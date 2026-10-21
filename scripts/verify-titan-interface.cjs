@@ -154,6 +154,25 @@ async function checkViewport(width) {
     await page.waitForFunction(() => document.querySelectorAll(".titanLayerPlannerSavedList li").length === 2);
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2,
       "Saved outfit is never automatically applied on reload");
+    if (width === 390) {
+      // Stale restored rows cannot stage a bookmark already removed elsewhere.
+      const previousStore = await page.evaluate(key => localStorage.getItem(key), libraryKey);
+      await page.evaluate(key => localStorage.setItem(key,
+        JSON.stringify({ version: 1, plans: [
+          { version: 1, composition: "separates", layers: ["shirt", "trouser"] },
+        ] })), libraryKey);
+      await layerPlanner.getByRole("button", { name: "Load saved layer plan 2 as draft" }).click();
+      assert.equal(await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).isChecked(), false,
+        "Outdated saved plan may not be staged");
+      assert.match(await layerPlanner.locator(".titanLayerPlannerLibraryFeedback").textContent(), /changed in another tab/i);
+      assert.equal(await layerPlanner.locator(".titanLayerPlannerSavedList li").count(), 1);
+      await page.evaluate(({ key, value }) => localStorage.setItem(key, value),
+        { key: libraryKey, value: previousStore });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await waitForLocalReferences(page);
+      await page.waitForFunction(() => document.querySelectorAll(".titanLayerPlannerSavedList li").length === 2);
+    }
     await layerPlanner.getByRole("button", { name: "Load saved layer plan 2 as draft" }).click();
     assert.equal(await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).isChecked(), true);
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2,
