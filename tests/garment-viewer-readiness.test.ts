@@ -39,8 +39,8 @@ function passingInput() {
     contract,
     manifest,
     patternScaleSamples:[
-      {fabricId:"stripe-a",pattern:"stripe" as const,errorPct:4.1,verified:true},
-      {fabricId:"check-b",pattern:"check" as const,errorPct:6.4,verified:true},
+      {fabricId:"stripe-a",pattern:"stripe" as const,errorPct:4.1,verified:true,repeatMm:20,observedRepeatPx:104.1,referenceMm:100,referencePx:500,physicalEvidenceNote:"Measured with fabric ruler A, same plane"},
+      {fabricId:"check-b",pattern:"check" as const,errorPct:6.4,verified:true,repeatMm:20,observedRepeatPx:106.4,referenceMm:100,referencePx:500,physicalEvidenceNote:"Measured with fabric ruler B, same plane"},
     ],
     interactionLatencyMs:[110,120,105,130,125,115,118,122,109,111,126,128],
     realismAssessments:Array.from({length:8},(_,index)=>({
@@ -76,12 +76,23 @@ test("prototype or invalid model contract blocks promotion",()=>{
 
 test("scale gate requires both verified stripe and check samples within eight percent",()=>{
   const missingCheck=passingInput();
-  missingCheck.patternScaleSamples=[{fabricId:"stripe-a",pattern:"stripe",errorPct:2,verified:true}];
+  missingCheck.patternScaleSamples=[{...missingCheck.patternScaleSamples[0]}];
   assert.equal(garmentViewerPromotionReadiness(missingCheck).scaleReady,false);
 
   const drift=passingInput();
-  drift.patternScaleSamples[1].errorPct=8.1;
+  drift.patternScaleSamples[1].observedRepeatPx=108.1;
+  drift.patternScaleSamples[1].errorPct=0; // Claimed success must not override measured 8.1% error.
   assert.equal(garmentViewerPromotionReadiness(drift).scaleReady,false);
+
+  const legacy=passingInput();
+  legacy.patternScaleSamples=legacy.patternScaleSamples.map(({repeatMm,observedRepeatPx,referenceMm,referencePx,physicalEvidenceNote,...row})=>({
+    ...row, repeatMm:undefined,observedRepeatPx:undefined,referenceMm:undefined,referencePx:undefined,physicalEvidenceNote:undefined,
+  }));
+  assert.equal(garmentViewerPromotionReadiness(legacy).scaleReady,false);
+
+  const invalid=passingInput();
+  invalid.patternScaleSamples[1].physicalEvidenceNote="";
+  assert.equal(garmentViewerPromotionReadiness(invalid).scaleReady,false);
 });
 
 test("realism, latency and boundary evidence cannot be bypassed",()=>{
