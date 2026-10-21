@@ -26,21 +26,39 @@ export type GarmentViewerAssetIdentity={
   manifestSha256:string;
 };
 
+/** Validate the complete identity before canonicalizing; never truncate asset hashes. */
+export function parseGarmentViewerAssetIdentity(value:unknown):GarmentViewerAssetIdentity|null {
+  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
+  const row=value as Record<string,unknown>;
+  if(typeof row.modelId!=="string" || typeof row.modelSha256!=="string"
+    || typeof row.manifestSha256!=="string") return null;
+  const modelId=row.modelId.trim();
+  const modelSha256=row.modelSha256.trim().toLowerCase();
+  const manifestSha256=row.manifestSha256.trim().toLowerCase();
+  if(!/^LE-[A-Z0-9-]{2,90}$/.test(modelId)
+    || !/^[a-f0-9]{64}$/.test(modelSha256)
+    || !/^[a-f0-9]{64}$/.test(manifestSha256)) return null;
+  return {modelId,modelSha256,manifestSha256};
+}
+
 export function garmentViewerAssetIdentityKey(identity:GarmentViewerAssetIdentity|null|undefined){
-  if(!identity) return "";
-  return [identity.modelId,identity.modelSha256,identity.manifestSha256].join(":");
+  const parsed=parseGarmentViewerAssetIdentity(identity);
+  if(!parsed) return "";
+  return [parsed.modelId,parsed.modelSha256,parsed.manifestSha256].join(":");
 }
 
 export function garmentViewerAssetIdentityMatches(
   current:GarmentViewerAssetIdentity|null|undefined,
   evidence:GarmentViewerAssetIdentity|null|undefined,
 ){
+  const currentIdentity=parseGarmentViewerAssetIdentity(current);
+  const evidenceIdentity=parseGarmentViewerAssetIdentity(evidence);
   return Boolean(
-    current
-    && evidence
-    && current.modelId===evidence.modelId
-    && current.modelSha256===evidence.modelSha256
-    && current.manifestSha256===evidence.manifestSha256
+    currentIdentity
+    && evidenceIdentity
+    && currentIdentity.modelId===evidenceIdentity.modelId
+    && currentIdentity.modelSha256===evidenceIdentity.modelSha256
+    && currentIdentity.manifestSha256===evidenceIdentity.manifestSha256
   );
 }
 
