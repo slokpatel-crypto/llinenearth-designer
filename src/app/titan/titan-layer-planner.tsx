@@ -65,6 +65,9 @@ export default function TitanLayerPlanner() {
   const [showSharedLink, setShowSharedLink] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
   const shareInput = useRef<HTMLInputElement>(null);
+  // A clipboard permission prompt can resolve after the active plan changed.
+  // Only the latest still-current request may report success or failure.
+  const shareCopyVersion = useRef(0);
   // The exact unreadable value displayed to the user; a later tab's newer
   // store must never be deleted by an old "Clear" button.
   const unreadableStoreRef = useRef<string | null>(null);
@@ -220,7 +223,14 @@ export default function TitanLayerPlanner() {
     }
   }
 
+  function invalidateShareCopy() {
+    shareCopyVersion.current += 1;
+    setShowSharedLink(false);
+    setShareMessage("");
+  }
+
   async function copyLayerLink() {
+    const requestVersion = ++shareCopyVersion.current;
     const href = titanLayerShareHref(appliedPlan);
     if (!shareOrigin || !href) {
       setShareMessage("This garment plan cannot be shared.");
@@ -231,8 +241,10 @@ export default function TitanLayerPlanner() {
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
       await navigator.clipboard.writeText(url);
+      if (requestVersion !== shareCopyVersion.current) return;
       setShareMessage("Share link copied. This is a garment plan only, not a 3D render or saved design.");
     } catch {
+      if (requestVersion !== shareCopyVersion.current) return;
       setShareMessage("Automatic copying is blocked. Select and copy the complete link below.");
     }
   }
@@ -254,8 +266,7 @@ export default function TitanLayerPlanner() {
     setDraftSlots([...STARTING_PLAN.layers]);
     setDraftComposition(STARTING_PLAN.composition);
     setMessage("Reset to shirt and trousers. No saved design was changed.");
-    setShowSharedLink(false);
-    setShareMessage("");
+    invalidateShareCopy();
   }
 
   function commitPlan(event: FormEvent<HTMLFormElement>) {
@@ -287,8 +298,7 @@ export default function TitanLayerPlanner() {
     setDraftSlots([...result.plan.layers]);
     setDraftComposition(result.plan.composition);
     setMessage("Valid layer plan applied locally. No garment asset, fabric, model or saved design was changed.");
-    setShowSharedLink(false);
-    setShareMessage("");
+    invalidateShareCopy();
   }
 
   // Any suggested fix is staged only; it never mutates the committed layer
