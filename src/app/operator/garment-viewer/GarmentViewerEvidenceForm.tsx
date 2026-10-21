@@ -132,6 +132,8 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
     }finally{setBusy(false);}
   }
 
+  const stripePreview=parseMeasuredScaleInput(stripeFabricId,stripePhysicalMm,stripeRepeatPx,stripeMarkerMm,stripeMarkerPx,stripeReference,"stripe",stripeVerified);
+  const checkPreview=parseMeasuredScaleInput(checkFabricId,checkPhysicalMm,checkRepeatPx,checkMarkerMm,checkMarkerPx,checkReference,"check",checkVerified);
   const checks=Object.entries(boundaryChecks) as Array<[keyof Boundaries,boolean]>;
   return <section className="garmentQaPanel garmentQaEvidenceForm">
     <div className="garmentQaPanelHead"><div><small>RECORD QA EVIDENCE</small><h2>Evidence stays tied to this exact model revision</h2></div><button type="button" onClick={refreshLocalEvidence}>Refresh lab samples</button></div>
@@ -155,6 +157,7 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
         <label><span>Check evidence reference</span><input value={checkReference} onChange={(event)=>setCheckReference(event.target.value)} placeholder="Photo/worksheet reference"/></label>
         <label className="garmentQaCheck"><input type="checkbox" checked={checkVerified} onChange={(event)=>setCheckVerified(event.target.checked)}/><span>Check values measured and traceable (independent sign-off still required)</span></label>
       </div>
+      <div className="garmentQaRubric"><small>CALCULATED SCALE CHECK · MAX 8%</small><p>Stripe: {stripePreview?stripePreview.errorPct.toFixed(2)+"%":"measurements pending"} · Check: {checkPreview?checkPreview.errorPct.toFixed(2)+"%":"measurements pending"}. These calculated results are only technical evidence; physical validation and independent owner/tailor approval remain separate.</p></div>
       <div className="garmentQaRubric"><small>REALISM RUBRIC · V1</small><p>Rate the same five things every time: officewear silhouette/proportions, cloth drape and body fit, collar/neck junction, hands + waist/trouser boundaries, and overall photographic believability against the studio-tucked reference. Give 4/5 or 5/5 only when there is no major mismatch.</p></div>
       <div className="garmentQaRating">
         <label><span>Independent viewer code</span><input value={viewerCode} onChange={(event)=>setViewerCode(event.target.value)} placeholder="e.g. viewer-07"/></label>
