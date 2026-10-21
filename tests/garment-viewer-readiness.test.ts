@@ -89,10 +89,10 @@ test("scale gate requires both verified stripe and check samples within eight pe
   roundingBoundary.patternScaleSamples[1].errorPct=8;
   assert.equal(garmentViewerPromotionReadiness(roundingBoundary).scaleReady,false);
 
-  const legacy=passingInput();
-  legacy.patternScaleSamples=legacy.patternScaleSamples.map((row)=>({
-    ...row, repeatMm:undefined,observedRepeatPx:undefined,referenceMm:undefined,referencePx:undefined,physicalEvidenceNote:undefined,
-  }));
+  const baseline=passingInput();
+  const legacy={...baseline,patternScaleSamples:baseline.patternScaleSamples.map(
+    ({fabricId,pattern,errorPct,verified})=>({fabricId,pattern,errorPct,verified}),
+  )};
   assert.equal(garmentViewerPromotionReadiness(legacy).scaleReady,false);
 
   const invalid=passingInput();
