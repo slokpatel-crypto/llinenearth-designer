@@ -191,7 +191,7 @@ test("HTTP evidence ingestion rejects overlong identities before persistence and
     assert.match(result.latest.readiness.reasons.join(" "),/future-dated audit timestamp/);
   }
 
-  for(const patch of [{modelSha256:identity.modelSha256+"suffix",{manifestSha256:""},{modelId:null},
+  for(const patch of [{modelSha256:identity.modelSha256+"suffix"},{manifestSha256:""},{modelId:null},
     {modelSha256:"c".repeat(64)}]){
     rows=[{...stored[0],payload:{...stored[0].payload,...patch}},stored[0]];
     const result=await reader.loadLatestGarmentViewerReadiness();
