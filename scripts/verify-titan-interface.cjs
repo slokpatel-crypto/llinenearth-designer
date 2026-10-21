@@ -262,6 +262,22 @@ async function checkViewport(width) {
     assert.equal(await layerPlanner.getByRole("textbox", { name: "Layer plan share URL" }).inputValue(),
       `${base}/titan?layer-plan=v1-0-03`);
     if (width === 390) {
+      // Permission denial must focus and preselect the real canonical link for
+      // a keyboard/screen reader user, not falsely announce a clipboard write.
+      await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: async () => { throw new Error("denied"); } },
+      }));
+      await layerPlanner.getByRole("button", { name: "Copy applied plan link" }).click();
+      await page.waitForFunction(() => {
+        const input = document.querySelector('input[aria-label="Layer plan share URL"]');
+        return input && document.activeElement === input
+          && input.selectionStart === 0 && input.selectionEnd === input.value.length;
+      });
+      assert.match(await layerPlanner.locator(".titanLayerPlannerShareFeedback").textContent(), /selected below/i);
+      await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+        configurable: true, value: { writeText: async () => {} },
+      }));
       await page.goto(`${base}/titan?layer-plan=v1-2-33`, { waitUntil: "domcontentloaded" });
       await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
       await waitForLocalReferences(page);
