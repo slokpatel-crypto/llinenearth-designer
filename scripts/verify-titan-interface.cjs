@@ -654,6 +654,40 @@ async function checkViewport(width) {
       await page.waitForFunction(expected => document.querySelector(".titanOutfitShareInput")?.value === expected,
         absoluteShare, { timeout: 10000 });
       const shareInput = page.getByRole("textbox", { name: "Shareable outfit reference link" });
+      // A pending permission prompt is allowed to finish after changing a
+      // cloth. Returning to the SAME reference pair still must not resurrect
+      // an old copy-success message or focus a stale denied-copy field.
+      if (width === 390) {
+        for (const denied of [false, true]) {
+          await page.evaluate(rejectRequest => {
+            Object.defineProperty(navigator, "clipboard", {
+              configurable: true,
+              value: { writeText: () => new Promise((resolve, reject) => {
+                window.__finishTitanPairCopy = () => rejectRequest
+                  ? reject(new Error("clipboard denied")) : resolve();
+              }) },
+            });
+          }, denied);
+          await page.getByRole("button", { name: "Copy link" }).click();
+          await page.waitForFunction(() => typeof window.__finishTitanPairCopy === "function");
+          await page.locator(".titanOutfitSlotText button").filter({ hasText: "Remove cloth" }).last().click();
+          assert.equal(await page.locator(".titanOutfitCopyStatus").count(), 0);
+          await page.getByRole("button", { name: "Trouser cloth" }).click();
+          await page.getByRole("searchbox", { name: "Find by colour or pattern" }).fill("beige");
+          const restore = page.locator(
+            `.titanFabricTile:has(.titanFabricCard[href="/designer-studio?source=titan&kind=trouser&fabric=${trouser}"]) .titanFabricOutfitSelect`,
+          );
+          await restore.click();
+          assert.equal(await page.locator(".titanOutfitShareCta").getAttribute("href"), shareHref);
+          await page.evaluate(() => window.__finishTitanPairCopy());
+          await page.waitForTimeout(35);
+          assert.equal(await page.locator(".titanOutfitCopyStatus").count(), 0,
+            "An old clipboard completion cannot reappear even if the same cloth pair was restored");
+        }
+        await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+          configurable: true, value: { writeText: async () => {} },
+        }));
+      }
       await shareInput.focus();
       assert.equal(await shareInput.evaluate(node => node.selectionEnd - node.selectionStart),
         absoluteShare.length, "Focused link must be selectable when clipboard is unavailable");
