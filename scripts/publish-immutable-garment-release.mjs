@@ -14,6 +14,23 @@ function isOwnShape(value, keys) {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     && Object.keys(value).sort().join("|") === [...keys].sort().join("|");
 }
+function checkedDirectory(directory, io) {
+  // lstat rejects symlinks, including aliases to valid directories. A release
+  // must never escape its configured root through an ancestor symlink.
+  const stat = io.lstatSync(directory);
+  if (!stat.isDirectory()) {
+    throw new Error("Garment release path must be a real directory, not a symlink: " + directory);
+  }
+}
+function ensureDirectory(directory, io) {
+  try {
+    checkedDirectory(directory, io);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+    io.mkdirSync(directory);
+    checkedDirectory(directory, io);
+  }
+}
 function checkedFile(file, maximum, io) {
   const stat = io.lstatSync(file);
   if (!stat.isFile() || stat.size < 1 || stat.size > maximum) {
@@ -47,6 +64,9 @@ function releasePaths(root, pointer) {
 }
 function verifiedRelease(root, pointer, io) {
   const paths = releasePaths(root, pointer);
+  checkedDirectory(root, io);
+  checkedDirectory(path.join(root, "releases"), io);
+  checkedDirectory(paths.directory, io);
   const glb = checkedFile(paths.modelPath, MAX_MODEL_BYTES, io);
   const sidecar = checkedFile(paths.manifestPath, MAX_MANIFEST_BYTES, io);
   if (digest(glb) !== pointer.modelSha256 || digest(sidecar) !== pointer.manifestSha256) {
@@ -73,6 +93,7 @@ function validatePointer(pointer) {
  */
 export function readGarmentRelease(releaseRoot, io = fs) {
   const root = path.resolve(releaseRoot);
+  checkedDirectory(root, io);
   const pointerPath = path.join(root, "current.json");
   const pointerBytes = checkedFile(pointerPath, MAX_MANIFEST_BYTES, io);
   const pointer = validatePointer(JSON.parse(pointerBytes.toString("utf8")));
@@ -92,11 +113,23 @@ export function publishImmutableGarmentRelease(stagedGlb, stagedManifest, releas
   const pointer = snapshot(glb, sidecar);
   const paths = releasePaths(root, pointer);
   const releases = path.join(root, "releases");
-  io.mkdirSync(releases, { recursive: true });
+  // Never write into an aliased release root or through an existing symlinked
+  // releases directory, even when the target contains a valid old pair.
+  io.mkdirSync(root, { recursive: true });
+  checkedDirectory(root, io);
+  ensureDirectory(releases, io);
   let staging = null;
   let pointerTemporary = null;
   try {
-    if (!io.existsSync(paths.directory)) {
+    // lstat catches dangling symlinks that existsSync would treat as missing.
+    let existingRelease = false;
+    try {
+      checkedDirectory(paths.directory, io);
+      existingRelease = true;
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+    if (!existingRelease) {
       staging = io.mkdtempSync(path.join(releases, ".staged-"));
       const tempGlb = path.join(staging, "model.glb");
       const tempManifest = path.join(staging, "model.viewer.json");

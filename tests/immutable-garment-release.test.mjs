@@ -141,3 +141,42 @@ test("readers retain a consistent old snapshot even after a concurrent pointer c
   assert.equal(opened.sidecar.toString(), '{"panels":"first measured fixture"}');
   assert.equal(read(p).glb.toString(), "second verified GLB fixture");
 }));
+
+
+test("symlinked release roots are rejected before publishing or reading", async () => workspace(async p => {
+  const first = publish(p);
+  const alias = path.join(p.root, "symlinked-published-root");
+  await fs.promises.symlink(p.releases, alias, "dir");
+
+  assert.throws(() => readGarmentRelease(alias), /real directory, not a symlink/);
+  assert.throws(
+    () => publishImmutableGarmentRelease(p.model, p.manifest, alias),
+    /real directory, not a symlink/,
+  );
+  assert.equal(read(p).pointer.releaseId, first.pointer.releaseId);
+}));
+
+test("symlinked releases ancestor cannot redirect assets outside release root", async () => workspace(async p => {
+  const first = publish(p);
+  const releases = path.join(p.releases, "releases");
+  const elsewhere = path.join(p.root, "displaced-immutable-assets");
+  const pointerBefore = await readFile(first.pointerPath);
+  await fs.promises.rename(releases, elsewhere);
+  await fs.promises.symlink(elsewhere, releases, "dir");
+
+  assert.throws(() => read(p), /real directory, not a symlink/);
+  assert.throws(() => publish(p), /real directory, not a symlink/);
+  assert.deepEqual(await readFile(first.pointerPath), pointerBefore);
+}));
+
+test("a symlinked version directory is invalid even with unmodified checked assets", async () => workspace(async p => {
+  const first = publish(p);
+  const saved = path.join(p.root, "displaced-version");
+  const pointerBefore = await readFile(first.pointerPath);
+  await fs.promises.rename(first.directory, saved);
+  await fs.promises.symlink(saved, first.directory, "dir");
+
+  assert.throws(() => read(p), /real directory, not a symlink/);
+  assert.throws(() => publish(p), /real directory, not a symlink/);
+  assert.deepEqual(await readFile(first.pointerPath), pointerBefore);
+}));
