@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -688,7 +689,10 @@ function clean(body:IncomingEvent, operatorAuthorized:boolean) {
     && (payload as Record<string,unknown>).subtype==="garment_viewer_readiness";
 
   return {
-    id:String(body.id || `EV-${Date.now()}`).slice(0,160),
+    // Each operator QA submission is a new append-only audit event. A caller-
+    // supplied duplicate ID could be ignored by the database's
+    // resolution=ignore-duplicates insert while the API reported success.
+    id:isGarmentReadiness?`EV-GARMENT-${randomUUID()}`:String(body.id || `EV-${Date.now()}`).slice(0,160),
     session_id:sessionId,
     type,
     at:isGarmentReadiness?new Date().toISOString():parsedAt.toISOString(),
