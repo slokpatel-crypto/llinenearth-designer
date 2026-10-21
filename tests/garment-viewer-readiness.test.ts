@@ -304,6 +304,7 @@ test("new latency submissions retain slow and malformed measurements instead of 
   assert.equal(garmentLatencySubmissionIsLossless("invalid"),false);
   assert.equal(garmentLatencySubmissionIsLossless(Array(121).fill(120)),false);
   assert.equal(garmentLatencySubmissionIsLossless(Array(120).fill(120)),true);
+  assert.equal(garmentLatencySubmissionIsLossless([...passing,0.02]),false,"rounding must not drop a tiny valid input");
 });
 
 test("realism submissions cannot omit bad assessments or truncate viewer identities",()=>{
@@ -324,4 +325,6 @@ test("realism submissions cannot omit bad assessments or truncate viewer identit
   assert.equal(garmentRealismSubmissionIsLossless(Array(51).fill({viewerId:"valid",rating:5})),false);
   assert.equal(garmentRealismSubmissionIsLossless(Array(50).fill({viewerId:"valid",rating:5})),true);
   assert.equal(garmentRealismSubmissionIsLossless([{viewerId:"  ViewER-1  ",rating:5}]),true);
+  assert.equal(garmentRealismSubmissionIsLossless([...passing,{viewerId:" VIEWER-1 ",rating:5}]),false,
+    "a later duplicate reviewer cannot silently replace an earlier negative rating");
 });
