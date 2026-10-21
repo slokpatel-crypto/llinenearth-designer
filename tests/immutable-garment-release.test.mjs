@@ -1,0 +1,143 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import * as fs from "node:fs";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { tmpdir } from "node:os";
+import { publishImmutableGarmentRelease, readGarmentRelease } from "../scripts/publish-immutable-garment-release.mjs";
+
+async function workspace(run) {
+  const root = await mkdtemp(path.join(tmpdir(), "linen immutable release "));
+  const staged = path.join(root, "incoming");
+  const releases = path.join(root, "published");
+  await mkdir(staged);
+  const model = path.join(staged, "candidate.glb");
+  const manifest = path.join(staged, "candidate.viewer.json");
+  try {
+    await writeFile(model, "first verified GLB fixture");
+    await writeFile(manifest, '{"panels":"first measured fixture"}');
+    await run({ root, releases, model, manifest });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+}
+function publish(p, io) {
+  return publishImmutableGarmentRelease(p.model, p.manifest, p.releases, io);
+}
+async function next(p) {
+  await writeFile(p.model, "second verified GLB fixture");
+  await writeFile(p.manifest, '{"panels":"second measured fixture"}');
+}
+function read(p) { return readGarmentRelease(p.releases); }
+
+test("single current pointer resolves a complete verified GLB and measured sidecar pair", async () => workspace(async p => {
+  const first = publish(p);
+  const result = read(p);
+  assert.deepEqual(result.pointer, first.pointer);
+  assert.equal(result.glb.toString(), "first verified GLB fixture");
+  assert.equal(result.sidecar.toString(), '{"panels":"first measured fixture"}');
+  assert.equal(path.dirname(result.modelPath), path.dirname(result.manifestPath));
+  assert.equal(await readFile(p.model, "utf8"), "first verified GLB fixture");
+  assert.equal(await readFile(p.manifest, "utf8"), '{"panels":"first measured fixture"}');
+  assert.equal((await readFile(first.pointerPath, "utf8")).trim(), JSON.stringify(first.pointer));
+  assert.equal(publish(p).pointer.releaseId, first.pointer.releaseId, "Re-running is idempotent");
+}));
+
+test("new pointer switches both paths at once and never modifies prior release bytes", async () => workspace(async p => {
+  const first = publish(p);
+  const oldGlb = await readFile(first.modelPath);
+  const oldManifest = await readFile(first.manifestPath);
+  await next(p);
+  const second = publish(p);
+  assert.notEqual(first.pointer.releaseId, second.pointer.releaseId);
+  assert.equal(read(p).glb.toString(), "second verified GLB fixture");
+  assert.equal(read(p).sidecar.toString(), '{"panels":"second measured fixture"}');
+  assert.deepEqual(await readFile(first.modelPath), oldGlb);
+  assert.deepEqual(await readFile(first.manifestPath), oldManifest);
+}));
+
+test("pointer rename failure leaves complete old pair selected and staged data intact", async () => workspace(async p => {
+  const original = publish(p);
+  await next(p);
+  const io = {
+    ...fs,
+    renameSync(from, to) {
+      if (to === path.join(p.releases, "current.json")) throw new Error("injected pointer rename failure");
+      return fs.renameSync(from, to);
+    },
+  };
+  assert.throws(() => publish(p, io), /injected pointer rename failure/);
+  assert.equal(read(p).pointer.releaseId, original.pointer.releaseId);
+  assert.equal(read(p).sidecar.toString(), '{"panels":"first measured fixture"}');
+  assert.equal(await readFile(p.model, "utf8"), "second verified GLB fixture");
+  const temporary = (await fs.promises.readdir(p.releases)).filter(x => x.startsWith(".current-"));
+  assert.deepEqual(temporary, []);
+}));
+
+test("failure while staging the second asset never publishes a partial release", async () => workspace(async p => {
+  const original = publish(p);
+  await next(p);
+  const io = {
+    ...fs,
+    writeFileSync(file, contents, options) {
+      if (String(file).endsWith("model.viewer.json")) throw new Error("injected staging write failure");
+      return fs.writeFileSync(file, contents, options);
+    },
+  };
+  assert.throws(() => publish(p, io), /injected staging write failure/);
+  assert.equal(read(p).pointer.releaseId, original.pointer.releaseId);
+  const staged = (await fs.promises.readdir(path.join(p.releases, "releases")))
+    .filter(x => x.startsWith(".staged-"));
+  assert.deepEqual(staged, []);
+}));
+
+test("corrupt immutable bytes are not reused or silently repaired", async () => workspace(async p => {
+  const published = publish(p);
+  await writeFile(published.manifestPath, "tampered sidecar");
+  assert.throws(() => read(p), /checksum mismatch/);
+  assert.throws(() => publish(p), /checksum mismatch/);
+  assert.equal(await readFile(published.manifestPath, "utf8"), "tampered sidecar");
+}));
+
+test("malformed, injected and traversal pointers fail closed", async () => workspace(async p => {
+  const published = publish(p);
+  const pointerPath = published.pointerPath;
+  const invalid = [
+    { ...published.pointer, format: "future-release-v2" },
+    { ...published.pointer, releaseId: "../escape" },
+    { ...published.pointer, extra: "/etc/passwd" },
+    { ...published.pointer, modelSha256: "0".repeat(64) },
+    ["not a pointer"],
+    null,
+  ];
+  for (const pointer of invalid) {
+    await writeFile(pointerPath, JSON.stringify(pointer));
+    assert.throws(() => read(p), /Invalid or unsupported garment release pointer/);
+  }
+  await writeFile(pointerPath, "{unparseable");
+  assert.throws(() => read(p), SyntaxError);
+}));
+
+test("missing, empty, symlinked and oversized candidate inputs cannot advance pointer", async () => workspace(async p => {
+  const first = publish(p);
+  await writeFile(p.manifest, "");
+  assert.throws(() => publish(p), /nonempty regular file/);
+  await fs.promises.unlink(p.manifest);
+  await fs.promises.symlink(first.manifestPath, p.manifest);
+  assert.throws(() => publish(p), /nonempty regular file/);
+  await fs.promises.unlink(p.manifest);
+  await writeFile(p.manifest, Buffer.alloc(1024 * 1024 + 1));
+  assert.throws(() => publish(p), /nonempty regular file/);
+  assert.equal(read(p).pointer.releaseId, first.pointer.releaseId);
+}));
+
+test("readers retain a consistent old snapshot even after a concurrent pointer change", async () => workspace(async p => {
+  const first = publish(p);
+  const opened = read(p);
+  await next(p);
+  publish(p);
+  assert.equal(opened.pointer.releaseId, first.pointer.releaseId);
+  assert.equal(opened.glb.toString(), "first verified GLB fixture");
+  assert.equal(opened.sidecar.toString(), '{"panels":"first measured fixture"}');
+  assert.equal(read(p).glb.toString(), "second verified GLB fixture");
+}));
