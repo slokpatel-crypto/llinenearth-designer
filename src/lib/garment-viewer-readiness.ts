@@ -134,10 +134,11 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   const scaleSamples=calibratedRows.map(({sample})=>sample);
   const stripeFabricIds=new Set(scaleSamples
     .filter((sample)=>sample.pattern==="stripe")
-    .map((sample)=>parseGarmentEvidenceFabricId(sample.fabricId) as string));
+    .map((sample)=>(parseGarmentEvidenceFabricId(sample.fabricId) as string).toLowerCase()));
   const checkFabricIds=new Set(scaleSamples
     .filter((sample)=>sample.pattern==="check")
-    .map((sample)=>parseGarmentEvidenceFabricId(sample.fabricId) as string));
+    .map((sample)=>(parseGarmentEvidenceFabricId(sample.fabricId) as string).toLowerCase()));
+  // Case changes cannot masquerade as physically independent fabric samples.
   const hasIndependentPatternSubjects=[...stripeFabricIds]
     .some((fabricId)=>[...checkFabricIds].some((checkId)=>checkId!==fabricId));
   const scaleReady=scaleSamples.length>=GARMENT_VIEWER_MIN_PATTERN_SCALE_SAMPLES
