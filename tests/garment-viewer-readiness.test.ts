@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeGarmentViewerEvidenceForStorage, parseGarmentPatternSamples, parseMeasuredScaleInput } from "../src/lib/garment-viewer-evidence-validation.ts";
+import { garmentPatternSubmissionIsLossless, normalizeGarmentViewerEvidenceForStorage, parseGarmentPatternSamples, parseMeasuredScaleInput } from "../src/lib/garment-viewer-evidence-validation.ts";
 import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness, garmentViewerScaleAudit, type GarmentViewerPromotionInput } from "../src/lib/garment-viewer-readiness.ts";
 import {
   GARMENT_VIEWER_CONTRACT_VERSION,
@@ -262,4 +262,32 @@ test("legacy percentage-only claims appear as unverified audit, not a promotion 
   assert.equal(audit[0].sample.verified,false);
   assert.equal(audit[0].measuredErrorPct,null);
   assert.equal(audit[0].passes,false);
+});
+
+test("submitted QA evidence cannot hide malformed or formerly verified calibration samples",()=>{
+  const originals=passingInput().patternScaleSamples;
+  assert.equal(garmentPatternSubmissionIsLossless(originals),true);
+  assert.equal(garmentPatternSubmissionIsLossless(undefined),true);
+  assert.equal(garmentPatternSubmissionIsLossless([]),true);
+
+  const verifiedBad=[
+    {...originals[0],renderedRepeatPx:null},
+    {...originals[0],evidenceReference:"x".repeat(241)},
+    {...originals[0],evidenceReference:"too-short"},
+    {...originals[0],fabricId:"x".repeat(161)},
+    {...originals[0],pattern:"not-a-pattern"},
+    {fabricId:"legacy-verified",pattern:"stripe",verified:true,errorPct:0},
+  ];
+  for(const bad of verifiedBad) {
+    assert.equal(garmentPatternSubmissionIsLossless([...originals,bad]),false,JSON.stringify(bad));
+  }
+  assert.equal(garmentPatternSubmissionIsLossless("not-an-array"),false);
+  assert.equal(garmentPatternSubmissionIsLossless([...originals, ...Array(19).fill(originals[0])]),false);
+  assert.equal(garmentPatternSubmissionIsLossless([...originals, null]),false);
+
+  const archival={fabricId:"legacy-unchecked",pattern:"other",verified:false,errorPct:5};
+  assert.equal(garmentPatternSubmissionIsLossless([...originals,archival]),true);
+  const stored=normalizeGarmentViewerEvidenceForStorage({patternScaleSamples:[...originals,archival]});
+  assert.equal(stored.patternScaleSamples.length,3);
+  assert.equal(stored.patternScaleSamples[2].verified,false);
 });
