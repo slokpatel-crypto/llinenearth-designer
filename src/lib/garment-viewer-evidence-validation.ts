@@ -1,5 +1,6 @@
 import {
   calibratedGarmentScaleErrorPct,
+  parseGarmentEvidenceFabricId,
   type GarmentViewerPatternScaleSample,
 } from "./garment-viewer-readiness.ts";
 import type { RealismAssessment } from "./designer/proof-scale.ts";
@@ -18,7 +19,7 @@ export function parseGarmentPatternSamples(value:unknown):GarmentViewerPatternSc
   return value.slice(-20).flatMap((item)=>{
     if(!item || typeof item!=="object" || Array.isArray(item)) return [];
     const row=item as Record<string,unknown>;
-    const fabricId=typeof row.fabricId==="string" ? row.fabricId.trim().slice(0,160) : "";
+    const fabricId=parseGarmentEvidenceFabricId(row.fabricId);
     const pattern=row.pattern;
     if(!fabricId || (pattern!=="stripe" && pattern!=="check" && pattern!=="other")) return [];
     const claimedPct=row.errorPct;
@@ -28,7 +29,8 @@ export function parseGarmentPatternSamples(value:unknown):GarmentViewerPatternSc
       ...(parsePositive(row.renderedRepeatPx,10000)!==null?{renderedRepeatPx:row.renderedRepeatPx as number}:{}),
       ...(parsePositive(row.referenceLengthMm,3000)!==null?{referenceLengthMm:row.referenceLengthMm as number}:{}),
       ...(parsePositive(row.referenceLengthPx,10000)!==null?{referenceLengthPx:row.referenceLengthPx as number}:{}),
-      ...(typeof row.evidenceReference==="string"?{evidenceReference:row.evidenceReference.trim().slice(0,240)}:{}),
+      ...(typeof row.evidenceReference==="string" && row.evidenceReference.length<=240
+        ?{evidenceReference:row.evidenceReference.trim()}:{}),
     };
     const derived=calibratedGarmentScaleErrorPct(candidate);
     if(derived!==null) return [{...candidate,errorPct:displayScaleError(derived),verified:row.verified===true}];
@@ -75,13 +77,13 @@ export function parseMeasuredScaleInput(
   pattern:"stripe"|"check",
   verified:boolean,
 ):GarmentViewerPatternScaleSample|null {
-  const fabric=fabricId.trim().slice(0,160);
+  const fabric=parseGarmentEvidenceFabricId(fabricId);
   const physicalRepeatMm=measure(physicalRepeatMmInput,1000);
   const renderedRepeatPx=measure(renderedRepeatPxInput,10000);
   const referenceLengthMm=measure(referenceLengthMmInput,3000);
   const referenceLengthPx=measure(referenceLengthPxInput,10000);
   const evidenceReference=evidenceReferenceInput.trim();
-  if(!fabric || physicalRepeatMm===null || renderedRepeatPx===null
+  if(fabric===null || physicalRepeatMm===null || renderedRepeatPx===null
     || referenceLengthMm===null || referenceLengthPx===null
     || evidenceReference.length<8 || evidenceReference.length>240) return null;
   const candidate:GarmentViewerPatternScaleSample={

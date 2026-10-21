@@ -76,6 +76,13 @@ export type GarmentViewerPatternScaleSample = {
   evidenceReference?:string;
 };
 
+/** Preserve the complete evidence subject identity; never alias it by truncation. */
+export function parseGarmentEvidenceFabricId(value:unknown):string|null {
+  if(typeof value!=="string") return null;
+  const fabricId=value.trim();
+  return fabricId.length>0 && fabricId.length<=160 ? fabricId : null;
+}
+
 /** Recompute scale error from the underlying measurement, never a claimed percentage. */
 export function calibratedGarmentScaleErrorPct(sample:GarmentViewerPatternScaleSample):number|null {
   const {physicalRepeatMm,renderedRepeatPx,referenceLengthMm,referenceLengthPx,evidenceReference}=sample;
@@ -108,14 +115,21 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   // Legacy percent-only rows remain inspectable but cannot pass physical QA.
   // Compute from exact calibrated dimensions even if a stored errorPct was altered.
   const scaleSamples=input.patternScaleSamples
-    .filter((sample)=>sample.verified===true && calibratedGarmentScaleErrorPct(sample)!==null)
+    .filter((sample)=>sample.verified===true
+      && parseGarmentEvidenceFabricId(sample.fabricId)!==null
+      && calibratedGarmentScaleErrorPct(sample)!==null)
     .slice(-20);
   const calibratedErrors=scaleSamples.map((sample)=>calibratedGarmentScaleErrorPct(sample) as number);
-  const hasStripe=scaleSamples.some((sample)=>sample.pattern==="stripe");
-  const hasCheck=scaleSamples.some((sample)=>sample.pattern==="check");
+  const stripeFabricIds=new Set(scaleSamples
+    .filter((sample)=>sample.pattern==="stripe")
+    .map((sample)=>parseGarmentEvidenceFabricId(sample.fabricId) as string));
+  const checkFabricIds=new Set(scaleSamples
+    .filter((sample)=>sample.pattern==="check")
+    .map((sample)=>parseGarmentEvidenceFabricId(sample.fabricId) as string));
+  const hasIndependentPatternSubjects=[...stripeFabricIds]
+    .some((fabricId)=>[...checkFabricIds].some((checkId)=>checkId!==fabricId));
   const scaleReady=scaleSamples.length>=GARMENT_VIEWER_MIN_PATTERN_SCALE_SAMPLES
-    && hasStripe
-    && hasCheck
+    && hasIndependentPatternSubjects
     && calibratedErrors.every((error)=>error<=ROADMAP_SCALE_TOLERANCE_PCT);
 
   const latency=summarizeLatencySamples(input.interactionLatencyMs);
@@ -131,7 +145,7 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   const reasons:string[]=[];
   if(!contractReady) reasons.push("Approved GLB has not passed the six-panel production material contract.");
   if(!manifestReady) reasons.push("Approved GLB physical panel manifest is missing or invalid.");
-  if(!scaleReady) reasons.push("Stripe and check both require physical repeat, rendered repeat pixels, same-plane reference calibration and traceable evidence within the <=8% scale gate.");
+  if(!scaleReady) reasons.push("Distinct stripe and check fabric samples both require physical repeat, rendered repeat pixels, same-plane reference calibration and traceable evidence within the <=8% scale gate.");
   if(!latencyReady) reasons.push("3D interaction needs at least 12 samples with p95 below 300 ms.");
   if(!realismReady) reasons.push("At least 6 of 8 independent viewers must rate the realistic model 4/5 or 5/5.");
   if(!boundaryReady) reasons.push("Neck, cuffs, waist and trouser-gap boundaries must all pass visual QA.");
