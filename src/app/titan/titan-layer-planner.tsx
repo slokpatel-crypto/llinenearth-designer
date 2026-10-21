@@ -20,6 +20,7 @@ import {
 import {
   readTitanLayerShare, titanLayerShareHref, TITAN_LAYER_SHARE_PARAMETER,
 } from "@/lib/titan/layer-plan-share";
+import { guideTitanLayerDraft } from "@/lib/titan/layer-compatibility-guidance";
 
 const STARTING_PLAN: EditableModelLayerPlan = {
   version: 1,
@@ -236,6 +237,27 @@ export default function TitanLayerPlanner() {
     setShareMessage("");
   }
 
+  // Any suggested fix is staged only; it never mutates the committed layer
+  // arrangement, bookmarks, real Designer, model or paid rendering APIs.
+  const draftGuidance = guideTitanLayerDraft({
+    version: 1, composition: draftComposition, layers: draftSlots,
+  });
+
+  function stageCompatibilityFix(proposal: EditableModelLayerPlan) {
+    // Reject stale/foreign fixes even when a user changes choices rapidly.
+    const candidate = JSON.stringify(proposal);
+    const current = guideTitanLayerDraft({
+      version: 1, composition: draftComposition, layers: draftSlots,
+    });
+    if (!current.suggestions.some(item => JSON.stringify(item.plan) === candidate)) {
+      setMessage("That recommendation is out of date. Review your current garment choices.");
+      return;
+    }
+    setDraftSlots([...proposal.layers]);
+    setDraftComposition(proposal.composition);
+    setMessage("Compatibility fix staged as a draft only. Review it and press Apply layer plan to confirm.");
+  }
+
   const hasUnappliedChanges = draftComposition !== appliedPlan.composition
     || MODEL_LAYER_SLOTS.some(({ slot }) => draftSlots.includes(slot) !== appliedPlan.layers.includes(slot));
 
@@ -284,6 +306,29 @@ export default function TitanLayerPlanner() {
           </fieldset>
           <p className="titanLayerPlannerHint">For a suit, select the blazer and its composition together.
             A three-piece suit also needs a waistcoat. Pocket squares require a blazer; ties require a shirt.</p>
+          {!draftGuidance.valid && (
+            <section className="titanLayerPlannerGuidance" aria-labelledby="titan-layer-guidance-title">
+              <h3 id="titan-layer-guidance-title">Complete your garment plan</h3>
+              <ul className="titanLayerPlannerGuidanceReasons">
+                {draftGuidance.reasons.map(reason => <li key={reason}>{reason}</li>)}
+              </ul>
+              {draftGuidance.suggestions.length > 0 && (
+                <>
+                  <p>Review a valid combination below. A suggestion changes your draft only.</p>
+                  <div className="titanLayerPlannerFixes">
+                    {draftGuidance.suggestions.map(option => (
+                      <button type="button" key={JSON.stringify(option.plan)}
+                        onClick={() => stageCompatibilityFix(option.plan)}
+                        aria-label={`Stage fix: ${option.description}`}>
+                        <strong>{option.description}</strong>
+                        <small>Stage draft · Apply separately</small>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+          )}
           <div className="titanLayerPlannerActions">
             <button type="submit" disabled={!hasUnappliedChanges}>Apply layer plan</button>
             <button type="button" onClick={revertDraft} disabled={!hasUnappliedChanges}>Discard edits</button>

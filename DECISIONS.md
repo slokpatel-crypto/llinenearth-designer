@@ -641,3 +641,11 @@ are displayed. Do not merge the stacked TITAN PRs or deploy.
 - Sharing requires the user to click **Copy applied plan link**. If clipboard permissions are blocked, display a select-and-copy URL field. Changes to the active plan hide any stale previously displayed share URL.
 - Browser and Node coverage must prove all valid canonical combinations, malformed tokens, explicit apply, preserved Designer draft, mobile focus/targets and no paid-provider calls. Do not claim independent photographic/Blender/source model approval based on this logic.
 - **DRAFT ONLY.** Stacked on #322, #321 and the unreleased TITAN chain. No merge, deployment or release authorisation.
+
+## 2026-10-21 — TITAN compatibility guidance is only a draft suggestion
+
+**Decision:** The isolated TITAN outfit layer planner now derives up to three deterministic, minimum-edit valid combinations from the existing seven-slot canonical garment contract. It prefers adding missing prerequisites over discarding a user's explicit selection. Every suggested plan is itself validated by `resolveModelLayerPlan` and is bounded to known slot IDs and the three existing compositions.
+
+**Safety:** Syntax-invalid, duplicated, injected and future-version plans produce no repair suggestions. The customer must click once to stage a candidate and click Apply separately to commit it locally. Nothing is written to Designer measurements/drafts, customer records or operator inventory; no 3D geometry or paid image API is called. This is not a claim of tailoring fit, physical drape, asset approval, or production readiness.
+
+**Compatibility and QA:** No schema, dependency, model identity, original Designer route or database change. Exhaustive 384-mask/composition unit coverage and actual 320/390/768/1440px Chromium interaction checks are required; no merge/deploy until CI and owner approval.
