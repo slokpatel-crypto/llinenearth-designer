@@ -273,7 +273,7 @@ test("submitted QA evidence cannot hide malformed or formerly verified calibrati
   const verifiedBad=[
     {...originals[0],renderedRepeatPx:null},
     {...originals[0],evidenceReference:"x".repeat(241)},
-    {...originals[0],evidenceReference:"too-short"},
+    {...originals[0],evidenceReference:"short"},
     {...originals[0],fabricId:"x".repeat(161)},
     {...originals[0],pattern:"not-a-pattern"},
     {fabricId:"legacy-verified",pattern:"stripe",verified:true,errorPct:0},
