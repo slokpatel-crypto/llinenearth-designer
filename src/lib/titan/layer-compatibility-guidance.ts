@@ -42,7 +42,7 @@ function isEditableDraft(value: unknown): value is EditableModelLayerPlan {
     && COMPOSITIONS.includes(raw.composition as OutfitComposition)
     && Array.isArray(raw.layers)
     && raw.layers.length <= MODEL_LAYER_SLOTS.length
-    && raw.layers.every(slot => typeof slot === "string" && SLOT_IDS.has(slot))
+    && Array.from(raw.layers).every(slot => typeof slot === "string" && SLOT_IDS.has(slot))
     && new Set(raw.layers).size === raw.layers.length;
 }
 
