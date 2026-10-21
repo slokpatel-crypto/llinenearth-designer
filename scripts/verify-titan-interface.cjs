@@ -64,12 +64,19 @@ async function checkViewport(width) {
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2,
       "Staging the preset must not alter the applied plan");
     assert.match(await layerPlanner.locator(".titanLayerPlannerFeedback").textContent(), /unapplied draft/i);
+    const review = layerPlanner.locator(".titanLayerPlannerReview");
+    assert.equal(await review.count(), 1, "Valid pending suit requires a visible review");
+    assert.match(await review.textContent(), /Add: Blazer/);
+    assert.match(await review.textContent(), /Not render-ready: Blazer/);
+    assert.match(await review.textContent(), /two-piece suit/i);
     await layerPlanner.getByRole("button", { name: "Discard edits" }).click();
+    assert.equal(await review.count(), 0, "Discarded edits must clear the review");
     assert.equal(await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).isChecked(), false);
     await layerPlanner.getByRole("button", { name: "Stage Full accessory layer plan as a draft" }).click();
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
     assert.equal(await layerPlanner.getByRole("checkbox", { name: /Pocket square/ }).isChecked(), true);
     assert.equal(await layerPlanner.getByRole("radio", { name: "Three-piece suit" }).isChecked(), true);
+    assert.match(await layerPlanner.locator(".titanLayerPlannerReview").textContent(), /pocket square/i);
     await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 7);
     assert.equal(await layerPlanner.locator("[data-titan-composition]").getAttribute("data-titan-composition"), "three-piece-suit");
@@ -147,6 +154,25 @@ async function checkViewport(width) {
     await page.waitForFunction(() => document.querySelectorAll(".titanLayerPlannerSavedList li").length === 2);
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2,
       "Saved outfit is never automatically applied on reload");
+    if (width === 390) {
+      // Stale restored rows cannot stage a bookmark already removed elsewhere.
+      const previousStore = await page.evaluate(key => localStorage.getItem(key), libraryKey);
+      await page.evaluate(key => localStorage.setItem(key,
+        JSON.stringify({ version: 1, plans: [
+          { version: 1, composition: "separates", layers: ["shirt", "trouser"] },
+        ] })), libraryKey);
+      await layerPlanner.getByRole("button", { name: "Load saved layer plan 2 as draft" }).click();
+      assert.equal(await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).isChecked(), false,
+        "Outdated saved plan may not be staged");
+      assert.match(await layerPlanner.locator(".titanLayerPlannerLibraryFeedback").textContent(), /changed in another tab/i);
+      assert.equal(await layerPlanner.locator(".titanLayerPlannerSavedList li").count(), 1);
+      await page.evaluate(({ key, value }) => localStorage.setItem(key, value),
+        { key: libraryKey, value: previousStore });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await waitForLocalReferences(page);
+      await page.waitForFunction(() => document.querySelectorAll(".titanLayerPlannerSavedList li").length === 2);
+    }
     await layerPlanner.getByRole("button", { name: "Load saved layer plan 2 as draft" }).click();
     assert.equal(await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).isChecked(), true);
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2,
@@ -168,6 +194,33 @@ async function checkViewport(width) {
     assert.equal(await layerPlanner.getByRole("button", { name: "Save applied plan" }).isDisabled(), true);
     assert.equal(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).version, libraryKey), 2,
       "Unknown store version must remain intact until explicit clearing");
+    if (width === 390) {
+      // A different tab can save a good store while this screen still shows an
+      // unreadable warning. The stale Clear button must never erase that data.
+      const replacement = JSON.stringify({
+        version: 1, plans: [{ version: 1, composition: "separates", layers: ["shirt", "trouser"] }],
+      });
+      await page.evaluate(({ key, value }) => localStorage.setItem(key, value),
+        { key: libraryKey, value: replacement });
+      await layerPlanner.getByRole("button", { name: "Clear unreadable bookmarks" }).click();
+      assert.equal(await page.evaluate(key => localStorage.getItem(key), libraryKey), replacement,
+        "Never remove newly valid data with a stale clear button");
+      assert.equal(await layerPlanner.locator(".titanLayerPlannerSavedList li").count(), 1);
+
+      // If the key changes from one unknown version to another, demand a
+      // deliberate second click on the new exact value rather than erasing it.
+      await page.evaluate(key => localStorage.setItem(key,
+        JSON.stringify({ version: 2, plans: [] })), libraryKey);
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await waitForLocalReferences(page);
+      await layerPlanner.getByRole("button", { name: "Clear unreadable bookmarks" }).waitFor();
+      await page.evaluate(key => localStorage.setItem(key,
+        JSON.stringify({ version: 3, plans: [] })), libraryKey);
+      await layerPlanner.getByRole("button", { name: "Clear unreadable bookmarks" }).click();
+      assert.equal(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).version, libraryKey), 3);
+      assert.match(await layerPlanner.locator(".titanLayerPlannerLibraryFeedback").textContent(), /changed since the warning/i);
+    }
     await layerPlanner.getByRole("button", { name: "Clear unreadable bookmarks" }).click();
     assert.equal(await page.evaluate(key => localStorage.getItem(key), libraryKey), null);
     assert.equal(await page.evaluate(key => localStorage.getItem(key), designerKey), designerSnapshot);

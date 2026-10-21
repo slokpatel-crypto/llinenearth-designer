@@ -29,6 +29,33 @@ const COMPOSITIONS: readonly OutfitComposition[] = [
 const SLOT_IDS: ReadonlySet<string> = new Set(MODEL_LAYER_SLOTS.map(item => item.slot));
 
 /**
+ * Prevalidate all 384 theoretical combinations ONCE per module load. Only
+ * canonical valid plans remain in this immutable index. Dynamic scoring still
+ * reflects the current user's exact pending choices and retains the previous
+ * deterministic tie-breaking order.
+ */
+const VALID_CANDIDATES: ReadonlyArray<Readonly<{
+  composition: OutfitComposition;
+  layers: readonly ModelLayerSlot[];
+  ordinal: number;
+}>> = Object.freeze((() => {
+  const records: Array<{
+    composition: OutfitComposition; layers: readonly ModelLayerSlot[]; ordinal: number;
+  }> = [];
+  for (const composition of COMPOSITIONS) {
+    for (let mask = 1; mask < 1 << MODEL_LAYER_SLOTS.length; mask++) {
+      const layers = MODEL_LAYER_SLOTS.filter((_, index) => (mask & (1 << index)) !== 0)
+        .map(item => item.slot);
+      if (!resolveModelLayerPlan({
+        version: MODEL_LAYER_PLAN_VERSION, composition, layers,
+      }).valid) continue;
+      records.push(Object.freeze({ composition, layers: Object.freeze(layers), ordinal: records.length }));
+    }
+  }
+  return records;
+})());
+
+/**
  * Malformed, injected, future-version or ambiguous input is never used to
  * propose a repair: advice cannot become a backdoor schema importer.
  * Semantic errors (missing prerequisites, wrong suit type) are permitted only
@@ -71,23 +98,19 @@ export function guideTitanLayerDraft(input: unknown): TitanLayerGuidance {
   if (current.valid) return { valid: true, reasons: [], suggestions: [] };
   const currentSlots = new Set(input.layers);
   const candidates: Array<TitanLayerRepair & { distance: number; ordinal: number }> = [];
-  let ordinal = 0;
-  for (const composition of COMPOSITIONS) {
-    for (let mask = 1; mask < 1 << MODEL_LAYER_SLOTS.length; mask++) {
-      const layers = MODEL_LAYER_SLOTS.filter((_, i) => (mask & (1 << i)) !== 0).map(item => item.slot);
-      const candidate = resolveModelLayerPlan({ version: MODEL_LAYER_PLAN_VERSION, composition, layers });
-      if (!candidate.valid) continue;
-      const add = layers.filter(slot => !currentSlots.has(slot));
-      const remove = input.layers.filter(slot => !layers.includes(slot));
-      const compositionChanged = composition !== input.composition;
-      const distance = add.length + remove.length + Number(compositionChanged);
-      if (!distance) continue;
-      candidates.push({
-        plan: { version: MODEL_LAYER_PLAN_VERSION, composition, layers },
-        add, remove, compositionChanged, distance, ordinal: ordinal++,
-        description: descriptionOf(add, remove, composition, compositionChanged),
-      });
-    }
+  for (const candidate of VALID_CANDIDATES) {
+    const { composition, layers, ordinal } = candidate;
+    const add = layers.filter(slot => !currentSlots.has(slot));
+    const remove = input.layers.filter(slot => !layers.includes(slot));
+    const compositionChanged = composition !== input.composition;
+    const distance = add.length + remove.length + Number(compositionChanged);
+    if (!distance) continue;
+    candidates.push({
+      // Never expose index arrays to callers: repair actions remain detached.
+      plan: { version: MODEL_LAYER_PLAN_VERSION, composition, layers: [...layers] },
+      add, remove, compositionChanged, distance, ordinal,
+      description: descriptionOf(add, remove, composition, compositionChanged),
+    });
   }
   candidates.sort((a, b) =>
     a.distance - b.distance

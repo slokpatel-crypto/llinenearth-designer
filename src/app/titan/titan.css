@@ -991,3 +991,16 @@
   .titanLayerPlannerPresetGrid { grid-template-columns: minmax(0, 1fr); }
   .titanLayerPlannerPresetGrid button { min-height: 85px; }
 }
+
+/* Review shows canonical changes, never garment / fit approval. */
+.titanLayerPlannerReview {
+  margin: 17px 0; padding: 17px; border: 1px solid #c2cbbd;
+  background: #eef1e9; color: #2d4030;
+}
+.titanLayerPlannerReview h3 { margin: 0 0 9px; font: 600 21px/1.3 Georgia, serif; }
+.titanLayerPlannerReview p, .titanLayerPlannerReview li {
+  font-size: 12px; line-height: 1.7; overflow-wrap: anywhere;
+}
+.titanLayerPlannerReview p { margin: 8px 0 0; }
+.titanLayerPlannerReview ul { margin: 10px 0; padding-left: 18px; }
+.titanLayerPlannerReview li + li { margin-top: 4px; }

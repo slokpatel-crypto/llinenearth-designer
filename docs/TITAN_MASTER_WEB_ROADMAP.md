@@ -192,3 +192,12 @@ Do not replace testing with concept renders, inflate progress percentages, claim
 - Clicking a starting structure **only replaces the pending local draft**. Nothing changes in the applied plan until the user presses Apply. The choice does not save a bookmark, alter the real Designer or model, call any paid renderer, load a new GLB or promise stock/fit/physical tailoring.
 - Unit tests cover every structurally valid existing seven-layer/composition state against each preset, including unchanged, invalid, non-mutation and no-op states. Existing real-browser TITAN QA now exercises draft/apply/revert, full seven-layer selection, touch targets and responsive 320/390/768/1440px layouts.
 - No new dependency, persistence version or schema. This remains stacked on the unreleased TITAN Intelligence draft. Independent asset/native/photo/physical proof, exact-head CI/browser verification, privacy review and owner approval are still mandatory. **No merge or production deploy.**
+
+
+### 21 October — three-part customer trust and speed sprint (draft)
+
+1. **Transparent garment plan review:** Before local Apply, show precisely which known garments will be added/removed or which suit composition changes, plus the still-unverified new-asset slots. Invalid prerequisite drafts retain the existing compatibility guidance without any false valid-plan review. The underlying 3D, fabric, fit and customer data do not change.
+2. **Safe browser bookmark recovery:** A saved row is revalidated against live device storage before it can stage the draft. The corruption clear button refuses to delete a newer valid store, and it requires a second deliberate click when unreadable data has changed under the displayed warning. No automatic deletion, database write or designer draft migration.
+3. **Faster zero-credit compatibility:** Immutable authoritative valid-plan candidates are indexed once; only per-draft minimal edits and deterministic ranking are computed during interaction, without new AI usage or a cached mutable result. Caller result arrays remain isolated.
+
+New tests cover all 2,916 valid-pair combinations (54 valid plans squared), malformed versions/fields, stale storage races, and browser interactions across phone/tablet/desktop. These checks are engineering coverage only; CI must pass on the exact head and owners must still review the visual and physical releases. Preserve original photo/model identity, all working routes, stock and supplier provenance. **Draft only — no merge or deployment.**
