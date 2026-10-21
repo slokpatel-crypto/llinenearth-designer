@@ -64,6 +64,7 @@ export default function TitanLayerPlanner() {
   const [shareOrigin, setShareOrigin] = useState("");
   const [showSharedLink, setShowSharedLink] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
+  const [focusManualShare, setFocusManualShare] = useState(false);
   const shareInput = useRef<HTMLInputElement>(null);
   // A clipboard permission prompt can resolve after the active plan changed.
   // Only the latest still-current request may report success or failure.
@@ -71,6 +72,17 @@ export default function TitanLayerPlanner() {
   // The exact unreadable value displayed to the user; a later tab's newer
   // store must never be deleted by an old "Clear" button.
   const unreadableStoreRef = useRef<string | null>(null);
+
+  // Clipboard permission failures should leave a selected, keyboard-focused
+  // exact URL, not a fallback that users must discover by another tap.
+  useEffect(() => {
+    if (!showSharedLink || !focusManualShare) return;
+    const input = shareInput.current;
+    if (!input) return;
+    input.focus();
+    input.select();
+    setFocusManualShare(false);
+  }, [showSharedLink, focusManualShare]);
 
   // A shared URL stages a logical outfit only. It never loads an accessory
   // GLB, applies a plan, touches Designer drafts or updates saved bookmarks.
@@ -227,6 +239,7 @@ export default function TitanLayerPlanner() {
     shareCopyVersion.current += 1;
     setShowSharedLink(false);
     setShareMessage("");
+    setFocusManualShare(false);
   }
 
   async function copyLayerLink() {
@@ -237,6 +250,7 @@ export default function TitanLayerPlanner() {
       return;
     }
     const url = new URL(href, shareOrigin).href;
+    setFocusManualShare(false);
     setShowSharedLink(true);
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
@@ -245,7 +259,8 @@ export default function TitanLayerPlanner() {
       setShareMessage("Share link copied. This is a garment plan only, not a 3D render or saved design.");
     } catch {
       if (requestVersion !== shareCopyVersion.current) return;
-      setShareMessage("Automatic copying is blocked. Select and copy the complete link below.");
+      setShareMessage("Automatic copying is blocked. The complete link is selected below for manual copying.");
+      setFocusManualShare(true);
     }
   }
 
