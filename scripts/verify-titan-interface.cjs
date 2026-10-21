@@ -66,8 +66,8 @@ async function checkViewport(width) {
     assert.match(await layerPlanner.locator(".titanLayerPlannerFeedback").textContent(), /unapplied draft/i);
     const review = layerPlanner.locator(".titanLayerPlannerReview");
     assert.equal(await review.count(), 1, "Valid pending suit requires a visible review");
-    assert.match(await review.textContent(), /Add:[\\s\\S]*Blazer/);
-    assert.match(await review.textContent(), /Not render-ready:[\\s\\S]*Blazer/);
+    assert.match(await review.textContent(), /Add: Blazer/);
+    assert.match(await review.textContent(), /Not render-ready: Blazer/);
     assert.match(await review.textContent(), /two-piece suit/i);
     await layerPlanner.getByRole("button", { name: "Discard edits" }).click();
     assert.equal(await review.count(), 0, "Discarded edits must clear the review");
