@@ -68,7 +68,7 @@ test("Reject malformed, future, unordered or injected plans and corrupted histor
   for (const invalid of [
     null, {}, [], { ...base, version: 2 }, { ...base, model: "different-person" },
     { ...base, productionApproved: true }, { ...base, layers: ["trouser", "shirt"] },
-    { ...base, layers: ["shirt", "shirt"] }, { ...base, layers: ["shirt", "tie"] },
+    { ...base, layers: ["shirt", "shirt"] }, { ...base, layers: ["tie"] },
     { ...base, composition: "four-piece-suit" },
   ]) {
     assert.equal(createTitanPlanHistory(invalid), null);
