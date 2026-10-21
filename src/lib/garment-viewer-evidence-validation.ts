@@ -9,6 +9,10 @@ import type { RealismAssessment } from "./designer/proof-scale.ts";
 const parsePositive=(value:unknown,max:number)=>typeof value==="number"
   && Number.isFinite(value) && value>0 && value<=max ? value : null;
 
+// Display rounding must not turn a finite, extreme failure into Infinity in JSON.
+const displayScaleError=(error:number)=>error<=Number.MAX_VALUE/100
+  ? Math.round(error*100)/100 : error;
+
 export function parseGarmentPatternSamples(value:unknown):GarmentViewerPatternScaleSample[] {
   if(!Array.isArray(value)) return [];
   return value.slice(-20).flatMap((item)=>{
@@ -27,7 +31,7 @@ export function parseGarmentPatternSamples(value:unknown):GarmentViewerPatternSc
       ...(typeof row.evidenceReference==="string"?{evidenceReference:row.evidenceReference.trim().slice(0,240)}:{}),
     };
     const derived=calibratedGarmentScaleErrorPct(candidate);
-    if(derived!==null) return [{...candidate,errorPct:Math.round(derived*100)/100,verified:row.verified===true}];
+    if(derived!==null) return [{...candidate,errorPct:displayScaleError(derived),verified:row.verified===true}];
     // Keep legacy records for audit, but explicitly revoke their unverifiable
     // "verified" flag. No claimed-only percentage can pass a future gate.
     if(typeof claimedPct!=="number" || !Number.isFinite(claimedPct) || claimedPct<0 || claimedPct>100) return [];
@@ -85,7 +89,7 @@ export function parseMeasuredScaleInput(
     referenceLengthMm,referenceLengthPx,evidenceReference,
   };
   const derived=calibratedGarmentScaleErrorPct(candidate);
-  return derived===null ? null : {...candidate,errorPct:Math.round(derived*100)/100};
+  return derived===null ? null : {...candidate,errorPct:displayScaleError(derived)};
 }
 
 export function normalizeGarmentViewerEvidenceForStorage(payload:Record<string,unknown>) {

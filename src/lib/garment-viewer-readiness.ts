@@ -69,7 +69,9 @@ export function calibratedGarmentScaleErrorPct(sample:GarmentViewerPatternScaleS
   const expectedPx=physicalRepeatMm*referenceLengthPx/referenceLengthMm;
   if(!Number.isFinite(expectedPx) || expectedPx<=0) return null;
   const error=Math.abs(renderedRepeatPx-expectedPx)/expectedPx*100;
-  return Number.isFinite(error) && error<=100 ? error : null;
+  // A finite measured failure must remain in the sample set, even above
+  // 100%. Dropping it could leave other samples falsely passing the gate.
+  return Number.isFinite(error) ? error : null;
 }
 
 export type GarmentViewerPromotionInput = {

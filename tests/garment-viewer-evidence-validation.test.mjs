@@ -59,9 +59,9 @@ test("physical input derives a percent from original calibration rather than acc
   assert.equal(parseMeasuredScaleInput("cloth","50","208","100","400","", "stripe",true),null);
 });
 
-test("calibrated scale greater than 100 percent is never approved",()=>{
+test("calibrated scale greater than 100 percent remains a measured failure",()=>{
   assert.deepEqual(parseGarmentPatternSamples([{...stripe,renderedRepeatPx:500,errorPct:0}]),[
-    {fabricId:"stripe-real",pattern:"stripe",errorPct:0,verified:false},
+    {...stripe,renderedRepeatPx:500,errorPct:150},
   ]);
 });
 
@@ -99,4 +99,47 @@ test("operator-event canonicalizer retains traceable calibration and drops fake 
     interactionLatencyMs:[17.9,88],
     realismAssessments:[{viewerId:"v2",rating:5,recordedAt:""}],
   });
+});
+
+
+const calibration={fabricId:"cloth",pattern:"stripe",errorPct:0,verified:true,
+  physicalRepeatMm:10,renderedRepeatPx:108.004,referenceLengthMm:100,referenceLengthPx:1000,evidenceReference:"measurement-fixture"};
+
+test("calibrated measurements survive storage and reload without rounding a failure into a pass",()=>{
+  const stored=normalizeGarmentViewerEvidenceForStorage({patternScaleSamples:[calibration]});
+  const reloaded=parseGarmentPatternSamples(JSON.parse(JSON.stringify(stored)).patternScaleSamples);
+  assert.deepEqual(reloaded,stored.patternScaleSamples);
+  assert.equal(reloaded.length,1);
+  assert.equal(reloaded[0].errorPct,8); // Display rounding does not change stored dimensions.
+  assert.equal(reloaded[0].verified,true);
+  for(const field of ["physicalRepeatMm","renderedRepeatPx","referenceLengthMm","referenceLengthPx","evidenceReference"]){
+    assert.equal(reloaded[0][field],calibration[field]);
+  }
+});
+
+test("severe measured errors stay auditable through ingestion and reload",()=>{
+  const severe={...calibration,renderedRepeatPx:301};
+  const stored=normalizeGarmentViewerEvidenceForStorage({patternScaleSamples:[severe]});
+  const reloaded=parseGarmentPatternSamples(JSON.parse(JSON.stringify(stored)).patternScaleSamples);
+  assert.equal(reloaded.length,1);
+  assert.ok(Math.abs(reloaded[0].errorPct-201)<1e-10);
+  assert.equal(reloaded[0].verified,true);
+});
+
+test("invalid JSON calibration dimensions revoke verification rather than trusting a claimed zero",()=>{
+  for(const field of ["physicalRepeatMm","renderedRepeatPx","referenceLengthMm","referenceLengthPx"]){
+    for(const invalid of [null,"10",false,0,-1,NaN,Infinity,undefined]){
+      const [result]=parseGarmentPatternSamples([{...calibration,[field]:invalid}]);
+      assert.equal(result.verified,false,`${field}: ${String(invalid)}`);
+    }
+  }
+});
+
+
+test("extreme finite measured errors cannot overflow display rounding during JSON storage",()=>{
+  const stored=normalizeGarmentViewerEvidenceForStorage({patternScaleSamples:[{...calibration,physicalRepeatMm:1e-305,renderedRepeatPx:100}]});
+  assert.equal(stored.patternScaleSamples.length,1);
+  assert.ok(Number.isFinite(stored.patternScaleSamples[0].errorPct));
+  assert.ok(stored.patternScaleSamples[0].errorPct>100);
+  assert.deepEqual(parseGarmentPatternSamples(JSON.parse(JSON.stringify(stored)).patternScaleSamples),stored.patternScaleSamples);
 });

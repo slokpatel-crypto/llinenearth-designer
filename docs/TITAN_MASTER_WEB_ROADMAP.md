@@ -183,3 +183,11 @@ Do not replace testing with concept renders, inflate progress percentages, claim
 - Received shared links populate an **unapplied local draft**; the customer must explicitly click Apply to change the temporary layer plan. The link never gives a new accessory asset a rendering license, never writes Designer/local bookmarks automatically and never certifies model fit, physical drape, fabric stock or order readiness.
 - Copy action includes accessible manual URL fallback, mobile touch controls and real-browser checks at 320/390/768/1440px. Build and browser verification must pass on each exact draft HEAD before considering changes integrated.
 - Draft-only work remains stacked on unreleased TITAN branches. Next real model milestone remains verified garment assets + native Blender/UV seams + fabric provenance + four-angle identity + tailor approval. **No merge or production deployment.**
+
+### 21 October — retain severe calibrated scale failures
+
+- Rebased on PR #339 at `2a0a2955`, preserving its concurrent calibration, display rounding and regression fixes.
+- Finite measured scale errors above 100% remain in the evidence set and block the 8% gate. Previously they lost their verified flag and calibration dimensions, so adding a severely incorrect sample to a passing stripe/check set could still report a technical pass.
+- Added severe-error, exact-boundary, missing-dimension and JSON ingestion/storage/reload regressions. Synthetic test measurements are not physical acceptance evidence. Legacy percentage-only rows remain unverified.
+- Matching-head GitHub/browser verification and independent physical/tailor acceptance remain separate gates. No model identity, assets, saved-design schema or database changes; draft stacked on #339, no merge/deploy.
+- Local verification after rebase: 887/887 tests, quality, engine evaluations, preview performance, static release checks and production build passed. Display rounding also preserves extreme finite failures through JSON storage.
