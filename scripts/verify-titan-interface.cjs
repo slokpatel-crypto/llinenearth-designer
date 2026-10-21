@@ -69,6 +69,25 @@ async function checkViewport(width) {
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
     assert.equal(await layerPlanner.locator("[data-titan-composition]").getAttribute("data-titan-composition"), "separates");
 
+    // Deterministic compatibility intelligence: a missing tie prerequisite
+    // offers a safe, explicit candidate but never applies it without consent.
+    await layerPlanner.getByRole("checkbox", { name: /Shirt/ }).uncheck();
+    await layerPlanner.getByRole("checkbox", { name: /Tie/ }).check();
+    assert.match(await layerPlanner.locator(".titanLayerPlannerGuidance").textContent(), /tie requires shirt/i);
+    assert.ok(await layerPlanner.locator(".titanLayerPlannerFixes button").count() >= 1);
+    const repair = layerPlanner.getByRole("button", { name: /Stage fix: Add shirt/i });
+    assert.ok((await repair.boundingBox()).height >= 44, "Draft repair has a usable phone touch target");
+    await repair.click();
+    assert.equal(await layerPlanner.getByRole("checkbox", { name: /Shirt/ }).isChecked(), true);
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2,
+      "Staging compatibility guidance must not apply any garment");
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerGuidance").count(), 0,
+      "The suggested draft must satisfy the exact authoritative rule engine");
+    await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 3);
+    await layerPlanner.getByRole("button", { name: "Reset plan" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
+
     // A device-only bookmark is saved only on an explicit click; reload never
     // applies it to the active outfit or writes an existing Designer draft.
     const libraryKey = "linen-earth:titan-layer-plans:v1";
