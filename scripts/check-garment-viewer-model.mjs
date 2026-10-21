@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { standaloneGarmentModelCheckStatus } from "./garment-model-check-status.mjs";
 import { inspectGarmentViewerGlb } from "../src/lib/garment-viewer-glb.ts";
 import {
   GARMENT_VIEWER_CONTRACT_VERSION,
@@ -41,15 +42,25 @@ try{
   // whereas production export must reject generated/placeholder geometry.
   const candidateReady=model.contract.physicallyScalable && model.uvReady
     && model.selfContained && model.placeholderGeometry && manifest.valid;
-  const ready=candidateMode ? candidateReady : model.structuralReady&&manifest.valid;
+  // This CLI only checks structural assets. Independent, asset-bound pattern,
+  // latency, boundary, realism and tailor approval is checked elsewhere.
+  const {ready,mode,productionApproved,promotionEvidenceEvaluated,pendingPromotionGates} =
+    standaloneGarmentModelCheckStatus({
+      candidateMode,
+      candidateReady,
+      structuralReady:model.structuralReady,
+      manifestValid:manifest.valid,
+    });
   console.log(JSON.stringify({
     version:GARMENT_VIEWER_CONTRACT_VERSION,
     modelPath:absoluteModel,
     manifestPath,
     modelId,
     ready,
-    mode:candidateMode ? "engineering_candidate" : "production_approval",
-    productionApproved:!candidateMode&&ready,
+    mode,
+    productionApproved,
+    promotionEvidenceEvaluated,
+    pendingPromotionGates,
     model,
     manifest,
   },null,2));
