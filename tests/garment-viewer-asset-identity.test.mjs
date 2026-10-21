@@ -109,9 +109,11 @@ test("HTTP evidence ingestion rejects overlong identities before persistence and
   const invalidPerformanceOrViewerInputs=[
     {interactionLatencyMs:[...evidence.interactionLatencyMs,null]},
     {interactionLatencyMs:[...evidence.interactionLatencyMs,10001]},
+    {interactionLatencyMs:[...evidence.interactionLatencyMs,0.02]},
     {interactionLatencyMs:Array(121).fill(100)},
     {realismAssessments:[...evidence.realismAssessments,{viewerId:"bad-rating",rating:0}]},
     {realismAssessments:[...evidence.realismAssessments,{viewerId:"x".repeat(81),rating:5}]},
+    {realismAssessments:[...evidence.realismAssessments,{viewerId:" VIEWER-0 ",rating:1}]},
     {realismAssessments:[...evidence.realismAssessments,{viewerId:"bad-date",rating:5,recordedAt:"x".repeat(81)}]},
     {realismAssessments:Array(51).fill({viewerId:"not-independent",rating:5})},
   ];
@@ -152,9 +154,11 @@ test("HTTP evidence ingestion rejects overlong identities before persistence and
     {patternScaleSamples:[...evidence.patternScaleSamples,{fabricId:"bad",pattern:"stripe",verified:true,errorPct:0}]},
     {patternScaleSamples:[...evidence.patternScaleSamples,{fabricId:"bad",pattern:"invalid"}]},
     {interactionLatencyMs:[...evidence.interactionLatencyMs,10001]},
+    {interactionLatencyMs:[...evidence.interactionLatencyMs,0.02]},
     {interactionLatencyMs:Array(121).fill(100)},
     {realismAssessments:[...evidence.realismAssessments,{viewerId:"bad",rating:0}]},
     {realismAssessments:[...evidence.realismAssessments,{viewerId:"x".repeat(81),rating:5}]},
+    {realismAssessments:[...evidence.realismAssessments,{viewerId:" VIEWER-0 ",rating:1}]},
   ];
   for(const patch of invalidHistoricalEvidence){
     rows=[{...stored[0],payload:{...stored[0].payload,...patch}}];
