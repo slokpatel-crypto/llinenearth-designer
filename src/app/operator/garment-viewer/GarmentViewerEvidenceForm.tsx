@@ -6,9 +6,10 @@ import {
   GARMENT_VIEWER_REALISM_STORAGE_KEY,
   GARMENT_VIEWER_REALISM_RUBRIC_VERSION,
   garmentViewerAssetIdentityKey,
+  calibratedGarmentScaleErrorPct,
   type GarmentViewerAssetIdentity,
 } from "@/lib/garment-viewer-readiness";
-import { summarizeIndependentRealism, summarizeLatencySamples, type RealismAssessment } from "@/lib/designer/proof-scale";
+import { ROADMAP_SCALE_TOLERANCE_PCT, summarizeIndependentRealism, summarizeLatencySamples, type RealismAssessment } from "@/lib/designer/proof-scale";
 import {
   parseGarmentLatencySamples,
   parseGarmentRealismAssessments,
@@ -134,6 +135,10 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
 
   const stripePreview=parseMeasuredScaleInput(stripeFabricId,stripePhysicalMm,stripeRepeatPx,stripeMarkerMm,stripeMarkerPx,stripeReference,"stripe",stripeVerified);
   const checkPreview=parseMeasuredScaleInput(checkFabricId,checkPhysicalMm,checkRepeatPx,checkMarkerMm,checkMarkerPx,checkReference,"check",checkVerified);
+  const stripeExactError=stripePreview?calibratedGarmentScaleErrorPct(stripePreview):null;
+  const checkExactError=checkPreview?calibratedGarmentScaleErrorPct(checkPreview):null;
+  const duplicateSubject=Boolean(stripeFabricId.trim()&&checkFabricId.trim()
+    && stripeFabricId.trim().toLowerCase()===checkFabricId.trim().toLowerCase());
   const checks=Object.entries(boundaryChecks) as Array<[keyof Boundaries,boolean]>;
   return <section className="garmentQaPanel garmentQaEvidenceForm">
     <div className="garmentQaPanelHead"><div><small>RECORD QA EVIDENCE</small><h2>Evidence stays tied to this exact model revision</h2></div><button type="button" onClick={refreshLocalEvidence}>Refresh lab samples</button></div>
@@ -157,7 +162,17 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
         <label><span>Check evidence reference</span><input value={checkReference} onChange={(event)=>setCheckReference(event.target.value)} placeholder="Photo/worksheet reference"/></label>
         <label className="garmentQaCheck"><input type="checkbox" checked={checkVerified} onChange={(event)=>setCheckVerified(event.target.checked)}/><span>Check values measured and traceable (independent sign-off still required)</span></label>
       </div>
-      <div className="garmentQaRubric"><small>CALCULATED SCALE CHECK · MAX 8%</small><p>Stripe: {stripePreview?stripePreview.errorPct.toFixed(2)+"%":"measurements pending"} · Check: {checkPreview?checkPreview.errorPct.toFixed(2)+"%":"measurements pending"}. These calculated results are only technical evidence; physical validation and independent owner/tailor approval remain separate.</p></div>
+      <div className="garmentQaScalePreview" aria-live="polite">
+        {([
+          ["Stripe",stripeVerified,stripeExactError],
+          ["Check",checkVerified,checkExactError],
+        ] as const).map(([pattern,verified,error])=><div key={pattern} data-ready={verified&&error!==null&&error<=ROADMAP_SCALE_TOLERANCE_PCT}>
+          <small>{pattern.toUpperCase()} · COMPUTED SCALE</small>
+          <strong>{error===null?"Needs full calibration":error.toFixed(3)+"% error"}</strong>
+          <span>{error===null?"Enter all measurements and a traceable source.":!verified?"Measurement recorded but not verified.":error<=ROADMAP_SCALE_TOLERANCE_PCT?"Within technical tolerance; physical review still required.":"Outside tolerance; scale gate cannot pass."}</span>
+        </div>)}
+      </div>
+      {duplicateSubject&&<p className="garmentQaAuditWarning">Stripe and check must use distinct physical fabric IDs, including letter case.</p>}
       <div className="garmentQaRubric"><small>REALISM RUBRIC · V1</small><p>Rate the same five things every time: officewear silhouette/proportions, cloth drape and body fit, collar/neck junction, hands + waist/trouser boundaries, and overall photographic believability against the studio-tucked reference. Give 4/5 or 5/5 only when there is no major mismatch.</p></div>
       <div className="garmentQaRating">
         <label><span>Independent viewer code</span><input value={viewerCode} onChange={(event)=>setViewerCode(event.target.value)} placeholder="e.g. viewer-07"/></label>
