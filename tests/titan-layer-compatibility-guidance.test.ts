@@ -83,3 +83,18 @@ test("Empty layer draft is never silently filled or accepted", () => {
   assert.deepEqual(plan([]).layers, []);
   assert.ok(result.suggestions.length > 0);
 });
+
+test("Cached candidate index cannot be mutated through a returned recommendation", () => {
+  const input = plan(["trouser", "tie"]);
+  const first = guideTitanLayerDraft(input);
+  const before = JSON.stringify(first);
+  assert.ok(first.suggestions.length > 0);
+  // Runtime mutation of a caller-owned result must not poison future lookups.
+  (first.suggestions[0].plan.layers as string[]).push("unsupported");
+  (first.suggestions[0].add as string[]).push("unsupported");
+  assert.equal(JSON.stringify(first) === before, false);
+  const next = guideTitanLayerDraft(input);
+  assert.equal(next.suggestions[0].plan.layers.includes("unsupported" as never), false);
+  assert.deepEqual(next, guideTitanLayerDraft(input));
+  assert.equal(resolveModelLayerPlan(next.suggestions[0].plan).valid, true);
+});
