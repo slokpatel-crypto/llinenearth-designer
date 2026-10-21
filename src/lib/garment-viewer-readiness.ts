@@ -10,7 +10,7 @@ import {
   type Phase1BoundaryChecks,
   type RealismAssessment,
 } from "./designer/proof-scale.ts";
-import { parseGarmentPatternSamples } from "./garment-viewer-evidence-validation.ts";
+import { parseGarmentPatternSamples, preciseGarmentScaleErrorPct } from "./garment-viewer-evidence-validation.ts";
 import type {
   GarmentViewerManifestValidation,
   GarmentViewerModelContractResult,
@@ -82,7 +82,10 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   const scaleReady=scaleSamples.length>=GARMENT_VIEWER_MIN_PATTERN_SCALE_SAMPLES
     && hasStripe
     && hasCheck
-    && scaleSamples.every((sample)=>sample.errorPct<=ROADMAP_SCALE_TOLERANCE_PCT);
+    && scaleSamples.every((sample)=>{
+      const rawError=preciseGarmentScaleErrorPct(sample);
+      return rawError!==null && rawError<=ROADMAP_SCALE_TOLERANCE_PCT;
+    });
 
   const latency=summarizeLatencySamples(input.interactionLatencyMs);
   const latencyReady=latency.count>=PHASE1_PROOF_MIN_LATENCY_SAMPLES
