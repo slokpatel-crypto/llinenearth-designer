@@ -97,7 +97,7 @@ export default async function GarmentViewerOperatorPage(){
     {latest&&<section className="garmentQaPanel garmentQaAudit">
       <div className="garmentQaPanelHead">
         <div><small>MEASUREMENT TRACE · OPERATOR REVIEW</small><h2>Physical pattern-scale evidence audit</h2></div>
-        <b>{latest.readiness.scaleAudit.filter((row)=>row.passes).length}/{latest.readiness.scaleAudit.length}</b>
+        <b>{latest.readiness.scaleAudit.filter((row)=>row.passes&&latest.identityMatches).length}/{latest.readiness.scaleAudit.length}</b>
       </div>
       <p className="garmentQaAuditIntro">These results are recomputed from the physical fabric repeat and same-plane calibration. A recorded 0% claim or a checked box alone is never accepted as a measurement. This audit is technical evidence, not owner or tailor sign-off.</p>
       {!latest.identityMatches&&<p className="garmentQaAuditWarning">The recorded evidence is for a different GLB or manifest revision. None of these measurements can approve the current asset.</p>}
