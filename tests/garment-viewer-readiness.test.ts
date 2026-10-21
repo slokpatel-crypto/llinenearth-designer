@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentPatternSubmissionIsLossless, normalizeGarmentViewerEvidenceForStorage, parseGarmentPatternSamples, parseMeasuredScaleInput } from "../src/lib/garment-viewer-evidence-validation.ts";
+import { garmentPatternSubmissionIsLossless, garmentLatencySubmissionIsLossless, garmentRealismSubmissionIsLossless, normalizeGarmentViewerEvidenceForStorage, parseGarmentPatternSamples, parseMeasuredScaleInput } from "../src/lib/garment-viewer-evidence-validation.ts";
 import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness, garmentViewerScaleAudit, type GarmentViewerPromotionInput } from "../src/lib/garment-viewer-readiness.ts";
 import {
   GARMENT_VIEWER_CONTRACT_VERSION,
@@ -290,4 +290,38 @@ test("submitted QA evidence cannot hide malformed or formerly verified calibrati
   const stored=normalizeGarmentViewerEvidenceForStorage({patternScaleSamples:[...originals,archival]});
   assert.equal(stored.patternScaleSamples.length,3);
   assert.equal(stored.patternScaleSamples[2].verified,false);
+});
+
+
+test("new latency submissions retain slow and malformed measurements instead of losing them",()=>{
+  const passing=passingInput().interactionLatencyMs;
+  assert.equal(garmentLatencySubmissionIsLossless(passing),true);
+  assert.equal(garmentLatencySubmissionIsLossless(undefined),true);
+  assert.equal(garmentLatencySubmissionIsLossless([]),true);
+  for(const failure of [null,false,"100",0,-1,10001,1e50,{}]){
+    assert.equal(garmentLatencySubmissionIsLossless([...passing,failure]),false,String(failure));
+  }
+  assert.equal(garmentLatencySubmissionIsLossless("invalid"),false);
+  assert.equal(garmentLatencySubmissionIsLossless(Array(121).fill(120)),false);
+  assert.equal(garmentLatencySubmissionIsLossless(Array(120).fill(120)),true);
+});
+
+test("realism submissions cannot omit bad assessments or truncate viewer identities",()=>{
+  const passing=passingInput().realismAssessments;
+  assert.equal(garmentRealismSubmissionIsLossless(passing),true);
+  assert.equal(garmentRealismSubmissionIsLossless(undefined),true);
+  assert.equal(garmentRealismSubmissionIsLossless([]),true);
+  assert.equal(garmentRealismSubmissionIsLossless("invalid"),false);
+  for(const invalid of [
+    null,{},false,{viewerId:"ok",rating:0},{viewerId:"ok",rating:6},
+    {viewerId:"ok",rating:4.5},{viewerId:"ok",rating:"4"},
+    {viewerId:"x".repeat(81),rating:5},{viewerId:"",rating:5},
+    {viewerId:"ok",rating:5,recordedAt:"d".repeat(81)},
+    {viewerId:"ok",rating:5,recordedAt:123},
+  ]){
+    assert.equal(garmentRealismSubmissionIsLossless([...passing,invalid]),false,JSON.stringify(invalid));
+  }
+  assert.equal(garmentRealismSubmissionIsLossless(Array(51).fill({viewerId:"valid",rating:5})),false);
+  assert.equal(garmentRealismSubmissionIsLossless(Array(50).fill({viewerId:"valid",rating:5})),true);
+  assert.equal(garmentRealismSubmissionIsLossless([{viewerId:"  ViewER-1  ",rating:5}]),true);
 });
