@@ -323,7 +323,8 @@ test("realism submissions cannot omit bad assessments or truncate viewer identit
     assert.equal(garmentRealismSubmissionIsLossless([...passing,invalid]),false,JSON.stringify(invalid));
   }
   assert.equal(garmentRealismSubmissionIsLossless(Array(51).fill({viewerId:"valid",rating:5})),false);
-  assert.equal(garmentRealismSubmissionIsLossless(Array(50).fill({viewerId:"valid",rating:5})),true);
+  assert.equal(garmentRealismSubmissionIsLossless(Array(50).fill({viewerId:"valid",rating:5})),false);
+  assert.equal(garmentRealismSubmissionIsLossless(Array.from({length:50},(_,i)=>({viewerId:`valid-${i}`,rating:5}))),true);
   assert.equal(garmentRealismSubmissionIsLossless([{viewerId:"  ViewER-1  ",rating:5}]),true);
   assert.equal(garmentRealismSubmissionIsLossless([...passing,{viewerId:" VIEWER-1 ",rating:5}]),false,
     "a later duplicate reviewer cannot silently replace an earlier negative rating");
