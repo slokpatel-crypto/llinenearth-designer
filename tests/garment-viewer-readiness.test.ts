@@ -39,8 +39,8 @@ function passingInput() {
     contract,
     manifest,
     patternScaleSamples:[
-      {fabricId:"stripe-a",pattern:"stripe" as const,errorPct:4.1,verified:true},
-      {fabricId:"check-b",pattern:"check" as const,errorPct:6.4,verified:true},
+      {fabricId:"stripe-a",pattern:"stripe" as const,errorPct:4.1,verified:true,physicalRepeatMm:50,renderedRepeatPx:208.2,referenceLengthMm:100,referenceLengthPx:400,evidenceReference:"photo-stripe-physical-001"},
+      {fabricId:"check-b",pattern:"check" as const,errorPct:6.4,verified:true,physicalRepeatMm:40,renderedRepeatPx:212.8,referenceLengthMm:100,referenceLengthPx:500,evidenceReference:"photo-check-physical-001"},
     ],
     interactionLatencyMs:[110,120,105,130,125,115,118,122,109,111,126,128],
     realismAssessments:Array.from({length:8},(_,index)=>({
@@ -76,12 +76,31 @@ test("prototype or invalid model contract blocks promotion",()=>{
 
 test("scale gate requires both verified stripe and check samples within eight percent",()=>{
   const missingCheck=passingInput();
-  missingCheck.patternScaleSamples=[{fabricId:"stripe-a",pattern:"stripe",errorPct:2,verified:true}];
+  missingCheck.patternScaleSamples=missingCheck.patternScaleSamples.slice(0,1);
   assert.equal(garmentViewerPromotionReadiness(missingCheck).scaleReady,false);
 
   const drift=passingInput();
-  drift.patternScaleSamples[1].errorPct=8.1;
+  drift.patternScaleSamples[1].renderedRepeatPx=218;
   assert.equal(garmentViewerPromotionReadiness(drift).scaleReady,false);
+});
+
+test("claimed 0% cannot conceal measured mismatch or rescue legacy percent-only evidence",()=>{
+  const misleading=passingInput();
+  misleading.patternScaleSamples[1].renderedRepeatPx=220;
+  misleading.patternScaleSamples[1].errorPct=0;
+  assert.equal(garmentViewerPromotionReadiness(misleading).scaleReady,false);
+
+  const legacy={...passingInput(),patternScaleSamples:[
+    {fabricId:"old-stripe",pattern:"stripe" as const,errorPct:0,verified:true},
+    {fabricId:"old-check",pattern:"check" as const,errorPct:0,verified:true},
+  ]};
+  assert.equal(garmentViewerPromotionReadiness(legacy).scaleReady,false);
+});
+
+test("physical drift just above 8% fails even when displayed percentage rounds to 8.00",()=>{
+  const input=passingInput();
+  input.patternScaleSamples[1].renderedRepeatPx=216.008; // 8.004% of expected 200px
+  assert.equal(garmentViewerPromotionReadiness(input).scaleReady,false);
 });
 
 test("realism, latency and boundary evidence cannot be bypassed",()=>{
