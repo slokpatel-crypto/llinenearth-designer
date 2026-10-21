@@ -649,3 +649,12 @@ are displayed. Do not merge the stacked TITAN PRs or deploy.
 **Safety:** Syntax-invalid, duplicated, injected and future-version plans produce no repair suggestions. The customer must click once to stage a candidate and click Apply separately to commit it locally. Nothing is written to Designer measurements/drafts, customer records or operator inventory; no 3D geometry or paid image API is called. This is not a claim of tailoring fit, physical drape, asset approval, or production readiness.
 
 **Compatibility and QA:** No schema, dependency, model identity, original Designer route or database change. Exhaustive 384-mask/composition unit coverage and actual 320/390/768/1440px Chromium interaction checks are required; no merge/deploy until CI and owner approval.
+
+
+## 2026-10-21 — TITAN garment quick-starts are editorial, never activation
+
+**Decision:** Five deterministic garment-layer structures accelerate the existing unreleased `/titan` logical planner without creating a separate styling or rendering engine. `previewTitanLayerPreset` takes an allowlisted preset ID and a valid existing v1 plan, uses the authoritative `applyModelLayerEdits` atomic contract, and reports the requested composition, exact slot additions/removals, and asset slots still requiring independent verification. Every candidate is revalidated and cloned; invalid or injected plans/IDs return no preview.
+
+**User control:** A preset click replaces only the mutable draft. The existing Apply action separately commits it locally; Discard returns to the current applied plan. The applied-plan share link, optional local bookmark library and existing Designer state are not written by selecting a preset. The default model and unchanged photographic reference are preserved.
+
+**Release boundary:** These titles describe structural garment combinations, **not** renderable suits, confirmed fit, stock, prices, calibrated colour/repeat, model likeness or physically approved tailoring. No paid AI, new GLB, dependency or persisted schema. Existing compatibility guidance and reference exports continue to use canonical v1 IDs. The pure transition suite and 320/390/768/1440px browser interactions require exact-head CI verification before calling this ready. Stacked draft only; no merge, deploy or homepage cutover.

@@ -183,3 +183,12 @@ Do not replace testing with concept renders, inflate progress percentages, claim
 - Received shared links populate an **unapplied local draft**; the customer must explicitly click Apply to change the temporary layer plan. The link never gives a new accessory asset a rendering license, never writes Designer/local bookmarks automatically and never certifies model fit, physical drape, fabric stock or order readiness.
 - Copy action includes accessible manual URL fallback, mobile touch controls and real-browser checks at 320/390/768/1440px. Build and browser verification must pass on each exact draft HEAD before considering changes integrated.
 - Draft-only work remains stacked on unreleased TITAN branches. Next real model milestone remains verified garment assets + native Blender/UV seams + fabric provenance + four-angle identity + tailor approval. **No merge or production deployment.**
+
+
+### 21 October — one-click wardrobe starting points, still draft-only
+
+- The isolated TITAN layer planner adds five real, validated *logical* starting structures: existing shirt/trouser pair, belted separates, two-piece suit, three-piece suit, and full seven-slot accessory composition.
+- Presets are authored against the same canonical versioned garment slots and must pass the existing model-layer contract. A pure preview runs the exact atomic edit transaction and reports added/removed layers, composition changes and **all** still-unverified extension assets. Rejected/injected/future or corrupted inputs cannot be used to stage a plan.
+- Clicking a starting structure **only replaces the pending local draft**. Nothing changes in the applied plan until the user presses Apply. The choice does not save a bookmark, alter the real Designer or model, call any paid renderer, load a new GLB or promise stock/fit/physical tailoring.
+- Unit tests cover every structurally valid existing seven-layer/composition state against each preset, including unchanged, invalid, non-mutation and no-op states. Existing real-browser TITAN QA now exercises draft/apply/revert, full seven-layer selection, touch targets and responsive 320/390/768/1440px layouts.
+- No new dependency, persistence version or schema. This remains stacked on the unreleased TITAN Intelligence draft. Independent asset/native/photo/physical proof, exact-head CI/browser verification, privacy review and owner approval are still mandatory. **No merge or production deploy.**

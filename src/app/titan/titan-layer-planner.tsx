@@ -21,6 +21,9 @@ import {
   readTitanLayerShare, titanLayerShareHref, TITAN_LAYER_SHARE_PARAMETER,
 } from "@/lib/titan/layer-plan-share";
 import { guideTitanLayerDraft } from "@/lib/titan/layer-compatibility-guidance";
+import {
+  TITAN_LAYER_PRESET_CHOICES, previewTitanLayerPreset, type TitanLayerPresetId,
+} from "@/lib/titan/layer-plan-presets";
 
 const STARTING_PLAN: EditableModelLayerPlan = {
   version: 1,
@@ -243,6 +246,24 @@ export default function TitanLayerPlanner() {
     version: 1, composition: draftComposition, layers: draftSlots,
   });
 
+  // Presets replace only pending draft choices; they never touch the applied
+  // plan, customer Designer storage, fabric selection or unapproved 3D assets.
+  function stageLayerPreset(id: TitanLayerPresetId) {
+    const preview = previewTitanLayerPreset(appliedPlan, id);
+    if (!preview) {
+      setMessage("This starting plan is unavailable or out of date.");
+      return;
+    }
+    setDraftSlots([...preview.plan.layers]);
+    setDraftComposition(preview.plan.composition);
+    const assetNote = preview.requiresUnverifiedAssets.length
+      ? ` ${preview.requiresUnverifiedAssets.length} additional garment asset(s) still require independent verification.`
+      : " The existing shirt/trouser reference layers remain unchanged.";
+    setMessage(preview.changed
+      ? `${preview.title} staged as an unapplied draft. Review it, then choose Apply layer plan.${assetNote}`
+      : `${preview.title} matches your applied plan. Pending draft edits were discarded.`);
+  }
+
   function stageCompatibilityFix(proposal: EditableModelLayerPlan) {
     // Reject stale/foreign fixes even when a user changes choices rapidly.
     const candidate = JSON.stringify(proposal);
@@ -273,6 +294,27 @@ export default function TitanLayerPlanner() {
       </div>
       <div className="titanLayerPlannerLayout">
         <form className="titanLayerPlannerForm" onSubmit={commitPlan}>
+          <fieldset className="titanLayerPlannerPresetFieldset">
+            <legend>Quick-start garment combinations</legend>
+            <p>Choose an editorial layer structure to stage a draft. Nothing is rendered or applied automatically.</p>
+            <div className="titanLayerPlannerPresetGrid">
+              {TITAN_LAYER_PRESET_CHOICES.map(preset => {
+                const preview = previewTitanLayerPreset(appliedPlan, preset.id);
+                return (
+                  <button type="button" key={preset.id}
+                    disabled={!preview}
+                    onClick={() => stageLayerPreset(preset.id)}
+                    aria-label={`Stage ${preset.title} as a draft`}>
+                    <strong>{preset.title}</strong>
+                    <small>{preset.description}</small>
+                    <span>{preview?.requiresUnverifiedAssets.length
+                      ? `${preview.requiresUnverifiedAssets.length} unverified garment asset(s)`
+                      : "Existing reference layers only"}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
           <fieldset>
             <legend>Choose garment layers</legend>
             <div className="titanLayerPlannerChoices">
