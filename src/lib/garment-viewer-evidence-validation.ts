@@ -24,7 +24,16 @@ function calibratedMeasurement(value: Record<string, unknown>): ScaleMeasurement
 
 function calculatedErrorPct(measurement: ScaleMeasurement): number {
   const expectedPx = measurement.repeatMm! * (measurement.referencePx! / measurement.referenceMm!);
-  return round2(Math.abs(measurement.observedRepeatPx! - expectedPx) / expectedPx * 100);
+  return Math.abs(measurement.observedRepeatPx! - expectedPx) / expectedPx * 100;
+}
+
+// Gate comparisons use the unrounded physical result, not its two-decimal
+// display/storage form: an actual 8.004% error must not round into 8.00% pass.
+export function preciseGarmentScaleErrorPct(sample: GarmentViewerPatternScaleSample): number | null {
+  const measurement = calibratedMeasurement(sample as unknown as Record<string, unknown>);
+  if (!measurement) return null;
+  const error = calculatedErrorPct(measurement);
+  return Number.isFinite(error) ? error : null;
 }
 
 export function parseGarmentPatternSamples(value: unknown): GarmentViewerPatternScaleSample[] {
@@ -46,7 +55,7 @@ export function parseGarmentPatternSamples(value: unknown): GarmentViewerPattern
     if (!measurement) return [{ fabricId, pattern, errorPct, verified: false }];
     const calculated = calculatedErrorPct(measurement);
     if (!Number.isFinite(calculated) || calculated > 100) return [];
-    return [{ fabricId, pattern, errorPct: calculated, verified, ...measurement }];
+    return [{ fabricId, pattern, errorPct: round2(calculated), verified, ...measurement }];
   });
 }
 
