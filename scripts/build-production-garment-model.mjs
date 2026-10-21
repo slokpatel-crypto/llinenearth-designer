@@ -3,10 +3,12 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { publishGarmentCandidate } from "./publish-garment-candidate.mjs";
+import { publishImmutableGarmentRelease } from "./publish-immutable-garment-release.mjs";
 
 const scene = String(process.env.LINEN_GARMENT_BLEND || "").trim();
 const panelSpec = String(process.env.LINEN_GARMENT_PANEL_SPEC || "").trim();
 const output = String(process.env.LINEN_GARMENT_OUTPUT || "public/models/linen-earth-officewear-v1.glb").trim();
+const immutableReleaseDir = String(process.env.LINEN_GARMENT_ATOMIC_RELEASE_DIR || "").trim();
 
 function fail(message) { throw new Error(message); }
 function requireFile(label, value) {
@@ -29,6 +31,7 @@ function manifestOf(glb) {
 let stagedDirectory;
 let finished = false;
 let outputPath;
+let immutableRelease = null;
 try {
   const scenePath = requireFile("LINEN_GARMENT_BLEND", scene);
   const panelSpecPath = requireFile("LINEN_GARMENT_PANEL_SPEC", panelSpec);
@@ -55,7 +58,15 @@ try {
     path.resolve("scripts/check-garment-viewer-model.mjs"),
     stagedOutput,
   ]);
-  publishGarmentCandidate(stagedOutput, stagedManifest, outputPath, manifestPath);
+  if (immutableReleaseDir) {
+    // Opt-in release protocol: atomic CURRENT pointer + immutable paired assets.
+    // Never replace the legacy public GLB and sidecar in this mode.
+    immutableRelease = publishImmutableGarmentRelease(
+      stagedOutput, stagedManifest, path.resolve(immutableReleaseDir),
+    );
+  } else {
+    publishGarmentCandidate(stagedOutput, stagedManifest, outputPath, manifestPath);
+  }
   finished = true;
 } catch (error) {
   console.error("Production GarmentViewer build failed: " + (error instanceof Error ? error.message : String(error)));
@@ -71,7 +82,14 @@ try {
   }
 }
 if (finished) {
-  console.log("Production GarmentViewer candidate passed export + structural validation: " + outputPath);
-  console.log("Published the candidate GLB and measured sidecar after staging checks.");
+  console.log("Production GarmentViewer candidate passed export + structural validation: "
+    + (immutableRelease ? immutableRelease.modelPath : outputPath));
+  if (immutableRelease) {
+    console.log("Published immutable candidate release " + immutableRelease.pointer.releaseId);
+    console.log("Release pointer: " + immutableRelease.pointerPath);
+    console.log("Use a single read of current.json for both model and measured sidecar.");
+  } else {
+    console.log("Published the candidate GLB and measured sidecar after staging checks.");
+  }
   console.log("Customer promotion still requires physical scale, latency, realism and boundary evidence.");
 }

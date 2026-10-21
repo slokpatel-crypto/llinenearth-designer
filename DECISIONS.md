@@ -683,3 +683,12 @@ are displayed. Do not merge the stacked TITAN PRs or deploy.
 **Explicit limitation:** Two separate filesystem renames are **not crash-atomic** and may be observed as a transient mismatch by concurrent readers between operations. Unclean process termination or power loss during promotion can still leave a mixed pair. A future immutable release-directory + single-pointer reader protocol is required for strict multi-reader atomic deployment. This is failure/rollback protection, **not** production approval.
 
 **Verification:** Existing process-level exporter tests now require the checker to inspect the staged filename and preserve the existing GLB/sidecar when validation fails. Five new real filesystem tests cover successful pair publication, absent/empty sidecar, failed first/second rename with restoration and backup failure. Included in normal `npm test` without weakening native Blender, photorealistic, physical scale, identity, UV, fit or owner approval gates. No merge/deployment.
+
+
+## 2026-10-21 — Native candidate publication gains opt-in single-pointer releases
+
+**Reason:** two live public-file renames (GLB plus `.viewer.json`) are not a consistent reader transaction when interrupted or read concurrently. Keep the existing validated, rollback-capable legacy publisher for backward compatibility and add an explicit alternate mode after exactly staged GLB validation.
+
+**Contract:** `LINEN_GARMENT_ATOMIC_RELEASE_DIR` enables immutable SHA-256 paired release directories and one `current.json` snapshot pointer. A reader resolves both files from one pointer read and checks their hashes. Existing candidate bytes are never rewritten; corrupt releases fail closed. Staging and atomic pointer rename occur within the same release filesystem. Versioned release IDs provide historical audit and rollback material, but pruning is manual.
+
+**Boundaries:** this is file publication correctness, **not** production model activation or model likeness, measured drape, pattern dimensions, physical fit or tailor signoff. The public viewer still uses its existing explicit source and is not automatically switched to `current.json`. Node tests use synthetic bytes and failure injection; pinned native Blender/GLB, browser, provenance and human photo/garment evidence remain separate release gates. No additional dependency, data migration, paid AI, merge or deploy.
