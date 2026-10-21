@@ -10,6 +10,7 @@ import {
   type Phase1BoundaryChecks,
   type RealismAssessment,
 } from "./designer/proof-scale.ts";
+import { parseGarmentPatternSamples } from "./garment-viewer-evidence-validation.ts";
 import type {
   GarmentViewerManifestValidation,
   GarmentViewerModelContractResult,
@@ -49,6 +50,13 @@ export type GarmentViewerPatternScaleSample = {
   pattern:"stripe"|"check"|"other";
   errorPct:number;
   verified:boolean;
+  // Audit measurements, not inferred fabric properties. Required to pass the
+  // verified-scale gate, optional for historical unverified operator notes.
+  repeatMm?:number;
+  observedRepeatPx?:number;
+  referenceMm?:number;
+  referencePx?:number;
+  physicalEvidenceNote?:string;
 };
 
 export type GarmentViewerPromotionInput = {
@@ -64,8 +72,10 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   const contractReady=input.contract?.readiness==="contract_ready" && input.contract.physicallyScalable;
   const manifestReady=input.manifest?.valid===true;
 
-  const scaleSamples=input.patternScaleSamples
-    .filter((sample)=>sample.verified&&Number.isFinite(sample.errorPct)&&sample.errorPct>=0)
+  // Recompute from measured physical repeat + same-plane ruler calibration.
+  // Legacy operator-entered percentages, even if marked verified, cannot pass.
+  const scaleSamples=parseGarmentPatternSamples(input.patternScaleSamples)
+    .filter((sample)=>sample.verified)
     .slice(-20);
   const hasStripe=scaleSamples.some((sample)=>sample.pattern==="stripe");
   const hasCheck=scaleSamples.some((sample)=>sample.pattern==="check");
@@ -87,7 +97,7 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   const reasons:string[]=[];
   if(!contractReady) reasons.push("Approved GLB has not passed the six-panel production material contract.");
   if(!manifestReady) reasons.push("Approved GLB physical panel manifest is missing or invalid.");
-  if(!scaleReady) reasons.push("Verified stripe and check renders must both stay within the <=8% physical-scale gate.");
+  if(!scaleReady) reasons.push("Measured stripe and check repeats need independently documented ruler calibration and <=8% computed scale error.");
   if(!latencyReady) reasons.push("3D interaction needs at least 12 samples with p95 below 300 ms.");
   if(!realismReady) reasons.push("At least 6 of 8 independent viewers must rate the realistic model 4/5 or 5/5.");
   if(!boundaryReady) reasons.push("Neck, cuffs, waist and trouser-gap boundaries must all pass visual QA.");
