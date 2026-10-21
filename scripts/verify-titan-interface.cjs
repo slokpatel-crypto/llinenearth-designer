@@ -64,12 +64,19 @@ async function checkViewport(width) {
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2,
       "Staging the preset must not alter the applied plan");
     assert.match(await layerPlanner.locator(".titanLayerPlannerFeedback").textContent(), /unapplied draft/i);
+    const review = layerPlanner.locator(".titanLayerPlannerReview");
+    assert.equal(await review.count(), 1, "Valid pending suit requires a visible review");
+    assert.match(await review.textContent(), /Add:[\\s\\S]*Blazer/);
+    assert.match(await review.textContent(), /Not render-ready:[\\s\\S]*Blazer/);
+    assert.match(await review.textContent(), /two-piece suit/i);
     await layerPlanner.getByRole("button", { name: "Discard edits" }).click();
+    assert.equal(await review.count(), 0, "Discarded edits must clear the review");
     assert.equal(await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).isChecked(), false);
     await layerPlanner.getByRole("button", { name: "Stage Full accessory layer plan as a draft" }).click();
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
     assert.equal(await layerPlanner.getByRole("checkbox", { name: /Pocket square/ }).isChecked(), true);
     assert.equal(await layerPlanner.getByRole("radio", { name: "Three-piece suit" }).isChecked(), true);
+    assert.match(await layerPlanner.locator(".titanLayerPlannerReview").textContent(), /pocket square/i);
     await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 7);
     assert.equal(await layerPlanner.locator("[data-titan-composition]").getAttribute("data-titan-composition"), "three-piece-suit");
