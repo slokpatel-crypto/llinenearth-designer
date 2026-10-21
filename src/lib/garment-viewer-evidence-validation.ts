@@ -87,7 +87,10 @@ export function parseGarmentRealismAssessments(value:unknown):RealismAssessment[
 export function garmentLatencySubmissionIsLossless(value:unknown):boolean {
   if(value===undefined) return true;
   if(!Array.isArray(value) || value.length>120) return false;
-  return parseGarmentLatencySamples(value).length===value.length;
+  const parsed=parseGarmentLatencySamples(value);
+  // Persistence rounds to tenths; sub-0.05ms rows would otherwise vanish.
+  return parsed.length===value.length
+    && parsed.every((sample)=>Math.round(sample*10)/10>0);
 }
 
 /**
@@ -99,11 +102,13 @@ export function garmentRealismSubmissionIsLossless(value:unknown):boolean {
   if(!Array.isArray(value) || value.length>50) return false;
   const parsed=parseGarmentRealismAssessments(value);
   if(parsed.length!==value.length) return false;
+  const seen=new Set<string>();
   return value.every((item,index)=>{
     const row=item as Record<string,unknown>;
     if(typeof row.viewerId!=="string") return false;
     const viewerId=row.viewerId.trim().toLowerCase();
-    if(viewerId.length<2 || viewerId.length>80) return false;
+    if(viewerId.length<2 || viewerId.length>80 || seen.has(viewerId)) return false;
+    seen.add(viewerId);
     if(row.recordedAt!==undefined
       && (typeof row.recordedAt!=="string" || row.recordedAt.length>80)) return false;
     return parsed[index].viewerId===viewerId;
