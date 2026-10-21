@@ -153,11 +153,11 @@ test("scale audit exposes measured inputs and uses exact unrounded gate precisio
 });
 
 test("audit never promotes legacy percentage-only or unchecked measurements",()=>{
-  const input=passingInput();
-  input.patternScaleSamples=[
-    {...input.patternScaleSamples[0],verified:false,errorPct:0},
-    {...input.patternScaleSamples[1],verified:true,repeatMm:undefined,observedRepeatPx:undefined,referenceMm:undefined,referencePx:undefined,physicalEvidenceNote:undefined},
-  ];
+  const baseline=passingInput();
+  const input={...baseline,patternScaleSamples:[
+    {...baseline.patternScaleSamples[0],verified:false,errorPct:0},
+    {fabricId:baseline.patternScaleSamples[1].fabricId,pattern:"check" as const,verified:true,errorPct:0},
+  ]};
   const rows=garmentViewerScaleAudit(input.patternScaleSamples);
   assert.equal(rows.length,1);
   assert.ok(rows[0].measuredErrorPct!==null&&Math.abs(rows[0].measuredErrorPct-4.1)<1e-9);
