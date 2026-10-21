@@ -94,6 +94,18 @@ test("HTTP evidence ingestion rejects overlong identities before persistence and
   assert.equal((await submit(evidence)).status,403);
   assert.equal(stored.length,0);
   authorized=true;
+  const brokenQAInputs=[
+    [...evidence.patternScaleSamples,{...evidence.patternScaleSamples[0],renderedRepeatPx:null}],
+    [...evidence.patternScaleSamples,{...evidence.patternScaleSamples[0],evidenceReference:"x".repeat(241)}],
+    [...evidence.patternScaleSamples,{...evidence.patternScaleSamples[0],fabricId:"fabric-"+"x".repeat(161)}],
+    [...evidence.patternScaleSamples,{fabricId:"legacy",pattern:"stripe",verified:true,errorPct:0}],
+    [...evidence.patternScaleSamples,...Array(19).fill(evidence.patternScaleSamples[0])],
+  ];
+  for(const patternScaleSamples of brokenQAInputs){
+    const result=await submit({...evidence,patternScaleSamples});
+    assert.equal(result.status,400,"malformed operator evidence should be rejected, not partially persisted");
+    assert.equal(stored.length,0);
+  }
   assert.equal((await submit({...evidence,modelSha256:identity.modelSha256.toUpperCase()})).status,200);
   assert.equal(stored.length,1);
   assert.equal(stored[0].payload.modelSha256,identity.modelSha256);

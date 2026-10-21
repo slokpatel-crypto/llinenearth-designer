@@ -713,3 +713,8 @@ The physical scale gate now requires the qualifying stripe and check measurement
 - Preserve historical/unchecked samples as visible unverified audit rows. A verified but incomplete input cannot be silently excluded to leave a technically passing set.
 - Explicitly signal when evidence belongs to another GLB/manifest revision; operator trace success cannot override asset identity, other technical checks or independent owner/tailor acceptance.
 - Compatibility: no persisted event/schema changes, no new dependency, no GLB/model identity/fabric/saved-design changes, no customer promotion, merge or deployment. Draft integration is stacked on the strict #344 branch; exact-head CI, browser viewport QA and real-fabric/tailor evidence remain release gates.
+
+## 2026-10-21 — Reject lossy QA submissions, preserve historical evidence reads
+- New V1 operator events must contain at most 20 calibrated sample rows. Reject the HTTP event if normalization would discard any row, if an allegedly verified measurement becomes unverified after dimension/reference validation, or if an overlong array could hide earlier failures.
+- A malformed new submission is a bad request, not a partial success. Historical records remain readable using the existing permissive audit parser; legacy unchecked records can still be saved as historical/unverified evidence.
+- The gate remains purely technical and hash-revision-bound. No changes to existing model/GLB, fabric assets, storage schema, customer Designer, owner/tailor acceptance or deployment. Stacked draft behind integrated audit #345.

@@ -41,6 +41,23 @@ export function parseGarmentPatternSamples(value:unknown):GarmentViewerPatternSc
   });
 }
 
+/**
+ * A submitted operator QA event must never quietly lose a failing fabric row,
+ * change a verified measurement into legacy history, or hide earlier rows by
+ * exceeding the bounded audit sample limit. Historical persisted events are
+ * still read through parseGarmentPatternSamples for backwards compatibility.
+ */
+export function garmentPatternSubmissionIsLossless(value:unknown):boolean {
+  if(value===undefined) return true; // Older V1 writers may omit empty evidence.
+  if(!Array.isArray(value) || value.length>20) return false;
+  const parsed=parseGarmentPatternSamples(value);
+  if(parsed.length!==value.length) return false;
+  return value.every((row,index)=>{
+    const submitted=row as Record<string,unknown>;
+    return submitted.verified!==true || parsed[index].verified===true;
+  });
+}
+
 export function parseGarmentLatencySamples(value:unknown):number[] {
   if(!Array.isArray(value)) return [];
   return value.filter((item):item is number=>typeof item==="number"
