@@ -6,6 +6,7 @@ import {
   GARMENT_VIEWER_REALISM_RUBRIC_VERSION,
   garmentViewerAssetIdentityMatches,
   garmentViewerPromotionReadiness,
+  parseGarmentViewerAssetIdentity,
 } from "@/lib/garment-viewer-readiness";
 import type { Phase1BoundaryChecks } from "@/lib/designer/proof-scale";
 import {
@@ -57,11 +58,9 @@ export async function loadLatestGarmentViewerReadiness(){
         realismAssessments:parseGarmentRealismAssessments(payload.realismAssessments),
         boundaryChecks:boundaries(payload.boundaryChecks),
       };
-      const evidenceIdentity={
-        modelId:String(payload.modelId||""),
-        modelSha256:String(payload.modelSha256||"").toLowerCase(),
-        manifestSha256:String(payload.manifestSha256||"").toLowerCase(),
-      };
+      // A malformed latest record must block; do not repair a hash or fall back
+      // to an older passing record for a different asset snapshot.
+      const evidenceIdentity=parseGarmentViewerAssetIdentity(payload);
       const identityMatches=garmentViewerAssetIdentityMatches(asset.assetIdentity,evidenceIdentity);
       const readiness=garmentViewerPromotionReadiness({
         contract:identityMatches?asset.model?.contract||null:null,

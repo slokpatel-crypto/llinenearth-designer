@@ -191,3 +191,10 @@ Do not replace testing with concept renders, inflate progress percentages, claim
 - Added severe-error, exact-boundary, missing-dimension and JSON ingestion/storage/reload regressions. Synthetic test measurements are not physical acceptance evidence. Legacy percentage-only rows remain unverified.
 - Matching-head GitHub/browser verification and independent physical/tailor acceptance remain separate gates. No model identity, assets, saved-design schema or database changes; draft stacked on #339, no merge/deploy.
 - Local verification after rebase: 887/887 tests, quality, engine evaluations, preview performance, static release checks and production build passed. Display rounding also preserves extreme finite failures through JSON storage.
+
+### 21 October — strict QA asset identity validation
+
+- Complete model IDs and both SHA-256 values now pass one strict parser before event ingestion, evidence reload, identity matching or browser timing-key construction. Overlong hashes cannot silently become their first 64 characters; empty or malformed identities cannot match themselves.
+- Existing valid identities retain whitespace/hex-case normalization. A malformed latest QA event blocks readiness instead of allowing an older passing record to replace it. No schema migration or customer/model asset change.
+- Pure regressions plus actual handler/reader tests use mocked authorization, structural asset status and JSON storage transport. They cover rejected writes, canonical round-trips, revision mismatches and malformed latest-record blocking. Synthetic tests do not establish live-service, browser, physical or tailor acceptance.
+- Stacked on #342; no merge or deployment. The audit UI branch #341 remains separate and must retain both calibration-failure and identity validation fixes when integrated.

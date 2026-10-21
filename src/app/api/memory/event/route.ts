@@ -7,6 +7,7 @@ import { CREATIVE_FEEDBACK_REASONS } from "@/lib/designer/creative-learning";
 import { legacyMemoryHeader } from "@/lib/runtime-compat";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
 import { normalizeGarmentViewerEvidenceForStorage } from "@/lib/garment-viewer-evidence-validation";
+import { parseGarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 
 const PUBLIC_TYPES = new Set([
   "session_started",
@@ -374,13 +375,12 @@ function cleanPayload(type:string, input:unknown) {
     if (subtype === "garment_viewer_readiness") {
       const version=text(payload.version,80);
       const status=text(payload.status,20);
-      const modelId=text(payload.modelId,100);
-      const modelSha256=text(payload.modelSha256,64).toLowerCase();
-      const manifestSha256=text(payload.manifestSha256,64).toLowerCase();
+      const identity=parseGarmentViewerAssetIdentity(payload);
       const realismRubricVersion=text(payload.realismRubricVersion,100);
       if(version!=="linen-earth-garment-viewer-readiness-v1" || !["accepted","review"].includes(status)) return null;
       if(realismRubricVersion!=="linen-earth-garment-viewer-realism-rubric-v1") return null;
-      if(!/^LE-[A-Z0-9-]{2,90}$/.test(modelId) || !/^[a-f0-9]{64}$/.test(modelSha256) || !/^[a-f0-9]{64}$/.test(manifestSha256)) return null;
+      if(!identity) return null;
+      const {modelId,modelSha256,manifestSha256}=identity;
       // Normalize raw JSON before persistence. Number(null) / Number("") / Number(false)
       // must never become zero-error or zero-latency QA evidence.
       const {patternScaleSamples,interactionLatencyMs,realismAssessments} =
