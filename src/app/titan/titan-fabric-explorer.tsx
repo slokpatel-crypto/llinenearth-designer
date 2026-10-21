@@ -52,6 +52,8 @@ export default function TitanFabricExplorer() {
   const [shareOrigin, setShareOrigin] = useState("");
   const [shareCopyResult, setShareCopyResult] = useState<string | null>(null);
   const shareInputRef = useRef<HTMLInputElement>(null);
+  // A pending clipboard permission prompt must not report an obsolete outfit.
+  const shareCopyVersion = useRef(0);
   const [savedPairs, setSavedPairs] = useState<TitanLookbookPair[]>([]);
   const [lookbookLoaded, setLookbookLoaded] = useState(false);
   const [lookbookStatus, setLookbookStatus] = useState("");
@@ -117,18 +119,27 @@ export default function TitanFabricExplorer() {
     [outfitShirt?.id, outfitTrouser?.id],
   );
 
+  function invalidateOutfitShareCopy() {
+    shareCopyVersion.current += 1;
+    setShareCopyResult(null);
+  }
+
   async function copyOutfitReferenceLink() {
     if (!shareHref) return;
+    const requestVersion = ++shareCopyVersion.current;
+    const requestedHref = shareHref;
+    setShareCopyResult(null);
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
-      await navigator.clipboard.writeText(new URL(shareHref, window.location.origin).href);
-      setShareCopyResult(shareHref);
+      await navigator.clipboard.writeText(new URL(requestedHref, window.location.origin).href);
+      if (requestVersion !== shareCopyVersion.current) return;
+      setShareCopyResult(requestedHref);
     } catch {
-      // Clipboard permission can be denied on mobile or insecure contexts.
-      // Expose a selected real URL for keyboard/touch copying, not a dead button.
+      if (requestVersion !== shareCopyVersion.current) return;
+      // Only the current pair may focus/select the manual-copy field.
       shareInputRef.current?.focus();
       shareInputRef.current?.select();
-      setShareCopyResult(`manual:${shareHref}`);
+      setShareCopyResult(`manual:${requestedHref}`);
     }
   }
   const comparisons = useMemo(
@@ -207,6 +218,7 @@ export default function TitanFabricExplorer() {
                   aria-pressed={kind === "shirt" ? outfitShirtId === fabric.id : outfitTrouserId === fabric.id}
                   aria-label={`${kind === "shirt" ? "Choose as shirt" : "Choose as trouser"}: ${fabric.name}`}
                   onClick={() => {
+                    invalidateOutfitShareCopy();
                     if (kind === "shirt") setOutfitShirtId(previous => previous === fabric.id ? null : fabric.id);
                     else setOutfitTrouserId(previous => previous === fabric.id ? null : fabric.id);
                   }}>
@@ -307,6 +319,7 @@ export default function TitanFabricExplorer() {
                       <p>{fabric.name}</p>
                       <span>{fabric.line}</span>
                       <button type="button" onClick={() => {
+                        invalidateOutfitShareCopy();
                         if (slot === "shirt") setOutfitShirtId(null);
                         else setOutfitTrouserId(null);
                       }} aria-label={`Remove ${fabric.name} ${slot} from outfit`}>Remove cloth</button>
@@ -347,6 +360,7 @@ export default function TitanFabricExplorer() {
                     <button type="button"
                       aria-label={`Use ${idea.counterpart.name} with the chosen ${outfitShirt ? "shirt" : "trouser"} reference`}
                       onClick={() => {
+                        invalidateOutfitShareCopy();
                         setOutfitShirtId(idea.shirtId);
                         setOutfitTrouserId(idea.trouserId);
                       }}>Use this cloth pair</button>
@@ -445,6 +459,7 @@ export default function TitanFabricExplorer() {
                   </div>
                   <div className="titanLookbookCardActions">
                     <button type="button" onClick={() => {
+                      invalidateOutfitShareCopy();
                       setOutfitShirtId(pair.shirtId);
                       setOutfitTrouserId(pair.trouserId);
                       setLookbookStatus("Reference pair reopened on this page; the Designer draft is unchanged.");
