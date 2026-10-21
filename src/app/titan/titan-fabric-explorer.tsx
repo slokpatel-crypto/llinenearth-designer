@@ -180,7 +180,12 @@ export default function TitanFabricExplorer() {
         </label>
         <label className="titanFabricField titanFabricSearch">
           Find by colour or pattern
-          <input value={search} onChange={event => { setSearch(event.target.value); setVisibleCount(FABRIC_PAGE_SIZE); }}
+          <input value={search} onInput={event => {
+            // Search inputs dispatch native 'input' on typing, paste and clear.
+            // Read the current target before scheduling React state updates.
+            setSearch(event.currentTarget.value);
+            setVisibleCount(FABRIC_PAGE_SIZE);
+          }}
             type="search" maxLength={100} placeholder="e.g. blue, stripe, linen" />
         </label>
       </div>
