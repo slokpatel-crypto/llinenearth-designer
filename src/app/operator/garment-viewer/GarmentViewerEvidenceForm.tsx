@@ -55,6 +55,9 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
   const [checkVerified,setCheckVerified]=useState(false);
   const [boundaryChecks,setBoundaryChecks]=useState<Boundaries>({neck:false,cuffs:false,waist:false,trouserGap:false});
   const [note,setNote]=useState("");
+  // Never accept a readiness record merely by opening/reloading the QA desk.
+  // This is operator acceptance of technical observations, not a production sign-off.
+  const [acceptTechnicalEvidence,setAcceptTechnicalEvidence]=useState(false);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
 
@@ -113,7 +116,7 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
           payload:{
             subtype:"garment_viewer_readiness",
             version:"linen-earth-garment-viewer-readiness-v1",
-            status:"review",
+            status:acceptTechnicalEvidence?"accepted":"review",
             realismRubricVersion:GARMENT_VIEWER_REALISM_RUBRIC_VERSION,
             ...assetIdentity,
             patternScaleSamples,
@@ -126,7 +129,10 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
       });
       const result=await response.json() as {stored?:boolean;error?:string};
       if(!response.ok||!result.stored) throw new Error(result.error||"GarmentViewer evidence could not be stored.");
-      setMessage("Evidence recorded against this exact GLB + manifest revision.");
+      setMessage(acceptTechnicalEvidence
+        ?"Technical QA evidence accepted against this exact asset. Production release still requires separate independent physical and owner/tailor approval."
+        :"QA evidence recorded for operator review; it cannot pass the acceptance gate until explicitly accepted.");
+      setAcceptTechnicalEvidence(false);
       window.setTimeout(()=>window.location.reload(),350);
     }catch(error){
       setMessage(error instanceof Error?error.message:"GarmentViewer evidence could not be stored.");
@@ -181,7 +187,8 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
       </div>
       <div className="garmentQaBoundary"><small>VISUAL BOUNDARIES</small>{checks.map(([key,value])=><label key={key}><input type="checkbox" checked={value} onChange={(event)=>setBoundaryChecks((current)=>({...current,[key]:event.target.checked}))}/><span>{key==="trouserGap"?"Trouser gap":key}</span></label>)}</div>
       <label className="garmentQaNote"><span>QA note</span><textarea value={note} onChange={(event)=>setNote(event.target.value)} placeholder="Reference, test conditions, reviewer context…"/></label>
-      <div className="garmentQaRecord"><p>Latency comes only from real fabric changes performed in the 3D Lab on this exact asset hash. Ratings are deduplicated by viewer code.</p><button type="button" disabled={busy} onClick={()=>void recordEvidence()}>{busy?"Recording…":"Record current QA evidence"}</button></div>
+      <label className="garmentQaCheck"><input type="checkbox" checked={acceptTechnicalEvidence} onChange={(event)=>setAcceptTechnicalEvidence(event.target.checked)}/><span>Accept this exact-asset technical QA record after operator review. This is NOT owner/tailor approval, physical garment acceptance, customer 3D activation or permission to deploy.</span></label>
+      <div className="garmentQaRecord"><p>Latency comes only from real fabric changes performed in the 3D Lab on this exact asset hash. Ratings are deduplicated by viewer code. Unchecked records remain in review and cannot pass the acceptance gate.</p><button type="button" disabled={busy} onClick={()=>void recordEvidence()}>{busy?"Recording…":acceptTechnicalEvidence?"Accept and record technical QA":"Record QA for review"}</button></div>
       {message&&<p className="garmentQaMessage">{message}</p>}
     </>}
   </section>;
