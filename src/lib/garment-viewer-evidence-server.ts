@@ -54,7 +54,15 @@ export async function loadLatestGarmentViewerReadiness(){
     for(const row of rows){
       const payload=row.payload||{};
       if(String(payload.subtype||"")!=="garment_viewer_readiness") continue;
-      if(String(payload.realismRubricVersion||"")!==GARMENT_VIEWER_REALISM_RUBRIC_VERSION) continue;
+      // The newest readiness event governs this asset revision even if its
+      // status, schema version or rubric has been changed. Skipping an invalid
+      // latest row would accidentally resurrect an older passing approval.
+      const status=String(payload.status||"");
+      const eventVersion=String(payload.version||"");
+      const rubricVersion=String(payload.realismRubricVersion||"");
+      const accepted=status==="accepted";
+      const versionReady=eventVersion==="linen-earth-garment-viewer-readiness-v1";
+      const rubricReady=rubricVersion===GARMENT_VIEWER_REALISM_RUBRIC_VERSION;
       // Old rows are still readable for operator audit, but any missing or
       // truncated raw observation must block release rather than silently
       // turning an otherwise failing record into a passing measurement set.
@@ -88,13 +96,18 @@ export async function loadLatestGarmentViewerReadiness(){
         readiness.realismReady=false;
         readiness.reasons.unshift("Recorded realism evidence contains lost, malformed or truncated viewer assessments.");
       }
-      readiness.ready=readiness.ready&&scaleLossless&&latencyLossless&&realismLossless;
+      if(!accepted) readiness.reasons.unshift("Latest QA evidence has not been accepted by the operator.");
+      if(!versionReady) readiness.reasons.unshift("Latest QA evidence uses an unsupported readiness event version.");
+      if(!rubricReady) readiness.reasons.unshift("Latest QA evidence uses an outdated or invalid realism rubric.");
+      readiness.ready=readiness.ready&&scaleLossless&&latencyLossless&&realismLossless
+        &&accepted&&versionReady&&rubricReady;
       if(!identityMatches) readiness.reasons.unshift("Recorded QA evidence belongs to a different or missing GarmentViewer asset revision.");
       return {
         configured:true as const,
         asset,
         latest:{
           at:row.at,
+          status,
           evidence,
           evidenceIdentity,
           identityMatches,
