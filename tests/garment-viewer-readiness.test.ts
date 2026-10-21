@@ -160,7 +160,7 @@ test("audit never promotes legacy percentage-only or unchecked measurements",()=
   ];
   const rows=garmentViewerScaleAudit(input.patternScaleSamples);
   assert.equal(rows.length,1);
-  assert.equal(rows[0].measuredErrorPct,4.1);
+  assert.ok(rows[0].measuredErrorPct!==null&&Math.abs(rows[0].measuredErrorPct-4.1)<1e-9);
   assert.equal(rows[0].passes,false);
   const readiness=garmentViewerPromotionReadiness(input);
   assert.equal(readiness.scaleReady,false);
