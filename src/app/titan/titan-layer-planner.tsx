@@ -318,7 +318,7 @@ export default function TitanLayerPlanner() {
                   <div className="titanLayerPlannerFixes">
                     {draftGuidance.suggestions.map(option => (
                       <button type="button" key={JSON.stringify(option.plan)}
-                        onClick={() => stageCompatibilityFix(option)}
+                        onClick={() => stageCompatibilityFix(option.plan)}
                         aria-label={`Stage fix: ${option.description}`}>
                         <strong>{option.description}</strong>
                         <small>Stage draft · Apply separately</small>
