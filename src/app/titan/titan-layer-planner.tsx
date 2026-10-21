@@ -65,6 +65,9 @@ export default function TitanLayerPlanner() {
   const [showSharedLink, setShowSharedLink] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
   const shareInput = useRef<HTMLInputElement>(null);
+  // The exact unreadable value displayed to the user; a later tab's newer
+  // store must never be deleted by an old "Clear" button.
+  const unreadableStoreRef = useRef<string | null>(null);
 
   // A shared URL stages a logical outfit only. It never loads an accessory
   // GLB, applies a plan, touches Designer drafts or updates saved bookmarks.
@@ -87,6 +90,7 @@ export default function TitanLayerPlanner() {
   useEffect(() => {
     function load(raw: string | null) {
       const data = readTitanLayerPlanLibrary(raw);
+      unreadableStoreRef.current = data.ok ? null : raw;
       setSavedPlans(data.plans);
       setLibraryState(data.ok ? "ready" : "invalid");
       if (!data.ok) setLibraryMessage("Existing layer bookmarks are unreadable. They were not overwritten.");
@@ -122,6 +126,7 @@ export default function TitanLayerPlanner() {
       // bookmarks or clear an unknown/future version behind its back.
       const current = readTitanLayerPlanLibrary(window.localStorage.getItem(TITAN_LAYER_PLANS_KEY));
       if (!current.ok) {
+        unreadableStoreRef.current = window.localStorage.getItem(TITAN_LAYER_PLANS_KEY);
         setSavedPlans([]);
         setLibraryState("invalid");
         setLibraryMessage("Stored bookmarks changed or became unreadable. Nothing was overwritten.");
@@ -151,19 +156,64 @@ export default function TitanLayerPlanner() {
   }
 
   function stageSavedPlan(plan: EditableModelLayerPlan) {
-    setDraftSlots([...plan.layers]);
-    setDraftComposition(plan.composition);
-    setMessage("Saved plan loaded as an unapplied draft. Select Apply layer plan to use it locally.");
+    if (libraryState !== "ready") return;
+    try {
+      // A stale bookmark removed in another tab must not be staged by the old
+      // tab if its storage event has not yet reached this component.
+      const raw = window.localStorage.getItem(TITAN_LAYER_PLANS_KEY);
+      const current = readTitanLayerPlanLibrary(raw);
+      unreadableStoreRef.current = current.ok ? null : raw;
+      setSavedPlans(current.plans);
+      setLibraryState(current.ok ? "ready" : "invalid");
+      if (!current.ok) {
+        setLibraryMessage("Bookmarks are unreadable. Your current draft was not changed.");
+        return;
+      }
+      const key = JSON.stringify(plan);
+      if (!current.plans.some(item => JSON.stringify(item) === key)) {
+        setLibraryMessage("That bookmark changed in another tab. It was not loaded.");
+        return;
+      }
+      setDraftSlots([...plan.layers]);
+      setDraftComposition(plan.composition);
+      setMessage("Saved plan loaded as an unapplied draft. Select Apply layer plan to use it locally.");
+    } catch {
+      setLibraryState("blocked");
+      setLibraryMessage("Could not recheck this bookmark; your current draft remains unchanged.");
+    }
   }
 
   function clearUnreadableLibrary() {
     if (libraryState !== "invalid") return;
     try {
-      // Explicit user action only. Corrupt/future data is never auto-deleted.
+      // Re-read immediately before deletion; only the precise corrupt value
+      // explicitly shown to the user is eligible for a one-click clear.
+      const raw = window.localStorage.getItem(TITAN_LAYER_PLANS_KEY);
+      const now = readTitanLayerPlanLibrary(raw);
+      if (now.ok) {
+        unreadableStoreRef.current = null;
+        setSavedPlans(now.plans);
+        setLibraryState("ready");
+        setLibraryMessage("Bookmarks changed since the warning. Nothing was deleted.");
+        return;
+      }
+      if (raw !== unreadableStoreRef.current) {
+        unreadableStoreRef.current = raw;
+        setSavedPlans([]);
+        setLibraryMessage("Unreadable data changed since the warning. Review and choose Clear again.");
+        return;
+      }
+      // Explicit user action on unchanged unreadable data only. Newer
+      // schema versions are never silently replaced during normal saves.
       window.localStorage.removeItem(TITAN_LAYER_PLANS_KEY);
-      setSavedPlans([]);
-      setLibraryState("ready");
-      setLibraryMessage("Unreadable local bookmarks cleared at your request.");
+      const after = window.localStorage.getItem(TITAN_LAYER_PLANS_KEY);
+      const checked = readTitanLayerPlanLibrary(after);
+      unreadableStoreRef.current = checked.ok ? null : after;
+      setSavedPlans(checked.plans);
+      setLibraryState(checked.ok ? "ready" : "invalid");
+      setLibraryMessage(checked.ok
+        ? "Unreadable local bookmarks cleared at your request."
+        : "Bookmarks changed during clearing; please review before trying again.");
     } catch {
       setLibraryState("blocked");
       setLibraryMessage("Browser could not clear these bookmarks.");
