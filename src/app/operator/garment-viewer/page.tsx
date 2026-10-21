@@ -33,13 +33,13 @@ export default async function GarmentViewerOperatorPage(){
     </header>
 
     <section className="garmentQaHero" data-ready={status.assetReady}>
-      <small>APPROVED PRODUCTION ASSET</small>
+      <small>MODEL CANDIDATE — STRUCTURAL PREFLIGHT</small>
       <strong>{status.assetReady?"STRUCTURE READY":"NOT READY"}</strong>
       <p>{status.configured ? status.modelSrc : "LINEN_GARMENT_MODEL_SRC is not configured."}</p>
     </section>
 
     <section className="garmentQaGrid garmentQaGridSix">
-      <article><small>MODEL FILE</small><strong>{status.configured?"Configured":"Missing"}</strong><p>{status.modelSrc||"Add an approved /models/*.glb source."}</p></article>
+      <article><small>MODEL FILE</small><strong>{status.configured?"Configured":"Missing"}</strong><p>{status.modelSrc||"Configure the candidate /models/*.glb source."}</p></article>
       <article><small>SOURCE / LICENSE</small><strong>{manifest?.sourceReady?"Verified":"Open"}</strong><p>{manifest?.source ? `${manifest.source.name} · ${manifest.source.license} · verified ${manifest.source.verifiedAt}` : "Production manifest must record source name, license and verification date."}</p></article>
       <article><small>SIX-PANEL CONTRACT</small><strong>{model?.contract.readiness==="contract_ready"?"Pass":"Open"}</strong><p>{model?model.contract.reasons.join(" "):"GLB has not been structurally inspected."}</p></article>
       <article><small>UV + NORMALS</small><strong>{model?.uvReady?"Pass":"Open"}</strong><p>Every shirt/trouser panel needs POSITION, NORMAL and TEXCOORD_0.</p></article>
@@ -78,7 +78,8 @@ export default async function GarmentViewerOperatorPage(){
     <GarmentViewerEvidenceForm assetIdentity={status.assetIdentity}/>
 
     <section className="garmentQaPanel">
-      <div className="garmentQaPanelHead"><div><small>CUSTOMER PROMOTION GATE</small><h2>3D stays in the lab until every evidence gate passes</h2></div><b>{latest?.readiness.ready?"READY":"BLOCKED"}</b></div>
+      <div className="garmentQaPanelHead"><div><small>CUSTOMER PROMOTION GATE — TECHNICAL CHECKS ONLY</small><h2>Technical checks must pass before independent owner and tailor sign-off</h2></div><b>{latest?.readiness.ready?"TECHNICAL PASS":"BLOCKED"}</b></div>
+      {latest?.readiness.ready&&<p className="garmentQaReasons">Automated technical evidence passed. This does not establish physical garment fit, independent owner/tailor acceptance, customer promotion permission, or deployment readiness.</p>}
       {latest?<div className="garmentQaPromotion">
         {([
           ["Model contract",latest.readiness.contractReady],

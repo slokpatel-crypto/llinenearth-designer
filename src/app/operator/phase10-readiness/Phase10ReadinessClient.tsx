@@ -440,7 +440,7 @@ export default function Phase10ReadinessClient(){
     const garmentViewerEvidence=data.garmentViewer?.latest||null;
     const garmentViewerAssetReady=data.garmentViewer?.asset.assetReady===true;
     const garmentViewerMobilePreflight=data.garmentViewer?.asset.model?.performanceBudgetReady===true;
-    const garmentViewerReady=Boolean(garmentViewerEvidence?.identityMatches&&garmentViewerEvidence.readiness.ready&&garmentViewerAssetReady&&garmentViewerMobilePreflight);
+    const garmentViewerTechnicalPass=Boolean(garmentViewerEvidence?.identityMatches&&garmentViewerEvidence.readiness.ready&&garmentViewerAssetReady&&garmentViewerMobilePreflight);
     const garmentViewerSignals=[
       garmentViewerAssetReady,
       garmentViewerMobilePreflight,
@@ -450,7 +450,9 @@ export default function Phase10ReadinessClient(){
       garmentViewerEvidence?.readiness.realismReady===true,
       garmentViewerEvidence?.readiness.boundaryReady===true,
     ];
-    const garmentViewerProgress=ratio(garmentViewerSignals.filter(Boolean).length,garmentViewerSignals.length);
+    // There is no independent owner/tailor acceptance record for this 3D candidate yet.
+    // A technical-only score must never mark the customer-release workstream complete.
+    const garmentViewerProgress=Math.min(95,ratio(garmentViewerSignals.filter(Boolean).length,garmentViewerSignals.length));
 
     const coverage=data.designerData?.coverage;
     let physicalPolicy=null;
@@ -572,12 +574,12 @@ export default function Phase10ReadinessClient(){
       {
         id:"garment-viewer-m2",
         title:"Reusable 3D GarmentViewer production gate",
-        detail:garmentViewerReady
-          ? "The exact production GLB revision has passed structure, physical pattern scale, mobile complexity, interaction latency, independent realism and garment-boundary evidence."
+        detail:garmentViewerTechnicalPass
+          ? "Technical preflight passed on this exact GLB revision. Independent owner/tailor physical fit and fabric-scale acceptance, explicit customer-promotion permission, and deployment verification remain pending. The customer Designer stays photographic."
           : garmentViewerEvidence
             ? `3D remains lab-only. ${garmentViewerEvidence.readiness.reasons.join(" ")}${garmentViewerMobilePreflight?"":" Mobile GLB complexity also needs review."}`
             : "No revision-bound production GarmentViewer evidence is recorded yet. The current customer Designer stays on the photographic preview.",
-        status:garmentViewerReady?"done":data.garmentViewer?.configured?"progress":"blocked",
+        status:data.garmentViewer?.configured?"progress":"blocked",
         progress:garmentViewerProgress,
         metric:garmentViewerEvidence
           ? `${garmentViewerEvidence.readiness.latency.count} latency samples · p95 ${garmentViewerEvidence.readiness.latency.p95Ms??"—"} ms · ${garmentViewerEvidence.readiness.realism.strongRatings}/${garmentViewerEvidence.readiness.realism.uniqueViewers} strong realism ratings`
