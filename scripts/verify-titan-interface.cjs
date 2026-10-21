@@ -49,6 +49,35 @@ async function checkViewport(width) {
     // model; invalid dependent changes roll back as one unit, even at 320px.
     const layerPlanner = page.locator("#titan-layer-planner");
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
+    // Five deterministic starting plans: no implicit apply, new geometry or
+    // saved customer changes. Exercise presets at every tested viewport.
+    const presets = layerPlanner.locator(".titanLayerPlannerPresetGrid button");
+    assert.equal(await presets.count(), 5);
+    const suitPreset = layerPlanner.getByRole("button", { name: "Stage Two-piece suit as a draft" });
+    const suitTap = await suitPreset.boundingBox();
+    assert.ok(suitTap && suitTap.height >= 44 && suitTap.width >= 44,
+      "Suit preset needs a usable phone touch target");
+    assert.match(await suitPreset.textContent(), /unverified garment asset/i);
+    await suitPreset.click();
+    assert.equal(await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).isChecked(), true);
+    assert.equal(await layerPlanner.getByRole("radio", { name: "Two-piece suit" }).isChecked(), true);
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2,
+      "Staging the preset must not alter the applied plan");
+    assert.match(await layerPlanner.locator(".titanLayerPlannerFeedback").textContent(), /unapplied draft/i);
+    await layerPlanner.getByRole("button", { name: "Discard edits" }).click();
+    assert.equal(await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).isChecked(), false);
+    await layerPlanner.getByRole("button", { name: "Stage Full accessory layer plan as a draft" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
+    assert.equal(await layerPlanner.getByRole("checkbox", { name: /Pocket square/ }).isChecked(), true);
+    assert.equal(await layerPlanner.getByRole("radio", { name: "Three-piece suit" }).isChecked(), true);
+    await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 7);
+    assert.equal(await layerPlanner.locator("[data-titan-composition]").getAttribute("data-titan-composition"), "three-piece-suit");
+    await layerPlanner.getByRole("button", { name: "Reset plan" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
+    await layerPlanner.getByRole("button", { name: "Stage Shirt & trousers as a draft" }).click();
+    assert.equal(await layerPlanner.getByRole("button", { name: "Apply layer plan" }).isDisabled(), true,
+      "Staging the already applied preset should be a no-op");
     await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).check();
     await layerPlanner.getByRole("radio", { name: "Two-piece suit" }).check();
     await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
