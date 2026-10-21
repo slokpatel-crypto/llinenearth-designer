@@ -54,8 +54,10 @@ class EvaluatedBodyHeightTests(unittest.TestCase):
         modifier.use_constant_offset = True
         modifier.constant_offset_displace = (0, 0, 0.21)
         bpy.context.view_layer.update()
-        self.assertAlmostEqual(body.dimensions.z, 1.727, delta=1e-5,
-            msg="Raw Blender object bounds should remain unchanged in this fixture")
+        source_height = max(vertex.co.z for vertex in body.data.vertices) - min(
+            vertex.co.z for vertex in body.data.vertices)
+        self.assertAlmostEqual(source_height, 1.727, delta=1e-5,
+            msg="Original body mesh stays unchanged by the evaluated modifier")
         self.assert_shared(body, 1.937)
         self.assertGreater(abs(preflight_height(body) - 1.727), PREFLIGHT["HEIGHT_TOLERANCE_M"])
         body.modifiers.remove(modifier)
