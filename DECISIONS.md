@@ -663,3 +663,12 @@ are displayed. Do not merge the stacked TITAN PRs or deploy.
 - Sharing requires the user to click **Copy applied plan link**. If clipboard permissions are blocked, display a select-and-copy URL field. Changes to the active plan hide any stale previously displayed share URL.
 - Browser and Node coverage must prove all valid canonical combinations, malformed tokens, explicit apply, preserved Designer draft, mobile focus/targets and no paid-provider calls. Do not claim independent photographic/Blender/source model approval based on this logic.
 - **DRAFT ONLY.** Stacked on #322, #321 and the unreleased TITAN chain. No merge, deployment or release authorisation.
+
+
+## 2026-10-21 — actual evaluated model height is required before native 3D export
+
+**Problem:** The native scene preflight and export manifest previously calculated body height from `obj.bound_box` and an unevaluated object matrix. A deforming/array modifier or constraint could change the mesh that Blender actually exports without changing the source object's original bounds. This could mistakenly accept a scene outside the original fixed-model height tolerance, or write a measured viewer manifest with the wrong body height.
+
+**Decision:** Both native Blender scripts now read the evaluated dependency-graph body mesh and evaluated world matrix, scanning finite vertex coordinates in scene metres. The source object, transforms and mesh are not rewritten. Empty/non-finite evaluated geometry returns an unavailable height; the existing 1.727 m ± 0.020 m tolerance rejects it. Temporary evaluated meshes are always released in a `finally` block.
+
+**Verification:** Six actual Blender 4.2 regressions exercise unchanged height, translation, modifier-expanded dimensions, constraint-scaled world space, corrupt/empty vertices and repeated read cleanup; the SHA-256-pinned native workflow stores `height.log`. Existing collision, UV and export tests stay enabled. This is a software measurement gate, **not** a human identity, textile drape, four-angle photographic or physical tailoring release approval. No production model/photo replacement, measured garment facts, merge or deployment.

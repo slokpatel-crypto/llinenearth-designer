@@ -49,6 +49,10 @@ jobs:
         run: |
           set -o pipefail
           "${{ runner.temp }}/blender-4.2.0-linux-x64/blender" --background --factory-startup --python-exit-code 1 --python tests/blender/test_scene_uv.py 2>&1 | tee artifacts/native-collision/uv.log
+      - name: Verify evaluated body export height and source nonmutation
+        run: |
+          set -o pipefail
+          "${{ runner.temp }}/blender-4.2.0-linux-x64/blender" --background --factory-startup --python-exit-code 1 --python tests/blender/test_scene_height.py 2>&1 | tee artifacts/native-collision/height.log
       - name: Preserve native regression evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -235,3 +235,10 @@ This creates `artifacts/model-qa/linen-earth-model-front.png`, `linen-earth-mode
 The renderer refuses a missing/wrong identity lock, missing realistic Body mesh, incomplete six-panel garment scene or incorrect body height. It does not modify/save the original scene, substitute another person, fabricate hidden garment details, declare a measured cloth drape or claim any tailor approval.
 
 **These are inspection candidates, not finished production assets.** Compare all four images manually against the current `/designer/studio-tucked.webp` target, including neck, shoulder slope, wrists, hand clearance, tuck, seat/thigh, trouser break and back silhouette. Record evidence in the existing operator gates before promotion. Unmeasured fabric mechanical properties and supplier repeat width must remain unknown until provided.
+
+
+### 21 October — evaluated body-height native preflight gate (unreleased)
+
+- Body height is measured from the **evaluated Blender mesh under the evaluated world transform**, not the unmodified source bounding box. Export and scene-preflight use the same measurement rule; evaluated modifiers/constraints can no longer hide model-height drift behind the original local bounds.
+- Empty and non-finite evaluated geometry fails the existing fixed height tolerance; the scripts release evaluation buffers without editing the authored model or reference photograph.
+- Six synthetic native Blender regression cases are now part of the pinned runtime CI gate and do not establish any real garment/fabric calibration. Physical drape, fitted seam placement, texture measurements, four-angle photo comparison and owner/tailor signoff remain mandatory before any activation.
