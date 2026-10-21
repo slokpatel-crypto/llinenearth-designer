@@ -77,13 +77,31 @@ def cli_args():
     return parser.parse_args(argv)
 
 
-def world_bounds(obj):
-    return [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
-
-
 def object_height(obj):
-    points = world_bounds(obj)
-    return max(point.z for point in points) - min(point.z for point in points)
+    """Height in world metres of the ACTUAL evaluated export-body geometry.
+
+    Raw obj.bound_box misses modifiers; raw obj.matrix_world may miss evaluated
+    constraints/parent transforms. Both must match what Blender exports.
+    Every temporary evaluated mesh is released, even for invalid geometry.
+    """
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        if mesh is None or len(mesh.vertices) == 0:
+            return math.nan
+        matrix = evaluated.matrix_world
+        low = math.inf
+        high = -math.inf
+        for vertex in mesh.vertices:
+            point = matrix @ vertex.co
+            if not all(math.isfinite(value) for value in point):
+                return math.nan
+            low = min(low, point.z)
+            high = max(high, point.z)
+        return high - low
+    finally:
+        evaluated.to_mesh_clear()
 
 
 def ensure_material(obj, material_name):
