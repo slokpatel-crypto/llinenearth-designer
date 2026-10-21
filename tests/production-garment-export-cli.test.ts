@@ -35,7 +35,13 @@ async function workspace(run: (root: string) => Promise<void>) {
         process.exit(flag >= 0 ? Number(args[flag + 1]) : 0);
       }
       if (process.env.EXPORT_TEST_MODE === "signal") process.kill(process.pid, "SIGTERM");
-      process.exit(Number(process.env.EXPORT_TEST_BLENDER_EXIT || 0));
+      const exitCode = Number(process.env.EXPORT_TEST_BLENDER_EXIT || 0);
+      if (exitCode) process.exit(exitCode);
+      const out = args[args.indexOf("--output") + 1];
+      if (!out || !out.endsWith(".glb")) process.exit(9);
+      fs.writeFileSync(out, "new structurally verified fixture");
+      fs.writeFileSync(out.slice(0, -4) + ".viewer.json", "new measured manifest fixture");
+      process.exit(0);
     `, { mode: 0o755 });
     await run(root);
   } finally { await fs.rm(root, { recursive: true, force: true }); }
@@ -88,7 +94,12 @@ test("Successful export still requires independent structural validation", async
   assert.equal(result.status, 1);
   assert.doesNotMatch(result.stdout, /candidate passed export/);
   const checked = JSON.parse(await fs.readFile(path.join(root, "validator-ran.json"), "utf8")) as string[];
-  assert.deepEqual(checked, [path.join(root, "candidate.glb")]);
+  assert.equal(checked.length, 1);
+  assert.equal(path.basename(checked[0]), "candidate.glb");
+  assert.notEqual(checked[0], path.join(root, "candidate.glb"),
+    "Validator must inspect staged bytes rather than the previously published candidate");
+  assert.equal(await fs.readFile(path.join(root, "candidate.glb"), "utf8"), "prior validated candidate fixture");
+  assert.equal(await fs.readFile(path.join(root, "candidate.viewer.json"), "utf8"), "prior manifest fixture");
 }));
 
 test("Export and validation preserve exact paths with spaces and separate process arguments", async () => workspace(async root => {
@@ -98,4 +109,8 @@ test("Export and validation preserve exact paths with spaces and separate proces
   assert.equal(args[args.indexOf("--background") + 1], path.join(root, "scene with spaces.blend"));
   assert.equal(args[args.indexOf("--panel-spec") + 1], path.join(root, "panel spec.json"));
   assert.match(result.stdout, /candidate passed export \+ structural validation/);
+  assert.equal(await fs.readFile(path.join(root, "candidate.glb"), "utf8"), "new structurally verified fixture");
+  assert.equal(await fs.readFile(path.join(root, "candidate.viewer.json"), "utf8"), "new measured manifest fixture");
+  const rootFiles = await fs.readdir(root);
+  assert.equal(rootFiles.some(name => name.startsWith(".linen-export-stage-")), false);
 }));
