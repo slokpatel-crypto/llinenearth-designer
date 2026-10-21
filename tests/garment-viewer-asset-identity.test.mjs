@@ -126,6 +126,18 @@ test("HTTP evidence ingestion rejects overlong identities before persistence and
   assert.equal(stored.length,1);
   assert.equal(stored[0].payload.modelSha256,identity.modelSha256);
 
+  const receivedAfter=Date.now();
+  const futureRequested="2099-01-01T00:00:00.000Z";
+  const futureEvent=new Request("https://qa.invalid/api/memory/event",{method:"POST",
+    headers:{"content-type":"application/json"},
+    body:JSON.stringify({type:"operator_note",sessionId:"qa-only",at:futureRequested,payload:evidence})});
+  assert.equal((await api.POST(futureEvent)).status,200);
+  assert.equal(stored.length,2);
+  assert.ok(Date.parse(stored[1].at)>=receivedAfter-1000);
+  assert.ok(Date.parse(stored[1].at)<=Date.now()+1000,
+    "server receipt time overrides an untrusted client timestamp");
+  assert.notEqual(stored[1].at,futureRequested);
+
   let rows=JSON.parse(JSON.stringify(stored)).reverse();
   const reader=isolatedModule("src/lib/garment-viewer-evidence-server.ts",{
     "@/lib/supabase-admin":cloud,
@@ -141,6 +153,8 @@ test("HTTP evidence ingestion rejects overlong identities before persistence and
   // The latest operator submission is authoritative. Never resurrect an
   // earlier accepted pass when a later operator marked it for review, when
   // the event version changed, or when the realism rubric is obsolete.
+  const recent=new Date(Date.now()-60_000).toISOString();
+  const earlier=new Date(Date.now()-120_000).toISOString();
   const invalidLatestMetadata=[
     {status:"review",expectedReason:/not been accepted/i},
     {status:"unrecognized",expectedReason:/not been accepted/i},
@@ -151,24 +165,33 @@ test("HTTP evidence ingestion rejects overlong identities before persistence and
     {realismRubricVersion:"",expectedReason:/outdated or invalid realism rubric/i},
   ];
   for(const {expectedReason,...patch} of invalidLatestMetadata){
-    rows=[{...stored[0],at:"2026-10-21T19:00:00Z",payload:{...stored[0].payload,...patch}},
-      {...stored[0],at:"2026-10-21T18:00:00Z"}];
+    rows=[{...stored[0],at:recent,payload:{...stored[0].payload,...patch}},
+      {...stored[0],at:earlier}];
     const result=await reader.loadLatestGarmentViewerReadiness();
     assert.ok(result.latest,"the blocked latest evidence remains inspectable");
-    assert.equal(result.latest.at,"2026-10-21T19:00:00Z");
+    assert.equal(result.latest.at,recent);
     assert.equal(result.latest.identityMatches,true);
     assert.equal(result.latest.readiness.ready,false,"stale approved QA must not be restored");
     assert.match(result.latest.readiness.reasons.join(" "),expectedReason);
   }
 
-  rows=[{...stored[0],at:"2026-10-21T19:00:00Z",
+  rows=[{...stored[0],at:recent,
     payload:{...stored[0].payload,status:"accepted",
       version:"linen-earth-garment-viewer-readiness-v1",
       realismRubricVersion:"linen-earth-garment-viewer-realism-rubric-v1"}}];
   assert.equal((await reader.loadLatestGarmentViewerReadiness()).latest.readiness.ready,true,
     "a new accepted event with the current version and rubric still passes");
 
-  for(const patch of [{modelSha256:identity.modelSha256+"suffix"},{manifestSha256:""},{modelId:null},
+  for(const invalidAt of ["invalid-audit-date",new Date(Date.now()+86_400_000).toISOString()]){
+    rows=[{...stored[0],at:invalidAt},{...stored[0],at:earlier}];
+    const result=await reader.loadLatestGarmentViewerReadiness();
+    assert.equal(result.latest.at,invalidAt);
+    assert.equal(result.latest.readiness.ready,false,
+      "untrusted future timestamp must not preserve technical approval");
+    assert.match(result.latest.readiness.reasons.join(" "),/future-dated audit timestamp/);
+  }
+
+  for(const patch of [{modelSha256:identity.modelSha256+"suffix",{manifestSha256:""},{modelId:null},
     {modelSha256:"c".repeat(64)}]){
     rows=[{...stored[0],payload:{...stored[0].payload,...patch}},stored[0]];
     const result=await reader.loadLatestGarmentViewerReadiness();
