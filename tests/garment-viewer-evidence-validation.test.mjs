@@ -5,6 +5,7 @@ import {
   parseGarmentLatencySamples,
   parseGarmentRealismAssessments,
   parseMeasuredScaleInput,
+  normalizeGarmentViewerEvidenceForStorage,
 } from "../src/lib/garment-viewer-evidence-validation.ts";
 
 test("strict scale parse rejects fabricated zero and out-of-range evidence", () => {
@@ -44,5 +45,21 @@ test("blank UI error cannot become verified perfect-scale evidence", () => {
   });
   assert.deepEqual(parseMeasuredScaleInput("cloth", "4.134", "check", false), {
     fabricId: "cloth", pattern: "check", errorPct: 4.13, verified: false,
+  });
+});
+
+test("operator-event canonicalizer drops fake observations before rounding", () => {
+  const result = normalizeGarmentViewerEvidenceForStorage({
+    patternScaleSamples: [
+      { fabricId: "stripe-a", pattern: "stripe", errorPct: null, verified: true },
+      { fabricId: "check-b", pattern: "check", errorPct: 2.678, verified: true },
+    ],
+    interactionLatencyMs: [null, false, "1", 0, 0.02, 17.86, 88],
+    realismAssessments: [{ viewerId: "v1", rating: "5" }, { viewerId: "v2", rating: 5 }],
+  });
+  assert.deepEqual(result, {
+    patternScaleSamples: [{ fabricId: "check-b", pattern: "check", errorPct: 2.68, verified: true }],
+    interactionLatencyMs: [17.9, 88],
+    realismAssessments: [{ viewerId: "v2", rating: 5, recordedAt: "" }],
   });
 });
