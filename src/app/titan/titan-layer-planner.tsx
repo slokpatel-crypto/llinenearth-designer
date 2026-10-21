@@ -21,6 +21,7 @@ import {
   readTitanLayerShare, titanLayerShareHref, TITAN_LAYER_SHARE_PARAMETER,
 } from "@/lib/titan/layer-plan-share";
 import { guideTitanLayerDraft } from "@/lib/titan/layer-compatibility-guidance";
+import { reviewTitanLayerChanges, titanLayerReviewDraft } from "@/lib/titan/layer-plan-review";
 import {
   TITAN_LAYER_PRESET_CHOICES, previewTitanLayerPreset, type TitanLayerPresetId,
 } from "@/lib/titan/layer-plan-presets";
@@ -281,6 +282,9 @@ export default function TitanLayerPlanner() {
 
   const hasUnappliedChanges = draftComposition !== appliedPlan.composition
     || MODEL_LAYER_SLOTS.some(({ slot }) => draftSlots.includes(slot) !== appliedPlan.layers.includes(slot));
+  const draftReview = reviewTitanLayerChanges(
+    appliedPlan, titanLayerReviewDraft(draftComposition, draftSlots),
+  );
 
   return (
     <section id="titan-layer-planner" className="titanLayerPlanner" aria-labelledby="titan-layer-planner-title">
@@ -348,6 +352,29 @@ export default function TitanLayerPlanner() {
           </fieldset>
           <p className="titanLayerPlannerHint">For a suit, select the blazer and its composition together.
             A three-piece suit also needs a waistcoat. Pocket squares require a blazer; ties require a shirt.</p>
+          {hasUnappliedChanges && draftReview.valid && (
+            <section className="titanLayerPlannerReview" aria-labelledby="titan-layer-review-title">
+              <h3 id="titan-layer-review-title">Review before applying</h3>
+              <p>These are proposed changes to your local garment plan, not a rendered outfit.</p>
+              <ul>
+                {draftReview.additions.length > 0 && (
+                  <li><strong>Add:</strong> {draftReview.additions.map(id => LABELS[id]).join(", ")}</li>
+                )}
+                {draftReview.removals.length > 0 && (
+                  <li><strong>Remove:</strong> {draftReview.removals.map(id => LABELS[id]).join(", ")}</li>
+                )}
+                {draftReview.compositionFrom !== draftReview.compositionTo && (
+                  <li><strong>Composition:</strong> {COMPOSITIONS.find(x => x.id === draftReview.compositionFrom)?.name}
+                    {" → "}{COMPOSITIONS.find(x => x.id === draftReview.compositionTo)?.name}</li>
+                )}
+              </ul>
+              {draftReview.unverifiedAssetSlots.length > 0 && (
+                <p><strong>Not render-ready:</strong> {draftReview.unverifiedAssetSlots.map(id => LABELS[id]).join(", ")}.
+                  These layers need separately verified 3D geometry and physical acceptance.</p>
+              )}
+              <p>Only Apply layer plan commits these changes locally. No measurements, fabric selections or saved Designer state change.</p>
+            </section>
+          )}
           {!draftGuidance.valid && (
             <section className="titanLayerPlannerGuidance" aria-labelledby="titan-layer-guidance-title">
               <h3 id="titan-layer-guidance-title">Complete your garment plan</h3>
