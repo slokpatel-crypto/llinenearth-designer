@@ -39,7 +39,7 @@ test("operator-claimed scale error cannot override recomputed physical ratio",()
   assert.deepEqual(parseGarmentPatternSamples([measured({observedRepeatPx:118,errorPct:0})])[0].errorPct,18);
   assert.deepEqual(parseGarmentPatternSamples([measured({errorPct:"0"})]),[]);
   assert.deepEqual(parseGarmentPatternSamples([measured({errorPct:null})]),[]);
-  assert.deepEqual(parseGarmentPatternSamples([measured({observedRepeatPx:0.1})]),[]);
+  assert.deepEqual(parseGarmentPatternSamples([measured({observedRepeatPx:300})]),[]);
 });
 
 test("legacy percentage-only evidence cannot count as physical verification",()=>{
