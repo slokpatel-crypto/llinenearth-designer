@@ -106,6 +106,22 @@ test("HTTP evidence ingestion rejects overlong identities before persistence and
     assert.equal(result.status,400,"malformed operator evidence should be rejected, not partially persisted");
     assert.equal(stored.length,0);
   }
+  const invalidPerformanceOrViewerInputs=[
+    {interactionLatencyMs:[...evidence.interactionLatencyMs,null]},
+    {interactionLatencyMs:[...evidence.interactionLatencyMs,10001]},
+    {interactionLatencyMs:[...evidence.interactionLatencyMs,0.02]},
+    {interactionLatencyMs:Array(121).fill(100)},
+    {realismAssessments:[...evidence.realismAssessments,{viewerId:"bad-rating",rating:0}]},
+    {realismAssessments:[...evidence.realismAssessments,{viewerId:"x".repeat(81),rating:5}]},
+    {realismAssessments:[...evidence.realismAssessments,{viewerId:" VIEWER-0 ",rating:1}]},
+    {realismAssessments:[...evidence.realismAssessments,{viewerId:"bad-date",rating:5,recordedAt:"x".repeat(81)}]},
+    {realismAssessments:Array(51).fill({viewerId:"not-independent",rating:5})},
+  ];
+  for(const patch of invalidPerformanceOrViewerInputs){
+    const result=await submit({...evidence,...patch});
+    assert.equal(result.status,400,"all operator measurements must survive persistence");
+    assert.equal(stored.length,0);
+  }
   assert.equal((await submit({...evidence,modelSha256:identity.modelSha256.toUpperCase()})).status,200);
   assert.equal(stored.length,1);
   assert.equal(stored[0].payload.modelSha256,identity.modelSha256);
@@ -130,5 +146,25 @@ test("HTTP evidence ingestion rejects overlong identities before persistence and
     assert.equal(result.latest.readiness.contractReady,false);
     assert.equal(result.latest.readiness.manifestReady,false);
     assert.match(result.latest.readiness.reasons[0],/different or missing/);
+  }
+
+  // A pre-existing or tampered stored event must remain inspectable while
+  // never becoming a release pass after a failing row is dropped on reload.
+  const invalidHistoricalEvidence=[
+    {patternScaleSamples:[...evidence.patternScaleSamples,{fabricId:"bad",pattern:"stripe",verified:true,errorPct:0}]},
+    {patternScaleSamples:[...evidence.patternScaleSamples,{fabricId:"bad",pattern:"invalid"}]},
+    {interactionLatencyMs:[...evidence.interactionLatencyMs,10001]},
+    {interactionLatencyMs:[...evidence.interactionLatencyMs,0.02]},
+    {interactionLatencyMs:Array(121).fill(100)},
+    {realismAssessments:[...evidence.realismAssessments,{viewerId:"bad",rating:0}]},
+    {realismAssessments:[...evidence.realismAssessments,{viewerId:"x".repeat(81),rating:5}]},
+    {realismAssessments:[...evidence.realismAssessments,{viewerId:" VIEWER-0 ",rating:1}]},
+  ];
+  for(const patch of invalidHistoricalEvidence){
+    rows=[{...stored[0],payload:{...stored[0].payload,...patch}}];
+    const result=await reader.loadLatestGarmentViewerReadiness();
+    assert.equal(result.latest.identityMatches,true);
+    assert.equal(result.latest.readiness.ready,false,"lossy stored records cannot pass release QA");
+    assert.match(result.latest.readiness.reasons.join(" "),/lost, malformed or truncated/);
   }
 });
