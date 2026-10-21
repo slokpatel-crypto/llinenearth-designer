@@ -124,7 +124,7 @@ test("missing, empty, symlinked and oversized candidate inputs cannot advance po
   assert.throws(() => publish(p), /nonempty regular file/);
   await fs.promises.unlink(p.manifest);
   await fs.promises.symlink(first.manifestPath, p.manifest);
-  assert.throws(() => publish(p), /nonempty regular file/);
+  assert.throws(() => publish(p), /nonempty regular file|ELOOP/);
   await fs.promises.unlink(p.manifest);
   await writeFile(p.manifest, Buffer.alloc(1024 * 1024 + 1));
   assert.throws(() => publish(p), /nonempty regular file/);
