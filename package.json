@@ -21,7 +21,7 @@
     "fabric:tiles": "node --experimental-strip-types scripts/build-fabric-render-assets.mjs",
     "eval:analyzer": "node --experimental-strip-types scripts/eval-phase10.mjs analyzer",
     "eval:designer": "node --experimental-strip-types scripts/eval-phase10.mjs designer",
-    "test": "npm run fabric:tiles && node --experimental-strip-types --test tests/*.test.ts",
+    "test": "npm run fabric:tiles && node --experimental-strip-types --test tests/*.test.ts tests/*.test.mjs",
     "eval:engine": "node --experimental-strip-types scripts/eval-phase10-engine.mjs && npm run eval:designer-snapshots && node scripts/eval-designer-advisor.cjs",
     "eval:designer-snapshots": "node --experimental-strip-types scripts/eval-phase10-designer-snapshots.mjs",
     "eval:preview-performance": "node --experimental-strip-types scripts/eval-preview-performance.mjs",
