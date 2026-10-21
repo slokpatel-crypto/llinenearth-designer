@@ -24,5 +24,6 @@ test("audited physical inputs, measured error and revision mismatch are visible 
   assert.match(source,/WRONG ASSET/);
   assert.match(form,/preciseGarmentScaleErrorPct\(stripePreview\)/);
   assert.match(form,/preciseGarmentScaleErrorPct\(checkPreview\)/);
+  assert.match(form,/must use different fabric IDs/);
   assert.match(form,/physical review still required/);
 });
