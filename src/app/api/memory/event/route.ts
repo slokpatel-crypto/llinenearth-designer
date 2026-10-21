@@ -685,7 +685,7 @@ function clean(body:IncomingEvent, operatorAuthorized:boolean) {
   // QA submission is latest. Future/backdated timestamps could otherwise
   // resurrect an old passing record or indefinitely overshadow later review.
   const isGarmentReadiness=operatorType && type==="operator_note"
-    && payload.subtype==="garment_viewer_readiness";
+    && (payload as Record<string,unknown>).subtype==="garment_viewer_readiness";
 
   return {
     id:String(body.id || `EV-${Date.now()}`).slice(0,160),
