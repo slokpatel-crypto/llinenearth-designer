@@ -3,7 +3,7 @@ import type { RealismAssessment } from "./designer/proof-scale.ts";
 
 // Numeric user input and stored JSON are different trust boundaries. Neither
 // should convert null, blank strings, booleans or malformed values into a pass.
-const DECIMAL = /^(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?$/;
+const DECIMAL = /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
 const round2 = (value: number) => Math.round(value * 100) / 100;
 const validPositive = (value: unknown, max: number): value is number =>
   typeof value === "number" && Number.isFinite(value) && value > 0 && value <= max;
@@ -14,7 +14,7 @@ type ScaleMeasurement = Pick<GarmentViewerPatternScaleSample,
 function calibratedMeasurement(value: Record<string, unknown>): ScaleMeasurement | null {
   const { repeatMm, observedRepeatPx, referenceMm, referencePx } = value;
   const physicalEvidenceNote = typeof value.physicalEvidenceNote === "string"
-    ? value.physicalEvidenceNote.replace(/\\s+/g, " ").trim().slice(0, 700)
+    ? value.physicalEvidenceNote.replace(/\s+/g, " ").trim().slice(0, 700)
     : "";
   if (!validPositive(repeatMm, 5000) || !validPositive(observedRepeatPx, 20000)
     || !validPositive(referenceMm, 5000) || !validPositive(referencePx, 20000)
