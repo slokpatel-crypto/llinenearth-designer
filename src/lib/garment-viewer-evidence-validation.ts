@@ -57,7 +57,7 @@ export function parseGarmentRealismAssessments(value:unknown):RealismAssessment[
 
 const measure=(text:string,max:number)=>{
   const input=text.trim();
-  if(!/^(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?$/.test(input)) return null;
+  if(!/^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(input)) return null;
   return parsePositive(Number(input),max);
 };
 
