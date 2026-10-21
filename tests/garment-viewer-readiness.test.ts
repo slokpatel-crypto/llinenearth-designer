@@ -141,7 +141,7 @@ test("scale audit exposes measured inputs and uses exact unrounded gate precisio
   assert.equal(audited.length,2);
   assert.equal(audited[0].sample.errorPct,4.1);
   assert.equal(audited[0].sample.repeatMm,20);
-  assert.equal(audited[0].measuredErrorPct,4.1);
+  assert.ok(audited[0].measuredErrorPct!==null&&Math.abs(audited[0].measuredErrorPct-4.1)<1e-9);
   assert.equal(audited[0].passes,true);
   assert.ok(audited[1].measuredErrorPct!==null&&audited[1].measuredErrorPct>8);
   assert.equal(audited[1].sample.errorPct,8); // display-only rounding
