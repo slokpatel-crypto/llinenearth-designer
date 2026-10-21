@@ -130,15 +130,25 @@ test("HTTP evidence ingestion rejects overlong identities before persistence and
   const futureRequested="2099-01-01T00:00:00.000Z";
   const futureEvent=new Request("https://qa.invalid/api/memory/event",{method:"POST",
     headers:{"content-type":"application/json"},
-    body:JSON.stringify({type:"operator_note",sessionId:"qa-only",at:futureRequested,payload:evidence})});
+    body:JSON.stringify({id:"EV-CALLER-DUPLICATE",type:"operator_note",sessionId:"qa-only",at:futureRequested,payload:evidence})});
   assert.equal((await api.POST(futureEvent)).status,200);
   assert.equal(stored.length,2);
   assert.ok(Date.parse(stored[1].at)>=receivedAfter-1000);
   assert.ok(Date.parse(stored[1].at)<=Date.now()+1000,
     "server receipt time overrides an untrusted client timestamp");
   assert.notEqual(stored[1].at,futureRequested);
+  assert.notEqual(stored[1].id,"EV-CALLER-DUPLICATE");
+  const duplicateIdEvent=new Request("https://qa.invalid/api/memory/event",{method:"POST",
+    headers:{"content-type":"application/json"},
+    body:JSON.stringify({id:"EV-CALLER-DUPLICATE",type:"operator_note",sessionId:"qa-only",
+      payload:{...evidence,status:"review"}})});
+  assert.equal((await api.POST(duplicateIdEvent)).status,200);
+  assert.equal(stored.length,3);
+  assert.notEqual(stored[1].id,stored[2].id,
+    "append-only technical review cannot be suppressed with a reused client event ID");
+  assert.equal(stored[2].payload.status,"review");
 
-  let rows=JSON.parse(JSON.stringify(stored)).reverse();
+  let rows=JSON.parse(JSON.stringify(stored.slice(0,2))).reverse();
   const reader=isolatedModule("src/lib/garment-viewer-evidence-server.ts",{
     "@/lib/supabase-admin":cloud,
     "@/lib/garment-viewer-model-server":{loadGarmentViewerProductionAssetStatus:async()=>({
