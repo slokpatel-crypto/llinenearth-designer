@@ -69,7 +69,7 @@ export function calibratedGarmentScaleErrorPct(sample:GarmentViewerPatternScaleS
   const expectedPx=physicalRepeatMm*referenceLengthPx/referenceLengthMm;
   if(!Number.isFinite(expectedPx) || expectedPx<=0) return null;
   const error=Math.abs(renderedRepeatPx-expectedPx)/expectedPx*100;
-  return Number.isFinite(error) && error<=100 ? Math.round(error*100)/100 : null;
+  return Number.isFinite(error) && error<=100 ? error : null;
 }
 
 export type GarmentViewerPromotionInput = {
