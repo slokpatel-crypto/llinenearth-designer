@@ -6,7 +6,7 @@ import { verifyMemorySessionToken } from "@/lib/memory-session";
 import { CREATIVE_FEEDBACK_REASONS } from "@/lib/designer/creative-learning";
 import { legacyMemoryHeader } from "@/lib/runtime-compat";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
-import { normalizeGarmentViewerEvidenceForStorage } from "@/lib/garment-viewer-evidence-validation";
+import { garmentPatternSubmissionIsLossless, normalizeGarmentViewerEvidenceForStorage } from "@/lib/garment-viewer-evidence-validation";
 import { parseGarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 
 const PUBLIC_TYPES = new Set([
@@ -380,6 +380,10 @@ function cleanPayload(type:string, input:unknown) {
       if(version!=="linen-earth-garment-viewer-readiness-v1" || !["accepted","review"].includes(status)) return null;
       if(realismRubricVersion!=="linen-earth-garment-viewer-realism-rubric-v1") return null;
       if(!identity) return null;
+      // Reject evidence rows that would disappear or lose verified status
+      // during normalization. Otherwise one bad measurement can be hidden
+      // alongside two otherwise passing calibrated rows.
+      if(!garmentPatternSubmissionIsLossless(payload.patternScaleSamples)) return null;
       const {modelId,modelSha256,manifestSha256}=identity;
       // Normalize raw JSON before persistence. Number(null) / Number("") / Number(false)
       // must never become zero-error or zero-latency QA evidence.
