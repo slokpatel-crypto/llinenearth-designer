@@ -329,3 +329,19 @@ test("realism submissions cannot omit bad assessments or truncate viewer identit
   assert.equal(garmentRealismSubmissionIsLossless([...passing,{viewerId:" VIEWER-1 ",rating:5}]),false,
     "a later duplicate reviewer cannot silently replace an earlier negative rating");
 });
+
+test("operator 3D QA acceptance is deliberate and cannot be confused with release",()=>{
+  const source=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
+  assert.match(source,/\[acceptTechnicalEvidence,setAcceptTechnicalEvidence\]=useState\(false\)/);
+  assert.match(source,/status:acceptTechnicalEvidence\?"accepted":"review"/);
+  assert.match(source,/checked=\{acceptTechnicalEvidence\}/);
+  assert.match(source,/NOT owner\/tailor approval/);
+  assert.match(source,/Record QA for review/);
+  assert.match(source,/garmentLatencySubmissionIsLossless\(savedLatencies\)/);
+  assert.match(source,/garmentRealismSubmissionIsLossless\(savedRatings\)/);
+  assert.match(source,/setLocalEvidenceCorrupt\(true\)/);
+  assert.match(source,/Recording is locked/);
+  const operatorPage=readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
+  assert.match(operatorPage,/CUSTOMER PROMOTION GATE — TECHNICAL CHECKS ONLY/);
+  assert.match(operatorPage,/owner and tailor sign-off/);
+});

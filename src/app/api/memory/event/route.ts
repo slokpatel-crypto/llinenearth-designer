@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -681,11 +682,20 @@ function clean(body:IncomingEvent, operatorAuthorized:boolean) {
   const payload = cleanPayload(type,body.payload);
   if (!payload) return null;
 
+  // The operator's client clock must not determine which revision-bound 3D
+  // QA submission is latest. Future/backdated timestamps could otherwise
+  // resurrect an old passing record or indefinitely overshadow later review.
+  const isGarmentReadiness=operatorType && type==="operator_note"
+    && (payload as Record<string,unknown>).subtype==="garment_viewer_readiness";
+
   return {
-    id:String(body.id || `EV-${Date.now()}`).slice(0,160),
+    // Each operator QA submission is a new append-only audit event. A caller-
+    // supplied duplicate ID could be ignored by the database's
+    // resolution=ignore-duplicates insert while the API reported success.
+    id:isGarmentReadiness?`EV-GARMENT-${randomUUID()}`:String(body.id || `EV-${Date.now()}`).slice(0,160),
     session_id:sessionId,
     type,
-    at:parsedAt.toISOString(),
+    at:isGarmentReadiness?new Date().toISOString():parsedAt.toISOString(),
     source:operatorType ? "operator" : "style-director",
     payload,
   };

@@ -13,6 +13,8 @@ import { ROADMAP_SCALE_TOLERANCE_PCT, summarizeIndependentRealism, summarizeLate
 import {
   parseGarmentLatencySamples,
   parseGarmentRealismAssessments,
+  garmentLatencySubmissionIsLossless,
+  garmentRealismSubmissionIsLossless,
   parseMeasuredScaleInput,
 } from "@/lib/garment-viewer-evidence-validation";
 
@@ -55,17 +57,21 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
   const [checkVerified,setCheckVerified]=useState(false);
   const [boundaryChecks,setBoundaryChecks]=useState<Boundaries>({neck:false,cuffs:false,waist:false,trouserGap:false});
   const [note,setNote]=useState("");
+  // Never accept a readiness record merely by opening/reloading the QA desk.
+  // This is operator acceptance of technical observations, not a production sign-off.
+  const [acceptTechnicalEvidence,setAcceptTechnicalEvidence]=useState(false);
+  const [localEvidenceCorrupt,setLocalEvidenceCorrupt]=useState(false);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
 
   function refreshLocalEvidence(){
-    if(!assetKey){setLatencies([]);setAssessments([]);return;}
-    const localLatencies=parseGarmentLatencySamples(
-      readStored<unknown>(GARMENT_VIEWER_LATENCY_STORAGE_KEY,assetKey,[]),
-    );
-    const localAssessments=parseGarmentRealismAssessments(
-      readStored<unknown>(GARMENT_VIEWER_REALISM_STORAGE_KEY,assetKey,[]),
-    );
+    if(!assetKey){setLatencies([]);setAssessments([]);setLocalEvidenceCorrupt(false);return;}
+    const savedLatencies=readStored<unknown>(GARMENT_VIEWER_LATENCY_STORAGE_KEY,assetKey,[]);
+    const savedRatings=readStored<unknown>(GARMENT_VIEWER_REALISM_STORAGE_KEY,assetKey,[]);
+    setLocalEvidenceCorrupt(!garmentLatencySubmissionIsLossless(savedLatencies)
+      || !garmentRealismSubmissionIsLossless(savedRatings));
+    const localLatencies=parseGarmentLatencySamples(savedLatencies);
+    const localAssessments=parseGarmentRealismAssessments(savedRatings);
     setLatencies(localLatencies);
     setAssessments(localAssessments);
   }
@@ -93,6 +99,17 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
 
   async function recordEvidence(){
     if(!assetIdentity||!assetKey){setMessage("Configure and validate the production GLB + manifest first.");return;}
+    // The lab cache is a transport staging area, not a trusted source. Reject
+    // raw malformed samples before filtered UI summaries can hide bad timings
+    // or ratings from the operator event submitted to the server.
+    const savedLatencies=readStored<unknown>(GARMENT_VIEWER_LATENCY_STORAGE_KEY,assetKey,[]);
+    const savedRatings=readStored<unknown>(GARMENT_VIEWER_REALISM_STORAGE_KEY,assetKey,[]);
+    if(!garmentLatencySubmissionIsLossless(savedLatencies)
+      || !garmentRealismSubmissionIsLossless(savedRatings)){
+      setLocalEvidenceCorrupt(true);
+      setMessage("Lab evidence contains invalid, duplicated or truncated measurements. Re-capture the timing samples in 3D Lab or replace the invalid ratings before recording QA.");
+      return;
+    }
     const stripeSample=parseMeasuredScaleInput(stripeFabricId,stripePhysicalMm,stripeRepeatPx,stripeMarkerMm,stripeMarkerPx,stripeReference,"stripe",stripeVerified);
     const checkSample=parseMeasuredScaleInput(checkFabricId,checkPhysicalMm,checkRepeatPx,checkMarkerMm,checkMarkerPx,checkReference,"check",checkVerified);
     if((stripeVerified&&!stripeSample)||(checkVerified&&!checkSample)){
@@ -113,7 +130,7 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
           payload:{
             subtype:"garment_viewer_readiness",
             version:"linen-earth-garment-viewer-readiness-v1",
-            status:"review",
+            status:acceptTechnicalEvidence?"accepted":"review",
             realismRubricVersion:GARMENT_VIEWER_REALISM_RUBRIC_VERSION,
             ...assetIdentity,
             patternScaleSamples,
@@ -126,7 +143,10 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
       });
       const result=await response.json() as {stored?:boolean;error?:string};
       if(!response.ok||!result.stored) throw new Error(result.error||"GarmentViewer evidence could not be stored.");
-      setMessage("Evidence recorded against this exact GLB + manifest revision.");
+      setMessage(acceptTechnicalEvidence
+        ?"Technical QA evidence accepted against this exact asset. Production release still requires separate independent physical and owner/tailor approval."
+        :"QA evidence recorded for operator review; it cannot pass the acceptance gate until explicitly accepted.");
+      setAcceptTechnicalEvidence(false);
       window.setTimeout(()=>window.location.reload(),350);
     }catch(error){
       setMessage(error instanceof Error?error.message:"GarmentViewer evidence could not be stored.");
@@ -144,6 +164,7 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
     <div className="garmentQaPanelHead"><div><small>RECORD QA EVIDENCE</small><h2>Evidence stays tied to this exact model revision</h2></div><button type="button" onClick={refreshLocalEvidence}>Refresh lab samples</button></div>
     {!assetIdentity?<p className="garmentQaReasons">Production asset identity is unavailable, so evidence recording is locked.</p>:<>
       <div className="garmentQaEvidenceMeta"><span><small>MODEL</small><b>{assetIdentity.modelId}</b></span><span><small>GLB HASH</small><b>{assetIdentity.modelSha256.slice(0,12)}…</b></span><span><small>MANIFEST HASH</small><b>{assetIdentity.manifestSha256.slice(0,12)}…</b></span></div>
+      {localEvidenceCorrupt&&<p className="garmentQaAuditWarning" role="alert">A saved lab timing or realism rating is invalid or lossy. Recording is locked until the affected asset-scoped lab evidence is replaced and refreshed.</p>}
       <div className="garmentQaEvidenceMetrics"><span><small>LAB LATENCY</small><b>{latencySummary.count}</b><em>{latencySummary.p95Ms===null?"p95 pending":`p95 ${latencySummary.p95Ms} ms`}</em></span><span><small>REALISM VIEWERS</small><b>{realismSummary.uniqueViewers}</b><em>{realismSummary.strongRatings} strong ratings</em></span></div>
       <div className="garmentQaRubric"><small>PHYSICAL REPEAT CALIBRATION</small><p>Measure the actual fabric repeat in mm. On one rendered screenshot, measure the repeat in pixels and a known-size reference marker in both mm and pixels, at the same depth. The system computes the scale error; include an identifiable measurement photo or worksheet reference. No pre-filled or manually asserted error % is accepted.</p></div>
       <div className="garmentQaEvidenceGrid">
@@ -181,7 +202,8 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
       </div>
       <div className="garmentQaBoundary"><small>VISUAL BOUNDARIES</small>{checks.map(([key,value])=><label key={key}><input type="checkbox" checked={value} onChange={(event)=>setBoundaryChecks((current)=>({...current,[key]:event.target.checked}))}/><span>{key==="trouserGap"?"Trouser gap":key}</span></label>)}</div>
       <label className="garmentQaNote"><span>QA note</span><textarea value={note} onChange={(event)=>setNote(event.target.value)} placeholder="Reference, test conditions, reviewer context…"/></label>
-      <div className="garmentQaRecord"><p>Latency comes only from real fabric changes performed in the 3D Lab on this exact asset hash. Ratings are deduplicated by viewer code.</p><button type="button" disabled={busy} onClick={()=>void recordEvidence()}>{busy?"Recording…":"Record current QA evidence"}</button></div>
+      <label className="garmentQaCheck"><input type="checkbox" checked={acceptTechnicalEvidence} onChange={(event)=>setAcceptTechnicalEvidence(event.target.checked)}/><span>Accept this exact-asset technical QA record after operator review. This is NOT owner/tailor approval, physical garment acceptance, customer 3D activation or permission to deploy.</span></label>
+      <div className="garmentQaRecord"><p>Latency comes only from real fabric changes performed in the 3D Lab on this exact asset hash. Ratings are deduplicated by viewer code. Unchecked records remain in review and cannot pass the acceptance gate.</p><button type="button" disabled={busy} onClick={()=>void recordEvidence()}>{busy?"Recording…":acceptTechnicalEvidence?"Accept and record technical QA":"Record QA for review"}</button></div>
       {message&&<p className="garmentQaMessage">{message}</p>}
     </>}
   </section>;
