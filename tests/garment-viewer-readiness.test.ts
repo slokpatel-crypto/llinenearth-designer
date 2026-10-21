@@ -84,6 +84,11 @@ test("scale gate requires both verified stripe and check samples within eight pe
   drift.patternScaleSamples[1].errorPct=0; // Claimed success must not override measured 8.1% error.
   assert.equal(garmentViewerPromotionReadiness(drift).scaleReady,false);
 
+  const roundingBoundary=passingInput();
+  roundingBoundary.patternScaleSamples[1].observedRepeatPx=108.004;
+  roundingBoundary.patternScaleSamples[1].errorPct=8;
+  assert.equal(garmentViewerPromotionReadiness(roundingBoundary).scaleReady,false);
+
   const legacy=passingInput();
   legacy.patternScaleSamples=legacy.patternScaleSamples.map((row)=>({
     ...row, repeatMm:undefined,observedRepeatPx:undefined,referenceMm:undefined,referencePx:undefined,physicalEvidenceNote:undefined,
