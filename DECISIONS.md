@@ -1,3 +1,11 @@
+## 2026-10-21 — Calibrated physical textile repeat is required for the 3D scale gate (draft)
+
+**Decision:** a manually entered percent-error figure, even marked "verified" by an operator, is not enough to promote the GarmentViewer. The operator must supply the actual textile repeat in mm, its observed preview period in pixels, and a known-length same-plane ruler measured in mm and pixels, with a 12+-character physical measurement source/method note. The program derives and rounds the relative period error instead of trusting the entered percent. Missing, nonnumeric, zero, excessively large or inconsistent evidence fails closed at the operator client, server event normalization and promotion reader. Both a stripe and a check must independently clear the existing <=8% threshold; real photographs and owner/tailor approval are still independent acceptance gates.
+
+**Compatibility:** additive audit fields only on each GarmentViewer pattern-scale sample: `repeatMm`, `observedRepeatPx`, `referenceMm`, `referencePx` and `physicalEvidenceNote`. The operator event version and current GLB/manifest identity keys stay unchanged; no Supabase migration, model/fabric changes, paid AI, customer viewer activation or existing saved-design rewrite. Historical percentage-only events remain readable as unverified records; even if their earlier payload claimed `verified: true`, they do **not** count as passing new physical-scale QA. This intentionally tightens the prior readiness check, not the fabric preview rendering algorithm. No source fabric repeat values are fabricated by code.
+
+**Verification:** unit regressions cover false zero error, JSON coercion, partial/invalid calibration, mismatch between claimed and derived errors, historical evidence and stripe/check promotion gates. GitHub exact-head checks and real operator browser/physical calibration must be verified separately. **NO MERGE / NO DEPLOY.**
+
 # DECISIONS.md — Linen Earth
 
 Architecture and product decisions that must persist across coding sessions.
