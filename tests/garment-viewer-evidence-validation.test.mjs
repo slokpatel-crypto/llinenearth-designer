@@ -37,6 +37,7 @@ test("operator-claimed scale error cannot override recomputed physical ratio",()
   const [perfect]=parseGarmentPatternSamples([measured({observedRepeatPx:100,errorPct:20})]);
   assert.equal(perfect.errorPct,0);
   assert.deepEqual(parseGarmentPatternSamples([measured({observedRepeatPx:118,errorPct:0})])[0].errorPct,18);
+  assert.equal(parseGarmentPatternSamples([measured({observedRepeatPx:108.004})])[0].errorPct,8); // display is rounded only
   assert.deepEqual(parseGarmentPatternSamples([measured({errorPct:"0"})]),[]);
   assert.deepEqual(parseGarmentPatternSamples([measured({errorPct:null})]),[]);
   assert.deepEqual(parseGarmentPatternSamples([measured({observedRepeatPx:300})]),[]);
