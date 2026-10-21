@@ -6,6 +6,8 @@ test("operator panel cannot advertise 3D customer readiness from automated evide
   const source = readFileSync("src/app/operator/garment-viewer/page.tsx", "utf8");
   assert.match(source, /CUSTOMER PROMOTION GATE — TECHNICAL CHECKS ONLY/);
   assert.match(source, /TECHNICAL PASS/);
+  assert.match(source, /MODEL CANDIDATE — STRUCTURAL PREFLIGHT/);
+  assert.doesNotMatch(source, /APPROVED PRODUCTION ASSET/);
   assert.match(source, /owner\/tailor acceptance/);
   assert.doesNotMatch(source, /latest\?\.readiness\.ready\?"READY"/);
 });
