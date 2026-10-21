@@ -49,7 +49,28 @@ export type GarmentViewerPatternScaleSample = {
   pattern:"stripe"|"check"|"other";
   errorPct:number;
   verified:boolean;
+  // Physical repeat is measured on the cloth; repeat and reference pixels
+  // are measured in the same rendered image at the same depth.
+  physicalRepeatMm?:number;
+  renderedRepeatPx?:number;
+  referenceLengthMm?:number;
+  referenceLengthPx?:number;
+  evidenceReference?:string;
 };
+
+/** Recompute scale error from the underlying measurement, never a claimed percentage. */
+export function calibratedGarmentScaleErrorPct(sample:GarmentViewerPatternScaleSample):number|null {
+  const {physicalRepeatMm,renderedRepeatPx,referenceLengthMm,referenceLengthPx,evidenceReference}=sample;
+  if(typeof physicalRepeatMm!=="number" || !Number.isFinite(physicalRepeatMm) || physicalRepeatMm<=0 || physicalRepeatMm>1000
+    || typeof renderedRepeatPx!=="number" || !Number.isFinite(renderedRepeatPx) || renderedRepeatPx<=0 || renderedRepeatPx>10000
+    || typeof referenceLengthMm!=="number" || !Number.isFinite(referenceLengthMm) || referenceLengthMm<=0 || referenceLengthMm>3000
+    || typeof referenceLengthPx!=="number" || !Number.isFinite(referenceLengthPx) || referenceLengthPx<=0 || referenceLengthPx>10000
+    || typeof evidenceReference!=="string" || evidenceReference.trim().length<8 || evidenceReference.length>240) return null;
+  const expectedPx=physicalRepeatMm*referenceLengthPx/referenceLengthMm;
+  if(!Number.isFinite(expectedPx) || expectedPx<=0) return null;
+  const error=Math.abs(renderedRepeatPx-expectedPx)/expectedPx*100;
+  return Number.isFinite(error) && error<=100 ? Math.round(error*100)/100 : null;
+}
 
 export type GarmentViewerPromotionInput = {
   contract:GarmentViewerModelContractResult|null;
@@ -64,15 +85,18 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   const contractReady=input.contract?.readiness==="contract_ready" && input.contract.physicallyScalable;
   const manifestReady=input.manifest?.valid===true;
 
+  // Legacy percent-only rows remain inspectable but cannot pass physical QA.
+  // Compute from exact calibrated dimensions even if a stored errorPct was altered.
   const scaleSamples=input.patternScaleSamples
-    .filter((sample)=>sample.verified&&Number.isFinite(sample.errorPct)&&sample.errorPct>=0)
+    .filter((sample)=>sample.verified===true && calibratedGarmentScaleErrorPct(sample)!==null)
     .slice(-20);
+  const calibratedErrors=scaleSamples.map((sample)=>calibratedGarmentScaleErrorPct(sample) as number);
   const hasStripe=scaleSamples.some((sample)=>sample.pattern==="stripe");
   const hasCheck=scaleSamples.some((sample)=>sample.pattern==="check");
   const scaleReady=scaleSamples.length>=GARMENT_VIEWER_MIN_PATTERN_SCALE_SAMPLES
     && hasStripe
     && hasCheck
-    && scaleSamples.every((sample)=>sample.errorPct<=ROADMAP_SCALE_TOLERANCE_PCT);
+    && calibratedErrors.every((error)=>error<=ROADMAP_SCALE_TOLERANCE_PCT);
 
   const latency=summarizeLatencySamples(input.interactionLatencyMs);
   const latencyReady=latency.count>=PHASE1_PROOF_MIN_LATENCY_SAMPLES
@@ -87,7 +111,7 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   const reasons:string[]=[];
   if(!contractReady) reasons.push("Approved GLB has not passed the six-panel production material contract.");
   if(!manifestReady) reasons.push("Approved GLB physical panel manifest is missing or invalid.");
-  if(!scaleReady) reasons.push("Verified stripe and check renders must both stay within the <=8% physical-scale gate.");
+  if(!scaleReady) reasons.push("Stripe and check both require physical repeat, rendered repeat pixels, same-plane reference calibration and traceable evidence within the <=8% scale gate.");
   if(!latencyReady) reasons.push("3D interaction needs at least 12 samples with p95 below 300 ms.");
   if(!realismReady) reasons.push("At least 6 of 8 independent viewers must rate the realistic model 4/5 or 5/5.");
   if(!boundaryReady) reasons.push("Neck, cuffs, waist and trouser-gap boundaries must all pass visual QA.");
