@@ -8,11 +8,12 @@ import {
   garmentViewerAssetIdentityKey,
   type GarmentViewerAssetIdentity,
 } from "@/lib/garment-viewer-readiness";
-import { summarizeIndependentRealism, summarizeLatencySamples, type RealismAssessment } from "@/lib/designer/proof-scale";
+import { ROADMAP_SCALE_TOLERANCE_PCT, summarizeIndependentRealism, summarizeLatencySamples, type RealismAssessment } from "@/lib/designer/proof-scale";
 import {
   parseGarmentLatencySamples,
   parseGarmentRealismAssessments,
   parseCalibratedScaleInput,
+  preciseGarmentScaleErrorPct,
 } from "@/lib/garment-viewer-evidence-validation";
 
 type Boundaries={neck:boolean;cuffs:boolean;waist:boolean;trouserGap:boolean};
@@ -73,6 +74,10 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
 
   const latencySummary=useMemo(()=>summarizeLatencySamples(latencies),[latencies]);
   const realismSummary=useMemo(()=>summarizeIndependentRealism(assessments),[assessments]);
+  const stripePreview=parseCalibratedScaleInput(stripeFabricId,"stripe",stripeRepeatMm,stripeObservedPx,stripeReferenceMm,stripeReferencePx,stripeEvidenceNote,stripeVerified);
+  const checkPreview=parseCalibratedScaleInput(checkFabricId,"check",checkRepeatMm,checkObservedPx,checkReferenceMm,checkReferencePx,checkEvidenceNote,checkVerified);
+  const stripeError=stripePreview?preciseGarmentScaleErrorPct(stripePreview):null;
+  const checkError=checkPreview?preciseGarmentScaleErrorPct(checkPreview):null;
 
   function saveAssessments(next:RealismAssessment[]){
     setAssessments(next);
@@ -154,6 +159,16 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
         <label><span>Check ruler length (px)</span><input type="number" min=".001" step="any" value={checkReferencePx} onChange={(event)=>setCheckReferencePx(event.target.value)} placeholder="Measured px"/></label>
         <label><span>Check evidence source/method</span><input value={checkEvidenceNote} onChange={(event)=>setCheckEvidenceNote(event.target.value)} placeholder="Cloth ruler/source, camera setup"/></label>
         <label className="garmentQaCheck"><input type="checkbox" checked={checkVerified} onChange={(event)=>setCheckVerified(event.target.checked)}/><span>Observed against real physical repeat</span></label>
+      </div>
+      <div className="garmentQaScalePreview" aria-live="polite">
+        {([
+          ["Stripe",stripeVerified,stripeError],
+          ["Check",checkVerified,checkError],
+        ] as const).map(([pattern,verified,error])=><div key={pattern} data-ready={verified&&error!==null&&error<=ROADMAP_SCALE_TOLERANCE_PCT}>
+          <small>{pattern.toUpperCase()} · COMPUTED SCALE</small>
+          <strong>{error===null?"Needs full calibration":error.toFixed(3)+"% error"}</strong>
+          <span>{error===null?"Enter all dimensions and a 12+ character physical source note.":!verified?"Measurement entered; physical verification unchecked.":error<=ROADMAP_SCALE_TOLERANCE_PCT?"Within 8% technical tolerance; physical review still required.":"Outside 8% tolerance; cannot pass the scale gate."}</span>
+        </div>)}
       </div>
       <div className="garmentQaRubric"><small>REALISM RUBRIC · V1</small><p>Rate the same five things every time: officewear silhouette/proportions, cloth drape and body fit, collar/neck junction, hands + waist/trouser boundaries, and overall photographic believability against the studio-tucked reference. Give 4/5 or 5/5 only when there is no major mismatch.</p></div>
       <div className="garmentQaRating">
