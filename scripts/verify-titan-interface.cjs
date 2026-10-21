@@ -21,6 +21,15 @@ async function waitForLocalReferences(page) {
   await page.locator('.titanLookbook[aria-busy="false"]').waitFor({ state: "visible", timeout: 8000 });
 }
 
+async function expectFabricCount(page, expected, reason) {
+  // A controlled React search input is applied asynchronously after Playwright
+  // fill/click. Poll for the actual rendered result rather than a stale frame.
+  await page.waitForFunction(count =>
+    document.querySelectorAll(".titanFabricCard").length === count,
+    expected, { timeout: 8000 });
+  assert.equal(await page.locator(".titanFabricCard").count(), expected, reason);
+}
+
 async function checkViewport(width) {
   const reducedMotion = width === 1440 ? "no-preference" : "reduce";
   const context = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion });
@@ -227,10 +236,57 @@ async function checkViewport(width) {
 
     // Share is opt-in and contains only the applied logical garment plan.
     // No share link triggers 3D generation, saved Designer mutation or order.
+    if (width === 390) {
+      // A browser's clipboard prompt may resolve after the user changes
+      // outfits. Neither delayed success nor delayed denial can report a stale
+      // copy or expose a stale reference link as the current plan.
+      for (const denied of [false, true]) {
+        await page.evaluate((rejectRequest) => {
+          Object.defineProperty(navigator, "clipboard", {
+            configurable: true,
+            value: { writeText: () => new Promise((resolve, reject) => {
+              window.__completeTitanClipboard = () => rejectRequest
+                ? reject(new Error("clipboard permission denied")) : resolve();
+            }) },
+          });
+        }, denied);
+        await layerPlanner.getByRole("button", { name: "Copy applied plan link" }).click();
+        await page.waitForFunction(() => typeof window.__completeTitanClipboard === "function");
+        await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).check();
+        await layerPlanner.getByRole("radio", { name: "Two-piece suit" }).check();
+        await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
+        assert.equal(await layerPlanner.getByRole("textbox", { name: "Layer plan share URL" }).count(), 0);
+        await page.evaluate(() => window.__completeTitanClipboard());
+        await page.waitForTimeout(35);
+        assert.equal((await layerPlanner.locator(".titanLayerPlannerShareFeedback").textContent()).trim(), "",
+          "Stale clipboard completion cannot report copied or denied");
+        assert.equal(await layerPlanner.getByRole("textbox", { name: "Layer plan share URL" }).count(), 0);
+        await layerPlanner.getByRole("button", { name: "Reset plan" }).click();
+      }
+      await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+        configurable: true, value: { writeText: async () => {} },
+      }));
+    }
     await layerPlanner.getByRole("button", { name: "Copy applied plan link" }).click();
     assert.equal(await layerPlanner.getByRole("textbox", { name: "Layer plan share URL" }).inputValue(),
       `${base}/titan?layer-plan=v1-0-03`);
     if (width === 390) {
+      // Permission denial must focus and preselect the real canonical link for
+      // a keyboard/screen reader user, not falsely announce a clipboard write.
+      await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: async () => { throw new Error("denied"); } },
+      }));
+      await layerPlanner.getByRole("button", { name: "Copy applied plan link" }).click();
+      await page.waitForFunction(() => {
+        const input = document.querySelector('input[aria-label="Layer plan share URL"]');
+        return input && document.activeElement === input
+          && input.selectionStart === 0 && input.selectionEnd === input.value.length;
+      });
+      assert.match(await layerPlanner.locator(".titanLayerPlannerShareFeedback").textContent(), /selected below/i);
+      await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+        configurable: true, value: { writeText: async () => {} },
+      }));
       await page.goto(`${base}/titan?layer-plan=v1-2-33`, { waitUntil: "domcontentloaded" });
       await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
       await waitForLocalReferences(page);
@@ -270,27 +326,27 @@ async function checkViewport(width) {
     // customer's saved wardrobe selections merely by browsing.
     const fabricSearch = page.getByRole("searchbox", { name: "Find by colour or pattern" });
     await fabricSearch.fill("sky blue");
-    assert.equal(await page.locator(".titanFabricCard").count(), 1, "Catalogue search must narrow real swatch data");
+    await expectFabricCount(page, 1, "Catalogue search must narrow real swatch data");
     await fabricSearch.fill("");
-    assert.equal(await page.locator(".titanFabricCard").count(), 8, "Clearing search restores the initial collection");
+    await expectFabricCount(page, 8, "Clearing search restores the initial collection");
     await fabricSearch.fill("never-a-real-fabric");
-    assert.equal(await page.locator(".titanFabricCard").count(), 0);
+    await expectFabricCount(page, 0, "Invalid search must yield no swatches");
     await page.getByRole("button", { name: "Trouser cloth" }).click();
     assert.equal(await fabricSearch.inputValue(), "", "Changing garment must clear a stale search");
-    assert.equal(await page.locator(".titanFabricCard").count(), 8, "Opposite garment should be immediately browsable");
+    await expectFabricCount(page, 8, "Opposite garment should be immediately browsable");
     await page.getByRole("button", { name: "Shirting", exact: true }).click();
     // Progressive discovery must avoid mounting every catalogue image at once.
     // A second batch is available on request, and both filters and collapse
     // restore the light eight-item initial view without touching saved looks.
     await page.getByRole("button", { name: /Load next 8 references/ }).click();
-    assert.equal(await page.locator(".titanFabricCard").count(), 16, "Loading more adds one bounded image batch");
+    await expectFabricCount(page, 16, "Loading more adds one bounded image batch");
     await fabricSearch.fill("sky blue");
-    assert.equal(await page.locator(".titanFabricCard").count(), 1, "Search resets pagination to matched results");
+    await expectFabricCount(page, 1, "Search resets pagination to matched results");
     await fabricSearch.fill("");
-    assert.equal(await page.locator(".titanFabricCard").count(), 8, "Clearing search restores an eight-item initial batch");
+    await expectFabricCount(page, 8, "Clearing search restores an eight-item initial batch");
     await page.getByRole("button", { name: /Load next 8 references/ }).click();
     await page.getByRole("button", { name: /Show fewer references/ }).click();
-    assert.equal(await page.locator(".titanFabricCard").count(), 8, "Collapse never discards catalogue entries");
+    await expectFabricCount(page, 8, "Collapse never discards catalogue entries");
     // Comparison is a real accessible two-slot shortlist, never a simulated
     // physical colour/scale claim. Selecting a swatch here must not write a
     // saved design, call a paid provider or change the Designer counterpart.
@@ -319,7 +375,7 @@ async function checkViewport(width) {
     await page.getByRole("button", { name: "Clear comparison" }).click();
     assert.equal(await page.locator(".titanFabricComparisonItem").count(), 0, "Clear comparison must leave no items");
     await page.getByRole("button", { name: "Shirting", exact: true }).click();
-    assert.equal(await page.locator(".titanFabricCard").count(), 8, "Shirting catalogue still works after reset");
+    await expectFabricCount(page, 8, "Shirting catalogue still works after reset");
     assert.equal(await page.locator(".titanOutfitSlot").count(), 2, "One builder slot per garment");
     assert.equal(await page.locator(".titanOutfitBuildCta").count(), 0, "Incomplete outfit cannot transfer");
 

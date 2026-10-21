@@ -201,3 +201,12 @@ Do not replace testing with concept renders, inflate progress percentages, claim
 3. **Faster zero-credit compatibility:** Immutable authoritative valid-plan candidates are indexed once; only per-draft minimal edits and deterministic ranking are computed during interaction, without new AI usage or a cached mutable result. Caller result arrays remain isolated.
 
 New tests cover all 2,916 valid-pair combinations (54 valid plans squared), malformed versions/fields, stale storage races, and browser interactions across phone/tablet/desktop. These checks are engineering coverage only; CI must pass on the exact head and owners must still review the visual and physical releases. Preserve original photo/model identity, all working routes, stock and supplier provenance. **Draft only — no merge or deployment.**
+
+
+### 21 October — stale share-copy completion guard (stacked draft)
+
+- A pending clipboard permission prompt no longer announces an outdated plan as copied when the user changes the applied outfit or resets the planner before the prompt resolves. Old manual-copy fields close on a different applied plan, and successive clipboard operations only let the newest current request update status.
+- Browser regression explicitly delays both clipboard success and permission rejection while applying a new suit plan. The test checks that neither outcome makes an old plan appear current. The share token format, saved outfits, model identity and all existing Designer/Style Director routes remain unchanged.
+- The clipboard itself is controlled by the browser and cannot be guaranteed to cancel an in-flight write. The improvement preserves honest UI state but does not make accessory geometry, styling, fit or stock production-ready. No merge/deploy.
+
+- When clipboard write is blocked, the exact public plan URL is keyboard-focused and selected for manual copying. This fallback cannot be triggered by stale asynchronous clipboard results after another plan is applied.

@@ -64,10 +64,25 @@ export default function TitanLayerPlanner() {
   const [shareOrigin, setShareOrigin] = useState("");
   const [showSharedLink, setShowSharedLink] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
+  const [focusManualShare, setFocusManualShare] = useState(false);
   const shareInput = useRef<HTMLInputElement>(null);
+  // A clipboard permission prompt can resolve after the active plan changed.
+  // Only the latest still-current request may report success or failure.
+  const shareCopyVersion = useRef(0);
   // The exact unreadable value displayed to the user; a later tab's newer
   // store must never be deleted by an old "Clear" button.
   const unreadableStoreRef = useRef<string | null>(null);
+
+  // Clipboard permission failures should leave a selected, keyboard-focused
+  // exact URL, not a fallback that users must discover by another tap.
+  useEffect(() => {
+    if (!showSharedLink || !focusManualShare) return;
+    const input = shareInput.current;
+    if (!input) return;
+    input.focus();
+    input.select();
+    setFocusManualShare(false);
+  }, [showSharedLink, focusManualShare]);
 
   // A shared URL stages a logical outfit only. It never loads an accessory
   // GLB, applies a plan, touches Designer drafts or updates saved bookmarks.
@@ -220,20 +235,32 @@ export default function TitanLayerPlanner() {
     }
   }
 
+  function invalidateShareCopy() {
+    shareCopyVersion.current += 1;
+    setShowSharedLink(false);
+    setShareMessage("");
+    setFocusManualShare(false);
+  }
+
   async function copyLayerLink() {
+    const requestVersion = ++shareCopyVersion.current;
     const href = titanLayerShareHref(appliedPlan);
     if (!shareOrigin || !href) {
       setShareMessage("This garment plan cannot be shared.");
       return;
     }
     const url = new URL(href, shareOrigin).href;
+    setFocusManualShare(false);
     setShowSharedLink(true);
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
       await navigator.clipboard.writeText(url);
+      if (requestVersion !== shareCopyVersion.current) return;
       setShareMessage("Share link copied. This is a garment plan only, not a 3D render or saved design.");
     } catch {
-      setShareMessage("Automatic copying is blocked. Select and copy the complete link below.");
+      if (requestVersion !== shareCopyVersion.current) return;
+      setShareMessage("Automatic copying is blocked. The complete link is selected below for manual copying.");
+      setFocusManualShare(true);
     }
   }
 
@@ -254,8 +281,7 @@ export default function TitanLayerPlanner() {
     setDraftSlots([...STARTING_PLAN.layers]);
     setDraftComposition(STARTING_PLAN.composition);
     setMessage("Reset to shirt and trousers. No saved design was changed.");
-    setShowSharedLink(false);
-    setShareMessage("");
+    invalidateShareCopy();
   }
 
   function commitPlan(event: FormEvent<HTMLFormElement>) {
@@ -287,8 +313,7 @@ export default function TitanLayerPlanner() {
     setDraftSlots([...result.plan.layers]);
     setDraftComposition(result.plan.composition);
     setMessage("Valid layer plan applied locally. No garment asset, fabric, model or saved design was changed.");
-    setShowSharedLink(false);
-    setShareMessage("");
+    invalidateShareCopy();
   }
 
   // Any suggested fix is staged only; it never mutates the committed layer

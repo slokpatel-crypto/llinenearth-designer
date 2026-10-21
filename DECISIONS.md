@@ -669,3 +669,12 @@ are displayed. Do not merge the stacked TITAN PRs or deploy.
 **Decision C — deterministic guidance optimization:** The existing 384 possible composition/subset candidates are validated only once per module load into a frozen index of valid outcomes, rather than being revalidated on every checkbox render. Scoring and original preference order remain dynamic and unchanged; advice returns independent arrays so a caller cannot poison the precomputed index.
 
 **QA gates:** New exhaustive valid-plan pairwise change tests, mutation isolation regression, and browser flows at 320/390/768/1440px cover review/rollback, changed unknown saved-data preservation, and stale bookmark load. Complete source tests, quality, strict types, build, browser QA and native/photo/physical approval remain separate. No merge or deployment; existing model photo, stored Designer records, stock provenance and paid rendering are unchanged.
+
+
+## 2026-10-21 — TITAN pending clipboard request invalidation
+
+**Decision:** Share-copy callbacks use a monotonically increasing per-component request generation. Resetting or applying a different garment-layer plan invalidates any outstanding browser clipboard request and hides the previous share field. Delayed browser permission success or rejection is ignored when it no longer refers to the displayed applied outfit. Two quick copy attempts also allow only the latest completion to update customer status.
+
+**Boundary:** This prevents misleading stale *UI feedback* and stale visible share references. A browser clipboard operation already in progress cannot always be cancelled, so the operating system could still have copied an old URL. Users should review the text before sending it. No changes to encoded sharing grammar, saved Designer records, accessory activation, models, fabrics, prices or paid services. Chromium checks both delayed fulfilled and rejected clipboard promises after a local outfit change, in addition to the existing 320/390/768/1440px route checks. Draft/CI signoff required; no merge or deploy.
+
+**Manual-copy accessibility extension:** On a current clipboard denial, the complete canonical URL input receives actual keyboard focus with its entire value selected. A stale denial after a plan change cannot trigger this focus. Browser checks verify activeElement and the full text-selection range, preserving manual sharing without requiring privileged clipboard access.
