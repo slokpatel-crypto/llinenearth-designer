@@ -13,6 +13,8 @@ import { ROADMAP_SCALE_TOLERANCE_PCT, summarizeIndependentRealism, summarizeLate
 import {
   parseGarmentLatencySamples,
   parseGarmentRealismAssessments,
+  garmentLatencySubmissionIsLossless,
+  garmentRealismSubmissionIsLossless,
   parseMeasuredScaleInput,
 } from "@/lib/garment-viewer-evidence-validation";
 
@@ -58,17 +60,18 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
   // Never accept a readiness record merely by opening/reloading the QA desk.
   // This is operator acceptance of technical observations, not a production sign-off.
   const [acceptTechnicalEvidence,setAcceptTechnicalEvidence]=useState(false);
+  const [localEvidenceCorrupt,setLocalEvidenceCorrupt]=useState(false);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
 
   function refreshLocalEvidence(){
-    if(!assetKey){setLatencies([]);setAssessments([]);return;}
-    const localLatencies=parseGarmentLatencySamples(
-      readStored<unknown>(GARMENT_VIEWER_LATENCY_STORAGE_KEY,assetKey,[]),
-    );
-    const localAssessments=parseGarmentRealismAssessments(
-      readStored<unknown>(GARMENT_VIEWER_REALISM_STORAGE_KEY,assetKey,[]),
-    );
+    if(!assetKey){setLatencies([]);setAssessments([]);setLocalEvidenceCorrupt(false);return;}
+    const savedLatencies=readStored<unknown>(GARMENT_VIEWER_LATENCY_STORAGE_KEY,assetKey,[]);
+    const savedRatings=readStored<unknown>(GARMENT_VIEWER_REALISM_STORAGE_KEY,assetKey,[]);
+    setLocalEvidenceCorrupt(!garmentLatencySubmissionIsLossless(savedLatencies)
+      || !garmentRealismSubmissionIsLossless(savedRatings));
+    const localLatencies=parseGarmentLatencySamples(savedLatencies);
+    const localAssessments=parseGarmentRealismAssessments(savedRatings);
     setLatencies(localLatencies);
     setAssessments(localAssessments);
   }
@@ -96,6 +99,17 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
 
   async function recordEvidence(){
     if(!assetIdentity||!assetKey){setMessage("Configure and validate the production GLB + manifest first.");return;}
+    // The lab cache is a transport staging area, not a trusted source. Reject
+    // raw malformed samples before filtered UI summaries can hide bad timings
+    // or ratings from the operator event submitted to the server.
+    const savedLatencies=readStored<unknown>(GARMENT_VIEWER_LATENCY_STORAGE_KEY,assetKey,[]);
+    const savedRatings=readStored<unknown>(GARMENT_VIEWER_REALISM_STORAGE_KEY,assetKey,[]);
+    if(!garmentLatencySubmissionIsLossless(savedLatencies)
+      || !garmentRealismSubmissionIsLossless(savedRatings)){
+      setLocalEvidenceCorrupt(true);
+      setMessage("Lab evidence contains invalid, duplicated or truncated measurements. Re-capture the timing samples in 3D Lab or replace the invalid ratings before recording QA.");
+      return;
+    }
     const stripeSample=parseMeasuredScaleInput(stripeFabricId,stripePhysicalMm,stripeRepeatPx,stripeMarkerMm,stripeMarkerPx,stripeReference,"stripe",stripeVerified);
     const checkSample=parseMeasuredScaleInput(checkFabricId,checkPhysicalMm,checkRepeatPx,checkMarkerMm,checkMarkerPx,checkReference,"check",checkVerified);
     if((stripeVerified&&!stripeSample)||(checkVerified&&!checkSample)){
@@ -150,6 +164,7 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
     <div className="garmentQaPanelHead"><div><small>RECORD QA EVIDENCE</small><h2>Evidence stays tied to this exact model revision</h2></div><button type="button" onClick={refreshLocalEvidence}>Refresh lab samples</button></div>
     {!assetIdentity?<p className="garmentQaReasons">Production asset identity is unavailable, so evidence recording is locked.</p>:<>
       <div className="garmentQaEvidenceMeta"><span><small>MODEL</small><b>{assetIdentity.modelId}</b></span><span><small>GLB HASH</small><b>{assetIdentity.modelSha256.slice(0,12)}…</b></span><span><small>MANIFEST HASH</small><b>{assetIdentity.manifestSha256.slice(0,12)}…</b></span></div>
+      {localEvidenceCorrupt&&<p className="garmentQaAuditWarning" role="alert">A saved lab timing or realism rating is invalid or lossy. Recording is locked until the affected asset-scoped lab evidence is replaced and refreshed.</p>}
       <div className="garmentQaEvidenceMetrics"><span><small>LAB LATENCY</small><b>{latencySummary.count}</b><em>{latencySummary.p95Ms===null?"p95 pending":`p95 ${latencySummary.p95Ms} ms`}</em></span><span><small>REALISM VIEWERS</small><b>{realismSummary.uniqueViewers}</b><em>{realismSummary.strongRatings} strong ratings</em></span></div>
       <div className="garmentQaRubric"><small>PHYSICAL REPEAT CALIBRATION</small><p>Measure the actual fabric repeat in mm. On one rendered screenshot, measure the repeat in pixels and a known-size reference marker in both mm and pixels, at the same depth. The system computes the scale error; include an identifiable measurement photo or worksheet reference. No pre-filled or manually asserted error % is accepted.</p></div>
       <div className="garmentQaEvidenceGrid">
