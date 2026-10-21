@@ -14,12 +14,23 @@ function isOwnShape(value, keys) {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     && Object.keys(value).sort().join("|") === [...keys].sort().join("|");
 }
-function checkedDirectory(directory, io) {
-  // lstat rejects symlinks, including aliases to valid directories. A release
-  // must never escape its configured root through an ancestor symlink.
-  const stat = io.lstatSync(directory);
-  if (!stat.isDirectory()) {
-    throw new Error("Garment release path must be a real directory, not a symlink: " + directory);
+function checkedDirectory(directory, io, allowMissing = false) {
+  // Check every component, not only the leaf: lstat(leaf) follows aliases
+  // in its parent path. During creation missing components are permitted,
+  // but existing symlinks are rejected BEFORE mkdir can write through one.
+  let current = path.resolve(directory);
+  while (true) {
+    try {
+      const stat = io.lstatSync(current);
+      if (!stat.isDirectory()) {
+        throw new Error("Garment release path must be a real directory, not a symlink: " + current);
+      }
+    } catch (error) {
+      if (!allowMissing || error?.code !== "ENOENT") throw error;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
   }
 }
 function ensureDirectory(directory, io) {
@@ -32,13 +43,24 @@ function ensureDirectory(directory, io) {
   }
 }
 function checkedFile(file, maximum, io) {
-  const stat = io.lstatSync(file);
-  if (!stat.isFile() || stat.size < 1 || stat.size > maximum) {
-    throw new Error("Release asset must be a nonempty regular file within bounds: " + file);
+  // A lstat(path) followed by readFile(path) is a symlink-swap race. Open one
+  // descriptor with O_NOFOLLOW and validate/read that same inode instead.
+  // O_NONBLOCK prevents hanging if an attacker substitutes a FIFO.
+  const flags = fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK;
+  const fd = io.openSync(file, flags);
+  try {
+    const stat = io.fstatSync(fd);
+    if (!stat.isFile() || stat.size < 1 || stat.size > maximum) {
+      throw new Error("Release asset must be a nonempty regular file within bounds: " + file);
+    }
+    const bytes = io.readFileSync(fd);
+    if (bytes.length !== stat.size || bytes.length < 1 || bytes.length > maximum) {
+      throw new Error("Release asset changed while being read: " + file);
+    }
+    return bytes;
+  } finally {
+    io.closeSync(fd);
   }
-  const bytes = io.readFileSync(file);
-  if (!bytes.length || bytes.length > maximum) throw new Error("Release asset changed while being read: " + file);
-  return bytes;
 }
 function syncFile(file, io) {
   const fd = io.openSync(file, "r");
@@ -115,6 +137,7 @@ export function publishImmutableGarmentRelease(stagedGlb, stagedManifest, releas
   const releases = path.join(root, "releases");
   // Never write into an aliased release root or through an existing symlinked
   // releases directory, even when the target contains a valid old pair.
+  checkedDirectory(root, io, true);
   io.mkdirSync(root, { recursive: true });
   checkedDirectory(root, io);
   ensureDirectory(releases, io);
