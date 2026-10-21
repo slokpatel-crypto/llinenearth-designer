@@ -94,6 +94,16 @@ test("scale gate requires stripe and check measurements from distinct fabric sub
   assert.match(result.reasons.join(" "),/Distinct stripe and check fabric samples/);
 });
 
+test("case-only fabric aliases cannot count as two independent physical subjects",()=>{
+  const input=passingInput();
+  input.patternScaleSamples[1].fabricId="STRIPE-A";
+  const readiness=garmentViewerPromotionReadiness(input);
+  assert.equal(readiness.scaleAudit.length,2);
+  assert.equal(readiness.scaleAudit.every((row)=>row.passes),true);
+  assert.equal(readiness.scaleReady,false);
+  assert.equal(readiness.ready,false);
+});
+
 test("complete fabric identities are rejected instead of truncated into another subject",()=>{
   const overlong=`fabric-${"x".repeat(154)}`;
   assert.equal(overlong.length,161);
