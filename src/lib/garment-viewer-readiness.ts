@@ -59,6 +59,21 @@ export type GarmentViewerPatternScaleSample = {
   physicalEvidenceNote?:string;
 };
 
+// A single canonical audit projection drives both the gate and the operator
+// inspection. Never trust the supplied display error or a checked flag alone.
+export function garmentViewerScaleAudit(value: unknown) {
+  return parseGarmentPatternSamples(value).map((sample) => {
+    const measuredErrorPct = preciseGarmentScaleErrorPct(sample);
+    return {
+      sample,
+      measuredErrorPct,
+      passes: sample.verified
+        && measuredErrorPct !== null
+        && measuredErrorPct <= ROADMAP_SCALE_TOLERANCE_PCT,
+    };
+  });
+}
+
 export type GarmentViewerPromotionInput = {
   contract:GarmentViewerModelContractResult|null;
   manifest:GarmentViewerManifestValidation|null;
@@ -74,18 +89,18 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
 
   // Recompute from measured physical repeat + same-plane ruler calibration.
   // Legacy operator-entered percentages, even if marked verified, cannot pass.
-  const scaleSamples=parseGarmentPatternSamples(input.patternScaleSamples)
-    .filter((sample)=>sample.verified)
-    .slice(-20);
-  const hasStripe=scaleSamples.some((sample)=>sample.pattern==="stripe");
-  const hasCheck=scaleSamples.some((sample)=>sample.pattern==="check");
-  const scaleReady=scaleSamples.length>=GARMENT_VIEWER_MIN_PATTERN_SCALE_SAMPLES
-    && hasStripe
-    && hasCheck
-    && scaleSamples.every((sample)=>{
-      const rawError=preciseGarmentScaleErrorPct(sample);
-      return rawError!==null && rawError<=ROADMAP_SCALE_TOLERANCE_PCT;
-    });
+  const scaleAudit=garmentViewerScaleAudit(input.patternScaleSamples);
+  const verifiedScale=scaleAudit.filter((item)=>item.sample.verified).slice(-20);
+  const scaleSamples=verifiedScale.map(({sample})=>sample);
+  const stripeIds=new Set(scaleSamples.filter((sample)=>sample.pattern==="stripe")
+    .map((sample)=>sample.fabricId.toLowerCase()));
+  const checkIds=new Set(scaleSamples.filter((sample)=>sample.pattern==="check")
+    .map((sample)=>sample.fabricId.toLowerCase()));
+  const hasDistinctPatternPair=[...stripeIds].some((stripeId)=>
+    [...checkIds].some((checkId)=>stripeId!==checkId));
+  const scaleReady=verifiedScale.length>=GARMENT_VIEWER_MIN_PATTERN_SCALE_SAMPLES
+    && hasDistinctPatternPair
+    && verifiedScale.every((item)=>item.passes);
 
   const latency=summarizeLatencySamples(input.interactionLatencyMs);
   const latencyReady=latency.count>=PHASE1_PROOF_MIN_LATENCY_SAMPLES
@@ -100,7 +115,7 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   const reasons:string[]=[];
   if(!contractReady) reasons.push("Approved GLB has not passed the six-panel production material contract.");
   if(!manifestReady) reasons.push("Approved GLB physical panel manifest is missing or invalid.");
-  if(!scaleReady) reasons.push("Measured stripe and check repeats need independently documented ruler calibration and <=8% computed scale error.");
+  if(!scaleReady) reasons.push("Distinct stripe and check fabric IDs need separately documented ruler calibration and <=8% computed scale error.");
   if(!latencyReady) reasons.push("3D interaction needs at least 12 samples with p95 below 300 ms.");
   if(!realismReady) reasons.push("At least 6 of 8 independent viewers must rate the realistic model 4/5 or 5/5.");
   if(!boundaryReady) reasons.push("Neck, cuffs, waist and trouser-gap boundaries must all pass visual QA.");
@@ -115,6 +130,7 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
     realismReady,
     boundaryReady,
     scaleSamples,
+    scaleAudit,
     latency,
     realism,
     reasons,

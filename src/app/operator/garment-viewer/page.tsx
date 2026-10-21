@@ -94,6 +94,30 @@ export default async function GarmentViewerOperatorPage(){
       </div>:<p className="garmentQaReasons">No GarmentViewer readiness evidence has been recorded yet. Structural asset checks alone cannot promote 3D to customers.</p>}
     </section>
 
+    {latest&&<section className="garmentQaPanel garmentQaAudit">
+      <div className="garmentQaPanelHead">
+        <div><small>MEASUREMENT TRACE · OPERATOR REVIEW</small><h2>Physical pattern-scale evidence audit</h2></div>
+        <b>{latest.readiness.scaleAudit.filter((row)=>row.passes&&latest.identityMatches).length}/{latest.readiness.scaleAudit.length}</b>
+      </div>
+      <p className="garmentQaAuditIntro">These results are recomputed from the physical fabric repeat and same-plane calibration. A recorded 0% claim or a checked box alone is never accepted as a measurement. This audit is technical evidence, not owner or tailor sign-off.</p>
+      {!latest.identityMatches&&<p className="garmentQaAuditWarning">The recorded evidence is for a different GLB or manifest revision. None of these measurements can approve the current asset.</p>}
+      {latest.readiness.scaleAudit.length===0
+        ? <p className="garmentQaAuditWarning">No usable calibrated pattern samples in the latest event. Historical percentage-only claims cannot satisfy the scale gate.</p>
+        : <div className="garmentQaAuditGrid">
+          {latest.readiness.scaleAudit.map(({sample,measuredErrorPct,passes},index)=><article key={sample.fabricId+"-"+sample.pattern+"-"+index} data-ready={passes&&latest.identityMatches}>
+            <div className="garmentQaAuditTitle"><strong>{sample.pattern.toUpperCase()} · {sample.fabricId}</strong><span>{!sample.verified?"UNVERIFIED":!latest.identityMatches?"WRONG ASSET":passes?"WITHIN 8%":"OUTSIDE 8%"}</span></div>
+            <dl>
+              <div><dt>Physical repeat</dt><dd>{sample.repeatMm===undefined?"Not recorded":sample.repeatMm+" mm"}</dd></div>
+              <div><dt>Preview repeat</dt><dd>{sample.observedRepeatPx===undefined?"Not recorded":sample.observedRepeatPx+" px"}</dd></div>
+              <div><dt>Calibration ruler</dt><dd>{sample.referenceMm===undefined||sample.referencePx===undefined?"Not recorded":sample.referenceMm+" mm / "+sample.referencePx+" px"}</dd></div>
+              <div><dt>Measured error</dt><dd>{measuredErrorPct===null?"Unverified":measuredErrorPct.toFixed(3)+"%"}</dd></div>
+            </dl>
+            <p className="garmentQaAuditSource"><b>Evidence source / method:</b> {sample.physicalEvidenceNote||"No verified physical source recorded."}</p>
+          </article>)}
+        </div>}
+      <p className="garmentQaAuditFoot">Recorded {new Date(latest.at).toLocaleString("en-IN")} · Model {latest.evidenceIdentity.modelId} · GLB {latest.evidenceIdentity.modelSha256.slice(0,12)}… · Manifest {latest.evidenceIdentity.manifestSha256.slice(0,12)}…</p>
+    </section>}
+
     <section className="garmentQaPanel">
       <div className="garmentQaPanelHead"><div><small>BLOCKERS</small><h2>What still prevents asset approval</h2></div></div>
       {status.reasons.length||model?.performanceWarnings.length?<div className="garmentQaReasons">{[...status.reasons,...(model?.performanceWarnings||[])].map((reason,index)=><p key={index}>{reason}</p>)}</div>:<p className="garmentQaClear">No structural blockers. Continue to physical-scale, performance, boundary and independent-realism evidence before customer promotion.</p>}

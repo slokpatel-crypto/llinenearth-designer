@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness } from "../src/lib/garment-viewer-readiness.ts";
+import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness, garmentViewerScaleAudit } from "../src/lib/garment-viewer-readiness.ts";
 import {
   GARMENT_VIEWER_CONTRACT_VERSION,
   REQUIRED_GARMENT_VIEWER_MATERIALS,
@@ -100,6 +100,17 @@ test("scale gate requires both verified stripe and check samples within eight pe
   assert.equal(garmentViewerPromotionReadiness(invalid).scaleReady,false);
 });
 
+test("one fabric cannot impersonate both independent stripe and check evidence",()=>{
+  const input=passingInput();
+  input.patternScaleSamples[1].fabricId="STRIPE-A";
+  const result=garmentViewerPromotionReadiness(input);
+  assert.equal(result.scaleAudit.length,2);
+  assert.equal(result.scaleAudit.every((row)=>row.passes),true);
+  assert.equal(result.scaleReady,false);
+  assert.equal(result.ready,false);
+  assert.ok(result.reasons.some((reason)=>reason.includes("Distinct stripe and check fabric IDs")));
+});
+
 test("realism, latency and boundary evidence cannot be bypassed",()=>{
   const input=passingInput();
   input.interactionLatencyMs=[100,110];
@@ -129,4 +140,40 @@ test("viewer late-load recovery is bounded by the original twenty-second loading
   assert.ok(source.includes("if(attempt<160) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125)"));
   assert.ok(source.includes("setModelReady(true);setProgress(1);setError(\"\")"));
   assert.ok(!source.includes("if(attempt<80) readinessTimer="));
+});
+
+
+test("scale audit exposes measured inputs and uses exact unrounded gate precision",()=>{
+  const input=passingInput();
+  input.patternScaleSamples[0].errorPct=0; // deliberately false claimed percent
+  input.patternScaleSamples[1].observedRepeatPx=108.004; // 8.004% must fail
+  input.patternScaleSamples[1].errorPct=8; // displayed rounding is not a pass
+  const audited=garmentViewerScaleAudit(input.patternScaleSamples);
+  assert.equal(audited.length,2);
+  assert.equal(audited[0].sample.errorPct,4.1);
+  assert.equal(audited[0].sample.repeatMm,20);
+  assert.ok(audited[0].measuredErrorPct!==null&&Math.abs(audited[0].measuredErrorPct-4.1)<1e-9);
+  assert.equal(audited[0].passes,true);
+  assert.ok(audited[1].measuredErrorPct!==null&&audited[1].measuredErrorPct>8);
+  assert.equal(audited[1].sample.errorPct,8); // display-only rounding
+  assert.equal(audited[1].passes,false);
+  const readiness=garmentViewerPromotionReadiness(input);
+  assert.equal(readiness.scaleReady,false);
+  assert.deepEqual(readiness.scaleAudit,audited);
+  assert.equal(readiness.ready,false);
+});
+
+test("audit never promotes legacy percentage-only or unchecked measurements",()=>{
+  const baseline=passingInput();
+  const input={...baseline,patternScaleSamples:[
+    {...baseline.patternScaleSamples[0],verified:false,errorPct:0},
+    {fabricId:baseline.patternScaleSamples[1].fabricId,pattern:"check" as const,verified:true,errorPct:0},
+  ]};
+  const rows=garmentViewerScaleAudit(input.patternScaleSamples);
+  assert.equal(rows.length,1);
+  assert.ok(rows[0].measuredErrorPct!==null&&Math.abs(rows[0].measuredErrorPct-4.1)<1e-9);
+  assert.equal(rows[0].passes,false);
+  const readiness=garmentViewerPromotionReadiness(input);
+  assert.equal(readiness.scaleReady,false);
+  assert.equal(readiness.scaleAudit.length,1);
 });
