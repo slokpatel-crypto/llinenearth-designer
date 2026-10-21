@@ -75,7 +75,7 @@ async function checkViewport(width) {
     await layerPlanner.getByRole("checkbox", { name: /Tie/ }).check();
     assert.match(await layerPlanner.locator(".titanLayerPlannerGuidance").textContent(), /tie requires shirt/i);
     assert.ok(await layerPlanner.locator(".titanLayerPlannerFixes button").count() >= 1);
-    const repair = layerPlanner.getByRole("button", { name: /Stage fix: Add shirt/i });
+    const repair = layerPlanner.getByRole("button", { name: "Stage fix: Add shirt", exact: true });
     assert.ok((await repair.boundingBox()).height >= 44, "Draft repair has a usable phone touch target");
     await repair.click();
     assert.equal(await layerPlanner.getByRole("checkbox", { name: /Shirt/ }).isChecked(), true);
