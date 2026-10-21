@@ -13,6 +13,9 @@ import {
   parseGarmentPatternSamples,
   parseGarmentLatencySamples,
   parseGarmentRealismAssessments,
+  garmentPatternSubmissionIsLossless,
+  garmentLatencySubmissionIsLossless,
+  garmentRealismSubmissionIsLossless,
 } from "@/lib/garment-viewer-evidence-validation";
 
 type StyleEventRow={at:string;payload?:Record<string,unknown>};
@@ -52,6 +55,12 @@ export async function loadLatestGarmentViewerReadiness(){
       const payload=row.payload||{};
       if(String(payload.subtype||"")!=="garment_viewer_readiness") continue;
       if(String(payload.realismRubricVersion||"")!==GARMENT_VIEWER_REALISM_RUBRIC_VERSION) continue;
+      // Old rows are still readable for operator audit, but any missing or
+      // truncated raw observation must block release rather than silently
+      // turning an otherwise failing record into a passing measurement set.
+      const scaleLossless=garmentPatternSubmissionIsLossless(payload.patternScaleSamples);
+      const latencyLossless=garmentLatencySubmissionIsLossless(payload.interactionLatencyMs);
+      const realismLossless=garmentRealismSubmissionIsLossless(payload.realismAssessments);
       const evidence={
         patternScaleSamples:parseGarmentPatternSamples(payload.patternScaleSamples),
         interactionLatencyMs:parseGarmentLatencySamples(payload.interactionLatencyMs),
@@ -67,6 +76,19 @@ export async function loadLatestGarmentViewerReadiness(){
         manifest:identityMatches?asset.manifest||null:null,
         ...evidence,
       });
+      if(!scaleLossless){
+        readiness.scaleReady=false;
+        readiness.reasons.unshift("Recorded physical scale evidence contains lost, malformed or truncated observations.");
+      }
+      if(!latencyLossless){
+        readiness.latencyReady=false;
+        readiness.reasons.unshift("Recorded latency evidence contains lost, malformed or truncated observations.");
+      }
+      if(!realismLossless){
+        readiness.realismReady=false;
+        readiness.reasons.unshift("Recorded realism evidence contains lost, malformed or truncated viewer assessments.");
+      }
+      readiness.ready=readiness.ready&&scaleLossless&&latencyLossless&&realismLossless;
       if(!identityMatches) readiness.reasons.unshift("Recorded QA evidence belongs to a different or missing GarmentViewer asset revision.");
       return {
         configured:true as const,
