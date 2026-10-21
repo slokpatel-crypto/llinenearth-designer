@@ -78,7 +78,7 @@ export default async function GarmentViewerOperatorPage(){
     <GarmentViewerEvidenceForm assetIdentity={status.assetIdentity}/>
 
     <section className="garmentQaPanel">
-      <div className="garmentQaPanelHead"><div><small>TECHNICAL 3D QA — NOT CUSTOMER RELEASE APPROVAL</small><h2>Technical checks must pass before independent owner and tailor sign-off</h2></div><b>{latest?.readiness.ready?"TECHNICAL PASS":"BLOCKED"}</b></div>
+      <div className="garmentQaPanelHead"><div><small>CUSTOMER PROMOTION GATE — TECHNICAL CHECKS ONLY</small><h2>Technical checks must pass before independent owner and tailor sign-off</h2></div><b>{latest?.readiness.ready?"TECHNICAL PASS":"BLOCKED"}</b></div>
       {latest?.readiness.ready&&<p className="garmentQaReasons">Automated technical evidence passed. This does not establish physical garment fit, independent owner/tailor acceptance, customer promotion permission, or deployment readiness.</p>}
       {latest?<div className="garmentQaPromotion">
         {([
