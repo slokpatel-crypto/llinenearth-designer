@@ -85,7 +85,7 @@ test("scale gate requires both verified stripe and check samples within eight pe
   assert.equal(garmentViewerPromotionReadiness(drift).scaleReady,false);
 
   const legacy=passingInput();
-  legacy.patternScaleSamples=legacy.patternScaleSamples.map(({repeatMm,observedRepeatPx,referenceMm,referencePx,physicalEvidenceNote,...row})=>({
+  legacy.patternScaleSamples=legacy.patternScaleSamples.map((row)=>({
     ...row, repeatMm:undefined,observedRepeatPx:undefined,referenceMm:undefined,referencePx:undefined,physicalEvidenceNote:undefined,
   }));
   assert.equal(garmentViewerPromotionReadiness(legacy).scaleReady,false);
