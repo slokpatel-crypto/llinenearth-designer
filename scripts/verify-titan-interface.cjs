@@ -227,6 +227,37 @@ async function checkViewport(width) {
 
     // Share is opt-in and contains only the applied logical garment plan.
     // No share link triggers 3D generation, saved Designer mutation or order.
+    if (width === 390) {
+      // A browser's clipboard prompt may resolve after the user changes
+      // outfits. Neither delayed success nor delayed denial can report a stale
+      // copy or expose a stale reference link as the current plan.
+      for (const denied of [false, true]) {
+        await page.evaluate((rejectRequest) => {
+          Object.defineProperty(navigator, "clipboard", {
+            configurable: true,
+            value: { writeText: () => new Promise((resolve, reject) => {
+              window.__completeTitanClipboard = () => rejectRequest
+                ? reject(new Error("clipboard permission denied")) : resolve();
+            }) },
+          });
+        }, denied);
+        await layerPlanner.getByRole("button", { name: "Copy applied plan link" }).click();
+        await page.waitForFunction(() => typeof window.__completeTitanClipboard === "function");
+        await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).check();
+        await layerPlanner.getByRole("radio", { name: "Two-piece suit" }).check();
+        await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
+        assert.equal(await layerPlanner.getByRole("textbox", { name: "Layer plan share URL" }).count(), 0);
+        await page.evaluate(() => window.__completeTitanClipboard());
+        await page.waitForTimeout(35);
+        assert.equal((await layerPlanner.locator(".titanLayerPlannerShareFeedback").textContent()).trim(), "",
+          "Stale clipboard completion cannot report copied or denied");
+        assert.equal(await layerPlanner.getByRole("textbox", { name: "Layer plan share URL" }).count(), 0);
+        await layerPlanner.getByRole("button", { name: "Reset plan" }).click();
+      }
+      await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+        configurable: true, value: { writeText: async () => {} },
+      }));
+    }
     await layerPlanner.getByRole("button", { name: "Copy applied plan link" }).click();
     assert.equal(await layerPlanner.getByRole("textbox", { name: "Layer plan share URL" }).inputValue(),
       `${base}/titan?layer-plan=v1-0-03`);
