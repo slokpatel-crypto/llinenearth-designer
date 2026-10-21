@@ -9,6 +9,11 @@ import {
   type GarmentViewerAssetIdentity,
 } from "@/lib/garment-viewer-readiness";
 import { summarizeIndependentRealism, summarizeLatencySamples, type RealismAssessment } from "@/lib/designer/proof-scale";
+import {
+  parseGarmentLatencySamples,
+  parseGarmentRealismAssessments,
+  parseMeasuredScaleInput,
+} from "@/lib/garment-viewer-evidence-validation";
 
 type Boundaries={neck:boolean;cuffs:boolean;waist:boolean;trouserGap:boolean};
 type StoredEvidence<T>={assetKey:string;value:T};
@@ -46,14 +51,12 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
 
   function refreshLocalEvidence(){
     if(!assetKey){setLatencies([]);setAssessments([]);return;}
-    const localLatencies=readStored<number[]>(GARMENT_VIEWER_LATENCY_STORAGE_KEY,assetKey,[])
-      .map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000).slice(-120);
-    const localAssessments=readStored<RealismAssessment[]>(GARMENT_VIEWER_REALISM_STORAGE_KEY,assetKey,[])
-      .flatMap((item)=>{
-        const code=String(item.viewerId||"").trim().toLowerCase().slice(0,80);
-        const score=Math.round(Number(item.rating));
-        return code.length>=2&&score>=1&&score<=5?[{viewerId:code,rating:score,recordedAt:String(item.recordedAt||"").slice(0,80)}]:[];
-      }).slice(-50);
+    const localLatencies=parseGarmentLatencySamples(
+      readStored<unknown>(GARMENT_VIEWER_LATENCY_STORAGE_KEY,assetKey,[]),
+    );
+    const localAssessments=parseGarmentRealismAssessments(
+      readStored<unknown>(GARMENT_VIEWER_REALISM_STORAGE_KEY,assetKey,[]),
+    );
     setLatencies(localLatencies);
     setAssessments(localAssessments);
   }
@@ -79,18 +82,15 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
     setMessage("");
   }
 
-  function scaleSample(fabricId:string,error:string,pattern:"stripe"|"check",verified:boolean){
-    const value=Number(error);
-    if(!fabricId.trim()||!Number.isFinite(value)||value<0||value>100) return null;
-    return {fabricId:fabricId.trim().slice(0,160),pattern,errorPct:Math.round(value*100)/100,verified};
-  }
-
   async function recordEvidence(){
     if(!assetIdentity||!assetKey){setMessage("Configure and validate the production GLB + manifest first.");return;}
-    const patternScaleSamples=[
-      scaleSample(stripeFabricId,stripeError,"stripe",stripeVerified),
-      scaleSample(checkFabricId,checkError,"check",checkVerified),
-    ].filter(Boolean);
+    const stripeSample=parseMeasuredScaleInput(stripeFabricId,stripeError,"stripe",stripeVerified);
+    const checkSample=parseMeasuredScaleInput(checkFabricId,checkError,"check",checkVerified);
+    if((stripeVerified&&!stripeSample)||(checkVerified&&!checkSample)){
+      setMessage("Enter a real fabric ID and measured numeric scale error before confirming physical verification.");
+      return;
+    }
+    const patternScaleSamples=[stripeSample,checkSample].filter((sample)=>sample!==null);
     setBusy(true);setMessage("");
     try{
       const response=await fetch("/api/memory/event",{
