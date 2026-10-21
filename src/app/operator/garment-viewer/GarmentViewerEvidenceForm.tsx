@@ -170,6 +170,8 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
           <span>{error===null?"Enter all dimensions and a 12+ character physical source note.":!verified?"Measurement entered; physical verification unchecked.":error<=ROADMAP_SCALE_TOLERANCE_PCT?"Within 8% technical tolerance; physical review still required.":"Outside 8% tolerance; cannot pass the scale gate."}</span>
         </div>)}
       </div>
+      {stripeFabricId.trim()&&checkFabricId.trim()&&stripeFabricId.trim().toLowerCase()===checkFabricId.trim().toLowerCase()
+        &&<p className="garmentQaAuditWarning">Stripe and check physical samples must use different fabric IDs before the scale gate can pass.</p>}
       <div className="garmentQaRubric"><small>REALISM RUBRIC · V1</small><p>Rate the same five things every time: officewear silhouette/proportions, cloth drape and body fit, collar/neck junction, hands + waist/trouser boundaries, and overall photographic believability against the studio-tucked reference. Give 4/5 or 5/5 only when there is no major mismatch.</p></div>
       <div className="garmentQaRating">
         <label><span>Independent viewer code</span><input value={viewerCode} onChange={(event)=>setViewerCode(event.target.value)} placeholder="e.g. viewer-07"/></label>
