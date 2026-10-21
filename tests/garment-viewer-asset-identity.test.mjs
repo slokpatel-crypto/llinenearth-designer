@@ -137,6 +137,37 @@ test("HTTP evidence ingestion rejects overlong identities before persistence and
   const valid=await reader.loadLatestGarmentViewerReadiness();
   assert.equal(valid.latest.identityMatches,true);
   assert.equal(valid.latest.readiness.ready,true);
+
+  // The latest operator submission is authoritative. Never resurrect an
+  // earlier accepted pass when a later operator marked it for review, when
+  // the event version changed, or when the realism rubric is obsolete.
+  const invalidLatestMetadata=[
+    {status:"review",expectedReason:/not been accepted/i},
+    {status:"unrecognized",expectedReason:/not been accepted/i},
+    {status:"",expectedReason:/not been accepted/i},
+    {version:"linen-earth-garment-viewer-readiness-v0",expectedReason:/unsupported readiness event version/i},
+    {version:"",expectedReason:/unsupported readiness event version/i},
+    {realismRubricVersion:"legacy-rubric",expectedReason:/outdated or invalid realism rubric/i},
+    {realismRubricVersion:"",expectedReason:/outdated or invalid realism rubric/i},
+  ];
+  for(const {expectedReason,...patch} of invalidLatestMetadata){
+    rows=[{...stored[0],at:"2026-10-21T19:00:00Z",payload:{...stored[0].payload,...patch}},
+      {...stored[0],at:"2026-10-21T18:00:00Z"}];
+    const result=await reader.loadLatestGarmentViewerReadiness();
+    assert.ok(result.latest,"the blocked latest evidence remains inspectable");
+    assert.equal(result.latest.at,"2026-10-21T19:00:00Z");
+    assert.equal(result.latest.identityMatches,true);
+    assert.equal(result.latest.readiness.ready,false,"stale approved QA must not be restored");
+    assert.match(result.latest.readiness.reasons.join(" "),expectedReason);
+  }
+
+  rows=[{...stored[0],at:"2026-10-21T19:00:00Z",
+    payload:{...stored[0].payload,status:"accepted",
+      version:"linen-earth-garment-viewer-readiness-v1",
+      realismRubricVersion:"linen-earth-garment-viewer-realism-rubric-v1"}}];
+  assert.equal((await reader.loadLatestGarmentViewerReadiness()).latest.readiness.ready,true,
+    "a new accepted event with the current version and rubric still passes");
+
   for(const patch of [{modelSha256:identity.modelSha256+"suffix"},{manifestSha256:""},{modelId:null},
     {modelSha256:"c".repeat(64)}]){
     rows=[{...stored[0],payload:{...stored[0].payload,...patch}},stored[0]];
