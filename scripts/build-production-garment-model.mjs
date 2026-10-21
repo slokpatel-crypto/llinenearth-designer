@@ -82,7 +82,8 @@ try {
   }
 }
 if (finished) {
-  console.log("Production GarmentViewer candidate passed export + structural validation: " + outputPath);
+  console.log("Production GarmentViewer candidate passed export + structural validation: "
+    + (immutableRelease ? immutableRelease.modelPath : outputPath));
   if (immutableRelease) {
     console.log("Published immutable candidate release " + immutableRelease.pointer.releaseId);
     console.log("Release pointer: " + immutableRelease.pointerPath);
