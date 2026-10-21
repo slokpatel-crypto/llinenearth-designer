@@ -23,6 +23,11 @@ import {
 import { guideTitanLayerDraft } from "@/lib/titan/layer-compatibility-guidance";
 import { reviewTitanLayerChanges, titanLayerReviewDraft } from "@/lib/titan/layer-plan-review";
 import {
+  createTitanPlanHistory, recordTitanPlanHistory,
+  undoTitanPlanHistory, redoTitanPlanHistory,
+  type TitanPlanHistory,
+} from "@/lib/titan/layer-plan-history";
+import {
   TITAN_LAYER_PRESET_CHOICES, previewTitanLayerPreset, type TitanLayerPresetId,
 } from "@/lib/titan/layer-plan-presets";
 
@@ -53,7 +58,10 @@ const COMPOSITIONS: ReadonlyArray<{ id: OutfitComposition; name: string }> = [
  * alone decides whether the complete proposed outfit can be committed.
  */
 export default function TitanLayerPlanner() {
-  const [appliedPlan, setAppliedPlan] = useState<EditableModelLayerPlan>(STARTING_PLAN);
+  const [planHistory, setPlanHistory] = useState<TitanPlanHistory>(
+    () => createTitanPlanHistory(STARTING_PLAN)!,
+  );
+  const appliedPlan = planHistory.current;
   const [draftSlots, setDraftSlots] = useState<readonly ModelLayerSlot[]>(STARTING_PLAN.layers);
   const [draftComposition, setDraftComposition] = useState<OutfitComposition>("separates");
   const [message, setMessage] = useState("Choose garment layers, then apply a complete plan.");
@@ -277,10 +285,35 @@ export default function TitanLayerPlanner() {
   }
 
   function resetPlan() {
-    setAppliedPlan(STARTING_PLAN);
-    setDraftSlots([...STARTING_PLAN.layers]);
-    setDraftComposition(STARTING_PLAN.composition);
-    setMessage("Reset to shirt and trousers. No saved design was changed.");
+    // Reset is a reversible applied-plan change, not a deletion of bookmarks,
+    // real Designer data or all prior history. Pending draft edits are cleared.
+    const next = recordTitanPlanHistory(planHistory, STARTING_PLAN);
+    if (!next) {
+      setMessage("The current plan could not be validated. Nothing was reset.");
+      return;
+    }
+    setPlanHistory(next);
+    setDraftSlots([...next.current.layers]);
+    setDraftComposition(next.current.composition);
+    setMessage("Reset to shirt and trousers. Undo can restore the previous valid plan.");
+    invalidateShareCopy();
+  }
+
+  function travelPlanHistory(direction: "undo" | "redo") {
+    // Never silently replace a pending draft; the user must Apply or Discard.
+    if (hasUnappliedChanges) {
+      setMessage("Apply or discard your pending draft before changing applied-plan history.");
+      return;
+    }
+    const next = direction === "undo"
+      ? undoTitanPlanHistory(planHistory) : redoTitanPlanHistory(planHistory);
+    if (!next) return;
+    setPlanHistory(next);
+    setDraftSlots([...next.current.layers]);
+    setDraftComposition(next.current.composition);
+    setMessage(direction === "undo"
+      ? "Previous valid garment plan restored locally. No saved design was changed."
+      : "Next valid garment plan restored locally. No saved design was changed.");
     invalidateShareCopy();
   }
 
@@ -309,8 +342,13 @@ export default function TitanLayerPlanner() {
       setMessage("Plan not applied: " + result.reasons.join(" ") + " Resolve every requirement before applying.");
       return;
     }
-    setAppliedPlan(result.plan);
-    setDraftSlots([...result.plan.layers]);
+    const next = recordTitanPlanHistory(planHistory, result.plan);
+    if (!next) {
+      setMessage("Plan history could not be validated. No changes were applied.");
+      return;
+    }
+    setPlanHistory(next);
+    setDraftSlots([...next.current.layers]);
     setDraftComposition(result.plan.composition);
     setMessage("Valid layer plan applied locally. No garment asset, fabric, model or saved design was changed.");
     invalidateShareCopy();
@@ -476,8 +514,16 @@ export default function TitanLayerPlanner() {
           <div className="titanLayerPlannerActions">
             <button type="submit" disabled={!hasUnappliedChanges}>Apply layer plan</button>
             <button type="button" onClick={revertDraft} disabled={!hasUnappliedChanges}>Discard edits</button>
+            <button type="button" onClick={() => travelPlanHistory("undo")}
+              disabled={hasUnappliedChanges || planHistory.undo.length === 0}
+              aria-label="Undo applied layer plan">Undo plan</button>
+            <button type="button" onClick={() => travelPlanHistory("redo")}
+              disabled={hasUnappliedChanges || planHistory.redo.length === 0}
+              aria-label="Redo applied layer plan">Redo plan</button>
             <button type="button" onClick={resetPlan}>Reset plan</button>
           </div>
+          <p className="titanLayerPlannerHint">Undo/redo keeps at most twelve applied plan changes in this open tab.
+            Pending drafts must be applied or discarded first; bookmarks and customer designs are never changed.</p>
           <p className="titanLayerPlannerFeedback" role="status" aria-live="polite">{message}</p>
         </form>
         <div className="titanLayerPlannerSummary">

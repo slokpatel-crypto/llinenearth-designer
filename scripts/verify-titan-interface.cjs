@@ -91,6 +91,24 @@ async function checkViewport(width) {
     assert.equal(await layerPlanner.locator("[data-titan-composition]").getAttribute("data-titan-composition"), "three-piece-suit");
     await layerPlanner.getByRole("button", { name: "Reset plan" }).click();
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
+    // Reset is reversible. Pending edits must not silently get overwritten
+    // by Undo or Redo, and both controls must be phone-sized in all viewports.
+    const undoPlan = layerPlanner.getByRole("button", { name: "Undo applied layer plan" });
+    const redoPlan = layerPlanner.getByRole("button", { name: "Redo applied layer plan" });
+    const undoTap = await undoPlan.boundingBox();
+    assert.ok(undoTap && undoTap.width >= 44 && undoTap.height >= 44, "Undo needs a usable touch target");
+    assert.equal(await undoPlan.isDisabled(), false);
+    await undoPlan.click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 7);
+    assert.equal(await layerPlanner.locator("[data-titan-composition]").getAttribute("data-titan-composition"), "three-piece-suit");
+    await layerPlanner.getByRole("button", { name: "Stage Shirt & trousers as a draft" }).click();
+    assert.equal(await undoPlan.isDisabled(), true, "Undo must not discard unapplied draft edits");
+    assert.equal(await redoPlan.isDisabled(), true, "Redo must not discard unapplied draft edits");
+    await layerPlanner.getByRole("button", { name: "Discard edits" }).click();
+    assert.equal(await redoPlan.isDisabled(), false);
+    await redoPlan.click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
+    assert.equal(await redoPlan.isDisabled(), true);
     await layerPlanner.getByRole("button", { name: "Stage Shirt & trousers as a draft" }).click();
     assert.equal(await layerPlanner.getByRole("button", { name: "Apply layer plan" }).isDisabled(), true,
       "Staging the already applied preset should be a no-op");
@@ -161,6 +179,8 @@ async function checkViewport(width) {
     await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
     await waitForLocalReferences(page);
     await page.waitForFunction(() => document.querySelectorAll(".titanLayerPlannerSavedList li").length === 2);
+    assert.equal(await layerPlanner.getByRole("button", { name: "Undo applied layer plan" }).isDisabled(), true,
+      "Plan history is tab-session-only; bookmarks do not replay applied changes");
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2,
       "Saved outfit is never automatically applied on reload");
     if (width === 390) {
@@ -440,7 +460,7 @@ async function checkViewport(width) {
 
     // Every visible navigation entry must be large enough to use on a phone,
     // tablet or desktop; screenshots alone cannot prove pointer ergonomics.
-    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricShowMore, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta, .titanOutfitShareCta, .titanOutfitCopyButton, .titanOutfitShareInput, .titanLayerPlannerLibrary button, .titanLayerPlannerShareButton, .titanLayerPlannerShare input").evaluateAll(nodes =>
+    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricShowMore, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta, .titanOutfitShareCta, .titanOutfitCopyButton, .titanOutfitShareInput, .titanLayerPlannerLibrary button, .titanLayerPlannerActions button:not(:disabled), .titanLayerPlannerShareButton, .titanLayerPlannerShare input").evaluateAll(nodes =>
       nodes.filter(node => node.getClientRects().length > 0)
         .map(node => ({ text: node.textContent.trim().slice(0, 50), height: node.getBoundingClientRect().height }))
     );
