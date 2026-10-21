@@ -1,7 +1,8 @@
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness } from "../src/lib/garment-viewer-readiness.ts";
+import { normalizeGarmentViewerEvidenceForStorage, parseGarmentPatternSamples } from "../src/lib/garment-viewer-evidence-validation.ts";
+import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness, type GarmentViewerPromotionInput } from "../src/lib/garment-viewer-readiness.ts";
 import {
   GARMENT_VIEWER_CONTRACT_VERSION,
   REQUIRED_GARMENT_VIEWER_MATERIALS,
@@ -34,7 +35,7 @@ const manifest=validateGarmentViewerModelManifest({
   panels:Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}])),
 },"LE-OFFICEWEAR-V1");
 
-function passingInput() {
+function passingInput():GarmentViewerPromotionInput {
   return {
     contract,
     manifest,
@@ -132,4 +133,51 @@ test("viewer late-load recovery is bounded by the original twenty-second loading
   assert.ok(source.includes("if(attempt<160) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125)"));
   assert.ok(source.includes("setModelReady(true);setProgress(1);setError(\"\")"));
   assert.ok(!source.includes("if(attempt<80) readinessTimer="));
+});
+
+
+test("calibrated scale gate applies exact tolerance before any display rounding",()=>{
+  for(const [pixels,expected] of [[107.999,true],[108,true],[108.004,false],[108.1,false],[92,true],[91.999,false]] as const){
+    const input=passingInput();
+    input.patternScaleSamples=input.patternScaleSamples.map(sample=>({...sample,physicalRepeatMm:10,renderedRepeatPx:100,referenceLengthMm:100,referenceLengthPx:1000}));
+    input.patternScaleSamples[1].renderedRepeatPx=pixels;
+    input.patternScaleSamples[1].errorPct=0;
+    assert.equal(garmentViewerPromotionReadiness(input).scaleReady,expected,`repeat ${pixels}px`);
+  }
+});
+
+test("a severe measured failure is not removed from an otherwise passing calibration set",()=>{
+  const input=passingInput();
+    input.patternScaleSamples=input.patternScaleSamples.map(sample=>({...sample,physicalRepeatMm:10,renderedRepeatPx:100,referenceLengthMm:100,referenceLengthPx:1000}));
+  input.patternScaleSamples.push({...input.patternScaleSamples[0],fabricId:"bad-stripe",renderedRepeatPx:301,errorPct:0});
+  const result=garmentViewerPromotionReadiness(input);
+  assert.equal(result.scaleSamples.length,3);
+  assert.equal(result.scaleReady,false);
+  assert.equal(result.ready,false);
+});
+
+test("legacy percentages and incomplete calibration cannot establish physical readiness",()=>{
+  for(const field of ["physicalRepeatMm","renderedRepeatPx","referenceLengthMm","referenceLengthPx","evidenceReference"] as const){
+    const input=passingInput();
+    input.patternScaleSamples=input.patternScaleSamples.map(sample=>({...sample,physicalRepeatMm:10,renderedRepeatPx:100,referenceLengthMm:100,referenceLengthPx:1000}));
+    delete input.patternScaleSamples[1][field];
+    assert.equal(garmentViewerPromotionReadiness(input).scaleReady,false,field);
+  }
+  const input=passingInput();
+    input.patternScaleSamples=input.patternScaleSamples.map(sample=>({...sample,physicalRepeatMm:10,renderedRepeatPx:100,referenceLengthMm:100,referenceLengthPx:1000}));
+  input.patternScaleSamples=input.patternScaleSamples.map(({fabricId,pattern})=>({fabricId,pattern,errorPct:0,verified:true}));
+  assert.equal(garmentViewerPromotionReadiness(input).scaleReady,false);
+});
+
+test("UI calibration evidence keeps the same gate outcome after ingestion, JSON storage and reload",()=>{
+  for(const [repeat,expected] of [[100,true],[108,true],[108.004,false],[301,false]] as const){
+    const input=passingInput();
+    input.patternScaleSamples=input.patternScaleSamples.map(sample=>({...sample,physicalRepeatMm:10,renderedRepeatPx:100,referenceLengthMm:100,referenceLengthPx:1000}));
+    input.patternScaleSamples[1].renderedRepeatPx=repeat;
+    const stored=normalizeGarmentViewerEvidenceForStorage(input);
+    const persisted=JSON.parse(JSON.stringify(stored));
+    const reloaded={...input,...persisted,patternScaleSamples:parseGarmentPatternSamples(persisted.patternScaleSamples)};
+    assert.equal(garmentViewerPromotionReadiness(reloaded).ready,expected,`${repeat}px persisted`);
+    assert.equal(reloaded.patternScaleSamples.length,2);
+  }
 });
