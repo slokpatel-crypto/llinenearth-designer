@@ -695,4 +695,6 @@ are displayed. Do not merge the stacked TITAN PRs or deploy.
 
 **Regression:** Real Chromium at 390px defers clipboard success and rejection, removes and restores the exact same pair before resolving each request, and verifies no stale copy outcome appears after the pair returns. The full existing 320/390/768/1440 workflows continue to gate the unchanged fabric discovery and maintained Designer handoff. The operating system may still complete an already-issued clipboard write; only stale user-interface assertions and stale manual fallback are prevented.
 
+**Fabric-filter input hardening:** The TITAN-only catalogue search now reads the native `input` event, which fires for typing, pasting and clearing a browser search field. Existing deterministic matching, paging reset, reference catalogue and handoff IDs remain authoritative. A reproducible 768px Playwright run observed an empty controlled input after fill despite earlier onChange-based handling. Preserve the strict one-result search assertion at all widths; only exact-head real-browser QA can confirm the fix.
+
 **Scope:** No new persisted state, backend, model, material, AI provider, 3D asset activation, measure/stock claim or dependency. Stacked on unreleased TITAN planning draft; **do not merge or deploy** until exact-head QA passes.
