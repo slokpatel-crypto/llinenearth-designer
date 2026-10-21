@@ -681,11 +681,17 @@ function clean(body:IncomingEvent, operatorAuthorized:boolean) {
   const payload = cleanPayload(type,body.payload);
   if (!payload) return null;
 
+  // The operator's client clock must not determine which revision-bound 3D
+  // QA submission is latest. Future/backdated timestamps could otherwise
+  // resurrect an old passing record or indefinitely overshadow later review.
+  const isGarmentReadiness=operatorType && type==="operator_note"
+    && payload.subtype==="garment_viewer_readiness";
+
   return {
     id:String(body.id || `EV-${Date.now()}`).slice(0,160),
     session_id:sessionId,
     type,
-    at:parsedAt.toISOString(),
+    at:isGarmentReadiness?new Date().toISOString():parsedAt.toISOString(),
     source:operatorType ? "operator" : "style-director",
     payload,
   };
