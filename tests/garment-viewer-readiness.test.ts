@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeGarmentViewerEvidenceForStorage, parseGarmentPatternSamples } from "../src/lib/garment-viewer-evidence-validation.ts";
+import { normalizeGarmentViewerEvidenceForStorage, parseGarmentPatternSamples, parseMeasuredScaleInput } from "../src/lib/garment-viewer-evidence-validation.ts";
 import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness, type GarmentViewerPromotionInput } from "../src/lib/garment-viewer-readiness.ts";
 import {
   GARMENT_VIEWER_CONTRACT_VERSION,
@@ -83,6 +83,35 @@ test("scale gate requires both verified stripe and check samples within eight pe
   const drift=passingInput();
   drift.patternScaleSamples[1].renderedRepeatPx=218;
   assert.equal(garmentViewerPromotionReadiness(drift).scaleReady,false);
+});
+
+test("scale gate requires stripe and check measurements from distinct fabric subjects",()=>{
+  const input=passingInput();
+  input.patternScaleSamples[1].fabricId=input.patternScaleSamples[0].fabricId;
+  const result=garmentViewerPromotionReadiness(input);
+  assert.equal(result.scaleSamples.length,2);
+  assert.equal(result.scaleReady,false);
+  assert.match(result.reasons.join(" "),/Distinct stripe and check fabric samples/);
+});
+
+test("complete fabric identities are rejected instead of truncated into another subject",()=>{
+  const overlong=`fabric-${"x".repeat(154)}`;
+  assert.equal(overlong.length,161);
+  const raw={...passingInput().patternScaleSamples[0],fabricId:overlong};
+  assert.deepEqual(parseGarmentPatternSamples([raw]),[]);
+  assert.equal(parseMeasuredScaleInput(overlong,"50","200","100","400","photo-stripe-physical-001","stripe",true),null);
+
+  const input=passingInput();
+  input.patternScaleSamples[0].fabricId=overlong;
+  assert.equal(garmentViewerPromotionReadiness(input).scaleReady,false);
+});
+
+test("overlong evidence references cannot be truncated into calibrated proof",()=>{
+  const raw={...passingInput().patternScaleSamples[0],evidenceReference:"e".repeat(241)};
+  const parsed=parseGarmentPatternSamples([raw]);
+  assert.equal(parsed.length,1);
+  assert.equal(parsed[0].verified,false);
+  assert.equal(parsed[0].evidenceReference,undefined);
 });
 
 test("claimed 0% cannot conceal measured mismatch or rescue legacy percent-only evidence",()=>{

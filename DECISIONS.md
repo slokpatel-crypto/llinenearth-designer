@@ -700,3 +700,9 @@ QA events previously truncated submitted hashes to 64 characters before checking
 Compatibility: existing valid model IDs/hashes and uppercase hex remain supported; there is no schema, saved-design or asset change. Malformed historical latest evidence blocks readiness and is not skipped in favor of older passing evidence. Regenerate that QA record with the correct exact asset identity. Complete hashes, calibrated textile evidence, independent owner/tailor review and all existing native/visual gates remain separate requirements.
 
 Verification uses pure malformed-input/revision tests plus the actual HTTP ingestion and readiness reader against mocked authentication, asset status and JSON storage transport. It verifies rejected writes, unauthorized writes, canonical persistence, valid reload and fail-closed latest-record handling. These synthetic fixtures are not live database or physical approval evidence. Draft only; no merge or deployment.
+
+## 2026-10-21 — exact, independent pattern-scale evidence subjects
+
+Pattern-scale ingestion no longer truncates overlong fabric IDs or evidence references into apparently valid records. The full trimmed fabric ID must be 1–160 characters, and runtime readiness repeats that check so callers cannot bypass storage validation. An overlong reference cannot retain a verified calibrated measurement; a valid legacy claimed percentage remains visible only as unverified audit history.
+
+The physical scale gate now requires the qualifying stripe and check measurements to name distinct fabric subjects. Two pattern labels attached to one fabric ID cannot establish independent stripe/check coverage. Existing calibrated dimensions, traceable evidence, exact 8% tolerance and all model, identity, boundary, latency, realism and human approval gates remain unchanged. This is evidence integrity, not proof of supplier dimensions, physical drape, photographic parity or tailor approval. Draft only; no merge or deployment.
