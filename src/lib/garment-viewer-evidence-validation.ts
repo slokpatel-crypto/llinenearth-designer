@@ -27,7 +27,7 @@ export function parseGarmentPatternSamples(value:unknown):GarmentViewerPatternSc
       ...(typeof row.evidenceReference==="string"?{evidenceReference:row.evidenceReference.trim().slice(0,240)}:{}),
     };
     const derived=calibratedGarmentScaleErrorPct(candidate);
-    if(derived!==null) return [{...candidate,errorPct:derived,verified:row.verified===true}];
+    if(derived!==null) return [{...candidate,errorPct:Math.round(derived*100)/100,verified:row.verified===true}];
     // Keep legacy records for audit, but explicitly revoke their unverifiable
     // "verified" flag. No claimed-only percentage can pass a future gate.
     if(typeof claimedPct!=="number" || !Number.isFinite(claimedPct) || claimedPct<0 || claimedPct>100) return [];
@@ -85,7 +85,7 @@ export function parseMeasuredScaleInput(
     referenceLengthMm,referenceLengthPx,evidenceReference,
   };
   const derived=calibratedGarmentScaleErrorPct(candidate);
-  return derived===null ? null : {...candidate,errorPct:derived};
+  return derived===null ? null : {...candidate,errorPct:Math.round(derived*100)/100};
 }
 
 export function normalizeGarmentViewerEvidenceForStorage(payload:Record<string,unknown>) {
