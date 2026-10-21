@@ -54,3 +54,14 @@ export function parseMeasuredScaleInput(
   if (!Number.isFinite(errorPct) || errorPct < 0 || errorPct > 100) return null;
   return { fabricId: id, pattern, errorPct: Math.round(errorPct * 100) / 100, verified };
 }
+
+export function normalizeGarmentViewerEvidenceForStorage(payload: Record<string, unknown>) {
+  return {
+    patternScaleSamples: parseGarmentPatternSamples(payload.patternScaleSamples).map((sample) => ({
+      ...sample, errorPct: Math.round(sample.errorPct * 100) / 100,
+    })),
+    interactionLatencyMs: parseGarmentLatencySamples(payload.interactionLatencyMs)
+      .map((sample) => Math.round(sample * 10) / 10).filter((sample) => sample > 0),
+    realismAssessments: parseGarmentRealismAssessments(payload.realismAssessments),
+  };
+}
