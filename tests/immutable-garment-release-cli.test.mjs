@@ -51,7 +51,7 @@ test("Blender export validates staged bytes and publishes one immutable pair thr
     const first = run();
     assert.equal(first.status, 0, first.stdout + first.stderr);
     const checked = JSON.parse(await fs.readFile(path.join(root, "validator-input.json"), "utf8"));
-    assert.match(checked.candidate, /\\.linen-export-stage-/);
+    assert.match(checked.candidate, /\.linen-export-stage-/);
     assert.equal(checked.bytes, "verified new model 1");
     const before = readGarmentRelease(releaseRoot);
     assert.equal(before.glb.toString(), "verified new model 1");
