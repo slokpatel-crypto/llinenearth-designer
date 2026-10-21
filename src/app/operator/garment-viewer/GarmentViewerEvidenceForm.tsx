@@ -12,7 +12,7 @@ import { summarizeIndependentRealism, summarizeLatencySamples, type RealismAsses
 import {
   parseGarmentLatencySamples,
   parseGarmentRealismAssessments,
-  parseMeasuredScaleInput,
+  parseCalibratedScaleInput,
 } from "@/lib/garment-viewer-evidence-validation";
 
 type Boundaries={neck:boolean;cuffs:boolean;waist:boolean;trouserGap:boolean};
@@ -39,10 +39,18 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
   const [viewerCode,setViewerCode]=useState("");
   const [rating,setRating]=useState("4");
   const [stripeFabricId,setStripeFabricId]=useState("");
-  const [stripeError,setStripeError]=useState("");
+  const [stripeRepeatMm,setStripeRepeatMm]=useState("");
+  const [stripeObservedPx,setStripeObservedPx]=useState("");
+  const [stripeReferenceMm,setStripeReferenceMm]=useState("");
+  const [stripeReferencePx,setStripeReferencePx]=useState("");
+  const [stripeEvidenceNote,setStripeEvidenceNote]=useState("");
   const [stripeVerified,setStripeVerified]=useState(false);
   const [checkFabricId,setCheckFabricId]=useState("");
-  const [checkError,setCheckError]=useState("");
+  const [checkRepeatMm,setCheckRepeatMm]=useState("");
+  const [checkObservedPx,setCheckObservedPx]=useState("");
+  const [checkReferenceMm,setCheckReferenceMm]=useState("");
+  const [checkReferencePx,setCheckReferencePx]=useState("");
+  const [checkEvidenceNote,setCheckEvidenceNote]=useState("");
   const [checkVerified,setCheckVerified]=useState(false);
   const [boundaryChecks,setBoundaryChecks]=useState<Boundaries>({neck:false,cuffs:false,waist:false,trouserGap:false});
   const [note,setNote]=useState("");
@@ -84,10 +92,10 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
 
   async function recordEvidence(){
     if(!assetIdentity||!assetKey){setMessage("Configure and validate the production GLB + manifest first.");return;}
-    const stripeSample=parseMeasuredScaleInput(stripeFabricId,stripeError,"stripe",stripeVerified);
-    const checkSample=parseMeasuredScaleInput(checkFabricId,checkError,"check",checkVerified);
+    const stripeSample=parseCalibratedScaleInput(stripeFabricId,"stripe",stripeRepeatMm,stripeObservedPx,stripeReferenceMm,stripeReferencePx,stripeEvidenceNote,stripeVerified);
+    const checkSample=parseCalibratedScaleInput(checkFabricId,"check",checkRepeatMm,checkObservedPx,checkReferenceMm,checkReferencePx,checkEvidenceNote,checkVerified);
     if((stripeVerified&&!stripeSample)||(checkVerified&&!checkSample)){
-      setMessage("Enter a real fabric ID and measured numeric scale error before confirming physical verification.");
+      setMessage("Verified scale requires fabric ID, physical repeat (mm), observed preview repeat (px), same-plane ruler dimensions (mm/px), and a measurement source note (12+ characters).");
       return;
     }
     const patternScaleSamples=[stripeSample,checkSample].filter((sample)=>sample!==null);
@@ -130,13 +138,22 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
     {!assetIdentity?<p className="garmentQaReasons">Production asset identity is unavailable, so evidence recording is locked.</p>:<>
       <div className="garmentQaEvidenceMeta"><span><small>MODEL</small><b>{assetIdentity.modelId}</b></span><span><small>GLB HASH</small><b>{assetIdentity.modelSha256.slice(0,12)}…</b></span><span><small>MANIFEST HASH</small><b>{assetIdentity.manifestSha256.slice(0,12)}…</b></span></div>
       <div className="garmentQaEvidenceMetrics"><span><small>LAB LATENCY</small><b>{latencySummary.count}</b><em>{latencySummary.p95Ms===null?"p95 pending":`p95 ${latencySummary.p95Ms} ms`}</em></span><span><small>REALISM VIEWERS</small><b>{realismSummary.uniqueViewers}</b><em>{realismSummary.strongRatings} strong ratings</em></span></div>
+      <div className="garmentQaRubric"><small>CALIBRATED PHYSICAL SCALE · AUDIT INPUTS</small><p>For each cloth pattern, measure the actual repeat on the physical fabric. In the same image/plane as the 3D preview repeat, measure the on-screen repeat in pixels and a known millimetre ruler in pixels. Error is calculated, never manually asserted. Record the source and measurement setup; estimates are not physical verification.</p></div>
       <div className="garmentQaEvidenceGrid">
         <label><span>Stripe fabric ID</span><input value={stripeFabricId} onChange={(event)=>setStripeFabricId(event.target.value)} placeholder="Exact tested fabric ID"/></label>
-        <label><span>Stripe scale error %</span><input type="number" min="0" max="100" step=".1" value={stripeError} onChange={(event)=>setStripeError(event.target.value)} placeholder="≤ 8"/></label>
-        <label className="garmentQaCheck"><input type="checkbox" checked={stripeVerified} onChange={(event)=>setStripeVerified(event.target.checked)}/><span>Measured against verified physical repeat</span></label>
+        <label><span>Physical stripe repeat (mm)</span><input type="number" min=".001" step="any" value={stripeRepeatMm} onChange={(event)=>setStripeRepeatMm(event.target.value)} placeholder="Measured mm"/></label>
+        <label><span>Observed stripe repeat (px)</span><input type="number" min=".001" step="any" value={stripeObservedPx} onChange={(event)=>setStripeObservedPx(event.target.value)} placeholder="Rendered px"/></label>
+        <label><span>Stripe ruler length (mm)</span><input type="number" min=".001" step="any" value={stripeReferenceMm} onChange={(event)=>setStripeReferenceMm(event.target.value)} placeholder="Known mm"/></label>
+        <label><span>Stripe ruler length (px)</span><input type="number" min=".001" step="any" value={stripeReferencePx} onChange={(event)=>setStripeReferencePx(event.target.value)} placeholder="Measured px"/></label>
+        <label><span>Stripe evidence source/method</span><input value={stripeEvidenceNote} onChange={(event)=>setStripeEvidenceNote(event.target.value)} placeholder="Cloth ruler/source, camera setup"/></label>
+        <label className="garmentQaCheck"><input type="checkbox" checked={stripeVerified} onChange={(event)=>setStripeVerified(event.target.checked)}/><span>Observed against real physical repeat</span></label>
         <label><span>Check fabric ID</span><input value={checkFabricId} onChange={(event)=>setCheckFabricId(event.target.value)} placeholder="Exact tested fabric ID"/></label>
-        <label><span>Check scale error %</span><input type="number" min="0" max="100" step=".1" value={checkError} onChange={(event)=>setCheckError(event.target.value)} placeholder="≤ 8"/></label>
-        <label className="garmentQaCheck"><input type="checkbox" checked={checkVerified} onChange={(event)=>setCheckVerified(event.target.checked)}/><span>Measured against verified physical repeat</span></label>
+        <label><span>Physical check repeat (mm)</span><input type="number" min=".001" step="any" value={checkRepeatMm} onChange={(event)=>setCheckRepeatMm(event.target.value)} placeholder="Measured mm"/></label>
+        <label><span>Observed check repeat (px)</span><input type="number" min=".001" step="any" value={checkObservedPx} onChange={(event)=>setCheckObservedPx(event.target.value)} placeholder="Rendered px"/></label>
+        <label><span>Check ruler length (mm)</span><input type="number" min=".001" step="any" value={checkReferenceMm} onChange={(event)=>setCheckReferenceMm(event.target.value)} placeholder="Known mm"/></label>
+        <label><span>Check ruler length (px)</span><input type="number" min=".001" step="any" value={checkReferencePx} onChange={(event)=>setCheckReferencePx(event.target.value)} placeholder="Measured px"/></label>
+        <label><span>Check evidence source/method</span><input value={checkEvidenceNote} onChange={(event)=>setCheckEvidenceNote(event.target.value)} placeholder="Cloth ruler/source, camera setup"/></label>
+        <label className="garmentQaCheck"><input type="checkbox" checked={checkVerified} onChange={(event)=>setCheckVerified(event.target.checked)}/><span>Observed against real physical repeat</span></label>
       </div>
       <div className="garmentQaRubric"><small>REALISM RUBRIC · V1</small><p>Rate the same five things every time: officewear silhouette/proportions, cloth drape and body fit, collar/neck junction, hands + waist/trouser boundaries, and overall photographic believability against the studio-tucked reference. Give 4/5 or 5/5 only when there is no major mismatch.</p></div>
       <div className="garmentQaRating">
