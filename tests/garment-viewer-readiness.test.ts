@@ -100,6 +100,17 @@ test("scale gate requires both verified stripe and check samples within eight pe
   assert.equal(garmentViewerPromotionReadiness(invalid).scaleReady,false);
 });
 
+test("one fabric cannot impersonate both independent stripe and check evidence",()=>{
+  const input=passingInput();
+  input.patternScaleSamples[1].fabricId="STRIPE-A";
+  const result=garmentViewerPromotionReadiness(input);
+  assert.equal(result.scaleAudit.length,2);
+  assert.equal(result.scaleAudit.every((row)=>row.passes),true);
+  assert.equal(result.scaleReady,false);
+  assert.equal(result.ready,false);
+  assert.ok(result.reasons.some((reason)=>reason.includes("Distinct stripe and check fabric IDs")));
+});
+
 test("realism, latency and boundary evidence cannot be bypassed",()=>{
   const input=passingInput();
   input.interactionLatencyMs=[100,110];
