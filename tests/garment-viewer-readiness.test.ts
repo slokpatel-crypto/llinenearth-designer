@@ -2,7 +2,7 @@ import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeGarmentViewerEvidenceForStorage, parseGarmentPatternSamples, parseMeasuredScaleInput } from "../src/lib/garment-viewer-evidence-validation.ts";
-import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness, type GarmentViewerPromotionInput } from "../src/lib/garment-viewer-readiness.ts";
+import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness, garmentViewerScaleAudit, type GarmentViewerPromotionInput } from "../src/lib/garment-viewer-readiness.ts";
 import {
   GARMENT_VIEWER_CONTRACT_VERSION,
   REQUIRED_GARMENT_VIEWER_MATERIALS,
@@ -92,6 +92,16 @@ test("scale gate requires stripe and check measurements from distinct fabric sub
   assert.equal(result.scaleSamples.length,2);
   assert.equal(result.scaleReady,false);
   assert.match(result.reasons.join(" "),/Distinct stripe and check fabric samples/);
+});
+
+test("case-only fabric aliases cannot count as two independent physical subjects",()=>{
+  const input=passingInput();
+  input.patternScaleSamples[1].fabricId="STRIPE-A";
+  const readiness=garmentViewerPromotionReadiness(input);
+  assert.equal(readiness.scaleAudit.length,2);
+  assert.equal(readiness.scaleAudit.every((row)=>row.passes),true);
+  assert.equal(readiness.scaleReady,false);
+  assert.equal(readiness.ready,false);
 });
 
 test("complete fabric identities are rejected instead of truncated into another subject",()=>{
@@ -209,4 +219,47 @@ test("UI calibration evidence keeps the same gate outcome after ingestion, JSON 
     assert.equal(garmentViewerPromotionReadiness(reloaded).ready,expected,`${repeat}px persisted`);
     assert.equal(reloaded.patternScaleSamples.length,2);
   }
+});
+
+test("physical measurement audit displays exact calibrated error without trusting a forged percentage",()=>{
+  const input=passingInput();
+  input.patternScaleSamples[0].errorPct=0;
+  input.patternScaleSamples[1].renderedRepeatPx=216.008; // 8.004%, not a passing 8.00%
+  input.patternScaleSamples[1].errorPct=0;
+  const audit=garmentViewerScaleAudit(input.patternScaleSamples);
+  assert.equal(audit.length,2);
+  assert.equal(audit[0].sample.physicalRepeatMm,50);
+  assert.equal(audit[0].sample.referenceLengthMm,100);
+  assert.equal(audit[0].sample.evidenceReference,"photo-stripe-physical-001");
+  assert.ok(audit[0].measuredErrorPct!==null&&Math.abs(audit[0].measuredErrorPct-4.1)<1e-9);
+  assert.equal(audit[0].passes,true);
+  assert.ok(audit[1].measuredErrorPct!==null&&audit[1].measuredErrorPct>8);
+  assert.equal(audit[1].passes,false);
+  const result=garmentViewerPromotionReadiness(input);
+  assert.deepEqual(result.scaleAudit,audit);
+  assert.equal(result.scaleReady,false);
+});
+
+test("incomplete verified measurement stays visible in audit and blocks a passing set",()=>{
+  const input=passingInput();
+  input.patternScaleSamples.push({
+    fabricId:"unverified-measurement",pattern:"stripe",verified:true,
+    errorPct:0,physicalRepeatMm:100,renderedRepeatPx:100,
+    referenceLengthMm:100,referenceLengthPx:100,
+  });
+  const result=garmentViewerPromotionReadiness(input);
+  assert.equal(result.scaleAudit.length,3);
+  assert.equal(result.scaleAudit[2].measuredErrorPct,null);
+  assert.equal(result.scaleAudit[2].passes,false);
+  assert.equal(result.scaleReady,false);
+  assert.equal(result.ready,false);
+});
+
+test("legacy percentage-only claims appear as unverified audit, not a promotion pass",()=>{
+  const rows=parseGarmentPatternSamples([{fabricId:"old-stripe",pattern:"stripe",errorPct:0,verified:true}]);
+  const audit=garmentViewerScaleAudit(rows);
+  assert.equal(audit.length,1);
+  assert.equal(audit[0].sample.verified,false);
+  assert.equal(audit[0].measuredErrorPct,null);
+  assert.equal(audit[0].passes,false);
 });

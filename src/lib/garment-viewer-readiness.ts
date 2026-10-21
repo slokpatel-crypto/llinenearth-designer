@@ -99,6 +99,19 @@ export function calibratedGarmentScaleErrorPct(sample:GarmentViewerPatternScaleS
   return Number.isFinite(error) ? error : null;
 }
 
+/** Exact, revision-agnostic measurement trace. Customer approval remains a separate gate. */
+export function garmentViewerScaleAudit(samples:GarmentViewerPatternScaleSample[]) {
+  return samples.slice(-20).map((sample)=>{
+    const measuredErrorPct=calibratedGarmentScaleErrorPct(sample);
+    const passes=sample.verified===true
+      && parseGarmentEvidenceFabricId(sample.fabricId)!==null
+      && (sample.pattern==="stripe"||sample.pattern==="check"||sample.pattern==="other")
+      && measuredErrorPct!==null
+      && measuredErrorPct<=ROADMAP_SCALE_TOLERANCE_PCT;
+    return {sample,measuredErrorPct,passes};
+  });
+}
+
 export type GarmentViewerPromotionInput = {
   contract:GarmentViewerModelContractResult|null;
   manifest:GarmentViewerManifestValidation|null;
@@ -114,23 +127,24 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
 
   // Legacy percent-only rows remain inspectable but cannot pass physical QA.
   // Compute from exact calibrated dimensions even if a stored errorPct was altered.
-  const scaleSamples=input.patternScaleSamples
-    .filter((sample)=>sample.verified===true
-      && parseGarmentEvidenceFabricId(sample.fabricId)!==null
-      && calibratedGarmentScaleErrorPct(sample)!==null)
-    .slice(-20);
-  const calibratedErrors=scaleSamples.map((sample)=>calibratedGarmentScaleErrorPct(sample) as number);
+  const scaleAudit=garmentViewerScaleAudit(input.patternScaleSamples);
+  const calibratedRows=scaleAudit.filter((row)=>row.sample.verified===true
+    && row.measuredErrorPct!==null
+    && parseGarmentEvidenceFabricId(row.sample.fabricId)!==null);
+  const scaleSamples=calibratedRows.map(({sample})=>sample);
   const stripeFabricIds=new Set(scaleSamples
     .filter((sample)=>sample.pattern==="stripe")
-    .map((sample)=>parseGarmentEvidenceFabricId(sample.fabricId) as string));
+    .map((sample)=>(parseGarmentEvidenceFabricId(sample.fabricId) as string).toLowerCase()));
   const checkFabricIds=new Set(scaleSamples
     .filter((sample)=>sample.pattern==="check")
-    .map((sample)=>parseGarmentEvidenceFabricId(sample.fabricId) as string));
+    .map((sample)=>(parseGarmentEvidenceFabricId(sample.fabricId) as string).toLowerCase()));
+  // Case changes cannot masquerade as physically independent fabric samples.
   const hasIndependentPatternSubjects=[...stripeFabricIds]
     .some((fabricId)=>[...checkFabricIds].some((checkId)=>checkId!==fabricId));
   const scaleReady=scaleSamples.length>=GARMENT_VIEWER_MIN_PATTERN_SCALE_SAMPLES
     && hasIndependentPatternSubjects
-    && calibratedErrors.every((error)=>error<=ROADMAP_SCALE_TOLERANCE_PCT);
+    && calibratedRows.every((row)=>row.passes)
+    && !scaleAudit.some((row)=>row.sample.verified===true && row.measuredErrorPct===null);
 
   const latency=summarizeLatencySamples(input.interactionLatencyMs);
   const latencyReady=latency.count>=PHASE1_PROOF_MIN_LATENCY_SAMPLES
@@ -160,6 +174,7 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
     realismReady,
     boundaryReady,
     scaleSamples,
+    scaleAudit,
     latency,
     realism,
     reasons,
