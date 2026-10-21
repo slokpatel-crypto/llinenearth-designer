@@ -124,7 +124,7 @@ test("missing, empty, symlinked and oversized candidate inputs cannot advance po
   assert.throws(() => publish(p), /nonempty regular file/);
   await fs.promises.unlink(p.manifest);
   await fs.promises.symlink(first.manifestPath, p.manifest);
-  assert.throws(() => publish(p), /nonempty regular file/);
+  assert.throws(() => publish(p), /nonempty regular file|ELOOP/);
   await fs.promises.unlink(p.manifest);
   await writeFile(p.manifest, Buffer.alloc(1024 * 1024 + 1));
   assert.throws(() => publish(p), /nonempty regular file/);
@@ -179,4 +179,89 @@ test("a symlinked version directory is invalid even with unmodified checked asse
   assert.throws(() => read(p), /real directory, not a symlink/);
   assert.throws(() => publish(p), /real directory, not a symlink/);
   assert.deepEqual(await readFile(first.pointerPath), pointerBefore);
+}));
+
+
+test("existing symlinked parent of release root is rejected on read and publish", async () => workspace(async p => {
+  const first = publish(p);
+  const parentAlias = path.join(p.root, "parent-alias");
+  await fs.promises.symlink(p.root, parentAlias, "dir");
+  const aliasedRoot = path.join(parentAlias, "published");
+
+  assert.throws(() => readGarmentRelease(aliasedRoot), /real directory, not a symlink/);
+  assert.throws(
+    () => publishImmutableGarmentRelease(p.model, p.manifest, aliasedRoot),
+    /real directory, not a symlink/,
+  );
+  assert.equal(read(p).pointer.releaseId, first.pointer.releaseId);
+}));
+
+test("symlinked parent is checked before recursive mkdir mutates outside paths", async () => workspace(async p => {
+  const outside = path.join(p.root, "outside-target");
+  await mkdir(outside);
+  const alias = path.join(p.root, "outside-alias");
+  await fs.promises.symlink(outside, alias, "dir");
+  const newRoot = path.join(alias, "unexpected", "published");
+
+  assert.throws(
+    () => publishImmutableGarmentRelease(p.model, p.manifest, newRoot),
+    /real directory, not a symlink/,
+  );
+  assert.equal(fs.existsSync(path.join(outside, "unexpected")), false);
+}));
+
+test("pointer file swapped to a symlink at open cannot be read through an old lstat", async () => workspace(async p => {
+  const first = publish(p);
+  const oldPointerBytes = await readFile(first.pointerPath);
+  let swapped = false;
+  const io = {
+    ...fs,
+    openSync(file, flags) {
+      if (file === first.pointerPath && !swapped) {
+        swapped = true;
+        fs.renameSync(file, file + ".original");
+        fs.symlinkSync(file + ".original", file);
+      }
+      return fs.openSync(file, flags);
+    },
+  };
+
+  assert.throws(() => readGarmentRelease(p.releases, io), /ELOOP|symbolic link|too many/i);
+  assert.equal(swapped, true);
+  assert.deepEqual(await readFile(first.pointerPath + ".original"), oldPointerBytes);
+}));
+
+test("staged candidate swapped to a symlink at open cannot advance current pointer", async () => workspace(async p => {
+  const first = publish(p);
+  await next(p);
+  let swapped = false;
+  const io = {
+    ...fs,
+    openSync(file, flags) {
+      if (file === p.model && !swapped) {
+        swapped = true;
+        fs.renameSync(file, file + ".original");
+        fs.symlinkSync(file + ".original", file);
+      }
+      return fs.openSync(file, flags);
+    },
+  };
+
+  assert.throws(() => publish(p, io), /ELOOP|symbolic link|too many/i);
+  assert.equal(swapped, true);
+  assert.equal(read(p).pointer.releaseId, first.pointer.releaseId);
+}));
+
+test("short descriptor reads fail before returning a partial release snapshot", async () => workspace(async p => {
+  const first = publish(p);
+  const io = {
+    ...fs,
+    readFileSync(file, ...args) {
+      const bytes = fs.readFileSync(file, ...args);
+      return typeof file === "number" ? bytes.subarray(0, bytes.length - 1) : bytes;
+    },
+  };
+
+  assert.throws(() => readGarmentRelease(p.releases, io), /Release asset changed while being read/);
+  assert.equal(read(p).pointer.releaseId, first.pointer.releaseId);
 }));
