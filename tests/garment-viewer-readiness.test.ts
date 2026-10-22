@@ -353,3 +353,11 @@ test("operator 3D QA acceptance is deliberate and cannot be confused with releas
   assert.match(operatorPage,/CUSTOMER PROMOTION GATE — TECHNICAL CHECKS ONLY/);
   assert.match(operatorPage,/owner and tailor sign-off/);
 });
+
+
+test("malformed local QA cache cannot silently turn into clean empty evidence",()=>{
+  const source=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
+  assert.match(source,/catch\\{return null as T;\\}/);
+  assert.match(source,/setLocalEvidenceCorrupt\\(!garmentLatencySubmissionIsLossless\\(savedLatencies\\)/);
+  assert.match(source,/Recording is locked/);
+});
