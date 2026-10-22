@@ -354,3 +354,31 @@ test("raw latency summary recomputes p95 and ignores invalid samples",()=>{
   assert.equal(result.p95Ms,120);
   assert.equal(result.maxMs,120);
 });
+
+test("latency evidence refuses coerced zeros and preserves exact positive measurements",()=>{
+  const raw=[null,false,"10","",0,NaN,-1,10001,0.02,100.004,299.96];
+  const summary=summarizeLatencySamples(raw);
+  assert.deepEqual(summary.samples,[0.02,100.004,299.96]);
+  assert.equal(summary.count,3);
+  assert.equal(summary.medianMs,100.004);
+  assert.equal(summary.p95Ms,299.96);
+  assert.equal(summarizeLatencySamples(Array(12).fill(null)).count,0);
+  assert.equal(summarizeLatencySamples(Array(12).fill(0)).p95Ms,null);
+});
+
+test("strict 300ms p95 gate does not round up a valid 299.96ms sample",()=>{
+  const passing=summarizeLatencySamples(Array(12).fill(299.96));
+  const failing=summarizeLatencySamples(Array(12).fill(300.04));
+  assert.ok(passing.p95Ms!==null && passing.p95Ms<300);
+  assert.ok(failing.p95Ms!==null && failing.p95Ms>=300);
+  assert.equal(phase1ProofAcceptance({
+    repeatMm:10,scaleGatePass:true,realModelSamples:passing.count,
+    realModelP95Ms:passing.p95Ms,realismRatings:[5,5,5,5,5,5,3,3],
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  }).accepted,true);
+  assert.equal(phase1ProofAcceptance({
+    repeatMm:10,scaleGatePass:true,realModelSamples:failing.count,
+    realModelP95Ms:failing.p95Ms,realismRatings:[5,5,5,5,5,5,3,3],
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  }).accepted,false);
+});
