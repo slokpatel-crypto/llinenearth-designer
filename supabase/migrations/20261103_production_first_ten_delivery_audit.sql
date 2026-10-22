@@ -1,12 +1,13 @@
--- First-ten real delivery proof must use complete historical orders and all audit rows.
--- The existing 500-row newest-order list is for operator browsing, not certification.
--- This returns at most ten earliest currently delivered orders (by creation order,
--- preserving the current Phase 8 policy), plus every audit for those exact orders.
--- Result is private: callable by service_role only, never browser/anon clients.
+-- Phase 8: certify the first ten ACTUALLY delivered orders by completion time.
+-- Newest-500 order browsing cannot establish first-ten release evidence.
+-- Real delivery events are required; missing/backdated transitions block approval.
+-- All functions and their evidence remain private to service_role.
 
--- Keep the first-ten lookup efficient as the customer-order volume grows.
 create index if not exists production_orders_first_delivered_idx
   on private.production_orders(status,created_at,order_id);
+create index if not exists production_order_events_delivered_proof_idx
+  on private.production_order_events(order_id,created_at)
+  where status='delivered';
 
 create or replace function public.production_first_ten_delivery_audit()
 returns jsonb
@@ -14,21 +15,33 @@ language sql
 security definer
 set search_path='public','private'
 as $$
-  with first_ten as (
-    select o.order_id,o.revision_id,o.recipe_hash,o.status,o.note,o.created_at
+  with delivered_orders as (
+    select o.order_id,o.revision_id,o.recipe_hash,o.status,o.note,o.created_at,
+      (select min(ev.created_at)
+       from private.production_order_events ev
+       where ev.order_id=o.order_id and ev.status='delivered') as delivered_at
     from private.production_orders o
     where o.status='delivered'
-    order by o.created_at asc,o.order_id asc
+  ),
+  first_ten as (
+    select * from delivered_orders
+    order by delivered_at asc nulls first,created_at asc,order_id asc
     limit 10
   )
   select jsonb_build_object(
-    'version','linen-earth-production-first-ten-audit-v1',
+    'version','linen-earth-production-first-ten-audit-v2',
+    -- A current delivered order without a matching chronological delivery
+    -- event invalidates the entire history, not merely that order's evidence.
+    'historyValid',coalesce((
+      select bool_and(delivered_at is not null and delivered_at>=created_at)
+      from delivered_orders
+    ),true),
     'orders',coalesce((
       select jsonb_agg(jsonb_build_object(
         'order_id',o.order_id,'revision_id',o.revision_id,
         'recipe_hash',o.recipe_hash,'status',o.status,
-        'note',o.note,'created_at',o.created_at
-      ) order by o.created_at,o.order_id)
+        'note',o.note,'created_at',o.created_at,'delivered_at',o.delivered_at
+      ) order by o.delivered_at asc nulls first,o.created_at,o.order_id)
       from first_ten o
     ),'[]'::jsonb),
     'evidence',coalesce((
