@@ -218,7 +218,9 @@ test("first-ten API/SQL/UI contract uses all history instead of treating newest-
   const client=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
   const roadmap=readFileSync("src/lib/designer/roadmap-readiness.ts","utf8");
   assert.match(sql,/function public\.production_first_ten_delivery_audit\(\)/);
-  assert.match(sql,/where o\.status='delivered'/);
+  assert.match(sql,/where o\.status='delivered'\s+or exists/);
+  assert.match(sql,/delivered_history\.status='delivered'/);
+  assert.match(sql,/select \* from delivery_history_orders\s+where delivered_at is not null/);
   assert.match(sql,/order by delivered_at asc nulls first,created_at asc,order_id asc/);
   assert.match(sql,/join first_ten o on o\.order_id=e\.order_id/);
   assert.match(sql,/from private\.production_delivery_evidence e/);
@@ -319,9 +321,23 @@ test("first-ten SQL refuses malformed or contradictory production status event c
   assert.match(sql,/created_event_at>=created_at/);
   assert.match(sql,/created_event_at<=delivered_at/);
   assert.match(sql,/after_delivery_transition_count=0/);
+  assert.match(sql,/status='delivered'\s+and delivered_at is not null/);
   assert.match(sql,/ev\.status<>\x27delivered\x27/);
   assert.match(sql,/ev\.created_at >=/);
   assert.match(sql,/historyValid/);
+});
+
+test("historically delivered orders cannot disappear after a current-status regression",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const sql=readFileSync("supabase/migrations/20261103_production_first_ten_delivery_audit.sql","utf8");
+  // The source set must retain orders with a delivery event independently of
+  // their current row status, then fail history validation unless that status
+  // is still delivered. Filtering only on the current row recreated the first
+  // ten from later orders and concealed the contradiction.
+  assert.match(sql,/where o\.status='delivered'\s+or exists \(\s*select 1 from private\.production_order_events delivered_history/);
+  assert.match(sql,/delivered_history\.order_id=o\.order_id\s+and delivered_history\.status='delivered'/);
+  assert.match(sql,/select bool_and\(\s*status='delivered'\s+and delivered_at is not null/);
+  assert.doesNotMatch(sql,/from private\.production_orders o\s+where o\.status='delivered'\s*\n\s*\),/);
 });
 
 test("Phase 10 operator summary never certifies from a capped or stale delivery browser list",async()=>{
