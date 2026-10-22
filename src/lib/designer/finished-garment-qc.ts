@@ -42,11 +42,13 @@ export function normalizeFinishedGarmentQcDraft(input:unknown){
     ? [...new Set(source.defects.map(String).filter((item)=>knownDefects.has(item as FinishedGarmentQcDefectId)))].slice(0,12) as FinishedGarmentQcDefectId[]
     : [];
   const note=String(source.note||"").trim().slice(0,1200);
-  const inspector=String(source.inspector||"").trim().slice(0,120);
-  const inspectionReference=String(source.inspectionReference||"").replace(/\s+/g," ").trim().slice(0,240);
+  // Identity-bearing physical evidence must not be coerced or silently truncated.
+  const inspector=typeof source.inspector==="string"?source.inspector.trim():"";
+  const inspectionReference=typeof source.inspectionReference==="string"
+    ?source.inspectionReference.replace(/\s+/g," ").trim():"";
 
-  if(inspector.length<2) throw new Error("Named inspector / checker is required.");
-  if(inspectionReference.length<3) throw new Error("Physical inspection reference is required.");
+  if(inspector.length<2||inspector.length>120) throw new Error("Named inspector / checker must be 2–120 characters.");
+  if(inspectionReference.length<3||inspectionReference.length>240) throw new Error("Physical inspection reference must be 3–240 characters.");
   if(decision==="approved"&&FINISHED_GARMENT_QC_CHECKS.some((item)=>!checks[item.id])){
     throw new Error("Every finished-garment QC check must pass before approval.");
   }
