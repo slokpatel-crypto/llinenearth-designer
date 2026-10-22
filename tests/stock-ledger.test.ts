@@ -161,3 +161,58 @@ test("operator writes never silently round stock receipts, reservations or cutti
   assert.equal(normalizeStockReservation({...base,quantityMetres:q}).quantityMetres,q);
   assert.equal(normalizeStockConsumption({...base,actualMetres:q}).actualMetres,q);
 });
+
+test("stock evidence identity fields reject aliases rather than truncating live IDs",()=>{
+  const base={
+    fabricId:"formal-shirt-01",
+    eventType:"receipt",
+    revisionId:"LE-LOCK-123456",
+    requestKey:"REQUEST-123456",
+    quantityMetres:2.345,
+    recordedBy:"Stock verifier",
+    requestedBy:"Tailor verifier",
+    sourceReference:"Actual roll worksheet LE-42",
+  };
+  // These share valid prefixes with real ids, but must never resolve to
+  // the same physical fabric, design revision or idempotency key.
+  for(const fabricId of ["x".repeat(160)+"different",42,{},null]){
+    assert.throws(()=>normalizeManualStockEvent({...base,fabricId}),/Fabric ID/i);
+    assert.throws(()=>normalizeStockReservation({...base,fabricId}),/Fabric ID/i);
+  }
+  for(const revisionId of ["r".repeat(220)+"other",true,{}]){
+    assert.throws(()=>normalizeStockReservation({...base,revisionId}),/Locked revision ID/i);
+  }
+  for(const requestKey of ["k".repeat(180)+"second-transaction",false,{}]){
+    assert.throws(()=>normalizeStockReservation({...base,requestKey}),/Reservation request key/i);
+  }
+  assert.equal(normalizeStockReservation({...base,requestKey:" REQUEST-123456 "}).requestKey,"REQUEST-123456");
+});
+
+test("physical stock provenance cannot silently lose an overlong source reference",()=>{
+  const base={
+    fabricId:"formal-shirt-01",eventType:"receipt",
+    revisionId:"LE-LOCK-123456",requestKey:"REQUEST-123456",
+    reservationId:"11111111-1111-4111-8111-111111111111",
+    quantityMetres:2,actualMetres:1,
+    recordedBy:"Stock checker",requestedBy:"Tailor checker",
+    checkedBy:"Cutting checker",releasedBy:"Release checker",
+    sourceReference:"a".repeat(240)+"other-document",
+  };
+  assert.throws(()=>normalizeManualStockEvent(base),/source reference exceeds 240/);
+  assert.throws(()=>normalizeStockReservation(base),/evidence reference exceeds 240/);
+  assert.throws(()=>normalizeStockConsumption(base),/evidence reference exceeds 240/);
+  assert.throws(()=>normalizeStockRelease(base),/release reference exceeds 240/);
+  assert.throws(()=>normalizeManualStockEvent({...base,recordedBy:"x".repeat(121),sourceReference:"roll LE-1"}),/checker.*exceeds 120/i);
+  assert.throws(()=>normalizeStockReservation({...base,requestedBy:"x".repeat(121),sourceReference:"roll LE-1"}),/requester.*exceeds 120/i);
+});
+
+test("only canonical UUID structure can address stock consumption or release",()=>{
+  const base={
+    actualMetres:1,checkedBy:"Checker",releasedBy:"Checker",
+    sourceReference:"Cutting reference LE-42",
+  };
+  for(const reservationId of ["-".repeat(36),"a".repeat(36),"11111111--11-4111-8111-111111111111"]){
+    assert.throws(()=>normalizeStockConsumption({...base,reservationId}),/Valid reservation ID/);
+    assert.throws(()=>normalizeStockRelease({...base,reservationId}),/Valid reservation ID/);
+  }
+});
