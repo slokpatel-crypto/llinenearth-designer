@@ -16,7 +16,7 @@ language sql
 security definer
 set search_path='public','private'
 as $$
-  with delivered_orders as (
+  with delivery_history_orders as (
     select o.order_id,o.revision_id,o.recipe_hash,o.status,o.note,o.created_at,
       (select min(ev.created_at)
        from private.production_order_events ev
@@ -35,10 +35,19 @@ as $$
            where done.order_id=o.order_id and done.status='delivered'
          )) as after_delivery_transition_count
     from private.production_orders o
+    -- Include every order that currently claims delivery OR has ever emitted a
+    -- delivery event. Otherwise a later status regression would erase an
+    -- actual early delivery from both history validation and the first ten.
     where o.status='delivered'
+      or exists (
+        select 1 from private.production_order_events delivered_history
+        where delivered_history.order_id=o.order_id
+          and delivered_history.status='delivered'
+      )
   ),
   first_ten as (
-    select * from delivered_orders
+    select * from delivery_history_orders
+    where delivered_at is not null
     order by delivered_at asc nulls first,created_at asc,order_id asc
     limit 10
   )
@@ -48,7 +57,8 @@ as $$
     -- event invalidates the entire history, not merely that order's evidence.
     'historyValid',coalesce((
       select bool_and(
-        delivered_at is not null
+        status='delivered'
+        and delivered_at is not null
         and delivered_at>=created_at
         and created_event_at is not null
         and created_event_at>=created_at
@@ -56,7 +66,7 @@ as $$
         and delivered_event_count=1
         and after_delivery_transition_count=0
       )
-      from delivered_orders
+      from delivery_history_orders
     ),true),
     'orders',coalesce((
       select jsonb_agg(jsonb_build_object(

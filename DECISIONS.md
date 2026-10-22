@@ -532,3 +532,9 @@ Architecture and product decisions that must persist across coding sessions.
 **Compatibility:** no schema/database migration; existing saved Designer designs, model identity IDs, source photographs and versioned option contracts are unchanged. Internal prototype rendering remains available to engineers, never as evidence of a completed realistic model. Passing structural preflight is still not visual realism approval, verified textile scale, tailor fit approval or deployment authorization.
 
 **Next engineering gate:** exact single identity body mesh, production garment/drape fit and UV evidence, independent front/3-4/side/back visual comparisons, verified supplier physical scale and tailor approval before customer-facing 3D promotion.
+
+## 2026-10-22 — delivery history survives current-status regression
+
+The first-ten production audit selects every order that either currently reports `delivered` or has ever emitted a persisted delivery event. An actual early delivery therefore remains in chronological scope even if a later contradictory transition changes the current order row to another status. Full-history validity now additionally requires every delivery-history order to remain in the terminal `delivered` state; a regression blocks the complete snapshot instead of silently shifting the first-ten window to later clean orders.
+
+Current delivered rows without a delivery event are still included in history validation and fail closed, while only rows with a real delivery timestamp can be ordered into the first-ten payload. The response shape and v2 RPC identifier remain compatible because this corrects selection semantics in the not-yet-released migration. No live migration, customer record, model asset or physical approval is created by this source change. Real delivery evidence, database installation, shop verification and release authorization remain separate gates. Draft only; no merge or deployment.
