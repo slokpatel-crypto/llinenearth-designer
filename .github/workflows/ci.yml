@@ -43,6 +43,13 @@ jobs:
       - run: npm run build
       - name: Load immutable photographic regression baseline
         run: git fetch --depth=1 origin 5126ebb6f82179b7fe25106e71f234248af3a677
+      # Cache only immutable browser binaries; never cache unreviewed project code.
+      # Keep --with-deps and every visual/GLB/browser gate fully enabled.
+      - name: Restore pinned Chromium browser cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-chromium-playwright-1.63.0-v1
       - name: Install pinned browser verification runtime
         env:
           LINEN_BROWSER_QA_RUNTIME: /tmp/linen-browser-qa
