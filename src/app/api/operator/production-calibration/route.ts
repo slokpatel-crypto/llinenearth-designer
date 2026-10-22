@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { normalizeProductionCutEvidenceDraft } from "@/lib/designer/meterage-calibration";
+import { normalizeProductionCutEvidenceDraft, distinctMeasuredCutCaseIds } from "@/lib/designer/meterage-calibration";
 
 export const runtime="nodejs";
 
@@ -84,15 +84,17 @@ export async function GET(){
     }));
     const shirts=cases.filter((item)=>item.garment==="shirt");
     const trousers=cases.filter((item)=>item.garment==="trouser");
+    const shirtIds=distinctMeasuredCutCaseIds(rows,"shirt");
+    const trouserIds=distinctMeasuredCutCaseIds(rows,"trouser");
     return NextResponse.json({
       configured:true,cases:cases.slice(0,100),
       summary:{
         total:cases.length,
-        shirtCases:shirts.length,
-        trouserCases:trousers.length,
-        medianShirtMetres:median(shirts.map((item)=>item.actualMetres)),
-        medianTrouserMetres:median(trousers.map((item)=>item.actualMetres)),
-        readyForModel:shirts.length>=20&&trousers.length>=20,
+        shirtCases:shirtIds?.length??0,
+        trouserCases:trouserIds?.length??0,
+        medianShirtMetres:shirtIds===null?null:median(shirts.map((item)=>item.actualMetres)),
+        medianTrouserMetres:trouserIds===null?null:median(trousers.map((item)=>item.actualMetres)),
+        readyForModel:shirtIds!==null&&trouserIds!==null&&shirtIds.length>=20&&trouserIds.length>=20,
       },
     },{headers:{"cache-control":"private, no-store"}});
   }catch(error){
