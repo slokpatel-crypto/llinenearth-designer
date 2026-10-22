@@ -357,7 +357,40 @@ test("operator 3D QA acceptance is deliberate and cannot be confused with releas
 
 test("malformed local QA cache cannot silently turn into clean empty evidence",()=>{
   const source=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
-  assert.ok(source.includes("catch{return null as T;}"));
+  assert.ok(source.includes("readGarmentViewerScopedCache(localStorage.getItem(key),key,assetKey,fallback)"));
   assert.ok(source.includes("setLocalEvidenceCorrupt(!garmentLatencySubmissionIsLossless(savedLatencies)"));
   assert.ok(source.includes("Recording is locked"));
+});
+
+test("GarmentViewer p95 accepts sub-300ms exact timings but blocks values at or above 300ms",()=>{
+  const justUnder=passingInput();
+  justUnder.interactionLatencyMs=Array(12).fill(299.96);
+  assert.equal(garmentViewerPromotionReadiness(justUnder).latencyReady,true);
+  assert.equal(garmentViewerPromotionReadiness(justUnder).latency.p95Ms,299.96);
+  const justOver=passingInput();
+  justOver.interactionLatencyMs=Array(12).fill(300.04);
+  assert.equal(garmentViewerPromotionReadiness(justOver).latencyReady,false);
+});
+
+test("operator QA submission requires a fresh review after local lab data changes",()=>{
+  const source=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
+  assert.match(source,/JSON.stringify\(currentLatencies\)!==JSON.stringify\(latencies\)/);
+  assert.match(source,/JSON.stringify\(currentAssessments\)!==JSON.stringify\(assessments\)/);
+  assert.match(source,/setAcceptTechnicalEvidence\(false\)/);
+  assert.match(source,/interactionLatencyMs:currentLatencies/);
+  assert.match(source,/realismAssessments:summarizeIndependentRealism\(currentAssessments\).assessments/);
+  assert.ok(!source.includes("value:next.slice(-50)"),"ratings must not be silently truncated");
+  assert.match(source,/garmentRealismSubmissionIsLossless\(next\)/);
+});
+
+test("a new garment asset revision cannot reuse prior accepted physical evidence",()=>{
+  const source=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
+  const refresh=source.slice(source.indexOf("function refreshLocalEvidence()"),source.indexOf("const latencySummary"));
+  for(const required of [
+    "setAcceptTechnicalEvidence(false)",
+    'setStripeFabricId("")','setCheckFabricId("")',
+    "setStripeVerified(false)","setCheckVerified(false)",
+    "setBoundaryChecks({neck:false,cuffs:false,waist:false,trouserGap:false})",
+    "},[assetKey])",
+  ])assert.ok(refresh.includes(required),required);
 });

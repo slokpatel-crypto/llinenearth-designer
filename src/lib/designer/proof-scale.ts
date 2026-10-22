@@ -72,9 +72,13 @@ export type RealismAssessment={
 export function summarizeIndependentRealism(assessments:RealismAssessment[]){
   const latest=new Map<string,RealismAssessment>();
   for(const item of assessments){
-    const viewerId=String(item.viewerId||"").trim().toLowerCase();
-    const rating=Math.round(Number(item.rating));
-    if(viewerId.length<2||viewerId.length>80||rating<1||rating>5) continue;
+    // A malformed or synthetic rating cannot become an independent reviewer.
+    // In particular Math.round(NaN) and numeric-string coercion can otherwise
+    // count an invalid viewer toward the eight-reviewer minimum.
+    const viewerId=typeof item.viewerId==="string"?item.viewerId.trim().toLowerCase():"";
+    const rating=item.rating;
+    if(viewerId.length<2||viewerId.length>80||!Number.isInteger(rating)
+      ||rating<1||rating>5) continue;
     latest.set(viewerId,{...item,viewerId,rating});
   }
   const unique=[...latest.values()];
@@ -103,18 +107,24 @@ export function phase1BoundaryChecksReady(value:unknown){
 }
 
 export function summarizeLatencySamples(values:unknown){
+  // Duration evidence is not a display number. Never coerce null, false,
+  // strings or zero into a passing timing observation.
   const samples=Array.isArray(values)
-    ? values.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10_000).slice(-120)
+    ? values.filter((value):value is number=>typeof value==="number"
+      && Number.isFinite(value)&&value>0&&value<=10_000).slice(-120)
     : [];
   if(!samples.length) return {samples:[],count:0,p95Ms:null as number|null,medianMs:null as number|null,maxMs:null as number|null};
   const ordered=[...samples].sort((a,b)=>a-b);
   const percentile=(fraction:number)=>ordered[Math.min(ordered.length-1,Math.max(0,Math.ceil(ordered.length*fraction)-1))];
+  // Keep the exact value for the strict p95 < 300 ms gate. Rounding a
+  // 299.96 ms result to 300 before checking would falsely block readiness,
+  // and rounding individual tiny observations could silently make zeros.
   return {
-    samples:samples.map((value)=>Math.round(value*10)/10),
+    samples:[...samples],
     count:samples.length,
-    p95Ms:Math.round(percentile(.95)*10)/10,
-    medianMs:Math.round(percentile(.5)*10)/10,
-    maxMs:Math.round(ordered[ordered.length-1]*10)/10,
+    p95Ms:percentile(.95),
+    medianMs:percentile(.5),
+    maxMs:ordered[ordered.length-1],
   };
 }
 
@@ -203,9 +213,11 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
         if(!item||typeof item!=="object") return [];
         const value=item as Record<string,unknown>;
         return [{
-          viewerId:String(value.viewerId||"").slice(0,80),
-          rating:Number(value.rating),
-          recordedAt:String(value.recordedAt||"").slice(0,80),
+          // Do not truncate IDs into a different identity or convert a
+          // missing, fractional or string score into measured realism.
+          viewerId:typeof value.viewerId==="string"?value.viewerId:"",
+          rating:typeof value.rating==="number"?value.rating:Number.NaN,
+          recordedAt:typeof value.recordedAt==="string"?value.recordedAt:"",
         }];
       })
     : [];

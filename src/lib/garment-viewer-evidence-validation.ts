@@ -1,5 +1,7 @@
 import {
   calibratedGarmentScaleErrorPct,
+  GARMENT_VIEWER_LATENCY_STORAGE_KEY,
+  GARMENT_VIEWER_REALISM_STORAGE_KEY,
   parseGarmentEvidenceFabricId,
   type GarmentViewerPatternScaleSample,
 } from "./garment-viewer-readiness.ts";
@@ -113,6 +115,34 @@ export function garmentRealismSubmissionIsLossless(value:unknown):boolean {
       && (typeof row.recordedAt!=="string" || row.recordedAt.length>80)) return false;
     return parsed[index].viewerId===viewerId;
   });
+}
+
+
+/** Read a model-revision-scoped lab cache without hiding corrupt observations. */
+export function readGarmentViewerScopedCache<T>(
+  raw:string|null,
+  storageKey:string,
+  assetKey:string,
+  fallback:T,
+):T|null {
+  if(raw===null) return fallback;
+  try {
+    const parsed:unknown=JSON.parse(raw);
+    if(!parsed || typeof parsed!=="object" || Array.isArray(parsed)) return null;
+    const cache=parsed as Record<string,unknown>;
+    if(typeof cache.assetKey!=="string" || !cache.assetKey) return null;
+    // A valid older asset cache is irrelevant to this model revision.
+    if(cache.assetKey!==assetKey) return fallback;
+    if(storageKey===GARMENT_VIEWER_LATENCY_STORAGE_KEY) {
+      return Array.isArray(cache.samples)?cache.samples as T:null;
+    }
+    if(storageKey===GARMENT_VIEWER_REALISM_STORAGE_KEY) {
+      return Object.prototype.hasOwnProperty.call(cache,"value")?cache.value as T:null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 const measure=(text:string,max:number)=>{

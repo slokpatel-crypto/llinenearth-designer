@@ -16,28 +16,17 @@ import {
   garmentLatencySubmissionIsLossless,
   garmentRealismSubmissionIsLossless,
   parseMeasuredScaleInput,
+  readGarmentViewerScopedCache,
 } from "@/lib/garment-viewer-evidence-validation";
 
 type Boundaries={neck:boolean;cuffs:boolean;waist:boolean;trouserGap:boolean};
-type StoredEvidence<T>={assetKey:string;value:T};
-
-function readStored<T>(key:string,assetKey:string,fallback:T):T{
-  try{
-    const raw=localStorage.getItem(key);
-    if(!raw) return fallback;
-    const parsed=JSON.parse(raw) as StoredEvidence<T>|{assetKey?:unknown;samples?:unknown};
-    if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||String((parsed as {assetKey?:unknown}).assetKey||"")!==assetKey) return fallback;
-    if(key===GARMENT_VIEWER_LATENCY_STORAGE_KEY){
-      const samples=(parsed as {samples?:unknown}).samples;
-      return (Array.isArray(samples)?samples:null) as T;
-    }
-    // Existing cache keys with missing or malformed rows are not clean, empty
-    // observations. Only an absent key may legitimately use the fallback.
-    return (Object.prototype.hasOwnProperty.call(parsed,"value")
-      ? (parsed as StoredEvidence<T>).value : null) as T;
-  // A corrupt stored lab payload must not silently become an empty, valid
-  // sample list. Null makes the existing losslessness check lock recording.
-  }catch{return null as T;}
+function readStored<T>(key:string,assetKey:string,fallback:T):T|null {
+  try {
+    return readGarmentViewerScopedCache(localStorage.getItem(key),key,assetKey,fallback);
+  } catch {
+    // Block evidence acceptance if browser storage fails at all.
+    return null;
+  }
 }
 
 export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity:GarmentViewerAssetIdentity|null}){
@@ -70,6 +59,9 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
   const [message,setMessage]=useState("");
 
   function refreshLocalEvidence(){
+    // Refresh means the operator must explicitly review again, even if the
+    // new samples happen to produce the same aggregate scores.
+    setAcceptTechnicalEvidence(false);
     if(!assetKey){setLatencies([]);setAssessments([]);setLocalEvidenceCorrupt(false);return;}
     const savedLatencies=readStored<unknown>(GARMENT_VIEWER_LATENCY_STORAGE_KEY,assetKey,[]);
     const savedRatings=readStored<unknown>(GARMENT_VIEWER_REALISM_STORAGE_KEY,assetKey,[]);
@@ -81,23 +73,46 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
     setAssessments(localAssessments);
   }
 
-  useEffect(()=>{refreshLocalEvidence();},[assetKey]);
+  useEffect(()=>{
+    refreshLocalEvidence();
+    // Changing the GLB/manifest identity also invalidates the old physical
+    // measurements, boundary ticks and reviewed note; none is transferable.
+    setStripeFabricId("");setStripePhysicalMm("");setStripeRepeatPx("");
+    setStripeMarkerMm("");setStripeMarkerPx("");setStripeReference("");setStripeVerified(false);
+    setCheckFabricId("");setCheckPhysicalMm("");setCheckRepeatPx("");
+    setCheckMarkerMm("");setCheckMarkerPx("");setCheckReference("");setCheckVerified(false);
+    setBoundaryChecks({neck:false,cuffs:false,waist:false,trouserGap:false});
+    setNote("");setMessage("");
+  },[assetKey]);
 
   const latencySummary=useMemo(()=>summarizeLatencySamples(latencies),[latencies]);
   const realismSummary=useMemo(()=>summarizeIndependentRealism(assessments),[assessments]);
 
-  function saveAssessments(next:RealismAssessment[]){
-    setAssessments(next);
-    if(!assetKey) return;
-    try{localStorage.setItem(GARMENT_VIEWER_REALISM_STORAGE_KEY,JSON.stringify({assetKey,value:next.slice(-50)}));}catch{}
+  function saveAssessments(next:RealismAssessment[]):boolean {
+    if(!assetKey) return false;
+    try {
+      // Reject overflow rather than silently dropping an independent reviewer.
+      localStorage.setItem(GARMENT_VIEWER_REALISM_STORAGE_KEY,JSON.stringify({assetKey,value:next}));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   function addRating(){
     const code=viewerCode.trim().toLowerCase();
     const score=Math.round(Number(rating));
-    if(code.length<2||score<1||score>5){setMessage("Add a viewer code and a 1–5 rating.");return;}
+    if(code.length<2||code.length>80||score<1||score>5){setMessage("Add a viewer code (2–80 characters) and a 1–5 rating.");return;}
     const next=[...assessments.filter((item)=>item.viewerId.toLowerCase()!==code),{viewerId:code,rating:score,recordedAt:new Date().toISOString()}];
-    saveAssessments(next);
+    if(!garmentRealismSubmissionIsLossless(next)){
+      setMessage("Cannot add this rating: the lab allows at most 50 distinct valid viewer codes. Replace an existing code if needed.");
+      return;
+    }
+    if(!saveAssessments(next)){
+      setMessage("Rating could not be saved to the model-scoped lab cache. Check browser storage before recording QA.");
+      return;
+    }
+    refreshLocalEvidence();
     setViewerCode("");
     setMessage("");
   }
@@ -112,9 +127,23 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
     if(!garmentLatencySubmissionIsLossless(savedLatencies)
       || !garmentRealismSubmissionIsLossless(savedRatings)){
       setLocalEvidenceCorrupt(true);
+      setAcceptTechnicalEvidence(false);
       setMessage("Lab evidence contains invalid, duplicated or truncated measurements. Re-capture the timing samples in 3D Lab or replace the invalid ratings before recording QA.");
       return;
     }
+    const currentLatencies=parseGarmentLatencySamples(savedLatencies);
+    const currentAssessments=parseGarmentRealismAssessments(savedRatings);
+    // Never submit observations silently replaced in another tab since the
+    // operator reviewed this page. Refresh the UI and require re-acceptance.
+    if(JSON.stringify(currentLatencies)!==JSON.stringify(latencies)
+      || JSON.stringify(currentAssessments)!==JSON.stringify(assessments)){
+      setLatencies(currentLatencies);
+      setAssessments(currentAssessments);
+      setAcceptTechnicalEvidence(false);
+      setMessage("Lab evidence changed since this review. Check the refreshed latency and viewer metrics, then accept the technical QA again.");
+      return;
+    }
+    setLocalEvidenceCorrupt(false);
     const stripeSample=parseMeasuredScaleInput(stripeFabricId,stripePhysicalMm,stripeRepeatPx,stripeMarkerMm,stripeMarkerPx,stripeReference,"stripe",stripeVerified);
     const checkSample=parseMeasuredScaleInput(checkFabricId,checkPhysicalMm,checkRepeatPx,checkMarkerMm,checkMarkerPx,checkReference,"check",checkVerified);
     if((stripeVerified&&!stripeSample)||(checkVerified&&!checkSample)){
@@ -139,8 +168,8 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
             realismRubricVersion:GARMENT_VIEWER_REALISM_RUBRIC_VERSION,
             ...assetIdentity,
             patternScaleSamples,
-            interactionLatencyMs:latencies,
-            realismAssessments:realismSummary.assessments,
+            interactionLatencyMs:currentLatencies,
+            realismAssessments:summarizeIndependentRealism(currentAssessments).assessments,
             boundaryChecks,
             note:note.trim(),
           },
