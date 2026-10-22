@@ -72,9 +72,13 @@ export type RealismAssessment={
 export function summarizeIndependentRealism(assessments:RealismAssessment[]){
   const latest=new Map<string,RealismAssessment>();
   for(const item of assessments){
-    const viewerId=String(item.viewerId||"").trim().toLowerCase();
-    const rating=Math.round(Number(item.rating));
-    if(viewerId.length<2||viewerId.length>80||rating<1||rating>5) continue;
+    // A malformed or synthetic rating cannot become an independent reviewer.
+    // In particular Math.round(NaN) and numeric-string coercion can otherwise
+    // count an invalid viewer toward the eight-reviewer minimum.
+    const viewerId=typeof item.viewerId==="string"?item.viewerId.trim().toLowerCase():"";
+    const rating=item.rating;
+    if(viewerId.length<2||viewerId.length>80||!Number.isInteger(rating)
+      ||rating<1||rating>5) continue;
     latest.set(viewerId,{...item,viewerId,rating});
   }
   const unique=[...latest.values()];
@@ -209,9 +213,11 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
         if(!item||typeof item!=="object") return [];
         const value=item as Record<string,unknown>;
         return [{
-          viewerId:String(value.viewerId||"").slice(0,80),
-          rating:Number(value.rating),
-          recordedAt:String(value.recordedAt||"").slice(0,80),
+          // Do not truncate IDs into a different identity or convert a
+          // missing, fractional or string score into measured realism.
+          viewerId:typeof value.viewerId==="string"?value.viewerId:"",
+          rating:typeof value.rating==="number"?value.rating:Number.NaN,
+          recordedAt:typeof value.recordedAt==="string"?value.recordedAt:"",
         }];
       })
     : [];
