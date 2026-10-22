@@ -304,7 +304,15 @@ test("new latency submissions retain slow and malformed measurements instead of 
   assert.equal(garmentLatencySubmissionIsLossless("invalid"),false);
   assert.equal(garmentLatencySubmissionIsLossless(Array(121).fill(120)),false);
   assert.equal(garmentLatencySubmissionIsLossless(Array(120).fill(120)),true);
-  assert.equal(garmentLatencySubmissionIsLossless([...passing,0.02]),false,"rounding must not drop a tiny valid input");
+  assert.equal(garmentLatencySubmissionIsLossless([...passing,0.02]),true,"tiny positive observations remain valid when stored exactly");
+});
+
+test("QA storage preserves exact latency observations at threshold boundaries",()=>{
+  const samples=[0.02,249.96,250.04,250.049,250.051,9999.999];
+  assert.equal(garmentLatencySubmissionIsLossless(samples),true);
+  const stored=normalizeGarmentViewerEvidenceForStorage({interactionLatencyMs:samples});
+  assert.deepEqual(stored.interactionLatencyMs,samples);
+  assert.deepEqual(JSON.parse(JSON.stringify(stored)).interactionLatencyMs,samples);
 });
 
 test("realism submissions cannot omit bad assessments or truncate viewer identities",()=>{
