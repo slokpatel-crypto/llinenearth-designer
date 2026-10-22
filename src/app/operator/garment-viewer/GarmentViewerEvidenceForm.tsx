@@ -32,7 +32,9 @@ function readStored<T>(key:string,assetKey:string,fallback:T):T{
       return (Array.isArray(samples)?samples:fallback) as T;
     }
     return ((parsed as StoredEvidence<T>).value ?? fallback) as T;
-  }catch{return fallback;}
+  // A corrupt stored lab payload must not silently become an empty, valid
+  // sample list. Null makes the existing losslessness check lock recording.
+  }catch{return null as T;}
 }
 
 export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity:GarmentViewerAssetIdentity|null}){
