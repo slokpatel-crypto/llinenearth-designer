@@ -261,3 +261,15 @@ test("backdated or unparseable delivered timestamps cannot prove zero re-entry",
     assert.equal(summary.gateComplete,false);
   }
 });
+
+test("live release refuses missing or corrupted first-ten delivery audit RPC",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const checker=readFileSync("scripts/check-cloud-readiness.mjs","utf8");
+  const release=readFileSync("scripts/release-readiness.mjs","utf8");
+  assert.match(checker,/production_first_ten_delivery_audit/);
+  assert.match(checker,/linen-earth-production-first-ten-audit-v2/);
+  assert.match(checker,/basis\?\.historyValid===true/);
+  assert.match(checker,/basis\.orders\.length<=10/);
+  assert.match(release,/20261103_production_first_ten_delivery_audit.sql/);
+  assert.match(release,/production_first_ten_delivery_audit/);
+});
