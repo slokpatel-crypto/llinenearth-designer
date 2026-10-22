@@ -95,7 +95,7 @@ export type LaunchChecklistEvent={
 
 /** Unverifiable, forged or future-dated audit rows must never approve launch. */
 function validLaunchRecordedAt(value:unknown):value is string {
-  if(typeof value!=="string"||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value)) return false;
+  if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return false;
   const at=Date.parse(value);
   return Number.isFinite(at)&&at<=Date.now()+10*60_000;
 }
