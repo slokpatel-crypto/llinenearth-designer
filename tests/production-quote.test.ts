@@ -29,3 +29,27 @@ test("quote helper never allows an adjustment to make the total negative",()=>{
     adjustment:-501,
   }),/cannot be negative/);
 });
+
+test("operator quote amounts never coerce null, booleans, arrays or nondecimal strings into money",()=>{
+  for(const invalid of [null,false,true,[],{},undefined,""," ","0x20","0b100","1e3","-3",Infinity,NaN]){
+    assert.throws(()=>normalizeProductionQuoteDraft({
+      lineItems:[{label:"Fabric",amount:invalid}],
+    }),/Invalid quote line item amount/,String(invalid));
+  }
+  for(const invalid of [null,false,true,[],{},""," ","0x10","1e3","--3",Infinity,NaN]){
+    assert.throws(()=>normalizeProductionQuoteDraft({
+      lineItems:[{label:"Fabric",amount:300}],adjustment:invalid,
+    }),/Invalid quote adjustment/,String(invalid));
+  }
+});
+
+test("decimal text from a quote form remains supported without JS numeric coercion",()=>{
+  const result=normalizeProductionQuoteDraft({
+    currency:"INR",
+    lineItems:[{label:"Fabric",amount:"1499.995"},{label:"Tailoring",amount:".25"}],
+    adjustment:-25,
+  });
+  assert.equal(result.subtotal,1500.25);
+  assert.equal(result.adjustment,-25);
+  assert.equal(result.total,1475.25);
+});
