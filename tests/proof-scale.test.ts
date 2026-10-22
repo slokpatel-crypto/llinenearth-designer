@@ -382,3 +382,48 @@ test("strict 300ms p95 gate does not round up a valid 299.96ms sample",()=>{
     boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
   }).accepted,false);
 });
+
+test("independent realism ratings cannot count NaN, fractional, coerced or truncated identities",()=>{
+  const legitimate=Array.from({length:6},(_,i)=>({viewerId:`review-${i}`,rating:5}));
+  const invalid=[
+    {viewerId:"bad-missing",rating:undefined},
+    {viewerId:"bad-string",rating:"5"},
+    {viewerId:"bad-fraction",rating:4.6},
+    {viewerId:"bad-null",rating:null},
+    {viewerId:"x".repeat(81),rating:5},
+    {viewerId:32,rating:5},
+  ];
+  const result=summarizeIndependentRealism([...legitimate,...invalid] as never);
+  assert.equal(result.uniqueViewers,6);
+  assert.equal(result.strongRatings,6);
+  assert.equal(result.ready,false);
+});
+
+test("historical Phase 1 proof cannot convert non-measured viewer scores into approvals",()=>{
+  const base={
+    version:"linen-earth-phase1-proof-v4",
+    scaleCoordinateSystem:"photo-1024x1536-fixture",
+    repeatMm:10,
+    physicalEvidenceNote:"Owner measured the repeat and photo calibration fixture with a steel ruler.",
+    photoReferenceMm:100,
+    photoReferencePx:82,
+    measuredPreviewRepeatPx:8.2,
+    realModelSampleDurationsMs:Array(12).fill(200),
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  };
+  const verified=Array.from({length:8},(_,i)=>({viewerId:`review-${i}`,rating:5}));
+  assert.equal(evaluateRecordedPhase1ProofEvidence({...base,realismAssessments:verified}).coreAccepted,true);
+  for(const bad of [
+    {viewerId:"bad-score",rating:"5"},
+    {viewerId:"bad-fraction",rating:4.6},
+    {viewerId:"bad-missing"},
+    {viewerId:"y".repeat(81),rating:5},
+    {viewerId:42,rating:5},
+  ]){
+    const result=evaluateRecordedPhase1ProofEvidence({
+      ...base,realismAssessments:[...verified.slice(0,7),bad],
+    });
+    assert.equal(result.realism.uniqueViewers,7,JSON.stringify(bad));
+    assert.equal(result.coreAccepted,false,JSON.stringify(bad));
+  }
+});
