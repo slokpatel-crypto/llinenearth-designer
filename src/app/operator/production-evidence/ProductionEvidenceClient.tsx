@@ -9,10 +9,12 @@ import {
 
 type Order={order_id:string;revision_id:string;recipe_hash:string;status:string;note:string;created_at:string};
 type Evidence={evidence_id:string;order_id:string;revision_id:string;recipe_hash:string;manual_design_reentry:boolean;reentry_fields:string[];note:string;operator:string;evidence_reference?:string;created_at:string;order_created_at:string};
+type FirstTenBasis={version:"linen-earth-production-first-ten-audit-v1";orders:Order[];evidence:Evidence[]};
 
 export default function ProductionEvidenceClient(){
   const [orders,setOrders]=useState<Order[]>([]);
   const [evidence,setEvidence]=useState<Evidence[]>([]);
+  const [firstTenBasis,setFirstTenBasis]=useState<FirstTenBasis|null>(null);
   const [configured,setConfigured]=useState(true);
   const [selectedOrderId,setSelectedOrderId]=useState("");
   const [manualChoice,setManualChoice]=useState<"unset"|"yes"|"no">("unset");
@@ -30,20 +32,34 @@ export default function ProductionEvidenceClient(){
     if(!response.ok){setMessage(data.error||"Production evidence could not be loaded.");return;}
     const nextOrders=Array.isArray(data.orders)?data.orders:[];
     const nextEvidence=Array.isArray(data.evidence)?data.evidence:[];
+    const rawBasis=data.firstTenBasis as Partial<FirstTenBasis>|null;
+    const basis:FirstTenBasis|null=rawBasis?.version==="linen-earth-production-first-ten-audit-v1"
+      &&Array.isArray(rawBasis.orders)&&Array.isArray(rawBasis.evidence)
+      ?rawBasis as FirstTenBasis:null;
+    // Include the oldest ten deliveries in the operator queue even if they
+    // fell out of the newest-500 browsing RPC.
+    const browseOrders=[...new Map([...nextOrders,...(basis?.orders||[])]
+      .map((item:Order)=>[item.order_id,item])).values()];
+    const browseEvidence=[...new Map([...nextEvidence,...(basis?.evidence||[])]
+      .map((item:Evidence)=>[item.evidence_id,item])).values()];
     setConfigured(data.configured!==false);
-    setOrders(nextOrders);
-    setEvidence(nextEvidence);
+    setFirstTenBasis(basis);
+    setOrders(browseOrders);
+    setEvidence(browseEvidence);
     const requested=new URLSearchParams(window.location.search).get("order");
-    const delivered=nextOrders.filter((item:Order)=>item.status==="delivered");
+    const delivered=browseOrders.filter((item:Order)=>item.status==="delivered");
     const requestedDelivered=delivered.find((item:Order)=>item.order_id===requested);
-    const firstMissing=delivered.find((item:Order)=>!nextEvidence.some((row:Evidence)=>row.order_id===item.order_id));
+    const firstMissing=delivered.find((item:Order)=>!browseEvidence.some((row:Evidence)=>row.order_id===item.order_id));
     setSelectedOrderId((current)=>current||requestedDelivered?.order_id||firstMissing?.order_id||delivered[0]?.order_id||"");
   }
 
   useEffect(()=>{void load();},[]);
 
   const delivered=useMemo(()=>[...orders].filter((item)=>item.status==="delivered").sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at)),[orders]);
-  const summary=useMemo(()=>summarizeProductionDeliveryEvidence(orders,evidence),[orders,evidence]);
+  // A positive first-ten proof must come from the oldest-ten SQL audit basis,
+  // never from the operator browsing lists that have 500-row caps.
+  const summary=useMemo(()=>summarizeProductionDeliveryEvidence(
+    firstTenBasis?.orders||[],firstTenBasis?.evidence||[]),[firstTenBasis]);
   const selected=delivered.find((item)=>item.order_id===selectedOrderId)||delivered[0]||null;
   const selectedEvidence=selected?evidence.find((item)=>item.order_id===selected.order_id)||null:null;
   const choiceValid=manualChoice!=="unset"&&operator.trim().length>=2&&evidenceReference.trim().length>=3&&(manualChoice==="no"||reentryFields.length>0||note.trim().length>=3);
@@ -100,6 +116,7 @@ export default function ProductionEvidenceClient(){
     </header>
 
     {!configured&&<section className="productionEvidenceNotice">Production evidence migration is not installed yet.</section>}
+    {configured&&!firstTenBasis&&<section className="productionEvidenceNotice">First-ten certification is unavailable until the full-history audit migration is installed. The order queue remains usable, but browsing results cannot prove release readiness.</section>}
     {message&&<section className="productionEvidenceNotice">{message}</section>}
     {summary.sourceCoverageUnknown&&<section className="productionEvidenceNotice">Audit proof is incomplete: the 500-row history limit may exclude older deliveries or inspections. Retrieve the full history before certifying the first ten orders.</section>}
     {summary.duplicateEvidenceSourceCount>0&&<section className="productionEvidenceNotice">Shared physical job-card reference detected across distinct delivered orders. Independently identify and review each source before sign-off.</section>}
