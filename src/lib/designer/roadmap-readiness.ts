@@ -159,16 +159,16 @@ export function summarizeRoadmapReadiness(input:RoadmapReadinessInput){
   const phase7Complete=renderRelease.gateComplete;
 
   const productionInput=object(input.productionEvidence);
-  // The live API explicitly includes firstTenBasis. If the full-history
-  // migration is absent, the field is null and Phase 8 must stay open;
-  // the newest-500 operator browse records are never release evidence.
-  // Direct legacy/fixture inputs without the field keep their pure-test path.
-  const productionBasis=productionInput.firstTenBasis===undefined
-    ?productionInput
-    :object(productionInput.firstTenBasis).version==="linen-earth-production-first-ten-audit-v2"
-      &&object(productionInput.firstTenBasis).historyValid===true
-      ?object(productionInput.firstTenBasis)
-      :{};
+  // Phase 8 never certifies from the newest-500 browsing payload, even if a
+  // caller omits the new field (for example a partially upgraded deployment).
+  // Delivery-event timestamps from the complete server RPC are compulsory.
+  const rawProductionBasis=object(productionInput.firstTenBasis);
+  const productionBasisOrders=array(rawProductionBasis.orders);
+  const productionBasis=rawProductionBasis.version==="linen-earth-production-first-ten-audit-v2"
+    &&rawProductionBasis.historyValid===true
+    &&productionBasisOrders.every((row)=>typeof row.delivered_at==="string"
+      &&Number.isFinite(Date.parse(row.delivered_at)))
+    ?rawProductionBasis:{};
   const productionSummary=summarizeProductionDeliveryEvidence(
     array(productionBasis.orders) as never[],
     array(productionBasis.evidence) as never[],
