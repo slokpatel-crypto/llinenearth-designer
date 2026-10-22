@@ -158,3 +158,23 @@ export function normalizeProductionCutEvidenceDraft(input:unknown){
     note:String(source.note||"").replace(/\s+/g," ").trim().slice(0,1200),
   };
 }
+
+/** The calibration threshold counts unique recorded cut cases, never raw rows.
+ * Invalid or duplicated case identities must be reconciled before approval.
+ */
+export function distinctMeasuredCutCaseIds(rows:unknown,garment:MeterageGarment):string[]|null {
+  if(!Array.isArray(rows)) return null;
+  const ids:string[]=[];
+  const seen=new Set<string>();
+  for(const candidate of rows){
+    const row=record(candidate);
+    if(row.garment!==garment) continue;
+    const caseId=typeof row.case_id==="string"?row.case_id.trim():"";
+    if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) return null;
+    const key=caseId.toLowerCase();
+    if(seen.has(key)) return null;
+    seen.add(key);
+    ids.push(caseId);
+  }
+  return ids;
+}
