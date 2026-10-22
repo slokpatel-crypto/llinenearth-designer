@@ -205,7 +205,7 @@ test("live Phase 8 cannot certify newest-500 browsing rows without a complete ol
   assert.equal(noMigration.phases.find((item)=>item.phase===8)?.evidenceComplete,false);
   const fullBasis=summarizeRoadmapReadiness({
     productionEvidence:{orders:[],evidence:[],firstTenBasis:{
-      version:"linen-earth-production-first-ten-audit-v1",orders,evidence,
+      version:"linen-earth-production-first-ten-audit-v2",historyValid:true,orders,evidence,
     }},meterageModel,
   });
   assert.equal(fullBasis.phases.find((item)=>item.phase===8)?.evidenceComplete,true);
@@ -213,4 +213,25 @@ test("live Phase 8 cannot certify newest-500 browsing rows without a complete ol
     productionEvidence:{orders,evidence,firstTenBasis:{version:"unverified",orders,evidence}},meterageModel,
   });
   assert.equal(forgedVersion.phases.find((item)=>item.phase===8)?.evidenceComplete,false);
+});
+
+test("roadmap rejects an otherwise complete production audit with missing delivery events",()=>{
+  const orders=Array.from({length:10},(_,i)=>({
+    order_id:"delivered-"+i,status:"delivered",
+    created_at:"2026-09-01T10:00:00Z",delivered_at:"2026-10-01T10:00:00Z",
+  }));
+  const evidence=orders.map((item,i)=>({
+    order_id:item.order_id,manual_design_reentry:false,operator:"Tailor Checker",
+    evidence_reference:"job-"+i,created_at:"2026-10-02T10:00:00Z",
+  }));
+  const meterageModel={models:[{garment:"shirt",status:"approved"},{garment:"trouser",status:"approved"}]};
+  for(const historyValid of [false,null,undefined]){
+    const summary=summarizeRoadmapReadiness({
+      productionEvidence:{firstTenBasis:{
+        version:"linen-earth-production-first-ten-audit-v2",
+        historyValid,orders,evidence,
+      }},meterageModel,
+    });
+    assert.equal(summary.phases.find((item)=>item.phase===8)?.evidenceComplete,false);
+  }
 });
