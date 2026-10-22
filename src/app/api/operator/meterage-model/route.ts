@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { normalizeMeterageCalibrationDraft } from "@/lib/designer/meterage-calibration";
+import { normalizeMeterageCalibrationDraft, distinctMeasuredCutCaseIds } from "@/lib/designer/meterage-calibration";
 
 export const runtime="nodejs";
 
@@ -30,10 +30,9 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 
 async function evidenceCaseIds(garment:"shirt"|"trouser"){
   const rows=await rpc<Array<{case_id:string;garment:string}>>("production_cut_evidence_list",{p_limit:2000});
-  return rows
-    .filter((row)=>row.garment===garment)
-    .map((row)=>String(row.case_id||"").trim())
-    .filter(Boolean);
+  const identities=distinctMeasuredCutCaseIds(rows,garment);
+  if(identities===null) throw new Error("Production cut ledger contains invalid or repeated case identities; reconcile physical evidence before creating a meterage model.");
+  return identities;
 }
 
 export async function GET(){

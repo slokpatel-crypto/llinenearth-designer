@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
-import { buildProductionHandoff } from "@/lib/designer/production-handoff";
+import { buildVerifiedProductionHandoff } from "@/lib/designer/production-handoff";
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
-import { buildProductionPacket } from "@/lib/designer/production-packet";
+import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet";
 import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
@@ -76,24 +76,37 @@ export default function ProductionClient(){
     a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
   }
 
-  function exportHandoff(){
-    if(!loadedRevision) return;
-    const handoff=buildProductionHandoff(loadedRevision);
-    download(`linen-earth-production-handoff-${loadedRevision.revisionId.toLowerCase()}.json`,"application/json",JSON.stringify(handoff,null,2));
+  function exportError(error:unknown){
+    setMessage(error instanceof Error
+      ? "Cannot export: "+error.message
+      : "Cannot export: verify the original locked design revision and reload it.");
   }
 
-  function exportTechPack(){
+  async function exportHandoff(){
     if(!loadedRevision) return;
-    const handoff=buildProductionHandoff(loadedRevision);
-    download(techPackFilename(handoff),"text/html;charset=utf-8",buildTailorTechPackHtml(handoff));
+    try{
+      const handoff=await buildVerifiedProductionHandoff(loadedRevision);
+      download(`linen-earth-production-handoff-${handoff.designRevisionId.toLowerCase()}.json`,
+        "application/json",JSON.stringify(handoff,null,2));
+    }catch(error){exportError(error);}
   }
-  function exportProductionPacket(){
+
+  async function exportTechPack(){
     if(!loadedRevision) return;
+    try{
+      const handoff=await buildVerifiedProductionHandoff(loadedRevision);
+      download(techPackFilename(handoff),"text/html;charset=utf-8",buildTailorTechPackHtml(handoff));
+    }catch(error){exportError(error);}
+  }
+
+  async function exportProductionPacket(){
+    if(!loadedRevision) return;
+    try{
     const quoteMatch=quotes.find((item)=>item.revision_id===loadedRevision.revisionId&&item.recipe_hash===loadedRevision.recipeHash&&item.status==="accepted")
       || quotes.find((item)=>item.revision_id===loadedRevision.revisionId&&item.recipe_hash===loadedRevision.recipeHash)
       || null;
     const orderMatch=orders.find((item)=>item.revision_id===loadedRevision.revisionId&&item.recipe_hash===loadedRevision.recipeHash)||null;
-    const packet=buildProductionPacket({
+    const packet=await buildVerifiedProductionPacket({
       revision:loadedRevision,
       quote:quoteMatch?{
         quoteId:quoteMatch.quote_id,currency:quoteMatch.currency,total:Number(quoteMatch.total),status:quoteMatch.status,createdAt:quoteMatch.created_at,
@@ -102,15 +115,27 @@ export default function ProductionClient(){
         orderId:orderMatch.order_id,status:orderMatch.status,createdAt:orderMatch.created_at,
       }:null,
     });
-    download(`linen-earth-production-packet-${loadedRevision.revisionId.toLowerCase()}.json`,"application/json",JSON.stringify(packet,null,2));
+    download(`linen-earth-production-packet-${packet.revisionId.toLowerCase()}.json`,
+      "application/json",JSON.stringify(packet,null,2));
+    }catch(error){exportError(error);}
   }
 
 
-  const quoteItems=useMemo(()=>[
-    {label:quote.line1Label.trim(),amount:Number(quote.line1Amount)},
-    {label:quote.line2Label.trim(),amount:Number(quote.line2Amount)},
-  ].filter((item)=>item.label&&Number.isFinite(item.amount)&&item.amount>=0),[quote]);
-  const canQuote=Boolean(loadedRevision)&&quote.revisionId.trim().length>=12&&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteItems.length>0;
+  const quoteRows=useMemo(()=>[
+    {label:quote.line1Label.trim(),amountText:quote.line1Amount.trim()},
+    {label:quote.line2Label.trim(),amountText:quote.line2Amount.trim()},
+  ],[quote.line1Label,quote.line1Amount,quote.line2Label,quote.line2Amount]);
+  const decimalPrice=(text:string)=>/^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/.test(text)
+    && Number.isFinite(Number(text))&&Number(text)>=0&&Number(text)<=10_000_000;
+  const quoteRowsValid=quoteRows.every((row)=>
+    (!row.label&&!row.amountText)||(Boolean(row.label)&&decimalPrice(row.amountText)));
+  const quoteItems=quoteRows.filter((row)=>row.label&&decimalPrice(row.amountText))
+    .map((row)=>({label:row.label,amount:Number(row.amountText)}));
+  const adjustmentValid=/^-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/.test(quote.adjustment.trim())
+    && Number.isFinite(Number(quote.adjustment))&&Math.abs(Number(quote.adjustment))<=10_000_000;
+  const canQuote=Boolean(loadedRevision)&&quote.revisionId.trim().length>=12
+    &&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteItems.length>0
+    &&quoteRowsValid&&adjustmentValid;
   const acceptedQuotes=useMemo(()=>quotes.filter((item)=>item.status==="accepted"&&(
     !order.revisionId || (item.revision_id===order.revisionId&&item.recipe_hash===order.recipeHash)
   )),[quotes,order.revisionId,order.recipeHash]);
@@ -137,9 +162,9 @@ export default function ProductionClient(){
         <span><small>TROUSER</small><b>{loadedRevision.garmentSpec.fabrics.trouser.name}</b></span>
         <span><small>CONSTRUCTION</small><b>{loadedRevision.garmentSpec.shirt.collar} · {loadedRevision.garmentSpec.shirt.cuff}</b></span>
         <div>
-          <button onClick={exportHandoff}>Export tailor handoff</button>
-          <button onClick={exportTechPack}>Export tech pack</button>
-          <button onClick={exportProductionPacket}>Export production packet</button>
+          <button onClick={()=>void exportHandoff()}>Export tailor handoff</button>
+          <button onClick={()=>void exportTechPack()}>Export tech pack</button>
+          <button onClick={()=>void exportProductionPacket()}>Export production packet</button>
           <Link href={`/operator/stock?fabric=${encodeURIComponent(loadedRevision.garmentSpec.fabrics.shirt.id)}&revision=${encodeURIComponent(loadedRevision.revisionId)}`}>Reserve shirt stock</Link>
           <Link href={`/operator/stock?fabric=${encodeURIComponent(loadedRevision.garmentSpec.fabrics.trouser.id)}&revision=${encodeURIComponent(loadedRevision.revisionId)}`}>Reserve trouser stock</Link>
         </div>

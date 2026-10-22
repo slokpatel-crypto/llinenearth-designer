@@ -5,6 +5,7 @@ import {
   buildVerifiedProductionHandoff,verifyProductionHandoff,
 } from "../src/lib/designer/production-handoff.ts";
 import type {CanonicalGarmentSpec} from "../src/lib/designer/garment-spec.ts";
+import {buildVerifiedProductionPacket} from "../src/lib/designer/production-packet.ts";
 
 const base:CanonicalGarmentSpec={
   version:"linen-earth-garment-spec-v1",
@@ -97,4 +98,34 @@ test("the handoff is an independent copy and never silently reserves stock or si
   assert.equal(revision.garmentSpec.shirt.finishedTargets[0].finishedCm.min,103);
   assert.equal(packet.production.quote.amount,null);
   assert.equal(packet.production.stockReservation.reservationId,null);
+});
+
+test("verified production download rejects a revised fabric identity even if packet would otherwise serialize",async()=>{
+  const original=await lockGarmentSpec(base,{lockedAt:"2026-10-10T14:00:00Z"});
+  const good=await buildVerifiedProductionPacket({
+    revision:original,
+    quote:{quoteId:"quote-01",currency:"INR",total:4500,status:"accepted",createdAt:"2026-10-10T14:05:00Z"},
+  });
+  assert.equal(good.handoff.recipeHash,original.recipeHash);
+  assert.equal(good.handoff.fabrics.shirt.id,"shirt-stock-original");
+  assert.equal(good.traceability.noDesignDataReEntry,false);
+  const tampered=structuredClone(original);
+  tampered.garmentSpec.fabrics.shirt.id="other-physical-roll";
+  await assert.rejects(()=>buildVerifiedProductionPacket({revision:tampered}),/hash no longer matches/);
+  const manipulatedFit=structuredClone(original);
+  manipulatedFit.garmentSpec.shirt.finishedTargets[0].finishedCm.max+=2;
+  await assert.rejects(()=>buildVerifiedProductionPacket({revision:manipulatedFit}),/hash no longer matches/);
+});
+
+test("all three operator production exports verify hash before writing a file",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const source=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  const exports=source.slice(source.indexOf("async function exportHandoff()"),source.indexOf("const quoteRows="));
+  assert.equal((exports.match(/await buildVerifiedProductionHandoff\(loadedRevision\)/g)||[]).length,2);
+  assert.ok(exports.includes("await buildVerifiedProductionPacket({"));
+  assert.ok(!exports.includes("buildProductionHandoff(loadedRevision)"));
+  assert.ok(!exports.includes("buildProductionPacket({"));
+  for(const exportName of ["exportHandoff","exportTechPack","exportProductionPacket"]){
+    assert.ok(source.includes(`onClick={()=>void ${exportName}()}`));
+  }
 });
