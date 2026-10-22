@@ -126,7 +126,7 @@ export function summarizeProductionDeliveryEvidence(
     duplicateDeliveredOrderCount:repeatedOrderIds.size,
     invalidDeliveredOrderCount:malformedDeliveryCount,
     missingEvidenceCount,
-    gateComplete:requestedTargetValid&&firstTarget.length>=target
+    gateComplete:firstTarget.length>=target&&requestedTargetValid
       &&auditedTargetCount===target&&zeroReentryTargetCount===target
       &&reentryIncidentCount===0&&disputedTargetCount===0
       &&repeatedOrderIds.size===0&&malformedDeliveryCount===0,
