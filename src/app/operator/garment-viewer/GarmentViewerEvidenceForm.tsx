@@ -59,6 +59,9 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
   const [message,setMessage]=useState("");
 
   function refreshLocalEvidence(){
+    // Refresh means the operator must explicitly review again, even if the
+    // new samples happen to produce the same aggregate scores.
+    setAcceptTechnicalEvidence(false);
     if(!assetKey){setLatencies([]);setAssessments([]);setLocalEvidenceCorrupt(false);return;}
     const savedLatencies=readStored<unknown>(GARMENT_VIEWER_LATENCY_STORAGE_KEY,assetKey,[]);
     const savedRatings=readStored<unknown>(GARMENT_VIEWER_REALISM_STORAGE_KEY,assetKey,[]);
@@ -70,7 +73,17 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
     setAssessments(localAssessments);
   }
 
-  useEffect(()=>{refreshLocalEvidence();},[assetKey]);
+  useEffect(()=>{
+    refreshLocalEvidence();
+    // Changing the GLB/manifest identity also invalidates the old physical
+    // measurements, boundary ticks and reviewed note; none is transferable.
+    setStripeFabricId("");setStripePhysicalMm("");setStripeRepeatPx("");
+    setStripeMarkerMm("");setStripeMarkerPx("");setStripeReference("");setStripeVerified(false);
+    setCheckFabricId("");setCheckPhysicalMm("");setCheckRepeatPx("");
+    setCheckMarkerMm("");setCheckMarkerPx("");setCheckReference("");setCheckVerified(false);
+    setBoundaryChecks({neck:false,cuffs:false,waist:false,trouserGap:false});
+    setNote("");setMessage("");
+  },[assetKey]);
 
   const latencySummary=useMemo(()=>summarizeLatencySamples(latencies),[latencies]);
   const realismSummary=useMemo(()=>summarizeIndependentRealism(assessments),[assessments]);
