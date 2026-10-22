@@ -17,6 +17,8 @@ export default function ProductionEvidenceClient(){
   const [firstTenBasis,setFirstTenBasis]=useState<FirstTenBasis|null>(null);
   const [deliveryHistoryInvalid,setDeliveryHistoryInvalid]=useState(false);
   const [configured,setConfigured]=useState(true);
+  const [loading,setLoading]=useState(true);
+  const [loadError,setLoadError]=useState(false);
   const [selectedOrderId,setSelectedOrderId]=useState("");
   const [manualChoice,setManualChoice]=useState<"unset"|"yes"|"no">("unset");
   const [reentryFields,setReentryFields]=useState<string[]>([]);
@@ -27,33 +29,50 @@ export default function ProductionEvidenceClient(){
   const [message,setMessage]=useState("");
 
   async function load(){
-    const response=await fetch("/api/operator/production-evidence",{cache:"no-store"});
-    if(response.status===401){window.location.href="/operator/login?next=/operator/production-evidence";return;}
-    const data=await response.json();
-    if(!response.ok){setMessage(data.error||"Production evidence could not be loaded.");return;}
-    const nextOrders=Array.isArray(data.orders)?data.orders:[];
-    const nextEvidence=Array.isArray(data.evidence)?data.evidence:[];
-    const rawBasis=data.firstTenBasis as Partial<FirstTenBasis>|null;
-    const basis:FirstTenBasis|null=rawBasis?.version==="linen-earth-production-first-ten-audit-v2"
-      &&rawBasis.historyValid===true
-      &&Array.isArray(rawBasis.orders)&&Array.isArray(rawBasis.evidence)
-      ?rawBasis as FirstTenBasis:null;
-    // Include the oldest ten deliveries in the operator queue even if they
-    // fell out of the newest-500 browsing RPC.
-    const browseOrders=[...new Map([...nextOrders,...(basis?.orders||[])]
-      .map((item:Order)=>[item.order_id,item])).values()];
-    const browseEvidence=[...new Map([...nextEvidence,...(basis?.evidence||[])]
-      .map((item:Evidence)=>[item.evidence_id,item])).values()];
-    setConfigured(data.configured!==false);
-    setFirstTenBasis(basis);
-    setDeliveryHistoryInvalid(rawBasis?.version==="linen-earth-production-first-ten-audit-v2"&&rawBasis.historyValid!==true);
-    setOrders(browseOrders);
-    setEvidence(browseEvidence);
-    const requested=new URLSearchParams(window.location.search).get("order");
-    const delivered=browseOrders.filter((item:Order)=>item.status==="delivered");
-    const requestedDelivered=delivered.find((item:Order)=>item.order_id===requested);
-    const firstMissing=[...(basis?.orders||[]),...delivered].find((item:Order)=>!browseEvidence.some((row:Evidence)=>row.order_id===item.order_id));
-    setSelectedOrderId((current)=>current||requestedDelivered?.order_id||firstMissing?.order_id||delivered[0]?.order_id||"");
+    // Clear any previously accepted snapshot before the new network read.
+    // A failed refresh must never leave a stale green production release gate.
+    setLoading(true);
+    setLoadError(false);
+    setFirstTenBasis(null);
+    setDeliveryHistoryInvalid(false);
+    setOrders([]);
+    setEvidence([]);
+    try {
+      const response=await fetch("/api/operator/production-evidence",{cache:"no-store"});
+      if(response.status===401){window.location.href="/operator/login?next=/operator/production-evidence";return;}
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.error||"Production evidence could not be loaded.");
+      const nextOrders=Array.isArray(data.orders)?data.orders:[];
+      const nextEvidence=Array.isArray(data.evidence)?data.evidence:[];
+      const rawBasis=data.firstTenBasis as Partial<FirstTenBasis>|null;
+      const basis:FirstTenBasis|null=rawBasis?.version==="linen-earth-production-first-ten-audit-v2"
+        &&rawBasis.historyValid===true
+        &&Array.isArray(rawBasis.orders)&&rawBasis.orders.length<=10
+        &&Array.isArray(rawBasis.evidence)
+        ?rawBasis as FirstTenBasis:null;
+      // Include the oldest ten deliveries even if the browse RPC omits them.
+      const browseOrders=[...new Map([...nextOrders,...(basis?.orders||[])]
+        .map((item:Order)=>[item.order_id,item])).values()];
+      const browseEvidence=[...new Map([...nextEvidence,...(basis?.evidence||[])]
+        .map((item:Evidence)=>[item.evidence_id,item])).values()];
+      setConfigured(data.configured!==false);
+      setFirstTenBasis(basis);
+      setDeliveryHistoryInvalid(rawBasis?.version==="linen-earth-production-first-ten-audit-v2"&&rawBasis.historyValid!==true);
+      setOrders(browseOrders);
+      setEvidence(browseEvidence);
+      const requested=new URLSearchParams(window.location.search).get("order");
+      const delivered=browseOrders.filter((item:Order)=>item.status==="delivered");
+      const requestedDelivered=delivered.find((item:Order)=>item.order_id===requested);
+      const firstMissing=[...(basis?.orders||[]),...delivered].find((item:Order)=>!browseEvidence.some((row:Evidence)=>row.order_id===item.order_id));
+      setSelectedOrderId((current)=>current||requestedDelivered?.order_id||firstMissing?.order_id||delivered[0]?.order_id||"");
+    } catch {
+      setFirstTenBasis(null);
+      setDeliveryHistoryInvalid(false);
+      setLoadError(true);
+      setMessage("Live production records could not be refreshed. Historical delivery certification is locked until a successful new read.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(()=>{void load();},[]);
@@ -126,8 +145,10 @@ export default function ProductionEvidenceClient(){
       <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/production">Production Desk</Link><Link href="/operator/garment-qc">Garment QC</Link></nav>
     </header>
 
-    {!configured&&<section className="productionEvidenceNotice">Production evidence migration is not installed yet.</section>}
-    {configured&&!firstTenBasis&&<section className="productionEvidenceNotice">First-ten certification is unavailable until the full-history delivery-event audit migration and verified chronology are available. The order queue remains usable, but browsing results cannot prove release readiness.</section>}
+    {loading&&<section className="productionEvidenceNotice">Refreshing live delivery evidence; release approval remains locked.</section>}
+    {!configured&&!loading&&<section className="productionEvidenceNotice">Production evidence migration is not installed yet.</section>}
+    {loadError&&<section className="productionEvidenceNotice" role="alert">Live delivery data could not be verified. Any previous first-ten approval has been revoked until refresh succeeds.</section>}
+    {configured&&!firstTenBasis&&!loading&&!loadError&&<section className="productionEvidenceNotice">First-ten certification is unavailable until the full-history delivery-event audit migration and verified chronology are available. The order queue remains usable, but browsing results cannot prove release readiness.</section>}
     {deliveryHistoryInvalid&&<section className="productionEvidenceNotice">Delivered-order history is missing or contradicts its delivery-event timestamps. Reconcile the real order transitions before any first-ten certification.</section>}
     {message&&<section className="productionEvidenceNotice">{message}</section>}
     {summary.sourceCoverageUnknown&&<section className="productionEvidenceNotice">Audit proof is incomplete: the 500-row history limit may exclude older deliveries or inspections. Retrieve the full history before certifying the first ten orders.</section>}
