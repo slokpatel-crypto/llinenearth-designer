@@ -8,7 +8,7 @@ import { CREATIVE_FEEDBACK_REASONS } from "@/lib/designer/creative-learning";
 import { legacyMemoryHeader } from "@/lib/runtime-compat";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
 import { garmentPatternSubmissionIsLossless, garmentLatencySubmissionIsLossless, garmentRealismSubmissionIsLossless, normalizeGarmentViewerEvidenceForStorage } from "@/lib/garment-viewer-evidence-validation";
-import { parseGarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
+import { parseGarmentViewerAssetIdentity, garmentViewerTechnicalEvidenceReady } from "@/lib/garment-viewer-readiness";
 
 const PUBLIC_TYPES = new Set([
   "session_started",
@@ -401,6 +401,11 @@ function cleanPayload(type:string, input:unknown) {
         waist:boundarySource.waist===true,
         trouserGap:boundarySource.trouserGap===true,
       };
+      // A checkbox alone must not create an 'accepted' 3D technical event.
+      // Keep incomplete observations in review; asset/GLB approval stays separate.
+      if(status==="accepted"&&!garmentViewerTechnicalEvidenceReady({
+        patternScaleSamples,interactionLatencyMs,realismAssessments,boundaryChecks,
+      })) return null;
       return {
         subtype,version,status,modelId,modelSha256,manifestSha256,realismRubricVersion,patternScaleSamples,interactionLatencyMs,realismAssessments,boundaryChecks,
         note:text(payload.note,700),

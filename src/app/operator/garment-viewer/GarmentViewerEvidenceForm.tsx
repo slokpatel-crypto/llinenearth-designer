@@ -8,6 +8,8 @@ import {
   garmentViewerAssetIdentityKey,
   calibratedGarmentScaleErrorPct,
   type GarmentViewerAssetIdentity,
+  type GarmentViewerPatternScaleSample,
+  garmentViewerTechnicalEvidenceReady,
 } from "@/lib/garment-viewer-readiness";
 import { ROADMAP_SCALE_TOLERANCE_PCT, normalizeIndependentViewerCode, summarizeIndependentRealism, summarizeLatencySamples, type RealismAssessment } from "@/lib/designer/proof-scale";
 import {
@@ -153,7 +155,17 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
       setMessage("For each verified fabric, enter real cloth repeat (mm), rendered repeat (px), same-plane calibration marker (mm + px), and traceable reference. Claimed error percentages are not accepted.");
       return;
     }
-    const patternScaleSamples=[stripeSample,checkSample].filter((sample)=>sample!==null);
+    const patternScaleSamples=[stripeSample,checkSample].filter((sample):sample is GarmentViewerPatternScaleSample=>sample!==null);
+    // Any changed sample, independent rating, latency or boundary can revoke
+    // acceptance after the box was checked. Do not silently store it as ready.
+    if(acceptTechnicalEvidence&&!garmentViewerTechnicalEvidenceReady({
+      patternScaleSamples,interactionLatencyMs:currentLatencies,
+      realismAssessments:currentAssessments,boundaryChecks,
+    })){
+      setAcceptTechnicalEvidence(false);
+      setMessage("Technical acceptance needs independently measured stripe/check repeats, 12 real latencies below the p95 target, 8 reviewers with 6 strong ratings, and all four boundary checks. Record an incomplete observation for review instead.");
+      return;
+    }
     setBusy(true);setMessage("");
     try{
       const response=await fetch("/api/memory/event",{
@@ -194,6 +206,10 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
   const checkPreview=parseMeasuredScaleInput(checkFabricId,checkPhysicalMm,checkRepeatPx,checkMarkerMm,checkMarkerPx,checkReference,"check",checkVerified);
   const stripeExactError=stripePreview?calibratedGarmentScaleErrorPct(stripePreview):null;
   const checkExactError=checkPreview?calibratedGarmentScaleErrorPct(checkPreview):null;
+  const technicalEvidenceReady=garmentViewerTechnicalEvidenceReady({
+    patternScaleSamples:[stripePreview,checkPreview].filter((sample):sample is GarmentViewerPatternScaleSample=>sample!==null),
+    interactionLatencyMs:latencies,realismAssessments:assessments,boundaryChecks,
+  });
   const duplicateSubject=Boolean(stripeFabricId.trim()&&checkFabricId.trim()
     && stripeFabricId.trim().toLowerCase()===checkFabricId.trim().toLowerCase());
   const checks=Object.entries(boundaryChecks) as Array<[keyof Boundaries,boolean]>;
@@ -239,8 +255,9 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
       </div>
       <div className="garmentQaBoundary"><small>VISUAL BOUNDARIES</small>{checks.map(([key,value])=><label key={key}><input type="checkbox" checked={value} onChange={(event)=>setBoundaryChecks((current)=>({...current,[key]:event.target.checked}))}/><span>{key==="trouserGap"?"Trouser gap":key}</span></label>)}</div>
       <label className="garmentQaNote"><span>QA note</span><textarea value={note} onChange={(event)=>setNote(event.target.value)} placeholder="Reference, test conditions, reviewer context…"/></label>
-      <label className="garmentQaCheck"><input type="checkbox" checked={acceptTechnicalEvidence} onChange={(event)=>setAcceptTechnicalEvidence(event.target.checked)}/><span>Accept this exact-asset technical QA record after operator review. This is NOT owner/tailor approval, physical garment acceptance, customer 3D activation or permission to deploy.</span></label>
-      <div className="garmentQaRecord"><p>Latency comes only from real fabric changes performed in the 3D Lab on this exact asset hash. Ratings are deduplicated by viewer code. Unchecked records remain in review and cannot pass the acceptance gate.</p><button type="button" disabled={busy} onClick={()=>void recordEvidence()}>{busy?"Recording…":acceptTechnicalEvidence?"Accept and record technical QA":"Record QA for review"}</button></div>
+      <label className="garmentQaCheck"><input type="checkbox" checked={acceptTechnicalEvidence&&technicalEvidenceReady} disabled={!technicalEvidenceReady} onChange={(event)=>setAcceptTechnicalEvidence(event.target.checked)}/><span>Accept this exact-asset technical QA record after operator review. This is NOT owner/tailor approval, physical garment acceptance, customer 3D activation or permission to deploy.</span></label>
+      {!technicalEvidenceReady&&<p className="garmentQaAuditWarning">Acceptance stays locked until both measured stripe/check samples pass, 12 real interaction samples meet p95 &lt;300 ms, at least 8 independent viewers include 6 strong ratings, and all four boundaries pass. You may still record an incomplete observation for review.</p>}
+      <div className="garmentQaRecord"><p>Latency comes only from real fabric changes performed in the 3D Lab on this exact asset hash. Ratings are deduplicated by viewer code. Unchecked records remain in review and cannot pass the acceptance gate.</p><button type="button" disabled={busy} onClick={()=>void recordEvidence()}>{busy?"Recording…":acceptTechnicalEvidence&&technicalEvidenceReady?"Accept and record technical QA":"Record QA for review"}</button></div>
       {message&&<p className="garmentQaMessage">{message}</p>}
     </>}
   </section>;
