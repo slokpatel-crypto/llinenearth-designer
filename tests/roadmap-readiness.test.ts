@@ -58,10 +58,11 @@ test("roadmap control tower keeps human and physical evidence separate from engi
       patternCoverageSummary:{requiredPairs:1,passedPairs:1,failedPairs:0,pendingPairs:0,gateComplete:true},
       manualReviewSignoff:{status:"approved"},
     },
-    productionEvidence:{
-      orders:Array.from({length:10},(_,index)=>({order_id:`order-${index}`,status:"delivered",created_at:`2026-09-${String(index+1).padStart(2,"0")}T10:00:00Z`})),
-      evidence:Array.from({length:10},(_,index)=>({order_id:`order-${index}`,manual_design_reentry:false,operator:"RK",evidence_reference:`CUT-${index}`,created_at:"2026-10-01T10:00:00Z"})),
-    },
+    productionEvidence:{firstTenBasis:{
+      version:"linen-earth-production-first-ten-audit-v2",historyValid:true,
+      orders:Array.from({length:10},(_,index)=>({order_id:`order-${index}`,status:"delivered",created_at:`2026-09-${String(index+1).padStart(2,"0")}T10:00:00Z`,delivered_at:"2026-10-20T10:00:00Z"})),
+      evidence:Array.from({length:10},(_,index)=>({order_id:`order-${index}`,manual_design_reentry:false,operator:"RK",evidence_reference:`CUT-${index}`,created_at:"2026-10-21T10:00:00Z"})),
+    }},
     meterageModel:{models:[{garment:"shirt",status:"approved"},{garment:"trouser",status:"approved"}]},
     customerOutcomes:{summary:{gateComplete:true,learningEligible:10,threshold:10}},
     backendHealth:healthyBackend(),
@@ -192,6 +193,7 @@ test("live Phase 8 cannot certify newest-500 browsing rows without a complete ol
   const orders=Array.from({length:10},(_,index)=>({
     order_id:"oldest-"+index,status:"delivered",
     created_at:"2026-09-"+String(index+1).padStart(2,"0")+"T09:00:00Z",
+    delivered_at:"2026-10-09T10:00:00Z",
   }));
   const evidence=orders.map((item,index)=>({
     order_id:item.order_id,manual_design_reentry:false,
@@ -203,6 +205,8 @@ test("live Phase 8 cannot certify newest-500 browsing rows without a complete ol
     productionEvidence:{orders,evidence,firstTenBasis:null},meterageModel,
   });
   assert.equal(noMigration.phases.find((item)=>item.phase===8)?.evidenceComplete,false);
+  const legacyOnly=summarizeRoadmapReadiness({productionEvidence:{orders,evidence},meterageModel});
+  assert.equal(legacyOnly.phases.find((item)=>item.phase===8)?.evidenceComplete,false);
   const fullBasis=summarizeRoadmapReadiness({
     productionEvidence:{orders:[],evidence:[],firstTenBasis:{
       version:"linen-earth-production-first-ten-audit-v2",historyValid:true,orders,evidence,
