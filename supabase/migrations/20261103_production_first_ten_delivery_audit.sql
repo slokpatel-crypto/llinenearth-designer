@@ -4,6 +4,10 @@
 -- preserving the current Phase 8 policy), plus every audit for those exact orders.
 -- Result is private: callable by service_role only, never browser/anon clients.
 
+-- Keep the first-ten lookup efficient as the customer-order volume grows.
+create index if not exists production_orders_first_delivered_idx
+  on private.production_orders(status,created_at,order_id);
+
 create or replace function public.production_first_ten_delivery_audit()
 returns jsonb
 language sql
