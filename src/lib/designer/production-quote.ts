@@ -11,7 +11,7 @@ export type ProductionQuoteDraft={
 /** Human-entered money cannot be coerced from null/boolean/hex/exponent. */
 function enteredMoney(raw:unknown,label:string):number {
   if(typeof raw==="number") return raw;
-  if(typeof raw==="string" && /^(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)$/.test(raw.trim())) {
+  if(typeof raw==="string" && /^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/.test(raw.trim())) {
     return Number(raw.trim());
   }
   throw new Error(`Invalid ${label}.`);
