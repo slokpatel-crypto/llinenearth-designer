@@ -262,3 +262,12 @@ test("Phase 8 rejects an overlong or malformed first-ten RPC snapshot",()=>{
   assert.equal(summarizeRoadmapReadiness({productionEvidence:valid,meterageModel})
     .phases.find((item)=>item.phase===8)?.evidenceComplete,true);
 });
+
+test("Roadmap control tower revokes stale approval signals before re-fetching source endpoints",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const client=readFileSync("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx","utf8");
+  assert.match(client,/setLoading\(true\);\s*\/\/ Do not display stale green production/);
+  assert.match(client,/setSources\(\{\}\)/);
+  assert.match(client,/setErrors\(\[\]\)/);
+  assert.match(client,/setSources\(next\)/);
+});

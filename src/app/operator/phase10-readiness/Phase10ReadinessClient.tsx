@@ -203,12 +203,19 @@ type ProductionPayload={
   orders:Array<{order_id:string;status:string;revision_id:string}>;
 };
 
+type DeliveryOrder={order_id:string;status:string;created_at:string;delivered_at?:string|null};
+type DeliveryEvidence={order_id:string;manual_design_reentry:boolean;operator?:string|null;evidence_reference?:string|null;created_at:string};
 type ProductionDeliveryEvidencePayload={
   configured:boolean;
-  orders:Array<{order_id:string;status:string;created_at:string}>;
-  evidence:Array<{
-    order_id:string;manual_design_reentry:boolean;operator?:string|null;evidence_reference?:string|null;created_at:string;
-  }>;
+  // Recent browsing lists have a 500-row cap; they never certify delivery.
+  orders:DeliveryOrder[];
+  evidence:DeliveryEvidence[];
+  firstTenBasis?:{
+    version:string;
+    historyValid:boolean;
+    orders:DeliveryOrder[];
+    evidence:DeliveryEvidence[];
+  }|null;
 };
 
 type LaunchReadinessPayload={
@@ -343,10 +350,12 @@ type ReadinessRow={
 function clamp(value:number){return Math.max(0,Math.min(100,Math.round(value)));}
 function ratio(value:number,total:number){return total>0?clamp(value/total*100):0;}
 
+const EMPTY_READINESS_DATA:LoadState={
+  phase1Proof:null,garmentViewer:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,productionDeliveryEvidence:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,fabricTruthPolicy:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,noviceDesignerStudy:null,
+};
+
 export default function Phase10ReadinessClient(){
-  const [data,setData]=useState<LoadState>({
-    phase1Proof:null,garmentViewer:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,productionDeliveryEvidence:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,fabricTruthPolicy:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,noviceDesignerStudy:null,
-  });
+  const [data,setData]=useState<LoadState>(EMPTY_READINESS_DATA);
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
 
@@ -362,6 +371,9 @@ export default function Phase10ReadinessClient(){
 
   async function load(){
     setLoading(true);setMessage("");
+    // Revocation is immediate: a failed or partial refresh cannot leave an
+    // old green readiness board visible as if it reflected live evidence.
+    setData({...EMPTY_READINESS_DATA});
     try{
       const [phase1Proof,garmentViewer,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,fabricTruthPolicy,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
@@ -535,17 +547,22 @@ export default function Phase10ReadinessClient(){
     const renderReleaseProgress=renderRelease?.progressPercent||0;
     const renderReleaseDone=renderRelease?.gateComplete===true;
 
-    const productionOrders=data.production?.orders||[];
-    const deliveredOrders=productionOrders.filter((item)=>item.status==="delivered").length;
-    const productionDeliverySummary=data.productionDeliveryEvidence
-      ? summarizeProductionDeliveryEvidence(
-          data.productionDeliveryEvidence.orders,
-          data.productionDeliveryEvidence.evidence,
-        )
+    const productionBasis=data.productionDeliveryEvidence?.firstTenBasis;
+    const productionBasisOrders=productionBasis?.orders;
+    // Only the unbounded SQL first-ten history is a release authority.
+    // Browsing RPCs may omit every historical delivery after 500 newer rows.
+    const productionBasisReady=productionBasis?.version==="linen-earth-production-first-ten-audit-v2"
+      &&productionBasis.historyValid===true
+      &&Array.isArray(productionBasisOrders)&&productionBasisOrders.length<=10
+      &&Array.isArray(productionBasis.evidence)
+      &&productionBasisOrders.every((item)=>item.status==="delivered"
+        &&typeof item.delivered_at==="string"&&Number.isFinite(Date.parse(item.delivered_at)));
+    const productionDeliverySummary=productionBasisReady&&productionBasisOrders&&productionBasis?.evidence
+      ? summarizeProductionDeliveryEvidence(productionBasisOrders,productionBasis.evidence)
       : null;
     const productionOrderProgress=productionDeliverySummary
       ? ratio(productionDeliverySummary.zeroReentryTargetCount,productionDeliverySummary.target)
-      : ratio(deliveredOrders,10);
+      : 0;
     const productionOrderDone=productionDeliverySummary?.gateComplete===true;
 
     const cache=data.renderCache?.database;
@@ -827,10 +844,10 @@ export default function Phase10ReadinessClient(){
           ? "The first 10 delivered orders have provenance-backed completion audits and zero manual design-data re-entry."
           : productionDeliverySummary
             ? `${productionDeliverySummary.zeroReentryTargetCount}/${productionDeliverySummary.target} first delivered orders currently have provenance-backed zero-reentry evidence · ${productionDeliverySummary.reentryIncidentCount} re-entry incident(s) · ${productionDeliverySummary.legacyOrUnverifiedCount} legacy/unverified audit(s).`
-            : "Production delivery evidence is unavailable; delivered-order count alone cannot satisfy the zero-reentry gate.",
-        status:productionOrderDone?"done":data.productionDeliveryEvidence?.configured?"progress":"blocked",
+            : "Full-history first-ten delivery chronology is unavailable or unverified. Newest-500 browsing rows cannot certify the zero-reentry gate.",
+        status:productionOrderDone?"done":productionDeliverySummary?"progress":"blocked",
         progress:productionOrderProgress,
-        metric:productionDeliverySummary?`${productionDeliverySummary.zeroReentryTargetCount}/${productionDeliverySummary.target} zero-reentry · ${productionDeliverySummary.auditedTargetCount} provenance-backed audits`:"No delivery evidence",
+        metric:productionDeliverySummary?`${productionDeliverySummary.zeroReentryTargetCount}/${productionDeliverySummary.target} zero-reentry · ${productionDeliverySummary.auditedTargetCount} provenance-backed audits`:"Full-history audit required",
         href:"/operator/production-evidence",
         action:"Audit delivered production flow",
         ownerDependent:true,

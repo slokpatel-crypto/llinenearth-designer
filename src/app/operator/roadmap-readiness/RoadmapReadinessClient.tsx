@@ -34,6 +34,10 @@ export default function RoadmapReadinessClient(){
 
   async function load(){
     setLoading(true);
+    // Do not display stale green production or launch gates during a refresh.
+    // Each released evidence signal must come from the latest successful read.
+    setSources({});
+    setErrors([]);
     const entries=Object.entries(ENDPOINTS) as Array<[SourceKey,string]>;
     const next:RoadmapReadinessInput={};
     const failures:string[]=[];
