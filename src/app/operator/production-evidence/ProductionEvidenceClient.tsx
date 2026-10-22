@@ -7,14 +7,15 @@ import {
   summarizeProductionDeliveryEvidence,
 } from "@/lib/designer/production-delivery-evidence";
 
-type Order={order_id:string;revision_id:string;recipe_hash:string;status:string;note:string;created_at:string};
+type Order={order_id:string;revision_id:string;recipe_hash:string;status:string;note:string;created_at:string;delivered_at?:string|null};
 type Evidence={evidence_id:string;order_id:string;revision_id:string;recipe_hash:string;manual_design_reentry:boolean;reentry_fields:string[];note:string;operator:string;evidence_reference?:string;created_at:string;order_created_at:string};
-type FirstTenBasis={version:"linen-earth-production-first-ten-audit-v1";orders:Order[];evidence:Evidence[]};
+type FirstTenBasis={version:"linen-earth-production-first-ten-audit-v2";historyValid:true;orders:Order[];evidence:Evidence[]};
 
 export default function ProductionEvidenceClient(){
   const [orders,setOrders]=useState<Order[]>([]);
   const [evidence,setEvidence]=useState<Evidence[]>([]);
   const [firstTenBasis,setFirstTenBasis]=useState<FirstTenBasis|null>(null);
+  const [deliveryHistoryInvalid,setDeliveryHistoryInvalid]=useState(false);
   const [configured,setConfigured]=useState(true);
   const [selectedOrderId,setSelectedOrderId]=useState("");
   const [manualChoice,setManualChoice]=useState<"unset"|"yes"|"no">("unset");
@@ -33,7 +34,8 @@ export default function ProductionEvidenceClient(){
     const nextOrders=Array.isArray(data.orders)?data.orders:[];
     const nextEvidence=Array.isArray(data.evidence)?data.evidence:[];
     const rawBasis=data.firstTenBasis as Partial<FirstTenBasis>|null;
-    const basis:FirstTenBasis|null=rawBasis?.version==="linen-earth-production-first-ten-audit-v1"
+    const basis:FirstTenBasis|null=rawBasis?.version==="linen-earth-production-first-ten-audit-v2"
+      &&rawBasis.historyValid===true
       &&Array.isArray(rawBasis.orders)&&Array.isArray(rawBasis.evidence)
       ?rawBasis as FirstTenBasis:null;
     // Include the oldest ten deliveries in the operator queue even if they
@@ -44,18 +46,20 @@ export default function ProductionEvidenceClient(){
       .map((item:Evidence)=>[item.evidence_id,item])).values()];
     setConfigured(data.configured!==false);
     setFirstTenBasis(basis);
+    setDeliveryHistoryInvalid(rawBasis?.version==="linen-earth-production-first-ten-audit-v2"&&rawBasis.historyValid!==true);
     setOrders(browseOrders);
     setEvidence(browseEvidence);
     const requested=new URLSearchParams(window.location.search).get("order");
     const delivered=browseOrders.filter((item:Order)=>item.status==="delivered");
     const requestedDelivered=delivered.find((item:Order)=>item.order_id===requested);
-    const firstMissing=delivered.find((item:Order)=>!browseEvidence.some((row:Evidence)=>row.order_id===item.order_id));
+    const firstMissing=[...(basis?.orders||[]),...delivered].find((item:Order)=>!browseEvidence.some((row:Evidence)=>row.order_id===item.order_id));
     setSelectedOrderId((current)=>current||requestedDelivered?.order_id||firstMissing?.order_id||delivered[0]?.order_id||"");
   }
 
   useEffect(()=>{void load();},[]);
 
-  const delivered=useMemo(()=>[...orders].filter((item)=>item.status==="delivered").sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at)),[orders]);
+  const delivered=useMemo(()=>[...orders].filter((item)=>item.status==="delivered").sort((a,b)=>Date.parse(a.delivered_at||a.created_at)-Date.parse(b.delivered_at||b.created_at)),[orders]);
+  const firstTenOrderIds=useMemo(()=>new Set(firstTenBasis?.orders.map((row)=>row.order_id)||[]),[firstTenBasis]);
   // A positive first-ten proof must come from the oldest-ten SQL audit basis,
   // never from the operator browsing lists that have 500-row caps.
   const summary=useMemo(()=>summarizeProductionDeliveryEvidence(
@@ -116,7 +120,8 @@ export default function ProductionEvidenceClient(){
     </header>
 
     {!configured&&<section className="productionEvidenceNotice">Production evidence migration is not installed yet.</section>}
-    {configured&&!firstTenBasis&&<section className="productionEvidenceNotice">First-ten certification is unavailable until the full-history audit migration is installed. The order queue remains usable, but browsing results cannot prove release readiness.</section>}
+    {configured&&!firstTenBasis&&<section className="productionEvidenceNotice">First-ten certification is unavailable until the full-history delivery-event audit migration and verified chronology are available. The order queue remains usable, but browsing results cannot prove release readiness.</section>}
+    {deliveryHistoryInvalid&&<section className="productionEvidenceNotice">Delivered-order history is missing or contradicts its delivery-event timestamps. Reconcile the real order transitions before any first-ten certification.</section>}
     {message&&<section className="productionEvidenceNotice">{message}</section>}
     {summary.sourceCoverageUnknown&&<section className="productionEvidenceNotice">Audit proof is incomplete: the 500-row history limit may exclude older deliveries or inspections. Retrieve the full history before certifying the first ten orders.</section>}
     {summary.duplicateEvidenceSourceCount>0&&<section className="productionEvidenceNotice">Shared physical job-card reference detected across distinct delivered orders. Independently identify and review each source before sign-off.</section>}
@@ -136,7 +141,7 @@ export default function ProductionEvidenceClient(){
         {delivered.map((item,index)=>{
           const row=evidence.find((entry)=>entry.order_id===item.order_id);
           return <button key={item.order_id} className={selected?.order_id===item.order_id?"active":""} onClick={()=>chooseOrder(item.order_id)}>
-            <span><b>{item.revision_id}</b>{index<10&&<em>FIRST 10</em>}</span>
+            <span><b>{item.revision_id}</b>{firstTenOrderIds.has(item.order_id)&&<em>FIRST 10</em>}</span>
             <small>{item.order_id}</small>
             <i data-state={!row?"pending":row.manual_design_reentry?"incident":"clean"}>{!row?"audit pending":row.manual_design_reentry?"re-entry recorded":"zero re-entry"}</i>
           </button>;
