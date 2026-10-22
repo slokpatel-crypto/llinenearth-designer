@@ -29,9 +29,12 @@ function readStored<T>(key:string,assetKey:string,fallback:T):T{
     if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||String((parsed as {assetKey?:unknown}).assetKey||"")!==assetKey) return fallback;
     if(key===GARMENT_VIEWER_LATENCY_STORAGE_KEY){
       const samples=(parsed as {samples?:unknown}).samples;
-      return (Array.isArray(samples)?samples:fallback) as T;
+      return (Array.isArray(samples)?samples:null) as T;
     }
-    return ((parsed as StoredEvidence<T>).value ?? fallback) as T;
+    // Existing cache keys with missing or malformed rows are not clean, empty
+    // observations. Only an absent key may legitimately use the fallback.
+    return (Object.prototype.hasOwnProperty.call(parsed,"value")
+      ? (parsed as StoredEvidence<T>).value : null) as T;
   // A corrupt stored lab payload must not silently become an empty, valid
   // sample list. Null makes the existing losslessness check lock recording.
   }catch{return null as T;}
