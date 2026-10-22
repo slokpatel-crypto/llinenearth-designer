@@ -219,9 +219,12 @@ test("first-ten API/SQL/UI contract uses all history instead of treating newest-
   const roadmap=readFileSync("src/lib/designer/roadmap-readiness.ts","utf8");
   assert.match(sql,/function public\.production_first_ten_delivery_audit\(\)/);
   assert.match(sql,/where o\.status='delivered'/);
-  assert.match(sql,/order by o\.created_at asc,o\.order_id asc/);
+  assert.match(sql,/order by delivered_at asc nulls first,created_at asc,order_id asc/);
   assert.match(sql,/join first_ten o on o\.order_id=e\.order_id/);
   assert.match(sql,/from private\.production_delivery_evidence e/);
+  assert.match(sql,/from private\.production_order_events ev/);
+  assert.match(sql,/ev\.status='delivered'/);
+  assert.match(sql,/historyValid/);
   assert.match(sql,/revoke all on function public\.production_first_ten_delivery_audit\(\)/);
   assert.match(sql,/grant execute on function public\.production_first_ten_delivery_audit\(\)/);
   assert.match(route,/rpc<unknown>\("production_first_ten_delivery_audit",\{\}\)/);
@@ -229,5 +232,32 @@ test("first-ten API/SQL/UI contract uses all history instead of treating newest-
   assert.match(client,/setFirstTenBasis\(basis\)/);
   assert.match(client,/firstTenBasis\?\.orders\|\|\[\]/);
   assert.match(roadmap,/productionInput\.firstTenBasis===undefined/);
-  assert.match(roadmap,/linen-earth-production-first-ten-audit-v1/);
+  assert.match(roadmap,/linen-earth-production-first-ten-audit-v2/);
+  assert.match(roadmap,/historyValid===true/);
+});
+
+test("proof ordering respects real delivery completion, not when work was first booked",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const extraOrder={order_id:"later-created-but-first-delivered",status:"delivered",
+    created_at:"2026-10-11T10:00:00Z",delivered_at:"2026-10-11T11:00:00Z"};
+  // Ten existing deliveries all completed after the newer-created order.
+  const completed=orders.map((item,i)=>({...item,delivered_at:
+    "2026-10-12T"+String(i+10).padStart(2,"0")+":00:00Z"}));
+  const summary=summarizeProductionDeliveryEvidence([...completed,extraOrder],evidence);
+  assert.equal(summary.deliveredCount,11);
+  assert.equal(summary.firstTargetOrderCount,10);
+  assert.equal(summary.auditedTargetCount,9);
+  assert.equal(summary.gateComplete,false);
+});
+
+test("backdated or unparseable delivered timestamps cannot prove zero re-entry",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const dated=orders.map((item)=>({...item,delivered_at:"2026-10-20T10:00:00Z"}));
+  assert.equal(summarizeProductionDeliveryEvidence(dated,evidence).gateComplete,true);
+  for(const delivered_at of ["2026-09-01T01:00:00Z","broken",null]){
+    const changed=[{...dated[0],delivered_at},...dated.slice(1)];
+    const summary=summarizeProductionDeliveryEvidence(changed,evidence);
+    assert.equal(summary.invalidDeliveredOrderCount,1);
+    assert.equal(summary.gateComplete,false);
+  }
 });
