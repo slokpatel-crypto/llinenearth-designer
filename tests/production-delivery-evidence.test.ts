@@ -323,3 +323,16 @@ test("first-ten SQL refuses malformed or contradictory production status event c
   assert.match(sql,/ev\.created_at >=/);
   assert.match(sql,/historyValid/);
 });
+
+test("Phase 10 operator summary never certifies from a capped or stale delivery browser list",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const page=readFileSync("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx","utf8");
+  assert.match(page,/productionBasis=data\.productionDeliveryEvidence\?\.firstTenBasis/);
+  assert.match(page,/productionBasis\.historyValid===true/);
+  assert.match(page,/productionBasisOrders\.length<=10/);
+  assert.match(page,/item\.delivered_at===\"string\"/);
+  assert.match(page,/summarizeProductionDeliveryEvidence\(productionBasisOrders,productionBasis\.evidence\)/);
+  assert.doesNotMatch(page,/summarizeProductionDeliveryEvidence\(\s*data\.productionDeliveryEvidence\.orders/);
+  assert.match(page,/setData\(\{\.\.\.EMPTY_READINESS_DATA\}\)/);
+  assert.match(page,/Newest-500 browsing rows cannot certify/);
+});
