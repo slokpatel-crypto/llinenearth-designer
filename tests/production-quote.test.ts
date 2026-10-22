@@ -29,3 +29,39 @@ test("quote helper never allows an adjustment to make the total negative",()=>{
     adjustment:-501,
   }),/cannot be negative/);
 });
+
+test("operator quote amounts never coerce null, booleans, arrays or nondecimal strings into money",()=>{
+  for(const invalid of [null,false,true,[],{},undefined,""," ","0x20","0b100","1e3","-3",Infinity,NaN]){
+    assert.throws(()=>normalizeProductionQuoteDraft({
+      lineItems:[{label:"Fabric",amount:invalid}],
+    }),/Invalid quote line item amount/,String(invalid));
+  }
+  for(const invalid of [null,false,true,[],{},""," ","0x10","1e3","--3",Infinity,NaN]){
+    assert.throws(()=>normalizeProductionQuoteDraft({
+      lineItems:[{label:"Fabric",amount:300}],adjustment:invalid,
+    }),/Invalid quote adjustment/,String(invalid));
+  }
+});
+
+test("decimal text from a quote form remains supported without JS numeric coercion",()=>{
+  const result=normalizeProductionQuoteDraft({
+    currency:"INR",
+    lineItems:[{label:"Fabric",amount:"1499.995"},{label:"Tailoring",amount:".25"}],
+    adjustment:-25,
+  });
+  assert.equal(result.subtotal,1500.25);
+  assert.equal(result.adjustment,-25);
+  assert.equal(result.total,1475.25);
+});
+
+test("operator form cannot silently quote unentered fabric and tailoring prices as zero",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const source=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  assert.match(source,/amountText:quote\.line1Amount\.trim\(\)/);
+  assert.match(source,/amountText:quote\.line2Amount\.trim\(\)/);
+  assert.match(source,/quoteRows\.every\(/);
+  assert.match(source,/Boolean\(row\.label\)&&decimalPrice\(row\.amountText\)/);
+  assert.match(source,/&&quoteRowsValid&&adjustmentValid/);
+  assert.ok(!source.includes("amount:Number(quote.line1Amount)"));
+  assert.ok(!source.includes("amount:Number(quote.line2Amount)"));
+});
