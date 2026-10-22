@@ -342,7 +342,8 @@ test("operator 3D QA acceptance is deliberate and cannot be confused with releas
   const source=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
   assert.match(source,/\[acceptTechnicalEvidence,setAcceptTechnicalEvidence\]=useState\(false\)/);
   assert.match(source,/status:acceptTechnicalEvidence\?"accepted":"review"/);
-  assert.match(source,/checked=\{acceptTechnicalEvidence\}/);
+  assert.match(source,/checked=\{acceptTechnicalEvidence&&technicalEvidenceReady\}/);
+  assert.match(source,/disabled=\{!technicalEvidenceReady\}/);
   assert.match(source,/NOT owner\/tailor approval/);
   assert.match(source,/Record QA for review/);
   assert.match(source,/garmentLatencySubmissionIsLossless\(savedLatencies\)/);
