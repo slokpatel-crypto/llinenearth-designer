@@ -104,6 +104,9 @@ export default function LaunchReadinessClient(){
 
     {!configured&&<section className="launchReadyNotice">Launch-readiness migration is not installed yet.</section>}
     {message&&<section className="launchReadyNotice">{message}</section>}
+    {summary.invalidBetaEvidenceCases>0&&<section className="launchReadyNotice">Invalid or contradictory beta evidence exists for {summary.invalidBetaEvidenceCases} case(s). Review the original server audit history; earlier passing records cannot override corrupted evidence.</section>}
+    {summary.invalidChecklistEvidenceItems>0&&<section className="launchReadyNotice">{summary.invalidChecklistEvidenceItems} checklist item(s) have missing or contradictory human sign-off evidence. Obtain a valid named approval before launch.</section>}
+    {summary.blockingBetaCases>0&&<section className="launchReadyNotice">{summary.blockingBetaCases} latest beta case(s) still have a blocking issue. Five other successful flows do not authorize launch while these failures remain unresolved.</section>}
 
     <section className="launchReadyScore">
       <article data-pass={summary.betaGateComplete}><span>LOCK → VERIFIED SHARE/ENQUIRY</span><strong>{summary.successfulBetaCases}/{LAUNCH_BETA_TARGET}</strong><small>latest case has a verified server flow audit and no blocking bug</small></article>

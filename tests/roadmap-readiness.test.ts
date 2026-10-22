@@ -35,7 +35,7 @@ function launchEvidence(){
   }));
   const checklistEvents=[
     "privacy_notice","terms_refunds","measurement_handling","third_party_processing","operator_access","incident_contact",
-  ].map((item_id,index)=>({item_id,status:"approved",created_at:`2026-10-01T10:0${index}:00Z`}));
+  ].map((item_id,index)=>({item_id,status:"approved",signed_by:"Owner Reviewer",created_at:`2026-10-01T10:0${index}:00Z`}));
   return {betaAttempts,checklistEvents};
 }
 
