@@ -165,7 +165,8 @@ export function summarizeRoadmapReadiness(input:RoadmapReadinessInput){
   // Direct legacy/fixture inputs without the field keep their pure-test path.
   const productionBasis=productionInput.firstTenBasis===undefined
     ?productionInput
-    :object(productionInput.firstTenBasis).version==="linen-earth-production-first-ten-audit-v1"
+    :object(productionInput.firstTenBasis).version==="linen-earth-production-first-ten-audit-v2"
+      &&object(productionInput.firstTenBasis).historyValid===true
       ?object(productionInput.firstTenBasis)
       :{};
   const productionSummary=summarizeProductionDeliveryEvidence(
