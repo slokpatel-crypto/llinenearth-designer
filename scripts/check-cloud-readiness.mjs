@@ -128,6 +128,7 @@ if (url && key) {
           ["production_order_list",{p_limit:1},"Production order ledger RPCs are installed."],
           ["finished_garment_qc_list",{p_limit:1},"Finished-garment QC RPCs are installed."],
           ["production_delivery_evidence_list",{p_limit:1},"Production delivery evidence RPCs are installed."],
+          ["production_first_ten_delivery_audit",{},"Complete chronological first-ten delivery audit RPC is installed."],
           ["production_meterage_model_list",{p_limit:1},"Versioned meterage calibration RPCs are installed."],
           ["production_cut_evidence_list",{p_limit:1},"Production cut evidence registry RPCs are installed."],
           ["launch_beta_attempt_list",{p_limit:1},"Private-beta evidence RPCs are installed."],
@@ -173,6 +174,14 @@ if (url && key) {
           if (!rpcResponse.ok) {
             const detail=(await rpcResponse.text()).replace(/\s+/g," ").slice(0,160);
             fail(`${rpcName} is unavailable. Apply Roadmap v2 Supabase migrations. HTTP ${rpcResponse.status}: ${detail}`);
+          } else if (rpcName==="production_first_ten_delivery_audit") {
+            const basis=await rpcResponse.json();
+            const valid=basis?.version==="linen-earth-production-first-ten-audit-v2"
+              &&basis?.historyValid===true
+              &&Array.isArray(basis?.orders)&&basis.orders.length<=10
+              &&Array.isArray(basis?.evidence);
+            if(!valid) fail("First-ten delivery audit is missing trustworthy completion history or the v2 migration.");
+            else ok(label);
           } else if (rpcName==="roadmap_v2_evidence_health") {
             const health=await rpcResponse.json();
             const missing=Object.entries(health||{}).filter(([,value])=>value!==true).map(([key])=>key);

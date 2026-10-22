@@ -159,9 +159,19 @@ export function summarizeRoadmapReadiness(input:RoadmapReadinessInput){
   const phase7Complete=renderRelease.gateComplete;
 
   const productionInput=object(input.productionEvidence);
+  // Phase 8 never certifies from the newest-500 browsing payload, even if a
+  // caller omits the new field (for example a partially upgraded deployment).
+  // Delivery-event timestamps from the complete server RPC are compulsory.
+  const rawProductionBasis=object(productionInput.firstTenBasis);
+  const productionBasisOrders=array(rawProductionBasis.orders);
+  const productionBasis=rawProductionBasis.version==="linen-earth-production-first-ten-audit-v2"
+    &&rawProductionBasis.historyValid===true
+    &&productionBasisOrders.every((row)=>typeof row.delivered_at==="string"
+      &&Number.isFinite(Date.parse(row.delivered_at)))
+    ?rawProductionBasis:{};
   const productionSummary=summarizeProductionDeliveryEvidence(
-    array(productionInput.orders) as never[],
-    array(productionInput.evidence) as never[],
+    array(productionBasis.orders) as never[],
+    array(productionBasis.evidence) as never[],
   );
   const meterageModels=array(object(input.meterageModel).models);
   const approvedMeterageGarments=new Set(

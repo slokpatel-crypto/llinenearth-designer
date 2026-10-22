@@ -46,6 +46,7 @@ export type ProductionEvidenceOrder={
   order_id:string;
   status:string;
   created_at:string;
+  delivered_at?:string|null;
 };
 
 export type ProductionDeliveryEvidenceRow={
@@ -78,7 +79,12 @@ export function summarizeProductionDeliveryEvidence(
   for(const order of rawDelivered){
     const id=typeof order.order_id==="string"?order.order_id.trim():"";
     const timestamp=typeof order.created_at==="string"?Date.parse(order.created_at):Number.NaN;
-    if(!id||!Number.isFinite(timestamp)){
+    const deliveredAt=order.delivered_at;
+    const deliveryTimestamp=deliveredAt===undefined
+      ?timestamp
+      :typeof deliveredAt==="string"?Date.parse(deliveredAt):Number.NaN;
+    if(!id||!Number.isFinite(timestamp)||!Number.isFinite(deliveryTimestamp)
+      ||deliveryTimestamp<timestamp){
       malformedDeliveryCount++;
       continue;
     }
@@ -87,7 +93,7 @@ export function summarizeProductionDeliveryEvidence(
     else orderById.set(key,order);
   }
   const delivered=[...orderById.values()]
-    .sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at));
+    .sort((a,b)=>Date.parse(a.delivered_at||a.created_at)-Date.parse(b.delivered_at||b.created_at));
   const firstTarget=delivered.slice(0,requestedTargetValid?target:10);
   const evidenceByOrder=new Map<string,ProductionDeliveryEvidenceRow[]>();
   for(const row of evidence){
@@ -107,6 +113,7 @@ export function summarizeProductionDeliveryEvidence(
       && typeof row.operator==="string"&&row.operator.trim().length>=2&&row.operator.trim().length<=120
       && typeof row.evidence_reference==="string"&&row.evidence_reference.trim().length>=3&&row.evidence_reference.trim().length<=240
       && typeof row.created_at==="string"&&Number.isFinite(Date.parse(row.created_at))
+      && (!order.delivered_at||Date.parse(row.created_at)>=Date.parse(order.delivered_at))
     );
     const disputed=rows.length>1&&rows.some((row)=>
       row.manual_design_reentry!==rows[0].manual_design_reentry);

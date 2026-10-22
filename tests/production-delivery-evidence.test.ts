@@ -210,3 +210,91 @@ test("operator RPC 500-row truncation cannot certify first ten historical delive
   assert.equal(auditsTruncated.sourceCoverageUnknown,true);
   assert.equal(auditsTruncated.gateComplete,false);
 });
+
+test("first-ten API/SQL/UI contract uses all history instead of treating newest-500 as certification",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const sql=readFileSync("supabase/migrations/20261103_production_first_ten_delivery_audit.sql","utf8");
+  const route=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
+  const client=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
+  const roadmap=readFileSync("src/lib/designer/roadmap-readiness.ts","utf8");
+  assert.match(sql,/function public\.production_first_ten_delivery_audit\(\)/);
+  assert.match(sql,/where o\.status='delivered'/);
+  assert.match(sql,/order by delivered_at asc nulls first,created_at asc,order_id asc/);
+  assert.match(sql,/join first_ten o on o\.order_id=e\.order_id/);
+  assert.match(sql,/from private\.production_delivery_evidence e/);
+  assert.match(sql,/from private\.production_order_events ev/);
+  assert.match(sql,/ev\.status='delivered'/);
+  assert.match(sql,/historyValid/);
+  assert.match(sql,/revoke all on function public\.production_first_ten_delivery_audit\(\)/);
+  assert.match(sql,/grant execute on function public\.production_first_ten_delivery_audit\(\)/);
+  assert.match(route,/rpc<unknown>\("production_first_ten_delivery_audit",\{\}\)/);
+  assert.match(route,/firstTenBasis/);
+  assert.match(client,/setFirstTenBasis\(basis\)/);
+  assert.match(client,/firstTenBasis\?\.orders\|\|\[\]/);
+  assert.match(roadmap,/const rawProductionBasis=object\(productionInput\.firstTenBasis\)/);
+  assert.match(roadmap,/productionBasisOrders\.every\(/);
+  assert.match(roadmap,/array\(productionBasis\.orders\) as never\[\]/);
+  assert.match(roadmap,/array\(productionBasis\.evidence\) as never\[\]/);
+  assert.match(roadmap,/linen-earth-production-first-ten-audit-v2/);
+  assert.match(roadmap,/historyValid===true/);
+});
+
+test("proof ordering respects real delivery completion, not when work was first booked",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const extraOrder={order_id:"later-created-but-first-delivered",status:"delivered",
+    created_at:"2026-10-11T10:00:00Z",delivered_at:"2026-10-11T11:00:00Z"};
+  // Ten existing deliveries all completed after the newer-created order.
+  const completed=orders.map((item,i)=>({...item,delivered_at:
+    "2026-10-12T"+String(i+10).padStart(2,"0")+":00:00Z"}));
+  const summary=summarizeProductionDeliveryEvidence([...completed,extraOrder],evidence);
+  assert.equal(summary.deliveredCount,11);
+  assert.equal(summary.firstTargetOrderCount,10);
+  assert.equal(summary.auditedTargetCount,9);
+  assert.equal(summary.gateComplete,false);
+});
+
+test("backdated or unparseable delivered timestamps cannot prove zero re-entry",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const dated=orders.map((item)=>({...item,delivered_at:"2026-10-20T10:00:00Z"}));
+  assert.equal(summarizeProductionDeliveryEvidence(dated,evidence).gateComplete,true);
+  for(const delivered_at of ["2026-09-01T01:00:00Z","broken",null]){
+    const changed=[{...dated[0],delivered_at},...dated.slice(1)];
+    const summary=summarizeProductionDeliveryEvidence(changed,evidence);
+    assert.equal(summary.invalidDeliveredOrderCount,1);
+    assert.equal(summary.gateComplete,false);
+  }
+});
+
+test("live release refuses missing or corrupted first-ten delivery audit RPC",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const checker=readFileSync("scripts/check-cloud-readiness.mjs","utf8");
+  const release=readFileSync("scripts/release-readiness.mjs","utf8");
+  assert.match(checker,/production_first_ten_delivery_audit/);
+  assert.match(checker,/linen-earth-production-first-ten-audit-v2/);
+  assert.match(checker,/basis\?\.historyValid===true/);
+  assert.match(checker,/basis\.orders\.length<=10/);
+  assert.match(release,/20261103_production_first_ten_delivery_audit.sql/);
+  assert.match(release,/production_first_ten_delivery_audit/);
+});
+
+test("immutable manual zero-reentry audit cannot predate the real delivery event",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const withDelivery=orders.map((order)=>({...order,delivered_at:"2026-10-20T10:00:00Z"}));
+  assert.equal(summarizeProductionDeliveryEvidence(withDelivery,evidence).gateComplete,true);
+  const priorAudit={...evidence[0],created_at:"2026-10-19T10:00:00Z"};
+  const summary=summarizeProductionDeliveryEvidence(withDelivery,[priorAudit,...evidence.slice(1)]);
+  assert.equal(summary.legacyOrUnverifiedCount,1);
+  assert.equal(summary.auditedTargetCount,9);
+  assert.equal(summary.gateComplete,false);
+});
+
+test("operator delivery audit detail never hides an older manual re-entry incident",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const client=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
+  assert.match(client,/const selectedEvidenceRows=selected\?evidence\.filter/);
+  assert.match(client,/const selectedIncident=selectedEvidenceRows\.some/);
+  assert.match(client,/selectedEvidenceRows\.map\(\(row\)=>/);
+  assert.match(client,/selectedDisputed&&<p role="alert">/);
+  assert.match(client,/audited historical snapshot, not total shop orders/);
+  assert.doesNotMatch(client,/Zero design-data re-entry confirmed/);
+});

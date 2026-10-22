@@ -36,7 +36,17 @@ export async function GET(){
       rpc<unknown[]>("production_order_list",{p_limit:500}),
       rpc<unknown[]>("production_delivery_evidence_list",{p_limit:500}),
     ]);
-    return NextResponse.json({configured:true,orders,evidence},{headers:{"cache-control":"private, no-store"}});
+    // The browsing RPCs have 500-row caps and cannot certify the earliest ten
+    // lifetime deliveries after a shop accumulates larger order history.
+    // Keep browsing/recording functional before this migration is installed,
+    // but never return a release-capable audit basis without the new DB RPC.
+    let firstTenBasis:unknown=null;
+    try {
+      firstTenBasis=await rpc<unknown>("production_first_ten_delivery_audit",{});
+    } catch {
+      // The first-ten evidence gate remains blocked until the migration exists.
+    }
+    return NextResponse.json({configured:true,orders,evidence,firstTenBasis},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/production-evidence]",error);
     return NextResponse.json({error:"Production completion evidence could not be read."},{status:503});
