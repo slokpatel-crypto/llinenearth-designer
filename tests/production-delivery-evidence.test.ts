@@ -309,3 +309,17 @@ test("operator first-ten UI revokes stale proof on every failed or pending live 
   assert.match(client,/rawBasis\.orders\.length<=10/);
   assert.match(client,/Historical delivery certification is locked/);
 });
+
+test("first-ten SQL refuses malformed or contradictory production status event chains",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const sql=readFileSync("supabase/migrations/20261103_production_first_ten_delivery_audit.sql","utf8");
+  assert.match(sql,/ev\.status=\x27created\x27/);
+  assert.match(sql,/delivered_event_count=1/);
+  assert.match(sql,/created_event_at is not null/);
+  assert.match(sql,/created_event_at>=created_at/);
+  assert.match(sql,/created_event_at<=delivered_at/);
+  assert.match(sql,/after_delivery_transition_count=0/);
+  assert.match(sql,/ev\.status<>\x27delivered\x27/);
+  assert.match(sql,/ev\.created_at >=/);
+  assert.match(sql,/historyValid/);
+});
