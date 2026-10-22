@@ -48,7 +48,7 @@ export function normalizeFinishedGarmentQcDraft(input:unknown){
     ?source.inspectionReference.replace(/\s+/g," ").trim():"";
 
   if(inspector.length<2||inspector.length>120) throw new Error("Named inspector / checker must be 2–120 characters.");
-  if(inspectionReference.length<3||inspectionReference.length>240) throw new Error("Physical inspection reference is required (3–240 characters).");
+  if(inspectionReference.length<3||inspectionReference.length>240) throw new Error("Physical inspection reference is required. Value must be 3–240 characters.");
   if(decision==="approved"&&FINISHED_GARMENT_QC_CHECKS.some((item)=>!checks[item.id])){
     throw new Error("Every finished-garment QC check must pass before approval.");
   }
