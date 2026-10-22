@@ -1,5 +1,8 @@
 import type { LockedDesignRevision } from "./design-lock.ts";
-import { buildProductionHandoff } from "./production-handoff.ts";
+import {
+  buildProductionHandoff, buildVerifiedProductionHandoff,
+  type ProductionHandoff,
+} from "./production-handoff.ts";
 
 export type ProductionQuoteSnapshot={
   quoteId:string;
@@ -15,12 +18,13 @@ export type ProductionOrderSnapshot={
   createdAt:string;
 };
 
-export function buildProductionPacket(input:{
+export type ProductionPacketInput={
   revision:LockedDesignRevision;
   quote?:ProductionQuoteSnapshot|null;
   order?:ProductionOrderSnapshot|null;
-}){
-  const handoff=buildProductionHandoff(input.revision);
+};
+
+function assembleProductionPacket(input:ProductionPacketInput,handoff:ProductionHandoff){
   const quote=input.quote??null;
   const order=input.order??null;
   return {
@@ -42,4 +46,17 @@ export function buildProductionPacket(input:{
       note:"Packet generation proves locked-recipe traceability only. Zero manual re-entry is verified separately after real delivery.",
     },
   };
+}
+
+/** Legacy pure packet constructor. Callers with user-provided or recovered
+ * revisions must use the verified variant before export or production work.
+ */
+export function buildProductionPacket(input:ProductionPacketInput){
+  return assembleProductionPacket(input,buildProductionHandoff(input.revision));
+}
+
+/** Only a SHA256-verified locked revision may produce an operator download. */
+export async function buildVerifiedProductionPacket(input:ProductionPacketInput){
+  const handoff=await buildVerifiedProductionHandoff(input.revision);
+  return assembleProductionPacket(input,handoff);
 }
