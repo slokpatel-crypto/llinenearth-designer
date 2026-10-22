@@ -159,9 +159,18 @@ export function summarizeRoadmapReadiness(input:RoadmapReadinessInput){
   const phase7Complete=renderRelease.gateComplete;
 
   const productionInput=object(input.productionEvidence);
+  // The live API explicitly includes firstTenBasis. If the full-history
+  // migration is absent, the field is null and Phase 8 must stay open;
+  // the newest-500 operator browse records are never release evidence.
+  // Direct legacy/fixture inputs without the field keep their pure-test path.
+  const productionBasis=productionInput.firstTenBasis===undefined
+    ?productionInput
+    :object(productionInput.firstTenBasis).version==="linen-earth-production-first-ten-audit-v1"
+      ?object(productionInput.firstTenBasis)
+      :{};
   const productionSummary=summarizeProductionDeliveryEvidence(
-    array(productionInput.orders) as never[],
-    array(productionInput.evidence) as never[],
+    array(productionBasis.orders) as never[],
+    array(productionBasis.evidence) as never[],
   );
   const meterageModels=array(object(input.meterageModel).models);
   const approvedMeterageGarments=new Set(
