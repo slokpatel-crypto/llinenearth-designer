@@ -165,3 +165,48 @@ test("delivery signoff rejects historically truncated evidence rather than provi
     assert.equal(summary.gateComplete,false);
   }
 });
+
+test("ten distinct deliveries cannot reuse the same physical job card source",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const reused={...evidence[1],evidence_reference:"  "+evidence[0].evidence_reference.toUpperCase()+"  "};
+  const summary=summarizeProductionDeliveryEvidence(orders,[evidence[0],reused,...evidence.slice(2)]);
+  assert.equal(summary.auditedTargetCount,10);
+  assert.equal(summary.zeroReentryTargetCount,10);
+  assert.equal(summary.duplicateEvidenceSourceCount,1);
+  assert.equal(summary.gateComplete,false);
+});
+
+test("repeat audit of the same physical source for its original order is not a cross-order collision",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const repeat={...evidence[0],evidence_reference:evidence[0].evidence_reference.toUpperCase(),
+    created_at:"2026-10-22T12:00:00Z"};
+  const summary=summarizeProductionDeliveryEvidence(orders,[...evidence,repeat]);
+  assert.equal(summary.duplicateEvidenceSourceCount,0);
+  assert.equal(summary.gateComplete,true);
+});
+
+test("capitalization of an order ID never turns one delivery into two",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const aliased={...orders[0],order_id:orders[0].order_id.toUpperCase()};
+  const summary=summarizeProductionDeliveryEvidence([...orders,aliased],evidence);
+  assert.equal(summary.deliveredCount,10);
+  assert.equal(summary.duplicateDeliveredOrderCount,1);
+  assert.equal(summary.gateComplete,false);
+});
+
+test("operator RPC 500-row truncation cannot certify first ten historical deliveries",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  assert.equal(summarizeProductionDeliveryEvidence(orders,evidence).gateComplete,true);
+  const otherOrders=Array.from({length:490},(_,i)=>({
+    order_id:"later-pending-"+i,status:"created",created_at:"2026-10-21T12:00:00Z",
+  }));
+  const olderCoverage=summarizeProductionDeliveryEvidence([...orders,...otherOrders],evidence);
+  assert.equal(olderCoverage.sourceCoverageUnknown,true);
+  assert.equal(olderCoverage.gateComplete,false);
+  const otherEvidence=Array.from({length:490},(_,i)=>({
+    ...evidence[0],order_id:"later-delivery-"+i,evidence_reference:"later-job-"+i,
+  }));
+  const auditsTruncated=summarizeProductionDeliveryEvidence(orders,[...evidence,...otherEvidence]);
+  assert.equal(auditsTruncated.sourceCoverageUnknown,true);
+  assert.equal(auditsTruncated.gateComplete,false);
+});
