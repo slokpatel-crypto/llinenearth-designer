@@ -287,3 +287,14 @@ test("immutable manual zero-reentry audit cannot predate the real delivery event
   assert.equal(summary.auditedTargetCount,9);
   assert.equal(summary.gateComplete,false);
 });
+
+test("operator delivery audit detail never hides an older manual re-entry incident",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const client=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
+  assert.match(client,/const selectedEvidenceRows=selected\?evidence\.filter/);
+  assert.match(client,/const selectedIncident=selectedEvidenceRows\.some/);
+  assert.match(client,/selectedEvidenceRows\.map\(\(row\)=>/);
+  assert.match(client,/selectedDisputed&&<p role="alert">/);
+  assert.match(client,/audited historical snapshot, not total shop orders/);
+  assert.doesNotMatch(client,/Zero design-data re-entry confirmed/);
+});
