@@ -5,7 +5,7 @@ import {
   parseGarmentEvidenceFabricId,
   type GarmentViewerPatternScaleSample,
 } from "./garment-viewer-readiness.ts";
-import type { RealismAssessment } from "./designer/proof-scale.ts";
+import { normalizeIndependentViewerCode, type RealismAssessment } from "./designer/proof-scale.ts";
 
 // Never coerce JSON evidence: Number(null), Number(false), and Number("")
 // could fabricate a perfect measurement or zero-duration timing sample.
@@ -71,9 +71,9 @@ export function parseGarmentRealismAssessments(value:unknown):RealismAssessment[
   return value.slice(-50).flatMap((item)=>{
     if(!item || typeof item!=="object" || Array.isArray(item)) return [];
     const row=item as Record<string,unknown>;
-    const viewerId=typeof row.viewerId==="string" ? row.viewerId.trim().toLowerCase().slice(0,80) : "";
+    const viewerId=normalizeIndependentViewerCode(row.viewerId);
     const rating=row.rating;
-    if(viewerId.length<2 || typeof rating!=="number" || !Number.isInteger(rating)
+    if(!viewerId || typeof rating!=="number" || !Number.isInteger(rating)
       || rating<1 || rating>5) return [];
     return [{viewerId,rating,recordedAt:typeof row.recordedAt==="string"
       ? row.recordedAt.slice(0,80) : ""}];
@@ -108,8 +108,8 @@ export function garmentRealismSubmissionIsLossless(value:unknown):boolean {
   return value.every((item,index)=>{
     const row=item as Record<string,unknown>;
     if(typeof row.viewerId!=="string") return false;
-    const viewerId=row.viewerId.trim().toLowerCase();
-    if(viewerId.length<2 || viewerId.length>80 || seen.has(viewerId)) return false;
+    const viewerId=normalizeIndependentViewerCode(row.viewerId);
+    if(!viewerId || seen.has(viewerId)) return false;
     seen.add(viewerId);
     if(row.recordedAt!==undefined
       && (typeof row.recordedAt!=="string" || row.recordedAt.length>80)) return false;
