@@ -88,9 +88,9 @@ export function garmentLatencySubmissionIsLossless(value:unknown):boolean {
   if(value===undefined) return true;
   if(!Array.isArray(value) || value.length>120) return false;
   const parsed=parseGarmentLatencySamples(value);
-  // Persistence rounds to tenths; sub-0.05ms rows would otherwise vanish.
-  return parsed.length===value.length
-    && parsed.every((sample)=>Math.round(sample*10)/10>0);
+  // Preserve every finite timing sample exactly; rounding before storage can
+  // turn a true p95 failure into a false pass near the latency threshold.
+  return parsed.length===value.length;
 }
 
 /**
@@ -151,8 +151,7 @@ export function parseMeasuredScaleInput(
 export function normalizeGarmentViewerEvidenceForStorage(payload:Record<string,unknown>) {
   return {
     patternScaleSamples:parseGarmentPatternSamples(payload.patternScaleSamples),
-    interactionLatencyMs:parseGarmentLatencySamples(payload.interactionLatencyMs)
-      .map((sample)=>Math.round(sample*10)/10).filter((sample)=>sample>0),
+    interactionLatencyMs:parseGarmentLatencySamples(payload.interactionLatencyMs),
     realismAssessments:parseGarmentRealismAssessments(payload.realismAssessments),
   };
 }
