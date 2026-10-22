@@ -239,3 +239,26 @@ test("roadmap rejects an otherwise complete production audit with missing delive
     assert.equal(summary.phases.find((item)=>item.phase===8)?.evidenceComplete,false);
   }
 });
+
+test("Phase 8 rejects an overlong or malformed first-ten RPC snapshot",()=>{
+  const orders=Array.from({length:11},(_,i)=>({
+    order_id:"historical-order-"+i,status:"delivered",
+    created_at:"2026-09-01T10:00:00Z",delivered_at:"2026-10-15T10:00:00Z",
+  }));
+  const evidence=orders.map((item,i)=>({
+    order_id:item.order_id,manual_design_reentry:false,
+    operator:"Real production checker",evidence_reference:"Job sheet "+i,
+    created_at:"2026-10-16T10:00:00Z",
+  }));
+  const productionEvidence={firstTenBasis:{
+    version:"linen-earth-production-first-ten-audit-v2",historyValid:true,
+    orders,evidence,
+  }};
+  const meterageModel={models:[{garment:"shirt",status:"approved"},{garment:"trouser",status:"approved"}]};
+  assert.equal(summarizeRoadmapReadiness({productionEvidence,meterageModel})
+    .phases.find((item)=>item.phase===8)?.evidenceComplete,false);
+  // Ten genuinely audited deliveries can pass; eleven falsely labelled "first ten" must not.
+  const valid={firstTenBasis:{...productionEvidence.firstTenBasis,orders:orders.slice(0,10),evidence:evidence.slice(0,10)}};
+  assert.equal(summarizeRoadmapReadiness({productionEvidence:valid,meterageModel})
+    .phases.find((item)=>item.phase===8)?.evidenceComplete,true);
+});

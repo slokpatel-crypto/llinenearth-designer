@@ -166,6 +166,7 @@ export function summarizeRoadmapReadiness(input:RoadmapReadinessInput){
   const productionBasisOrders=array(rawProductionBasis.orders);
   const productionBasis=rawProductionBasis.version==="linen-earth-production-first-ten-audit-v2"
     &&rawProductionBasis.historyValid===true
+    &&productionBasisOrders.length<=10
     &&productionBasisOrders.every((row)=>typeof row.delivered_at==="string"
       &&Number.isFinite(Date.parse(row.delivered_at)))
     ?rawProductionBasis:{};

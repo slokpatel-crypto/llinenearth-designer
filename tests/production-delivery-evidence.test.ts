@@ -298,3 +298,14 @@ test("operator delivery audit detail never hides an older manual re-entry incide
   assert.match(client,/audited historical snapshot, not total shop orders/);
   assert.doesNotMatch(client,/Zero design-data re-entry confirmed/);
 });
+
+test("operator first-ten UI revokes stale proof on every failed or pending live refresh",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const client=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
+  assert.match(client,/setLoading\(true\);\s*setLoadError\(false\);\s*setFirstTenBasis\(null\)/);
+  assert.match(client,/setOrders\(\[\]\);\s*setEvidence\(\[\]\)/);
+  assert.match(client,/catch\s*\{\s*setFirstTenBasis\(null\)/);
+  assert.match(client,/setLoadError\(true\)/);
+  assert.match(client,/rawBasis\.orders\.length<=10/);
+  assert.match(client,/Historical delivery certification is locked/);
+});
