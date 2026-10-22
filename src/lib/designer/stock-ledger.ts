@@ -28,7 +28,7 @@ function requiredStockIdentity(value:unknown,label:string,min:number,max:number)
 /** A cut-off source reference would no longer identify the source worksheet. */
 function requiredStockAuditText(value:unknown,label:string,min:number,max:number):string {
   if(typeof value!=="string") throw new Error(`${label} is required.`);
-  const text=value.replace(/\\s+/g," ").trim();
+  const text=value.replace(/\s+/g," ").trim();
   if(text.length<min) throw new Error(`${label} is required.`);
   if(text.length>max) throw new Error(`${label} exceeds ${max} characters; source provenance cannot be truncated.`);
   return text;
