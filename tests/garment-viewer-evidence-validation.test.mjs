@@ -6,6 +6,7 @@ import {
   parseGarmentRealismAssessments,
   parseMeasuredScaleInput,
   normalizeGarmentViewerEvidenceForStorage,
+  readGarmentViewerScopedCache,
 } from "../src/lib/garment-viewer-evidence-validation.ts";
 
 const stripe={
@@ -142,4 +143,25 @@ test("extreme finite measured errors cannot overflow display rounding during JSO
   assert.ok(Number.isFinite(stored.patternScaleSamples[0].errorPct));
   assert.ok(stored.patternScaleSamples[0].errorPct>100);
   assert.deepEqual(parseGarmentPatternSamples(JSON.parse(JSON.stringify(stored)).patternScaleSamples),stored.patternScaleSamples);
+});
+
+test("scoped QA cache rejects all present-but-malformed rows without inventing an empty pass",()=>{
+  const assetKey="LE-OFFICEWEAR-V1:"+"a".repeat(64)+":"+"b".repeat(64);
+  const latencyKey="linen-earth-garment-viewer-latency-v1";
+  const ratingKey="linen-earth-garment-viewer-realism-v1";
+  const read=(raw,key=latencyKey)=>readGarmentViewerScopedCache(raw,key,assetKey,[]);
+  assert.deepEqual(read(null),[],"absent cache is an empty observation");
+  for(const raw of [""," ","null","false","0","[]","\"empty\"","{}",
+    JSON.stringify({samples:[100]}),JSON.stringify({assetKey:null,samples:[100]}),
+    JSON.stringify({assetKey,samples:null}),"{broken"]){
+    assert.equal(read(raw),null,raw);
+  }
+  assert.deepEqual(read(JSON.stringify({assetKey,samples:[0.02,299.96]})),[0.02,299.96]);
+  assert.deepEqual(read(JSON.stringify({assetKey:"obsolete-model",samples:[999]})),[]);
+  assert.equal(read(JSON.stringify({assetKey,value:[]})),null);
+  assert.equal(read(JSON.stringify({assetKey,samples:[]}),ratingKey),null);
+  assert.deepEqual(read(JSON.stringify({assetKey,value:[{viewerId:"v-01",rating:4}]}),ratingKey),
+    [{viewerId:"v-01",rating:4}]);
+  assert.equal(read(JSON.stringify({assetKey,value:null}),ratingKey),null);
+  assert.equal(read(JSON.stringify({assetKey,value:[]}),"other-key"),null);
 });
