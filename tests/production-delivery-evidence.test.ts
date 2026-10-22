@@ -62,3 +62,82 @@ test("legacy delivery audits without provenance stay visible but cannot satisfy 
   assert.equal(summary.legacyOrUnverifiedCount,10);
   assert.equal(summary.gateComplete,false);
 });
+
+function tenAuditedDeliveries(){
+  const orders=Array.from({length:10},(_,i)=>({
+    order_id:`le-order-${i}`,status:"delivered",
+    created_at:`2026-10-${String(i+1).padStart(2,"0")}T10:00:00Z`,
+  }));
+  const evidence=orders.map((order,i)=>({
+    order_id:order.order_id,manual_design_reentry:false,
+    operator:"Independent checker",evidence_reference:`delivery-job-card-${i}`,
+    created_at:"2026-10-21T08:00:00Z",
+  }));
+  return {orders,evidence};
+}
+
+test("later zero-reentry evidence cannot overwrite an earlier re-entry incident",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const incident={...evidence[0],manual_design_reentry:true,created_at:"2026-10-20T08:00:00Z"};
+  for(const rows of [
+    [incident,...evidence],
+    [...evidence,incident],
+  ]){
+    const summary=summarizeProductionDeliveryEvidence(orders,rows);
+    assert.equal(summary.recordedTargetCount,10);
+    assert.equal(summary.reentryIncidentCount,1);
+    assert.equal(summary.disputedTargetCount,1);
+    assert.equal(summary.zeroReentryTargetCount,9);
+    assert.equal(summary.gateComplete,false);
+  }
+});
+
+test("duplicate delivered-order rows cannot masquerade as ten distinct successful deliveries",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const duplicated=[...orders.slice(0,9),orders[0]];
+  const summary=summarizeProductionDeliveryEvidence(duplicated,evidence);
+  assert.equal(summary.deliveredCount,9);
+  assert.equal(summary.duplicateDeliveredOrderCount,1);
+  assert.equal(summary.firstTargetOrderCount,9);
+  assert.equal(summary.gateComplete,false);
+  const withTen=[...orders,orders[0]];
+  assert.equal(summarizeProductionDeliveryEvidence(withTen,evidence).gateComplete,false);
+});
+
+test("unknown re-entry state, missing provenance and corrupt timestamps never become a zero-reentry release pass",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  assert.equal(summarizeProductionDeliveryEvidence(orders,evidence).gateComplete,true);
+  for(const changed of [
+    {...evidence[0],manual_design_reentry:undefined},
+    {...evidence[0],manual_design_reentry:"false"},
+    {...evidence[0],operator:""},
+    {...evidence[0],created_at:"not-a-date"},
+  ]){
+    const summary=summarizeProductionDeliveryEvidence(orders,[changed as never,...evidence.slice(1)]);
+    assert.equal(summary.auditedTargetCount,9);
+    assert.equal(summary.zeroReentryTargetCount,9);
+    assert.equal(summary.gateComplete,false,JSON.stringify(changed));
+  }
+  assert.equal(summarizeProductionDeliveryEvidence([
+    {...orders[0],created_at:"broken-delivery-time"},...orders.slice(1),
+  ],evidence).gateComplete,false);
+});
+
+test("phase eight first-ten standard cannot be weakened with zero or small target arguments",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  assert.equal(summarizeProductionDeliveryEvidence(orders,evidence,0).gateComplete,false);
+  assert.equal(summarizeProductionDeliveryEvidence(orders,evidence,1).gateComplete,false);
+  assert.equal(summarizeProductionDeliveryEvidence(orders,evidence,9).gateComplete,false);
+  assert.equal(summarizeProductionDeliveryEvidence(orders,evidence,10).gateComplete,true);
+});
+
+test("two concordant audits for the same delivery retain both while counting one verified order",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const result=summarizeProductionDeliveryEvidence(orders,[
+    ...evidence,{...evidence[0],created_at:"2026-10-22T09:00:00Z"},
+  ]);
+  assert.equal(result.recordedTargetCount,10);
+  assert.equal(result.reentryIncidentCount,0);
+  assert.equal(result.disputedTargetCount,0);
+  assert.equal(result.gateComplete,true);
+});

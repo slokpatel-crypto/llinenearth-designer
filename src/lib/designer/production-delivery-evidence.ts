@@ -55,30 +55,63 @@ export type ProductionDeliveryEvidenceRow={
   created_at:string;
 };
 
+/**
+ * The first ten DISTINCT delivered production orders must have independently
+ * traceable evidence with zero manual design re-entry. Never allow map
+ * last-write-wins behavior to hide an earlier re-entry incident, or duplicate
+ * order rows to count as additional successful customer deliveries.
+ */
 export function summarizeProductionDeliveryEvidence(
   orders:ProductionEvidenceOrder[],
   evidence:ProductionDeliveryEvidenceRow[],
   target=10,
 ){
-  const delivered=[...orders]
-    .filter((item)=>item.status==="delivered")
+  const requestedTargetValid=Number.isInteger(target)&&target>=10&&target<=500;
+  const rawDelivered=orders.filter((item)=>item&&item.status==="delivered");
+  const orderById=new Map<string,ProductionEvidenceOrder>();
+  const repeatedOrderIds=new Set<string>();
+  let malformedDeliveryCount=0;
+  for(const order of rawDelivered){
+    const id=typeof order.order_id==="string"?order.order_id.trim():"";
+    const timestamp=typeof order.created_at==="string"?Date.parse(order.created_at):Number.NaN;
+    if(!id||!Number.isFinite(timestamp)){
+      malformedDeliveryCount++;
+      continue;
+    }
+    if(orderById.has(id)) repeatedOrderIds.add(id);
+    else orderById.set(id,order);
+  }
+  const delivered=[...orderById.values()]
     .sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at));
-  const firstTarget=delivered.slice(0,target);
-  const evidenceByOrder=new Map(evidence.map((item)=>[item.order_id,item]));
+  const firstTarget=delivered.slice(0,requestedTargetValid?target:10);
+  const evidenceByOrder=new Map<string,ProductionDeliveryEvidenceRow[]>();
+  for(const row of evidence){
+    if(!row||typeof row.order_id!=="string"||!row.order_id.trim()) continue;
+    const group=evidenceByOrder.get(row.order_id)||[];
+    group.push(row);
+    evidenceByOrder.set(row.order_id,group);
+  }
   const audited=firstTarget.map((order)=>{
-    const row=evidenceByOrder.get(order.order_id)||null;
-    const provenanceReady=Boolean(
-      row &&
-      String(row.operator||"").trim().length>=2 &&
-      String(row.evidence_reference||"").trim().length>=3
+    const rows=evidenceByOrder.get(order.order_id)||[];
+    // Every recorded audit matters. A later false cannot erase an earlier
+    // true, even if Supabase returned rows in a different order.
+    const incident=rows.some((row)=>row.manual_design_reentry===true);
+    const provenanceReady=rows.length>0&&rows.every((row)=>
+      typeof row.manual_design_reentry==="boolean"
+      && typeof row.operator==="string"&&row.operator.trim().length>=2
+      && typeof row.evidence_reference==="string"&&row.evidence_reference.trim().length>=3
+      && typeof row.created_at==="string"&&Number.isFinite(Date.parse(row.created_at))
     );
-    return {order,evidence:row,provenanceReady};
+    const disputed=rows.length>1&&rows.some((row)=>
+      row.manual_design_reentry!==rows[0].manual_design_reentry);
+    return {order,evidence:rows[0]||null,provenanceReady,incident,disputed};
   });
   const recordedTargetCount=audited.filter((item)=>item.evidence).length;
-  const auditedTargetCount=audited.filter((item)=>item.evidence&&item.provenanceReady).length;
+  const auditedTargetCount=audited.filter((item)=>item.provenanceReady).length;
   const legacyOrUnverifiedCount=audited.filter((item)=>item.evidence&&!item.provenanceReady).length;
-  const zeroReentryTargetCount=audited.filter((item)=>item.evidence&&item.provenanceReady&&!item.evidence.manual_design_reentry).length;
-  const reentryIncidentCount=audited.filter((item)=>item.evidence&&item.provenanceReady&&item.evidence.manual_design_reentry).length;
+  const zeroReentryTargetCount=audited.filter((item)=>item.provenanceReady&&!item.incident).length;
+  const reentryIncidentCount=audited.filter((item)=>item.incident).length;
+  const disputedTargetCount=audited.filter((item)=>item.disputed).length;
   const missingEvidenceCount=firstTarget.length-recordedTargetCount;
   return {
     target,
@@ -89,7 +122,13 @@ export function summarizeProductionDeliveryEvidence(
     legacyOrUnverifiedCount,
     zeroReentryTargetCount,
     reentryIncidentCount,
+    disputedTargetCount,
+    duplicateDeliveredOrderCount:repeatedOrderIds.size,
+    invalidDeliveredOrderCount:malformedDeliveryCount,
     missingEvidenceCount,
-    gateComplete:firstTarget.length>=target&&auditedTargetCount===target&&reentryIncidentCount===0,
+    gateComplete:firstTarget.length>=target&&requestedTargetValid
+      &&auditedTargetCount===target&&zeroReentryTargetCount===target
+      &&reentryIncidentCount===0&&disputedTargetCount===0
+      &&repeatedOrderIds.size===0&&malformedDeliveryCount===0,
   };
 }
