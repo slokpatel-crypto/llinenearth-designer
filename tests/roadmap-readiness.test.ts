@@ -187,3 +187,30 @@ test("Phase 9 cannot pass on a preview or duplicate Vercel runtime",()=>{
   assert.match(phase9?.blocker||"",/primary vercel production runtime/i);
   assert.equal(summary.productionRuntimeHealthy,false);
 });
+
+test("live Phase 8 cannot certify newest-500 browsing rows without a complete oldest-ten snapshot",()=>{
+  const orders=Array.from({length:10},(_,index)=>({
+    order_id:"oldest-"+index,status:"delivered",
+    created_at:"2026-09-"+String(index+1).padStart(2,"0")+"T09:00:00Z",
+  }));
+  const evidence=orders.map((item,index)=>({
+    order_id:item.order_id,manual_design_reentry:false,
+    operator:"Tailor Checker",evidence_reference:"Real job card "+index,
+    created_at:"2026-10-10T10:00:00Z",
+  }));
+  const meterageModel={models:[{garment:"shirt",status:"approved"},{garment:"trouser",status:"approved"}]};
+  const noMigration=summarizeRoadmapReadiness({
+    productionEvidence:{orders,evidence,firstTenBasis:null},meterageModel,
+  });
+  assert.equal(noMigration.phases.find((item)=>item.phase===8)?.evidenceComplete,false);
+  const fullBasis=summarizeRoadmapReadiness({
+    productionEvidence:{orders:[],evidence:[],firstTenBasis:{
+      version:"linen-earth-production-first-ten-audit-v1",orders,evidence,
+    }},meterageModel,
+  });
+  assert.equal(fullBasis.phases.find((item)=>item.phase===8)?.evidenceComplete,true);
+  const forgedVersion=summarizeRoadmapReadiness({
+    productionEvidence:{orders,evidence,firstTenBasis:{version:"unverified",orders,evidence}},meterageModel,
+  });
+  assert.equal(forgedVersion.phases.find((item)=>item.phase===8)?.evidenceComplete,false);
+});
