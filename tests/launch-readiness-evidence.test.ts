@@ -189,3 +189,35 @@ test("normalizers reject overlong case IDs, revision IDs and launch reviewer nam
     itemId:"operator_access",status:"approved",signedBy:"a".repeat(121),
   }),/human sign-off/);
 });
+
+test("same-instant contradictory beta and checklist records block approval regardless of input ordering",()=>{
+  const {attempts,checklist}=passingLaunchEvidence();
+  const conflictingBeta={...attempts[0],blocking_bug:true};
+  for(const records of [
+    [conflictingBeta,...attempts],
+    [...attempts,conflictingBeta],
+  ]){
+    const summary=summarizeLaunchReadiness(records,checklist);
+    assert.equal(summary.invalidBetaEvidenceCases,1);
+    assert.equal(summary.betaGateComplete,false);
+  }
+  const conflictingChecklist={...checklist[0],status:"review"};
+  for(const records of [
+    [conflictingChecklist,...checklist],
+    [...checklist,conflictingChecklist],
+  ]){
+    const summary=summarizeLaunchReadiness(attempts,records);
+    assert.equal(summary.invalidChecklistEvidenceItems,1);
+    assert.equal(summary.checklistGateComplete,false);
+  }
+});
+
+test("only complete timestamped audit records can satisfy launch gating",()=>{
+  const {attempts,checklist}=passingLaunchEvidence();
+  for(const created_at of ["2026-10-01","2026-10-01T08:00:00","not-a-timestamp"]){
+    const summary=summarizeLaunchReadiness([
+      {...attempts[0],created_at},...attempts.slice(1),
+    ],checklist);
+    assert.equal(summary.betaGateComplete,false,created_at);
+  }
+});
