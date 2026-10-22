@@ -95,7 +95,7 @@ export type LaunchChecklistEvent={
 
 /** Unverifiable, forged or future-dated audit rows must never approve launch. */
 function validLaunchRecordedAt(value:unknown):value is string {
-  if(typeof value!=="string") return false;
+  if(typeof value!=="string"||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value)) return false;
   const at=Date.parse(value);
   return Number.isFinite(at)&&at<=Date.now()+10*60_000;
 }
@@ -105,9 +105,22 @@ export function summarizeLaunchReadiness(
   checklistEvents:LaunchChecklistEvent[],
 ){
   const invalidBetaKeys=new Set<string>();
+  const betaSignatureAt=new Map<string,string>();
   for(const row of betaAttempts){
     const key=typeof row?.case_id==="string"?row.case_id.trim().toLowerCase():"";
-    if(key&&!validLaunchRecordedAt(row.created_at)) invalidBetaKeys.add(key);
+    if(!key) continue;
+    if(!validLaunchRecordedAt(row.created_at)||!/^[a-z0-9._-]{3,80}$/.test(key)){
+      invalidBetaKeys.add(key);
+      continue;
+    }
+    const stamp=key+"|"+Date.parse(row.created_at);
+    const signature=JSON.stringify([
+      row.core_flow_completed,row.design_locked,row.share_or_enquiry_completed,
+      row.revision_id,row.blocking_bug,row.share_audit_confirmed,row.enquiry_audit_confirmed,
+    ]);
+    const previous=betaSignatureAt.get(stamp);
+    if(previous!==undefined&&previous!==signature) invalidBetaKeys.add(key);
+    else betaSignatureAt.set(stamp,signature);
   }
   const latestBeta=new Map<string,LaunchBetaAttempt>();
   for(const row of [...betaAttempts].filter((item)=>item&&validLaunchRecordedAt(item.created_at))
@@ -135,9 +148,17 @@ export function summarizeLaunchReadiness(
 
   const invalidChecklistIds=new Set<string>();
   const knownChecklistIds=new Set<string>(LAUNCH_CHECKLIST_ITEMS.map((item)=>item.id));
+  const checklistStatusAt=new Map<string,string>();
   for(const row of checklistEvents){
-    if(knownChecklistIds.has(row?.item_id)&&!validLaunchRecordedAt(row.created_at))
+    if(!knownChecklistIds.has(row?.item_id)) continue;
+    if(!validLaunchRecordedAt(row.created_at)){
       invalidChecklistIds.add(row.item_id);
+      continue;
+    }
+    const stamp=row.item_id+"|"+Date.parse(row.created_at);
+    const previous=checklistStatusAt.get(stamp);
+    if(previous!==undefined&&previous!==row.status) invalidChecklistIds.add(row.item_id);
+    else checklistStatusAt.set(stamp,row.status);
   }
   const latestChecklist=new Map<string,LaunchChecklistEvent>();
   for(const row of [...checklistEvents].filter((item)=>item&&validLaunchRecordedAt(item.created_at))
