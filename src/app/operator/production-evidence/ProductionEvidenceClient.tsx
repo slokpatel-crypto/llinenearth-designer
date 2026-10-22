@@ -65,7 +65,14 @@ export default function ProductionEvidenceClient(){
   const summary=useMemo(()=>summarizeProductionDeliveryEvidence(
     firstTenBasis?.orders||[],firstTenBasis?.evidence||[]),[firstTenBasis]);
   const selected=delivered.find((item)=>item.order_id===selectedOrderId)||delivered[0]||null;
-  const selectedEvidence=selected?evidence.find((item)=>item.order_id===selected.order_id)||null:null;
+  const selectedEvidenceRows=selected?evidence.filter((item)=>
+    item.order_id.toLowerCase()===selected.order_id.toLowerCase()):[];
+  const selectedEvidence=selectedEvidenceRows[0]||null;
+  // A later clean check cannot erase an earlier re-entry incident. Show all
+  // immutable audit rows, even if the newest browsing RPC returns them out of order.
+  const selectedIncident=selectedEvidenceRows.some((item)=>item.manual_design_reentry===true);
+  const selectedDisputed=selectedEvidenceRows.length>1&&selectedEvidenceRows.some((item)=>
+    item.manual_design_reentry!==selectedEvidence?.manual_design_reentry);
   const choiceValid=manualChoice!=="unset"&&operator.trim().length>=2&&evidenceReference.trim().length>=3&&(manualChoice==="no"||reentryFields.length>0||note.trim().length>=3);
 
   function chooseOrder(orderId:string){
@@ -127,7 +134,7 @@ export default function ProductionEvidenceClient(){
     {summary.duplicateEvidenceSourceCount>0&&<section className="productionEvidenceNotice">Shared physical job-card reference detected across distinct delivered orders. Independently identify and review each source before sign-off.</section>}
 
     <section className="productionEvidenceScore">
-      <article><span>DELIVERED</span><strong>{summary.deliveredCount}</strong><small>real completed orders</small></article>
+      <article><span>EARLIEST DELIVERIES</span><strong>{summary.deliveredCount}/10</strong><small>audited historical snapshot, not total shop orders</small></article>
       <article><span>FIRST 10 AUDITED</span><strong>{summary.auditedTargetCount}/10</strong><small>immutable completion audits</small></article>
       <article><span>ZERO RE-ENTRY</span><strong>{summary.zeroReentryTargetCount}</strong><small>within first 10 delivered</small></article>
       <article data-alert={summary.reentryIncidentCount>0}><span>RE-ENTRY INCIDENTS</span><strong>{summary.reentryIncidentCount}</strong><small>within first 10 delivered</small></article>
@@ -138,12 +145,12 @@ export default function ProductionEvidenceClient(){
       <aside className="productionEvidenceQueue">
         <div className="productionEvidenceSectionHead"><span>DELIVERED ORDER AUDITS</span><b>{delivered.length}</b></div>
         {!delivered.length&&<p>No delivered orders exist yet.</p>}
-        {delivered.map((item,index)=>{
+        {delivered.map((item)=>{
           const row=evidence.find((entry)=>entry.order_id===item.order_id);
           return <button key={item.order_id} className={selected?.order_id===item.order_id?"active":""} onClick={()=>chooseOrder(item.order_id)}>
             <span><b>{item.revision_id}</b>{firstTenOrderIds.has(item.order_id)&&<em>FIRST 10</em>}</span>
             <small>{item.order_id}</small>
-            <i data-state={!row?"pending":row.manual_design_reentry?"incident":"clean"}>{!row?"audit pending":row.manual_design_reentry?"re-entry recorded":"zero re-entry"}</i>
+            <i data-state={!row?"pending":evidence.some((entry)=>entry.order_id===item.order_id&&entry.manual_design_reentry===true)?"incident":"clean"}>{!row?"audit pending":evidence.some((entry)=>entry.order_id===item.order_id&&entry.manual_design_reentry===true)?"re-entry recorded":"audit recorded"}</i>
           </button>;
         })}
       </aside>
@@ -158,11 +165,17 @@ export default function ProductionEvidenceClient(){
 
           {selectedEvidence?<div className="productionEvidenceLocked">
             <span>IMMUTABLE AUDIT</span>
-            <h2>{selectedEvidence.manual_design_reentry?"Manual re-entry occurred":"Zero design-data re-entry confirmed"}</h2>
-            <p>{selectedEvidence.note||"No additional note."}</p>
-            {selectedEvidence.reentry_fields?.length>0&&<p><b>Fields:</b> {selectedEvidence.reentry_fields.join(", ")}</p>}
-            <p><b>Evidence reference:</b> {selectedEvidence.evidence_reference||"Legacy audit · provenance not recorded"}</p>
-            <small>{selectedEvidence.operator||"Operator not named"} · {new Date(selectedEvidence.created_at).toLocaleString("en-IN")}</small>
+            <h2>{selectedIncident?"Manual re-entry occurred":selectedDisputed?"Conflicting audits — review required":"No recorded design-data re-entry"}</h2>
+            {selectedDisputed&&<p role="alert">Conflicting immutable audit outcomes exist for this order. Reconcile all real production evidence before sign-off.</p>}
+            <p>{selectedEvidenceRows.length} immutable completion audit{selectedEvidenceRows.length===1?"":"s"} recorded. A clean audit never cancels an incident.</p>
+            {selectedEvidenceRows.map((row)=>(
+              <div key={row.evidence_id}>
+                <p><b>{row.manual_design_reentry?"Re-entry incident":"No re-entry recorded"}:</b> {row.note||"No additional note."}</p>
+                {row.reentry_fields?.length>0&&<p><b>Fields:</b> {row.reentry_fields.join(", ")}</p>}
+                <p><b>Evidence reference:</b> {row.evidence_reference||"Legacy audit · provenance not recorded"}</p>
+                <small>{row.operator||"Operator not named"} · {Number.isFinite(Date.parse(row.created_at))?new Date(row.created_at).toLocaleString("en-IN"):"Timestamp unverified"}</small>
+              </div>
+            ))}
           </div>:<>
             <div className="productionEvidenceChoice">
               <span>01 / DID ANY DESIGN DATA HAVE TO BE TYPED AGAIN?</span>
