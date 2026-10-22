@@ -106,11 +106,23 @@ export default function ProductionClient(){
   }
 
 
-  const quoteItems=useMemo(()=>[
-    {label:quote.line1Label.trim(),amount:Number(quote.line1Amount)},
-    {label:quote.line2Label.trim(),amount:Number(quote.line2Amount)},
-  ].filter((item)=>item.label&&Number.isFinite(item.amount)&&item.amount>=0),[quote]);
-  const canQuote=Boolean(loadedRevision)&&quote.revisionId.trim().length>=12&&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteItems.length>0;
+  // A prefilled label is not a price. Number("") returns zero; never create
+  // free garment quotes from blank, incomplete, or ambiguous operator inputs.
+  const quoteRows=useMemo(()=>[
+    {label:quote.line1Label.trim(),amountText:quote.line1Amount.trim()},
+    {label:quote.line2Label.trim(),amountText:quote.line2Amount.trim()},
+  ],[quote.line1Label,quote.line1Amount,quote.line2Label,quote.line2Amount]);
+  const decimalPrice=(text:string)=>/^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/.test(text)
+    && Number.isFinite(Number(text))&&Number(text)>=0&&Number(text)<=10_000_000;
+  const quoteRowsValid=quoteRows.every((row)=>
+    (!row.label&&!row.amountText)||(Boolean(row.label)&&decimalPrice(row.amountText)));
+  const quoteItems=quoteRows.filter((row)=>row.label&&decimalPrice(row.amountText))
+    .map((row)=>({label:row.label,amount:Number(row.amountText)}));
+  const adjustmentValid=/^-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/.test(quote.adjustment.trim())
+    && Number.isFinite(Number(quote.adjustment))&&Math.abs(Number(quote.adjustment))<=10_000_000;
+  const canQuote=Boolean(loadedRevision)&&quote.revisionId.trim().length>=12
+    &&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteItems.length>0
+    &&quoteRowsValid&&adjustmentValid;
   const acceptedQuotes=useMemo(()=>quotes.filter((item)=>item.status==="accepted"&&(
     !order.revisionId || (item.revision_id===order.revisionId&&item.recipe_hash===order.recipeHash)
   )),[quotes,order.revisionId,order.recipeHash]);
