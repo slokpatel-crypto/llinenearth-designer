@@ -53,3 +53,15 @@ test("decimal text from a quote form remains supported without JS numeric coerci
   assert.equal(result.adjustment,-25);
   assert.equal(result.total,1475.25);
 });
+
+test("operator form cannot silently quote unentered fabric and tailoring prices as zero",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const source=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  assert.match(source,/amountText:quote\.line1Amount\.trim\(\)/);
+  assert.match(source,/amountText:quote\.line2Amount\.trim\(\)/);
+  assert.match(source,/quoteRows\.every\(/);
+  assert.match(source,/Boolean\(row\.label\)&&decimalPrice\(row\.amountText\)/);
+  assert.match(source,/&&quoteRowsValid&&adjustmentValid/);
+  assert.ok(!source.includes("amount:Number(quote.line1Amount)"));
+  assert.ok(!source.includes("amount:Number(quote.line2Amount)"));
+});
