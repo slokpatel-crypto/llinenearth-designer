@@ -357,7 +357,7 @@ test("operator 3D QA acceptance is deliberate and cannot be confused with releas
 
 test("malformed local QA cache cannot silently turn into clean empty evidence",()=>{
   const source=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
-  assert.match(source,/catch\\{return null as T;\\}/);
-  assert.match(source,/setLocalEvidenceCorrupt\\(!garmentLatencySubmissionIsLossless\\(savedLatencies\\)/);
-  assert.match(source,/Recording is locked/);
+  assert.ok(source.includes("catch{return null as T;}"));
+  assert.ok(source.includes("setLocalEvidenceCorrupt(!garmentLatencySubmissionIsLossless(savedLatencies)"));
+  assert.ok(source.includes("Recording is locked"));
 });
