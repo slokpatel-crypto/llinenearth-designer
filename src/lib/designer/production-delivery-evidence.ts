@@ -68,6 +68,9 @@ export function summarizeProductionDeliveryEvidence(
   target=10,
 ){
   const requestedTargetValid=Number.isInteger(target)&&target>=10&&target<=500;
+  // Both operator list RPCs are capped at 500 newest rows. At the cap, the
+  // earliest-ever deliveries/evidence might be omitted, so proof is incomplete.
+  const sourceCoverageUnknown=orders.length>=500||evidence.length>=500;
   const rawDelivered=orders.filter((item)=>item&&item.status==="delivered");
   const orderById=new Map<string,ProductionEvidenceOrder>();
   const repeatedOrderIds=new Set<string>();
@@ -79,8 +82,9 @@ export function summarizeProductionDeliveryEvidence(
       malformedDeliveryCount++;
       continue;
     }
-    if(orderById.has(id)) repeatedOrderIds.add(id);
-    else orderById.set(id,order);
+    const key=id.toLowerCase();
+    if(orderById.has(key)) repeatedOrderIds.add(key);
+    else orderById.set(key,order);
   }
   const delivered=[...orderById.values()]
     .sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at));
@@ -88,12 +92,13 @@ export function summarizeProductionDeliveryEvidence(
   const evidenceByOrder=new Map<string,ProductionDeliveryEvidenceRow[]>();
   for(const row of evidence){
     if(!row||typeof row.order_id!=="string"||!row.order_id.trim()) continue;
-    const group=evidenceByOrder.get(row.order_id)||[];
+    const key=row.order_id.trim().toLowerCase();
+    const group=evidenceByOrder.get(key)||[];
     group.push(row);
-    evidenceByOrder.set(row.order_id,group);
+    evidenceByOrder.set(key,group);
   }
   const audited=firstTarget.map((order)=>{
-    const rows=evidenceByOrder.get(order.order_id)||[];
+    const rows=evidenceByOrder.get(order.order_id.trim().toLowerCase())||[];
     // Every recorded audit matters. A later false cannot erase an earlier
     // true, even if Supabase returned rows in a different order.
     const incident=rows.some((row)=>row.manual_design_reentry===true);
@@ -107,6 +112,20 @@ export function summarizeProductionDeliveryEvidence(
       row.manual_design_reentry!==rows[0].manual_design_reentry);
     return {order,evidence:rows[0]||null,provenanceReady,incident,disputed};
   });
+  // A single job card copied across several delivered orders is not ten
+  // independent source documents. Count unique physical references per order.
+  const sourceOwner=new Map<string,string>();
+  const repeatedSourceReferences=new Set<string>();
+  for(const item of audited){
+    if(!item.provenanceReady) continue;
+    const orderId=item.order.order_id.trim().toLowerCase();
+    for(const row of evidenceByOrder.get(orderId)||[]){
+      const reference=(row.evidence_reference as string).trim().replace(/\s+/g," ").toLowerCase();
+      const firstOrder=sourceOwner.get(reference);
+      if(firstOrder&&firstOrder!==orderId) repeatedSourceReferences.add(reference);
+      else sourceOwner.set(reference,orderId);
+    }
+  }
   const recordedTargetCount=audited.filter((item)=>item.evidence).length;
   const auditedTargetCount=audited.filter((item)=>item.provenanceReady).length;
   const legacyOrUnverifiedCount=audited.filter((item)=>item.evidence&&!item.provenanceReady).length;
@@ -125,11 +144,14 @@ export function summarizeProductionDeliveryEvidence(
     reentryIncidentCount,
     disputedTargetCount,
     duplicateDeliveredOrderCount:repeatedOrderIds.size,
+    duplicateEvidenceSourceCount:repeatedSourceReferences.size,
+    sourceCoverageUnknown,
     invalidDeliveredOrderCount:malformedDeliveryCount,
     missingEvidenceCount,
     gateComplete:firstTarget.length>=target&&requestedTargetValid
       &&auditedTargetCount===target&&zeroReentryTargetCount===target
       &&reentryIncidentCount===0&&disputedTargetCount===0
-      &&repeatedOrderIds.size===0&&malformedDeliveryCount===0,
+      &&repeatedOrderIds.size===0&&repeatedSourceReferences.size===0
+      &&malformedDeliveryCount===0&&!sourceCoverageUnknown,
   };
 }
