@@ -386,11 +386,11 @@ test("operator QA submission requires a fresh review after local lab data change
 test("a new garment asset revision cannot reuse prior accepted physical evidence",()=>{
   const source=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
   const refresh=source.slice(source.indexOf("function refreshLocalEvidence()"),source.indexOf("const latencySummary"));
-  assert.match(refresh,/setAcceptTechnicalEvidence\(false\)/);
-  assert.match(refresh,/setStripeFabricId\("")/);
-  assert.match(refresh,/setCheckFabricId\("")/);
-  assert.match(refresh,/setStripeVerified\(false\)/);
-  assert.match(refresh,/setCheckVerified\(false\)/);
-  assert.match(refresh,/setBoundaryChecks\(\{neck:false,cuffs:false,waist:false,trouserGap:false\}\)/);
-  assert.match(refresh,/\},\[assetKey\]\)/);
+  for(const required of [
+    "setAcceptTechnicalEvidence(false)",
+    'setStripeFabricId("")','setCheckFabricId("")',
+    "setStripeVerified(false)","setCheckVerified(false)",
+    "setBoundaryChecks({neck:false,cuffs:false,waist:false,trouserGap:false})",
+    "},[assetKey])",
+  ])assert.ok(refresh.includes(required),required);
 });
