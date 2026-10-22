@@ -90,6 +90,7 @@ export type LaunchBetaAttempt={
 export type LaunchChecklistEvent={
   item_id:string;
   status:string;
+  signed_by?:string|null;
   created_at:string;
 };
 
@@ -137,6 +138,7 @@ export function summarizeLaunchReadiness(
     && row.revision_id.trim().length<=180
     && (row.share_audit_confirmed===true||row.enquiry_audit_confirmed===true)
     && row.blocking_bug===false
+    && ["mobile","tablet","desktop"].includes(row.device_class)
   );
   const uniqueSuccessfulByRevision=new Map<string,LaunchBetaAttempt>();
   for(const row of successfulRows){
@@ -145,20 +147,26 @@ export function summarizeLaunchReadiness(
   }
   const successfulBeta=[...uniqueSuccessfulByRevision.values()];
   const deviceCoverage=new Set(successfulBeta.map((row)=>row.device_class));
+  const blockingBetaCases=beta.filter((row)=>row.blocking_bug===true).length;
 
   const invalidChecklistIds=new Set<string>();
   const knownChecklistIds=new Set<string>(LAUNCH_CHECKLIST_ITEMS.map((item)=>item.id));
   const checklistStatusAt=new Map<string,string>();
   for(const row of checklistEvents){
     if(!knownChecklistIds.has(row?.item_id)) continue;
-    if(!validLaunchRecordedAt(row.created_at)){
+    // A recorded approval without an identifiable human signer is not approval.
+    // Corrupt newer rows also invalidate older approvals instead of reviving them.
+    if(!validLaunchRecordedAt(row.created_at)
+      ||typeof row.signed_by!=="string"||row.signed_by.trim().length<2||row.signed_by.trim().length>120
+      ||(row.status!=="approved"&&row.status!=="review")){
       invalidChecklistIds.add(row.item_id);
       continue;
     }
     const stamp=row.item_id+"|"+Date.parse(row.created_at);
+    const signature=JSON.stringify([row.status,row.signed_by.trim()]);
     const previous=checklistStatusAt.get(stamp);
-    if(previous!==undefined&&previous!==row.status) invalidChecklistIds.add(row.item_id);
-    else checklistStatusAt.set(stamp,row.status);
+    if(previous!==undefined&&previous!==signature) invalidChecklistIds.add(row.item_id);
+    else checklistStatusAt.set(stamp,signature);
   }
   const latestChecklist=new Map<string,LaunchChecklistEvent>();
   for(const row of [...checklistEvents].filter((item)=>item&&validLaunchRecordedAt(item.created_at))
@@ -172,7 +180,7 @@ export function summarizeLaunchReadiness(
     betaTarget:LAUNCH_BETA_TARGET,
     uniqueBetaCases:beta.length,
     successfulBetaCases:successfulBeta.length,
-    blockingBetaCases:beta.filter((row)=>row.blocking_bug===true).length,
+    blockingBetaCases,
     verifiedShareCases:beta.filter((row)=>row.share_audit_confirmed===true).length,
     verifiedEnquiryCases:beta.filter((row)=>row.enquiry_audit_confirmed===true).length,
     verifiedFlowCases:beta.filter((row)=>row.share_audit_confirmed===true||row.enquiry_audit_confirmed===true).length,
@@ -182,8 +190,9 @@ export function summarizeLaunchReadiness(
     deviceCoverage:[...deviceCoverage],
     checklistApproved,
     checklistTotal:LAUNCH_CHECKLIST_ITEMS.length,
-    betaGateComplete:successfulBeta.length>=LAUNCH_BETA_TARGET,
-    checklistGateComplete:checklistApproved===LAUNCH_CHECKLIST_ITEMS.length,
-    launchEvidenceComplete:successfulBeta.length>=LAUNCH_BETA_TARGET&&checklistApproved===LAUNCH_CHECKLIST_ITEMS.length,
+    betaGateComplete:successfulBeta.length>=LAUNCH_BETA_TARGET&&blockingBetaCases===0&&invalidBetaKeys.size===0,
+    checklistGateComplete:checklistApproved===LAUNCH_CHECKLIST_ITEMS.length&&invalidChecklistIds.size===0,
+    launchEvidenceComplete:successfulBeta.length>=LAUNCH_BETA_TARGET&&blockingBetaCases===0&&invalidBetaKeys.size===0
+      &&checklistApproved===LAUNCH_CHECKLIST_ITEMS.length&&invalidChecklistIds.size===0,
   };
 }
