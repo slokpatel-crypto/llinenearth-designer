@@ -210,3 +210,24 @@ test("operator RPC 500-row truncation cannot certify first ten historical delive
   assert.equal(auditsTruncated.sourceCoverageUnknown,true);
   assert.equal(auditsTruncated.gateComplete,false);
 });
+
+test("first-ten API/SQL/UI contract uses all history instead of treating newest-500 as certification",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const sql=readFileSync("supabase/migrations/20261103_production_first_ten_delivery_audit.sql","utf8");
+  const route=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
+  const client=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
+  const roadmap=readFileSync("src/lib/designer/roadmap-readiness.ts","utf8");
+  assert.match(sql,/function public\.production_first_ten_delivery_audit\(\)/);
+  assert.match(sql,/where o\.status='delivered'/);
+  assert.match(sql,/order by o\.created_at asc,o\.order_id asc/);
+  assert.match(sql,/join first_ten o on o\.order_id=e\.order_id/);
+  assert.match(sql,/from private\.production_delivery_evidence e/);
+  assert.match(sql,/revoke all on function public\.production_first_ten_delivery_audit\(\)/);
+  assert.match(sql,/grant execute on function public\.production_first_ten_delivery_audit\(\)/);
+  assert.match(route,/rpc<unknown>\("production_first_ten_delivery_audit",\{\}\)/);
+  assert.match(route,/firstTenBasis/);
+  assert.match(client,/setFirstTenBasis\(basis\)/);
+  assert.match(client,/firstTenBasis\?\.orders\|\|\[\]/);
+  assert.match(roadmap,/productionInput\.firstTenBasis===undefined/);
+  assert.match(roadmap,/linen-earth-production-first-ten-audit-v1/);
+});
