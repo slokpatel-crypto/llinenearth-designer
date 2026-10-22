@@ -101,6 +101,8 @@ export default function ProductionEvidenceClient(){
 
     {!configured&&<section className="productionEvidenceNotice">Production evidence migration is not installed yet.</section>}
     {message&&<section className="productionEvidenceNotice">{message}</section>}
+    {summary.sourceCoverageUnknown&&<section className="productionEvidenceNotice">Audit proof is incomplete: the 500-row history limit may exclude older deliveries or inspections. Retrieve the full history before certifying the first ten orders.</section>}
+    {summary.duplicateEvidenceSourceCount>0&&<section className="productionEvidenceNotice">Shared physical job-card reference detected across distinct delivered orders. Independently identify and review each source before sign-off.</section>}
 
     <section className="productionEvidenceScore">
       <article><span>DELIVERED</span><strong>{summary.deliveredCount}</strong><small>real completed orders</small></article>
