@@ -25,7 +25,7 @@ export function normalizeMeterageCalibrationDraft(input:unknown){
   const garment=String(source.garment||"") as MeterageGarment;
   if(garment!=="shirt"&&garment!=="trouser") throw new Error("Garment must be shirt or trouser.");
 
-  const version=String(source.version||"").trim().slice(0,80);
+  const version=String(source.version||"").trim();
   if(!/^[A-Za-z0-9._-]{3,80}$/.test(version)) {
     throw new Error("Version must be 3–80 characters using letters, numbers, dot, dash or underscore.");
   }
@@ -36,14 +36,14 @@ export function normalizeMeterageCalibrationDraft(input:unknown){
 
   const bands:MeterageCalibrationBand[]=source.bands.map((raw,index)=>{
     const item=record(raw);
-    const label=String(item.label||"").trim().slice(0,80);
+    const label=String(item.label||"").trim();
     const minFabricWidthCm=finite(item.minFabricWidthCm);
     const maxFabricWidthCm=finite(item.maxFabricWidthCm);
     const baseMetres=finite(item.baseMetres);
     const patternAllowanceMetres=finite(item.patternAllowanceMetres??0);
     const cutContext=String(item.cutContext||"").trim().slice(0,160);
 
-    if(!label) throw new Error("Band "+(index+1)+" needs a label.");
+    if(!label||label.length>80) throw new Error("Band "+(index+1)+" needs a label of at most 80 characters.");
     if(minFabricWidthCm===null||maxFabricWidthCm===null||minFabricWidthCm<60||maxFabricWidthCm>220||maxFabricWidthCm<minFabricWidthCm){
       throw new Error("Band "+(index+1)+" has an invalid fabric-width range.");
     }
@@ -110,22 +110,22 @@ export function verifiedMeterageEvidenceCase(input:unknown,expectedGarment?:Mete
   const garment=String(source.garment||"") as MeterageGarment;
   if(garment!=="shirt"&&garment!=="trouser") return null;
   if(expectedGarment&&garment!==expectedGarment) return null;
-  const caseId=String(source.caseId||"").trim().slice(0,80);
+  const caseId=String(source.caseId||"").trim();
   if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) return null;
   const fabricWidthCm=finite(source.fabricWidthCm);
   const actualMetres=finite(source.actualMetres);
   if(fabricWidthCm===null||fabricWidthCm<60||fabricWidthCm>220) return null;
   if(actualMetres===null||actualMetres<=0||actualMetres>12) return null;
-  const checkedBy=String(source.checkedBy||"").replace(/\s+/g," ").trim().slice(0,120);
-  const evidenceReference=String(source.evidenceReference||"").replace(/\s+/g," ").trim().slice(0,240);
-  if(checkedBy.length<2||evidenceReference.length<3) return null;
+  const checkedBy=typeof source.checkedBy==="string"?source.checkedBy.replace(/\s+/g," ").trim():"";
+  const evidenceReference=typeof source.evidenceReference==="string"?source.evidenceReference.replace(/\s+/g," ").trim():"";
+  if(checkedBy.length<2||checkedBy.length>120||evidenceReference.length<3||evidenceReference.length>240) return null;
   return {caseId,garment,fabricWidthCm,actualMetres,checkedBy,evidenceReference};
 }
 
 
 export function normalizeProductionCutEvidenceDraft(input:unknown){
   const source=record(input);
-  const caseId=String(source.caseId||"").trim().slice(0,80);
+  const caseId=String(source.caseId||"").trim();
   if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) throw new Error("Anonymous cut case ID is required.");
   const orderId=String(source.orderId||"").trim();
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId)){
@@ -133,8 +133,8 @@ export function normalizeProductionCutEvidenceDraft(input:unknown){
   }
   const garment=String(source.garment||"") as MeterageGarment;
   if(garment!=="shirt"&&garment!=="trouser") throw new Error("Garment must be shirt or trouser.");
-  const fabricId=String(source.fabricId||"").trim().slice(0,160);
-  if(fabricId.length<2) throw new Error("Locked fabric ID is required.");
+  const fabricId=typeof source.fabricId==="string"?source.fabricId.trim():"";
+  if(fabricId.length<2||fabricId.length>160) throw new Error("Locked fabric ID must be 2–160 characters without truncation.");
   const fabricWidthCm=finite(source.fabricWidthCm);
   if(fabricWidthCm===null||fabricWidthCm<60||fabricWidthCm>220) throw new Error("Fabric width must be between 60 and 220 cm.");
   const actualMetres=finite(source.actualMetres);
@@ -143,10 +143,10 @@ export function normalizeProductionCutEvidenceDraft(input:unknown){
     ? null
     : finite(source.patternRepeatMm);
   if(repeatRaw!==null&&(repeatRaw<=0||repeatRaw>1000)) throw new Error("Pattern repeat must be between 0 and 1000 mm.");
-  const checkedBy=String(source.checkedBy||"").replace(/\s+/g," ").trim().slice(0,120);
-  if(checkedBy.length<2) throw new Error("Named tailor or checker is required.");
-  const evidenceReference=String(source.evidenceReference||"").replace(/\s+/g," ").trim().slice(0,240);
-  if(evidenceReference.length<3) throw new Error("Physical cutting evidence reference is required.");
+  const checkedBy=typeof source.checkedBy==="string"?source.checkedBy.replace(/\s+/g," ").trim():"";
+  if(checkedBy.length<2||checkedBy.length>120) throw new Error("Named tailor or checker must be 2–120 characters.");
+  const evidenceReference=typeof source.evidenceReference==="string"?source.evidenceReference.replace(/\s+/g," ").trim():"";
+  if(evidenceReference.length<3||evidenceReference.length>240) throw new Error("Physical cutting evidence reference must be 3–240 characters.");
   return {
     caseId,orderId,garment,fabricId,
     fabricWidthCm:Math.round(fabricWidthCm*100)/100,
