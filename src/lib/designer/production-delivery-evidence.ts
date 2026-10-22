@@ -29,7 +29,7 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
   const evidenceReference=typeof source.evidenceReference==="string"
     ?source.evidenceReference.replace(/\s+/g," ").trim():"";
   if(operator.length<2||operator.length>120) throw new Error("Named operator / checker must be 2–120 characters for production completion evidence.");
-  if(evidenceReference.length<3||evidenceReference.length>240) throw new Error("Production-flow evidence reference must be 3–240 characters.");
+  if(evidenceReference.length<3||evidenceReference.length>240) throw new Error("Production-flow evidence reference is required (3–240 characters).");
   if(source.manualDesignReentry&&reentryFields.length===0&&note.length<3){
     throw new Error("Record what had to be re-entered or add a short incident note.");
   }
