@@ -7,6 +7,7 @@ import {
   parseMeasuredScaleInput,
   normalizeGarmentViewerEvidenceForStorage,
   readGarmentViewerScopedCache,
+  garmentRealismSubmissionIsLossless,
 } from "../src/lib/garment-viewer-evidence-validation.ts";
 
 const stripe={
@@ -164,4 +165,20 @@ test("scoped QA cache rejects all present-but-malformed rows without inventing a
     [{viewerId:"v-01",rating:4}]);
   assert.equal(read(JSON.stringify({assetKey,value:null}),ratingKey),null);
   assert.equal(read(JSON.stringify({assetKey,value:[]}),"other-key"),null);
+});
+
+test("3D operator QA rejects visually confusable reviewer identities before storing or rating",()=>{
+  const legitimate=[{viewerId:"VIEWER-01",rating:5}];
+  assert.equal(garmentRealismSubmissionIsLossless(legitimate),true);
+  for(const viewerId of [
+    "viewer-01\u200b","viewer\u2060-01","viewer 01","v\u0131ewer-01",
+    "viewer-01\u0000","viewer-01\u0301",
+  ]){
+    const forged=[{viewerId,rating:5}];
+    assert.equal(garmentRealismSubmissionIsLossless(forged),false,JSON.stringify(viewerId));
+    assert.deepEqual(parseGarmentRealismAssessments(forged),[],JSON.stringify(viewerId));
+  }
+  assert.equal(garmentRealismSubmissionIsLossless([
+    {viewerId:"Viewer-01",rating:5},{viewerId:"viewer-01",rating:5},
+  ]),false,"letter casing cannot create an independent viewer");
 });
