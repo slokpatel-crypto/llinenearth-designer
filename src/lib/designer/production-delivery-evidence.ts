@@ -113,6 +113,7 @@ export function summarizeProductionDeliveryEvidence(
       && typeof row.operator==="string"&&row.operator.trim().length>=2&&row.operator.trim().length<=120
       && typeof row.evidence_reference==="string"&&row.evidence_reference.trim().length>=3&&row.evidence_reference.trim().length<=240
       && typeof row.created_at==="string"&&Number.isFinite(Date.parse(row.created_at))
+      && (!order.delivered_at||Date.parse(row.created_at)>=Date.parse(order.delivered_at))
     );
     const disputed=rows.length>1&&rows.some((row)=>
       row.manual_design_reentry!==rows[0].manual_design_reentry);
