@@ -427,3 +427,20 @@ test("historical Phase 1 proof cannot convert non-measured viewer scores into ap
     assert.equal(result.coreAccepted,false,JSON.stringify(bad));
   }
 });
+
+test("invisible and lookalike reviewer codes never count as independent people",()=>{
+  const aliases=[
+    {viewerId:"viewer-01",rating:5},
+    {viewerId:"viewer-01\u200b",rating:5},
+    {viewerId:"view\u2060er-01",rating:5},
+    {viewerId:"v\u0131ewer-01",rating:5},
+    {viewerId:"viewer-01\u0000",rating:5},
+    {viewerId:"VIEWER-01",rating:5},
+    {viewerId:" viewer-01 ",rating:5},
+    {viewerId:"viewer-02",rating:4},
+  ];
+  const summary=summarizeIndependentRealism(aliases);
+  assert.equal(summary.uniqueViewers,2);
+  assert.equal(summary.strongRatings,2);
+  assert.equal(summary.ready,false);
+});

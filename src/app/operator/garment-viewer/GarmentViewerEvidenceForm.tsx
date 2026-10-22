@@ -9,7 +9,7 @@ import {
   calibratedGarmentScaleErrorPct,
   type GarmentViewerAssetIdentity,
 } from "@/lib/garment-viewer-readiness";
-import { ROADMAP_SCALE_TOLERANCE_PCT, summarizeIndependentRealism, summarizeLatencySamples, type RealismAssessment } from "@/lib/designer/proof-scale";
+import { ROADMAP_SCALE_TOLERANCE_PCT, normalizeIndependentViewerCode, summarizeIndependentRealism, summarizeLatencySamples, type RealismAssessment } from "@/lib/designer/proof-scale";
 import {
   parseGarmentLatencySamples,
   parseGarmentRealismAssessments,
@@ -100,9 +100,12 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
   }
 
   function addRating(){
-    const code=viewerCode.trim().toLowerCase();
-    const score=Math.round(Number(rating));
-    if(code.length<2||code.length>80||score<1||score>5){setMessage("Add a viewer code (2–80 characters) and a 1–5 rating.");return;}
+    const code=normalizeIndependentViewerCode(viewerCode);
+    const score=Number(rating);
+    if(!code||!Number.isInteger(score)||score<1||score>5){
+      setMessage("Use a 2–80 character reviewer code with letters, numbers, dots, underscores or hyphens and an integer 1–5 rating.");
+      return;
+    }
     const next=[...assessments.filter((item)=>item.viewerId.toLowerCase()!==code),{viewerId:code,rating:score,recordedAt:new Date().toISOString()}];
     if(!garmentRealismSubmissionIsLossless(next)){
       setMessage("Cannot add this rating: the lab allows at most 50 distinct valid viewer codes. Replace an existing code if needed.");

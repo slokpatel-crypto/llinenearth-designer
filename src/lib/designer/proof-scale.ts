@@ -69,15 +69,24 @@ export type RealismAssessment={
   recordedAt?:string;
 };
 
+// A reviewer is identified by a stable opaque code, not their display name.
+// Invisible Unicode, lookalike/combining marks, control characters and
+// whitespace variants must not inflate the independent-viewer count.
+export function normalizeIndependentViewerCode(value:unknown):string|null {
+  if(typeof value!=="string") return null;
+  const code=value.trim().toLowerCase();
+  return /^[a-z0-9][a-z0-9._-]{1,79}$/.test(code)?code:null;
+}
+
 export function summarizeIndependentRealism(assessments:RealismAssessment[]){
   const latest=new Map<string,RealismAssessment>();
   for(const item of assessments){
     // A malformed or synthetic rating cannot become an independent reviewer.
     // In particular Math.round(NaN) and numeric-string coercion can otherwise
     // count an invalid viewer toward the eight-reviewer minimum.
-    const viewerId=typeof item.viewerId==="string"?item.viewerId.trim().toLowerCase():"";
+    const viewerId=normalizeIndependentViewerCode(item.viewerId);
     const rating=item.rating;
-    if(viewerId.length<2||viewerId.length>80||!Number.isInteger(rating)
+    if(!viewerId||!Number.isInteger(rating)
       ||rating<1||rating>5) continue;
     latest.set(viewerId,{...item,viewerId,rating});
   }
