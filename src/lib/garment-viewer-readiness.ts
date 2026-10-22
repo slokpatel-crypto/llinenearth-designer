@@ -180,3 +180,16 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
     reasons,
   };
 }
+
+/**
+ * Records marked "accepted" must contain the complete measurable technical
+ * proof, not just a checked operator box. The GLB contract and manifest remain
+ * separate release gates; this intentionally certifies neither of them.
+ */
+export function garmentViewerTechnicalEvidenceReady(
+  input:Pick<GarmentViewerPromotionInput,
+    "patternScaleSamples"|"interactionLatencyMs"|"realismAssessments"|"boundaryChecks">,
+):boolean {
+  const proof=garmentViewerPromotionReadiness({...input,contract:null,manifest:null});
+  return proof.scaleReady&&proof.latencyReady&&proof.realismReady&&proof.boundaryReady;
+}
