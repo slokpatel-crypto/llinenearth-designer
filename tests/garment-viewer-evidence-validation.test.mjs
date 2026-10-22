@@ -1,3 +1,4 @@
+import { garmentViewerTechnicalEvidenceReady } from "../src/lib/garment-viewer-readiness.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -181,4 +182,38 @@ test("3D operator QA rejects visually confusable reviewer identities before stor
   assert.equal(garmentRealismSubmissionIsLossless([
     {viewerId:"Viewer-01",rating:5},{viewerId:"viewer-01",rating:5},
   ]),false,"letter casing cannot create an independent viewer");
+});
+
+test("3D technical acceptance cannot pass with only an operator checkbox",()=>{
+  const stripeProof={...stripe,errorPct:4};
+  const checkProof={...stripeProof,fabricId:"check-real",pattern:"check",renderedRepeatPx:200,errorPct:0};
+  const complete={
+    patternScaleSamples:[stripeProof,checkProof],
+    interactionLatencyMs:Array(12).fill(100),
+    realismAssessments:Array.from({length:8},(_,i)=>({
+      viewerId:"independent-"+i,rating:i<6?5:3,
+    })),
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  };
+  assert.equal(garmentViewerTechnicalEvidenceReady(complete),true);
+  for(const altered of [
+    {...complete,patternScaleSamples:[]},
+    {...complete,patternScaleSamples:[stripeProof,{...stripeProof,pattern:"check"}]},
+    {...complete,patternScaleSamples:[{...stripeProof,renderedRepeatPx:260},checkProof]},
+    {...complete,interactionLatencyMs:Array(11).fill(100)},
+    {...complete,interactionLatencyMs:Array(12).fill(300)},
+    {...complete,realismAssessments:complete.realismAssessments.slice(0,7)},
+    {...complete,realismAssessments:complete.realismAssessments.map((row,i)=>({...row,rating:i<5?5:3}))},
+    {...complete,boundaryChecks:{...complete.boundaryChecks,trouserGap:false}},
+  ]) assert.equal(garmentViewerTechnicalEvidenceReady(altered),false,JSON.stringify(altered));
+});
+
+test("3D accepted technical events require complete proof on both server and operator UI",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const server=readFileSync("src/app/api/memory/event/route.ts","utf8");
+  const form=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
+  assert.match(server,/status==="accepted"&&!garmentViewerTechnicalEvidenceReady/);
+  assert.match(form,/acceptTechnicalEvidence&&!garmentViewerTechnicalEvidenceReady/);
+  assert.match(form,/disabled=\{!technicalEvidenceReady\}/);
+  assert.match(form,/Record QA for review/);
 });
