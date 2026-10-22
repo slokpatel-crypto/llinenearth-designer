@@ -351,7 +351,7 @@ function clamp(value:number){return Math.max(0,Math.min(100,Math.round(value)));
 function ratio(value:number,total:number){return total>0?clamp(value/total*100):0;}
 
 const EMPTY_READINESS_DATA:LoadState={
-  phase1Proof:null,garmentViewer:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,productionDeliveryEvidence:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,fabricTruthPolicy:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,noviceDesignerStudy:null,
+  phase1Proof:null,garmentViewer:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,productionDeliveryEvidence:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,fabricTruthPolicy:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,noviceDesignerStudy:null,
 };
 
 export default function Phase10ReadinessClient(){
