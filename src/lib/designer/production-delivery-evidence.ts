@@ -25,10 +25,11 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
     ? [...new Set(source.reentryFields.map(String).filter((item)=>known.has(item as ProductionReentryField)))].slice(0,12) as ProductionReentryField[]
     : [];
   const note=String(source.note||"").trim().slice(0,1200);
-  const operator=String(source.operator||"").trim().slice(0,120);
-  const evidenceReference=String(source.evidenceReference||"").replace(/\s+/g," ").trim().slice(0,240);
-  if(operator.length<2) throw new Error("Named operator / checker is required for production completion evidence.");
-  if(evidenceReference.length<3) throw new Error("Production-flow evidence reference is required.");
+  const operator=typeof source.operator==="string"?source.operator.trim():"";
+  const evidenceReference=typeof source.evidenceReference==="string"
+    ?source.evidenceReference.replace(/\s+/g," ").trim():"";
+  if(operator.length<2||operator.length>120) throw new Error("Named operator / checker must be 2–120 characters for production completion evidence.");
+  if(evidenceReference.length<3||evidenceReference.length>240) throw new Error("Production-flow evidence reference is required. Value must be 3–240 characters.");
   if(source.manualDesignReentry&&reentryFields.length===0&&note.length<3){
     throw new Error("Record what had to be re-entered or add a short incident note.");
   }
@@ -98,8 +99,8 @@ export function summarizeProductionDeliveryEvidence(
     const incident=rows.some((row)=>row.manual_design_reentry===true);
     const provenanceReady=rows.length>0&&rows.every((row)=>
       typeof row.manual_design_reentry==="boolean"
-      && typeof row.operator==="string"&&row.operator.trim().length>=2
-      && typeof row.evidence_reference==="string"&&row.evidence_reference.trim().length>=3
+      && typeof row.operator==="string"&&row.operator.trim().length>=2&&row.operator.trim().length<=120
+      && typeof row.evidence_reference==="string"&&row.evidence_reference.trim().length>=3&&row.evidence_reference.trim().length<=240
       && typeof row.created_at==="string"&&Number.isFinite(Date.parse(row.created_at))
     );
     const disputed=rows.length>1&&rows.some((row)=>

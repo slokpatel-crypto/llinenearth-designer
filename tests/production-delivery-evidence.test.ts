@@ -141,3 +141,27 @@ test("two concordant audits for the same delivery retain both while counting one
   assert.equal(result.disputedTargetCount,0);
   assert.equal(result.gateComplete,true);
 });
+
+test("delivery evidence refuses lossy or coerced checker and source identities",()=>{
+  const base={manualDesignReentry:false,reentryFields:[],operator:"Independent Checker",evidenceReference:"Tailor job card 001"};
+  for(const operator of ["x".repeat(121),["Independent Checker"],{name:"Independent Checker"},true]){
+    assert.throws(()=>normalizeProductionDeliveryEvidence({...base,operator}),/Named operator/,JSON.stringify(operator));
+  }
+  for(const evidenceReference of ["r".repeat(241),["Tailor job card 001"],{id:"Tailor job card 001"},true]){
+    assert.throws(()=>normalizeProductionDeliveryEvidence({...base,evidenceReference}),/Production-flow evidence reference/,JSON.stringify(evidenceReference));
+  }
+  assert.equal(normalizeProductionDeliveryEvidence({...base,operator:"O".repeat(120)}).operator.length,120);
+  assert.equal(normalizeProductionDeliveryEvidence({...base,evidenceReference:"R".repeat(240)}).evidenceReference.length,240);
+});
+
+test("delivery signoff rejects historically truncated evidence rather than proving zero re-entry",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  for(const changed of [
+    {...evidence[0],operator:"o".repeat(121)},
+    {...evidence[0],evidence_reference:"r".repeat(241)},
+  ]){
+    const summary=summarizeProductionDeliveryEvidence(orders,[changed,...evidence.slice(1)]);
+    assert.equal(summary.auditedTargetCount,9);
+    assert.equal(summary.gateComplete,false);
+  }
+});
