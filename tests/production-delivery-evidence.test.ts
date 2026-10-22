@@ -231,7 +231,10 @@ test("first-ten API/SQL/UI contract uses all history instead of treating newest-
   assert.match(route,/firstTenBasis/);
   assert.match(client,/setFirstTenBasis\(basis\)/);
   assert.match(client,/firstTenBasis\?\.orders\|\|\[\]/);
-  assert.match(roadmap,/productionInput\.firstTenBasis===undefined/);
+  assert.match(roadmap,/const rawProductionBasis=object\(productionInput\.firstTenBasis\)/);
+  assert.match(roadmap,/productionBasisOrders\.every\(/);
+  assert.match(roadmap,/array\(productionBasis\.orders\) as never\[\]/);
+  assert.match(roadmap,/array\(productionBasis\.evidence\) as never\[\]/);
   assert.match(roadmap,/linen-earth-production-first-ten-audit-v2/);
   assert.match(roadmap,/historyValid===true/);
 });
