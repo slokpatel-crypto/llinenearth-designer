@@ -273,3 +273,14 @@ test("live release refuses missing or corrupted first-ten delivery audit RPC",as
   assert.match(release,/20261103_production_first_ten_delivery_audit.sql/);
   assert.match(release,/production_first_ten_delivery_audit/);
 });
+
+test("immutable manual zero-reentry audit cannot predate the real delivery event",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const withDelivery=orders.map((order)=>({...order,delivered_at:"2026-10-20T10:00:00Z"}));
+  assert.equal(summarizeProductionDeliveryEvidence(withDelivery,evidence).gateComplete,true);
+  const priorAudit={...evidence[0],created_at:"2026-10-19T10:00:00Z"};
+  const summary=summarizeProductionDeliveryEvidence(withDelivery,[priorAudit,...evidence.slice(1)]);
+  assert.equal(summary.legacyOrUnverifiedCount,1);
+  assert.equal(summary.auditedTargetCount,9);
+  assert.equal(summary.gateComplete,false);
+});
