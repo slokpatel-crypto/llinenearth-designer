@@ -61,7 +61,7 @@ test("launch evidence completes only when exact flow and checklist gates both pa
     created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
   }));
   const checklist=LAUNCH_CHECKLIST_ITEMS.map((item,index)=>({
-    item_id:item.id,status:"approved",created_at:"2026-10-"+String(index+10).padStart(2,"0")+"T10:00:00Z",
+    item_id:item.id,status:"approved",signed_by:"Owner Reviewer",created_at:"2026-10-"+String(index+10).padStart(2,"0")+"T10:00:00Z",
   }));
   assert.equal(summarizeLaunchReadiness(attempts,checklist).launchEvidenceComplete,true);
 });
@@ -128,7 +128,7 @@ function passingLaunchEvidence(){
     created_at:`2026-10-${String(i+1).padStart(2,"0")}T08:00:00Z`,
   }));
   const checklist=LAUNCH_CHECKLIST_ITEMS.map((item,i)=>({
-    item_id:item.id,status:"approved",
+    item_id:item.id,status:"approved",signed_by:"Owner Reviewer",
     created_at:`2026-10-${String(i+8).padStart(2,"0")}T09:00:00Z`,
   }));
   return {attempts,checklist};
@@ -220,4 +220,55 @@ test("only complete timestamped audit records can satisfy launch gating",()=>{
     ],checklist);
     assert.equal(summary.betaGateComplete,false,created_at);
   }
+});
+
+test("an unresolved blocking beta case stops launch even after five successful distinct flows",()=>{
+  const {attempts,checklist}=passingLaunchEvidence();
+  attempts.push({
+    ...attempts[0],case_id:"BETA-OPEN-INCIDENT",revision_id:"LOCKED-REVISION-INCIDENT",
+    blocking_bug:true,created_at:"2026-10-19T08:00:00Z",
+  });
+  const summary=summarizeLaunchReadiness(attempts,checklist);
+  assert.equal(summary.successfulBetaCases,5);
+  assert.equal(summary.blockingBetaCases,1);
+  assert.equal(summary.betaGateComplete,false);
+  assert.equal(summary.launchEvidenceComplete,false);
+});
+
+test("anonymous, absent or overlong historical checklist signers cannot approve launch",()=>{
+  const {attempts,checklist}=passingLaunchEvidence();
+  assert.equal(summarizeLaunchReadiness(attempts,checklist).launchEvidenceComplete,true);
+  for(const signed_by of ["",null,undefined,"x".repeat(121)]){
+    const rows=[...checklist.slice(0,1),{...checklist[1],signed_by},...checklist.slice(2)] as never;
+    const summary=summarizeLaunchReadiness(attempts,rows);
+    assert.equal(summary.checklistApproved,LAUNCH_CHECKLIST_ITEMS.length-1);
+    assert.equal(summary.invalidChecklistEvidenceItems,1);
+    assert.equal(summary.checklistGateComplete,false);
+    assert.equal(summary.launchEvidenceComplete,false);
+  }
+});
+
+test("invalid newer signer cannot resurrect an earlier signed checklist approval",()=>{
+  const {attempts,checklist}=passingLaunchEvidence();
+  const corrupted={...checklist[0],signed_by:" ",created_at:"2026-10-20T10:00:00Z"};
+  const summary=summarizeLaunchReadiness(attempts,[...checklist,corrupted]);
+  assert.equal(summary.invalidChecklistEvidenceItems,1);
+  assert.equal(summary.checklistApproved,LAUNCH_CHECKLIST_ITEMS.length-1);
+  assert.equal(summary.launchEvidenceComplete,false);
+});
+
+test("contradictory signers at one instant invalidate checklist identity",()=>{
+  const {attempts,checklist}=passingLaunchEvidence();
+  const contradictory={...checklist[0],signed_by:"Different Person"};
+  const summary=summarizeLaunchReadiness(attempts,[...checklist,contradictory]);
+  assert.equal(summary.invalidChecklistEvidenceItems,1);
+  assert.equal(summary.checklistGateComplete,false);
+});
+
+test("invalid stored device classes cannot count toward the beta flow gate",()=>{
+  const {attempts,checklist}=passingLaunchEvidence();
+  const invalid=[{...attempts[0],device_class:"server"},...attempts.slice(1)];
+  const summary=summarizeLaunchReadiness(invalid,checklist);
+  assert.equal(summary.successfulBetaCases,4);
+  assert.equal(summary.betaGateComplete,false);
 });
