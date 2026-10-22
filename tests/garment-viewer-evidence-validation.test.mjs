@@ -96,7 +96,7 @@ test("operator-event canonicalizer retains traceable calibration and drops fake 
   });
   assert.deepEqual(result,{
     patternScaleSamples:[{...stripe,errorPct:4}],
-    interactionLatencyMs:[17.9,88],
+    interactionLatencyMs:[0.02,17.86,88],
     realismAssessments:[{viewerId:"v2",rating:5,recordedAt:""}],
   });
 });

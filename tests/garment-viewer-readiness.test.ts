@@ -304,7 +304,15 @@ test("new latency submissions retain slow and malformed measurements instead of 
   assert.equal(garmentLatencySubmissionIsLossless("invalid"),false);
   assert.equal(garmentLatencySubmissionIsLossless(Array(121).fill(120)),false);
   assert.equal(garmentLatencySubmissionIsLossless(Array(120).fill(120)),true);
-  assert.equal(garmentLatencySubmissionIsLossless([...passing,0.02]),false,"rounding must not drop a tiny valid input");
+  assert.equal(garmentLatencySubmissionIsLossless([...passing,0.02]),true,"tiny positive observations remain valid when stored exactly");
+});
+
+test("QA storage preserves exact latency observations at threshold boundaries",()=>{
+  const samples=[0.02,249.96,250.04,250.049,250.051,9999.999];
+  assert.equal(garmentLatencySubmissionIsLossless(samples),true);
+  const stored=normalizeGarmentViewerEvidenceForStorage({interactionLatencyMs:samples});
+  assert.deepEqual(stored.interactionLatencyMs,samples);
+  assert.deepEqual(JSON.parse(JSON.stringify(stored)).interactionLatencyMs,samples);
 });
 
 test("realism submissions cannot omit bad assessments or truncate viewer identities",()=>{
@@ -344,4 +352,12 @@ test("operator 3D QA acceptance is deliberate and cannot be confused with releas
   const operatorPage=readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
   assert.match(operatorPage,/CUSTOMER PROMOTION GATE — TECHNICAL CHECKS ONLY/);
   assert.match(operatorPage,/owner and tailor sign-off/);
+});
+
+
+test("malformed local QA cache cannot silently turn into clean empty evidence",()=>{
+  const source=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
+  assert.ok(source.includes("catch{return null as T;}"));
+  assert.ok(source.includes("setLocalEvidenceCorrupt(!garmentLatencySubmissionIsLossless(savedLatencies)"));
+  assert.ok(source.includes("Recording is locked"));
 });
