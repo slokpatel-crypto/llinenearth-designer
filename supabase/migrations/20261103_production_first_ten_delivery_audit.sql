@@ -1,6 +1,7 @@
 -- Phase 8: certify the first ten ACTUALLY delivered orders by completion time.
 -- Newest-500 order browsing cannot establish first-ten release evidence.
--- Real delivery events are required; missing/backdated transitions block approval.
+-- Require an original created event and exactly one terminal delivered event.
+-- Missing/backdated or contradictory later status events block approval.
 -- All functions and their evidence remain private to service_role.
 
 create index if not exists production_orders_first_delivered_idx
@@ -19,7 +20,20 @@ as $$
     select o.order_id,o.revision_id,o.recipe_hash,o.status,o.note,o.created_at,
       (select min(ev.created_at)
        from private.production_order_events ev
-       where ev.order_id=o.order_id and ev.status='delivered') as delivered_at
+       where ev.order_id=o.order_id and ev.status='delivered') as delivered_at,
+      (select count(*)
+       from private.production_order_events ev
+       where ev.order_id=o.order_id and ev.status='delivered') as delivered_event_count,
+      (select min(ev.created_at)
+       from private.production_order_events ev
+       where ev.order_id=o.order_id and ev.status='created') as created_event_at,
+      (select count(*)
+       from private.production_order_events ev
+       where ev.order_id=o.order_id and ev.status<>'delivered'
+         and ev.created_at >= (
+           select min(done.created_at) from private.production_order_events done
+           where done.order_id=o.order_id and done.status='delivered'
+         )) as after_delivery_transition_count
     from private.production_orders o
     where o.status='delivered'
   ),
@@ -33,7 +47,15 @@ as $$
     -- A current delivered order without a matching chronological delivery
     -- event invalidates the entire history, not merely that order's evidence.
     'historyValid',coalesce((
-      select bool_and(delivered_at is not null and delivered_at>=created_at)
+      select bool_and(
+        delivered_at is not null
+        and delivered_at>=created_at
+        and created_event_at is not null
+        and created_event_at>=created_at
+        and created_event_at<=delivered_at
+        and delivered_event_count=1
+        and after_delivery_transition_count=0
+      )
       from delivered_orders
     ),true),
     'orders',coalesce((
