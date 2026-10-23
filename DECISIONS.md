@@ -566,3 +566,9 @@ The new, **not yet applied**, 20261104_production_zero_reentry_consistency.sql m
 ## 2026-10-23 — backend health must not bless malformed delivery chronology
 
 The independent cloud readiness CLI now validates the v2 first-ten RPC's order identity, full chronology and audit provenance as well as historyValid/response shape. It reports a backend readiness failure on missing delivery timestamps, contradictory zero-reentry fields, duplicate order identities and extraneous malformed audits. It still reports RPC installation, **not** physical zero-reentry certification; real delivery records and separate manual release gates remain mandatory. No live query, migration, production approval or deployment was performed in this source-only change.
+
+## 2026-10-23 — production re-entry field IDs are lossless closed-vocabulary evidence
+
+Operator delivery evidence no longer coerces or silently filters submitted re-entry field IDs. When the field list is present it must be an array containing only the six canonical production categories; unknown, non-string or mixed entries reject the complete submission. Duplicate known selections may be normalized because they do not change the recorded physical incident. In particular, an unknown field can no longer disappear and turn a contradictory submission into an apparently clean zero-reentry audit.
+
+The separate, unapplied `20261105_production_reentry_field_vocabulary.sql` migration first refuses unknown historical values, then adds a database CHECK using JSONB containment over the same six IDs. It never rewrites immutable shop evidence. This is compatible with valid current records and introduces no model, fabric fact, customer schema or paid dependency. Database installation, real record reconciliation, operator review and release approval remain later human-controlled gates. Draft only; no merge or deployment.

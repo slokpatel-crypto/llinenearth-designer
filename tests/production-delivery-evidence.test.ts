@@ -424,6 +424,24 @@ test("zero-reentry declarations may not conceal re-entered fields in submitted o
   }),false);
 });
 
+test("operator evidence rejects unknown and coerced re-entry fields instead of silently dropping them",()=>{
+  const base={
+    manualDesignReentry:false,note:"",operator:"Independent Checker",
+    evidenceReference:"Tailor job card 001",
+  };
+  for(const reentryFields of ["fabric_identity",["future_field"],[false],[null],["fabric_identity",7]]){
+    assert.throws(()=>normalizeProductionDeliveryEvidence({...base,reentryFields}),
+      /supported production field list/i);
+  }
+  assert.throws(()=>normalizeProductionDeliveryEvidence({
+    ...base,manualDesignReentry:true,reentryFields:["future_field"],note:"Retyped an unknown field.",
+  }),/supported production field list/i);
+  assert.deepEqual(normalizeProductionDeliveryEvidence({
+    ...base,manualDesignReentry:true,
+    reentryFields:["fabric_identity","fabric_identity","construction"],
+  }).reentryFields,["fabric_identity","construction"]);
+});
+
 test("database rejects zero-reentry contradictions before applying the new constraint",async()=>{
   const {readFileSync}=await import("node:fs");
   const sql=readFileSync("supabase/migrations/20261104_production_zero_reentry_consistency.sql","utf8");
@@ -435,6 +453,21 @@ test("database rejects zero-reentry contradictions before applying the new const
   assert.match(sql,/check \(manual_design_reentry or jsonb_array_length\(reentry_fields\) = 0\)/);
   assert.match(release,/20261104_production_zero_reentry_consistency.sql/);
   assert.match(release,/production_zero_reentry_fields_consistent/);
+});
+
+test("database rejects unknown physical re-entry field IDs without rewriting evidence",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const sql=readFileSync("supabase/migrations/20261105_production_reentry_field_vocabulary.sql","utf8");
+  const release=readFileSync("scripts/release-readiness.mjs","utf8");
+  assert.match(sql,/where not \(reentry_fields <@/);
+  for(const field of ["fabric_identity","construction","fit_measurements","style_recipe","quote_order_identity","other"]){
+    assert.match(sql,new RegExp(`\\b${field}\\b`));
+  }
+  assert.match(sql,/raise exception/);
+  assert.match(sql,/add constraint production_reentry_fields_known/);
+  assert.match(sql,/check \(reentry_fields <@/);
+  assert.match(release,/20261105_production_reentry_field_vocabulary.sql/);
+  assert.match(release,/production_reentry_fields_known/);
 });
 
 test("cloud backend readiness cannot bless a malformed chronological delivery RPC",async()=>{
