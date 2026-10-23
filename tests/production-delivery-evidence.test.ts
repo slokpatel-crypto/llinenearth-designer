@@ -435,3 +435,14 @@ test("database rejects zero-reentry contradictions before applying the new const
   assert.match(release,/20261104_production_zero_reentry_consistency.sql/);
   assert.match(release,/production_zero_reentry_fields_consistent/);
 });
+
+test("cloud backend readiness cannot bless a malformed chronological delivery RPC",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const checker=readFileSync("scripts/check-cloud-readiness.mjs","utf8");
+  assert.match(checker,/const validOrders=orders.length<=10/);
+  assert.match(checker,/deliveredAtByOrder.has\(key\)/);
+  assert.match(checker,/const validEvidence=evidence.every/);
+  assert.match(checker,/Date.parse\(row.created_at\)>=deliveredAt/);
+  assert.match(checker,/row.reentry_fields.length===0/);
+  assert.match(checker,/&&Array.isArray\(basis\?\.evidence\)&&validEvidence/);
+});
