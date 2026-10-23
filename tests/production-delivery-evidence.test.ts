@@ -422,3 +422,16 @@ test("zero-reentry declarations may not conceal re-entered fields in submitted o
     ...basis,evidence:[contradiction,...evidence.slice(1)],
   }),false);
 });
+
+test("database rejects zero-reentry contradictions before applying the new constraint",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const sql=readFileSync("supabase/migrations/20261104_production_zero_reentry_consistency.sql","utf8");
+  const release=readFileSync("scripts/release-readiness.mjs","utf8");
+  assert.match(sql,/manual_design_reentry = false/);
+  assert.match(sql,/jsonb_array_length\(reentry_fields\) > 0/);
+  assert.match(sql,/raise exception/);
+  assert.match(sql,/add constraint production_zero_reentry_fields_consistent/);
+  assert.match(sql,/check \(manual_design_reentry or jsonb_array_length\(reentry_fields\) = 0\)/);
+  assert.match(release,/20261104_production_zero_reentry_consistency.sql/);
+  assert.match(release,/production_zero_reentry_fields_consistent/);
+});
