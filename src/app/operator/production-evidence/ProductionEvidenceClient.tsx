@@ -40,6 +40,13 @@ export default function ProductionEvidenceClient(){
     setDeliveryHistoryInvalid(false);
     setOrders([]);
     setEvidence([]);
+    // A refreshed order snapshot must not retain a form drafted for another
+    // delivery. Evidence is immutable, so require re-confirmation.
+    setManualChoice("unset");
+    setReentryFields([]);
+    setNote("");
+    setOperator("");
+    setEvidenceReference("");
     try {
       const response=await fetch("/api/operator/production-evidence",{cache:"no-store"});
       if(requestId!==latestLoad.current) return;
@@ -70,7 +77,8 @@ export default function ProductionEvidenceClient(){
       const delivered=browseOrders.filter((item:Order)=>item.status==="delivered");
       const requestedDelivered=delivered.find((item:Order)=>item.order_id===requested);
       const firstMissing=[...(basis?.orders||[]),...delivered].find((item:Order)=>!browseEvidence.some((row:Evidence)=>row.order_id===item.order_id));
-      setSelectedOrderId((current)=>current||requestedDelivered?.order_id||firstMissing?.order_id||delivered[0]?.order_id||"");
+      setSelectedOrderId((current)=>delivered.some((item:Order)=>item.order_id===current)
+        ?current:requestedDelivered?.order_id||firstMissing?.order_id||delivered[0]?.order_id||"");
     } catch {
       if(requestId!==latestLoad.current) return;
       setFirstTenBasis(null);
@@ -90,7 +98,8 @@ export default function ProductionEvidenceClient(){
   // never from the operator browsing lists that have 500-row caps.
   const summary=useMemo(()=>summarizeProductionDeliveryEvidence(
     firstTenBasis?.orders||[],firstTenBasis?.evidence||[]),[firstTenBasis]);
-  const selected=delivered.find((item)=>item.order_id===selectedOrderId)||delivered[0]||null;
+  // Never silently target the first order when the selected ID went stale.
+  const selected=delivered.find((item)=>item.order_id===selectedOrderId)||null;
   const selectedEvidenceRows=selected?evidence.filter((item)=>
     item.order_id.toLowerCase()===selected.order_id.toLowerCase()):[];
   const selectedEvidence=selectedEvidenceRows[0]||null;
