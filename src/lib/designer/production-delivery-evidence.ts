@@ -9,6 +9,14 @@ export const PRODUCTION_REENTRY_FIELDS=[
 
 export type ProductionReentryField=typeof PRODUCTION_REENTRY_FIELDS[number]["id"];
 
+// Both incoming submissions and historical delivery records must preserve
+// the closed physical-incident vocabulary, without casting unknown IDs away.
+const knownProductionReentryFieldIds=new Set<string>(PRODUCTION_REENTRY_FIELDS.map((item)=>item.id));
+export function validProductionReentryFields(value:unknown):value is ProductionReentryField[]{
+  return Array.isArray(value)&&value.every((field)=>
+    typeof field==="string"&&knownProductionReentryFieldIds.has(field));
+}
+
 type UnknownRecord=Record<string,unknown>;
 
 function record(value:unknown):UnknownRecord{
@@ -20,13 +28,8 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
   if(typeof source.manualDesignReentry!=="boolean"){
     throw new Error("Confirm whether any design data had to be manually re-entered.");
   }
-  const known=new Set(PRODUCTION_REENTRY_FIELDS.map((item)=>item.id));
-  if(source.reentryFields!==undefined&&!Array.isArray(source.reentryFields)){
-    throw new Error("Re-entered fields must use the supported production field list.");
-  }
-  const submittedFields=source.reentryFields??[];
-  if((submittedFields as unknown[]).some((item)=>typeof item!=="string"
-    ||!known.has(item as ProductionReentryField))){
+  const submittedFields=source.reentryFields===undefined?[]:source.reentryFields;
+  if(!validProductionReentryFields(submittedFields)){
     throw new Error("Re-entered fields must use the supported production field list.");
   }
   // Duplicate known choices carry no extra meaning; unknown or coerced values
@@ -71,6 +74,7 @@ export function validProductionFirstTenAuditBasis(input:unknown):boolean{
     return Date.parse(value);
   };
   const deliveredAtByOrder=new Map<string,number>();
+  let previousDeliveredAt=Number.NEGATIVE_INFINITY;
   for(const value of basis.orders){
     if(!value||typeof value!=="object"||Array.isArray(value)) return false;
     const order=value as Record<string,unknown>;
@@ -80,7 +84,11 @@ export function validProductionFirstTenAuditBasis(input:unknown):boolean{
     const deliveredAt=time(order.delivered_at);
     const key=order.order_id.trim().toLowerCase();
     if(!Number.isFinite(createdAt)||!Number.isFinite(deliveredAt)
-      ||deliveredAt<createdAt||deliveredAtByOrder.has(key)) return false;
+      ||deliveredAt<createdAt||deliveredAtByOrder.has(key)
+      ||deliveredAt<previousDeliveredAt) return false;
+    // SQL sorts the first-ever deliveries by event time. Never certify an
+    // arbitrary later window or reordered rows as the first-ten snapshot.
+    previousDeliveredAt=deliveredAt;
     deliveredAtByOrder.set(key,deliveredAt);
   }
   for(const value of basis.evidence){
@@ -91,9 +99,9 @@ export function validProductionFirstTenAuditBasis(input:unknown):boolean{
     const auditedAt=time(evidence.created_at);
     if(deliveryAt===undefined||!Number.isFinite(auditedAt)||auditedAt<deliveryAt
       ||typeof evidence.manual_design_reentry!=="boolean"
+      ||(evidence.reentry_fields!==undefined&&!validProductionReentryFields(evidence.reentry_fields))
       ||(evidence.manual_design_reentry===false
-        &&evidence.reentry_fields!==undefined
-        &&(!Array.isArray(evidence.reentry_fields)||evidence.reentry_fields.length!==0))
+        &&Array.isArray(evidence.reentry_fields)&&evidence.reentry_fields.length!==0)
       ||typeof evidence.operator!=="string"||evidence.operator.trim().length<2||evidence.operator.trim().length>120
       ||typeof evidence.evidence_reference!=="string"||evidence.evidence_reference.trim().length<3
       ||evidence.evidence_reference.trim().length>240) return false;
@@ -170,6 +178,7 @@ export function summarizeProductionDeliveryEvidence(
     const incident=rows.some((row)=>row.manual_design_reentry===true);
     const provenanceReady=rows.length>0&&rows.every((row)=>
       typeof row.manual_design_reentry==="boolean"
+      && (row.reentry_fields===undefined||validProductionReentryFields(row.reentry_fields))
       && (row.manual_design_reentry===true
         || row.reentry_fields===undefined
         || (Array.isArray(row.reentry_fields)&&row.reentry_fields.length===0))

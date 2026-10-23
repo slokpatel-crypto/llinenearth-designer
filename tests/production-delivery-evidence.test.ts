@@ -429,7 +429,7 @@ test("operator evidence rejects unknown and coerced re-entry fields instead of s
     manualDesignReentry:false,note:"",operator:"Independent Checker",
     evidenceReference:"Tailor job card 001",
   };
-  for(const reentryFields of ["fabric_identity",["future_field"],[false],[null],["fabric_identity",7]]){
+  for(const reentryFields of ["fabric_identity",["future_field"],[false],[null],null,["fabric_identity",7]]){
     assert.throws(()=>normalizeProductionDeliveryEvidence({...base,reentryFields}),
       /supported production field list/i);
   }
@@ -459,13 +459,16 @@ test("database rejects unknown physical re-entry field IDs without rewriting evi
   const {readFileSync}=await import("node:fs");
   const sql=readFileSync("supabase/migrations/20261105_production_reentry_field_vocabulary.sql","utf8");
   const release=readFileSync("scripts/release-readiness.mjs","utf8");
-  assert.match(sql,/where not \(reentry_fields <@/);
+  assert.match(sql,/or not \(reentry_fields <@/);
+  assert.match(sql,/reentry_fields is null/);
+  assert.match(sql,/jsonb_typeof\(reentry_fields\) is distinct from 'array'/);
   for(const field of ["fabric_identity","construction","fit_measurements","style_recipe","quote_order_identity","other"]){
     assert.match(sql,new RegExp(`\\b${field}\\b`));
   }
   assert.match(sql,/raise exception/);
   assert.match(sql,/add constraint production_reentry_fields_known/);
-  assert.match(sql,/check \(reentry_fields <@/);
+  assert.match(sql,/check \(reentry_fields is not null/);
+  assert.match(sql,/jsonb_typeof\(reentry_fields\) = 'array'/);
   assert.match(release,/20261105_production_reentry_field_vocabulary.sql/);
   assert.match(release,/production_reentry_fields_known/);
 });
@@ -479,4 +482,44 @@ test("cloud backend readiness cannot bless a malformed chronological delivery RP
   assert.match(checker,/Date.parse\(row.created_at\)>=deliveredAt/);
   assert.match(checker,/row.reentry_fields.length===0/);
   assert.match(checker,/&&Array.isArray\(basis\?\.evidence\)&&validEvidence/);
+});
+
+test("chronological first-ten snapshots reject reordered or later-window delivery records",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const sorted=orders.map((order,index)=>({
+    ...order,delivered_at:`2026-10-20T${String(index+10).padStart(2,"0")}:00:00Z`,
+  }));
+  const audits=evidence.map((item)=>({...item,created_at:"2026-10-21T12:00:00Z"}));
+  const basis={version:"linen-earth-production-first-ten-audit-v2",
+    historyValid:true,orders:sorted,evidence:audits};
+  assert.equal(validProductionFirstTenAuditBasis(basis),true);
+  assert.equal(validProductionFirstTenAuditBasis({
+    ...basis,orders:[sorted[1],sorted[0],...sorted.slice(2)],
+  }),false);
+});
+
+test("historical re-entry fields cannot use unrecognized or coerced physical incident IDs",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const dated=orders.map((order)=>({...order,delivered_at:"2026-10-20T10:00:00Z"}));
+  const basis={version:"linen-earth-production-first-ten-audit-v2",
+    historyValid:true,orders:dated,evidence};
+  for(const reentry_fields of [["unknown_field"],["fabric_identity","unexpected"],[true],null,{}, "construction"]){
+    const altered=[{...evidence[0],manual_design_reentry:true,reentry_fields},...evidence.slice(1)];
+    assert.equal(validProductionFirstTenAuditBasis({...basis,evidence:altered}),false,
+      "Malformed field identity passed SQL snapshot validation");
+    assert.equal(summarizeProductionDeliveryEvidence(orders,altered).gateComplete,false,
+      "Malformed historical incident must not certify release");
+  }
+  const supported=[{...evidence[0],manual_design_reentry:true,reentry_fields:["construction"]},...evidence.slice(1)];
+  assert.equal(validProductionFirstTenAuditBasis({...basis,evidence:supported}),true);
+  assert.equal(summarizeProductionDeliveryEvidence(orders,supported).reentryIncidentCount,1);
+});
+
+test("cloud health check also rejects misordered deliveries and unknown incident fields",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const checker=readFileSync("scripts/check-cloud-readiness.mjs","utf8");
+  assert.match(checker,/previousDeliveredAt/);
+  assert.match(checker,/Date.parse\(order.delivered_at\)<previousDeliveredAt/);
+  assert.match(checker,/knownReentryFields/);
+  assert.match(checker,/validReentryFields\(row.reentry_fields\)/);
 });
