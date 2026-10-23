@@ -1,5 +1,5 @@
 import { summarizeLaunchReadiness } from "./launch-readiness-evidence.ts";
-import { summarizeProductionDeliveryEvidence } from "./production-delivery-evidence.ts";
+import { summarizeProductionDeliveryEvidence, validProductionFirstTenAuditBasis } from "./production-delivery-evidence.ts";
 import { evaluateFinalRenderReleaseEvidence } from "./render-release-evidence.ts";
 import { evaluateFabricTruthPolicy, normalizeFabricTruthPolicy } from "./fabric-truth-policy.ts";
 import { summarizeRoadmapBackendHealth } from "./roadmap-backend-health.ts";
@@ -164,7 +164,8 @@ export function summarizeRoadmapReadiness(input:RoadmapReadinessInput){
   // Delivery-event timestamps from the complete server RPC are compulsory.
   const rawProductionBasis=object(productionInput.firstTenBasis);
   const productionBasisOrders=array(rawProductionBasis.orders);
-  const productionBasis=rawProductionBasis.version==="linen-earth-production-first-ten-audit-v2"
+  const productionBasis=validProductionFirstTenAuditBasis(rawProductionBasis)
+    &&rawProductionBasis.version==="linen-earth-production-first-ten-audit-v2"
     &&rawProductionBasis.historyValid===true
     &&productionBasisOrders.length<=10
     &&productionBasisOrders.every((row)=>typeof row.delivered_at==="string"

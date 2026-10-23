@@ -183,6 +183,7 @@ for (const path of [
   "supabase/migrations/20261003_production_delivery_evidence.sql",
   "supabase/migrations/20261026_production_delivery_evidence_provenance.sql",
   "supabase/migrations/20261103_production_first_ten_delivery_audit.sql",
+  "supabase/migrations/20261104_production_zero_reentry_consistency.sql",
   "src/app/operator/meterage-model/page.tsx",
   "src/lib/designer/meterage-calibration.ts",
   "supabase/migrations/20261004_meterage_calibration_registry.sql",
@@ -785,6 +786,7 @@ requireTokens("src/lib/designer/production-delivery-evidence.ts", ["evidenceRefe
 requireTokens("src/app/api/operator/production-evidence/route.ts", ["production_delivery_evidence_record_v2","p_evidence_reference"]);
 requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx", ["Production-flow evidence reference","legacy audits without provenance","evidenceReference"]);
 requireTokens("supabase/migrations/20261026_production_delivery_evidence_provenance.sql", ["evidence_reference","production_delivery_evidence_record_v2","named operator or checker is required","production-flow evidence reference is required","service_role"]);
+requireTokens("supabase/migrations/20261104_production_zero_reentry_consistency.sql", ["production_zero_reentry_fields_consistent","manual_design_reentry = false","jsonb_array_length(reentry_fields)","raise exception"]);
 requireTokens("src/lib/designer/production-packet.ts", ["packetBuiltFromLockedRevision:true","noDesignDataReEntry:false","deliveryAuditRequired:true","verified separately after real delivery"]);
 requireTokens("src/lib/designer/production-packet.ts", ["linen-earth-production-packet-v1","noDesignDataReEntry"]);
 requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","normalizeManualStockEvent","normalizeStockReservation","normalizeStockConsumption","normalizeStockRelease","recordedBy","requestedBy","checkedBy","releasedBy","sourceReference","reservedMetres","availableMetres"]);

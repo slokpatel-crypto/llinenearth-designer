@@ -30,6 +30,9 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
     ?source.evidenceReference.replace(/\s+/g," ").trim():"";
   if(operator.length<2||operator.length>120) throw new Error("Named operator / checker must be 2–120 characters for production completion evidence.");
   if(evidenceReference.length<3||evidenceReference.length>240) throw new Error("Production-flow evidence reference is required. Value must be 3–240 characters.");
+  if(!source.manualDesignReentry&&reentryFields.length>0){
+    throw new Error("Zero design-data re-entry cannot list any manually re-entered fields.");
+  }
   if(source.manualDesignReentry&&reentryFields.length===0&&note.length<3){
     throw new Error("Record what had to be re-entered or add a short incident note.");
   }
@@ -42,6 +45,54 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
   };
 }
 
+/**
+ * Fail-closed contract guard for the authoritative first-ten SQL snapshot.
+ * This only validates response integrity; real shop evidence and physical
+ * approval remain separate requirements for a production release.
+ */
+export function validProductionFirstTenAuditBasis(input:unknown):boolean{
+  if(!input||typeof input!=="object"||Array.isArray(input)) return false;
+  const basis=input as Record<string,unknown>;
+  if(basis.version!=="linen-earth-production-first-ten-audit-v2"
+    ||basis.historyValid!==true
+    ||!Array.isArray(basis.orders)||basis.orders.length>10
+    ||!Array.isArray(basis.evidence)) return false;
+  const time=(value:unknown):number=>{
+    if(typeof value!=="string"
+      ||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) return Number.NaN;
+    return Date.parse(value);
+  };
+  const deliveredAtByOrder=new Map<string,number>();
+  for(const value of basis.orders){
+    if(!value||typeof value!=="object"||Array.isArray(value)) return false;
+    const order=value as Record<string,unknown>;
+    if(typeof order.order_id!=="string"||!order.order_id.trim()
+      ||order.status!=="delivered") return false;
+    const createdAt=time(order.created_at);
+    const deliveredAt=time(order.delivered_at);
+    const key=order.order_id.trim().toLowerCase();
+    if(!Number.isFinite(createdAt)||!Number.isFinite(deliveredAt)
+      ||deliveredAt<createdAt||deliveredAtByOrder.has(key)) return false;
+    deliveredAtByOrder.set(key,deliveredAt);
+  }
+  for(const value of basis.evidence){
+    if(!value||typeof value!=="object"||Array.isArray(value)) return false;
+    const evidence=value as Record<string,unknown>;
+    const key=typeof evidence.order_id==="string"?evidence.order_id.trim().toLowerCase():"";
+    const deliveryAt=deliveredAtByOrder.get(key);
+    const auditedAt=time(evidence.created_at);
+    if(deliveryAt===undefined||!Number.isFinite(auditedAt)||auditedAt<deliveryAt
+      ||typeof evidence.manual_design_reentry!=="boolean"
+      ||(evidence.manual_design_reentry===false
+        &&evidence.reentry_fields!==undefined
+        &&(!Array.isArray(evidence.reentry_fields)||evidence.reentry_fields.length!==0))
+      ||typeof evidence.operator!=="string"||evidence.operator.trim().length<2||evidence.operator.trim().length>120
+      ||typeof evidence.evidence_reference!=="string"||evidence.evidence_reference.trim().length<3
+      ||evidence.evidence_reference.trim().length>240) return false;
+  }
+  return true;
+}
+
 export type ProductionEvidenceOrder={
   order_id:string;
   status:string;
@@ -52,6 +103,7 @@ export type ProductionEvidenceOrder={
 export type ProductionDeliveryEvidenceRow={
   order_id:string;
   manual_design_reentry:boolean;
+  reentry_fields?:unknown;
   operator?:string|null;
   evidence_reference?:string|null;
   created_at:string;
@@ -110,6 +162,9 @@ export function summarizeProductionDeliveryEvidence(
     const incident=rows.some((row)=>row.manual_design_reentry===true);
     const provenanceReady=rows.length>0&&rows.every((row)=>
       typeof row.manual_design_reentry==="boolean"
+      && (row.manual_design_reentry===true
+        || row.reentry_fields===undefined
+        || (Array.isArray(row.reentry_fields)&&row.reentry_fields.length===0))
       && typeof row.operator==="string"&&row.operator.trim().length>=2&&row.operator.trim().length<=120
       && typeof row.evidence_reference==="string"&&row.evidence_reference.trim().length>=3&&row.evidence_reference.trim().length<=240
       && typeof row.created_at==="string"&&Number.isFinite(Date.parse(row.created_at))

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeProductionDeliveryEvidence, summarizeProductionDeliveryEvidence } from "../src/lib/designer/production-delivery-evidence.ts";
+import { normalizeProductionDeliveryEvidence, summarizeProductionDeliveryEvidence, validProductionFirstTenAuditBasis } from "../src/lib/designer/production-delivery-evidence.ts";
 
 test("manual re-entry incident requires field or note evidence",()=>{
   assert.throws(()=>normalizeProductionDeliveryEvidence({
@@ -274,7 +274,8 @@ test("live release refuses missing or corrupted first-ten delivery audit RPC",as
   assert.match(checker,/production_first_ten_delivery_audit/);
   assert.match(checker,/linen-earth-production-first-ten-audit-v2/);
   assert.match(checker,/basis\?\.historyValid===true/);
-  assert.match(checker,/basis\.orders\.length<=10/);
+  assert.match(checker,/const validOrders=orders\.length<=10/);
+  assert.match(checker,/&&Array\.isArray\(basis\?\.orders\)&&validOrders/);
   assert.match(release,/20261103_production_first_ten_delivery_audit.sql/);
   assert.match(release,/production_first_ten_delivery_audit/);
 });
@@ -351,4 +352,98 @@ test("Phase 10 operator summary never certifies from a capped or stale delivery 
   assert.doesNotMatch(page,/summarizeProductionDeliveryEvidence\(\s*data\.productionDeliveryEvidence\.orders/);
   assert.match(page,/setData\(\{\.\.\.EMPTY_READINESS_DATA\}\)/);
   assert.match(page,/Newest-500 browsing rows cannot certify/);
+});
+
+test("first-ten audit guard rejects missing chronology, duplicate orders and malformed audit rows",()=>{
+  const {orders,evidence}=tenAuditedDeliveries();
+  const basis={
+    version:"linen-earth-production-first-ten-audit-v2",historyValid:true,
+    orders:orders.map((order)=>({...order,delivered_at:"2026-10-20T10:00:00Z"})),
+    evidence,
+  };
+  assert.equal(validProductionFirstTenAuditBasis(basis),true);
+  const invalid=[
+    {...basis,historyValid:false},
+    {...basis,orders:[{...basis.orders[0],delivered_at:null},...basis.orders.slice(1)]},
+    {...basis,orders:[{...basis.orders[0],delivered_at:"not-a-date"},...basis.orders.slice(1)]},
+    {...basis,orders:[{...basis.orders[0],delivered_at:"2026-09-01T10:00:00Z"},...basis.orders.slice(1)]},
+    {...basis,orders:[{...basis.orders[0],status:"in_production"},...basis.orders.slice(1)]},
+    {...basis,orders:[...basis.orders,basis.orders[0]]},
+    {...basis,orders:[...basis.orders.slice(0,9),{...basis.orders[0]}]},
+    {...basis,orders:[null,...basis.orders.slice(1)]},
+    {...basis,orders:basis.orders.slice(0,9)},
+    {...basis,evidence:[...evidence,null]},
+    {...basis,evidence:[...evidence,{...evidence[0],order_id:"not-among-earliest-ten"}]},
+    {...basis,evidence:[...evidence,{...evidence[0],manual_design_reentry:"false"}]},
+    {...basis,evidence:[...evidence,{...evidence[0],created_at:"2026-10-19T10:00:00Z"}]},
+    {...basis,evidence:[...evidence,{...evidence[0],evidence_reference:""}]},
+  ];
+  for(const candidate of invalid){
+    assert.equal(validProductionFirstTenAuditBasis(candidate),false,
+      "Malformed chronological proof must not pass: "+JSON.stringify(candidate).slice(0,180));
+  }
+  const partial={...basis,orders:basis.orders.slice(0,9),evidence:evidence.slice(0,9)};
+  assert.equal(validProductionFirstTenAuditBasis(partial),true);
+  assert.equal(summarizeProductionDeliveryEvidence(partial.orders,partial.evidence).gateComplete,false);
+});
+
+test("operator, Phase 10 and Roadmap all apply the same first-ten audit contract",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const direct=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
+  const phase10=readFileSync("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx","utf8");
+  const roadmap=readFileSync("src/lib/designer/roadmap-readiness.ts","utf8");
+  assert.match(direct,/validProductionFirstTenAuditBasis\(rawBasis\)/);
+  assert.match(phase10,/validProductionFirstTenAuditBasis\(productionBasis\)/);
+  assert.match(roadmap,/validProductionFirstTenAuditBasis\(rawProductionBasis\)/);
+});
+
+test("zero-reentry declarations may not conceal re-entered fields in submitted or historical evidence",()=>{
+  const submission={
+    manualDesignReentry:false,reentryFields:["fabric_identity"],note:"",
+    operator:"Independent Checker",evidenceReference:"Tailor job card 001",
+  };
+  assert.throws(()=>normalizeProductionDeliveryEvidence(submission),/Zero design-data re-entry/i);
+  assert.equal(normalizeProductionDeliveryEvidence({...submission,reentryFields:[]}).manualDesignReentry,false);
+
+  const {orders,evidence}=tenAuditedDeliveries();
+  assert.equal(summarizeProductionDeliveryEvidence(orders,evidence).gateComplete,true);
+  const contradiction={...evidence[0],reentry_fields:["fabric_identity"]};
+  const historical=summarizeProductionDeliveryEvidence(orders,[contradiction,...evidence.slice(1)]);
+  assert.equal(historical.legacyOrUnverifiedCount,1);
+  assert.equal(historical.zeroReentryTargetCount,9);
+  assert.equal(historical.gateComplete,false);
+
+  const basis={
+    version:"linen-earth-production-first-ten-audit-v2",historyValid:true,
+    orders:orders.map((order)=>({...order,delivered_at:"2026-10-20T10:00:00Z"})),
+    evidence,
+  };
+  assert.equal(validProductionFirstTenAuditBasis(basis),true);
+  assert.equal(validProductionFirstTenAuditBasis({
+    ...basis,evidence:[contradiction,...evidence.slice(1)],
+  }),false);
+});
+
+test("database rejects zero-reentry contradictions before applying the new constraint",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const sql=readFileSync("supabase/migrations/20261104_production_zero_reentry_consistency.sql","utf8");
+  const release=readFileSync("scripts/release-readiness.mjs","utf8");
+  assert.match(sql,/manual_design_reentry = false/);
+  assert.match(sql,/jsonb_array_length\(reentry_fields\) > 0/);
+  assert.match(sql,/raise exception/);
+  assert.match(sql,/add constraint production_zero_reentry_fields_consistent/);
+  assert.match(sql,/check \(manual_design_reentry or jsonb_array_length\(reentry_fields\) = 0\)/);
+  assert.match(release,/20261104_production_zero_reentry_consistency.sql/);
+  assert.match(release,/production_zero_reentry_fields_consistent/);
+});
+
+test("cloud backend readiness cannot bless a malformed chronological delivery RPC",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const checker=readFileSync("scripts/check-cloud-readiness.mjs","utf8");
+  assert.match(checker,/const validOrders=orders.length<=10/);
+  assert.match(checker,/deliveredAtByOrder.has\(key\)/);
+  assert.match(checker,/const validEvidence=evidence.every/);
+  assert.match(checker,/Date.parse\(row.created_at\)>=deliveredAt/);
+  assert.match(checker,/row.reentry_fields.length===0/);
+  assert.match(checker,/&&Array.isArray\(basis\?\.evidence\)&&validEvidence/);
 });

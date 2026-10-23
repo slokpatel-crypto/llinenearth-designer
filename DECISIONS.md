@@ -538,3 +538,31 @@ Architecture and product decisions that must persist across coding sessions.
 The first-ten production audit selects every order that either currently reports `delivered` or has ever emitted a persisted delivery event. An actual early delivery therefore remains in chronological scope even if a later contradictory transition changes the current order row to another status. Full-history validity now additionally requires every delivery-history order to remain in the terminal `delivered` state; a regression blocks the complete snapshot instead of silently shifting the first-ten window to later clean orders.
 
 Current delivered rows without a delivery event are still included in history validation and fail closed, while only rows with a real delivery timestamp can be ordered into the first-ten payload. The response shape and v2 RPC identifier remain compatible because this corrects selection semantics in the not-yet-released migration. No live migration, customer record, model asset or physical approval is created by this source change. Real delivery evidence, database installation, shop verification and release authorization remain separate gates. Draft only; no merge or deployment.
+
+## 2026-10-23 — cross-dashboard first-ten evidence contract and timestamp integrity
+
+The service-role production_first_ten_delivery_audit v2 RPC is the only chronological authority for the Phase 8 first-ten delivery gate. Its historyValid flag alone is insufficient when the returned JSON lacks delivery chronology or contains malformed evidence. Production Evidence, Phase 10 and Roadmap Control Tower now use the same fail-closed contract guard: at most ten distinct delivered orders; explicit timezone-bearing delivery timestamps no earlier than creation; and well-typed, post-delivery immutable audit rows with checker/source provenance. Unknown/null/extra audit rows and unrecognized order IDs block positive certification rather than being silently filtered out. Valid partial snapshots may display progress but never count as ten real deliveries.
+
+**Compatibility:** source-only validation of the existing v2 RPC; no schema migration, fabric truth update, saved design change, model/GLB/image replacement, or additional paid AI. No live production records, real delivery reviews, human sign-off, release, merge or deployment is implied. Exact-head CI and operator browser/physical evidence remain separate gates.
+
+## 2026-10-23 — production dependency security patch
+
+Exact-head GitHub CI and Deep Engine QA reported a new critical npm audit finding for Next.js 15.5.24 before source/test execution. Patched Next.js 15.5.28 was pinned on the existing 15.5 maintenance line; package-lock.json was regenerated via npm on an isolated GitHub Actions runner with registry-supplied sha512 integrity values, including the matching SWC optional artifacts. Existing Sharp 0.35.5 stays pinned. The temporary lock regeneration workflow was removed. This preserves the audited npm-ci security gate rather than bypassing it.
+
+This source patch does not automatically upgrade the production deployment. No deploy, merge, model asset change or operator/physical signoff is authorized, and exact-head CI/browser checks plus release review must be re-run before any future deploy.
+
+## 2026-10-23 — zero-reentry audit contradictions
+
+The delivery audit contract now rejects a false manual-design-reentry flag paired with any explicitly recorded reentered field ID. Operator POST normalization rejects such submissions instead of storing a misleading "zero re-entry" declaration. Historical records containing the contradiction remain available for investigation, but cannot satisfy a provenance-verified delivery release or the v2 first-ten operator dashboards. Old evidence rows that omitted this optional structured field entirely remain readable for compatibility; existing versioned design, physical proofs, fabrics and the stable model identity remain unchanged.
+
+Source-only correction; no live migration, rewritten physical records, fabricated checker identity, signed delivery or deployment.
+
+## 2026-10-23 — delivery consistency must be enforced at the database boundary
+
+The new, **not yet applied**, 20261104_production_zero_reentry_consistency.sql migration refuses to install on unresolved historical records where manual_design_reentry=false but reentry_fields is nonempty, and adds a validated table CHECK constraint. This prevents even a service-role caller bypassing the application normalizer to record contradictory "clean" deliveries. Existing immutable audit records are never rewritten automatically; the migration must remain blocked until real shop evidence is reviewed and reconciled. The release source checklist includes this migration.
+
+**Release:** no live SQL or DB mutation, no synthetic physical approval, no model/GLB update, no merge or deployment. The production team must review old rows and approve migration application at a later clean milestone.
+
+## 2026-10-23 — backend health must not bless malformed delivery chronology
+
+The independent cloud readiness CLI now validates the v2 first-ten RPC's order identity, full chronology and audit provenance as well as historyValid/response shape. It reports a backend readiness failure on missing delivery timestamps, contradictory zero-reentry fields, duplicate order identities and extraneous malformed audits. It still reports RPC installation, **not** physical zero-reentry certification; real delivery records and separate manual release gates remain mandatory. No live query, migration, production approval or deployment was performed in this source-only change.
