@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   PRODUCTION_REENTRY_FIELDS,
   summarizeProductionDeliveryEvidence,
+  validProductionFirstTenAuditBasis,
 } from "@/lib/designer/production-delivery-evidence";
 
 type Order={order_id:string;revision_id:string;recipe_hash:string;status:string;note:string;created_at:string;delivered_at?:string|null};
@@ -45,7 +46,8 @@ export default function ProductionEvidenceClient(){
       const nextOrders=Array.isArray(data.orders)?data.orders:[];
       const nextEvidence=Array.isArray(data.evidence)?data.evidence:[];
       const rawBasis=data.firstTenBasis as Partial<FirstTenBasis>|null;
-      const basis:FirstTenBasis|null=rawBasis?.version==="linen-earth-production-first-ten-audit-v2"
+      const basis:FirstTenBasis|null=validProductionFirstTenAuditBasis(rawBasis)
+        &&rawBasis?.version==="linen-earth-production-first-ten-audit-v2"
         &&rawBasis.historyValid===true
         &&Array.isArray(rawBasis.orders)&&rawBasis.orders.length<=10
         &&Array.isArray(rawBasis.evidence)
