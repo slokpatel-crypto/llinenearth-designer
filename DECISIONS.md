@@ -562,3 +562,7 @@ Source-only correction; no live migration, rewritten physical records, fabricate
 The new, **not yet applied**, 20261104_production_zero_reentry_consistency.sql migration refuses to install on unresolved historical records where manual_design_reentry=false but reentry_fields is nonempty, and adds a validated table CHECK constraint. This prevents even a service-role caller bypassing the application normalizer to record contradictory "clean" deliveries. Existing immutable audit records are never rewritten automatically; the migration must remain blocked until real shop evidence is reviewed and reconciled. The release source checklist includes this migration.
 
 **Release:** no live SQL or DB mutation, no synthetic physical approval, no model/GLB update, no merge or deployment. The production team must review old rows and approve migration application at a later clean milestone.
+
+## 2026-10-23 — backend health must not bless malformed delivery chronology
+
+The independent cloud readiness CLI now validates the v2 first-ten RPC's order identity, full chronology and audit provenance as well as historyValid/response shape. It reports a backend readiness failure on missing delivery timestamps, contradictory zero-reentry fields, duplicate order identities and extraneous malformed audits. It still reports RPC installation, **not** physical zero-reentry certification; real delivery records and separate manual release gates remain mandatory. No live query, migration, production approval or deployment was performed in this source-only change.
