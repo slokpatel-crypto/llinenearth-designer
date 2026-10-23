@@ -572,3 +572,16 @@ The independent cloud readiness CLI now validates the v2 first-ten RPC's order i
 Operator delivery evidence no longer coerces or silently filters submitted re-entry field IDs. When the field list is present it must be an array containing only the six canonical production categories; unknown, non-string or mixed entries reject the complete submission. Duplicate known selections may be normalized because they do not change the recorded physical incident. In particular, an unknown field can no longer disappear and turn a contradictory submission into an apparently clean zero-reentry audit.
 
 The separate, unapplied `20261105_production_reentry_field_vocabulary.sql` migration first refuses unknown historical values, then adds a database CHECK using JSONB containment over the same six IDs. It never rewrites immutable shop evidence. This is compatible with valid current records and introduces no model, fabric fact, customer schema or paid dependency. Database installation, real record reconciliation, operator review and release approval remain later human-controlled gates. Draft only; no merge or deployment.
+
+## 2026-10-23 — first-ten delivery proof requires ordered, unmodified incident identities
+
+All three first-ten consumers (operator, Phase 10, Roadmap) already use the shared
+snapshot guard. The guard and independent cloud readiness checker now reject
+out-of-order delivery-event snapshots and unrecognized, non-array, or coerced
+re-entry fields in **historical** evidence, including reported incidents.
+Legacy fields omitted by older read shapes retain their previous treatment;
+the database's current schema requires JSON arrays, and the new, still-unapplied
+vocabulary migration independently enforces that shape and closed vocabulary.
+These fail-closed checks do not create or validate physical sign-off and cannot
+prove the selected ten are the true historical first ten without the underlying
+service-role SQL, real records and independent operator review. No merge/deploy.
