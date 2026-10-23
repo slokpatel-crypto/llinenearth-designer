@@ -36,3 +36,11 @@ test("Phase 10 and Roadmap reject late successful completions and redirects",()=
   assert.match(roadmap,/if\(requestId!==latestLoad\.current\) return;\s*if\(unauthorized\)/);
   assert.match(roadmap,/setSources\(\{\}\)/);
 });
+
+test("a refreshed order list cannot redirect a drafted immutable audit to another delivery",()=>{
+  const source=readFileSync(paths[0],"utf8");
+  assert.match(source,/setManualChoice\("unset"\);\s*setReentryFields\(\[\]\);\s*setNote\(""\);\s*setOperator\(""\);\s*setEvidenceReference\(""\);/);
+  assert.match(source,/setSelectedOrderId\(\(current\)=>delivered\.some/);
+  assert.match(source,/const selected=delivered\.find\(\(item\)=>item\.order_id===selectedOrderId\)\|\|null/);
+  assert.doesNotMatch(source,/const selected=delivered\.find\([^\n]*\)\|\|delivered\[0\]/);
+});
