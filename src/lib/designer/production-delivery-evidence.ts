@@ -21,9 +21,17 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
     throw new Error("Confirm whether any design data had to be manually re-entered.");
   }
   const known=new Set(PRODUCTION_REENTRY_FIELDS.map((item)=>item.id));
-  const reentryFields=Array.isArray(source.reentryFields)
-    ? [...new Set(source.reentryFields.map(String).filter((item)=>known.has(item as ProductionReentryField)))].slice(0,12) as ProductionReentryField[]
-    : [];
+  if(source.reentryFields!==undefined&&!Array.isArray(source.reentryFields)){
+    throw new Error("Re-entered fields must use the supported production field list.");
+  }
+  const submittedFields=source.reentryFields??[];
+  if((submittedFields as unknown[]).some((item)=>typeof item!=="string"
+    ||!known.has(item as ProductionReentryField))){
+    throw new Error("Re-entered fields must use the supported production field list.");
+  }
+  // Duplicate known choices carry no extra meaning; unknown or coerced values
+  // are rejected above rather than disappearing into a false clean audit.
+  const reentryFields=[...new Set(submittedFields as ProductionReentryField[])];
   const note=String(source.note||"").trim().slice(0,1200);
   const operator=typeof source.operator==="string"?source.operator.trim():"";
   const evidenceReference=typeof source.evidenceReference==="string"
