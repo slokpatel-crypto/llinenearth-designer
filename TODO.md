@@ -1,0 +1,80 @@
+# TITAN — prioritized execution queue
+
+Prepared: 2026-10-24 (Asia/Kolkata). This is a **planned 8-hour work allocation**, not a background-job runner or a claim that work has executed. Check boxes only after implementation and exact-head verification.
+
+Repository: `slokpatel-crypto/llinenearth-designer`
+Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs were green when this plan was drafted. Parent PRs are stacked; do **not** merge straight into `main`.
+
+## Eight-hour work allocation — 24 October 2026, IST
+
+| Time | Budget | Focus | Exit evidence |
+| --- | --- | --- | --- |
+| 01:45–02:30 | 45 min | Repo/PR/CI audit, blockers, highest-risk regression | Reproducible failure list and selected one-file-at-a-time tasks |
+| 02:30–04:00 | 90 min | Fabric intake, Analyzer truth, stock/provenance contract | Tests for declared-vs-estimated facts, repeat-mm identity and unknown data |
+| 04:00–05:30 | 90 min | Designer Engine, Style Director compatibility | Tested exact-ID outfit rules and reproducibility |
+| 05:30–06:30 | 60 min | Measurements, design lock, versioned tailor handoff | Canonical lock/restore/revision tests |
+| 06:30–07:30 | 60 min | Existing Real Model Designer technical integrity | Model-identity, projection/UV or measurable geometry preflight; no fake photo approval |
+| 07:30–08:45 | 75 min | Operator/release evidence, responsive UI and failure paths | Fail-closed proof checks and 390/768/1440px browser QA |
+| 08:45–09:45 | 60 min | Full validation and handoff | Quality/tests/evals/build, clean draft PR and remaining blockers |
+
+**Work sequencing:** Finish one scoped task, add tests, run affected checks, commit on a branch, then pick the next task. If a task is blocked by real supplier/physical evidence, record the blocker and continue to the next code task. The time slots are budgets, not promises of completion.
+
+## 1. Stabilize and audit (highest priority)
+- [ ] Compare `main` with stacked draft PRs, including #372; document conflicts and safe integration order.
+- [ ] Read current roadmap, `AGENTS.md`, `DECISIONS.md` and all release gates before changing behavior.
+- [ ] Verify CI and Non-3D QA on the **new** exact commit, not a green parent only.
+- [ ] Investigate existing lint/quality/build warnings, runtime errors and unresolved audit findings.
+- [ ] Preserve fixed studio-model identity `linen-earth-studio-model-v1` and canonical `/designer/studio-tucked.webp`.
+
+## 2. Core fabric intake and Analyzer / Fabric Intelligence
+- [ ] Trace flat/macro/fold intake, catalogue identity and operator-review flow end-to-end.
+- [ ] Check physical repeat mm, fibre, GSM, drape, colour and stock provenance; leave unverifiable values unknown.
+- [ ] Harden malformed input, cross-fabric identity, stale replies and partial-batch recovery.
+- [ ] Confirm reviewed evidence flows to all relevant Designer routes without losing provenance.
+- [ ] Add focused deterministic tests for each issue actually found; do not invent supplier measurements.
+
+## 3. Designer Engine and Style Director
+- [ ] Audit shirt/pant option IDs and canonical cross-garment rules; reject incompatible construction.
+- [ ] Verify Safe / Elevated / Statement ranking with deterministic scenario snapshots.
+- [ ] Fix discovered fabric-selection or design-state regressions, one scoped patch at a time.
+- [ ] Preserve quick, no-credit interactive previews; optional AI is only for locked/final workflows.
+- [ ] Test saved designs and older StyleSpec adapters for backward compatibility.
+
+## 4. Measurements, lock and tailoring bridge
+- [ ] Audit measurement validation, ease and fit warnings with explicit uncertainty labels.
+- [ ] Verify exact fabric IDs, garment options, measurements and versions survive lock/save/restore.
+- [ ] Verify locked-spec hash prevents silent drift between preview, render and tailor handoff.
+- [ ] Add recovery tests for changed selections, lost browser state and stale network responses.
+
+## 5. Real Model Designer: technical-only work
+- [ ] Keep original model/photo identity, proportions, garments and customer-visible rollout unchanged.
+- [ ] Review production vs prototype 3D separation and model asset integrity/preflight.
+- [ ] Test existing body/garment alignment, UV orientation, actual repeat scale and four-view QA contracts.
+- [ ] Prepare concrete issues for real Blender geometry/drape corrections when evidence is insufficient.
+- [ ] Do **not** claim photoreal, fit, physical fabric or tailor acceptance from software-only tests.
+
+## 6. Operator workflow, UX and production QA
+- [ ] Confirm first-ten production evidence is based on actual chronological delivery history and closed field IDs.
+- [ ] Confirm refresh failure, stale replies, contradiction and missing live data all revoke readiness.
+- [ ] Check responsive screens at 390px / 768px / 1440px, plus console/runtime errors.
+- [ ] Run `npm run quality`, `npm test`, `npm run eval:engine`, `npm run eval:preview-performance`, `npm run release:check`, `npm run build`.
+- [ ] Record exact tested SHA, passed/failed checks, screenshots where applicable and remaining risks.
+- [ ] Open/update a draft PR; **no main merge or production deploy** before full milestone verification.
+
+## External evidence / release blockers (must remain unclaimed until proven)
+- [ ] Owner/supplier-confirmed repeat, GSM, fibre, physical drape and stock facts.
+- [ ] Real tailor construction/fit approval and verified model four-angle physical comparison.
+- [ ] Authenticated live Supabase migration verification and genuine oldest-ten delivery audit.
+- [ ] Real operator/browser/device acceptance, security/release gate sign-off.
+- [ ] Production deployment only after a major clean milestone and explicit approval.
+
+## Later phase — do not implement in this queue
+- [ ] Ecommerce and checkout.
+- [ ] B2B customer accounts.
+- [ ] Additional brand/marketing pages.
+- [ ] Notifications and broad marketing automations.
+
+## Progress record
+- [x] 2026-10-24: Confirmed connected GitHub repository and latest open draft PR #372.
+- [x] 2026-10-24: Confirmed PR #372 head `28a50ac` has passing **CI** and **Deep Engine — Non-3D QA** workflow runs.
+- [ ] No engineering implementation beyond this task-planning document is claimed by these checkboxes.
