@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { summarizeRoadmapReadiness, type RoadmapReadinessInput } from "@/lib/designer/roadmap-readiness";
 
 const ENDPOINTS={
@@ -31,8 +31,10 @@ export default function RoadmapReadinessClient(){
   const [sources,setSources]=useState<RoadmapReadinessInput>({});
   const [loading,setLoading]=useState(true);
   const [errors,setErrors]=useState<string[]>([]);
+  const latestLoad=useRef(0);
 
   async function load(){
+    const requestId=++latestLoad.current;
     setLoading(true);
     // Do not display stale green production or launch gates during a refresh.
     // Each released evidence signal must come from the latest successful read.
@@ -58,6 +60,7 @@ export default function RoadmapReadinessClient(){
       }
     }));
 
+    if(requestId!==latestLoad.current) return;
     if(unauthorized){
       window.location.href="/operator/login?next=/operator/roadmap-readiness";
       return;
@@ -67,7 +70,7 @@ export default function RoadmapReadinessClient(){
     setLoading(false);
   }
 
-  useEffect(()=>{void load();},[]);
+  useEffect(()=>{void load();return ()=>{latestLoad.current++;};},[]);
   const summary=useMemo(()=>summarizeRoadmapReadiness(sources),[sources]);
 
   return <main className="roadmapReadiness">

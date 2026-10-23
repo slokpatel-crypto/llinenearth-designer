@@ -585,3 +585,23 @@ vocabulary migration independently enforces that shape and closed vocabulary.
 These fail-closed checks do not create or validate physical sign-off and cannot
 prove the selected ten are the true historical first ten without the underlying
 service-role SQL, real records and independent operator review. No merge/deploy.
+
+## 2026-10-23 — operator evidence dashboards use last-request-wins network reads
+
+The Phase 8 delivery, Phase 10 readiness and Roadmap v2 release boards already
+clear prior positive evidence before starting a refresh. Concurrent initial or
+manual requests can nevertheless return out of order. All three now use a
+monotonic request generation, discard older replies/errors and invalidate
+pending reads on React unmount; unauthorized navigation also cannot originate
+from a superseded generation. This preserves the physical evidence thresholds
+and existing design/model identity. Real operator/browser QA remains necessary.
+Source-only candidate: no production migration, main merge or deployment.
+
+## 2026-10-23 — immutable delivery audits cannot follow implicit order fallback
+
+On fresh production evidence reads, operator form answers are reset and the
+selected order is reconciled with the currently delivered queue. The form no
+longer silently targets the first delivered order if the previous selection
+is gone. A physical checker must explicitly reconfirm the audited order and
+its field/note/reference data. This is a source-only identity-integrity change,
+not a claim of completed production audit or human verification.

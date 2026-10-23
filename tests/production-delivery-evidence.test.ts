@@ -307,7 +307,7 @@ test("operator first-ten UI revokes stale proof on every failed or pending live 
   const client=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
   assert.match(client,/setLoading\(true\);\s*setLoadError\(false\);\s*setFirstTenBasis\(null\)/);
   assert.match(client,/setOrders\(\[\]\);\s*setEvidence\(\[\]\)/);
-  assert.match(client,/catch\s*\{\s*setFirstTenBasis\(null\)/);
+  assert.match(client,/catch\s*\{\s*if\(requestId!==latestLoad\.current\) return;\s*setFirstTenBasis\(null\)/);
   assert.match(client,/setLoadError\(true\)/);
   assert.match(client,/rawBasis\.orders\.length<=10/);
   assert.match(client,/Historical delivery certification is locked/);

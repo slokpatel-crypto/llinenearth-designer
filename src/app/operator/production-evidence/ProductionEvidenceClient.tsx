@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   PRODUCTION_REENTRY_FIELDS,
   summarizeProductionDeliveryEvidence,
@@ -28,8 +28,10 @@ export default function ProductionEvidenceClient(){
   const [evidenceReference,setEvidenceReference]=useState("");
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
+  const latestLoad=useRef(0);
 
   async function load(){
+    const requestId=++latestLoad.current;
     // Clear any previously accepted snapshot before the new network read.
     // A failed refresh must never leave a stale green production release gate.
     setLoading(true);
@@ -38,10 +40,19 @@ export default function ProductionEvidenceClient(){
     setDeliveryHistoryInvalid(false);
     setOrders([]);
     setEvidence([]);
+    // A refreshed order snapshot must not retain a form drafted for another
+    // delivery. Evidence is immutable, so require re-confirmation.
+    setManualChoice("unset");
+    setReentryFields([]);
+    setNote("");
+    setOperator("");
+    setEvidenceReference("");
     try {
       const response=await fetch("/api/operator/production-evidence",{cache:"no-store"});
+      if(requestId!==latestLoad.current) return;
       if(response.status===401){window.location.href="/operator/login?next=/operator/production-evidence";return;}
       const data=await response.json();
+      if(requestId!==latestLoad.current) return;
       if(!response.ok) throw new Error(data.error||"Production evidence could not be loaded.");
       const nextOrders=Array.isArray(data.orders)?data.orders:[];
       const nextEvidence=Array.isArray(data.evidence)?data.evidence:[];
@@ -66,18 +77,20 @@ export default function ProductionEvidenceClient(){
       const delivered=browseOrders.filter((item:Order)=>item.status==="delivered");
       const requestedDelivered=delivered.find((item:Order)=>item.order_id===requested);
       const firstMissing=[...(basis?.orders||[]),...delivered].find((item:Order)=>!browseEvidence.some((row:Evidence)=>row.order_id===item.order_id));
-      setSelectedOrderId((current)=>current||requestedDelivered?.order_id||firstMissing?.order_id||delivered[0]?.order_id||"");
+      setSelectedOrderId((current)=>delivered.some((item:Order)=>item.order_id===current)
+        ?current:requestedDelivered?.order_id||firstMissing?.order_id||delivered[0]?.order_id||"");
     } catch {
+      if(requestId!==latestLoad.current) return;
       setFirstTenBasis(null);
       setDeliveryHistoryInvalid(false);
       setLoadError(true);
       setMessage("Live production records could not be refreshed. Historical delivery certification is locked until a successful new read.");
     } finally {
-      setLoading(false);
+      if(requestId===latestLoad.current) setLoading(false);
     }
   }
 
-  useEffect(()=>{void load();},[]);
+  useEffect(()=>{void load();return ()=>{latestLoad.current++;};},[]);
 
   const delivered=useMemo(()=>[...orders].filter((item)=>item.status==="delivered").sort((a,b)=>Date.parse(a.delivered_at||a.created_at)-Date.parse(b.delivered_at||b.created_at)),[orders]);
   const firstTenOrderIds=useMemo(()=>new Set(firstTenBasis?.orders.map((row)=>row.order_id)||[]),[firstTenBasis]);
@@ -85,7 +98,8 @@ export default function ProductionEvidenceClient(){
   // never from the operator browsing lists that have 500-row caps.
   const summary=useMemo(()=>summarizeProductionDeliveryEvidence(
     firstTenBasis?.orders||[],firstTenBasis?.evidence||[]),[firstTenBasis]);
-  const selected=delivered.find((item)=>item.order_id===selectedOrderId)||delivered[0]||null;
+  // Never silently target the first order when the selected ID went stale.
+  const selected=delivered.find((item)=>item.order_id===selectedOrderId)||null;
   const selectedEvidenceRows=selected?evidence.filter((item)=>
     item.order_id.toLowerCase()===selected.order_id.toLowerCase()):[];
   const selectedEvidence=selectedEvidenceRows[0]||null;

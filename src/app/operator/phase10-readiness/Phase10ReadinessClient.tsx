@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { summarizeConstructionReviews } from "@/lib/designer/construction-review-summary";
 import { summarizeLaunchReadiness } from "@/lib/designer/launch-readiness-evidence";
 import { evaluateFinalRenderReleaseEvidence } from "@/lib/designer/render-release-evidence";
@@ -358,11 +358,12 @@ export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>(EMPTY_READINESS_DATA);
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
+  const latestLoad=useRef(0);
 
-  async function read<T>(url:string):Promise<T|null>{
+  async function read<T>(url:string,requestId:number):Promise<T|null>{
     const response=await fetch(url,{cache:"no-store"});
     if(response.status===401){
-      window.location.href="/operator/login?next=/operator/phase10-readiness";
+      if(requestId===latestLoad.current) window.location.href="/operator/login?next=/operator/phase10-readiness";
       return null;
     }
     if(!response.ok) return null;
@@ -370,45 +371,47 @@ export default function Phase10ReadinessClient(){
   }
 
   async function load(){
+    const requestId=++latestLoad.current;
     setLoading(true);setMessage("");
     // Revocation is immediate: a failed or partial refresh cannot leave an
     // old green readiness board visible as if it reflected live evidence.
     setData({...EMPTY_READINESS_DATA});
     try{
       const [phase1Proof,garmentViewer,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,fabricTruthPolicy,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy]=await Promise.all([
-        read<Phase1ProofPayload>("/api/operator/phase1-proof"),
-        read<GarmentViewerPayload>("/api/operator/garment-viewer"),
-        read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
-        read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
-        read<DesignerDataPayload>("/api/operator/designer-data"),
-        read<AnalyzerStatsPayload>("/api/operator/fabric-analyzer/stats"),
-        read<AnalyzerScorecardPayload>("/api/operator/fabric-ground-truth/scorecard"),
-        read<ScorecardPayload>("/api/operator/designer-evaluation/scorecard"),
-        read<ConstructionPayload>("/api/operator/construction-approval"),
-        read<DeviceQaPayload>("/api/operator/device-qa"),
-        read<RenderCachePayload>("/api/operator/designer-render-cache/stats"),
-        read<ProductionCalibrationPayload>("/api/operator/production-calibration"),
-        read<StockPayload>("/api/operator/stock"),
-        read<ProductionPayload>("/api/operator/production"),
-        read<ProductionDeliveryEvidencePayload>("/api/operator/production-evidence"),
-        read<RenderQaPayload>("/api/operator/render-qa"),
-        read<LaunchReadinessPayload>("/api/operator/launch-readiness"),
-        read<FabricColorCalibrationPayload>("/api/operator/fabric-color-calibration"),
-        read<FabricTruthPolicyPayload>("/api/operator/fabric-truth-policy"),
-        read<StyleDirectorValidationPayload>("/api/operator/style-director-validation"),
-        read<EaseCalibrationPayload>("/api/operator/ease-calibration"),
-        read<PreviewCoveragePayload>("/api/operator/preview-option-coverage"),
-        read<NoviceDesignerStudyPayload>("/api/operator/novice-designer-study"),
+        read<Phase1ProofPayload>("/api/operator/phase1-proof",requestId),
+        read<GarmentViewerPayload>("/api/operator/garment-viewer",requestId),
+        read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration",requestId),
+        read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60",requestId),
+        read<DesignerDataPayload>("/api/operator/designer-data",requestId),
+        read<AnalyzerStatsPayload>("/api/operator/fabric-analyzer/stats",requestId),
+        read<AnalyzerScorecardPayload>("/api/operator/fabric-ground-truth/scorecard",requestId),
+        read<ScorecardPayload>("/api/operator/designer-evaluation/scorecard",requestId),
+        read<ConstructionPayload>("/api/operator/construction-approval",requestId),
+        read<DeviceQaPayload>("/api/operator/device-qa",requestId),
+        read<RenderCachePayload>("/api/operator/designer-render-cache/stats",requestId),
+        read<ProductionCalibrationPayload>("/api/operator/production-calibration",requestId),
+        read<StockPayload>("/api/operator/stock",requestId),
+        read<ProductionPayload>("/api/operator/production",requestId),
+        read<ProductionDeliveryEvidencePayload>("/api/operator/production-evidence",requestId),
+        read<RenderQaPayload>("/api/operator/render-qa",requestId),
+        read<LaunchReadinessPayload>("/api/operator/launch-readiness",requestId),
+        read<FabricColorCalibrationPayload>("/api/operator/fabric-color-calibration",requestId),
+        read<FabricTruthPolicyPayload>("/api/operator/fabric-truth-policy",requestId),
+        read<StyleDirectorValidationPayload>("/api/operator/style-director-validation",requestId),
+        read<EaseCalibrationPayload>("/api/operator/ease-calibration",requestId),
+        read<PreviewCoveragePayload>("/api/operator/preview-option-coverage",requestId),
+        read<NoviceDesignerStudyPayload>("/api/operator/novice-designer-study",requestId),
       ]);
+      if(requestId!==latestLoad.current) return;
       setData({phase1Proof,garmentViewer,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,fabricTruthPolicy,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy});
     }catch(error){
-      setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
+      if(requestId===latestLoad.current) setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
-      setLoading(false);
+      if(requestId===latestLoad.current) setLoading(false);
     }
   }
 
-  useEffect(()=>{void load();},[]);
+  useEffect(()=>{void load();return ()=>{latestLoad.current++;};},[]);
 
   const rows=useMemo<ReadinessRow[]>(()=>{
     const launchCounts=data.launchMetrics?.counts||{};
