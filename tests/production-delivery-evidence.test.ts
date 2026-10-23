@@ -395,3 +395,30 @@ test("operator, Phase 10 and Roadmap all apply the same first-ten audit contract
   assert.match(phase10,/validProductionFirstTenAuditBasis\(productionBasis\)/);
   assert.match(roadmap,/validProductionFirstTenAuditBasis\(rawProductionBasis\)/);
 });
+
+test("zero-reentry declarations may not conceal re-entered fields in submitted or historical evidence",()=>{
+  const submission={
+    manualDesignReentry:false,reentryFields:["fabric_identity"],note:"",
+    operator:"Independent Checker",evidenceReference:"Tailor job card 001",
+  };
+  assert.throws(()=>normalizeProductionDeliveryEvidence(submission),/Zero design-data re-entry/i);
+  assert.equal(normalizeProductionDeliveryEvidence({...submission,reentryFields:[]}).manualDesignReentry,false);
+
+  const {orders,evidence}=tenAuditedDeliveries();
+  assert.equal(summarizeProductionDeliveryEvidence(orders,evidence).gateComplete,true);
+  const contradiction={...evidence[0],reentry_fields:["fabric_identity"]};
+  const historical=summarizeProductionDeliveryEvidence(orders,[contradiction,...evidence.slice(1)]);
+  assert.equal(historical.legacyOrUnverifiedCount,1);
+  assert.equal(historical.zeroReentryTargetCount,9);
+  assert.equal(historical.gateComplete,false);
+
+  const basis={
+    version:"linen-earth-production-first-ten-audit-v2",historyValid:true,
+    orders:orders.map((order)=>({...order,delivered_at:"2026-10-20T10:00:00Z"})),
+    evidence,
+  };
+  assert.equal(validProductionFirstTenAuditBasis(basis),true);
+  assert.equal(validProductionFirstTenAuditBasis({
+    ...basis,evidence:[contradiction,...evidence.slice(1)],
+  }),false);
+});
