@@ -429,7 +429,7 @@ test("operator evidence rejects unknown and coerced re-entry fields instead of s
     manualDesignReentry:false,note:"",operator:"Independent Checker",
     evidenceReference:"Tailor job card 001",
   };
-  for(const reentryFields of ["fabric_identity",["future_field"],[false],[null],["fabric_identity",7]]){
+  for(const reentryFields of ["fabric_identity",["future_field"],[false],[null],null,["fabric_identity",7]]){
     assert.throws(()=>normalizeProductionDeliveryEvidence({...base,reentryFields}),
       /supported production field list/i);
   }
@@ -496,7 +496,6 @@ test("chronological first-ten snapshots reject reordered or later-window deliver
   assert.equal(validProductionFirstTenAuditBasis({
     ...basis,orders:[sorted[1],sorted[0],...sorted.slice(2)],
   }),false);
-
 });
 
 test("historical re-entry fields cannot use unrecognized or coerced physical incident IDs",()=>{
@@ -520,7 +519,7 @@ test("cloud health check also rejects misordered deliveries and unknown incident
   const {readFileSync}=await import("node:fs");
   const checker=readFileSync("scripts/check-cloud-readiness.mjs","utf8");
   assert.match(checker,/previousDeliveredAt/);
-  assert.match(checker,/Date.parse\\(order.delivered_at\\)<previousDeliveredAt/);
+  assert.match(checker,/Date.parse\(order.delivered_at\)<previousDeliveredAt/);
   assert.match(checker,/knownReentryFields/);
-  assert.match(checker,/validReentryFields\\(row.reentry_fields\\)/);
+  assert.match(checker,/validReentryFields\(row.reentry_fields\)/);
 });
