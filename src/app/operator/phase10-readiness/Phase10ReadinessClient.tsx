@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { summarizeConstructionReviews } from "@/lib/designer/construction-review-summary";
 import { summarizeLaunchReadiness } from "@/lib/designer/launch-readiness-evidence";
 import { evaluateFinalRenderReleaseEvidence } from "@/lib/designer/render-release-evidence";
-import { summarizeProductionDeliveryEvidence } from "@/lib/designer/production-delivery-evidence";
+import { summarizeProductionDeliveryEvidence, validProductionFirstTenAuditBasis } from "@/lib/designer/production-delivery-evidence";
 import { evaluateFabricTruthPolicy, normalizeFabricTruthPolicy, type FabricTruthPolicy } from "@/lib/designer/fabric-truth-policy";
 
 type DesignerDataPayload={
@@ -551,7 +551,8 @@ export default function Phase10ReadinessClient(){
     const productionBasisOrders=productionBasis?.orders;
     // Only the unbounded SQL first-ten history is a release authority.
     // Browsing RPCs may omit every historical delivery after 500 newer rows.
-    const productionBasisReady=productionBasis?.version==="linen-earth-production-first-ten-audit-v2"
+    const productionBasisReady=validProductionFirstTenAuditBasis(productionBasis)
+      &&productionBasis?.version==="linen-earth-production-first-ten-audit-v2"
       &&productionBasis.historyValid===true
       &&Array.isArray(productionBasisOrders)&&productionBasisOrders.length<=10
       &&Array.isArray(productionBasis.evidence)
