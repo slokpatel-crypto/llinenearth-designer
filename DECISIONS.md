@@ -556,3 +556,9 @@ This source patch does not automatically upgrade the production deployment. No d
 The delivery audit contract now rejects a false manual-design-reentry flag paired with any explicitly recorded reentered field ID. Operator POST normalization rejects such submissions instead of storing a misleading "zero re-entry" declaration. Historical records containing the contradiction remain available for investigation, but cannot satisfy a provenance-verified delivery release or the v2 first-ten operator dashboards. Old evidence rows that omitted this optional structured field entirely remain readable for compatibility; existing versioned design, physical proofs, fabrics and the stable model identity remain unchanged.
 
 Source-only correction; no live migration, rewritten physical records, fabricated checker identity, signed delivery or deployment.
+
+## 2026-10-23 — delivery consistency must be enforced at the database boundary
+
+The new, **not yet applied**, 20261104_production_zero_reentry_consistency.sql migration refuses to install on unresolved historical records where manual_design_reentry=false but reentry_fields is nonempty, and adds a validated table CHECK constraint. This prevents even a service-role caller bypassing the application normalizer to record contradictory "clean" deliveries. Existing immutable audit records are never rewritten automatically; the migration must remain blocked until real shop evidence is reviewed and reconciled. The release source checklist includes this migration.
+
+**Release:** no live SQL or DB mutation, no synthetic physical approval, no model/GLB update, no merge or deployment. The production team must review old rows and approve migration application at a later clean milestone.
