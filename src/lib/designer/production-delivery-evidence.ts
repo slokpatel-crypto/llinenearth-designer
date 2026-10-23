@@ -28,7 +28,7 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
   if(typeof source.manualDesignReentry!=="boolean"){
     throw new Error("Confirm whether any design data had to be manually re-entered.");
   }
-  const submittedFields=source.reentryFields??[];
+  const submittedFields=source.reentryFields===undefined?[]:source.reentryFields;
   if(!validProductionReentryFields(submittedFields)){
     throw new Error("Re-entered fields must use the supported production field list.");
   }
