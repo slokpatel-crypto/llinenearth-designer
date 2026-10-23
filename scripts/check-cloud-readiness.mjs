@@ -176,10 +176,38 @@ if (url && key) {
             fail(`${rpcName} is unavailable. Apply Roadmap v2 Supabase migrations. HTTP ${rpcResponse.status}: ${detail}`);
           } else if (rpcName==="production_first_ten_delivery_audit") {
             const basis=await rpcResponse.json();
+            const orders=Array.isArray(basis?.orders)?basis.orders:[];
+            const evidence=Array.isArray(basis?.evidence)?basis.evidence:[];
+            const validTimestamp=(value)=>typeof value==="string"
+              &&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(value)
+              &&Number.isFinite(Date.parse(value));
+            const deliveredAtByOrder=new Map();
+            const validOrders=orders.length<=10&&orders.every((order)=>{
+              const key=typeof order?.order_id==="string"?order.order_id.trim().toLowerCase():"";
+              if(!key||order?.status!=="delivered"
+                ||!validTimestamp(order?.created_at)||!validTimestamp(order?.delivered_at)
+                ||Date.parse(order.delivered_at)<Date.parse(order.created_at)
+                ||deliveredAtByOrder.has(key)) return false;
+              deliveredAtByOrder.set(key,Date.parse(order.delivered_at));
+              return true;
+            });
+            const validEvidence=evidence.every((row)=>{
+              const key=typeof row?.order_id==="string"?row.order_id.trim().toLowerCase():"";
+              const deliveredAt=deliveredAtByOrder.get(key);
+              return deliveredAt!==undefined&&validTimestamp(row?.created_at)
+                &&Date.parse(row.created_at)>=deliveredAt
+                &&typeof row.manual_design_reentry==="boolean"
+                &&(row.manual_design_reentry
+                  ||row.reentry_fields===undefined
+                  ||(Array.isArray(row.reentry_fields)&&row.reentry_fields.length===0))
+                &&typeof row.operator==="string"&&row.operator.trim().length>=2&&row.operator.trim().length<=120
+                &&typeof row.evidence_reference==="string"
+                &&row.evidence_reference.trim().length>=3&&row.evidence_reference.trim().length<=240;
+            });
             const valid=basis?.version==="linen-earth-production-first-ten-audit-v2"
               &&basis?.historyValid===true
-              &&Array.isArray(basis?.orders)&&basis.orders.length<=10
-              &&Array.isArray(basis?.evidence);
+              &&Array.isArray(basis?.orders)&&validOrders
+              &&Array.isArray(basis?.evidence)&&validEvidence;
             if(!valid) fail("First-ten delivery audit is missing trustworthy completion history or the v2 migration.");
             else ok(label);
           } else if (rpcName==="roadmap_v2_evidence_health") {
