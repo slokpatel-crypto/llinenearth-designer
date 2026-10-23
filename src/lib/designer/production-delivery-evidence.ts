@@ -30,6 +30,9 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
     ?source.evidenceReference.replace(/\s+/g," ").trim():"";
   if(operator.length<2||operator.length>120) throw new Error("Named operator / checker must be 2–120 characters for production completion evidence.");
   if(evidenceReference.length<3||evidenceReference.length>240) throw new Error("Production-flow evidence reference is required. Value must be 3–240 characters.");
+  if(!source.manualDesignReentry&&reentryFields.length>0){
+    throw new Error("Zero design-data re-entry cannot list any manually re-entered fields.");
+  }
   if(source.manualDesignReentry&&reentryFields.length===0&&note.length<3){
     throw new Error("Record what had to be re-entered or add a short incident note.");
   }
@@ -80,6 +83,9 @@ export function validProductionFirstTenAuditBasis(input:unknown):boolean{
     const auditedAt=time(evidence.created_at);
     if(deliveryAt===undefined||!Number.isFinite(auditedAt)||auditedAt<deliveryAt
       ||typeof evidence.manual_design_reentry!=="boolean"
+      ||(evidence.manual_design_reentry===false
+        &&evidence.reentry_fields!==undefined
+        &&(!Array.isArray(evidence.reentry_fields)||evidence.reentry_fields.length!==0))
       ||typeof evidence.operator!=="string"||evidence.operator.trim().length<2||evidence.operator.trim().length>120
       ||typeof evidence.evidence_reference!=="string"||evidence.evidence_reference.trim().length<3
       ||evidence.evidence_reference.trim().length>240) return false;
@@ -97,6 +103,7 @@ export type ProductionEvidenceOrder={
 export type ProductionDeliveryEvidenceRow={
   order_id:string;
   manual_design_reentry:boolean;
+  reentry_fields?:unknown;
   operator?:string|null;
   evidence_reference?:string|null;
   created_at:string;
@@ -155,6 +162,9 @@ export function summarizeProductionDeliveryEvidence(
     const incident=rows.some((row)=>row.manual_design_reentry===true);
     const provenanceReady=rows.length>0&&rows.every((row)=>
       typeof row.manual_design_reentry==="boolean"
+      && (row.manual_design_reentry===true
+        || row.reentry_fields===undefined
+        || (Array.isArray(row.reentry_fields)&&row.reentry_fields.length===0))
       && typeof row.operator==="string"&&row.operator.trim().length>=2&&row.operator.trim().length<=120
       && typeof row.evidence_reference==="string"&&row.evidence_reference.trim().length>=3&&row.evidence_reference.trim().length<=240
       && typeof row.created_at==="string"&&Number.isFinite(Date.parse(row.created_at))
