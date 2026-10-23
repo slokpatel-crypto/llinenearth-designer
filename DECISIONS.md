@@ -596,3 +596,12 @@ pending reads on React unmount; unauthorized navigation also cannot originate
 from a superseded generation. This preserves the physical evidence thresholds
 and existing design/model identity. Real operator/browser QA remains necessary.
 Source-only candidate: no production migration, main merge or deployment.
+
+## 2026-10-23 — immutable delivery audits cannot follow implicit order fallback
+
+On fresh production evidence reads, operator form answers are reset and the
+selected order is reconciled with the currently delivered queue. The form no
+longer silently targets the first delivered order if the previous selection
+is gone. A physical checker must explicitly reconfirm the audited order and
+its field/note/reference data. This is a source-only identity-integrity change,
+not a claim of completed production audit or human verification.
