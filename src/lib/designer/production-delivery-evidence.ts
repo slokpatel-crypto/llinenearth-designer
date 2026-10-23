@@ -42,6 +42,51 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
   };
 }
 
+/**
+ * Fail-closed contract guard for the authoritative first-ten SQL snapshot.
+ * This only validates response integrity; real shop evidence and physical
+ * approval remain separate requirements for a production release.
+ */
+export function validProductionFirstTenAuditBasis(input:unknown):boolean{
+  if(!input||typeof input!=="object"||Array.isArray(input)) return false;
+  const basis=input as Record<string,unknown>;
+  if(basis.version!=="linen-earth-production-first-ten-audit-v2"
+    ||basis.historyValid!==true
+    ||!Array.isArray(basis.orders)||basis.orders.length>10
+    ||!Array.isArray(basis.evidence)) return false;
+  const time=(value:unknown):number=>{
+    if(typeof value!=="string"
+      ||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) return Number.NaN;
+    return Date.parse(value);
+  };
+  const deliveredAtByOrder=new Map<string,number>();
+  for(const value of basis.orders){
+    if(!value||typeof value!=="object"||Array.isArray(value)) return false;
+    const order=value as Record<string,unknown>;
+    if(typeof order.order_id!=="string"||!order.order_id.trim()
+      ||order.status!=="delivered") return false;
+    const createdAt=time(order.created_at);
+    const deliveredAt=time(order.delivered_at);
+    const key=order.order_id.trim().toLowerCase();
+    if(!Number.isFinite(createdAt)||!Number.isFinite(deliveredAt)
+      ||deliveredAt<createdAt||deliveredAtByOrder.has(key)) return false;
+    deliveredAtByOrder.set(key,deliveredAt);
+  }
+  for(const value of basis.evidence){
+    if(!value||typeof value!=="object"||Array.isArray(value)) return false;
+    const evidence=value as Record<string,unknown>;
+    const key=typeof evidence.order_id==="string"?evidence.order_id.trim().toLowerCase():"";
+    const deliveryAt=deliveredAtByOrder.get(key);
+    const auditedAt=time(evidence.created_at);
+    if(deliveryAt===undefined||!Number.isFinite(auditedAt)||auditedAt<deliveryAt
+      ||typeof evidence.manual_design_reentry!=="boolean"
+      ||typeof evidence.operator!=="string"||evidence.operator.trim().length<2||evidence.operator.trim().length>120
+      ||typeof evidence.evidence_reference!=="string"||evidence.evidence_reference.trim().length<3
+      ||evidence.evidence_reference.trim().length>240) return false;
+  }
+  return true;
+}
+
 export type ProductionEvidenceOrder={
   order_id:string;
   status:string;
