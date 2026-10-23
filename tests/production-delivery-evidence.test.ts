@@ -274,7 +274,8 @@ test("live release refuses missing or corrupted first-ten delivery audit RPC",as
   assert.match(checker,/production_first_ten_delivery_audit/);
   assert.match(checker,/linen-earth-production-first-ten-audit-v2/);
   assert.match(checker,/basis\?\.historyValid===true/);
-  assert.match(checker,/basis\.orders\.length<=10/);
+  assert.match(checker,/const validOrders=orders\.length<=10/);
+  assert.match(checker,/&&Array\.isArray\(basis\?\.orders\)&&validOrders/);
   assert.match(release,/20261103_production_first_ten_delivery_audit.sql/);
   assert.match(release,/production_first_ten_delivery_audit/);
 });
