@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {mergeDistinctAtelierHandoffs} from "../src/lib/atelier-handoff-identity.ts";
+import {mergeDistinctAtelierHandoffs, validStoredAtelierHandoffs} from "../src/lib/atelier-handoff-identity.ts";
 
 type Enquiry={designId:string;specHash:string;customerNote:string};
 
@@ -39,4 +39,29 @@ test("production atelier writer uses composite handoff identity rather than spec
   const source=readFileSync("src/lib/handoff.ts","utf8");
   assert.match(source,/mergeDistinctAtelierHandoffs\(existing,item\)/);
   assert.doesNotMatch(source,/filter\(\(x\)=>x\.specHash!==item\.specHash\)/);
+});
+
+test("corrupted local handoff rows cannot poison new customer requests",()=>{
+  const valid={
+    id:"HO-001",designId:"design-a",specHash:"same-pattern",createdAt:"2026-10-24T12:00:00.000Z",
+    title:"Linen shirt",status:"requested",garmentSpec:{},fabricAssessment:{score:70},
+    palette:["ivory"],idealStoreFabrics:[],
+  };
+  const stored=[null,false,"broken",{}, {...valid,id:""}, {...valid,palette:"blue"},valid];
+  const snapshot=JSON.stringify(stored);
+  const recovered=validStoredAtelierHandoffs<typeof valid>(stored);
+  assert.deepEqual(recovered,[valid]);
+  assert.equal(JSON.stringify(stored),snapshot);
+  assert.deepEqual(mergeDistinctAtelierHandoffs(recovered,{...valid,id:"HO-002",designId:"design-b"}).map(x=>x.id),["HO-002","HO-001"]);
+});
+
+test("invalid JSON storage shape does not produce fake atelier handoffs",()=>{
+  for(const value of [null,{},[],false,"[bad JSON]"]) {
+    assert.deepEqual(validStoredAtelierHandoffs(value),[]);
+  }
+});
+
+test("browser Atelier reader validates storage rows before render/update",()=>{
+  const source=readFileSync("src/lib/handoff.ts","utf8");
+  assert.match(source,/validStoredAtelierHandoffs<AtelierHandoff>\(value\)/);
 });
