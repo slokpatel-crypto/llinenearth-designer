@@ -1,5 +1,6 @@
 import { MEASUREMENT_STORAGE_KEY, type MeasurementProfile as LegacyMeasurementProfile } from "@/lib/measurements";
 import { makeCustomerMeasurementProfileId, validStoredCustomerMeasurementProfiles } from "./customer-measurement-storage-integrity.ts";
+import { ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY, matchesActiveCustomerMeasurementSnapshot, parseActiveCustomerMeasurementLink, serializeActiveCustomerMeasurementLink } from "./customer-measurement-active-link.ts";
 
 export type CustomerMeasurementUnit = "cm" | "in";
 export type CustomerMeasurementKey = "chest" | "waist" | "shoulder" | "sleeveLength" | "neck" | "hip" | "shirtLength" | "trouserWaist" | "trouserLength" | "inseam";
@@ -74,7 +75,16 @@ export function saveCustomerMeasurementProfile(input: Omit<CustomerMeasurementPr
 export function removeCustomerMeasurementProfile(id: string) {
   if (typeof window === "undefined") return;
   const next = listCustomerMeasurementProfiles().filter((profile) => profile.id !== id);
+  const link=parseActiveCustomerMeasurementLink(localStorage.getItem(ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY));
+  const active=link?.profileId===id?localStorage.getItem(MEASUREMENT_STORAGE_KEY):null;
   localStorage.setItem(CUSTOMER_MEASUREMENTS_KEY, JSON.stringify(next));
+  if(link?.profileId===id){
+    // Never erase manual Designer measurements or another customer's active fit.
+    if(matchesActiveCustomerMeasurementSnapshot(link,id,active)){
+      localStorage.removeItem(MEASUREMENT_STORAGE_KEY);
+    }
+    localStorage.removeItem(ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY);
+  }
 }
 
 export function activateCustomerMeasurementProfile(profile: CustomerMeasurementProfile) {
@@ -99,7 +109,11 @@ export function activateCustomerMeasurementProfile(profile: CustomerMeasurementP
     },
     updatedAt: new Date().toISOString(),
   };
-  localStorage.setItem(MEASUREMENT_STORAGE_KEY, JSON.stringify(legacy));
+  const snapshot=JSON.stringify(legacy);
+  // Write identity first: if this fails, the existing active measurements stay intact.
+  // If the second write fails, the digest cannot match the old snapshot.
+  localStorage.setItem(ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY, serializeActiveCustomerMeasurementLink(profile.id,snapshot));
+  localStorage.setItem(MEASUREMENT_STORAGE_KEY, snapshot);
 }
 
 export function profileMeasurementSummary(profile: CustomerMeasurementProfile) {
