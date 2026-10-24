@@ -86,3 +86,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] 2026-10-24: Prevented physical CSV template from promoting provenance-free catalogue GSM and drape into verified claims; only valid operator physical provenance allows prefill, with independent pure tests and HTTPS-only exported evidence URLs.
 
 - [x] 2026-10-24: Rejected malformed and over-limit synchronous Analyzer batch envelopes atomically instead of silently processing only the first 12 rows. Added envelope and route-contract regressions; exact-head CI and browser QA still required.
+
+- [x] 2026-10-24: Strictly parsed Analyzer CSV worksheets: duplicate/empty headings, row-width drift, unclosed quotes and unexpected text after quote now block all rows, surface an operator error and prevent analysis. Ordinary valid quoted provenance and numeric columns remain supported; exact-head CI pending.
