@@ -178,9 +178,10 @@ export function MeasurementStudio(){
       });
       const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;error?:string};
       if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure measurement copy could not be saved.");
-      // The remote write is already complete. Do not lose the one-time token
+      // The remote write is already complete. Do not lose its recovery token
       // or falsely claim failure if this browser rejects localStorage writes.
       setVaultToken(result.recoveryToken);
+      setVaultExpiresAt(""); // A previous loaded token's expiry must not label a new copy.
       let localSaved=false;
       try{
         localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(nextProfile));
