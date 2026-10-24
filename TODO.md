@@ -123,3 +123,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 
 - [x] 2026-10-24: Local named customer-measurement records now skip corrupted null/nonnumeric/invalid nested entries, deduplicate IDs, preserve valid legacy customers and enforce the existing 20-profile limit. New profiles get random 128-bit nonce IDs, while browser save/use/delete failures show errors rather than false confirmation; pure and UI regressions added, exact-head CI/browser acceptance pending.
 - [ ] Investigate linked-active customer measurement deletion without accidentally purging unrelated Designer measurements; document independent legacy snapshot provenance before touching it.
+
+- [x] 2026-10-24: Secure measurement vault now exposes the issued recovery/delete token before any browser-local writes. Browser quota/security failure leaves token available and reports server success separately; clipboard denial preserves manual-copy fallback. Pure truth-message and UI sequencing tests added. Exact-head CI and browser permission simulation pending.
