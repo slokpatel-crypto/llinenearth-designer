@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { catalogPhysicalCsvPrefill, itemsFromCsv } from "@/lib/fabric-analyzer-batch-csv";
+import { catalogPhysicalCsvPrefill, inspectBatchCsvWorksheet } from "@/lib/fabric-analyzer-batch-csv";
 
 const HEADERS=[
   "fabricId","imageUrl","macroImageUrl","foldImageUrl","sourcePageUrl","sourceId",
@@ -22,7 +22,8 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
   const [progress,setProgress]=useState({done:0,total:0,succeeded:0,failed:0});
   const [message,setMessage]=useState("");
   const fileRef=useRef<HTMLInputElement|null>(null);
-  const parsed=useMemo(()=>itemsFromCsv(csvText),[csvText]);
+  const worksheet=useMemo(()=>inspectBatchCsvWorksheet(csvText),[csvText]);
+  const parsed=worksheet.items;
   const runnable=parsed.filter((item)=>Boolean(item.imageUrl||item.sourcePageUrl));
 
   async function downloadTemplate(){
@@ -92,7 +93,7 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
   }
 
   async function runBatch(){
-    if(running || !runnable.length) return;
+    if(running || worksheet.error || !runnable.length) return;
     setRunning(true);
     setMessage("");
     setProgress({done:0,total:runnable.length,succeeded:0,failed:0});
@@ -134,6 +135,7 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
       <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={(event)=>void pickFile(event.target.files?.[0]||null)} />
     </div>
     <textarea value={csvText} onChange={(event)=>setCsvText(event.target.value)} placeholder={HEADERS.join(",")} rows={9} spellCheck={false} />
+    {worksheet.error&&<p className="batchGuardrail" role="alert">CSV cannot run: {worksheet.error}</p>}
     <div className="batchSummary">
       <span><small>PARSED ROWS</small><b>{parsed.length}</b></span>
       <span><small>WITH TRUSTED SOURCE</small><b>{runnable.length}</b></span>
@@ -141,7 +143,7 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
       <span><small>RESULT</small><b>{progress.succeeded} ok · {progress.failed} failed</b></span>
     </div>
     {running&&<div className="batchProgress"><i style={{width:`${progress.total?Math.round(progress.done/progress.total*100):0}%`}}/><span>{progress.done}/{progress.total}</span></div>}
-    <button className="analyzeButton" type="button" disabled={running||!runnable.length} onClick={()=>void runBatch()}>{running?"Running private Analyzer batches…":`Analyze ${runnable.length} trusted rows`}</button>
+    <button className="analyzeButton" type="button" disabled={running||Boolean(worksheet.error)||!runnable.length} onClick={()=>void runBatch()}>{running?"Running private Analyzer batches…":`Analyze ${runnable.length} trusted rows`}</button>
     {message&&<button className="batchMessage" type="button" onClick={()=>setMessage("")}>{message}<b>×</b></button>}
   </section>;
 }
