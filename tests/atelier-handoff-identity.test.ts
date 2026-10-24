@@ -44,7 +44,9 @@ test("production atelier writer uses composite handoff identity rather than spec
 test("corrupted local handoff rows cannot poison new customer requests",()=>{
   const valid={
     id:"HO-001",designId:"design-a",specHash:"same-pattern",createdAt:"2026-10-24T12:00:00.000Z",
-    title:"Linen shirt",status:"requested",garmentSpec:{},fabricAssessment:{score:70},
+    title:"Linen shirt",status:"requested",garmentSpec:{shirt:"Oxford",trouser:"Flat front",layer:"None",footwear:"Loafer"},
+    fabricAssessment:{score:70,verdict:"good",preferredRole:"shirt",bestOutfitType:"Two piece",reasons:["Versatile"]},
+    customerNote:"Visit tomorrow",occasion:"Business",venue:"Store",aesthetic:"classic",uploadedFabric:"Ivory linen",
     palette:["ivory"],idealStoreFabrics:[],
   };
   const stored=[null,false,"broken",{}, {...valid,id:""}, {...valid,palette:"blue"},valid];
@@ -64,4 +66,48 @@ test("invalid JSON storage shape does not produce fake atelier handoffs",()=>{
 test("browser Atelier reader validates storage rows before render/update",()=>{
   const source=readFileSync("src/lib/handoff.ts","utf8");
   assert.match(source,/validStoredAtelierHandoffs<AtelierHandoff>\(value\)/);
+});
+
+test("nested malformed handoff records and unknown statuses are dropped before Atelier rendering",()=>{
+  const valid={
+    id:"HO-001",designId:"design-a",specHash:"hash",createdAt:"2026-10-24T12:00:00.000Z",
+    title:"Shirt",status:"requested",customerNote:"",occasion:"Office",venue:"Store",
+    aesthetic:"clean",uploadedFabric:"Linen",garmentSpec:{shirt:"Shirt",trouser:"Trouser",layer:"None",footwear:"Loafer"},
+    fabricAssessment:{score:80,verdict:"appropriate",preferredRole:"shirt",bestOutfitType:"Shirt",reasons:["Soft"]},
+    palette:["#ffffff"],idealStoreFabrics:[{id:"A",name:"Linen A",reason:"Stock alternative"}]
+  };
+  const bad=[
+    {...valid,status:"completed"},
+    {...valid,garmentSpec:{shirt:"Shirt"}},
+    {...valid,garmentSpec:[]},
+    {...valid,fabricAssessment:{...valid.fabricAssessment,reasons:null}},
+    {...valid,fabricAssessment:{...valid.fabricAssessment,reasons:["Fine",{}]}},
+    {...valid,fabricAssessment:{...valid.fabricAssessment,score:"80"}},
+    {...valid,palette:[{color:"blue"}]},
+    {...valid,idealStoreFabrics:[null]},
+    {...valid,idealStoreFabrics:[{id:"A",name:"B"}]},
+    {...valid,customerNote:{text:"unsafe"}},
+    {...valid,staffNote:["bad"]}
+  ];
+  assert.deepEqual(validStoredAtelierHandoffs([...bad,valid]),[valid]);
+});
+test("corrupt or legacy oversized storage cannot make Atelier queue exceed its 50 record bound",()=>{
+  const valid={
+    id:"HO",designId:"D",specHash:"S",createdAt:"2026-10-24",title:"Linen",
+    status:"requested",customerNote:"",occasion:"",venue:"",aesthetic:"",uploadedFabric:"",
+    garmentSpec:{shirt:"",trouser:"",layer:"",footwear:""},
+    fabricAssessment:{score:0,verdict:"pending",preferredRole:"shirt",bestOutfitType:"",reasons:[]},
+    palette:[],idealStoreFabrics:[]
+  };
+  const many=Array.from({length:75},(_,i)=>({...valid,id:`HO-${i}`}));
+  const result=validStoredAtelierHandoffs(many);
+  assert.equal(result.length,50);
+  assert.deepEqual(result.map(x=>x.id),many.slice(0,50).map(x=>x.id));
+});
+test("Atelier selection always reflects the chosen request's saved note and status",()=>{
+  const source=readFileSync("src/components/AtelierQueueClient.tsx","utf8");
+  assert.match(source,/setActiveId\(loaded\[0\]\?\.id\|\|null\);setNote\(loaded\[0\]\?\.staffNote\|\|""\)/);
+  assert.match(source,/onClick=\{\(\)=>\{setActiveId\(item\.id\);setNote\(item\.staffNote\|\|""\)\}\}/);
+  assert.match(source,/<select value=\{active\.status\}/);
+  assert.doesNotMatch(source,/<select defaultValue=\{active\.status\}/);
 });
