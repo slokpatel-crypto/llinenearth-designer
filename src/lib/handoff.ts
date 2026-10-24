@@ -53,7 +53,7 @@ export function createHandoff(design: SavedDesign, customerNote = ""): AtelierHa
   if (typeof window === "undefined") throw new Error("Atelier handoff is available in the browser.");
   const assessment = judgeFabricForBrief(design.brief, design.version.candidate.fabricJudgement?.garmentRole);
   const item: AtelierHandoff = {
-    id:makeAtelierHandoffId(design.version.specHash,design.id,window.crypto.getRandomValues(new Uint8Array(16))),
+    id:makeAtelierHandoffId(design.version.specHash || design.version.id,design.id,window.crypto.getRandomValues(new Uint8Array(16))),
     createdAt:new Date().toISOString(), status:"requested", designId:design.id,
     specHash:design.version.specHash || design.version.id, title:design.title, customerNote,
     occasion:design.brief.context.occasion, venue:design.brief.context.venue, aesthetic:design.version.candidate.aesthetic,
