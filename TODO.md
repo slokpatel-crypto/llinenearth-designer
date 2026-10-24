@@ -94,3 +94,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] 2026-10-24: Checked actual Gregorian validity of operator/supplier physical-evidence dates before exporting GSM/drape as verified CSV. Reject impossible days/months, preserve valid leap day; targeted tests added. No real evidence asserted.
 
 - [x] 2026-10-24: Fixed atelier handoff identity collision: two saved design IDs using the same locked spec hash now retain separate customer requests; a duplicate request for the same design/version still replaces its earlier copy. Added pure regression tests, protected 50-item cap; browser-only storage remains non-production.
+
+- [x] 2026-10-24: Atelier browser handoff reader rejects corrupt null/nonobject/incomplete stored rows before new submissions, deduplication or dashboard updates. Valid stored handoffs retain original persistence format; pure recovery tests added.
