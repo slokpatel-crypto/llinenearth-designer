@@ -188,3 +188,9 @@ test("valid sheets with blank spacer rows still retain all identified rows in or
   assert.deepEqual(worksheet.items.map((item)=>item.fabricId),["fabric-1","fabric-2"]);
   assert.deepEqual(worksheet.items.map((item)=>item.verifiedGsm),[145,160]);
 });
+
+test("Analyzer header uses supported flexbox alignment without autoprefixer end warning",()=>{
+  const css=readFileSync("src/app/operator/fabric-analyzer/fabric-analyzer.css","utf8");
+  assert.match(css,/\.panelTitle\{display:flex;align-items:flex-end;/);
+  assert.doesNotMatch(css,/align-items:end;/);
+});
