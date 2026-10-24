@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { assertPhysicalEvidenceHasFlatCapture, normalizeVerifiedPhysicalEvidenceInput } from "@/lib/physical-evidence-provenance";
+import { FabricAnalyzerBatchInputError, parseFabricAnalyzerBatchEnvelope } from "@/lib/fabric-analyzer-batch-envelope";
 import {
   enqueueFabricAnalyzerBatch,
   loadFabricAnalyzerBatchStatus,
@@ -44,9 +45,8 @@ export async function POST(request:Request) {
   if(length>1_500_000) return json({error:"Queue request is too large."},{status:413});
 
   try {
-    const body=await request.json() as {items?:FabricAnalyzerBatchItem[]};
-    const items=Array.isArray(body.items)?body.items.slice(0,500):[];
-    if(!items.length) return json({error:"Provide 1 to 500 backend analysis items."},{status:400});
+    const body=await request.json() as unknown;
+    const items=parseFabricAnalyzerBatchEnvelope<FabricAnalyzerBatchItem>(body,500);
     const normalizedItems=items.map((item)=>{
       const physicalEvidence=normalizeVerifiedPhysicalEvidenceInput(item as unknown as Record<string,unknown>);
       assertPhysicalEvidenceHasFlatCapture(physicalEvidence,typeof item.imageUrl==="string"?item.imageUrl.trim():"");
@@ -56,6 +56,7 @@ export async function POST(request:Request) {
     if(!batch || batch.queued<1) return json({error:"No valid fabric items were queued."},{status:400});
     return json({engine:"private-fabric-analyzer-queue-v1",batchId:batch.batch_id,queued:batch.queued});
   } catch(error) {
+    if(error instanceof FabricAnalyzerBatchInputError) return json({error:error.message},{status:400});
     console.error("[operator/fabric-analyzer/queue]",error);
     return json({error:error instanceof Error?error.message:"Analyzer batch could not be queued."},{status:400});
   }

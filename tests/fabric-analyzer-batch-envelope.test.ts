@@ -37,3 +37,20 @@ test("real batch route uses the strict envelope without truncation",()=>{
   assert.doesNotMatch(source,/body\.items\.slice\(0,12\)/);
   assert.match(source,/FabricAnalyzerBatchInputError/);
 });
+
+test("durable queue accepts 500 ordered jobs but refuses a 501st without loss",()=>{
+  const jobs=Array.from({length:500},(_,index)=>({fabricId:`roll-${index}`}));
+  const parsed=parseFabricAnalyzerBatchEnvelope<{fabricId:string}>({items:jobs},500);
+  assert.deepEqual(parsed,jobs);
+  assert.throws(
+    ()=>parseFabricAnalyzerBatchEnvelope({items:[...jobs,{fabricId:"roll-overflow"}]},500),
+    /at most 500.*none.*processed/i,
+  );
+});
+
+test("real durable queue route enforces the full request instead of slicing",()=>{
+  const source=readFileSync("src/app/api/operator/fabric-analyzer/queue/route.ts","utf8");
+  assert.match(source,/parseFabricAnalyzerBatchEnvelope<FabricAnalyzerBatchItem>\(body,500\)/);
+  assert.doesNotMatch(source,/body\.items\.slice\(0,500\)/);
+  assert.match(source,/FabricAnalyzerBatchInputError/);
+});
