@@ -92,3 +92,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] 2026-10-24: Durable 500-job Analyzer queue now rejects malformed/oversized envelopes before enqueuing, rather than silently discarding submitted jobs 501+. Shared size-aware batch validator and regression tests. Production queue/database not touched.
 
 - [x] 2026-10-24: Checked actual Gregorian validity of operator/supplier physical-evidence dates before exporting GSM/drape as verified CSV. Reject impossible days/months, preserve valid leap day; targeted tests added. No real evidence asserted.
+
+- [x] 2026-10-24: Fixed atelier handoff identity collision: two saved design IDs using the same locked spec hash now retain separate customer requests; a duplicate request for the same design/version still replaces its earlier copy. Added pure regression tests, protected 50-item cap; browser-only storage remains non-production.
