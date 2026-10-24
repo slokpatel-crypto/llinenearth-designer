@@ -13,6 +13,7 @@ export function SavedDesignsClient() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [feedbackSaved,setFeedbackSaved] = useState<string | null>(null);
+  const [feedbackError,setFeedbackError] = useState<{designId:string;message:string}|null>(null);
 
   useEffect(() => { const loaded = listSavedDesigns(); setDesigns(loaded); setActiveId(loaded[0]?.id || null); }, []);
   const active = useMemo(() => designs.find((item) => item.id === activeId) || designs[0], [designs, activeId]);
@@ -20,8 +21,14 @@ export function SavedDesignsClient() {
   function remove(id: string) { removeSavedDesign(id); const next = designs.filter((item) => item.id !== id); setDesigns(next); if (activeId === id) setActiveId(next[0]?.id || null); }
   async function copyId(design: SavedDesign) { const value = `${design.title} · ${design.version.specHash} · ${design.id}`; try { await navigator.clipboard.writeText(value); setCopied(design.id); window.setTimeout(() => setCopied(null), 1600); } catch { setCopied(null); } }
   function rate(design: SavedDesign, rating: FeedbackRating) {
-    saveFeedback({ designId:design.id, specHash:design.version.specHash || design.version.id, rating, reasons:[rating === "love" ? "Strong overall direction" : rating === "good" ? "Useful direction with minor changes" : "Needs designer review"], note:"" });
-    setFeedbackSaved(`${design.id}:${rating}`);
+    try {
+      saveFeedback({ designId:design.id, specHash:design.version.specHash || design.version.id, rating, reasons:[rating === "love" ? "Strong overall direction" : rating === "good" ? "Useful direction with minor changes" : "Needs designer review"], note:"" });
+      setFeedbackSaved(`${design.id}:${rating}`);
+      setFeedbackError(null);
+    } catch {
+      setFeedbackSaved(null);
+      setFeedbackError({designId:design.id,message:"Feedback could not be saved in this browser. Check storage permissions and retry."});
+    }
   }
 
   if (!designs.length) return <section className="savedEmpty"><p className="eyebrow">YOUR ATELIER</p><h1>No saved designs yet.</h1><p>Finalize a direction in the Designer, visualize the locked specification, then save it here as a permanent concept card.</p><Link className="button light" href="/designer">Start a design</Link></section>;
@@ -35,7 +42,7 @@ export function SavedDesignsClient() {
         <p className="eyebrow">{active.brief.context.occasion} · {active.brief.context.venue}</p><h2>{active.title}</h2><p className="savedConcept">{active.version.candidate.concept}</p>
         <dl className="savedSpec"><div><dt>Shirt</dt><dd>{active.version.candidate.garments.shirt}</dd></div><div><dt>Trouser</dt><dd>{active.version.candidate.garments.trouser}</dd></div><div><dt>Layer</dt><dd>{active.version.candidate.garments.layer}</dd></div><div><dt>Footwear</dt><dd>{active.version.candidate.garments.footwear}</dd></div><div><dt>Fabric</dt><dd>{active.renderSet.spec.fabric.material}</dd></div><div><dt>Model</dt><dd>{active.renderSet.modelId}</dd></div></dl>
         <div className="savedPalette">{active.version.candidate.palette.map((color) => <i key={color} style={{ background: color }} />)}</div>
-        <div className="designFeedbackBox"><span>HOW DID THIS DIRECTION LAND?</span><div className="feedbackButtons"><button className={feedbackSaved===`${active.id}:love`?"active":""} onClick={()=>rate(active,"love")}>Love it</button><button className={feedbackSaved===`${active.id}:good`?"active":""} onClick={()=>rate(active,"good")}>Good, minor changes</button><button className={feedbackSaved===`${active.id}:needs_work`?"active":""} onClick={()=>rate(active,"needs_work")}>Needs work</button></div>{feedbackSaved?.startsWith(active.id) && <p className="feedbackSaved">Saved for human review.</p>}</div>
+        <div className="designFeedbackBox"><span>HOW DID THIS DIRECTION LAND?</span><div className="feedbackButtons"><button className={feedbackSaved===`${active.id}:love`?"active":""} onClick={()=>rate(active,"love")}>Love it</button><button className={feedbackSaved===`${active.id}:good`?"active":""} onClick={()=>rate(active,"good")}>Good, minor changes</button><button className={feedbackSaved===`${active.id}:needs_work`?"active":""} onClick={()=>rate(active,"needs_work")}>Needs work</button></div>{feedbackSaved?.startsWith(active.id) && <p className="feedbackSaved">Saved to this browser only — not sent to Linen Earth staff.</p>}{feedbackError?.designId===active.id&&<p className="feedbackSaved" role="alert">{feedbackError.message}</p>}</div>
         <div className="savedActions"><button onClick={() => void copyId(active)}>{copied === active.id ? "Copied" : "Copy design ID"}</button><button className="danger" onClick={() => remove(active.id)}>Remove</button></div><p className="savedTimestamp">Saved {new Date(active.savedAt).toLocaleString()}</p>
         <AtelierHandoffPanel key={`${active.id}:${active.version.specHash || active.version.id}`} design={active}/>
       </aside>}
