@@ -31,7 +31,7 @@ test("corrupt nested rows never crash valid surrounding customer cards",()=>{
 
 test("dedupes corrupt or repeated IDs before React keys, keeps newest valid and caps at 20",()=>{
   const many=Array.from({length:30},(_,i)=>({...profile,id:`CMP-${i}`,name:`Customer ${i}`}));
-  assert.deepEqual(validStoredCustomerMeasurementProfiles([...many[0]?[many[0]]:[],{...many[0],name:"Duplicate"},...many.slice(1)]).map(x=>x.id),many.slice(0,20).map(x=>x.id));
+  assert.deepEqual(validStoredCustomerMeasurementProfiles([many[0],{...many[0],name:"Duplicate"},...many.slice(1)]).map(x=>x.id),many.slice(0,20).map(x=>x.id));
   assert.equal(validStoredCustomerMeasurementProfiles(many).length,20);
 });
 
