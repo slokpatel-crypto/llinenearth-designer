@@ -625,3 +625,7 @@ The Analyzer evidence-gap CSV originally prefilled the verified GSM and drape co
 ## 2026-10-24 — No silent truncation of synchronous Analyzer batches
 
 Batch uploads are explicitly limited to 12 JSON items per request. The previous API sliced an oversized `items` array before processing, so the caller could receive success even though later fabric IDs were never analyzed. A pure boundary validator now rejects the entire malformed/oversized envelope before any fabric job starts and returns an actionable HTTP 400. A 12-item or smaller valid batch retains its original order and processing behavior; the browser already chunks CSV worksheets into groups of 12. No schema, stock evidence, physical claim, model asset, API price or deployment policy changes. Tests cover valid boundaries, over-limit rejection and malformed records. Exact-head CI remains necessary.
+
+## 2026-10-24 — Analyzer CSV must reject ambiguous row structure
+
+The batch CSV client must never quietly remap physical evidence because a spreadsheet has duplicate/blank headers, too many/few columns, malformed quote placement or unterminated quotation. The reusable parser rejects the entire malformed worksheet with a visible operator error and disables batch submission. A valid template with quoted commas, embedded newlines and escaped double quotes still imports. A malformed worksheet changes no server data. The existing JSON batch size and verified physical-value validation remain independently enforced. No migration, new AI service, model, stock fact, or deployment action.
