@@ -18,7 +18,7 @@ test("operator worksheet is immutable during in-flight ingestion",()=>{
   assert.ok(source.includes('type="file" accept=".csv,text/csv" hidden disabled={running}'));
   assert.ok(source.includes("if(!file || runningRef.current) return;"));
   assert.ok(source.includes("const text=await file.text();"));
-  assert.ok(source.includes("if(runningRef.current) return;"));
+  assert.ok(source.includes("if(runningRef.current || csvRevisionRef.current!==revision) return;"));
   assert.ok(source.includes("setCsvText(text);"));
 });
 
