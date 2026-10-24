@@ -69,25 +69,43 @@ function parseCsv(text:string){
   let row:string[]=[];
   let cell="";
   let quoted=false;
+  let closedQuote=false;
+  const pushCell=()=>{row.push(cell);cell="";closedQuote=false;};
+  const pushRow=()=>{
+    if(row.some((value)=>value.trim())) rows.push(row);
+    row=[];
+  };
   for(let i=0;i<text.length;i++){
     const char=text[i];
-    if(char==='"'){
-      if(quoted && text[i+1]==='"'){cell+='"';i+=1;}
-      else quoted=!quoted;
+    if(quoted){
+      if(char==='"'){
+        if(text[i+1]==='"'){cell+='"';i+=1;}
+        else {quoted=false;closedQuote=true;}
+      }else cell+=char;
       continue;
     }
-    if(char==="," && !quoted){row.push(cell);cell="";continue;}
-    if((char==="\n"||char==="\r") && !quoted){
-      if(char==="\r"&&text[i+1]==="\n") i+=1;
-      row.push(cell);cell="";
-      if(row.some((value)=>value.trim())) rows.push(row);
-      row=[];
+    if(char==='"'){
+      if(cell.length||closedQuote) throw new Error("Unexpected quote inside CSV cell.");
+      quoted=true;
+      continue;
+    }
+    if(char==="," || char==="\n" || char==="\r"){
+      pushCell();
+      if(char!==","){
+        if(char==="\r" && text[i+1]==="\n") i+=1;
+        pushRow();
+      }
+      continue;
+    }
+    if(closedQuote){
+      if(char!==" "&&char!=="\t") throw new Error("Unexpected text after closing CSV quote.");
       continue;
     }
     cell+=char;
   }
-  row.push(cell);
-  if(row.some((value)=>value.trim())) rows.push(row);
+  if(quoted) throw new Error("CSV has an unclosed quoted field.");
+  pushCell();
+  pushRow();
   return rows;
 }
 
@@ -104,6 +122,14 @@ export function itemsFromCsv(text:string){
   const rows=parseCsv(text);
   if(rows.length<2) return [] as BatchItem[];
   const header=rows[0].map((value)=>value.trim());
+  if(header.some((key)=>!key) || new Set(header).size!==header.length) {
+    throw new Error("CSV contains an empty or duplicate column header.");
+  }
+  for(const [index,cells] of rows.slice(1).entries()) {
+    if(cells.length!==header.length) {
+      throw new Error(`CSV data row ${index+2} has ${cells.length} columns; expected ${header.length}.`);
+    }
+  }
   return rows.slice(1).map((cells)=>{
     const raw=Object.fromEntries(header.map((key,index)=>[key,(cells[index]||"").trim()]));
     const drape=raw.verifiedDrape||undefined;
@@ -134,3 +160,15 @@ export function itemsFromCsv(text:string){
   }).filter((item)=>item.fabricId || item.imageUrl || item.sourcePageUrl);
 }
 
+
+/**
+ * Safe client-facing parser: malformed worksheets never reach the batch API
+ * and never throw during React rendering. Keep errors visible to the operator.
+ */
+export function inspectBatchCsvWorksheet(text:string){
+  try{
+    return {items:itemsFromCsv(text),error:null as string|null};
+  }catch(error){
+    return {items:[] as BatchItem[],error:error instanceof Error?error.message:"Invalid CSV worksheet."};
+  }
+}
