@@ -116,3 +116,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] 2026-10-24: Fabric Studio scan now snapshots the selected upload/consent, invalidates async work on file, stock, fabric-range, garment, source changes and unmount; stale classifier/provider replies can no longer replace a newer fabric profile, and canceled preflight avoids starting an obsolete optional AI request. UI wiring tests added. Exact-head CI/browser QA pending.
 
 - [x] 2026-10-24: Operator Analyzer batch prevents duplicate in-flight ingestion via an immediate ref lock independent of React state; CSV textarea, file picker and template actions are locked during a run, including a second guard after asynchronous file reading. Tested source lifecycle and `finally` unlock. Exact-head CI/browser QA pending.
+
+- [x] 2026-10-24: Operator Analyzer CSV file imports now obey most-recent intent. Late file reads cannot replace a newer selected file, manual CSV edit, or in-flight batch source; read failures are reported without clearing the worksheet, and same-file reselection is supported. Exact-head CI and operator device QA remain required; no merge/deploy.
