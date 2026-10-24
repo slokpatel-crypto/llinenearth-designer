@@ -1,4 +1,5 @@
 import { MEASUREMENT_STORAGE_KEY, type MeasurementProfile as LegacyMeasurementProfile } from "@/lib/measurements";
+import { makeCustomerMeasurementProfileId, validStoredCustomerMeasurementProfiles } from "./customer-measurement-storage-integrity.ts";
 
 export type CustomerMeasurementUnit = "cm" | "in";
 export type CustomerMeasurementKey = "chest" | "waist" | "shoulder" | "sleeveLength" | "neck" | "hip" | "shirtLength" | "trouserWaist" | "trouserLength" | "inseam";
@@ -47,8 +48,8 @@ export function listCustomerMeasurementProfiles(): CustomerMeasurementProfile[] 
   try {
     const raw = localStorage.getItem(CUSTOMER_MEASUREMENTS_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as CustomerMeasurementProfile[];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed:unknown = JSON.parse(raw);
+    return validStoredCustomerMeasurementProfiles<CustomerMeasurementProfile>(parsed);
   } catch {
     return [];
   }
@@ -58,7 +59,7 @@ export function saveCustomerMeasurementProfile(input: Omit<CustomerMeasurementPr
   if (typeof window === "undefined") throw new Error("Measurements are available in the browser.");
   const existing = listCustomerMeasurementProfiles();
   const saved: CustomerMeasurementProfile = {
-    id: input.id || `CMP-${Date.now()}`,
+    id: input.id || makeCustomerMeasurementProfileId(window.crypto.getRandomValues(new Uint8Array(16)),Date.now()),
     name: input.name.trim(),
     unit: input.unit,
     measurements: input.measurements,
