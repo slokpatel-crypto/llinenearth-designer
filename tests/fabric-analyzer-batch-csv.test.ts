@@ -84,8 +84,8 @@ test("batch template rejects malformed provenance and never exports HTTP as veri
 
 test("malformed CSV headers never silently overwrite physical fields",()=>{
   for(const csv of [
-    "fabricId,verifiedGsm,verifiedGsm\\nfabric-1,145,",
-    "fabricId,,verifiedGsm\\nfabric-1,,145",
+    "fabricId,verifiedGsm,verifiedGsm\nfabric-1,145,",
+    "fabricId,,verifiedGsm\nfabric-1,,145",
   ]){
     assert.throws(()=>itemsFromCsv(csv),/empty or duplicate column header/i);
     const result=inspectBatchCsvWorksheet(csv);
@@ -96,8 +96,8 @@ test("malformed CSV headers never silently overwrite physical fields",()=>{
 
 test("missing or extra columns reject the entire worksheet with a row number",()=>{
   for(const csv of [
-    "fabricId,imageUrl,verifiedGsm\\nfabric-1,https://example.com/a.jpg",
-    "fabricId,imageUrl\\nfabric-1,https://example.com/a.jpg,145",
+    "fabricId,imageUrl,verifiedGsm\nfabric-1,https://example.com/a.jpg",
+    "fabricId,imageUrl\nfabric-1,https://example.com/a.jpg,145",
   ]){
     const result=inspectBatchCsvWorksheet(csv);
     assert.deepEqual(result.items,[]);
@@ -107,9 +107,9 @@ test("missing or extra columns reject the entire worksheet with a row number",()
 
 test("unclosed and displaced CSV quotes do not hide submitted fabric evidence",()=>{
   for(const csv of [
-    'fabricId,verifiedPhysicalEvidenceNote\\nfabric-1,"Supplier measured GSM',
-    'fabricId,verifiedPhysicalEvidenceNote\\nfabric-1,Supplier "says" 145',
-    'fabricId,verifiedPhysicalEvidenceNote\\nfabric-1,"Supplier"garbled',
+    'fabricId,verifiedPhysicalEvidenceNote\nfabric-1,"Supplier measured GSM',
+    'fabricId,verifiedPhysicalEvidenceNote\nfabric-1,Supplier "says" 145',
+    'fabricId,verifiedPhysicalEvidenceNote\nfabric-1,"Supplier"garbled',
   ]){
     const result=inspectBatchCsvWorksheet(csv);
     assert.equal(result.items.length,0);
@@ -118,21 +118,21 @@ test("unclosed and displaced CSV quotes do not hide submitted fabric evidence",(
 });
 
 test("legitimate escaped quotes, commas and quoted newlines remain supported",()=>{
-  const csv='fabricId,verifiedPhysicalEvidenceNote,verifiedGsm\\nfabric-1,"Supplier \\"measured\\" roll, verified\\nby owner",145';
-  const r=inspectBatchCsvWorksheet(csv.replaceAll('\\\\"','\\"\\"'));
+  const csv=[
+    "fabricId,verifiedPhysicalEvidenceNote,verifiedGsm",
+    'fabric-1,"Supplier ""measured"" roll, verified',
+    'by owner",145',
+  ].join("\n");
+  const r=inspectBatchCsvWorksheet(csv);
   assert.equal(r.error,null);
   assert.equal(r.items.length,1);
   assert.equal(r.items[0].verifiedGsm,145);
-  assert.match(r.items[0].verifiedPhysicalEvidenceNote||"",/Supplier "measured" roll, verified\\nby owner/);
+  assert.match(r.items[0].verifiedPhysicalEvidenceNote||"",/Supplier "measured" roll, verified\nby owner/);
 });
 
 test("operator cannot run a structurally invalid CSV on the real batch screen",()=>{
-  const source=requireSource();
+  const source=readFileSync("src/app/operator/fabric-analyzer/FabricAnalyzerBatchPanel.tsx","utf8");
   assert.match(source,/inspectBatchCsvWorksheet/);
   assert.match(source,/worksheet\.error/);
   assert.match(source,/role="alert"/);
 });
-
-function requireSource(){
-  return readFileSync("src/app/operator/fabric-analyzer/FabricAnalyzerBatchPanel.tsx","utf8");
-}
