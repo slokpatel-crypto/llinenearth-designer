@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { catalogPhysicalCsvPrefill, inspectBatchCsvWorksheet } from "@/lib/fabric-analyzer-batch-csv";
+import { verifyFabricAnalyzerBatchResult } from "@/lib/fabric-analyzer-batch-result";
 
 const HEADERS=[
   "fabricId","imageUrl","macroImageUrl","foldImageUrl","sourcePageUrl","sourceId",
@@ -113,8 +114,9 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
         }
         const result=await response.json() as {succeeded?:number;failed?:number;error?:string};
         if(!response.ok) throw new Error(result.error||"Analyzer batch failed.");
-        succeeded+=Number(result.succeeded||0);
-        failed+=Number(result.failed||0);
+        const verified=verifyFabricAnalyzerBatchResult(result,items.length);
+        succeeded+=verified.succeeded;
+        failed+=verified.failed;
         setProgress({done:Math.min(runnable.length,offset+items.length),total:runnable.length,succeeded,failed});
       }
       setMessage(`Batch complete: ${succeeded} analyzed, ${failed} failed. New profiles still require human review before full Designer trust.`);
