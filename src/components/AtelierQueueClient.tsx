@@ -8,7 +8,7 @@ const statusLabel: Record<HandoffStatus,string> = {requested:"Requested",in_revi
 
 export function AtelierQueueClient(){
   const [items,setItems]=useState<AtelierHandoff[]>([]); const [activeId,setActiveId]=useState<string|null>(null); const [note,setNote]=useState("");
-  useEffect(()=>{const loaded=listHandoffs();setItems(loaded);setActiveId(loaded[0]?.id||null)},[]);
+  useEffect(()=>{const loaded=listHandoffs();setItems(loaded);setActiveId(loaded[0]?.id||null);setNote(loaded[0]?.staffNote||"")},[]);
   const active=useMemo(()=>items.find((x)=>x.id===activeId)||items[0],[items,activeId]);
   function save(status:HandoffStatus){if(!active)return;updateHandoff(active.id,{status,staffNote:note});setItems((prev)=>prev.map((x)=>x.id===active.id?{...x,status,staffNote:note}:x));}
 
@@ -20,6 +20,6 @@ export function AtelierQueueClient(){
       <dl className="queueSpec"><div><dt>Shirt</dt><dd>{active.garmentSpec.shirt}</dd></div><div><dt>Trouser</dt><dd>{active.garmentSpec.trouser}</dd></div><div><dt>Layer</dt><dd>{active.garmentSpec.layer}</dd></div><div><dt>Footwear</dt><dd>{active.garmentSpec.footwear}</dd></div></dl>
       <div className="fabricReview"><span>FABRIC REVIEW · {active.fabricAssessment.verdict.toUpperCase()} · {active.fabricAssessment.score}/100</span><h3>{active.uploadedFabric}</h3><p>{active.fabricAssessment.reasons.join(" ")}</p><div className="idealFabrics">{active.idealStoreFabrics.map((fabric)=><div key={fabric.id}><strong>{fabric.name}</strong><span>{fabric.reason}</span></div>)}</div></div>
       {active.customerNote&&<div className="fabricReview"><span>CUSTOMER NOTE</span><p>{active.customerNote}</p></div>}
-      <div className="staffControls"><select defaultValue={active.status} onChange={(e)=>save(e.target.value as HandoffStatus)}><option value="requested">Requested</option><option value="in_review">In review</option><option value="fabric_check">Fabric check</option><option value="ready_for_consultation">Ready for consultation</option></select><textarea value={note} onChange={(e)=>setNote(e.target.value)} placeholder="Human designer note: inventory match, construction change, fitting consideration…"/><button onClick={()=>save(active.status)}>Save staff note</button></div>
+      <div className="staffControls"><select value={active.status} onChange={(e)=>save(e.target.value as HandoffStatus)}><option value="requested">Requested</option><option value="in_review">In review</option><option value="fabric_check">Fabric check</option><option value="ready_for_consultation">Ready for consultation</option></select><textarea value={note} onChange={(e)=>setNote(e.target.value)} placeholder="Human designer note: inventory match, construction change, fitting consideration…"/><button onClick={()=>save(active.status)}>Save staff note</button></div>
     </aside>}</div></section>;
 }
