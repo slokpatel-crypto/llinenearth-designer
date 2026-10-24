@@ -104,3 +104,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] 2026-10-24: Analyzer CSV import rejects unsupported/misspelled headings and nonempty rows without fabricId, imageUrl or sourcePageUrl rather than silently excluding source/physical evidence. Blank spacer lines and valid identified rows retain previous behavior; focused fail-closed regressions added. Exact-head CI and operator browser QA pending.
 
 - [x] 2026-10-24: Replaced unsupported `align-items:end` on the Analyzer operator panel with `align-items:flex-end`; added CSS regression, addressing the recurring Autoprefixer mixed-support build warning without changing model or physical evidence. Exact-head build must confirm no warning.
+
+- [x] 2026-10-24: Analyzer operator batch client now verifies that every 200 response accounts for each submitted row exactly once via ordered per-item status, matching total and success/failure counts. Inconsistent/partial acknowledgements show an error rather than incrementing success totals. Focused pure and UI/API contract tests added. Exact-head CI and browser QA pending.
