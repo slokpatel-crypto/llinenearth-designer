@@ -124,7 +124,7 @@ test("distinct local requests cannot share a timestamp-derived handoff identifie
 });
 test("handoff writer uses browser cryptographic randomness rather than just milliseconds",()=>{
   const source=readFileSync("src/lib/handoff.ts","utf8");
-  assert.match(source,/makeAtelierHandoffId\(design\.version\.specHash,design\.id,window\.crypto\.getRandomValues\(new Uint8Array\(16\)\)\)/);
+  assert.ok(source.includes("makeAtelierHandoffId(design.version.specHash || design.version.id,design.id,window.crypto.getRandomValues(new Uint8Array(16)))"));
   assert.doesNotMatch(source,/Date\.now\(\)\.toString\(36\)/);
 });
 test("Atelier local queue must not misrepresent a browser-only write as staff delivery",()=>{
