@@ -645,3 +645,9 @@ Two saved looks can have the same content-addressed spec hash even when they bel
 ## 2026-10-24 — Legacy/corrupted local atelier handoffs are untrusted
 
 The Atelier handoff store reads browser JSON, which can contain null entries, truncated older objects or non-arrays. Directly treating that data as typed handoffs could crash creation/deduplication or the dashboard, particularly after the composite design/spec identity fix. Read operations now filter records missing the stable request identity and UI-required object/array fields; fully shaped legacy entries remain intact and in order. This is a best-effort integrity guard, not durable server persistence or recovery of already-lost records. The handoff storage key and schema are unchanged, no background migration or customer data rewriting is attempted, and no deployment has happened.
+
+## 2026-10-24 — Browser-only Atelier handoff integrity
+
+**Boundary:** The Atelier queue is localStorage-only convenience, not a production order inbox or recovered durable customer record. At the read boundary reject incomplete nested packet shapes, unknown statuses and corrupt notes/reasons/alternatives instead of displaying someone else's or an unrenderable packet; retain valid existing format/order and 50-record cap. Operator selection must show the chosen handoff's saved note and controlled status immediately (including the first loaded item).
+
+**Compatibility/evidence:** No persistence schema or existing saved design format changed, no supplier/stock/physical facts added. Regression tests exercise corrupted nested browser JSON and source wiring; exact-head CI and responsive browser acceptance are still required before any release.

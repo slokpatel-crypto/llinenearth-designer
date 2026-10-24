@@ -23,15 +23,28 @@ export function validStoredAtelierHandoffs<T extends {
   id:string;designId:string;specHash:string;createdAt:string;title:string;status:string;
 }>(value:unknown):T[] {
   if(!Array.isArray(value)) return [];
+  const hasText=(value:unknown):value is string=>typeof value==="string" && Boolean(value.trim());
+  const isRecord=(value:unknown):value is Record<string,unknown>=>Boolean(value) && typeof value==="object" && !Array.isArray(value);
   return value.filter((candidate):candidate is T=>{
-    if(!candidate || typeof candidate!=="object" || Array.isArray(candidate)) return false;
-    const row=candidate as Record<string,unknown>;
-    if(!["id","designId","specHash","createdAt","title","status"].every(
-      (field)=>typeof row[field]==="string" && Boolean((row[field] as string).trim())
+    if(!isRecord(candidate)) return false;
+    const row=candidate;
+    if(!["id","designId","specHash","createdAt","title"].every((field)=>hasText(row[field]))) return false;
+    if(!["requested","in_review","fabric_check","ready_for_consultation"].includes(String(row.status))) return false;
+    if(!["customerNote","occasion","venue","aesthetic","uploadedFabric"].every((field)=>typeof row[field]==="string")) return false;
+    if(row.staffNote!==undefined && typeof row.staffNote!=="string") return false;
+    if(!isRecord(row.garmentSpec) || !["shirt","trouser","layer","footwear"].every(
+      (field)=>typeof (row.garmentSpec as Record<string,unknown>)[field]==="string"
     )) return false;
-    return Boolean(row.garmentSpec && typeof row.garmentSpec==="object" &&
-      !Array.isArray(row.garmentSpec) && row.fabricAssessment &&
-      typeof row.fabricAssessment==="object" && !Array.isArray(row.fabricAssessment) &&
-      Array.isArray(row.palette) && Array.isArray(row.idealStoreFabrics));
-  });
+    if(!isRecord(row.fabricAssessment)) return false;
+    const assessment=row.fabricAssessment;
+    if(typeof assessment.score!=="number" || !Number.isFinite(assessment.score) ||
+      !hasText(assessment.verdict) || !hasText(assessment.preferredRole) ||
+      typeof assessment.bestOutfitType!=="string" ||
+      !Array.isArray(assessment.reasons) || !assessment.reasons.every((reason)=>typeof reason==="string")) return false;
+    if(!Array.isArray(row.palette) || !row.palette.every((color)=>typeof color==="string")) return false;
+    if(!Array.isArray(row.idealStoreFabrics) || !row.idealStoreFabrics.every((fabric)=>
+      isRecord(fabric) && ["id","name","reason"].every((field)=>typeof fabric[field]==="string")
+    )) return false;
+    return true;
+  }).slice(0,50);
 }
