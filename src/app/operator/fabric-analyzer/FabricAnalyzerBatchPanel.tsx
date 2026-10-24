@@ -20,6 +20,7 @@ function csvCell(value:unknown){
 export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>void|Promise<void>}){
   const [csvText,setCsvText]=useState("");
   const [running,setRunning]=useState(false);
+  const runningRef=useRef(false);
   const [progress,setProgress]=useState({done:0,total:0,succeeded:0,failed:0});
   const [message,setMessage]=useState("");
   const fileRef=useRef<HTMLInputElement|null>(null);
@@ -28,6 +29,7 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
   const runnable=parsed.filter((item)=>Boolean(item.imageUrl||item.sourcePageUrl));
 
   async function downloadTemplate(){
+    if(runningRef.current) return;
     setMessage("");
     try{
       const response=await fetch("/api/operator/designer-data",{cache:"no-store"});
@@ -88,13 +90,16 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
   }
 
   async function pickFile(file:File|null){
-    if(!file) return;
-    setCsvText(await file.text());
+    if(!file || runningRef.current) return;
+    const text=await file.text();
+    if(runningRef.current) return;
+    setCsvText(text);
     setMessage(`Loaded ${file.name}.`);
   }
 
   async function runBatch(){
-    if(running || worksheet.error || !runnable.length) return;
+    if(runningRef.current || worksheet.error || !runnable.length) return;
+    runningRef.current=true;
     setRunning(true);
     setMessage("");
     setProgress({done:0,total:runnable.length,succeeded:0,failed:0});
@@ -124,6 +129,7 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
     }catch(error){
       setMessage(error instanceof Error?error.message:"Analyzer batch failed.");
     }finally{
+      runningRef.current=false;
       setRunning(false);
     }
   }
@@ -132,11 +138,11 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
     <div className="panelTitle"><span>03 / BATCH CAPTURE</span><h2>Process verified fabric evidence faster.</h2><b>{runnable.length} runnable</b></div>
     <div className="batchGuardrail"><strong>NO AUTO-INVENTED PHYSICAL FACTS</strong><p>The worksheet preloads catalogue identity only. Add trusted flat image URLs and enter GSM, drape, fibre, millimetres or the 0–1 physics indices only when you have repeatable supplier/owner evidence. Every physical value also needs either a source URL or a short evidence note.</p></div>
     <div className="batchActions">
-      <button type="button" onClick={()=>void downloadTemplate()}>Download evidence-gap CSV</button>
-      <button type="button" onClick={()=>fileRef.current?.click()}>Load completed CSV</button>
-      <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={(event)=>void pickFile(event.target.files?.[0]||null)} />
+      <button type="button" disabled={running} onClick={()=>void downloadTemplate()}>Download evidence-gap CSV</button>
+      <button type="button" disabled={running} onClick={()=>fileRef.current?.click()}>Load completed CSV</button>
+      <input ref={fileRef} type="file" accept=".csv,text/csv" hidden disabled={running} onChange={(event)=>void pickFile(event.target.files?.[0]||null)} />
     </div>
-    <textarea value={csvText} onChange={(event)=>setCsvText(event.target.value)} placeholder={HEADERS.join(",")} rows={9} spellCheck={false} />
+    <textarea value={csvText} disabled={running} onChange={(event)=>setCsvText(event.target.value)} placeholder={HEADERS.join(",")} rows={9} spellCheck={false} />
     {worksheet.error&&<p className="batchGuardrail" role="alert">CSV cannot run: {worksheet.error}</p>}
     <div className="batchSummary">
       <span><small>PARSED ROWS</small><b>{parsed.length}</b></span>
