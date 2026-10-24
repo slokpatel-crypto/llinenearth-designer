@@ -134,3 +134,14 @@ test("Atelier local queue must not misrepresent a browser-only write as staff de
   assert.match(source,/role="alert"/);
   assert.doesNotMatch(source,/Send to Linen Earth atelier/);
 });
+
+test("saved-design switching remounts local handoff draft by exact design and locked version",()=>{
+  const parent=readFileSync("src/components/SavedDesignsClient.tsx","utf8");
+  const child=readFileSync("src/components/AtelierHandoffPanel.tsx","utf8");
+  assert.ok(parent.includes("AtelierHandoffPanel key={"));
+  assert.ok(parent.includes("active.version.specHash || active.version.id"));
+  assert.doesNotMatch(parent,/<AtelierHandoffPanel design=\{active\}/);
+  assert.match(child,/const \[sent,setSent\]=useState/);
+  assert.match(child,/const \[note,setNote\]=useState/);
+  assert.match(child,/const \[error,setError\]=useState/);
+});
