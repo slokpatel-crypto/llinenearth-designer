@@ -59,20 +59,28 @@ export function CustomerMeasurements() {
       setStatus(`Add required measurements: ${missingRequired.map((field) => field.label).join(", ")}.`);
       return;
     }
-    const saved = saveCustomerMeasurementProfile({ id: profileId, name, unit, measurements });
-    setProfileId(saved.id);
-    setProfiles(listCustomerMeasurementProfiles());
-    setStatus(`${saved.name} is saved on this device and selected for the Designer Engine.`);
+    try {
+      const saved = saveCustomerMeasurementProfile({ id: profileId, name, unit, measurements });
+      setProfileId(saved.id);
+      setProfiles(listCustomerMeasurementProfiles());
+      setStatus(`${saved.name} is saved on this device and selected for the Designer Engine.`);
+    } catch {
+      setStatus("Measurement profile could not be saved or activated on this device. Check browser storage before continuing.");
+    }
   }
 
   function loadProfile(profile: CustomerMeasurementProfile) {
-    setProfileId(profile.id);
-    setName(profile.name);
-    setUnit(profile.unit);
-    setMeasurements(profile.measurements);
-    activateCustomerMeasurementProfile(profile);
-    setStatus(`${profile.name} is now the active fit profile.`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    try {
+      activateCustomerMeasurementProfile(profile);
+      setProfileId(profile.id);
+      setName(profile.name);
+      setUnit(profile.unit);
+      setMeasurements(profile.measurements);
+      setStatus(`${profile.name} is now the active fit profile.`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      setStatus("Could not activate the selected measurement profile on this device.");
+    }
   }
 
   function newProfile() {
@@ -84,9 +92,13 @@ export function CustomerMeasurements() {
   }
 
   function deleteProfile(id: string) {
-    removeCustomerMeasurementProfile(id);
-    setProfiles(listCustomerMeasurementProfiles());
-    if (profileId === id) newProfile();
+    try {
+      removeCustomerMeasurementProfile(id);
+      setProfiles(listCustomerMeasurementProfiles());
+      if (profileId === id) newProfile();
+    } catch {
+      setStatus("Could not delete this browser-stored profile. No removal was confirmed.");
+    }
   }
 
   return (
