@@ -677,3 +677,9 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Lifecycle:** A handoff composer is stateful (unsent note, error and saved packet). It must not be reused across a different `SavedDesign.id` or locked spec/version, even though the same React panel position is reused by Saved Designs. Key the component by design identity and locked version; switching selections now starts the new design's independent draft immediately.
 
 **Boundary:** The existing browser-local storage key, spec hash and saved-design format remain unchanged. React remount isolation is not durable customer persistence or proof of staff receipt. Browser regression at 390/768/1440 and exact-head checks remain needed.
+
+## 2026-10-24 — Local saved-design structural recovery
+
+**Boundary:** Saved Designs is browser localStorage, not a durable customer system. Malformed, partially written or foreign records must never crash browsing or saving another design. At read time keep valid designs in original order, checking fields needed by Saved Designs, rendering and the local Atelier handoff; skip invalid entries and enforce the existing 24-card cap without mutating browser storage. Accept optional legacy version hashes instead of fabricating missing versions.
+
+**Limitations:** This is safe best-effort recovery, not retrieval of corrupted customer data. It does not change saved IDs/deduplication semantics, rewrite existing storage or guarantee physical/production truth. Tests cover corrupt nested records, valid older data, cap and actual reader wiring. Exact-head CI and independent browser acceptance remain mandatory.

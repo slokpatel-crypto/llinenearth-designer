@@ -1,6 +1,7 @@
 import type { DesignerBrief } from "@/lib/designer-types";
 import type { DesignVersion } from "@/lib/refinement-engine";
 import type { RenderSet } from "@/lib/visualization-engine";
+import { validStoredSavedDesigns } from "./saved-design-storage-integrity.ts";
 
 export const SAVED_DESIGNS_KEY = "linen-earth-saved-designs-v1";
 
@@ -18,8 +19,8 @@ export function listSavedDesigns(): SavedDesign[] {
   try {
     const raw = window.localStorage.getItem(SAVED_DESIGNS_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as SavedDesign[];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed:unknown = JSON.parse(raw);
+    return validStoredSavedDesigns<SavedDesign>(parsed);
   } catch {
     return [];
   }

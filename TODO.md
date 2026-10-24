@@ -108,3 +108,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] 2026-10-24: Analyzer operator batch client now verifies that every 200 response accounts for each submitted row exactly once via ordered per-item status, matching total and success/failure counts. Inconsistent/partial acknowledgements show an error rather than incrementing success totals. Focused pure and UI/API contract tests added. Exact-head CI and browser QA pending.
 
 - [x] 2026-10-24: Saved Designs remounts the browser-local Atelier handoff panel when design ID or locked version changes; a saved/sent packet and unsent customer note from design A can no longer appear under design B. Static React key wiring regression added. Exact-head browser QA pending.
+
+- [x] 2026-10-24: Saved Designs now filters corrupted/legacy localStorage entries at the browser-read boundary before list rendering or save/dedup, validating required design, brief, visual render and handoff shape. Valid older drafts retain order/format and prior 24-design cap. Pure corrupt-entry and compatibility regressions added; exact-head CI/browser validation pending. Not durable production storage.
