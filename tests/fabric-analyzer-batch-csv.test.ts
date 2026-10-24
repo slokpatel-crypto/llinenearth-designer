@@ -136,3 +136,20 @@ test("operator cannot run a structurally invalid CSV on the real batch screen",(
   assert.match(source,/worksheet\.error/);
   assert.match(source,/role="alert"/);
 });
+
+test("fabric physical provenance requires a real calendar date, not just YYYY-MM-DD shape",()=>{
+  for(const evidenceDate of ["2026-02-30","2026-04-31","2026-00-10","2026-13-01","0000-01-01"]) {
+    const csv=catalogPhysicalCsvPrefill({
+      weightGsm:145,drape:"medium",
+      physicalEvidence:{sourceType:"owner_measurement",reference:"Roll date",checkedBy:"Operator",evidenceDate},
+    });
+    assert.equal(csv.verifiedGsm,"",evidenceDate);
+    assert.equal(csv.verifiedDrape,"",evidenceDate);
+  }
+  const leap=catalogPhysicalCsvPrefill({
+    weightGsm:145,drape:"medium",
+    physicalEvidence:{sourceType:"owner_measurement",reference:"Leap-day roll",checkedBy:"Operator",evidenceDate:"2024-02-29"},
+  });
+  assert.equal(leap.verifiedGsm,145);
+  assert.match(leap.verifiedPhysicalEvidenceNote,/2024-02-29/);
+});
