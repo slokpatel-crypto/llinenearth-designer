@@ -1,31 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-
-type BatchItem={
-  fabricId?:string;
-  imageUrl?:string;
-  macroImageUrl?:string;
-  foldImageUrl?:string;
-  sourcePageUrl?:string;
-  sourceId?:string;
-  declaredMaterial?:string;
-  declaredFabricType?:string;
-  supplierColorName?:string;
-  supplierPatternName?:string;
-  notes?:string;
-  swatchRealWidthMm?:number;
-  repeatRealMm?:number;
-  verifiedGsm?:number;
-  verifiedDrape?:"Fluid"|"Balanced"|"Structured";
-  verifiedFiberContent?:string;
-  verifiedStructure?:number;
-  verifiedBreathability?:number;
-  verifiedWrinkleResistance?:number;
-  verifiedStretch?:number;
-  verifiedPhysicalSourceUrl?:string;
-  verifiedPhysicalEvidenceNote?:string;
-};
+import { itemsFromCsv } from "@/lib/fabric-analyzer-batch-csv";
 
 const HEADERS=[
   "fabricId","imageUrl","macroImageUrl","foldImageUrl","sourcePageUrl","sourceId",
@@ -34,72 +10,6 @@ const HEADERS=[
   "verifiedStructure","verifiedBreathability","verifiedWrinkleResistance","verifiedStretch",
   "verifiedPhysicalSourceUrl","verifiedPhysicalEvidenceNote","notes",
 ] as const;
-
-function parseCsv(text:string){
-  const rows:string[][]=[];
-  let row:string[]=[];
-  let cell="";
-  let quoted=false;
-  for(let i=0;i<text.length;i++){
-    const char=text[i];
-    if(char==='"'){
-      if(quoted && text[i+1]==='"'){cell+='"';i+=1;}
-      else quoted=!quoted;
-      continue;
-    }
-    if(char==="," && !quoted){row.push(cell);cell="";continue;}
-    if((char==="\n"||char==="\r") && !quoted){
-      if(char==="\r"&&text[i+1]==="\n") i+=1;
-      row.push(cell);cell="";
-      if(row.some((value)=>value.trim())) rows.push(row);
-      row=[];
-      continue;
-    }
-    cell+=char;
-  }
-  row.push(cell);
-  if(row.some((value)=>value.trim())) rows.push(row);
-  return rows;
-}
-
-function numberOrUndefined(value:string){
-  const n=Number(value.trim());
-  return value.trim() && Number.isFinite(n) ? n : undefined;
-}
-
-function itemsFromCsv(text:string){
-  const rows=parseCsv(text);
-  if(rows.length<2) return [] as BatchItem[];
-  const header=rows[0].map((value)=>value.trim());
-  return rows.slice(1).map((cells)=>{
-    const raw=Object.fromEntries(header.map((key,index)=>[key,(cells[index]||"").trim()]));
-    const drape=["Fluid","Balanced","Structured"].includes(raw.verifiedDrape) ? raw.verifiedDrape as BatchItem["verifiedDrape"] : undefined;
-    return {
-      fabricId:raw.fabricId||undefined,
-      imageUrl:raw.imageUrl||undefined,
-      macroImageUrl:raw.macroImageUrl||undefined,
-      foldImageUrl:raw.foldImageUrl||undefined,
-      sourcePageUrl:raw.sourcePageUrl||undefined,
-      sourceId:raw.sourceId||undefined,
-      declaredMaterial:raw.declaredMaterial||undefined,
-      declaredFabricType:raw.declaredFabricType||undefined,
-      supplierColorName:raw.supplierColorName||undefined,
-      supplierPatternName:raw.supplierPatternName||undefined,
-      swatchRealWidthMm:numberOrUndefined(raw.swatchRealWidthMm||""),
-      repeatRealMm:numberOrUndefined(raw.repeatRealMm||""),
-      verifiedGsm:numberOrUndefined(raw.verifiedGsm||""),
-      verifiedDrape:drape,
-      verifiedFiberContent:raw.verifiedFiberContent||undefined,
-      verifiedStructure:numberOrUndefined(raw.verifiedStructure||""),
-      verifiedBreathability:numberOrUndefined(raw.verifiedBreathability||""),
-      verifiedWrinkleResistance:numberOrUndefined(raw.verifiedWrinkleResistance||""),
-      verifiedStretch:numberOrUndefined(raw.verifiedStretch||""),
-      verifiedPhysicalSourceUrl:raw.verifiedPhysicalSourceUrl||undefined,
-      verifiedPhysicalEvidenceNote:raw.verifiedPhysicalEvidenceNote||undefined,
-      notes:raw.notes||undefined,
-    };
-  }).filter((item)=>item.fabricId || item.imageUrl || item.sourcePageUrl);
-}
 
 function csvCell(value:unknown){
   const text=String(value??"");
