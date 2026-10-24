@@ -1,4 +1,5 @@
 import type { SavedDesign } from "@/lib/saved-designs";
+import { mergeDistinctAtelierHandoffs } from "./atelier-handoff-identity.ts";
 import { fabricTypes, judgeFabricForBrief, type WearFamily } from "@/lib/fashion-intelligence";
 
 export const HANDOFF_KEY = "linen-earth-atelier-handoffs-v1";
@@ -62,7 +63,7 @@ export function createHandoff(design: SavedDesign, customerNote = ""): AtelierHa
     idealStoreFabrics:idealFabrics(design),
   };
   const existing = listHandoffs();
-  localStorage.setItem(HANDOFF_KEY, JSON.stringify([item, ...existing.filter((x)=>x.specHash!==item.specHash)].slice(0,50)));
+  localStorage.setItem(HANDOFF_KEY, JSON.stringify(mergeDistinctAtelierHandoffs(existing,item)));
   return item;
 }
 

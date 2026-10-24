@@ -637,3 +637,7 @@ The private queue originally submitted only `items.slice(0,500)` even when opera
 ## 2026-10-24 — Physical provenance dates must denote actual calendar days
 
 Existing operator physical-evidence records use an optional YYYY-MM-DD inspection date. Shape-only validation previously accepted impossible dates such as `2026-02-30`, letting invalid provenance prefill verified CSV columns. The normalizer now checks the Gregorian UTC calendar parts after parsing, preserving valid leap days and undated written records. Impossible dated records are excluded from verified prefill rather than fabricated or rewritten. Compatible with the existing schema; no physical measurement, model, store record or release approval changed.
+
+## 2026-10-24 — A garment spec hash is not a unique customer handoff identity
+
+Two saved looks can have the same content-addressed spec hash even when they belong to distinct design IDs or customer consultations. The browser atelier handoff writer previously deduplicated solely on `specHash`, which could erase a different saved design's request and customer note without warning. Handoff deduplication now keys on `(designId, specHash)` and preserves different design IDs and revised version hashes; re-requesting an identical version of the same saved design still refreshes one entry. Retain the existing 50-record cap and browser persistence format; no migration or server-side identity claim. Previously overwritten local records cannot be recovered from this code change. No model, supplier evidence or release status changed.
