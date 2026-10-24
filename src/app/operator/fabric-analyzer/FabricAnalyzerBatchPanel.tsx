@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { catalogPhysicalCsvPrefill, inspectBatchCsvWorksheet } from "@/lib/fabric-analyzer-batch-csv";
 import { verifyFabricAnalyzerBatchResult } from "@/lib/fabric-analyzer-batch-result";
+import { describeBatchStop, describeBatchRefreshFailure } from "@/lib/fabric-analyzer-batch-messages";
 
 const HEADERS=[
   "fabricId","imageUrl","macroImageUrl","foldImageUrl","sourcePageUrl","sourceId",
@@ -140,9 +141,18 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
         setProgress({done:Math.min(runnable.length,offset+items.length),total:runnable.length,succeeded,failed});
       }
       setMessage(`Batch complete: ${succeeded} analyzed, ${failed} failed. New profiles still require human review before full Designer trust.`);
-      await onComplete?.();
+      try{
+        await onComplete?.();
+      }catch{
+        setMessage(describeBatchRefreshFailure(succeeded,failed));
+      }
     }catch(error){
-      setMessage(error instanceof Error?error.message:"Analyzer batch failed.");
+      setMessage(describeBatchStop({
+        total:runnable.length,
+        succeeded,
+        failed,
+        error:error instanceof Error?error.message:"Analyzer request failed.",
+      }));
     }finally{
       runningRef.current=false;
       setRunning(false);
