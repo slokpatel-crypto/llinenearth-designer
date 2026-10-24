@@ -12,7 +12,7 @@ export class FabricAnalyzerBatchInputError extends Error {
 
 export const FABRIC_ANALYZER_BATCH_LIMIT=12;
 
-export function parseFabricAnalyzerBatchEnvelope<T extends object>(body:unknown):T[] {
+export function parseFabricAnalyzerBatchEnvelope<T extends object>(body:unknown,limit=FABRIC_ANALYZER_BATCH_LIMIT):T[] {
   if(!body || typeof body!=="object" || Array.isArray(body)) {
     throw new FabricAnalyzerBatchInputError("Expected a batch request with an items array.");
   }
@@ -20,9 +20,9 @@ export function parseFabricAnalyzerBatchEnvelope<T extends object>(body:unknown)
   if(!Array.isArray(items)||items.length===0) {
     throw new FabricAnalyzerBatchInputError("Provide at least one fabric analysis item.");
   }
-  if(items.length>FABRIC_ANALYZER_BATCH_LIMIT) {
+  if(items.length>limit) {
     throw new FabricAnalyzerBatchInputError(
-      `Submit at most ${FABRIC_ANALYZER_BATCH_LIMIT} fabrics per batch; none of this oversized batch was processed.`
+      `Submit at most ${limit} fabrics per batch; none of this oversized batch was processed.`
     );
   }
   if(!items.every((item)=>item!==null && typeof item==="object" && !Array.isArray(item))) {
