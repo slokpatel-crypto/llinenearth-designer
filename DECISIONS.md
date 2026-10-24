@@ -711,3 +711,9 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Race:** A browser File.text() read is asynchronous. An older upload must not overwrite a newer file selection, typed CSV edits or a batch already started on a different worksheet. A monotonic in-memory revision increments on new file selection, manual changes and batch start; pending reads apply only when their revision still matches and no batch is running. Superseded file errors remain silent and active failed reads report an error without discarding the previous worksheet.
 
 **Compatibility:** The native file input clears immediately after selection so the same CSV may be reloaded. No change to analysis schema, uploaded physical facts, persistent state, paid AI, the fixed Designer model or production workflow. Exact-head tests and real browser QA still gate acceptance.
+
+## 2026-10-24 — Batch acknowledgement truth survives UI refresh failure
+
+**Acknowledgements:** Batch POSTs run in 12-item chunks, and a network timeout or malformed result may occur after a server write. Only count rows whose chunk returned a structurally verified response. On failure display confirmed count and label the current chunk **unknown**, instructing staff to inspect persisted profiles before retrying. Do not claim exactly-once behavior.
+
+**Refresh boundary:** A failed post-batch `onComplete` dashboard refresh does not roll back Analyzer results. Report processing as complete while independently flagging failed view refresh; don't suggest re-uploading the worksheet to fix a stale view. Preserve existing 401 navigation, server result checks, physical review requirements and no-deploy policy. Exact-head CI and real operator QA are still required.
