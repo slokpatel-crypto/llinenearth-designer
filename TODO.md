@@ -84,3 +84,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] 2026-10-24: Refactored Analyzer batch CSV parsing into a testable pure module; invalid nonempty GSM, repeat, physics indices and drape labels survive to strict server validation instead of being silently dropped by the worksheet importer. Existing valid decimal values still parse as numbers.
 
 - [x] 2026-10-24: Prevented physical CSV template from promoting provenance-free catalogue GSM and drape into verified claims; only valid operator physical provenance allows prefill, with independent pure tests and HTTPS-only exported evidence URLs.
+
+- [x] 2026-10-24: Rejected malformed and over-limit synchronous Analyzer batch envelopes atomically instead of silently processing only the first 12 rows. Added envelope and route-contract regressions; exact-head CI and browser QA still required.
