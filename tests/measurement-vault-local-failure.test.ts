@@ -32,6 +32,8 @@ test("secure measurement copy exposes token before attempting local writes",()=>
   const token=store.indexOf("setVaultToken(result.recoveryToken);");
   const local=store.indexOf("localStorage.setItem(MEASUREMENT_STORAGE_KEY");
   assert.ok(responseCheck>=0&&token>responseCheck&&local>token);
+  assert.ok(store.indexOf('setVaultExpiresAt("");')>token);
+  assert.ok(store.indexOf('setVaultExpiresAt("");')<local);
   assert.match(store,/try\{\s*localStorage\.setItem\(MEASUREMENT_STORAGE_KEY/);
   assert.match(store,/catch\{\s*\/\/ Server copy still exists/);
   assert.match(store,/let tokenCopied=false/);
