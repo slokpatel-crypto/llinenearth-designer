@@ -691,3 +691,11 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Storage:** Validate browser review packets before rendering/marking as reviewed (closed ratings/statuses, safe string reasons and notes), preserving the 100-record cap and valid prior order. This is strictly a local cache, not a staff submission or durable production system. No model/photo, physical fabric facts, backend migrations or customer data recovery are claimed. New regressions protect composite identity, invalid arrays, nonce construction and caller wiring. Exact-head CI/browser QA pending.
 
 **Customer-facing truth:** The Saved Designs rating confirmation must explicitly say the review was saved only in this browser; it is not a submitted staff ticket. Failed writes show a scoped error for that design and must never present a successful saved message.
+
+## 2026-10-24 — Fabric Studio async results belong to the selected cloth
+
+**Lifecycle:** A requested fabric analysis may outlast file selection, stock selection, source changes, garment changes, range changes or unmount. Scope each request to a monotonically advancing revision and snapshot the input `File` plus AI consent at execution. Before optional AI dispatch, result commit and error commit, reject a superseded revision. Selecting an existing stock fabric must never later be overwritten by a stale uploaded fabric profile.
+
+**Privacy and compatibility:** Toggling consent is disabled during an active scan, and the consent snapshot applies to that request only. An already dispatched HTTP request cannot be unsent, but stale responses cannot update the UI; canceled capture/base64 preflight makes no paid provider request. No API/backend schema or model/photo change, and no physical fabric fact is inferred. Exact-head tests and responsive browser acceptance remain mandatory.
+
+**Raw-image disclosure:** Without photo-consent, image pixels are decoded locally but derived visual summary and file metadata are sent to the app's own `/api/fabric/analyze` server. Do not call this an entirely on-device analysis. With photo-consent, original image bytes are included for optional server/provider AI; labels distinguish the two cases.
