@@ -29,7 +29,15 @@ export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricP
   if(reference.length<2||checkedBy.length<2) return null;
 
   const evidenceDate=clean(source.evidenceDate,20);
-  if(evidenceDate&&!/^\d{4}-\d{2}-\d{2}$/.test(evidenceDate)) return null;
+  if(evidenceDate){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(evidenceDate)) return null;
+    const [year,month,day]=evidenceDate.split("-").map(Number);
+    const calendarDate=new Date(Date.UTC(year,month-1,day));
+    // A formatted string alone is not a real inspection date (e.g. 2026-02-31).
+    if(calendarDate.getUTCFullYear()!==year ||
+      calendarDate.getUTCMonth()+1!==month ||
+      calendarDate.getUTCDate()!==day) return null;
+  }
 
   const sourceUrl=clean(source.sourceUrl,500);
   if(sourceUrl){

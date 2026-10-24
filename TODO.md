@@ -90,3 +90,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] 2026-10-24: Strictly parsed Analyzer CSV worksheets: duplicate/empty headings, row-width drift, unclosed quotes and unexpected text after quote now block all rows, surface an operator error and prevent analysis. Ordinary valid quoted provenance and numeric columns remain supported; exact-head CI pending.
 
 - [x] 2026-10-24: Durable 500-job Analyzer queue now rejects malformed/oversized envelopes before enqueuing, rather than silently discarding submitted jobs 501+. Shared size-aware batch validator and regression tests. Production queue/database not touched.
+
+- [x] 2026-10-24: Checked actual Gregorian validity of operator/supplier physical-evidence dates before exporting GSM/drape as verified CSV. Reject impossible days/months, preserve valid leap day; targeted tests added. No real evidence asserted.
