@@ -102,3 +102,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] 2026-10-24: Atelier handoff IDs no longer depend on timestamps alone; new local packets use a fresh 128-bit browser cryptographic nonce, with backward-compatible legacy IDs. Handoff CTA and confirmation now explicitly identify browser-only storage and report write failures without claiming staff delivery. Added deterministic pure/static tests; exact-head CI and browser QA pending.
 
 - [x] 2026-10-24: Analyzer CSV import rejects unsupported/misspelled headings and nonempty rows without fabricId, imageUrl or sourcePageUrl rather than silently excluding source/physical evidence. Blank spacer lines and valid identified rows retain previous behavior; focused fail-closed regressions added. Exact-head CI and operator browser QA pending.
+
+- [x] 2026-10-24: Replaced unsupported `align-items:end` on the Analyzer operator panel with `align-items:flex-end`; added CSS regression, addressing the recurring Autoprefixer mixed-support build warning without changing model or physical evidence. Exact-head build must confirm no warning.
