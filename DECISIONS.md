@@ -629,3 +629,7 @@ Batch uploads are explicitly limited to 12 JSON items per request. The previous 
 ## 2026-10-24 — Analyzer CSV must reject ambiguous row structure
 
 The batch CSV client must never quietly remap physical evidence because a spreadsheet has duplicate/blank headers, too many/few columns, malformed quote placement or unterminated quotation. The reusable parser rejects the entire malformed worksheet with a visible operator error and disables batch submission. A valid template with quoted commas, embedded newlines and escaped double quotes still imports. A malformed worksheet changes no server data. The existing JSON batch size and verified physical-value validation remain independently enforced. No migration, new AI service, model, stock fact, or deployment action.
+
+## 2026-10-24 — Durable Analyzer queue may not silently drop jobs 501+
+
+The private queue originally submitted only `items.slice(0,500)` even when operators supplied more than 500 jobs; a success acknowledgement could omit later stock IDs. The same strict envelope validator used for 12-item synchronous batches now receives a documented 500-item queue limit. Oversized or malformed requests are rejected entirely with an actionable 400 before any enqueue RPC, while valid 1–500 item payloads retain their order. Regression tests cover both route callsites, exact limit and over-limit integrity. Source-only compatibility fix; no database migration, real supplier proof, model change or deploy.
