@@ -699,3 +699,9 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Privacy and compatibility:** Toggling consent is disabled during an active scan, and the consent snapshot applies to that request only. An already dispatched HTTP request cannot be unsent, but stale responses cannot update the UI; canceled capture/base64 preflight makes no paid provider request. No API/backend schema or model/photo change, and no physical fabric fact is inferred. Exact-head tests and responsive browser acceptance remain mandatory.
 
 **Raw-image disclosure:** Without photo-consent, image pixels are decoded locally but derived visual summary and file metadata are sent to the app's own `/api/fabric/analyze` server. Do not call this an entirely on-device analysis. With photo-consent, original image bytes are included for optional server/provider AI; labels distinguish the two cases.
+
+## 2026-10-24 — Analyzer batch input stays fixed while processing
+
+**Concurrency:** An async batch action must acquire a synchronous ref lock before `setRunning`, because two rapid clicks can execute before React renders the disabled state. Hold the lock across all 12-row network chunks, release it in `finally`, and disallow worksheet edits, CSV selection and template creation while active. A pending `File.text()` read must also recheck the lock before mutating source rows.
+
+**Data safety:** The already captured request rows and reported counts remain authoritative for that run; do not let a later worksheet edit make the progress appear to belong to another CSV. This does not guarantee network-level exactly-once processing after a failure or retry, and does not change live operator authentication, backend queue schema or physical evidence policy. Exact-head CI and actual UI QA required.
