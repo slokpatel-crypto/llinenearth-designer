@@ -671,3 +671,9 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Decision:** A successful HTTP status is insufficient to certify a batch. The operator UI must verify `total === submittedCount`, `succeeded + failed === submittedCount`, a result for each original index in order and consistency between each row's `ok` flag and the summary. Malformed/partial 200 replies fail closed; previously confirmed chunks retain their visible progress, and the operator is told to inspect/retry unresolved fabrics.
 
 **Compatibility:** Uses the existing server batch v1 response shape with no endpoint, database or migration change. This does not invent fabric evidence, assume idempotent processing for unconfirmed rows or authorize production release. New pure tests and source wiring enforce the invariant; exact-head CI/operator browser acceptance pending.
+
+## 2026-10-24 — Keep local handoff drafts scoped to exact saved design version
+
+**Lifecycle:** A handoff composer is stateful (unsent note, error and saved packet). It must not be reused across a different `SavedDesign.id` or locked spec/version, even though the same React panel position is reused by Saved Designs. Key the component by design identity and locked version; switching selections now starts the new design's independent draft immediately.
+
+**Boundary:** The existing browser-local storage key, spec hash and saved-design format remain unchanged. React remount isolation is not durable customer persistence or proof of staff receipt. Browser regression at 390/768/1440 and exact-head checks remain needed.
