@@ -31,3 +31,12 @@ test("consent cannot change halfway through an in-flight fabric scan",()=>{
   assert.match(source,/const consentForRequest = aiConsent/);
   assert.match(source,/checked=\{aiConsent\} disabled=\{status === "analyzing"\}/);
 });
+
+test("no-consent privacy messaging distinguishes local raw photo from sent visual statistics",()=>{
+  assert.match(source,/Raw photo stays in your browser/);
+  assert.match(source,/derived color and texture signals go to the Linen Earth server/);
+  assert.doesNotMatch(source,/Leave this off to keep the on-device estimate/);
+  const server=readFileSync("src/app/api/fabric/analyze/route.ts","utf8");
+  assert.match(server,/const \{ fileName, contentType, size, visualSignals, imageBase64, aiConsent \} = body/);
+  assert.match(server,/aiConsent === true/);
+});
