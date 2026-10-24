@@ -651,3 +651,11 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Boundary:** The Atelier queue is localStorage-only convenience, not a production order inbox or recovered durable customer record. At the read boundary reject incomplete nested packet shapes, unknown statuses and corrupt notes/reasons/alternatives instead of displaying someone else's or an unrenderable packet; retain valid existing format/order and 50-record cap. Operator selection must show the chosen handoff's saved note and controlled status immediately (including the first loaded item).
 
 **Compatibility/evidence:** No persistence schema or existing saved design format changed, no supplier/stock/physical facts added. Regression tests exercise corrupted nested browser JSON and source wiring; exact-head CI and responsive browser acceptance are still required before any release.
+
+## 2026-10-24 — Local handoff identifiers and delivery truth
+
+**Identity:** A locked spec hash and millisecond timestamp are not unique customer/packet identities. New browser-local handoffs keep the familiar `HO-<spec>-...` prefix but use a 128-bit cryptographic random nonce; existing legacy IDs remain readable. No backend ID migration or hidden deduplication policy change.
+
+**Delivery semantics:** Creating a localStorage packet must never be labelled as a message sent to Linen Earth staff. Show browser-only copy before the action and after success; surface storage failures without claiming a saved request. Operational delivery still requires durable server persistence and human workflow evidence.
+
+**Verification:** Focused cryptographic-identity and UI contract tests are source-level gates. Exact-head CI, browser QA and real production/shop acceptance remain separate and required; no app deployment or physical validation was performed.

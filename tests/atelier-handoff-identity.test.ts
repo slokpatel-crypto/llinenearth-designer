@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {mergeDistinctAtelierHandoffs, validStoredAtelierHandoffs} from "../src/lib/atelier-handoff-identity.ts";
+import {makeAtelierHandoffId, mergeDistinctAtelierHandoffs, validStoredAtelierHandoffs} from "../src/lib/atelier-handoff-identity.ts";
 
 type Enquiry={designId:string;specHash:string;customerNote:string};
 
@@ -110,4 +110,27 @@ test("Atelier selection always reflects the chosen request's saved note and stat
   assert.match(source,/onClick=\{\(\)=>\{setActiveId\(item\.id\);setNote\(item\.staffNote\|\|""\)\}\}/);
   assert.match(source,/<select value=\{active\.status\}/);
   assert.doesNotMatch(source,/<select defaultValue=\{active\.status\}/);
+});
+
+test("distinct local requests cannot share a timestamp-derived handoff identifier",()=>{
+  const a=new Uint8Array(16),b=new Uint8Array(16);
+  a[15]=1; b[15]=2;
+  const first=makeAtelierHandoffId("same-hash","same-design",a);
+  const second=makeAtelierHandoffId("same-hash","same-design",b);
+  assert.notEqual(first,second);
+  assert.match(first,/^HO-same-hash-[A-F0-9]{32}$/);
+  assert.equal(makeAtelierHandoffId("", "design-only",a).startsWith("HO-design-only-"),true);
+  assert.throws(()=>makeAtelierHandoffId("hash","id",new Uint8Array(0)),/128 bits/);
+});
+test("handoff writer uses browser cryptographic randomness rather than just milliseconds",()=>{
+  const source=readFileSync("src/lib/handoff.ts","utf8");
+  assert.ok(source.includes("makeAtelierHandoffId(design.version.specHash || design.version.id,design.id,window.crypto.getRandomValues(new Uint8Array(16)))"));
+  assert.doesNotMatch(source,/Date\.now\(\)\.toString\(36\)/);
+});
+test("Atelier local queue must not misrepresent a browser-only write as staff delivery",()=>{
+  const source=readFileSync("src/components/AtelierHandoffPanel.tsx","utf8");
+  assert.match(source,/Save to local atelier queue/);
+  assert.match(source,/It has not been transmitted to Linen Earth staff/);
+  assert.match(source,/role="alert"/);
+  assert.doesNotMatch(source,/Send to Linen Earth atelier/);
 });

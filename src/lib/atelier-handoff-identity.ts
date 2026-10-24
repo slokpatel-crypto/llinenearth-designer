@@ -48,3 +48,10 @@ export function validStoredAtelierHandoffs<T extends {
     return true;
   }).slice(0,50);
 }
+
+/** Generate a collision-resistant browser-local handoff ID without a timestamp-only nonce. */
+export function makeAtelierHandoffId(specHash:string,designId:string,randomBytes:Uint8Array):string {
+  if(randomBytes.length!==16) throw new Error("Atelier handoff identity requires 128 bits of randomness.");
+  const suffix=Array.from(randomBytes,(byte)=>byte.toString(16).padStart(2,"0")).join("").toUpperCase();
+  return `HO-${specHash||designId}-${suffix}`;
+}
