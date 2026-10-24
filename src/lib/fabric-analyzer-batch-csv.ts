@@ -125,13 +125,30 @@ export function itemsFromCsv(text:string){
   if(header.some((key)=>!key) || new Set(header).size!==header.length) {
     throw new Error("CSV contains an empty or duplicate column header.");
   }
+  // Unknown headings (including misspelled verified columns) otherwise disappear
+  // when mapped into BatchItem, silently losing a supplier's entered facts.
+  const supported=new Set([
+    "fabricId","imageUrl","macroImageUrl","foldImageUrl","sourcePageUrl","sourceId",
+    "declaredMaterial","declaredFabricType","supplierColorName","supplierPatternName",
+    "notes","swatchRealWidthMm","repeatRealMm","verifiedGsm","verifiedDrape",
+    "verifiedFiberContent","verifiedStructure","verifiedBreathability",
+    "verifiedWrinkleResistance","verifiedStretch","verifiedPhysicalSourceUrl",
+    "verifiedPhysicalEvidenceNote",
+  ]);
+  const unsupported=header.filter((key)=>!supported.has(key));
+  if(unsupported.length) throw new Error(`Unsupported CSV column: ${unsupported.join(", ")}. Correct the worksheet headings before analysis.`);
   for(const [index,cells] of rows.slice(1).entries()) {
     if(cells.length!==header.length) {
       throw new Error(`CSV data row ${index+2} has ${cells.length} columns; expected ${header.length}.`);
     }
   }
-  return rows.slice(1).map((cells)=>{
+  return rows.slice(1).map((cells,index)=>{
     const raw=Object.fromEntries(header.map((key,index)=>[key,(cells[index]||"").trim()]));
+    // Every nonblank parsed row must be accounted for. No identity/source means
+    // the batch API cannot process it; dropping the row would report false success.
+    if(!raw.fabricId && !raw.imageUrl && !raw.sourcePageUrl) {
+      throw new Error(`CSV data row ${index+2} contains no fabricId, imageUrl or sourcePageUrl; none of this worksheet was processed.`);
+    }
     const drape=raw.verifiedDrape||undefined;
     return {
       fabricId:raw.fabricId||undefined,
@@ -157,7 +174,7 @@ export function itemsFromCsv(text:string){
       verifiedPhysicalEvidenceNote:raw.verifiedPhysicalEvidenceNote||undefined,
       notes:raw.notes||undefined,
     };
-  }).filter((item)=>item.fabricId || item.imageUrl || item.sourcePageUrl);
+  });
 }
 
 

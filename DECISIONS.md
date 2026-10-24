@@ -659,3 +659,9 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Delivery semantics:** Creating a localStorage packet must never be labelled as a message sent to Linen Earth staff. Show browser-only copy before the action and after success; surface storage failures without claiming a saved request. Operational delivery still requires durable server persistence and human workflow evidence.
 
 **Verification:** Focused cryptographic-identity and UI contract tests are source-level gates. Exact-head CI, browser QA and real production/shop acceptance remain separate and required; no app deployment or physical validation was performed.
+
+## 2026-10-24 — Analyzer CSV completeness before ingestion
+
+**Contract:** A CSV worksheet cannot report success if data in any populated row or unrecognized column is silently discarded. The supported 22-column vocabulary is aligned to the existing operator template. Misspellings and unsupported supplier fields fail with an actionable error; any populated row lacking `fabricId`, `imageUrl` and `sourcePageUrl` blocks the complete worksheet before batch dispatch. Empty spacer rows remain ignored and in-order valid rows are unchanged.
+
+**Compatibility:** Previous permissive unknown columns are now rejected instead of dropped, requiring their explicit mapping into supported columns. No supplier facts are invented, no backend schema or physical evidence state changes, no model/photo changes. New tests protect mixed valid/orphan rows, unknown headings and blank spacer rows. Exact-head CI and operator/browser QA still required.
