@@ -705,3 +705,9 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Concurrency:** An async batch action must acquire a synchronous ref lock before `setRunning`, because two rapid clicks can execute before React renders the disabled state. Hold the lock across all 12-row network chunks, release it in `finally`, and disallow worksheet edits, CSV selection and template creation while active. A pending `File.text()` read must also recheck the lock before mutating source rows.
 
 **Data safety:** The already captured request rows and reported counts remain authoritative for that run; do not let a later worksheet edit make the progress appear to belong to another CSV. This does not guarantee network-level exactly-once processing after a failure or retry, and does not change live operator authentication, backend queue schema or physical evidence policy. Exact-head CI and actual UI QA required.
+
+## 2026-10-24 — Operator CSV imports obey newest operator intent
+
+**Race:** A browser File.text() read is asynchronous. An older upload must not overwrite a newer file selection, typed CSV edits or a batch already started on a different worksheet. A monotonic in-memory revision increments on new file selection, manual changes and batch start; pending reads apply only when their revision still matches and no batch is running. Superseded file errors remain silent and active failed reads report an error without discarding the previous worksheet.
+
+**Compatibility:** The native file input clears immediately after selection so the same CSV may be reloaded. No change to analysis schema, uploaded physical facts, persistent state, paid AI, the fixed Designer model or production workflow. Exact-head tests and real browser QA still gate acceptance.
