@@ -21,6 +21,7 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
   const [csvText,setCsvText]=useState("");
   const [running,setRunning]=useState(false);
   const runningRef=useRef(false);
+  const csvRevisionRef=useRef(0);
   const [progress,setProgress]=useState({done:0,total:0,succeeded:0,failed:0});
   const [message,setMessage]=useState("");
   const fileRef=useRef<HTMLInputElement|null>(null);
@@ -89,17 +90,31 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
     }
   }
 
+  function editCsvText(value:string){
+    if(runningRef.current) return;
+    csvRevisionRef.current+=1;
+    setCsvText(value);
+    setMessage("");
+  }
+
   async function pickFile(file:File|null){
     if(!file || runningRef.current) return;
-    const text=await file.text();
-    if(runningRef.current) return;
-    setCsvText(text);
-    setMessage(`Loaded ${file.name}.`);
+    const revision=++csvRevisionRef.current;
+    try{
+      const text=await file.text();
+      if(runningRef.current || csvRevisionRef.current!==revision) return;
+      setCsvText(text);
+      setMessage(`Loaded ${file.name}.`);
+    }catch{
+      if(runningRef.current || csvRevisionRef.current!==revision) return;
+      setMessage(`Could not read ${file.name}. Please choose a valid CSV file.`);
+    }
   }
 
   async function runBatch(){
     if(runningRef.current || worksheet.error || !runnable.length) return;
     runningRef.current=true;
+    csvRevisionRef.current+=1;
     setRunning(true);
     setMessage("");
     setProgress({done:0,total:runnable.length,succeeded:0,failed:0});
@@ -140,9 +155,9 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
     <div className="batchActions">
       <button type="button" disabled={running} onClick={()=>void downloadTemplate()}>Download evidence-gap CSV</button>
       <button type="button" disabled={running} onClick={()=>fileRef.current?.click()}>Load completed CSV</button>
-      <input ref={fileRef} type="file" accept=".csv,text/csv" hidden disabled={running} onChange={(event)=>void pickFile(event.target.files?.[0]||null)} />
+      <input ref={fileRef} type="file" accept=".csv,text/csv" hidden disabled={running} onChange={(event)=>{const file=event.currentTarget.files?.[0]||null;event.currentTarget.value="";void pickFile(file);}} />
     </div>
-    <textarea value={csvText} disabled={running} onChange={(event)=>setCsvText(event.target.value)} placeholder={HEADERS.join(",")} rows={9} spellCheck={false} />
+    <textarea value={csvText} disabled={running} onChange={(event)=>editCsvText(event.target.value)} placeholder={HEADERS.join(",")} rows={9} spellCheck={false} />
     {worksheet.error&&<p className="batchGuardrail" role="alert">CSV cannot run: {worksheet.error}</p>}
     <div className="batchSummary">
       <span><small>PARSED ROWS</small><b>{parsed.length}</b></span>
