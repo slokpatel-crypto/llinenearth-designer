@@ -1,3 +1,44 @@
+import { normalizeFabricPhysicalEvidenceProvenance } from "./fabric-physical-provenance.ts";
+
+export type CatalogPhysicalTemplateMetadata={
+  weightGsm?:number;
+  drape?:string;
+  physicalEvidence?:unknown;
+};
+
+/**
+ * Only a source-backed, operator-reviewed catalogue value may enter the
+ * template's "verified" columns. Unproven metadata stays blank for review.
+ */
+export function catalogPhysicalCsvPrefill(metadata:CatalogPhysicalTemplateMetadata|undefined){
+  const provenance=normalizeFabricPhysicalEvidenceProvenance(metadata?.physicalEvidence);
+  const blank={
+    verifiedGsm:"" as number|string,
+    verifiedDrape:"",
+    verifiedPhysicalSourceUrl:"",
+    verifiedPhysicalEvidenceNote:"",
+  };
+  if(!provenance) return blank;
+  const mappedDrape=metadata?.drape==="structured"?"Structured"
+    : metadata?.drape==="medium"?"Balanced"
+      : metadata?.drape==="fluid"||metadata?.drape==="soft"?"Fluid":"";
+  const note=[
+    provenance.sourceType,
+    provenance.reference,
+    "checked by "+provenance.checkedBy,
+    provenance.evidenceDate||"",
+  ].filter(Boolean).join(" · ");
+  // Older operator records can contain HTTP links. Retain their auditable
+  // written provenance but never export an HTTP link as verified HTTPS evidence.
+  const sourceUrl=provenance.sourceUrl?.startsWith("https://")?provenance.sourceUrl:"";
+  return {
+    verifiedGsm:typeof metadata?.weightGsm==="number"&&Number.isFinite(metadata.weightGsm)?metadata.weightGsm:"",
+    verifiedDrape:mappedDrape,
+    verifiedPhysicalSourceUrl:sourceUrl,
+    verifiedPhysicalEvidenceNote:note,
+  };
+}
+
 export type BatchItem={
   fabricId?:string;
   imageUrl?:string;

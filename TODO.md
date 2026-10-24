@@ -82,3 +82,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] 2026-10-24: Closed the reference-page-only Analyzer evidence-loss gap across direct, batch, queue and worker routes; source-only requests containing submitted verified physical facts or provenance now fail closed instead of silently dropping it. No asset, schema, model or live data changed.
 
 - [x] 2026-10-24: Refactored Analyzer batch CSV parsing into a testable pure module; invalid nonempty GSM, repeat, physics indices and drape labels survive to strict server validation instead of being silently dropped by the worksheet importer. Existing valid decimal values still parse as numbers.
+
+- [x] 2026-10-24: Prevented physical CSV template from promoting provenance-free catalogue GSM and drape into verified claims; only valid operator physical provenance allows prefill, with independent pure tests and HTTPS-only exported evidence URLs.
