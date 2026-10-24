@@ -37,7 +37,7 @@ export function SavedDesignsClient() {
         <div className="savedPalette">{active.version.candidate.palette.map((color) => <i key={color} style={{ background: color }} />)}</div>
         <div className="designFeedbackBox"><span>HOW DID THIS DIRECTION LAND?</span><div className="feedbackButtons"><button className={feedbackSaved===`${active.id}:love`?"active":""} onClick={()=>rate(active,"love")}>Love it</button><button className={feedbackSaved===`${active.id}:good`?"active":""} onClick={()=>rate(active,"good")}>Good, minor changes</button><button className={feedbackSaved===`${active.id}:needs_work`?"active":""} onClick={()=>rate(active,"needs_work")}>Needs work</button></div>{feedbackSaved?.startsWith(active.id) && <p className="feedbackSaved">Saved for human review.</p>}</div>
         <div className="savedActions"><button onClick={() => void copyId(active)}>{copied === active.id ? "Copied" : "Copy design ID"}</button><button className="danger" onClick={() => remove(active.id)}>Remove</button></div><p className="savedTimestamp">Saved {new Date(active.savedAt).toLocaleString()}</p>
-        <AtelierHandoffPanel design={active}/>
+        <AtelierHandoffPanel key={`${active.id}:${active.version.specHash || active.version.id}`} design={active}/>
       </aside>}
     </div>
   </section>;
