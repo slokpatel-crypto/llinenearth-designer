@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, DragEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { FabricProfile, FabricVisualSignals } from "@/lib/fabric-analysis";
 import { fabricOptionsForGarment, fabricProfileFromStock, type FabricColorway, type GarmentKind } from "@/lib/fabric-stock";
 import type { FabricSelection } from "@/lib/designer-types";
@@ -89,6 +89,7 @@ export function FabricStudio({ onContinue }: { onContinue?: (selection: FabricSe
   const [toneOverride, setToneOverride] = useState("");
   const [aiConsent, setAiConsent] = useState(false);
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>(null);
+  const analysisRevision = useRef(0);
 
   const fileMeta = useMemo(() => file ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB` : null, [file]);
   const garmentStock = useMemo(() => fabricOptionsForGarment(garment), [garment]);
@@ -96,26 +97,31 @@ export function FabricStudio({ onContinue }: { onContinue?: (selection: FabricSe
   const visibleStock = useMemo(() => garmentStock.filter((fabric) => fabric.line === stockLine), [garmentStock, stockLine]);
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+  useEffect(() => () => { analysisRevision.current += 1; }, []);
 
   function changeSource(next: SourceMode) {
+    analysisRevision.current += 1;
     setSourceMode(next); setProfile(null); setSelectedStock(null); setAnalysisMode(null);
     setFamilyOverride(""); setToneOverride(""); setError(null);
     setStatus(next === "upload" && file ? "ready" : "idle");
   }
 
   function changeGarment(next: GarmentKind) {
+    analysisRevision.current += 1;
     const options = fabricOptionsForGarment(next);
     setGarment(next); setStockLine(options[0]?.line || ""); setSelectedStock(null);
     setProfile(null); setAnalysisMode(null); setStatus("idle");
   }
 
   function chooseStock(fabric: FabricColorway) {
+    analysisRevision.current += 1;
     setSelectedStock(fabric); setProfile(fabricProfileFromStock(fabric)); setAnalysisMode("stock_catalog");
     setFamilyOverride(""); setToneOverride(""); setError(null); setStatus("complete");
   }
 
   function loadFile(next: File | null) {
     if (!next) return;
+    analysisRevision.current += 1;
     if (!next.type.startsWith("image/")) { setError("Please choose a photo of the fabric."); setStatus("error"); return; }
     if (next.size > 10 * 1024 * 1024) { setError("Please use an image smaller than 10 MB."); setStatus("error"); return; }
     if (preview) URL.revokeObjectURL(preview);
@@ -136,16 +142,26 @@ export function FabricStudio({ onContinue }: { onContinue?: (selection: FabricSe
 
   async function analyze() {
     if (!file) return;
+    const revision = ++analysisRevision.current;
+    const selectedFile = file;
+    const consentForRequest = aiConsent;
     setStatus("analyzing"); setError(null);
     try {
-      const visualSignals = await extractVisualSignals(file);
-      const payload: Record<string, unknown> = { fileName: file.name, contentType: file.type, size: file.size, visualSignals };
-      if (aiConsent) { payload.aiConsent = true; payload.imageBase64 = await fileToBase64(file); }
+      const visualSignals = await extractVisualSignals(selectedFile);
+      if (revision !== analysisRevision.current) return;
+      const payload: Record<string, unknown> = { fileName: selectedFile.name, contentType: selectedFile.type, size: selectedFile.size, visualSignals };
+      if (consentForRequest) {
+        payload.aiConsent = true;
+        payload.imageBase64 = await fileToBase64(selectedFile);
+        if (revision !== analysisRevision.current) return;
+      }
       const response = await fetch("/api/fabric/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await response.json();
+      if (revision !== analysisRevision.current) return;
       if (!response.ok) throw new Error(data.error || "Analysis failed.");
       setProfile(data.profile); setAnalysisMode(data.mode ?? null); setStatus("complete");
     } catch (caught) {
+      if (revision !== analysisRevision.current) return;
       setError(caught instanceof Error ? caught.message : "Analysis failed."); setStatus("error");
     }
   }
@@ -175,14 +191,14 @@ export function FabricStudio({ onContinue }: { onContinue?: (selection: FabricSe
       {sourceMode === "stock" ? <>
         <div className="canvasHead"><div><span className="micro">SHOP FABRIC</span><h2>{selectedStock ? selectedStock.colorName : "Choose from our collection"}</h2></div><span className="privacyTag">Linen Earth catalogue</span></div>
         <div className="stockGarmentFilters" aria-label="Garment type">{GARMENTS.map((option) => <button key={option.value} className={garment === option.value ? "active" : ""} onClick={() => changeGarment(option.value)}>{option.label}</button>)}</div>
-        <div className="stockLineFilters" aria-label="Fabric range">{stockLines.map((line) => <button key={line} className={stockLine === line ? "active" : ""} onClick={() => { setStockLine(line); setSelectedStock(null); setProfile(null); setAnalysisMode(null); setStatus("idle"); }}>{line}</button>)}</div>
+        <div className="stockLineFilters" aria-label="Fabric range">{stockLines.map((line) => <button key={line} className={stockLine === line ? "active" : ""} onClick={() => { analysisRevision.current += 1; setStockLine(line); setSelectedStock(null); setProfile(null); setAnalysisMode(null); setStatus("idle"); }}>{line}</button>)}</div>
         <div className="stockGrid" aria-label={`${stockLine} fabric choices`}>{visibleStock.map((fabric) => <button key={fabric.id} className={`stockCard ${selectedStock?.id === fabric.id ? "selected" : ""}`} onClick={() => chooseStock(fabric)} aria-pressed={selectedStock?.id === fabric.id}><span className="stockImage"><img src={fabric.swatchImageUrl} alt={`${fabric.colorName} ${fabric.line} fabric swatch`} loading="lazy" /></span><span className="stockCardCopy"><strong>{fabric.colorName}</strong><small>{fabric.pattern}</small><i style={{ background: fabric.hex }} aria-hidden="true" /></span></button>)}</div>
         <div className="stockFoot"><span>{visibleStock.length} swatches in this range</span><span>Photographed from the supplied Linen Earth catalogues</span></div>
       </> : <>
         <div className="canvasHead"><div><span className="micro">YOUR FABRIC</span><h2>{file ? "Fabric captured" : "Show us the material"}</h2></div><span className="privacyTag">{aiConsent ? "Photo sent to AI for this scan" : "Photo stays in your browser"}</span></div>
         <label className={`uploadStage ${preview ? "hasImage" : ""}`} onDragOver={(event) => event.preventDefault()} onDrop={onDrop}><input type="file" accept="image/*" onChange={onInput} />{preview ? <><img src={preview} alt="Uploaded fabric preview" /><div className="uploadShade" /><div className="replaceHint">Click or drop another image to replace</div></> : <div className="uploadEmpty"><span className="uploadPlus">+</span><h3>Drop a fabric photo here</h3><p>or choose from your device · camera works on mobile</p><small>Best result: even light, cloth fills the frame, one small fold, no heavy filters.</small></div>}</label>
         <div className="captureGuide"><div><span>01</span><strong>Natural light</strong><p>Avoid strong yellow or blue lighting.</p></div><div><span>02</span><strong>Fill the frame</strong><p>Show enough surface to read weave and pattern.</p></div><div><span>03</span><strong>Keep one fold</strong><p>A small fold helps communicate drape.</p></div></div>
-        <label className="aiConsentRow"><input type="checkbox" checked={aiConsent} onChange={(event) => setAiConsent(event.target.checked)} /><span>Let Linen Earth&apos;s AI read the actual photo for a more accurate result. Your photo is sent for this scan only. Leave this off to keep the on-device estimate.</span></label>
+        <label className="aiConsentRow"><input type="checkbox" checked={aiConsent} disabled={status === "analyzing"} onChange={(event) => setAiConsent(event.target.checked)} /><span>Let Linen Earth&apos;s AI read the actual photo for a more accurate result. Your photo is sent for this scan only. Leave this off to keep the on-device estimate.</span></label>
         <div className="canvasActions"><div>{fileMeta ?? "PNG, JPG, WEBP · up to 10 MB"}</div><button className="button light" disabled={!file || status === "analyzing"} onClick={analyze}>{status === "analyzing" ? (aiConsent ? "Asking the AI…" : "Scanning weave…") : profile ? "Analyze again" : "Analyze fabric"}</button></div>{error && <p className="studioError">{error}</p>}
       </>}
     </div>
