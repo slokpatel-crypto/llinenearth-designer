@@ -153,3 +153,38 @@ test("fabric physical provenance requires a real calendar date, not just YYYY-MM
   assert.equal(leap.verifiedGsm,145);
   assert.match(leap.verifiedPhysicalEvidenceNote,/2024-02-29/);
 });
+
+test("CSV orphan row with physical facts fails entire worksheet instead of being silently dropped",()=>{
+  const csv=[
+    "fabricId,imageUrl,verifiedGsm,notes",
+    "fabric-1,https://example.com/one.jpg,145,Verified",
+    ",,165,This second roll has no identity",
+  ].join("\n");
+  assert.throws(()=>itemsFromCsv(csv),/row 3.*no fabricId.*imageUrl.*sourcePageUrl/);
+  const worksheet=inspectBatchCsvWorksheet(csv);
+  assert.deepEqual(worksheet.items,[]);
+  assert.match(worksheet.error||"",/row 3/i);
+});
+test("unsupported/misspelled CSV evidence headings fail closed",()=>{
+  for(const csv of [
+    "fabricId,verfiedGsm\nfabric-1,145",
+    "fabricId,verifiedGsm,unknownSupplierGsm\nfabric-1,145,150",
+    "fabricId,__proto__\nfabric-1,malicious",
+  ]){
+    const worksheet=inspectBatchCsvWorksheet(csv);
+    assert.deepEqual(worksheet.items,[]);
+    assert.match(worksheet.error||"",/Unsupported CSV column/i);
+  }
+});
+test("valid sheets with blank spacer rows still retain all identified rows in order",()=>{
+  const csv=[
+    "fabricId,imageUrl,verifiedGsm,notes",
+    "fabric-1,https://example.com/one.jpg,145,First",
+    ",,,",
+    "fabric-2,https://example.com/two.jpg,160,Second",
+  ].join("\n");
+  const worksheet=inspectBatchCsvWorksheet(csv);
+  assert.equal(worksheet.error,null);
+  assert.deepEqual(worksheet.items.map((item)=>item.fabricId),["fabric-1","fabric-2"]);
+  assert.deepEqual(worksheet.items.map((item)=>item.verifiedGsm),[145,160]);
+});
