@@ -10,7 +10,7 @@ const measurementKeys=new Set([
 
 type StoredProfile={
   id:string;name:string;unit:"cm"|"in";updatedAt:string;
-  measurements:Record<string,number>;
+  measurements:object;
 };
 
 function record(value:unknown):value is Record<string,unknown>{
