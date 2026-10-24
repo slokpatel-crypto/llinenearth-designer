@@ -633,3 +633,7 @@ The batch CSV client must never quietly remap physical evidence because a spread
 ## 2026-10-24 — Durable Analyzer queue may not silently drop jobs 501+
 
 The private queue originally submitted only `items.slice(0,500)` even when operators supplied more than 500 jobs; a success acknowledgement could omit later stock IDs. The same strict envelope validator used for 12-item synchronous batches now receives a documented 500-item queue limit. Oversized or malformed requests are rejected entirely with an actionable 400 before any enqueue RPC, while valid 1–500 item payloads retain their order. Regression tests cover both route callsites, exact limit and over-limit integrity. Source-only compatibility fix; no database migration, real supplier proof, model change or deploy.
+
+## 2026-10-24 — Physical provenance dates must denote actual calendar days
+
+Existing operator physical-evidence records use an optional YYYY-MM-DD inspection date. Shape-only validation previously accepted impossible dates such as `2026-02-30`, letting invalid provenance prefill verified CSV columns. The normalizer now checks the Gregorian UTC calendar parts after parsing, preserving valid leap days and undated written records. Impossible dated records are excluded from verified prefill rather than fabricated or rewritten. Compatible with the existing schema; no physical measurement, model, store record or release approval changed.
