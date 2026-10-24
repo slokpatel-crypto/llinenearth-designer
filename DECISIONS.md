@@ -605,3 +605,7 @@ longer silently targets the first delivered order if the previous selection
 is gone. A physical checker must explicitly reconfirm the audited order and
 its field/note/reference data. This is a source-only identity-integrity change,
 not a claim of completed production audit or human verification.
+
+## 2026-10-24 — Fabric Analyzer physical evidence is validated at every execution boundary
+
+Physical measurements and provenance now use one lossless normalizer across direct analysis, synchronous batches, durable queue ingestion and the independent queue worker. Numeric strings, objects, unknown drape labels, non-text provenance and overlong evidence are rejected instead of coerced, ignored or truncated. The worker repeats validation on persisted JSON so a malformed or bypassed queue write cannot become a stored verified GSM, repeat, width, drape or fibre claim. Valid current UI payloads already send finite JSON numbers and remain compatible. No supplier fact is inferred, no live data is rewritten and no schema or dependency changes are introduced.

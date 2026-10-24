@@ -11,6 +11,7 @@ import {
   finishFabricAnalyzerJob,
   type ClaimedFabricAnalyzerJob,
 } from "@/lib/fabric-analyzer-store";
+import { normalizeVerifiedPhysicalEvidenceInput } from "@/lib/physical-evidence-provenance";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -34,10 +35,6 @@ function sameOrigin(request:Request) {
 function clean(value:unknown,limit:number) {
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
 }
-function physicalIndex(value:unknown) {
-  return typeof value==="number" && Number.isFinite(value) ? value : undefined;
-}
-
 async function processJob(job:ClaimedFabricAnalyzerJob) {
   try {
     const declared=job.declared_context || {};
@@ -49,6 +46,7 @@ async function processJob(job:ClaimedFabricAnalyzerJob) {
       profileId=result.run.profileId;
       reviewPriority=result.run.reviewPriority;
     } else if(job.image_url) {
+      const physicalEvidence=normalizeVerifiedPhysicalEvidenceInput(declared);
       const input:FabricAnalyzerContext={
         fabricId:job.fabric_id || undefined,
         imageUrl:job.image_url,
@@ -61,17 +59,7 @@ async function processJob(job:ClaimedFabricAnalyzerJob) {
         supplierColorName:clean(declared.supplierColorName,120) || undefined,
         supplierPatternName:clean(declared.supplierPatternName,120) || undefined,
         notes:clean(declared.notes,500) || undefined,
-        swatchRealWidthMm:Number.isFinite(Number(declared.swatchRealWidthMm)) ? Number(declared.swatchRealWidthMm) : undefined,
-        repeatRealMm:Number.isFinite(Number(declared.repeatRealMm)) ? Number(declared.repeatRealMm) : undefined,
-        verifiedGsm:Number.isFinite(Number(declared.verifiedGsm)) ? Number(declared.verifiedGsm) : undefined,
-        verifiedDrape:["Fluid","Balanced","Structured"].includes(String(declared.verifiedDrape)) ? declared.verifiedDrape as FabricAnalyzerContext["verifiedDrape"] : undefined,
-        verifiedFiberContent:clean(declared.verifiedFiberContent,220) || undefined,
-        verifiedStructure:physicalIndex(declared.verifiedStructure),
-        verifiedBreathability:physicalIndex(declared.verifiedBreathability),
-        verifiedWrinkleResistance:physicalIndex(declared.verifiedWrinkleResistance),
-        verifiedStretch:physicalIndex(declared.verifiedStretch),
-        verifiedPhysicalSourceUrl:clean(declared.verifiedPhysicalSourceUrl,1800) || undefined,
-        verifiedPhysicalEvidenceNote:clean(declared.verifiedPhysicalEvidenceNote,500) || undefined,
+        ...physicalEvidence,
       };
       const result=await analyzeMenswearFabricWithStore(input,{reuseReviewed:!job.force,persist:true});
       profileId=result.profileId;
