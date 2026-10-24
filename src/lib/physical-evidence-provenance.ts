@@ -12,6 +12,63 @@ export type VerifiedPhysicalEvidenceInput={
   verifiedPhysicalEvidenceNote?:string;
 };
 
+const PHYSICAL_NUMBER_FIELDS=[
+  ["swatchRealWidthMm","photographed swatch width"],
+  ["repeatRealMm","pattern repeat"],
+  ["verifiedGsm","verified GSM"],
+  ["verifiedStructure","verified structure"],
+  ["verifiedBreathability","verified breathability"],
+  ["verifiedWrinkleResistance","verified wrinkle resistance"],
+  ["verifiedStretch","verified stretch"],
+] as const;
+
+function optionalPhysicalNumber(value:unknown,label:string){
+  if(value===undefined||value===null||value==="") return undefined;
+  if(typeof value!=="number"||!Number.isFinite(value)) {
+    throw new Error(`${label} must be supplied as a finite number.`);
+  }
+  return value;
+}
+
+function optionalPhysicalText(value:unknown,label:string,limit:number){
+  if(value===undefined||value===null||value==="") return undefined;
+  if(typeof value!=="string") throw new Error(`${label} must be supplied as text.`);
+  const normalized=value.replace(/\s+/g," ").trim();
+  if(!normalized) return undefined;
+  if(normalized.length>limit) throw new Error(`${label} must be ${limit} characters or fewer.`);
+  return normalized;
+}
+
+/**
+ * Normalize untrusted API or persisted JSON without coercing physical facts.
+ * Callers must not silently turn numeric strings, objects or unknown drape
+ * labels into verified evidence or drop them from an otherwise valid record.
+ */
+export function normalizeVerifiedPhysicalEvidenceInput(input:Record<string,unknown>){
+  const normalized:VerifiedPhysicalEvidenceInput={};
+  for(const [field,label] of PHYSICAL_NUMBER_FIELDS){
+    const value=optionalPhysicalNumber(input[field],label);
+    if(value!==undefined) normalized[field]=value;
+  }
+
+  const drape=input.verifiedDrape;
+  if(drape!==undefined&&drape!==null&&drape!==""){
+    if(typeof drape!=="string"||!["Fluid","Balanced","Structured"].includes(drape)) {
+      throw new Error("Verified drape must use the supported physical drape list.");
+    }
+    normalized.verifiedDrape=drape as VerifiedPhysicalEvidenceInput["verifiedDrape"];
+  }
+
+  const fiberContent=optionalPhysicalText(input.verifiedFiberContent,"Verified fibre content",220);
+  const sourceUrl=optionalPhysicalText(input.verifiedPhysicalSourceUrl,"Physical evidence source URL",1800);
+  const evidenceNote=optionalPhysicalText(input.verifiedPhysicalEvidenceNote,"Physical evidence note",500);
+  if(fiberContent!==undefined) normalized.verifiedFiberContent=fiberContent;
+  if(sourceUrl!==undefined) normalized.verifiedPhysicalSourceUrl=sourceUrl;
+  if(evidenceNote!==undefined) normalized.verifiedPhysicalEvidenceNote=evidenceNote;
+  validateVerifiedPhysicalEvidence(normalized);
+  return normalized;
+}
+
 export function hasVerifiedPhysicalEvidence(input:VerifiedPhysicalEvidenceInput){
   return Boolean(
     Number.isFinite(input.swatchRealWidthMm)

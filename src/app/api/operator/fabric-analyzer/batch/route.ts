@@ -6,7 +6,7 @@ import {
   type FabricAnalyzerContext,
 } from "@/lib/fabric-analyzer";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
-import { validateVerifiedPhysicalEvidence } from "@/lib/physical-evidence-provenance";
+import { normalizeVerifiedPhysicalEvidenceInput } from "@/lib/physical-evidence-provenance";
 
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -59,10 +59,6 @@ function clean(value:unknown,limit:number) {
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
 }
 
-function physicalNumber(value:unknown) {
-  return typeof value==="number" && Number.isFinite(value) ? value : undefined;
-}
-
 async function runItem(item:BatchItem,index:number) {
   try {
     const fabricId=clean(item.fabricId,160) || undefined;
@@ -76,6 +72,7 @@ async function runItem(item:BatchItem,index:number) {
 
     if(!imageUrl) return {index,fabricId,ok:false,error:"Missing trusted imageUrl or approved sourcePageUrl."};
 
+    const physicalEvidence=normalizeVerifiedPhysicalEvidenceInput(item as unknown as Record<string,unknown>);
     const input:FabricAnalyzerContext={
       fabricId,
       imageUrl,
@@ -88,19 +85,8 @@ async function runItem(item:BatchItem,index:number) {
       supplierColorName:clean(item.supplierColorName,120) || undefined,
       supplierPatternName:clean(item.supplierPatternName,120) || undefined,
       notes:clean(item.notes,500) || undefined,
-      swatchRealWidthMm:Number.isFinite(Number(item.swatchRealWidthMm)) ? Number(item.swatchRealWidthMm) : undefined,
-      repeatRealMm:Number.isFinite(Number(item.repeatRealMm)) ? Number(item.repeatRealMm) : undefined,
-      verifiedGsm:Number.isFinite(Number(item.verifiedGsm)) ? Number(item.verifiedGsm) : undefined,
-      verifiedDrape:["Fluid","Balanced","Structured"].includes(String(item.verifiedDrape)) ? item.verifiedDrape : undefined,
-      verifiedFiberContent:clean(item.verifiedFiberContent,220) || undefined,
-      verifiedStructure:physicalNumber(item.verifiedStructure),
-      verifiedBreathability:physicalNumber(item.verifiedBreathability),
-      verifiedWrinkleResistance:physicalNumber(item.verifiedWrinkleResistance),
-      verifiedStretch:physicalNumber(item.verifiedStretch),
-      verifiedPhysicalSourceUrl:clean(item.verifiedPhysicalSourceUrl,1800) || undefined,
-      verifiedPhysicalEvidenceNote:clean(item.verifiedPhysicalEvidenceNote,500) || undefined,
+      ...physicalEvidence,
     };
-    validateVerifiedPhysicalEvidence(input);
     const run=await analyzeMenswearFabricWithStore(input,{reuseReviewed:item.force!==true,persist:true});
     return {index,fabricId,ok:true,mode:"private-fabric-analyzer-v4",run};
   } catch(error) {

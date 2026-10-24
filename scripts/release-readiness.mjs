@@ -579,8 +579,9 @@ requireTokens("supabase/migrations/20260930_fabric_ground_truth_history.sql", ["
 requireTokens("supabase/migrations/20260930_fabric_analyzer_queue_provenance.sql", ["fabric_analyzer_batch_enqueue","verifiedPhysicalEvidenceNote","service_role"]);
 requireTokens("src/lib/fabric-ground-truth-labels.ts", ["loadFabricAnalyzerGroundTruthHistory","fabricGroundTruthStateFromProfile","reconstructOriginalFabricGroundTruthState","backfilledLabels"]);
 requireTokens("src/lib/fabric-analyzer-store.ts", ["FabricAnalyzerGroundTruthHistoryRow","loadFabricAnalyzerGroundTruthHistory","fabric_analyzer_ground_truth_history"]);
-requireTokens("src/app/api/operator/fabric-analyzer/queue/route.ts", ["validateVerifiedPhysicalEvidence","enqueueFabricAnalyzerBatch"]);
-requireTokens("src/app/api/operator/fabric-analyzer/process/route.ts", ["verifiedPhysicalEvidenceNote"]);
+requireTokens("src/app/api/operator/fabric-analyzer/queue/route.ts", ["normalizeVerifiedPhysicalEvidenceInput","enqueueFabricAnalyzerBatch"]);
+requireTokens("src/app/api/operator/fabric-analyzer/process/route.ts", ["normalizeVerifiedPhysicalEvidenceInput","physicalEvidence"]);
+requireTokens("src/lib/physical-evidence-provenance.ts", ["normalizeVerifiedPhysicalEvidenceInput","verifiedPhysicalEvidenceNote","validateVerifiedPhysicalEvidence"]);
 requireTokens("src/lib/fabric-ground-truth-scorecard.ts", ["FABRIC_GROUND_TRUTH_VERSION","scoreFabricGroundTruth","fieldAgreementPercent","exactProfilePercent"]);
 requireTokens("src/app/api/operator/fabric-ground-truth/scorecard/route.ts", ["verifyOperatorSession","MIN_LABELS=40","loadFabricGroundTruthLabels","reportable"]);
 requireTokens("src/app/operator/fabric-ground-truth/FabricGroundTruthClient.tsx", ["fabric_ground_truth_label","fabric-ground-truth-v1","OWNER-LABELLED ANALYZER AGREEMENT","fieldAgreementPercent"]);

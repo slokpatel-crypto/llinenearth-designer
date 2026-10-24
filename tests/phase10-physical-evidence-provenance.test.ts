@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasVerifiedPhysicalEvidence, validateVerifiedPhysicalEvidence } from "../src/lib/physical-evidence-provenance.ts";
+import {
+  hasVerifiedPhysicalEvidence,
+  normalizeVerifiedPhysicalEvidenceInput,
+  validateVerifiedPhysicalEvidence,
+} from "../src/lib/physical-evidence-provenance.ts";
 
 test("physical evidence requires an auditable source URL or evidence note",()=>{
   assert.equal(hasVerifiedPhysicalEvidence({verifiedGsm:145}),true);
@@ -20,4 +24,55 @@ test("physical value ranges are bounded",()=>{
   assert.throws(()=>validateVerifiedPhysicalEvidence({verifiedStructure:1.2,verifiedPhysicalEvidenceNote:"Owner ran a structure test."}),/between 0 and 1/i);
   assert.throws(()=>validateVerifiedPhysicalEvidence({verifiedBreathability:-0.1,verifiedPhysicalEvidenceNote:"Owner ran a breathability test."}),/between 0 and 1/i);
   assert.doesNotThrow(()=>validateVerifiedPhysicalEvidence({verifiedStructure:0,verifiedBreathability:1,verifiedWrinkleResistance:.65,verifiedStretch:.08,verifiedPhysicalEvidenceNote:"Owner recorded repeatable shop test indices."}));
+});
+
+test("untrusted physical evidence is lossless and rejects coercion",()=>{
+  const valid=normalizeVerifiedPhysicalEvidenceInput({
+    verifiedGsm:145,
+    repeatRealMm:18,
+    verifiedDrape:"Balanced",
+    verifiedFiberContent:"  100%   linen  ",
+    verifiedStructure:0,
+    verifiedPhysicalEvidenceNote:"  Owner measured roll 24B with calibrated tools.  ",
+  });
+  assert.deepEqual(valid,{
+    repeatRealMm:18,
+    verifiedGsm:145,
+    verifiedStructure:0,
+    verifiedDrape:"Balanced",
+    verifiedFiberContent:"100% linen",
+    verifiedPhysicalEvidenceNote:"Owner measured roll 24B with calibrated tools.",
+  });
+
+  for(const input of [
+    {verifiedGsm:"145",verifiedPhysicalEvidenceNote:"Owner measured GSM."},
+    {repeatRealMm:{value:18},verifiedPhysicalEvidenceNote:"Owner measured repeat."},
+    {verifiedStructure:"0.5",verifiedPhysicalEvidenceNote:"Owner tested structure."},
+    {verifiedDrape:"Soft",verifiedPhysicalEvidenceNote:"Owner inspected drape."},
+    {verifiedFiberContent:["linen"],verifiedPhysicalEvidenceNote:"Supplier fibre record."},
+  ]) assert.throws(()=>normalizeVerifiedPhysicalEvidenceInput(input),/must be supplied|supported physical drape list/i);
+});
+
+test("untrusted physical provenance rejects lossy oversized values",()=>{
+  assert.throws(()=>normalizeVerifiedPhysicalEvidenceInput({
+    verifiedGsm:145,
+    verifiedPhysicalEvidenceNote:"x".repeat(501),
+  }),/500 characters or fewer/i);
+  assert.throws(()=>normalizeVerifiedPhysicalEvidenceInput({
+    verifiedDrape:"Balanced",
+    verifiedPhysicalSourceUrl:`https://supplier.example/${"x".repeat(1800)}`,
+  }),/1800 characters or fewer/i);
+});
+
+test("every Analyzer ingestion path enforces shared physical evidence normalization",async()=>{
+  const {readFileSync}=await import("node:fs");
+  for(const path of [
+    "src/app/api/operator/fabric-analyzer/analyze/route.ts",
+    "src/app/api/operator/fabric-analyzer/batch/route.ts",
+    "src/app/api/operator/fabric-analyzer/queue/route.ts",
+    "src/app/api/operator/fabric-analyzer/process/route.ts",
+  ]) {
+    const source=readFileSync(path,"utf8");
+    assert.match(source,/normalizeVerifiedPhysicalEvidenceInput\(/,path);
+  }
 });

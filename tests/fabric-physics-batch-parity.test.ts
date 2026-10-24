@@ -10,17 +10,24 @@ const fields = [
 ] as const;
 
 test("single and batch Analyzer paths retain every normalized physics field", () => {
-  const files = [
+  const boundaryFiles = [
     "src/app/api/operator/fabric-analyzer/analyze/route.ts",
     "src/app/api/operator/fabric-analyzer/batch/route.ts",
     "src/app/api/operator/fabric-analyzer/process/route.ts",
+  ].map((path)=>({path,source:readFileSync(path,"utf8")}));
+  for(const file of boundaryFiles) {
+    assert.match(file.source,/normalizeVerifiedPhysicalEvidenceInput\(/,`shared physical normalizer missing from ${file.path}`);
+  }
+
+  const fieldFiles = [
+    "src/lib/physical-evidence-provenance.ts",
     "src/lib/fabric-analyzer-store.ts",
     "src/app/operator/fabric-analyzer/FabricAnalyzerClient.tsx",
     "src/app/operator/fabric-analyzer/FabricAnalyzerBatchPanel.tsx",
   ].map((path)=>({path,source:readFileSync(path,"utf8")}));
 
   for(const field of fields) {
-    for(const file of files) {
+    for(const file of fieldFiles) {
       assert.match(file.source,new RegExp("\\b"+field+"\\b"),`${field} missing from ${file.path}`);
     }
   }
