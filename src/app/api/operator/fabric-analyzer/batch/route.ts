@@ -6,6 +6,7 @@ import {
   type FabricAnalyzerContext,
 } from "@/lib/fabric-analyzer";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
+import { FabricAnalyzerBatchInputError, parseFabricAnalyzerBatchEnvelope } from "@/lib/fabric-analyzer-batch-envelope";
 import { assertPhysicalEvidenceHasFlatCapture, normalizeVerifiedPhysicalEvidenceInput } from "@/lib/physical-evidence-provenance";
 
 export const runtime="nodejs";
@@ -102,9 +103,8 @@ export async function POST(request:Request) {
   if(length>240_000) return json({error:"Batch request is too large."},{status:413});
 
   try {
-    const body=await request.json() as {items?:BatchItem[]};
-    const items=Array.isArray(body.items)?body.items.slice(0,12):[];
-    if(!items.length) return json({error:"Provide at least one fabric analysis item."},{status:400});
+    const body=await request.json() as unknown;
+    const items=parseFabricAnalyzerBatchEnvelope<BatchItem>(body);
 
     const results:Array<Awaited<ReturnType<typeof runItem>>>=new Array(items.length);
     let cursor=0;
@@ -124,6 +124,7 @@ export async function POST(request:Request) {
       results,
     });
   } catch(error) {
+    if(error instanceof FabricAnalyzerBatchInputError) return json({error:error.message},{status:400});
     console.error("[operator/fabric-analyzer/batch]",error);
     return json({error:"Fabric Analyzer batch failed."},{status:400});
   }
