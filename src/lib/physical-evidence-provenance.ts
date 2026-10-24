@@ -69,6 +69,17 @@ export function normalizeVerifiedPhysicalEvidenceInput(input:Record<string,unkno
   return normalized;
 }
 
+/**
+ * Reference-page analysis does not accept the operator's physical measurements.
+ * Reject, rather than silently discard, a verified claim when no flat capture
+ * can carry it into the measured Analyzer profile.
+ */
+export function assertPhysicalEvidenceHasFlatCapture(evidence:VerifiedPhysicalEvidenceInput,flatImageUrl:string){
+  if(!flatImageUrl && Object.keys(evidence).length>0) {
+    throw new Error("Verified physical evidence requires a flat fabric image; reference-page-only analysis cannot apply it.");
+  }
+}
+
 export function hasVerifiedPhysicalEvidence(input:VerifiedPhysicalEvidenceInput){
   return Boolean(
     Number.isFinite(input.swatchRealWidthMm)

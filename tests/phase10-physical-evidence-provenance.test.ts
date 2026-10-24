@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  assertPhysicalEvidenceHasFlatCapture,
   hasVerifiedPhysicalEvidence,
   normalizeVerifiedPhysicalEvidenceInput,
   validateVerifiedPhysicalEvidence,
@@ -73,6 +74,34 @@ test("every Analyzer ingestion path enforces shared physical evidence normalizat
     "src/app/api/operator/fabric-analyzer/process/route.ts",
   ]) {
     const source=readFileSync(path,"utf8");
+    assert.match(source,/normalizeVerifiedPhysicalEvidenceInput\(/,path);
+  }
+});
+
+test("reference-page-only analysis refuses to discard verified measurements or provenance",()=>{
+  const pageOnly=[
+    {verifiedGsm:145,verifiedPhysicalEvidenceNote:"Owner recorded real GSM."},
+    {verifiedPhysicalEvidenceNote:"Owner's physical measurement record."},
+    {verifiedPhysicalSourceUrl:"https://supplier.example/evidence"},
+  ];
+  for(const submitted of pageOnly) {
+    const evidence=normalizeVerifiedPhysicalEvidenceInput(submitted);
+    assert.throws(()=>assertPhysicalEvidenceHasFlatCapture(evidence,""),/requires a flat fabric image/i);
+    assert.doesNotThrow(()=>assertPhysicalEvidenceHasFlatCapture(evidence,"https://images.unsplash.com/fabric.jpg"));
+  }
+  assert.doesNotThrow(()=>assertPhysicalEvidenceHasFlatCapture(normalizeVerifiedPhysicalEvidenceInput({}),""));
+});
+
+test("direct, synchronous batch, durable queue and worker all reject source-only physical claims",async()=>{
+  const {readFileSync}=await import("node:fs");
+  for(const path of [
+    "src/app/api/operator/fabric-analyzer/analyze/route.ts",
+    "src/app/api/operator/fabric-analyzer/batch/route.ts",
+    "src/app/api/operator/fabric-analyzer/queue/route.ts",
+    "src/app/api/operator/fabric-analyzer/process/route.ts",
+  ]) {
+    const source=readFileSync(path,"utf8");
+    assert.match(source,/assertPhysicalEvidenceHasFlatCapture\(/,path);
     assert.match(source,/normalizeVerifiedPhysicalEvidenceInput\(/,path);
   }
 });
