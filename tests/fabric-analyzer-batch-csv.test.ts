@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { itemsFromCsv } from "../src/lib/fabric-analyzer-batch-csv.ts";
+import { catalogPhysicalCsvPrefill, itemsFromCsv } from "../src/lib/fabric-analyzer-batch-csv.ts";
 
 test("batch CSV retains invalid GSM, repeat and 0-1 physical claims instead of dropping them",()=>{
   const lines=[
@@ -46,4 +46,37 @@ test("quoted CSV preserves commas in provenance and retains validated drape",()=
   const [row]=itemsFromCsv('fabricId,verifiedDrape,verifiedPhysicalEvidenceNote\nfabric-5,Balanced,"Supplier measured, checker approved"');
   assert.equal(row.verifiedDrape,"Balanced");
   assert.equal(row.verifiedPhysicalEvidenceNote,"Supplier measured, checker approved");
+});
+
+test("batch template must not promote provenance-free catalogue GSM and drape to verified claims",()=>{
+  const prefill=catalogPhysicalCsvPrefill({weightGsm:145,drape:"structured"});
+  assert.deepEqual(prefill,{verifiedGsm:"",verifiedDrape:"",verifiedPhysicalSourceUrl:"",verifiedPhysicalEvidenceNote:""});
+});
+
+test("batch template carries source-backed operator measurements with provenance",()=>{
+  const prefill=catalogPhysicalCsvPrefill({
+    weightGsm:145,drape:"medium",
+    physicalEvidence:{sourceType:"owner_measurement",reference:"GSM roll-9",checkedBy:"Checker A",evidenceDate:"2026-10-24",sourceUrl:"https://supplier.example/roll9"},
+  });
+  assert.equal(prefill.verifiedGsm,145);
+  assert.equal(prefill.verifiedDrape,"Balanced");
+  assert.equal(prefill.verifiedPhysicalSourceUrl,"https://supplier.example/roll9");
+  assert.match(prefill.verifiedPhysicalEvidenceNote,/GSM roll-9.*Checker A.*2026-10-24/);
+});
+
+test("batch template rejects malformed provenance and never exports HTTP as verified source",()=>{
+  const invalid=catalogPhysicalCsvPrefill({
+    weightGsm:145,drape:"fluid",
+    physicalEvidence:{sourceType:"estimate",reference:"Guess",checkedBy:"Operator"},
+  });
+  assert.equal(invalid.verifiedGsm,"");
+  assert.equal(invalid.verifiedDrape,"");
+  const http=catalogPhysicalCsvPrefill({
+    weightGsm:155,drape:"soft",
+    physicalEvidence:{sourceType:"supplier_document",reference:"Supplier card 25",checkedBy:"Checker B",sourceUrl:"http://supplier.example/card"},
+  });
+  assert.equal(http.verifiedGsm,155);
+  assert.equal(http.verifiedDrape,"Fluid");
+  assert.equal(http.verifiedPhysicalSourceUrl,"");
+  assert.match(http.verifiedPhysicalEvidenceNote,/Supplier card 25.*Checker B/);
 });

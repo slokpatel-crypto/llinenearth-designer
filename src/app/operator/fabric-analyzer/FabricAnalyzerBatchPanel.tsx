@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { itemsFromCsv } from "@/lib/fabric-analyzer-batch-csv";
+import { catalogPhysicalCsvPrefill, itemsFromCsv } from "@/lib/fabric-analyzer-batch-csv";
 
 const HEADERS=[
   "fabricId","imageUrl","macroImageUrl","foldImageUrl","sourcePageUrl","sourceId",
@@ -43,13 +43,7 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
         .sort((a,b)=>(b.evidence?.priority||0)-(a.evidence?.priority||0));
       const lines=[HEADERS.join(",")];
       for(const fabric of fabrics){
-        const mappedDrape=fabric.metadata?.drape==="structured"?"Structured"
-          : fabric.metadata?.drape==="medium"?"Balanced"
-            : ["fluid","soft"].includes(String(fabric.metadata?.drape||""))?"Fluid":"";
-        const provenance=fabric.metadata?.physicalEvidence;
-        const inheritedEvidenceNote=provenance
-          ? [provenance.sourceType,provenance.reference,provenance.checkedBy ? "checked by "+provenance.checkedBy : "",provenance.evidenceDate].filter(Boolean).join(" · ")
-          : "";
+        const verifiedPhysical=catalogPhysicalCsvPrefill(fabric.metadata);
         const row:Record<string,unknown>={
           fabricId:fabric.id,
           imageUrl:"",
@@ -63,15 +57,15 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
           supplierPatternName:fabric.pattern,
           swatchRealWidthMm:"",
           repeatRealMm:"",
-          verifiedGsm:fabric.metadata?.weightGsm??"",
-          verifiedDrape:mappedDrape,
+          verifiedGsm:verifiedPhysical.verifiedGsm,
+          verifiedDrape:verifiedPhysical.verifiedDrape,
           verifiedFiberContent:"",
           verifiedStructure:"",
           verifiedBreathability:"",
           verifiedWrinkleResistance:"",
           verifiedStretch:"",
-          verifiedPhysicalSourceUrl:provenance?.sourceUrl||"",
-          verifiedPhysicalEvidenceNote:inheritedEvidenceNote,
+          verifiedPhysicalSourceUrl:verifiedPhysical.verifiedPhysicalSourceUrl,
+          verifiedPhysicalEvidenceNote:verifiedPhysical.verifiedPhysicalEvidenceNote,
           notes:`Evidence queue gaps: ${(fabric.evidence?.gaps||[]).join(" | ")}`,
         };
         lines.push(HEADERS.map((header)=>csvCell(row[header])).join(","));
