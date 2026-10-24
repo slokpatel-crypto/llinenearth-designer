@@ -683,3 +683,11 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Boundary:** Saved Designs is browser localStorage, not a durable customer system. Malformed, partially written or foreign records must never crash browsing or saving another design. At read time keep valid designs in original order, checking fields needed by Saved Designs, rendering and the local Atelier handoff; skip invalid entries and enforce the existing 24-card cap without mutating browser storage. Accept optional legacy version hashes instead of fabricating missing versions.
 
 **Limitations:** This is safe best-effort recovery, not retrieval of corrupted customer data. It does not change saved IDs/deduplication semantics, rewrite existing storage or guarantee physical/production truth. Tests cover corrupt nested records, valid older data, cap and actual reader wiring. Exact-head CI and independent browser acceptance remain mandatory.
+
+## 2026-10-24 — Feedback belongs to a saved design and locked version
+
+**Identity:** A locked garment spec is not a unique customer review. Browser-local feedback must deduplicate only an exact `(designId,specHash)` pair, preserve ratings from distinct saved designs with identical construction, and generate nonce-based IDs that cannot collide within the same millisecond. Existing local feedback ID strings remain readable.
+
+**Storage:** Validate browser review packets before rendering/marking as reviewed (closed ratings/statuses, safe string reasons and notes), preserving the 100-record cap and valid prior order. This is strictly a local cache, not a staff submission or durable production system. No model/photo, physical fabric facts, backend migrations or customer data recovery are claimed. New regressions protect composite identity, invalid arrays, nonce construction and caller wiring. Exact-head CI/browser QA pending.
+
+**Customer-facing truth:** The Saved Designs rating confirmation must explicitly say the review was saved only in this browser; it is not a submitted staff ticket. Failed writes show a scoped error for that design and must never present a successful saved message.
