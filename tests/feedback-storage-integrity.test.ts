@@ -44,3 +44,13 @@ test("feedback writer uses composite request identity and safe browser reader",(
   assert.match(source,/window\.crypto\.getRandomValues\(new Uint8Array\(16\)\)/);
   assert.doesNotMatch(source,/filter\(\(x\)=>x\.specHash !== input\.specHash\)/);
 });
+
+test("saved-design rating never pretends local cache delivered feedback to staff",()=>{
+  const source=readFileSync("src/components/SavedDesignsClient.tsx","utf8");
+  assert.match(source,/Saved to this browser only/);
+  assert.match(source,/not sent to Linen Earth staff/);
+  assert.match(source,/feedbackError\?\.designId===active\.id/);
+  assert.match(source,/role="alert"/);
+  assert.match(source,/Feedback could not be saved in this browser/);
+  assert.doesNotMatch(source,/Saved for human review\./);
+});
