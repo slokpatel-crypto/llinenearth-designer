@@ -11,7 +11,7 @@ import {
   finishFabricAnalyzerJob,
   type ClaimedFabricAnalyzerJob,
 } from "@/lib/fabric-analyzer-store";
-import { normalizeVerifiedPhysicalEvidenceInput } from "@/lib/physical-evidence-provenance";
+import { assertPhysicalEvidenceHasFlatCapture, normalizeVerifiedPhysicalEvidenceInput } from "@/lib/physical-evidence-provenance";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -38,6 +38,8 @@ function clean(value:unknown,limit:number) {
 async function processJob(job:ClaimedFabricAnalyzerJob) {
   try {
     const declared=job.declared_context || {};
+    const physicalEvidence=normalizeVerifiedPhysicalEvidenceInput(declared);
+    assertPhysicalEvidenceHasFlatCapture(physicalEvidence,job.image_url || "");
     let profileId:string|null=null;
     let reviewPriority:"low"|"normal"|"high"="normal";
 
@@ -46,7 +48,6 @@ async function processJob(job:ClaimedFabricAnalyzerJob) {
       profileId=result.run.profileId;
       reviewPriority=result.run.reviewPriority;
     } else if(job.image_url) {
-      const physicalEvidence=normalizeVerifiedPhysicalEvidenceInput(declared);
       const input:FabricAnalyzerContext={
         fabricId:job.fabric_id || undefined,
         imageUrl:job.image_url,

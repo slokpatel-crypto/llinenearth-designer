@@ -78,3 +78,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] 2026-10-24: Confirmed connected GitHub repository and latest open draft PR #372.
 - [x] 2026-10-24: Confirmed PR #372 head `28a50ac` has passing **CI** and **Deep Engine — Non-3D QA** workflow runs.
 - [x] 2026-10-24: Hardened physical-evidence parsing across direct, batch, queue and worker Analyzer paths; malformed/coerced facts now fail closed and persisted jobs are independently revalidated.
+
+- [x] 2026-10-24: Closed the reference-page-only Analyzer evidence-loss gap across direct, batch, queue and worker routes; source-only requests containing submitted verified physical facts or provenance now fail closed instead of silently dropping it. No asset, schema, model or live data changed.

@@ -6,7 +6,7 @@ import {
   type FabricAnalyzerContext,
 } from "@/lib/fabric-analyzer";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
-import { normalizeVerifiedPhysicalEvidenceInput } from "@/lib/physical-evidence-provenance";
+import { assertPhysicalEvidenceHasFlatCapture, normalizeVerifiedPhysicalEvidenceInput } from "@/lib/physical-evidence-provenance";
 import { DIRECT_FABRIC_CAPTURE_MAX_CHARS, isDirectFabricCapture } from "@/lib/fabric-capture-input";
 
 export const runtime="nodejs";
@@ -56,6 +56,8 @@ export async function POST(request:Request) {
     const sourcePageUrl=clean(body.sourcePageUrl,1800);
     const imageUrl=imageInput(body.imageUrl);
     const force=body.force===true;
+    const physicalEvidence=normalizeVerifiedPhysicalEvidenceInput(body);
+    assertPhysicalEvidenceHasFlatCapture(physicalEvidence,imageUrl);
 
     if(sourcePageUrl && !imageUrl) {
       const result=await analyzeMenswearReferencePage(sourcePageUrl,{persist:true,fabricId});
@@ -68,7 +70,6 @@ export async function POST(request:Request) {
 
     if(!imageUrl) return json({error:"Provide a trusted image URL, authenticated direct capture, or approved source page."},{status:400});
 
-    const physicalEvidence=normalizeVerifiedPhysicalEvidenceInput(body);
     const input:FabricAnalyzerContext={
       fabricId,
       imageUrl,

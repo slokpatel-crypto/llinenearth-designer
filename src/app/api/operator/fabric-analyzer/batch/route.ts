@@ -6,7 +6,7 @@ import {
   type FabricAnalyzerContext,
 } from "@/lib/fabric-analyzer";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
-import { normalizeVerifiedPhysicalEvidenceInput } from "@/lib/physical-evidence-provenance";
+import { assertPhysicalEvidenceHasFlatCapture, normalizeVerifiedPhysicalEvidenceInput } from "@/lib/physical-evidence-provenance";
 
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -64,6 +64,8 @@ async function runItem(item:BatchItem,index:number) {
     const fabricId=clean(item.fabricId,160) || undefined;
     const sourcePageUrl=clean(item.sourcePageUrl,1800);
     const imageUrl=clean(item.imageUrl,1800);
+    const physicalEvidence=normalizeVerifiedPhysicalEvidenceInput(item as unknown as Record<string,unknown>);
+    assertPhysicalEvidenceHasFlatCapture(physicalEvidence,imageUrl);
 
     if(sourcePageUrl && !imageUrl) {
       const result=await analyzeMenswearReferencePage(sourcePageUrl,{persist:true,fabricId});
@@ -72,7 +74,6 @@ async function runItem(item:BatchItem,index:number) {
 
     if(!imageUrl) return {index,fabricId,ok:false,error:"Missing trusted imageUrl or approved sourcePageUrl."};
 
-    const physicalEvidence=normalizeVerifiedPhysicalEvidenceInput(item as unknown as Record<string,unknown>);
     const input:FabricAnalyzerContext={
       fabricId,
       imageUrl,
