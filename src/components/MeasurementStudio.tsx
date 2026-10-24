@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { emptyMeasurementProfile, formatMeasure, fromCm, MEASUREMENT_STORAGE_KEY, measurementCoverage, toCm, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, emptyTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
+import { describeMeasurementVaultSaveOutcome } from "@/lib/measurement-vault-save-outcome";
 
 type Mode = "shirt" | "pants";
 type Field = { key: string; label: string; short: string; min: number; max: number; tip: string };
@@ -177,15 +178,29 @@ export function MeasurementStudio(){
       });
       const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;error?:string};
       if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure measurement copy could not be saved.");
-      localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(nextProfile));
-      localStorage.setItem(TAILOR_OBSERVATION_STORAGE_KEY,JSON.stringify(nextObservations));
-      setProfile(nextProfile);setObservations(nextObservations);setSaved(true);setVaultToken(result.recoveryToken);
+      // The remote write is already complete. Do not lose its recovery token
+      // or falsely claim failure if this browser rejects localStorage writes.
+      setVaultToken(result.recoveryToken);
+      setVaultExpiresAt(""); // A previous loaded token's expiry must not label a new copy.
+      let localSaved=false;
+      try{
+        localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(nextProfile));
+        localStorage.setItem(TAILOR_OBSERVATION_STORAGE_KEY,JSON.stringify(nextObservations));
+        setProfile(nextProfile);setObservations(nextObservations);setSaved(true);
+        localSaved=true;
+      }catch{
+        // Server copy still exists; the recovery token must remain visible.
+      }
+      let tokenCopied=false;
       try{
         await navigator.clipboard.writeText(result.recoveryToken);
-        setVaultMessage(`Recovery token copied · secure copy expires in ${result.expiresInDays||180} days.`);
+        tokenCopied=true;
       }catch{
-        setVaultMessage("Secure copy saved. Copy the recovery token and keep it private.");
+        // Clipboard permission is optional: token stays visible in textarea.
       }
+      setVaultMessage(describeMeasurementVaultSaveOutcome({
+        localSaved,tokenCopied,expiresInDays:result.expiresInDays,
+      }));
     }catch(error){
       setVaultMessage(error instanceof Error?error.message:"Secure measurement copy could not be saved.");
     }finally{setVaultBusy(false);}
