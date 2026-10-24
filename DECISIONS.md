@@ -665,3 +665,9 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Contract:** A CSV worksheet cannot report success if data in any populated row or unrecognized column is silently discarded. The supported 22-column vocabulary is aligned to the existing operator template. Misspellings and unsupported supplier fields fail with an actionable error; any populated row lacking `fabricId`, `imageUrl` and `sourcePageUrl` blocks the complete worksheet before batch dispatch. Empty spacer rows remain ignored and in-order valid rows are unchanged.
 
 **Compatibility:** Previous permissive unknown columns are now rejected instead of dropped, requiring their explicit mapping into supported columns. No supplier facts are invented, no backend schema or physical evidence state changes, no model/photo changes. New tests protect mixed valid/orphan rows, unknown headings and blank spacer rows. Exact-head CI and operator/browser QA still required.
+
+## 2026-10-24 — Analyzer response accounting is part of trust
+
+**Decision:** A successful HTTP status is insufficient to certify a batch. The operator UI must verify `total === submittedCount`, `succeeded + failed === submittedCount`, a result for each original index in order and consistency between each row's `ok` flag and the summary. Malformed/partial 200 replies fail closed; previously confirmed chunks retain their visible progress, and the operator is told to inspect/retry unresolved fabrics.
+
+**Compatibility:** Uses the existing server batch v1 response shape with no endpoint, database or migration change. This does not invent fabric evidence, assume idempotent processing for unconfirmed rows or authorize production release. New pure tests and source wiring enforce the invariant; exact-head CI/operator browser acceptance pending.
