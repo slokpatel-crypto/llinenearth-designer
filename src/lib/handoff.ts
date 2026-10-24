@@ -1,5 +1,5 @@
 import type { SavedDesign } from "@/lib/saved-designs";
-import { mergeDistinctAtelierHandoffs } from "./atelier-handoff-identity.ts";
+import { mergeDistinctAtelierHandoffs, validStoredAtelierHandoffs } from "./atelier-handoff-identity.ts";
 import { fabricTypes, judgeFabricForBrief, type WearFamily } from "@/lib/fashion-intelligence";
 
 export const HANDOFF_KEY = "linen-earth-atelier-handoffs-v1";
@@ -31,7 +31,7 @@ export type AtelierHandoff = {
 
 export function listHandoffs(): AtelierHandoff[] {
   if (typeof window === "undefined") return [];
-  try { const value = JSON.parse(localStorage.getItem(HANDOFF_KEY) || "[]"); return Array.isArray(value) ? value : []; } catch { return []; }
+  try { const value:unknown = JSON.parse(localStorage.getItem(HANDOFF_KEY) || "[]"); return validStoredAtelierHandoffs<AtelierHandoff>(value); } catch { return []; }
 }
 
 function idealFabrics(design: SavedDesign) {
