@@ -749,3 +749,11 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Contract:** Once the store RPC has returned a valid vault identifier, construct the recovery token before attempting optional account attachment. Treat a false/rejected owner-link as `accountOwned: false` plus an explicit recovery-token warning; preserve optional production-ownership propagation for linked design vaults. Do not log access keys or fabricate account ownership. Reject invalid request bodies or unknown actions with 400. Measurement UI shows account-link failures without hiding the credential. These changes require no database migration, additional paid AI dependency or changes to the existing model.
 
 **Residual boundaries:** This does not make remote storage and HTTP response atomic, does not establish distributed rate limiting and does not guarantee owner linking if a process terminates before response. Real browser and live migration/RPC outage verification remain release gates. No merge or deployment approved.
+
+## 2026-10-26 — Treat the local measurement/observation pair as one UI activation
+
+**Defect:** Each secure measurement save/load wrote profile and manual tailor observations into separate localStorage keys. If the second write failed, the first could persist while UI reported error; reloading could silently combine mismatched evidence.
+
+**Safety:** Keep both existing storage keys and on-disk schema for backwards compatibility. A pure two-key writer snapshots both prior values, writes the pair, then activates React state only if both completed. If either fails, best-effort rollback restores only values that still equal this operation's attempted values; leave other-tab changes intact. Distinguish confirmed remote retrieval from failure to store locally and never discard the original recovery token. If rollback is incomplete, warn about a potentially inconsistent browser cache.
+
+**Limit:** This is not an atomic localStorage transaction or cross-tab lock; tab termination after the first write and browser storage corruption still require manual QA. No migration, main merge or production deployment.
