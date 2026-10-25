@@ -59,5 +59,7 @@ test("measurement UI surfaces optional account-link warning without discarding t
   const e=ui.indexOf("async function loadSecureCopy",s);
   const flow=ui.slice(s,e);
   assert.ok(flow.indexOf("setVaultToken(result.recoveryToken);")>=0);
-  assert.ok(flow.indexOf("setVaultToken(result.recoveryToken);")<flow.indexOf("setVaultMessage([savedMessage,result.ownershipWarning]"));
+  const warningMessage=flow.indexOf("setVaultMessage([");
+  assert.ok(warningMessage>flow.indexOf("setVaultToken(result.recoveryToken);"));
+  assert.match(flow.slice(warningMessage),/result\.ownershipWarning/);
 });
