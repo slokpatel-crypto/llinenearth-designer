@@ -19,7 +19,7 @@ import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "
 import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
 import type { MeasurementProfile } from "@/lib/measurements";
 import { normalizeMeasuredBodyInput } from "@/lib/designer/measurement-input-validation";
-import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
+import { validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import { toLegacyStyle, validateStyleSpecV2, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { validBodyPreviewProfile, type BodyPreviewProfile } from "@/lib/designer/body-profile";
@@ -66,22 +66,7 @@ function safeMeasurements(value:unknown):MeasurementProfile|null {
 }
 
 function safeObservations(value:unknown):TailorObservationProfile|null {
-  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
-  const input=value as Partial<TailorObservationProfile>;
-  if(input.version!==1) return null;
-  const shoulder=["unknown","level","square","sloping"] as const;
-  const posture=["unknown","balanced","erect","forward"] as const;
-  const seat=["unknown","balanced","flat","full"] as const;
-  const mobility=["standard","high"] as const;
-  if(!shoulder.includes(input.shoulderBalance as never) || !posture.includes(input.posture as never) || !seat.includes(input.seatBalance as never) || !mobility.includes(input.mobilityPriority as never)) return null;
-  return {
-    version:1,
-    shoulderBalance:input.shoulderBalance!,
-    posture:input.posture!,
-    seatBalance:input.seatBalance!,
-    mobilityPriority:input.mobilityPriority!,
-    updatedAt:typeof input.updatedAt==="string"?input.updatedAt.slice(0,80):new Date().toISOString(),
-  };
+  return validStoredTailorObservationProfile(value);
 }
 
 function safeVisualReview(value:unknown):CanonicalCreativeVisualReview|null {

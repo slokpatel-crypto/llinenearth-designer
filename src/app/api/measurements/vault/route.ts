@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
-import { type MeasurementProfile } from "@/lib/measurements";
-import { type TailorObservationProfile } from "@/lib/designer/tailor-observations";
+import { validStoredMeasurementProfile, type MeasurementProfile } from "@/lib/measurements";
+import { validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import {
   createMeasurementVaultAccessKey,
   createMeasurementVaultRecoveryToken,
@@ -49,20 +49,6 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
   return await response.json() as T;
 }
 
-function validProfile(profile:unknown):profile is MeasurementProfile{
-  if(!profile||typeof profile!=="object"||Array.isArray(profile)) return false;
-  const p=profile as MeasurementProfile;
-  if(p.version!==1||!["cm","in"].includes(p.unit)||!p.shirt||!p.pants) return false;
-  const numericValues=[...Object.values(p.shirt),...Object.values(p.pants)];
-  return numericValues.every((value)=>value===undefined||(typeof value==="number"&&Number.isFinite(value)&&value>0&&value<500));
-}
-
-function validObservations(value:unknown):value is TailorObservationProfile{
-  if(!value||typeof value!=="object"||Array.isArray(value)) return false;
-  const v=value as TailorObservationProfile;
-  return v.version===1;
-}
-
 export async function POST(request:Request){
   if(blocked(request)) return jsonNoStore({error:"Too many measurement-vault requests."},{status:429});
   try{
@@ -77,15 +63,17 @@ export async function POST(request:Request){
     const customer=await getCustomerIdentity(request);
 
     if(action==="store"){
-      if(!validProfile(body.profile)||!validObservations(body.observations)) {
+      const profile=validStoredMeasurementProfile(body.profile);
+      const observations=validStoredTailorObservationProfile(body.observations);
+      if(!profile||!observations) {
         return jsonNoStore({error:"A valid measurement and tailoring profile is required."},{status:400});
       }
       const accessKey=createMeasurementVaultAccessKey();
       const accessHash=hashMeasurementVaultAccessKey(accessKey);
       const vaultId=await rpc<string>("measurement_profile_vault_store",{
         p_access_hash:accessHash,
-        p_profile:body.profile,
-        p_observations:body.observations,
+        p_profile:profile,
+        p_observations:observations,
         p_ttl_days:180,
       });
 
@@ -110,7 +98,7 @@ export async function POST(request:Request){
         vault_id:string;profile:MeasurementProfile;observations:TailorObservationProfile;
         created_at:string;expires_at:string;
       }>>("measurement_profile_vault_list_owned",{p_owner_user_id:customer.id});
-      const profiles=rows.filter((row)=>validProfile(row.profile)&&validObservations(row.observations)).map((row)=>({
+      const profiles=rows.filter((row)=>validStoredMeasurementProfile(row.profile)&&validStoredTailorObservationProfile(row.observations)).map((row)=>({
         vaultId:row.vault_id,
         unit:row.profile.unit,
         createdAt:row.created_at,
@@ -126,10 +114,12 @@ export async function POST(request:Request){
         {p_vault_id:String(body.vaultId||""),p_owner_user_id:customer.id},
       );
       const row=rows[0];
-      if(!row||!validProfile(row.profile)||!validObservations(row.observations)) {
+      const profile=validStoredMeasurementProfile(row?.profile);
+      const observations=validStoredTailorObservationProfile(row?.observations);
+      if(!row||!profile||!observations) {
         return jsonNoStore({error:"Measurement profile was not found."},{status:404});
       }
-      return jsonNoStore({profile:row.profile,observations:row.observations,expiresAt:row.expires_at});
+      return jsonNoStore({profile,observations,expiresAt:row.expires_at});
     }
 
     if(action==="deleteOwned"){
@@ -156,10 +146,12 @@ export async function POST(request:Request){
         p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
       });
       const row=rows[0];
-      if(!row||!validProfile(row.profile)||!validObservations(row.observations)) {
+      const profile=validStoredMeasurementProfile(row?.profile);
+      const observations=validStoredTailorObservationProfile(row?.observations);
+      if(!row||!profile||!observations) {
         return jsonNoStore({error:"Measurement profile was not found or has expired."},{status:404});
       }
-      return jsonNoStore({profile:row.profile,observations:row.observations,expiresAt:row.expires_at});
+      return jsonNoStore({profile,observations,expiresAt:row.expires_at});
     }
 
     if(action==="delete"){

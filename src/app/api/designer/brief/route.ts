@@ -9,7 +9,7 @@ import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence
 import { loadApprovedHouseEaseModel } from "@/lib/designer/house-ease-server";
 import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
 import type { MeasurementProfile } from "@/lib/measurements";
-import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
+import { validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { safePersonalTaste, personalizeDesignerBrief } from "@/lib/designer/personal-taste";
 import { compileDesignerIntent, designGoalPatch, scopeStyleLocks } from "@/lib/designer/design-intent";
 
@@ -51,22 +51,7 @@ function safeMeasurements(value:unknown):MeasurementProfile|null {
 }
 
 function safeObservations(value:unknown):TailorObservationProfile|null {
-  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
-  const input=value as Partial<TailorObservationProfile>;
-  if(input.version!==1) return null;
-  const shoulder=["unknown","level","square","sloping"] as const;
-  const posture=["unknown","balanced","erect","forward"] as const;
-  const seat=["unknown","balanced","flat","full"] as const;
-  const mobility=["standard","high"] as const;
-  if(!shoulder.includes(input.shoulderBalance as never) || !posture.includes(input.posture as never) || !seat.includes(input.seatBalance as never) || !mobility.includes(input.mobilityPriority as never)) return null;
-  return {
-    version:1,
-    shoulderBalance:input.shoulderBalance!,
-    posture:input.posture!,
-    seatBalance:input.seatBalance!,
-    mobilityPriority:input.mobilityPriority!,
-    updatedAt:typeof input.updatedAt==="string"?input.updatedAt.slice(0,80):new Date().toISOString(),
-  };
+  return validStoredTailorObservationProfile(value);
 }
 
 function tierOrder(preferred:DesignerSearchTier|undefined) {

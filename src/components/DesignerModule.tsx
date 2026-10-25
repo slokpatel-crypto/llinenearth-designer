@@ -14,8 +14,8 @@ import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/resear
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview-support";
-import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
-import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
+import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, validStoredMeasurementProfile, type MeasurementProfile } from "@/lib/measurements";
+import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
 import { lockGarmentSpec, type LockedDesignRevision } from "@/lib/designer/design-lock";
@@ -268,8 +268,8 @@ export function DesignerModule() {
     try {
       const raw = localStorage.getItem(MEASUREMENT_STORAGE_KEY);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as MeasurementProfile;
-      if (parsed?.version === 1) setMeasurementProfile(parsed);
+      const parsed = validStoredMeasurementProfile(JSON.parse(raw));
+      if (parsed) setMeasurementProfile(parsed);
     } catch { /* Saved measurements are optional; Designer remains usable without them. */ }
   },[]);
 
@@ -277,8 +277,8 @@ export function DesignerModule() {
     try {
       const raw = localStorage.getItem(TAILOR_OBSERVATION_STORAGE_KEY);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as TailorObservationProfile;
-      if (parsed?.version === 1) setTailorObservations(parsed);
+      const parsed = validStoredTailorObservationProfile(JSON.parse(raw));
+      if (parsed) setTailorObservations(parsed);
     } catch { /* Tailor observations are optional; Designer remains usable without them. */ }
   },[]);
 

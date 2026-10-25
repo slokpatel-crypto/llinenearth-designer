@@ -12,6 +12,27 @@ export type MeasurementProfile = {
 export const MEASUREMENT_STORAGE_KEY = "linen-earth-measurements-v1";
 export const emptyMeasurementProfile = (): MeasurementProfile => ({ version: 1, unit: "in", shirt: {}, pants: {}, updatedAt: new Date().toISOString() });
 
+const SHIRT_MEASUREMENT_KEYS = new Set<keyof ShirtMeasurements>(["neck","chest","waist","shoulder","sleeve","shirtLength","bicep","wrist"]);
+const PANT_MEASUREMENT_KEYS = new Set<keyof PantMeasurements>(["waist","seat","thigh","frontRise","inseam","outseam","knee","hem"]);
+
+function validStoredMeasurements(value:unknown,keys:Set<string>):Record<string,number>|null {
+  if(!value||typeof value!=="object"||Array.isArray(value)) return null;
+  const entries=Object.entries(value);
+  if(entries.some(([key,measurement])=>!keys.has(key)||typeof measurement!=="number"||!Number.isFinite(measurement)||measurement<=0||measurement>350)) return null;
+  return Object.fromEntries(entries) as Record<string,number>;
+}
+
+/** Validate persisted measurements without coercing or inventing missing evidence. */
+export function validStoredMeasurementProfile(value:unknown):MeasurementProfile|null {
+  if(!value||typeof value!=="object"||Array.isArray(value)) return null;
+  const profile=value as Partial<MeasurementProfile>;
+  const shirt=validStoredMeasurements(profile.shirt,SHIRT_MEASUREMENT_KEYS);
+  const pants=validStoredMeasurements(profile.pants,PANT_MEASUREMENT_KEYS);
+  if(profile.version!==1||(profile.unit!=="cm"&&profile.unit!=="in")||!shirt||!pants) return null;
+  if(typeof profile.updatedAt!=="string"||!Number.isFinite(Date.parse(profile.updatedAt))) return null;
+  return {version:1,unit:profile.unit,shirt,pants,updatedAt:profile.updatedAt};
+}
+
 export function toCm(value: number, unit: MeasurementUnit) { return unit === "cm" ? value : value * 2.54; }
 export function fromCm(value: number, unit: MeasurementUnit) { return unit === "cm" ? value : value / 2.54; }
 export function formatMeasure(value: number | undefined, unit: MeasurementUnit) { return value == null ? "—" : `${fromCm(value,unit).toFixed(1)} ${unit === "in" ? "in" : "cm"}`; }
