@@ -1,3 +1,4 @@
+import { linkVaultOwnerBestEffort, vaultOwnershipWarning } from "@/lib/vault-owner-link";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -52,14 +53,19 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 export async function POST(request:Request){
   if(blocked(request)) return jsonNoStore({error:"Too many measurement-vault requests."},{status:429});
   try{
-    const body=await request.json() as {
+    const input:unknown=await request.json().catch(()=>null);
+    if(!input||typeof input!=="object"||Array.isArray(input))
+      return jsonNoStore({error:"Invalid measurement-vault request body."},{status:400});
+    const body=input as {
       action?:string;
       profile?:MeasurementProfile;
       observations?:TailorObservationProfile;
       recoveryToken?:string;
       vaultId?:string;
     };
-    const action=String(body.action||"");
+    const action=body.action;
+    if(typeof action!=="string"||!["store","listOwned","loadOwned","deleteOwned","claim","load","delete"].includes(action))
+      return jsonNoStore({error:"Unsupported measurement-vault action."},{status:400});
     const customer=await getCustomerIdentity(request);
 
     if(action==="store"){
@@ -77,17 +83,18 @@ export async function POST(request:Request){
         p_ttl_days:180,
       });
 
-      let accountOwned=false;
-      if(customer){
-        accountOwned=Boolean(await rpc<boolean>("measurement_profile_vault_set_owner",{
-          p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:customer.id,
-        }));
-      }
-
+      // Construct the recovery credential as soon as storage has been confirmed.
+      // An optional account-link RPC must not turn this successful store into a 503.
       const recoveryToken=createMeasurementVaultRecoveryToken(vaultId,accessKey);
+      const linkStatus=await linkVaultOwnerBestEffort(customer?.id,ownerId=>
+        rpc<boolean>("measurement_profile_vault_set_owner",{
+          p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:ownerId,
+        }),
+      );
       return jsonNoStore({
         vaultId,recoveryToken,expiresInDays:180,
-        accountOwned,
+        accountOwned:linkStatus==="linked",
+        ownershipWarning:vaultOwnershipWarning(linkStatus),
         customer:customer?{email:customer.email}:null,
       });
     }

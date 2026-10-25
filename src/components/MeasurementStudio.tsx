@@ -176,7 +176,7 @@ export function MeasurementStudio(){
         headers:{"content-type":"application/json"},
         body:JSON.stringify({action:"store",profile:nextProfile,observations:nextObservations}),
       });
-      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;error?:string};
+      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;ownershipWarning?:string;error?:string};
       if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure measurement copy could not be saved.");
       // The remote write is already complete. Do not lose its recovery token
       // or falsely claim failure if this browser rejects localStorage writes.
@@ -198,9 +198,10 @@ export function MeasurementStudio(){
       }catch{
         // Clipboard permission is optional: token stays visible in textarea.
       }
-      setVaultMessage(describeMeasurementVaultSaveOutcome({
+      const savedMessage=describeMeasurementVaultSaveOutcome({
         localSaved,tokenCopied,expiresInDays:result.expiresInDays,
-      }));
+      });
+      setVaultMessage([savedMessage,result.ownershipWarning].filter(Boolean).join(" "));
     }catch(error){
       setVaultMessage(error instanceof Error?error.message:"Secure measurement copy could not be saved.");
     }finally{setVaultBusy(false);}

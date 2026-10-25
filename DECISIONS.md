@@ -741,3 +741,11 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Boundary:** Treat browser-local JSON, secure-vault rows and Designer request observations as untrusted at every restore boundary. Accept only version 1, known shirt/trouser measurement keys, finite positive values within the existing 350 cm API ceiling, closed manual observation categories and a parseable recorded timestamp. Reject corrupted profiles instead of coercing strings, inventing timestamps or admitting unknown fields; do not rewrite rejected browser data.
 
 **Compatibility and truth:** Valid existing profiles retain the same storage keys, shape, units and values. The app remains usable without rejected optional data, and the secure vault returns a not-found response for invalid stored payloads without exposing them to the client. This is software integrity only: it adds no supplier measurement, physical fit, tailor approval, database migration or production-data verification. Exact-head CI and real browser/vault acceptance remain mandatory.
+
+## 2026-10-26 — Vault remote-write success is not dependent on account-link RPC
+
+**Failure:** A secure measurement or locked-design vault RPC can commit successfully and then an optional account-ownership RPC can reject, leaving the client with a 503 and no recovery/delete credential. A malformed request envelope also previously fell into the generic 503 path.
+
+**Contract:** Once the store RPC has returned a valid vault identifier, construct the recovery token before attempting optional account attachment. Treat a false/rejected owner-link as `accountOwned: false` plus an explicit recovery-token warning; preserve optional production-ownership propagation for linked design vaults. Do not log access keys or fabricate account ownership. Reject invalid request bodies or unknown actions with 400. Measurement UI shows account-link failures without hiding the credential. These changes require no database migration, additional paid AI dependency or changes to the existing model.
+
+**Residual boundaries:** This does not make remote storage and HTTP response atomic, does not establish distributed rate limiting and does not guarantee owner linking if a process terminates before response. Real browser and live migration/RPC outage verification remain release gates. No merge or deployment approved.

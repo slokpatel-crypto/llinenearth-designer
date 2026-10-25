@@ -1,3 +1,4 @@
+import { linkVaultOwnerBestEffort, vaultOwnershipWarning } from "@/lib/vault-owner-link";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -51,13 +52,18 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 export async function POST(request:Request){
   if(blocked(request)) return jsonNoStore({error:"Too many design-vault requests."},{status:429});
   try{
-    const body=await request.json() as {
+    const input:unknown=await request.json().catch(()=>null);
+    if(!input||typeof input!=="object"||Array.isArray(input))
+      return jsonNoStore({error:"Invalid design-vault request body."},{status:400});
+    const body=input as {
       action?:string;
       revision?:LockedDesignRevision;
       recoveryToken?:string;
       vaultId?:string;
     };
-    const action=String(body.action||"");
+    const action=body.action;
+    if(typeof action!=="string"||!["store","listOwned","loadOwned","deleteOwned","claim","load","delete"].includes(action))
+      return jsonNoStore({error:"Unsupported design-vault action."},{status:400});
     const customer=await getCustomerIdentity(request);
 
     if(action==="store"){
@@ -79,29 +85,31 @@ export async function POST(request:Request){
       });
       if(!vaultId) throw new Error("The design vault did not return an id.");
 
-      let accountOwned=false;
-      if(customer){
-        accountOwned=Boolean(await rpc<boolean>("designer_locked_revision_vault_set_owner",{
-          p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:customer.id,
-        }));
-        if(accountOwned){
-          try{
-            await rpc("production_claim_revision_ownership",{
-              p_revision_id:revision.revisionId,
-              p_recipe_hash:revision.recipeHash.toLowerCase(),
-              p_owner_user_id:customer.id,
-            });
-          }catch{
-            // Ownership propagation is additive; secure design storage remains available
-            // while the newer production-ownership migration is being installed.
-          }
+      // A successful remote store must still yield a recovery credential if
+      // account linking or optional production ownership propagation fails.
+      const recoveryToken=createDesignVaultRecoveryToken(vaultId,accessKey);
+      const linkStatus=await linkVaultOwnerBestEffort(customer?.id,ownerId=>
+        rpc<boolean>("designer_locked_revision_vault_set_owner",{
+          p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:ownerId,
+        }),
+      );
+      if(linkStatus==="linked"&&customer){
+        try{
+          await rpc("production_claim_revision_ownership",{
+            p_revision_id:revision.revisionId,
+            p_recipe_hash:revision.recipeHash.toLowerCase(),
+            p_owner_user_id:customer.id,
+          });
+        }catch{
+          // Production ownership propagation is additive; secure design recovery
+          // must remain possible during migration / temporary RPC failure.
         }
       }
 
-      const recoveryToken=createDesignVaultRecoveryToken(vaultId,accessKey);
       return jsonNoStore({
         vaultId,recoveryToken,expiresInDays:180,
-        accountOwned,
+        accountOwned:linkStatus==="linked",
+        ownershipWarning:vaultOwnershipWarning(linkStatus),
         customer:customer?{email:customer.email}:null,
       });
     }
