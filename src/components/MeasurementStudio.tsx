@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { emptyMeasurementProfile, formatMeasure, fromCm, MEASUREMENT_STORAGE_KEY, measurementCoverage, toCm, type MeasurementProfile } from "@/lib/measurements";
-import { TAILOR_OBSERVATION_STORAGE_KEY, emptyTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
+import { emptyMeasurementProfile, formatMeasure, fromCm, MEASUREMENT_STORAGE_KEY, measurementCoverage, toCm, validStoredMeasurementProfile, type MeasurementProfile } from "@/lib/measurements";
+import { TAILOR_OBSERVATION_STORAGE_KEY, emptyTailorObservationProfile, validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { describeMeasurementVaultSaveOutcome } from "@/lib/measurement-vault-save-outcome";
 
 type Mode = "shirt" | "pants";
@@ -149,7 +149,7 @@ export function MeasurementStudio(){
   const [vaultToken,setVaultToken]=useState("");
   const [vaultExpiresAt,setVaultExpiresAt]=useState("");
 
-  useEffect(()=>{try{const raw=localStorage.getItem(MEASUREMENT_STORAGE_KEY);if(raw){const parsed=JSON.parse(raw) as MeasurementProfile;setProfile({...parsed,unit:"in"});}const observed=localStorage.getItem(TAILOR_OBSERVATION_STORAGE_KEY);if(observed){const parsed=JSON.parse(observed) as TailorObservationProfile;if(parsed?.version===1)setObservations(parsed);}}catch{}},[]);
+  useEffect(()=>{try{const raw=localStorage.getItem(MEASUREMENT_STORAGE_KEY);if(raw){const parsed=validStoredMeasurementProfile(JSON.parse(raw));if(parsed)setProfile({...parsed,unit:"in"});}const observed=localStorage.getItem(TAILOR_OBSERVATION_STORAGE_KEY);if(observed){const parsed=validStoredTailorObservationProfile(JSON.parse(observed));if(parsed)setObservations(parsed);}}catch{}},[]);
   const unit="in" as const; const fields=mode==="shirt"?shirtFields:pantFields; const coverage=measurementCoverage(profile);
   const activeField=fields.find(f=>f.key===active)||fields[0];
   const values=(mode==="shirt"?profile.shirt:profile.pants) as Record<string,number|undefined>;
@@ -216,11 +216,13 @@ export function MeasurementStudio(){
         body:JSON.stringify({action:"load",recoveryToken:vaultToken.trim()}),
       });
       const result=await response.json() as {profile?:MeasurementProfile;observations?:TailorObservationProfile;expiresAt?:string;error?:string};
-      if(!response.ok||!result.profile||!result.observations) throw new Error(result.error||"Secure measurement profile could not be loaded.");
-      const nextProfile={...result.profile,unit:"in" as const};
+      const restoredProfile=validStoredMeasurementProfile(result.profile);
+      const restoredObservations=validStoredTailorObservationProfile(result.observations);
+      if(!response.ok||!restoredProfile||!restoredObservations) throw new Error(result.error||"Secure measurement profile could not be loaded.");
+      const nextProfile={...restoredProfile,unit:"in" as const};
       localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(nextProfile));
-      localStorage.setItem(TAILOR_OBSERVATION_STORAGE_KEY,JSON.stringify(result.observations));
-      setProfile(nextProfile);setObservations(result.observations);setSaved(true);setVaultExpiresAt(result.expiresAt||"");
+      localStorage.setItem(TAILOR_OBSERVATION_STORAGE_KEY,JSON.stringify(restoredObservations));
+      setProfile(nextProfile);setObservations(restoredObservations);setSaved(true);setVaultExpiresAt(result.expiresAt||"");
       setVaultMessage("Secure measurement profile loaded onto this device.");
     }catch(error){
       setVaultMessage(error instanceof Error?error.message:"Secure measurement profile could not be loaded.");

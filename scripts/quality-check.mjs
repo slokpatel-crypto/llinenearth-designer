@@ -1024,7 +1024,7 @@ console.log("Measurement blueprint gate passed: the existing Measurements page n
 
 
 const realDesignerMeasurements = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["MEASUREMENT_STORAGE_KEY","measurementCoverage","measurementFitGuidance","newDesignerFitCompact","Fit details","MEASUREMENTS","FIT PROFILE ·"]) {
+for (const token of ["MEASUREMENT_STORAGE_KEY","measurementCoverage","measurementFitGuidance","validStoredMeasurementProfile","validStoredTailorObservationProfile","newDesignerFitCompact","Fit details","MEASUREMENTS","FIT PROFILE ·"]) {
   if (!realDesignerMeasurements.includes(token)) throw new Error(`Designer measurement-fit regression: missing ${token}`);
 }
 const realDesignerMeasurementCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
@@ -1425,7 +1425,7 @@ for (const token of ["observations?: TailorObservationProfile","observations:inp
   if (!tailorSearch.includes(token)) throw new Error(`Tailor observation regression: search missing ${token}`);
 }
 const tailorMeasurementUi = fs.readFileSync("src/components/MeasurementStudio.tsx","utf8");
-for (const token of ["OPTIONAL / TAILOR OBSERVATIONS","Shoulder balance","Posture balance","Seat balance","Movement priority","MANUAL INPUT ONLY","TAILOR_OBSERVATION_STORAGE_KEY"]) {
+for (const token of ["OPTIONAL / TAILOR OBSERVATIONS","Shoulder balance","Posture balance","Seat balance","Movement priority","MANUAL INPUT ONLY","TAILOR_OBSERVATION_STORAGE_KEY","validStoredMeasurementProfile","validStoredTailorObservationProfile"]) {
   if (!tailorMeasurementUi.includes(token)) throw new Error(`Tailor observation regression: Measurements UI missing ${token}`);
 }
 const tailorDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
