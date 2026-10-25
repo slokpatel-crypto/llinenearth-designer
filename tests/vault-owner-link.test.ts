@@ -63,3 +63,16 @@ test("measurement UI surfaces optional account-link warning without discarding t
   assert.ok(warningMessage>flow.indexOf("setVaultToken(result.recoveryToken);"));
   assert.match(flow.slice(warningMessage),/result\.ownershipWarning/);
 });
+
+
+test("locked-design studio shows ownership uncertainty alongside its already-visible recovery token",()=>{
+  const ui=readFileSync("src/components/DesignerModule.tsx","utf8");
+  const start=ui.indexOf("async function saveLockedRevisionToVault()");
+  const end=ui.indexOf("return <div className=\"newDesigner\">",start);
+  const flow=ui.slice(start,end);
+  const token=flow.indexOf("setVaultRecoveryToken(result.recoveryToken);");
+  const message=flow.indexOf("setVaultMessage([savedMessage,result.ownershipWarning]");
+  assert.ok(start>=0&&end>start&&token>=0&&message>token);
+  assert.match(flow,/tokenCopied=true/);
+  assert.match(flow,/Copy the recovery token below and keep it private/);
+});
