@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { emptyMeasurementProfile, formatMeasure, fromCm, MEASUREMENT_STORAGE_KEY, measurementCoverage, toCm, validStoredMeasurementProfile, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, emptyTailorObservationProfile, validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { describeMeasurementVaultSaveOutcome } from "@/lib/measurement-vault-save-outcome";
+import { persistMeasurementPair } from "@/lib/measurement-pair-browser-store";
 
 type Mode = "shirt" | "pants";
 type Field = { key: string; label: string; short: string; min: number; max: number; tip: string };
@@ -176,21 +177,20 @@ export function MeasurementStudio(){
         headers:{"content-type":"application/json"},
         body:JSON.stringify({action:"store",profile:nextProfile,observations:nextObservations}),
       });
-      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;error?:string};
+      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;ownershipWarning?:string;error?:string};
       if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure measurement copy could not be saved.");
       // The remote write is already complete. Do not lose its recovery token
       // or falsely claim failure if this browser rejects localStorage writes.
       setVaultToken(result.recoveryToken);
       setVaultExpiresAt(""); // A previous loaded token's expiry must not label a new copy.
-      let localSaved=false;
-      try{
-        localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(nextProfile));
-        localStorage.setItem(TAILOR_OBSERVATION_STORAGE_KEY,JSON.stringify(nextObservations));
+      const localResult=persistMeasurementPair(
+        localStorage,JSON.stringify(nextProfile),JSON.stringify(nextObservations),
+      );
+      const localSaved=localResult.saved;
+      if(localSaved){
         setProfile(nextProfile);setObservations(nextObservations);setSaved(true);
-        localSaved=true;
-      }catch{
-        // Server copy still exists; the recovery token must remain visible.
       }
+      // A failed local write must not hide the successful server copy or its token.
       let tokenCopied=false;
       try{
         await navigator.clipboard.writeText(result.recoveryToken);
@@ -198,9 +198,14 @@ export function MeasurementStudio(){
       }catch{
         // Clipboard permission is optional: token stays visible in textarea.
       }
-      setVaultMessage(describeMeasurementVaultSaveOutcome({
+      const savedMessage=describeMeasurementVaultSaveOutcome({
         localSaved,tokenCopied,expiresInDays:result.expiresInDays,
-      }));
+      });
+      setVaultMessage([
+        savedMessage,
+        result.ownershipWarning,
+        !localResult.rollbackComplete?"The previous browser cache could not be fully restored; recheck local measurements before using them.":undefined,
+      ].filter(Boolean).join(" "));
     }catch(error){
       setVaultMessage(error instanceof Error?error.message:"Secure measurement copy could not be saved.");
     }finally{setVaultBusy(false);}
@@ -220,8 +225,15 @@ export function MeasurementStudio(){
       const restoredObservations=validStoredTailorObservationProfile(result.observations);
       if(!response.ok||!restoredProfile||!restoredObservations) throw new Error(result.error||"Secure measurement profile could not be loaded.");
       const nextProfile={...restoredProfile,unit:"in" as const};
-      localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(nextProfile));
-      localStorage.setItem(TAILOR_OBSERVATION_STORAGE_KEY,JSON.stringify(restoredObservations));
+      const localResult=persistMeasurementPair(
+        localStorage,JSON.stringify(nextProfile),JSON.stringify(restoredObservations),
+      );
+      if(!localResult.saved){
+        setVaultMessage(localResult.rollbackComplete
+          ?"Secure measurement copy was retrieved, but browser storage failed. No local profile was activated. Keep the recovery token and try again."
+          :"Secure measurement copy was retrieved, but browser storage failed and the previous browser cache may be inconsistent. Keep the recovery token and recheck local measurements.");
+        return;
+      }
       setProfile(nextProfile);setObservations(restoredObservations);setSaved(true);setVaultExpiresAt(result.expiresAt||"");
       setVaultMessage("Secure measurement profile loaded onto this device.");
     }catch(error){
