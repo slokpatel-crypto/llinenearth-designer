@@ -1190,15 +1190,20 @@ export function DesignerModule() {
         headers:{"content-type":"application/json"},
         body:JSON.stringify({action:"store",revision:lockedRevision}),
       });
-      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;error?:string};
+      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;ownershipWarning?:string;error?:string};
       if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure cloud copy could not be saved.");
       setVaultRecoveryToken(result.recoveryToken);
+      let tokenCopied=false;
       try{
         await navigator.clipboard.writeText(result.recoveryToken);
-        setVaultMessage(`Recovery token copied · secure copy expires in ${result.expiresInDays||180} days.`);
+        tokenCopied=true;
       }catch{
-        setVaultMessage("Secure cloud copy saved. Copy the recovery token below and keep it private.");
+        // Clipboard permission is optional; the token remains visible.
       }
+      const savedMessage=tokenCopied
+        ?`Recovery token copied · secure copy expires in ${result.expiresInDays||180} days.`
+        :"Secure cloud copy saved. Copy the recovery token below and keep it private.";
+      setVaultMessage([savedMessage,result.ownershipWarning].filter(Boolean).join(" "));
     }catch(error){
       setVaultMessage(error instanceof Error?error.message:"Secure cloud copy could not be saved.");
     }finally{
