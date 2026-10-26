@@ -78,3 +78,17 @@ test("save and restore both gate React state updates on successful paired browse
   assert.ok(load.indexOf("if(!localResult.saved)")<load.indexOf("setProfile(nextProfile);"));
   assert.match(load,/Secure measurement copy was retrieved, but browser storage failed/);
 });
+
+test("primary save and Designer navigation refuse a partially written fit",()=>{
+  const source=readFileSync("src/components/MeasurementStudio.tsx","utf8");
+  const direct=source.slice(source.indexOf("  function save(){"),source.indexOf("  async function saveSecureCopy()"));
+  assert.match(direct,/const localResult=persistMeasurementPair\(/);
+  assert.match(direct,/if\(!localResult\.saved\)\{/);
+  assert.ok(direct.indexOf("if(!localResult.saved)")<direct.indexOf("setProfile(inchProfile);"));
+  assert.match(direct,/return false;/);
+  assert.doesNotMatch(direct,/localStorage\.setItem/);
+  assert.match(source,/onClick=\{\(event\)=>\{if\(!save\(\)\)event\.preventDefault\(\);\}\}/);
+  assert.match(source,/role="alert"/);
+  assert.match(source,/previous complete fit remains active/);
+  assert.match(source,/browser storage may now be inconsistent/);
+});
