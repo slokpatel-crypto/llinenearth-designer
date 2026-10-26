@@ -742,6 +742,12 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 
 **Compatibility and truth:** Valid existing profiles retain the same storage keys, shape, units and values. The app remains usable without rejected optional data, and the secure vault returns a not-found response for invalid stored payloads without exposing them to the client. This is software integrity only: it adds no supplier measurement, physical fit, tailor approval, database migration or production-data verification. Exact-head CI and real browser/vault acceptance remain mandatory.
 
+## 2026-10-26 — Primary measurement activation requires the complete browser pair
+
+**Activation:** The ordinary Save and Use in Designer actions must use the same guarded measurement-plus-manual-observation writer as secure recovery. React fit state and Designer navigation advance only after both browser records are confirmed written. A failed second write attempts to restore the prior complete pair; navigation is blocked and the customer sees whether rollback was complete or browser state needs rechecking.
+
+**Boundary:** Browser localStorage still has no atomic transaction or durable account guarantee. The storage keys, record schemas and valid saved values remain unchanged, and another tab's concurrent edit is never overwritten during rollback. This prevents software from knowingly activating a mixed fit; it does not prove measurements, posture observations, tailor acceptance or cross-device persistence. Blocked-storage and concurrent-tab browser acceptance remain release gates.
+
 ## 2026-10-26 — Vault remote-write success is not dependent on account-link RPC
 
 **Failure:** A secure measurement or locked-design vault RPC can commit successfully and then an optional account-ownership RPC can reject, leaving the client with a 503 and no recovery/delete credential. A malformed request envelope also previously fell into the generic 503 path.

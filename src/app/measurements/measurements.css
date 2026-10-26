@@ -96,6 +96,7 @@
 .measureRange strong{font-size:9px;font-weight:500;color:#333}
 .measureSave,.measureDesignerLink{margin-top:17px;min-height:47px;display:flex;align-items:center;justify-content:center;border:0;cursor:pointer;text-decoration:none}
 .measureSave{background:#0b56b2;color:#fff;font-size:10px}
+.measureSaveError{margin:9px 0 0;color:#963f35;font-size:9px;line-height:1.45}
 .measureDesignerLink{border:1px solid #b8cce3;color:#164d8c;font-size:10px;justify-content:space-between;padding:0 14px;background:#f5f9ff}
 .measureDesignerLink:hover{background:#eaf3ff}
 .measurePrivacy{margin-top:13px;color:#9a9187;font-size:8px;line-height:1.5}

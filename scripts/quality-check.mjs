@@ -1425,7 +1425,7 @@ for (const token of ["observations?: TailorObservationProfile","observations:inp
   if (!tailorSearch.includes(token)) throw new Error(`Tailor observation regression: search missing ${token}`);
 }
 const tailorMeasurementUi = fs.readFileSync("src/components/MeasurementStudio.tsx","utf8");
-for (const token of ["OPTIONAL / TAILOR OBSERVATIONS","Shoulder balance","Posture balance","Seat balance","Movement priority","MANUAL INPUT ONLY","TAILOR_OBSERVATION_STORAGE_KEY","validStoredMeasurementProfile","validStoredTailorObservationProfile"]) {
+for (const token of ["OPTIONAL / TAILOR OBSERVATIONS","Shoulder balance","Posture balance","Seat balance","Movement priority","MANUAL INPUT ONLY","TAILOR_OBSERVATION_STORAGE_KEY","validStoredMeasurementProfile","validStoredTailorObservationProfile","persistMeasurementPair","event.preventDefault()","measureSaveError"]) {
   if (!tailorMeasurementUi.includes(token)) throw new Error(`Tailor observation regression: Measurements UI missing ${token}`);
 }
 const tailorDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
