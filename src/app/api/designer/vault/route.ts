@@ -1,4 +1,4 @@
-import { linkVaultOwnerBestEffort, vaultOwnershipWarning } from "@/lib/vault-owner-link";
+import { linkVaultOwnerBestEffort, resolveVaultStoreOwnerBestEffort, vaultOwnershipWarning } from "@/lib/vault-owner-link";
 import { parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity } from "@/lib/vault-request-identifiers";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
@@ -70,7 +70,8 @@ export async function POST(request:Request){
       const field=identifiers.field==="vaultId"?"vault ID":"recovery token";
       return jsonNoStore({error:`A valid ${field} string is required.`},{status:400});
     }
-    const customer=vaultActionNeedsCustomerIdentity(action)?await getCustomerIdentity(request):null;
+    const optionalOwner=action==="store"?await resolveVaultStoreOwnerBestEffort(()=>getCustomerIdentity(request)):null;
+    const customer=optionalOwner?optionalOwner.customer:vaultActionNeedsCustomerIdentity(action)?await getCustomerIdentity(request):null;
 
     if(action==="store"){
       const revision=body.revision;
@@ -115,7 +116,7 @@ export async function POST(request:Request){
       return jsonNoStore({
         vaultId,recoveryToken,expiresInDays:180,
         accountOwned:linkStatus==="linked",
-        ownershipWarning:vaultOwnershipWarning(linkStatus),
+        ownershipWarning:optionalOwner?.lookupFailed?vaultOwnershipWarning("unavailable"):vaultOwnershipWarning(linkStatus),
         customer:customer?{email:customer.email}:null,
       });
     }
