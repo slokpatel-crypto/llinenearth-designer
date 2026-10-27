@@ -14,6 +14,7 @@ import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/resear
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview-support";
+import { creativeDirectionMatchesSelection } from "@/lib/designer/creative-selection";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, validStoredMeasurementProfile, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
@@ -428,10 +429,12 @@ export function DesignerModule() {
       setBodyProfile(nextBodyProfile || DEFAULT_BODY_PREVIEW_PROFILE);
 
       if(!fromDirector && parsed?.creative &&
-        parsed.creative.recommendation?.shirt?.id===nextShirtId &&
-        parsed.creative.recommendation?.pant?.id===nextPantId &&
-        parsed.creative.recommendation?.occasion===nextOccasion &&
-        Array.isArray(parsed.creative.treatments)) {
+        Array.isArray(parsed.creative.treatments) &&
+        creativeDirectionMatchesSelection(parsed.creative,{
+          shirtId:nextShirtId,pantId:nextPantId,occasion:nextOccasion,
+          climate:nextClimate,intention:nextIntention,style:nextStyle,
+          styleSpec:nextStyleSpec || fromLegacyStyle(nextStyle),
+        })) {
         setActiveCreative(parsed.creative);
         setCreativeDirections([parsed.creative]);
         setRecommendation(parsed.creative.recommendation);
@@ -496,10 +499,9 @@ export function DesignerModule() {
 
   useEffect(() => {
     if(!draftReady) return;
-    const creativeStillMatches=activeCreative &&
-      activeCreative.recommendation.shirt.id===shirtId &&
-      activeCreative.recommendation.pant.id===pantId &&
-      activeCreative.recommendation.occasion===occasion;
+    const creativeStillMatches=creativeDirectionMatchesSelection(activeCreative,{
+      shirtId,pantId,occasion,climate,intention,style,styleSpec,
+    });
     if(creativeStillMatches) return;
     setSearchResults([]);
     setCreativeDirections([]);
@@ -507,7 +509,7 @@ export function DesignerModule() {
     setCreativeVisualReview(null);
     setCreativeRenderRepair("");
     setCreativeAutoNote("");
-  },[draftReady,shirtId,pantId,occasion,climate,intention]);
+  },[draftReady,shirtId,pantId,occasion,climate,intention,style,styleSpec]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -651,7 +653,7 @@ export function DesignerModule() {
     creativeRequestRef.current=null;
     setCreativeGenerating(false);
     return ()=>{creativeRequestRef.current?.controller.abort();};
-  },[shirtId,pantId,occasion,style,climate,intention,craftRequest]);
+  },[shirtId,pantId,occasion,style,styleSpec,climate,intention,craftRequest]);
 
   useEffect(()=>{if(pendingCraftBrief.current){pendingCraftBrief.current=false;void runCreativeLab();}},[craftRequest]);
 
