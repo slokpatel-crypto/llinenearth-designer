@@ -91,4 +91,5 @@ test("assessment request binds its payload and late reply to the committed selec
   assert.match(block,/if\(!isCurrent\(\)\) return;\s*applyServerAssessment\(next\)/);
   assert.match(block,/catch\(error\) \{\s*if\(!isCurrent\(\)\) return;/);
   assert.match(source,/run\.identity!==assessmentIdentity[\s\S]*run\.controller\.abort\(\)/);
+  assert.match(source,/committedAssessmentIdentity\.current!==assessmentIdentity[\s\S]*setAssessment\(null\)/);
 });
