@@ -100,7 +100,12 @@ export function removeCustomerMeasurementProfile(id: string) {
   if(link?.profileId===id){
     // Never erase manual Designer measurements or another customer's active fit.
     if(matchesActiveCustomerMeasurementSnapshot(link,id,active)){
+      // The named profile owns its manual posture evidence too. Leaving it
+      // behind could carry customer A's observations into a new manual fit.
+      // Preserve unrelated manually edited measurements when the digest has
+      // changed: those records are no longer proven to belong to this link.
       records.push([MEASUREMENT_STORAGE_KEY,null]);
+      records.push([TAILOR_OBSERVATION_STORAGE_KEY,null]);
     }
     records.push([ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY,null]);
   }
