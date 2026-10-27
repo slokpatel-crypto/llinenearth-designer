@@ -339,6 +339,17 @@ function rule(id: string, severity: RuleSeverity, status: RuleStatus, explanatio
   return { id, severity, status, explanation };
 }
 
+// A catalogue drape label or GSM number is not a reviewed physical measurement.
+// Only a matching-fabric, finite, reviewed physics fact can clear these gates.
+// Estimated numeric drape from a categorical label must remain unverified.
+function reviewedPhysicalFact(fabric:DesignerFabric,dimension:"gsm"|"drape"):boolean {
+  const profile=fabric.physicsProfile;
+  if(!profile || profile.fabricId!==fabric.id || profile.version!=="linen-earth-fabric-physics-v1") return false;
+  const fact=profile[dimension];
+  if(!fact || fact.evidence!=="reviewed" || typeof fact.value!=="number" || !Number.isFinite(fact.value)) return false;
+  return dimension==="gsm" ? fact.value>=20 && fact.value<=1000 : fact.value>=0 && fact.value<=1;
+}
+
 // Coverage is a count of independently confirmed facts, NOT a probability of
 // satisfaction. An approximate photographed colour or a yarn-count label does
 // not count as verification of colour, GSM, thermal comfort or stock.
@@ -347,8 +358,8 @@ export function designerMaterialEvidence(shirt: DesignerFabric, pant: DesignerFa
     [`${fabric.name}: physical colour`, fabric.colorVerified === true],
     [`${fabric.name}: motif scale`, fabric.patternScaleVerified === true],
     [`${fabric.name}: exact composition`, fabric.fiberContentVerified === true && !!fabric.fiberContent],
-    [`${fabric.name}: measured GSM`, fabric.weightGsm !== null && Number.isFinite(fabric.weightGsm) && fabric.weightGsm > 0],
-    [`${fabric.name}: drape`, !!fabric.drape],
+    [`${fabric.name}: measured GSM`, reviewedPhysicalFact(fabric,"gsm")],
+    [`${fabric.name}: drape`, reviewedPhysicalFact(fabric,"drape")],
     [`${fabric.name}: opacity`, !!fabric.opacity],
     [`${fabric.name}: comfort for intended climate`, !!fabric.comfortTags?.length],
     [`${fabric.name}: verified physical stock status`, fabric.availabilityVerified===true || (fabric.confirmedAvailableMetres !== null && Number.isFinite(fabric.confirmedAvailableMetres) && fabric.confirmedAvailableMetres >= 0)],
@@ -521,8 +532,8 @@ export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabri
     pantPatternScale:pant.patternScale,
     shirtWeightClass:shirt.weightClass,
     pantWeightClass:pant.weightClass,
-    shirtDrapeVerified:Boolean(shirt.drape && shirt.weightGsm!==null),
-    pantDrapeVerified:Boolean(pant.drape && pant.weightGsm!==null),
+    shirtDrapeVerified:reviewedPhysicalFact(shirt,"drape"),
+    pantDrapeVerified:reviewedPhysicalFact(pant,"drape"),
   });
   for(const cross of crossRules) {
     // CR-4 remains the compatibility identifier used by saved reports; the
