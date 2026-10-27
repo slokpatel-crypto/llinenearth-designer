@@ -3,7 +3,7 @@ import reference from "./reference-data.json";
 import { optionsFor } from "./options/library.ts";
 import { fromLegacyStyle, type StyleSpecV2 } from "./style-spec-v2.ts";
 import { evaluateCrossGarmentRules } from "./rules/evaluator.ts";
-import type { FabricCompatibilityResult, FabricPhysicsProfile } from "./fabric-physics.ts";
+import { validFabricPhysicsValue, type FabricCompatibilityResult, type FabricPhysicsProfile } from "./fabric-physics.ts";
 
 export type OccasionTier = "Casual" | "Smart-Casual" | "Semi-Formal" | "Formal";
 export type RuleStatus = "pass" | "flag" | "unknown" | "not_applicable";
@@ -346,8 +346,7 @@ function reviewedPhysicalFact(fabric:DesignerFabric,dimension:"gsm"|"drape"):boo
   const profile=fabric.physicsProfile;
   if(!profile || profile.fabricId!==fabric.id || profile.version!=="linen-earth-fabric-physics-v1") return false;
   const fact=profile[dimension];
-  if(!fact || fact.evidence!=="reviewed" || typeof fact.value!=="number" || !Number.isFinite(fact.value)) return false;
-  return dimension==="gsm" ? fact.value>=20 && fact.value<=1000 : fact.value>=0 && fact.value<=1;
+  return fact?.evidence==="reviewed" && validFabricPhysicsValue(dimension,fact.value);
 }
 
 // Coverage is a count of independently confirmed facts, NOT a probability of
