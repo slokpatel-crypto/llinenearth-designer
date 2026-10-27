@@ -59,3 +59,30 @@ test("ease calibration provenance changes the locked recipe hash",async()=>{
   },{lockedAt:"2026-10-01T09:00:00.000Z"});
   assert.notEqual(provisional.recipeHash,calibrated.recipeHash);
 });
+
+test("corrupt remote locked-revision envelopes are rejected without throwing",async()=>{
+  const valid=await lockGarmentSpec(spec,{lockedAt:"2026-10-01T09:00:00.000Z"});
+  for(const bad of [
+    null,undefined,[],123,"not-a-revision",{},
+    {...valid,revisionId:[]},
+    {...valid,revisionId:""},
+    {...valid,lockedAt:{}},
+    {...valid,lockedAt:"not-a-timestamp"},
+    {...valid,parentRevisionId:[]},
+    {...valid,recipeHash:null},
+    {...valid,recipeHash:"0".repeat(63)},
+    {...valid,garmentSpec:null},
+    {...valid,garmentSpec:[]},
+    {...valid,garmentSpec:{version:"unknown"}},
+  ]){
+    assert.equal(await verifyLockedDesignRevision(bad),false,`expected invalid envelope: ${String(typeof bad)}`);
+  }
+  assert.equal(await verifyLockedDesignRevision(valid),true);
+});
+
+test("unserializable runtime payload cannot crash locked-design verification",async()=>{
+  const valid=await lockGarmentSpec(spec,{lockedAt:"2026-10-01T09:00:00.000Z"});
+  const circular:Record<string,unknown>={version:"linen-earth-garment-spec-v1"};
+  circular.loop=circular;
+  assert.equal(await verifyLockedDesignRevision({...valid,garmentSpec:circular}),false);
+});
