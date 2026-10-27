@@ -52,7 +52,8 @@ test("both API endpoints validate identifier type before customer lookup or RPC"
 
 test("recovery-token load and delete never depend on a legacy session lookup",()=>{
   for(const action of ["load","delete"]) assert.equal(vaultActionNeedsCustomerIdentity(action),false);
-  for(const action of ["store","claim","listOwned","loadOwned","deleteOwned"]){
+  assert.equal(vaultActionNeedsCustomerIdentity("store"),false); // optional ownership only
+  for(const action of ["claim","listOwned","loadOwned","deleteOwned"]){
     assert.equal(vaultActionNeedsCustomerIdentity(action),true);
   }
   // Unknown actions must not accidentally invoke optional legacy authentication.
