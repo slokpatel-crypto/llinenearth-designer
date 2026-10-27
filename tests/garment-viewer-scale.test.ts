@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { garmentPanelTextureScale, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
+import { canRepresentGarmentPanelTileExactly, garmentPanelTextureScale, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
 test("verified render tile width stays authoritative",()=>{
   assert.equal(resolveViewerTileWidthMm(
@@ -74,4 +74,24 @@ test("3D manifest and tile builder retain observed-repeat evidence",()=>{
   const builder=readFileSync("scripts/build-fabric-render-assets.mjs","utf8");
   assert.match(viewer,/repeatDetected\?:boolean/);
   assert.match(builder,/repeatDetected:repeatDetected\?measured\.repeatPeriodPx:null|repeatPeriodPx:repeatDetected\?measured\.repeatPeriodPx:null/);
+});
+
+test("recorded physical tile cannot be marked calibrated when sampler clamps either UV axis",()=>{
+  assert.equal(canRepresentGarmentPanelTileExactly(580,780,40),true);
+  assert.equal(canRepresentGarmentPanelTileExactly(580,780,0.5),false);
+  assert.equal(canRepresentGarmentPanelTileExactly(1,780,40),false);
+  assert.equal(canRepresentGarmentPanelTileExactly(580,780,Number.NaN),false);
+  assert.equal(canRepresentGarmentPanelTileExactly(580,780,Number.POSITIVE_INFINITY),false);
+  assert.equal(canRepresentGarmentPanelTileExactly(1e308,1e308,1e-308),false);
+  assert.equal(canRepresentGarmentPanelTileExactly("580" as unknown as number,780,40),false);
+});
+
+test("3D calibrated badge requires representable scale for every garment panel",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert.match(viewer,/panelSpecs\.filter\(\(panel\)=>panel\.garment==="shirt"\)\.every\(\(panel\)=>canRepresentGarmentPanelTileExactly/);
+  assert.match(viewer,/panelSpecs\.filter\(\(panel\)=>panel\.garment==="trouser"\)\.every\(\(panel\)=>canRepresentGarmentPanelTileExactly/);
+  assert.match(viewer,/Recorded shirt tile scale exceeds the 3D sampler range/);
+  assert.match(viewer,/Recorded tile ·/);
+  assert.match(viewer,/UV unverified/);
+  assert.match(viewer,/Recorded trouser tile scale exceeds the 3D sampler range/);
 });

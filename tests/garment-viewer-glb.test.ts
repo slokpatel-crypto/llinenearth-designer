@@ -77,3 +77,80 @@ test("prototype complexity preflight counts rendered mesh instances",()=>{
   assert.equal(inspection.performanceBudgetReady,true);
   assert.deepEqual(inspection.performanceWarnings,[]);
 });
+
+function rewritePrototypeJson(mutator:(json:ReturnType<typeof parseGarmentViewerGlbJson>)=>void):Uint8Array {
+  const original=buildPrototypeGarmentGlb();
+  const json=parseGarmentViewerGlbJson(original);
+  mutator(json);
+  const payload=new TextEncoder().encode(JSON.stringify(json));
+  const jsonSize=(payload.byteLength+3)&~3;
+  const originalJsonSize=new DataView(original.buffer,original.byteOffset,original.byteLength).getUint32(12,true);
+  const binaryTail=original.subarray(20+originalJsonSize);
+  const updated=new Uint8Array(20+jsonSize+binaryTail.length);
+  const view=new DataView(updated.buffer);
+  view.setUint32(0,0x46546c67,true);
+  view.setUint32(4,2,true);
+  view.setUint32(8,updated.byteLength,true);
+  view.setUint32(12,jsonSize,true);
+  view.setUint32(16,0x4e4f534a,true);
+  updated.fill(32,20,20+jsonSize);
+  updated.set(payload,20);
+  updated.set(binaryTail,20+jsonSize);
+  return updated;
+}
+
+test("GLB UV accessor metadata cannot claim texture readiness without real VEC2 coordinates",()=>{
+  const invalid=[
+    (json:ReturnType<typeof parseGarmentViewerGlbJson>)=>{json.accessors![2].type="VEC3";},
+    (json:ReturnType<typeof parseGarmentViewerGlbJson>)=>{json.accessors![2].count=1;},
+    (json:ReturnType<typeof parseGarmentViewerGlbJson>)=>{json.accessors![2].componentType=5125;},
+    (json:ReturnType<typeof parseGarmentViewerGlbJson>)=>{json.accessors![2].bufferView=999;},
+    (json:ReturnType<typeof parseGarmentViewerGlbJson>)=>{json.meshes![1].primitives![0].attributes!.TEXCOORD_0=-1;},
+    (json:ReturnType<typeof parseGarmentViewerGlbJson>)=>{json.meshes![1].primitives![0].attributes!.TEXCOORD_0=999;},
+  ];
+  for(const mutate of invalid){
+    const inspection=inspectGarmentViewerGlb(rewritePrototypeJson(mutate),"LE-OFFICEWEAR-V1");
+    assert.equal(inspection.uvReady,false);
+    assert.equal(inspection.structuralReady,false);
+    assert(inspection.reasons.some((reason)=>reason.includes("invalid TEXCOORD_0 accessor")));
+  }
+});
+
+test("GLB normal accessor must match vertex count and valid buffer metadata",()=>{
+  const bad=inspectGarmentViewerGlb(rewritePrototypeJson((json)=>{
+    json.accessors![1].count=2;
+  }),"LE-OFFICEWEAR-V1");
+  assert.equal(bad.uvReady,false);
+  assert(bad.panels.some((panel)=>!panel.normal));
+});
+
+test("GLB UV readiness checks actual BIN values, not only accessor metadata",()=>{
+  const original=buildPrototypeGarmentGlb();
+  const json=parseGarmentViewerGlbJson(original);
+  const uvView=json.bufferViews![json.accessors![2].bufferView!];
+  const jsonLength=new DataView(original.buffer,original.byteOffset,original.byteLength).getUint32(12,true);
+  const uvStart=20+jsonLength+8+(uvView.byteOffset||0);
+  for(const bad of [Number.NaN,Number.POSITIVE_INFINITY]){
+    const modified=original.slice();
+    new DataView(modified.buffer).setFloat32(uvStart,bad,true);
+    const inspection=inspectGarmentViewerGlb(modified,"LE-OFFICEWEAR-V1");
+    assert.equal(inspection.uvReady,false);
+    assert(inspection.reasons.some((reason)=>reason.includes("invalid TEXCOORD_0 accessor")));
+  }
+  const collapsed=original.slice();
+  const uvCount=json.accessors![2].count!;
+  const view=new DataView(collapsed.buffer);
+  for(let i=0;i<uvCount*2;i++) view.setFloat32(uvStart+i*4,0,true);
+  assert.equal(inspectGarmentViewerGlb(collapsed,"LE-OFFICEWEAR-V1").uvReady,false);
+});
+
+test("GLB rejects truncated UV buffer views and impossible embedded BIN bounds",()=>{
+  for(const mutate of [
+    (json:ReturnType<typeof parseGarmentViewerGlbJson>)=>{json.bufferViews![2].byteLength=4;},
+    (json:ReturnType<typeof parseGarmentViewerGlbJson>)=>{json.bufferViews![2].byteOffset=99999999;},
+    (json:ReturnType<typeof parseGarmentViewerGlbJson>)=>{json.buffers![0].byteLength=99999999;},
+  ]){
+    const inspection=inspectGarmentViewerGlb(rewritePrototypeJson(mutate),"LE-OFFICEWEAR-V1");
+    assert.equal(inspection.uvReady,false);
+  }
+});
