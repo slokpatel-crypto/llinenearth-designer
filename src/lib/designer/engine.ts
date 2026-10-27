@@ -587,6 +587,7 @@ export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabri
     ...(style.shirtWear === "Tucked" ? ["Confirm shirt body length, waist ease and the actual tuck against the wearer."] : []),
     ...(whiteContrast ? ["Choose and verify a separate white collar cloth; confirm its shade, weight, shrinkage and metres before cutting."] : []),
     ...(shirt.patternScaleVerified!==true || pant.patternScaleVerified!==true
+      || shirtPatternScale===null || pantPatternScale===null
       ? ["Check motif scale against a physical swatch; catalogue pattern labels do not verify physical repeat."] : []),
     ...(accent && accentStatus !== "pass" ? ["Confirm accent role, weight, colour and placement with the physical cloth."] : []),
     ...(needsReview ? ["Review the flagged pairing with a Linen Earth stylist."] : []),
