@@ -46,6 +46,7 @@ test("short sleeve blocks actual wrist cuff construction, not just a styling pre
 
 test("full sleeve cannot silently use a short-sleeve hem instead of a wrist cuff",()=>{
   assert.equal(rule(context({sleeve:"full_sleeve",cuff:"open_short_hem_cuff"}),"CG-FULL-SLEEVE-HEM")?.effect,"block");
+  assert.equal(rule(context({sleeve:"roll_up_styled",cuff:"open_short_hem_cuff"}),"CG-FULL-SLEEVE-HEM")?.effect,"block");
   assert.equal(rule(context(),"CG-FULL-SLEEVE-HEM"),undefined);
 });
 
@@ -191,4 +192,15 @@ test("wide-trouser drape rule is cleared only by reviewed evidence for the selec
     version:"linen-earth-fabric-physics-v1",fabricId:pant.id,
     drape:{value:0.72,evidence:"reviewed"},
   }}),undefined);
+});
+
+test("hot-weather catalogue weight cautions do not claim supplier-verified GSM",()=>{
+  const c=context();
+  c.climate="Hot / humid";
+  const caution=evaluateCrossGarmentRules({
+    ...c,shirtWeightClass:"Heavy",pantWeightClass:"Heavy",
+  }).find(x=>x.ruleId==="CG-HOT-HEAVY");
+  assert.equal(caution?.effect,"penalty");
+  assert.match(caution?.explanation??"",/catalogue|supplier|confirm/i);
+  assert.doesNotMatch(caution?.explanation??"",/confirmed in the heavy weight class/i);
 });
