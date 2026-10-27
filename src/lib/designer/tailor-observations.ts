@@ -1,3 +1,5 @@
+import { validMeasurementTimestamp } from "../measurements.ts";
+
 export type ShoulderBalance = "unknown" | "level" | "square" | "sloping";
 export type PostureBalance = "unknown" | "balanced" | "erect" | "forward";
 export type SeatBalance = "unknown" | "balanced" | "flat" | "full";
@@ -23,7 +25,7 @@ export function validStoredTailorObservationProfile(value:unknown):TailorObserva
   if(!(["unknown","balanced","erect","forward"] as unknown[]).includes(profile.posture)) return null;
   if(!(["unknown","balanced","flat","full"] as unknown[]).includes(profile.seatBalance)) return null;
   if(!(["standard","high"] as unknown[]).includes(profile.mobilityPriority)) return null;
-  if(typeof profile.updatedAt!=="string"||!Number.isFinite(Date.parse(profile.updatedAt))) return null;
+  if(!validMeasurementTimestamp(profile.updatedAt)) return null;
   return {
     version:1,
     shoulderBalance:profile.shoulderBalance,

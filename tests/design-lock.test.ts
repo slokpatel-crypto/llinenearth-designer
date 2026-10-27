@@ -101,3 +101,59 @@ test("identical recipes locked within the same second have independent revision 
   assert.equal(child.parentRevisionId,a.revisionId);
   assert.notEqual(child.revisionId,a.revisionId);
 });
+
+test("revision verification binds exact ID timestamp and recipe prefix without breaking legacy IDs",async()=>{
+  const valid=await lockGarmentSpec(spec,{lockedAt:"2026-10-01T09:00:00.000Z"});
+  const legacy={...valid,revisionId:valid.revisionId.replace(/-[0-9A-F]{16}$/,"")};
+  assert.equal(await verifyLockedDesignRevision(legacy),true);
+  for(const corrupt of [
+    {...valid,revisionId:"LE-LOCK-20261001090001-"+valid.recipeHash.slice(0,12).toUpperCase()},
+    {...valid,revisionId:valid.revisionId.replace(valid.recipeHash.slice(0,12).toUpperCase(),"000000000000")},
+    {...valid,revisionId:"someone-elses-design"},
+    {...valid,revisionId:valid.revisionId.toLowerCase()},
+    {...valid,lockedAt:"2026-10-01T09:00:01.000Z"},
+    {...valid,lockedAt:"2026-02-30T09:00:00.000Z"},
+    {...valid,lockedAt:"2026-10-01T24:00:00.000Z"},
+    {...valid,lockedAt:"2026-10-01T09:00:00Z"},
+    {...valid,parentRevisionId:valid.revisionId},
+    {...valid,parentRevisionId:"not-a-revision"},
+  ]){
+    assert.equal(await verifyLockedDesignRevision(corrupt),false,
+      "invalid revision envelope must not verify");
+  }
+  await assert.rejects(()=>lockGarmentSpec(spec,{parentRevisionId:"forged"}),/parent revision/);
+  for(const lockedAt of ["2026-02-29T09:00:00Z","2026-10-01T24:00:00Z",
+    "2026-10-01T09:00:00+15:00","not-a-time"]){
+    await assert.rejects(()=>lockGarmentSpec(spec,{lockedAt}),/valid timestamp/);
+  }
+  const leap=await lockGarmentSpec(spec,{lockedAt:"2028-02-29T09:00:00+05:30"});
+  assert.equal(await verifyLockedDesignRevision(leap),true);
+  assert.equal(leap.lockedAt,"2028-02-29T03:30:00.000Z");
+});
+
+test("tailor target ranges must be finite, ordered and typed before design lock",async()=>{
+  const valid=await lockGarmentSpec({
+    ...spec,shirt:{...spec.shirt,finishedTargets:[{
+      label:"Finished chest",bodyCm:98,finishedCm:{min:104,max:108},
+      easeCm:{min:6,max:10},basis:"body_plus_ease",
+    }]},
+  });
+  assert.equal(await verifyLockedDesignRevision(valid),true);
+  const target=valid.garmentSpec.shirt.finishedTargets[0];
+  for(const invalid of [
+    {...target,bodyCm:NaN},
+    {...target,bodyCm:Infinity},
+    {...target,bodyCm:0},
+    {...target,finishedCm:{min:110,max:105}},
+    {...target,finishedCm:{min:NaN,max:108}},
+    {...target,finishedCm:{min:104,max:Infinity}},
+    {...target,easeCm:{min:12,max:8}},
+    {...target,basis:"invented"},
+  ]){
+    const changed={...spec,shirt:{...spec.shirt,finishedTargets:[invalid]}} as CanonicalGarmentSpec;
+    await assert.rejects(()=>lockGarmentSpec(changed),/Invalid finished-garment measurement targets/);
+    const forged=structuredClone(valid);
+    forged.garmentSpec.shirt.finishedTargets=[invalid as typeof target];
+    assert.equal(await verifyLockedDesignRevision(forged),false);
+  }
+});

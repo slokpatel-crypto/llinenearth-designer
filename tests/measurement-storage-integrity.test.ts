@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {validStoredMeasurementProfile} from "../src/lib/measurements.ts";
+import {validStoredMeasurementProfile,validMeasurementTimestamp} from "../src/lib/measurements.ts";
 import {validStoredTailorObservationProfile} from "../src/lib/designer/tailor-observations.ts";
 
 const updatedAt="2026-10-25T09:00:00.000Z";
@@ -64,5 +64,22 @@ test("all browser and vault restore boundaries use the shared validators",()=>{
   for(const route of ["assess","brief","search"]) {
     const source=readFileSync(`src/app/api/designer/${route}/route.ts`,"utf8");
     assert.match(source,/return validStoredTailorObservationProfile\(value\)/);
+  }
+});
+
+test("impossible calendar dates and clock offsets cannot masquerade as saved body or tailor evidence",()=>{
+  for(const timestamp of [
+    "2026-02-29T10:00:00Z","2026-04-31T10:00:00Z",
+    "2026-10-25T24:00:00Z","2026-10-25T10:60:00Z",
+    "2026-10-25T10:00:00+15:00","2026-10-25T10:00:00",
+  ]){
+    assert.equal(validMeasurementTimestamp(timestamp),false);
+    assert.equal(validStoredMeasurementProfile({...measurements,updatedAt:timestamp}),null);
+    assert.equal(validStoredTailorObservationProfile({...observations,updatedAt:timestamp}),null);
+  }
+  for(const timestamp of ["2028-02-29T10:00:00Z","2026-10-25T15:30:00+05:30"]){
+    assert.equal(validMeasurementTimestamp(timestamp),true);
+    assert.ok(validStoredMeasurementProfile({...measurements,updatedAt:timestamp}));
+    assert.ok(validStoredTailorObservationProfile({...observations,updatedAt:timestamp}));
   }
 });

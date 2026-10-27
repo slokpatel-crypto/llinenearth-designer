@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type CalibrationCase={
   at:string;caseId:string;
@@ -26,13 +26,45 @@ export default function MeasurementCalibrationClient(){
   const [form,setForm]=useState(empty);
   const [saving,setSaving]=useState(false);
   const [message,setMessage]=useState("");
+  const [loadError,setLoadError]=useState("");
+  const loadVersion=useRef(0);
 
   async function load(){
-    const response=await fetch("/api/operator/measurement-calibration",{cache:"no-store"});
-    if(response.status===401){window.location.href="/operator/login?next=/operator/measurement-calibration";return;}
-    if(response.ok) setData(await response.json() as Payload);
+    const requestVersion=++loadVersion.current;
+    try{
+      const response=await fetch("/api/operator/measurement-calibration",{cache:"no-store"});
+      if(requestVersion!==loadVersion.current) return;
+      if(response.status===401){setData(null);window.location.href="/operator/login?next=/operator/measurement-calibration";return;}
+      if(!response.ok) throw new Error("Live calibration evidence could not be loaded.");
+      const payload=await response.json() as Payload;
+      if(requestVersion!==loadVersion.current) return;
+      // Never retain a previous PASS after a failed or malformed operator read.
+      if(!payload||typeof payload!=="object"||!Array.isArray(payload.cases)||
+        !payload.summary||typeof payload.summary!=="object"||
+        typeof payload.summary.complete!=="boolean"||
+        typeof payload.summary.total!=="number"||
+        typeof payload.summary.chestPass!=="boolean"||
+        typeof payload.summary.sleevePass!=="boolean"||
+        !Number.isInteger(payload.summary.total)||payload.summary.total<0||
+        !Number.isInteger(payload.summary.target)||payload.summary.target<1||
+        (payload.summary.complete&&(
+          !payload.summary.chestPass||!payload.summary.sleevePass||
+          payload.summary.total<payload.summary.target||
+          typeof payload.summary.medianChestErrorCm!=="number"||
+          typeof payload.summary.medianSleeveErrorCm!=="number"||
+          !Number.isFinite(payload.summary.medianChestErrorCm)||
+          !Number.isFinite(payload.summary.medianSleeveErrorCm))))
+        throw new Error("Calibration evidence response is invalid.");
+      setData(payload);
+      setLoadError("");
+    }catch{
+      if(requestVersion===loadVersion.current){
+        setData(null);
+        setLoadError("Live measurement evidence is unavailable. Readiness cannot be confirmed; retry before any tailor handoff.");
+      }
+    }
   }
-  useEffect(()=>{void load();},[]);
+  useEffect(()=>{void load();return ()=>{loadVersion.current+=1;};},[]);
 
   const valid=Boolean(
     form.caseId.trim()
@@ -79,6 +111,7 @@ export default function MeasurementCalibrationClient(){
       <nav><Link href="/measurements">Open customer guide</Link><Link href="/operator/phase10-readiness">Readiness</Link><Link href="/operator">Operator Desk</Link></nav>
     </header>
 
+    {loadError&&<p className="measurementCalMessage" role="alert">{loadError} <button type="button" onClick={()=>void load()}>Retry</button></p>}
     <section className="measurementCalSummary">
       <article data-pass={Boolean(summary?.total && summary.total>=10)}><small>CASES</small><strong>{summary?.total??0}/{summary?.target??10}</strong><span>Unique case IDs; latest entry per case is used.</span></article>
       <article data-pass={summary?.chestPass===true}><small>MEDIAN CHEST ERROR</small><strong>{summary?.medianChestErrorCm??"—"} cm</strong><span>Target &lt; 1.5 cm after at least 10 cases.</span></article>
