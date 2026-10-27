@@ -61,8 +61,9 @@ async function sha256Hex(input:string) {
 
 // Existing stored revisions use the 14-digit UTC timestamp and first 12
 // recipe-hash hex digits. Newer revisions append a random 64-bit nonce.
-// Preserve both formats, but never let an arbitrary record rename itself
-// to a different revision/customer while retaining a matching recipe hash.
+// Preserve both formats and detect malformed or mismatched timestamp/hash
+// prefixes. The random nonce is not signed; vault ownership must be checked
+// separately, and this validator cannot authenticate revision identity.
 const REVISION_ID=/^LE-LOCK-(\d{14})-([0-9A-F]{12})(?:-([0-9A-F]{16}))?$/;
 
 function safeTimestamp(value:string) {
