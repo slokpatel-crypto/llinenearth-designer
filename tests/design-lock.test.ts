@@ -86,3 +86,18 @@ test("unserializable runtime payload cannot crash locked-design verification",as
   circular.loop=circular;
   assert.equal(await verifyLockedDesignRevision({...valid,garmentSpec:circular}),false);
 });
+
+test("identical recipes locked within the same second have independent revision identities",async()=>{
+  const when="2026-10-01T09:00:00.000Z";
+  const a=await lockGarmentSpec(spec,{lockedAt:when});
+  const b=await lockGarmentSpec(spec,{lockedAt:when});
+  assert.equal(a.recipeHash,b.recipeHash);
+  assert.notEqual(a.revisionId,b.revisionId);
+  assert.match(a.revisionId,/^LE-LOCK-20261001090000-[0-9A-F]{12}-[0-9A-F]{16}$/);
+  assert.match(b.revisionId,/^LE-LOCK-20261001090000-[0-9A-F]{12}-[0-9A-F]{16}$/);
+  assert.equal(await verifyLockedDesignRevision(a),true);
+  assert.equal(await verifyLockedDesignRevision(b),true);
+  const child=await lockGarmentSpec(spec,{parentRevisionId:a.revisionId,lockedAt:when});
+  assert.equal(child.parentRevisionId,a.revisionId);
+  assert.notEqual(child.revisionId,a.revisionId);
+});
