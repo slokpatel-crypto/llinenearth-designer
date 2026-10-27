@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {linkVaultOwnerBestEffort,vaultOwnershipWarning} from "../src/lib/vault-owner-link.ts";
+import {linkVaultOwnerBestEffort,resolveVaultStoreOwnerBestEffort,vaultOwnershipWarning} from "../src/lib/vault-owner-link.ts";
 
 test("absent customer does not call the optional owner-link RPC",async()=>{
   let calls=0;
@@ -75,4 +75,28 @@ test("locked-design studio shows ownership uncertainty alongside its already-vis
   assert.ok(start>=0&&end>start&&token>=0&&message>token);
   assert.match(flow,/tokenCopied=true/);
   assert.match(flow,/Copy the recovery token below and keep it private/);
+});
+
+test("optional vault store survives missing and failed legacy authentication lookups",async()=>{
+  const absent=await resolveVaultStoreOwnerBestEffort(async()=>null);
+  assert.deepEqual(absent,{customer:null,lookupFailed:false});
+  const signedIn=await resolveVaultStoreOwnerBestEffort(async()=>({id:"account-1",email:null}));
+  assert.deepEqual(signedIn,{customer:{id:"account-1",email:null},lookupFailed:false});
+  const interrupted=await resolveVaultStoreOwnerBestEffort(async()=>{
+    throw new Error("injected auth service timeout");
+  });
+  assert.deepEqual(interrupted,{customer:null,lookupFailed:true});
+  assert.match(vaultOwnershipWarning(interrupted.lookupFailed?"unavailable":"not-requested")||"",/recovery token/);
+});
+
+test("vault store routes treat optional auth failures as recovery-only copies, not 503",()=>{
+  for(const path of ["src/app/api/measurements/vault/route.ts","src/app/api/designer/vault/route.ts"]){
+    const source=readFileSync(path,"utf8");
+    const lookup=source.indexOf('const optionalOwner=action==="store"?await resolveVaultStoreOwnerBestEffort(()=>getCustomerIdentity(request)):null');
+    const store=source.indexOf('if(action==="store")',lookup);
+    const save=source.indexOf('const recoveryToken=create',store);
+    assert.ok(lookup>=0&&store>lookup&&save>store,path);
+    assert.match(source,/ownershipWarning:optionalOwner\?\.lookupFailed\?vaultOwnershipWarning\("unavailable"\):vaultOwnershipWarning\(linkStatus\)/);
+    assert.match(source,/accountOwned:linkStatus==="linked"/);
+  }
 });
