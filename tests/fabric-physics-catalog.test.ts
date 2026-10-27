@@ -185,7 +185,7 @@ test("catalogue GET retains stock filtering and accepted metadata while attachin
 test("physics indices reject pending reviews and unsafe or coerced provenance",()=>{
   const baseline=reviewed();
   const badCases:DesignerFabricIntelligence[]=[
-    {...baseline,reviewStatus:"pending"},
+    {...baseline,reviewStatus:"unreviewed"},
     {...baseline,reviewStatus:"rejected"},
     {...baseline,verifiedPhysical:{...baseline.verifiedPhysical,sourceUrl:"javascript:alert(1)",evidenceNote:null}},
     {...baseline,verifiedPhysical:{...baseline.verifiedPhysical,sourceUrl:"http://example.com/roll",evidenceNote:null}},
