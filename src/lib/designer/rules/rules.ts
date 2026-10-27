@@ -131,11 +131,11 @@ export const CROSS_GARMENT_RULES:readonly CrossGarmentRule[]=[
   {
     id:"CG-FULL-SLEEVE-HEM",
     name:"Full sleeve versus open short-sleeve hem",
-    appliesWhen:({spec})=>spec.shirt.sleeve==="full_sleeve"
+    appliesWhen:({spec})=>["full_sleeve","roll_up_styled"].includes(spec.shirt.sleeve)
       && spec.shirt.cuff==="open_short_hem_cuff",
     effect:"block",
     severity:"High",
-    explanation:()=> "The open short-sleeve hem is not a wrist cuff for a full-length sleeve. Select a barrel/convertible cuff or switch to the short-sleeve construction.",
+    explanation:()=> "The open short-sleeve hem is not a wrist cuff for a full-length or roll-up sleeve. Select a wrist cuff or switch to the half-sleeve construction.",
     provenance:"reference-source",
     reviewStatus:"provisional",
   },
