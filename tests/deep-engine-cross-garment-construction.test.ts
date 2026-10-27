@@ -251,3 +251,20 @@ test("malformed catalogue weight and pattern vocabularies fail closed in pairing
   assert.equal(known.find((item:{id:string})=>item.id==="MF-2")?.status,"pass");
   assert.equal(known.find((item:{id:string})=>item.id==="MF-4")?.status,"pass");
 });
+
+test("catalogue motif categories cannot suppress physical repeat confirmation",()=>{
+  const require=createRequire(import.meta.url);
+  const {load}=require("../scripts/designer-test-loader.cjs");
+  const engine=load("src/lib/designer/engine.ts");
+  const shirt={...engine.DESIGNER_SHIRTS[0],patternScale:"Fine",patternScaleVerified:false};
+  const pant={...engine.DESIGNER_PANTS[0],patternScale:"None",patternScaleVerified:false};
+  const style=engine.designerStyleForOccasion("Semi-Formal");
+  const run=(a:typeof shirt,b:typeof pant)=>engine.evaluateDesignerCombo(
+    a,b,"Semi-Formal",style,undefined,{climate:"Not specified",intention:"Balanced"},
+  );
+  const needs=(result:{confirmationsNeeded:string[]})=>result.confirmationsNeeded.some(x=>/physical swatch/i.test(x));
+  assert(needs(run(shirt,pant)),"named pattern categories are not measured physical repeats");
+  assert(needs(run({...shirt,patternScaleVerified:true},pant)),"both garments require independent evidence");
+  assert(!needs(run({...shirt,patternScaleVerified:true},{...pant,patternScaleVerified:true})));
+  assert(needs(run({...shirt,patternScale:"invalid",patternScaleVerified:true},{...pant,patternScaleVerified:true})));
+});
