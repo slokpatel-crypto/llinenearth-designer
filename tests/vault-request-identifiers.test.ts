@@ -40,7 +40,7 @@ test("both API endpoints validate identifier type before customer lookup or RPC"
   for(const path of ["src/app/api/measurements/vault/route.ts","src/app/api/designer/vault/route.ts"]){
     const source=readFileSync(path,"utf8");
     const guard=source.indexOf("const identifiers=parseVaultRequestIdentifiers(action,body)");
-    const auth=source.indexOf("const customer=vaultActionNeedsCustomerIdentity(action)?await getCustomerIdentity(request):null");
+    const auth=source.indexOf("const customer=optionalOwner?optionalOwner.customer:vaultActionNeedsCustomerIdentity(action)?await getCustomerIdentity(request):null");
     assert.ok(guard>=0&&auth>guard,path);
     assert.match(source,/if\(!identifiers\.ok\)/);
     assert.match(source,/status:400/);
@@ -62,8 +62,10 @@ test("recovery-token load and delete never depend on a legacy session lookup",()
 test("both vault routes bypass optional customer auth only for recovery-token operations",()=>{
   for(const path of ["src/app/api/measurements/vault/route.ts","src/app/api/designer/vault/route.ts"]){
     const source=readFileSync(path,"utf8");
-    const condition="const customer=vaultActionNeedsCustomerIdentity(action)?await getCustomerIdentity(request):null";
+    const condition="const customer=optionalOwner?optionalOwner.customer:vaultActionNeedsCustomerIdentity(action)?await getCustomerIdentity(request):null";
     const auth=source.indexOf(condition);
+    const optional=source.indexOf('const optionalOwner=action==="store"?await resolveVaultStoreOwnerBestEffort(()=>getCustomerIdentity(request)):null;');
+    assert.ok(optional>=0&&optional<auth,path);
     assert.ok(auth>source.indexOf("const identifiers=parseVaultRequestIdentifiers(action,body)"),path);
     assert.ok(source.indexOf('if(action==="claim")')>auth,path);
     assert.ok(source.indexOf('if(action==="load")')>auth,path);
