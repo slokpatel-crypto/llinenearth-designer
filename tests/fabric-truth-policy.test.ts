@@ -44,3 +44,41 @@ test("missing active catalogue evidence never passes",()=>{
   });
   assert.equal(evaluateFabricTruthPolicy(policy,{activeCandidates:0}).gateComplete,false);
 });
+
+test("fabric truth policy cannot be approved using coerced thresholds or reviewer text",()=>{
+  const valid={
+    status:"approved",physicalScalePercent:100,gsmPercent:80,drapePercent:75,fiberPercent:90,
+    signedBy:"Owner",note:"Supplier and owner verified the physical facts.",
+  };
+  for(const malformed of [true,"100",[100],null,{}]){
+    assert.throws(()=>normalizeFabricTruthPolicy({...valid,physicalScalePercent:malformed}),/between 1% and 100%/);
+  }
+  for(const signedBy of [["Owner"],{toString:()=>"Owner"},true]){
+    assert.throws(()=>normalizeFabricTruthPolicy({...valid,signedBy}),/Named owner/);
+  }
+  for(const note of [["Supplier physical evidence"],{toString:()=>"Supplier physical evidence"}]){
+    assert.throws(()=>normalizeFabricTruthPolicy({...valid,note}),/rationale/);
+  }
+  assert.throws(()=>normalizeFabricTruthPolicy({...valid,status:["approved"]}),/status must/);
+});
+
+test("contradictory and coerced fabric coverage counts fail closed",()=>{
+  const policy=normalizeFabricTruthPolicy({
+    status:"approved",physicalScalePercent:100,gsmPercent:80,drapePercent:75,fiberPercent:90,
+    signedBy:"Owner",note:"Supplier and owner verified the physical facts.",
+  });
+  const valid={activeCandidates:20,physicalScale:20,gsm:16,drape:15,fiber:18};
+  assert.equal(evaluateFabricTruthPolicy(policy,valid).gateComplete,true);
+  for(const field of ["physicalScale","gsm","drape","fiber"] as const){
+    const over={...valid,[field]:21};
+    const result=evaluateFabricTruthPolicy(policy,over);
+    assert.equal(result.gateComplete,false);
+    assert.equal(result.detail[field].pass,false);
+  }
+  for(const activeCandidates of ["20",true,20.5,Number.POSITIVE_INFINITY]){
+    assert.equal(evaluateFabricTruthPolicy(policy,{...valid,activeCandidates:activeCandidates as number}).gateComplete,false);
+  }
+  for(const bad of ["20",true,20.5,Number.POSITIVE_INFINITY]){
+    assert.equal(evaluateFabricTruthPolicy(policy,{...valid,physicalScale:bad as number}).gateComplete,false);
+  }
+});

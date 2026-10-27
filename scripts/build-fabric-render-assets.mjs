@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import { measuredPalette, measurePattern } from "../src/lib/fabric-measurement-core.ts";
+import { approvedFabricTileScaleEvidence } from "../src/lib/fabric-render-scale-evidence.ts";
 import { FABRIC_STOCK } from "../src/lib/fabric-stock.ts";
 
 // Catalogue photos include folds, selvage and sometimes printed captions. The
@@ -52,10 +53,12 @@ for(const file of files) {
   const {data}=await sharp(crop).resize(128,128).greyscale().raw().toBuffer({resolveWithObject:true});
   const {data:rgb}=await sharp(crop).resize(128,128).removeAlpha().raw().toBuffer({resolveWithObject:true});
   const palette=measuredPalette(new Uint8Array(rgb),128,128,3,3);
-  const scale=declared[stem]||{};
+  // Physical scale is never inferred from an unreviewed or provenance-free
+  // JSON number. The current empty scale file therefore remains approximate.
+  const scale=approvedFabricTileScaleEvidence(declared[stem])||{};
   const physical={
-    ...(Number(scale.swatchRealWidthMm)>0?{swatchRealWidthMm:Number(scale.swatchRealWidthMm)*cropWidth/width}:{}),
-    ...(Number(scale.repeatRealMm)>0?{repeatRealMm:Number(scale.repeatRealMm)}:{}),
+    ...(scale.swatchRealWidthMm!==undefined?{swatchRealWidthMm:scale.swatchRealWidthMm*cropWidth/width}:{}),
+    ...(scale.repeatRealMm!==undefined?{repeatRealMm:scale.repeatRealMm}:{}),
     originalWidthPx:width,
   };
   const measured=measurePattern(new Uint8Array(data),128,128,palette.palette,physical);
@@ -94,11 +97,15 @@ for(const file of files) {
       ])
     .webp({quality:86,effort:5}).toBuffer();
   await fs.writeFile(path.join(outputDir,`${stem}.webp`),tile);
-  const tileRealWidthMm=Number(scale.swatchRealWidthMm)>0
-    ? Math.round(200*Number(scale.swatchRealWidthMm)*cropWidth/width)/100
-    : Number(scale.repeatRealMm)>0 && repeatDetected && measured.repeatPeriodPx
-      ? Math.round(200*128*Number(scale.repeatRealMm)/measured.repeatPeriodPx)/100
+  const computedTileWidthMm=scale.swatchRealWidthMm!==undefined
+    ? Math.round(200*scale.swatchRealWidthMm*cropWidth/width)/100
+    : scale.repeatRealMm!==undefined && repeatDetected && measured.repeatPeriodPx
+      ? Math.round(200*128*scale.repeatRealMm/measured.repeatPeriodPx)/100
       : null;
+  // Very small measurements can round to zero at the manifest precision.
+  // A non-renderable 0 mm tile must stay approximate, not falsely verified.
+  const tileRealWidthMm=typeof computedTileWidthMm==="number" &&
+    Number.isFinite(computedTileWidthMm)&&computedTileWidthMm>0?computedTileWidthMm:null;
   manifest.assets[stem]={
     tileUrl:`/fabric-tiles/${stem}.webp`,
     placeholderUrl:`/fabric-tiles/${stem}-placeholder.webp`,
@@ -109,8 +116,8 @@ for(const file of files) {
     dominantHex:palette.dominant.hex,
     scaleApproximate:tileRealWidthMm===null,
     physicalScaleStatus:measured.physicalScaleStatus,
-    repeatRealMm:Number(scale.repeatRealMm)>0?Number(scale.repeatRealMm):null,
-    swatchRealWidthMm:Number(scale.swatchRealWidthMm)>0?Number(scale.swatchRealWidthMm):null,
+    repeatRealMm:scale.repeatRealMm??null,
+    swatchRealWidthMm:scale.swatchRealWidthMm??null,
     tileRealWidthMm,
     renderAssetVersion:version,
     tileStrategy,

@@ -92,6 +92,7 @@ type FabricTileManifest={
   assets?:Record<string,{
     tileRealWidthMm?:number|null;
     repeatPeriodPx?:number|null;
+    repeatDetected?:boolean;
     scaleApproximate?:boolean;
     renderAssetVersion?:string;
   }>;

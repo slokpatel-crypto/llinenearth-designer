@@ -28,11 +28,13 @@ function record(value:unknown):UnknownRecord{
   return value&&typeof value==="object"&&!Array.isArray(value)?value as UnknownRecord:{};
 }
 function text(value:unknown,limit:number){
-  return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
+  return typeof value==="string"?value.replace(/\s+/g," ").trim().slice(0,limit):"";
 }
 function percent(value:unknown,label:string){
-  const n=Number(value);
-  if(!Number.isFinite(n)||n<1||n>100) throw new Error(`${label} coverage must be between 1% and 100%.`);
+  if(typeof value!=="number"||!Number.isFinite(value)||value<1||value>100) {
+    throw new Error(`${label} coverage must be between 1% and 100%.`);
+  }
+  const n=value;
   return Math.round(n);
 }
 
@@ -57,8 +59,7 @@ export function normalizeFabricTruthPolicy(input:unknown):FabricTruthPolicy{
 }
 
 function safeCount(value:unknown){
-  const n=Number(value);
-  return Number.isFinite(n)&&n>0?Math.floor(n):0;
+  return typeof value==="number"&&Number.isSafeInteger(value)&&value>=0?value:0;
 }
 function requiredCount(active:number,pct:number){
   return active>0?Math.ceil(active*pct/100):0;
@@ -91,7 +92,9 @@ export function evaluateFabricTruthPolicy(
       requiredCount:required,
       currentCount:current,
       percent:active?Math.round(current/active*100):0,
-      pass:required!==null&&active>0&&current>=required,
+      // A field count larger than the active catalogue is contradictory,
+      // not evidence of >100% coverage.
+      pass:required!==null&&active>0&&current<=active&&current>=required,
     }];
   })) as Record<FabricTruthPolicyField,{
     thresholdPercent:number|null;

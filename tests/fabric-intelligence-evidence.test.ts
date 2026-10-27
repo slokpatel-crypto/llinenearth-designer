@@ -129,3 +129,62 @@ test("reviewed physical claims are applied independently by field provenance",()
   assert.equal(result.fiberContent,null);
   assert.equal(result.patternScaleVerified,undefined);
 });
+
+test("reviewed scale requires actual finite physical dimensions, not only a status",()=>{
+  for(const bad of [null,0,-1,Number.NaN,Number.POSITIVE_INFINITY,5001,"12"]){
+    const reviewed=intelligence("reviewed");
+    reviewed.measuredEvidence.repeatMm=bad as number|null;
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    assert.equal(result.patternScaleVerified,undefined);
+    assert.equal(result.renderScale?.physicalScaleStatus,"unknown");
+  }
+  const swatch=intelligence("reviewed");
+  swatch.measuredEvidence.patternPhysicalScale="declared_swatch_width";
+  swatch.measuredEvidence.repeatMm=null;
+  swatch.measuredEvidence.stripeWidthMm=null;
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,swatch).patternScaleVerified,undefined);
+  swatch.measuredEvidence.stripeWidthMm=3;
+  const withStripe=applyVerifiedPhysicalFabricEvidence(fabric,swatch);
+  assert.equal(withStripe.patternScaleVerified,true);
+  assert.equal(withStripe.renderScale?.repeatMm,null);
+  assert.equal(withStripe.renderScale?.stripeWidthMm,3);
+});
+
+test("invalid stripe widths are never copied into reviewed scale",()=>{
+  for(const stripeWidthMm of [-2,Number.NaN,Number.POSITIVE_INFINITY,6000,20]){
+    const reviewed=intelligence("reviewed");
+    reviewed.measuredEvidence.stripeWidthMm=stripeWidthMm;
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    assert.equal(result.patternScaleVerified,true);
+    assert.equal(result.renderScale?.repeatMm,10);
+    assert.equal(result.renderScale?.stripeWidthMm,null);
+  }
+});
+
+test("invalid source, GSM, drape and fibre cannot be promoted",()=>{
+  for(const sourceUrl of ["not-a-url","http://supplier.example/roll","https://user:pass@supplier.example/roll",{}]){
+    const reviewed=intelligence("reviewed");
+    reviewed.verifiedPhysical.sourceUrl=sourceUrl as string;
+    reviewed.verifiedPhysical.evidenceNote=null;
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    assert.equal(result.patternScaleVerified,undefined);
+    assert.equal(result.weightGsm,null);
+    assert.equal(result.fiberContent,null);
+  }
+  const malformed=intelligence("reviewed");
+  malformed.verifiedPhysical.gsm="145" as unknown as number;
+  malformed.verifiedPhysical.drape="Stretchy" as "Balanced";
+  malformed.verifiedPhysical.fiberContent={text:"linen"} as unknown as string;
+  const result=applyVerifiedPhysicalFabricEvidence(fabric,malformed);
+  assert.equal(result.weightGsm,null);
+  assert.equal(result.drape,null);
+  assert.equal(result.fiberContent,null);
+  assert.equal(result.fiberContentVerified,undefined);
+  assert.equal(result.patternScaleVerified,true);
+});
+
+test("rejected profile cannot upgrade physical facts despite reviewed trust",()=>{
+  const rejected=intelligence("reviewed");
+  rejected.reviewStatus="rejected";
+  assert.deepEqual(applyVerifiedPhysicalFabricEvidence(fabric,rejected),fabric);
+});

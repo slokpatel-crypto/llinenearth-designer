@@ -271,3 +271,26 @@ test("Roadmap control tower revokes stale approval signals before re-fetching so
   assert.match(client,/setErrors\(\[\]\)/);
   assert.match(client,/setSources\(next\)/);
 });
+
+test("Phase 2 cannot certify coerced or impossible physical coverage at roadmap boundary",()=>{
+  const policy={
+    version:"fabric-truth-policy-v1",status:"approved",
+    physicalScalePercent:100,gsmPercent:80,drapePercent:75,fiberPercent:90,
+    signedBy:"Owner",note:"Owner checked the physical catalogue coverage.",
+  };
+  const coverage={activeCandidates:20,physicalScale:20,gsm:16,drape:15,fiber:18};
+  const input={
+    fabricAnalyzer:{groundTruth:{reviewedFabrics:50,target:50}},
+    fabricColor:{summary:{uniqueFabrics:10,target:10,evidenceGateComplete:true}},
+    fabricTruthPolicy:{policy},
+  };
+  const phase2=(c:Record<string,unknown>)=>summarizeRoadmapReadiness({
+    ...input,designerData:{coverage:c},
+  }).phases.find((item)=>item.phase===2);
+  assert.equal(phase2(coverage)?.evidenceComplete,true);
+  for(const key of Object.keys(coverage)){
+    assert.equal(phase2({...coverage,[key]:String(coverage[key as keyof typeof coverage])})?.evidenceComplete,false);
+    assert.equal(phase2({...coverage,[key]:true})?.evidenceComplete,false);
+  }
+  assert.equal(phase2({...coverage,gsm:21})?.evidenceComplete,false);
+});
