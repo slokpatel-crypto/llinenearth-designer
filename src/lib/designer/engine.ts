@@ -368,15 +368,30 @@ export function designerMaterialEvidence(shirt: DesignerFabric, pant: DesignerFa
 }
 
 const weightBands = ["Light", "Medium", "Heavy"] as const;
+function weightBandIndex(value:unknown):number|null {
+  if(typeof value!=="string") return null;
+  const index=weightBands.indexOf(value as (typeof weightBands)[number]);
+  return index>=0 ? index : null;
+}
+
+function knownPatternScale(value:unknown):DesignerFabric["patternScale"] {
+  return typeof value==="string" && ["None","Fine","Medium","Medium-Bold","Bold"].includes(value)
+    ? value as DesignerFabric["patternScale"] : null;
+}
+
 
 export function evaluateDesignerAccent(base: DesignerFabric, accent: DesignerFabric, placement: DesignerAccent["placement"], occasion: OccasionTier): DesignerRuleResult[] {
   const roleStatus: RuleStatus = accent.roleTags === null ? "unknown" : accent.roleTags.includes("accent_safe") ? "pass" : "flag";
-  const weightStatus: RuleStatus = !base.weightClass || !accent.weightClass ? "unknown"
-    : weightBands.indexOf(accent.weightClass) <= weightBands.indexOf(base.weightClass) ? "pass" : "flag";
+  const baseWeight=weightBandIndex(base.weightClass);
+  const accentWeight=weightBandIndex(accent.weightClass);
+  const weightStatus: RuleStatus = baseWeight===null || accentWeight===null ? "unknown"
+    : accentWeight<=baseWeight ? "pass" : "flag";
   const colourStatus: RuleStatus = base.tone && accent.tone && base.tone !== accent.tone ? "pass"
     : base.colorFamily && accent.colorFamily ? base.colorFamily !== accent.colorFamily ? "pass" : "flag" : "unknown";
-  const patternStatus: RuleStatus = base.patternScale === null || accent.patternScale === null ? "unknown"
-    : base.patternScale === "None" || accent.patternScale === "None" ? "pass" : "flag";
+  const basePattern=knownPatternScale(base.patternScale);
+  const accentPattern=knownPatternScale(accent.patternScale);
+  const patternStatus: RuleStatus = basePattern===null || accentPattern===null ? "unknown"
+    : basePattern==="None" || accentPattern==="None" ? "pass" : "flag";
   const placementStatus: RuleStatus = placement === "waistband" ? "unknown"
     : (placement === "placket" || placement === "pocket") && (occasion === "Semi-Formal" || occasion === "Formal") ? "flag" : "pass";
   return [
@@ -445,16 +460,18 @@ export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabri
   const jewelClash = shirt.colorFamily === "Jewel-tone" && pant.colorFamily === "Jewel-tone"
     && swatchSaturation(shirt.hex) > .4 && swatchSaturation(pant.hex) > .4;
   const colorFlag = jewelClash || colorRelation === "unverified contrast";
+  const shirtPatternScale=knownPatternScale(shirt.patternScale);
+  const pantPatternScale=knownPatternScale(pant.patternScale);
   const prominent = (value: DesignerFabric["patternScale"]) => value === "Bold" || value === "Medium-Bold";
-  const oneProminent = prominent(shirt.patternScale) || prominent(pant.patternScale);
-  const otherRestrained = prominent(shirt.patternScale)
-    ? pant.patternScale === "None" || pant.patternScale === "Fine"
-    : shirt.patternScale === "None" || shirt.patternScale === "Fine";
-  const patternUncertain = oneProminent && (prominent(shirt.patternScale) ? pant.patternScale === null : shirt.patternScale === null);
+  const oneProminent = prominent(shirtPatternScale) || prominent(pantPatternScale);
+  const otherRestrained = prominent(shirtPatternScale)
+    ? pantPatternScale === "None" || pantPatternScale === "Fine"
+    : shirtPatternScale === "None" || shirtPatternScale === "Fine";
+  const patternUncertain = oneProminent && (prominent(shirtPatternScale) ? pantPatternScale === null : shirtPatternScale === null);
   const patternConflict = oneProminent && !otherRestrained && !patternUncertain;
   const buttonScore = score(buttons, "Button_Material", style.button);
-  const shirtWeight = shirt.weightClass ? weightBands.indexOf(shirt.weightClass) : null;
-  const pantWeight = pant.weightClass ? weightBands.indexOf(pant.weightClass) : null;
+  const shirtWeight=weightBandIndex(shirt.weightClass);
+  const pantWeight=weightBandIndex(pant.weightClass);
   const weightStatus: RuleStatus = shirtWeight === null || pantWeight === null ? "unknown" : Math.abs(shirtWeight - pantWeight) > 1 ? "flag" : "pass";
   const seasons = (values: string[]) => values.map((value) => value.toLowerCase().trim());
   const shirtSeasons = shirt.bestSeason?.length ? seasons(shirt.bestSeason) : null;
@@ -475,9 +492,9 @@ export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabri
     rule("CR-2", "Medium", colorFlag ? "flag" : "pass",
       jewelClash ? "Two saturated jewel tones need a stylist's review." : `The pair reads as ${colorRelation}; colour is approximate in catalogue photographs.`),
     rule("CR-3", "Medium", weightStatus, weightStatus === "unknown" ? "The catalogue lacks comparable weight-class data; measured GSM, opacity and drape still require physical evidence." : weightStatus === "flag" ? "The recorded shirt and trouser weight classes differ by two bands; verify both physical GSM values." : "The catalogue weight classes are within one band; this does not verify measured GSM."),
-    rule("CR-4", "High", patternConflict ? "flag" : shirt.patternScale === null || pant.patternScale === null ? "unknown" : "pass",
-      patternConflict ? "A bold motif needs a solid or fine companion." : shirt.patternScale === null || pant.patternScale === null
-        ? "At least one print has no confirmed motif scale." : "The pair has a restrained pattern load."),
+    rule("CR-4", "High", patternConflict ? "flag" : shirtPatternScale === null || pantPatternScale === null ? "unknown" : "pass",
+      patternConflict ? "A bold motif needs a solid or fine companion." : shirtPatternScale === null || pantPatternScale === null
+        ? "At least one print lacks a recorded motif scale." : "The catalogue pairing has a restrained pattern load; physical repeat remains unverified."),
     rule("CR-5", "Low", seasonStatus, seasonStatus === "unknown" ? "The specific fabrics have no verified season or thermal-comfort data." : seasonStatus === "flag" ? "The recorded season tags do not overlap; verify real-world comfort." : "The catalogue season tags overlap or include all-season; physical comfort remains unverified."),
     rule("CR-6", "High", accentStatus, !accent ? "This direction uses one cloth per garment and no accent fabric." : accentStatus === "unknown" ? "The accent needs additional verification before it can be recommended." : accentStatus === "flag" ? "The proposed accent breaks one or more multi-fabric rules." : "The accent meets the verified multi-fabric rules."),
     rule("CR-7", "Low", buttonScore === null || shirtScore === null ? "unknown" : Math.abs(buttonScore - shirtScore) > 1 ? "flag" : "pass",
@@ -527,8 +544,8 @@ export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabri
     spec:expandedStyleSpec??fromLegacyStyle(style),
     occasion,
     climate:context.climate,
-    shirtPatternScale:shirt.patternScale,
-    pantPatternScale:pant.patternScale,
+    shirtPatternScale,
+    pantPatternScale,
     shirtWeightClass:shirt.weightClass,
     pantWeightClass:pant.weightClass,
     shirtDrapeVerified:reviewedPhysicalFact(shirt,"drape"),
