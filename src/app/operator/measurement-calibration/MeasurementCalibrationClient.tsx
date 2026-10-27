@@ -44,7 +44,16 @@ export default function MeasurementCalibrationClient(){
         typeof payload.summary.complete!=="boolean"||
         typeof payload.summary.total!=="number"||
         typeof payload.summary.chestPass!=="boolean"||
-        typeof payload.summary.sleevePass!=="boolean")
+        typeof payload.summary.sleevePass!=="boolean"||
+        !Number.isInteger(payload.summary.total)||payload.summary.total<0||
+        !Number.isInteger(payload.summary.target)||payload.summary.target<1||
+        (payload.summary.complete&&(
+          !payload.summary.chestPass||!payload.summary.sleevePass||
+          payload.summary.total<payload.summary.target||
+          typeof payload.summary.medianChestErrorCm!=="number"||
+          typeof payload.summary.medianSleeveErrorCm!=="number"||
+          !Number.isFinite(payload.summary.medianChestErrorCm)||
+          !Number.isFinite(payload.summary.medianSleeveErrorCm))))
         throw new Error("Calibration evidence response is invalid.");
       setData(payload);
       setLoadError("");
