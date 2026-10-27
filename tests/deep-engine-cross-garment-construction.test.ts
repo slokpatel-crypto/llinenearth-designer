@@ -204,3 +204,27 @@ test("hot-weather catalogue weight cautions do not claim supplier-verified GSM",
   assert.match(caution?.explanation??"",/catalogue|supplier|confirm/i);
   assert.doesNotMatch(caution?.explanation??"",/confirmed in the heavy weight class/i);
 });
+
+test("Style Director catalogue search excludes every incompatible v2 construction candidate",()=>{
+  const require=createRequire(import.meta.url);
+  const {load}=require("../scripts/designer-test-loader.cjs");
+  const engine=load("src/lib/designer/engine.ts");
+  const {searchDesignerCatalogue}=load("src/lib/designer/search.ts");
+  const {fromLegacyStyle}=load("src/lib/designer/style-spec-v2.ts");
+  const style=engine.designerStyleForOccasion("Semi-Formal");
+  const base=fromLegacyStyle(style);
+  const shirt=engine.DESIGNER_SHIRTS.find((item:{id:string})=>item.id===engine.DESIGNER_REVIEWED_PAIRING.shirtId);
+  const pant=engine.DESIGNER_PANTS.find((item:{id:string})=>item.id===engine.DESIGNER_REVIEWED_PAIRING.pantId);
+  assert(shirt&&pant,"reference pairing must remain available for regression");
+  const input={
+    shirts:[shirt],pants:[pant],currentShirt:shirt,currentPant:pant,
+    chosenStyle:style,occasion:"Semi-Formal",context:{climate:"Not specified",intention:"Balanced"},
+  };
+  const normal=searchDesignerCatalogue({...input,styleSpec:base});
+  assert(normal.length>0,"known baseline must remain recommendable");
+  const incompatible=structuredClone(base);
+  incompatible.shirt.type="short_sleeve_shirt";
+  incompatible.shirt.sleeve="full_sleeve";
+  assert.deepEqual(searchDesignerCatalogue({...input,styleSpec:incompatible}),[]);
+  assert.equal(base.shirt.type,"dress_shirt","search must not mutate the saved recipe");
+});
