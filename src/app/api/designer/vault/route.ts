@@ -3,6 +3,7 @@ import { parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity } from "
 import { vaultRateBlocked } from "@/lib/vault-rate-guard";
 import { ownedDesignVaultRowMatchesPayload } from "@/lib/vault-owned-list-integrity";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
+import { requireVaultBooleanResult } from "@/lib/vault-write-integrity";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -161,10 +162,10 @@ export async function POST(request:Request){
 
     if(action==="deleteOwned"){
       if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
-      const deleted=await rpc<boolean>("designer_locked_revision_vault_delete_owned",{
+      const deleted=requireVaultBooleanResult(await rpc<unknown>("designer_locked_revision_vault_delete_owned",{
         p_vault_id:identifiers.vaultId!,p_owner_user_id:customer.id,
-      });
-      return jsonNoStore({deleted:Boolean(deleted)});
+      }));
+      return jsonNoStore({deleted});
     }
 
     const parsed=parseDesignVaultRecoveryToken(identifiers.recoveryToken!);
@@ -172,9 +173,9 @@ export async function POST(request:Request){
 
     if(action==="claim"){
       if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
-      const claimed=await rpc<boolean>("designer_locked_revision_vault_set_owner",{
+      const claimed=requireVaultBooleanResult(await rpc<unknown>("designer_locked_revision_vault_set_owner",{
         p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,p_owner_user_id:customer.id,
-      });
+      }));
       if(claimed){
         const rows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>("designer_locked_revision_vault_get",{
           p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
@@ -192,7 +193,7 @@ export async function POST(request:Request){
           }
         }
       }
-      return jsonNoStore({claimed:Boolean(claimed)});
+      return jsonNoStore({claimed});
     }
 
     if(action==="load"){
@@ -209,11 +210,11 @@ export async function POST(request:Request){
     }
 
     if(action==="delete"){
-      const deleted=await rpc<boolean>("designer_locked_revision_vault_delete",{
+      const deleted=requireVaultBooleanResult(await rpc<unknown>("designer_locked_revision_vault_delete",{
         p_vault_id:parsed.vaultId,
         p_access_hash:parsed.accessHash,
-      });
-      return jsonNoStore({deleted:Boolean(deleted)});
+      }));
+      return jsonNoStore({deleted});
     }
 
     return jsonNoStore({error:"Unsupported design-vault action."},{status:400});
