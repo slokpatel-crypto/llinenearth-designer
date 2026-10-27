@@ -188,9 +188,22 @@ export function DesignerModule() {
   const directorHandoffCurrent=directorHandoffIdentity===handoffIdentity;
   const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
   const committedAssessmentIdentity=useRef(assessmentIdentity);
+  const assessRunRef=useRef<{identity:string;controller:AbortController}|null>(null);
   const committedCreativeId=useRef(activeCreative?.id||null);
   useLayoutEffect(()=>{committedCreativeId.current=activeCreative?.id||null;},[activeCreative?.id]);
-  useLayoutEffect(()=>{committedAssessmentIdentity.current=assessmentIdentity;},[assessmentIdentity]);
+  useLayoutEffect(()=>{
+    committedAssessmentIdentity.current=assessmentIdentity;
+    const run=assessRunRef.current;
+    if(run && run.identity!==assessmentIdentity){
+      run.controller.abort();
+      assessRunRef.current=null;
+      setAssessmentLoading(false);
+    }
+  },[assessmentIdentity]);
+  useEffect(()=>()=>{
+    assessRunRef.current?.controller.abort();
+    assessRunRef.current=null;
+  },[]);
   const visibleShirts=useMemo(()=>discoverFabrics(shirtOptions,"shirt",shirtFilter,shirtSearch),[shirtFilter,shirtOptions,shirtSearch]);
   const visiblePants=useMemo(()=>discoverFabrics(pantOptions,"trouser",pantFilter,pantSearch),[pantFilter,pantOptions,pantSearch]);
   const shirtFilterCounts=useMemo(()=>fabricFilterCounts(shirtOptions,"shirt",shirtSearch),[shirtOptions,shirtSearch]);
@@ -881,7 +894,17 @@ export function DesignerModule() {
   }
 
   async function assess(nextStyle: DesignerStyle = style) {
-    if (!shirt || !pant || assessmentLoading) return;
+    if (!shirt || !pant || assessRunRef.current) return;
+    const nextStyleSpec=mergeLegacyIntoStyleSpec(styleSpec,nextStyle);
+    const expectedIdentity=JSON.stringify([
+      shirt.id,pant.id,occasion,styleIdentity(nextStyle),nextStyleSpec,
+      climate,intention,measurementProfile,tailorObservations,bodyProfile,
+    ]);
+    const controller=new AbortController();
+    const run={identity:expectedIdentity,controller};
+    assessRunRef.current=run;
+    const isCurrent=()=>assessRunRef.current===run &&
+      !controller.signal.aborted && committedAssessmentIdentity.current===expectedIdentity;
     setActiveCreative(null);
     setCreativeVisualReview(null);
     setStyle({ ...nextStyle });
@@ -893,8 +916,11 @@ export function DesignerModule() {
     const context:DesignerContext={climate,intention};
     try {
       const next=await requestLookAssessment({
-        shirtId:shirt.id,pantId:pant.id,occasion,style:nextStyle,context,
+        shirtId:shirt.id,pantId:pant.id,occasion,style:nextStyle,styleSpec:nextStyleSpec,
+        bodyProfile,measurements:measurementProfile,observations:tailorObservations,
+        context,signal:controller.signal,
       });
+      if(!isCurrent()) return;
       applyServerAssessment(next);
       try {
         const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
@@ -922,11 +948,15 @@ export function DesignerModule() {
         setRecommendationId(event.id);
       } catch { /* The direction still works when event storage is unavailable. */ }
     } catch(error) {
+      if(!isCurrent()) return;
       setAssessment(null);
       setRecommendation(null);
       setAssessmentError(error instanceof Error?error.message:"Designer assessment is unavailable.");
     } finally {
-      setAssessmentLoading(false);
+      if(assessRunRef.current===run){
+        assessRunRef.current=null;
+        setAssessmentLoading(false);
+      }
     }
   }
 
