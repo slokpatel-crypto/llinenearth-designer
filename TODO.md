@@ -75,6 +75,7 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [ ] Notifications and broad marketing automations.
 
 ## Progress record
+- [x] 2026-10-28 04:00 IST (draft): Physical motif-repeat confirmation is no longer suppressed by a catalogue Fine/None/Bold label; both fabric IDs need independently verified scale flags and valid closed-vocabulary labels. Added negative and valid-case recommendation regressions. This requests human physical evidence; it does not supply it. Exact-head CI pending.
 - [x] 2026-10-28 04:00 IST (draft): Closed physical-physics provenance upgrade gap: supplying a reviewed label without an explicit GSM measurement patch cannot convert a catalogue fallback into reviewed evidence. Explicit weaker/unknown labels remain conservative; valid reviewed patches and malformed-value rejection have focused tests. No supplier reading was manufactured. Exact-head CI pending.
 - [x] 2026-10-28 04:00 IST (draft): Pairing and accent rules now fail closed on malformed/unknown weight-class and pattern-scale vocabularies instead of treating invalid index -1 or unknown motifs as a valid pass. The catalogue motif warning explicitly avoids claiming measured physical repeat. Added negative and valid-case engine regressions; exact-head CI pending.
 - [x] 2026-10-28 04:00 IST (draft): Corrected hot/humid weight, weight-class and season-tag recommendation language to identify catalogue observations rather than claiming confirmed supplier physical data. Added roll-up and hot-weather negative regressions.
