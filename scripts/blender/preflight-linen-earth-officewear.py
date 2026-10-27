@@ -7,7 +7,11 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from uv_mesh_gate import inspect_uv_polygons
 
 import bpy
 from mathutils import Vector
@@ -75,7 +79,20 @@ def evaluated_mesh_stats(obj):
         triangles = len(mesh.loop_triangles)
         degenerate = sum(1 for polygon in mesh.polygons if not math.isfinite(polygon.area) or polygon.area <= 1e-10)
         uv_layers = len(mesh.uv_layers)
-        uv_name = mesh.uv_layers.active.name if mesh.uv_layers.active else None
+        uv_layer = mesh.uv_layers.active
+        uv_name = uv_layer.name if uv_layer else None
+        # Evaluate UV loop coordinates, not only the existence of a UV layer.
+        # Blender stores UVs per polygon corner; shared mesh vertices may
+        # legitimately have different per-face UVs, which must be reviewed.
+        uv_quality = inspect_uv_polygons(
+            [
+                [
+                    (int(mesh.loops[index].vertex_index), tuple(uv_layer.data[index].uv))
+                    for index in polygon.loop_indices
+                ]
+                for polygon in mesh.polygons
+            ]
+        ) if uv_layer else None
         return {
             "vertices": vertices,
             "polygons": polygons,
@@ -84,6 +101,7 @@ def evaluated_mesh_stats(obj):
             "degenerateRatio": (degenerate / polygons) if polygons else 1.0,
             "uvLayers": uv_layers,
             "activeUv": uv_name,
+            "uvQuality": uv_quality,
         }
     finally:
         evaluated.to_mesh_clear()
@@ -403,6 +421,31 @@ def main():
             reasons.append(f"{name} has empty or non-renderable geometry.")
         if stats["uvLayers"] <= 0 or not stats["activeUv"]:
             reasons.append(f"{name} needs an active UV map.")
+        uv_quality = stats["uvQuality"]
+        if uv_quality is not None:
+            if uv_quality["invalidUvFaces"] or uv_quality["nonfiniteUvFaces"]:
+                reasons.append(
+                    f"{name} UV data contains invalid or nonfinite faces: "
+                    f"{uv_quality['invalidUvFaces']} invalid, {uv_quality['nonfiniteUvFaces']} nonfinite."
+                )
+            if uv_quality["collapsedUvFaces"]:
+                reasons.append(
+                    f"{name} UV projection has collapsed faces: {uv_quality['collapsedUvFaces']}."
+                )
+            if uv_quality["discontinuousSharedUvEdges"]:
+                reasons.append(
+                    f"{name} UV shared-edge discontinuities: "
+                    f"{uv_quality['discontinuousSharedUvEdges']} of {uv_quality['sharedUvEdges']} "
+                    "shared edges; unreviewed UV seams cannot pass native preflight."
+                )
+            if uv_quality["nonmanifoldUvEdges"]:
+                reasons.append(
+                    f"{name} has {uv_quality['nonmanifoldUvEdges']} nonmanifold UV mesh edges."
+                )
+            if stats["polygons"] > 1 and not uv_quality["sharedUvEdges"]:
+                reasons.append(
+                    f"{name} has no shared UV mesh edges; continuity cannot be verified."
+                )
         if stats["degenerateRatio"] > MAX_DEGENERATE_FACE_RATIO:
             reasons.append(
                 f"{name} has too many zero-area/degenerate faces: "
