@@ -15,6 +15,7 @@ import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-styl
 import { PhotoOutfitPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview-support";
 import { creativeDirectionMatchesSelection } from "@/lib/designer/creative-selection";
+import { createPreviewRequestScope } from "@/lib/designer/preview-request-scope";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, validStoredMeasurementProfile, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
@@ -147,6 +148,7 @@ export function DesignerModule() {
   const [searchResults, setSearchResults] = useState<DesignerSearchOption[]>([]);
   const [searchLoading,setSearchLoading]=useState(false);
   const [searchError,setSearchError]=useState("");
+  const searchRequestScopeRef=useRef(createPreviewRequestScope());
   const [advisorEpoch,setAdvisorEpoch]=useState(0);
   const [assessment,setAssessment]=useState<DesignerAssessmentResponse|null>(null);
   const [assessmentLoading,setAssessmentLoading]=useState(false);
@@ -187,6 +189,7 @@ export function DesignerModule() {
   const handoffIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention]);
   const directorHandoffCurrent=directorHandoffIdentity===handoffIdentity;
   const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+  const searchIdentity=JSON.stringify([assessmentIdentity,searchScope]);
   const committedAssessmentIdentity=useRef(assessmentIdentity);
   const assessRunRef=useRef<{identity:string;controller:AbortController}|null>(null);
   const committedCreativeId=useRef(activeCreative?.id||null);
@@ -213,6 +216,17 @@ export function DesignerModule() {
     assessRunRef.current?.controller.abort();
     assessRunRef.current=null;
   },[]);
+  useLayoutEffect(()=>{
+    // An old alternative search must not populate a different fabric, style,
+    // fit or search scope after the user has changed the selection.
+    const scope=searchRequestScopeRef.current;
+    scope.invalidate();
+    scope.activate();
+    setSearchResults([]);
+    setSearchLoading(false);
+    setSearchError("");
+    return ()=>scope.invalidate();
+  },[searchIdentity]);
   const visibleShirts=useMemo(()=>discoverFabrics(shirtOptions,"shirt",shirtFilter,shirtSearch),[shirtFilter,shirtOptions,shirtSearch]);
   const visiblePants=useMemo(()=>discoverFabrics(pantOptions,"trouser",pantFilter,pantSearch),[pantFilter,pantOptions,pantSearch]);
   const shirtFilterCounts=useMemo(()=>fabricFilterCounts(shirtOptions,"shirt",shirtSearch),[shirtOptions,shirtSearch]);
@@ -624,13 +638,16 @@ export function DesignerModule() {
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   }
 
-    async function runAdvancedSearch() {
-    if (!shirt || !pant || searchLoading) return;
+  async function runAdvancedSearch() {
+    if(!shirt || !pant) return;
+    const request=searchRequestScopeRef.current.begin();
+    if(!request) return;
     setSearchLoading(true);
     setSearchError("");
     try {
       const response=await fetch("/api/designer/search",{
         method:"POST",
+        signal:request.signal,
         headers:{"content-type":"application/json"},
         body:JSON.stringify({
           shirtId:shirt.id,
@@ -645,13 +662,16 @@ export function DesignerModule() {
         }),
       });
       const data=await response.json() as {results?:DesignerSearchOption[];error?:string};
+      if(!request.isCurrent()) return;
       if(!response.ok) throw new Error(data.error || "Designer could not prepare alternatives.");
       setSearchResults(Array.isArray(data.results)?data.results:[]);
     } catch(error) {
+      if(!request.isCurrent()) return;
       setSearchResults([]);
       setSearchError(error instanceof Error ? error.message : "Designer could not prepare alternatives.");
     } finally {
-      setSearchLoading(false);
+      if(request.isCurrent()) setSearchLoading(false);
+      request.finish();
     }
   }
 
