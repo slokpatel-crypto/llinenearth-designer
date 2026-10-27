@@ -48,7 +48,13 @@ export async function lockGarmentSpec(
   const recipeHash=await sha256Hex(canonical);
   const lockedAt=safeTimestamp(options.lockedAt ?? new Date().toISOString());
   const stamp=lockedAt.replace(/[-:.TZ]/g,"").slice(0,14);
-  const revisionId=`LE-LOCK-${stamp}-${recipeHash.slice(0,12).toUpperCase()}`;
+  // A timestamp rounded to seconds plus a recipe hash is NOT a unique order
+  // identity: two customers locking an identical recipe within one second
+  // previously shared the same revision ID. A fresh 64-bit nonce separates
+  // independently locked revisions while leaving the recipe hash stable.
+  const nonce=Array.from(globalThis.crypto.getRandomValues(new Uint8Array(8)),
+    byte=>byte.toString(16).padStart(2,"0")).join("").toUpperCase();
+  const revisionId=`LE-LOCK-${stamp}-${recipeHash.slice(0,12).toUpperCase()}-${nonce}`;
   const clone=JSON.parse(canonical) as CanonicalGarmentSpec;
   return {
     version:LOCKED_DESIGN_VERSION,
