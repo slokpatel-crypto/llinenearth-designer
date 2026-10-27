@@ -98,18 +98,18 @@ export const CROSS_GARMENT_RULES:readonly CrossGarmentRule[]=[
   },
   {
     id:"CG-HOT-HEAVY",
-    name:"Hot-humid verified weight check",
+    name:"Hot-humid recorded weight caution",
     appliesWhen:({climate,shirtWeightClass,pantWeightClass})=>climate==="Hot / humid"
       && shirtWeightClass==="Heavy" && pantWeightClass==="Heavy",
     effect:"penalty",
     severity:"Medium",
-    explanation:()=> "Both garments are confirmed in the heavy weight class for a hot/humid context; consider a lighter verified cloth combination.",
+    explanation:()=> "Both garments are labelled heavy in the available catalogue for hot/humid wear. Confirm physical GSM, comfort and drape with the supplier or tailor before treating this as a buildable choice.",
     provenance:"owner-provided",
     reviewStatus:"provisional",
   },
   {
     id:"CG-WIDE-DRAPE-VERIFY",
-    name:"Wide silhouette drape verification",
+    name:"Wide silhouette drape evidence review",
     appliesWhen:({spec,pantDrapeVerified})=>wideFits.has(spec.pant.fit) && !pantDrapeVerified,
     effect:"penalty",
     severity:"Low",
