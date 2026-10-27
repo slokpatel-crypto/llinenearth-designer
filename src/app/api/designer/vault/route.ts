@@ -2,6 +2,7 @@ import { linkVaultOwnerBestEffort, resolveVaultStoreOwnerBestEffort, vaultOwners
 import { parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity } from "@/lib/vault-request-identifiers";
 import { vaultRateBlocked } from "@/lib/vault-rate-guard";
 import { ownedDesignVaultRowMatchesPayload } from "@/lib/vault-owned-list-integrity";
+import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -150,7 +151,7 @@ export async function POST(request:Request){
         "designer_locked_revision_vault_get_owned",
         {p_vault_id:vaultId,p_owner_user_id:customer.id},
       );
-      const row=rows[0];
+      const row=selectVaultReadRow(rows);
       if(!row?.payload) return jsonNoStore({error:"Design not found."},{status:404});
       if(!await verifyLockedDesignRevision(row.payload)) {
         return jsonNoStore({error:"Stored design failed integrity verification."},{status:409});
@@ -178,7 +179,7 @@ export async function POST(request:Request){
         const rows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>("designer_locked_revision_vault_get",{
           p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
         });
-        const revision=rows[0]?.payload;
+        const revision=selectVaultReadRow(rows)?.payload as LockedDesignRevision | undefined;
         if(revision&&await verifyLockedDesignRevision(revision)){
           try{
             await rpc("production_claim_revision_ownership",{
@@ -199,7 +200,7 @@ export async function POST(request:Request){
         p_vault_id:parsed.vaultId,
         p_access_hash:parsed.accessHash,
       });
-      const row=rows[0];
+      const row=selectVaultReadRow(rows);
       if(!row?.payload) return jsonNoStore({error:"Design not found or recovery token expired."},{status:404});
       if(!await verifyLockedDesignRevision(row.payload)) {
         return jsonNoStore({error:"Stored design failed integrity verification."},{status:409});

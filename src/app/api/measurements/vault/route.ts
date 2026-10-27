@@ -2,6 +2,7 @@ import { linkVaultOwnerBestEffort, resolveVaultStoreOwnerBestEffort, vaultOwners
 import { parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity } from "@/lib/vault-request-identifiers";
 import { vaultRateBlocked } from "@/lib/vault-rate-guard";
 import { isVaultListRowEnvelope } from "@/lib/vault-owned-list-integrity";
+import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -126,7 +127,7 @@ export async function POST(request:Request){
         "measurement_profile_vault_get_owned",
         {p_vault_id:identifiers.vaultId!,p_owner_user_id:customer.id},
       );
-      const row=rows[0];
+      const row=selectVaultReadRow(rows);
       const profile=validStoredMeasurementProfile(row?.profile);
       const observations=validStoredTailorObservationProfile(row?.observations);
       if(!row||!profile||!observations) {
@@ -158,7 +159,7 @@ export async function POST(request:Request){
       const rows=await rpc<Array<{profile:MeasurementProfile;observations:TailorObservationProfile;expires_at:string}>>("measurement_profile_vault_get",{
         p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
       });
-      const row=rows[0];
+      const row=selectVaultReadRow(rows);
       const profile=validStoredMeasurementProfile(row?.profile);
       const observations=validStoredTailorObservationProfile(row?.observations);
       if(!row||!profile||!observations) {
