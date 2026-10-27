@@ -13,8 +13,8 @@ type GlbPrimitive={
 type GlbMesh={name?:string;primitives?:GlbPrimitive[]};
 type GlbNode={mesh?:number};
 type GlbImage={uri?:string};
-type GlbBuffer={uri?:string};
-type GlbAccessor={count?:number;type?:string;componentType?:number;bufferView?:number;normalized?:boolean};
+type GlbBuffer={uri?:string;byteLength?:number};
+type GlbAccessor={count?:number;type?:string;componentType?:number;bufferView?:number;byteOffset?:number;normalized?:boolean};
 type GlbJson={
   asset?:{version?:string;generator?:string};
   materials?:GlbMaterial[];
@@ -22,7 +22,7 @@ type GlbJson={
   nodes?:GlbNode[];
   images?:GlbImage[];
   buffers?:GlbBuffer[];
-  bufferViews?:{buffer?:number;byteLength?:number}[];
+  bufferViews?:{buffer?:number;byteLength?:number;byteOffset?:number;byteStride?:number}[];
   accessors?:GlbAccessor[];
 };
 
@@ -107,6 +107,58 @@ function validGlbAttribute(gltf:GlbJson,index:unknown,type:"VEC2"|"VEC3",positio
     bufferIndex<(gltf.buffers?.length||0)&&Number.isInteger(view.byteLength)&&(view.byteLength||0)>0);
 }
 
+/**
+ * A GLB can contain plausible UV accessor metadata but no usable UV bytes.
+ * Inspect the actual embedded BIN chunk without trusting offsets or counts.
+ * This does not establish seam stitching, grain direction or physical repeat.
+ */
+function finiteGlbUvPayload(bytes:Uint8Array,gltf:GlbJson,index:unknown):boolean {
+  if(typeof index!=="number"||!Number.isInteger(index)||index<0) return false;
+  const accessor=gltf.accessors?.[index];
+  if(!accessor||!Number.isInteger(accessor.count)||!accessor.count||
+    accessor.count<1||accessor.count>GARMENT_VIEWER_ADVISORY_MAX_VERTICES) return false;
+  const viewIndex=accessor.bufferView;
+  if(typeof viewIndex!=="number"||!Number.isInteger(viewIndex)||viewIndex<0) return false;
+  const bufferView=gltf.bufferViews?.[viewIndex];
+  if(!bufferView||bufferView.buffer!==0) return false;
+  const componentBytes=accessor.componentType===5126?4:accessor.componentType===5123?2:accessor.componentType===5121?1:0;
+  if(!componentBytes) return false;
+  const offset=accessor.byteOffset??0;
+  const viewOffset=bufferView.byteOffset??0;
+  const stride=bufferView.byteStride??2*componentBytes;
+  const viewLength=bufferView.byteLength;
+  if(![offset,viewOffset,stride,viewLength].every((value)=>typeof value==="number"&&Number.isSafeInteger(value)&&value>=0)||
+    stride<2*componentBytes||stride%componentBytes!==0||
+    offset%componentBytes!==0||viewOffset%componentBytes!==0) return false;
+  const usedBytes=offset+(accessor.count-1)*stride+2*componentBytes;
+  if(!Number.isSafeInteger(usedBytes)||usedBytes>viewLength!) return false;
+  const header=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+  const jsonLength=header.getUint32(12,true);
+  const chunkHeader=20+jsonLength;
+  if(chunkHeader+8>bytes.byteLength||header.getUint32(chunkHeader+4,true)!==0x004e4942) return false;
+  const binLength=header.getUint32(chunkHeader,true);
+  const binStart=chunkHeader+8;
+  const declaredBufferLength=gltf.buffers?.[0]?.byteLength;
+  if(!Number.isSafeInteger(declaredBufferLength)||!declaredBufferLength||
+    declaredBufferLength<1||declaredBufferLength>binLength||
+    binStart+binLength>bytes.byteLength||
+    viewOffset+viewLength!>declaredBufferLength||
+    viewOffset+usedBytes>declaredBufferLength) return false;
+  const start=binStart+viewOffset+offset;
+  const data=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+  let minU=Infinity,maxU=-Infinity,minV=Infinity,maxV=-Infinity;
+  for(let i=0;i<accessor.count;i++){
+    const at=start+i*stride;
+    const u=componentBytes===4?data.getFloat32(at,true):componentBytes===2?data.getUint16(at,true):data.getUint8(at);
+    const v=componentBytes===4?data.getFloat32(at+componentBytes,true):componentBytes===2?data.getUint16(at+componentBytes,true):data.getUint8(at+componentBytes);
+    if(!Number.isFinite(u)||!Number.isFinite(v)) return false;
+    minU=Math.min(minU,u);maxU=Math.max(maxU,u);
+    minV=Math.min(minV,v);maxV=Math.max(maxV,v);
+  }
+  // Constant UV on either axis is not a usable two-dimensional fabric map.
+  return maxU-minU>1e-8&&maxV-minV>1e-8;
+}
+
 function primitiveTriangleCount(gltf:GlbJson,primitive:GlbPrimitive){
   const elementCount=primitive.indices!==undefined
     ? accessorCount(gltf,primitive.indices)
@@ -156,7 +208,8 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
       normal:primitives.length>0&&primitives.every((primitive)=>
         validGlbAttribute(gltf,primitive.attributes?.NORMAL,"VEC3",accessorCount(gltf,primitive.attributes?.POSITION))),
       uv0:primitives.length>0&&primitives.every((primitive)=>
-        validGlbAttribute(gltf,primitive.attributes?.TEXCOORD_0,"VEC2",accessorCount(gltf,primitive.attributes?.POSITION))),
+        validGlbAttribute(gltf,primitive.attributes?.TEXCOORD_0,"VEC2",accessorCount(gltf,primitive.attributes?.POSITION)) &&
+        finiteGlbUvPayload(bytes,gltf,primitive.attributes?.TEXCOORD_0)),
     };
   });
 

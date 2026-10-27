@@ -123,3 +123,34 @@ test("GLB normal accessor must match vertex count and valid buffer metadata",()=
   assert.equal(bad.uvReady,false);
   assert(bad.panels.some((panel)=>!panel.normal));
 });
+
+test("GLB UV readiness checks actual BIN values, not only accessor metadata",()=>{
+  const original=buildPrototypeGarmentGlb();
+  const json=parseGarmentViewerGlbJson(original);
+  const uvView=json.bufferViews![json.accessors![2].bufferView!];
+  const jsonLength=new DataView(original.buffer,original.byteOffset,original.byteLength).getUint32(12,true);
+  const uvStart=20+jsonLength+8+(uvView.byteOffset||0);
+  for(const bad of [Number.NaN,Number.POSITIVE_INFINITY]){
+    const modified=original.slice();
+    new DataView(modified.buffer).setFloat32(uvStart,bad,true);
+    const inspection=inspectGarmentViewerGlb(modified,"LE-OFFICEWEAR-V1");
+    assert.equal(inspection.uvReady,false);
+    assert(inspection.reasons.some((reason)=>reason.includes("invalid TEXCOORD_0 accessor")));
+  }
+  const collapsed=original.slice();
+  const uvCount=json.accessors![2].count!;
+  const view=new DataView(collapsed.buffer);
+  for(let i=0;i<uvCount*2;i++) view.setFloat32(uvStart+i*4,0,true);
+  assert.equal(inspectGarmentViewerGlb(collapsed,"LE-OFFICEWEAR-V1").uvReady,false);
+});
+
+test("GLB rejects truncated UV buffer views and impossible embedded BIN bounds",()=>{
+  for(const mutate of [
+    (json:ReturnType<typeof parseGarmentViewerGlbJson>)=>{json.bufferViews![2].byteLength=4;},
+    (json:ReturnType<typeof parseGarmentViewerGlbJson>)=>{json.bufferViews![2].byteOffset=99999999;},
+    (json:ReturnType<typeof parseGarmentViewerGlbJson>)=>{json.buffers![0].byteLength=99999999;},
+  ]){
+    const inspection=inspectGarmentViewerGlb(rewritePrototypeJson(mutate),"LE-OFFICEWEAR-V1");
+    assert.equal(inspection.uvReady,false);
+  }
+});
