@@ -354,3 +354,51 @@ test("raw latency summary recomputes p95 and ignores invalid samples",()=>{
   assert.equal(result.p95Ms,120);
   assert.equal(result.maxMs,120);
 });
+
+test("invalid realism ratings cannot inflate unique viewer counts or acceptance",()=>{
+  const result=summarizeIndependentRealism([
+    ...Array.from({length:6},(_,index)=>({viewerId:"valid-"+index,rating:5})),
+    {viewerId:"missing",rating:Number.NaN},
+    {viewerId:"infinite",rating:Number.POSITIVE_INFINITY},
+    {viewerId:"coerced",rating:"5" as unknown as number},
+    {viewerId:"null-rating",rating:null as unknown as number},
+  ]);
+  assert.equal(result.uniqueViewers,6);
+  assert.equal(result.strongRatings,6);
+  assert.equal(result.ready,false);
+
+  const gate=phase1ProofAcceptance({
+    repeatMm:10,
+    scaleGatePass:true,
+    realModelSamples:12,
+    realModelP95Ms:220,
+    realismRatings:[5,5,5,5,5,5,Number.NaN,Number.POSITIVE_INFINITY],
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  });
+  assert.equal(gate.strongRatings,6);
+  assert.equal(gate.realismReady,false);
+  assert.equal(gate.accepted,false);
+});
+
+test("recorded proof cannot convert malformed reviewer JSON into independent ratings",()=>{
+  const evidence=evaluateRecordedPhase1ProofEvidence({
+    version:"linen-earth-phase1-proof-v4",
+    scaleCoordinateSystem:"photo-1024x1536-fixture",
+    repeatMm:10,
+    physicalEvidenceNote:"Owner measured repeat and photo reference with a ruler.",
+    photoReferenceMm:100,
+    photoReferencePx:82,
+    measuredPreviewRepeatPx:8.2,
+    realModelSampleDurationsMs:Array(12).fill(200),
+    realismAssessments:[
+      ...Array.from({length:6},(_,index)=>({viewerId:"valid-"+index,rating:5})),
+      {viewerId:"coerced",rating:"5"},
+      {viewerId:"missing",rating:null},
+    ],
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  });
+  assert.equal(evidence.realism.uniqueViewers,6);
+  assert.equal(evidence.realism.strongRatings,6);
+  assert.equal(evidence.acceptance.realismReady,false);
+  assert.equal(evidence.coreAccepted,false);
+});
