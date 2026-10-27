@@ -34,4 +34,5 @@ test("tampered or malformed recovery token is rejected",()=>{
   assert.equal(parseDesignVaultRecoveryToken(token.replace("lev1.","lev2.")),null);
   assert.equal(parseDesignVaultRecoveryToken("lev1.not-a-uuid.bad"),null);
   assert.equal(parseDesignVaultRecoveryToken(token+" extra"),null);
+  assert.equal(parseDesignVaultRecoveryToken([token]),null);
 });

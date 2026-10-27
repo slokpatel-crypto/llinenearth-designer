@@ -21,4 +21,5 @@ test("measurement vault token round-trips with a hashed server credential",()=>{
 test("invalid measurement vault tokens are rejected",()=>{
   assert.equal(parseMeasurementVaultRecoveryToken("lem1.bad.bad"),null);
   assert.equal(parseMeasurementVaultRecoveryToken("lev1.123e4567-e89b-12d3-a456-426614174000."+createMeasurementVaultAccessKey()),null);
+  assert.equal(parseMeasurementVaultRecoveryToken(["lem1.123e4567-e89b-12d3-a456-426614174000."+createMeasurementVaultAccessKey()]),null);
 });

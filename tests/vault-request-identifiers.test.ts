@@ -3,12 +3,17 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {parseVaultRequestIdentifiers} from "../src/lib/vault-request-identifiers.ts";
 
-test("owned vault actions accept only nonempty string IDs and trim accidental whitespace",()=>{
+test("owned vault actions accept only canonical UUID strings before auth or RPC",()=>{
   for(const action of ["loadOwned","deleteOwned"]){
-    assert.deepEqual(parseVaultRequestIdentifiers(action,{vaultId:" 123e4567-e89b-12d3-a456-426614174000 "}),{
+    assert.deepEqual(parseVaultRequestIdentifiers(action,{vaultId:" 123E4567-E89B-12D3-A456-426614174000 "}),{
       ok:true,vaultId:"123e4567-e89b-12d3-a456-426614174000",recoveryToken:null,
     });
-    for(const invalid of [undefined,null,0,true,{},["123e4567-e89b-12d3-a456-426614174000"]," \n "]){
+    for(const invalid of [
+      undefined,null,0,true,{},["123e4567-e89b-12d3-a456-426614174000"]," \n ",
+      "not-a-uuid","123e4567-e89b-02d3-a456-426614174000",
+      "123e4567-e89b-12d3-7456-426614174000","123e4567e89b12d3a456426614174000",
+      "123e4567-e89b-12d3-a456-426614174000.extra",
+    ]){
       assert.deepEqual(parseVaultRequestIdentifiers(action,{vaultId:invalid}),{ok:false,field:"vaultId"},action);
     }
   }

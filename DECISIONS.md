@@ -783,3 +783,9 @@ The browser regression uses synthetic vault responses and blocked browser storag
 Source type, reference and reviewer are required strings. Optional date/URL fields may be absent or null, but populated values must also be strings. Objects, arrays, booleans and numeric values no longer become text that qualifies metadata as physically reviewed. The same normalizer protects ingestion, stored metadata reads and verified CSV prefill. A documented catalogue GSM value outside the existing 40–1000 range is left blank in the worksheet instead of promoted to verified data.
 
 Valid string records retain their normalization and optional-field compatibility. Existing malformed records are not rewritten; they simply do not qualify as physical provenance. These software checks establish format integrity only, never authenticity of a supplier statement or an actual measurement.
+
+## 2026-10-27 — Vault identifiers use one strict UUID boundary
+
+Owned-vault actions validate and normalize the submitted UUID before customer identity lookup or database RPC. The same helper is used when issuing and parsing both measurement and locked-design recovery tokens, so a malformed ID cannot be accepted by one path and rejected by another. Arrays, objects, missing UUID hyphens, unsupported UUID versions/variants and trailing data fail closed; valid existing UUIDs remain compatible and are normalized to lowercase.
+
+This is request-format integrity, not authenticated live Supabase acceptance or proof that a vault belongs to a customer. Database migrations, token formats and stored records are unchanged. Exact-head CI plus real signed-in recovery, claim, load and delete verification remain release gates.
