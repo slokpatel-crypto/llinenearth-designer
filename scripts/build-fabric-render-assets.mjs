@@ -97,11 +97,15 @@ for(const file of files) {
       ])
     .webp({quality:86,effort:5}).toBuffer();
   await fs.writeFile(path.join(outputDir,`${stem}.webp`),tile);
-  const tileRealWidthMm=scale.swatchRealWidthMm!==undefined
+  const computedTileWidthMm=scale.swatchRealWidthMm!==undefined
     ? Math.round(200*scale.swatchRealWidthMm*cropWidth/width)/100
     : scale.repeatRealMm!==undefined && repeatDetected && measured.repeatPeriodPx
       ? Math.round(200*128*scale.repeatRealMm/measured.repeatPeriodPx)/100
       : null;
+  // Very small measurements can round to zero at the manifest precision.
+  // A non-renderable 0 mm tile must stay approximate, not falsely verified.
+  const tileRealWidthMm=typeof computedTileWidthMm==="number" &&
+    Number.isFinite(computedTileWidthMm)&&computedTileWidthMm>0?computedTileWidthMm:null;
   manifest.assets[stem]={
     tileUrl:`/fabric-tiles/${stem}.webp`,
     placeholderUrl:`/fabric-tiles/${stem}-placeholder.webp`,
