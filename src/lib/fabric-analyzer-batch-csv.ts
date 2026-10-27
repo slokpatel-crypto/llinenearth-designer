@@ -120,7 +120,10 @@ function numberOrUntrusted(value:string):number|string|undefined {
 
 export function itemsFromCsv(text:string){
   const rows=parseCsv(text);
-  if(rows.length<2) return [] as BatchItem[];
+  // Even a header-only / accidentally headerless one-row worksheet must
+  // validate its columns. Previously it returned [] before checking headers,
+  // hiding misspelled evidence columns and single-row supplier data.
+  if(rows.length===0) return [] as BatchItem[];
   const header=rows[0].map((value)=>value.trim());
   if(header.some((key)=>!key) || new Set(header).size!==header.length) {
     throw new Error("CSV contains an empty or duplicate column header.");
@@ -137,6 +140,7 @@ export function itemsFromCsv(text:string){
   ]);
   const unsupported=header.filter((key)=>!supported.has(key));
   if(unsupported.length) throw new Error(`Unsupported CSV column: ${unsupported.join(", ")}. Correct the worksheet headings before analysis.`);
+  if(rows.length===1) return [] as BatchItem[];
   for(const [index,cells] of rows.slice(1).entries()) {
     if(cells.length!==header.length) {
       throw new Error(`CSV data row ${index+2} has ${cells.length} columns; expected ${header.length}.`);
