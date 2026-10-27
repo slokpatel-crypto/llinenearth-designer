@@ -73,6 +73,7 @@ test('successful save persists the same customer that becomes active',t=>{
   assert.equal(JSON.parse(state.get(LINK)!).profileId,saved.id);
   removeCustomerMeasurementProfile(saved.id);
   assert.equal(state.has(PROFILE),false);
+  assert.equal(state.has(OBS),false);
   assert.equal(state.has(LINK),false);
   assert.equal(JSON.parse(state.get(CUSTOMER_MEASUREMENTS_KEY)!).some((p:CustomerMeasurementProfile)=>p.id===saved.id),false);
 });
@@ -86,3 +87,50 @@ for(const corrupted of ['not-json','null','{}','']){
     assert.deepEqual(state,previous);
   });
 }
+
+test('deleting active customer removes their manual posture evidence as well',t=>{
+  const state=browser(t);
+  const saved=saveCustomerMeasurementProfile(customer);
+  state.set(OBS,JSON.stringify({...emptyTailorObservationProfile(),posture:'erect'}));
+  removeCustomerMeasurementProfile(saved.id);
+  assert.equal(state.has(PROFILE),false);
+  assert.equal(state.has(OBS),false);
+  assert.equal(state.has(LINK),false);
+});
+
+test('deleting a stale named link preserves an independently edited manual fit and observations',t=>{
+  const state=browser(t);
+  const saved=saveCustomerMeasurementProfile(customer);
+  const editedFit=JSON.stringify({...JSON.parse(state.get(PROFILE)!),shirt:{chest:122},updatedAt:'2026-10-27T08:00:00Z'});
+  const editedObservations=JSON.stringify({...emptyTailorObservationProfile(),posture:'forward'});
+  state.set(PROFILE,editedFit);
+  state.set(OBS,editedObservations);
+  removeCustomerMeasurementProfile(saved.id);
+  assert.equal(state.get(PROFILE),editedFit);
+  assert.equal(state.get(OBS),editedObservations);
+  assert.equal(state.has(LINK),false);
+});
+
+test('denied observation deletion restores customer history, linked fit and posture evidence',t=>{
+  let deny=false;
+  const state=browser(t,(key,value)=>{if(deny&&key===OBS&&value===null)throw Error('observation delete denied');});
+  const saved=saveCustomerMeasurementProfile(customer);
+  state.set(OBS,JSON.stringify({...emptyTailorObservationProfile(),posture:'forward'}));
+  const previous=new Map(state);
+  deny=true;
+  assert.throws(()=>removeCustomerMeasurementProfile(saved.id),/previous browser records were restored/);
+  assert.deepEqual(state,previous);
+});
+
+test('deleting a different saved customer keeps the current active fit and posture evidence',t=>{
+  const state=browser(t);
+  const previousCustomer=saveCustomerMeasurementProfile({...customer,id:'CMP-A',name:'Customer A'});
+  saveCustomerMeasurementProfile(customer);
+  const beforeFit=state.get(PROFILE);
+  const beforeObservation=state.get(OBS);
+  const beforeLink=state.get(LINK);
+  removeCustomerMeasurementProfile(previousCustomer.id);
+  assert.equal(state.get(PROFILE),beforeFit);
+  assert.equal(state.get(OBS),beforeObservation);
+  assert.equal(state.get(LINK),beforeLink);
+});
