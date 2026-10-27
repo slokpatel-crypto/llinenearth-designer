@@ -15,6 +15,26 @@ export const emptyMeasurementProfile = (): MeasurementProfile => ({ version: 1, 
 const SHIRT_MEASUREMENT_KEYS = new Set<keyof ShirtMeasurements>(["neck","chest","waist","shoulder","sleeve","shirtLength","bicep","wrist"]);
 const PANT_MEASUREMENT_KEYS = new Set<keyof PantMeasurements>(["waist","seat","thigh","frontRise","inseam","outseam","knee","hem"]);
 
+/** Calendar-valid, offset-aware timestamps for browser measurement/observation
+ * records. Date.parse alone normalizes nonexistent dates and 24:00.
+ */
+export function validMeasurementTimestamp(value:unknown):value is string {
+  if(typeof value!=="string") return false;
+  const match=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if(!match) return false;
+  const [,yy,mm,dd,hh,mi,ss,zone]=match;
+  const year=Number(yy),month=Number(mm),day=Number(dd);
+  const date=new Date(Date.UTC(year,month-1,day));
+  if(year<2000||month<1||month>12||day<1||day>31||
+    date.getUTCFullYear()!==year||date.getUTCMonth()+1!==month||date.getUTCDate()!==day||
+    Number(hh)>23||Number(mi)>59||Number(ss)>59) return false;
+  if(zone!=="Z"){
+    const hour=Number(zone.slice(1,3)),minute=Number(zone.slice(4,6));
+    if(hour>14||minute>59||(hour===14&&minute!==0)) return false;
+  }
+  return Number.isFinite(Date.parse(value));
+}
+
 function validStoredMeasurements(value:unknown,keys:Set<string>):Record<string,number>|null {
   if(!value||typeof value!=="object"||Array.isArray(value)) return null;
   const entries=Object.entries(value);
@@ -29,7 +49,7 @@ export function validStoredMeasurementProfile(value:unknown):MeasurementProfile|
   const shirt=validStoredMeasurements(profile.shirt,SHIRT_MEASUREMENT_KEYS);
   const pants=validStoredMeasurements(profile.pants,PANT_MEASUREMENT_KEYS);
   if(profile.version!==1||(profile.unit!=="cm"&&profile.unit!=="in")||!shirt||!pants) return null;
-  if(typeof profile.updatedAt!=="string"||!Number.isFinite(Date.parse(profile.updatedAt))) return null;
+  if(!validMeasurementTimestamp(profile.updatedAt)) return null;
   return {version:1,unit:profile.unit,shirt,pants,updatedAt:profile.updatedAt};
 }
 
