@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { garmentPanelTextureScale, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
 test("verified render tile width stays authoritative",()=>{
@@ -66,4 +67,11 @@ test("coerced and overflowing runtime values cannot produce 3D tile widths",()=>
     {physicalScaleStatus:"declared_repeat",repeatMm:20}),null);
   assert.equal(resolveViewerTileWidthMm({tileRealWidthMm:"120" as unknown as number,scaleApproximate:false},
     {physicalScaleStatus:"unknown",repeatMm:null}),null);
+});
+
+test("3D manifest and tile builder retain observed-repeat evidence",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  const builder=readFileSync("scripts/build-fabric-render-assets.mjs","utf8");
+  assert.match(viewer,/repeatDetected\?:boolean/);
+  assert.match(builder,/repeatDetected:repeatDetected\?measured\.repeatPeriodPx:null|repeatPeriodPx:repeatDetected\?measured\.repeatPeriodPx:null/);
 });
