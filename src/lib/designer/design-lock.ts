@@ -37,11 +37,11 @@ async function sha256Hex(input:string) {
 // recipe-hash hex digits. Newer revisions append a random 64-bit nonce.
 // Preserve both formats, but never let an arbitrary record rename itself
 // to a different revision/customer while retaining a matching recipe hash.
-const REVISION_ID=/^LE-LOCK-(\\d{14})-([0-9A-F]{12})(?:-([0-9A-F]{16}))?$/;
+const REVISION_ID=/^LE-LOCK-(\d{14})-([0-9A-F]{12})(?:-([0-9A-F]{16}))?$/;
 
 function safeTimestamp(value:string) {
   if(typeof value!=="string") throw new Error("lockedAt must be a valid timestamp");
-  const match=/^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2})$/.exec(value);
+  const match=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/.exec(value);
   if(!match) throw new Error("lockedAt must be a valid timestamp");
   const [,yy,mm,dd,hh,mi,ss,zone]=match;
   const year=Number(yy),month=Number(mm),day=Number(dd);
