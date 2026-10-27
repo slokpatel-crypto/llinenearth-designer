@@ -39,11 +39,6 @@ export function resolveViewerTileWidthMm(
 }
 
 /**
- * The temporary M1 model uses one UV span across the visible width/height of
- * each garment panel. Converting both axes through the same physical tile width
- * keeps repeat size consistent between torso, sleeves, waist and trouser legs.
- */
-/**
  * A recorded physical tile must not be described as calibrated when the
  * sampler's repeat limits would silently clamp either garment axis.
  * Unknown/oversized values remain approximate in the viewer.
@@ -61,6 +56,11 @@ export function canRepresentGarmentPanelTileExactly(
   return Number.isFinite(u)&&Number.isFinite(v)&&u>=.35&&u<=80&&v>=.35&&v<=80;
 }
 
+/**
+ * The temporary M1 model uses one UV span across each garment panel.
+ * A clamp is allowed only for explicitly approximate previews. Call
+ * canRepresentGarmentPanelTileExactly before labelling a tile calibrated.
+ */
 export function garmentPanelTextureScale(
   widthMm:number,
   heightMm:number,

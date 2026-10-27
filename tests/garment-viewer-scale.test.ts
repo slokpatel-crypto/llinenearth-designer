@@ -91,5 +91,7 @@ test("3D calibrated badge requires representable scale for every garment panel",
   assert.match(viewer,/panelSpecs\.filter\(\(panel\)=>panel\.garment==="shirt"\)\.every\(\(panel\)=>canRepresentGarmentPanelTileExactly/);
   assert.match(viewer,/panelSpecs\.filter\(\(panel\)=>panel\.garment==="trouser"\)\.every\(\(panel\)=>canRepresentGarmentPanelTileExactly/);
   assert.match(viewer,/Recorded shirt tile scale exceeds the 3D sampler range/);
+  assert.match(viewer,/Recorded tile ·/);
+  assert.match(viewer,/UV unverified/);
   assert.match(viewer,/Recorded trouser tile scale exceeds the 3D sampler range/);
 });
