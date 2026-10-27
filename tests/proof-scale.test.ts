@@ -452,3 +452,33 @@ test("direct proof acceptance rejects impossible latency and nonfinite physical 
     assert.equal(result.accepted,false,JSON.stringify(malformed));
   }
 });
+
+test("extreme finite photo measurements fail closed rather than crash or certify scale",()=>{
+  assert.throws(()=>pxPerMmFromMarker(1e308,1e-308),/finite/);
+  assert.throws(()=>pxPerMmFromMarker(1e-308,1e308),/finite/);
+  assert.throws(()=>expectedPeriodPx(1e308,1e308),/finite/);
+  assert.throws(()=>expectedPeriodPx(1e-308,1e-308),/finite/);
+
+  const base={
+    version:"linen-earth-phase1-proof-v4",
+    scaleCoordinateSystem:"photo-1024x1536-fixture",
+    repeatMm:10,
+    physicalEvidenceNote:"Owner measured repeat and photo reference with a ruler.",
+    photoReferenceMm:100,
+    photoReferencePx:82,
+    measuredPreviewRepeatPx:8.2,
+    realModelSampleDurationsMs:Array(12).fill(210),
+    realismAssessments:Array.from({length:8},(_,index)=>({viewerId:`viewer-${index}`,rating:index<6?5:3})),
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  };
+  assert.equal(evaluateRecordedPhase1ProofEvidence(base).scaleGatePass,true);
+  for(const reference of [
+    {photoReferencePx:1e308,photoReferenceMm:1e-308},
+    {photoReferencePx:1e-308,photoReferenceMm:1e308},
+    {photoReferencePx:1e308,photoReferenceMm:1},
+  ]){
+    const evidence=evaluateRecordedPhase1ProofEvidence({...base,...reference});
+    assert.equal(evidence.scaleGatePass,false);
+    assert.equal(evidence.coreAccepted,false);
+  }
+});
