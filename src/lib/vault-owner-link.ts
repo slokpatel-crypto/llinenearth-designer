@@ -20,3 +20,16 @@ export function vaultOwnershipWarning(status:VaultOwnerLinkStatus):string|undefi
     ?"Account linking could not be confirmed. Keep this recovery token private: it is required to retrieve, delete or claim this secure copy."
     :undefined;
 }
+
+/**
+ * A customer session is optional when storing a new recovery-token vault copy.
+ * A legacy session introspection outage must not prevent the independent
+ * secure store; surface account-link uncertainty instead of silently treating
+ * the failed lookup as an intentionally anonymous request.
+ */
+export async function resolveVaultStoreOwnerBestEffort<T>(
+  lookup:()=>Promise<T|null>,
+):Promise<{customer:T|null;lookupFailed:boolean}>{
+  try{return {customer:await lookup(),lookupFailed:false};}
+  catch{return {customer:null,lookupFailed:true};}
+}
