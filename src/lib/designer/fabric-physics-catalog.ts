@@ -21,9 +21,15 @@ export function attachCatalogFabricPhysics(base: DesignerFabric, intelligence?: 
     patch[key] = value;
     evidence[key] = provenance;
   };
-  if (base.weightGsm === null && fabric.weightGsm !== null && fabric.weightGsm === intelligence?.verifiedPhysical.gsm) {
+  if (auditable && base.weightGsm === null && validFabricPhysicsValue("gsm",fabric.weightGsm)
+    && fabric.weightGsm === intelligence?.verifiedPhysical.gsm) {
     const provenance = intelligence.fieldProvenance?.["verifiedPhysical.gsm"];
-    if (provenance === "declared" || provenance === "reviewed") evidence.gsm = provenance;
+    if (provenance === "declared" || provenance === "reviewed") {
+      // The accepted, auditable Analyzer value is an explicit physical patch.
+      // A pre-existing catalogue GSM must remain a separate declaration.
+      patch.gsm=fabric.weightGsm;
+      evidence.gsm=provenance;
+    }
   }
   acceptIndex("structure",intelligence?.verifiedPhysical.structure ?? null);
   acceptIndex("breathability",intelligence?.verifiedPhysical.breathability ?? null);
