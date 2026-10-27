@@ -1,4 +1,5 @@
 import { linkVaultOwnerBestEffort, vaultOwnershipWarning } from "@/lib/vault-owner-link";
+import { parseVaultRequestIdentifiers } from "@/lib/vault-request-identifiers";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -66,6 +67,11 @@ export async function POST(request:Request){
     const action=body.action;
     if(typeof action!=="string"||!["store","listOwned","loadOwned","deleteOwned","claim","load","delete"].includes(action))
       return jsonNoStore({error:"Unsupported measurement-vault action."},{status:400});
+    const identifiers=parseVaultRequestIdentifiers(action,body);
+    if(!identifiers.ok){
+      const field=identifiers.field==="vaultId"?"vault ID":"recovery token";
+      return jsonNoStore({error:`A valid ${field} string is required.`},{status:400});
+    }
     const customer=await getCustomerIdentity(request);
 
     if(action==="store"){
@@ -118,7 +124,7 @@ export async function POST(request:Request){
       if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
       const rows=await rpc<Array<{profile:MeasurementProfile;observations:TailorObservationProfile;expires_at:string}>>(
         "measurement_profile_vault_get_owned",
-        {p_vault_id:String(body.vaultId||""),p_owner_user_id:customer.id},
+        {p_vault_id:identifiers.vaultId!,p_owner_user_id:customer.id},
       );
       const row=rows[0];
       const profile=validStoredMeasurementProfile(row?.profile);
@@ -132,12 +138,12 @@ export async function POST(request:Request){
     if(action==="deleteOwned"){
       if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
       const deleted=await rpc<boolean>("measurement_profile_vault_delete_owned",{
-        p_vault_id:String(body.vaultId||""),p_owner_user_id:customer.id,
+        p_vault_id:identifiers.vaultId!,p_owner_user_id:customer.id,
       });
       return jsonNoStore({deleted:Boolean(deleted)});
     }
 
-    const parsed=parseMeasurementVaultRecoveryToken(String(body.recoveryToken||""));
+    const parsed=parseMeasurementVaultRecoveryToken(identifiers.recoveryToken!);
     if(!parsed) return jsonNoStore({error:"The measurement recovery token is invalid."},{status:400});
 
     if(action==="claim"){
