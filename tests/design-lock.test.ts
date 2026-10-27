@@ -130,3 +130,30 @@ test("revision verification binds exact ID timestamp and recipe prefix without b
   assert.equal(await verifyLockedDesignRevision(leap),true);
   assert.equal(leap.lockedAt,"2028-02-29T03:30:00.000Z");
 });
+
+test("tailor target ranges must be finite, ordered and typed before design lock",async()=>{
+  const valid=await lockGarmentSpec({
+    ...spec,shirt:{...spec.shirt,finishedTargets:[{
+      label:"Finished chest",bodyCm:98,finishedCm:{min:104,max:108},
+      easeCm:{min:6,max:10},basis:"body_plus_ease",
+    }]},
+  });
+  assert.equal(await verifyLockedDesignRevision(valid),true);
+  const target=valid.garmentSpec.shirt.finishedTargets[0];
+  for(const invalid of [
+    {...target,bodyCm:NaN},
+    {...target,bodyCm:Infinity},
+    {...target,bodyCm:0},
+    {...target,finishedCm:{min:110,max:105}},
+    {...target,finishedCm:{min:NaN,max:108}},
+    {...target,finishedCm:{min:104,max:Infinity}},
+    {...target,easeCm:{min:12,max:8}},
+    {...target,basis:"invented"},
+  ]){
+    const changed={...spec,shirt:{...spec.shirt,finishedTargets:[invalid]}} as CanonicalGarmentSpec;
+    await assert.rejects(()=>lockGarmentSpec(changed),/Invalid finished-garment measurement targets/);
+    const forged=structuredClone(valid);
+    forged.garmentSpec.shirt.finishedTargets=[invalid as typeof target];
+    assert.equal(await verifyLockedDesignRevision(forged),false);
+  }
+});
