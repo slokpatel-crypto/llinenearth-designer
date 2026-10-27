@@ -77,6 +77,7 @@ test("Designer restore, live invalidation and generation lifecycle use the same 
   const source=readFileSync("src/components/DesignerModule.tsx","utf8");
   assert.match(source,/creativeDirectionMatchesSelection\(parsed\.creative,/);
   assert.match(source,/creativeDirectionMatchesSelection\(activeCreative,/);
+  assert.match(source,/if\(activeCreative\) \{\s*setRecommendation\(null\);\s*setAssessment\(null\);\s*setRecommendationId\(null\);/);
   assert.match(source,/\[draftReady,shirtId,pantId,occasion,climate,intention,style,styleSpec\]/);
   assert.match(source,/\[shirtId,pantId,occasion,style,styleSpec,climate,intention,craftRequest\]/);
 });
