@@ -228,3 +228,26 @@ test("Style Director catalogue search excludes every incompatible v2 constructio
   assert.deepEqual(searchDesignerCatalogue({...input,styleSpec:incompatible}),[]);
   assert.equal(base.shirt.type,"dress_shirt","search must not mutate the saved recipe");
 });
+
+test("malformed catalogue weight and pattern vocabularies fail closed in pairing and accent rules",()=>{
+  const require=createRequire(import.meta.url);
+  const {load}=require("../scripts/designer-test-loader.cjs");
+  const engine=load("src/lib/designer/engine.ts");
+  const shirt={...engine.DESIGNER_SHIRTS[0],weightClass:"not-a-band",patternScale:"not-a-pattern"};
+  const pant={...engine.DESIGNER_PANTS[0],weightClass:"Heavy",patternScale:"Fine"};
+  const style=engine.designerStyleForOccasion("Semi-Formal");
+  const result=engine.evaluateDesignerCombo(
+    shirt,pant,"Semi-Formal",style,undefined,{climate:"Not specified",intention:"Balanced"},
+  );
+  assert.equal(result.rules.find((item:{id:string})=>item.id==="CR-3")?.status,"unknown");
+  assert.equal(result.rules.find((item:{id:string})=>item.id==="CR-4")?.status,"unknown");
+  const accent=engine.evaluateDesignerAccent(pant,shirt,"cuff","Semi-Formal");
+  assert.equal(accent.find((item:{id:string})=>item.id==="MF-2")?.status,"unknown");
+  assert.equal(accent.find((item:{id:string})=>item.id==="MF-4")?.status,"unknown");
+  const known=engine.evaluateDesignerAccent(
+    {...pant,weightClass:"Heavy",patternScale:"None"},
+    {...shirt,weightClass:"Light",patternScale:"Bold"},"cuff","Semi-Formal",
+  );
+  assert.equal(known.find((item:{id:string})=>item.id==="MF-2")?.status,"pass");
+  assert.equal(known.find((item:{id:string})=>item.id==="MF-4")?.status,"pass");
+});
