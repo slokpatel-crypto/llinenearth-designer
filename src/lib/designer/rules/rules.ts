@@ -130,7 +130,7 @@ export const CROSS_GARMENT_RULES:readonly CrossGarmentRule[]=[
   },
   {
     id:"CG-FULL-SLEEVE-HEM",
-    name:"Full sleeve versus open short-sleeve hem",
+    name:"Full or roll-up sleeve versus open short-sleeve hem",
     appliesWhen:({spec})=>["full_sleeve","roll_up_styled"].includes(spec.shirt.sleeve)
       && spec.shirt.cuff==="open_short_hem_cuff",
     effect:"block",
@@ -153,12 +153,12 @@ export const CROSS_GARMENT_RULES:readonly CrossGarmentRule[]=[
   },
   {
     id:"CG-CROP-BREAK",
-    name:"Trouser cropped hem and full break conflict",
+    name:"Trouser cropped hem versus shoe break",
     appliesWhen:({spec})=>spec.pant.hem==="cropped_above_ankle_hem"
       && ["slight_break","full_break","stacked_break"].includes(spec.pant.break),
     effect:"block",
     severity:"High",
-    explanation:()=> "An above-ankle cropped trouser hem cannot also stack or have a full break at the shoe. Choose the matching cropped/no-break length.",
+    explanation:()=> "An above-ankle cropped trouser hem cannot also have a slight, full or stacked shoe break. Choose the matching cropped/no-break length.",
     provenance:"reference-source",
     reviewStatus:"provisional",
   },
