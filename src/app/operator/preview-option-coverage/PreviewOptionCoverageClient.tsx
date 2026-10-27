@@ -14,7 +14,7 @@ type Row={
   previewReview:Review|null;
 };
 type Summary={
-  total:number;previewApproved:number;previewRejected:number;previewPending:number;
+  total:number;invalidRows:number;previewApproved:number;previewRejected:number;previewPending:number;
   noPreviewSupport:number;constructionBlocked:number;constructionPending:number;
   fullyCleared:number;coveragePercent:number;gateComplete:boolean;
 };
@@ -105,11 +105,14 @@ export default function PreviewOptionCoverageClient(){
       <section style={{...panel,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:12}}>
         <article><small>CUSTOMER CHOICES</small><div style={{fontSize:34,fontWeight:800}}>{summary?.total??0}</div></article>
         <article><small>FULLY CLEARED</small><div style={{fontSize:34,fontWeight:800}}>{summary?.fullyCleared??0}</div></article>
+        <article><small>INVALID / DUPLICATE</small><div style={{fontSize:34,fontWeight:800}}>{summary?.invalidRows??0}</div></article>
         <article><small>PREVIEW PENDING</small><div style={{fontSize:34,fontWeight:800}}>{summary?.previewPending??0}</div></article>
         <article><small>CONSTRUCTION PENDING</small><div style={{fontSize:34,fontWeight:800}}>{summary?.constructionPending??0}</div></article>
         <article><small>COVERAGE</small><div style={{fontSize:30,fontWeight:800}}>{summary?.coveragePercent??0}%</div></article>
         <article><small>GATE</small><div style={{fontSize:24,fontWeight:800}}>{summary?.gateComplete?"COMPLETE":"OPEN"}</div></article>
       </section>
+
+      {(summary?.invalidRows??0)>0&&<section role="alert" style={{...panel,background:"#fff0e8"}}>Preview coverage contains invalid or duplicate option rows. The release gate remains open until the catalogue and review evidence are corrected.</section>}
 
       <section style={{display:"grid",gridTemplateColumns:"minmax(300px,.72fr) minmax(360px,1.28fr)",gap:18}}>
         <aside style={panel}>

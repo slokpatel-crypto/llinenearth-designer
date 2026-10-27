@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { summarizePreviewOptionCoverage } from "../src/lib/designer/preview-option-coverage.ts";
 
 test("customer preview gate requires every visible option to be fully cleared",()=>{
@@ -32,4 +33,46 @@ test("non-renderable or rejected choices can never count as fully cleared",()=>{
   assert.equal(result.noPreviewSupport,1);
   assert.equal(result.constructionBlocked,1);
   assert.equal(result.fullyCleared,0);
+});
+
+test("duplicate option identities cannot inflate an all-approved release gate",()=>{
+  const approved={id:"preview:collar:point",styleKey:"collar",label:"Point",
+    livePreview:"exact" as const,constructionStatus:"approved" as const,previewStatus:"approved" as const};
+  const result=summarizePreviewOptionCoverage([approved,{...approved,label:"Conflicting point"}]);
+  assert.equal(result.total,2);
+  assert.equal(result.invalidRows,1);
+  assert.equal(result.fullyCleared,1);
+  assert.equal(result.coveragePercent,50);
+  assert.equal(result.gateComplete,false);
+});
+
+test("malformed support/status and incomplete identities never count as approved",()=>{
+  const approved={id:"a",styleKey:"collar",label:"Point",
+    livePreview:"exact",constructionStatus:"approved",previewStatus:"approved"};
+  const corrupt=[
+    {...approved,id:" "},
+    {...approved,id:"b",livePreview:"unsupported"},
+    {...approved,id:"c",constructionStatus:"maybe"},
+    {...approved,id:"d",previewStatus:"yes"},
+    {...approved,id:"e",label:""},
+    null,
+  ];
+  const result=summarizePreviewOptionCoverage(corrupt as unknown as Parameters<typeof summarizePreviewOptionCoverage>[0]);
+  assert.equal(result.invalidRows,corrupt.length);
+  assert.equal(result.fullyCleared,0);
+  assert.equal(result.gateComplete,false);
+});
+
+test("missing runtime coverage data cannot be mistaken for a completed gate",()=>{
+  const result=summarizePreviewOptionCoverage(null as unknown as Parameters<typeof summarizePreviewOptionCoverage>[0]);
+  assert.equal(result.total,0);
+  assert.equal(result.invalidRows,0);
+  assert.equal(result.gateComplete,false);
+});
+
+test("operator UI visibly reports invalid or duplicate preview evidence",()=>{
+  const source=readFileSync("src/app/operator/preview-option-coverage/PreviewOptionCoverageClient.tsx","utf8");
+  assert.match(source,/INVALID \/ DUPLICATE/);
+  assert.match(source,/summary\?\.invalidRows/);
+  assert.match(source,/role="alert"/);
 });

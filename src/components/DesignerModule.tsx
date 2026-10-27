@@ -14,6 +14,8 @@ import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/resear
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview-support";
+import { creativeDirectionMatchesSelection } from "@/lib/designer/creative-selection";
+import { createPreviewRequestScope } from "@/lib/designer/preview-request-scope";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, validStoredMeasurementProfile, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
@@ -146,6 +148,7 @@ export function DesignerModule() {
   const [searchResults, setSearchResults] = useState<DesignerSearchOption[]>([]);
   const [searchLoading,setSearchLoading]=useState(false);
   const [searchError,setSearchError]=useState("");
+  const searchRequestScopeRef=useRef(createPreviewRequestScope());
   const [advisorEpoch,setAdvisorEpoch]=useState(0);
   const [assessment,setAssessment]=useState<DesignerAssessmentResponse|null>(null);
   const [assessmentLoading,setAssessmentLoading]=useState(false);
@@ -186,10 +189,44 @@ export function DesignerModule() {
   const handoffIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention]);
   const directorHandoffCurrent=directorHandoffIdentity===handoffIdentity;
   const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+  const searchIdentity=JSON.stringify([assessmentIdentity,searchScope]);
   const committedAssessmentIdentity=useRef(assessmentIdentity);
+  const assessRunRef=useRef<{identity:string;controller:AbortController}|null>(null);
   const committedCreativeId=useRef(activeCreative?.id||null);
   useLayoutEffect(()=>{committedCreativeId.current=activeCreative?.id||null;},[activeCreative?.id]);
-  useLayoutEffect(()=>{committedAssessmentIdentity.current=assessmentIdentity;},[assessmentIdentity]);
+  useLayoutEffect(()=>{
+    if(committedAssessmentIdentity.current!==assessmentIdentity){
+      // Fit, construction and production-readiness panels must not retain an
+      // assessment computed for a previous fabric, measurement or cut.
+      setAssessment(null);
+      setAssessmentError("");
+      setRecommendationId(null);
+      setResponse(null);
+      setFeedbackReason(null);
+    }
+    committedAssessmentIdentity.current=assessmentIdentity;
+    const run=assessRunRef.current;
+    if(run && run.identity!==assessmentIdentity){
+      run.controller.abort();
+      assessRunRef.current=null;
+      setAssessmentLoading(false);
+    }
+  },[assessmentIdentity]);
+  useEffect(()=>()=>{
+    assessRunRef.current?.controller.abort();
+    assessRunRef.current=null;
+  },[]);
+  useLayoutEffect(()=>{
+    // An old alternative search must not populate a different fabric, style,
+    // fit or search scope after the user has changed the selection.
+    const scope=searchRequestScopeRef.current;
+    scope.invalidate();
+    scope.activate();
+    setSearchResults([]);
+    setSearchLoading(false);
+    setSearchError("");
+    return ()=>scope.invalidate();
+  },[searchIdentity]);
   const visibleShirts=useMemo(()=>discoverFabrics(shirtOptions,"shirt",shirtFilter,shirtSearch),[shirtFilter,shirtOptions,shirtSearch]);
   const visiblePants=useMemo(()=>discoverFabrics(pantOptions,"trouser",pantFilter,pantSearch),[pantFilter,pantOptions,pantSearch]);
   const shirtFilterCounts=useMemo(()=>fabricFilterCounts(shirtOptions,"shirt",shirtSearch),[shirtOptions,shirtSearch]);
@@ -428,10 +465,12 @@ export function DesignerModule() {
       setBodyProfile(nextBodyProfile || DEFAULT_BODY_PREVIEW_PROFILE);
 
       if(!fromDirector && parsed?.creative &&
-        parsed.creative.recommendation?.shirt?.id===nextShirtId &&
-        parsed.creative.recommendation?.pant?.id===nextPantId &&
-        parsed.creative.recommendation?.occasion===nextOccasion &&
-        Array.isArray(parsed.creative.treatments)) {
+        Array.isArray(parsed.creative.treatments) &&
+        creativeDirectionMatchesSelection(parsed.creative,{
+          shirtId:nextShirtId,pantId:nextPantId,occasion:nextOccasion,
+          climate:nextClimate,intention:nextIntention,style:nextStyle,
+          styleSpec:nextStyleSpec || fromLegacyStyle(nextStyle),
+        })) {
         setActiveCreative(parsed.creative);
         setCreativeDirections([parsed.creative]);
         setRecommendation(parsed.creative.recommendation);
@@ -496,18 +535,27 @@ export function DesignerModule() {
 
   useEffect(() => {
     if(!draftReady) return;
-    const creativeStillMatches=activeCreative &&
-      activeCreative.recommendation.shirt.id===shirtId &&
-      activeCreative.recommendation.pant.id===pantId &&
-      activeCreative.recommendation.occasion===occasion;
+    const creativeStillMatches=creativeDirectionMatchesSelection(activeCreative,{
+      shirtId,pantId,occasion,climate,intention,style,styleSpec,
+    });
     if(creativeStillMatches) return;
+    // A creative assessment belongs to the selected concept. Do not leave its
+    // recommendation or fit/production assessment attached after the concept
+    // is invalidated by a context or construction change.
+    if(activeCreative) {
+      setRecommendation(null);
+      setAssessment(null);
+      setRecommendationId(null);
+      setResponse(null);
+      setFeedbackReason(null);
+    }
     setSearchResults([]);
     setCreativeDirections([]);
     setActiveCreative(null);
     setCreativeVisualReview(null);
     setCreativeRenderRepair("");
     setCreativeAutoNote("");
-  },[draftReady,shirtId,pantId,occasion,climate,intention]);
+  },[draftReady,shirtId,pantId,occasion,climate,intention,style,styleSpec]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -590,13 +638,16 @@ export function DesignerModule() {
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   }
 
-    async function runAdvancedSearch() {
-    if (!shirt || !pant || searchLoading) return;
+  async function runAdvancedSearch() {
+    if(!shirt || !pant) return;
+    const request=searchRequestScopeRef.current.begin();
+    if(!request) return;
     setSearchLoading(true);
     setSearchError("");
     try {
       const response=await fetch("/api/designer/search",{
         method:"POST",
+        signal:request.signal,
         headers:{"content-type":"application/json"},
         body:JSON.stringify({
           shirtId:shirt.id,
@@ -611,13 +662,16 @@ export function DesignerModule() {
         }),
       });
       const data=await response.json() as {results?:DesignerSearchOption[];error?:string};
+      if(!request.isCurrent()) return;
       if(!response.ok) throw new Error(data.error || "Designer could not prepare alternatives.");
       setSearchResults(Array.isArray(data.results)?data.results:[]);
     } catch(error) {
+      if(!request.isCurrent()) return;
       setSearchResults([]);
       setSearchError(error instanceof Error ? error.message : "Designer could not prepare alternatives.");
     } finally {
-      setSearchLoading(false);
+      if(request.isCurrent()) setSearchLoading(false);
+      request.finish();
     }
   }
 
@@ -651,7 +705,7 @@ export function DesignerModule() {
     creativeRequestRef.current=null;
     setCreativeGenerating(false);
     return ()=>{creativeRequestRef.current?.controller.abort();};
-  },[shirtId,pantId,occasion,style,climate,intention,craftRequest]);
+  },[shirtId,pantId,occasion,style,styleSpec,climate,intention,craftRequest]);
 
   useEffect(()=>{if(pendingCraftBrief.current){pendingCraftBrief.current=false;void runCreativeLab();}},[craftRequest]);
 
@@ -869,10 +923,23 @@ export function DesignerModule() {
   }
 
   async function assess(nextStyle: DesignerStyle = style) {
-    if (!shirt || !pant || assessmentLoading) return;
+    if (!shirt || !pant || assessRunRef.current) return;
+    const nextStyleSpec=mergeLegacyIntoStyleSpec(styleSpec,nextStyle);
+    const expectedIdentity=JSON.stringify([
+      shirt.id,pant.id,occasion,styleIdentity(nextStyle),nextStyleSpec,
+      climate,intention,measurementProfile,tailorObservations,bodyProfile,
+    ]);
+    const controller=new AbortController();
+    const run={identity:expectedIdentity,controller};
+    assessRunRef.current=run;
+    const isCurrent=()=>assessRunRef.current===run &&
+      !controller.signal.aborted && committedAssessmentIdentity.current===expectedIdentity;
     setActiveCreative(null);
     setCreativeVisualReview(null);
+    // Commit both representations together: a render between legacy and v2
+    // updates must not abort its own matching assessment as stale.
     setStyle({ ...nextStyle });
+    setStyleSpec(nextStyleSpec);
     setAssessmentLoading(true);
     setAssessmentError("");
     setRecommendationId(null);
@@ -881,8 +948,11 @@ export function DesignerModule() {
     const context:DesignerContext={climate,intention};
     try {
       const next=await requestLookAssessment({
-        shirtId:shirt.id,pantId:pant.id,occasion,style:nextStyle,context,
+        shirtId:shirt.id,pantId:pant.id,occasion,style:nextStyle,styleSpec:nextStyleSpec,
+        bodyProfile,measurements:measurementProfile,observations:tailorObservations,
+        context,signal:controller.signal,
       });
+      if(!isCurrent()) return;
       applyServerAssessment(next);
       try {
         const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
@@ -910,11 +980,15 @@ export function DesignerModule() {
         setRecommendationId(event.id);
       } catch { /* The direction still works when event storage is unavailable. */ }
     } catch(error) {
+      if(!isCurrent()) return;
       setAssessment(null);
       setRecommendation(null);
       setAssessmentError(error instanceof Error?error.message:"Designer assessment is unavailable.");
     } finally {
-      setAssessmentLoading(false);
+      if(assessRunRef.current===run){
+        assessRunRef.current=null;
+        setAssessmentLoading(false);
+      }
     }
   }
 
