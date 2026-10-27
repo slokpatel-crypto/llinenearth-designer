@@ -200,6 +200,11 @@ export function fabricPhysicsFromDesignerFabric(
     evidence[key] ?? (present ? "declared" : "unknown");
 
   const gsm = value("gsm", fabric.weightGsm);
+  // An evidence label alone cannot promote a catalogue GSM fallback to a
+  // reviewed measurement. Reviewed GSM requires an explicit physical patch.
+  const gsmEvidence=Object.hasOwn(patch,"gsm")
+    ? evidenceFor("gsm",gsm!==null)
+    : evidence.gsm==="unknown" ? "unknown" : evidence.gsm==="estimated" ? "estimated" : "declared";
   const drape = value("drape", baseDrape);
   const structure = value("structure", null);
   const breathability = value("breathability", null);
@@ -209,7 +214,7 @@ export function fabricPhysicsFromDesignerFabric(
   return {
     version: "linen-earth-fabric-physics-v1",
     fabricId: fabric.id,
-    gsm: knownValue("gsm", gsm, evidenceFor("gsm", gsm !== null), "Physical fabric weight in GSM."),
+    gsm: knownValue("gsm", gsm, gsmEvidence, "Physical fabric weight in GSM."),
     drape: knownValue("drape", drape,
       Object.hasOwn(patch, "drape") ? evidenceFor("drape", drape !== null) : evidence.drape === "unknown" ? "unknown" : "estimated",
       !Object.hasOwn(patch, "drape") && fabric.drape ? `Provisional index mapped from ${fabric.drape} drape classification; not a measured coefficient.` : undefined),

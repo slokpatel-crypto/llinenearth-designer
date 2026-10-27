@@ -181,3 +181,27 @@ test("catalogue GET retains stock filtering and accepted metadata while attachin
   }
   assert(!JSON.stringify(data).includes("test checker"), "public physics results must not expose operator evidence notes");
 });
+
+test("physics indices reject pending reviews and unsafe or coerced provenance",()=>{
+  const baseline=reviewed();
+  const badCases:DesignerFabricIntelligence[]=[
+    {...baseline,reviewStatus:"unreviewed"},
+    {...baseline,reviewStatus:"rejected"},
+    {...baseline,verifiedPhysical:{...baseline.verifiedPhysical,sourceUrl:"javascript:alert(1)",evidenceNote:null}},
+    {...baseline,verifiedPhysical:{...baseline.verifiedPhysical,sourceUrl:"http://example.com/roll",evidenceNote:null}},
+    {...baseline,verifiedPhysical:{...baseline.verifiedPhysical,sourceUrl:"https://user:secret@example.com/roll",evidenceNote:null}},
+    {...baseline,verifiedPhysical:{...baseline.verifiedPhysical,sourceUrl:{toString:()=> "https://example.com/roll"} as unknown as string,evidenceNote:null}},
+    {...baseline,verifiedPhysical:{...baseline.verifiedPhysical,sourceUrl:null,evidenceNote:{toString:()=> "fabric inspected"} as unknown as string}},
+  ];
+  for(const input of badCases){
+    const fabric=attachCatalogFabricPhysics(base,input);
+    assert.equal(fabric.physicsProfile?.structure.value,null,JSON.stringify(input.reviewStatus));
+    assert.equal(fabric.physicsProfile?.gsm.value,null,JSON.stringify(input.reviewStatus));
+    assert(fabric.garmentCompatibility?.every(item=>item.status==="insufficient_evidence"));
+  }
+  const https=reviewed();
+  https.verifiedPhysical={...https.verifiedPhysical,sourceUrl:"https://example.com/roll-verified",evidenceNote:null};
+  assert.equal(attachCatalogFabricPhysics(base,https).physicsProfile?.structure.evidence,"reviewed");
+  const corrected={...https,reviewStatus:"corrected" as const};
+  assert.equal(attachCatalogFabricPhysics(base,corrected).physicsProfile?.gsm.evidence,"reviewed");
+});

@@ -166,3 +166,22 @@ test("estimated physics lowers confidence without changing physical-fit math", (
   assert.equal(reviewed.status, "strong");
   assert.notEqual(estimated.status, "strong");
 });
+
+test("catalogue GSM cannot become reviewed from a provenance label without a physical patch",()=>{
+  const source={id:"roll-1",weightGsm:265,drape:"Balanced" as const};
+  const claimed=fabricPhysicsFromDesignerFabric(source,{}, {gsm:"reviewed"});
+  assert.equal(claimed.gsm.value,265);
+  assert.equal(claimed.gsm.evidence,"declared");
+  assert.equal(claimed.drape.evidence,"estimated");
+  const estimated=fabricPhysicsFromDesignerFabric(source,{}, {gsm:"estimated"});
+  assert.equal(estimated.gsm.evidence,"estimated","explicitly weaker evidence must not be upgraded");
+  const unknown=fabricPhysicsFromDesignerFabric(source,{}, {gsm:"unknown"});
+  assert.equal(unknown.gsm.value,null);
+  assert.equal(unknown.gsm.evidence,"unknown");
+  const reviewed=fabricPhysicsFromDesignerFabric(source,{gsm:271},{gsm:"reviewed"});
+  assert.equal(reviewed.gsm.value,271);
+  assert.equal(reviewed.gsm.evidence,"reviewed");
+  const invalid=fabricPhysicsFromDesignerFabric(source,{gsm:Infinity},{gsm:"reviewed"});
+  assert.equal(invalid.gsm.value,null);
+  assert.equal(invalid.gsm.evidence,"unknown");
+});
