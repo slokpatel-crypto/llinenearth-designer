@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { designerStyleForOccasion } from "../src/lib/designer/engine.ts";
+import type { DesignerStyle } from "../src/lib/designer/engine.ts";
 import type { CreativeDirection } from "../src/lib/designer/creative-engine.ts";
 import {
   creativeDirectionMatchesSelection,
@@ -10,7 +10,15 @@ import {
 import { fromLegacyStyle } from "../src/lib/designer/style-spec-v2.ts";
 
 function fixture() {
-  const style=designerStyleForOccasion("Semi-Formal");
+  // Keep the fixture independent of the legacy engine's unannotated JSON
+  // import; this pure selection gate is intentionally testable in Node.
+  const style:DesignerStyle={
+    collar:"Point (Standard) Collar",collarFinish:"Self-fabric",
+    cuff:"Barrel Cuff (1-button)",placket:"Standard (visible stitch)",
+    shirtFit:"Regular / Classic Fit",shirtWear:"Tucked",
+    trouser:"Pleated Trouser",rise:"Mid Rise",waistband:"Belt Loops",
+    break:"Slight Break",button:"Corozo (vegetable ivory)",
+  };
   const selection:CreativeSelection={
     shirtId:"linen-shirt-a",pantId:"linen-pant-a",occasion:"Semi-Formal",
     climate:"Not specified",intention:"Balanced",style,
