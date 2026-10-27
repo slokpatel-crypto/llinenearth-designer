@@ -11,10 +11,19 @@ export function attachCatalogFabricPhysics(base: DesignerFabric, intelligence?: 
   const fabric = applyVerifiedPhysicalFabricEvidence(base, intelligence);
   const evidence: FabricPhysicsEvidenceOverrides = {};
   const patch: FabricPhysicsPatch = {};
-  const auditable = intelligence?.trust === "reviewed" && Boolean(
-    String(intelligence.verifiedPhysical.sourceUrl || "").trim()
-    || String(intelligence.verifiedPhysical.evidenceNote || "").trim().length >= 8
-  );
+  const physical=intelligence?.verifiedPhysical;
+  const sourceUrl=typeof physical?.sourceUrl==="string" ? physical.sourceUrl.trim() : "";
+  let hasSourceUrl=false;
+  if(sourceUrl) {
+    try {
+      const url=new URL(sourceUrl);
+      hasSourceUrl=url.protocol==="https:" && Boolean(url.hostname) && !url.username && !url.password;
+    } catch { /* Invalid URLs cannot prove physical facts. */ }
+  }
+  const hasEvidenceNote=typeof physical?.evidenceNote==="string" && physical.evidenceNote.trim().length>=8;
+  const auditable=intelligence?.trust==="reviewed"
+    && ["approved","corrected"].includes(intelligence.reviewStatus)
+    && (hasSourceUrl||hasEvidenceNote);
   const acceptIndex = (key: Exclude<FabricPhysicsDimension,"gsm"|"drape">, value: number | null) => {
     const provenance = intelligence?.fieldProvenance?.[`verifiedPhysical.${key}`];
     if(!auditable || !validFabricPhysicsValue(key,value) || (provenance !== "declared" && provenance !== "reviewed")) return;
