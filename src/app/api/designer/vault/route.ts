@@ -1,5 +1,6 @@
 import { linkVaultOwnerBestEffort, resolveVaultStoreOwnerBestEffort, vaultOwnershipWarning } from "@/lib/vault-owner-link";
 import { parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity } from "@/lib/vault-request-identifiers";
+import { vaultRateBlocked } from "@/lib/vault-rate-guard";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -26,11 +27,7 @@ const rate=(globalThis as typeof globalThis & {
 
 function blocked(request:Request){
   const ip=request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()||"unknown";
-  const now=Date.now();
-  const current=rate.get(ip);
-  if(!current||now-current.at>60_000){rate.set(ip,{at:now,count:1});return false;}
-  current.count+=1;
-  return current.count>30;
+  return vaultRateBlocked(rate,ip);
 }
 
 async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
