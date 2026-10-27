@@ -24,3 +24,14 @@ export function parseVaultRequestIdentifiers(
   }
   return {ok:true,vaultId:null,recoveryToken:null};
 }
+
+/**
+ * Possession of a valid recovery credential authorizes load/delete, without
+ * requiring an account session. Never make those token-only operations depend
+ * on an optional legacy Supabase Auth lookup, which can time out independently
+ * of the vault RPC. Claims and owned operations still require identity.
+ */
+export function vaultActionNeedsCustomerIdentity(action:string):boolean{
+  return action==="store"||action==="claim"||
+    action==="listOwned"||action==="loadOwned"||action==="deleteOwned";
+}
