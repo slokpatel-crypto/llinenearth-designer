@@ -789,3 +789,9 @@ Valid string records retain their normalization and optional-field compatibility
 Owned-vault actions validate and normalize the submitted UUID before customer identity lookup or database RPC. The same helper is used when issuing and parsing both measurement and locked-design recovery tokens, so a malformed ID cannot be accepted by one path and rejected by another. Arrays, objects, missing UUID hyphens, unsupported UUID versions/variants and trailing data fail closed; valid existing UUIDs remain compatible and are normalized to lowercase.
 
 This is request-format integrity, not authenticated live Supabase acceptance or proof that a vault belongs to a customer. Database migrations, token formats and stored records are unchanged. Exact-head CI plus real signed-in recovery, claim, load and delete verification remain release gates.
+
+## 2026-10-28 — Physical evidence stays untrusted at every rendering boundary
+
+**Contract:** even an approved Analyzer profile must supply field-level declared/reviewed provenance, a usable HTTPS source or sufficiently descriptive note, and finite in-range physical dimensions before customer Designer gains verified facts. Declared pattern repeats require positive repeat mm; swatch-derived scale requires a usable physical pattern dimension. Invalid optional stripe width is dropped without certifying its measurement. The persisted profile shape is unchanged.
+
+**Renderer parity:** isolated 3D tile calibration cannot treat declared swatch width or an undetected/stale pixel period as a measured print repeat. A declared repeat and detected period are required, as in deterministic photographic preview. This is a software truth guard, not supplier confirmation, four-angle Blender/photo parity, calibrated drape or tailor acceptance.
