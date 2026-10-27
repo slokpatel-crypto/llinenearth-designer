@@ -75,6 +75,7 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [ ] Notifications and broad marketing automations.
 
 ## Progress record
+- [x] 2026-10-28: Reviewed Analyzer-to-Designer physical evidence now requires valid dimensions and provenance; malformed GSM, drape, fibre, URLs and rejected reviews cannot certify customer facts. Isolated 3D repeat calibration matches deterministic photo preview: swatch width/unobserved repeat cannot certify true scale, and overflow/coercion fails closed. Added negative regressions. Exact-head CI, supplier evidence and native Blender acceptance remain separate pending gates; no release claim.
 - [x] 2026-10-28: Hardened Phase 1 proof against coerced latency samples (`null`, booleans, numeric strings, empty strings) and invalid direct-gate sample counts, p95 values or nonfinite physical repeats; photo calibration overflow/underflow now fails closed instead of throwing or certifying scale. Added raw and recorded-evidence regressions. Exact-head CI/Non-3D QA, genuine render timings and real physical/operator acceptance remain separate pending gates; no release claim.
 - [x] 2026-10-24: Confirmed connected GitHub repository and latest open draft PR #372.
 - [x] 2026-10-24: Confirmed PR #372 head `28a50ac` has passing **CI** and **Deep Engine — Non-3D QA** workflow runs.
