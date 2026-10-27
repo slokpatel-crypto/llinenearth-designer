@@ -46,8 +46,13 @@ export const LIVE_APPROXIMATE_TILE_PX=112;
 export const PHOTO_MODEL_COORDINATE_SCALE=1024/640;
 export const PHOTO_SWATCH_TILE_PX=320;
 
+function hasFinitePhysicalTileWidth(asset:FabricRenderAsset|null):asset is FabricRenderAsset & {tileRealWidthMm:number}{
+  return typeof asset?.tileRealWidthMm==="number" &&
+    Number.isFinite(asset.tileRealWidthMm) && asset.tileRealWidthMm>0;
+}
+
 export function fabricTileSizePx(asset:FabricRenderAsset|null) {
-  if(!asset?.tileRealWidthMm || asset.tileRealWidthMm<=0) return LIVE_APPROXIMATE_TILE_PX;
+  if(!hasFinitePhysicalTileWidth(asset)) return LIVE_APPROXIMATE_TILE_PX;
   return clamp(asset.tileRealWidthMm*LIVE_MODEL_PX_PER_MM,18,320);
 }
 
@@ -55,15 +60,20 @@ export function applyRuntimeFabricScale(
   asset:FabricRenderAsset|null,
   renderScale:{physicalScaleStatus:"declared_repeat"|"declared_swatch_width"|"unknown";repeatMm:number|null;stripeWidthMm:number|null}|null|undefined,
 ):FabricRenderAsset|null {
-  if(!asset || !renderScale || renderScale.physicalScaleStatus==="unknown") return asset;
-  const repeatMm=Number(renderScale.repeatMm);
-  const repeatPx=Number(asset.repeatPeriodPx);
-  if(!Number.isFinite(repeatMm) || repeatMm<=0 || !Number.isFinite(repeatPx) || repeatPx<=0) return asset;
+  // A measured swatch width is not a measured print repeat. Never turn a
+  // stale pixel-period estimate into supposedly verified physical scale.
+  if(!asset || !renderScale || renderScale.physicalScaleStatus!=="declared_repeat" ||
+    asset.repeatDetected!==true) return asset;
+  const repeatMm=renderScale.repeatMm;
+  const repeatPx=asset.repeatPeriodPx;
+  if(typeof repeatMm!=="number" || !Number.isFinite(repeatMm) || repeatMm<=0 ||
+    typeof repeatPx!=="number" || !Number.isFinite(repeatPx) || repeatPx<=0) return asset;
   // The tile builder measures repeat spacing on the 128 px source crop before
   // composing the 256 px display tile. Reuse that exact calibration basis so a
   // reviewed runtime millimetre measurement can override an old build-time
   // approximate scale without rebuilding the tile image.
   const tileRealWidthMm=Math.round(200*128*repeatMm/repeatPx)/100;
+  if(!Number.isFinite(tileRealWidthMm) || tileRealWidthMm<=0) return asset;
   return {
     ...asset,
     tileRealWidthMm,
@@ -81,7 +91,7 @@ export function photoFabricPatternScale(
   fallback:number,
   photoPxPerMm?:number|null,
 ) {
-  if(!asset || asset.scaleApproximate!==false || !asset.tileRealWidthMm || asset.tileRealWidthMm<=0) return fallback;
+  if(!asset || asset.scaleApproximate!==false || !hasFinitePhysicalTileWidth(asset)) return fallback;
   const directPhotoPxPerMm=Number(photoPxPerMm);
   const photoTilePx=Number.isFinite(directPhotoPxPerMm)&&directPhotoPxPerMm>0
     ? clamp(
@@ -95,7 +105,7 @@ export function photoFabricPatternScale(
 
 export function visiblePatternScaleVerified(patternType:string,asset:FabricRenderAsset|null) {
   if(patternType.toLowerCase()==="solid") return true;
-  return asset?.scaleApproximate===false && Boolean(asset.tileRealWidthMm && asset.tileRealWidthMm>0);
+  return asset?.scaleApproximate===false && hasFinitePhysicalTileWidth(asset);
 }
 
 /**
@@ -104,7 +114,10 @@ export function visiblePatternScaleVerified(patternType:string,asset:FabricRende
  * it proves the renderer's scale math when a measured repeat is available.
  */
 export function photoExpectedRepeatPx(asset:FabricRenderAsset|null,photoPxPerMm?:number|null) {
-  if(!asset || asset.scaleApproximate!==false || !asset.repeatPeriodPx || asset.repeatPeriodPx<=0) return null;
+  if(!asset || asset.scaleApproximate!==false || !hasFinitePhysicalTileWidth(asset) ||
+    asset.repeatDetected!==true || typeof asset.repeatPeriodPx!=="number" ||
+    !Number.isFinite(asset.repeatPeriodPx) || asset.repeatPeriodPx<=0 ||
+    !Number.isFinite(asset.tileWidthPx) || asset.tileWidthPx<=0) return null;
   const scale=photoFabricPatternScale(asset,1,photoPxPerMm);
   const repeatInSwatchTile=asset.repeatPeriodPx*(PHOTO_SWATCH_TILE_PX/asset.tileWidthPx);
   return repeatInSwatchTile*scale;
