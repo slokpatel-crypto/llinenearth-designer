@@ -75,6 +75,7 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [ ] Notifications and broad marketing automations.
 
 ## Progress record
+- [x] 2026-10-28: Hardened Phase 1 proof against coerced latency samples (`null`, booleans, numeric strings, empty strings) and invalid direct-gate sample counts, p95 values or nonfinite physical repeats. Added raw and recorded-evidence regressions. Exact-head CI/Non-3D QA, genuine render timings and real physical/operator acceptance remain separate pending gates; no release claim.
 - [x] 2026-10-24: Confirmed connected GitHub repository and latest open draft PR #372.
 - [x] 2026-10-24: Confirmed PR #372 head `28a50ac` has passing **CI** and **Deep Engine — Non-3D QA** workflow runs.
 - [x] 2026-10-24: Hardened physical-evidence parsing across direct, batch, queue and worker Analyzer paths; malformed/coerced facts now fail closed and persisted jobs are independently revalidated.
