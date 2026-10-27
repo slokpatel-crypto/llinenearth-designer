@@ -108,7 +108,7 @@
   .premiumAtelier .gatewayIntro { padding-top: 44px; }
   .premiumAtelier .gatewayCardCopy h3 { font-size: 2.4rem; }
   .premiumAtelier .atelierMobileDock { grid-template-columns: 1.25fr 1fr 1fr .85fr .75fr; }
-  .premiumAtelier .atelierMobileDock a { font-size: 10px; line-height: 1.25; padding-inline: 3px; }
+  .premiumAtelier .atelierMobileDock a { font-size: 11px; line-height: 1.15; padding-inline: 3px; }
   .premiumAtelier .creativeCards { grid-template-columns: 1fr; }
   .premiumAtelier .creativeStudio .newDesignerSimpleHead { gap: 14px; }
 }
