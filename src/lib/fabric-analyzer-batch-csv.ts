@@ -32,7 +32,7 @@ export function catalogPhysicalCsvPrefill(metadata:CatalogPhysicalTemplateMetada
   // written provenance but never export an HTTP link as verified HTTPS evidence.
   const sourceUrl=provenance.sourceUrl?.startsWith("https://")?provenance.sourceUrl:"";
   return {
-    verifiedGsm:typeof metadata?.weightGsm==="number"&&Number.isFinite(metadata.weightGsm)?metadata.weightGsm:"",
+    verifiedGsm:typeof metadata?.weightGsm==="number"&&Number.isFinite(metadata.weightGsm)&&metadata.weightGsm>=40&&metadata.weightGsm<=1000?metadata.weightGsm:"",
     verifiedDrape:mappedDrape,
     verifiedPhysicalSourceUrl:sourceUrl,
     verifiedPhysicalEvidenceNote:note,

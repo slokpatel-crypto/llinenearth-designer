@@ -765,3 +765,21 @@ The Atelier handoff store reads browser JSON, which can contain null entries, tr
 **Limit:** This is not an atomic localStorage transaction or cross-tab lock; tab termination after the first write and browser storage corruption still require manual QA. No migration, main merge or production deployment.
 
 **Designer vault UX follow-up:** The existing Designer Studio vault action ignored the new owner-link failure warning. It now retains its original token and clipboard behavior while clearly surfacing unconfirmed account ownership to customers; account-linked confirmation is not implied. UI/browser acceptance remains pending.
+
+## 2026-10-27 — Customer fit activation includes evidence isolation and recovery
+
+A named customer profile records tape measurements, not manual posture observations. Activating it must reset those observations to unassessed defaults rather than attach the previous customer's evidence. Save, activate and delete now use a shared best-effort multi-record writer; failed writes restore only unchanged values belonging to that operation. Successful writes are read back before success is reported. An unreadable history must block mutation rather than be treated as an empty customer list. Existing keys, valid profile shapes, centimetre values and optional legacy identity markers are retained.
+
+Browser storage remains nontransactional. Concurrent writes after readback, browser termination during writes, and failed rollback remain limits; no cross-tab atomicity or durable cloud guarantee is claimed. Tests inject quota errors, corrupt history, lost writes and concurrent changes.
+
+## 2026-10-27 — Measurement vault request and input lifecycle
+
+A synchronous ref guards all measurement vault actions before fetch dispatch. Measurement controls, primary save/navigation and recovery-token edits are locked while the request settles. This prevents duplicate remote stores and prevents recovery/delete responses from being labelled as a different edited token. Token edits clear stale expiry/status metadata. The pair writer resolves the localStorage getter inside its error boundary, so browser-level storage denial cannot hide a confirmed remote copy's recovery token or escape the ordinary save error UI.
+
+The browser regression uses synthetic vault responses and blocked browser storage at 390/768/1440 widths. It is wired into both existing CI workflows without removing any model or production gate. Real authenticated vault/database and physical tailor acceptance remain separate.
+
+## 2026-10-27 — Physical evidence text is never manufactured by coercion
+
+Source type, reference and reviewer are required strings. Optional date/URL fields may be absent or null, but populated values must also be strings. Objects, arrays, booleans and numeric values no longer become text that qualifies metadata as physically reviewed. The same normalizer protects ingestion, stored metadata reads and verified CSV prefill. A documented catalogue GSM value outside the existing 40–1000 range is left blank in the worksheet instead of promoted to verified data.
+
+Valid string records retain their normalization and optional-field compatibility. Existing malformed records are not rewritten; they simply do not qualify as physical provenance. These software checks establish format integrity only, never authenticity of a supplier statement or an actual measurement.
