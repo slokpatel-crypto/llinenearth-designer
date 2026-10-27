@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { emptyMeasurementProfile, formatMeasure, fromCm, MEASUREMENT_STORAGE_KEY, measurementCoverage, toCm, validStoredMeasurementProfile, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, emptyTailorObservationProfile, validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { describeMeasurementVaultSaveOutcome } from "@/lib/measurement-vault-save-outcome";
@@ -147,6 +147,7 @@ export function MeasurementStudio(){
   const [localSaveMessage,setLocalSaveMessage]=useState("");
   const [observations,setObservations]=useState<TailorObservationProfile>(emptyTailorObservationProfile());
   const [vaultBusy,setVaultBusy]=useState(false);
+  const vaultBusyRef=useRef(false);
   const [vaultMessage,setVaultMessage]=useState("");
   const [vaultToken,setVaultToken]=useState("");
   const [vaultExpiresAt,setVaultExpiresAt]=useState("");
@@ -162,15 +163,17 @@ export function MeasurementStudio(){
   const scaleFill=((sliderValue-SCALE_MIN)/(SCALE_MAX-SCALE_MIN))*100;
 
   function setValue(key:string,display:string){
+    if(vaultBusyRef.current)return;
     const n=Number(display); const cm=Number.isFinite(n)&&n>0?toCm(n,unit):undefined;
     setProfile(p=>({...p,unit:"in",[mode]:{...p[mode],[key]:cm},updatedAt:new Date().toISOString()}));setSaved(false);
   }
   function save(){
+    if(vaultBusyRef.current)return false;
     const now=new Date().toISOString();
     const inchProfile={...profile,unit:"in" as const,updatedAt:now};
     const observationProfile={...observations,updatedAt:now};
     const localResult=persistMeasurementPair(
-      localStorage,JSON.stringify(inchProfile),JSON.stringify(observationProfile),
+      ()=>localStorage,JSON.stringify(inchProfile),JSON.stringify(observationProfile),
     );
     if(!localResult.saved){
       setSaved(false);
@@ -183,7 +186,8 @@ export function MeasurementStudio(){
     return true;
   }
   async function saveSecureCopy(){
-    if(vaultBusy) return;
+    if(vaultBusyRef.current) return;
+    vaultBusyRef.current=true;
     setVaultBusy(true);setVaultMessage("");
     const now=new Date().toISOString();
     const nextProfile={...profile,unit:"in" as const,updatedAt:now};
@@ -201,11 +205,12 @@ export function MeasurementStudio(){
       setVaultToken(result.recoveryToken);
       setVaultExpiresAt(""); // A previous loaded token's expiry must not label a new copy.
       const localResult=persistMeasurementPair(
-        localStorage,JSON.stringify(nextProfile),JSON.stringify(nextObservations),
+        ()=>localStorage,JSON.stringify(nextProfile),JSON.stringify(nextObservations),
       );
       const localSaved=localResult.saved;
+      if(!localSaved)setSaved(false);
       if(localSaved){
-        setProfile(nextProfile);setObservations(nextObservations);setSaved(true);
+        setProfile(nextProfile);setObservations(nextObservations);setSaved(true);setLocalSaveMessage("");
       }
       // A failed local write must not hide the successful server copy or its token.
       let tokenCopied=false;
@@ -225,11 +230,12 @@ export function MeasurementStudio(){
       ].filter(Boolean).join(" "));
     }catch(error){
       setVaultMessage(error instanceof Error?error.message:"Secure measurement copy could not be saved.");
-    }finally{setVaultBusy(false);}
+    }finally{vaultBusyRef.current=false;setVaultBusy(false);}
   }
 
   async function loadSecureCopy(){
-    if(vaultBusy||!vaultToken.trim()) return;
+    if(vaultBusyRef.current||!vaultToken.trim()) return;
+    vaultBusyRef.current=true;
     setVaultBusy(true);setVaultMessage("");
     try{
       const response=await fetch("/api/measurements/vault",{
@@ -243,23 +249,25 @@ export function MeasurementStudio(){
       if(!response.ok||!restoredProfile||!restoredObservations) throw new Error(result.error||"Secure measurement profile could not be loaded.");
       const nextProfile={...restoredProfile,unit:"in" as const};
       const localResult=persistMeasurementPair(
-        localStorage,JSON.stringify(nextProfile),JSON.stringify(restoredObservations),
+        ()=>localStorage,JSON.stringify(nextProfile),JSON.stringify(restoredObservations),
       );
       if(!localResult.saved){
+        setSaved(false);
         setVaultMessage(localResult.rollbackComplete
           ?"Secure measurement copy was retrieved, but browser storage failed. No local profile was activated. Keep the recovery token and try again."
           :"Secure measurement copy was retrieved, but browser storage failed and the previous browser cache may be inconsistent. Keep the recovery token and recheck local measurements.");
         return;
       }
-      setProfile(nextProfile);setObservations(restoredObservations);setSaved(true);setVaultExpiresAt(result.expiresAt||"");
+      setProfile(nextProfile);setObservations(restoredObservations);setSaved(true);setLocalSaveMessage("");setVaultExpiresAt(result.expiresAt||"");
       setVaultMessage("Secure measurement profile loaded onto this device.");
     }catch(error){
       setVaultMessage(error instanceof Error?error.message:"Secure measurement profile could not be loaded.");
-    }finally{setVaultBusy(false);}
+    }finally{vaultBusyRef.current=false;setVaultBusy(false);}
   }
 
   async function deleteSecureCopy(){
-    if(vaultBusy||!vaultToken.trim()) return;
+    if(vaultBusyRef.current||!vaultToken.trim()) return;
+    vaultBusyRef.current=true;
     setVaultBusy(true);setVaultMessage("");
     try{
       const response=await fetch("/api/measurements/vault",{
@@ -273,7 +281,7 @@ export function MeasurementStudio(){
       if(result.deleted){setVaultToken("");setVaultExpiresAt("");}
     }catch(error){
       setVaultMessage(error instanceof Error?error.message:"Secure measurement copy could not be deleted.");
-    }finally{setVaultBusy(false);}
+    }finally{vaultBusyRef.current=false;setVaultBusy(false);}
   }
   const progress=mode==="shirt"?coverage.shirt:coverage.pants;
   const summary=useMemo(()=>[
@@ -293,12 +301,12 @@ export function MeasurementStudio(){
       <aside className="measureEntry"><span className="micro">NOW MEASURING</span><h2>{activeField.label}</h2><p>{activeField.tip}</p>
         <div className="measurementScale">
           <div className="measurementScaleHead"><span>SELECT ON SCALE</span><div className="measurementScaleValue"><strong>{selectedDisplay}</strong><small>0.01 inch precision</small></div></div>
-          <input className="measurementRangeInput" type="range" min={SCALE_MIN} max={SCALE_MAX} step={SCALE_STEP} value={sliderValue} onChange={e=>setValue(activeField.key,e.target.value)} aria-label={`${activeField.label} in inches`} style={{"--scale-fill":`${scaleFill}%`} as CSSProperties}/>
+          <input className="measurementRangeInput" disabled={vaultBusy} type="range" min={SCALE_MIN} max={SCALE_MAX} step={SCALE_STEP} value={sliderValue} onChange={e=>setValue(activeField.key,e.target.value)} aria-label={`${activeField.label} in inches`} style={{"--scale-fill":`${scaleFill}%`} as CSSProperties}/>
           <div className="measurementScaleTicks" aria-hidden="true"><span>0.01</span><span>25</span><span>50</span><span>75</span><span>100 in</span></div>
           <div className="measurementScaleMeta"><span>TAILORING GUIDE</span><strong>{formatMeasure(activeField.min,unit)} – {formatMeasure(activeField.max,unit)}</strong><p>The full selector runs from 0.01 to 100 inches. The highlighted guide range helps you catch an accidental selection.</p></div>
         </div>
         {invalid&&<p className="measureWarning">This value is outside the usual tailoring range. Recheck the tape and scale position.</p>}
-        <button className="measureSave" onClick={save}>{saved?"Measurements saved ✓":"Save measurements"}</button><Link href="/designer-studio" className="measureDesignerLink" onClick={(event)=>{if(!save())event.preventDefault();}}>Use in Designer <span>→</span></Link>{localSaveMessage&&<p className="measureSaveError" role="alert">{localSaveMessage}</p>}<small className="measurePrivacy">Stored locally on this device. No body measurements are sent to secure storage unless you explicitly choose it below.</small>
+        <button className="measureSave" disabled={vaultBusy} onClick={save}>{saved?"Measurements saved ✓":"Save measurements"}</button><Link href="/designer-studio" className="measureDesignerLink" aria-disabled={vaultBusy} onClick={(event)=>{if(!save())event.preventDefault();}}>Use in Designer <span>→</span></Link>{localSaveMessage&&<p className="measureSaveError" role="alert">{localSaveMessage}</p>}<small className="measurePrivacy">Stored locally on this device. No body measurements are sent to secure storage unless you explicitly choose it below.</small>
         <details className="measurementVault">
           <summary>Secure measurement copy</summary>
           <p>Optional. Save an expiring private server copy so you can recover measurements on another device. The recovery token is the key; keep it private.</p>
@@ -306,7 +314,7 @@ export function MeasurementStudio(){
             <button type="button" onClick={()=>void saveSecureCopy()} disabled={vaultBusy}>{vaultBusy?"Working…":"Save secure copy"}</button>
             <button type="button" onClick={()=>void loadSecureCopy()} disabled={vaultBusy||!vaultToken.trim()}>Load token</button>
           </div>
-          <label>Recovery token<textarea rows={3} value={vaultToken} onChange={(e)=>setVaultToken(e.target.value)} placeholder="lem1.…" spellCheck={false}/></label>
+          <label>Recovery token<textarea rows={3} disabled={vaultBusy} value={vaultToken} onChange={(e)=>{setVaultToken(e.target.value);setVaultExpiresAt("");setVaultMessage("");}} placeholder="lem1.…" spellCheck={false}/></label>
           {vaultExpiresAt&&<small>Recovered copy expires {new Date(vaultExpiresAt).toLocaleDateString("en-IN")}.</small>}
           {vaultMessage&&<p className="measurementVaultMessage">{vaultMessage}</p>}
           {vaultToken&&<button type="button" className="measurementVaultDelete" onClick={()=>void deleteSecureCopy()} disabled={vaultBusy}>Delete secure copy</button>}
@@ -321,7 +329,7 @@ export function MeasurementStudio(){
       </div>
       <div className="tailorObservationGrid">
         <label>Shoulder balance
-          <select value={observations.shoulderBalance} onChange={(e)=>{setObservations((current)=>({...current,shoulderBalance:e.target.value as TailorObservationProfile["shoulderBalance"]}));setSaved(false);}}>
+          <select disabled={vaultBusy} value={observations.shoulderBalance} onChange={(e)=>{setObservations((current)=>({...current,shoulderBalance:e.target.value as TailorObservationProfile["shoulderBalance"]}));setSaved(false);}}>
             <option value="unknown">Not assessed</option>
             <option value="level">Level / typical</option>
             <option value="square">More square</option>
@@ -330,7 +338,7 @@ export function MeasurementStudio(){
           <small>Used to flag shoulder-angle and armhole checks.</small>
         </label>
         <label>Posture balance
-          <select value={observations.posture} onChange={(e)=>{setObservations((current)=>({...current,posture:e.target.value as TailorObservationProfile["posture"]}));setSaved(false);}}>
+          <select disabled={vaultBusy} value={observations.posture} onChange={(e)=>{setObservations((current)=>({...current,posture:e.target.value as TailorObservationProfile["posture"]}));setSaved(false);}}>
             <option value="unknown">Not assessed</option>
             <option value="balanced">Balanced</option>
             <option value="erect">More erect</option>
@@ -339,7 +347,7 @@ export function MeasurementStudio(){
           <small>Used to flag front/back length and yoke balance checks.</small>
         </label>
         <label>Seat balance
-          <select value={observations.seatBalance} onChange={(e)=>{setObservations((current)=>({...current,seatBalance:e.target.value as TailorObservationProfile["seatBalance"]}));setSaved(false);}}>
+          <select disabled={vaultBusy} value={observations.seatBalance} onChange={(e)=>{setObservations((current)=>({...current,seatBalance:e.target.value as TailorObservationProfile["seatBalance"]}));setSaved(false);}}>
             <option value="unknown">Not assessed</option>
             <option value="balanced">Balanced</option>
             <option value="flat">Flatter seat</option>
@@ -348,14 +356,14 @@ export function MeasurementStudio(){
           <small>Used to flag back-rise and trouser upper-block checks.</small>
         </label>
         <label>Movement priority
-          <select value={observations.mobilityPriority} onChange={(e)=>{setObservations((current)=>({...current,mobilityPriority:e.target.value as TailorObservationProfile["mobilityPriority"]}));setSaved(false);}}>
+          <select disabled={vaultBusy} value={observations.mobilityPriority} onChange={(e)=>{setObservations((current)=>({...current,mobilityPriority:e.target.value as TailorObservationProfile["mobilityPriority"]}));setSaved(false);}}>
             <option value="standard">Standard</option>
             <option value="high">High mobility</option>
           </select>
           <small>High mobility protects ease when a visually slim cut is selected.</small>
         </label>
       </div>
-      <div className="tailorObservationFoot"><span>MANUAL INPUT ONLY</span><p>Final pattern/block adjustments still require an in-person tailor check before cutting.</p><button type="button" onClick={save}>{saved?"Profile saved ✓":"Save fit profile"}</button></div>
+      <div className="tailorObservationFoot"><span>MANUAL INPUT ONLY</span><p>Final pattern/block adjustments still require an in-person tailor check before cutting.</p><button type="button" disabled={vaultBusy} onClick={save}>{saved?"Profile saved ✓":"Save fit profile"}</button></div>
     </section>
   </section>;
 }

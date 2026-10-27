@@ -41,10 +41,10 @@ test("missing old linkage and corrupted browser markers fail closed",()=>{
 test("activation and deletion use the same guarded browser identity contract",()=>{
   const lib=readFileSync("src/lib/customer-measurements.ts","utf8");
   assert.match(lib,/serializeActiveCustomerMeasurementLink\(profile\.id,snapshot\)/);
-  assert.match(lib,/localStorage\.setItem\(ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY/);
+  assert.match(lib,/\[ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY,serializeActiveCustomerMeasurementLink/);
   assert.match(lib,/matchesActiveCustomerMeasurementSnapshot\(link,id,active\)/);
-  assert.match(lib,/localStorage\.removeItem\(MEASUREMENT_STORAGE_KEY\)/);
-  assert.match(lib,/localStorage\.removeItem\(ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY\)/);
+  assert.match(lib,/records\.push\(\[MEASUREMENT_STORAGE_KEY,null\]\)/);
+  assert.match(lib,/records\.push\(\[ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY,null\]\)/);
   assert.match(lib,/link\?\.profileId===id/);
   assert.equal(ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY,"linen-earth-active-customer-measurement-link-v1");
 });

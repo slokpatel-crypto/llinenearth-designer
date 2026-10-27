@@ -92,3 +92,41 @@ test("primary save and Designer navigation refuse a partially written fit",()=>{
   assert.match(source,/previous complete fit remains active/);
   assert.match(source,/browser storage may now be inconsistent/);
 });
+
+test("readback detects a concurrent change even if both writes returned successfully",()=>{
+  const {state,storage}=store({[PROFILE]:"old-p",[OBS]:"old-o"},(key,value)=>{
+    if(key===OBS&&value==="new-o")state.set(PROFILE,"other-tab");
+  });
+  assert.deepEqual(persistMeasurementPair(storage,"new-p","new-o"),{saved:false,rollbackComplete:false});
+  assert.equal(state.get(PROFILE),"other-tab");
+  assert.equal(state.get(OBS),"old-o");
+});
+
+test("silent lost writes cannot be reported as a complete fit",()=>{
+  const {state,storage}=store({[PROFILE]:"old-p",[OBS]:"old-o"});
+  const original=storage.setItem;
+  storage.setItem=(key,value)=>{if(key!==OBS)original(key,value);};
+  assert.deepEqual(persistMeasurementPair(storage,"new-p","new-o"),{saved:false,rollbackComplete:true});
+  assert.equal(state.get(PROFILE),"old-p");
+  assert.equal(state.get(OBS),"old-o");
+});
+
+test("browser denial of the localStorage property is handled before any write",()=>{
+  assert.deepEqual(persistMeasurementPair(()=>{throw Error('SecurityError');},'p','o'),{saved:false,rollbackComplete:true});
+});
+
+test("vault actions lock synchronous dispatch, edits and token identity until completion",()=>{
+  const source=readFileSync('src/components/MeasurementStudio.tsx','utf8');
+  for(const name of ['saveSecureCopy','loadSecureCopy','deleteSecureCopy']){
+    const action=source.slice(source.indexOf(`  async function ${name}()`));
+    const body=action.slice(0,action.indexOf('finally{')+'finally{vaultBusyRef.current=false;setVaultBusy(false);}'.length);
+    assert.match(body,/if\(vaultBusyRef.current/);
+    assert.ok(body.indexOf('vaultBusyRef.current=true')<body.indexOf('await fetch'));
+    assert.match(body,/finally\{vaultBusyRef.current=false;setVaultBusy\(false\);\}/);
+  }
+  assert.match(source,/function save\(\)\{\s*if\(vaultBusyRef.current\)return false/);
+  assert.match(source,/measurementRangeInput" disabled=\{vaultBusy\}/);
+  assert.equal((source.match(/<select disabled=\{vaultBusy\}/g)||[]).length,4);
+  assert.match(source,/<textarea rows=\{3\} disabled=\{vaultBusy\}/);
+  assert.equal((source.match(/\(\)=>localStorage,JSON.stringify/g)||[]).length,3);
+});

@@ -60,6 +60,7 @@ jobs:
           done
           curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null
           node scripts/verify-deep-engine-fabric-discovery.cjs
+          node scripts/verify-measurement-recovery.cjs
           node scripts/verify-designer-advisor.cjs
           node scripts/verify-photo-form.cjs
           node scripts/verify-photo-craft.cjs

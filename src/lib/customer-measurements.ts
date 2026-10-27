@@ -1,6 +1,15 @@
-import { MEASUREMENT_STORAGE_KEY, type MeasurementProfile as LegacyMeasurementProfile } from "@/lib/measurements";
+import { MEASUREMENT_STORAGE_KEY, type MeasurementProfile as LegacyMeasurementProfile } from "./measurements.ts";
 import { makeCustomerMeasurementProfileId, validStoredCustomerMeasurementProfiles } from "./customer-measurement-storage-integrity.ts";
 import { ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY, matchesActiveCustomerMeasurementSnapshot, parseActiveCustomerMeasurementLink, serializeActiveCustomerMeasurementLink } from "./customer-measurement-active-link.ts";
+
+import { emptyTailorObservationProfile, TAILOR_OBSERVATION_STORAGE_KEY } from "./designer/tailor-observations.ts";
+import { writeBrowserRecords, type BrowserWriteResult } from "./browser-storage-write.ts";
+
+function requireSaved(result: BrowserWriteResult) {
+  if (!result.saved) throw new Error(result.rollbackComplete
+    ? "Profile was not changed. The previous browser records were restored."
+    : "Profile was not confirmed. Browser storage may be inconsistent; recheck measurements before using Designer.");
+}
 
 export type CustomerMeasurementUnit = "cm" | "in";
 export type CustomerMeasurementKey = "chest" | "waist" | "shoulder" | "sleeveLength" | "neck" | "hip" | "shirtLength" | "trouserWaist" | "trouserLength" | "inseam";
@@ -44,13 +53,18 @@ export function measurementFromCm(value: number, unit: CustomerMeasurementUnit) 
   return unit === "cm" ? value : value / 2.54;
 }
 
+function readCustomerMeasurementProfiles(): CustomerMeasurementProfile[] {
+  const raw = localStorage.getItem(CUSTOMER_MEASUREMENTS_KEY);
+  if (raw === null) return [];
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed)) throw new Error("Customer history is unreadable.");
+  return validStoredCustomerMeasurementProfiles<CustomerMeasurementProfile>(parsed);
+}
+
 export function listCustomerMeasurementProfiles(): CustomerMeasurementProfile[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(CUSTOMER_MEASUREMENTS_KEY);
-    if (!raw) return [];
-    const parsed:unknown = JSON.parse(raw);
-    return validStoredCustomerMeasurementProfiles<CustomerMeasurementProfile>(parsed);
+    return readCustomerMeasurementProfiles();
   } catch {
     return [];
   }
@@ -58,7 +72,7 @@ export function listCustomerMeasurementProfiles(): CustomerMeasurementProfile[] 
 
 export function saveCustomerMeasurementProfile(input: Omit<CustomerMeasurementProfile, "id" | "updatedAt"> & { id?: string }) {
   if (typeof window === "undefined") throw new Error("Measurements are available in the browser.");
-  const existing = listCustomerMeasurementProfiles();
+  const existing = readCustomerMeasurementProfiles();
   const saved: CustomerMeasurementProfile = {
     id: input.id || makeCustomerMeasurementProfileId(window.crypto.getRandomValues(new Uint8Array(16)),Date.now()),
     name: input.name.trim(),
@@ -66,29 +80,42 @@ export function saveCustomerMeasurementProfile(input: Omit<CustomerMeasurementPr
     measurements: input.measurements,
     updatedAt: new Date().toISOString(),
   };
+  if (validStoredCustomerMeasurementProfiles([saved]).length !== 1) {
+    throw new Error("Invalid customer measurement profile.");
+  }
   const next = [saved, ...existing.filter((profile) => profile.id !== saved.id)].slice(0, 20);
-  localStorage.setItem(CUSTOMER_MEASUREMENTS_KEY, JSON.stringify(next));
-  activateCustomerMeasurementProfile(saved);
+  requireSaved(writeBrowserRecords(localStorage, [
+    [CUSTOMER_MEASUREMENTS_KEY, JSON.stringify(next)],
+    ...customerActivationRecords(saved),
+  ]));
   return saved;
 }
 
 export function removeCustomerMeasurementProfile(id: string) {
   if (typeof window === "undefined") return;
-  const next = listCustomerMeasurementProfiles().filter((profile) => profile.id !== id);
+  const next = readCustomerMeasurementProfiles().filter((profile) => profile.id !== id);
   const link=parseActiveCustomerMeasurementLink(localStorage.getItem(ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY));
   const active=link?.profileId===id?localStorage.getItem(MEASUREMENT_STORAGE_KEY):null;
-  localStorage.setItem(CUSTOMER_MEASUREMENTS_KEY, JSON.stringify(next));
+  const records: Array<readonly [string,string|null]> = [[CUSTOMER_MEASUREMENTS_KEY,JSON.stringify(next)]];
   if(link?.profileId===id){
     // Never erase manual Designer measurements or another customer's active fit.
     if(matchesActiveCustomerMeasurementSnapshot(link,id,active)){
-      localStorage.removeItem(MEASUREMENT_STORAGE_KEY);
+      records.push([MEASUREMENT_STORAGE_KEY,null]);
     }
-    localStorage.removeItem(ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY);
+    records.push([ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY,null]);
   }
+  requireSaved(writeBrowserRecords(localStorage,records));
 }
 
 export function activateCustomerMeasurementProfile(profile: CustomerMeasurementProfile) {
   if (typeof window === "undefined") return;
+  requireSaved(writeBrowserRecords(localStorage,customerActivationRecords(profile)));
+}
+
+function customerActivationRecords(profile: CustomerMeasurementProfile): Array<readonly [string,string]> {
+  if (validStoredCustomerMeasurementProfiles([profile]).length !== 1) {
+    throw new Error("Invalid customer measurement profile.");
+  }
   const m = profile.measurements;
   const legacy: LegacyMeasurementProfile = {
     version: 1,
@@ -110,10 +137,13 @@ export function activateCustomerMeasurementProfile(profile: CustomerMeasurementP
     updatedAt: new Date().toISOString(),
   };
   const snapshot=JSON.stringify(legacy);
-  // Write identity first: if this fails, the existing active measurements stay intact.
-  // If the second write fails, the digest cannot match the old snapshot.
-  localStorage.setItem(ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY, serializeActiveCustomerMeasurementLink(profile.id,snapshot));
-  localStorage.setItem(MEASUREMENT_STORAGE_KEY, snapshot);
+  // Named profiles do not capture posture evidence: never inherit another customer's observations.
+  const observations=JSON.stringify({...emptyTailorObservationProfile(),updatedAt:legacy.updatedAt});
+  return [
+    [ACTIVE_CUSTOMER_MEASUREMENT_LINK_KEY,serializeActiveCustomerMeasurementLink(profile.id,snapshot)],
+    [MEASUREMENT_STORAGE_KEY,snapshot],
+    [TAILOR_OBSERVATION_STORAGE_KEY,observations],
+  ];
 }
 
 export function profileMeasurementSummary(profile: CustomerMeasurementProfile) {
