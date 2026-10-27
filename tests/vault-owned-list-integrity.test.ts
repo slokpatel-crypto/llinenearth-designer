@@ -44,6 +44,30 @@ test("measurement list shares the same null, UUID and date validation without re
   assert.equal(isVaultListRowEnvelope({...minimal,created_at:42}),false);
 });
 
+
+test("owned list excludes expired, impossible and ambiguous timestamped RPC rows",()=>{
+  const now=Date.parse("2026-10-27T12:10:00Z");
+  assert.equal(isVaultListRowEnvelope(row,now),true);
+  assert.equal(ownedDesignVaultRowMatchesPayload(row,now),true);
+  for(const record of [
+    {...row,expires_at:"2026-10-27T12:10:00Z"}, // equality expires
+    {...row,expires_at:"2026-10-27T12:09:59Z"}, // expired
+    {...row,expires_at:"2026-10-27T11:59:59Z"}, // expiry before creation
+    {...row,created_at:"2027-04-26T12:00:00Z"}, // creation after expiry
+    {...row,created_at:"2026-10-27"}, // not an offset-bearing instant
+    {...row,expires_at:"2027-04-25"}, // previously accepted by Date.parse
+    {...row,expires_at:"2027-04-25T12:00:00"}, // ambiguous local time
+    {...row,created_at:42},
+  ]){
+    assert.equal(isVaultListRowEnvelope(record,now),false);
+    assert.equal(ownedDesignVaultRowMatchesPayload(record,now),false);
+  }
+  assert.equal(isVaultListRowEnvelope(row,Number.NaN),false);
+  assert.equal(ownedDesignVaultRowMatchesPayload(row,Number.POSITIVE_INFINITY),false);
+  // Server and Vercel JS may use a different TZ; explicit offsets normalize.
+  assert.equal(isVaultListRowEnvelope({...row,created_at:"2026-10-27T17:30:00+05:30"},now),true);
+});
+
 test("both owned-list endpoints validate untrusted row envelopes before UI serialization",()=>{
   const designer=readFileSync("src/app/api/designer/vault/route.ts","utf8");
   const measurements=readFileSync("src/app/api/measurements/vault/route.ts","utf8");

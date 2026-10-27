@@ -1,12 +1,16 @@
 import {normalizeVaultId} from "./vault-id.ts";
+import {parseVaultTimestamptz} from "./vault-read-integrity.ts";
 
 /** JSON returned by remote vault RPCs is not necessarily a well-formed row. */
-export function isVaultListRowEnvelope(value:unknown):boolean{
+export function isVaultListRowEnvelope(value:unknown,nowMs:number=Date.now()):boolean{
   if(!value||typeof value!=="object"||Array.isArray(value))return false;
   const row=value as Record<string,unknown>;
-  return normalizeVaultId(row.vault_id)!==null &&
-    typeof row.created_at==="string"&&Number.isFinite(Date.parse(row.created_at)) &&
-    typeof row.expires_at==="string"&&Number.isFinite(Date.parse(row.expires_at));
+  const created=parseVaultTimestamptz(row.created_at);
+  const expires=parseVaultTimestamptz(row.expires_at);
+  // An RPC bug must not expose expired entries as recoverable, or offer
+  // impossible created-after-expiry records in the customer's account list.
+  return normalizeVaultId(row.vault_id)!==null&&created!==null&&expires!==null&&
+    Number.isFinite(nowMs)&&expires>nowMs&&created<=expires;
 }
 
 /**
@@ -14,8 +18,8 @@ export function isVaultListRowEnvelope(value:unknown):boolean{
  * payload; otherwise the account screen can claim a different order/hash.
  * This is consistency validation, not an authenticity signature.
  */
-export function ownedDesignVaultRowMatchesPayload(value:unknown):boolean{
-  if(!isVaultListRowEnvelope(value))return false;
+export function ownedDesignVaultRowMatchesPayload(value:unknown,nowMs:number=Date.now()):boolean{
+  if(!isVaultListRowEnvelope(value,nowMs))return false;
   const row=value as Record<string,unknown>;
   const payload=row.payload;
   if(!payload||typeof payload!=="object"||Array.isArray(payload))return false;
