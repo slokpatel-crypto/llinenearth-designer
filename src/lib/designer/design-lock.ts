@@ -23,6 +23,32 @@ function canonicalize(value:unknown):unknown {
   return value;
 }
 
+// A SHA256 of JSON is not proof of physical validity. JSON.stringify silently
+// converts NaN/Infinity to null; reject malformed finished-garment targets
+// before such values can be locked or printed as tailor-ready centimetres.
+function validFinishedTargets(spec:CanonicalGarmentSpec):boolean {
+  for(const part of [spec.shirt,spec.trouser]){
+    if(!part||!Array.isArray(part.finishedTargets)) return false;
+    for(const target of part.finishedTargets){
+      if(!target||typeof target!=="object"||
+        typeof target.label!=="string"||!target.label.trim()||
+        typeof target.bodyCm!=="number"||!Number.isFinite(target.bodyCm)||
+        target.bodyCm<=0||target.bodyCm>350||
+        !target.finishedCm||typeof target.finishedCm!=="object"||
+        !Number.isFinite(target.finishedCm.min)||!Number.isFinite(target.finishedCm.max)||
+        target.finishedCm.min<=0||target.finishedCm.max>450||
+        target.finishedCm.min>target.finishedCm.max||
+        !["body_plus_ease","recorded_anchor","customer_desired"].includes(target.basis)) return false;
+      if(target.easeCm!==undefined&&(
+        !target.easeCm||typeof target.easeCm!=="object"||
+        !Number.isFinite(target.easeCm.min)||!Number.isFinite(target.easeCm.max)||
+        target.easeCm.min>target.easeCm.max||
+        target.easeCm.min< -100||target.easeCm.max>150)) return false;
+    }
+  }
+  return true;
+}
+
 export function canonicalLockedDesignJson(spec:CanonicalGarmentSpec) {
   return JSON.stringify(canonicalize(spec));
 }
@@ -72,6 +98,7 @@ export async function lockGarmentSpec(
   options:{parentRevisionId?:string|null;lockedAt?:string}={},
 ):Promise<LockedDesignRevision> {
   if(spec.version!=="linen-earth-garment-spec-v1") throw new Error("Unsupported garment specification version.");
+  if(!validFinishedTargets(spec)) throw new Error("Invalid finished-garment measurement targets.");
   if(options.parentRevisionId!=null&&!REVISION_ID.test(options.parentRevisionId))
     throw new Error("Invalid parent revision identity.");
   const canonical=canonicalLockedDesignJson(spec);
@@ -120,7 +147,8 @@ export async function verifyLockedDesignRevision(value:unknown):Promise<boolean>
     // Locked revisions always store normalized ISO UTC. This rejects
     // impossible/normalized dates and protects the timestamp/hash fields
     // embedded in the revision ID; it does not authenticate vault ownership.
-    if(safeTimestamp(revision.lockedAt)!==revision.lockedAt||
+    if(!validFinishedTargets(revision.garmentSpec)||
+      safeTimestamp(revision.lockedAt)!==revision.lockedAt||
       !revisionIdentityMatches(revision.revisionId,revision.lockedAt,revision.recipeHash)||
       revision.parentRevisionId===revision.revisionId) return false;
     const hash=await sha256Hex(canonicalLockedDesignJson(revision.garmentSpec));
