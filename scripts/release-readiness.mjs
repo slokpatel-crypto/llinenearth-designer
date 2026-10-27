@@ -779,6 +779,8 @@ requireTokens("src/components/PremiumShirtProof.tsx", ["Premium Shirt Proof","St
 requireTokens("src/lib/designer/design-lock.ts", ["linen-earth-design-lock-v1","recipeHash","revisionId","verifyLockedDesignRevision"]);
 requireTokens("src/lib/designer/design-vault.ts", ["lev1","createDesignVaultAccessKey","hashDesignVaultAccessKey"]);
 requireTokens("src/lib/measurement-vault.ts", ["lem1","createMeasurementVaultAccessKey","hashMeasurementVaultAccessKey"]);
+requireTokens("src/lib/vault-id.ts", ["normalizeVaultId","typeof value!==\"string\"","VAULT_ID.test(normalized)"]);
+requireTokens("src/lib/vault-request-identifiers.ts", ["normalizeVaultId(body.vaultId)","return {ok:false,field:\"vaultId\"}"]);
 requireTokens("src/components/MeasurementStudio.tsx", ["Secure measurement copy","/api/measurements/vault","Recovery token"]);
 requireTokens("src/lib/designer/production-handoff.ts", ["linen-earth-production-handoff-v1","stockReservation","clothEstimate","quote"]);
 requireTokens("src/lib/designer/tech-pack.ts", ["linen-earth-tech-pack-v1","Tailor Tech Pack","not a cutting pattern"]);

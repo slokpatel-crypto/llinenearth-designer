@@ -1,3 +1,5 @@
+import { normalizeVaultId } from "./vault-id.ts";
+
 /**
  * Vault identifiers are security credentials, not values to stringify.
  * JSON arrays such as ["token"] otherwise become a valid token via String().
@@ -11,9 +13,9 @@ export function parseVaultRequestIdentifiers(
   | {ok:true;vaultId:string|null;recoveryToken:string|null}
 {
   if(action==="loadOwned"||action==="deleteOwned"){
-    if(typeof body.vaultId!=="string"||!body.vaultId.trim())
-      return {ok:false,field:"vaultId"};
-    return {ok:true,vaultId:body.vaultId.trim(),recoveryToken:null};
+    const vaultId=normalizeVaultId(body.vaultId);
+    if(!vaultId) return {ok:false,field:"vaultId"};
+    return {ok:true,vaultId,recoveryToken:null};
   }
   if(action==="claim"||action==="load"||action==="delete"){
     if(typeof body.recoveryToken!=="string"||!body.recoveryToken.trim())

@@ -1,9 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
+import { normalizeVaultId } from "../vault-id.ts";
 
 export const DESIGN_VAULT_TOKEN_VERSION="lev1" as const;
 export const DESIGN_VAULT_ACCESS_BYTES=32;
 
-const VAULT_ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACCESS_KEY=/^[A-Za-z0-9_-]{40,80}$/;
 
 export function createDesignVaultAccessKey(){
@@ -17,18 +17,20 @@ export function hashDesignVaultAccessKey(accessKey:string){
 }
 
 export function createDesignVaultRecoveryToken(vaultId:string,accessKey:string){
-  const id=String(vaultId||"").trim().toLowerCase();
-  if(!VAULT_ID.test(id)) throw new Error("Invalid design vault id.");
+  const id=normalizeVaultId(vaultId);
+  if(!id) throw new Error("Invalid design vault id.");
   if(!ACCESS_KEY.test(accessKey)) throw new Error("Invalid design vault access key.");
   return `${DESIGN_VAULT_TOKEN_VERSION}.${id}.${accessKey}`;
 }
 
-export function parseDesignVaultRecoveryToken(token:string){
-  const [version,vaultId,accessKey,extra]=String(token||"").trim().split(".");
-  if(version!==DESIGN_VAULT_TOKEN_VERSION||extra||!VAULT_ID.test(vaultId||"")||!ACCESS_KEY.test(accessKey||"")) return null;
+export function parseDesignVaultRecoveryToken(token:unknown){
+  if(typeof token!=="string") return null;
+  const [version,rawVaultId,accessKey,extra]=token.trim().split(".");
+  const vaultId=normalizeVaultId(rawVaultId);
+  if(version!==DESIGN_VAULT_TOKEN_VERSION||extra||!vaultId||!ACCESS_KEY.test(accessKey||"")) return null;
   return {
     version:DESIGN_VAULT_TOKEN_VERSION,
-    vaultId:vaultId.toLowerCase(),
+    vaultId,
     accessKey,
     accessHash:hashDesignVaultAccessKey(accessKey),
   };
