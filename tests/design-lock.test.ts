@@ -101,3 +101,32 @@ test("identical recipes locked within the same second have independent revision 
   assert.equal(child.parentRevisionId,a.revisionId);
   assert.notEqual(child.revisionId,a.revisionId);
 });
+
+test("revision verification binds exact ID timestamp and recipe prefix without breaking legacy IDs",async()=>{
+  const valid=await lockGarmentSpec(spec,{lockedAt:"2026-10-01T09:00:00.000Z"});
+  const legacy={...valid,revisionId:valid.revisionId.replace(/-[0-9A-F]{16}$/,"")};
+  assert.equal(await verifyLockedDesignRevision(legacy),true);
+  for(const corrupt of [
+    {...valid,revisionId:"LE-LOCK-20261001090001-"+valid.recipeHash.slice(0,12).toUpperCase()},
+    {...valid,revisionId:valid.revisionId.replace(valid.recipeHash.slice(0,12).toUpperCase(),"000000000000")},
+    {...valid,revisionId:"someone-elses-design"},
+    {...valid,revisionId:valid.revisionId.toLowerCase()},
+    {...valid,lockedAt:"2026-10-01T09:00:01.000Z"},
+    {...valid,lockedAt:"2026-02-30T09:00:00.000Z"},
+    {...valid,lockedAt:"2026-10-01T24:00:00.000Z"},
+    {...valid,lockedAt:"2026-10-01T09:00:00Z"},
+    {...valid,parentRevisionId:valid.revisionId},
+    {...valid,parentRevisionId:"not-a-revision"},
+  ]){
+    assert.equal(await verifyLockedDesignRevision(corrupt),false,
+      "invalid revision envelope must not verify");
+  }
+  await assert.rejects(()=>lockGarmentSpec(spec,{parentRevisionId:"forged"}),/parent revision/);
+  for(const lockedAt of ["2026-02-29T09:00:00Z","2026-10-01T24:00:00Z",
+    "2026-10-01T09:00:00+15:00","not-a-time"]){
+    await assert.rejects(()=>lockGarmentSpec(spec,{lockedAt}),/valid timestamp/);
+  }
+  const leap=await lockGarmentSpec(spec,{lockedAt:"2028-02-29T09:00:00+05:30"});
+  assert.equal(await verifyLockedDesignRevision(leap),true);
+  assert.equal(leap.lockedAt,"2028-02-29T03:30:00.000Z");
+});
