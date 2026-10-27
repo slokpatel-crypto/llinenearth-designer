@@ -110,6 +110,8 @@ test("operator calibration UI clears stale PASS on failed or out-of-order reads"
   assert.match(source,/setData\(null\)/);
   assert.match(source,/setLoadError\("Live measurement evidence is unavailable/);
   assert.match(source,/role="alert"/);
+  assert.match(source,/payload\.summary\.total<payload\.summary\.target/);
+  assert.match(source,/Number\.isFinite\(payload\.summary\.medianChestErrorCm\)/);
   assert.match(source,/return \(\)=>\{loadVersion\.current\+=1;\}/);
 });
 
