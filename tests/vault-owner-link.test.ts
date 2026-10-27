@@ -42,7 +42,7 @@ test("both vault routes retain recovery-token issuance ahead of optional owner-l
     const route=readFileSync(path,"utf8");
     const issue=route.indexOf("const recoveryToken="+token);
     const owner=route.indexOf("const linkStatus=await linkVaultOwnerBestEffort");
-    const response=route.indexOf("ownershipWarning:vaultOwnershipWarning(linkStatus)");
+    const response=route.indexOf('ownershipWarning:optionalOwner?.lookupFailed?vaultOwnershipWarning("unavailable"):vaultOwnershipWarning(linkStatus)');
     assert.ok(issue>=0&&owner>issue&&response>owner,path);
     assert.match(route,/accountOwned:linkStatus==="linked"/);
     assert.match(route,/const input:unknown=await request\.json\(\)\.catch\(\(\)=>null\)/);
