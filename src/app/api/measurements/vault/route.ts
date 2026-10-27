@@ -1,6 +1,7 @@
 import { linkVaultOwnerBestEffort, resolveVaultStoreOwnerBestEffort, vaultOwnershipWarning } from "@/lib/vault-owner-link";
 import { parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity } from "@/lib/vault-request-identifiers";
 import { vaultRateBlocked } from "@/lib/vault-rate-guard";
+import { isVaultListRowEnvelope } from "@/lib/vault-owned-list-integrity";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -109,7 +110,8 @@ export async function POST(request:Request){
         vault_id:string;profile:MeasurementProfile;observations:TailorObservationProfile;
         created_at:string;expires_at:string;
       }>>("measurement_profile_vault_list_owned",{p_owner_user_id:customer.id});
-      const profiles=rows.filter((row)=>validStoredMeasurementProfile(row.profile)&&validStoredTailorObservationProfile(row.observations)).map((row)=>({
+      if(!Array.isArray(rows)) throw new Error("Invalid owned measurement vault response.");
+      const profiles=rows.filter((row)=>isVaultListRowEnvelope(row)&&validStoredMeasurementProfile(row.profile)&&validStoredTailorObservationProfile(row.observations)).map((row)=>({
         vaultId:row.vault_id,
         unit:row.profile.unit,
         createdAt:row.created_at,
