@@ -6,12 +6,13 @@ import type {CrossGarmentRuleContext} from "../src/lib/designer/rules/types.ts";
 function context(options:{
   sleeve?:string;cuff?:string;shirtHem?:string;wear?:string;
   pantHem?:string;pantBreak?:string;occasion?:string;
+  shirtType?:string;pantType?:string;pantPleat?:string;
 }={}):CrossGarmentRuleContext {
   return {
     spec:{
       styleSchemaVersion:2,
       shirt:{
-        type:"dress_shirt",collar:"point_standard_collar",
+        type:options.shirtType??"dress_shirt",collar:"point_standard_collar",
         collarFinish:"Self-fabric",cuff:options.cuff??"barrel_cuff_1_button",
         placket:"standard_visible_placket",pocket:"no_pocket",
         sleeve:options.sleeve??"full_sleeve",fit:"regular_classic_fit",
@@ -19,8 +20,8 @@ function context(options:{
         back:"plain_back",wear:options.wear??"untucked",button:"corozo",
       },
       pant:{
-        type:"formal_flat_front",fit:"straight_classic",rise:"mid_rise",
-        pleat:"flat_front",waistband:"belt_loops",
+        type:options.pantType??"formal_flat_front",fit:"straight_classic",rise:"mid_rise",
+        pleat:options.pantPleat??"flat_front",waistband:"belt_loops",
         hem:options.pantHem??"plain_hem",
         break:options.pantBreak??"no_break",
       },
@@ -69,4 +70,46 @@ test("formal tucked side-vented or flat hem calls for tailor review instead of a
 test("legacy default regular officewear garment remains viable",()=>{
   const blocked=evaluateCrossGarmentRules(context()).filter(x=>x.effect==="block");
   assert.deepEqual(blocked,[]);
+});
+
+test("short-sleeve shirt family requires an actual short sleeve",()=>{
+  for(const sleeve of ["full_sleeve","roll_up_styled"]){
+    assert.equal(rule(context({shirtType:"short_sleeve_shirt",sleeve}),"CG-SHORT-TYPE-SLEEVE")?.effect,"block",sleeve);
+  }
+  assert.equal(rule(context({shirtType:"short_sleeve_shirt",sleeve:"half_sleeve",cuff:"open_short_hem_cuff"}),"CG-SHORT-TYPE-SLEEVE"),undefined);
+  assert.equal(rule(context({shirtType:"dress_shirt",sleeve:"full_sleeve"}),"CG-SHORT-TYPE-SLEEVE"),undefined);
+});
+
+test("trouser family and pleat IDs must describe the same construction",()=>{
+  for(const pantPleat of ["single_pleat_forward","double_pleat_reverse"]){
+    assert.equal(rule(context({pantType:"formal_flat_front",pantPleat}),"CG-PLEAT-TYPE")?.effect,"block",pantPleat);
+  }
+  assert.equal(rule(context({pantType:"pleated_trouser",pantPleat:"flat_front"}),"CG-PLEAT-TYPE")?.effect,"block");
+  assert.equal(rule(context({pantType:"pleated_trouser",pantPleat:"single_pleat_reverse"}),"CG-PLEAT-TYPE"),undefined);
+  assert.equal(rule(context({pantType:"formal_flat_front",pantPleat:"flat_front"}),"CG-PLEAT-TYPE"),undefined);
+  // Unrelated garment families remain provisional rather than being guessed incompatible.
+  assert.equal(rule(context({pantType:"chino",pantPleat:"flat_front"}),"CG-PLEAT-TYPE"),undefined);
+});
+
+test("cropped trouser type and cropped hem cannot claim a shoe break",()=>{
+  for(const pantBreak of ["slight_break","full_break","stacked_break"]){
+    assert.equal(rule(context({pantType:"cropped_ankle",pantBreak}),"CG-CROPPED-TYPE-BREAK")?.effect,"block",pantBreak);
+    assert.equal(rule(context({pantHem:"cropped_above_ankle_hem",pantBreak}),"CG-CROP-BREAK")?.effect,"block",pantBreak);
+  }
+  assert.equal(rule(context({pantType:"cropped_ankle",pantBreak:"cropped_above_ankle"}),"CG-CROPPED-TYPE-BREAK"),undefined);
+  assert.equal(rule(context({pantType:"cropped_ankle",pantBreak:"no_break"}),"CG-CROPPED-TYPE-BREAK"),undefined);
+  assert.equal(rule(context({pantType:"formal_flat_front",pantBreak:"slight_break"}),"CG-CROPPED-TYPE-BREAK"),undefined);
+});
+
+test("construction conflicts remain deterministic and do not mutate a saved recipe",()=>{
+  const c=context({shirtType:"short_sleeve_shirt",pantType:"formal_flat_front",pantPleat:"double_pleat_forward",pantBreak:"full_break",pantHem:"cropped_above_ankle_hem"});
+  const before=JSON.stringify(c);
+  const first=evaluateCrossGarmentRules(c);
+  assert.deepEqual(evaluateCrossGarmentRules(c),first);
+  assert.equal(JSON.stringify(c),before);
+  for(const id of ["CG-SHORT-TYPE-SLEEVE","CG-PLEAT-TYPE","CG-CROP-BREAK"]){
+    const hit=first.find(x=>x.ruleId===id);
+    assert.equal(hit?.effect,"block",id);
+    assert.equal(hit?.reviewStatus,"provisional",id);
+  }
 });
