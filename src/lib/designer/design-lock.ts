@@ -60,10 +60,29 @@ export async function lockGarmentSpec(
   };
 }
 
-export async function verifyLockedDesignRevision(revision:LockedDesignRevision) {
-  if(revision.version!==LOCKED_DESIGN_VERSION) return false;
-  const hash=await sha256Hex(canonicalLockedDesignJson(revision.garmentSpec));
-  return hash===revision.recipeHash;
+/**
+ * Remote vault payloads and browser restores are untrusted JSON. A malformed
+ * locked revision must be a rejected design, not an uncaught TypeError that
+ * turns a corrupt record into an unrelated vault-service outage.
+ *
+ * A recipe hash proves integrity of the garment recipe; it is not a signature
+ * on account ownership, identity metadata, or physical tailoring acceptance.
+ */
+export async function verifyLockedDesignRevision(value:unknown):Promise<boolean> {
+  if(!value||typeof value!=="object"||Array.isArray(value)) return false;
+  const revision=value as Partial<LockedDesignRevision>;
+  if(revision.version!==LOCKED_DESIGN_VERSION ||
+    typeof revision.revisionId!=="string"||!revision.revisionId.trim() ||
+    typeof revision.lockedAt!=="string"||!Number.isFinite(Date.parse(revision.lockedAt)) ||
+    !(revision.parentRevisionId===null||typeof revision.parentRevisionId==="string") ||
+    typeof revision.recipeHash!=="string"||!/^[0-9a-f]{64}$/.test(revision.recipeHash) ||
+    !revision.garmentSpec||typeof revision.garmentSpec!=="object"||
+    Array.isArray(revision.garmentSpec)||revision.garmentSpec.version!=="linen-earth-garment-spec-v1"
+  ) return false;
+  try{
+    const hash=await sha256Hex(canonicalLockedDesignJson(revision.garmentSpec));
+    return hash===revision.recipeHash;
+  }catch{return false;}
 }
 
 export function reconstructLockedGarmentSpec(revision:LockedDesignRevision):CanonicalGarmentSpec {
