@@ -192,6 +192,15 @@ export function DesignerModule() {
   const committedCreativeId=useRef(activeCreative?.id||null);
   useLayoutEffect(()=>{committedCreativeId.current=activeCreative?.id||null;},[activeCreative?.id]);
   useLayoutEffect(()=>{
+    if(committedAssessmentIdentity.current!==assessmentIdentity){
+      // Fit, construction and production-readiness panels must not retain an
+      // assessment computed for a previous fabric, measurement or cut.
+      setAssessment(null);
+      setAssessmentError("");
+      setRecommendationId(null);
+      setResponse(null);
+      setFeedbackReason(null);
+    }
     committedAssessmentIdentity.current=assessmentIdentity;
     const run=assessRunRef.current;
     if(run && run.identity!==assessmentIdentity){
