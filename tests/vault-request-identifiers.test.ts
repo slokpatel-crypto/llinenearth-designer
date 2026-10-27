@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {parseVaultRequestIdentifiers} from "../src/lib/vault-request-identifiers.ts";
+import {parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity} from "../src/lib/vault-request-identifiers.ts";
 
 test("owned vault actions accept only canonical UUID strings before auth or RPC",()=>{
   for(const action of ["loadOwned","deleteOwned"]){
@@ -40,12 +40,33 @@ test("both API endpoints validate identifier type before customer lookup or RPC"
   for(const path of ["src/app/api/measurements/vault/route.ts","src/app/api/designer/vault/route.ts"]){
     const source=readFileSync(path,"utf8");
     const guard=source.indexOf("const identifiers=parseVaultRequestIdentifiers(action,body)");
-    const auth=source.indexOf("const customer=await getCustomerIdentity(request)");
+    const auth=source.indexOf("const customer=vaultActionNeedsCustomerIdentity(action)?await getCustomerIdentity(request):null");
     assert.ok(guard>=0&&auth>guard,path);
     assert.match(source,/if\(!identifiers\.ok\)/);
     assert.match(source,/status:400/);
     assert.doesNotMatch(source,/String\(body\.(vaultId|recoveryToken)\|\|""\)/);
     assert.match(source,/identifiers\.recoveryToken!/);
     assert.match(source,/identifiers\.vaultId!/);
+  }
+});
+
+test("recovery-token load and delete never depend on a legacy session lookup",()=>{
+  for(const action of ["load","delete"]) assert.equal(vaultActionNeedsCustomerIdentity(action),false);
+  for(const action of ["store","claim","listOwned","loadOwned","deleteOwned"]){
+    assert.equal(vaultActionNeedsCustomerIdentity(action),true);
+  }
+  // Unknown actions must not accidentally invoke optional legacy authentication.
+  assert.equal(vaultActionNeedsCustomerIdentity("unsupported"),false);
+});
+
+test("both vault routes bypass optional customer auth only for recovery-token operations",()=>{
+  for(const path of ["src/app/api/measurements/vault/route.ts","src/app/api/designer/vault/route.ts"]){
+    const source=readFileSync(path,"utf8");
+    const condition="const customer=vaultActionNeedsCustomerIdentity(action)?await getCustomerIdentity(request):null";
+    const auth=source.indexOf(condition);
+    assert.ok(auth>source.indexOf("const identifiers=parseVaultRequestIdentifiers(action,body)"),path);
+    assert.ok(source.indexOf('if(action==="claim")')>auth,path);
+    assert.ok(source.indexOf('if(action==="load")')>auth,path);
+    assert.match(source,/if\(!customer\) return jsonNoStore\(\{error:"Customer sign-in is required\."\},\{status:401\}\)/);
   }
 });
