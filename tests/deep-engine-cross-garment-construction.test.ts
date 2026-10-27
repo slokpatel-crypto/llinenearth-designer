@@ -133,3 +133,62 @@ test("Style Director maps the exact v2 construction blockers into high-severity 
   }
   assert.equal(recommendation.status,"needs_review");
 });
+
+test("categorical drape and unproven GSM never clear the physical evidence gate",()=>{
+  const require=createRequire(import.meta.url);
+  const {load}=require("../scripts/designer-test-loader.cjs");
+  const engine=load("src/lib/designer/engine.ts");
+  const shirt={...engine.DESIGNER_SHIRTS[0],weightGsm:180,drape:"Balanced"};
+  const pant={...engine.DESIGNER_PANTS[0],weightGsm:260,drape:"Fluid"};
+  const original=engine.designerMaterialEvidence(shirt,pant);
+  assert(original.missing.includes(`${pant.name}: drape`));
+  assert(original.missing.includes(`${pant.name}: measured GSM`));
+  const profile=(fabricId:string,evidence:string,drapeValue:unknown=0.72,gsmValue:unknown=260)=>({
+    version:"linen-earth-fabric-physics-v1",fabricId,
+    drape:{value:drapeValue,evidence},gsm:{value:gsmValue,evidence},
+  });
+  for(const bad of [
+    profile(pant.id,"estimated"),
+    profile(pant.id,"declared"),
+    profile("different-fabric","reviewed"),
+    profile(pant.id,"reviewed",Number.NaN),
+    profile(pant.id,"reviewed",Infinity),
+    profile(pant.id,"reviewed",1.01),
+    profile(pant.id,"reviewed","0.7"),
+  ]){
+    const evidence=engine.designerMaterialEvidence(shirt,{...pant,physicsProfile:bad});
+    assert(evidence.missing.includes(`${pant.name}: drape`),JSON.stringify(bad));
+  }
+  const reviewed=engine.designerMaterialEvidence(shirt,{...pant,physicsProfile:profile(pant.id,"reviewed")});
+  assert(!reviewed.missing.includes(`${pant.name}: drape`));
+  assert(!reviewed.missing.includes(`${pant.name}: measured GSM`));
+  assert.equal(reviewed.verified,original.verified+2);
+  const malformedGsm=engine.designerMaterialEvidence(shirt,{...pant,physicsProfile:profile(pant.id,"reviewed",0.7,Number.POSITIVE_INFINITY)});
+  assert(malformedGsm.missing.includes(`${pant.name}: measured GSM`));
+});
+
+test("wide-trouser drape rule is cleared only by reviewed evidence for the selected fabric",()=>{
+  const require=createRequire(import.meta.url);
+  const {load}=require("../scripts/designer-test-loader.cjs");
+  const engine=load("src/lib/designer/engine.ts");
+  const shirt=engine.DESIGNER_SHIRTS[0];
+  const pant={...engine.DESIGNER_PANTS[0],weightGsm:260,drape:"Fluid"};
+  const spec=context().spec;
+  spec.pant.fit="wide_leg_drape";
+  const check=(fabric:typeof pant)=>{
+    const recommendation=engine.evaluateDesignerCombo(
+      shirt,fabric,"Semi-Formal",engine.designerStyleForOccasion("Semi-Formal"),
+      undefined,{climate:"Not specified",intention:"Balanced"},spec,
+    );
+    return recommendation.rules.find((item:{id:string})=>item.id==="CG-WIDE-DRAPE-VERIFY");
+  };
+  assert.equal(check(pant)?.status,"flag");
+  assert.equal(check({...pant,physicsProfile:{
+    version:"linen-earth-fabric-physics-v1",fabricId:pant.id,
+    drape:{value:0.72,evidence:"estimated"},
+  }})?.status,"flag");
+  assert.equal(check({...pant,physicsProfile:{
+    version:"linen-earth-fabric-physics-v1",fabricId:pant.id,
+    drape:{value:0.72,evidence:"reviewed"},
+  }}),undefined);
+});
