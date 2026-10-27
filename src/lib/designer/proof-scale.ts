@@ -5,13 +5,17 @@ export const ROADMAP_SCALE_TOLERANCE_PCT = 8;
 export function pxPerMmFromMarker(pixelDistance:number, markerMm:number) {
   if(!Number.isFinite(pixelDistance) || pixelDistance<=0) throw new Error("pixelDistance must be > 0");
   if(!Number.isFinite(markerMm) || markerMm<=0) throw new Error("markerMm must be > 0");
-  return pixelDistance/markerMm;
+  const ratio=pixelDistance/markerMm;
+  if(!Number.isFinite(ratio)||ratio<=0) throw new Error("photo px/mm ratio must be finite and > 0");
+  return ratio;
 }
 
 export function expectedPeriodPx(repeatMm:number, pxPerMm:number) {
   if(!Number.isFinite(repeatMm) || repeatMm<=0) throw new Error("repeatMm must be > 0");
   if(!Number.isFinite(pxPerMm) || pxPerMm<=0) throw new Error("pxPerMm must be > 0");
-  return repeatMm*pxPerMm;
+  const period=repeatMm*pxPerMm;
+  if(!Number.isFinite(period)||period<=0) throw new Error("expected repeat period must be finite and > 0");
+  return period;
 }
 
 export function scaleErrorPct(measuredPeriodPx:number, repeatMm:number, pxPerMm:number) {
@@ -106,8 +110,11 @@ export function phase1BoundaryChecksReady(value:unknown){
 }
 
 export function summarizeLatencySamples(values:unknown){
+  // Proof samples must be actual numeric timings, never JSON coercions:
+  // Number(null), Number(false) and Number("") all fabricate a 0 ms render.
   const samples=Array.isArray(values)
-    ? values.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10_000).slice(-120)
+    ? values.filter((value):value is number=>
+        typeof value==="number"&&Number.isFinite(value)&&value>=0&&value<=10_000).slice(-120)
     : [];
   if(!samples.length) return {samples:[],count:0,p95Ms:null as number|null,medianMs:null as number|null,maxMs:null as number|null};
   const ordered=[...samples].sort((a,b)=>a-b);
@@ -134,9 +141,13 @@ export function phase1ProofAcceptance(input:Phase1ProofAcceptanceInput) {
   const validRatings=input.realismRatings.filter((rating)=>
     typeof rating==="number"&&Number.isFinite(rating)&&rating>=1&&rating<=5);
   const strongRatings=validRatings.filter((rating)=>rating>=4).length;
-  const scaleReady=Boolean(input.repeatMm && input.repeatMm>0 && input.scaleGatePass===true);
-  const latencyReady=input.realModelSamples>=PHASE1_PROOF_MIN_LATENCY_SAMPLES
-    && input.realModelP95Ms!==null
+  const scaleReady=typeof input.repeatMm==="number"
+    && Number.isFinite(input.repeatMm)&&input.repeatMm>0&&input.scaleGatePass===true;
+  const latencyReady=Number.isSafeInteger(input.realModelSamples)
+    && input.realModelSamples>=PHASE1_PROOF_MIN_LATENCY_SAMPLES
+    && typeof input.realModelP95Ms==="number"
+    && Number.isFinite(input.realModelP95Ms)
+    && input.realModelP95Ms>=0
     && input.realModelP95Ms<PHASE1_PROOF_MAX_P95_MS;
   const realismReady=validRatings.length>=PHASE1_PROOF_MIN_REALISM_VIEWERS
     && strongRatings>=PHASE1_PROOF_MIN_STRONG_REALISM;
@@ -191,10 +202,12 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
     catch { photoPxPerMm=null; }
   }
 
+  const expectedPhotoPeriod=photoPxPerMm===null?null:repeatMm*photoPxPerMm;
   const scaleInputsValid=
-    photoPxPerMm!==null &&
+    photoPxPerMm!==null && Number.isFinite(photoPxPerMm)&&photoPxPerMm>0 &&
     Number.isFinite(repeatMm)&&repeatMm>0 &&
-    Number.isFinite(measuredPreviewRepeatPx)&&measuredPreviewRepeatPx>0;
+    Number.isFinite(measuredPreviewRepeatPx)&&measuredPreviewRepeatPx>0 &&
+    expectedPhotoPeriod!==null&&Number.isFinite(expectedPhotoPeriod)&&expectedPhotoPeriod>0;
 
   const scaleGatePass=scaleInputsValid
     ? passesScaleGate(measuredPreviewRepeatPx,repeatMm,photoPxPerMm as number)
