@@ -32,6 +32,9 @@ export function parseVaultRequestIdentifiers(
  * of the vault RPC. Claims and owned operations still require identity.
  */
 export function vaultActionNeedsCustomerIdentity(action:string):boolean{
-  return action==="store"||action==="claim"||
-    action==="listOwned"||action==="loadOwned"||action==="deleteOwned";
+  // Only account-only actions require a successful auth lookup. "store" may
+  // attempt optional ownership linking but must issue recovery credentials
+  // independently when the auth provider is unavailable.
+  return action==="claim"||action==="listOwned"||
+    action==="loadOwned"||action==="deleteOwned";
 }
