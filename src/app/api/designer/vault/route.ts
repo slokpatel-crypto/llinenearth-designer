@@ -1,5 +1,5 @@
 import { linkVaultOwnerBestEffort, vaultOwnershipWarning } from "@/lib/vault-owner-link";
-import { parseVaultRequestIdentifiers } from "@/lib/vault-request-identifiers";
+import { parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity } from "@/lib/vault-request-identifiers";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -70,7 +70,7 @@ export async function POST(request:Request){
       const field=identifiers.field==="vaultId"?"vault ID":"recovery token";
       return jsonNoStore({error:`A valid ${field} string is required.`},{status:400});
     }
-    const customer=await getCustomerIdentity(request);
+    const customer=vaultActionNeedsCustomerIdentity(action)?await getCustomerIdentity(request):null;
 
     if(action==="store"){
       const revision=body.revision;
