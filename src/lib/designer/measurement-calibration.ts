@@ -105,7 +105,13 @@ export function summarizeMeasurementCalibration(rows:MeasurementCalibrationCaseR
       continue;
     }
     const prior=latest.get(key);
-    if(!prior||Date.parse(row.created_at)>Date.parse(prior.created_at)) latest.set(key,row);
+    const instant=Date.parse(row.created_at);
+    if(prior&&instant===Date.parse(prior.created_at)&&
+      JSON.stringify(row)!==JSON.stringify(prior)){
+      // Equal-time conflicting writes have no provable latest revision.
+      // Refuse to pick whichever the API happened to return first.
+      blocked.add(key);
+    }else if(!prior||instant>Date.parse(prior.created_at)) latest.set(key,row);
   }
   const cases=[...latest.entries()].flatMap(([key,row])=>{
     if(blocked.has(key)||!validRecordedCase(row)) return [];
