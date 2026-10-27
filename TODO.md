@@ -154,3 +154,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 
 - [x] 2026-10-27: Identical garment recipes locked in the same second now receive distinct 64-bit nonce-suffixed design revision IDs. Recipe hashing, parent links and compatibility with older stored IDs remain unchanged. Draft #409; exact-head CI and production handoff acceptance pending.
 - [x] 2026-10-27: Measurement and locked-design vault per-process rate caches are bounded to 4,096 entries, opportunistically evicting expired oldest keys with constant per-request work; the existing 30 requests/minute per cache identity threshold remains. Memory safety is not distributed rate-limit security: edge/backend enforcement and authenticated threat-model review remain release blockers. Draft #410; exact-head CI pending.
+
+- [x] 2026-10-27: Increased premium 390px phone navigation from 8px to 11px labels while retaining the five real destinations, fixed bottom clearance and compact two/three-line wrapping; static regression added. Draft #411. Requires fresh exact-head Chromium 390/768/1440 screenshots and touch-device acceptance; does not imply general accessibility sign-off.
