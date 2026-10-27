@@ -81,3 +81,14 @@ test("Designer restore, live invalidation and generation lifecycle use the same 
   assert.match(source,/\[draftReady,shirtId,pantId,occasion,climate,intention,style,styleSpec\]/);
   assert.match(source,/\[shirtId,pantId,occasion,style,styleSpec,climate,intention,craftRequest\]/);
 });
+
+test("assessment request binds its payload and late reply to the committed selection",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  const block=source.slice(source.indexOf("  async function assess("),source.indexOf("  function giveFeedback("));
+  assert.match(block,/const nextStyleSpec=mergeLegacyIntoStyleSpec\(styleSpec,nextStyle\)/);
+  assert.match(block,/setStyle\(\{ \.\.\.nextStyle \}\);\s*setStyleSpec\(nextStyleSpec\)/);
+  assert.match(block,/styleSpec:nextStyleSpec,[\s\S]*signal:controller\.signal/);
+  assert.match(block,/if\(!isCurrent\(\)\) return;\s*applyServerAssessment\(next\)/);
+  assert.match(block,/catch\(error\) \{\s*if\(!isCurrent\(\)\) return;/);
+  assert.match(source,/run\.identity!==assessmentIdentity[\s\S]*run\.controller\.abort\(\)/);
+});
