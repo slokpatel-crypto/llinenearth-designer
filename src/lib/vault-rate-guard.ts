@@ -19,7 +19,7 @@ export function vaultRateBlocked(
   const previous=entries.get(key);
   if(!previous || now-previous.at>WINDOW_MS || now<previous.at){
     if(!entries.has(key)&&entries.size>=MAX_VAULT_RATE_KEYS){
-      // The Map is insertion ordered. Examine only a small number of oldest
+      // The Map tracks least-recently-used keys. Examine only a few oldest
       // entries per request; scanning all 4,096 entries for each new address
       // would turn a bounded-memory fix into a CPU amplification problem.
       for(let attempt=0;attempt<8;attempt++){
@@ -41,5 +41,10 @@ export function vaultRateBlocked(
     return false;
   }
   previous.count++;
+  // Keep currently active (including blocked) identities at the tail so
+  // rotating one-off addresses do not immediately displace active counters.
+  // Do not shift the window start time: the 60-second threshold is unchanged.
+  entries.delete(key);
+  entries.set(key,previous);
   return previous.count>MAX_REQUESTS;
 }
