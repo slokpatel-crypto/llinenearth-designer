@@ -112,3 +112,16 @@ test("operator calibration UI clears stale PASS on failed or out-of-order reads"
   assert.match(source,/role="alert"/);
   assert.match(source,/return \(\)=>\{loadVersion\.current\+=1;\}/);
 });
+
+test("conflicting same-instant revisions cannot be ordered by API row order",()=>{
+  const original={case_id:"CASE-77",self_chest_cm:100,tailor_chest_cm:100,
+    self_sleeve_cm:64,tailor_sleeve_cm:64,evidence_source:"physical tape check",
+    checked_by:"Tailor",note:"",created_at:"2026-10-01T10:00:00Z"};
+  const conflicting={...original,self_chest_cm:105};
+  for(const rows of [[original,conflicting],[conflicting,original]]){
+    const result=summarizeMeasurementCalibration(rows);
+    assert.equal(result.total,0);
+    assert.equal(result.complete,false);
+  }
+  assert.equal(summarizeMeasurementCalibration([original,{...original}]).total,1);
+});
