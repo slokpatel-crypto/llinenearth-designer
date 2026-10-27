@@ -1,6 +1,7 @@
 import { linkVaultOwnerBestEffort, resolveVaultStoreOwnerBestEffort, vaultOwnershipWarning } from "@/lib/vault-owner-link";
 import { parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity } from "@/lib/vault-request-identifiers";
 import { vaultRateBlocked } from "@/lib/vault-rate-guard";
+import { ownedDesignVaultRowMatchesPayload } from "@/lib/vault-owned-list-integrity";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -124,9 +125,12 @@ export async function POST(request:Request){
         vault_id:string;revision_id:string;recipe_hash:string;
         payload:LockedDesignRevision;created_at:string;expires_at:string;
       }>>("designer_locked_revision_vault_list_owned",{p_owner_user_id:customer.id});
+      // A corrupt RPC row must not poison the account list or mislabel an
+      // unrelated revision. The payload hash is checked independently below.
+      if(!Array.isArray(rows)) throw new Error("Invalid owned design vault response.");
       const designs=[];
       for(const row of rows){
-        if(row.payload&&await verifyLockedDesignRevision(row.payload)){
+        if(ownedDesignVaultRowMatchesPayload(row)&&await verifyLockedDesignRevision(row.payload)){
           designs.push({
             vaultId:row.vault_id,
             revisionId:row.revision_id,
