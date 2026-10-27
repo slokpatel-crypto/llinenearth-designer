@@ -65,6 +65,9 @@ export type BatchItem={
 };
 
 function parseCsv(text:string){
+  // UTF-8 BOM is common in exported supplier worksheets; only a leading
+  // signature is format metadata. Interior unexpected characters remain data.
+  if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
   const rows:string[][]=[];
   let row:string[]=[];
   let cell="";
