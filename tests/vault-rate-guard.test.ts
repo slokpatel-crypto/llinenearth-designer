@@ -49,3 +49,14 @@ test("both recovery vault routes use the same bounded process-local limiter",()=
     assert.doesNotMatch(code,/current\.count\+=1/);
   }
 });
+
+test("active throttled identities outlive cold keys when a full cache evicts",()=>{
+  const entries:VaultRateStore=new Map([["hot",{at:1_000,count:30}]]);
+  for(let i=1;i<MAX_VAULT_RATE_KEYS;i++) entries.set(`cold-${i}`,{at:1_000,count:1});
+  assert.equal(vaultRateBlocked(entries,"hot",1_000),true);
+  assert.equal(vaultRateBlocked(entries,"new",1_000),false);
+  assert.equal(entries.has("hot"),true);
+  assert.equal(entries.get("hot")?.count,31);
+  assert.equal(entries.has("cold-1"),false);
+  assert.equal(entries.size,MAX_VAULT_RATE_KEYS);
+});
