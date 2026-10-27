@@ -503,6 +503,16 @@ export function DesignerModule() {
       shirtId,pantId,occasion,climate,intention,style,styleSpec,
     });
     if(creativeStillMatches) return;
+    // A creative assessment belongs to the selected concept. Do not leave its
+    // recommendation or fit/production assessment attached after the concept
+    // is invalidated by a context or construction change.
+    if(activeCreative) {
+      setRecommendation(null);
+      setAssessment(null);
+      setRecommendationId(null);
+      setResponse(null);
+      setFeedbackReason(null);
+    }
     setSearchResults([]);
     setCreativeDirections([]);
     setActiveCreative(null);
