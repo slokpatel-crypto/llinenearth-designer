@@ -5,13 +5,17 @@ export const ROADMAP_SCALE_TOLERANCE_PCT = 8;
 export function pxPerMmFromMarker(pixelDistance:number, markerMm:number) {
   if(!Number.isFinite(pixelDistance) || pixelDistance<=0) throw new Error("pixelDistance must be > 0");
   if(!Number.isFinite(markerMm) || markerMm<=0) throw new Error("markerMm must be > 0");
-  return pixelDistance/markerMm;
+  const ratio=pixelDistance/markerMm;
+  if(!Number.isFinite(ratio)||ratio<=0) throw new Error("photo px/mm ratio must be finite and > 0");
+  return ratio;
 }
 
 export function expectedPeriodPx(repeatMm:number, pxPerMm:number) {
   if(!Number.isFinite(repeatMm) || repeatMm<=0) throw new Error("repeatMm must be > 0");
   if(!Number.isFinite(pxPerMm) || pxPerMm<=0) throw new Error("pxPerMm must be > 0");
-  return repeatMm*pxPerMm;
+  const period=repeatMm*pxPerMm;
+  if(!Number.isFinite(period)||period<=0) throw new Error("expected repeat period must be finite and > 0");
+  return period;
 }
 
 export function scaleErrorPct(measuredPeriodPx:number, repeatMm:number, pxPerMm:number) {
@@ -198,10 +202,12 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
     catch { photoPxPerMm=null; }
   }
 
+  const expectedPhotoPeriod=photoPxPerMm===null?null:repeatMm*photoPxPerMm;
   const scaleInputsValid=
-    photoPxPerMm!==null &&
+    photoPxPerMm!==null && Number.isFinite(photoPxPerMm)&&photoPxPerMm>0 &&
     Number.isFinite(repeatMm)&&repeatMm>0 &&
-    Number.isFinite(measuredPreviewRepeatPx)&&measuredPreviewRepeatPx>0;
+    Number.isFinite(measuredPreviewRepeatPx)&&measuredPreviewRepeatPx>0 &&
+    expectedPhotoPeriod!==null&&Number.isFinite(expectedPhotoPeriod)&&expectedPhotoPeriod>0;
 
   const scaleGatePass=scaleInputsValid
     ? passesScaleGate(measuredPreviewRepeatPx,repeatMm,photoPxPerMm as number)
