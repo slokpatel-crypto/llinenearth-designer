@@ -86,12 +86,15 @@ export function summarizeRoadmapReadiness(input:RoadmapReadinessInput){
   const policyRaw=object(input.fabricTruthPolicy).policy;
   let fabricTruthPolicy=null;
   try{fabricTruthPolicy=normalizeFabricTruthPolicy(policyRaw);}catch{}
+  // Do not coerce persisted string/boolean coverage into numeric proof.
+  // The policy evaluator rejects invalid counts and counts above the active set.
+  const strictCoverageCount=(value:unknown)=>typeof value==="number"?value:Number.NaN;
   const fabricTruthEvidence=evaluateFabricTruthPolicy(fabricTruthPolicy,{
-    activeCandidates:number(fabricCoverage.activeCandidates),
-    physicalScale:number(fabricCoverage.physicalScale),
-    gsm:number(fabricCoverage.gsm),
-    drape:number(fabricCoverage.drape),
-    fiber:number(fabricCoverage.fiber),
+    activeCandidates:strictCoverageCount(fabricCoverage.activeCandidates),
+    physicalScale:strictCoverageCount(fabricCoverage.physicalScale),
+    gsm:strictCoverageCount(fabricCoverage.gsm),
+    drape:strictCoverageCount(fabricCoverage.drape),
+    fiber:strictCoverageCount(fabricCoverage.fiber),
   });
   const reviewedComplete=reviewedFabrics>=reviewedTarget;
   const phase2MeasuredProgress=Math.round((
