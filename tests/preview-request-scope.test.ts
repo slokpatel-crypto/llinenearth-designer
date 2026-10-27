@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { createPreviewRequestScope } from "../src/lib/designer/preview-request-scope.ts";
 
@@ -96,4 +97,39 @@ test("cleanup aborts work and stale finally cannot unlock a remounted request", 
   assert.equal(previous.isCurrent(), false);
   assert.equal(current.isCurrent(), true);
   assert.equal(scope.begin(), null);
+});
+
+test("stale catalogue alternatives cannot replace a newer selection or unlock its request",async()=>{
+  const scope=createPreviewRequestScope();
+  scope.activate();
+  const old=scope.begin()!;
+  const oldReply=deferred<string[]>();
+  const displayed:string[]=[];
+  const oldWork=(async()=>{
+    const alternatives=await oldReply.promise;
+    if(old.isCurrent()) displayed.push(...alternatives);
+    old.finish();
+  })();
+  scope.invalidate();
+  scope.activate();
+  const current=scope.begin()!;
+  oldReply.resolve(["old-shirt","old-pant"]);
+  await oldWork;
+  assert.deepEqual(displayed,[]);
+  assert.equal(old.signal.aborted,true);
+  assert.equal(current.isCurrent(),true);
+  assert.equal(scope.begin(),null);
+  current.finish();
+  assert.ok(scope.begin());
+});
+
+test("Designer alternative-search wiring aborts and ignores stale responses",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert.match(source,/const searchIdentity=JSON\.stringify\(\[assessmentIdentity,searchScope\]\)/);
+  assert.match(source,/const scope=searchRequestScopeRef\.current;\s*scope\.invalidate\(\);\s*scope\.activate\(\)/);
+  const block=source.slice(source.indexOf("  async function runAdvancedSearch()"),source.indexOf("  async function requestCreativeDirections("));
+  assert.match(block,/const request=searchRequestScopeRef\.current\.begin\(\)/);
+  assert.match(block,/signal:request\.signal/);
+  assert.match(block,/if\(!request\.isCurrent\(\)\) return;/);
+  assert.match(block,/if\(request\.isCurrent\(\)\) setSearchLoading\(false\);\s*request\.finish\(\)/);
 });
