@@ -194,3 +194,24 @@ test("Analyzer header uses supported flexbox alignment without autoprefixer end 
   assert.match(css,/\.panelTitle\{display:flex;align-items:flex-end;/);
   assert.doesNotMatch(css,/align-items:end;/);
 });
+
+test("a header-only CSV still rejects duplicate, blank and misspelled physical-evidence headings",()=>{
+  for(const csv of [
+    "fabricId,verifiedGsm,verifiedGsm",
+    "fabricId,,verifiedGsm",
+    "fabricId,verfiedGsm",
+    "fabric-1,145",
+  ]){
+    const inspected=inspectBatchCsvWorksheet(csv);
+    assert.deepEqual(inspected.items,[]);
+    assert.ok(inspected.error, `expected a column error for ${csv}`);
+    assert.throws(()=>itemsFromCsv(csv));
+  }
+});
+
+test("a genuinely blank or valid header-only worksheet has no items or false error",()=>{
+  assert.deepEqual(inspectBatchCsvWorksheet("   \n   "),{items:[],error:null});
+  assert.deepEqual(inspectBatchCsvWorksheet("fabricId,verifiedGsm"),{items:[],error:null});
+  const [item]=itemsFromCsv("fabricId,verifiedGsm\nfabric-9,145");
+  assert.equal(item.verifiedGsm,145);
+});
