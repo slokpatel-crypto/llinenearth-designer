@@ -217,7 +217,7 @@ test("Style Director catalogue search excludes every incompatible v2 constructio
   const pant=engine.DESIGNER_PANTS.find((item:{id:string})=>item.id===engine.DESIGNER_REVIEWED_PAIRING.pantId);
   assert(shirt&&pant,"reference pairing must remain available for regression");
   const input={
-    shirts:[shirt],pants:[pant],currentShirt:shirt,currentPant:pant,
+    shirts:engine.DESIGNER_SHIRTS,pants:engine.DESIGNER_PANTS,currentShirt:shirt,currentPant:pant,
     chosenStyle:style,occasion:"Semi-Formal",context:{climate:"Not specified",intention:"Balanced"},
   };
   const normal=searchDesignerCatalogue({...input,styleSpec:base});
