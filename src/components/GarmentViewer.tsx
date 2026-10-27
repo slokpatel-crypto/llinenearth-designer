@@ -6,7 +6,7 @@ import {
   GARMENT_PANEL_SPECS,
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
-import { garmentPanelTextureScale, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { canRepresentGarmentPanelTileExactly, garmentPanelTextureScale, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
@@ -489,16 +489,24 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
 
   const shirt=useMemo(()=>shirtFabrics.find((fabric)=>fabric.id===shirtId) || shirtFabrics[0],[shirtFabrics,shirtId]);
   const trouser=useMemo(()=>trouserFabrics.find((fabric)=>fabric.id===trouserId) || trouserFabrics[0],[trouserFabrics,trouserId]);
-  const shirtMeasuredTileMm=useMemo(()=>measuredTileWidth(tileManifest,runtimeScale,shirt),[tileManifest,runtimeScale,shirt]);
-  const trouserMeasuredTileMm=useMemo(()=>measuredTileWidth(tileManifest,runtimeScale,trouser),[tileManifest,runtimeScale,trouser]);
-  const assetIdentityKey=useMemo(()=>garmentViewerAssetIdentityKey(assetIdentity),[assetIdentity]);
-  const shirtTileMm=shirtMeasuredTileMm ?? shirtManualTileMm;
-  const trouserTileMm=trouserMeasuredTileMm ?? trouserManualTileMm;
-  const productionManifestReady=!modelSrc || modelManifestValidation?.valid===true;
   const panelSpecs=useMemo(()=>GARMENT_PANEL_SPECS.map((panel)=>{
     const measured=modelManifest?.panels?.[panel.material];
     return measured ? {...panel,widthMm:measured.widthMm,heightMm:measured.heightMm,offsetU:measured.offsetU,offsetV:measured.offsetV,rotationDeg:measured.rotationDeg} : panel;
   }),[modelManifest]);
+  const shirtMeasuredTileCandidateMm=useMemo(()=>measuredTileWidth(tileManifest,runtimeScale,shirt),[tileManifest,runtimeScale,shirt]);
+  const trouserMeasuredTileCandidateMm=useMemo(()=>measuredTileWidth(tileManifest,runtimeScale,trouser),[tileManifest,runtimeScale,trouser]);
+  const shirtMeasuredTileMm=useMemo(()=>shirtMeasuredTileCandidateMm!==null &&
+    panelSpecs.filter((panel)=>panel.garment==="shirt").every((panel)=>canRepresentGarmentPanelTileExactly(panel.widthMm,panel.heightMm,shirtMeasuredTileCandidateMm))
+    ? shirtMeasuredTileCandidateMm : null,[shirtMeasuredTileCandidateMm,panelSpecs]);
+  const trouserMeasuredTileMm=useMemo(()=>trouserMeasuredTileCandidateMm!==null &&
+    panelSpecs.filter((panel)=>panel.garment==="trouser").every((panel)=>canRepresentGarmentPanelTileExactly(panel.widthMm,panel.heightMm,trouserMeasuredTileCandidateMm))
+    ? trouserMeasuredTileCandidateMm : null,[trouserMeasuredTileCandidateMm,panelSpecs]);
+  const shirtScaleUnrepresentable=shirtMeasuredTileCandidateMm!==null&&shirtMeasuredTileMm===null;
+  const trouserScaleUnrepresentable=trouserMeasuredTileCandidateMm!==null&&trouserMeasuredTileMm===null;
+  const assetIdentityKey=useMemo(()=>garmentViewerAssetIdentityKey(assetIdentity),[assetIdentity]);
+  const shirtTileMm=shirtMeasuredTileMm ?? shirtManualTileMm;
+  const trouserTileMm=trouserMeasuredTileMm ?? trouserManualTileMm;
+  const productionManifestReady=!modelSrc || modelManifestValidation?.valid===true;
   const cameraViews=useMemo(()=>CAMERA_VIEWS.map((view)=>({
     ...view,
     orbit:modelManifest?.cameraOrbits?.[view.id] || view.orbit,
@@ -1148,11 +1156,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Shirt</b><small>Types: {SHIRT_GARMENT_CATEGORY.typeExamples.slice(0,6).join(" · ")}</small><small>Details: {SHIRT_GARMENT_CATEGORY.detailFamilies.join(" · ")}</small></div>
       <label><span>Shirt fabric</span><select value={shirtId} onChange={(event)=>{beginFabricInteraction();setShirtId(event.target.value);}}>{shirtFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
       <div className="garmentSwatchPreview">{shirt&&<><img src={shirt.image} alt="" /><span><b>{shirt.name}</b><small>{shirt.line}</small><small className="garmentDrapeMeta">Drape · {fabricDrapeClass(shirt)}{shirt.weightGsm ? " · "+shirt.weightGsm+" GSM" : ""}{shirt.weave ? " · "+shirt.weave : ""}</small><em data-calibrated={Boolean(shirtMeasuredTileMm)}>{shirtMeasuredTileMm?`Calibrated tile · ${shirtMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${shirtManualTileMm} mm`}</em></span></>}</div>
+      {shirtScaleUnrepresentable&&<p className="garmentViewerGuardrail">Recorded shirt tile scale exceeds the 3D sampler range; this preview uses an approximate repeat, not calibrated fabric projection.</p>}
       {!shirtMeasuredTileMm&&<label className="garmentRange"><span>Approx. shirt tile width <b>{shirtManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={shirtManualTileMm} onChange={(event)=>setShirtManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
 
       <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Trouser</b><small>Types: {TROUSER_GARMENT_CATEGORY.typeExamples.slice(0,6).join(" · ")}</small><small>Details: {TROUSER_GARMENT_CATEGORY.detailFamilies.join(" · ")}</small></div>
       <label><span>Trouser fabric</span><select value={trouserId} onChange={(event)=>{beginFabricInteraction();setTrouserId(event.target.value);}}>{trouserFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
       <div className="garmentSwatchPreview">{trouser&&<><img src={trouser.image} alt="" /><span><b>{trouser.name}</b><small>{trouser.line}</small><small className="garmentDrapeMeta">Drape · {fabricDrapeClass(trouser)}{trouser.weightGsm ? " · "+trouser.weightGsm+" GSM" : ""}{trouser.weave ? " · "+trouser.weave : ""}</small><em data-calibrated={Boolean(trouserMeasuredTileMm)}>{trouserMeasuredTileMm?`Calibrated tile · ${trouserMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${trouserManualTileMm} mm`}</em></span></>}</div>
+      {trouserScaleUnrepresentable&&<p className="garmentViewerGuardrail">Recorded trouser tile scale exceeds the 3D sampler range; this preview uses an approximate repeat, not calibrated fabric projection.</p>}
       {!trouserMeasuredTileMm&&<label className="garmentRange"><span>Approx. trouser tile width <b>{trouserManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={trouserManualTileMm} onChange={(event)=>setTrouserManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
 
       <label className="garmentRange"><span>Surface roughness base <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Fabric drape class automatically shifts linen normal strength and roughness around this base value; unknown fabrics stay on a conservative medium response.</small></label>
