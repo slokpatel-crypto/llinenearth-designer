@@ -198,6 +198,32 @@ async function regression(name, run) {
       assert.equal(logo.source, "/brand/linen-earth-logo-" + hash.slice(0, 12) + ".png");
       summary.branding.legacyAliasAndContentIdentity = "passed";
     }
+    if (width === 390) {
+      // Confirm the computed responsive styles in real Chromium. A CSS source
+      // assertion alone cannot catch later cascade or specificity regressions.
+      const mobileDock = await page.locator(".atelierMobileDock").evaluate((dock) => ({
+        visible: getComputedStyle(dock).display !== "none",
+        links: Array.from(dock.querySelectorAll("a"), (link) => {
+          const bounds = link.getBoundingClientRect();
+          return {
+            label: (link.textContent || "").trim(),
+            fontSize: Number.parseFloat(getComputedStyle(link).fontSize),
+            width: bounds.width,
+            height: bounds.height,
+            left: bounds.left,
+            right: bounds.right,
+          };
+        }),
+      }));
+      assert.equal(mobileDock.visible, true, "Phone navigation must be visible");
+      assert.equal(mobileDock.links.length, 5, "Keep five expected mobile destinations");
+      for (const link of mobileDock.links) {
+        assert.ok(link.fontSize >= 11, "Unreadably small mobile dock label: " + link.label);
+        assert.ok(link.width >= 42 && link.height >= 44, "Undersized mobile target: " + link.label);
+        assert.ok(link.left >= 0 && link.right <= width + 1, "Mobile nav target outside viewport: " + link.label);
+      }
+      summary.branding.mobileDock = "computed typography, targets and viewport bounds passed";
+    }
     const metrics = await page.evaluate(() => {
       const canvas = document.querySelector(".newDesignerPhoto canvas");
       const ctx = canvas.getContext("2d");

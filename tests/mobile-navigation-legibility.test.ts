@@ -1,0 +1,20 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+
+test("premium phone navigation keeps five destinations with readable labels",()=>{
+  const shell=readFileSync("src/components/AppShell.tsx","utf8");
+  const css=readFileSync("src/app/premium-atelier.css","utf8");
+  assert.match(shell,/className="atelierMobileDock"/);
+  for(const label of ["Real Model Designer","Style Director","Measurements","My Account","Contact"]){
+    assert.ok(shell.includes(`["${label}",`),label);
+  }
+  assert.match(css,/\.premiumAtelier \.atelierMobileDock \{ grid-template-columns: 1\.25fr 1fr 1fr \.85fr \.75fr; \}/);
+  assert.match(css,/\.premiumAtelier \.atelierMobileDock a \{ font-size: 11px; line-height: 1\.15; padding-inline: 3px; \}/);
+});
+
+test("phone pages reserve clearance beneath fixed navigation and enquiry dock",()=>{
+  const css=readFileSync("src/app/finish-polish.css","utf8");
+  assert.match(css,/\.atelierContent>main\{padding-bottom:76px\}/);
+  assert.match(css,/\.floatingContactDock\{right:10px;bottom:86px\}/);
+});
