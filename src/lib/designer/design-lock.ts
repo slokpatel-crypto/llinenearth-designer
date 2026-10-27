@@ -33,10 +33,38 @@ async function sha256Hex(input:string) {
   return Array.from(new Uint8Array(digest),(byte)=>byte.toString(16).padStart(2,"0")).join("");
 }
 
+// Existing stored revisions use the 14-digit UTC timestamp and first 12
+// recipe-hash hex digits. Newer revisions append a random 64-bit nonce.
+// Preserve both formats, but never let an arbitrary record rename itself
+// to a different revision/customer while retaining a matching recipe hash.
+const REVISION_ID=/^LE-LOCK-(\\d{14})-([0-9A-F]{12})(?:-([0-9A-F]{16}))?$/;
+
 function safeTimestamp(value:string) {
+  if(typeof value!=="string") throw new Error("lockedAt must be a valid timestamp");
+  const match=/^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2})$/.exec(value);
+  if(!match) throw new Error("lockedAt must be a valid timestamp");
+  const [,yy,mm,dd,hh,mi,ss,zone]=match;
+  const year=Number(yy),month=Number(mm),day=Number(dd);
+  const calendar=new Date(Date.UTC(year,month-1,day));
+  if(year<2000||month<1||month>12||day<1||day>31||
+    calendar.getUTCFullYear()!==year||calendar.getUTCMonth()+1!==month||
+    calendar.getUTCDate()!==day||Number(hh)>23||Number(mi)>59||Number(ss)>59)
+    throw new Error("lockedAt must be a valid timestamp");
+  if(zone!=="Z"){
+    const hour=Number(zone.slice(1,3)),minute=Number(zone.slice(4,6));
+    if(hour>14||minute>59||(hour===14&&minute!==0))
+      throw new Error("lockedAt must be a valid timestamp");
+  }
   const date=new Date(value);
   if(Number.isNaN(date.getTime())) throw new Error("lockedAt must be a valid timestamp");
   return date.toISOString();
+}
+
+function revisionIdentityMatches(id:string,lockedAt:string,recipeHash:string) {
+  const match=REVISION_ID.exec(id);
+  return Boolean(match&&
+    match[1]===lockedAt.replace(/[-:.TZ]/g,"").slice(0,14)&&
+    match[2]===recipeHash.slice(0,12).toUpperCase());
 }
 
 export async function lockGarmentSpec(
@@ -44,6 +72,8 @@ export async function lockGarmentSpec(
   options:{parentRevisionId?:string|null;lockedAt?:string}={},
 ):Promise<LockedDesignRevision> {
   if(spec.version!=="linen-earth-garment-spec-v1") throw new Error("Unsupported garment specification version.");
+  if(options.parentRevisionId!=null&&!REVISION_ID.test(options.parentRevisionId))
+    throw new Error("Invalid parent revision identity.");
   const canonical=canonicalLockedDesignJson(spec);
   const recipeHash=await sha256Hex(canonical);
   const lockedAt=safeTimestamp(options.lockedAt ?? new Date().toISOString());
@@ -78,14 +108,21 @@ export async function verifyLockedDesignRevision(value:unknown):Promise<boolean>
   if(!value||typeof value!=="object"||Array.isArray(value)) return false;
   const revision=value as Partial<LockedDesignRevision>;
   if(revision.version!==LOCKED_DESIGN_VERSION ||
-    typeof revision.revisionId!=="string"||!revision.revisionId.trim() ||
-    typeof revision.lockedAt!=="string"||!Number.isFinite(Date.parse(revision.lockedAt)) ||
-    !(revision.parentRevisionId===null||typeof revision.parentRevisionId==="string") ||
+    typeof revision.revisionId!=="string"||
+    typeof revision.lockedAt!=="string"||
+    !(revision.parentRevisionId===null||
+      (typeof revision.parentRevisionId==="string"&&REVISION_ID.test(revision.parentRevisionId))) ||
     typeof revision.recipeHash!=="string"||!/^[0-9a-f]{64}$/.test(revision.recipeHash) ||
     !revision.garmentSpec||typeof revision.garmentSpec!=="object"||
     Array.isArray(revision.garmentSpec)||revision.garmentSpec.version!=="linen-earth-garment-spec-v1"
   ) return false;
   try{
+    // Locked revisions always store normalized ISO UTC. This rejects
+    // impossible/normalized dates and protects the timestamp/hash fields
+    // embedded in the revision ID; it does not authenticate vault ownership.
+    if(safeTimestamp(revision.lockedAt)!==revision.lockedAt||
+      !revisionIdentityMatches(revision.revisionId,revision.lockedAt,revision.recipeHash)||
+      revision.parentRevisionId===revision.revisionId) return false;
     const hash=await sha256Hex(canonicalLockedDesignJson(revision.garmentSpec));
     return hash===revision.recipeHash;
   }catch{return false;}
