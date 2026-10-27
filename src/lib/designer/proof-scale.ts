@@ -73,7 +73,10 @@ export function summarizeIndependentRealism(assessments:RealismAssessment[]){
   const latest=new Map<string,RealismAssessment>();
   for(const item of assessments){
     const viewerId=String(item.viewerId||"").trim().toLowerCase();
-    const rating=Math.round(Number(item.rating));
+    // A missing or malformed rating must never become an independent reviewer.
+    // In particular NaN passes neither the <1 nor >5 comparisons.
+    if(typeof item.rating!=="number"||!Number.isFinite(item.rating)) continue;
+    const rating=Math.round(item.rating);
     if(viewerId.length<2||viewerId.length>80||rating<1||rating>5) continue;
     latest.set(viewerId,{...item,viewerId,rating});
   }
@@ -128,12 +131,14 @@ export type Phase1ProofAcceptanceInput={
 };
 
 export function phase1ProofAcceptance(input:Phase1ProofAcceptanceInput) {
-  const strongRatings=input.realismRatings.filter((rating)=>rating>=4&&rating<=5).length;
+  const validRatings=input.realismRatings.filter((rating)=>
+    typeof rating==="number"&&Number.isFinite(rating)&&rating>=1&&rating<=5);
+  const strongRatings=validRatings.filter((rating)=>rating>=4).length;
   const scaleReady=Boolean(input.repeatMm && input.repeatMm>0 && input.scaleGatePass===true);
   const latencyReady=input.realModelSamples>=PHASE1_PROOF_MIN_LATENCY_SAMPLES
     && input.realModelP95Ms!==null
     && input.realModelP95Ms<PHASE1_PROOF_MAX_P95_MS;
-  const realismReady=input.realismRatings.length>=PHASE1_PROOF_MIN_REALISM_VIEWERS
+  const realismReady=validRatings.length>=PHASE1_PROOF_MIN_REALISM_VIEWERS
     && strongRatings>=PHASE1_PROOF_MIN_STRONG_REALISM;
   const boundaryReady=phase1BoundaryChecksReady(input.boundaryChecks);
   const reasons:string[]=[];
@@ -204,7 +209,7 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
         const value=item as Record<string,unknown>;
         return [{
           viewerId:String(value.viewerId||"").slice(0,80),
-          rating:Number(value.rating),
+          rating:value.rating as number,
           recordedAt:String(value.recordedAt||"").slice(0,80),
         }];
       })
