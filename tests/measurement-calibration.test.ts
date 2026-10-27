@@ -101,3 +101,14 @@ test("ten malformed database rows never count as real tape calibration",()=>{
   assert.equal(summarizeMeasurementCalibration([stale,corruptLatest,...valid.slice(1)] as never).total,9);
   assert.equal(summarizeMeasurementCalibration([valid[0],{...valid[0],created_at:"2026-02-29T10:00:00Z"},...valid.slice(1)]).total,9);
 });
+
+test("operator calibration UI clears stale PASS on failed or out-of-order reads",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const source=readFileSync("src/app/operator/measurement-calibration/MeasurementCalibrationClient.tsx","utf8");
+  assert.match(source,/requestVersion!==loadVersion\.current/);
+  assert.match(source,/if\(!response\.ok\) throw new Error/);
+  assert.match(source,/setData\(null\)/);
+  assert.match(source,/setLoadError\("Live measurement evidence is unavailable/);
+  assert.match(source,/role="alert"/);
+  assert.match(source,/return \(\)=>\{loadVersion\.current\+=1;\}/);
+});
