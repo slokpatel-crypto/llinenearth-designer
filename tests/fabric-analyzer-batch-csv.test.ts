@@ -215,3 +215,13 @@ test("a genuinely blank or valid header-only worksheet has no items or false err
   const [item]=itemsFromCsv("fabricId,verifiedGsm\nfabric-9,145");
   assert.equal(item.verifiedGsm,145);
 });
+
+test("BOM-prefixed supplier CSVs retain every verified data column and quoted header",()=>{
+  const plain=inspectBatchCsvWorksheet("\uFEFFfabricId,verifiedGsm,verifiedPhysicalEvidenceNote\nfabric-5,145,Measured");
+  assert.equal(plain.error,null);
+  assert.equal(plain.items[0].verifiedGsm,145);
+  assert.equal(plain.items[0].verifiedPhysicalEvidenceNote,"Measured");
+  const quoted=itemsFromCsv('\uFEFF"fabricId",verifiedGsm\nfabric-6,165');
+  assert.deepEqual(quoted.map(item=>[item.fabricId,item.verifiedGsm]),[["fabric-6",165]]);
+  assert.match(inspectBatchCsvWorksheet("\uFEFFfabricId,verfiedGsm").error||"",/Unsupported CSV column/);
+});
