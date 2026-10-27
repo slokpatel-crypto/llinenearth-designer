@@ -106,8 +106,11 @@ export function phase1BoundaryChecksReady(value:unknown){
 }
 
 export function summarizeLatencySamples(values:unknown){
+  // Proof samples must be actual numeric timings, never JSON coercions:
+  // Number(null), Number(false) and Number("") all fabricate a 0 ms render.
   const samples=Array.isArray(values)
-    ? values.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10_000).slice(-120)
+    ? values.filter((value):value is number=>
+        typeof value==="number"&&Number.isFinite(value)&&value>=0&&value<=10_000).slice(-120)
     : [];
   if(!samples.length) return {samples:[],count:0,p95Ms:null as number|null,medianMs:null as number|null,maxMs:null as number|null};
   const ordered=[...samples].sort((a,b)=>a-b);
@@ -134,9 +137,13 @@ export function phase1ProofAcceptance(input:Phase1ProofAcceptanceInput) {
   const validRatings=input.realismRatings.filter((rating)=>
     typeof rating==="number"&&Number.isFinite(rating)&&rating>=1&&rating<=5);
   const strongRatings=validRatings.filter((rating)=>rating>=4).length;
-  const scaleReady=Boolean(input.repeatMm && input.repeatMm>0 && input.scaleGatePass===true);
-  const latencyReady=input.realModelSamples>=PHASE1_PROOF_MIN_LATENCY_SAMPLES
-    && input.realModelP95Ms!==null
+  const scaleReady=typeof input.repeatMm==="number"
+    && Number.isFinite(input.repeatMm)&&input.repeatMm>0&&input.scaleGatePass===true;
+  const latencyReady=Number.isSafeInteger(input.realModelSamples)
+    && input.realModelSamples>=PHASE1_PROOF_MIN_LATENCY_SAMPLES
+    && typeof input.realModelP95Ms==="number"
+    && Number.isFinite(input.realModelP95Ms)
+    && input.realModelP95Ms>=0
     && input.realModelP95Ms<PHASE1_PROOF_MAX_P95_MS;
   const realismReady=validRatings.length>=PHASE1_PROOF_MIN_REALISM_VIEWERS
     && strongRatings>=PHASE1_PROOF_MIN_STRONG_REALISM;
