@@ -10,6 +10,13 @@ export type VaultReadEnvelope = Record<string, unknown> & {expires_at:string};
 
 const TIMESTAMPTZ=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
+/** Postgres timestamptz JSON must contain an explicit offset, not a local date. */
+export function parseVaultTimestamptz(value:unknown):number|null{
+  if(typeof value!=="string"||!TIMESTAMPTZ.test(value))return null;
+  const time=Date.parse(value);
+  return Number.isFinite(time)?time:null;
+}
+
 export function selectVaultReadRow(
   response:unknown,
   nowMs:number=Date.now(),
@@ -19,8 +26,7 @@ export function selectVaultReadRow(
   const row=response[0];
   if(!row||typeof row!=="object"||Array.isArray(row))return null;
   const expiry=(row as Record<string,unknown>).expires_at;
-  if(typeof expiry!=="string"||!TIMESTAMPTZ.test(expiry))return null;
-  const time=Date.parse(expiry);
-  if(!Number.isFinite(time)||!Number.isFinite(nowMs)||time<=nowMs)return null;
+  const time=parseVaultTimestamptz(expiry);
+  if(time===null||!Number.isFinite(nowMs)||time<=nowMs)return null;
   return row as VaultReadEnvelope;
 }
