@@ -14,7 +14,7 @@ type GlbMesh={name?:string;primitives?:GlbPrimitive[]};
 type GlbNode={mesh?:number};
 type GlbImage={uri?:string};
 type GlbBuffer={uri?:string};
-type GlbAccessor={count?:number;type?:string};
+type GlbAccessor={count?:number;type?:string;componentType?:number;bufferView?:number;normalized?:boolean};
 type GlbJson={
   asset?:{version?:string;generator?:string};
   materials?:GlbMaterial[];
@@ -22,6 +22,7 @@ type GlbJson={
   nodes?:GlbNode[];
   images?:GlbImage[];
   buffers?:GlbBuffer[];
+  bufferViews?:{buffer?:number;byteLength?:number}[];
   accessors?:GlbAccessor[];
 };
 
@@ -89,6 +90,23 @@ function accessorCount(gltf:GlbJson,index:unknown){
   return Number.isFinite(count)&&count>0?count:0;
 }
 
+function validGlbAttribute(gltf:GlbJson,index:unknown,type:"VEC2"|"VEC3",positionCount?:number){
+  if(typeof index!=="number"||!Number.isInteger(index)||index<0) return false;
+  const accessor=gltf.accessors?.[index];
+  if(!accessor || accessor.type!==type || !Number.isInteger(accessor.count) || (accessor.count||0)<=0) return false;
+  if(positionCount!==undefined && accessor.count!==positionCount) return false;
+  const component=accessor.componentType;
+  if(type==="VEC3" && component!==5126) return false;
+  if(type==="VEC2" && component!==5126 &&
+    !((component===5121||component===5123)&&accessor.normalized===true)) return false;
+  const viewIndex=accessor.bufferView;
+  if(!Number.isInteger(viewIndex)||typeof viewIndex!=="number"||viewIndex<0) return false;
+  const view=gltf.bufferViews?.[viewIndex];
+  const bufferIndex=view?.buffer;
+  return Boolean(view&&typeof bufferIndex==="number"&&Number.isInteger(bufferIndex)&&bufferIndex>=0&&
+    bufferIndex<(gltf.buffers?.length||0)&&Number.isInteger(view.byteLength)&&(view.byteLength||0)>0);
+}
+
 function primitiveTriangleCount(gltf:GlbJson,primitive:GlbPrimitive){
   const elementCount=primitive.indices!==undefined
     ? accessorCount(gltf,primitive.indices)
@@ -134,9 +152,11 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
     return {
       material,
       primitiveCount:primitives.length,
-      position:primitives.length>0&&primitives.every((primitive)=>Number.isInteger(primitive.attributes?.POSITION)),
-      normal:primitives.length>0&&primitives.every((primitive)=>Number.isInteger(primitive.attributes?.NORMAL)),
-      uv0:primitives.length>0&&primitives.every((primitive)=>Number.isInteger(primitive.attributes?.TEXCOORD_0)),
+      position:primitives.length>0&&primitives.every((primitive)=>validGlbAttribute(gltf,primitive.attributes?.POSITION,"VEC3")),
+      normal:primitives.length>0&&primitives.every((primitive)=>
+        validGlbAttribute(gltf,primitive.attributes?.NORMAL,"VEC3",accessorCount(gltf,primitive.attributes?.POSITION))),
+      uv0:primitives.length>0&&primitives.every((primitive)=>
+        validGlbAttribute(gltf,primitive.attributes?.TEXCOORD_0,"VEC2",accessorCount(gltf,primitive.attributes?.POSITION))),
     };
   });
 
@@ -169,7 +189,7 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
     else {
       if(!panel.position) reasons.push(`${panel.material} primitive is missing POSITION.`);
       if(!panel.normal) reasons.push(`${panel.material} primitive is missing NORMAL.`);
-      if(!panel.uv0) reasons.push(`${panel.material} primitive is missing TEXCOORD_0.`);
+      if(!panel.uv0) reasons.push(`${panel.material} primitive has missing or invalid TEXCOORD_0 accessor.`);
     }
   }
   if(!selfContained) reasons.push("Production GLB must be self-contained; external image or buffer URIs are not allowed.");
