@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {createRequire} from "node:module";
 import {evaluateCrossGarmentRules} from "../src/lib/designer/rules/evaluator.ts";
 import type {CrossGarmentRuleContext} from "../src/lib/designer/rules/types.ts";
 
@@ -112,4 +113,23 @@ test("construction conflicts remain deterministic and do not mutate a saved reci
     assert.equal(hit?.effect,"block",id);
     assert.equal(hit?.reviewStatus,"provisional",id);
   }
+});
+
+test("Style Director maps the exact v2 construction blockers into high-severity recommendation flags",()=>{
+  // Load the existing reference-backed engine through the repository's Node test adapter.
+  const require=createRequire(import.meta.url);
+  const {load}=require("../scripts/designer-test-loader.cjs");
+  const engine=load("src/lib/designer/engine.ts");
+  const spec=context({shirtType:"short_sleeve_shirt",pantType:"formal_flat_front",pantPleat:"single_pleat_forward"}).spec;
+  const recommendation=engine.evaluateDesignerCombo(
+    engine.DESIGNER_SHIRTS[0],engine.DESIGNER_PANTS[0],"Semi-Formal",
+    engine.designerStyleForOccasion("Semi-Formal"),undefined,
+    {climate:"Not specified",intention:"Balanced"},spec,
+  );
+  for(const id of ["CG-SHORT-TYPE-SLEEVE","CG-PLEAT-TYPE"]){
+    const flag=recommendation.rules.find((item:{id:string})=>item.id===id);
+    assert.equal(flag?.status,"flag",id);
+    assert.equal(flag?.severity,"High",id);
+  }
+  assert.equal(recommendation.status,"needs_review");
 });
