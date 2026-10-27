@@ -402,3 +402,53 @@ test("recorded proof cannot convert malformed reviewer JSON into independent rat
   assert.equal(evidence.acceptance.realismReady,false);
   assert.equal(evidence.coreAccepted,false);
 });
+
+test("coerced latency evidence cannot satisfy the minimum sample count",()=>{
+  const result=summarizeLatencySamples([
+    ...Array(11).fill(210),
+    null,undefined,false,true,"", "220",{},Number.NaN,Number.POSITIVE_INFINITY,-1,10001,
+  ]);
+  assert.equal(result.count,11);
+  assert.equal(result.p95Ms,210);
+  assert.deepEqual(result.samples,Array(11).fill(210));
+
+  const evidence=evaluateRecordedPhase1ProofEvidence({
+    version:"linen-earth-phase1-proof-v4",
+    scaleCoordinateSystem:"photo-1024x1536-fixture",
+    repeatMm:10,
+    physicalEvidenceNote:"Owner measured repeat and the photo reference against a ruler.",
+    photoReferenceMm:100,
+    photoReferencePx:82,
+    measuredPreviewRepeatPx:8.2,
+    realModelSampleDurationsMs:[...Array(11).fill(210),null,false,"220"],
+    realismAssessments:Array.from({length:8},(_,index)=>({viewerId:`viewer-${index}`,rating:index<6?5:3})),
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  });
+  assert.equal(evidence.realModelSamples,11);
+  assert.equal(evidence.acceptance.latencyReady,false);
+  assert.equal(evidence.coreAccepted,false);
+});
+
+test("direct proof acceptance rejects impossible latency and nonfinite physical scale",()=>{
+  const valid={
+    repeatMm:10,
+    scaleGatePass:true,
+    realModelSamples:12,
+    realModelP95Ms:200,
+    realismRatings:[5,5,5,5,5,5,3,3],
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  };
+  assert.equal(phase1ProofAcceptance(valid).accepted,true);
+  for(const malformed of [
+    {realModelSamples:11.5},
+    {realModelSamples:Number.POSITIVE_INFINITY},
+    {realModelP95Ms:-1},
+    {realModelP95Ms:Number.NaN},
+    {realModelP95Ms:Number.NEGATIVE_INFINITY},
+    {repeatMm:Number.POSITIVE_INFINITY},
+    {repeatMm:Number.NaN},
+  ]){
+    const result=phase1ProofAcceptance({...valid,...malformed});
+    assert.equal(result.accepted,false,JSON.stringify(malformed));
+  }
+});
