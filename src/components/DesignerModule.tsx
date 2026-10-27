@@ -907,7 +907,10 @@ export function DesignerModule() {
       !controller.signal.aborted && committedAssessmentIdentity.current===expectedIdentity;
     setActiveCreative(null);
     setCreativeVisualReview(null);
+    // Commit both representations together: a render between legacy and v2
+    // updates must not abort its own matching assessment as stale.
     setStyle({ ...nextStyle });
+    setStyleSpec(nextStyleSpec);
     setAssessmentLoading(true);
     setAssessmentError("");
     setRecommendationId(null);
