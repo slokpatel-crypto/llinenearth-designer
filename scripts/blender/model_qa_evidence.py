@@ -25,11 +25,23 @@ HASH_PATTERN = re.compile(r"[0-9a-f]{64}\Z")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
-def validate_native_preflight_report(report: object) -> list[str]:
+def validate_native_preflight_report(report: object, *, allow_rejected: bool = False) -> list[str]:
     """Independently reject contradictory or incomplete native geometry evidence."""
     if not isinstance(report, dict):
         return ["Native preflight report is missing or malformed"]
     reasons: list[str] = []
+    if allow_rejected:
+        if report.get("ready") is not False:
+            return ["Rejected diagnostic requires a failed native scene preflight"]
+        identity = report.get("modelIdentity")
+        if (report.get("gate") != PREFLIGHT_GATE
+            or not isinstance(report.get("reasons"), list) or not report["reasons"]
+            or not all(isinstance(reason, str) and reason.strip() for reason in report["reasons"])):
+            reasons.append("Rejected diagnostic lacks actual native failure reasons")
+        if (not isinstance(identity, dict) or identity.get("id") != MODEL_IDENTITY_ID
+            or identity.get("referenceImage") != REFERENCE_IMAGE or identity.get("locked") is not True):
+            reasons.append("Rejected diagnostic is not tied to the canonical locked identity")
+        return reasons
     if report.get("gate") != PREFLIGHT_GATE or report.get("ready") is not True or report.get("reasons") != []:
         reasons.append("Native scene preflight did not report an unblocked geometry/UV gate")
     identity = report.get("modelIdentity")
@@ -80,7 +92,7 @@ def validate_native_preflight_report(report: object) -> list[str]:
     return reasons
 
 
-def run_native_preflight(script: Path) -> dict:
+def run_native_preflight(script: Path, *, allow_rejected: bool = False) -> dict:
     """Execute the real Blender scene preflight and require its actual report."""
     if not script.is_file() or script.is_symlink():
         raise RuntimeError("Native scene preflight script is missing or symlinked")
@@ -91,6 +103,12 @@ def run_native_preflight(script: Path) -> dict:
     try:
         report = checker()
     except SystemExit as error:
+        rejected_report = getattr(error, "report", None)
+        if allow_rejected and rejected_report is not None:
+            reasons = validate_native_preflight_report(rejected_report, allow_rejected=True)
+            if reasons:
+                raise RuntimeError("Rejected diagnostic evidence is malformed: " + "; ".join(reasons)) from error
+            return rejected_report
         if error.code not in (None, 0):
             raise RuntimeError("Native scene geometry/UV preflight failed; QA render blocked") from error
         raise RuntimeError("Native preflight exited without an auditable report") from error
@@ -148,7 +166,8 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 def validate_candidate_manifest(manifest: object, directory: Path,
                                 *, source: Path | None = None,
                                 preflight_script: Path | None = None,
-                                reference_photo: Path | None = None) -> list[str]:
+                                reference_photo: Path | None = None,
+                                allow_rejected: bool = False) -> list[str]:
     """Validate a *candidate* manifest; this never constitutes model approval."""
     reasons: list[str] = []
     if not isinstance(manifest, dict):
@@ -163,7 +182,8 @@ def validate_candidate_manifest(manifest: object, directory: Path,
             reasons.append(f"Incorrect {key}")
     for key, expected in (
         ("identityLocked", True), ("candidateOnly", True),
-        ("nativePreflightPassed", True),
+        ("nativePreflightPassed", not allow_rejected),
+        ("rejectedDiagnostic", allow_rejected),
         ("photographicMatchApproved", False), ("realismApproved", False),
         ("tailorApproved", False), ("measuredFabricDrapeApproved", False),
     ):
@@ -202,7 +222,7 @@ def validate_candidate_manifest(manifest: object, directory: Path,
             if sha256_file(report_path) != report_sha:
                 raise ValueError("Native preflight report SHA-256 differs from manifest")
             report = json.loads(report_path.read_text(encoding="utf-8"))
-            reasons.extend(validate_native_preflight_report(report))
+            reasons.extend(validate_native_preflight_report(report, allow_rejected=allow_rejected))
         except (OSError, ValueError, UnicodeError) as error:
             reasons.append(f"Invalid native preflight report: {error}")
     if source is not None and manifest.get("sourceBlendName") != source.name:
@@ -255,6 +275,7 @@ def main() -> int:
     parser.add_argument("--source-blend", type=Path, required=True)
     parser.add_argument("--preflight-script", type=Path, required=True)
     parser.add_argument("--reference-photo", type=Path, required=True)
+    parser.add_argument("--allow-rejected-diagnostic", action="store_true")
     args = parser.parse_args()
     try:
         if args.manifest.is_symlink() or not args.manifest.is_file():
@@ -266,6 +287,7 @@ def main() -> int:
             payload, args.manifest.parent,
             source=args.source_blend, preflight_script=args.preflight_script,
             reference_photo=args.reference_photo,
+            allow_rejected=args.allow_rejected_diagnostic,
         )
     except (OSError, ValueError, UnicodeError) as error:
         reasons = [f"Could not inspect candidate manifest: {error}"]
@@ -273,7 +295,10 @@ def main() -> int:
         for reason in reasons:
             print(f"FAIL: {reason}")
         return 1
-    print("PASS: candidate file integrity only; photo parity, physical drape and tailor approval remain unverified.")
+    if args.allow_rejected_diagnostic:
+        print("REJECTED DIAGNOSTIC: file integrity only; native geometry and production release gates remain FAILED.")
+    else:
+        print("PASS: candidate file integrity only; photo parity, physical drape and tailor approval remain unverified.")
     return 0
 
 

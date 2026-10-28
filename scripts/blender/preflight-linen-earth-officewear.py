@@ -147,6 +147,13 @@ def guide_center(obj):
     return sum(points, Vector((0.0, 0.0, 0.0))) / len(points)
 
 
+class NativePreflightRejected(SystemExit):
+    """Retain the actual failed report for explicitly rejected diagnostic renders."""
+    def __init__(self, report):
+        super().__init__(1)
+        self.report = report
+
+
 def main():
     reasons = []
     warnings = []
@@ -533,7 +540,7 @@ def main():
     }
     print(json.dumps(report, indent=2))
     if reasons:
-        raise SystemExit(1)
+        raise NativePreflightRejected(report)
     return report
 
 

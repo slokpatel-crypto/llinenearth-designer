@@ -41,6 +41,7 @@ def args():
     parser.add_argument("--width", type=int, default=768)
     parser.add_argument("--height", type=int, default=1088)
     parser.add_argument("--samples", type=int, default=48)
+    parser.add_argument("--diagnostic-rejected", action="store_true", help="Render explicitly rejected native-preflight diagnostics; never production candidate proof.")
     return parser.parse_args(argv)
 
 
@@ -154,7 +155,9 @@ def main():
         raise RuntimeError("Choose a new, non-existing --output-dir for each QA candidate.")
     preflight_script = Path(__file__).with_name("preflight-linen-earth-officewear.py")
     preflight_sha = sha256_file(preflight_script)
-    native_report = run_native_preflight(preflight_script)
+    native_report = run_native_preflight(preflight_script, allow_rejected=options.diagnostic_rejected)
+    if options.diagnostic_rejected and native_report.get("ready") is True:
+        raise RuntimeError("Diagnostic mode is only for a rejected native scene; use normal QA mode for a passing scene.")
     if sha256_file(preflight_script) != preflight_sha:
         raise RuntimeError("Native preflight changed while the scene was inspected.")
     if bpy.data.is_dirty:
@@ -177,7 +180,8 @@ def main():
             "sourceBlendSha256": sha256_file(source),
             "referencePhotoSha256": sha256_file(reference_photo),
             "nativePreflightGate": PREFLIGHT_GATE,
-            "nativePreflightPassed": True,
+            "nativePreflightPassed": not options.diagnostic_rejected,
+            "rejectedDiagnostic": options.diagnostic_rejected,
             "nativePreflightScriptSha256": preflight_sha,
             "nativePreflightReportFile": "model-qa-native-preflight.json",
             "nativePreflightReportSha256": sha256_file(preflight_report_path),
@@ -209,6 +213,7 @@ def main():
         reasons = validate_candidate_manifest(
             manifest, staging, source=source, preflight_script=preflight_script,
             reference_photo=reference_photo,
+            allow_rejected=options.diagnostic_rejected,
         )
         if reasons:
             raise RuntimeError("Candidate QA evidence integrity failed: " + "; ".join(reasons))
@@ -222,7 +227,10 @@ def main():
         os.rename(staging, output)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
-    print(f"Linen Earth candidate four-angle QA written to {output}")
+    if options.diagnostic_rejected:
+        print(f"REJECTED native candidate: diagnostic four-angle files written to {output}; production gate remains FAILED.")
+    else:
+        print(f"Linen Earth candidate four-angle QA written to {output}")
     print("NOT APPROVED: visual identity, real drape, pattern scale and tailor signoff remain required.")
 
 if __name__ == "__main__":

@@ -46,6 +46,7 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
             "referencePhotoSha256": sha256_file(self.photo),
             "nativePreflightGate": PREFLIGHT_GATE,
             "nativePreflightPassed": True,
+            "rejectedDiagnostic": False,
             "nativePreflightScriptSha256": sha256_file(self.preflight),
             "nativePreflightReportFile": PREFLIGHT_REPORT_FILE,
             "identityLocked": True,
@@ -244,6 +245,35 @@ else:
         manifest_path.write_text("{not JSON", encoding="utf-8")
         corrupt = subprocess.run(command, capture_output=True, text=True, check=False)
         self.assertEqual(corrupt.returncode, 1)
+
+    def test_native_preflight_rejected_report_requires_explicit_diagnostic_opt_in(self):
+        script = self.directory / "mock-rejected-preflight.py"
+        rejected = dict(self.report)
+        rejected["ready"] = False
+        rejected["reasons"] = ["Sleeve spacing exceeds target"]
+        script.write_text(
+            "class Rejected(SystemExit):\n"
+            " def __init__(self, report):\n  super().__init__(1)\n  self.report=report\n"
+            "def main():\n raise Rejected(" + repr(rejected) + ")\n", encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "preflight failed"):
+            run_native_preflight(script)
+        self.assertEqual(run_native_preflight(script, allow_rejected=True), rejected)
+
+    def test_rejected_diagnostic_can_be_audited_but_never_pass_candidate_gate(self):
+        self.assertTrue(validate_native_preflight_report(self.report, allow_rejected=True))
+        self.report["ready"] = False
+        self.report["reasons"] = ["Sleeve center 563.4mm", "Unreviewed UV seams 83/85"]
+        self.report["identityFitMeasurementsMm"]["sleeveCenterSpacingMm"] = 563.4
+        self.report["objects"]["ShirtSleeveLFabric"]["uvQuality"]["discontinuousSharedUvEdges"] = 83
+        report_path = self.directory / PREFLIGHT_REPORT_FILE
+        report_path.write_text(json.dumps(self.report), encoding="utf-8")
+        self.manifest["nativePreflightReportSha256"] = sha256_file(report_path)
+        self.manifest["nativePreflightPassed"] = False
+        self.manifest["rejectedDiagnostic"] = True
+        self.assertTrue(self.validate())
+        self.assertEqual(validate_candidate_manifest(self.manifest, self.directory,
+            source=self.source, preflight_script=self.preflight,
+            reference_photo=self.photo, allow_rejected=True), [])
 
     def test_native_report_blocks_old_sleeve_spacing_and_uv_seam_failures(self):
         self.report["identityFitMeasurementsMm"]["sleeveCenterSpacingMm"] = 563.4
