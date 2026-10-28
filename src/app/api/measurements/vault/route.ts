@@ -150,7 +150,7 @@ export async function POST(request:Request){
         p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
       });
       const row=rows[0];
-      if(!row||!validProfile(row.profile)||!validObservations(row.observations)) {
+      if(!row||!validMeasurementVaultProfile(row.profile)||!validMeasurementVaultObservations(row.observations)) {
         return jsonNoStore({error:"Measurement profile was not found or has expired."},{status:404});
       }
       return jsonNoStore({profile:row.profile,observations:row.observations,expiresAt:row.expires_at});
