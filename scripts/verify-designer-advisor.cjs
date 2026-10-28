@@ -206,7 +206,7 @@ async function fitInputContracts(){
   console.log("PASS 4 actual fit-input HTTP boundary contracts");
 }
 (async()=>{
-  fs.mkdirSync(output,{recursive:true});await apiContracts();await visualReviewContracts();await measurementReceiptContracts();await fitInputContracts();browser=await chromium.launch({headless:true});
+  fs.mkdirSync(output,{recursive:true});await apiContracts();await visualReviewContracts();await measurementReceiptContracts();await fitInputContracts();summary.fitInputContracts=await require("./verify-designer-fit-contracts.cjs").verifyDesignerFitContracts(baseURL);browser=await chromium.launch({headless:true});
   for(const width of [390,768,1440]){
     const {page,context}=await freshPage(width),pixels=await mainPixels(page);
     const heroLayout=await page.evaluate(()=>{
