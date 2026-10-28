@@ -60,3 +60,9 @@ test("rejected or pending Analyzer review cannot certify customer-facing fabric"
   }
   assert.equal(enrich({reviewStatus:"corrected"}).weightGsm,145);
 });
+
+test("a coerced source URL cannot be rescued by a note",()=>{
+  const result=enrich({verifiedPhysical:{...reviewed.verifiedPhysical,sourceUrl:{url:"https://supplier.example/spec"},evidenceNote:"Owner measured this roll"}});
+  assert.equal(result.weightGsm,null);
+  assert.equal(result.patternScaleVerified,false);
+});

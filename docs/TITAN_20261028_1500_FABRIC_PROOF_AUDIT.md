@@ -15,3 +15,6 @@ Base draft PR #442 exact head `ca27429ba189be771321c3c9f431e164a0cb75ca`: CI 406
 
 ## Compatibility and follow-up
 Existing correctly recorded provenance and approved/corrected reviewed Analyzer values remain accepted. Previously tolerated malformed physical receipts are now ignored rather than promoted; operators must correct the evidence, not fabricate it. Follow up with exact-head CI, full test/build/release/preview gates and physical supplier/tailor signoff. Keep next 16:00 work on authenticated stock and vault recovery, without modifying production data.
+
+## Additional intake integrity hardening
+Direct fabric data-URL ingestion now rejects malformed base64 padding, incomplete quartets and noncanonical pad bits before a capture is accepted. The existing JPEG/PNG/WebP MIME allowlist and byte limits remain; actual image decoding still belongs to the Analyzer pipeline. A malformed non-string source URL cannot be laundered into verified physical evidence by appending a note. Three additional positive/negative Node regressions were added (13 focused tests total). No file bytes, stock, customer data or evidence records were changed.

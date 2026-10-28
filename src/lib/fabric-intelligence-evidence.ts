@@ -2,6 +2,7 @@ import type { DesignerFabric } from "@/lib/designer/engine";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 
 function hasAuditablePhysicalSource(sourceUrl:unknown,note:unknown){
+  if(sourceUrl!=null && sourceUrl!=="" && typeof sourceUrl!=="string") return false;
   if(typeof sourceUrl==="string"&&sourceUrl.trim()){
     try{
       const url=new URL(sourceUrl.trim());
