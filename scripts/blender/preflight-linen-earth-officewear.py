@@ -400,6 +400,30 @@ def main():
                 f"locked model target is {target_leg_spacing:.1f} mm ± 24.0 mm."
             )
 
+    # No native scene may report ready if a locked silhouette sample could not
+    # be measured. Earlier warnings for missing centerlines, cuffs and hems
+    # could leave ready=True; NaN also bypasses ordinary > tolerance checks.
+    required_fit_samples = (
+        "shirtShoulderWidthMm", "shirtWaistWidthMm", "trouserWaistWidthMm",
+        "leftHemWidthMm", "rightHemWidthMm", "shirtCenterOffsetMm",
+        "trouserCenterOffsetMm", "sleeveCenterSpacingMm",
+        "cuffWidthAsymmetryMm", "hemWidthAsymmetryMm", "legCenterSpacingMm",
+    )
+    for key in required_fit_samples:
+        value = identity_measurements.get(key)
+        if type(value) not in (int, float) or not math.isfinite(value):
+            reasons.append(f"Native silhouette sample {key} is missing or nonfinite.")
+    required_identity_guides = (
+        "LE_GUIDE_SHIRT_SHOULDER", "LE_GUIDE_SHIRT_WAIST",
+        "LE_GUIDE_TROUSER_WAIST", "LE_GUIDE_LEFT_HEM",
+        "LE_GUIDE_RIGHT_HEM", "LE_GUIDE_OUTER_ARM_SILHOUETTE",
+        "LE_GUIDE_HEIGHT", "handCenterSpacing", "legCenterSpacing",
+    )
+    for key in required_identity_guides:
+        value = guide_measurements.get(key)
+        if type(value) not in (int, float) or not math.isfinite(value):
+            reasons.append(f"Native identity guide {key} is missing or nonfinite.")
+
     for name in GARMENT_OBJECTS:
         obj = bpy.data.objects.get(name)
         entry = {
