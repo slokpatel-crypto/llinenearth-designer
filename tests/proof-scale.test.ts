@@ -482,3 +482,84 @@ test("extreme finite photo measurements fail closed rather than crash or certify
     assert.equal(evidence.coreAccepted,false);
   }
 });
+
+
+test("realism proof refuses fractional ratings and non-string reviewer identities",()=>{
+  const legitimate=Array.from({length:6},(_,index)=>({viewerId:`valid-${index}`,rating:5}));
+  const result=summarizeIndependentRealism([
+    ...legitimate,
+    {viewerId:"fraction-strong",rating:4.5},
+    {viewerId:"fraction-low",rating:3.5},
+    {viewerId:123 as unknown as string,rating:5},
+    {viewerId:{id:"fake"} as unknown as string,rating:5},
+    null as unknown as {viewerId:string,rating:number},
+  ]);
+  assert.equal(result.uniqueViewers,6);
+  assert.equal(result.strongRatings,6);
+  assert.equal(result.ready,false);
+  const direct=phase1ProofAcceptance({
+    repeatMm:10,
+    scaleGatePass:true,
+    realModelSamples:12,
+    realModelP95Ms:200,
+    realismRatings:[5,5,5,5,5,5,4.5,3.5],
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  });
+  assert.equal(direct.realismReady,false);
+  assert.equal(direct.accepted,false);
+});
+
+test("recorded physical proof never converts JSON strings, null or booleans into measurements",()=>{
+  const base={
+    version:"linen-earth-phase1-proof-v4",
+    scaleCoordinateSystem:"photo-1024x1536-fixture",
+    repeatMm:10,
+    physicalEvidenceNote:"Owner measured repeat and photo reference with a steel ruler.",
+    photoReferenceMm:100,
+    photoReferencePx:82,
+    measuredPreviewRepeatPx:8.2,
+    realModelSampleDurationsMs:Array(12).fill(210),
+    realismAssessments:Array.from({length:8},(_,index)=>({viewerId:`viewer-${index}`,rating:index<6?5:3})),
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  };
+  assert.equal(evaluateRecordedPhase1ProofEvidence(base).coreAccepted,true);
+  for(const bad of [
+    {repeatMm:"10"},
+    {repeatMm:true},
+    {repeatMm:null},
+    {measuredPreviewRepeatPx:"8.2"},
+    {measuredPreviewRepeatPx:true},
+    {photoReferenceMm:"100"},
+    {photoReferenceMm:null},
+    {photoReferencePx:"82"},
+    {photoReferencePx:true},
+    {physicalEvidenceNote:{note:base.physicalEvidenceNote}},
+  ]){
+    const proof=evaluateRecordedPhase1ProofEvidence({...base,...bad});
+    assert.equal(proof.coreAccepted,false,JSON.stringify(bad));
+    assert.equal(proof.scaleGatePass,false,JSON.stringify(bad));
+  }
+});
+
+test("recorded proof cannot count fractional or object-identity reviews",()=>{
+  const evidence=evaluateRecordedPhase1ProofEvidence({
+    version:"linen-earth-phase1-proof-v4",
+    scaleCoordinateSystem:"photo-1024x1536-fixture",
+    repeatMm:10,
+    physicalEvidenceNote:"Owner measured repeat and photo reference with a steel ruler.",
+    photoReferenceMm:100,
+    photoReferencePx:82,
+    measuredPreviewRepeatPx:8.2,
+    realModelSampleDurationsMs:Array(12).fill(210),
+    realismAssessments:[
+      ...Array.from({length:6},(_,index)=>({viewerId:`valid-${index}`,rating:5})),
+      {viewerId:"fraction",rating:4.5},
+      {viewerId:{id:"forged"},rating:5},
+      {viewerId:"fraction-low",rating:3.5},
+    ],
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  });
+  assert.equal(evidence.realism.uniqueViewers,6);
+  assert.equal(evidence.acceptance.realismReady,false);
+  assert.equal(evidence.coreAccepted,false);
+});
