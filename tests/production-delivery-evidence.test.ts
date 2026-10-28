@@ -534,3 +534,12 @@ test("cloud health check also rejects misordered deliveries and unknown incident
   assert.match(checker,/knownReentryFields/);
   assert.match(checker,/validReentryFields\(row.reentry_fields\)/);
 });
+
+test("cloud health checks immutable order/audit lineage and unique evidence",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const cloud=readFileSync("scripts/check-cloud-readiness.mjs","utf8");
+  assert.match(cloud,/row.revision_id===lineage.revisionId/);
+  assert.match(cloud,/row.recipe_hash===lineage.recipeHash/);
+  assert.match(cloud,/row.order_created_at===lineage.createdAt/);
+  assert.match(cloud,/seenEvidenceIds.has\(evidenceId\)/);
+});

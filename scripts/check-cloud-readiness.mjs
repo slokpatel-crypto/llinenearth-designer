@@ -182,16 +182,21 @@ if (url && key) {
               &&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(value)
               &&Number.isFinite(Date.parse(value));
             const deliveredAtByOrder=new Map();
+             const orderLineageById=new Map();
+             const seenEvidenceIds=new Set();
             let previousDeliveredAt=Number.NEGATIVE_INFINITY;
             const validOrders=orders.length<=10&&orders.every((order)=>{
               const key=typeof order?.order_id==="string"?order.order_id.trim().toLowerCase():"";
               if(!key||order?.status!=="delivered"
+                 ||typeof order.revision_id!=="string"||order.revision_id.trim().length<3
+                 ||typeof order.recipe_hash!=="string"||!/^[a-f0-9]{64}$/i.test(order.recipe_hash)
                 ||!validTimestamp(order?.created_at)||!validTimestamp(order?.delivered_at)
                 ||Date.parse(order.delivered_at)<Date.parse(order.created_at)
                 ||deliveredAtByOrder.has(key)
                 ||Date.parse(order.delivered_at)<previousDeliveredAt) return false;
               previousDeliveredAt=Date.parse(order.delivered_at);
               deliveredAtByOrder.set(key,previousDeliveredAt);
+               orderLineageById.set(key,{revisionId:order.revision_id,recipeHash:order.recipe_hash,createdAt:order.created_at});
               return true;
             });
             const knownReentryFields=new Set(["fabric_identity","construction","fit_measurements",
@@ -201,7 +206,16 @@ if (url && key) {
             const validEvidence=evidence.every((row)=>{
               const key=typeof row?.order_id==="string"?row.order_id.trim().toLowerCase():"";
               const deliveredAt=deliveredAtByOrder.get(key);
-              return deliveredAt!==undefined&&validTimestamp(row?.created_at)
+               const lineage=orderLineageById.get(key);
+               const evidenceId=typeof row?.evidence_id==="string"?row.evidence_id.trim().toLowerCase():"";
+               if(!evidenceId||seenEvidenceIds.has(evidenceId)) return false;
+               seenEvidenceIds.add(evidenceId);
+              return deliveredAt!==undefined&&lineage!==undefined&&validTimestamp(row?.created_at)
+                 &&row.revision_id===lineage.revisionId&&row.recipe_hash===lineage.recipeHash
+                 &&row.order_created_at===lineage.createdAt
+                 &&typeof row.note==="string"&&Array.isArray(row.reentry_fields)
+                 &&new Set(row.reentry_fields).size===row.reentry_fields.length
+                 &&(row.manual_design_reentry===false||row.reentry_fields.length>0||row.note.trim().length>=3)
                 &&Date.parse(row.created_at)>=deliveredAt
                 &&typeof row.manual_design_reentry==="boolean"
                 &&(row.reentry_fields===undefined||validReentryFields(row.reentry_fields))
