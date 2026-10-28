@@ -188,3 +188,14 @@ test("catalogue, creative generation and assessment share identical reviewed fab
     assert.doesNotMatch(source,/enrichDesignerFabricsWithIntelligence\(/,path);
   }
 });
+
+
+test("server assessment rejects stale same-ID creative recipes before garment spec creation",()=>{
+  const source=readFileSync("src/app/api/designer/assess/route.ts","utf8");
+  assert.match(source,/creativeDirectionMatchesSelection\(creative,\{/);
+  assert.match(source,/shirtId,pantId,shirt,pant,occasion/);
+  assert.match(source,/style:resolvedStyle,styleSpec:styleSpec\?\?fromLegacyStyle\(resolvedStyle\)/);
+  const guard=source.indexOf("creative&&!creativeDirectionMatchesSelection");
+  const build=source.indexOf("const garmentSpec=buildCanonicalGarmentSpec");
+  assert.ok(guard>0&&build>guard,"stale creative must be rejected before handoff assembly");
+});
