@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {FABRIC_STOCK} from "../src/lib/fabric-stock.ts";
-import {assertCurrentFabricId,readBoundedStockMutationJson,StockMutationPayloadTooLarge,stockMutationRequestError}
+import {assertCurrentFabricId,readBoundedStockMutationJson,StockMutationPayloadTooLarge,stockMutationRequestError,validateOperatorStockSnapshot}
   from "../src/lib/designer/operator-stock-safety.ts";
 import {readFileSync} from "node:fs";
 
@@ -124,4 +124,37 @@ test("operator stock dashboard fails closed when the live ledger cannot load",()
   assert.ok(code.includes('snapshotState==="ready"?(provenanceReady?"RECORDED":"PENDING"):"UNAVAILABLE"'));
   assert.ok(code.includes('disabled={busy||snapshotState!=="ready"||'));
   assert.ok(code.includes("do not reserve or cut against a missing snapshot"));
+});
+
+test("operator stock snapshots reject corrupt availability, duplicate SKUs and forged provenance",()=>{
+  const row={
+    fabric_id:FABRIC_STOCK[0].id,physical_metres:12,reserved_metres:2,available_metres:10,
+    manual_event_count:2,provenance_event_count:2,legacy_unverified_event_count:0,
+    provenance_ready:true,last_event_at:"2026-10-28T00:00:00+00:00",
+  };
+  assert.deepEqual(validateOperatorStockSnapshot([row]),[row]);
+  assert.deepEqual(validateOperatorStockSnapshot([]),[]);
+  for(const invalid of [
+    null,{},[null],[row,row],
+    [{...row,fabric_id:"unlisted-supplier-99"}],
+    [{...row,physical_metres:"12"}],
+    [{...row,physical_metres:Infinity}],
+    [{...row,physical_metres:-1}],
+    [{...row,reserved_metres:13}],
+    [{...row,available_metres:11}],
+    [{...row,manual_event_count:"2"}],
+    [{...row,manual_event_count:2.5}],
+    [{...row,provenance_event_count:3}],
+    [{...row,legacy_unverified_event_count:1}],
+    [{...row,provenance_ready:"true"}],
+    [{...row,provenance_ready:false}],
+    [{...row,last_event_at:"2027-02-29T00:00:00Z"}],
+  ])assert.equal(validateOperatorStockSnapshot(invalid),null);
+});
+test("operator stock GET refuses invalid backend rows before showing available metres",()=>{
+  const code=readFileSync("src/app/api/operator/stock/route.ts","utf8");
+  const checked=code.indexOf("validateOperatorStockSnapshot(stock)");
+  const returned=code.indexOf("stock:verified");
+  assert.ok(checked>0&&returned>checked);
+  assert.ok(code.includes("Stock ledger returned inconsistent rows; do not reserve or cut."));
 });
