@@ -57,18 +57,47 @@ def validate_native_preflight_report(report: object, *, allow_rejected: bool = F
         reasons.append("Native preflight bodyHeightMm fails the locked 1727±20mm silhouette")
     guide = report.get("identityGuideMeasurementsMm")
     if not isinstance(guide, dict):
-        reasons.append("Native preflight lacks measured hand/leg identity guides")
+        reasons.append("Native preflight lacks measured identity guides")
     else:
-        for key, target in (("handCenterSpacing", 500.0), ("legCenterSpacing", 210.0)):
+        # The native script measures these physical guide segments independently
+        # of garment meshes. Missing, coerced or nonfinite samples cannot certify
+        # the original studio-model identity.
+        guide_targets = (
+            ("LE_GUIDE_SHIRT_SHOULDER", 388.0, 2.0),
+            ("LE_GUIDE_SHIRT_WAIST", 294.0, 2.0),
+            ("LE_GUIDE_TROUSER_WAIST", 344.0, 2.0),
+            ("LE_GUIDE_LEFT_HEM", 64.0, 2.0),
+            ("LE_GUIDE_RIGHT_HEM", 64.0, 2.0),
+            ("LE_GUIDE_OUTER_ARM_SILHOUETTE", 574.0, 3.0),
+            ("LE_GUIDE_HEIGHT", 1727.0, 3.0),
+            ("handCenterSpacing", 500.0, 3.0),
+            ("legCenterSpacing", 210.0, 3.0),
+        )
+        for key, target, tolerance in guide_targets:
             value = guide.get(key)
-            if type(value) not in (int, float) or not math.isfinite(value) or abs(value - target) > 3.0:
-                reasons.append(f"Native preflight {key} guide spacing fails locked identity")
+            if type(value) not in (int, float) or not math.isfinite(value) or abs(value - target) > tolerance:
+                reasons.append(f"Native preflight {key} fails locked identity guide")
     fit = report.get("identityFitMeasurementsMm")
     if not isinstance(fit, dict):
         reasons.append("Native preflight lacks silhouette measurements")
     else:
-        for key, target, tolerance in (("sleeveCenterSpacingMm", 500.0, 36.0),
-                                       ("legCenterSpacingMm", 210.0, 24.0)):
+        # The original Blender preflight previously emitted warnings for
+        # unsampled garment widths and centerlines while still saying ready.
+        # Require every measured zone and reject drift even if ready=True.
+        fit_targets = (
+            ("shirtShoulderWidthMm", 388.0, 42.0),
+            ("shirtWaistWidthMm", 294.0, 38.0),
+            ("trouserWaistWidthMm", 344.0, 38.0),
+            ("leftHemWidthMm", 64.0, 28.0),
+            ("rightHemWidthMm", 64.0, 28.0),
+            ("shirtCenterOffsetMm", 0.0, 18.0),
+            ("trouserCenterOffsetMm", 0.0, 18.0),
+            ("sleeveCenterSpacingMm", 500.0, 36.0),
+            ("cuffWidthAsymmetryMm", 0.0, 14.0),
+            ("hemWidthAsymmetryMm", 0.0, 10.0),
+            ("legCenterSpacingMm", 210.0, 24.0),
+        )
+        for key, target, tolerance in fit_targets:
             value = fit.get(key)
             if type(value) not in (int, float) or not math.isfinite(value) or abs(value - target) > tolerance:
                 reasons.append(f"Native preflight {key} fails locked silhouette target")
