@@ -235,6 +235,21 @@ async function visualReviewContracts(){
   await regression("stale-question-after-construction-change",async page=>{const old=await start(page);await page.getByLabel("Shirt fit",{exact:true}).selectOption("Relaxed Fit");await answer(page,old);assert.equal(await panel(page).locator(".designerAdvice").count(),0);assert.equal((await memory(page)).filter(e=>e.type==="designer_override").length,0);});
   await regression("reset-same-design-invalidates-question",async page=>{const old=await start(page);await page.getByRole("button",{name:"Reset",exact:true}).click();await answer(page,old);assert.equal(await question(page).inputValue(),"");assert.equal((await request(page,"question",old)).aborted,true);assert.equal(await panel(page).locator(".designerAdvice").count(),0);});
   await regression("stale-revision-error-cannot-unlock-new-question",async page=>{await answer(page,await start(page));const old=await revision(page);const fresh=await start(page,"Compare point vs spread collar");await complete(page,"question",old,{error:"Discarded revision error"},500);assert.equal(await panel(page).getByRole("alert").count(),0);assert.equal(await panel(page).getByRole("button",{name:"Designing…",exact:true}).isDisabled(),true);await answer(page,fresh);});
+  await regression("same-id-revised-assessment-cannot-certify-old-fabric",async page=>{
+    await answer(page,await start(page,"Keep both fabrics. Make the shirt relaxed."));
+    await panel(page).getByRole("button",{name:"Apply direction",exact:true}).first().click();
+    await settle(page);
+    const index=(await count(page,"assessment"))-1;
+    const body=(await request(page,"assessment",index)).body;
+    const revised=assessmentFixture(body);
+    revised.assessment.recommendation.shirt={
+      ...revised.assessment.recommendation.shirt,
+      image:"/fabrics/supplier-revised-same-id.webp",
+    };
+    await complete(page,"assessment",index,revised);
+    assert.equal((await memory(page)).filter(e=>e.type==="designer_recommendation").length,0,
+      "A same-ID supplier/photo revision must not record an approved assessment");
+  });
   await regression("stale-assessment-after-applied-choice-change",async page=>{await answer(page,await start(page,"Keep both fabrics. Make the shirt relaxed."));await panel(page).getByRole("button",{name:"Apply direction",exact:true}).first().click();await settle(page);const index=(await count(page,"assessment"))-1,body=(await request(page,"assessment",index)).body;await page.getByLabel("Shirt fit",{exact:true}).selectOption("Slim Fit");await complete(page,"assessment",index,assessmentFixture(body));assert.equal(await page.getByLabel("Shirt fit",{exact:true}).inputValue(),"Slim Fit");assert.equal((await memory(page)).filter(e=>e.type==="designer_recommendation").length,0);});
   await regression("comparison-and-unsupported-task",async page=>{const compared=await answer(page,await start(page,"Compare pleated vs flat-front trousers"));assert.equal(compared.results.length,2);assert.equal(await panel(page).getByRole("button",{name:"Resolve conflict first",exact:true}).isDisabled(),true);await answer(page,await start(page,"Design a sherwani"));assert.equal(await panel(page).locator(".newDesignerBriefResults").count(),0);assert.match(await panel(page).locator(".designerAdvice").textContent(),/supported block/);});
   await regression("unmount-discards-question",async page=>{const old=await start(page);await page.getByRole("link",{name:/Style Director/i}).first().click();await page.waitForURL("**/style-director");await answer(page,old);assert.equal((await request(page,"question",old)).aborted,true);assert.equal((await memory(page)).filter(e=>e.type==="designer_override").length,0);});
