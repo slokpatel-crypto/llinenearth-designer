@@ -24,3 +24,10 @@ test("stock mutation also rejects same-site fetch-metadata CSRF",()=>{
   const s=readFileSync("src/lib/designer/operator-stock-safety.ts","utf8");
   assert.ok(s.includes('fetchSite!=="same-origin"&&fetchSite!=="none"'));
 });
+
+test("measurement token recovery and owned reads share strict validation, not removed legacy helpers",()=>{
+  const code=readFileSync("src/app/api/measurements/vault/route.ts","utf8");
+  assert.ok(!/\bvalidProfile\(/.test(code));
+  assert.ok(!/\bvalidObservations\(/.test(code));
+  assert.ok(code.includes('if(!row||!validMeasurementVaultProfile(row.profile)||!validMeasurementVaultObservations(row.observations))'));
+});
