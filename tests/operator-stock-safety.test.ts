@@ -158,3 +158,13 @@ test("operator stock GET refuses invalid backend rows before showing available m
   assert.ok(checked>0&&returned>checked);
   assert.ok(code.includes("Stock ledger returned inconsistent rows; do not reserve or cut."));
 });
+
+test("operator stock mutations require UUID RPC acknowledgements before claiming success",()=>{
+  const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
+  assert.ok(route.includes('normalizeVaultId(await rpc<unknown>("fabric_stock_record_v2"'));
+  assert.ok(route.includes('normalizeVaultId(await rpc<unknown>("fabric_stock_reserve_v2"'));
+  assert.ok(route.includes("if(!eventId) return NextResponse.json"));
+  assert.ok(route.includes("if(!reservationId) return NextResponse.json"));
+  assert.ok(route.includes('if(released!==true) return NextResponse.json'));
+  assert.ok(route.includes('if(consumed!==true) return NextResponse.json'));
+});
