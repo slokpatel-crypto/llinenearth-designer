@@ -66,6 +66,8 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
         self.report = {
             "gate": PREFLIGHT_GATE, "ready": True, "reasons": [],
             "modelIdentity": {"id": MODEL_IDENTITY_ID, "referenceImage": REFERENCE_IMAGE, "locked": True},
+            "referenceBody": "Body", "bodyHeightMm": 1727.0,
+            "identityGuideMeasurementsMm": {"handCenterSpacing": 500.0, "legCenterSpacing": 210.0},
             "requiredGarmentObjects": list(GARMENT_OBJECTS),
             "identityFitMeasurementsMm": {"sleeveCenterSpacingMm": 500.0, "legCenterSpacingMm": 210.0},
             "objects": {name: {"present": True, "inExportCollection": True,
@@ -411,6 +413,24 @@ else:
                 self.manifest["nativePreflightReportSha256"] = sha256_file(report_path)
                 self.assertTrue(any("native preflight report" in reason.lower()
                                     for reason in self.validate()))
+
+
+    def test_native_report_cannot_omit_body_height_or_spoof_identity_guides(self):
+        original = json.loads(json.dumps(self.report))
+        for mutation in (
+            lambda r: r.pop("bodyHeightMm"),
+            lambda r: r.update(bodyHeightMm=True),
+            lambda r: r.update(bodyHeightMm=1748.0),
+            lambda r: r.update(referenceBody="Placeholder"),
+            lambda r: r.pop("identityGuideMeasurementsMm"),
+            lambda r: r["identityGuideMeasurementsMm"].update(handCenterSpacing=563.4),
+            lambda r: r["identityGuideMeasurementsMm"].update(legCenterSpacing=float("nan")),
+        ):
+            report = json.loads(json.dumps(original))
+            mutation(report)
+            with self.subTest(report=report):
+                self.assertTrue(validate_native_preflight_report(report))
+        self.assertEqual(validate_native_preflight_report(original), [])
 
 
 if __name__ == "__main__":

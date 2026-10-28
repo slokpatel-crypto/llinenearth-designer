@@ -50,6 +50,19 @@ def validate_native_preflight_report(report: object, *, allow_rejected: bool = F
         reasons.append("Native preflight model identity differs from canonical studio photo")
     if report.get("requiredGarmentObjects") != list(GARMENT_OBJECTS):
         reasons.append("Native preflight garment panel inventory differs from contract")
+    if report.get("referenceBody") != "Body":
+        reasons.append("Native preflight referenceBody is not the canonical body mesh")
+    height = report.get("bodyHeightMm")
+    if type(height) not in (int, float) or not math.isfinite(height) or abs(height - 1727.0) > 20.0:
+        reasons.append("Native preflight bodyHeightMm fails the locked 1727±20mm silhouette")
+    guide = report.get("identityGuideMeasurementsMm")
+    if not isinstance(guide, dict):
+        reasons.append("Native preflight lacks measured hand/leg identity guides")
+    else:
+        for key, target in (("handCenterSpacing", 500.0), ("legCenterSpacing", 210.0)):
+            value = guide.get(key)
+            if type(value) not in (int, float) or not math.isfinite(value) or abs(value - target) > 3.0:
+                reasons.append(f"Native preflight {key} guide spacing fails locked identity")
     fit = report.get("identityFitMeasurementsMm")
     if not isinstance(fit, dict):
         reasons.append("Native preflight lacks silhouette measurements")
