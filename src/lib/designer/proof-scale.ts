@@ -138,7 +138,13 @@ export type Phase1ProofAcceptanceInput={
   boundaryChecks?:Phase1BoundaryChecks|null;
 };
 
-export function phase1ProofAcceptance(input:Phase1ProofAcceptanceInput) {
+export function phase1ProofAcceptance(input:Phase1ProofAcceptanceInput|null|undefined) {
+  // A direct caller can bypass the recorded-evidence adapter; a malformed
+  // envelope must yield a blocked gate rather than throw or certify proof.
+  input=input&&typeof input==="object"&&!Array.isArray(input)?input:{
+    repeatMm:null,scaleGatePass:null,realModelSamples:0,
+    realModelP95Ms:null,realismRatings:[],boundaryChecks:null,
+  };
   const validRatings=Array.isArray(input.realismRatings)?input.realismRatings.filter((rating)=>
     typeof rating==="number"&&Number.isInteger(rating)&&rating>=1&&rating<=5):[];
   const strongRatings=validRatings.filter((rating)=>rating>=4).length;
