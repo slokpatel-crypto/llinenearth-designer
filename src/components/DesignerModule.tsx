@@ -160,7 +160,7 @@ export function DesignerModule() {
   const [shareBusy,setShareBusy]=useState(false);
   const [shareMessage,setShareMessage]=useState("");
   const [enquiryBusy,setEnquiryBusy]=useState(false);
-  const [enquiryMessage,setEnquiryMessage]=useState("");
+  const [enquiryResult,setEnquiryResult]=useState<{revisionId:string;href:string|null;message:string}|null>(null);
   const [vaultBusy,setVaultBusy]=useState(false);
   const [vaultMessage,setVaultMessage]=useState("");
   const [vaultRecoveryToken,setVaultRecoveryToken]=useState("");
@@ -1193,6 +1193,7 @@ export function DesignerModule() {
       }
       lockedRevisionSelectionIdentityRef.current=selectionAtLock;
       setLockedRevision(revision);
+      setEnquiryResult(null);
       setLastLockedRevisionId(revision.revisionId);
       recordStyleMemoryEvent(designerSession(),"design_locked",{
         revisionId:revision.revisionId,
@@ -1296,21 +1297,36 @@ export function DesignerModule() {
     const revision=currentLockedRevision();
     const identity=lockIdentity;
     if(!revision||enquiryBusy) return;
-    setEnquiryBusy(true);setEnquiryMessage("");
+    setEnquiryBusy(true);setEnquiryResult(null);
     try{
       const response=await fetch("/api/designer/enquiry",{
         method:"POST",
         headers:{"content-type":"application/json"},
         body:JSON.stringify(revision),
       });
-      const result=await response.json() as {href?:string;audited?:boolean;revisionId?:string;error?:string};
+      const result=await response.json() as {
+        href?:string;audited?:boolean;revisionId?:string;
+        handoffStatus?:string;error?:string;
+      };
       if(currentSelectionIdentityRef.current!==identity) return;
-      if(!response.ok||!result.href) throw new Error(result.error||"Locked-look enquiry could not be created.");
-      setEnquiryMessage(result.audited?"Verified enquiry audit recorded for this locked revision.":"WhatsApp enquiry opened · beta audit unavailable.");
-      window.open(result.href,"_blank","noopener,noreferrer");
+      if(!response.ok||!result.href||result.revisionId!==revision.revisionId
+         ||result.handoffStatus!=="prepared_not_sent")
+        throw new Error(result.error||"A verified WhatsApp draft could not be prepared.");
+      // Sending is a separate, explicit customer click. Audit != delivery.
+      const destination=new URL(result.href);
+      if(destination.protocol!=="https:"||destination.hostname!=="wa.me")
+        throw new Error("Invalid WhatsApp destination.");
+      setEnquiryResult({
+        revisionId:revision.revisionId,
+        href:result.href,
+        message:result.audited
+          ?"WhatsApp draft prepared; preparation audit recorded. Open WhatsApp and press Send. The store has not received a confirmed message yet."
+          :"WhatsApp draft prepared, but the beta audit is unavailable. Open WhatsApp and press Send; no store receipt is confirmed.",
+      });
     }catch(error){
       if(currentSelectionIdentityRef.current!==identity) return;
-      setEnquiryMessage(error instanceof Error?error.message:"Locked-look enquiry could not be created.");
+      setEnquiryResult({revisionId:revision.revisionId,href:null,
+        message:error instanceof Error?error.message:"Locked-look enquiry could not be prepared."});
     }finally{
       setEnquiryBusy(false);
     }
@@ -1655,8 +1671,11 @@ export function DesignerModule() {
                 <button type="button" onClick={downloadTailorTechPack}>Export printable tech pack ↗</button>
                 <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
                 {shareMessage&&<p>{shareMessage}</p>}
-                <button type="button" onClick={()=>void openLockedRevisionEnquiry()} disabled={enquiryBusy}>{enquiryBusy?"Opening WhatsApp…":"WhatsApp locked look ↗"}</button>
-                {enquiryMessage&&<p>{enquiryMessage}</p>}
+                <button type="button" onClick={()=>void openLockedRevisionEnquiry()} disabled={enquiryBusy}>{enquiryBusy?"Preparing WhatsApp…":"Prepare WhatsApp enquiry ↗"}</button>
+                {enquiryResult?.revisionId===verifiedLockedRevision.revisionId&&<>
+                  <p role="status">{enquiryResult.message}</p>
+                  {enquiryResult.href&&<a href={enquiryResult.href} target="_blank" rel="noopener noreferrer">Open WhatsApp and send ↗</a>}
+                </>}
                 <button type="button" onClick={()=>void saveLockedRevisionToVault()} disabled={vaultBusy}>{vaultBusy?"Saving secure copy…":"Save secure cloud copy ↗"}</button>
                 {vaultMessage&&<p>{vaultMessage}</p>}
                 {vaultRecoveryToken&&<>
