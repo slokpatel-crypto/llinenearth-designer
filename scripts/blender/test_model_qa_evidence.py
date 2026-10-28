@@ -274,6 +274,16 @@ else:
         self.assertEqual(validate_candidate_manifest(self.manifest, self.directory,
             source=self.source, preflight_script=self.preflight,
             reference_photo=self.photo, allow_rejected=True), [])
+        manifest_path = self.directory / "model-qa-manifest.json"
+        manifest_path.write_text(json.dumps(self.manifest), encoding="utf-8")
+        result = subprocess.run([
+            sys.executable, str(Path(__file__).with_name("model_qa_evidence.py")),
+            "--manifest", str(manifest_path), "--source-blend", str(self.source),
+            "--preflight-script", str(self.preflight), "--reference-photo", str(self.photo),
+            "--allow-rejected-diagnostic",
+        ], capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("REJECTED DIAGNOSTIC", result.stdout)
 
     def test_native_report_blocks_old_sleeve_spacing_and_uv_seam_failures(self):
         self.report["identityFitMeasurementsMm"]["sleeveCenterSpacingMm"] = 563.4

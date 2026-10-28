@@ -296,7 +296,8 @@ def main() -> int:
             print(f"FAIL: {reason}")
         return 1
     if args.allow_rejected_diagnostic:
-        print("REJECTED DIAGNOSTIC: file integrity only; native geometry and production release gates remain FAILED.")
+        print("REJECTED DIAGNOSTIC: file integrity checked; native geometry and production release gates remain FAILED.")
+        return 2  # Never report process success for rejected native geometry.
     else:
         print("PASS: candidate file integrity only; photo parity, physical drape and tailor approval remain unverified.")
     return 0
