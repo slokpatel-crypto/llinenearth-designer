@@ -13,6 +13,8 @@ spec.loader.exec_module(module)
 def receipt(baseline=(4, 5), selected=(3, 5), **changes):
     data = {
         "nativeWorldSpaceCollisionFree": True,
+        "requestedMmPerSleeve": 22.0,
+        "selectedMmPerSleeve": 11.0,
         "shirtTorsoContactNotWorsened": True,
         "shirtTorsoPairsAtOriginal": list(baseline),
         "shirtTorsoPairsAtSelected": list(selected),
@@ -68,6 +70,14 @@ class SleeveTorsoGateTests(unittest.TestCase):
             {"shirtTorsoPairsAtSelected": [3]},
             {"nativeWorldSpaceCollisionFree": 1},
             {"shirtTorsoContactNotWorsened": "true"},
+            {"selectedMmPerSleeve": 23},
+            {"selectedMmPerSleeve": -1},
+            {"selectedMmPerSleeve": True},
+            {"selectedMmPerSleeve": "11"},
+            {"selectedMmPerSleeve": float("nan")},
+            {"selectedMmPerSleeve": 12, "requestedMmPerSleeve": 11},
+            {"requestedMmPerSleeve": 100},
+            {"requestedMmPerSleeve": None},
         )
         for changed in bad:
             raw = receipt(**changed)
