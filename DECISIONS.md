@@ -1,5 +1,12 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-10-28 — Phase 1 physical and reviewer proof rejects JSON coercion
+
+**Decision:** Treat recorded physical repeat, preview-period and calibration-marker values as untrusted evidence: only actual numeric JSON values are eligible, never strings, booleans, null or objects that `Number(...)` can convert. Preserve existing finite/positive ratio and scale-tolerance checks. Physical provenance notes must be strings, not object-coerced text. Independent reviewer IDs must be strings and ratings must be integer values 1–5; fractional scores cannot be rounded into passing reviews. Apply the same rating contract to the direct Phase 1 acceptance gate to prevent bypass through a different caller. Malformed historical evidence fails closed until resubmitted; valid numeric receipts and versioned contract remain compatible.
+
+**Limit:** Software validation is not proof of real independent people, supplier-calibrated scale, native Blender geometry, four-angle likeness, tailor signoff or live production verification. No schema, provider, model identity, merge or deployment change.
+
+
 ## 2026-10-28 — Native 3D silhouette and evaluated-mesh evidence is fail-closed
 
 **Decision:** A native Blender report that says `ready=true` cannot certify candidate four-angle file integrity if garment widths, centerlines, cuffs, hem asymmetry or identity guides were not actually sampled. Missing/nonfinite measurements now block native preflight, and the independent receipt validator checks all eleven locked garment silhouette values and nine identity-guide values with the existing target/tolerance contract. It also cross-checks evaluated panel vertex/polygon/triangle counts, applied transforms, active UV layers, degenerate geometry, and aggregate mobile triangle/vertex budgets. Reject missing, coerced or contradictory counts even if the native report claims success.
