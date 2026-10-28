@@ -102,6 +102,7 @@ def validate_native_preflight_report(report: object, *, allow_rejected: bool = F
             if type(value) not in (int, float) or not math.isfinite(value) or abs(value - target) > tolerance:
                 reasons.append(f"Native preflight {key} fails locked silhouette target")
     objects = report.get("objects")
+    counted_triangles = counted_vertices = 0
     if not isinstance(objects, dict):
         reasons.append("Native preflight has no evaluated garment objects")
     else:
@@ -110,6 +111,27 @@ def validate_native_preflight_report(report: object, *, allow_rejected: bool = F
             if not isinstance(entry, dict) or entry.get("present") is not True or entry.get("inExportCollection") is not True:
                 reasons.append(f"Native preflight missing canonical garment mesh {name}")
                 continue
+            # Do not accept ready=True with empty geometry, unapplied
+            # transforms or fabricated summary counts. These are native
+            # evaluated-mesh facts, not photographic/tailor acceptance.
+            for field in ("vertices", "polygons", "triangles"):
+                count = entry.get(field)
+                if type(count) is not int or count <= 0:
+                    reasons.append(f"Native preflight {name} has invalid {field}")
+            if entry.get("transformApplied") is not True:
+                reasons.append(f"Native preflight {name} has unapplied transforms")
+            if type(entry.get("uvLayers")) is not int or entry["uvLayers"] <= 0 or not isinstance(entry.get("activeUv"), str) or not entry["activeUv"].strip():
+                reasons.append(f"Native preflight {name} lacks an active UV layer")
+            ratio = entry.get("degenerateRatio")
+            degenerate = entry.get("degenerateFaces")
+            if (type(ratio) not in (int, float) or not math.isfinite(ratio)
+                or ratio < 0 or ratio > 0.001
+                or type(degenerate) is not int or degenerate < 0):
+                reasons.append(f"Native preflight {name} has invalid degenerate geometry")
+            if type(entry.get("triangles")) is int and entry["triangles"] > 0:
+                counted_triangles += entry["triangles"]
+            if type(entry.get("vertices")) is int and entry["vertices"] > 0:
+                counted_vertices += entry["vertices"]
             uv = entry.get("uvQuality")
             if not isinstance(uv, dict):
                 reasons.append(f"Native preflight missing UV continuity evidence for {name}")
@@ -120,6 +142,19 @@ def validate_native_preflight_report(report: object, *, allow_rejected: bool = F
                     reasons.append(f"Native preflight {name} has unreviewed {key}")
             if type(uv.get("sharedUvEdges")) is not int or uv["sharedUvEdges"] <= 0:
                 reasons.append(f"Native preflight {name} lacks shared-edge UV evidence")
+    totals = report.get("totals")
+    if (not isinstance(totals, dict)
+        or type(totals.get("triangles")) is not int
+        or type(totals.get("vertices")) is not int
+        or totals["triangles"] != counted_triangles
+        or totals["vertices"] != counted_vertices
+        or type(totals.get("triangleBudget")) is not int
+        or type(totals.get("vertexBudget")) is not int
+        or totals["triangleBudget"] != 220_000
+        or totals["vertexBudget"] != 280_000
+        or counted_triangles <= 0 or counted_triangles > 220_000
+        or counted_vertices <= 0 or counted_vertices > 280_000):
+        reasons.append("Native preflight evaluated mesh totals exceed budget or contradict garment objects")
     intersections = report.get("boundaryIntersections")
     if not isinstance(intersections, dict):
         reasons.append("Native preflight lacks body/garment intersection evidence")
