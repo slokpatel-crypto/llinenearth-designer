@@ -15,6 +15,7 @@ import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-styl
 import { PhotoOutfitPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview-support";
 import { creativeDirectionMatchesSelection, fabricRevisionKey } from "@/lib/designer/creative-selection";
+import { assessmentMatchesSelectedFabricRevisions } from "@/lib/designer/assessment-fabric-parity";
 import { createPreviewRequestScope } from "@/lib/designer/preview-request-scope";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, validStoredMeasurementProfile, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
@@ -619,6 +620,14 @@ export function DesignerModule() {
     });
     const data=await response.json() as {assessment?:DesignerAssessmentResponse;error?:string};
     if(!response.ok || !data.assessment) throw new Error(data.error || "Designer could not assess this look.");
+    // A server catalogue refresh can replace a roll under the same ID while
+    // this request is in flight. Never attach that newer physical evidence to
+    // the older photo/stock/scale snapshot still selected in this browser.
+    const selectedShirt=shirtOptions.find((fabric)=>fabric.id===input.shirtId);
+    const selectedPant=pantOptions.find((fabric)=>fabric.id===input.pantId);
+    if(!assessmentMatchesSelectedFabricRevisions(data.assessment,selectedShirt,selectedPant)) {
+      throw new Error("Fabric evidence changed during assessment. Refresh the catalogue and reassess the current look.");
+    }
     return data.assessment;
   }
 
