@@ -54,7 +54,7 @@ def verify_source():
     scene = bpy.context.scene
     if (scene.get("linen_earth_model_identity_id") != IDENTITY_ID
         or scene.get("linen_earth_model_reference_image") != REFERENCE_IMAGE
-        or not scene.get("linen_earth_model_identity_locked")):
+        or scene.get("linen_earth_model_identity_locked") is not True):
         raise RuntimeError("Scene is not locked to the canonical Designer Studio reference.")
     body = bpy.data.objects.get("Body")
     if body is None or body.type != "MESH":
@@ -144,6 +144,9 @@ def main():
         raise RuntimeError("QA render dimensions/samples are outside bounded inspection limits.")
 
     source, mid_height, floor_z = verify_source()
+    reference_photo = Path(__file__).resolve().parents[2] / "public/designer/studio-tucked.webp"
+    if reference_photo.is_symlink() or not reference_photo.is_file():
+        raise RuntimeError("Canonical Designer Studio photo is unavailable for QA evidence binding.")
     output = options.output_dir.expanduser().resolve()
     # Never silently overwrite prior evidence or mix frames from separate
     # scenes. A fresh destination is required for every candidate run.
@@ -172,6 +175,7 @@ def main():
             "modelIdentityId": IDENTITY_ID,
             "sourceBlendName": source.name,
             "sourceBlendSha256": sha256_file(source),
+            "referencePhotoSha256": sha256_file(reference_photo),
             "nativePreflightGate": PREFLIGHT_GATE,
             "nativePreflightPassed": True,
             "nativePreflightScriptSha256": preflight_sha,
@@ -204,6 +208,7 @@ def main():
             })
         reasons = validate_candidate_manifest(
             manifest, staging, source=source, preflight_script=preflight_script,
+            reference_photo=reference_photo,
         )
         if reasons:
             raise RuntimeError("Candidate QA evidence integrity failed: " + "; ".join(reasons))

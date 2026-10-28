@@ -33,6 +33,8 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
         self.directory = Path(self.temp.name)
         self.source = self.directory / "identity-locked.blend"
         self.source.write_bytes(b"test identity locked source fixture")
+        self.photo = self.directory / "studio-tucked.webp"
+        self.photo.write_bytes(b"canonical photo fixture")
         self.preflight = self.directory / "preflight.py"
         self.preflight.write_text("# test preflight fixture\n", encoding="utf-8")
         self.manifest = {
@@ -41,6 +43,7 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
             "modelIdentityId": MODEL_IDENTITY_ID,
             "sourceBlendName": self.source.name,
             "sourceBlendSha256": sha256_file(self.source),
+            "referencePhotoSha256": sha256_file(self.photo),
             "nativePreflightGate": PREFLIGHT_GATE,
             "nativePreflightPassed": True,
             "nativePreflightScriptSha256": sha256_file(self.preflight),
@@ -80,7 +83,8 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
 
     def validate(self):
         return validate_candidate_manifest(self.manifest, self.directory,
-                                           source=self.source, preflight_script=self.preflight)
+                                           source=self.source, preflight_script=self.preflight,
+                                           reference_photo=self.photo)
 
     def test_complete_candidate_evidence_is_integrity_valid_but_not_approved(self):
         self.assertEqual(self.validate(), [])
@@ -175,6 +179,37 @@ else:
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_truthy_string_cannot_spoof_scene_identity_lock(self):
+        code = """
+import runpy, sys, types
+bpy = types.ModuleType("bpy")
+bpy.data = types.SimpleNamespace(filepath=sys.argv[2], is_dirty=False)
+bpy.context = types.SimpleNamespace(scene={
+    "linen_earth_model_identity_id": "linen-earth-studio-model-v1",
+    "linen_earth_model_reference_image": "/designer/studio-tucked.webp",
+    "linen_earth_model_identity_locked": "false",
+})
+sys.modules["bpy"] = bpy
+mathutils = types.ModuleType("mathutils")
+mathutils.Vector = object
+sys.modules["mathutils"] = mathutils
+namespace = runpy.run_path(sys.argv[1], run_name="candidate_import_only")
+try:
+    namespace["verify_source"]()
+except RuntimeError as error:
+    assert "not locked" in str(error)
+else:
+    raise AssertionError("Truthy string accepted as identity lock")
+"""
+        renderer = Path(__file__).with_name("render-linen-earth-model-qa.py")
+        result = subprocess.run(
+            [sys.executable, "-I", "-c", code, str(renderer), str(self.source)],
+            cwd=self.directory, capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        native_source = Path(__file__).with_name("preflight-linen-earth-officewear.py").read_text(encoding="utf-8")
+        self.assertIn('identity_locked = bpy.context.scene.get("linen_earth_model_identity_locked") is True', native_source)
+
     def test_blender_script_resolves_local_helper_under_isolated_python(self):
         # Blender's --python runner may execute a file without adding its
         # directory to sys.path. Simulate that with isolated Python and bpy stubs.
@@ -197,7 +232,8 @@ else:
         manifest_path.write_text(json.dumps(self.manifest), encoding="utf-8")
         command = [sys.executable, str(Path(__file__).with_name("model_qa_evidence.py")),
                    "--manifest", str(manifest_path), "--source-blend", str(self.source),
-                   "--preflight-script", str(self.preflight)]
+                   "--preflight-script", str(self.preflight),
+                   "--reference-photo", str(self.photo)]
         valid = subprocess.run(command, capture_output=True, text=True, check=False)
         self.assertEqual(valid.returncode, 0, valid.stdout + valid.stderr)
         self.assertIn("candidate file integrity only", valid.stdout)
@@ -218,6 +254,10 @@ else:
         errors = self.validate()
         self.assertTrue(any("sleeveCenterSpacingMm" in x for x in errors))
         self.assertTrue(any("discontinuousSharedUvEdges" in x for x in errors))
+
+    def test_reference_photo_drift_invalidates_candidate_identity(self):
+        self.photo.write_bytes(b"different studio reference")
+        self.assertTrue(any("referencePhotoSha256" in x for x in self.validate()))
 
     def test_native_report_rejects_missing_or_tampered_geometry(self):
         report_path = self.directory / PREFLIGHT_REPORT_FILE

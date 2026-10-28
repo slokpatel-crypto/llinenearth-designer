@@ -89,7 +89,7 @@ Release is approved only when:
 ## 9. Native Real Model Designer candidate QA (not a release approval)
 - [ ] Run the existing identity-locked Blender scene through `scripts/blender/preflight-linen-earth-officewear.py`; resolve sleeve spacing, body/garment collisions, UV continuity and physical silhouette failures on the actual asset.
 - [ ] Render to a **fresh** output directory with `scripts/blender/render-linen-earth-model-qa.py`. The renderer blocks when native preflight fails; it validates and atomically publishes front, three-quarter, side and back candidate frames plus `model-qa-native-preflight.json` and `model-qa-manifest.json`.
-- [ ] Verify the exact .blend SHA-256, preflight-script SHA-256, native preflight report SHA-256, reported sleeve/leg spacing, UV seam counts, body intersections, frame SHA-256, PNG integrity, dimensions and camera yaw. Run `python3 -m unittest discover -s scripts/blender -p 'test_*.py' -v` for software-only negative cases.
+- [ ] Verify the exact .blend SHA-256, preflight-script SHA-256, native preflight report SHA-256, canonical reference-photo SHA-256, reported sleeve/leg spacing, UV seam counts, body intersections, frame SHA-256, PNG integrity, dimensions and camera yaw. Run `python3 -m unittest discover -s scripts/blender -p 'test_*.py' -v` for software-only negative cases.
 - [ ] Independently compare all four actual renders to the original `/designer/studio-tucked.webp` and record human photo/garment review. Obtain physical repeat, drape and tailor approval separately. A valid candidate manifest is **not** four-angle parity, real physical proof or release signoff.
 
 **Independent offline recheck** (using the exact original .blend and the preflight script from the rendering run):
@@ -97,6 +97,7 @@ Release is approved only when:
 python3 scripts/blender/model_qa_evidence.py \
   --manifest artifacts/model-qa-<unique-run>/model-qa-manifest.json \
   --source-blend .cache/linen-earth/linen-earth-officewear-authored.blend \
-  --preflight-script scripts/blender/preflight-linen-earth-officewear.py
+  --preflight-script scripts/blender/preflight-linen-earth-officewear.py \
+  --reference-photo public/designer/studio-tucked.webp
 ```
 A passing offline recheck validates recorded file identity only; it cannot prove the native preflight was honestly run or replace independent visual/physical review.

@@ -155,7 +155,7 @@ def main():
     body = bpy.data.objects.get(REFERENCE_BODY)
     identity_id = str(bpy.context.scene.get("linen_earth_model_identity_id", "")).strip()
     identity_reference = str(bpy.context.scene.get("linen_earth_model_reference_image", "")).strip()
-    identity_locked = bool(bpy.context.scene.get("linen_earth_model_identity_locked", False))
+    identity_locked = bpy.context.scene.get("linen_earth_model_identity_locked") is True
     identity_targets_raw = str(bpy.context.scene.get("linen_earth_identity_targets_json", "")).strip()
     try:
         identity_targets = json.loads(identity_targets_raw) if identity_targets_raw else None

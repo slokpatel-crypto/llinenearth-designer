@@ -147,7 +147,8 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 def validate_candidate_manifest(manifest: object, directory: Path,
                                 *, source: Path | None = None,
-                                preflight_script: Path | None = None) -> list[str]:
+                                preflight_script: Path | None = None,
+                                reference_photo: Path | None = None) -> list[str]:
     """Validate a *candidate* manifest; this never constitutes model approval."""
     reasons: list[str] = []
     if not isinstance(manifest, dict):
@@ -178,7 +179,8 @@ def validate_candidate_manifest(manifest: object, directory: Path,
     if manifest.get("renderEngine") != "BLENDER_EEVEE_NEXT":
         reasons.append("Unexpected render engine")
     for key, path in (("sourceBlendSha256", source),
-                      ("nativePreflightScriptSha256", preflight_script)):
+                      ("nativePreflightScriptSha256", preflight_script),
+                      ("referencePhotoSha256", reference_photo)):
         value = manifest.get(key)
         if not isinstance(value, str) or not HASH_PATTERN.fullmatch(value):
             reasons.append(f"Missing or malformed {key}")
@@ -252,6 +254,7 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--source-blend", type=Path, required=True)
     parser.add_argument("--preflight-script", type=Path, required=True)
+    parser.add_argument("--reference-photo", type=Path, required=True)
     args = parser.parse_args()
     try:
         if args.manifest.is_symlink() or not args.manifest.is_file():
@@ -262,6 +265,7 @@ def main() -> int:
         reasons = validate_candidate_manifest(
             payload, args.manifest.parent,
             source=args.source_blend, preflight_script=args.preflight_script,
+            reference_photo=args.reference_photo,
         )
     except (OSError, ValueError, UnicodeError) as error:
         reasons = [f"Could not inspect candidate manifest: {error}"]
