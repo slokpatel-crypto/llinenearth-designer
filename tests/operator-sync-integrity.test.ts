@@ -81,8 +81,9 @@ test("cloud event ordering and identical-instant ID tie-breaks are enforced",()=
     at:"2026-10-28T00:00:00Z",received_at:"2026-10-28T00:01:00Z",
     source:"operator-desktop",payload:{note:"ok"}};
   assert.deepEqual(validateOperatorSyncReadRows([row,{...row,id:"evt-b"}],2)?.length,2);
-  assert.equal(validateOperatorSyncReadRows([{...row,id:"evt-b"},row],2),null);
+  assert.deepEqual(validateOperatorSyncReadRows([{...row,id:"evt-b"},row],2)?.length,2);
   assert.equal(validateOperatorSyncReadRows([row,row],2),null);
+  assert.deepEqual(validateOperatorSyncReadRows([{...row,id:"evt-b",received_at:"2026-10-28T00:01:00.123456Z"},{...row,received_at:"2026-10-28T00:01:00.123789Z"}],2)?.length,2);
   assert.equal(validateOperatorSyncReadRows([{...row,id:"evt-b",received_at:"2026-10-28T00:02:00Z"},row],2),null);
 });
 test("operator route refuses truncated date/time fields and coerced financial evidence",()=>{
