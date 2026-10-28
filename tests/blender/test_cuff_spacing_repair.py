@@ -277,6 +277,42 @@ for obj in (left, right):
 assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
 assert tuple(tuple(vertex.co) for vertex in torso.data.vertices) == torso_before
 
+# A native repair exception after a partial Y mutation must restore the
+# entire original XYZ source snapshot; exceptions are not a license to
+# strand an unreviewed garment state.
+exception_start = {
+    obj.name: tuple(tuple(vertex.co) for vertex in obj.data.vertices)
+    for obj in (left, right)
+}
+
+
+def forced_body_contact(first, second):
+    return 1 if first is body and second in (left, right) else 0
+
+
+def broken_native_repair(_body, sleeve, _passes):
+    sleeve.data.vertices[0].co.y += .007
+    sleeve.data.update()
+    bpy.context.view_layer.update()
+    raise RuntimeError("simulated BVH repair exception")
+
+
+try:
+    author.source_fit_collision_pairs = forced_body_contact
+    author.repair_body_intersections = broken_native_repair
+    try:
+        author.try_collision_safe_cuff_spacing(body, 0, 1, 22)
+    except RuntimeError as error:
+        assert "simulated BVH repair exception" in str(error)
+    else:
+        raise AssertionError("A failing native repair was silently accepted")
+finally:
+    author.source_fit_collision_pairs = actual_contact
+    author.repair_body_intersections = actual_repair
+for obj in (left, right):
+    assert tuple(tuple(vertex.co) for vertex in obj.data.vertices) == exception_start[obj.name]
+assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
+
 # Missing torso must not be silently treated as zero contact.
 bpy.data.objects.remove(torso, do_unlink=True)
 try:
