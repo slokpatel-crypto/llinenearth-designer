@@ -14,3 +14,6 @@ Based on draft #443 head `af21f450aaf26829350e6d6490bcaf4c792279fd` (stacked thr
 
 ## Compatibility / handoff
 Same-origin JSON clients remain supported; account-owned and recovery-token paths remain available. Previously accepted malformed observation records now fail closed until corrected. Operators must verify production Supabase migrations, security grants, stock physical counts and a disposable end-to-end delivery/restore test before launch. Next 17:00 integration should inspect matching-head CI, fix any regressions, reconcile the stacked draft chain and preserve native source blockers. Do not merge or deploy without separate approval.
+
+## Read-only production connector probe
+Supabase project listing returned `llinen-earth-designer` (`wfplvqmsdzwhwwupsbfu`, `ap-south-1`) with reported `ACTIVE_HEALTHY` project status. **This is not a database, RLS, stock RPC or live delivery validation.** Read-only attempts to list migrations, inspect public tables and run `select current_setting('server_version')` all failed with database connection timeouts. No production data was read or changed; leave all live schema/security/stock gates open and retry a read-only database audit only when connectivity recovers.
