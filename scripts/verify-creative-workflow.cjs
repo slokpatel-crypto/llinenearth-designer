@@ -45,6 +45,7 @@ async function run(){fs.mkdirSync(out,{recursive:true});const valid=await http("
       const countBefore=state.generates;await page.getByRole("textbox",{name:"Designer question or task",exact:true}).fill("Create wave embroidery on the cuff");await page.getByRole("button",{name:"Ask Designer",exact:true}).click();await page.waitForFunction(()=>document.querySelector('textarea[aria-label="Creative design brief"]')?.value==="Create wave embroidery on the cuff");await page.waitForTimeout(100);assert.equal(state.generates,countBefore+1);summary.regressions.push("designer question routes into deterministic craft generation");
       // Simulate a supplier catalogue revision under the SAME selected fabric ID.
       // A restored concept must not carry old visual/fit proof into the new roll.
+      await lab.locator(".creativeCards article").first().waitFor({state:"visible"});
       await lab.locator(".creativeCards article").first().getByRole("button",{name:"Try this",exact:true}).click();
       await page.locator(".newDesignerCreativeHandoff").waitFor();
       await page.waitForFunction(()=>{
