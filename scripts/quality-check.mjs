@@ -1315,8 +1315,22 @@ for (const token of ["inspectCreativeRender","heroVisibility","boundaryIntegrity
   if (!aiVisualization.includes(token)) throw new Error(`Designer V5 render-inspection regression: missing ${token}`);
 }
 const creativeGenerateRoute = fs.readFileSync("src/app/api/designer/creative-generate/route.ts","utf8");
-for (const token of ["generateCreativeDirections","chooseCreativeRedesign","researchFreedom:\"maximum\"","loadDesignerFabricMetadata","loadDesignerCreativeContext","__linenCreativeGenerateRate","contentLength>650_000"]) {
+for (const token of ["generateCreativeDirections","chooseCreativeRedesign","researchFreedom:\"maximum\"","loadActiveDesignerCatalogueFabrics","loadDesignerCreativeContext","__linenCreativeGenerateRate","contentLength>650_000"]) {
   if (!creativeGenerateRoute.includes(token)) throw new Error(`Designer V5 server-generation route regression: missing ${token}`);
+}
+const sharedFabricRevisionLoader=fs.readFileSync("src/lib/designer/catalog-stock-server.ts","utf8");
+for(const token of ["loadActiveDesignerFabricStock","loadDesignerFabricIntelligence","attachCatalogFabricPhysics","applyLiveVerifiedStockAvailability"]){
+  if(!sharedFabricRevisionLoader.includes(token)) throw new Error(`Shared Designer fabric revision loader regression: missing ${token}`);
+}
+for(const path of [
+  "src/app/api/designer/catalog/route.ts",
+  "src/app/api/designer/creative-generate/route.ts",
+  "src/app/api/designer/assess/route.ts",
+]){
+  const source=fs.readFileSync(path,"utf8");
+  if(!source.includes("loadActiveDesignerCatalogueFabrics()") || source.includes("enrichDesignerFabricsWithIntelligence(")){
+    throw new Error(`Designer physical catalogue/creative/assessment revision drift: ${path}`);
+  }
 }
 if (realDesignerModule.includes("generateCreativeDirections({") || realDesignerModule.includes("chooseCreativeRedesign(") || realDesignerModule.includes("creativeLearning") || realDesignerModule.includes("creativeResearch")) {
   throw new Error("Designer V5 architecture regression: creative intelligence returned to the customer UI bundle.");
@@ -1546,7 +1560,7 @@ for(const token of ["linen-earth-fabric-physics-v1","linen-earth-fabric-compatib
 for(const token of ["attachCatalogFabricPhysics","validFabricPhysicsValue","fabricCompatibilityMatrix","verifiedPhysical.structure","verifiedPhysical.breathability"]) {
   if(!fabricPhysicsCatalog.includes(token)) throw new Error(`Fabric Physics catalogue regression: missing ${token}`);
 }
-for(const token of ["attachCatalogFabricPhysics","fabricsWithPhysics"]) {
+for(const token of ["loadActiveDesignerCatalogueFabrics","fabricsWithPhysics"]) {
   if(!fabricCatalogRoute.includes(token)) throw new Error(`Fabric Physics Designer catalogue regression: missing ${token}`);
 }
 for(const token of ["Verified structure index","Verified breathability","Verified wrinkle resistance","Verified stretch","PHYSICS COMPATIBILITY"]) {
@@ -1593,7 +1607,7 @@ for(const token of ["shirt","trouser","blazer","suit","typeExamples","detailFami
 for(const token of ["blazer.type","blazer.lapel","blazer.vent","blazer.pocket","blazer.shoulder","suit.type","suit.waistcoat","suit.jacket","suit.trouser","status:\"planned\""]) {
   if(!futureGarmentOptions.includes(token)) throw new Error(`Future garment taxonomy regression: missing ${token}`);
 }
-for(const token of ["01 / GARMENT + CLOTH","Choose what you are making, then the fabric.","styleIdentity(direction.baseStyle),fromLegacyStyle(direction.baseStyle),climate","styleIdentity(result.style),nextStyleSpec,nextContext.climate","GARMENT_CATEGORY_LIBRARY","newDesignerGarmentScope","garment.status===\"live\"?\"CURRENT\":\"FUTURE\"","aria-label=\"Shirt type\"","aria-label=\"Trouser type\"","changeGarmentType(\"shirt\"","changeGarmentType(\"pant\"","styleSpec.shirt.type","styleSpec.pant.type","PLANNED DETAILS · ","newDesignerOpen3D","href=\"/lab/garment-viewer\"","localStorage.setItem(DRAFT_KEY","detailFamilies.slice(0,5)"]) {
+for(const token of ["01 / GARMENT + CLOTH","Choose what you are making, then the fabric.","fabricIdentity,direction.recommendation.occasion,styleIdentity(direction.baseStyle),directionStyleSpec,climate","styleIdentity(result.style),nextStyleSpec,nextContext.climate","GARMENT_CATEGORY_LIBRARY","newDesignerGarmentScope","garment.status===\"live\"?\"CURRENT\":\"FUTURE\"","aria-label=\"Shirt type\"","aria-label=\"Trouser type\"","changeGarmentType(\"shirt\"","changeGarmentType(\"pant\"","styleSpec.shirt.type","styleSpec.pant.type","PLANNED DETAILS · ","newDesignerOpen3D","href=\"/lab/garment-viewer\"","localStorage.setItem(DRAFT_KEY","detailFamilies.slice(0,5)"]) {
   if(!designerModuleGarmentScope.includes(token)) throw new Error(`Designer garment-scope regression: missing ${token}`);
 }
 for(const token of ["english_spread_collar","English Spread / British Collar","pointLengthMm:69.85","spreadMm:123.95"]) {

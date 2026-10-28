@@ -14,7 +14,7 @@ import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/resear
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview-support";
-import { creativeDirectionMatchesSelection } from "@/lib/designer/creative-selection";
+import { creativeDirectionMatchesSelection, fabricRevisionKey } from "@/lib/designer/creative-selection";
 import { createPreviewRequestScope } from "@/lib/designer/preview-request-scope";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, validStoredMeasurementProfile, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
@@ -186,9 +186,17 @@ export function DesignerModule() {
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
   const craftFabrics=useMemo(()=>[...new Map([...shirtOptions,...pantOptions].map(f=>[f.id,f])).values()],[shirtOptions,pantOptions]);
   const styleIdentity=(value:DesignerStyle)=>(Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>).map((key)=>value[key]);
-  const handoffIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention]);
+  const fabricIdentity=JSON.stringify([fabricRevisionKey(shirt),fabricRevisionKey(pant)]);
+  const handoffIdentity=JSON.stringify([shirtId,pantId,fabricIdentity,occasion,styleIdentity(style),styleSpec,climate,intention]);
   const directorHandoffCurrent=directorHandoffIdentity===handoffIdentity;
-  const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+  const assessmentIdentity=JSON.stringify([shirtId,pantId,fabricIdentity,occasion,styleIdentity(style),styleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+  // Lock identity includes the selected creative recipe and its visual review,
+  // not only fabrics, cut, context and measurements.
+  const lockIdentity=JSON.stringify([assessmentIdentity,activeCreative,creativeVisualReview]);
+  const currentSelectionIdentityRef=useRef(lockIdentity);
+  const lockedRevisionSelectionIdentityRef=useRef<string|null>(null);
+  useLayoutEffect(()=>{currentSelectionIdentityRef.current=lockIdentity;},[lockIdentity]);
+  const verifiedLockedRevision=lockedRevisionSelectionIdentityRef.current===lockIdentity?lockedRevision:null;
   const searchIdentity=JSON.stringify([assessmentIdentity,searchScope]);
   const committedAssessmentIdentity=useRef(assessmentIdentity);
   const assessRunRef=useRef<{identity:string;controller:AbortController}|null>(null);
@@ -296,10 +304,11 @@ export function DesignerModule() {
   const garmentSpec=assessment?.garmentSpec || null;
 
   useEffect(()=>{
+    lockedRevisionSelectionIdentityRef.current=null;
     setLockedRevision(null);
     setVaultRecoveryToken("");
     setVaultMessage("");
-  },[shirtId,pantId,styleSpec,bodyProfile,measurementProfile,activeCreative]);
+  },[lockIdentity]);
 
   useEffect(() => {
     try {
@@ -419,7 +428,9 @@ export function DesignerModule() {
         setDirectorHandoffTitle(params.get("sourceTitle") || "Style Director result");
         setDirectorHandoffTier(params.get("sourceTier") || "");
         setDirectorHandoffReason(params.get("sourceReason") || "");
-        setDirectorHandoffIdentity(JSON.stringify([nextShirtId,nextPantId,nextOccasion,styleIdentity(nextStyle),nextStyleSpec || fromLegacyStyle(nextStyle),nextClimate,nextIntention]));
+        setDirectorHandoffIdentity(JSON.stringify([nextShirtId,nextPantId,
+          JSON.stringify([fabricRevisionKey(DESIGNER_SHIRTS.find((item)=>item.id===nextShirtId)),fabricRevisionKey(DESIGNER_PANTS.find((item)=>item.id===nextPantId))]),
+          nextOccasion,styleIdentity(nextStyle),nextStyleSpec || fromLegacyStyle(nextStyle),nextClimate,nextIntention]));
         const handoffToken=params.get("handoffToken");
         if(handoffToken){
           void fetch("/api/style-director/handoff",{
@@ -468,6 +479,8 @@ export function DesignerModule() {
         Array.isArray(parsed.creative.treatments) &&
         creativeDirectionMatchesSelection(parsed.creative,{
           shirtId:nextShirtId,pantId:nextPantId,occasion:nextOccasion,
+          shirt:DESIGNER_SHIRTS.find((item)=>item.id===nextShirtId)??null,
+          pant:DESIGNER_PANTS.find((item)=>item.id===nextPantId)??null,
           climate:nextClimate,intention:nextIntention,style:nextStyle,
           styleSpec:nextStyleSpec || fromLegacyStyle(nextStyle),
         })) {
@@ -536,7 +549,7 @@ export function DesignerModule() {
   useEffect(() => {
     if(!draftReady) return;
     const creativeStillMatches=creativeDirectionMatchesSelection(activeCreative,{
-      shirtId,pantId,occasion,climate,intention,style,styleSpec,
+      shirtId,pantId,shirt:shirt??null,pant:pant??null,occasion,climate,intention,style,styleSpec,
     });
     if(creativeStillMatches) return;
     // A creative assessment belongs to the selected concept. Do not leave its
@@ -555,7 +568,7 @@ export function DesignerModule() {
     setCreativeVisualReview(null);
     setCreativeRenderRepair("");
     setCreativeAutoNote("");
-  },[draftReady,shirtId,pantId,occasion,climate,intention,style,styleSpec]);
+  },[draftReady,shirtId,pantId,shirt,pant,occasion,climate,intention,style,styleSpec]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -705,7 +718,7 @@ export function DesignerModule() {
     creativeRequestRef.current=null;
     setCreativeGenerating(false);
     return ()=>{creativeRequestRef.current?.controller.abort();};
-  },[shirtId,pantId,occasion,style,styleSpec,climate,intention,craftRequest]);
+  },[shirtId,pantId,fabricIdentity,occasion,style,styleSpec,climate,intention,craftRequest]);
 
   useEffect(()=>{if(pendingCraftBrief.current){pendingCraftBrief.current=false;void runCreativeLab();}},[craftRequest]);
 
@@ -807,7 +820,15 @@ export function DesignerModule() {
   }
 
   function useCreativeDirection(direction:CreativeDirection,origin:"manual"|"automatic"="manual") {
-    const expectedIdentity=JSON.stringify([direction.recommendation.shirt.id,direction.recommendation.pant.id,direction.recommendation.occasion,styleIdentity(direction.baseStyle),fromLegacyStyle(direction.baseStyle),climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+    const directionStyleSpec=fromLegacyStyle(direction.baseStyle);
+    if(!creativeDirectionMatchesSelection(direction,{
+      shirtId,pantId,shirt:shirt??null,pant:pant??null,
+      occasion,climate,intention,style:direction.baseStyle,styleSpec:directionStyleSpec,
+    })){
+      setCreativeAutoNote("Fabric evidence or selection changed. Generate a fresh concept before applying it.");
+      return;
+    }
+    const expectedIdentity=JSON.stringify([direction.recommendation.shirt.id,direction.recommendation.pant.id,fabricIdentity,direction.recommendation.occasion,styleIdentity(direction.baseStyle),directionStyleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
     setCreativeVisualReview(null);
     if(origin==="manual") {
       setCreativeAutoRetryCount(0);
@@ -1140,11 +1161,21 @@ export function DesignerModule() {
     URL.revokeObjectURL(url);
   }
 
+  function currentLockedRevision():LockedDesignRevision|null{
+    return lockedRevisionSelectionIdentityRef.current===lockIdentity ? verifiedLockedRevision : null;
+  }
+
   async function lockAndDownloadRevision() {
     if(!garmentSpec || lockBusy) return;
     setLockBusy(true);
     try {
+      const selectionAtLock=lockIdentity;
       const revision=await lockGarmentSpec(garmentSpec,{parentRevisionId:lastLockedRevisionId});
+      if(currentSelectionIdentityRef.current!==selectionAtLock){
+        setShareMessage("Fabric or design evidence changed during locking. Review and lock the current selection again.");
+        return;
+      }
+      lockedRevisionSelectionIdentityRef.current=selectionAtLock;
       setLockedRevision(revision);
       setLastLockedRevisionId(revision.revisionId);
       recordStyleMemoryEvent(designerSession(),"design_locked",{
@@ -1171,20 +1202,22 @@ export function DesignerModule() {
   }
 
   async function downloadProductionHandoff() {
-    if(!lockedRevision) return;
+    const revision=currentLockedRevision();
+    const identity=lockIdentity;
+    if(!revision) return;
     // Verify locked SHA-256 before a customer can generate a production
     // handoff. If any editable measurement or selected cut was changed in
     // the revision, fail closed rather than exporting an untrusted packet.
-    const handoff=await buildVerifiedProductionHandoff(lockedRevision).catch(()=>{
+    const handoff=await buildVerifiedProductionHandoff(revision).catch(()=>{
       setShareMessage("The locked recipe is no longer valid. Review the design and lock a new revision before downloading.");
       return null;
     });
-    if(!handoff) return;
+    if(!handoff||currentSelectionIdentityRef.current!==identity) return;
     const blob=new Blob([JSON.stringify(handoff,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);
     const anchor=document.createElement("a");
     anchor.href=url;
-    anchor.download=`linen-earth-production-handoff-${lockedRevision.revisionId.toLowerCase()}.json`;
+    anchor.download=`linen-earth-production-handoff-${revision.revisionId.toLowerCase()}.json`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -1192,12 +1225,14 @@ export function DesignerModule() {
   }
 
   async function downloadTailorTechPack() {
-    if(!lockedRevision) return;
-    const handoff=await buildVerifiedProductionHandoff(lockedRevision).catch(()=>{
+    const revision=currentLockedRevision();
+    const identity=lockIdentity;
+    if(!revision) return;
+    const handoff=await buildVerifiedProductionHandoff(revision).catch(()=>{
       setShareMessage("The locked recipe is no longer valid. Lock a new design before exporting its tailor tech pack.");
       return null;
     });
-    if(!handoff) return;
+    if(!handoff||currentSelectionIdentityRef.current!==identity) return;
     const html=buildTailorTechPackHtml(handoff);
     const blob=new Blob([html],{type:"text/html;charset=utf-8"});
     const url=URL.createObjectURL(blob);
@@ -1211,24 +1246,30 @@ export function DesignerModule() {
   }
 
   async function shareLockedRevision() {
-    if(!lockedRevision||shareBusy) return;
+    const revision=currentLockedRevision();
+    const identity=lockIdentity;
+    if(!revision||shareBusy) return;
     setShareBusy(true);setShareMessage("");
     try{
       const response=await fetch("/api/designer/share",{
         method:"POST",
         headers:{"content-type":"application/json"},
-        body:JSON.stringify(lockedRevision),
+        body:JSON.stringify(revision),
       });
       const result=await response.json() as {token?:string;expiresInDays?:number;audited?:boolean;error?:string};
+      if(currentSelectionIdentityRef.current!==identity) return;
       if(!response.ok||!result.token) throw new Error(result.error||"Share link could not be created.");
       const url=new URL(`/share/${result.token}`,window.location.origin).toString();
       try{
         await navigator.clipboard.writeText(url);
+        if(currentSelectionIdentityRef.current!==identity) return;
         setShareMessage(`Share link copied · expires in ${result.expiresInDays||30} days${result.audited?" · verified share audit recorded":" · beta audit unavailable"}.`);
       }catch{
+        if(currentSelectionIdentityRef.current!==identity) return;
         setShareMessage(url);
       }
     }catch(error){
+      if(currentSelectionIdentityRef.current!==identity) return;
       setShareMessage(error instanceof Error?error.message:"Share link could not be created.");
     }finally{
       setShareBusy(false);
@@ -1236,19 +1277,23 @@ export function DesignerModule() {
   }
 
   async function openLockedRevisionEnquiry() {
-    if(!lockedRevision||enquiryBusy) return;
+    const revision=currentLockedRevision();
+    const identity=lockIdentity;
+    if(!revision||enquiryBusy) return;
     setEnquiryBusy(true);setEnquiryMessage("");
     try{
       const response=await fetch("/api/designer/enquiry",{
         method:"POST",
         headers:{"content-type":"application/json"},
-        body:JSON.stringify(lockedRevision),
+        body:JSON.stringify(revision),
       });
       const result=await response.json() as {href?:string;audited?:boolean;revisionId?:string;error?:string};
+      if(currentSelectionIdentityRef.current!==identity) return;
       if(!response.ok||!result.href) throw new Error(result.error||"Locked-look enquiry could not be created.");
       setEnquiryMessage(result.audited?"Verified enquiry audit recorded for this locked revision.":"WhatsApp enquiry opened · beta audit unavailable.");
       window.open(result.href,"_blank","noopener,noreferrer");
     }catch(error){
+      if(currentSelectionIdentityRef.current!==identity) return;
       setEnquiryMessage(error instanceof Error?error.message:"Locked-look enquiry could not be created.");
     }finally{
       setEnquiryBusy(false);
@@ -1256,20 +1301,24 @@ export function DesignerModule() {
   }
 
   async function saveLockedRevisionToVault() {
-    if(!lockedRevision||vaultBusy) return;
+    const revision=currentLockedRevision();
+    const identity=lockIdentity;
+    if(!revision||vaultBusy) return;
     setVaultBusy(true);setVaultMessage("");
     try{
       const response=await fetch("/api/designer/vault",{
         method:"POST",
         headers:{"content-type":"application/json"},
-        body:JSON.stringify({action:"store",revision:lockedRevision}),
+        body:JSON.stringify({action:"store",revision:revision}),
       });
       const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;ownershipWarning?:string;error?:string};
+      if(currentSelectionIdentityRef.current!==identity) return;
       if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure cloud copy could not be saved.");
       setVaultRecoveryToken(result.recoveryToken);
       let tokenCopied=false;
       try{
         await navigator.clipboard.writeText(result.recoveryToken);
+        if(currentSelectionIdentityRef.current!==identity) return;
         tokenCopied=true;
       }catch{
         // Clipboard permission is optional; the token remains visible.
@@ -1277,8 +1326,10 @@ export function DesignerModule() {
       const savedMessage=tokenCopied
         ?`Recovery token copied · secure copy expires in ${result.expiresInDays||180} days.`
         :"Secure cloud copy saved. Copy the recovery token below and keep it private.";
+      if(currentSelectionIdentityRef.current!==identity) return;
       setVaultMessage([savedMessage,result.ownershipWarning].filter(Boolean).join(" "));
     }catch(error){
+      if(currentSelectionIdentityRef.current!==identity) return;
       setVaultMessage(error instanceof Error?error.message:"Secure cloud copy could not be saved.");
     }finally{
       setVaultBusy(false);
@@ -1582,8 +1633,8 @@ export function DesignerModule() {
             {garmentSpec && <>
               <button type="button" onClick={downloadGarmentSpec}>Export garment spec ↗</button>
               <button type="button" onClick={()=>void lockAndDownloadRevision()} disabled={lockBusy}>{lockBusy?"Locking…":"Lock recipe revision ↗"}</button>
-              {lockedRevision&&<>
-                <p><b>Locked revision:</b> {lockedRevision.revisionId} · recipe {lockedRevision.recipeHash.slice(0,12).toUpperCase()}</p>
+              {verifiedLockedRevision&&<>
+                <p><b>Locked revision:</b> {verifiedLockedRevision.revisionId} · recipe {verifiedLockedRevision.recipeHash.slice(0,12).toUpperCase()}</p>
                 <button type="button" onClick={downloadProductionHandoff}>Export tailor handoff ↗</button>
                 <button type="button" onClick={downloadTailorTechPack}>Export printable tech pack ↗</button>
                 <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>

@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import type { DesignerStyle } from "../src/lib/designer/engine.ts";
+import type { DesignerFabric, DesignerStyle } from "../src/lib/designer/engine.ts";
 import type { CreativeDirection } from "../src/lib/designer/creative-engine.ts";
 import {
   creativeDirectionMatchesSelection,
+  fabricRevisionKey,
   type CreativeSelection,
 } from "../src/lib/designer/creative-selection.ts";
 import { fromLegacyStyle } from "../src/lib/designer/style-spec-v2.ts";
@@ -86,8 +87,23 @@ test("Designer restore, live invalidation and generation lifecycle use the same 
   assert.match(source,/creativeDirectionMatchesSelection\(parsed\.creative,/);
   assert.match(source,/creativeDirectionMatchesSelection\(activeCreative,/);
   assert.match(source,/if\(activeCreative\) \{\s*setRecommendation\(null\);\s*setAssessment\(null\);\s*setRecommendationId\(null\);/);
-  assert.match(source,/\[draftReady,shirtId,pantId,occasion,climate,intention,style,styleSpec\]/);
-  assert.match(source,/\[shirtId,pantId,occasion,style,styleSpec,climate,intention,craftRequest\]/);
+  assert.match(source,/\[draftReady,shirtId,pantId,shirt,pant,occasion,climate,intention,style,styleSpec\]/);
+  assert.match(source,/shirt:shirt\?\?null,pant:pant\?\?null/);
+  assert.match(source,/const fabricIdentity=JSON\.stringify\(\[fabricRevisionKey\(shirt\),fabricRevisionKey\(pant\)\]\)/);
+  assert.match(source,/const assessmentIdentity=JSON\.stringify\(\[shirtId,pantId,fabricIdentity,/);
+  assert.match(source,/shirt:DESIGNER_SHIRTS\.find\(\(item\)=>item\.id===nextShirtId\)\?\?null/);
+  assert.match(source,/pant:DESIGNER_PANTS\.find\(\(item\)=>item\.id===nextPantId\)\?\?null/);
+  assert.match(source,/const lockIdentity=JSON\.stringify\(\[assessmentIdentity,activeCreative,creativeVisualReview\]\)/);
+  assert.match(source,/\[lockIdentity\]/);
+  assert.match(source,/lockedRevisionSelectionIdentityRef\.current=null;\s*setLockedRevision\(null\)/);
+  assert.match(source,/currentSelectionIdentityRef\.current!==selectionAtLock/);
+  assert.equal((source.match(/const revision=currentLockedRevision\(\)/g)||[]).length,5,
+    "all handoff, tech-pack, share, enquiry and vault actions must guard current lock identity");
+  assert.match(source,/lockedRevisionSelectionIdentityRef\.current===lockIdentity/);
+  assert.match(source,/currentSelectionIdentityRef\.current!==identity/);
+  assert.match(source,/\[shirtId,pantId,fabricIdentity,occasion,style,styleSpec,climate,intention,craftRequest\]/);
+  assert.match(source,/creativeDirectionMatchesSelection\(direction,\{/);
+  assert.match(source,/const expectedIdentity=JSON\.stringify\(\[direction\.recommendation\.shirt\.id,direction\.recommendation\.pant\.id,fabricIdentity,/);
 });
 
 test("assessment request binds its payload and late reply to the committed selection",()=>{
@@ -100,4 +116,96 @@ test("assessment request binds its payload and late reply to the committed selec
   assert.match(block,/catch\(error\) \{\s*if\(!isCurrent\(\)\) return;/);
   assert.match(source,/run\.identity!==assessmentIdentity[\s\S]*run\.controller\.abort\(\)/);
   assert.match(source,/committedAssessmentIdentity\.current!==assessmentIdentity[\s\S]*setAssessment\(null\)/);
+});
+
+
+test("same-ID catalogue revisions revoke creative direction and physical preview evidence",()=>{
+  const {selection,direction}=fixture();
+  const shirt={
+    id:selection.shirtId,name:"Blue stripe",image:"/fabrics/a.webp",source:"operator",
+    renderScale:{physicalScaleStatus:"declared_repeat",repeatMm:10,stripeWidthMm:null},
+    weightGsm:180,confirmedAvailableMetres:14,availabilityVerified:true,
+    physicsProfile:{version:"linen-earth-fabric-physics-v1",fabricId:selection.shirtId,
+      gsm:{value:180,evidence:"declared"}},
+  } as unknown as DesignerFabric;
+  const pant={id:selection.pantId,name:"Beige suiting",image:"/fabrics/b.webp",
+    source:"operator",confirmedAvailableMetres:20} as unknown as DesignerFabric;
+  const selected={...selection,shirt:{...shirt},pant:{...pant}};
+  const concept={...direction,recommendation:{...direction.recommendation,shirt:{...shirt},pant:{...pant}}};
+  assert.equal(creativeDirectionMatchesSelection(concept,selected),true);
+  assert.equal(fabricRevisionKey(shirt),fabricRevisionKey({...shirt}),true);
+  const changes=[
+    {...shirt,image:"/fabrics/new-photo.webp"},
+    {...shirt,renderScale:{physicalScaleStatus:"declared_repeat" as const,repeatMm:12,stripeWidthMm:null}},
+    {...shirt,weightGsm:210},
+    {...shirt,confirmedAvailableMetres:3},
+    {...shirt,physicsProfile:{...shirt.physicsProfile!,
+      gsm:{value:180,evidence:"reviewed" as const}}},
+  ];
+  for(const revised of changes){
+    assert.equal(creativeDirectionMatchesSelection(concept,{...selected,shirt:revised}),false);
+    assert.notEqual(fabricRevisionKey(shirt),fabricRevisionKey(revised));
+  }
+  assert.equal(creativeDirectionMatchesSelection(concept,{...selected,pant:{...pant,source:"supplier-revised"}}),false);
+  assert.equal(creativeDirectionMatchesSelection(concept,{...selected,shirt:null}),false);
+  assert.equal(creativeDirectionMatchesSelection(concept,{...selected,shirt:{...shirt,id:""}}),false);
+  assert.equal(creativeDirectionMatchesSelection(direction,selected),false,
+    "a legacy ID-only concept must not certify a current physical catalogue snapshot");
+  assert.equal(creativeDirectionMatchesSelection(direction,selection),true,
+    "legacy callers without snapshot remain compatible but do not assert physical parity");
+});
+
+
+test("fabric revision keys are order-independent and fail closed on non-JSON evidence",()=>{
+  const base={id:"fabric-a",image:"/fabrics/a.webp",weightGsm:180,
+    physicsProfile:{version:"linen-earth-fabric-physics-v1",fabricId:"fabric-a",
+      gsm:{value:180,evidence:"declared"}}} as unknown as DesignerFabric;
+  const reordered={...base,physicsProfile:{
+    gsm:{evidence:"declared",value:180},
+    fabricId:"fabric-a",version:"linen-earth-fabric-physics-v1",
+  }} as unknown as DesignerFabric;
+  assert.equal(fabricRevisionKey(base),fabricRevisionKey(reordered));
+  assert.equal(fabricRevisionKey({...base,weightGsm:Number.NaN}),"missing");
+  assert.equal(fabricRevisionKey({...base,weightGsm:Number.POSITIVE_INFINITY}),"missing");
+  const cyclic:Record<string,unknown>={};
+  cyclic.self=cyclic;
+  assert.equal(fabricRevisionKey({...base,physicsProfile:cyclic as unknown as DesignerFabric["physicsProfile"]}),"missing");
+});
+
+
+test("catalogue, creative generation and assessment share identical reviewed fabric enrichment",()=>{
+  const loader=readFileSync("src/lib/designer/catalog-stock-server.ts","utf8");
+  assert.match(loader,/export async function loadActiveDesignerCatalogueFabrics\(\)/);
+  assert.match(loader,/loadDesignerFabricIntelligence\(base\.map\(\(fabric\)=>fabric\.id\)\)/);
+  assert.match(loader,/attachCatalogFabricPhysics\(fabric,intelligence\[fabric\.id\]\)/);
+  for(const path of [
+    "src/app/api/designer/catalog/route.ts",
+    "src/app/api/designer/creative-generate/route.ts",
+    "src/app/api/designer/assess/route.ts",
+  ]){
+    const source=readFileSync(path,"utf8");
+    assert.match(source,/loadActiveDesignerCatalogueFabrics\(\)/,path);
+    assert.doesNotMatch(source,/enrichDesignerFabricsWithIntelligence\(/,path);
+  }
+});
+
+
+test("server assessment rejects stale same-ID creative recipes before garment spec creation",()=>{
+  const source=readFileSync("src/app/api/designer/assess/route.ts","utf8");
+  assert.match(source,/creativeDirectionMatchesSelection\(creative,\{/);
+  assert.match(source,/shirtId,pantId,shirt,pant,occasion/);
+  assert.match(source,/style:resolvedStyle,styleSpec:styleSpec\?\?fromLegacyStyle\(resolvedStyle\)/);
+  const guard=source.indexOf("creative&&!creativeDirectionMatchesSelection");
+  const build=source.indexOf("const garmentSpec=buildCanonicalGarmentSpec");
+  assert.ok(guard>0&&build>guard,"stale creative must be rejected before handoff assembly");
+});
+
+
+test("server creative redesign rejects stale physical provenance before reusing a concept",()=>{
+  const source=readFileSync("src/app/api/designer/creative-generate/route.ts","utf8");
+  const guard=source.indexOf("creativeDirectionMatchesSelection(body.current");
+  const redesign=source.indexOf("const redesign=body.current.craft");
+  assert.ok(guard>0&&redesign>guard,"stale same-ID concepts must not enter redesign");
+  assert.match(source,/shirtId,pantId,shirt,pant,occasion/);
+  assert.match(source,/style:body.current.baseStyle,styleSpec:fromLegacyStyle\(body.current.baseStyle\)/);
 });

@@ -684,7 +684,7 @@ requireTokens("src/lib/designer/creative-engine.ts", [
 requireTokens("src/lib/designer/fashion-research-source-pool.ts", [
   "FASHION_RESEARCH_SOURCES","FASHION_RESEARCH_TOPICS","FASHION_RESEARCH_TARGETS","buildFashionResearchTargets"
 ]);
-requireTokens("src/app/api/designer/creative-generate/route.ts", ["generateCreativeDirections","chooseCreativeRedesign","researchFreedom:\"maximum\"","loadDesignerFabricMetadata","loadDesignerCreativeContext","__linenCreativeGenerateRate"]);
+requireTokens("src/app/api/designer/creative-generate/route.ts", ["generateCreativeDirections","chooseCreativeRedesign","researchFreedom:\"maximum\"","loadActiveDesignerCatalogueFabrics","loadDesignerCreativeContext","__linenCreativeGenerateRate"]);
 requireTokens("src/lib/designer/creative-context.ts", ["server-only","aggregateCreativeLearning","aggregateCreativeResearch","loadDesignerCreativeContext"]);
 requireTokens("src/app/api/designer/creative-render/route.ts", ["renderCreativeFashnFront","CreativeFashnRequest"]);
 requireTokens("src/app/api/designer/creative-inspect/route.ts", ["inspectCreativeFashnOutput","CreativeFashnRequest","maxDuration=30"]);
@@ -800,8 +800,8 @@ requireTokens("src/lib/designer/stock-availability.ts", ["verifiedStockAvailabil
 requireTokens("src/lib/designer/engine.ts", ["availabilityVerified?: boolean","verified physical stock status","provenance-ready positive stock status"]);
 requireTokens("tests/stock-availability.test.ts", ["availabilityVerified,true","availabilityVerified,undefined"]);
 requireTokens("src/lib/designer/stock-availability-server.ts", ["fabric_stock_snapshot_v2","applyLiveVerifiedStockAvailability","cache:\"no-store\""]);
-requireTokens("src/lib/designer/catalog-stock-server.ts", ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
-requireTokens("src/app/api/designer/catalog/route.ts", ["loadActiveDesignerFabricStock","verifiedStockFabrics"]);
+requireTokens("src/lib/designer/catalog-stock-server.ts", ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability","verifiedStockFabrics","loadActiveDesignerCatalogueFabrics","loadDesignerFabricIntelligence","attachCatalogFabricPhysics","filter((fabric)=>fabric.inStock)"]);
+requireTokens("src/app/api/designer/catalog/route.ts", ["loadActiveDesignerCatalogueFabrics","verifiedStockFabrics"]);
 requireTokens("src/lib/garment-viewer-model-contract.ts", ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest"]);
 requireTokens("src/lib/garment-viewer-glb.ts", ["parseGarmentViewerGlbJson","externalGlbUri","performanceBudgetReady","structuralReady"]);
 requireTokens("src/lib/garment-viewer-readiness.ts", ["garmentViewerPromotionReadiness","GARMENT_VIEWER_REALISM_RUBRIC_VERSION","ROADMAP_SCALE_TOLERANCE_PCT"]);
@@ -811,7 +811,7 @@ requireTokens("src/app/operator/garment-viewer/page.tsx", ["CUSTOMER PROMOTION G
 requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["garment-viewer-m2","Reusable 3D GarmentViewer production gate","/api/operator/garment-viewer"]);
 requireTokens("src/app/api/designer/search/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
 requireTokens("src/app/api/designer/brief/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
-requireTokens("src/app/api/designer/assess/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
+requireTokens("src/app/api/designer/assess/route.ts", ["loadActiveDesignerCatalogueFabrics","creativeDirectionMatchesSelection"]);
 requireTokens("src/app/api/style-director/route.ts", ["applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
 requireTokens("src/app/style-director/page.tsx", ["verified ledger availability enforced where recorded"]);
 requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","New quotes and production orders are blocked","Quote created from verified locked revision","Production order created from verified locked revision","durable design context","learningContexts","Outcome lineage","context missing","CUSTOMER OUTCOME","not automatically applied to Designer ranking","/operator/customer-outcomes","Outcome Review"]);

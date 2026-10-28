@@ -7,7 +7,10 @@ test("GarmentViewer and customer Designer share the same active stock loader",()
   const viewer=readFileSync("src/app/lab/garment-viewer/page.tsx","utf8");
   const shared=readFileSync("src/lib/designer/catalog-stock-server.ts","utf8");
 
-  assert.match(catalog,/loadActiveDesignerFabricStock/);
+  assert.match(catalog,/loadActiveDesignerCatalogueFabrics/);
+  assert.match(shared,/loadActiveDesignerFabricStock\(\)/);
+  assert.match(shared,/loadDesignerFabricIntelligence/);
+  assert.match(shared,/attachCatalogFabricPhysics/);
   assert.match(viewer,/loadActiveDesignerFabricStock/);
   for(const token of ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability"]) {
     assert.match(shared,new RegExp(token));

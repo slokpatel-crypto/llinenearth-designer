@@ -118,6 +118,7 @@ test("Designer leads with garment plus cloth instead of fabric alone",()=>{
 
 test("Async Designer identity includes canonical StyleSpec so applied directions are not discarded",()=>{
   const source=readFileSync("src/components/DesignerModule.tsx","utf8");
-  assert(source.includes("styleIdentity(direction.baseStyle),fromLegacyStyle(direction.baseStyle),climate"));
+  assert(source.includes("fabricIdentity,direction.recommendation.occasion,styleIdentity(direction.baseStyle),directionStyleSpec,climate"));
+  assert(source.includes("creativeDirectionMatchesSelection(direction,{"));
   assert(source.includes("styleIdentity(result.style),nextStyleSpec,nextContext.climate"));
 });
