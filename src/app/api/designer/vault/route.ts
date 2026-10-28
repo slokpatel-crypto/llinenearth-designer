@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
@@ -50,8 +51,10 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 
 export async function POST(request:Request){
   if(blocked(request)) return jsonNoStore({error:"Too many design-vault requests."},{status:429});
+  const unsafe=secureJsonRequestError(request,256_000);
+  if(unsafe) return jsonNoStore({error:unsafe.error},{status:unsafe.status});
   try{
-    const body=await request.json() as {
+    const body=await readSecureJsonObject(request,256_000) as {
       action?:string;
       revision?:LockedDesignRevision;
       recoveryToken?:string;
@@ -201,6 +204,8 @@ export async function POST(request:Request){
 
     return jsonNoStore({error:"Unsupported design-vault action."},{status:400});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return jsonNoStore({error:error.message},{status:413});
+    if(error instanceof SecureJsonBodyInvalid) return jsonNoStore({error:error.message},{status:400});
     console.error("[designer/vault]",error);
     return jsonNoStore({error:"Secure design storage is temporarily unavailable."},{status:503});
   }

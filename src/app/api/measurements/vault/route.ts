@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
+import { validMeasurementVaultProfile, validMeasurementVaultObservations, validMeasurementVaultId } from "@/lib/measurement-vault-payload";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { type MeasurementProfile } from "@/lib/measurements";
@@ -49,35 +51,25 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
   return await response.json() as T;
 }
 
-function validProfile(profile:unknown):profile is MeasurementProfile{
-  if(!profile||typeof profile!=="object"||Array.isArray(profile)) return false;
-  const p=profile as MeasurementProfile;
-  if(p.version!==1||!["cm","in"].includes(p.unit)||!p.shirt||!p.pants) return false;
-  const numericValues=[...Object.values(p.shirt),...Object.values(p.pants)];
-  return numericValues.every((value)=>value===undefined||(typeof value==="number"&&Number.isFinite(value)&&value>0&&value<500));
-}
-
-function validObservations(value:unknown):value is TailorObservationProfile{
-  if(!value||typeof value!=="object"||Array.isArray(value)) return false;
-  const v=value as TailorObservationProfile;
-  return v.version===1;
-}
-
 export async function POST(request:Request){
   if(blocked(request)) return jsonNoStore({error:"Too many measurement-vault requests."},{status:429});
+  const unsafe=secureJsonRequestError(request,16_384);
+  if(unsafe) return jsonNoStore({error:unsafe.error},{status:unsafe.status});
   try{
-    const body=await request.json() as {
+    const body=await readSecureJsonObject(request,16_384) as {
       action?:string;
       profile?:MeasurementProfile;
       observations?:TailorObservationProfile;
       recoveryToken?:string;
       vaultId?:string;
     };
-    const action=String(body.action||"");
+    const action=typeof body.action==="string"?body.action:"";
+    if(!["store","listOwned","loadOwned","deleteOwned","claim","load","delete"].includes(action))
+      return jsonNoStore({error:"Unsupported measurement-vault action."},{status:400});
     const customer=await getCustomerIdentity(request);
 
     if(action==="store"){
-      if(!validProfile(body.profile)||!validObservations(body.observations)) {
+      if(!validMeasurementVaultProfile(body.profile)||!validMeasurementVaultObservations(body.observations)) {
         return jsonNoStore({error:"A valid measurement and tailoring profile is required."},{status:400});
       }
       const accessKey=createMeasurementVaultAccessKey();
@@ -110,7 +102,7 @@ export async function POST(request:Request){
         vault_id:string;profile:MeasurementProfile;observations:TailorObservationProfile;
         created_at:string;expires_at:string;
       }>>("measurement_profile_vault_list_owned",{p_owner_user_id:customer.id});
-      const profiles=rows.filter((row)=>validProfile(row.profile)&&validObservations(row.observations)).map((row)=>({
+      const profiles=rows.filter((row)=>validMeasurementVaultProfile(row.profile)&&validMeasurementVaultObservations(row.observations)).map((row)=>({
         vaultId:row.vault_id,
         unit:row.profile.unit,
         createdAt:row.created_at,
@@ -121,12 +113,13 @@ export async function POST(request:Request){
 
     if(action==="loadOwned"){
       if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
+      if(!validMeasurementVaultId(body.vaultId)) return jsonNoStore({error:"Invalid vault id."},{status:400});
       const rows=await rpc<Array<{profile:MeasurementProfile;observations:TailorObservationProfile;expires_at:string}>>(
         "measurement_profile_vault_get_owned",
         {p_vault_id:String(body.vaultId||""),p_owner_user_id:customer.id},
       );
       const row=rows[0];
-      if(!row||!validProfile(row.profile)||!validObservations(row.observations)) {
+      if(!row||!validMeasurementVaultProfile(row.profile)||!validMeasurementVaultObservations(row.observations)) {
         return jsonNoStore({error:"Measurement profile was not found."},{status:404});
       }
       return jsonNoStore({profile:row.profile,observations:row.observations,expiresAt:row.expires_at});
@@ -134,6 +127,7 @@ export async function POST(request:Request){
 
     if(action==="deleteOwned"){
       if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
+      if(!validMeasurementVaultId(body.vaultId)) return jsonNoStore({error:"Invalid vault id."},{status:400});
       const deleted=await rpc<boolean>("measurement_profile_vault_delete_owned",{
         p_vault_id:String(body.vaultId||""),p_owner_user_id:customer.id,
       });
@@ -171,6 +165,8 @@ export async function POST(request:Request){
 
     return jsonNoStore({error:"Unsupported measurement-vault action."},{status:400});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return jsonNoStore({error:error.message},{status:413});
+    if(error instanceof SecureJsonBodyInvalid) return jsonNoStore({error:error.message},{status:400});
     console.error("[measurements/vault]",error);
     return jsonNoStore({error:"Secure measurement storage is temporarily unavailable."},{status:503});
   }
