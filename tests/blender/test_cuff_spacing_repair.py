@@ -241,6 +241,39 @@ for obj in (left, right):
 assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
 assert tuple(tuple(vertex.co) for vertex in torso.data.vertices) == torso_before
 
+# Time-of-check/time-of-use drift: the accepted candidate is safe during
+# the trial but becomes unsafe at the final independent BVH recheck. The
+# author must fail AND restore all source garment XYZ, not strand a rejected
+# silhouette in the Blender scene.
+unstable_start = {
+    obj.name: tuple(tuple(vertex.co) for vertex in obj.data.vertices)
+    for obj in (left, right)
+}
+left_body_checks = [0]
+
+
+def late_source_contact(first, second):
+    if first is body and second is left:
+        left_body_checks[0] += 1
+        return 1 if left_body_checks[0] >= 3 else 0
+    return 0
+
+
+try:
+    author.source_fit_collision_pairs = late_source_contact
+    try:
+        author.try_collision_safe_cuff_spacing(body, 0, 1, 22)
+    except RuntimeError as error:
+        assert "final contact recheck" in str(error)
+    else:
+        raise AssertionError("Late unsafe sleeve contact passed final acceptance")
+finally:
+    author.source_fit_collision_pairs = actual_contact
+for obj in (left, right):
+    assert tuple(tuple(vertex.co) for vertex in obj.data.vertices) == unstable_start[obj.name]
+assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
+assert tuple(tuple(vertex.co) for vertex in torso.data.vertices) == torso_before
+
 # Missing torso must not be silently treated as zero contact.
 bpy.data.objects.remove(torso, do_unlink=True)
 try:
