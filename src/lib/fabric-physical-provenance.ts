@@ -16,7 +16,26 @@ export type FabricPhysicalEvidenceProvenance={
 };
 
 function clean(value:unknown,limit:number){
-  return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
+  // Do not turn an object/number into an apparently human-signed physical receipt.
+  if(typeof value!=="string"||value.length>limit*4) return "";
+  const normalized=value.replace(/\s+/g," ").trim();
+  return normalized.length<=limit?normalized:"";
+}
+
+function validEvidenceDate(value:string){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date=new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime())
+    && date.toISOString().slice(0,10)===value
+    && value<=new Date().toISOString().slice(0,10);
+}
+
+function validEvidenceUrl(value:string){
+  try{
+    const url=new URL(value);
+    return url.protocol==="https:" && Boolean(url.hostname)
+      && !url.username && !url.password;
+  }catch{return false;}
 }
 
 export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricPhysicalEvidenceProvenance|null{
@@ -29,15 +48,12 @@ export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricP
   if(reference.length<2||checkedBy.length<2) return null;
 
   const evidenceDate=clean(source.evidenceDate,20);
-  if(evidenceDate&&!/^\d{4}-\d{2}-\d{2}$/.test(evidenceDate)) return null;
+  if(source.evidenceDate!=null && source.evidenceDate!=="" && !evidenceDate) return null;
+  if(evidenceDate&&!validEvidenceDate(evidenceDate)) return null;
 
   const sourceUrl=clean(source.sourceUrl,500);
-  if(sourceUrl){
-    try{
-      const parsed=new URL(sourceUrl);
-      if(!["https:","http:"].includes(parsed.protocol)) return null;
-    }catch{return null;}
-  }
+  if(source.sourceUrl!=null && source.sourceUrl!=="" && !sourceUrl) return null;
+  if(sourceUrl&&!validEvidenceUrl(sourceUrl)) return null;
 
   return {
     sourceType,
