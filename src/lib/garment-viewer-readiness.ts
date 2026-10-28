@@ -51,6 +51,55 @@ export type GarmentViewerPatternScaleSample = {
   verified:boolean;
 };
 
+// Stored operator evidence is untrusted JSON. Never coerce null/booleans,
+// strings or decimal reviewer ratings into a passing physical/realism claim.
+export function normalizeGarmentViewerPatternSamples(value:unknown):GarmentViewerPatternScaleSample[]{
+  if(!Array.isArray(value)) return [];
+  const rows=value.slice(-20);
+  const normalized:GarmentViewerPatternScaleSample[]=[];
+  for(const item of rows){
+    if(!item||typeof item!=="object"||Array.isArray(item)) return [];
+    const row=item as Record<string,unknown>;
+    if(typeof row.fabricId!=="string"||!row.fabricId.trim()||row.fabricId.length>160
+      ||(row.pattern!=="stripe"&&row.pattern!=="check"&&row.pattern!=="other")
+      ||typeof row.errorPct!=="number"||!Number.isFinite(row.errorPct)
+      ||row.errorPct<0||row.errorPct>100||typeof row.verified!=="boolean") return [];
+    normalized.push({fabricId:row.fabricId.trim(),pattern:row.pattern,errorPct:row.errorPct,verified:row.verified});
+  }
+  return normalized;
+}
+
+export function normalizeGarmentViewerLatencies(value:unknown):number[]{
+  if(!Array.isArray(value)) return [];
+  const rows=value.slice(-120);
+  if(rows.some((item)=>typeof item!=="number"||!Number.isFinite(item)||item<0||item>10000)) return [];
+  return rows;
+}
+
+export function normalizeGarmentViewerRealism(value:unknown):RealismAssessment[]{
+  if(!Array.isArray(value)) return [];
+  const rows=value.slice(-50);
+  const normalized:RealismAssessment[]=[];
+  for(const item of rows){
+    if(!item||typeof item!=="object"||Array.isArray(item)) return [];
+    const row=item as Record<string,unknown>;
+    if(typeof row.viewerId!=="string"||row.viewerId.trim().length<2||row.viewerId.length>80
+      ||typeof row.rating!=="number"||!Number.isInteger(row.rating)||row.rating<1||row.rating>5
+      ||(row.recordedAt!==undefined&&typeof row.recordedAt!=="string")) return [];
+    normalized.push({
+      viewerId:row.viewerId.trim().toLowerCase(),
+      rating:row.rating,
+      recordedAt:typeof row.recordedAt==="string"?row.recordedAt.slice(0,80):"",
+    });
+  }
+  return normalized;
+}
+
+export function normalizeGarmentViewerBoundaries(value:unknown):Phase1BoundaryChecks{
+  const input=value&&typeof value==="object"&&!Array.isArray(value)?value as Record<string,unknown>:{};
+  return {neck:input.neck===true,cuffs:input.cuffs===true,waist:input.waist===true,trouserGap:input.trouserGap===true};
+}
+
 export type GarmentViewerPromotionInput = {
   contract:GarmentViewerModelContractResult|null;
   manifest:GarmentViewerManifestValidation|null;
@@ -64,15 +113,15 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   const contractReady=input.contract?.readiness==="contract_ready" && input.contract.physicallyScalable;
   const manifestReady=input.manifest?.valid===true;
 
-  const scaleSamples=input.patternScaleSamples
-    .filter((sample)=>sample.verified&&Number.isFinite(sample.errorPct)&&sample.errorPct>=0)
-    .slice(-20);
-  const hasStripe=scaleSamples.some((sample)=>sample.pattern==="stripe");
-  const hasCheck=scaleSamples.some((sample)=>sample.pattern==="check");
+  const scaleSamples=normalizeGarmentViewerPatternSamples(input.patternScaleSamples)
+    .filter((sample)=>sample.verified);
+  const scaleKeys=scaleSamples.map((sample)=>sample.fabricId+":"+sample.pattern);
+  const uniqueSamples=new Set(scaleKeys).size===scaleKeys.length;
+  const independentStripeAndCheck=scaleSamples.some((stripe)=>stripe.pattern==="stripe"
+    &&scaleSamples.some((check)=>check.pattern==="check"&&check.fabricId!==stripe.fabricId));
   const scaleReady=scaleSamples.length>=GARMENT_VIEWER_MIN_PATTERN_SCALE_SAMPLES
-    && hasStripe
-    && hasCheck
-    && scaleSamples.every((sample)=>sample.errorPct<=ROADMAP_SCALE_TOLERANCE_PCT);
+    &&uniqueSamples&&independentStripeAndCheck
+    &&scaleSamples.every((sample)=>sample.errorPct<=ROADMAP_SCALE_TOLERANCE_PCT);
 
   const latency=summarizeLatencySamples(input.interactionLatencyMs);
   const latencyReady=latency.count>=PHASE1_PROOF_MIN_LATENCY_SAMPLES

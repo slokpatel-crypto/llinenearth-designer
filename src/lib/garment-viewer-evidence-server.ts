@@ -6,52 +6,13 @@ import {
   GARMENT_VIEWER_REALISM_RUBRIC_VERSION,
   garmentViewerAssetIdentityMatches,
   garmentViewerPromotionReadiness,
-  type GarmentViewerPatternScaleSample,
+  normalizeGarmentViewerPatternSamples,
+  normalizeGarmentViewerLatencies,
+  normalizeGarmentViewerRealism,
+  normalizeGarmentViewerBoundaries,
 } from "@/lib/garment-viewer-readiness";
-import type { Phase1BoundaryChecks, RealismAssessment } from "@/lib/designer/proof-scale";
 
 type StyleEventRow={at:string;payload?:Record<string,unknown>};
-
-function patternSamples(value:unknown):GarmentViewerPatternScaleSample[]{
-  if(!Array.isArray(value)) return [];
-  return value.slice(-20).flatMap((item)=>{
-    if(!item||typeof item!=="object"||Array.isArray(item)) return [];
-    const row=item as Record<string,unknown>;
-    const fabricId=String(row.fabricId||"").trim().slice(0,160);
-    const pattern=String(row.pattern||"");
-    const errorPct=Number(row.errorPct);
-    if(!fabricId||!["stripe","check","other"].includes(pattern)||!Number.isFinite(errorPct)||errorPct<0||errorPct>100) return [];
-    return [{fabricId,pattern:pattern as GarmentViewerPatternScaleSample["pattern"],errorPct,verified:row.verified===true}];
-  });
-}
-
-function latencies(value:unknown){
-  return Array.isArray(value)
-    ? value.map(Number).filter((item)=>Number.isFinite(item)&&item>=0&&item<=10000).slice(-120)
-    : [];
-}
-
-function realism(value:unknown):RealismAssessment[]{
-  if(!Array.isArray(value)) return [];
-  return value.slice(-50).flatMap((item)=>{
-    if(!item||typeof item!=="object"||Array.isArray(item)) return [];
-    const row=item as Record<string,unknown>;
-    const viewerId=String(row.viewerId||"").trim().toLowerCase().slice(0,80);
-    const rating=Math.round(Number(row.rating));
-    if(viewerId.length<2||rating<1||rating>5) return [];
-    return [{viewerId,rating,recordedAt:String(row.recordedAt||"").slice(0,80)}];
-  });
-}
-
-function boundaries(value:unknown):Phase1BoundaryChecks{
-  const input=value&&typeof value==="object"&&!Array.isArray(value)?value as Record<string,unknown>:{};
-  return {
-    neck:input.neck===true,
-    cuffs:input.cuffs===true,
-    waist:input.waist===true,
-    trouserGap:input.trouserGap===true,
-  };
-}
 
 export async function loadLatestGarmentViewerReadiness(){
   const asset=await loadGarmentViewerProductionAssetStatus();
@@ -79,10 +40,10 @@ export async function loadLatestGarmentViewerReadiness(){
       if(String(payload.subtype||"")!=="garment_viewer_readiness") continue;
       if(String(payload.realismRubricVersion||"")!==GARMENT_VIEWER_REALISM_RUBRIC_VERSION) continue;
       const evidence={
-        patternScaleSamples:patternSamples(payload.patternScaleSamples),
-        interactionLatencyMs:latencies(payload.interactionLatencyMs),
-        realismAssessments:realism(payload.realismAssessments),
-        boundaryChecks:boundaries(payload.boundaryChecks),
+        patternScaleSamples:normalizeGarmentViewerPatternSamples(payload.patternScaleSamples),
+        interactionLatencyMs:normalizeGarmentViewerLatencies(payload.interactionLatencyMs),
+        realismAssessments:normalizeGarmentViewerRealism(payload.realismAssessments),
+        boundaryChecks:normalizeGarmentViewerBoundaries(payload.boundaryChecks),
       };
       const evidenceIdentity={
         modelId:String(payload.modelId||""),
