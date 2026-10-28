@@ -72,16 +72,16 @@ function cleanOperatorPayload(type: string, input: unknown) {
   }
 
   if (type === "lead_status_changed") {
-    const status = text(payload.status, 40);
-    if (!["new","contacted","visit-booked","won","lost","follow-up"].includes(status)) return null;
+    const status = payload.status;
+    if (typeof status!=="string" || !["new","contacted","visit-booked","won","lost","follow-up"].includes(status)) return null;
     return { status };
   }
 
   if (type === "order_status_changed") {
-    const status = text(payload.status, 40);
-    if (!["quoted","measurement","deposit","cutting","tailoring","trial","ready","collected","cancelled"].includes(status)) return null;
-    const dueDate = text(payload.dueDate, 10);
-    if (dueDate && !validOperatorLocalDate(dueDate)) return null;
+    const status = payload.status;
+    if (typeof status!=="string" || !["quoted","measurement","deposit","cutting","tailoring","trial","ready","collected","cancelled"].includes(status)) return null;
+    const dueDate = payload.dueDate == null ? "" : payload.dueDate;
+    if (typeof dueDate!=="string" || (dueDate && !validOperatorLocalDate(dueDate))) return null;
     const orderValue = payload.orderValue == null ? null : operatorSyncNumber(payload.orderValue,0,100_000_000);
     if (payload.orderValue != null && orderValue === null) return null;
     return { status, dueDate, note: text(payload.note, 1000), orderValue };
@@ -102,7 +102,7 @@ function cleanOperatorPayload(type: string, input: unknown) {
   }
 
   if (type === "measurements_updated") {
-    const unit = text(payload.unit, 2);
+    const unit = payload.unit;
     if (unit !== "in" && unit !== "cm") return null;
     const raw = payload.measurements && typeof payload.measurements === "object" && !Array.isArray(payload.measurements)
       ? payload.measurements as Record<string,unknown>
@@ -124,7 +124,7 @@ function cleanOperatorPayload(type: string, input: unknown) {
 
   if (type === "payment_logged") {
     const amount = operatorSyncNumber(payload.amount,0,100_000_000);
-    const method = text(payload.method, 20);
+    const method = payload.method;
     if (amount === null || amount <= 0) return null;
     if (!["cash","upi","card","bank","other"].includes(method)) return null;
     return {
@@ -136,9 +136,10 @@ function cleanOperatorPayload(type: string, input: unknown) {
   }
 
   if (type === "appointment_updated") {
-    const kind = text(payload.kind, 24);
-    const status = text(payload.status, 20);
-    const dateTime = text(payload.dateTime, 16);
+    const kind = payload.kind;
+    const status = payload.status;
+    const dateTime = payload.dateTime == null ? "" : payload.dateTime;
+    if (typeof dateTime !== "string") return null;
     if (!["consultation","fitting","trial","pickup","delivery"].includes(kind)) return null;
     if (!["scheduled","completed","cancelled"].includes(status)) return null;
     if ((status === "scheduled" || dateTime) && !validOperatorLocalDateTime(dateTime)) return null;
