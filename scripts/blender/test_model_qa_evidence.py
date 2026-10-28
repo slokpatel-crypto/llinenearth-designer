@@ -17,12 +17,16 @@ def chunk(kind, data):
     return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff)
 
 
-def png(width=480, height=640):
-    pixels = b"".join(b"\0" + b"\x00\x00\x00" * width for _ in range(height))
+def png(width=480, height=640, *, raw_pixels=None, compressed=None,
+        depth=8, color=2, interlace=0):
+    channels = 4 if color == 6 else 3
+    pixels = (raw_pixels if raw_pixels is not None else
+              b"".join(b"\0" + b"\x00" * (width * channels * (depth // 8))
+                       for _ in range(height)))
     return (b"\x89PNG\r\n\x1a\n"
-            + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, depth, color, 0, 0, interlace))
             + chunk(b"tEXt", b"QA\0" + b"x" * 12000)
-            + chunk(b"IDAT", zlib.compress(pixels))
+            + chunk(b"IDAT", compressed if compressed is not None else zlib.compress(pixels))
             + chunk(b"IEND", b""))
 
 
@@ -62,6 +66,8 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
         self.report = {
             "gate": PREFLIGHT_GATE, "ready": True, "reasons": [],
             "modelIdentity": {"id": MODEL_IDENTITY_ID, "referenceImage": REFERENCE_IMAGE, "locked": True},
+            "referenceBody": "Body", "bodyHeightMm": 1727.0,
+            "identityGuideMeasurementsMm": {"handCenterSpacing": 500.0, "legCenterSpacing": 210.0},
             "requiredGarmentObjects": list(GARMENT_OBJECTS),
             "identityFitMeasurementsMm": {"sleeveCenterSpacingMm": 500.0, "legCenterSpacingMm": 210.0},
             "objects": {name: {"present": True, "inExportCollection": True,
@@ -319,6 +325,112 @@ else:
         frame.write_bytes(png() + b"junk")
         self.manifest["angles"][0]["sha256"] = sha256_file(frame)
         self.assertTrue(any("trailing" in x for x in self.validate()))
+
+
+    def test_crc_valid_but_undecodable_or_wrong_length_png_is_rejected(self):
+        frame = self.directory / "linen-earth-model-front.png"
+        valid_pixels = b"".join(b"\0" + b"\0" * (480 * 3) for _ in range(640))
+        invalid_frames = (
+            png(compressed=b"not a zlib stream"),
+            png(raw_pixels=valid_pixels[:-1]),
+            png(raw_pixels=valid_pixels + b"\0"),
+            png(raw_pixels=b"\x05" + valid_pixels[1:]),
+            png(interlace=1),
+            png(depth=4),
+        )
+        for forged in invalid_frames:
+            with self.subTest(case=forged[:50]):
+                frame.write_bytes(forged)
+                self.manifest["angles"][0]["sha256"] = sha256_file(frame)
+                self.assertTrue(any("front" in reason for reason in self.validate()))
+
+    def test_split_idat_is_valid_but_nonconsecutive_idat_is_rejected(self):
+        frame = self.directory / "linen-earth-model-front.png"
+        original = png()
+        marker = original.index(b"IDAT")
+        chunk_start = marker - 4
+        length = struct.unpack(">I", original[chunk_start:marker])[0]
+        data = original[marker + 4:marker + 4 + length]
+        tail = original[marker + 4 + length + 4:]
+        prefix = original[:chunk_start]
+        frame.write_bytes(prefix + chunk(b"IDAT", data[:10])
+                          + chunk(b"IDAT", data[10:]) + tail)
+        self.manifest["angles"][0]["sha256"] = sha256_file(frame)
+        self.assertEqual(self.validate(), [])
+        frame.write_bytes(prefix + chunk(b"IDAT", data[:10])
+                          + chunk(b"tEXt", b"note\0interrupted")
+                          + chunk(b"IDAT", data[10:]) + tail)
+        self.manifest["angles"][0]["sha256"] = sha256_file(frame)
+        self.assertTrue(any("front" in reason for reason in self.validate()))
+
+    def test_supported_rgba_and_16_bit_png_are_decodable(self):
+        frame = self.directory / "linen-earth-model-front.png"
+        for depth in (8, 16):
+            frame.write_bytes(png(depth=depth, color=6))
+            self.manifest["angles"][0]["sha256"] = sha256_file(frame)
+            self.assertEqual(self.validate(), [])
+
+
+    def test_candidate_cannot_pass_without_all_three_source_evidence_files(self):
+        required = "requires actual Blender source"
+        self.assertTrue(any(required in reason for reason in
+                            validate_candidate_manifest(self.manifest, self.directory)))
+        for kwargs in (
+            {"preflight_script": self.preflight, "reference_photo": self.photo},
+            {"source": self.source, "reference_photo": self.photo},
+            {"source": self.source, "preflight_script": self.preflight},
+        ):
+            with self.subTest(missing=kwargs):
+                self.assertTrue(any(required in reason for reason in
+                                    validate_candidate_manifest(self.manifest, self.directory, **kwargs)))
+
+
+    def test_duplicate_or_nonfinite_json_receipts_fail_closed(self):
+        manifest_path = self.directory / "model-qa-manifest.json"
+        command = [
+            sys.executable, str(Path(__file__).with_name("model_qa_evidence.py")),
+            "--manifest", str(manifest_path), "--source-blend", str(self.source),
+            "--preflight-script", str(self.preflight),
+            "--reference-photo", str(self.photo),
+        ]
+        manifest_path.write_text('{"version": "a", "version": "b"}', encoding="utf-8")
+        duplicate = subprocess.run(command, capture_output=True, text=True, check=False)
+        self.assertEqual(duplicate.returncode, 1)
+        self.assertIn("Duplicate JSON evidence key", duplicate.stdout)
+        manifest_path.write_text('{"nativePreflightPassed": NaN}', encoding="utf-8")
+        nonfinite = subprocess.run(command, capture_output=True, text=True, check=False)
+        self.assertEqual(nonfinite.returncode, 1)
+        self.assertIn("Nonfinite JSON evidence constant", nonfinite.stdout)
+
+        report_path = self.directory / PREFLIGHT_REPORT_FILE
+        for raw in (
+            json.dumps(self.report).replace('"ready": true',
+                                            '"ready": true, "ready": true', 1),
+            json.dumps(self.report)[:-1] + ', "unexpected": Infinity}',
+        ):
+            with self.subTest(raw=raw[:80]):
+                report_path.write_text(raw, encoding="utf-8")
+                self.manifest["nativePreflightReportSha256"] = sha256_file(report_path)
+                self.assertTrue(any("native preflight report" in reason.lower()
+                                    for reason in self.validate()))
+
+
+    def test_native_report_cannot_omit_body_height_or_spoof_identity_guides(self):
+        original = json.loads(json.dumps(self.report))
+        for mutation in (
+            lambda r: r.pop("bodyHeightMm"),
+            lambda r: r.update(bodyHeightMm=True),
+            lambda r: r.update(bodyHeightMm=1748.0),
+            lambda r: r.update(referenceBody="Placeholder"),
+            lambda r: r.pop("identityGuideMeasurementsMm"),
+            lambda r: r["identityGuideMeasurementsMm"].update(handCenterSpacing=563.4),
+            lambda r: r["identityGuideMeasurementsMm"].update(legCenterSpacing=float("nan")),
+        ):
+            report = json.loads(json.dumps(original))
+            mutation(report)
+            with self.subTest(report=report):
+                self.assertTrue(validate_native_preflight_report(report))
+        self.assertEqual(validate_native_preflight_report(original), [])
 
 
 if __name__ == "__main__":
