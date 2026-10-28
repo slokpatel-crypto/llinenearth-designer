@@ -15,6 +15,8 @@ import {
 import type { CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { loadDesignerCreativeContext } from "@/lib/designer/creative-context";
 import { loadActiveDesignerCatalogueFabrics } from "@/lib/designer/catalog-stock-server";
+import { creativeDirectionMatchesSelection } from "@/lib/designer/creative-selection";
+import { fromLegacyStyle } from "@/lib/designer/style-spec-v2";
 
 import { attachCreativeCraft, craftClarifications, DEFAULT_CRAFT_REQUEST, resolveCraftRequest, reviseCreativeCraft, validCraftRequest, validCreativeCraft, resolveCraftFabrics } from "@/lib/designer/creative-spec";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -134,6 +136,13 @@ export async function POST(request:Request) {
         return NextResponse.json({error:"A current concept and redesign reason are required."},{status:400});
       }
       if(body.current.craft!==undefined&&!validCreativeCraft(body.current.craft))return NextResponse.json({error:"Invalid craft recipe."},{status:400});
+      if(!creativeDirectionMatchesSelection(body.current,{
+        shirtId,pantId,shirt,pant,occasion,
+        climate:body.context.climate,intention:body.context.intention,
+        style:body.current.baseStyle,styleSpec:fromLegacyStyle(body.current.baseStyle),
+      }))return NextResponse.json({
+        error:"The previous creative concept no longer matches the current fabric revision or context.",
+      },{status:409});
       if(body.current.craft){const canonical=resolveCraftFabrics(body.current.craft,fabrics,shirtId,pantId);if(!canonical)return NextResponse.json({error:"Current craft recipe does not match available fabrics."},{status:409});body.current.craft=canonical;}
       const redesign=body.current.craft?reviseCreativeCraft(body.current,body.reason):chooseCreativeRedesign(concepts,body.current,body.reason);
       return NextResponse.json({concepts:concepts.slice(0,limit),redesign:redesign || null,memory},{headers:{"cache-control":"no-store"}});
