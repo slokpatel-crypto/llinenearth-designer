@@ -10,7 +10,7 @@ import zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "qa"))
-from model_turntable_evidence import verify_turntable, VIEWS
+from model_turntable_evidence import verify_turntable, verify_canonical_reference, VIEWS
 
 
 def digest(path):
@@ -69,6 +69,22 @@ class TurntableEvidenceTests(unittest.TestCase):
     def verify(self):
         self.manifest.write_text(json.dumps(self.data))
         return verify_turntable(self.manifest, self.front, self.source)
+
+    def test_accept_canonical_checked_out_reference(self):
+        canonical = self.root / "public" / "designer" / "studio-tucked.webp"
+        canonical.parent.mkdir(parents=True)
+        canonical.write_bytes(b"locked-studio-photo-fixture")
+        self.assertEqual(verify_canonical_reference(canonical, self.root),
+                         canonical.resolve())
+
+    def test_reject_substituted_reference_photo(self):
+        canonical = self.root / "public" / "designer" / "studio-tucked.webp"
+        canonical.parent.mkdir(parents=True)
+        canonical.write_bytes(b"locked-studio-photo-fixture")
+        replacement = self.root / "other.webp"
+        replacement.write_bytes(b"replacement-person")
+        with self.assertRaisesRegex(ValueError, "canonical checked-out"):
+            verify_canonical_reference(replacement, self.root)
 
     def test_valid_complete_four_angle_source(self):
         result = self.verify()
