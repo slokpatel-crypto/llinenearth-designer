@@ -271,8 +271,8 @@ export async function GET(request: Request) {
         );
       }
 
-      const version = Number(await response.json());
-      if (version !== 5) {
+      const version:unknown = await response.json();
+      if (typeof version !== "number" || version !== 5) {
         return NextResponse.json(
           { error: `Unsupported cloud schema version ${version}.`, paired: true, cloudConfigured: true, schemaVersion: version },
           { status: 503, headers: { "cache-control": "private, no-store, max-age=0" } },
