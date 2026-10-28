@@ -101,7 +101,9 @@ test("Designer restore, live invalidation and generation lifecycle use the same 
     "all handoff, tech-pack, share, enquiry and vault actions must guard current lock identity");
   assert.match(source,/lockedRevisionSelectionIdentityRef\.current===lockIdentity/);
   assert.match(source,/currentSelectionIdentityRef\.current!==identity/);
-  assert.match(source,/\[shirtId,pantId,occasion,style,styleSpec,climate,intention,craftRequest\]/);
+  assert.match(source,/\[shirtId,pantId,fabricIdentity,occasion,style,styleSpec,climate,intention,craftRequest\]/);
+  assert.match(source,/creativeDirectionMatchesSelection\(direction,\{/);
+  assert.match(source,/const expectedIdentity=JSON\.stringify\(\[direction\.recommendation\.shirt\.id,direction\.recommendation\.pant\.id,fabricIdentity,/);
 });
 
 test("assessment request binds its payload and late reply to the committed selection",()=>{
