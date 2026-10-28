@@ -444,7 +444,8 @@ else:
             ("vertices", 0), ("vertices", True), ("polygons", -1),
             ("triangles", "100"), ("transformApplied", False),
             ("uvLayers", 0), ("activeUv", ""),
-            ("degenerateFaces", -1), ("degenerateRatio", float("nan")),
+            ("degenerateFaces", -1), ("degenerateFaces", 1),
+            ("degenerateRatio", float("nan")),
             ("degenerateRatio", 0.002),
         ):
             original = panel[key]
