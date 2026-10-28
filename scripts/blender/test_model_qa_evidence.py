@@ -246,6 +246,10 @@ else:
         corrupt = subprocess.run(command, capture_output=True, text=True, check=False)
         self.assertEqual(corrupt.returncode, 1)
 
+    def test_rejected_diagnostic_renderer_exits_nonzero_after_writing_artifacts(self):
+        source = Path(__file__).with_name("render-linen-earth-model-qa.py").read_text(encoding="utf-8")
+        self.assertIn("if options.diagnostic_rejected:\n        raise SystemExit(2)", source)
+
     def test_native_preflight_rejected_report_requires_explicit_diagnostic_opt_in(self):
         script = self.directory / "mock-rejected-preflight.py"
         rejected = dict(self.report)
