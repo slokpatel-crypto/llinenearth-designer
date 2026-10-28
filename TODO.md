@@ -12,8 +12,10 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 ### Execute in priority order
 - [x] Inspect latest draft PR #450 and its exact-head CI / Non-3D QA; both passed at `74db98f` on 28 Oct. Do not extrapolate that status to a later commit.
 - [x] Find and patch coercible/truncated fabric IDs and occasion/scope data on assessment/search/brief; add static and real HTTP negative tests on this *new draft branch*. This is implementation, not an assertion that this new head passed CI.
-- [ ] Confirm **new exact-head** quality, complete Node tests, engine, preview performance, release check, production build and real Chromium HTTP/viewport checks before promoting this batch.
-- [ ] Reconcile the separate #444–#447 delivery/secure-vault stack with the #448–#450 Designer stack; inspect overlapping shared helper and SQL changes, preserve both ancestries, and do not merge stacked draft PRs straight to `main`.
+- [x] Confirm strict Designer request patch #451 on exact head `151f1bd`: build + Studio browser checks passed. This does **not** approve later changes.
+- [ ] Confirm **new exact-head** quality, complete Node tests, engine, preview performance, release check, production build and real Chromium HTTP/viewport checks before promoting PR #452.
+- [x] Compare overlapping #444–#447 and #448–#452 source-level security and first-ten RPC contracts; selectively port vault bounds + order lineage without replacing newer modules. See `docs/TITAN_20261028_DRAFT_STACK_RECONCILIATION.md`.
+- [ ] Complete full stacked-draft ancestry review/integration; keep older SQL incompatible with current v2 RPC unapplied, and do not merge draft stacks straight to `main`.
 - [ ] Verify real authenticated Supabase lock/recovery/enquiry path and selected stock; do not treat local browser storage as production durability.
 - [ ] Obtain owner-controlled fabric scale/stock truth, real tailor signoff, novice beta/device/edge QA, primary production runtime identity and customer consent before opening beta.
 - [ ] Keep 3D Blender/photo four-angle parity, automatic production delivery, FASHN final render and ecommerce **outside this smallest beta** until separately approved and evidenced.

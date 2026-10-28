@@ -35,7 +35,10 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
   // Duplicate known choices carry no extra meaning; unknown or coerced values
   // are rejected above rather than disappearing into a false clean audit.
   const reentryFields=[...new Set(submittedFields as ProductionReentryField[])];
-  const note=String(source.note||"").trim().slice(0,1200);
+  if(source.note!==undefined&&source.note!==null&&typeof source.note!=="string")
+    throw new Error("Production completion note must be text.");
+  const note=typeof source.note==="string"?source.note.trim():"";
+  if(note.length>1200) throw new Error("Production completion note cannot exceed 1200 characters.");
   const operator=typeof source.operator==="string"?source.operator.trim():"";
   const evidenceReference=typeof source.evidenceReference==="string"
     ?source.evidenceReference.replace(/\s+/g," ").trim():"";
@@ -74,12 +77,16 @@ export function validProductionFirstTenAuditBasis(input:unknown):boolean{
     return Date.parse(value);
   };
   const deliveredAtByOrder=new Map<string,number>();
+  const orderLineage=new Map<string,{revision:string;hash:string;created:string}>();
+  const evidenceIds=new Set<string>();
   let previousDeliveredAt=Number.NEGATIVE_INFINITY;
   for(const value of basis.orders){
     if(!value||typeof value!=="object"||Array.isArray(value)) return false;
     const order=value as Record<string,unknown>;
     if(typeof order.order_id!=="string"||!order.order_id.trim()
-      ||order.status!=="delivered") return false;
+      ||order.status!=="delivered"
+      ||typeof order.revision_id!=="string"||order.revision_id.trim().length<3||order.revision_id.length>240
+      ||typeof order.recipe_hash!=="string"||!/^[a-f0-9]{64}$/i.test(order.recipe_hash)) return false;
     const createdAt=time(order.created_at);
     const deliveredAt=time(order.delivered_at);
     const key=order.order_id.trim().toLowerCase();
@@ -90,14 +97,24 @@ export function validProductionFirstTenAuditBasis(input:unknown):boolean{
     // arbitrary later window or reordered rows as the first-ten snapshot.
     previousDeliveredAt=deliveredAt;
     deliveredAtByOrder.set(key,deliveredAt);
+    orderLineage.set(key,{revision:order.revision_id as string,hash:order.recipe_hash as string,created:order.created_at as string});
   }
   for(const value of basis.evidence){
     if(!value||typeof value!=="object"||Array.isArray(value)) return false;
     const evidence=value as Record<string,unknown>;
     const key=typeof evidence.order_id==="string"?evidence.order_id.trim().toLowerCase():"";
     const deliveryAt=deliveredAtByOrder.get(key);
+    const lineage=orderLineage.get(key);
+    const evidenceId=typeof evidence.evidence_id==="string"?evidence.evidence_id.trim().toLowerCase():"";
     const auditedAt=time(evidence.created_at);
-    if(deliveryAt===undefined||!Number.isFinite(auditedAt)||auditedAt<deliveryAt
+    if(deliveryAt===undefined||!lineage||!Number.isFinite(auditedAt)||auditedAt<deliveryAt
+      ||!evidenceId||evidenceIds.has(evidenceId)
+      ||evidence.revision_id!==lineage.revision||evidence.recipe_hash!==lineage.hash
+      ||evidence.order_created_at!==lineage.created
+      ||typeof evidence.note!=="string"
+      ||!Array.isArray(evidence.reentry_fields)
+      ||new Set(evidence.reentry_fields).size!==evidence.reentry_fields.length
+      ||(evidence.manual_design_reentry===true&&evidence.reentry_fields.length===0&&evidence.note.trim().length<3)
       ||typeof evidence.manual_design_reentry!=="boolean"
       ||(evidence.reentry_fields!==undefined&&!validProductionReentryFields(evidence.reentry_fields))
       ||(evidence.manual_design_reentry===false
@@ -105,6 +122,7 @@ export function validProductionFirstTenAuditBasis(input:unknown):boolean{
       ||typeof evidence.operator!=="string"||evidence.operator.trim().length<2||evidence.operator.trim().length>120
       ||typeof evidence.evidence_reference!=="string"||evidence.evidence_reference.trim().length<3
       ||evidence.evidence_reference.trim().length>240) return false;
+    evidenceIds.add(evidenceId);
   }
   return true;
 }

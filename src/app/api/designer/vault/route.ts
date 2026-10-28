@@ -1,3 +1,4 @@
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { linkVaultOwnerBestEffort, resolveVaultStoreOwnerBestEffort, vaultOwnershipWarning } from "@/lib/vault-owner-link";
 import { parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity } from "@/lib/vault-request-identifiers";
 import { vaultRateBlocked } from "@/lib/vault-rate-guard";
@@ -52,10 +53,10 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 
 export async function POST(request:Request){
   if(blocked(request)) return jsonNoStore({error:"Too many design-vault requests."},{status:429});
+  const unsafe=secureJsonRequestError(request,98304);
+  if(unsafe) return jsonNoStore({error:unsafe.error},{status:unsafe.status});
   try{
-    const input:unknown=await request.json().catch(()=>null);
-    if(!input||typeof input!=="object"||Array.isArray(input))
-      return jsonNoStore({error:"Invalid design-vault request body."},{status:400});
+    const input:unknown=await readSecureJsonObject(request,98304);
     const body=input as {
       action?:string;
       revision?:LockedDesignRevision;
@@ -219,6 +220,8 @@ export async function POST(request:Request){
 
     return jsonNoStore({error:"Unsupported design-vault action."},{status:400});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return jsonNoStore({error:error.message},{status:413});
+    if(error instanceof SecureJsonBodyInvalid) return jsonNoStore({error:error.message},{status:400});
     console.error("[designer/vault]",error);
     return jsonNoStore({error:"Secure design storage is temporarily unavailable."},{status:503});
   }

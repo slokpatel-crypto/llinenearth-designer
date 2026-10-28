@@ -891,3 +891,9 @@ The assessment endpoint used to fetch the live catalogue and approved house ease
 **Why:** `String(["catalogue-id"])` produced a valid ID and `String(["Casual"])` a valid occasion. `.slice(0,160)` could also turn a malformed overlength identifier into a different real catalogue selection. This makes the resulting fit or lock evidence appear linked to a request the caller did not actually submit.
 
 **Compatibility:** legitimate string selectors, legacy omitted fabric starts, and deterministic preview remain unchanged. No migrations, provider calls, approved-model assets, production deployment or physical proof. Real HTTP negative regressions plus exact-head CI must pass before calling the engineering repair verified. Pilot requirements and external approvals are in `docs/TITAN_LAUNCH_MVP.md`.
+
+## 2026-10-28 — Selective draft-stack request and delivery reconciliation
+
+The prior #444–#447 and newer Designer #448–#452 branches diverge deeply; changing entire files across stacks would drop newer custody, locked-design validation or production chronology. **Decision:** forward-port only missing invariants to the newer branch: same-origin, strict JSON and streamed size bounds on both vaults and privileged operator mutations; first-ten evidence revision ID, immutable recipe hash, unique evidence IDs and valid post-delivery chronology in the newer JSON v2 audit and cloud verifier. Current recovery-token issuance precedes optional owner association, and stock snapshot / operator checks remain unchanged.
+
+The older authoritative-table-returning first-ten migration is NOT the same RPC contract as the newer `20261103` JSON v2 migration and is not replayed. No migrations deployed or real first-ten operator evidence confirmed. Exact-head CI plus real browser and authenticated environment acceptance remain prerequisites to promotion. File decisions: `docs/TITAN_20261028_DRAFT_STACK_RECONCILIATION.md`.

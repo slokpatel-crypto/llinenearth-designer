@@ -65,11 +65,13 @@ test("legacy delivery audits without provenance stay visible but cannot satisfy 
 
 function tenAuditedDeliveries(){
   const orders=Array.from({length:10},(_,i)=>({
-    order_id:`le-order-${i}`,status:"delivered",
+    order_id:`le-order-${i}`,status:"delivered",revision_id:`locked-revision-${i}`,recipe_hash:"a".repeat(64),
     created_at:`2026-10-${String(i+1).padStart(2,"0")}T10:00:00Z`,
   }));
   const evidence=orders.map((order,i)=>({
-    order_id:order.order_id,manual_design_reentry:false,
+    order_id:order.order_id,evidence_id:`audit-${i}`,revision_id:order.revision_id,
+    recipe_hash:order.recipe_hash,order_created_at:order.created_at,
+    manual_design_reentry:false,reentry_fields:[],note:"",
     operator:"Independent checker",evidence_reference:`delivery-job-card-${i}`,
     created_at:"2026-10-21T08:00:00Z",
   }));
@@ -377,6 +379,15 @@ test("first-ten audit guard rejects missing chronology, duplicate orders and mal
     {...basis,evidence:[...evidence,{...evidence[0],manual_design_reentry:"false"}]},
     {...basis,evidence:[...evidence,{...evidence[0],created_at:"2026-10-19T10:00:00Z"}]},
     {...basis,evidence:[...evidence,{...evidence[0],evidence_reference:""}]},
+    {...basis,orders:[{...basis.orders[0],revision_id:"changed-revision"},...basis.orders.slice(1)]},
+    {...basis,orders:[{...basis.orders[0],recipe_hash:"b".repeat(64)},...basis.orders.slice(1)]},
+    {...basis,evidence:[{...evidence[0],revision_id:"different"},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],recipe_hash:"b".repeat(64)},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],order_created_at:"2026-10-01T00:00:00Z"},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],evidence_id:""},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],evidence_id:evidence[1].evidence_id},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],reentry_fields:["fabric_identity","fabric_identity"]},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],note:null},...evidence.slice(1)]},
   ];
   for(const candidate of invalid){
     assert.equal(validProductionFirstTenAuditBasis(candidate),false,
@@ -522,4 +533,30 @@ test("cloud health check also rejects misordered deliveries and unknown incident
   assert.match(checker,/Date.parse\(order.delivered_at\)<previousDeliveredAt/);
   assert.match(checker,/knownReentryFields/);
   assert.match(checker,/validReentryFields\(row.reentry_fields\)/);
+});
+
+test("cloud health checks immutable order/audit lineage and unique evidence",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const cloud=readFileSync("scripts/check-cloud-readiness.mjs","utf8");
+  assert.match(cloud,/row.revision_id===lineage.revisionId/);
+  assert.match(cloud,/row.recipe_hash===lineage.recipeHash/);
+  assert.match(cloud,/row.order_created_at===lineage.createdAt/);
+  assert.match(cloud,/seenEvidenceIds.has\(evidenceId\)/);
+});
+
+test("operator evidence submission rejects coerced record actions and fabric-order identities",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const route=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
+  assert.match(route,/if\(body.action!=="record"\)/);
+  assert.match(route,/typeof body.orderId==="string"/);
+  assert.match(route,/readSecureJsonObject\(request,16_?384\)/);
+  assert.match(route,/\[0-9a-f\]\{8\}/);
+  assert.throws(()=>normalizeProductionDeliveryEvidence({
+    manualDesignReentry:false,reentryFields:[],note:["not text"],operator:"Checker",
+    evidenceReference:"Job Card 100",
+  }),/note must be text/i);
+  assert.throws(()=>normalizeProductionDeliveryEvidence({
+    manualDesignReentry:false,reentryFields:[],note:"x".repeat(1201),operator:"Checker",
+    evidenceReference:"Job Card 100",
+  }),/1200 characters/i);
 });

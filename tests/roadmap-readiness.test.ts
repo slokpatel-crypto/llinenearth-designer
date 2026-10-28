@@ -60,8 +60,8 @@ test("roadmap control tower keeps human and physical evidence separate from engi
     },
     productionEvidence:{firstTenBasis:{
       version:"linen-earth-production-first-ten-audit-v2",historyValid:true,
-      orders:Array.from({length:10},(_,index)=>({order_id:`order-${index}`,status:"delivered",created_at:`2026-09-${String(index+1).padStart(2,"0")}T10:00:00Z`,delivered_at:"2026-10-20T10:00:00Z"})),
-      evidence:Array.from({length:10},(_,index)=>({order_id:`order-${index}`,manual_design_reentry:false,operator:"RK",evidence_reference:`CUT-${index}`,created_at:"2026-10-21T10:00:00Z"})),
+      orders:Array.from({length:10},(_,index)=>({order_id:`order-${index}`,status:"delivered",revision_id:`revision-${index}`,recipe_hash:"a".repeat(64),created_at:`2026-09-${String(index+1).padStart(2,"0")}T10:00:00Z`,delivered_at:"2026-10-20T10:00:00Z"})),
+      evidence:Array.from({length:10},(_,index)=>({order_id:`order-${index}`,evidence_id:`audit-${index}`,revision_id:`revision-${index}`,recipe_hash:"a".repeat(64),order_created_at:`2026-09-${String(index+1).padStart(2,"0")}T10:00:00Z`,manual_design_reentry:false,reentry_fields:[],note:"",operator:"RK",evidence_reference:`CUT-${index}`,created_at:"2026-10-21T10:00:00Z"})),
     }},
     meterageModel:{models:[{garment:"shirt",status:"approved"},{garment:"trouser",status:"approved"}]},
     customerOutcomes:{summary:{gateComplete:true,learningEligible:10,threshold:10}},
@@ -191,12 +191,13 @@ test("Phase 9 cannot pass on a preview or duplicate Vercel runtime",()=>{
 
 test("live Phase 8 cannot certify newest-500 browsing rows without a complete oldest-ten snapshot",()=>{
   const orders=Array.from({length:10},(_,index)=>({
-    order_id:"oldest-"+index,status:"delivered",
+    order_id:"oldest-"+index,status:"delivered",revision_id:"revision-"+index,recipe_hash:"a".repeat(64),
     created_at:"2026-09-"+String(index+1).padStart(2,"0")+"T09:00:00Z",
     delivered_at:"2026-10-09T10:00:00Z",
   }));
   const evidence=orders.map((item,index)=>({
-    order_id:item.order_id,manual_design_reentry:false,
+    order_id:item.order_id,evidence_id:"audit-"+index,revision_id:item.revision_id,recipe_hash:item.recipe_hash,
+    order_created_at:item.created_at,manual_design_reentry:false,reentry_fields:[],note:"",
     operator:"Tailor Checker",evidence_reference:"Real job card "+index,
     created_at:"2026-10-10T10:00:00Z",
   }));
@@ -242,11 +243,12 @@ test("roadmap rejects an otherwise complete production audit with missing delive
 
 test("Phase 8 rejects an overlong or malformed first-ten RPC snapshot",()=>{
   const orders=Array.from({length:11},(_,i)=>({
-    order_id:"historical-order-"+i,status:"delivered",
+    order_id:"historical-order-"+i,status:"delivered",revision_id:"revision-"+i,recipe_hash:"a".repeat(64),
     created_at:"2026-09-01T10:00:00Z",delivered_at:"2026-10-15T10:00:00Z",
   }));
   const evidence=orders.map((item,i)=>({
-    order_id:item.order_id,manual_design_reentry:false,
+    order_id:item.order_id,evidence_id:"audit-"+i,revision_id:item.revision_id,recipe_hash:item.recipe_hash,
+    order_created_at:item.created_at,manual_design_reentry:false,reentry_fields:[],note:"",
     operator:"Real production checker",evidence_reference:"Job sheet "+i,
     created_at:"2026-10-16T10:00:00Z",
   }));
