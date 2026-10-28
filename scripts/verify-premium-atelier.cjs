@@ -248,6 +248,7 @@ async function run() {
             garmentSelectHeight: document.querySelector('.newDesignerGarmentScope article select').getBoundingClientRect().height,
             filterFont: px('.newDesignerFabricFilters button'),
             filterHeight: document.querySelector('.newDesignerFabricFilters button').getBoundingClientRect().height,
+            spokenPreview: document.querySelector('.newDesignerSrOnly')?.textContent || '',
           };
         });
         assert.equal(studio.overflow, false, 'Designer stays within the viewport at ' + width);
@@ -257,6 +258,8 @@ async function run() {
           'garment construction selectors remain readable: ' + JSON.stringify(studio));
         assert.ok(studio.filterFont >= 11 && studio.filterHeight >= 44,
           'shirt fabric filter targets remain readable: ' + JSON.stringify(studio));
+        assert.ok(studio.spokenPreview.includes('Fit and drape require physical verification.'),
+          'screen reader preview state must not claim physical acceptance');
         await page.screenshot({ path: path.join(out, `designer-legibility-${width}.png`) });
         summary.checks.push('keyboard skip link and responsive Designer control legibility at ' + width + 'px');
       }

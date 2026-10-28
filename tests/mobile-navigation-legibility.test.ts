@@ -55,3 +55,12 @@ test("fabric discovery, photoreal view and QA controls do not regress to 6px cap
   assert.match(css,/\.newDesigner :is\(\.newDesignerSelectedQa span,[^}]*\)\{font-size:11px!important/);
   assert.match(css,/\.newDesigner \.newDesignerSelectedQaMetrics i\{white-space:normal/);
 });
+
+test("fabric and preview readiness changes are announced without claiming verified fit",()=>{
+  const photo=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const css=readFileSync("src/app/designer-studio/accessibility.css","utf8");
+  assert.match(photo,/className="newDesignerSrOnly" role="status" aria-live="polite" aria-atomic="true"/);
+  assert.match(photo,/previewFabricLabel\(shirt,pant\)/);
+  assert.match(photo,/Fit and drape require physical verification\./);
+  assert.match(css,/\.newDesigner \.newDesignerSrOnly\{[^}]*clip-path:inset\(50%\)/);
+});
