@@ -611,3 +611,23 @@ test("direct realism aggregator treats malformed envelope types as no evidence",
   }
   assert.equal(summarizeIndependentRealism([{viewerId:"valid",rating:5}]).uniqueViewers,1);
 });
+
+
+test("direct acceptance rejects malformed root envelopes and non-array ratings",()=>{
+  for(const malformed of [null,undefined,[],{},false,42]){
+    const gate=phase1ProofAcceptance(malformed as unknown as Parameters<typeof phase1ProofAcceptance>[0]);
+    assert.equal(gate.accepted,false);
+    assert.equal(gate.realismReady,false);
+    assert.equal(gate.scaleReady,false);
+  }
+  const gate=phase1ProofAcceptance({
+    repeatMm:10,
+    scaleGatePass:true,
+    realModelSamples:12,
+    realModelP95Ms:200,
+    realismRatings:"5,5,5,5,5,5,5,5" as unknown as number[],
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  });
+  assert.equal(gate.realismReady,false);
+  assert.equal(gate.accepted,false);
+});
