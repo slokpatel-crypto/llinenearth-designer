@@ -36,6 +36,44 @@ def candidate_sleeve_inboard_mm(panel, body_height_ratio, requested_mm):
 
 
 
+
+MAX_OUTER_CUFF_TAPER_MM = 36.0
+
+
+def candidate_outer_cuff_taper_mm(panel, body_height_ratio, outer_fraction, requested_mm):
+    """Experimental cuff ONLY: trim the outside half of an existing sleeve.
+
+    Unlike translating the entire source-derived tube, this leaves the
+    skin-facing inner half at its already BVH-checked position. A Blender
+    trial must STILL independently check full cloth/body intersections,
+    source silhouette, evaluated UV and photographic identity. It is not a
+    measured pattern, body/hand pose change or fit approval.
+
+    outer_fraction=0 is the inside extremum in the source cuff-height band;
+    outer_fraction=1 is its outside extremum. Do not derive this from an
+    assumed human joint location.
+    """
+    if panel not in ("ShirtSleeveLFabric", "ShirtSleeveRFabric"):
+        raise ValueError("Outer cuff contour is sleeve-only")
+    values = (body_height_ratio, outer_fraction, requested_mm)
+    if any(isinstance(x, (bool, str, bytes)) or not isinstance(x, (int, float))
+           or not math.isfinite(x) for x in values):
+        raise ValueError("Outer cuff contour needs finite numeric parameters")
+    if not 0 <= body_height_ratio <= 1 or not 0 <= outer_fraction <= 1:
+        raise ValueError("Outer cuff coordinates must be normalized to [0,1]")
+    if not 0 <= requested_mm <= MAX_OUTER_CUFF_TAPER_MM:
+        raise ValueError("Outer cuff contour cannot exceed 36 mm per side")
+
+    # A smooth, strictly cloth-only contour: no inner cuff motion, no
+    # shoulder movement, no invented anatomical reference or fabric easing.
+    outside = max(0.0, min(1.0, (outer_fraction - .45) / .55))
+    outside = outside * outside * (3.0 - 2.0 * outside)
+    signed_vertical_fade = candidate_sleeve_inboard_mm(
+        panel, body_height_ratio, 1.0
+    )
+    return signed_vertical_fade * requested_mm * outside
+
+
 def optimistic_sleeve_spacing_budget(current_spacing_mm, applied_mm_per_sleeve, *,
                                      target_mm=500.0, tolerance_mm=36.0):
     """Upper bound on what the REMAINING cloth-only contour can achieve.

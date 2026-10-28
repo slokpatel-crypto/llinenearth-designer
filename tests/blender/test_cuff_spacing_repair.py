@@ -140,4 +140,71 @@ for obj in (left, right):
         assert abs(vertex.co.z - origin[2]) < 1e-6, "Rejected fine trial leaked Z"
 assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
 
+
+# A second independent source-locked experiment reduces ONLY the outside
+# half of the cuff rather than moving the entire arm-width shell through skin.
+# This separate tiny Blender fixture proves restoration, not real-world fit.
+bpy.data.objects.remove(left, do_unlink=True)
+bpy.data.objects.remove(right, do_unlink=True)
+left = cube("ShirtSleeveLFabric", (-.32, 0, .56), (.12, .05, .08))
+right = cube("ShirtSleeveRFabric", (.32, 0, .56), (.12, .05, .08))
+outer_before = {
+    obj.name: tuple(tuple(vertex.co) for vertex in obj.data.vertices)
+    for obj in (left, right)
+}
+outer_contour_pass = author.try_collision_safe_outer_cuff_taper(
+    body, 0.0, 1.0, 30.0
+)
+assert outer_contour_pass["nativeWorldSpaceCollisionFree"] is True, outer_contour_pass
+assert outer_contour_pass["selectedMmPerSleeve"] == 30.0, outer_contour_pass
+for obj in (left, right):
+    coords = outer_before[obj.name]
+    x_values = [p[0] for p in coords]
+    outer_x = min(x_values) if obj is left else max(x_values)
+    inner_x = max(x_values) if obj is left else min(x_values)
+    for vertex, original_xyz in zip(obj.data.vertices, coords):
+        if abs(original_xyz[0] - inner_x) < 1e-6:
+            assert abs(vertex.co.x - original_xyz[0]) < 1e-7, (
+                "Body-facing sleeve cloth must not move"
+            )
+        if abs(original_xyz[0] - outer_x) < 1e-6:
+            sign = 1 if obj is left else -1
+            assert abs(vertex.co.x - (original_xyz[0] + sign * .03)) < 1e-6
+        assert abs(vertex.co.y - original_xyz[1]) < 1e-7
+        assert abs(vertex.co.z - original_xyz[2]) < 1e-7
+assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
+assert outer_contour_pass["productionApproved"] is False
+
+# A real native intersection test is compulsory for EACH candidate. If every
+# nonzero contour intersects the source, the 0-mm rollback must preserve
+# all XYZ, and cannot claim newly approved sleeve spacing.
+bpy.data.objects.remove(left, do_unlink=True)
+bpy.data.objects.remove(right, do_unlink=True)
+left = cube("ShirtSleeveLFabric", (-.32, 0, .56), (.12, .05, .08))
+right = cube("ShirtSleeveRFabric", (.32, 0, .56), (.12, .05, .08))
+rejected_source = {
+    obj.name: tuple(tuple(vertex.co) for vertex in obj.data.vertices)
+    for obj in (left, right)
+}
+def fake_source_contact(first, second):
+    if first is body and second in (left, right):
+        original_positions = rejected_source[second.name]
+        return 1 if any(abs(vertex.co.x - point[0]) > 1e-8
+                        for vertex, point in zip(second.data.vertices, original_positions)) else 0
+    return 0
+
+try:
+    author.source_fit_collision_pairs = fake_source_contact
+    outer_rejected = author.try_collision_safe_outer_cuff_taper(body, 0, 1, 30)
+finally:
+    author.source_fit_collision_pairs = actual_contact
+assert outer_rejected["selectedMmPerSleeve"] == 0, outer_rejected
+assert outer_rejected["productionApproved"] is False
+assert len(outer_rejected["trials"]) >= 2
+assert all(not trial["nativeWorldSpaceCollisionFree"]
+           for trial in outer_rejected["trials"] if trial["requestedOuterContourMmPerSleeve"] > 0)
+for obj in (left, right):
+    assert tuple(tuple(vertex.co) for vertex in obj.data.vertices) == rejected_source[obj.name]
+assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
+
 print("LINEN_EARTH_NATIVE_CUFF_SPACING_REPAIR: PASS")

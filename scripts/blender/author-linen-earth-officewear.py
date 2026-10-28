@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
 from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic, metric_tangent_chart_uv, audit_shared_uv_edges, phase_align_cylindrical_charts, align_metric_tangent_charts, classify_unapproved_uv_seams, estimate_source_tube_radius_m
 from region_islands import keep_ankle_connected_faces
-from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm, bounded_sleeve_cuff_refinement_trials
+from sleeve_stance_math import MAX_INBOARD_MM, MAX_OUTER_CUFF_TAPER_MM, candidate_sleeve_inboard_mm, candidate_outer_cuff_taper_mm, bounded_sleeve_cuff_refinement_trials
 from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm, candidate_inner_seam_relief_mm
 from leg_gap_safety import bounded_leg_gap_trials, bounded_leg_gap_refinement_trials
 
@@ -62,6 +62,8 @@ def cli_args():
                         help="0 for a clean shell; 0..6 mm art-directed visual microfolds, not physical drape")
     parser.add_argument("--sleeve-cuff-inboard-mm", type=float, default=22.0,
                         help="OFF by default: native 20mm experiment intersected locked body; 0..22mm/side for diagnostic only")
+    parser.add_argument("--sleeve-outer-cuff-taper-mm", type=float, default=30.0,
+                        help="Unapproved outer cloth contour trial, 0..36 mm/side; keep native collision and geometry gates")
     parser.add_argument("--trouser-leg-inboard-mm", type=float, default=3.0,
                         help="Conservative cloth-only leg-gap trial 3mm per leg; 7mm trial intersected left/right cloth")
     return parser.parse_args(argv)
@@ -835,6 +837,119 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
     return evidence
 
 
+
+def try_collision_safe_outer_cuff_taper(body, floor_z, height, requested_mm):
+    """Probe a SOURCE sleeve contour, never the unchanged model/hand pose.
+
+    The earlier uniform tube translation cannot reach the identity hand-spacing
+    band within its collision-safe 22-mm cap. This independent experiment
+    moves only each sleeve's outer-facing cuff perimeter towards the centre;
+    inner cloth vertices stay exactly at their source positions. A candidate is
+    retained only after fresh real-world body/sleeve BVH tests. The native
+    silhouette, UV, four-angle and tailor gates remain mandatory.
+    """
+    if (isinstance(requested_mm, (str, bytes, bool)) or
+            not isinstance(requested_mm, (int, float)) or
+            not math.isfinite(requested_mm) or not 0 <= requested_mm <= MAX_OUTER_CUFF_TAPER_MM):
+        raise RuntimeError("Source cuff contour trial needs finite 0..36 mm")
+    if not math.isfinite(floor_z) or not math.isfinite(height) or height <= 0:
+        raise RuntimeError("Source cuff contour needs a valid body frame")
+    names = ("ShirtSleeveLFabric", "ShirtSleeveRFabric")
+    sleeves = [bpy.data.objects.get(name) for name in names]
+    if any(obj is None or obj.type != "MESH" for obj in sleeves):
+        raise RuntimeError("Two original source-derived sleeve meshes required")
+    original = {obj.name: [vertex.co.copy() for vertex in obj.data.vertices]
+                for obj in sleeves}
+
+    def restore_original():
+        for obj in sleeves:
+            if len(obj.data.vertices) != len(original[obj.name]):
+                raise RuntimeError("Sleeve topology changed during exterior contour trials")
+            for vertex, xyz in zip(obj.data.vertices, original[obj.name]):
+                vertex.co = xyz
+            obj.data.update()
+        bpy.context.view_layer.update()
+
+    # This source-mesh band follows the same normalized lower sleeve range as
+    # the unmodified cuff-profile function. Never use a fabricated joint XY.
+    x_bands = {}
+    for obj in sleeves:
+        cuff_x = [point.x for point in original[obj.name]
+                  if .50 <= (point.z - floor_z) / height <= .64]
+        if len(cuff_x) < 8 or max(cuff_x) - min(cuff_x) < .04:
+            raise RuntimeError("Source sleeve cuff band cannot support bounded contour")
+        x_bands[obj.name] = (min(cuff_x), max(cuff_x))
+
+    if ([source_fit_collision_pairs(body, obj) for obj in sleeves] != [0, 0]
+            or source_fit_collision_pairs(sleeves[0], sleeves[1]) != 0):
+        raise RuntimeError("Exterior contour cannot start from intersecting sleeve geometry")
+    attempted = []
+    for mm in dict.fromkeys(
+        [round(max(0.0, requested_mm - 3.0 * step), 6)
+         for step in range(math.ceil(requested_mm / 3.0) + 1)] + [0.0]
+    ):
+        restore_original()
+        for obj in sleeves:
+            lowest, highest = x_bands[obj.name]
+            span = highest - lowest
+            for vertex, position in zip(obj.data.vertices, original[obj.name]):
+                outer_fraction = ((highest - position.x) / span
+                                  if obj.name == names[0] else
+                                  (position.x - lowest) / span)
+                # Outside points beyond the guide-height band are clamped,
+                # and shoulder fades to zero by its immutable source ratio.
+                outer_fraction = max(0.0, min(1.0, outer_fraction))
+                ratio = (position.z - floor_z) / height
+                if 0.0 <= ratio <= 1.0:
+                    vertex.co.x = position.x + candidate_outer_cuff_taper_mm(
+                        obj.name, ratio, outer_fraction, mm
+                    ) / 1000.0
+            obj.data.update()
+        bpy.context.view_layer.update()
+        skin_pairs = [source_fit_collision_pairs(body, obj) for obj in sleeves]
+        mutual_pairs = source_fit_collision_pairs(sleeves[0], sleeves[1])
+        safe = skin_pairs == [0, 0] and mutual_pairs == 0
+        attempted.append({"requestedOuterContourMmPerSleeve": mm,
+                          "bodyContactPairs": skin_pairs,
+                          "betweenSleevesContactPairs": mutual_pairs,
+                          "nativeWorldSpaceCollisionFree": safe})
+        if safe:
+            evidence = {
+                "requestedMmPerSleeve": requested_mm,
+                "selectedMmPerSleeve": mm,
+                "nativeWorldSpaceCollisionFree": True,
+                "cuffContourMethod": "original_mesh_outer_perimeter_only_unapproved",
+                "trials": attempted,
+                "photoPoseApproved": False,
+                "physicalDrapeApproved": False,
+                "tailorApproved": False,
+                "productionApproved": False,
+            }
+            for obj in sleeves:
+                obj["linen_earth_sleeve_outer_cuff_taper_candidate_mm"] = mm
+                obj["linen_earth_sleeve_outer_cuff_taper_evidence_json"] = json.dumps(evidence, sort_keys=True)
+            print("SOURCE_FIT_OUTER_CUFF_CONTOUR_TRIAL=" + json.dumps(evidence, sort_keys=True))
+            return evidence
+
+    restore_original()
+    evidence = {
+        "requestedMmPerSleeve": requested_mm,
+        "selectedMmPerSleeve": 0.0,
+        "nativeWorldSpaceCollisionFree": False,
+        "cuffContourMethod": "original_mesh_outer_perimeter_only_unapproved",
+        "trials": attempted,
+        "photoPoseApproved": False,
+        "physicalDrapeApproved": False,
+        "tailorApproved": False,
+        "productionApproved": False,
+    }
+    for obj in sleeves:
+        obj["linen_earth_sleeve_outer_cuff_taper_candidate_mm"] = 0.0
+        obj["linen_earth_sleeve_outer_cuff_taper_evidence_json"] = json.dumps(evidence, sort_keys=True)
+    print("SOURCE_FIT_OUTER_CUFF_CONTOUR_REJECTED=" + json.dumps(evidence, sort_keys=True))
+    return evidence
+
+
 def planar_grain_uv(obj):
     """Candidate X/Z UV uses mesh metres, not an arbitrary 0..1 per panel.
 
@@ -1011,6 +1126,8 @@ def main():
         raise RuntimeError("Unverified leg spacing adjustment must stay within 0..8 mm per shell.")
     if not math.isfinite(options.sleeve_cuff_inboard_mm) or not 0 <= options.sleeve_cuff_inboard_mm <= MAX_INBOARD_MM:
         raise RuntimeError("Unverified sleeve cuff shift must be within 0..22 mm, not an approved body pose.")
+    if not math.isfinite(options.sleeve_outer_cuff_taper_mm) or not 0 <= options.sleeve_outer_cuff_taper_mm <= MAX_OUTER_CUFF_TAPER_MM:
+        raise RuntimeError("Unapproved exterior cuff taper must be 0..36 mm; native physical checks stay mandatory.")
     if not math.isfinite(options.waist_layer_extra_mm) or not 0 <= options.waist_layer_extra_mm <= 7:
         raise RuntimeError("Unverified tuck/waist layer separation must be between 0 and 7 mm.")
     if options.clearance_mm + options.waist_layer_extra_mm > 18:
@@ -1141,6 +1258,9 @@ def main():
     cuff_audit = try_collision_safe_cuff_spacing(
         body, min_z, height, options.sleeve_cuff_inboard_mm
     )
+    outer_cuff_audit = try_collision_safe_outer_cuff_taper(
+        body, min_z, height, options.sleeve_outer_cuff_taper_mm
+    ) if cuff_audit["nativeWorldSpaceCollisionFree"] else None
     # The final attempted fine probe is not necessarily the SAFE snapshot.
     # Recompute source-world BVH contacts on the restored, actually retained
     # meshes. Never record the last rejected trial as the final garment state.
@@ -1155,6 +1275,7 @@ def main():
     for obj, post_count in zip(sleeves, sleeve_contact_final):
         fit_stage_report[obj.name]["postCuffBodyPairs"] = post_count
         fit_stage_report[obj.name]["postCuffSelectedMmPerSleeve"] = cuff_audit["selectedMmPerSleeve"]
+        fit_stage_report[obj.name]["postCuffOuterTaperMmPerSleeve"] = (outer_cuff_audit["selectedMmPerSleeve"] if outer_cuff_audit else None)
         fit_stage_report[obj.name]["postCuffSleevePairs"] = sleeve_mutual_final
     for obj, post_count in zip(legs, leg_contact_final):
         fit_stage_report[obj.name]["postGapRollbackBodyPairs"] = post_count
@@ -1200,6 +1321,8 @@ def main():
     bpy.context.scene["linen_earth_contact_repair_passes"] = options.contact_repair_passes
     bpy.context.scene["linen_earth_waist_layer_extra_mm"] = options.waist_layer_extra_mm
     bpy.context.scene["linen_earth_hem_taper_candidate_fraction"] = options.hem_taper_fraction
+    bpy.context.scene["linen_earth_candidate_sleeve_outer_cuff_mm"] = (outer_cuff_audit["selectedMmPerSleeve"] if outer_cuff_audit else None)
+    bpy.context.scene["linen_earth_sleeve_outer_cuff_evidence_json"] = json.dumps(outer_cuff_audit, sort_keys=True) if outer_cuff_audit else "null"
     bpy.context.scene["linen_earth_candidate_sleeve_inboard_mm"] = cuff_audit["selectedMmPerSleeve"]
     bpy.context.scene["linen_earth_candidate_sleeve_inboard_requested_mm"] = options.sleeve_cuff_inboard_mm
     bpy.context.scene["linen_earth_sleeve_gap_rollback_audit_json"] = json.dumps(cuff_audit, sort_keys=True)

@@ -217,3 +217,32 @@ fix the immutable sleeve spacing, or approve photoreal results**. Preserve the
 original model and source-body pose. The candidate remains in draft PR #311,
 without merging or deploying. Only cite terminal matching-head CI/browser/
 native Blender runs as verification.
+
+
+## 28 October 2026 — bounded exterior-only cuff experiment (draft)
+
+The prior *real* source-Blender trial left sleeve centres at 563.4 mm after
+11 mm of safe whole-sleeve movement; the unchanged photographic guide accepts
+500 +/- 36 mm. Existing complete-tube translation cannot close the gap within
+the 22-mm bound. A separate candidate now explores a **0–36 mm exterior-only
+cloth contour**: in the source lower-cuff band, the outer perimeter can move
+towards centre while the skin-facing inner 45% of that tube does not move at
+all. The source human, hands, material provenance and shoulder fade stay
+unchanged. The new method does **not** relax the existing whole-tube cap.
+
+The Blender author independently checks both original sleeve/body pairs and
+sleeve-to-sleeve contacts for every descending 3-mm contour trial, and restores
+the original full XYZ source snapshot before each attempt. If all positive
+trials intersect body geometry, the unchanged zero-millimetre candidate is
+restored; a source/contact mismatch is not allowed to count as a successful
+fit. The source-independent preflight must still check sleeve spacing, evaluated
+mesh topology, UV, silhouette, body collisions and source photo identity.
+Unit and native Blender fixture tests cover sign, left/right symmetry,
+untrusted inputs, inner-perimeter immobility and rejection rollback.
+
+**All geometry changes remain unapproved.** A collision-free full sleeve
+cannot be inferred from a toy fixture, and no claim of passing native
+original-source Blender geometry, authentic four-angle photo comparison,
+supplier grain/repeat, fabric mechanics or tailor acceptance is made until
+exact-head workflows and human evidence exist. Keep this PR stacked on
+#311, draft/unmerged, not deployed.
