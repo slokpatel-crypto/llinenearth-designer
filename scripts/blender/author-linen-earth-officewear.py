@@ -773,6 +773,23 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
                     "maxVertexCorrectionMm": report["maxVertexCorrectionMm"],
                     "remainingContactPairs": report["remainingContactPairs"],
                 }
+        # A skin-normal repair can push the cuff into the shirt's armhole.
+        # Attempt a small, bounded torso-normal correction only for NEW
+        # intersections beyond the sewn-junction baseline. Every correction
+        # is separately checked against source skin and the opposite sleeve;
+        # an unsuccessful attempt is rolled back by the next evaluate().
+        torso_after_body_repair = [
+            source_fit_collision_pairs(torso, obj) for obj in sleeves
+        ]
+        torso_repairs = {}
+        for obj, count, baseline in zip(sleeves, torso_after_body_repair, torso_baseline_pairs):
+            if count > baseline:
+                report = repair_body_intersections(torso, obj, 3)
+                torso_repairs[obj.name] = {
+                    "contactPairsByPass": report["contactPairsByPass"],
+                    "maxVertexCorrectionMm": report["maxVertexCorrectionMm"],
+                    "remainingContactPairs": report["remainingContactPairs"],
+                }
         after = [source_fit_collision_pairs(body, obj) for obj in sleeves]
         torso_after = [source_fit_collision_pairs(torso, obj) for obj in sleeves]
         sleeve_pairs = source_fit_collision_pairs(sleeves[0], sleeves[1])
@@ -789,7 +806,9 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
             "bodyPairsAfterRepair": after,
             "shirtTorsoPairsAtOriginal": torso_baseline_pairs,
             "shirtTorsoPairsBeforeRepair": torso_before,
+            "shirtTorsoPairsAfterBodyRepair": torso_after_body_repair,
             "shirtTorsoPairsAfterRepair": torso_after,
+            "boundedShirtTorsoContactCorrections": torso_repairs,
             "shirtTorsoContactNotWorsened": torso_not_worsened,
             "sleeveToSleevePairs": sleeve_pairs,
             "boundedBodyContactCorrections": repairs,
