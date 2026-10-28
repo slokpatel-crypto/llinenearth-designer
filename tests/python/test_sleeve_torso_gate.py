@@ -100,5 +100,115 @@ class SleeveTorsoGateTests(unittest.TestCase):
                 module.validate_sleeve_torso_receipts([raw, raw], (0, 0))
 
 
+    def test_exterior_cuff_final_mesh_and_original_seam_are_both_bound(self):
+        outer = {
+            "cuffContourMethod": "original_mesh_outer_perimeter_only_unapproved",
+            "nativeWorldSpaceCollisionFree": True,
+            "shirtTorsoContactNotWorsened": True,
+            "requestedMmPerSleeve": 30.0,
+            "selectedMmPerSleeve": 18.0,
+            "shirtTorsoPairsAtOriginal": [4, 5],
+            "shirtTorsoPairsAtSelected": [3, 5],
+            "photoPoseApproved": False,
+            "physicalDrapeApproved": False,
+            "tailorApproved": False,
+            "productionApproved": False,
+            "trials": [{
+                "requestedOuterContourMmPerSleeve": 18.0,
+                "bodyContactPairs": [0, 0],
+                "shirtTorsoPairsAtOriginal": [4, 5],
+                "shirtTorsoPairsAtTrial": [3, 5],
+                "shirtTorsoContactNotWorsened": True,
+                "betweenSleevesContactPairs": 0,
+                "nativeWorldSpaceCollisionFree": True,
+            }],
+        }
+        raw = json.dumps(outer)
+        verified = module.validate_outer_cuff_torso_receipts([raw, raw], [3, 5])
+        self.assertEqual(verified["shirtTorsoPairsAtOriginal"], [4, 5])
+        self.assertFalse(verified["productionApproved"])
+        # First-stage selected torso receipt must match second-stage original,
+        # not the current evaluated mesh after the exterior contour.
+        first = receipt(baseline=(5, 6), selected=(4, 5))
+        self.assertTrue(module.validate_sleeve_torso_receipts(
+            [first, first], verified["shirtTorsoPairsAtOriginal"]
+        )["independentNativeBvhMatchesReceipt"])
+        with self.assertRaises(ValueError):
+            module.validate_sleeve_torso_receipts([first, first], [3, 5])
+
+        zero = {**outer, "selectedMmPerSleeve": 0.0,
+                "shirtTorsoPairsAtSelected": [4, 5],
+                "trials": [{**outer["trials"][0],
+                            "requestedOuterContourMmPerSleeve": 0.0,
+                            "shirtTorsoPairsAtTrial": [4, 5]}]}
+        z = json.dumps(zero)
+        self.assertTrue(module.validate_outer_cuff_torso_receipts(
+            [z, z], [4, 5]
+        )["independentNativeBvhMatchesReceipt"])
+
+    def test_exterior_cuff_rejects_stale_coerced_and_forged_evidence(self):
+        base = {
+            "cuffContourMethod": "original_mesh_outer_perimeter_only_unapproved",
+            "nativeWorldSpaceCollisionFree": True,
+            "shirtTorsoContactNotWorsened": True,
+            "requestedMmPerSleeve": 30.0,
+            "selectedMmPerSleeve": 12.0,
+            "shirtTorsoPairsAtOriginal": [4, 5],
+            "shirtTorsoPairsAtSelected": [3, 5],
+            "photoPoseApproved": False,
+            "physicalDrapeApproved": False,
+            "tailorApproved": False,
+            "productionApproved": False,
+            "trials": [{
+                "requestedOuterContourMmPerSleeve": 12.0,
+                "bodyContactPairs": [0, 0],
+                "shirtTorsoPairsAtOriginal": [4, 5],
+                "shirtTorsoPairsAtTrial": [3, 5],
+                "shirtTorsoContactNotWorsened": True,
+                "betweenSleevesContactPairs": 0,
+                "nativeWorldSpaceCollisionFree": True,
+            }],
+        }
+        raw = json.dumps(base)
+        for pair, measured in (
+            ([raw], [3, 5]),
+            ([raw, None], [3, 5]),
+            ([raw, raw], [4, 5]),
+            ([raw, raw], [3, True]),
+            ([raw, json.dumps({**base, "selectedMmPerSleeve": 0})], [3, 5]),
+        ):
+            with self.subTest(pair=pair, measured=measured), self.assertRaises(ValueError):
+                module.validate_outer_cuff_torso_receipts(pair, measured)
+        mutations = (
+            {"selectedMmPerSleeve": True},
+            {"selectedMmPerSleeve": "12"},
+            {"selectedMmPerSleeve": 36.1},
+            {"selectedMmPerSleeve": 31},
+            {"requestedMmPerSleeve": float("nan")},
+            {"shirtTorsoPairsAtOriginal": [4.0, 5]},
+            {"shirtTorsoPairsAtSelected": [5, 5]},
+            {"nativeWorldSpaceCollisionFree": 1},
+            {"shirtTorsoContactNotWorsened": "true"},
+            {"tailorApproved": True},
+            {"trials": []},
+            {"trials": [{**base["trials"][0], "bodyContactPairs": [1, 0]}]},
+            {"trials": [{**base["trials"][0], "shirtTorsoPairsAtTrial": [4, 5]}]},
+            {"trials": [{**base["trials"][0], "betweenSleevesContactPairs": True}]},
+            {"trials": base["trials"] + base["trials"]},
+        )
+        for change in mutations:
+            raw = json.dumps({**base, **change})
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                module.validate_outer_cuff_torso_receipts([raw, raw], [3, 5])
+        for raw in (
+            '{"nativeWorldSpaceCollisionFree":true,"nativeWorldSpaceCollisionFree":true}',
+            '{"nativeWorldSpaceCollisionFree":NaN}',
+            'not json',
+        ):
+            with self.subTest(raw=raw), self.assertRaises(ValueError):
+                module.validate_outer_cuff_torso_receipts([raw, raw], [3, 5])
+
+
+
 if __name__ == "__main__":
     unittest.main()
