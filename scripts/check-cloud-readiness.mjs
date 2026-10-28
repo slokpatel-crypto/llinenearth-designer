@@ -128,6 +128,8 @@ if (url && key) {
           ["production_order_list",{p_limit:1},"Production order ledger RPCs are installed."],
           ["finished_garment_qc_list",{p_limit:1},"Finished-garment QC RPCs are installed."],
           ["production_delivery_evidence_list",{p_limit:1},"Production delivery evidence RPCs are installed."],
+          ["production_delivery_first_ten_audit",{},"Authoritative first-ten delivery chronology RPC is installed."],
+          ["production_delivery_evidence_recent",{p_limit:1},"Recent delivery evidence queue RPC is installed."],
           ["production_meterage_model_list",{p_limit:1},"Versioned meterage calibration RPCs are installed."],
           ["production_cut_evidence_list",{p_limit:1},"Production cut evidence registry RPCs are installed."],
           ["launch_beta_attempt_list",{p_limit:1},"Private-beta evidence RPCs are installed."],
