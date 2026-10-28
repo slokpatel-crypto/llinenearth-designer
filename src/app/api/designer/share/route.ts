@@ -1,24 +1,31 @@
 import { NextResponse } from "next/server";
+import { readLockedHandoffRequest, verifiedLockedHandoffAuditId } from "@/lib/designer/locked-handoff-request";
 import { createDesignShareToken, designShareConfigured } from "@/lib/designer/design-share";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 
 export const runtime="nodejs";
 
+function privateJson(body:unknown,init?:{status?:number}){
+  return NextResponse.json(body,{...init,headers:{"cache-control":"private, no-store"}});
+}
+
 export async function POST(request:Request){
   try{
-    const revision=await request.json() as LockedDesignRevision;
+    const parsed=await readLockedHandoffRequest(request);
+    if(!parsed.ok) return privateJson({error:parsed.error},{status:parsed.status});
+    const revision=parsed.revision as unknown as LockedDesignRevision;
     if(!revision || revision.version!=="linen-earth-design-lock-v1") {
-      return NextResponse.json({error:"A locked Linen Earth design revision is required."},{status:400});
+      return privateJson({error:"A locked Linen Earth design revision is required."},{status:400});
     }
     if(!await verifyLockedDesignRevision(revision)) {
-      return NextResponse.json({error:"The locked design revision did not pass integrity verification."},{status:409});
+      return privateJson({error:"The locked design revision did not pass integrity verification."},{status:409});
     }
     if(!designShareConfigured()) {
-      return NextResponse.json({error:"Design sharing is not configured on this deployment."},{status:503});
+      return privateJson({error:"Design sharing is not configured on this deployment."},{status:503});
     }
     const token=createDesignShareToken(revision);
-    if(!token) return NextResponse.json({error:"Could not create a share token."},{status:500});
+    if(!token) return privateJson({error:"Could not create a share token."},{status:500});
 
     let audited=false;
     const cloud=getSupabaseAdminConfig();
@@ -31,15 +38,20 @@ export async function POST(request:Request){
           cache:"no-store",
           signal:AbortSignal.timeout(8_000),
         });
-        audited=audit.ok;
-        if(!audit.ok) console.error("[designer/share] audit failed",audit.status,(await audit.text()).slice(0,240));
+        if(audit.ok){
+          const auditId=verifiedLockedHandoffAuditId(await audit.json().catch(()=>null));
+          audited=Boolean(auditId);
+          if(!audited) console.error("[designer/share] audit RPC did not return a valid audit ID");
+        }else{
+          console.error("[designer/share] audit failed",audit.status);
+        }
       }catch(error){
         console.error("[designer/share] audit failed",error);
       }
     }
 
-    return NextResponse.json({token,expiresInDays:30,audited});
+    return privateJson({token,expiresInDays:30,audited});
   }catch{
-    return NextResponse.json({error:"Could not create a share link for this design."},{status:400});
+    return privateJson({error:"Could not create a share link for this design."},{status:400});
   }
 }
