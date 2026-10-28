@@ -67,9 +67,25 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
             "gate": PREFLIGHT_GATE, "ready": True, "reasons": [],
             "modelIdentity": {"id": MODEL_IDENTITY_ID, "referenceImage": REFERENCE_IMAGE, "locked": True},
             "referenceBody": "Body", "bodyHeightMm": 1727.0,
-            "identityGuideMeasurementsMm": {"handCenterSpacing": 500.0, "legCenterSpacing": 210.0},
+            "identityGuideMeasurementsMm": {
+                "LE_GUIDE_SHIRT_SHOULDER": 388.0,
+                "LE_GUIDE_SHIRT_WAIST": 294.0,
+                "LE_GUIDE_TROUSER_WAIST": 344.0,
+                "LE_GUIDE_LEFT_HEM": 64.0,
+                "LE_GUIDE_RIGHT_HEM": 64.0,
+                "LE_GUIDE_OUTER_ARM_SILHOUETTE": 574.0,
+                "LE_GUIDE_HEIGHT": 1727.0,
+                "handCenterSpacing": 500.0, "legCenterSpacing": 210.0,
+            },
             "requiredGarmentObjects": list(GARMENT_OBJECTS),
-            "identityFitMeasurementsMm": {"sleeveCenterSpacingMm": 500.0, "legCenterSpacingMm": 210.0},
+            "identityFitMeasurementsMm": {
+                "shirtShoulderWidthMm": 388.0, "shirtWaistWidthMm": 294.0,
+                "trouserWaistWidthMm": 344.0, "leftHemWidthMm": 64.0,
+                "rightHemWidthMm": 64.0, "shirtCenterOffsetMm": 0.0,
+                "trouserCenterOffsetMm": 0.0, "sleeveCenterSpacingMm": 500.0,
+                "cuffWidthAsymmetryMm": 0.0, "hemWidthAsymmetryMm": 0.0,
+                "legCenterSpacingMm": 210.0,
+            },
             "objects": {name: {"present": True, "inExportCollection": True,
                                "uvQuality": {"invalidUvFaces": 0, "nonfiniteUvFaces": 0,
                                              "collapsedUvFaces": 0, "discontinuousSharedUvEdges": 0,
@@ -414,6 +430,58 @@ else:
                 self.assertTrue(any("native preflight report" in reason.lower()
                                     for reason in self.validate()))
 
+
+    def test_native_ready_cannot_skip_any_silhouette_or_identity_guide_sample(self):
+        # A report saying ready=True is insufficient when Blender could not
+        # sample a waist, hem, cuff, centerline or canonical guide.
+        self.assertEqual(validate_native_preflight_report(self.report), [])
+        for field in tuple(self.report["identityFitMeasurementsMm"]):
+            for invalid in (None, True, "0", float("nan"), float("inf")):
+                with self.subTest(kind="fit", field=field, invalid=invalid):
+                    original = self.report["identityFitMeasurementsMm"][field]
+                    self.report["identityFitMeasurementsMm"][field] = invalid
+                    self.assertTrue(any(field in reason for reason in
+                                        validate_native_preflight_report(self.report)))
+                    self.report["identityFitMeasurementsMm"][field] = original
+            original = self.report["identityFitMeasurementsMm"].pop(field)
+            with self.subTest(kind="missing-fit", field=field):
+                self.assertTrue(any(field in reason for reason in
+                                    validate_native_preflight_report(self.report)))
+            self.report["identityFitMeasurementsMm"][field] = original
+        for field in tuple(self.report["identityGuideMeasurementsMm"]):
+            original = self.report["identityGuideMeasurementsMm"].pop(field)
+            with self.subTest(kind="missing-guide", field=field):
+                self.assertTrue(any(field in reason for reason in
+                                    validate_native_preflight_report(self.report)))
+            self.report["identityGuideMeasurementsMm"][field] = original
+        self.assertEqual(validate_native_preflight_report(self.report), [])
+
+    def test_native_ready_cannot_accept_out_of_tolerance_silhouette_receipts(self):
+        for field, invalid in (
+            ("shirtShoulderWidthMm", 431.0),
+            ("shirtWaistWidthMm", 333.0),
+            ("trouserWaistWidthMm", 383.0),
+            ("leftHemWidthMm", 93.0),
+            ("rightHemWidthMm", 93.0),
+            ("shirtCenterOffsetMm", 19.0),
+            ("trouserCenterOffsetMm", -19.0),
+            ("cuffWidthAsymmetryMm", 15.0),
+            ("hemWidthAsymmetryMm", 11.0),
+        ):
+            original = self.report["identityFitMeasurementsMm"][field]
+            self.report["identityFitMeasurementsMm"][field] = invalid
+            with self.subTest(field=field):
+                self.assertTrue(any(field in reason for reason in
+                                    validate_native_preflight_report(self.report)))
+            self.report["identityFitMeasurementsMm"][field] = original
+        self.assertEqual(validate_native_preflight_report(self.report), [])
+
+    def test_native_script_does_not_warn_only_on_missing_silhouette_samples(self):
+        source = Path(__file__).with_name("preflight-linen-earth-officewear.py").read_text(encoding="utf-8")
+        self.assertIn("required_fit_samples = (", source)
+        self.assertIn("required_identity_guides = (", source)
+        self.assertIn('reasons.append(f"Native silhouette sample {key} is missing or nonfinite.")', source)
+        self.assertIn('reasons.append(f"Native identity guide {key} is missing or nonfinite.")', source)
 
     def test_native_report_cannot_omit_body_height_or_spoof_identity_guides(self):
         original = json.loads(json.dumps(self.report))
