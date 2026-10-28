@@ -32,7 +32,7 @@ async function authorized(){
 
 export async function GET(){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,stock:[]});
+  if(!getSupabaseAdminConfig()) return NextResponse.json({error:"Stock backend is not configured; availability is unavailable."},{status:503,headers:{"cache-control":"private, no-store"}});
   try{
     const stock=await rpc<Array<{
       fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;
