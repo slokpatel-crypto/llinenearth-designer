@@ -65,11 +65,13 @@ test("legacy delivery audits without provenance stay visible but cannot satisfy 
 
 function tenAuditedDeliveries(){
   const orders=Array.from({length:10},(_,i)=>({
-    order_id:`le-order-${i}`,status:"delivered",
+    order_id:`le-order-${i}`,status:"delivered",revision_id:`locked-revision-${i}`,recipe_hash:"a".repeat(64),
     created_at:`2026-10-${String(i+1).padStart(2,"0")}T10:00:00Z`,
   }));
   const evidence=orders.map((order,i)=>({
-    order_id:order.order_id,manual_design_reentry:false,
+    order_id:order.order_id,evidence_id:`audit-${i}`,revision_id:order.revision_id,
+    recipe_hash:order.recipe_hash,order_created_at:order.created_at,
+    manual_design_reentry:false,reentry_fields:[],note:"",
     operator:"Independent checker",evidence_reference:`delivery-job-card-${i}`,
     created_at:"2026-10-21T08:00:00Z",
   }));
@@ -377,6 +379,15 @@ test("first-ten audit guard rejects missing chronology, duplicate orders and mal
     {...basis,evidence:[...evidence,{...evidence[0],manual_design_reentry:"false"}]},
     {...basis,evidence:[...evidence,{...evidence[0],created_at:"2026-10-19T10:00:00Z"}]},
     {...basis,evidence:[...evidence,{...evidence[0],evidence_reference:""}]},
+    {...basis,orders:[{...basis.orders[0],revision_id:"changed-revision"},...basis.orders.slice(1)]},
+    {...basis,orders:[{...basis.orders[0],recipe_hash:"b".repeat(64)},...basis.orders.slice(1)]},
+    {...basis,evidence:[{...evidence[0],revision_id:"different"},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],recipe_hash:"b".repeat(64)},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],order_created_at:"2026-10-01T00:00:00Z"},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],evidence_id:""},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],evidence_id:evidence[1].evidence_id},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],reentry_fields:["fabric_identity","fabric_identity"]},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],note:null},...evidence.slice(1)]},
   ];
   for(const candidate of invalid){
     assert.equal(validProductionFirstTenAuditBasis(candidate),false,
