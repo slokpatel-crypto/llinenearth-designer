@@ -190,10 +190,13 @@ export function DesignerModule() {
   const handoffIdentity=JSON.stringify([shirtId,pantId,fabricIdentity,occasion,styleIdentity(style),styleSpec,climate,intention]);
   const directorHandoffCurrent=directorHandoffIdentity===handoffIdentity;
   const assessmentIdentity=JSON.stringify([shirtId,pantId,fabricIdentity,occasion,styleIdentity(style),styleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
-  const currentSelectionIdentityRef=useRef(assessmentIdentity);
+  // Lock identity includes the selected creative recipe and its visual review,
+  // not only fabrics, cut, context and measurements.
+  const lockIdentity=JSON.stringify([assessmentIdentity,activeCreative,creativeVisualReview]);
+  const currentSelectionIdentityRef=useRef(lockIdentity);
   const lockedRevisionSelectionIdentityRef=useRef<string|null>(null);
-  useLayoutEffect(()=>{currentSelectionIdentityRef.current=assessmentIdentity;},[assessmentIdentity]);
-  const verifiedLockedRevision=lockedRevisionSelectionIdentityRef.current===assessmentIdentity?lockedRevision:null;
+  useLayoutEffect(()=>{currentSelectionIdentityRef.current=lockIdentity;},[lockIdentity]);
+  const verifiedLockedRevision=lockedRevisionSelectionIdentityRef.current===lockIdentity?lockedRevision:null;
   const searchIdentity=JSON.stringify([assessmentIdentity,searchScope]);
   const committedAssessmentIdentity=useRef(assessmentIdentity);
   const assessRunRef=useRef<{identity:string;controller:AbortController}|null>(null);
@@ -305,7 +308,7 @@ export function DesignerModule() {
     setLockedRevision(null);
     setVaultRecoveryToken("");
     setVaultMessage("");
-  },[assessmentIdentity,activeCreative]);
+  },[lockIdentity]);
 
   useEffect(() => {
     try {
@@ -1151,14 +1154,14 @@ export function DesignerModule() {
   }
 
   function currentLockedRevision():LockedDesignRevision|null{
-    return lockedRevisionSelectionIdentityRef.current===assessmentIdentity ? verifiedLockedRevision : null;
+    return lockedRevisionSelectionIdentityRef.current===lockIdentity ? verifiedLockedRevision : null;
   }
 
   async function lockAndDownloadRevision() {
     if(!garmentSpec || lockBusy) return;
     setLockBusy(true);
     try {
-      const selectionAtLock=assessmentIdentity;
+      const selectionAtLock=lockIdentity;
       const revision=await lockGarmentSpec(garmentSpec,{parentRevisionId:lastLockedRevisionId});
       if(currentSelectionIdentityRef.current!==selectionAtLock){
         setShareMessage("Fabric or design evidence changed during locking. Review and lock the current selection again.");
@@ -1192,7 +1195,7 @@ export function DesignerModule() {
 
   async function downloadProductionHandoff() {
     const revision=currentLockedRevision();
-    const identity=assessmentIdentity;
+    const identity=lockIdentity;
     if(!revision) return;
     // Verify locked SHA-256 before a customer can generate a production
     // handoff. If any editable measurement or selected cut was changed in
@@ -1215,7 +1218,7 @@ export function DesignerModule() {
 
   async function downloadTailorTechPack() {
     const revision=currentLockedRevision();
-    const identity=assessmentIdentity;
+    const identity=lockIdentity;
     if(!revision) return;
     const handoff=await buildVerifiedProductionHandoff(revision).catch(()=>{
       setShareMessage("The locked recipe is no longer valid. Lock a new design before exporting its tailor tech pack.");
@@ -1236,7 +1239,7 @@ export function DesignerModule() {
 
   async function shareLockedRevision() {
     const revision=currentLockedRevision();
-    const identity=assessmentIdentity;
+    const identity=lockIdentity;
     if(!revision||shareBusy) return;
     setShareBusy(true);setShareMessage("");
     try{
@@ -1267,7 +1270,7 @@ export function DesignerModule() {
 
   async function openLockedRevisionEnquiry() {
     const revision=currentLockedRevision();
-    const identity=assessmentIdentity;
+    const identity=lockIdentity;
     if(!revision||enquiryBusy) return;
     setEnquiryBusy(true);setEnquiryMessage("");
     try{
@@ -1291,7 +1294,7 @@ export function DesignerModule() {
 
   async function saveLockedRevisionToVault() {
     const revision=currentLockedRevision();
-    const identity=assessmentIdentity;
+    const identity=lockIdentity;
     if(!revision||vaultBusy) return;
     setVaultBusy(true);setVaultMessage("");
     try{
