@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {secureJsonRequestError,readSecureJsonObject,SecureJsonBodyInvalid,SecureJsonBodyTooLarge} from "../src/lib/secure-json-request.ts";
 
-const URL="https://linenearth.example/api/designer/search";
-const request=(body:string,headers:Record<string,string>={})=>new Request(URL,{
+const REQUEST_URL="https://linenearth.example/api/designer/search";
+const request=(body:string,headers:Record<string,string>={})=>new Request(REQUEST_URL,{
   method:"POST",headers:{"content-type":"application/json",...headers},body,
 });
 
@@ -41,7 +41,7 @@ test("Designer JSON transport rejects malformed UTF-8, non-object JSON and inval
   for(const invalid of ["","null","[]","12",'"text"','{"incomplete":']) {
     await assert.rejects(()=>readSecureJsonObject(request(invalid),300),SecureJsonBodyInvalid);
   }
-  const broken=new Request(URL,{method:"POST",headers:{"content-type":"application/json"},body:new Uint8Array([123,34,97,34,58,34,255,34,125])});
+  const broken=new Request(REQUEST_URL,{method:"POST",headers:{"content-type":"application/json"},body:new Uint8Array([123,34,97,34,58,34,255,34,125])});
   await assert.rejects(()=>readSecureJsonObject(broken,300),SecureJsonBodyInvalid);
 });
 
