@@ -103,9 +103,11 @@ export async function POST(request:Request) {
       creative?:unknown;
       creativeVisualReview?:unknown;
     };
-    const shirtId=String(body.shirtId||"").slice(0,160);
-    const pantId=String(body.pantId||"").slice(0,160);
-    const occasion=String(body.occasion||"") as OccasionTier;
+    // A coerced JSON array may stringify to a real fabric ID or occasion.
+    // Reject the supplied type and overlength IDs rather than laundering/truncating evidence.
+    const shirtId=typeof body.shirtId==="string"&&body.shirtId.length<=160?body.shirtId:"";
+    const pantId=typeof body.pantId==="string"&&body.pantId.length<=160?body.pantId:"";
+    const occasion=(typeof body.occasion==="string"?body.occasion:"") as OccasionTier;
     const styleSpec=validateStyleSpecV2(body.styleSpec) ? body.styleSpec as StyleSpecV2 : null;
     // Invalid new-format cut choices must not silently downgrade to legacy
     // style fields and return a falsely favourable compatibility assessment.

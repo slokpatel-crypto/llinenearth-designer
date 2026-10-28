@@ -882,3 +882,12 @@ Existing valid same-origin clients and the measurement/fit contract are unchange
 ## 2026-10-28 — Reject invalid fit evidence before assessment data loading (draft)
 
 The assessment endpoint used to fetch the live catalogue and approved house ease model, then check if the requested fabrics existed, and only afterward parse explicit measurement and tailor-observation receipts. A corrupt tape reading combined with a retired fabric could return a misleading stock 409 or load protected evidence unnecessarily. The fit input now fails with 422 before catalogue/ease I/O, while valid requests retain the original evaluation path and output. Static ordering and real HTTP regression with a deliberately missing fabric prove the precedence. This does not infer a physically observed measurement or tailor approval.
+
+
+## 2026-10-28 — Draft MVP fabric-identity input boundary
+
+**Decision:** the launch-track Designer assessment and alternative-search endpoints accept literal (nonempty, at most 160-character) string shirt/trouser IDs and an exact supported occasion; the alternative scope must be a literal closed-vocabulary string, except that omitted/null scope retains the legacy `keep_shirt` default. The brief/advisor route rejects malformed supplied fabric IDs instead of allowing them to be coerced to a stock ID or quietly falling back, and requires a text brief. Existing omitted legacy starting-fabric fields remain optional.
+
+**Why:** `String(["catalogue-id"])` produced a valid ID and `String(["Casual"])` a valid occasion. `.slice(0,160)` could also turn a malformed overlength identifier into a different real catalogue selection. This makes the resulting fit or lock evidence appear linked to a request the caller did not actually submit.
+
+**Compatibility:** legitimate string selectors, legacy omitted fabric starts, and deterministic preview remain unchanged. No migrations, provider calls, approved-model assets, production deployment or physical proof. Real HTTP negative regressions plus exact-head CI must pass before calling the engineering repair verified. Pilot requirements and external approvals are in `docs/TITAN_LAUNCH_MVP.md`.

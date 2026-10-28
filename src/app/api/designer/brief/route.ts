@@ -70,8 +70,14 @@ export async function POST(request:Request) {
       context?:unknown;
       judgement?:unknown;
     };
-    const brief=String(body.brief||"").replace(/\s+/g," ").trim().slice(0,500);
+    const brief=(typeof body.brief==="string"?body.brief:"").replace(/\s+/g," ").trim().slice(0,500);
     if(brief.length<5) return NextResponse.json({error:"Tell Designer where you are going and how you want the outfit to feel."},{status:400});
+    // Supplying a malformed or overlength selection must not quietly fall back
+    // to another stock roll, especially in advisor/fit handoff paths.
+    if(
+      (body.currentShirtId!=null&&(typeof body.currentShirtId!=="string"||body.currentShirtId.length>160)) ||
+      (body.currentPantId!=null&&(typeof body.currentPantId!=="string"||body.currentPantId.length>160))
+    ) return NextResponse.json({error:"Invalid selected fabric identifier; reselect current stock."},{status:400});
 
     const advisorRequest=body.currentStyle!==undefined;
     if(advisorRequest && (!validDesignerStyle(body.currentStyle) || !validDesignerOccasion(body.occasion) || !validDesignerContext(body.context))) return NextResponse.json({error:"The selected construction or occasion is invalid. Reload the direction before asking Designer."},{status:400});
@@ -104,8 +110,8 @@ export async function POST(request:Request) {
     const pants=fabrics.filter((fabric)=>fabric.allowedGarments.includes("pant"));
     if(!shirts.length || !pants.length) return NextResponse.json({error:"The current Linen Earth stock does not contain enough shirt and trouser fabrics."},{status:409});
 
-    const requestedShirt=String(body.currentShirtId||"").slice(0,160);
-    const requestedPant=String(body.currentPantId||"").slice(0,160);
+    const requestedShirt=typeof body.currentShirtId==="string"?body.currentShirtId:"";
+    const requestedPant=typeof body.currentPantId==="string"?body.currentPantId:"";
     const currentShirt=shirts.find((fabric)=>fabric.id===requestedShirt)
       || shirts.find((fabric)=>fabric.id===DESIGNER_REVIEWED_PAIRING.shirtId)
       || shirts[0];
