@@ -171,3 +171,20 @@ test("fabric revision keys are order-independent and fail closed on non-JSON evi
   cyclic.self=cyclic;
   assert.equal(fabricRevisionKey({...base,physicsProfile:cyclic as unknown as DesignerFabric["physicsProfile"]}),"missing");
 });
+
+
+test("catalogue, creative generation and assessment share identical reviewed fabric enrichment",()=>{
+  const loader=readFileSync("src/lib/designer/catalog-stock-server.ts","utf8");
+  assert.match(loader,/export async function loadActiveDesignerCatalogueFabrics\(\)/);
+  assert.match(loader,/loadDesignerFabricIntelligence\(base\.map\(\(fabric\)=>fabric\.id\)\)/);
+  assert.match(loader,/attachCatalogFabricPhysics\(fabric,intelligence\[fabric\.id\]\)/);
+  for(const path of [
+    "src/app/api/designer/catalog/route.ts",
+    "src/app/api/designer/creative-generate/route.ts",
+    "src/app/api/designer/assess/route.ts",
+  ]){
+    const source=readFileSync(path,"utf8");
+    assert.match(source,/loadActiveDesignerCatalogueFabrics\(\)/,path);
+    assert.doesNotMatch(source,/enrichDesignerFabricsWithIntelligence\(/,path);
+  }
+});
