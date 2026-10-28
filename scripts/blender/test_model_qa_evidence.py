@@ -1,0 +1,143 @@
+import struct
+import sys
+import tempfile
+import unittest
+import zlib
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from model_qa_evidence import (VIEWS, MODEL_IDENTITY_ID, REFERENCE_IMAGE,
+                               MANIFEST_VERSION, PREFLIGHT_GATE,
+                               sha256_file, validate_candidate_manifest, run_native_preflight)
+
+
+def chunk(kind, data):
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff)
+
+
+def png(width=480, height=640):
+    pixels = b"".join(b"\0" + b"\x00\x00\x00" * width for _ in range(height))
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"tEXt", b"QA\0" + b"x" * 12000)
+            + chunk(b"IDAT", zlib.compress(pixels))
+            + chunk(b"IEND", b""))
+
+
+class CandidateFourAngleEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.directory = Path(self.temp.name)
+        self.source = self.directory / "identity-locked.blend"
+        self.source.write_bytes(b"test identity locked source fixture")
+        self.preflight = self.directory / "preflight.py"
+        self.preflight.write_text("# test preflight fixture\n", encoding="utf-8")
+        self.manifest = {
+            "version": MANIFEST_VERSION,
+            "referenceImage": REFERENCE_IMAGE,
+            "modelIdentityId": MODEL_IDENTITY_ID,
+            "sourceBlendName": self.source.name,
+            "sourceBlendSha256": sha256_file(self.source),
+            "nativePreflightGate": PREFLIGHT_GATE,
+            "nativePreflightPassed": True,
+            "nativePreflightScriptSha256": sha256_file(self.preflight),
+            "identityLocked": True,
+            "candidateOnly": True,
+            "photographicMatchApproved": False,
+            "realismApproved": False,
+            "tailorApproved": False,
+            "measuredFabricDrapeApproved": False,
+            "renderEngine": "BLENDER_EEVEE_NEXT",
+            "resolution": [480, 640],
+            "angles": [],
+        }
+        for label, yaw in VIEWS:
+            filename = f"linen-earth-model-{label}.png"
+            (self.directory / filename).write_bytes(png())
+            self.manifest["angles"].append({"view": label, "yawDeg": yaw,
+                                            "file": filename,
+                                            "sha256": sha256_file(self.directory / filename)})
+
+    def validate(self):
+        return validate_candidate_manifest(self.manifest, self.directory,
+                                           source=self.source, preflight_script=self.preflight)
+
+    def test_complete_candidate_evidence_is_integrity_valid_but_not_approved(self):
+        self.assertEqual(self.validate(), [])
+        self.assertFalse(self.manifest["photographicMatchApproved"])
+        self.assertFalse(self.manifest["tailorApproved"])
+
+    def test_missing_reordered_duplicate_or_traversal_view_rejected(self):
+        self.manifest["angles"][1] = dict(self.manifest["angles"][0])
+        self.assertTrue(self.validate())
+        self.manifest["angles"][1]["file"] = "../other.png"
+        self.assertTrue(self.validate())
+        self.manifest["angles"].pop()
+        self.assertIn("Exactly four camera-angle entries are required", self.validate())
+
+    def test_wrong_yaw_and_false_approval_rejected(self):
+        self.manifest["angles"][2]["yawDeg"] = 0
+        self.manifest["realismApproved"] = True
+        errors = self.validate()
+        self.assertTrue(any("yaw" in x for x in errors))
+        self.assertTrue(any("realismApproved" in x for x in errors))
+
+    def test_source_or_preflight_script_drift_invalidates_candidate(self):
+        self.source.write_bytes(b"modified .blend")
+        self.preflight.write_text("# changed", encoding="utf-8")
+        errors = self.validate()
+        self.assertTrue(any("sourceBlendSha256" in x for x in errors))
+        self.assertTrue(any("nativePreflightScriptSha256" in x for x in errors))
+
+    def test_corrupt_crc_truncated_png_and_wrong_resolution_rejected(self):
+        frame = self.directory / "linen-earth-model-front.png"
+        content = frame.read_bytes()
+        frame.write_bytes(content[:200])
+        self.assertTrue(any("front" in x for x in self.validate()))
+        frame.write_bytes(content[:-10] + b"broken tail")
+        self.manifest["angles"][0]["sha256"] = sha256_file(frame)
+        self.assertTrue(any("front" in x for x in self.validate()))
+        frame.write_bytes(png(500, 640))
+        self.manifest["angles"][0]["sha256"] = sha256_file(frame)
+        self.assertTrue(any("dimensions" in x for x in self.validate()))
+
+    def test_symlink_frame_and_missing_frame_rejected(self):
+        frame = self.directory / "linen-earth-model-back.png"
+        frame.unlink()
+        self.assertTrue(any("back" in x for x in self.validate()))
+        frame.symlink_to(self.directory / "linen-earth-model-front.png")
+        self.assertTrue(any("symlinked" in x for x in self.validate()))
+
+    def test_coerced_metadata_and_malformed_manifest_rejected(self):
+        self.manifest["resolution"] = [True, 640]
+        self.manifest["nativePreflightPassed"] = "true"
+        self.assertTrue(any("resolution" in x for x in self.validate()))
+        self.assertTrue(any("nativePreflightPassed" in x for x in self.validate()))
+        self.assertTrue(validate_candidate_manifest(None, self.directory))
+
+    def test_native_preflight_required_and_failure_blocks_render(self):
+        script = self.directory / "mock-native-preflight.py"
+        with self.assertRaises(RuntimeError):
+            run_native_preflight(script)
+        script.write_text("def main():\n    raise SystemExit(1)\n", encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "preflight failed"):
+            run_native_preflight(script)
+        script.write_text("def main():\n    return None\n", encoding="utf-8")
+        run_native_preflight(script)
+        script.write_text("pass\n", encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "main"):
+            run_native_preflight(script)
+
+    def test_invalid_png_signature_and_trailing_bytes(self):
+        frame = self.directory / "linen-earth-model-front.png"
+        frame.write_bytes(b"not PNG" + b"x" * 12000)
+        self.manifest["angles"][0]["sha256"] = sha256_file(frame)
+        self.assertTrue(any("front" in x for x in self.validate()))
+        frame.write_bytes(png() + b"junk")
+        self.manifest["angles"][0]["sha256"] = sha256_file(frame)
+        self.assertTrue(any("trailing" in x for x in self.validate()))
+
+
+if __name__ == "__main__":
+    unittest.main()
