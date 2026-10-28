@@ -1,5 +1,12 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-10-28 — Same-ID fabric revisions revoke preview and handoff evidence
+
+**Decision:** Fabric IDs alone do not bind a Creative Lab concept to the physical roll data it was generated from. Derive a deterministic revision identity from catalogue photo, colour/pattern, repeat scale, provenance, physics, declared stock and allowed-garment fields. When the live or restored fabric snapshot differs under the same ID, revoke creative direction, visual review, stale async assessment, alternative search, lock UI and the matched Director handoff badge. Context-derived compatibility scores are intentionally excluded from the physical revision identity. Missing current snapshots fail closed in the customer Designer; legacy pure callers without snapshots retain their existing ID/context/cut semantics but cannot certify current physical parity.
+
+**Compatibility:** No schema migration or model replacement. This may conservatively require reselecting a concept after a supplier/catalogue update; it never treats a new revision as measured fabric truth. Human supplier, tailor and native Blender acceptance remain mandatory. No merge/deployment or paid-provider call.
+
+
 ## 2026-10-28 — Phase 1 physical and reviewer proof rejects JSON coercion
 
 **Decision:** Treat recorded physical repeat, preview-period and calibration-marker values as untrusted evidence: only actual numeric JSON values are eligible, never strings, booleans, null or objects that `Number(...)` can convert. Preserve existing finite/positive ratio and scale-tolerance checks. Physical provenance notes must be strings, not object-coerced text. Evidence version and photo-coordinate-system identifiers must also be literal strings; arrays/objects that stringify to a valid label cannot satisfy the contract. Independent reviewer IDs must be strings and ratings must be integer values 1–5; fractional scores cannot be rounded into passing reviews. Apply the same rating contract to the direct Phase 1 acceptance gate to prevent bypass through a different caller. Malformed root event envelopes (null, arrays and primitives) also normalize to blocked evidence rather than throwing, including direct realism aggregation and direct Phase 1 acceptance callers. Malformed historical evidence fails closed until resubmitted; valid numeric receipts and versioned contract remain compatible.
