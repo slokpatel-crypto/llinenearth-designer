@@ -1025,6 +1025,16 @@ requireTokens("src/components/DesignerModule.tsx",[
   "Open WhatsApp and send","destination.hostname!==\"wa.me\"",
 ]);
 
+// Operator quotes and orders must refer to exactly one live recovered lock.
+requireTokens("src/lib/designer/operator-locked-selection.ts",[
+  "parseOperatorLockedSelection","typeof input.revisionId","typeof input.recipeHash",
+  "typeof input.recoveryToken","note.length>1000","quoteId.length>180",
+]);
+requireTokens("src/app/api/operator/production/route.ts",[
+  "selectVaultReadRow(rows)","parseOperatorLockedSelection(body)",
+  "verifyLockedDesignRevision(revision)","production_quote_create","production_order_create_with_context",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);

@@ -24,3 +24,12 @@ Source implementation date: 29 October 2026. **Draft, not an approved beta.**
 ## Non-goals
 
 No automated ordering, payment, AI credits, 3D identity replacement, or assertion that an enquiry is received because an audit row exists. The older draft SQL RPC shape must not be replayed into the current v2 production first-ten schema.
+
+## Operator acceptance extension (same customer → tailor milestone)
+
+- [x] Source implementation: quote/order POST actions accept only literal 12–180-character revision identity, lowercase canonical 64-hex recipe hash, bounded literal recovery token and typed untruncated notes/optional quote IDs.
+- [x] Source implementation: the privileged `designer_locked_revision_vault_get` response must contain exactly one unexpired, structurally valid vault row; then the original locked SHA-256 revision is revalidated and compared with the requested revision/hash before a quote/order RPC.
+- [ ] Verify exact-head static + unit + production build + browser CI on stacked operator draft.
+- [ ] Test real operator session, genuine vault expiry/replay, customer ownership and quote rejection using an isolated Supabase test environment; database schema introspection previously timed out.
+
+The operator UI still asks for the customer's recovery token, which is an independent secret; do not add it to public share/WhatsApp links. No order is created simply by preparing an enquiry.
