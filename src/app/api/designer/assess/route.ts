@@ -113,6 +113,9 @@ export async function POST(request:Request) {
       return NextResponse.json({error:"Invalid advanced tailoring specification; please reselect the cut options."},{status:422});
     }
     const bodyProfile=validBodyPreviewProfile(body.bodyProfile) ? body.bodyProfile as BodyPreviewProfile : null;
+    if(body.bodyProfile!==undefined && body.bodyProfile!==null && !bodyProfile) {
+      return NextResponse.json({error:"Invalid body preview profile; reselect the current model proportions."},{status:422});
+    }
     const resolvedStyle=styleSpec ? toLegacyStyle(styleSpec) : body.style;
     if(!shirtId || !pantId || !OCCASIONS.includes(occasion) || !validStyle(resolvedStyle) || !validContext(body.context)) {
       return NextResponse.json({error:"A valid fabric pair, occasion and supported style are required."},{status:400});
@@ -135,6 +138,9 @@ export async function POST(request:Request) {
       },{status:422});
     }
     const observations=safeObservations(body.observations);
+    if(body.observations!==undefined && body.observations!==null && !observations) {
+      return NextResponse.json({error:"Invalid tailor observations; review the current fit notes."},{status:422});
+    }
     const creative=safeCreative(body.creative);
     if(body.creative&&!creative)return NextResponse.json({error:"Invalid creative recipe."},{status:400});
     // Revalidate the complete creative recipe against the live catalogue, not
