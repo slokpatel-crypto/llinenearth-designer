@@ -124,9 +124,13 @@ def validate_native_preflight_report(report: object, *, allow_rejected: bool = F
                 reasons.append(f"Native preflight {name} lacks an active UV layer")
             ratio = entry.get("degenerateRatio")
             degenerate = entry.get("degenerateFaces")
+            polygons = entry.get("polygons")
             if (type(ratio) not in (int, float) or not math.isfinite(ratio)
                 or ratio < 0 or ratio > 0.001
-                or type(degenerate) is not int or degenerate < 0):
+                or type(degenerate) is not int or degenerate < 0
+                or type(polygons) is not int or polygons <= 0
+                or degenerate > polygons
+                or abs(ratio - degenerate / polygons) > 1e-9):
                 reasons.append(f"Native preflight {name} has invalid degenerate geometry")
             if type(entry.get("triangles")) is int and entry["triangles"] > 0:
                 counted_triangles += entry["triangles"]
