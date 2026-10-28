@@ -10,7 +10,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from model_qa_evidence import (VIEWS, MODEL_IDENTITY_ID, REFERENCE_IMAGE,
                                MANIFEST_VERSION, PREFLIGHT_GATE, PREFLIGHT_REPORT_FILE, GARMENT_OBJECTS,
-                               sha256_file, validate_candidate_manifest, run_native_preflight, validate_native_preflight_report)
+                               sha256_file, validate_candidate_manifest, run_native_preflight,
+                               validate_native_preflight_report, require_unchanged_sources)
 
 
 def chunk(kind, data):
@@ -436,6 +437,37 @@ else:
                 self.assertTrue(any("native preflight report" in reason.lower()
                                     for reason in self.validate()))
 
+
+    def test_native_render_source_snapshots_reject_midrun_file_drift(self):
+        sources = (
+            (self.source, sha256_file(self.source)),
+            (self.photo, sha256_file(self.photo)),
+            (self.preflight, sha256_file(self.preflight)),
+        )
+        require_unchanged_sources(sources)
+        for path, _ in sources:
+            with self.subTest(path=path.name):
+                original = path.read_bytes()
+                path.write_bytes(original + b"changed during rendering")
+                with self.assertRaisesRegex(RuntimeError, "source changed"):
+                    require_unchanged_sources(sources)
+                path.write_bytes(original)
+        self.assertEqual(require_unchanged_sources(sources), None)
+        self.preflight.unlink()
+        self.preflight.symlink_to(self.source)
+        with self.assertRaisesRegex(RuntimeError, "source changed"):
+            require_unchanged_sources(sources)
+
+    def test_renderer_snapshots_and_rechecks_all_sources_before_publication(self):
+        renderer = Path(__file__).with_name("render-linen-earth-model-qa.py").read_text(encoding="utf-8")
+        self.assertIn("source_sha, reference_photo_sha, preflight_sha", renderer)
+        self.assertIn('"sourceBlendSha256": source_sha', renderer)
+        self.assertIn('"referencePhotoSha256": reference_photo_sha', renderer)
+        self.assertGreaterEqual(renderer.count("require_unchanged_sources(sources)"), 3)
+        self.assertLess(renderer.index("require_unchanged_sources(sources)"),
+                        renderer.index("setup_studio(mid_height, floor_z, options)"))
+        self.assertLess(renderer.rindex("require_unchanged_sources(sources)"),
+                        renderer.index("os.rename(staging, output)"))
 
     def test_native_ready_rejects_missing_geometry_uv_or_false_mesh_totals(self):
         self.assertEqual(validate_native_preflight_report(self.report), [])
