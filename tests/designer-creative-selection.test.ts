@@ -96,7 +96,9 @@ test("Designer restore, live invalidation and generation lifecycle use the same 
   assert.match(source,/\[assessmentIdentity,activeCreative\]/);
   assert.match(source,/lockedRevisionSelectionIdentityRef\.current=null;\s*setLockedRevision\(null\)/);
   assert.match(source,/currentSelectionIdentityRef\.current!==selectionAtLock/);
-  assert.match(source,/const revision=currentLockedRevision\(\)/);
+  assert.equal((source.match(/const revision=currentLockedRevision\(\)/g)||[]).length,5,
+    "all handoff, tech-pack, share, enquiry and vault actions must guard current lock identity");
+  assert.match(source,/lockedRevisionSelectionIdentityRef\.current===assessmentIdentity/);
   assert.match(source,/currentSelectionIdentityRef\.current!==identity/);
   assert.match(source,/\[shirtId,pantId,occasion,style,styleSpec,climate,intention,craftRequest\]/);
 });
