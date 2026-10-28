@@ -786,7 +786,11 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
         ]
         torso_repairs = {}
         for obj, count, baseline in zip(sleeves, torso_after_body_repair, torso_baseline_pairs):
-            if count > baseline:
+            # The generic BVH repair cannot distinguish a legitimate
+            # preexisting sewn armhole face from a newly intersecting face.
+            # Never move an existing seam: only attempt bounded relief when
+            # this sleeve had ZERO original torso contacts.
+            if count > baseline and baseline == 0:
                 report = repair_body_intersections(torso, obj, 3)
                 torso_repairs[obj.name] = {
                     "contactPairsByPass": report["contactPairsByPass"],
