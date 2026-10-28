@@ -174,10 +174,8 @@ export const PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM="photo-1024x1536-fixture";
 
 export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknown>|null|undefined){
   // Untrusted event payloads may be null or arrays despite the static contract.
-  // Reuse the empty blocked evidence path rather than throwing on property access.
-  if(!payload||typeof payload!=="object"||Array.isArray(payload)){
-    return evaluateRecordedPhase1ProofEvidence({});
-  }
+  // Normalize to empty blocked evidence instead of throwing on property access.
+  payload=payload&&typeof payload==="object"&&!Array.isArray(payload)?payload:{};
   // Version and coordinate-system contracts must not be satisfied by
   // String(["expected-version"]) or object-defined coercion.
   const version=typeof payload.version==="string"?payload.version:"";
