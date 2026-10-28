@@ -1,5 +1,14 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-10-28 — Native candidate four-angle evidence must be complete and scene-bound
+
+**Decision:** Candidate four-angle Blender renders require a passing native geometry/UV scene preflight before any frame is generated. Use the existing identity-locked source scene and canonical `linen-earth-studio-model-v1` / `/designer/studio-tucked.webp`; do not generate a substitute model.
+
+**Integrity:** Write into a fresh temporary output directory and publish the four frames, native geometry/UV preflight report and manifest together only after checking exact angle labels/yaws, PNG structure/CRC/dimensions, file SHA-256, source .blend SHA-256, original studio-photo SHA-256, preflight-script SHA-256 and report SHA-256. Reject truthy non-boolean scene identity locks and unsaved Blender edits. Reject contradictory sleeve/leg spacing, UV seam or body-intersection findings even if a report says ready. Never overwrite previous evidence in place. A separate explicit rejected-diagnostic mode may preserve failed-native-preflight frames and report, but must keep `nativePreflightPassed=false` and `rejectedDiagnostic=true`, and cannot satisfy candidate promotion. Legacy #311 native workflow needs an output/flag adaptation before integration. Python regressions run in CI without Blender.
+
+**Limit:** The manifest remains `candidateOnly: true` and all photographic/realism/tailor/drape approval flags remain false. This does not demonstrate a successful native Blender run or actual four-angle likeness, physical fabric calibration or production readiness. No schema/dependency changes or customer rollout.
+
+
 Architecture and product decisions that must persist across coding sessions.
 
 ## 2026-10-05 — Style Director signs the complete garment recipe

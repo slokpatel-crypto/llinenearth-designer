@@ -9,28 +9,29 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
+import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
+
+# Blender --python does not guarantee the script directory is on sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from model_qa_evidence import (
+    MANIFEST_VERSION, MODEL_IDENTITY_ID, PREFLIGHT_GATE, REFERENCE_IMAGE, VIEWS,
+    run_native_preflight, sha256_file, validate_candidate_manifest,
+)
 
 import bpy
 from mathutils import Vector
 
-IDENTITY_ID = "linen-earth-studio-model-v1"
-REFERENCE_IMAGE = "/designer/studio-tucked.webp"
+IDENTITY_ID = MODEL_IDENTITY_ID
 GARMENT_OBJECTS = (
     "ShirtTorsoFabric", "ShirtSleeveLFabric", "ShirtSleeveRFabric",
     "TrouserWaistFabric", "TrouserLegLFabric", "TrouserLegRFabric",
 )
-VIEWS = (
-    ("front", 0.0),
-    ("three-quarter", 35.0),
-    ("side", 90.0),
-    ("back", 180.0),
-)
-
 
 def args():
     argv = sys.argv
@@ -40,17 +41,21 @@ def args():
     parser.add_argument("--width", type=int, default=768)
     parser.add_argument("--height", type=int, default=1088)
     parser.add_argument("--samples", type=int, default=48)
+    parser.add_argument("--diagnostic-rejected", action="store_true", help="Render explicitly rejected native-preflight diagnostics; never production candidate proof.")
     return parser.parse_args(argv)
 
 
 def verify_source():
     source = Path(bpy.data.filepath)
-    if not source.is_file() or not source.name.endswith(".blend"):
+    if not source.is_file() or source.is_symlink() or not source.name.endswith(".blend"):
         raise RuntimeError("Load the actual identity-locked Linen Earth .blend before rendering.")
+    # An on-disk SHA cannot identify unsaved in-memory garment edits.
+    if bpy.data.is_dirty:
+        raise RuntimeError("Unsaved Blender scene edits cannot be bound to the source .blend SHA; save and reload first.")
     scene = bpy.context.scene
     if (scene.get("linen_earth_model_identity_id") != IDENTITY_ID
         or scene.get("linen_earth_model_reference_image") != REFERENCE_IMAGE
-        or not scene.get("linen_earth_model_identity_locked")):
+        or scene.get("linen_earth_model_identity_locked") is not True):
         raise RuntimeError("Scene is not locked to the canonical Designer Studio reference.")
     body = bpy.data.objects.get("Body")
     if body is None or body.type != "MESH":
@@ -134,50 +139,99 @@ def setup_studio(mid_height, floor_z, options):
 
 def main():
     options = args()
-    if options.width < 480 or options.height < 640 or options.samples < 8:
-        raise RuntimeError("QA render resolution/samples must retain usable inspection detail.")
-    source, mid_height, floor_z = verify_source()
-    output = options.output_dir.expanduser().resolve()
-    output.mkdir(parents=True, exist_ok=True)
-    camera = setup_studio(mid_height, floor_z, options)
-    scene = bpy.context.scene
-    manifest = {
-        "version": "linen-earth-model-qa-turntable-v1",
-        "referenceImage": REFERENCE_IMAGE,
-        "modelIdentityId": IDENTITY_ID,
-        "sourceBlendName": source.name,
-        "sourceBlendSha256": hashlib.sha256(source.read_bytes()).hexdigest(),
-        "identityLocked": True,
-        "candidateOnly": True,
-        "photographicMatchApproved": False,
-        "realismApproved": False,
-        "tailorApproved": False,
-        "measuredFabricDrapeApproved": False,
-        "renderEngine": scene.render.engine,
-        "resolution": [options.width, options.height],
-        "angles": [],
-    }
-    target = Vector((0, 0, mid_height))
-    for label, yaw_deg in VIEWS:
-        yaw = math.radians(yaw_deg)
-        camera.location = (3.6 * math.sin(yaw), -3.6 * math.cos(yaw), mid_height)
-        camera.rotation_euler = (target - camera.location).to_track_quat("-Z", "Y").to_euler()
-        filename = f"linen-earth-model-{label}.png"
-        destination = output / filename
-        scene.render.filepath = str(destination)
-        bpy.ops.render.render(write_still=True)
-        if not destination.is_file() or destination.stat().st_size < 12_000:
-            raise RuntimeError(f"Rendered frame missing or too small: {label}")
-        manifest["angles"].append({
-            "view": label, "yawDeg": yaw_deg, "file": filename,
-            "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
-        })
-    (output / "model-qa-manifest.json").write_text(
-        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
-    )
-    print(f"Linen Earth candidate four-angle QA written to {output}")
-    print("NOT APPROVED: visual identity, real drape, pattern scale and tailor signoff remain required.")
+    if (options.width < 480 or options.height < 640
+        or options.width > 8192 or options.height > 8192
+        or options.samples < 8 or options.samples > 512):
+        raise RuntimeError("QA render dimensions/samples are outside bounded inspection limits.")
 
+    source, mid_height, floor_z = verify_source()
+    reference_photo = Path(__file__).resolve().parents[2] / "public/designer/studio-tucked.webp"
+    if reference_photo.is_symlink() or not reference_photo.is_file():
+        raise RuntimeError("Canonical Designer Studio photo is unavailable for QA evidence binding.")
+    output = options.output_dir.expanduser().resolve()
+    # Never silently overwrite prior evidence or mix frames from separate
+    # scenes. A fresh destination is required for every candidate run.
+    if output.exists() or output.is_symlink():
+        raise RuntimeError("Choose a new, non-existing --output-dir for each QA candidate.")
+    preflight_script = Path(__file__).with_name("preflight-linen-earth-officewear.py")
+    preflight_sha = sha256_file(preflight_script)
+    native_report = run_native_preflight(preflight_script, allow_rejected=options.diagnostic_rejected)
+    if options.diagnostic_rejected and native_report.get("ready") is True:
+        raise RuntimeError("Diagnostic mode is only for a rejected native scene; use normal QA mode for a passing scene.")
+    if sha256_file(preflight_script) != preflight_sha:
+        raise RuntimeError("Native preflight changed while the scene was inspected.")
+    if bpy.data.is_dirty:
+        raise RuntimeError("Native preflight left unsaved scene edits; refuse to bind frames to the saved .blend.")
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=".linen-earth-model-qa-", dir=output.parent))
+    try:
+        camera = setup_studio(mid_height, floor_z, options)
+        scene = bpy.context.scene
+        preflight_report_path = staging / "model-qa-native-preflight.json"
+        preflight_report_path.write_text(
+            json.dumps(native_report, indent=2) + "\n", encoding="utf-8"
+        )
+        manifest = {
+            "version": MANIFEST_VERSION,
+            "referenceImage": REFERENCE_IMAGE,
+            "modelIdentityId": IDENTITY_ID,
+            "sourceBlendName": source.name,
+            "sourceBlendSha256": sha256_file(source),
+            "referencePhotoSha256": sha256_file(reference_photo),
+            "nativePreflightGate": PREFLIGHT_GATE,
+            "nativePreflightPassed": not options.diagnostic_rejected,
+            "rejectedDiagnostic": options.diagnostic_rejected,
+            "nativePreflightScriptSha256": preflight_sha,
+            "nativePreflightReportFile": "model-qa-native-preflight.json",
+            "nativePreflightReportSha256": sha256_file(preflight_report_path),
+            "identityLocked": True,
+            "candidateOnly": True,
+            "photographicMatchApproved": False,
+            "realismApproved": False,
+            "tailorApproved": False,
+            "measuredFabricDrapeApproved": False,
+            "renderEngine": scene.render.engine,
+            "resolution": [options.width, options.height],
+            "angles": [],
+        }
+        target = Vector((0, 0, mid_height))
+        for label, yaw_deg in VIEWS:
+            yaw = math.radians(yaw_deg)
+            camera.location = (3.6 * math.sin(yaw), -3.6 * math.cos(yaw), mid_height)
+            camera.rotation_euler = (target - camera.location).to_track_quat("-Z", "Y").to_euler()
+            filename = f"linen-earth-model-{label}.png"
+            destination = staging / filename
+            scene.render.filepath = str(destination)
+            bpy.ops.render.render(write_still=True)
+            if not destination.is_file():
+                raise RuntimeError(f"Rendered frame missing: {label}")
+            manifest["angles"].append({
+                "view": label, "yawDeg": yaw_deg, "file": filename,
+                "sha256": sha256_file(destination),
+            })
+        reasons = validate_candidate_manifest(
+            manifest, staging, source=source, preflight_script=preflight_script,
+            reference_photo=reference_photo,
+            allow_rejected=options.diagnostic_rejected,
+        )
+        if reasons:
+            raise RuntimeError("Candidate QA evidence integrity failed: " + "; ".join(reasons))
+        (staging / "model-qa-manifest.json").write_text(
+            json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+        )
+        if output.exists() or output.is_symlink():
+            raise RuntimeError("QA destination appeared during render; refusing to overwrite it.")
+        # Publish the complete four-angle set and manifest together. Failed
+        # renders leave no partial final evidence directory.
+        os.rename(staging, output)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+    if options.diagnostic_rejected:
+        print(f"REJECTED native candidate: diagnostic four-angle files written to {output}; production gate remains FAILED.")
+    else:
+        print(f"Linen Earth candidate four-angle QA written to {output}")
+    print("NOT APPROVED: visual identity, real drape, pattern scale and tailor signoff remain required.")
 
 if __name__ == "__main__":
     main()

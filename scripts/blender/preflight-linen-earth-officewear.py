@@ -147,6 +147,13 @@ def guide_center(obj):
     return sum(points, Vector((0.0, 0.0, 0.0))) / len(points)
 
 
+class NativePreflightRejected(SystemExit):
+    """Retain the actual failed report for explicitly rejected diagnostic renders."""
+    def __init__(self, report):
+        super().__init__(1)
+        self.report = report
+
+
 def main():
     reasons = []
     warnings = []
@@ -155,7 +162,7 @@ def main():
     body = bpy.data.objects.get(REFERENCE_BODY)
     identity_id = str(bpy.context.scene.get("linen_earth_model_identity_id", "")).strip()
     identity_reference = str(bpy.context.scene.get("linen_earth_model_reference_image", "")).strip()
-    identity_locked = bool(bpy.context.scene.get("linen_earth_model_identity_locked", False))
+    identity_locked = bpy.context.scene.get("linen_earth_model_identity_locked") is True
     identity_targets_raw = str(bpy.context.scene.get("linen_earth_identity_targets_json", "")).strip()
     try:
         identity_targets = json.loads(identity_targets_raw) if identity_targets_raw else None
@@ -533,7 +540,8 @@ def main():
     }
     print(json.dumps(report, indent=2))
     if reasons:
-        raise SystemExit(1)
+        raise NativePreflightRejected(report)
+    return report
 
 
 if __name__ == "__main__":
