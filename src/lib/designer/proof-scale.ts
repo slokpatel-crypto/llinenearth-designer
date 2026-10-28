@@ -173,7 +173,9 @@ export const PHASE1_PROOF_EVIDENCE_VERSION="linen-earth-phase1-proof-v4";
 export const PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM="photo-1024x1536-fixture";
 
 export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknown>){
-  const version=String(payload.version||"");
+  // Version and coordinate-system contracts must not be satisfied by
+  // String(["expected-version"]) or object-defined coercion.
+  const version=typeof payload.version==="string"?payload.version:"";
   // Stored operator JSON is untrusted. Number(null), Number(true) and numeric
   // strings are not physical measurements, even when their ratios look right.
   const repeatMm=typeof payload.repeatMm==="number"?payload.repeatMm:Number.NaN;
@@ -195,7 +197,7 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
 
   const fixtureInputsValid=
     version===PHASE1_PROOF_EVIDENCE_VERSION &&
-    String(payload.scaleCoordinateSystem||"")===PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM &&
+    payload.scaleCoordinateSystem===PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM &&
     physicalEvidenceReady &&
     Number.isFinite(photoReferenceMm)&&photoReferenceMm>0 &&
     Number.isFinite(photoReferencePx)&&photoReferencePx>0;
