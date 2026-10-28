@@ -14,7 +14,7 @@ import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/resear
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview-support";
-import { creativeDirectionMatchesSelection } from "@/lib/designer/creative-selection";
+import { creativeDirectionMatchesSelection, fabricRevisionKey } from "@/lib/designer/creative-selection";
 import { createPreviewRequestScope } from "@/lib/designer/preview-request-scope";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, validStoredMeasurementProfile, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
@@ -186,9 +186,10 @@ export function DesignerModule() {
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
   const craftFabrics=useMemo(()=>[...new Map([...shirtOptions,...pantOptions].map(f=>[f.id,f])).values()],[shirtOptions,pantOptions]);
   const styleIdentity=(value:DesignerStyle)=>(Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>).map((key)=>value[key]);
-  const handoffIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention]);
+  const fabricIdentity=JSON.stringify([fabricRevisionKey(shirt),fabricRevisionKey(pant)]);
+  const handoffIdentity=JSON.stringify([shirtId,pantId,fabricIdentity,occasion,styleIdentity(style),styleSpec,climate,intention]);
   const directorHandoffCurrent=directorHandoffIdentity===handoffIdentity;
-  const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+  const assessmentIdentity=JSON.stringify([shirtId,pantId,fabricIdentity,occasion,styleIdentity(style),styleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
   const searchIdentity=JSON.stringify([assessmentIdentity,searchScope]);
   const committedAssessmentIdentity=useRef(assessmentIdentity);
   const assessRunRef=useRef<{identity:string;controller:AbortController}|null>(null);
@@ -299,7 +300,7 @@ export function DesignerModule() {
     setLockedRevision(null);
     setVaultRecoveryToken("");
     setVaultMessage("");
-  },[shirtId,pantId,styleSpec,bodyProfile,measurementProfile,activeCreative]);
+  },[shirtId,pantId,fabricIdentity,styleSpec,bodyProfile,measurementProfile,activeCreative]);
 
   useEffect(() => {
     try {
@@ -419,7 +420,9 @@ export function DesignerModule() {
         setDirectorHandoffTitle(params.get("sourceTitle") || "Style Director result");
         setDirectorHandoffTier(params.get("sourceTier") || "");
         setDirectorHandoffReason(params.get("sourceReason") || "");
-        setDirectorHandoffIdentity(JSON.stringify([nextShirtId,nextPantId,nextOccasion,styleIdentity(nextStyle),nextStyleSpec || fromLegacyStyle(nextStyle),nextClimate,nextIntention]));
+        setDirectorHandoffIdentity(JSON.stringify([nextShirtId,nextPantId,
+          JSON.stringify([fabricRevisionKey(DESIGNER_SHIRTS.find((item)=>item.id===nextShirtId)),fabricRevisionKey(DESIGNER_PANTS.find((item)=>item.id===nextPantId))]),
+          nextOccasion,styleIdentity(nextStyle),nextStyleSpec || fromLegacyStyle(nextStyle),nextClimate,nextIntention]));
         const handoffToken=params.get("handoffToken");
         if(handoffToken){
           void fetch("/api/style-director/handoff",{
@@ -468,6 +471,8 @@ export function DesignerModule() {
         Array.isArray(parsed.creative.treatments) &&
         creativeDirectionMatchesSelection(parsed.creative,{
           shirtId:nextShirtId,pantId:nextPantId,occasion:nextOccasion,
+          shirt:DESIGNER_SHIRTS.find((item)=>item.id===nextShirtId)??null,
+          pant:DESIGNER_PANTS.find((item)=>item.id===nextPantId)??null,
           climate:nextClimate,intention:nextIntention,style:nextStyle,
           styleSpec:nextStyleSpec || fromLegacyStyle(nextStyle),
         })) {
@@ -536,7 +541,7 @@ export function DesignerModule() {
   useEffect(() => {
     if(!draftReady) return;
     const creativeStillMatches=creativeDirectionMatchesSelection(activeCreative,{
-      shirtId,pantId,occasion,climate,intention,style,styleSpec,
+      shirtId,pantId,shirt:shirt??null,pant:pant??null,occasion,climate,intention,style,styleSpec,
     });
     if(creativeStillMatches) return;
     // A creative assessment belongs to the selected concept. Do not leave its
@@ -555,7 +560,7 @@ export function DesignerModule() {
     setCreativeVisualReview(null);
     setCreativeRenderRepair("");
     setCreativeAutoNote("");
-  },[draftReady,shirtId,pantId,occasion,climate,intention,style,styleSpec]);
+  },[draftReady,shirtId,pantId,shirt,pant,occasion,climate,intention,style,styleSpec]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
