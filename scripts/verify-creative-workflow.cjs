@@ -10,9 +10,13 @@ const input={shirtId:e.DESIGNER_SHIRTS[0].id,pantId:e.DESIGNER_PANTS[0].id,style
 async function http(p,data){const response=await fetch(base+p,{method:data?"POST":"GET",headers:{"content-type":"application/json"},...(data?{body:JSON.stringify(data)}:{})});return {status:response.status,data:await response.json()};}
 function fixture(b){const shirt=e.DESIGNER_SHIRTS.find(f=>f.id===b.shirtId),pant=e.DESIGNER_PANTS.find(f=>f.id===b.pantId);return s.attachCreativeCraft(c.generateCreativeDirections({shirt,pant,occasion:b.occasion,style:b.style,context:b.context,limit:5}),s.resolveCraftRequest(b.craft),e.DESIGNER_SHIRTS.find(f=>f.id===b.craft.accentId));}
 function assessment(b){const shirt=e.DESIGNER_SHIRTS.find(f=>f.id===b.shirtId),pant=e.DESIGNER_PANTS.find(f=>f.id===b.pantId),style=b.styleSpec?body.toLegacyStyle(b.styleSpec):b.style,recommendation=e.evaluateDesignerCombo(shirt,pant,b.occasion,style,undefined,b.context),f=fit.assessFitConstruction(b.measurements,style,{climate:b.context.climate,shirtFabric:shirt,trouserFabric:pant});return {assessment:{recommendation,fitConstruction:f,brandLanguage:null,blockStrategy:null,negotiation:negotiation.buildDesignerNegotiation(recommendation,f),garmentSpec:g.buildCanonicalGarmentSpec(recommendation,f,b.measurements,null,null,b.creative,b.creativeVisualReview,b.styleSpec,b.bodyProfile)}};}
-async function pageAt(width){const context=await browser.newContext({viewport:{width,height:1000},acceptDownloads:true}),page=await context.newPage();activePage=page;page.on("pageerror",error=>summary.errors.push(error.message));page.on("console",m=>{if(m.type()==="error")summary.errors.push(m.text());});let personal={authenticated:true,configured:true,owner:"qa-owner-A",reviewCount:0,preferences:{...s.DEFAULT_CRAFT_PREFERENCES,enabled:true}},generates=0,held=[],reviews=[];
+async function pageAt(width){const context=await browser.newContext({viewport:{width,height:1000},acceptDownloads:true}),page=await context.newPage();activePage=page;page.on("pageerror",error=>summary.errors.push(error.message));page.on("console",m=>{if(m.type()==="error")summary.errors.push(m.text());});let personal={authenticated:true,configured:true,owner:"qa-owner-A",reviewCount:0,preferences:{...s.DEFAULT_CRAFT_PREFERENCES,enabled:true}},generates=0,held=[],reviews=[],catalogueRevision=false;
   await context.route("**/api/**",async route=>{const req=route.request(),p=new URL(req.url()).pathname,b=req.postDataJSON()||{};
     if(/creative-render|creative-inspect|look-render|look-inspect/.test(p)){summary.paidCalls++;return route.fulfill({status:200,json:{}});}
+    if(p==="/api/designer/catalog")return route.fulfill({status:200,json:catalogueRevision?{
+      shirts:e.DESIGNER_SHIRTS.map(f=>({...f,source:f.source+"-qa-revision"})),
+      pants:e.DESIGNER_PANTS,
+    }:{}});
     if(p==="/api/designer/creative-generate"){generates++;if(b.craft?.brief==="DELAYED"&&held.length===0){held.push(route);return;}return route.fulfill({status:200,json:{concepts:fixture(b)}});}
     if(p==="/api/designer/creative-profile"){if(req.method()==="POST"){reviews.push(b);if(b.action==="preferences")personal={...personal,preferences:b.preferences};if(b.action==="reset")personal={...personal,preferences:s.DEFAULT_CRAFT_PREFERENCES,reviewCount:0};if(b.action==="review")personal={...personal,reviewCount:personal.reviewCount+1};}return route.fulfill({status:200,json:personal});}
     if(p==="/api/designer/assess")return route.fulfill({status:200,json:assessment(b)});
@@ -20,7 +24,7 @@ async function pageAt(width){const context=await browser.newContext({viewport:{w
     return route.fulfill({status:200,json:p.includes("photo-calibration")?{verified:false}:{}});
   });
   await page.goto(base+"/designer-studio",{waitUntil:"networkidle"});await page.locator(".brandIntro").waitFor({state:"hidden"});await page.locator(".newDesignerPhoto canvas").waitFor();await page.waitForFunction(()=>[...document.querySelectorAll(".newDesignerPhoto button")].some(b=>b.textContent==="Lock final design"&&!b.disabled));
-  return {page,context,held,reviews,get generates(){return generates;},switchOwner(){personal={...personal,owner:"qa-owner-B",preferences:s.DEFAULT_CRAFT_PREFERENCES,reviewCount:0};}};
+  return {page,context,held,reviews,get generates(){return generates;},reviseCatalogue(){catalogueRevision=true;},switchOwner(){personal={...personal,owner:"qa-owner-B",preferences:s.DEFAULT_CRAFT_PREFERENCES,reviewCount:0};}};
 }
 const pixels=page=>page.locator(".newDesignerPhoto canvas").evaluate(c=>c.toDataURL());
 async function run(){fs.mkdirSync(out,{recursive:true});const valid=await http("/api/designer/creative-generate",input);assert.equal(valid.status,200);assert.equal(valid.data.concepts.length,5);assert.ok(valid.data.concepts.every(d=>s.validCreativeCraft(d.craft)));summary.http.push("valid catalogue recipe generation");
@@ -39,6 +43,24 @@ async function run(){fs.mkdirSync(out,{recursive:true});const valid=await http("
     if(width===1440){await lab.locator(".creativeMemory summary").click();const changedOwnerBefore=state.reviews.length;state.switchOwner();await page.evaluate(()=>window.dispatchEvent(new Event("focus")));await page.waitForFunction(()=>!document.querySelector(".creativeMemory input[type=checkbox]")?.checked);await lab.locator(".creativeCards article").first().getByRole("button",{name:"I like this",exact:true}).click();assert.equal(state.reviews.length,changedOwnerBefore,"guest/disabled scope cannot inherit other customer's reviews");summary.regressions.push("account switch clears scope and disabled taste does not persist");
       await lab.getByRole("textbox",{name:"Creative design brief",exact:true}).fill("DELAYED");await generate.click();await page.waitForTimeout(100);assert.equal(state.held.length,1);await lab.getByRole("combobox",{name:"Craft motif",exact:true}).selectOption("wave");await generate.click();await page.waitForFunction(()=>document.querySelector(".creativeCards article")?.textContent.includes("wave"));try{await state.held[0].fulfill({status:200,json:{concepts:fixture({...input,craft:{...input.craft,motif:"leaf"}})}});}catch{}await page.waitForTimeout(100);assert.match(await lab.locator(".creativeCards article").first().textContent(),/wave/);summary.regressions.push("stale generation cannot replace current controls");
       const countBefore=state.generates;await page.getByRole("textbox",{name:"Designer question or task",exact:true}).fill("Create wave embroidery on the cuff");await page.getByRole("button",{name:"Ask Designer",exact:true}).click();await page.waitForFunction(()=>document.querySelector('textarea[aria-label="Creative design brief"]')?.value==="Create wave embroidery on the cuff");await page.waitForTimeout(100);assert.equal(state.generates,countBefore+1);summary.regressions.push("designer question routes into deterministic craft generation");
+      // Simulate a supplier catalogue revision under the SAME selected fabric ID.
+      // A restored concept must not carry old visual/fit proof into the new roll.
+      await lab.locator(".creativeCards article").first().getByRole("button",{name:"Try this",exact:true}).click();
+      await page.locator(".newDesignerCreativeHandoff").waitFor();
+      await page.waitForFunction(()=>{
+        const raw=localStorage.getItem("linen-earth:real-designer-draft:v2");
+        try{return Boolean(raw&&JSON.parse(raw).creative?.id);}catch{return false;}
+      });
+      state.reviseCatalogue();
+      await page.reload({waitUntil:"networkidle"});
+      await page.locator(".brandIntro").waitFor({state:"hidden"});
+      await page.waitForFunction(()=>{
+        const raw=localStorage.getItem("linen-earth:real-designer-draft:v2");
+        try{return Boolean(raw&&!JSON.parse(raw).creative);}catch{return false;}
+      });
+      assert.equal(await page.locator(".newDesignerCreativeHandoff").count(),0,
+        "same-ID catalogue revision must revoke restored creative evidence");
+      summary.regressions.push("same-ID catalogue revision revokes restored creative proof");
     }
     await context.close();
   }
