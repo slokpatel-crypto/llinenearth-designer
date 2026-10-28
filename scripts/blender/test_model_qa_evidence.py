@@ -87,10 +87,16 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
                 "legCenterSpacingMm": 210.0,
             },
             "objects": {name: {"present": True, "inExportCollection": True,
+                               "vertices": 100, "polygons": 50, "triangles": 100,
+                               "degenerateFaces": 0, "degenerateRatio": 0.0,
+                               "uvLayers": 1, "activeUv": "UVMap",
+                               "transformApplied": True,
                                "uvQuality": {"invalidUvFaces": 0, "nonfiniteUvFaces": 0,
                                              "collapsedUvFaces": 0, "discontinuousSharedUvEdges": 0,
                                              "nonmanifoldUvEdges": 0, "sharedUvEdges": 50}}
                         for name in GARMENT_OBJECTS},
+            "totals": {"triangles": 600, "vertices": 600,
+                       "triangleBudget": 220000, "vertexBudget": 280000},
             "boundaryIntersections": {key: 0 for key in
                 ("bodyShirtTorso", "bodySleeveL", "bodySleeveR", "bodyTrouserWaist",
                  "bodyTrouserLegL", "bodyTrouserLegR", "shirtTrouserTuck")},
@@ -430,6 +436,33 @@ else:
                 self.assertTrue(any("native preflight report" in reason.lower()
                                     for reason in self.validate()))
 
+
+    def test_native_ready_rejects_missing_geometry_uv_or_false_mesh_totals(self):
+        self.assertEqual(validate_native_preflight_report(self.report), [])
+        panel = self.report["objects"]["ShirtTorsoFabric"]
+        for key, invalid in (
+            ("vertices", 0), ("vertices", True), ("polygons", -1),
+            ("triangles", "100"), ("transformApplied", False),
+            ("uvLayers", 0), ("activeUv", ""),
+            ("degenerateFaces", -1), ("degenerateRatio", float("nan")),
+            ("degenerateRatio", 0.002),
+        ):
+            original = panel[key]
+            panel[key] = invalid
+            with self.subTest(key=key, invalid=invalid):
+                self.assertTrue(validate_native_preflight_report(self.report))
+            panel[key] = original
+        for key, invalid in (
+            ("triangles", 601), ("vertices", 599),
+            ("triangleBudget", 220001), ("vertexBudget", 280001),
+        ):
+            original = self.report["totals"][key]
+            self.report["totals"][key] = invalid
+            with self.subTest(total=key):
+                self.assertTrue(any("totals" in reason for reason in
+                                    validate_native_preflight_report(self.report)))
+            self.report["totals"][key] = original
+        self.assertEqual(validate_native_preflight_report(self.report), [])
 
     def test_native_ready_cannot_skip_any_silhouette_or_identity_guide_sample(self):
         # A report saying ready=True is insufficient when Blender could not
