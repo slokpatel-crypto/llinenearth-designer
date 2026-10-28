@@ -1315,8 +1315,22 @@ for (const token of ["inspectCreativeRender","heroVisibility","boundaryIntegrity
   if (!aiVisualization.includes(token)) throw new Error(`Designer V5 render-inspection regression: missing ${token}`);
 }
 const creativeGenerateRoute = fs.readFileSync("src/app/api/designer/creative-generate/route.ts","utf8");
-for (const token of ["generateCreativeDirections","chooseCreativeRedesign","researchFreedom:\"maximum\"","loadDesignerFabricMetadata","loadDesignerCreativeContext","__linenCreativeGenerateRate","contentLength>650_000"]) {
+for (const token of ["generateCreativeDirections","chooseCreativeRedesign","researchFreedom:\"maximum\"","loadActiveDesignerCatalogueFabrics","loadDesignerCreativeContext","__linenCreativeGenerateRate","contentLength>650_000"]) {
   if (!creativeGenerateRoute.includes(token)) throw new Error(`Designer V5 server-generation route regression: missing ${token}`);
+}
+const sharedFabricRevisionLoader=fs.readFileSync("src/lib/designer/catalog-stock-server.ts","utf8");
+for(const token of ["loadActiveDesignerFabricStock","loadDesignerFabricIntelligence","attachCatalogFabricPhysics","applyLiveVerifiedStockAvailability"]){
+  if(!sharedFabricRevisionLoader.includes(token)) throw new Error(`Shared Designer fabric revision loader regression: missing ${token}`);
+}
+for(const path of [
+  "src/app/api/designer/catalog/route.ts",
+  "src/app/api/designer/creative-generate/route.ts",
+  "src/app/api/designer/assess/route.ts",
+]){
+  const source=fs.readFileSync(path,"utf8");
+  if(!source.includes("loadActiveDesignerCatalogueFabrics()") || source.includes("enrichDesignerFabricsWithIntelligence(")){
+    throw new Error(`Designer physical catalogue/creative/assessment revision drift: ${path}`);
+  }
 }
 if (realDesignerModule.includes("generateCreativeDirections({") || realDesignerModule.includes("chooseCreativeRedesign(") || realDesignerModule.includes("creativeLearning") || realDesignerModule.includes("creativeResearch")) {
   throw new Error("Designer V5 architecture regression: creative intelligence returned to the customer UI bundle.");
