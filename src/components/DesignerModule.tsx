@@ -305,7 +305,7 @@ export function DesignerModule() {
     setLockedRevision(null);
     setVaultRecoveryToken("");
     setVaultMessage("");
-  },[shirtId,pantId,fabricIdentity,styleSpec,bodyProfile,measurementProfile,activeCreative]);
+  },[assessmentIdentity,activeCreative]);
 
   useEffect(() => {
     try {
