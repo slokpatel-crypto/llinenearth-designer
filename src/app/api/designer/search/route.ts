@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import {
   DESIGNER_STYLE_CHOICES,
   designerFabricFromStock,
@@ -65,11 +66,11 @@ function safeObservations(value:unknown):TailorObservationProfile|null {
 
 export async function POST(request:Request) {
   if(rateLimited(request)) return NextResponse.json({error:"Designer search is temporarily rate limited."},{status:429});
-  const contentLength=Number(request.headers.get("content-length")||0);
-  if(contentLength>80_000) return NextResponse.json({error:"Designer search request is too large."},{status:413});
+  const unsafe=secureJsonRequestError(request,80_000);
+  if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
 
   try {
-    const body=await request.json() as {
+    const body=await readSecureJsonObject(request,80_000) as {
       shirtId?:unknown;
       pantId?:unknown;
       occasion?:unknown;
@@ -146,6 +147,8 @@ export async function POST(request:Request) {
     }));
     return NextResponse.json({results:presentation},{headers:{"cache-control":"no-store"}});
   } catch(error) {
+    if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
+    if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
     console.error("[designer/search]",error);
     return NextResponse.json({error:"Designer could not prepare alternative directions."},{status:500});
   }
