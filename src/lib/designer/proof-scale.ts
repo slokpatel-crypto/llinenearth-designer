@@ -73,14 +73,15 @@ export type RealismAssessment={
   recordedAt?:string;
 };
 
-export function summarizeIndependentRealism(assessments:RealismAssessment[]){
+export function summarizeIndependentRealism(assessments:unknown){
   const latest=new Map<string,RealismAssessment>();
-  for(const item of assessments){
-    const viewerId=String(item.viewerId||"").trim().toLowerCase();
-    // A missing or malformed rating must never become an independent reviewer.
-    // In particular NaN passes neither the <1 nor >5 comparisons.
-    if(typeof item.rating!=="number"||!Number.isFinite(item.rating)) continue;
-    const rating=Math.round(item.rating);
+  for(const item of Array.isArray(assessments)?assessments:[]){
+    if(!item||typeof item!=="object"||Array.isArray(item)) continue;
+    // Reviewer identity and the closed 1..5 rating must be genuine JSON types.
+    // Coercing object IDs or rounding 3.5/4.5 would fabricate independent proof.
+    const viewerId=typeof item.viewerId==="string"?item.viewerId.trim().toLowerCase():"";
+    if(typeof item.rating!=="number"||!Number.isInteger(item.rating)) continue;
+    const rating=item.rating;
     if(viewerId.length<2||viewerId.length>80||rating<1||rating>5) continue;
     latest.set(viewerId,{...item,viewerId,rating});
   }
@@ -137,9 +138,15 @@ export type Phase1ProofAcceptanceInput={
   boundaryChecks?:Phase1BoundaryChecks|null;
 };
 
-export function phase1ProofAcceptance(input:Phase1ProofAcceptanceInput) {
-  const validRatings=input.realismRatings.filter((rating)=>
-    typeof rating==="number"&&Number.isFinite(rating)&&rating>=1&&rating<=5);
+export function phase1ProofAcceptance(input:Phase1ProofAcceptanceInput|null|undefined) {
+  // A direct caller can bypass the recorded-evidence adapter; a malformed
+  // envelope must yield a blocked gate rather than throw or certify proof.
+  input=input&&typeof input==="object"&&!Array.isArray(input)?input:{
+    repeatMm:null,scaleGatePass:null,realModelSamples:0,
+    realModelP95Ms:null,realismRatings:[],boundaryChecks:null,
+  };
+  const validRatings=Array.isArray(input.realismRatings)?input.realismRatings.filter((rating)=>
+    typeof rating==="number"&&Number.isInteger(rating)&&rating>=1&&rating<=5):[];
   const strongRatings=validRatings.filter((rating)=>rating>=4).length;
   const scaleReady=typeof input.repeatMm==="number"
     && Number.isFinite(input.repeatMm)&&input.repeatMm>0&&input.scaleGatePass===true;
@@ -171,14 +178,22 @@ export function phase1ProofAcceptance(input:Phase1ProofAcceptanceInput) {
 export const PHASE1_PROOF_EVIDENCE_VERSION="linen-earth-phase1-proof-v4";
 export const PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM="photo-1024x1536-fixture";
 
-export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknown>){
-  const version=String(payload.version||"");
-  const repeatMm=Number(payload.repeatMm);
-  const measuredPreviewRepeatPx=Number(payload.measuredPreviewRepeatPx);
-  const photoReferenceMm=Number(payload.photoReferenceMm);
-  const photoReferencePx=Number(payload.photoReferencePx);
+export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknown>|null|undefined){
+  // Untrusted event payloads may be null or arrays despite the static contract.
+  // Normalize to empty blocked evidence instead of throwing on property access.
+  payload=payload&&typeof payload==="object"&&!Array.isArray(payload)?payload:{};
+  // Version and coordinate-system contracts must not be satisfied by
+  // String(["expected-version"]) or object-defined coercion.
+  const version=typeof payload.version==="string"?payload.version:"";
+  // Stored operator JSON is untrusted. Number(null), Number(true) and numeric
+  // strings are not physical measurements, even when their ratios look right.
+  const repeatMm=typeof payload.repeatMm==="number"?payload.repeatMm:Number.NaN;
+  const measuredPreviewRepeatPx=typeof payload.measuredPreviewRepeatPx==="number"?payload.measuredPreviewRepeatPx:Number.NaN;
+  const photoReferenceMm=typeof payload.photoReferenceMm==="number"?payload.photoReferenceMm:Number.NaN;
+  const photoReferencePx=typeof payload.photoReferencePx==="number"?payload.photoReferencePx:Number.NaN;
 
-  const physicalEvidenceNote=String(payload.physicalEvidenceNote||"").replace(/\s+/g," ").trim().slice(0,700);
+  const physicalEvidenceNote=typeof payload.physicalEvidenceNote==="string"
+    ?payload.physicalEvidenceNote.replace(/\s+/g," ").trim().slice(0,700):"";
   let physicalEvidenceReady=false;
   try {
     physicalEvidenceReady=validateVerifiedPhysicalEvidence({
@@ -191,7 +206,7 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
 
   const fixtureInputsValid=
     version===PHASE1_PROOF_EVIDENCE_VERSION &&
-    String(payload.scaleCoordinateSystem||"")===PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM &&
+    payload.scaleCoordinateSystem===PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM &&
     physicalEvidenceReady &&
     Number.isFinite(photoReferenceMm)&&photoReferenceMm>0 &&
     Number.isFinite(photoReferencePx)&&photoReferencePx>0;
@@ -221,7 +236,7 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
         if(!item||typeof item!=="object") return [];
         const value=item as Record<string,unknown>;
         return [{
-          viewerId:String(value.viewerId||"").slice(0,80),
+          viewerId:typeof value.viewerId==="string"?value.viewerId.slice(0,80):"",
           rating:value.rating as number,
           recordedAt:String(value.recordedAt||"").slice(0,80),
         }];
