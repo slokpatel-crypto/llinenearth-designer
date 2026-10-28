@@ -1,0 +1,34 @@
+/* Compact photo-preview controls contain real customer decisions and proof states.
+   Do not shrink them to 6–9px on phones or desktop; wrap long fabric names. */
+.newDesigner .newDesignerPhotoSummaryCompact span{font-size:11px!important;letter-spacing:.05em}
+.newDesigner .newDesignerPhotoSummaryCompact strong{font-size:13px!important;line-height:1.35;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+.newDesigner .newDesignerPhotoActionsCompact button{font-size:12px!important;line-height:1.3;min-height:44px;padding:10px 12px!important;white-space:normal}
+.newDesigner .newDesignerPhotoTag{font-size:11px;letter-spacing:.08em}
+.newDesigner :is(.newDesignerPhotoLock,.newDesignerPhotoCache,.newDesignerPhotoQaHold){font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.newDesigner :is(.newDesignerPhotoLock,.newDesignerPhotoQaHold) strong{font-size:11px;letter-spacing:.06em}
+.newDesigner :is(.newDesignerResultChips b,.newDesignerPhotoCreativeTags b,.newDesignerResultReasons span,.newDesignerFeedbackCompact>span,.newDesignerPreferenceDrawer label,.newDesignerResearchDrawer>summary){font-size:11px!important;line-height:1.45}
+.newDesigner .newDesignerGarmentScope article{min-width:0}
+.newDesigner .newDesignerGarmentScope article :is(span,p,small,label>span){font-size:11px;line-height:1.45;overflow-wrap:break-word}
+.newDesigner .newDesignerGarmentScope article select{font-size:13px;min-height:44px}
+@media(max-width:560px){
+  .newDesigner .newDesignerPhotoSummaryCompact{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+  .newDesigner .newDesignerGarmentScope{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* Fabric discovery, view switching and review/repair are real controls, not captions. */
+.newDesigner :is(.newDesignerPhotoViews button,.newDesignerSelectedQa button,.newDesignerCreativeReview button,.newDesignerCreativeReviewReasons button,.newDesignerTechnicalDrawer button,.newDesignerSearchScopes button,.newDesignerBriefHead>button,.newDesignerBriefResults>article>button,.newDesignerOptionalSearchRun,.newDesignerWhatsAppLook){font-size:12px!important;line-height:1.3;min-height:44px;white-space:normal}
+.newDesigner :is(.newDesignerFabricFilters button,.newDesignerQuickResults>article>button){font-size:11px!important;line-height:1.3;min-height:44px}
+.newDesigner :is(.newDesignerSelectedQa span,.newDesignerSelectedQa strong,.newDesignerSelectedQa small,.newDesignerSelectedQaMetrics i,.newDesignerSelectedQaMetrics i b,.newDesignerPhotoMatch>span,.newDesignerPhotoMatch p,.newDesignerTruthNearCta span,.newDesignerTruthNearCta p,.newDesignerRenderCheck>span,.newDesignerRenderCheck b,.newDesignerRenderCheck p){font-size:11px!important;line-height:1.45;overflow-wrap:break-word}
+.newDesigner .newDesignerSelectedQa{min-width:0}
+.newDesigner .newDesignerSelectedQaMetrics i{white-space:normal}
+@media(max-width:560px){.newDesigner .newDesignerPhotoViews{padding-inline:14px}}
+
+/* Keep live preview state available to assistive technology without covering the photograph. */
+.newDesigner .newDesignerSrOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* Review status and future-garment descriptions must meet normal-text contrast.
+   Planned garments stay visually distinct by their background, not low opacity. */
+.newDesigner .newDesignerFabricFilters button[aria-pressed="false"]{color:#526575}
+.newDesigner .newDesignerGarmentScope article[data-status="planned"]{opacity:1}
+.newDesigner .newDesignerGarmentScope article[data-status="planned"] :is(span,p,small,strong){color:#5f584f}
+.newDesigner .newDesignerSelectedQa[data-status="review"] span{color:#87543c}

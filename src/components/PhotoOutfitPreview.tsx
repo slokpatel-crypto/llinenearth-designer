@@ -1711,6 +1711,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <span>LIVE PREVIEW</span>
       <h2 id="designerPhotoTitle">Your look.</h2>
     </div>
+    <span className="newDesignerSrOnly" role="status" aria-live="polite" aria-atomic="true">
+      {`${previewFabricLabel(shirt,pant)}. Shirt ${style.shirtWear.toLowerCase()}, collar ${style.collarFinish.toLowerCase()}. ${ready ? "Instant studio preview available." : "Preparing instant studio preview."} Fit and drape require physical verification.`}
+    </span>
     <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-ready={ready?"true":"false"}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
       {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image)} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal ${photorealView} view of ${shirt.name} with ${pant.name}`} />}

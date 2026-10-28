@@ -9,7 +9,7 @@ if (!runtime) throw Error('Set LINEN_BROWSER_QA_RUNTIME');
 const { chromium } = createRequire(path.join(runtime, 'package.json'))('playwright');
 const base = process.env.LINEN_BROWSER_QA_URL || 'http://127.0.0.1:3000';
 const out = path.resolve('artifacts/preview-lifecycle/premium-atelier');
-const summary = { browser: 'Chromium', model: 'existing local fallback', providerCalls: 0, viewports: [], checks: [], errors: [] };
+const summary = { browser: 'Chromium', model: 'existing local fallback', providerCalls: 0, browserTimingScope: 'Warm-session navigation + deterministic preview readiness in CI Chromium; not a device, cold-cache, paint SLA or physical acceptance', viewports: [], checks: [], errors: [] };
 let browser, activePage;
 async function open(width, reducedMotion = 'no-preference', javaScriptEnabled = true) {
   const recordVideo = width === 1440 && reducedMotion === 'no-preference' && javaScriptEnabled ? { dir: path.join(out, 'recordings'), size: { width: 1440, height: 1000 } } : undefined;
@@ -208,6 +208,72 @@ async function run() {
         assert.equal(await page.locator('.atelierPageProgress').count(), 0, 'homepage motion does not leak into studio');
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
         summary.checks.push('navigation preserves usable designer and removes homepage motion');
+      }
+      if (reducedMotion === 'reduce') {
+        const skip = page.getByRole('link', { name: 'Skip to main content' });
+        assert.equal(await skip.count(), 1, 'main content skip link is present');
+        await skip.focus();
+        assert.equal(await skip.evaluate(n => getComputedStyle(n).visibility), 'visible');
+        await skip.press('Enter');
+        assert.equal(await page.evaluate(() => location.hash), '#main-content');
+        assert.equal(await page.locator('#main-content').count(), 1);
+        if (width === 390) {
+          const mobileLinks = await page.locator('.atelierMobileDock a').evaluateAll(nodes => nodes.map(n => ({
+            font: parseFloat(getComputedStyle(n).fontSize),
+            height: n.getBoundingClientRect().height,
+            left: n.getBoundingClientRect().left,
+            right: n.getBoundingClientRect().right,
+            scroll: n.scrollWidth,
+            client: n.clientWidth,
+          })));
+          assert.equal(mobileLinks.length, 5);
+          for (const link of mobileLinks) {
+            assert.ok(link.font >= 11 && link.height >= 44 && link.left >= 0 && link.right <= width + 1 && link.scroll <= link.client + 1,
+              'five phone navigation targets remain readable and unclipped: ' + JSON.stringify(link));
+          }
+        }
+        const studioStarted = Date.now();
+        await page.goto(base + '/designer-studio', { waitUntil: 'networkidle' });
+        await page.locator('.newDesignerPhotoStage[data-ready="true"]').waitFor({ timeout: 30000 });
+        const studioReadyMs = Date.now() - studioStarted;
+        summary.viewports[summary.viewports.length - 1].studioReadyMs = studioReadyMs;
+        await page.locator('.newDesignerPhotoSummaryCompact').waitFor();
+        const studio = await page.evaluate(() => {
+          const px = selector => parseFloat(getComputedStyle(document.querySelector(selector)).fontSize);
+          const action = document.querySelector('.newDesignerPhotoActionsCompact button');
+          return {
+            overflow: document.documentElement.scrollWidth > innerWidth + 2,
+            summaryLabel: px('.newDesignerPhotoSummaryCompact span'),
+            summaryValue: px('.newDesignerPhotoSummaryCompact strong'),
+            actionLabel: action ? parseFloat(getComputedStyle(action).fontSize) : 0,
+            actionHeight: action ? action.getBoundingClientRect().height : 0,
+            garmentLabel: px('.newDesignerGarmentScope article label span'),
+            garmentSelect: px('.newDesignerGarmentScope article select'),
+            garmentSelectHeight: document.querySelector('.newDesignerGarmentScope article select').getBoundingClientRect().height,
+            filterFont: px('.newDesignerFabricFilters button'),
+            filterHeight: document.querySelector('.newDesignerFabricFilters button').getBoundingClientRect().height,
+            spokenPreview: document.querySelector('.newDesignerSrOnly')?.textContent || '',
+            filterInactiveColor: getComputedStyle(document.querySelector('.newDesignerFabricFilters button[aria-pressed="false"]')).color,
+            plannedOpacity: getComputedStyle(document.querySelector('.newDesignerGarmentScope article[data-status="planned"]')).opacity,
+            plannedTextColor: getComputedStyle(document.querySelector('.newDesignerGarmentScope article[data-status="planned"] small')).color,
+            plannedTitleColor: getComputedStyle(document.querySelector('.newDesignerGarmentScope article[data-status="planned"] strong')).color,
+          };
+        });
+        assert.equal(studio.overflow, false, 'Designer stays within the viewport at ' + width);
+        assert.ok(studio.summaryLabel >= 11 && studio.summaryValue >= 13 && studio.actionLabel >= 12 && studio.actionHeight >= 44,
+          'fabric identity and lock controls remain readable: ' + JSON.stringify(studio));
+        assert.ok(studio.garmentLabel >= 11 && studio.garmentSelect >= 13 && studio.garmentSelectHeight >= 44,
+          'garment construction selectors remain readable: ' + JSON.stringify(studio));
+        assert.ok(studio.filterFont >= 11 && studio.filterHeight >= 44,
+          'shirt fabric filter targets remain readable: ' + JSON.stringify(studio));
+        assert.ok(studio.spokenPreview.includes('Fit and drape require physical verification.'),
+          'screen reader preview state must not claim physical acceptance');
+        assert.equal(studio.filterInactiveColor, 'rgb(82, 101, 117)', 'inactive fabric filters remain legible');
+        assert.equal(studio.plannedOpacity, '1', 'future garment descriptions must not fade below normal-text contrast');
+        assert.equal(studio.plannedTextColor, 'rgb(95, 88, 79)', 'future garment labels remain readable');
+        assert.equal(studio.plannedTitleColor, 'rgb(95, 88, 79)', 'future garment titles remain readable');
+        await page.screenshot({ path: path.join(out, `designer-legibility-${width}.png`) });
+        summary.checks.push('keyboard skip link and responsive Designer control legibility at ' + width + 'px');
       }
       const video = page.video();
       await context.close();
