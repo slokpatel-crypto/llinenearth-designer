@@ -120,7 +120,7 @@ test("same-ID catalogue revisions revoke creative direction and physical preview
       gsm:{value:180,evidence:"declared"}},
   } as unknown as DesignerFabric;
   const pant={id:selection.pantId,name:"Beige suiting",image:"/fabrics/b.webp",
-    source:"operator",confirmedAvailableMetres:20} as DesignerFabric;
+    source:"operator",confirmedAvailableMetres:20} as unknown as DesignerFabric;
   const selected={...selection,shirt:{...shirt},pant:{...pant}};
   const concept={...direction,recommendation:{...direction.recommendation,shirt:{...shirt},pant:{...pant}}};
   assert.equal(creativeDirectionMatchesSelection(concept,selected),true);
