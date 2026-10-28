@@ -81,11 +81,11 @@ export function validateOperatorStockSnapshot(value:unknown):OperatorStockSnapsh
        ids.has(item.fabric_id))return null;
     ids.add(item.fabric_id);
     const numbers=["physical_metres","reserved_metres","available_metres"] as const;
-    if(numbers.some((field)=>typeof item[field]!=="number"||
-       !Number.isFinite(item[field])||(item[field] as number)<0))return null;
+    if(numbers.some((field)=>{const n=item[field];return typeof n!=="number"||
+       !Number.isFinite(n)||n<0;}))return null;
     const counts=["manual_event_count","provenance_event_count","legacy_unverified_event_count"] as const;
-    if(counts.some((field)=>typeof item[field]!=="number"||
-       !Number.isSafeInteger(item[field])||(item[field] as number)<0))return null;
+    if(counts.some((field)=>{const n=item[field];return typeof n!=="number"||
+       !Number.isSafeInteger(n)||n<0;}))return null;
     if(typeof item.provenance_ready!=="boolean")return null;
     const manual=item.manual_event_count as number;
     const proven=item.provenance_event_count as number;
