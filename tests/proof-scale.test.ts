@@ -563,3 +563,30 @@ test("recorded proof cannot count fractional or object-identity reviews",()=>{
   assert.equal(evidence.acceptance.realismReady,false);
   assert.equal(evidence.coreAccepted,false);
 });
+
+
+test("array-coerced version and coordinate labels cannot satisfy Phase 1 evidence contract",()=>{
+  const base={
+    version:"linen-earth-phase1-proof-v4",
+    scaleCoordinateSystem:"photo-1024x1536-fixture",
+    repeatMm:10,
+    physicalEvidenceNote:"Owner measured repeat and photo reference with a steel ruler.",
+    photoReferenceMm:100,
+    photoReferencePx:82,
+    measuredPreviewRepeatPx:8.2,
+    realModelSampleDurationsMs:Array(12).fill(210),
+    realismAssessments:Array.from({length:8},(_,index)=>({viewerId:`viewer-${index}`,rating:index<6?5:3})),
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  };
+  assert.equal(evaluateRecordedPhase1ProofEvidence(base).coreAccepted,true);
+  for(const spoofed of [
+    {version:[base.version]},
+    {scaleCoordinateSystem:[base.scaleCoordinateSystem]},
+    {version:{toString:()=>base.version}},
+    {scaleCoordinateSystem:{toString:()=>base.scaleCoordinateSystem}},
+  ]){
+    const proof=evaluateRecordedPhase1ProofEvidence({...base,...spoofed});
+    assert.equal(proof.scaleGatePass,false);
+    assert.equal(proof.coreAccepted,false);
+  }
+});
