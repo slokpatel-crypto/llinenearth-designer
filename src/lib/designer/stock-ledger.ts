@@ -84,7 +84,8 @@ export function normalizeManualStockEvent(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock event evidence is required.");
   const source=input as Record<string,unknown>;
   const fabricId=requiredStockIdentity(source.fabricId,"Fabric ID",1,160);
-  const eventType=typeof source.eventType==="string"?source.eventType as StockEventType:null;
+  if(typeof source.eventType!=="string") throw new Error("Unsupported manual stock event.");
+  const eventType=source.eventType as StockEventType;
   const quantityMetres=exactStockMetres(source.quantityMetres,"Stock quantity",100000);
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
   const recordedBy=requiredStockAuditText(source.recordedBy,"Named stock checker / recorder",2,120);
