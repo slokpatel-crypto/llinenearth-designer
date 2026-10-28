@@ -5,7 +5,7 @@
 ## Exact source heads
 
 - Default `main` observed: `b1c9d102219005da6f2584ea275a80e8dc021a37`.
-- Latest stacked development draft: PR **#431**, `work/titan-proof-input-boundaries-20261028-hour10`, head `911df10124a459cb97326ce46ea10e4bdb5dd22e`, based on PR **#430** head `f88c685d6ab1b058c07593822f780bd1475f3692`.
+- Latest stacked development draft: PR **#431**, `work/titan-proof-input-boundaries-20261028-hour10`, source/test/docs head before this handoff document `911df10124a459cb97326ce46ea10e4bdb5dd22e` (the handoff commit advances the head; resolve the live PR ref before verification), based on PR **#430** head `f88c685d6ab1b058c07593822f780bd1475f3692`.
 - PRs **#416–#431** were inspected as open, draft and unmerged. They form a sequential stack (#417 on #416, …, #431 on #430), not changes shipped to `main`.
 - Older native 3D PR **#311** remains a separate draft, unmerged integration dependency, head `714345a6fef4f978f111de9898e0ea9b089e4330`.
 
@@ -13,7 +13,7 @@
 
 - PR #430 exact-head `f88c685...`: CI run **40627721930** and Deep Engine Non-3D QA run **40627721745** both completed **success**.
 - PRs #425–#429 also had successful exact-head CI and Non-3D QA at inspection. Do not extrapolate these statuses to #431.
-- PR #431 exact-head `911df101...`: CI run **40632874035** and Non-3D QA run **40632874049** were **pending** at the 10:00 block inspection. Re-query their status before auditing or marking the TODO record verified.
+- PR #431 earlier head `911df101...` (now superseded by the handoff commit): CI run **40632874035** and Non-3D QA run **40632874049** were **pending** at the 10:00 block inspection. These are **not** checks for the latest handoff commit. Re-query the latest head and its new runs before auditing or marking the TODO record verified.
 - #431 changes: strict numeric physical-scale receipts, literal version/coordinate identifiers, string provenance notes and reviewer identities, integer 1–5 realism ratings at both stored-evidence and direct-gate boundaries; regression tests. Source/test/docs diff only. No physical measurements were collected.
 - Repository definition of done: `npm run quality`, `npm test`, `npm run eval:engine`, `npm run eval:preview-performance`, `npm run release:check`, `npm run build`, plus responsive browser verification where relevant. Inspect exact-head workflow jobs and artifacts, not just a green parent.
 
