@@ -7,12 +7,15 @@ import {
   summarizeProductionDeliveryEvidence,
 } from "@/lib/designer/production-delivery-evidence";
 
-type Order={order_id:string;revision_id:string;recipe_hash:string;status:string;note:string;created_at:string};
+type Order={order_id:string;revision_id?:string;recipe_hash?:string;status:string;note?:string;created_at:string;delivered_at?:string};
 type Evidence={evidence_id:string;order_id:string;revision_id:string;recipe_hash:string;manual_design_reentry:boolean;reentry_fields:string[];note:string;operator:string;evidence_reference?:string;created_at:string;order_created_at:string};
 
 export default function ProductionEvidenceClient(){
   const [orders,setOrders]=useState<Order[]>([]);
   const [evidence,setEvidence]=useState<Evidence[]>([]);
+  const [firstTenOrders,setFirstTenOrders]=useState<Order[]>([]);
+  const [firstTenEvidence,setFirstTenEvidence]=useState<Evidence[]>([]);
+  const [deliveredCount,setDeliveredCount]=useState(0);
   const [configured,setConfigured]=useState(true);
   const [historyComplete,setHistoryComplete]=useState(false);
   const [selectedOrderId,setSelectedOrderId]=useState("");
@@ -31,10 +34,15 @@ export default function ProductionEvidenceClient(){
     if(!response.ok){setMessage(data.error||"Production evidence could not be loaded.");return;}
     const nextOrders=Array.isArray(data.orders)?data.orders:[];
     const nextEvidence=Array.isArray(data.evidence)?data.evidence:[];
+    const nextFirstTenOrders=Array.isArray(data.firstTenOrders)?data.firstTenOrders:[];
+    const nextFirstTenEvidence=Array.isArray(data.firstTenEvidence)?data.firstTenEvidence:[];
     setConfigured(data.configured!==false);
     setHistoryComplete(data.historyComplete===true);
     setOrders(nextOrders);
     setEvidence(nextEvidence);
+    setFirstTenOrders(nextFirstTenOrders);
+    setFirstTenEvidence(nextFirstTenEvidence);
+    setDeliveredCount(Number.isInteger(data.deliveredCount)&&data.deliveredCount>=0?data.deliveredCount:0);
     const requested=new URLSearchParams(window.location.search).get("order");
     const delivered=nextOrders.filter((item:Order)=>item.status==="delivered");
     const requestedDelivered=delivered.find((item:Order)=>item.order_id===requested);
@@ -45,7 +53,8 @@ export default function ProductionEvidenceClient(){
   useEffect(()=>{void load();},[]);
 
   const delivered=useMemo(()=>[...orders].filter((item)=>item.status==="delivered").sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at)),[orders]);
-  const summary=useMemo(()=>summarizeProductionDeliveryEvidence(orders,evidence,10,historyComplete),[orders,evidence,historyComplete]);
+  const summary=useMemo(()=>summarizeProductionDeliveryEvidence(firstTenOrders,firstTenEvidence,10,historyComplete,deliveredCount),[firstTenOrders,firstTenEvidence,historyComplete,deliveredCount]);
+  const firstTenIds=useMemo(()=>new Set(firstTenOrders.map((item)=>item.order_id)),[firstTenOrders]);
   const selected=delivered.find((item)=>item.order_id===selectedOrderId)||delivered[0]||null;
   const selectedEvidence=selected?evidence.find((item)=>item.order_id===selected.order_id)||null:null;
   const choiceValid=manualChoice!=="unset"&&operator.trim().length>=2&&evidenceReference.trim().length>=3&&(manualChoice==="no"||reentryFields.length>0||note.trim().length>=3);
@@ -102,7 +111,7 @@ export default function ProductionEvidenceClient(){
     </header>
 
     {!configured&&<section className="productionEvidenceNotice">Production evidence migration is not installed yet.</section>}
-    {configured&&!historyComplete&&<section className="productionEvidenceNotice">Complete production history is not verified (the backend may have reached its 500-record cap). Phase 8 stays OPEN until the earliest delivered orders and their audits can be checked without truncation.</section>}
+    {configured&&!historyComplete&&<section className="productionEvidenceNotice">Authoritative delivery chronology is unavailable. Phase 8 stays OPEN until the earliest delivered events and their audits are verified by the production ledger.</section>}
     {message&&<section className="productionEvidenceNotice">{message}</section>}
 
     <section className="productionEvidenceScore">
@@ -110,6 +119,7 @@ export default function ProductionEvidenceClient(){
       <article><span>FIRST 10 AUDITED</span><strong>{summary.auditedTargetCount}/10</strong><small>immutable completion audits</small></article>
       <article><span>ZERO RE-ENTRY</span><strong>{summary.zeroReentryTargetCount}</strong><small>within first 10 delivered</small></article>
       <article data-alert={summary.reentryIncidentCount>0}><span>RE-ENTRY INCIDENTS</span><strong>{summary.reentryIncidentCount}</strong><small>within first 10 delivered</small></article>
+      {summary.statusRegressionCount>0&&<article data-alert="true"><span>STATUS DRIFT</span><strong>{summary.statusRegressionCount}</strong><small>delivered history contradicts current status</small></article>}
       <article data-complete={summary.gateComplete}><span>PHASE 8 GATE</span><strong>{summary.gateComplete?"PROVED":"OPEN"}</strong><small>{summary.gateComplete?"first 10 passed":"requires real evidence"}</small></article>
     </section>
 
@@ -117,10 +127,10 @@ export default function ProductionEvidenceClient(){
       <aside className="productionEvidenceQueue">
         <div className="productionEvidenceSectionHead"><span>DELIVERED ORDER AUDITS</span><b>{delivered.length}</b></div>
         {!delivered.length&&<p>No delivered orders exist yet.</p>}
-        {delivered.map((item,index)=>{
+        {delivered.map((item)=>{
           const row=evidence.find((entry)=>entry.order_id===item.order_id);
           return <button key={item.order_id} className={selected?.order_id===item.order_id?"active":""} onClick={()=>chooseOrder(item.order_id)}>
-            <span><b>{item.revision_id}</b>{index<10&&<em>FIRST 10</em>}</span>
+            <span><b>{item.revision_id}</b>{firstTenIds.has(item.order_id)&&<em>FIRST 10</em>}</span>
             <small>{item.order_id}</small>
             <i data-state={!row?"pending":row.manual_design_reentry?"incident":"clean"}>{!row?"audit pending":row.manual_design_reentry?"re-entry recorded":"zero re-entry"}</i>
           </button>;

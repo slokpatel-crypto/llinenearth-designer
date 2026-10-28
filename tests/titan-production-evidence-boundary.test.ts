@@ -28,18 +28,32 @@ test("production evidence endpoint gates privileged RPC and never exposes backen
   assert.ok(post.includes("SecureJsonBodyTooLarge")&&post.includes("SecureJsonBodyInvalid"));
   assert.ok(post.includes('return NextResponse.json({error:"Production completion evidence could not be recorded."},{status:503})'));
   assert.ok(!post.includes('error:error instanceof Error?error.message:"Production completion evidence could not be recorded."'));
-  assert.ok(source.includes("orders.length<500&&evidence.length<500"));
+  assert.ok(source.includes('rpc<unknown[]>("production_delivery_first_ten_audit",{})'));
+  assert.ok(source.includes("parseAuthoritativeFirstTenDeliveryAudit(firstTenRows)"));
+  assert.ok(source.includes('rpc<unknown[]>("production_delivery_evidence_recent",{p_limit:500})'));
 });
 
 test("operator display cannot mark phase gate complete with incomplete ledger history",()=>{
   const source=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
   assert.ok(source.includes("setHistoryComplete(data.historyComplete===true)"));
-  assert.ok(source.includes("summarizeProductionDeliveryEvidence(orders,evidence,10,historyComplete)"));
+  assert.ok(source.includes("summarizeProductionDeliveryEvidence(firstTenOrders,firstTenEvidence,10,historyComplete,deliveredCount)"));
 });
 
 test("release contract requires complete history before first-ten certification",()=>{
   const release=readFileSync("scripts/release-readiness.mjs","utf8");
   assert.ok(release.includes("gateComplete:historyComplete&&firstTarget.length>=target"));
-  assert.ok(release.includes("orders.length<500&&evidence.length<500"));
+  assert.ok(release.includes("production_delivery_first_ten_audit"));
   assert.ok(!release.includes('"gateComplete:firstTarget.length>=target"'));
+});
+
+test("authoritative audit migration derives chronology from delivery events and remains service-role only",()=>{
+  const migration=readFileSync("supabase/migrations/20261028121038_authoritative_first_ten_delivery_audit.sql","utf8");
+  assert.ok(migration.includes("min(event.created_at) as delivered_at"));
+  assert.ok(migration.includes("count(*) over ()::integer as total_delivered_count"));
+  assert.ok(migration.includes("order by delivered_at asc,order_id asc\n    limit 10"));
+  assert.ok(migration.includes("o.status as current_status"));
+  assert.ok(migration.includes("order by evidence.created_at desc,evidence.evidence_id desc"));
+  assert.ok(migration.includes("security definer\nset search_path=''"));
+  assert.ok(migration.includes("revoke all on function public.production_delivery_first_ten_audit() from public,anon,authenticated"));
+  assert.ok(migration.includes("grant execute on function public.production_delivery_first_ten_audit() to service_role"));
 });

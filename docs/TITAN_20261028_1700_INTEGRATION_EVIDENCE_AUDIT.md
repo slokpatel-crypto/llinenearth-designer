@@ -30,3 +30,8 @@
 
 ## Build typecheck repair
 - Commit `33ae53bf2e627d0d305a20f06d7d10eda4899a79` passed unit/engine/preview/release stages but Next.js build typechecking rejected a `Set<ProductionReentryField>.has(string)` call in the new strict validator. The subsequent commit explicitly narrows the checked string to the existing closed vocabulary type; it does not bypass runtime validation. Recheck full exact-head CI and Chromium before reporting success.
+
+## Authoritative delivery chronology follow-up
+- Replace capped-list inference with a service-role-only RPC that selects the first actual `delivered` status event for each order, orders the complete ledger by that event, returns the earliest ten plus the uncapped delivered count, and retains later status contradictions as blockers.
+- Keep the operator work queue separate and pair the newest 500 orders with the newest 500 evidence rows, avoiding duplicate-record attempts after a large history.
+- Validate UUIDs, status vocabulary, timestamps, order, uniqueness and count consistency before the browser can receive `historyComplete:true`. This is source engineering only; the migration and real order evidence remain unverified until authenticated live acceptance.

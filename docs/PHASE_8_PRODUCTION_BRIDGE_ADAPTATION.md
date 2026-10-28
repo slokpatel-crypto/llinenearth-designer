@@ -137,6 +137,7 @@ A private **Zero-Reentry Proof** desk now measures the remaining operational gat
 For every real **Delivered** order, the operator records whether any design data had to be typed again during the handoff or production flow. If re-entry happened, the audit records which category was re-entered and preserves the incident instead of hiding it.
 
 The scorecard evaluates the **first 10 delivered orders in chronological order**:
+- chronology comes from the first immutable `delivered` status event, not order creation time or a capped browser list,
 - all 10 must have a completion audit tied to a named operator/checker,
 - every qualifying audit must include a concrete production-flow evidence reference such as a tailor job card, cutting packet or dispatch record,
 - all 10 must confirm zero manual design-data re-entry,
@@ -144,6 +145,8 @@ The scorecard evaluates the **first 10 delivered orders in chronological order**
 - legacy completion rows without provenance remain visible but do not satisfy the current gate.
 
 The software therefore supplies the evidence mechanism, but the roadmap item stays incomplete until 10 real delivered orders actually prove the result. Production-packet generation itself no longer claims zero re-entry; it proves only that the packet came directly from the immutable locked revision, while the real post-delivery audit supplies the operational proof.
+
+The database returns the authoritative earliest-ten prefix and the uncapped delivered-order count in one service-role-only receipt. A later contradictory current status remains visible and blocks proof. The operator queue separately uses recent evidence so a history larger than 500 rows cannot make a recent audited order appear unaudited. This migration changes no historical rows and does not establish that any real order or audit exists; authenticated live migration verification remains required.
 
 
 ## Versioned meterage calibration registry

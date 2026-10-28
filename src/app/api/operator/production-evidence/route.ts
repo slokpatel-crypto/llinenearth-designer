@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { normalizeProductionDeliveryEvidence } from "@/lib/designer/production-delivery-evidence";
+import { normalizeProductionDeliveryEvidence, parseAuthoritativeFirstTenDeliveryAudit } from "@/lib/designer/production-delivery-evidence";
 
 export const runtime="nodejs";
 
@@ -31,16 +31,20 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 
 export async function GET(){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,orders:[],evidence:[]});
+  if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,orders:[],evidence:[],firstTenOrders:[],firstTenEvidence:[],deliveredCount:0,historyComplete:false});
   try{
-    const [orders,evidence]=await Promise.all([
+    const [orders,evidence,firstTenRows]=await Promise.all([
       rpc<unknown[]>("production_order_list",{p_limit:500}),
-      rpc<unknown[]>("production_delivery_evidence_list",{p_limit:500}),
+      rpc<unknown[]>("production_delivery_evidence_recent",{p_limit:500}),
+      rpc<unknown[]>("production_delivery_first_ten_audit",{}),
     ]);
-    // Both RPCs cap their result sets at 500. A capped response cannot prove
-    // that these are the first ten delivered orders in the complete ledger.
-    const historyComplete=orders.length<500&&evidence.length<500;
-    return NextResponse.json({configured:true,orders,evidence,historyComplete},{headers:{"cache-control":"private, no-store"}});
+    const audit=parseAuthoritativeFirstTenDeliveryAudit(firstTenRows);
+    if(!audit) throw new Error("Authoritative first-ten delivery audit returned an invalid receipt.");
+    return NextResponse.json({
+      configured:true,orders,evidence,
+      firstTenOrders:audit.orders,firstTenEvidence:audit.evidence,
+      deliveredCount:audit.deliveredCount,historyComplete:true,
+    },{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/production-evidence]",error);
     return NextResponse.json({error:"Production completion evidence could not be read."},{status:503});
