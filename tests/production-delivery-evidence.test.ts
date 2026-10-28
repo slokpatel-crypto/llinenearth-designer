@@ -77,3 +77,35 @@ test("capped or unverified ledger history cannot prove the first-ten production 
   assert.equal(truncated.auditedTargetCount,10);
   assert.equal(truncated.gateComplete,false);
 });
+
+test("production completion provenance rejects coerced objects and contradictory fields",()=>{
+  const base={
+    manualDesignReentry:false,reentryFields:[],note:"Verified job card",
+    operator:"Checker A",evidenceReference:"Tailor packet 004",
+  };
+  for(const input of [
+    {...base,operator:{name:"Checker A"}},
+    {...base,evidenceReference:{ref:"Tailor packet 004"}},
+    {...base,note:{detail:"not text"}},
+    {...base,reentryFields:["unrecognized"]},
+    {...base,reentryFields:"fabric_identity"},
+    {...base,reentryFields:["fabric_identity"]},
+  ]) assert.throws(()=>normalizeProductionDeliveryEvidence(input));
+  const incident=normalizeProductionDeliveryEvidence({
+    ...base,manualDesignReentry:true,reentryFields:["fabric_identity"],note:"",
+  });
+  assert.deepEqual(incident.reentryFields,["fabric_identity"]);
+});
+
+test("malformed boolean audit evidence cannot certify zero re-entry",()=>{
+  const orders=Array.from({length:10},(_,i)=>({
+    order_id:"order-"+i,status:"delivered",created_at:"2026-10-"+String(i+1).padStart(2,"0")+"T10:00:00Z",
+  }));
+  const rows=orders.map((o)=>({
+    order_id:o.order_id,manual_design_reentry:false,operator:"Checker A",
+    evidence_reference:"packet-004",created_at:"2026-10-28T10:00:00Z",
+  }));
+  assert.equal(summarizeProductionDeliveryEvidence(orders,rows).gateComplete,true);
+  const malformed=rows.map((row,i)=>i===3?{...row,manual_design_reentry:undefined}:row);
+  assert.equal(summarizeProductionDeliveryEvidence(orders,malformed as typeof rows).gateComplete,false);
+});

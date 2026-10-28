@@ -18,3 +18,8 @@
 - Inspect exact-head CI, Node/quality/engine/performance/build and Chromium widths 390/768/1440; source-locked native Blender remains a separate gate.
 - Native original-model cuff spacing remains about 563.5 mm against max 536 mm; sleeve UV discontinuities 112/110, photographic parity, true supplier repeat and tailor signoff remain open.
 - Production Supabase project health alone does not prove schema/RLS/stock/restore; earlier read-only SQL calls timed out. Recheck only read-only evidence when available. Do not merge or deploy without separate approval.
+
+## Additional provenance-integrity hardening
+- The production evidence normalizer previously coerced objects into plausible human checker/reference strings (`[object Object]`), silently dropped unsupported re-entry choices, and permitted a "zero re-entry" declaration alongside re-entered fields. These now fail validation instead of manufacturing audit provenance.
+- Phase 8 aggregation now requires a literal boolean re-entry observation and literal text provenance, rather than treating a missing re-entry flag as zero.
+- Regression cases cover forged object provenance, malformed/unsupported field arrays, contradictory declarations, a legitimate incident, and a malformed historical boolean.

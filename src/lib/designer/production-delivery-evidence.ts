@@ -21,12 +21,20 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
     throw new Error("Confirm whether any design data had to be manually re-entered.");
   }
   const known=new Set(PRODUCTION_REENTRY_FIELDS.map((item)=>item.id));
-  const reentryFields=Array.isArray(source.reentryFields)
-    ? [...new Set(source.reentryFields.map(String).filter((item)=>known.has(item as ProductionReentryField)))].slice(0,12) as ProductionReentryField[]
-    : [];
-  const note=String(source.note||"").trim().slice(0,1200);
-  const operator=String(source.operator||"").trim().slice(0,120);
-  const evidenceReference=String(source.evidenceReference||"").replace(/\s+/g," ").trim().slice(0,240);
+  if(source.reentryFields!==undefined&&(!Array.isArray(source.reentryFields)||
+      !source.reentryFields.every((item)=>typeof item==="string"&&known.has(item)))){
+    throw new Error("Re-entry fields must use the supported production evidence choices.");
+  }
+  const reentryFields=[...new Set((source.reentryFields||[]) as ProductionReentryField[])].slice(0,12);
+  if(source.note!==undefined&&source.note!==null&&typeof source.note!=="string")
+    throw new Error("Completion note must be text.");
+  if(typeof source.operator!=="string"||typeof source.evidenceReference!=="string")
+    throw new Error("Named operator and production-flow evidence reference must be text.");
+  const note=(source.note||"").trim().slice(0,1200);
+  const operator=source.operator.trim().slice(0,120);
+  const evidenceReference=source.evidenceReference.replace(/\s+/g," ").trim().slice(0,240);
+  if(!source.manualDesignReentry&&reentryFields.length>0)
+    throw new Error("Zero re-entry cannot include re-entered design fields.");
   if(operator.length<2) throw new Error("Named operator / checker is required for production completion evidence.");
   if(evidenceReference.length<3) throw new Error("Production-flow evidence reference is required.");
   if(source.manualDesignReentry&&reentryFields.length===0&&note.length<3){
@@ -70,16 +78,17 @@ export function summarizeProductionDeliveryEvidence(
     const row=evidenceByOrder.get(order.order_id)||null;
     const provenanceReady=Boolean(
       row &&
-      String(row.operator||"").trim().length>=2 &&
-      String(row.evidence_reference||"").trim().length>=3
+      typeof row.manual_design_reentry==="boolean" &&
+      typeof row.operator==="string" && row.operator.trim().length>=2 &&
+      typeof row.evidence_reference==="string" && row.evidence_reference.trim().length>=3
     );
     return {order,evidence:row,provenanceReady};
   });
   const recordedTargetCount=audited.filter((item)=>item.evidence).length;
   const auditedTargetCount=audited.filter((item)=>item.evidence&&item.provenanceReady).length;
   const legacyOrUnverifiedCount=audited.filter((item)=>item.evidence&&!item.provenanceReady).length;
-  const zeroReentryTargetCount=audited.filter((item)=>item.evidence&&item.provenanceReady&&!item.evidence.manual_design_reentry).length;
-  const reentryIncidentCount=audited.filter((item)=>item.evidence&&item.provenanceReady&&item.evidence.manual_design_reentry).length;
+  const zeroReentryTargetCount=audited.filter((item)=>item.evidence&&item.provenanceReady&&item.evidence.manual_design_reentry===false).length;
+  const reentryIncidentCount=audited.filter((item)=>item.evidence&&item.provenanceReady&&item.evidence.manual_design_reentry===true).length;
   const missingEvidenceCount=firstTarget.length-recordedTargetCount;
   return {
     target,
