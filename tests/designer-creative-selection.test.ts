@@ -145,3 +145,20 @@ test("same-ID catalogue revisions revoke creative direction and physical preview
   assert.equal(creativeDirectionMatchesSelection(direction,selection),true,
     "legacy callers without snapshot remain compatible but do not assert physical parity");
 });
+
+
+test("fabric revision keys are order-independent and fail closed on non-JSON evidence",()=>{
+  const base={id:"fabric-a",image:"/fabrics/a.webp",weightGsm:180,
+    physicsProfile:{version:"linen-earth-fabric-physics-v1",fabricId:"fabric-a",
+      gsm:{value:180,evidence:"declared"}}} as unknown as DesignerFabric;
+  const reordered={...base,physicsProfile:{
+    gsm:{evidence:"declared",value:180},
+    fabricId:"fabric-a",version:"linen-earth-fabric-physics-v1",
+  }} as unknown as DesignerFabric;
+  assert.equal(fabricRevisionKey(base),fabricRevisionKey(reordered));
+  assert.equal(fabricRevisionKey({...base,weightGsm:Number.NaN}),"missing");
+  assert.equal(fabricRevisionKey({...base,weightGsm:Number.POSITIVE_INFINITY}),"missing");
+  const cyclic:Record<string,unknown>={};
+  cyclic.self=cyclic;
+  assert.equal(fabricRevisionKey({...base,physicsProfile:cyclic as unknown as DesignerFabric["physicsProfile"]}),"missing");
+});
