@@ -6,6 +6,9 @@ import {
   GARMENT_VIEWER_REALISM_STORAGE_KEY,
   GARMENT_VIEWER_REALISM_RUBRIC_VERSION,
   garmentViewerAssetIdentityKey,
+  normalizeGarmentViewerLatencies,
+  normalizeGarmentViewerRealism,
+  parseGarmentViewerScaleSampleInput,
   type GarmentViewerAssetIdentity,
 } from "@/lib/garment-viewer-readiness";
 import { summarizeIndependentRealism, summarizeLatencySamples, type RealismAssessment } from "@/lib/designer/proof-scale";
@@ -46,14 +49,12 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
 
   function refreshLocalEvidence(){
     if(!assetKey){setLatencies([]);setAssessments([]);return;}
-    const localLatencies=readStored<number[]>(GARMENT_VIEWER_LATENCY_STORAGE_KEY,assetKey,[])
-      .map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000).slice(-120);
-    const localAssessments=readStored<RealismAssessment[]>(GARMENT_VIEWER_REALISM_STORAGE_KEY,assetKey,[])
-      .flatMap((item)=>{
-        const code=String(item.viewerId||"").trim().toLowerCase().slice(0,80);
-        const score=Math.round(Number(item.rating));
-        return code.length>=2&&score>=1&&score<=5?[{viewerId:code,rating:score,recordedAt:String(item.recordedAt||"").slice(0,80)}]:[];
-      }).slice(-50);
+    const localLatencies=normalizeGarmentViewerLatencies(
+      readStored<unknown>(GARMENT_VIEWER_LATENCY_STORAGE_KEY,assetKey,[]),
+    );
+    const localAssessments=normalizeGarmentViewerRealism(
+      readStored<unknown>(GARMENT_VIEWER_REALISM_STORAGE_KEY,assetKey,[]),
+    );
     setLatencies(localLatencies);
     setAssessments(localAssessments);
   }
@@ -71,26 +72,25 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
 
   function addRating(){
     const code=viewerCode.trim().toLowerCase();
-    const score=Math.round(Number(rating));
-    if(code.length<2||score<1||score>5){setMessage("Add a viewer code and a 1–5 rating.");return;}
+    const score=Number(rating);
+    if(code.length<2||!Number.isInteger(score)||score<1||score>5){setMessage("Add a viewer code and a 1–5 rating.");return;}
     const next=[...assessments.filter((item)=>item.viewerId.toLowerCase()!==code),{viewerId:code,rating:score,recordedAt:new Date().toISOString()}];
     saveAssessments(next);
     setViewerCode("");
     setMessage("");
   }
 
-  function scaleSample(fabricId:string,error:string,pattern:"stripe"|"check",verified:boolean){
-    const value=Number(error);
-    if(!fabricId.trim()||!Number.isFinite(value)||value<0||value>100) return null;
-    return {fabricId:fabricId.trim().slice(0,160),pattern,errorPct:Math.round(value*100)/100,verified};
-  }
-
   async function recordEvidence(){
     if(!assetIdentity||!assetKey){setMessage("Configure and validate the production GLB + manifest first.");return;}
-    const patternScaleSamples=[
-      scaleSample(stripeFabricId,stripeError,"stripe",stripeVerified),
-      scaleSample(checkFabricId,checkError,"check",checkVerified),
-    ].filter(Boolean);
+    const stripeSample=parseGarmentViewerScaleSampleInput(stripeFabricId,stripeError,"stripe",stripeVerified);
+    const checkSample=parseGarmentViewerScaleSampleInput(checkFabricId,checkError,"check",checkVerified);
+    if((stripeVerified&&!stripeSample)||(checkVerified&&!checkSample)){
+      setMessage("Verified stripe/check evidence needs a real fabric ID and a nonempty numeric error percentage.");return;
+    }
+    if(stripeSample?.verified&&checkSample?.verified&&stripeSample.fabricId===checkSample.fabricId){
+      setMessage("Stripe and check physical-scale evidence must use two distinct fabric IDs.");return;
+    }
+    const patternScaleSamples=[stripeSample,checkSample].filter((item):item is NonNullable<typeof item>=>item!==null);
     setBusy(true);setMessage("");
     try{
       const response=await fetch("/api/memory/event",{

@@ -69,6 +69,19 @@ export function normalizeGarmentViewerPatternSamples(value:unknown):GarmentViewe
   return normalized;
 }
 
+export function parseGarmentViewerScaleSampleInput(
+  fabricId:string,errorText:string,pattern:"stripe"|"check",verified:boolean,
+):GarmentViewerPatternScaleSample|null{
+  // Number("") and Number("  ") are zero, which would forge a perfect scale
+  // result from an empty operator field. Never round away >8% drift.
+  const error=errorText.trim();
+  if(!/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(error)) return null;
+  const samples=normalizeGarmentViewerPatternSamples([
+    {fabricId:fabricId.trim(),pattern,errorPct:Number(error),verified},
+  ]);
+  return samples[0]??null;
+}
+
 export function normalizeGarmentViewerLatencies(value:unknown):number[]{
   if(!Array.isArray(value)) return [];
   const rows=value.slice(-120);

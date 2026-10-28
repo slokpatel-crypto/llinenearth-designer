@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness, normalizeGarmentViewerPatternSamples, normalizeGarmentViewerLatencies, normalizeGarmentViewerRealism } from "../src/lib/garment-viewer-readiness.ts";
+import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness, normalizeGarmentViewerPatternSamples, normalizeGarmentViewerLatencies, normalizeGarmentViewerRealism, parseGarmentViewerScaleSampleInput } from "../src/lib/garment-viewer-readiness.ts";
 import {
   GARMENT_VIEWER_CONTRACT_VERSION,
   REQUIRED_GARMENT_VIEWER_MATERIALS,
@@ -164,4 +164,32 @@ test("malformed operator evidence never becomes a passing viewer-readiness sampl
   assert.equal(result.latencyReady,false);
   assert.equal(result.realismReady,false);
   assert.equal(result.ready,false);
+});
+
+
+test("operator physical-scale input cannot turn blank fields or rounding into verified zero drift",()=>{
+  assert.equal(parseGarmentViewerScaleSampleInput("stripe-a","","stripe",true),null);
+  assert.equal(parseGarmentViewerScaleSampleInput("stripe-a","  ","stripe",true),null);
+  assert.equal(parseGarmentViewerScaleSampleInput("stripe-a","1e1","stripe",true),null);
+  assert.equal(parseGarmentViewerScaleSampleInput("stripe-a","true","stripe",true),null);
+  assert.equal(parseGarmentViewerScaleSampleInput("stripe-a","NaN","stripe",true),null);
+  assert.equal(parseGarmentViewerScaleSampleInput("","0","stripe",true),null);
+  assert.deepEqual(parseGarmentViewerScaleSampleInput("stripe-a","0","stripe",true),
+    {fabricId:"stripe-a",pattern:"stripe",errorPct:0,verified:true});
+  const precise=parseGarmentViewerScaleSampleInput("stripe-a","8.0001","stripe",true);
+  assert.equal(precise?.errorPct,8.0001);
+  const input=passingInput();
+  input.patternScaleSamples[0]=precise!;
+  assert.equal(garmentViewerPromotionReadiness(input).scaleReady,false);
+});
+
+test("operator 3D evidence form cannot re-coerce corrupt browser samples or submit duplicate physical IDs",()=>{
+  const source=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
+  assert.ok(source.includes("normalizeGarmentViewerLatencies("));
+  assert.ok(source.includes("normalizeGarmentViewerRealism("));
+  assert.ok(source.includes("parseGarmentViewerScaleSampleInput("));
+  assert.ok(source.includes("stripeSample.fabricId===checkSample.fabricId"));
+  assert.ok(source.includes("stripeVerified&&!stripeSample"));
+  assert.ok(!source.includes(".map(Number).filter("));
+  assert.ok(!source.includes("Math.round(Number(item.rating))"));
 });
