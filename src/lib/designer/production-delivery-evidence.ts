@@ -22,7 +22,7 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
   }
   const known=new Set(PRODUCTION_REENTRY_FIELDS.map((item)=>item.id));
   if(source.reentryFields!==undefined&&(!Array.isArray(source.reentryFields)||
-      !source.reentryFields.every((item)=>typeof item==="string"&&known.has(item)))){
+      !source.reentryFields.every((item)=>typeof item==="string"&&known.has(item as ProductionReentryField)))){
     throw new Error("Re-entry fields must use the supported production evidence choices.");
   }
   const reentryFields=[...new Set((source.reentryFields||[]) as ProductionReentryField[])].slice(0,12);
