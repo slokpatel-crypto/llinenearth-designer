@@ -7,6 +7,8 @@ import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRel
 
 export const runtime="nodejs";
 
+class StockBackendError extends Error {}
+
 async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
   const config=getSupabaseAdminConfig();
   if(!config) throw new Error("Stock backend is not configured.");
@@ -19,7 +21,7 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
   });
   if(!response.ok){
     const detail=(await response.text()).slice(0,300);
-    throw new Error(`Stock operation failed (${response.status}): ${detail}`);
+    throw new StockBackendError(`Stock operation failed (${response.status}): ${detail}`);
   }
   return await response.json() as T;
 }
@@ -107,6 +109,7 @@ export async function POST(request:Request){
     if(error instanceof StockMutationPayloadTooLarge)
       return NextResponse.json({error:error.message},{status:413});
     console.error("[operator/stock]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Stock operation failed."},{status:409});
+    if(error instanceof StockBackendError) return NextResponse.json({error:"Stock ledger backend could not complete the operation."},{status:503});
+    return NextResponse.json({error:error instanceof Error?error.message:"Invalid stock operation."},{status:400});
   }
 }

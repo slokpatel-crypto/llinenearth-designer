@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
@@ -79,9 +80,11 @@ export async function GET(){
 
 export async function POST(request:Request){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,48_000);
+  if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
   try{
-    const body=await request.json() as Record<string,unknown>;
-    const action=String(body.action||"");
+    const body=await readSecureJsonObject(request,48_000);
+    const action=typeof body.action==="string"?body.action:"";
     if(action==="create_quote"){
       const revisionId=String(body.revisionId||"").trim();
       const recipeHash=String(body.recipeHash||"").trim().toLowerCase();
@@ -94,11 +97,12 @@ export async function POST(request:Request){
       if(revision.revisionId!==revisionId||revision.recipeHash.toLowerCase()!==recipeHash){
         return NextResponse.json({error:"The verified locked design does not match the quote revision/hash."},{status:409});
       }
-      const draft=normalizeProductionQuoteDraft({
+      let draft:ReturnType<typeof normalizeProductionQuoteDraft>;
+      try{draft=normalizeProductionQuoteDraft({
         currency:body.currency,
         lineItems:body.lineItems,
         adjustment:body.adjustment,
-      });
+      });}catch{return NextResponse.json({error:"Quote line items or amounts are invalid."},{status:400});}
       const quoteId=await rpc<string>("production_quote_create",{
         p_revision_id:revisionId,p_recipe_hash:recipeHash,p_currency:draft.currency,
         p_line_items:draft.lineItems,p_adjustment:draft.adjustment,p_note:note,
@@ -158,7 +162,9 @@ export async function POST(request:Request){
     }
     return NextResponse.json({error:"Unsupported production action."},{status:400});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
+    if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
     console.error("[operator/production]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Production operation failed."},{status:409});
+    return NextResponse.json({error:"Production operation could not be completed."},{status:503});
   }
 }
