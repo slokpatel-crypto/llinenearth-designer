@@ -2,7 +2,6 @@ import { validCreativeCraft, resolveCraftFabrics } from "@/lib/designer/creative
 import { NextResponse } from "next/server";
 import {
   DESIGNER_STYLE_CHOICES,
-  designerFabricFromStock,
   evaluateDesignerCombo,
   type DesignerClimate,
   type DesignerContext,
@@ -15,8 +14,7 @@ import { assessBlockStrategy } from "@/lib/designer/block-strategy";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
 import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation";
 import { buildCanonicalGarmentSpec, type CanonicalCreativeVisualReview } from "@/lib/designer/garment-spec";
-import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
-import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
+import { loadActiveDesignerCatalogueFabrics } from "@/lib/designer/catalog-stock-server";
 import type { MeasurementProfile } from "@/lib/measurements";
 import { normalizeMeasuredBodyInput } from "@/lib/designer/measurement-input-validation";
 import { validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
@@ -24,7 +22,6 @@ import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import { toLegacyStyle, validateStyleSpecV2, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { validBodyPreviewProfile, type BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { loadApprovedHouseEaseModel } from "@/lib/designer/house-ease-server";
-import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
 
 export const runtime="nodejs";
 export const maxDuration=20;
@@ -137,14 +134,11 @@ export async function POST(request:Request) {
       return NextResponse.json({error:"A valid fabric pair, occasion and supported style are required."},{status:400});
     }
 
-    const [metadata,easeModel]=await Promise.all([
-      loadDesignerFabricMetadata(),
+    const [catalogue,easeModel]=await Promise.all([
+      loadActiveDesignerCatalogueFabrics(),
       loadApprovedHouseEaseModel(),
     ]);
-    const liveStock=await applyLiveVerifiedStockAvailability(applyDesignerFabricMetadataToStock(metadata));
-    const stock=liveStock.stock.filter((fabric)=>fabric.inStock);
-    const baseFabrics=stock.map(designerFabricFromStock);
-    const {fabrics}=await enrichDesignerFabricsWithIntelligence(baseFabrics);
+    const fabrics=catalogue.fabrics;
     const shirt=fabrics.find((fabric)=>fabric.id===shirtId && fabric.allowedGarments.includes("shirt"));
     const pant=fabrics.find((fabric)=>fabric.id===pantId && fabric.allowedGarments.includes("pant"));
     if(!shirt || !pant) return NextResponse.json({error:"The selected fabrics are no longer available in the current Designer catalogue."},{status:409});
