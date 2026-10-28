@@ -1,3 +1,4 @@
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -48,6 +49,8 @@ export async function GET(){
     }
     return NextResponse.json({configured:true,orders,evidence,firstTenBasis},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
+    if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
     console.error("[operator/production-evidence]",error);
     return NextResponse.json({error:"Production completion evidence could not be read."},{status:503});
   }
@@ -55,11 +58,10 @@ export async function GET(){
 
 export async function POST(request:Request){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,16384);
+  if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
   try{
-    const parsed:unknown=await request.json();
-    if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))
-      return NextResponse.json({error:"Evidence submission must be an object."},{status:400});
-    const body=parsed as Record<string,unknown>;
+    const body=await readSecureJsonObject(request,16384);
     if(body.action!=="record") return NextResponse.json({error:"Unsupported evidence action."},{status:400});
     const orderId=typeof body.orderId==="string"?body.orderId.trim():"";
     if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) return NextResponse.json({error:"Valid delivered order ID is required."},{status:400});

@@ -1,3 +1,4 @@
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -72,6 +73,8 @@ export async function GET(){
     }
     return NextResponse.json({configured:true,quotes,orders,qcInspections,customerOutcomes,learningContexts},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
+    if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
     console.error("[operator/production]",error);
     return NextResponse.json({error:"Production records could not be read."},{status:503});
   }
@@ -79,9 +82,11 @@ export async function GET(){
 
 export async function POST(request:Request){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,65536);
+  if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
   try{
-    const body=await request.json() as Record<string,unknown>;
-    const action=String(body.action||"");
+    const body=await readSecureJsonObject(request,65536);
+    const action=typeof body.action==="string"?body.action:"";
     if(action==="create_quote"){
       const revisionId=String(body.revisionId||"").trim();
       const recipeHash=String(body.recipeHash||"").trim().toLowerCase();
