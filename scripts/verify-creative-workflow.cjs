@@ -31,8 +31,12 @@ async function run(){fs.mkdirSync(out,{recursive:true});const valid=await http("
   for(const [name,p,b,status]of [["unknown accent","/api/designer/creative-generate",{...input,craft:{...input.craft,accentId:"missing"}},409],["invalid zone","/api/designer/creative-generate",{...input,craft:{...input.craft,zone:"face"}},400],["guest memory write","/api/designer/creative-profile",{action:"reset",owner:"forged"},401],["scheduler auth","/api/cron/designer-research",null,401],["operator refresh auth","/api/operator/designer-research/refresh",{action:"refresh"},401]]){assert.equal((await http(p,b)).status,status,name);summary.http.push(name);}
   const unsupported=await http("/api/designer/creative-generate",{...input,craft:{...input.craft,brief:"Peacock with sequins"}});assert.deepEqual(unsupported.data.concepts,[]);assert.ok(unsupported.data.clarifications.length);summary.http.push("unsupported artwork clarification");
   const guest=await http("/api/designer/creative-profile");assert.equal(guest.data.authenticated,false);summary.http.push("guest no-store memory state");
-  const assessed=await http("/api/designer/assess",{...input,creative:valid.data.concepts[0]});assert.equal(assessed.status,200);assert.deepEqual(assessed.data.assessment.garmentSpec.creative.craft,valid.data.concepts[0].craft);summary.http.push("actual assess preserves craft recipe");
-  const changed=structuredClone(valid.data.concepts[0]);changed.craft.base.shirtId="wrong";assert.equal((await http("/api/designer/assess",{...input,creative:changed})).status,409);summary.http.push("mismatched recipe fails closed");
+  const chosen=valid.data.concepts[0];
+  const assessed=await http("/api/designer/assess",{...input,style:chosen.baseStyle,creative:chosen});assert.equal(assessed.status,200);assert.deepEqual(assessed.data.assessment.garmentSpec.creative.craft,chosen.craft);summary.http.push("actual assess preserves craft recipe");
+  const changed=structuredClone(chosen);changed.craft.base.shirtId="wrong";assert.equal((await http("/api/designer/assess",{...input,style:changed.baseStyle,creative:changed})).status,409);summary.http.push("mismatched recipe fails closed");
+  const stale=structuredClone(chosen);stale.recommendation.shirt.source+="-tampered";
+  assert.equal((await http("/api/designer/assess",{...input,style:stale.baseStyle,creative:stale})).status,409);
+  summary.http.push("same-ID physical provenance mismatch fails closed");
   browser=await chromium.launch({headless:true});
   for(const width of [390,768,1440]){const state=await pageAt(width),{page,context}=state,lab=page.locator("#designerCreativeLab");
     await page.getByRole("textbox",{name:"Creative design brief",exact:true}).fill("Subtle leaf embroidery on the cuff");await page.getByRole("combobox",{name:"Accent fabric",exact:true}).selectOption(e.DESIGNER_SHIRTS[1].id);await page.getByRole("combobox",{name:"Craft surface",exact:true}).selectOption("embroidery");
