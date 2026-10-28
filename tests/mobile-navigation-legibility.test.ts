@@ -47,3 +47,11 @@ test("studio exposes readable compact proof and garment controls",()=>{
   assert.match(css,/\.newDesigner \.newDesignerPhotoSummaryCompact strong\{[^}]*white-space:normal/);
   assert.match(css,/\.newDesigner \.newDesignerGarmentScope article select\{font-size:13px;min-height:44px/);
 });
+
+test("fabric discovery, photoreal view and QA controls do not regress to 6px captions",()=>{
+  const css=readFileSync("src/app/designer-studio/accessibility.css","utf8");
+  assert.match(css,/\.newDesigner :is\(\.newDesignerPhotoViews button,[^}]*\)\{font-size:12px!important;[^}]*min-height:44px/);
+  assert.match(css,/\.newDesigner :is\(\.newDesignerFabricFilters button,[^}]*\)\{font-size:11px!important;[^}]*min-height:44px/);
+  assert.match(css,/\.newDesigner :is\(\.newDesignerSelectedQa span,[^}]*\)\{font-size:11px!important/);
+  assert.match(css,/\.newDesigner \.newDesignerSelectedQaMetrics i\{white-space:normal/);
+});

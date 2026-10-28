@@ -14,3 +14,11 @@
   .newDesigner .newDesignerPhotoSummaryCompact{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
   .newDesigner .newDesignerGarmentScope{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* Fabric discovery, view switching and review/repair are real controls, not captions. */
+.newDesigner :is(.newDesignerPhotoViews button,.newDesignerSelectedQa button,.newDesignerCreativeReview button,.newDesignerCreativeReviewReasons button,.newDesignerTechnicalDrawer button,.newDesignerSearchScopes button,.newDesignerBriefHead>button,.newDesignerBriefResults>article>button,.newDesignerOptionalSearchRun,.newDesignerWhatsAppLook){font-size:12px!important;line-height:1.3;min-height:44px;white-space:normal}
+.newDesigner :is(.newDesignerFabricFilters button,.newDesignerQuickResults>article>button){font-size:11px!important;line-height:1.3;min-height:44px}
+.newDesigner :is(.newDesignerSelectedQa span,.newDesignerSelectedQa strong,.newDesignerSelectedQa small,.newDesignerSelectedQaMetrics i,.newDesignerSelectedQaMetrics i b,.newDesignerPhotoMatch>span,.newDesignerPhotoMatch p,.newDesignerTruthNearCta span,.newDesignerTruthNearCta p,.newDesignerRenderCheck>span,.newDesignerRenderCheck b,.newDesignerRenderCheck p){font-size:11px!important;line-height:1.45;overflow-wrap:break-word}
+.newDesigner .newDesignerSelectedQa{min-width:0}
+.newDesigner .newDesignerSelectedQaMetrics i{white-space:normal}
+@media(max-width:560px){.newDesigner .newDesignerPhotoViews{padding-inline:14px}}

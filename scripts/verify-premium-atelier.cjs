@@ -246,6 +246,8 @@ async function run() {
             garmentLabel: px('.newDesignerGarmentScope article label span'),
             garmentSelect: px('.newDesignerGarmentScope article select'),
             garmentSelectHeight: document.querySelector('.newDesignerGarmentScope article select').getBoundingClientRect().height,
+            filterFont: px('.newDesignerFabricFilters button'),
+            filterHeight: document.querySelector('.newDesignerFabricFilters button').getBoundingClientRect().height,
           };
         });
         assert.equal(studio.overflow, false, 'Designer stays within the viewport at ' + width);
@@ -253,6 +255,8 @@ async function run() {
           'fabric identity and lock controls remain readable: ' + JSON.stringify(studio));
         assert.ok(studio.garmentLabel >= 11 && studio.garmentSelect >= 13 && studio.garmentSelectHeight >= 44,
           'garment construction selectors remain readable: ' + JSON.stringify(studio));
+        assert.ok(studio.filterFont >= 11 && studio.filterHeight >= 44,
+          'shirt fabric filter targets remain readable: ' + JSON.stringify(studio));
         await page.screenshot({ path: path.join(out, `designer-legibility-${width}.png`) });
         summary.checks.push('keyboard skip link and responsive Designer control legibility at ' + width + 'px');
       }
