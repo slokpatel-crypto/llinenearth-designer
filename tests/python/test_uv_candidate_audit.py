@@ -407,7 +407,9 @@ class CandidateUvAuditTests(unittest.TestCase):
             [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
             [(2, (.02-period, .05)), (1, (.02-period, 0)),
              (3, (.04-period, .05))],
-            [(3, (.04-period, .05)), (2, (.02-period, .05)),
+            # Opposite shared-edge winding keeps the original protected-edge
+            # regression about UV continuity, not invalid mesh topology.
+            [(2, (.02-period, .05)), (3, (.04-period, .05)),
              (4, (.06-period, .08))],
         ]
         baseline = audit.audit_shared_uv_edges(faces)
@@ -1032,7 +1034,8 @@ class CandidateUvAuditTests(unittest.TestCase):
             [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
             [(2, (.02-period, .05)), (1, (.02-period, 0)),
              (3, (.04-period, .05))],
-            [(3, (.07-period, .05)), (2, (.05-period, .05)),
+            # Correct opposite winding: test a UV tear trade, not topology.
+            [(2, (.05-period, .05)), (3, (.07-period, .05)),
              (4, (.06-period, .10))],
         ]
         original = audit.audit_shared_uv_edges(faces)
