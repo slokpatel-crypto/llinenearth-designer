@@ -166,7 +166,9 @@ async function apiContracts(){
     assert.equal(applied.shirtId,revised.results[0].shirt.id);assert.equal(applied.pantId,revised.results[0].pant.id);
     await complete(page,"assessment",assessmentIndex,assessmentFixture(applied));
     assert.equal(await page.getByLabel("Shirt fit",{exact:true}).inputValue(),"Relaxed Fit");
-    const completed=(await memory(page)).filter(e=>e.type==="designer_recommendation");assert.equal(completed.at(-1).payload.style.shirtFit,"Relaxed Fit");
+    const completed=(await memory(page)).filter(e=>e.type==="designer_recommendation");
+    assert.ok(completed.length,"Applied direction must persist an assessment for the current fabric revision");
+    assert.equal(completed.at(-1).payload.style.shirtFit,"Relaxed Fit");
     const constructionPixels=await mainPixels(page),named=await answer(page,await start(page,"Keep both fabrics. Make the collar mandarin, hide the placket and use horn buttons."));
     assert.equal(named.results.length,1);assert.equal(named.results[0].style.collar,"Mandarin / Band Collar");assert.equal(named.results[0].style.placket,"Hidden / Fly-front");assert.equal(named.results[0].style.button,"Horn");
     assert.equal(await mainPixels(page),constructionPixels,"A named construction request still needs Apply");
@@ -174,7 +176,9 @@ async function apiContracts(){
     const namedAssessmentIndex=await count(page,"assessment");await panel(page).getByRole("button",{name:"Apply direction",exact:true}).first().click();await settle(page);
     const namedApplied=(await request(page,"assessment",namedAssessmentIndex)).body;
     assert.deepEqual(namedApplied.styleSpec,fromLegacyStyle(named.results[0].style));await complete(page,"assessment",namedAssessmentIndex,assessmentFixture(namedApplied));
-    const namedMemory=(await memory(page)).filter(e=>e.type==="designer_recommendation").at(-1).payload.style;
+    const namedEvents=(await memory(page)).filter(e=>e.type==="designer_recommendation");
+    assert.ok(namedEvents.length>=2,"Both applied directions must persist current-revision assessments");
+    const namedMemory=namedEvents.at(-1).payload.style;
     assert.equal(namedMemory.collar,"Mandarin / Band Collar");assert.equal(namedMemory.placket,"Hidden / Fly-front");assert.equal(namedMemory.button,"Horn");
     const beforeCapsule=await mainPixels(page),wardrobe=await answer(page,await start(page,"Create a capsule for office, dinner and weekend"));
     assert.deepEqual(wardrobe.results.map(r=>r.occasion),["Semi-Formal","Smart-Casual","Casual"]);assert.equal(await mainPixels(page),beforeCapsule);

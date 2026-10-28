@@ -110,6 +110,8 @@ test("assessment request binds its payload and late reply to the committed selec
   const source=readFileSync("src/components/DesignerModule.tsx","utf8");
   const block=source.slice(source.indexOf("  async function assess("),source.indexOf("  function giveFeedback("));
   assert.match(block,/const nextStyleSpec=mergeLegacyIntoStyleSpec\(styleSpec,nextStyle\)/);
+  assert.match(block,/shirt\.id,pant\.id,fabricIdentity,occasion,styleIdentity\(nextStyle\),nextStyleSpec/,
+    "manual assessments must compare the same physical fabric revision as the committed selection");
   assert.match(block,/setStyle\(\{ \.\.\.nextStyle \}\);\s*setStyleSpec\(nextStyleSpec\)/);
   assert.match(block,/styleSpec:nextStyleSpec,[\s\S]*signal:controller\.signal/);
   assert.match(block,/if\(!isCurrent\(\)\) return;\s*applyServerAssessment\(next\)/);
@@ -208,4 +210,17 @@ test("server creative redesign rejects stale physical provenance before reusing 
   assert.ok(guard>0&&redesign>guard,"stale same-ID concepts must not enter redesign");
   assert.match(source,/shirtId,pantId,shirt,pant,occasion/);
   assert.match(source,/style:body.current.baseStyle,styleSpec:fromLegacyStyle\(body.current.baseStyle\)/);
+});
+
+
+test("all asynchronous assessment handoffs bind the current physical fabric revision",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert.match(source,/const assessmentIdentity=JSON\.stringify\(\[shirtId,pantId,fabricIdentity,/);
+  assert.match(source,/const routedFabricIdentity=JSON\.stringify\(\[fabricRevisionKey\(routedShirtFabric\),fabricRevisionKey\(routedPantFabric\)\]\)/);
+  assert.match(source,/const expectedIdentity=JSON\.stringify\(\[nextShirtId,nextPantId,routedFabricIdentity,/);
+  assert.match(source,/const selectedFabricIdentity=JSON\.stringify\(\[\s*fabricRevisionKey\(shirtOptions\.find/);
+  assert.match(source,/fabricRevisionKey\(pantOptions\.find\(\(item\)=>item\.id===result\.pant\.id\)\)/);
+  assert.match(source,/const expectedIdentity=JSON\.stringify\(\[result\.shirt\.id,result\.pant\.id,selectedFabricIdentity,/);
+  assert.match(source,/shirt\.id,pant\.id,fabricIdentity,occasion,styleIdentity\(nextStyle\),nextStyleSpec/);
+  assert.match(source,/if\(!isCurrent\(\)\) return;\s*applyServerAssessment\(next\)/);
 });

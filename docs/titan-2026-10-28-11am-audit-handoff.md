@@ -39,3 +39,10 @@
 4. Run or inspect native Blender evidence separately from ordinary web CI. Failed native preflight means **not production-ready**.
 5. Record verified completion only from evidence; do not assert 90% because the stretch target was requested.
 6. Leave all drafts unmerged, do not deploy or call paid providers without explicit approval.
+
+## 10:30 IST follow-up: verified #432 browser regression (do not mark green)
+
+- Newer draft **#432** head `78df98b30e553381cd2353d1389d3458bced6b3a`, based on #431 `3b8ecce49ed8fc0034ba646fa12ec60a48ee1602`, is still unmerged.
+- #432 exact-head [CI 40634792687](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/40634792687) and [Non-3D QA 40634792686](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/40634792686) **both failed**, despite passing quality, all 978 unit tests, engine, preview-performance, release and build stages. Both failed in the real Chromium Designer Advisor script at line 169 (`Cannot read properties of undefined (reading 'payload')`). The PR body previously described those browser stages as pending; use final job conclusions instead.
+- Root cause reproduced by source inspection: the new `assessmentIdentity` includes `fabricIdentity`, but the manual assessment, search result and Style Director handoff `expectedIdentity` values omitted the fabric revision component. Valid asynchronous responses therefore failed their own stale-result guard, silently dropping assessments and browser memory events.
+- Isolated follow-up branch `work/titan-assessment-revision-identity-20261028-hour10-fix` restores the revision component in all three callbacks and adds regression assertions, explicit browser failure messages and TODO evidence. **Exact-head CI and real Chromium must be green before considering this repair verified**. No native 3D, supplier, tailor, production, merge or deployment evidence changes.
