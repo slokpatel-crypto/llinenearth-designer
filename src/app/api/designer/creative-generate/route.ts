@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import {
   DESIGNER_STYLE_CHOICES,
-  designerFabricFromStock,
   type DesignerClimate,
   type DesignerContext,
   type DesignerIntention,
@@ -15,14 +14,11 @@ import {
 } from "@/lib/designer/creative-engine";
 import type { CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { loadDesignerCreativeContext } from "@/lib/designer/creative-context";
-import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
-import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
-import { attachCatalogFabricPhysics } from "@/lib/designer/fabric-physics-catalog";
+import { loadActiveDesignerCatalogueFabrics } from "@/lib/designer/catalog-stock-server";
 
 import { attachCreativeCraft, craftClarifications, DEFAULT_CRAFT_REQUEST, resolveCraftRequest, reviseCreativeCraft, validCraftRequest, validCreativeCraft, resolveCraftFabrics } from "@/lib/designer/creative-spec";
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { readCreativePersonalContext } from "@/lib/designer/creative-profile-server";
-import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
 
 export const runtime="nodejs";
 export const maxDuration=30;
@@ -101,13 +97,9 @@ export async function POST(request:Request) {
       return NextResponse.json({error:"A valid fabric pair, occasion and supported style are required."},{status:400});
     }
 
-    const metadata=await loadDesignerFabricMetadata();
-    const stock=(await applyLiveVerifiedStockAvailability(applyDesignerFabricMetadataToStock(metadata))).stock.filter((fabric)=>fabric.inStock);
-    const baseFabrics=stock.map(designerFabricFromStock);
-    // Match /api/designer/catalog exactly: Creative Lab must generate from the
-    // same reviewed physical/provenance snapshot the customer is previewing.
-    const intelligence=await loadDesignerFabricIntelligence(baseFabrics.map((fabric)=>fabric.id));
-    const fabrics=baseFabrics.map((fabric)=>attachCatalogFabricPhysics(fabric,intelligence[fabric.id]));
+    // Generate from the same reviewed physical/provenance snapshot as the
+    // customer catalogue; never attach a different same-ID fabric revision.
+    const {fabrics}=await loadActiveDesignerCatalogueFabrics();
     const shirt=fabrics.find((fabric)=>fabric.id===shirtId && fabric.allowedGarments.includes("shirt"));
     const pant=fabrics.find((fabric)=>fabric.id===pantId && fabric.allowedGarments.includes("pant"));
     if(!shirt || !pant) return NextResponse.json({error:"The selected fabrics are no longer available in the current Designer catalogue."},{status:409});
