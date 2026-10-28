@@ -50,7 +50,8 @@ export function parseOperatorSyncPage(url:URL):OperatorSyncPage|null{
 
 /** Do not silently discard event 251 or coerce a malformed batch into an empty success. */
 export class OperatorSyncBatchError extends Error{
-  constructor(message:string,public readonly status:number=400){super(message);}
+  readonly status:number;
+  constructor(message:string,status:number=400){super(message);this.status=status;}
 }
 export async function readOperatorSyncBatch(request:Request):Promise<unknown[]>{
   if(!request.body)throw new OperatorSyncBatchError("Operator sync JSON body is required.");
