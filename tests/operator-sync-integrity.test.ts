@@ -96,3 +96,10 @@ test("operator route refuses truncated date/time fields and coerced financial ev
   assert.ok(!route.includes('Number(rawValue)'));
   assert.ok(route.includes('stored: null'));
 });
+
+test("cloud schema health requires a literal numeric v5 acknowledgement",()=>{
+  const route=readFileSync("src/app/api/operator/sync/route.ts","utf8");
+  assert.ok(route.includes('const version:unknown = await response.json()'));
+  assert.ok(route.includes('typeof version !== "number" || version !== 5'));
+  assert.ok(!route.includes('Number(await response.json())'));
+});
