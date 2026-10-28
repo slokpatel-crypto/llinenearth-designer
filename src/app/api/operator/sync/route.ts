@@ -126,7 +126,7 @@ function cleanOperatorPayload(type: string, input: unknown) {
     const amount = operatorSyncNumber(payload.amount,0,100_000_000);
     const method = payload.method;
     if (amount === null || amount <= 0) return null;
-    if (!["cash","upi","card","bank","other"].includes(method)) return null;
+    if (typeof method!=="string" || !["cash","upi","card","bank","other"].includes(method)) return null;
     return {
       amount: Math.round(amount * 100) / 100,
       currency: "INR",
@@ -140,8 +140,8 @@ function cleanOperatorPayload(type: string, input: unknown) {
     const status = payload.status;
     const dateTime = payload.dateTime == null ? "" : payload.dateTime;
     if (typeof dateTime !== "string") return null;
-    if (!["consultation","fitting","trial","pickup","delivery"].includes(kind)) return null;
-    if (!["scheduled","completed","cancelled"].includes(status)) return null;
+    if (typeof kind!=="string" || !["consultation","fitting","trial","pickup","delivery"].includes(kind)) return null;
+    if (typeof status!=="string" || !["scheduled","completed","cancelled"].includes(status)) return null;
     if ((status === "scheduled" || dateTime) && !validOperatorLocalDateTime(dateTime)) return null;
     return {
       kind,
