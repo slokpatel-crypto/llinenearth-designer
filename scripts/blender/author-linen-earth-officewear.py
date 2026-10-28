@@ -825,6 +825,15 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
         }
         return evidence, after == [0, 0] and sleeve_pairs == 0 and torso_not_worsened
 
+    def evaluate_with_rollback(mm):
+        try:
+            return evaluate(mm)
+        except Exception:
+            # A Blender BVH/normal-repair failure can happen after mutating
+            # some XYZ. Never leave a half-repaired garment in the scene.
+            restore(original)
+            raise
+
     values = [round(max(0.0, requested_mm-i), 6)
               for i in range(math.ceil(requested_mm)+1)]
     if values[-1] != 0.0:
@@ -832,7 +841,7 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
     attempts = []
     last_rejected = None
     for mm in dict.fromkeys(values):
-        trial, safe = evaluate(mm)
+        trial, safe = evaluate_with_rollback(mm)
         attempts.append(trial)
         if not safe:
             last_rejected = mm
@@ -844,7 +853,7 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
         # monotonically improving clearance as cloth moves towards the body.
         if last_rejected is not None and last_rejected > mm:
             for fine_mm in bounded_sleeve_cuff_refinement_trials(last_rejected, mm):
-                fine_trial, fine_safe = evaluate(fine_mm)
+                fine_trial, fine_safe = evaluate_with_rollback(fine_mm)
                 attempts.append(fine_trial)
                 if fine_safe:
                     selected_mm = fine_mm
