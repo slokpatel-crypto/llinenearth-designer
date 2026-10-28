@@ -29,6 +29,23 @@ async function pageAt(width){const context=await browser.newContext({viewport:{w
 const pixels=page=>page.locator(".newDesignerPhoto canvas").evaluate(c=>c.toDataURL());
 async function run(){fs.mkdirSync(out,{recursive:true});const valid=await http("/api/designer/creative-generate",input);assert.equal(valid.status,200);assert.equal(valid.data.concepts.length,5);assert.ok(valid.data.concepts.every(d=>s.validCreativeCraft(d.craft)));summary.http.push("valid catalogue recipe generation");
   for(const [name,p,b,status]of [["unknown accent","/api/designer/creative-generate",{...input,craft:{...input.craft,accentId:"missing"}},409],["invalid zone","/api/designer/creative-generate",{...input,craft:{...input.craft,zone:"face"}},400],["guest memory write","/api/designer/creative-profile",{action:"reset",owner:"forged"},401],["scheduler auth","/api/cron/designer-research",null,401],["operator refresh auth","/api/operator/designer-research/refresh",{action:"refresh"},401]]){assert.equal((await http(p,b)).status,status,name);summary.http.push(name);}
+  // Public locked handoffs are not auth-only operations: test actual HTTP
+  // origin, streaming limits and malformed payload behavior without cloud writes.
+  for(const endpoint of ["/api/designer/share","/api/designer/enquiry"]){
+    for(const [label,headers,body,expected] of [
+      ["cross-site origin",{"content-type":"application/json",origin:"https://external.example"},"{}",403],
+      ["cross-site metadata",{"content-type":"application/json","sec-fetch-site":"cross-site"},"{}",403],
+      ["wrong media type",{"content-type":"text/plain"},"{}",415],
+      ["non-object JSON",{"content-type":"application/json"},"[]",400],
+      ["malformed JSON",{"content-type":"application/json"},"{",400],
+      ["streamed overflow",{"content-type":"application/json"},JSON.stringify({unused:"x".repeat(100_000)}),413],
+    ]){
+      const response=await fetch(base+endpoint,{method:"POST",headers,body});
+      assert.equal(response.status,expected,endpoint+" "+label);
+      assert.match(response.headers.get("cache-control")||"",/no-store/,endpoint+" no-store");
+      summary.http.push(endpoint+" "+label);
+    }
+  }
   const unsupported=await http("/api/designer/creative-generate",{...input,craft:{...input.craft,brief:"Peacock with sequins"}});assert.deepEqual(unsupported.data.concepts,[]);assert.ok(unsupported.data.clarifications.length);summary.http.push("unsupported artwork clarification");
   const guest=await http("/api/designer/creative-profile");assert.equal(guest.data.authenticated,false);summary.http.push("guest no-store memory state");
   const chosen=valid.data.concepts[0];
