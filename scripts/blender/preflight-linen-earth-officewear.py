@@ -17,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from uv_candidate_audit import audit_shared_uv_edges, audit_uv_triangles, classify_unapproved_uv_seams, validate_recomputed_source_cut_evidence, verify_evaluated_tube_radius_m, validate_independent_uv_hotspots
 from sleeve_stance_math import source_arm_band_geometry, optimistic_sleeve_spacing_budget
+from sleeve_torso_gate import validate_sleeve_torso_receipts
 
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
@@ -752,6 +753,36 @@ def main():
                 reasons.append(
                     f"{key} has {count} intersecting triangle pairs; production garment/body boundaries must be clean."
                 )
+
+        # Independently remeasure CURRENT evaluated sleeve/torso BVH
+        # contacts. Intentional sewn-armhole contact may already exist,
+        # but the cuff correction cannot worsen it on either side.
+        shirt_torso = bpy.data.objects.get("ShirtTorsoFabric")
+        source_sleeves = [
+            bpy.data.objects.get("ShirtSleeveLFabric"),
+            bpy.data.objects.get("ShirtSleeveRFabric"),
+        ]
+        torso_sleeve_pairs = [
+            intersection_pair_count(shirt_torso, sleeve)
+            for sleeve in source_sleeves
+        ]
+        boundary_intersections["shirtTorsoSleeveL"] = torso_sleeve_pairs[0]
+        boundary_intersections["shirtTorsoSleeveR"] = torso_sleeve_pairs[1]
+        if any(value is None for value in torso_sleeve_pairs):
+            reasons.append("Could not independently measure both shirt/sleeve seam contacts.")
+        else:
+            receipts = [
+                sleeve.get("linen_earth_sleeve_spacing_evidence_json")
+                if sleeve is not None else None
+                for sleeve in source_sleeves
+            ]
+            try:
+                contact_receipt = validate_sleeve_torso_receipts(
+                    receipts, torso_sleeve_pairs
+                )
+                boundary_intersections["shirtTorsoSleeveContactReceipt"] = contact_receipt
+            except ValueError as error:
+                reasons.append(f"Source sleeve/torso contact gate failed: {error}")
 
         # Garment-vs-garment contact matters even when neither garment
         # penetrates the source body. Two trouser legs must remain distinct:
