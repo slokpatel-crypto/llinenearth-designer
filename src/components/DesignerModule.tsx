@@ -718,7 +718,7 @@ export function DesignerModule() {
     creativeRequestRef.current=null;
     setCreativeGenerating(false);
     return ()=>{creativeRequestRef.current?.controller.abort();};
-  },[shirtId,pantId,occasion,style,styleSpec,climate,intention,craftRequest]);
+  },[shirtId,pantId,fabricIdentity,occasion,style,styleSpec,climate,intention,craftRequest]);
 
   useEffect(()=>{if(pendingCraftBrief.current){pendingCraftBrief.current=false;void runCreativeLab();}},[craftRequest]);
 
@@ -820,7 +820,15 @@ export function DesignerModule() {
   }
 
   function useCreativeDirection(direction:CreativeDirection,origin:"manual"|"automatic"="manual") {
-    const expectedIdentity=JSON.stringify([direction.recommendation.shirt.id,direction.recommendation.pant.id,direction.recommendation.occasion,styleIdentity(direction.baseStyle),fromLegacyStyle(direction.baseStyle),climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+    const directionStyleSpec=fromLegacyStyle(direction.baseStyle);
+    if(!creativeDirectionMatchesSelection(direction,{
+      shirtId,pantId,shirt:shirt??null,pant:pant??null,
+      occasion,climate,intention,style:direction.baseStyle,styleSpec:directionStyleSpec,
+    })){
+      setCreativeAutoNote("Fabric evidence or selection changed. Generate a fresh concept before applying it.");
+      return;
+    }
+    const expectedIdentity=JSON.stringify([direction.recommendation.shirt.id,direction.recommendation.pant.id,fabricIdentity,direction.recommendation.occasion,styleIdentity(direction.baseStyle),directionStyleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
     setCreativeVisualReview(null);
     if(origin==="manual") {
       setCreativeAutoRetryCount(0);
