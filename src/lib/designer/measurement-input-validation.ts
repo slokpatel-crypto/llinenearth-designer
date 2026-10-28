@@ -1,4 +1,4 @@
-import type { MeasurementProfile } from "../measurements.ts";
+import { validMeasurementTimestamp, type MeasurementProfile } from "../measurements.ts";
 
 const SHIRT_KEYS=new Set(["neck","chest","waist","shoulder","sleeve","shirtLength","bicep","wrist"]);
 const PANT_KEYS=new Set(["waist","seat","thigh","frontRise","inseam","outseam","knee","hem"]);
@@ -16,7 +16,7 @@ export function normalizeMeasuredBodyInput(value:unknown):MeasurementProfile|nul
   if(!value||typeof value!=="object"||Array.isArray(value))
     throw new Error("Invalid body measurement profile.");
   const input=value as Record<string,unknown>;
-  if(input.version!==1||!["cm","in"].includes(String(input.unit)))
+  if(input.version!==1||(input.unit!=="cm"&&input.unit!=="in"))
     throw new Error("Unsupported body measurement version or display unit.");
   const clean=(part:unknown,keys:Set<string>,name:string)=>{
     if(!part||typeof part!=="object"||Array.isArray(part))
@@ -37,6 +37,10 @@ export function normalizeMeasuredBodyInput(value:unknown):MeasurementProfile|nul
     }
     return measurements;
   };
+  // A supplied timestamp is part of the customer measurement receipt. Do
+  // not silently truncate or preserve impossible dates as tailor evidence.
+  if(input.updatedAt!==undefined&&!validMeasurementTimestamp(input.updatedAt))
+    throw new Error("Invalid body measurement timestamp.");
   const shirt=clean(input.shirt,SHIRT_KEYS,"shirt");
   const pants=clean(input.pants,PANT_KEYS,"trouser");
   return {
@@ -44,6 +48,6 @@ export function normalizeMeasuredBodyInput(value:unknown):MeasurementProfile|nul
     unit:input.unit as "cm"|"in",
     shirt,
     pants,
-    updatedAt:typeof input.updatedAt==="string"?input.updatedAt.slice(0,80):new Date().toISOString(),
+    updatedAt:input.updatedAt===undefined?new Date().toISOString():input.updatedAt as string,
   };
 }
