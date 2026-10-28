@@ -73,3 +73,11 @@ test("Chromium UI records actual preview-ready diagnostics without inventing a d
   assert.match(script,/not a device, cold-cache, paint SLA or physical acceptance/);
   assert.doesNotMatch(script,/assert\.ok\(studioReadyMs\s*[<>=]/);
 });
+
+test("inactive fabric filters and provisional garment/QA evidence retain readable contrast",()=>{
+  const css=readFileSync("src/app/designer-studio/accessibility.css","utf8");
+  assert.match(css,/\.newDesigner \.newDesignerFabricFilters button\[aria-pressed="false"\]\{color:#526575\}/);
+  assert.match(css,/\.newDesigner \.newDesignerGarmentScope article\[data-status="planned"\]\{opacity:1\}/);
+  assert.match(css,/\.newDesigner \.newDesignerGarmentScope article\[data-status="planned"\] :is\(span,p,small\)\{color:#5f584f\}/);
+  assert.match(css,/\.newDesigner \.newDesignerSelectedQa\[data-status="review"\] span\{color:#87543c\}/);
+});
