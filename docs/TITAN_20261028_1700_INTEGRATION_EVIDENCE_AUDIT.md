@@ -27,3 +27,6 @@
 ## Exact-head CI regression and repair
 - First PR head `67df8351f2a48c9d5d8d34d5b36e9a20f228d33b`: npm unit, engine and preview checks passed, but CI and Non-3D QA stopped at `npm run release:check`. The release-readiness script was enforcing a **literal** old token `gateComplete:firstTarget.length>=target`, incompatible with the stricter history-complete gate. Updated its required token to the new fail-closed expression and added source checks for streamed JSON and history cap. This preserves (strengthens) the release contract instead of removing it.
 - Exact-head CI and browser QA must be rechecked after this commit; no claims of a pass based on earlier heads.
+
+## Build typecheck repair
+- Commit `33ae53bf2e627d0d305a20f06d7d10eda4899a79` passed unit/engine/preview/release stages but Next.js build typechecking rejected a `Set<ProductionReentryField>.has(string)` call in the new strict validator. The subsequent commit explicitly narrows the checked string to the existing closed vocabulary type; it does not bypass runtime validation. Recheck full exact-head CI and Chromium before reporting success.
