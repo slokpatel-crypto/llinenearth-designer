@@ -824,9 +824,18 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
         # Failed fine probes may alter all XYZ through normal-direction
         # repairs. Commit ONLY the last independently safe full XYZ snapshot.
         restore(safe_positions)
+        final_body = [source_fit_collision_pairs(body, obj) for obj in sleeves]
+        final_torso = [source_fit_collision_pairs(torso, obj) for obj in sleeves]
+        final_sleeves = source_fit_collision_pairs(sleeves[0], sleeves[1])
+        if (final_body != [0, 0] or final_sleeves != 0
+                or any(now > old for now, old in zip(final_torso, torso_baseline_pairs))):
+            raise RuntimeError("Accepted sleeve geometry failed independent final contact recheck")
         evidence = {
             "requestedMmPerSleeve": requested_mm,
             "selectedMmPerSleeve": selected_mm,
+            "shirtTorsoPairsAtOriginal": torso_baseline_pairs,
+            "shirtTorsoPairsAtSelected": final_torso,
+            "shirtTorsoContactNotWorsened": True,
             "nativeWorldSpaceCollisionFree": True,
             "trials": attempts,
             "submillimetreContactRefinementAttempted": last_rejected is not None,
@@ -844,6 +853,11 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
     evidence = {
         "requestedMmPerSleeve": requested_mm,
         "selectedMmPerSleeve": 0.0,
+        "shirtTorsoPairsAtOriginal": torso_baseline_pairs,
+        "shirtTorsoPairsAtSelected": [
+            source_fit_collision_pairs(torso, obj) for obj in sleeves
+        ],
+        "shirtTorsoContactNotWorsened": False,
         "nativeWorldSpaceCollisionFree": False,
         "trials": attempts,
         "submillimetreContactRefinementAttempted": False,
