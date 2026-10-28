@@ -131,6 +131,23 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "main"):
             run_native_preflight(script)
 
+    def test_blender_script_resolves_local_helper_under_isolated_python(self):
+        # Blender's --python runner may execute a file without adding its
+        # directory to sys.path. Simulate that with isolated Python and bpy stubs.
+        code = (
+            "import runpy,sys,types;"
+            "sys.modules['bpy']=types.ModuleType('bpy');"
+            "m=types.ModuleType('mathutils');m.Vector=object;"
+            "sys.modules['mathutils']=m;"
+            "runpy.run_path(sys.argv[1],run_name='candidate_import_only')"
+        )
+        renderer = Path(__file__).with_name("render-linen-earth-model-qa.py")
+        result = subprocess.run(
+            [sys.executable, "-I", "-c", code, str(renderer)],
+            cwd=self.directory, capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_independent_cli_rechecks_exact_source_and_frames(self):
         manifest_path = self.directory / "model-qa-manifest.json"
         manifest_path.write_text(json.dumps(self.manifest), encoding="utf-8")

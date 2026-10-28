@@ -17,6 +17,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Blender --python does not guarantee the script directory is on sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from model_qa_evidence import (
     MANIFEST_VERSION, MODEL_IDENTITY_ID, PREFLIGHT_GATE, REFERENCE_IMAGE, VIEWS,
     run_native_preflight, sha256_file, validate_candidate_manifest,
