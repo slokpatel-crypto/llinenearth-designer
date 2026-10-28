@@ -864,3 +864,7 @@ A same-ID fabric can change in the server catalogue during an asynchronous Desig
 ## 2026-10-28 — Server measurement receipts require literal units and real supplied timestamps (draft)
 
 The Designer assessment API's measurement adapter no longer coerces `unit:["cm"]` to `"cm"`, which could otherwise cause the downstream centimetre/inch converter to interpret an array as inches. Any supplied `updatedAt` must be a real offset-aware Gregorian timestamp (including valid leap days); impossible dates and 24:00 are rejected before tailoring/fit evidence. Legacy clients omitting `updatedAt` retain a receipt-created timestamp for compatibility; this does not claim a physically observed measurement time. Explicit invalid tape values continue to fail closed. New unit and real HTTP negative tests cover this boundary; human tailor approval remains mandatory.
+
+## 2026-10-28 — Invalid explicit body and tailor receipts must not silently disappear (draft)
+
+The assessment API previously converted malformed supplied `bodyProfile` or `observations` into null, which could make fit guidance appear to have no relevant observations rather than reporting a corrupt receipt. Supplied invalid values now return HTTP 422; omitted/null optional values remain compatible. The body-profile validator also rejects array roots and coercible `build`, `skinTone` and `source` enum arrays, preserving the fixed original model and exact selected proportions. Pure and actual HTTP negative regressions cover the boundary; software checks cannot replace a real tailor's manual fit approval.

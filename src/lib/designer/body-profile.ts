@@ -108,7 +108,7 @@ function validScale(value:unknown,min=.75,max=1.3) {
 }
 
 export function validBodyPreviewProfile(value:unknown):value is BodyPreviewProfile {
-  if(!value || typeof value!=="object") return false;
+  if(!value || typeof value!=="object" || Array.isArray(value)) return false;
   const profile=value as Partial<BodyPreviewProfile>;
   const silhouette=profile.silhouette;
   const silhouetteValid=!silhouette || (
@@ -123,12 +123,12 @@ export function validBodyPreviewProfile(value:unknown):value is BodyPreviewProfi
     && silhouette.evidenceCount<=6
   );
   return profile.version===1
-    && ["slim","regular","athletic","broad"].includes(String(profile.build))
+    && typeof profile.build==="string" && ["slim","regular","athletic","broad"].includes(profile.build)
     && Number.isFinite(profile.heightCm)
     && Number(profile.heightCm)>=155
     && Number(profile.heightCm)<=200
-    && ["warm_light","medium","tan","deep"].includes(String(profile.skinTone))
-    && ["default","measurements","manual"].includes(String(profile.source))
+    && typeof profile.skinTone==="string" && ["warm_light","medium","tan","deep"].includes(profile.skinTone)
+    && typeof profile.source==="string" && ["default","measurements","manual"].includes(profile.source)
     && silhouetteValid;
 }
 
