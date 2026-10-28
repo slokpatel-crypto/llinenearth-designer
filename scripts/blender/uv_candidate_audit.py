@@ -334,6 +334,28 @@ def phase_align_cylindrical_charts(faces, *, radius_m, excluded_face_indices=(),
            for i in ignored):
         raise ValueError("Phase excluded face indices must refer to real polygons")
     period = 2 * math.pi * radius_m
+    # An edge with >2 faces or equal-direction face traversal has no
+    # unambiguous sewing neighbour. Refuse even an apparently alignable
+    # periodic subgraph until the original mesh topology is repaired.
+    if initial["nonManifoldEdges"] or initial["inconsistentWindingEdges"]:
+        return [[(vid, tuple(uv)) for vid, uv in face] for face in faces], {
+            "geometryEstimatedCircumferenceMm": round(period * 1000, 5),
+            "phaseShiftedFaces": 0,
+            "phaseAlignableInteriorEdges": 0,
+            "phaseCycleConflicts": 0,
+            "phaseCandidateRolledBack": True,
+            "phaseRollbackReason": "invalid_source_topology",
+            "phaseRejectedComponents": 0,
+            "phaseAcceptedComponents": 0,
+            "phaseRollbackReasons": ["invalid_source_topology"],
+            "wouldBreakPreviouslyContinuousSourceEdges": 0,
+            "excludedUnapprovedFaceCharts": len(ignored),
+            "unapprovedInteriorUvSeamsBefore": initial["unapprovedInteriorUvSeams"],
+            "unapprovedInteriorUvSeamsAfter": initial["unapprovedInteriorUvSeams"],
+            "supplierRepeatVerified": False,
+            "supplierGrainVerified": False,
+            "productionApproved": False,
+        }
     edges = defaultdict(list)
     for face_index, face in enumerate(faces):
         if face_index in ignored:
@@ -507,7 +529,8 @@ def align_metric_tangent_charts(faces, *, tangent_face_indices, tolerance_m=1e-5
             "rigidlyAlignedTangentChartFaces": len(aligned),
             "alignedSourcePolygonIndices": sorted(aligned),
             "unresolvedTangentChartFaces": len(tangent_indices - aligned),
-            "nonManifoldTopologyRejected": rejected_topology,
+            "nonManifoldTopologyRejected": rejected_topology and before["nonManifoldEdges"] > 0,
+            "inconsistentWindingTopologyRejected": rejected_topology and before["inconsistentWindingEdges"] > 0,
             "supplierRepeatVerified": False,
             "supplierGrainVerified": False,
             "seamLayoutApproved": False,
@@ -516,7 +539,7 @@ def align_metric_tangent_charts(faces, *, tangent_face_indices, tolerance_m=1e-5
 
     # Never edit charts on ambiguous edge adjacency. Genuine nonmanifold
     # geometry must be repaired upstream instead of masked by UV changes.
-    if before["nonManifoldEdges"]:
+    if before["nonManifoldEdges"] or before["inconsistentWindingEdges"]:
         return report(set(), rejected_topology=True)
 
     edge_uses = collections.defaultdict(list)
