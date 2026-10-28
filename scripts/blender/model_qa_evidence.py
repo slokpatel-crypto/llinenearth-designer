@@ -223,6 +223,8 @@ def validate_candidate_manifest(manifest: object, directory: Path,
     reasons: list[str] = []
     if not isinstance(manifest, dict):
         return ["Candidate QA manifest must be an object"]
+    if source is None or preflight_script is None or reference_photo is None:
+        reasons.append("Candidate integrity requires actual Blender source, preflight script and canonical photo files")
     for key, expected in (
         ("version", MANIFEST_VERSION),
         ("modelIdentityId", MODEL_IDENTITY_ID),

@@ -369,5 +369,19 @@ else:
             self.assertEqual(self.validate(), [])
 
 
+    def test_candidate_cannot_pass_without_all_three_source_evidence_files(self):
+        required = "requires actual Blender source"
+        self.assertTrue(any(required in reason for reason in
+                            validate_candidate_manifest(self.manifest, self.directory)))
+        for kwargs in (
+            {"preflight_script": self.preflight, "reference_photo": self.photo},
+            {"source": self.source, "reference_photo": self.photo},
+            {"source": self.source, "preflight_script": self.preflight},
+        ):
+            with self.subTest(missing=kwargs):
+                self.assertTrue(any(required in reason for reason in
+                                    validate_candidate_manifest(self.manifest, self.directory, **kwargs)))
+
+
 if __name__ == "__main__":
     unittest.main()
