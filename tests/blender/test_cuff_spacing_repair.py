@@ -171,7 +171,12 @@ assert torso_safe["nativeWorldSpaceCollisionFree"] is True, torso_safe
 assert torso_safe["trials"][0]["shirtTorsoPairsAtOriginal"] == [2, 2]
 assert torso_safe["trials"][0]["shirtTorsoPairsAfterRepair"] == [3, 3]
 assert torso_safe["trials"][0]["shirtTorsoContactNotWorsened"] is False
-assert torso_safe["trials"][-1]["shirtTorsoContactNotWorsened"] is True
+# Fine probes after the selected safe 10-mm trial are rejected; the final
+# trial list entry is not the retained geometry. Trust only the independently
+# rechecked selected-geometry receipt, never the last attempted probe.
+assert torso_safe["trials"][-1]["shirtTorsoContactNotWorsened"] is False
+assert torso_safe["shirtTorsoPairsAtSelected"] == [2, 2]
+assert torso_safe["shirtTorsoContactNotWorsened"] is True
 assert tuple(tuple(vertex.co) for vertex in torso.data.vertices) == torso_before
 assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
 for obj in (left, right):
