@@ -8,10 +8,10 @@ Draft #441 at `89f4f4f500068a8a91b2d253c64e0c59cc716228` passed exact-head web C
 
 The comparison-sheet script previously accepted any PNG over 12 KB as the candidate, without checking it came from the same source Blender scene or matched the four-angle manifest. A stale, swapped or partial render could therefore be archived as if it were the current scene's four-angle review evidence, even though the receipt correctly disclaimed human approval.
 
-- `scripts/qa/model_turntable_evidence.py`: fail-closed pure-Python verification of locked identity, original .blend SHA-256, all four exact camera yaw/view/file pairs, PNG dimensions and per-view SHA-256, non-duplicated frames, and exact front frame. Reject duplicate JSON keys, non-finite numbers, coerced approval booleans, path traversal, missing frames and any forged approved flag.
+- `scripts/qa/model_turntable_evidence.py`: fail-closed pure-Python verification of locked identity, original .blend SHA-256, all four exact camera yaw/view/file pairs, PNG dimensions and per-view SHA-256, non-duplicated frames, and exact front frame. The comparison script also requires the checked-out canonical `public/designer/studio-tucked.webp` photograph rather than an arbitrary supplied image. Reject duplicate JSON keys, non-finite numbers, coerced approval booleans, path traversal, missing frames and any forged approved flag.
 - `scripts/qa/model-reference-contact-sheet.py`: require manifest and source scene; verify **all four** PNGs are decodable using Pillow before archiving the front comparison. Record manifest/source/per-view hashes in the review receipt; still explicitly unapproved.
 - `.github/workflows/model-source-candidate.yml`: wire manifest and original scene into the actual native CI archive step, trigger on the new verifier, and syntax-check QA scripts.
-- `tests/python/test_model_turntable_evidence.py`: positive complete-source fixture and adversarial negative regressions.
+- `tests/python/test_model_turntable_evidence.py`: positive complete-source fixture and adversarial negative regressions, including canonical-photo substitution.
 
 This proves artifact binding only. Distinct PNG hashes are not photographic parity, source model likeness, true fabric physics, supplier calibration, body/cloth collision safety or tailor approval. The canonical `linen-earth-studio-model-v1` image and all geometry remain unchanged. No paid provider, production data, migration, merge or deployment.
 
