@@ -1021,5 +1021,52 @@ class CandidateUvAuditTests(unittest.TestCase):
         self.assertFalse(result["productionApproved"])
 
 
+
+    def test_phase_shift_cannot_move_a_tear_to_another_source_edge(self):
+        import math
+        period = 2 * math.pi * .1
+        # Face 1 can be translated by one full turn to stitch edge 1--2,
+        # but that enlarges its already-torn edge 2--3 against face 2.
+        # A global count would drop from two tears to one and conceal harm.
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            [(2, (.02-period, .05)), (1, (.02-period, 0)),
+             (3, (.04-period, .05))],
+            [(3, (.07-period, .05)), (2, (.05-period, .05)),
+             (4, (.06-period, .10))],
+        ]
+        original = audit.audit_shared_uv_edges(faces)
+        self.assertEqual(original["unapprovedInteriorUvSeams"], 2)
+        unchanged, receipt = audit.phase_align_cylindrical_charts(
+            faces, radius_m=.1
+        )
+        self.assertEqual(unchanged, faces)
+        self.assertTrue(receipt["phaseCandidateRolledBack"])
+        self.assertIn("existing_source_edge_uv_jump_worsened",
+                      receipt["phaseRollbackReasons"])
+        self.assertEqual(receipt["unapprovedInteriorUvSeamsAfter"], 2)
+        self.assertFalse(receipt["productionApproved"])
+
+    def test_tangent_stitch_cannot_worsen_existing_third_edge(self):
+        # Two neighbours want +100 mm while the third wants -20 mm.
+        # A greedy 2-for-1 seam-count improvement would enlarge the
+        # third tear from 20 mm to 120 mm: preserve all source charts.
+        central = [(0, (0, 0)), (1, (.02, 0)), (2, (0, .02))]
+        anchor_a = [(1, (.12, 0)), (0, (.1, 0)), (3, (.11, -.02))]
+        anchor_b = [(2, (.1, .02)), (1, (.12, 0)), (4, (.14, .02))]
+        anchor_c = [(0, (-.02, 0)), (2, (-.02, .02)), (5, (-.04, .01))]
+        faces = [central, anchor_a, anchor_b, anchor_c]
+        before = audit.audit_shared_uv_edges(faces)
+        self.assertEqual(before["unapprovedInteriorUvSeams"], 3)
+        unchanged, receipt = audit.align_metric_tangent_charts(
+            faces, tangent_face_indices=[0]
+        )
+        self.assertEqual(unchanged, faces)
+        self.assertEqual(receipt["rigidlyAlignedTangentChartFaces"], 0)
+        self.assertEqual(receipt["remainingUnapprovedInteriorUvSeams"], 3)
+        self.assertFalse(receipt["supplierRepeatVerified"])
+        self.assertFalse(receipt["seamLayoutApproved"])
+
+
 if __name__ == "__main__":
     unittest.main()
