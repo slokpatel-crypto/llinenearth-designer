@@ -4,6 +4,8 @@
 
 **Decision:** A native Blender report that says `ready=true` cannot certify candidate four-angle file integrity if garment widths, centerlines, cuffs, hem asymmetry or identity guides were not actually sampled. Missing/nonfinite measurements now block native preflight, and the independent receipt validator checks all eleven locked garment silhouette values and nine identity-guide values with the existing target/tolerance contract. It also cross-checks evaluated panel vertex/polygon/triangle counts, applied transforms, active UV layers, degenerate geometry, and aggregate mobile triangle/vertex budgets. Reject missing, coerced or contradictory counts even if the native report claims success.
 
+**Source immutability:** Snapshot SHA-256 of the loaded .blend, canonical studio photo and native preflight script before running native checks. Recheck the actual files after preflight, after all four renders and immediately before atomic publication. Concurrent source replacement or symlink substitution invalidates the candidate instead of binding the final receipt to a different source. Regression fixtures cover source, photo and script drift.
+
 **Scope:** Offline candidate-file integrity only; the old native sleeve-spacing/UV-seam failures remain blocked pending a fresh real Blender run. No new model, fabricated physical facts, supplier measurements, photoreal parity, tailor signoff, deployment or production promotion. The historical candidate receipt shape remains readable but incomplete evidence must be regenerated rather than silently promoted.
 
 ## 2026-10-28 — Four-angle PNG receipts require decodable bounded rasters
