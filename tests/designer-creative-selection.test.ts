@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import type { DesignerStyle } from "../src/lib/designer/engine.ts";
+import type { DesignerFabric, DesignerStyle } from "../src/lib/designer/engine.ts";
 import type { CreativeDirection } from "../src/lib/designer/creative-engine.ts";
 import {
   creativeDirectionMatchesSelection,
+  fabricRevisionKey,
   type CreativeSelection,
 } from "../src/lib/designer/creative-selection.ts";
 import { fromLegacyStyle } from "../src/lib/designer/style-spec-v2.ts";
@@ -86,7 +87,10 @@ test("Designer restore, live invalidation and generation lifecycle use the same 
   assert.match(source,/creativeDirectionMatchesSelection\(parsed\.creative,/);
   assert.match(source,/creativeDirectionMatchesSelection\(activeCreative,/);
   assert.match(source,/if\(activeCreative\) \{\s*setRecommendation\(null\);\s*setAssessment\(null\);\s*setRecommendationId\(null\);/);
-  assert.match(source,/\[draftReady,shirtId,pantId,occasion,climate,intention,style,styleSpec\]/);
+  assert.match(source,/\[draftReady,shirtId,pantId,shirt,pant,occasion,climate,intention,style,styleSpec\]/);
+  assert.match(source,/shirt:shirt\?\?null,pant:pant\?\?null/);
+  assert.match(source,/const fabricIdentity=JSON\.stringify\(\[fabricRevisionKey\(shirt\),fabricRevisionKey\(pant\)\]\)/);
+  assert.match(source,/\[shirtId,pantId,fabricIdentity,styleSpec,bodyProfile,measurementProfile,activeCreative\]/);
   assert.match(source,/\[shirtId,pantId,occasion,style,styleSpec,climate,intention,craftRequest\]/);
 });
 
@@ -100,4 +104,40 @@ test("assessment request binds its payload and late reply to the committed selec
   assert.match(block,/catch\(error\) \{\s*if\(!isCurrent\(\)\) return;/);
   assert.match(source,/run\.identity!==assessmentIdentity[\s\S]*run\.controller\.abort\(\)/);
   assert.match(source,/committedAssessmentIdentity\.current!==assessmentIdentity[\s\S]*setAssessment\(null\)/);
+});
+
+
+test("same-ID catalogue revisions revoke creative direction and physical preview evidence",()=>{
+  const {selection,direction}=fixture();
+  const shirt={
+    id:selection.shirtId,name:"Blue stripe",image:"/fabrics/a.webp",source:"operator",
+    renderScale:{physicalScaleStatus:"declared_repeat",repeatMm:10,stripeWidthMm:null},
+    weightGsm:180,confirmedAvailableMetres:14,availabilityVerified:true,
+    physicsProfile:{version:"linen-earth-fabric-physics-v1",fabricId:selection.shirtId,
+      gsm:{value:180,evidence:"declared"}},
+  } as unknown as DesignerFabric;
+  const pant={id:selection.pantId,name:"Beige suiting",image:"/fabrics/b.webp",
+    source:"operator",confirmedAvailableMetres:20} as DesignerFabric;
+  const selected={...selection,shirt:{...shirt},pant:{...pant}};
+  const concept={...direction,recommendation:{...direction.recommendation,shirt:{...shirt},pant:{...pant}}};
+  assert.equal(creativeDirectionMatchesSelection(concept,selected),true);
+  assert.equal(fabricRevisionKey(shirt),fabricRevisionKey({...shirt}),true);
+  const changes=[
+    {...shirt,image:"/fabrics/new-photo.webp"},
+    {...shirt,renderScale:{physicalScaleStatus:"declared_repeat" as const,repeatMm:12,stripeWidthMm:null}},
+    {...shirt,weightGsm:210},
+    {...shirt,confirmedAvailableMetres:3},
+    {...shirt,physicsProfile:{...shirt.physicsProfile!,
+      gsm:{value:180,evidence:"reviewed" as const}}},
+  ];
+  for(const revised of changes){
+    assert.equal(creativeDirectionMatchesSelection(concept,{...selected,shirt:revised}),false);
+    assert.notEqual(fabricRevisionKey(shirt),fabricRevisionKey(revised));
+  }
+  assert.equal(creativeDirectionMatchesSelection(concept,{...selected,pant:{...pant,source:"supplier-revised"}}),false);
+  assert.equal(creativeDirectionMatchesSelection(concept,{...selected,shirt:null}),false);
+  assert.equal(creativeDirectionMatchesSelection(direction,selected),false,
+    "a legacy ID-only concept must not certify a current physical catalogue snapshot");
+  assert.equal(creativeDirectionMatchesSelection(direction,selection),true,
+    "legacy callers without snapshot remain compatible but do not assert physical parity");
 });
