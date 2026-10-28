@@ -46,7 +46,7 @@ test("Designer JSON transport rejects malformed UTF-8, non-object JSON and inval
 });
 
 test("three Designer API POST paths use bounded streamed JSON before doing work",()=>{
-  for(const [route,limit] of [["assess",180_000],["search",80_000],["brief",90_000]] as const){
+  for(const [route,limit] of [["assess","180_000"],["search","80_000"],["brief","90_000"]] as const){
     const src=readFileSync(new URL(`../src/app/api/designer/${route}/route.ts`,import.meta.url),"utf8");
     assert.ok(src.includes(`secureJsonRequestError(request,${limit})`),`${route} preflight missing`);
     assert.ok(src.includes(`readSecureJsonObject(request,${limit})`),`${route} streamed reader missing`);
