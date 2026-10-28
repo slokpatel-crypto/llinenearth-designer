@@ -78,6 +78,6 @@ test("inactive fabric filters and provisional garment/QA evidence retain readabl
   const css=readFileSync("src/app/designer-studio/accessibility.css","utf8");
   assert.match(css,/\.newDesigner \.newDesignerFabricFilters button\[aria-pressed="false"\]\{color:#526575\}/);
   assert.match(css,/\.newDesigner \.newDesignerGarmentScope article\[data-status="planned"\]\{opacity:1\}/);
-  assert.match(css,/\.newDesigner \.newDesignerGarmentScope article\[data-status="planned"\] :is\(span,p,small\)\{color:#5f584f\}/);
+  assert.match(css,/\.newDesigner \.newDesignerGarmentScope article\[data-status="planned"\] :is\(span,p,small,strong\)\{color:#5f584f\}/);
   assert.match(css,/\.newDesigner \.newDesignerSelectedQa\[data-status="review"\] span\{color:#87543c\}/);
 });

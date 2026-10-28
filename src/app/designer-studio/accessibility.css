@@ -30,5 +30,5 @@
    Planned garments stay visually distinct by their background, not low opacity. */
 .newDesigner .newDesignerFabricFilters button[aria-pressed="false"]{color:#526575}
 .newDesigner .newDesignerGarmentScope article[data-status="planned"]{opacity:1}
-.newDesigner .newDesignerGarmentScope article[data-status="planned"] :is(span,p,small){color:#5f584f}
+.newDesigner .newDesignerGarmentScope article[data-status="planned"] :is(span,p,small,strong){color:#5f584f}
 .newDesigner .newDesignerSelectedQa[data-status="review"] span{color:#87543c}

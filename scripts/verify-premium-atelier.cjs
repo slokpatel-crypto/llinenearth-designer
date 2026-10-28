@@ -256,6 +256,7 @@ async function run() {
             filterInactiveColor: getComputedStyle(document.querySelector('.newDesignerFabricFilters button[aria-pressed="false"]')).color,
             plannedOpacity: getComputedStyle(document.querySelector('.newDesignerGarmentScope article[data-status="planned"]')).opacity,
             plannedTextColor: getComputedStyle(document.querySelector('.newDesignerGarmentScope article[data-status="planned"] small')).color,
+            plannedTitleColor: getComputedStyle(document.querySelector('.newDesignerGarmentScope article[data-status="planned"] strong')).color,
           };
         });
         assert.equal(studio.overflow, false, 'Designer stays within the viewport at ' + width);
@@ -270,6 +271,7 @@ async function run() {
         assert.equal(studio.filterInactiveColor, 'rgb(82, 101, 117)', 'inactive fabric filters remain legible');
         assert.equal(studio.plannedOpacity, '1', 'future garment descriptions must not fade below normal-text contrast');
         assert.equal(studio.plannedTextColor, 'rgb(95, 88, 79)', 'future garment labels remain readable');
+        assert.equal(studio.plannedTitleColor, 'rgb(95, 88, 79)', 'future garment titles remain readable');
         await page.screenshot({ path: path.join(out, `designer-legibility-${width}.png`) });
         summary.checks.push('keyboard skip link and responsive Designer control legibility at ' + width + 'px');
       }
