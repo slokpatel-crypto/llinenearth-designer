@@ -161,6 +161,9 @@ export function DesignerModule() {
   const [shareMessage,setShareMessage]=useState("");
   const [enquiryBusy,setEnquiryBusy]=useState(false);
   const [enquiryMessage,setEnquiryMessage]=useState("");
+  const [enquiryConsent,setEnquiryConsent]=useState(false);
+  const [enquiryHref,setEnquiryHref]=useState("");
+  const [vaultAccountOwned,setVaultAccountOwned]=useState(false);
   const [vaultBusy,setVaultBusy]=useState(false);
   const [vaultMessage,setVaultMessage]=useState("");
   const [vaultRecoveryToken,setVaultRecoveryToken]=useState("");
@@ -308,7 +311,11 @@ export function DesignerModule() {
     lockedRevisionSelectionIdentityRef.current=null;
     setLockedRevision(null);
     setVaultRecoveryToken("");
+    setVaultAccountOwned(false);
     setVaultMessage("");
+    setEnquiryConsent(false);
+    setEnquiryHref("");
+    setEnquiryMessage("");
   },[lockIdentity]);
 
   useEffect(() => {
@@ -1295,18 +1302,27 @@ export function DesignerModule() {
   async function openLockedRevisionEnquiry() {
     const revision=currentLockedRevision();
     const identity=lockIdentity;
-    if(!revision||enquiryBusy) return;
-    setEnquiryBusy(true);setEnquiryMessage("");
+    if(!revision||enquiryBusy||!enquiryConsent) return;
+    setEnquiryBusy(true);setEnquiryMessage("");setEnquiryHref("");
     try{
       const response=await fetch("/api/designer/enquiry",{
         method:"POST",
         headers:{"content-type":"application/json"},
-        body:JSON.stringify(revision),
+        body:JSON.stringify({
+          revision,consentToContact:true,
+          ...(vaultAccountOwned&&vaultRecoveryToken?{recoveryToken:vaultRecoveryToken}:{}),
+        }),
       });
-      const result=await response.json() as {href?:string;audited?:boolean;revisionId?:string;error?:string};
+      const result=await response.json() as {
+        href?:string;audited?:boolean;auditId?:string|null;ownerVerified?:boolean;
+        operatorReceived?:boolean;revisionId?:string;error?:string;
+      };
       if(currentSelectionIdentityRef.current!==identity) return;
       if(!response.ok||!result.href) throw new Error(result.error||"Locked-look enquiry could not be created.");
-      setEnquiryMessage(result.audited?"Verified enquiry audit recorded for this locked revision.":"WhatsApp enquiry opened · beta audit unavailable.");
+      setEnquiryHref(result.href);
+      setEnquiryMessage(result.audited&&result.ownerVerified&&result.auditId
+        ?`Signed-in enquiry intent recorded · receipt ${result.auditId.slice(0,8)}. WhatsApp still needs to be sent manually.`
+        :"WhatsApp draft ready. No verified operator receipt or confirmed message delivery.");
       window.open(result.href,"_blank","noopener,noreferrer");
     }catch(error){
       if(currentSelectionIdentityRef.current!==identity) return;
@@ -1327,10 +1343,11 @@ export function DesignerModule() {
         headers:{"content-type":"application/json"},
         body:JSON.stringify({action:"store",revision:revision}),
       });
-      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;ownershipWarning?:string;error?:string};
+      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;accountOwned?:boolean;ownershipWarning?:string;error?:string};
       if(currentSelectionIdentityRef.current!==identity) return;
       if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure cloud copy could not be saved.");
       setVaultRecoveryToken(result.recoveryToken);
+      setVaultAccountOwned(result.accountOwned===true);
       let tokenCopied=false;
       try{
         await navigator.clipboard.writeText(result.recoveryToken);
@@ -1655,8 +1672,13 @@ export function DesignerModule() {
                 <button type="button" onClick={downloadTailorTechPack}>Export printable tech pack ↗</button>
                 <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
                 {shareMessage&&<p>{shareMessage}</p>}
-                <button type="button" onClick={()=>void openLockedRevisionEnquiry()} disabled={enquiryBusy}>{enquiryBusy?"Opening WhatsApp…":"WhatsApp locked look ↗"}</button>
-                {enquiryMessage&&<p>{enquiryMessage}</p>}
+                <label className="newDesignerEnquiryConsent">
+                  <input type="checkbox" checked={enquiryConsent} onChange={(event)=>setEnquiryConsent(event.target.checked)}/>
+                  I agree to share this locked outfit enquiry with Linen Earth staff.
+                </label>
+                <button type="button" onClick={()=>void openLockedRevisionEnquiry()} disabled={enquiryBusy||!enquiryConsent}>{enquiryBusy?"Preparing enquiry…":"Prepare WhatsApp enquiry ↗"}</button>
+                {enquiryMessage&&<p role="status">{enquiryMessage}</p>}
+                {enquiryHref&&<a href={enquiryHref} target="_blank" rel="noreferrer">Open the WhatsApp draft manually ↗</a>}
                 <button type="button" onClick={()=>void saveLockedRevisionToVault()} disabled={vaultBusy}>{vaultBusy?"Saving secure copy…":"Save secure cloud copy ↗"}</button>
                 {vaultMessage&&<p>{vaultMessage}</p>}
                 {vaultRecoveryToken&&<>
