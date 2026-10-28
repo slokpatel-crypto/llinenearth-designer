@@ -986,6 +986,16 @@ requireTokens("src/app/api/designer/creative-profile/route.ts",["getCustomerIden
 requireTokens("src/lib/designer/research-refresh-server.ts",["claim.duplicate","paidModelCalls:0","contentHash:hash","pending_review"]);
 requireTokens("src/app/api/cron/designer-research/route.ts",["CRON_SECRET","timingSafeEqual"]);
 
+// Public Designer POST handlers must enforce the same bounded streamed JSON
+// transport as privileged recovery/production writes, including chunked bodies.
+requireTokens("src/lib/secure-json-request.ts", ["readSecureJsonObject","secureJsonRequestError","SecureJsonBodyInvalid","SecureJsonBodyTooLarge"]);
+for(const kind of ["assess","search","brief"]) {
+  requireTokens(`src/app/api/designer/${kind}/route.ts`, [
+    "secureJsonRequestError(request,","readSecureJsonObject(request,",
+    "error instanceof SecureJsonBodyInvalid","error instanceof SecureJsonBodyTooLarge",
+  ]);
+}
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);

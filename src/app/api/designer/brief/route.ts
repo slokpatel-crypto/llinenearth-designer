@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { DESIGNER_REVIEWED_PAIRING, designerFabricFromStock, designerStyleForOccasion } from "@/lib/designer/engine";
 import { parseDesignerBrief, explicitDesignerStylePatch } from "@/lib/designer/brief";
 import { answerDesignerQuestion, designerTaskFor, safeDesignerJudgement, validDesignerContext, validDesignerOccasion, validDesignerStyle } from "@/lib/designer/advisor";
@@ -53,11 +54,11 @@ function directionName(tier:DesignerSearchTier) {
 
 export async function POST(request:Request) {
   if(rateLimited(request)) return NextResponse.json({error:"Designer brief is temporarily rate limited."},{status:429});
-  const contentLength=Number(request.headers.get("content-length")||0);
-  if(contentLength>90_000) return NextResponse.json({error:"Designer brief request is too large."},{status:413});
+  const unsafe=secureJsonRequestError(request,90_000);
+  if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
 
   try {
-    const body=await request.json() as {
+    const body=await readSecureJsonObject(request,90_000) as {
       brief?:unknown;
       currentShirtId?:unknown;
       currentPantId?:unknown;
@@ -169,6 +170,8 @@ export async function POST(request:Request) {
       engine:"linen-designer-brief-v2",
     },{headers:{"cache-control":"no-store"}});
   } catch(error) {
+    if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
+    if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
     console.error("[designer/brief]",error);
     return NextResponse.json({error:"Designer could not turn that brief into outfit directions."},{status:500});
   }

@@ -1,5 +1,6 @@
 import { validCreativeCraft, resolveCraftFabrics } from "@/lib/designer/creative-spec";
 import { NextResponse } from "next/server";
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import {
   DESIGNER_STYLE_CHOICES,
   evaluateDesignerCombo,
@@ -86,10 +87,10 @@ function safeCreative(value:unknown):CreativeDirection|null {
 
 export async function POST(request:Request) {
   if(rateLimited(request)) return NextResponse.json({error:"Designer assessment is temporarily rate limited."},{status:429});
-  const contentLength=Number(request.headers.get("content-length")||0);
-  if(contentLength>180_000) return NextResponse.json({error:"Designer assessment request is too large."},{status:413});
+  const unsafe=secureJsonRequestError(request,180_000);
+  if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
   try {
-    const body=await request.json() as {
+    const body=await readSecureJsonObject(request,180_000) as {
       shirtId?:unknown;
       pantId?:unknown;
       occasion?:unknown;
@@ -185,6 +186,8 @@ export async function POST(request:Request) {
       runtime:{houseEaseModel:easeModel?{modelId:easeModel.modelId,version:easeModel.version,approvedBy:easeModel.approvedBy}:null},
     },{headers:{"cache-control":"no-store"}});
   } catch(error) {
+    if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
+    if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
     console.error("[designer/assess]",error);
     return NextResponse.json({error:"Designer could not assess this look."},{status:500});
   }
