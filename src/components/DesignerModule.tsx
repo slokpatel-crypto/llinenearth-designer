@@ -1251,11 +1251,14 @@ export function DesignerModule() {
       const url=new URL(`/share/${result.token}`,window.location.origin).toString();
       try{
         await navigator.clipboard.writeText(url);
+        if(currentSelectionIdentityRef.current!==identity) return;
         setShareMessage(`Share link copied · expires in ${result.expiresInDays||30} days${result.audited?" · verified share audit recorded":" · beta audit unavailable"}.`);
       }catch{
+        if(currentSelectionIdentityRef.current!==identity) return;
         setShareMessage(url);
       }
     }catch(error){
+      if(currentSelectionIdentityRef.current!==identity) return;
       setShareMessage(error instanceof Error?error.message:"Share link could not be created.");
     }finally{
       setShareBusy(false);
@@ -1279,6 +1282,7 @@ export function DesignerModule() {
       setEnquiryMessage(result.audited?"Verified enquiry audit recorded for this locked revision.":"WhatsApp enquiry opened · beta audit unavailable.");
       window.open(result.href,"_blank","noopener,noreferrer");
     }catch(error){
+      if(currentSelectionIdentityRef.current!==identity) return;
       setEnquiryMessage(error instanceof Error?error.message:"Locked-look enquiry could not be created.");
     }finally{
       setEnquiryBusy(false);
@@ -1303,6 +1307,7 @@ export function DesignerModule() {
       let tokenCopied=false;
       try{
         await navigator.clipboard.writeText(result.recoveryToken);
+        if(currentSelectionIdentityRef.current!==identity) return;
         tokenCopied=true;
       }catch{
         // Clipboard permission is optional; the token remains visible.
@@ -1310,8 +1315,10 @@ export function DesignerModule() {
       const savedMessage=tokenCopied
         ?`Recovery token copied · secure copy expires in ${result.expiresInDays||180} days.`
         :"Secure cloud copy saved. Copy the recovery token below and keep it private.";
+      if(currentSelectionIdentityRef.current!==identity) return;
       setVaultMessage([savedMessage,result.ownershipWarning].filter(Boolean).join(" "));
     }catch(error){
+      if(currentSelectionIdentityRef.current!==identity) return;
       setVaultMessage(error instanceof Error?error.message:"Secure cloud copy could not be saved.");
     }finally{
       setVaultBusy(false);
