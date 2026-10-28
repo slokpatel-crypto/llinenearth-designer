@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { legacyBrandIdentifier, readBrandEnv } from "@/lib/runtime-compat";
+import {parseOperatorSyncPage,validOperatorSyncId,validOperatorSyncSession,validOperatorSyncTimestamp,validOperatorLocalDate,validOperatorLocalDateTime,operatorSyncNumber,readOperatorSyncBatch,OperatorSyncBatchError,validateOperatorSyncReadRows} from "@/lib/operator-sync-integrity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ function text(value: unknown, max: number) {
 }
 
 function cleanOperatorPayload(type: string, input: unknown) {
-  const payload = input && typeof input === "object" ? input as Record<string,unknown> : {};
+  const payload = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string,unknown> : {};
 
   if (type === "session_started") {
     return {
@@ -58,7 +59,7 @@ function cleanOperatorPayload(type: string, input: unknown) {
       title: text(payload.title, 180),
       fabricId: text(payload.fabricId, 160),
       fabric: text(payload.fabric, 220),
-      automatic: Boolean(payload.automatic),
+      automatic: payload.automatic === true,
     };
   }
 
@@ -80,9 +81,9 @@ function cleanOperatorPayload(type: string, input: unknown) {
     const status = text(payload.status, 40);
     if (!["quoted","measurement","deposit","cutting","tailoring","trial","ready","collected","cancelled"].includes(status)) return null;
     const dueDate = text(payload.dueDate, 10);
-    if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return null;
-    const orderValue = payload.orderValue == null ? null : Number(payload.orderValue);
-    if (orderValue != null && (!Number.isFinite(orderValue) || orderValue < 0 || orderValue > 100_000_000)) return null;
+    if (dueDate && !validOperatorLocalDate(dueDate)) return null;
+    const orderValue = payload.orderValue == null ? null : operatorSyncNumber(payload.orderValue,0,100_000_000);
+    if (payload.orderValue != null && orderValue === null) return null;
     return { status, dueDate, note: text(payload.note, 1000), orderValue };
   }
 
@@ -91,8 +92,8 @@ function cleanOperatorPayload(type: string, input: unknown) {
   }
 
   if (type === "sale_logged") {
-    const amount = Number(payload.amount ?? 0);
-    if (!Number.isFinite(amount) || amount < 0 || amount > 100_000_000) return null;
+    const amount = operatorSyncNumber(payload.amount,0,100_000_000);
+    if (amount === null) return null;
     return { amount, currency: "INR" };
   }
 
@@ -103,17 +104,18 @@ function cleanOperatorPayload(type: string, input: unknown) {
   if (type === "measurements_updated") {
     const unit = text(payload.unit, 2);
     if (unit !== "in" && unit !== "cm") return null;
-    const raw = payload.measurements && typeof payload.measurements === "object"
+    const raw = payload.measurements && typeof payload.measurements === "object" && !Array.isArray(payload.measurements)
       ? payload.measurements as Record<string,unknown>
-      : {};
+      : null;
+    if (!raw) return null;
     const allowed = new Set(["neck","chest","waist","seat","shoulder","sleeve","shirtLength","trouserWaist","outseam","inseam","thigh","bottom"]);
     const max = unit === "cm" ? 300 : 120;
     const measurements: Record<string,number> = {};
 
     for (const [key, rawValue] of Object.entries(raw)) {
-      if (!allowed.has(key)) continue;
-      const value = Number(rawValue);
-      if (!Number.isFinite(value) || value <= 0 || value > max) return null;
+      if (!allowed.has(key)) return null;
+      const value = operatorSyncNumber(rawValue,0,max);
+      if (value === null || value <= 0) return null;
       measurements[key] = Math.round(value * 100) / 100;
     }
     if (!Object.keys(measurements).length) return null;
@@ -121,9 +123,9 @@ function cleanOperatorPayload(type: string, input: unknown) {
   }
 
   if (type === "payment_logged") {
-    const amount = Number(payload.amount ?? 0);
+    const amount = operatorSyncNumber(payload.amount,0,100_000_000);
     const method = text(payload.method, 20);
-    if (!Number.isFinite(amount) || amount <= 0 || amount > 100_000_000) return null;
+    if (amount === null || amount <= 0) return null;
     if (!["cash","upi","card","bank","other"].includes(method)) return null;
     return {
       amount: Math.round(amount * 100) / 100,
@@ -139,7 +141,7 @@ function cleanOperatorPayload(type: string, input: unknown) {
     const dateTime = text(payload.dateTime, 16);
     if (!["consultation","fitting","trial","pickup","delivery"].includes(kind)) return null;
     if (!["scheduled","completed","cancelled"].includes(status)) return null;
-    if (status === "scheduled" && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateTime)) return null;
+    if ((status === "scheduled" || dateTime) && !validOperatorLocalDateTime(dateTime)) return null;
     return {
       kind,
       status,
@@ -152,15 +154,15 @@ function cleanOperatorPayload(type: string, input: unknown) {
 }
 
 function cleanOperatorEvent(input: unknown) {
-  if (!input || typeof input !== "object") return null;
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
   const body = input as Record<string,unknown>;
-  const id = String(body.id || "").slice(0,160);
-  const sessionId = String(body.sessionId || body.session_id || "").slice(0,140);
-  const type = String(body.type || "");
-  if (!id || !sessionId || !OPERATOR_EVENT_TYPES.has(type)) return null;
-
-  const parsed = new Date(String(body.at || ""));
-  if (Number.isNaN(parsed.getTime())) return null;
+  const id = body.id;
+  const sessionId = body.sessionId ?? body.session_id;
+  const type = body.type;
+  if (!validOperatorSyncId(id) || !validOperatorSyncSession(sessionId) ||
+      typeof type !== "string" || !OPERATOR_EVENT_TYPES.has(type) ||
+      !validOperatorSyncTimestamp(body.at)) return null;
+  const parsed = new Date(body.at);
 
   const payload = cleanOperatorPayload(type, body.payload);
   if (!payload) return null;
@@ -186,12 +188,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json() as { events?: unknown[] };
-    const incoming = Array.isArray(body.events) ? body.events.slice(0,250) : [];
-    const events = incoming.map(cleanOperatorEvent).filter(Boolean);
-    if (!events.length) {
-      return NextResponse.json({ accepted: 0, stored: 0 });
+    const incoming = await readOperatorSyncBatch(request);
+    const events = incoming.map(cleanOperatorEvent);
+    if (events.some((event) => !event)) {
+      return NextResponse.json({error:"Operator sync batch contains invalid events."},{status:400});
     }
+    const ids=events.map((event)=>event!.id);
+    if (new Set(ids).size !== ids.length) {
+      return NextResponse.json({error:"Operator sync batch contains duplicate event IDs."},{status:400});
+    }
+    if (!events.length) return NextResponse.json({accepted:0,stored:0});
 
     const response = await fetch(`${cloud.url}/rest/v1/style_events`, {
       method: "POST",
@@ -209,8 +215,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Cloud memory could not be updated." }, { status: 502 });
     }
 
-    return NextResponse.json({ accepted: events.length, stored: events.length });
+    // ignore-duplicates does not report how many existing IDs were inserted.
+    return NextResponse.json({ accepted: events.length, acknowledged: events.length, stored: null });
   } catch (error) {
+    if(error instanceof OperatorSyncBatchError)
+      return NextResponse.json({error:error.message},{status:error.status});
     console.error("[operator/sync POST]", error);
     return NextResponse.json({ error: "Unable to upload operator events." }, { status: 500 });
   }
@@ -289,8 +298,9 @@ export async function GET(request: Request) {
     );
   }
 
-  const cursor = incomingUrl.searchParams.get("cursor");
-  const limit = Math.min(1000, Math.max(1, Number(incomingUrl.searchParams.get("limit") || 500)));
+  const page=parseOperatorSyncPage(incomingUrl);
+  if(!page) return NextResponse.json({error:"Invalid operator sync cursor or limit."},{status:400,headers:{"cache-control":"private, no-store"}});
+  const {limit,cursor}=page;
 
   const params = new URLSearchParams({
     select: "id,session_id,type,at,source,payload,received_at",
@@ -299,14 +309,11 @@ export async function GET(request: Request) {
   });
 
   if (cursor) {
-    const separator = cursor.lastIndexOf("|");
-    if (separator > 0) {
-      const time = cursor.slice(0, separator);
-      const id = cursor.slice(separator + 1);
-      params.set("or", `(received_at.gt.${time},and(received_at.eq.${time},id.gt.${id}))`);
+    if (cursor.id !== null) {
+      params.set("or", `(received_at.gt.${cursor.receivedAt},and(received_at.eq.${cursor.receivedAt},id.gt.${cursor.id}))`);
     } else {
       // Backward compatibility with the first desktop builds, which stored only received_at.
-      params.set("received_at", `gt.${cursor}`);
+      params.set("received_at", `gt.${cursor.receivedAt}`);
     }
   }
 
@@ -327,15 +334,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Cloud memory could not be read." }, { status: 502 });
     }
 
-    const rows = await response.json() as Array<{
-      id: string;
-      session_id: string;
-      type: string;
-      at: string;
-      source: string;
-      payload: Record<string, unknown>;
-      received_at: string;
-    }>;
+    const rows=validateOperatorSyncReadRows(await response.json(),limit);
+    if(!rows) return NextResponse.json({error:"Cloud sync returned malformed event rows."},{status:502,headers:{"cache-control":"private, no-store"}});
 
     const events = rows.map((row) => ({
       id: row.id,
@@ -353,7 +353,7 @@ export async function GET(request: Request) {
         ? `${rows.at(-1)?.received_at}|${rows.at(-1)?.id}`
         : cursor || null,
       hasMore: rows.length === limit,
-    });
+    },{headers:{"cache-control":"private, no-store"}});
   } catch (error) {
     console.error("[operator/sync GET]", error);
     return NextResponse.json({ error: "Cloud sync is temporarily unavailable." }, { status: 500 });
