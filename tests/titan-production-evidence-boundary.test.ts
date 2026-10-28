@@ -36,3 +36,10 @@ test("operator display cannot mark phase gate complete with incomplete ledger hi
   assert.ok(source.includes("setHistoryComplete(data.historyComplete===true)"));
   assert.ok(source.includes("summarizeProductionDeliveryEvidence(orders,evidence,10,historyComplete)"));
 });
+
+test("release contract requires complete history before first-ten certification",()=>{
+  const release=readFileSync("scripts/release-readiness.mjs","utf8");
+  assert.ok(release.includes("gateComplete:historyComplete&&firstTarget.length>=target"));
+  assert.ok(release.includes("orders.length<500&&evidence.length<500"));
+  assert.ok(!release.includes('"gateComplete:firstTarget.length>=target"'));
+});

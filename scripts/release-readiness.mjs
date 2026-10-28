@@ -780,7 +780,8 @@ requireTokens("src/lib/designer/production-handoff.ts", ["linen-earth-production
 requireTokens("src/lib/designer/tech-pack.ts", ["linen-earth-tech-pack-v1","Tailor Tech Pack","not a cutting pattern"]);
 requireTokens("src/lib/designer/production-quote.ts", ["normalizeProductionQuoteDraft","Quote total cannot be negative"]);
 requireTokens("src/lib/designer/production-state.ts", ["ORDER_TRANSITIONS","QUOTE_TRANSITIONS","cloth_reserved","delivered"]);
-requireTokens("src/lib/designer/production-delivery-evidence.ts", ["evidenceReference","legacyOrUnverifiedCount","provenanceReady","gateComplete:firstTarget.length>=target"]);
+requireTokens("src/lib/designer/production-delivery-evidence.ts", ["evidenceReference","legacyOrUnverifiedCount","provenanceReady","typeof row.manual_design_reentry","gateComplete:historyComplete&&firstTarget.length>=target"]);
+requireTokens("src/app/api/operator/production-evidence/route.ts", ["historyComplete","orders.length<500&&evidence.length<500","secureJsonRequestError(request,16_384)","readSecureJsonObject(request,16_384)"]);
 requireTokens("src/app/api/operator/production-evidence/route.ts", ["production_delivery_evidence_record_v2","p_evidence_reference"]);
 requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx", ["Production-flow evidence reference","legacy audits without provenance","evidenceReference"]);
 requireTokens("supabase/migrations/20261026_production_delivery_evidence_provenance.sql", ["evidence_reference","production_delivery_evidence_record_v2","named operator or checker is required","production-flow evidence reference is required","service_role"]);

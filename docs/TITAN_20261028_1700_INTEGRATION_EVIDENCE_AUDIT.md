@@ -23,3 +23,7 @@
 - The production evidence normalizer previously coerced objects into plausible human checker/reference strings (`[object Object]`), silently dropped unsupported re-entry choices, and permitted a "zero re-entry" declaration alongside re-entered fields. These now fail validation instead of manufacturing audit provenance.
 - Phase 8 aggregation now requires a literal boolean re-entry observation and literal text provenance, rather than treating a missing re-entry flag as zero.
 - Regression cases cover forged object provenance, malformed/unsupported field arrays, contradictory declarations, a legitimate incident, and a malformed historical boolean.
+
+## Exact-head CI regression and repair
+- First PR head `67df8351f2a48c9d5d8d34d5b36e9a20f228d33b`: npm unit, engine and preview checks passed, but CI and Non-3D QA stopped at `npm run release:check`. The release-readiness script was enforcing a **literal** old token `gateComplete:firstTarget.length>=target`, incompatible with the stricter history-complete gate. Updated its required token to the new fail-closed expression and added source checks for streamed JSON and history cap. This preserves (strengthens) the release contract instead of removing it.
+- Exact-head CI and browser QA must be rechecked after this commit; no claims of a pass based on earlier heads.
