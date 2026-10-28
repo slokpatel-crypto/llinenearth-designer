@@ -9,6 +9,7 @@ import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence
 import { loadApprovedHouseEaseModel } from "@/lib/designer/house-ease-server";
 import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
 import type { MeasurementProfile } from "@/lib/measurements";
+import { normalizeMeasuredBodyInput } from "@/lib/designer/measurement-input-validation";
 import { validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { safePersonalTaste, personalizeDesignerBrief } from "@/lib/designer/personal-taste";
 import { compileDesignerIntent, designGoalPatch, scopeStyleLocks } from "@/lib/designer/design-intent";
@@ -31,23 +32,7 @@ function rateLimited(request:Request) {
 }
 
 function safeMeasurements(value:unknown):MeasurementProfile|null {
-  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
-  const input=value as Partial<MeasurementProfile>;
-  if(input.version!==1 || !["cm","in"].includes(String(input.unit)) || !input.shirt || !input.pants) return null;
-  const clean=(source:Record<string,unknown>)=>Object.fromEntries(
-    Object.entries(source).filter(([,raw])=>{
-      if(raw===undefined || raw===null || raw==="") return false;
-      const n=Number(raw);
-      return Number.isFinite(n) && n>0 && n<=350;
-    }).map(([key,raw])=>[key,Number(raw)])
-  );
-  return {
-    version:1,
-    unit:input.unit as "cm"|"in",
-    shirt:clean(input.shirt as unknown as Record<string,unknown>),
-    pants:clean(input.pants as unknown as Record<string,unknown>),
-    updatedAt:typeof input.updatedAt==="string"?input.updatedAt.slice(0,80):new Date().toISOString(),
-  };
+  return normalizeMeasuredBodyInput(value);
 }
 
 function safeObservations(value:unknown):TailorObservationProfile|null {
@@ -96,6 +81,15 @@ export async function POST(request:Request) {
     const read=parseDesignerBrief(judgement ? judgement.note || "Revise this direction" : taskText,base);
     if(base && ["design","capsule"].includes(designerTaskFor(taskText,judgement)) && !/\b(?:keep|preserve|same|unchanged)\b/i.test(taskText)) read.style={...designerStyleForOccasion(read.occasion),...explicitDesignerStylePatch(taskText)};
     const parsed=!base || ["design","capsule"].includes(designerTaskFor(taskText,judgement)) ? personalizeDesignerBrief(read,safePersonalTaste(body.tasteProfile)) : read;
+    let measurements:MeasurementProfile|null;
+    try { measurements=safeMeasurements(body.measurements); }
+    catch(error) {
+      return NextResponse.json({error:error instanceof Error?error.message:"Invalid body measurements."},{status:422});
+    }
+    const observations=safeObservations(body.observations);
+    if(body.observations!==undefined && body.observations!==null && !observations) {
+      return NextResponse.json({error:"Invalid tailor observations; review the current fit notes."},{status:422});
+    }
     const [metadata,evidence,easeModel]=await Promise.all([
       loadDesignerFabricMetadata(),
       loadDesignerEvidenceContext(),
@@ -121,7 +115,7 @@ export async function POST(request:Request) {
     if(base) {
       if(currentShirt.id!==requestedShirt || currentPant.id!==requestedPant) return NextResponse.json({error:"A selected fabric is no longer available for this garment. Choose current stock before continuing."},{status:409});
       const answer=answerDesignerQuestion({shirts,pants,currentShirt,currentPant,occasion:base.occasion,context:base.context,chosenStyle:base.style,
-        measurements:safeMeasurements(body.measurements),observations:safeObservations(body.observations),casebook:evidence.casebook,fitOutcomes:evidence.fitOutcomes,fabricIntelligence,easeModel,brief,judgement,parsed});
+        measurements,observations,casebook:evidence.casebook,fitOutcomes:evidence.fitOutcomes,fabricIntelligence,easeModel,brief,judgement,parsed});
       return NextResponse.json({...answer,requestId:"LE-ADVICE-"+crypto.randomUUID(),engine:"linen-designer-advisor-v1"},{headers:{"cache-control":"no-store"}});
     }
 
@@ -134,8 +128,8 @@ export async function POST(request:Request) {
       occasion:parsed.occasion,
       chosenStyle:parsed.style,
       context:parsed.context,
-      measurements:safeMeasurements(body.measurements),
-      observations:safeObservations(body.observations),
+      measurements,
+      observations,
       scope:"open",
       casebook:evidence.casebook,
       fitOutcomes:evidence.fitOutcomes,

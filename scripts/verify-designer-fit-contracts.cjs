@@ -1,0 +1,59 @@
+// Exercise the real HTTP boundaries, including both legacy and advisor briefs.
+// Uses local catalogue fallback; does not certify live supplier or tailor evidence.
+const assert=require('node:assert/strict');
+const {load}=require('./designer-test-loader.cjs');
+const engine=load('src/lib/designer/engine.ts');
+
+async function verifyDesignerFitContracts(baseURL='http://127.0.0.1:3000') {
+  const pair=engine.DESIGNER_REVIEWED_PAIRING;
+  const style=engine.designerStyleForOccasion(pair.occasion);
+  const context={climate:'Air-conditioned',intention:'Balanced'};
+  const measurements={version:1,unit:'in',shirt:{chest:108,waist:84},pants:{seat:102},updatedAt:'2026-10-28T12:00:00+05:30'};
+  const observations={version:1,shoulderBalance:'unknown',posture:'balanced',seatBalance:'unknown',mobilityPriority:'standard',updatedAt:measurements.updatedAt};
+  const selection={shirtId:pair.shirtId,pantId:pair.pantId,occasion:pair.occasion,style,context};
+  const brief={brief:'Business meeting with a tucked shirt',currentShirtId:pair.shirtId,currentPantId:pair.pantId};
+  const modes=[
+    ['assessment','assess',selection],
+    ['search','search',{...selection,scope:'open'}],
+    ['legacy brief','brief',brief],
+    ['advisor brief','brief',{...brief,brief:'Check fit and movement',currentStyle:style,occasion:pair.occasion,context}],
+  ];
+  const cases=[
+    ['valid centimetre quantities with inch display',{measurements,observations},200],
+    ['optional values omitted',{},200],
+    ['optional values null',{measurements:null,observations:null},200],
+    ['decimal tape input',{measurements:{...measurements,shirt:{chest:'108.5'}}},200],
+    ['negative tape',{measurements:{...measurements,shirt:{chest:-5}}},422],
+    ['boolean tape',{measurements:{...measurements,shirt:{chest:true}}},422],
+    ['array tape',{measurements:{...measurements,shirt:{chest:[108]}}},422],
+    ['hex tape',{measurements:{...measurements,shirt:{chest:'0x64'}}},422],
+    ['unknown field',{measurements:{...measurements,shirt:{invented:100}}},422],
+    ['coerced unit',{measurements:{...measurements,unit:['cm']}},422],
+    ['impossible date',{measurements:{...measurements,updatedAt:'2027-02-29T12:00:00Z'}},422],
+    ['array profile',{measurements:[]},422],
+    ['array shirt',{measurements:{...measurements,shirt:[]}},422],
+    ['invalid notes',{observations:{...observations,posture:['balanced']}},422],
+    ['false notes',{observations:false},422],
+    ['invalid notes date',{observations:{...observations,updatedAt:'2027-02-29T12:00:00Z'}},422],
+  ];
+  const results=[];
+  for(const [mode,route,body] of modes) {
+    for(const [label,inputs,status] of cases) {
+      // Isolated QA identities prevent unrelated existing suite calls consuming this budget.
+      const response=await fetch(`${baseURL}/api/designer/${route}`,{
+        method:'POST',headers:{'content-type':'application/json','x-forwarded-for':`192.0.2.${100+Math.floor(results.length/8)}`},
+        body:JSON.stringify({...body,...inputs}),
+      });
+      const data=await response.json();
+      assert.equal(response.status,status,`${mode}: ${label}: ${data.error||'unexpected response'}`);
+      if(status===422) assert.match(data.error,/measurement|observations/i);
+      else if(route==='assess') assert.ok(data.assessment?.garmentSpec);
+      else assert.ok(Array.isArray(data.results));
+      results.push({mode,label,status:response.status});
+    }
+  }
+  console.log(`PASS ${results.length} actual HTTP fit-input contracts across assessment, search and both brief modes`);
+  return results;
+}
+module.exports={verifyDesignerFitContracts};
+if(require.main===module) verifyDesignerFitContracts(process.env.LINEN_BROWSER_QA_URL).catch(error=>{console.error(error);process.exitCode=1;});
