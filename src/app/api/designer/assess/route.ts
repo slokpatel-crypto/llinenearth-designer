@@ -122,15 +122,6 @@ export async function POST(request:Request) {
       return NextResponse.json({error:"A valid fabric pair, occasion and supported style are required."},{status:400});
     }
 
-    const [catalogue,easeModel]=await Promise.all([
-      loadActiveDesignerCatalogueFabrics(),
-      loadApprovedHouseEaseModel(),
-    ]);
-    const fabrics=catalogue.fabrics;
-    const shirt=fabrics.find((fabric)=>fabric.id===shirtId && fabric.allowedGarments.includes("shirt"));
-    const pant=fabrics.find((fabric)=>fabric.id===pantId && fabric.allowedGarments.includes("pant"));
-    if(!shirt || !pant) return NextResponse.json({error:"The selected fabrics are no longer available in the current Designer catalogue."},{status:409});
-
     let measurements:MeasurementProfile|null;
     try{ measurements=safeMeasurements(body.measurements); }
     catch(error){
@@ -142,6 +133,15 @@ export async function POST(request:Request) {
     if(body.observations!==undefined && body.observations!==null && !observations) {
       return NextResponse.json({error:"Invalid tailor observations; review the current fit notes."},{status:422});
     }
+    const [catalogue,easeModel]=await Promise.all([
+      loadActiveDesignerCatalogueFabrics(),
+      loadApprovedHouseEaseModel(),
+    ]);
+    const fabrics=catalogue.fabrics;
+    const shirt=fabrics.find((fabric)=>fabric.id===shirtId && fabric.allowedGarments.includes("shirt"));
+    const pant=fabrics.find((fabric)=>fabric.id===pantId && fabric.allowedGarments.includes("pant"));
+    if(!shirt || !pant) return NextResponse.json({error:"The selected fabrics are no longer available in the current Designer catalogue."},{status:409});
+
     const creative=safeCreative(body.creative);
     if(body.creative&&!creative)return NextResponse.json({error:"Invalid creative recipe."},{status:400});
     // Revalidate the complete creative recipe against the live catalogue, not
