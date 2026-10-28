@@ -199,3 +199,13 @@ test("server assessment rejects stale same-ID creative recipes before garment sp
   const build=source.indexOf("const garmentSpec=buildCanonicalGarmentSpec");
   assert.ok(guard>0&&build>guard,"stale creative must be rejected before handoff assembly");
 });
+
+
+test("server creative redesign rejects stale physical provenance before reusing a concept",()=>{
+  const source=readFileSync("src/app/api/designer/creative-generate/route.ts","utf8");
+  const guard=source.indexOf("creativeDirectionMatchesSelection(body.current");
+  const redesign=source.indexOf("const redesign=body.current.craft");
+  assert.ok(guard>0&&redesign>guard,"stale same-ID concepts must not enter redesign");
+  assert.match(source,/shirtId,pantId,shirt,pant,occasion/);
+  assert.match(source,/style:body.current.baseStyle,styleSpec:fromLegacyStyle\(body.current.baseStyle\)/);
+});
