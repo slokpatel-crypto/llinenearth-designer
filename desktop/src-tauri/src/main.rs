@@ -1859,7 +1859,9 @@ async fn sync_from_cloud(sync_lock: tauri::State<'_, SyncLock>) -> Result<SyncRe
     .iter()
     .filter(|event| {
       event.source == "operator-desktop"
-        && state.last_pushed_at.as_ref().is_none_or(|cursor| event.at > *cursor)
+        // Re-send the timestamp boundary: equal-time events may have distinct IDs.
+        // Cloud uploads ignore duplicate IDs, so retrying the boundary is safe.
+        && state.last_pushed_at.as_ref().is_none_or(|cursor| event.at >= *cursor)
     })
     .cloned()
     .collect::<Vec<_>>();

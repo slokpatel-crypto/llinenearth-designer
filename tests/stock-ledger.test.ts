@@ -216,3 +216,21 @@ test("only canonical UUID structure can address stock consumption or release",()
     assert.throws(()=>normalizeStockRelease({...base,reservationId}),/Valid reservation ID/);
   }
 });
+
+test("stock event types and reservation UUIDs cannot be laundered through String(array)",()=>{
+  const base={
+    fabricId:"formal-shirt-01",eventType:"receipt",quantityMetres:2,
+    recordedBy:"Stock checker",sourceReference:"Roll tag LE-042",
+  };
+  assert.equal(normalizeManualStockEvent(base).eventType,"receipt");
+  for(const eventType of [["receipt"],{"0":"receipt"},true,1])
+    assert.throws(()=>normalizeManualStockEvent({...base,eventType}),/Unsupported manual stock event/);
+  const uuid="11111111-1111-4111-8111-111111111111";
+  const close={reservationId:uuid,actualMetres:1,checkedBy:"Checker",releasedBy:"Checker",sourceReference:"Cutting LE-42"};
+  assert.equal(normalizeStockRelease(close).reservationId,uuid);
+  assert.equal(normalizeStockConsumption(close).reservationId,uuid);
+  for(const reservationId of [[uuid],{toString:uuid},true,1]){
+    assert.throws(()=>normalizeStockRelease({...close,reservationId}),/Valid reservation ID/);
+    assert.throws(()=>normalizeStockConsumption({...close,reservationId}),/Valid reservation ID/);
+  }
+});

@@ -1,4 +1,5 @@
 import { FABRIC_STOCK } from "../fabric-stock.ts";
+import {parseVaultTimestamptz} from "../vault-read-integrity.ts";
 
 const KNOWN_CATALOGUE_FABRICS=new Set(FABRIC_STOCK.map(fabric=>fabric.id));
 
@@ -60,4 +61,42 @@ export async function readBoundedStockMutationJson(request:Request):Promise<Reco
   if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))
     throw new Error("Stock mutation JSON must be an object.");
   return parsed as Record<string,unknown>;
+}
+
+/** Fail closed on inconsistent privileged stock snapshots before a dashboard can
+ * display or reserve against invented availability. This is NOT roll certification.
+ */
+export type OperatorStockSnapshotRow={
+  fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;
+  manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;
+  provenance_ready:boolean;last_event_at:string|null;
+};
+export function validateOperatorStockSnapshot(value:unknown):OperatorStockSnapshotRow[]|null{
+  if(!Array.isArray(value)||value.length>KNOWN_CATALOGUE_FABRICS.size)return null;
+  const ids=new Set<string>();
+  for(const row of value){
+    if(!row||typeof row!=="object"||Array.isArray(row))return null;
+    const item=row as Record<string,unknown>;
+    if(typeof item.fabric_id!=="string"||!KNOWN_CATALOGUE_FABRICS.has(item.fabric_id)||
+       ids.has(item.fabric_id))return null;
+    ids.add(item.fabric_id);
+    const numbers=["physical_metres","reserved_metres","available_metres"] as const;
+    if(numbers.some((field)=>{const n=item[field];return typeof n!=="number"||
+       !Number.isFinite(n)||n<0;}))return null;
+    const counts=["manual_event_count","provenance_event_count","legacy_unverified_event_count"] as const;
+    if(counts.some((field)=>{const n=item[field];return typeof n!=="number"||
+       !Number.isSafeInteger(n)||n<0;}))return null;
+    if(typeof item.provenance_ready!=="boolean")return null;
+    const manual=item.manual_event_count as number;
+    const proven=item.provenance_event_count as number;
+    const legacy=item.legacy_unverified_event_count as number;
+    if(proven+legacy!==manual ||
+       item.provenance_ready!==(manual>0&&legacy===0))return null;
+    if(Math.abs((item.physical_metres as number)-(item.reserved_metres as number)-
+       (item.available_metres as number))>0.003)return null;
+    if(item.last_event_at!==null &&
+       (typeof item.last_event_at!=="string"||
+        parseVaultTimestamptz(item.last_event_at)===null))return null;
+  }
+  return value as OperatorStockSnapshotRow[];
 }

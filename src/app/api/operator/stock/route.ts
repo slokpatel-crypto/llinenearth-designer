@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
-import { assertCurrentFabricId, readBoundedStockMutationJson, StockMutationPayloadTooLarge, stockMutationRequestError } from "@/lib/designer/operator-stock-safety";
+import { assertCurrentFabricId, readBoundedStockMutationJson, StockMutationPayloadTooLarge, stockMutationRequestError, validateOperatorStockSnapshot } from "@/lib/designer/operator-stock-safety";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
+import {normalizeVaultId} from "@/lib/vault-id";
 
 export const runtime="nodejs";
 
@@ -31,14 +32,16 @@ async function authorized(){
 
 export async function GET(){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,stock:[]});
+  if(!getSupabaseAdminConfig()) return NextResponse.json({error:"Stock backend is not configured; availability is unavailable."},{status:503,headers:{"cache-control":"private, no-store"}});
   try{
     const stock=await rpc<Array<{
       fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;
       manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;
       provenance_ready:boolean;last_event_at:string|null;
     }>>("fabric_stock_snapshot_v2",{p_fabric_ids:null});
-    return NextResponse.json({configured:true,stock},{headers:{"cache-control":"private, no-store"}});
+    const verified=validateOperatorStockSnapshot(stock);
+    if(!verified) return NextResponse.json({error:"Stock ledger returned inconsistent rows; do not reserve or cut."},{status:503,headers:{"cache-control":"private, no-store"}});
+    return NextResponse.json({configured:true,stock:verified},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/stock]",error);
     return NextResponse.json({error:"Stock ledger could not be read."},{status:503});
@@ -52,31 +55,33 @@ export async function POST(request:Request){
   if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
   try{
     const body=await readBoundedStockMutationJson(request);
-    const action=String(body.action||"");
+    const action=typeof body.action==="string"?body.action:"";
     if(action==="record"){
       const draft=normalizeManualStockEvent(body);
       assertCurrentFabricId(draft.fabricId);
-      const eventId=await rpc<string>("fabric_stock_record_v2",{
+      const eventId=normalizeVaultId(await rpc<unknown>("fabric_stock_record_v2",{
         p_fabric_id:draft.fabricId,
         p_event_type:draft.eventType,
         p_quantity_metres:draft.quantityMetres,
         p_note:draft.note,
         p_recorded_by:draft.recordedBy,
         p_source_reference:draft.sourceReference,
-      });
+      }));
+      if(!eventId) return NextResponse.json({error:"Stock backend did not confirm a valid event ID."},{status:502});
       return NextResponse.json({eventId});
     }
     if(action==="reserve"){
       const draft=normalizeStockReservation(body);
       assertCurrentFabricId(draft.fabricId);
-      const reservationId=await rpc<string>("fabric_stock_reserve_v2",{
+      const reservationId=normalizeVaultId(await rpc<unknown>("fabric_stock_reserve_v2",{
         p_fabric_id:draft.fabricId,
         p_quantity_metres:draft.quantityMetres,
         p_revision_id:draft.revisionId,
         p_request_key:draft.requestKey,
         p_requested_by:draft.requestedBy,
         p_source_reference:draft.sourceReference,
-      });
+      }));
+      if(!reservationId) return NextResponse.json({error:"Stock backend did not confirm a valid reservation ID."},{status:502});
       return NextResponse.json({reservationId});
     }
     if(action==="release"){
