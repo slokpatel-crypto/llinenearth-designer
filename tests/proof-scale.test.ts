@@ -590,3 +590,14 @@ test("array-coerced version and coordinate labels cannot satisfy Phase 1 evidenc
     assert.equal(proof.coreAccepted,false);
   }
 });
+
+
+test("malformed recorded proof envelopes return blocked evidence without throwing",()=>{
+  for(const malformed of [null,undefined,[],[{}],"",false,42]){
+    const result=evaluateRecordedPhase1ProofEvidence(malformed as unknown as Record<string,unknown>);
+    assert.equal(result.coreAccepted,false);
+    assert.equal(result.scaleGatePass,false);
+    assert.equal(result.realModelSamples,0);
+    assert.equal(result.realism.uniqueViewers,0);
+  }
+});
