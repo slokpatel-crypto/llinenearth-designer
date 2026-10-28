@@ -13,6 +13,7 @@ import hashlib
 import json
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageOps
+from model_turntable_evidence import verify_turntable
 
 def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -29,10 +30,21 @@ def main():
     parser.add_argument("--reference", type=Path, required=True)
     parser.add_argument("--candidate", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--source-blend", type=Path, required=True)
     options = parser.parse_args()
     for source in (options.reference, options.candidate):
         if not source.is_file() or source.stat().st_size < 12000:
             raise SystemExit(f"Missing/invalid visual source: {source}")
+
+    provenance = verify_turntable(options.manifest, options.candidate,
+                                  options.source_blend)
+    # SHA and PNG header checks do not prove decodability: inspect all four
+    # actual frames before archiving any owner-review contact sheet.
+    for view in provenance["frameSha256ByView"]:
+        frame = options.manifest.parent / f"linen-earth-model-{view}.png"
+        with Image.open(frame) as image:
+            image.verify()
 
     width, height, header = 560, 810, 76
     canvas = Image.new("RGB", (width * 2, height + header), "#e8e5e0")
@@ -52,6 +64,9 @@ def main():
         "referenceSha256": digest(options.reference),
         "candidate": str(options.candidate),
         "candidateSha256": digest(options.candidate),
+        "turntableManifestSha256": provenance["manifestSha256"],
+        "sourceBlendSha256": provenance["sourceBlendSha256"],
+        "frameSha256ByView": provenance["frameSha256ByView"],
         "contactSheet": str(options.output),
         "contactSheetSha256": digest(options.output),
         "frontPhotoOnly": True,
