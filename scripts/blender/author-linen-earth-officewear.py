@@ -725,6 +725,16 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
         obj.name: [vertex.co.copy() for vertex in obj.data.vertices]
         for obj in sleeves
     }
+    # Body clearance alone is insufficient: a cuff repair can pull the
+    # garment through its own shirt torso while avoiding the source skin.
+    # The source armhole is an intentionally sewn junction, so compare to
+    # its actual pre-trial contact count rather than falsely requiring zero.
+    torso = bpy.data.objects.get("ShirtTorsoFabric")
+    if torso is None or torso.type != "MESH":
+        raise RuntimeError("Source shirt torso is required for sleeve/torso collision QA")
+    torso_baseline_pairs = [
+        source_fit_collision_pairs(torso, obj) for obj in sleeves
+    ]
 
     def restore(source):
         for obj in sleeves:
@@ -753,6 +763,7 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
             obj.data.update()
         bpy.context.view_layer.update()
         before = [source_fit_collision_pairs(body, obj) for obj in sleeves]
+        torso_before = [source_fit_collision_pairs(torso, obj) for obj in sleeves]
         repairs = {}
         for obj, count in zip(sleeves, before):
             if count > 0:
@@ -763,15 +774,27 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
                     "remainingContactPairs": report["remainingContactPairs"],
                 }
         after = [source_fit_collision_pairs(body, obj) for obj in sleeves]
+        torso_after = [source_fit_collision_pairs(torso, obj) for obj in sleeves]
         sleeve_pairs = source_fit_collision_pairs(sleeves[0], sleeves[1])
+        # Only accept a shift if it did not introduce additional contact
+        # with the actual fitted shirt. This is not proof of a sewn seam or
+        # a visually approved armhole; the native preflight still applies.
+        torso_not_worsened = all(
+            current <= baseline for current, baseline in
+            zip(torso_after, torso_baseline_pairs)
+        )
         evidence = {
             "requestedCuffInboardMmPerSleeve": mm,
             "bodyPairsBeforeRepair": before,
             "bodyPairsAfterRepair": after,
+            "shirtTorsoPairsAtOriginal": torso_baseline_pairs,
+            "shirtTorsoPairsBeforeRepair": torso_before,
+            "shirtTorsoPairsAfterRepair": torso_after,
+            "shirtTorsoContactNotWorsened": torso_not_worsened,
             "sleeveToSleevePairs": sleeve_pairs,
             "boundedBodyContactCorrections": repairs,
         }
-        return evidence, after == [0, 0] and sleeve_pairs == 0
+        return evidence, after == [0, 0] and sleeve_pairs == 0 and torso_not_worsened
 
     values = [round(max(0.0, requested_mm-i), 6)
               for i in range(math.ceil(requested_mm)+1)]
