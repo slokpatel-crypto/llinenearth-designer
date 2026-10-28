@@ -118,6 +118,7 @@ test("authoritative first-ten receipt follows delivered-event chronology and tot
     delivered_at:`2026-10-${String(index+1).padStart(2,"0")}T10:00:00Z`,
     total_delivered_count:47,
     evidence_id:`223e4567-e89b-42d3-a456-${String(index).padStart(12,"0")}`,
+    evidence_revision_id:`revision-${index}`,evidence_recipe_hash:"a".repeat(64),
     manual_design_reentry:false,reentry_fields:[],note:"checked",operator:"SP",
     evidence_reference:`job-card-${index}`,evidence_created_at:"2026-10-20T10:00:00Z",
   }));
@@ -137,6 +138,7 @@ test("historical delivery remains visible and blocks proof after contradictory s
     order_created_at:`2026-09-${String(index+1).padStart(2,"0")}T10:00:00Z`,
     delivered_at:`2026-10-${String(index+1).padStart(2,"0")}T10:00:00Z`,total_delivered_count:10,
     evidence_id:`223e4567-e89b-42d3-a456-${String(index).padStart(12,"0")}`,
+    evidence_revision_id:`revision-${index}`,evidence_recipe_hash:"a".repeat(64),
     manual_design_reentry:false,reentry_fields:[],note:"",operator:"SP",
     evidence_reference:`job-card-${index}`,evidence_created_at:"2026-10-20T10:00:00Z",
   }));
@@ -152,6 +154,7 @@ test("malformed, duplicated, reordered or inconsistent database receipts fail cl
     order_id:"123e4567-e89b-42d3-a456-426614174000",revision_id:"revision-1",recipe_hash:"a".repeat(64),
     current_status:"delivered",order_created_at:"2026-09-01T10:00:00Z",delivered_at:"2026-10-01T10:00:00Z",
     total_delivered_count:2,evidence_id:null,manual_design_reentry:null,reentry_fields:null,note:null,
+    evidence_revision_id:null,evidence_recipe_hash:null,
     operator:null,evidence_reference:null,evidence_created_at:null,
   };
   assert.equal(parseAuthoritativeFirstTenDeliveryAudit([row,{...row}]),null);
@@ -160,4 +163,36 @@ test("malformed, duplicated, reordered or inconsistent database receipts fail cl
   assert.equal(parseAuthoritativeFirstTenDeliveryAudit([{...row,current_status:"unknown"}]),null);
   const later={...row,order_id:"123e4567-e89b-42d3-a456-426614174001",delivered_at:"2026-10-02T10:00:00Z"};
   assert.equal(parseAuthoritativeFirstTenDeliveryAudit([later,row]),null);
+});
+
+test("authoritative receipt rejects audit lineage drift and pre-delivery evidence",()=>{
+  const row={
+    order_id:"123e4567-e89b-42d3-a456-426614174000",revision_id:"revision-1",recipe_hash:"a".repeat(64),
+    current_status:"delivered",order_created_at:"2026-09-01T10:00:00Z",delivered_at:"2026-10-01T10:00:00Z",
+    total_delivered_count:1,evidence_id:"223e4567-e89b-42d3-a456-426614174000",
+    evidence_revision_id:"revision-1",evidence_recipe_hash:"a".repeat(64),manual_design_reentry:false,
+    reentry_fields:[],note:"checked",operator:"SP",evidence_reference:"job-card-1",
+    evidence_created_at:"2026-10-01T10:01:00Z",
+  };
+  assert.ok(parseAuthoritativeFirstTenDeliveryAudit([row]));
+  assert.equal(parseAuthoritativeFirstTenDeliveryAudit([{...row,evidence_revision_id:"revision-2"}]),null);
+  assert.equal(parseAuthoritativeFirstTenDeliveryAudit([{...row,evidence_recipe_hash:"b".repeat(64)}]),null);
+  assert.equal(parseAuthoritativeFirstTenDeliveryAudit([{...row,evidence_created_at:"2026-09-30T23:59:59Z"}]),null);
+  assert.equal(parseAuthoritativeFirstTenDeliveryAudit([{...row,order_created_at:"2026-10-02T10:00:00Z"}]),null);
+});
+
+test("authoritative receipt rejects contradictory or partial evidence payloads",()=>{
+  const row={
+    order_id:"123e4567-e89b-42d3-a456-426614174000",revision_id:"revision-1",recipe_hash:"a".repeat(64),
+    current_status:"delivered",order_created_at:"2026-09-01T10:00:00Z",delivered_at:"2026-10-01T10:00:00Z",
+    total_delivered_count:1,evidence_id:"223e4567-e89b-42d3-a456-426614174000",
+    evidence_revision_id:"revision-1",evidence_recipe_hash:"a".repeat(64),manual_design_reentry:false,
+    reentry_fields:[],note:"checked",operator:"SP",evidence_reference:"job-card-1",
+    evidence_created_at:"2026-10-01T10:01:00Z",
+  };
+  assert.equal(parseAuthoritativeFirstTenDeliveryAudit([{...row,reentry_fields:["fabric_identity"]}]),null);
+  assert.equal(parseAuthoritativeFirstTenDeliveryAudit([{...row,manual_design_reentry:true,note:"",reentry_fields:[]}]),null);
+  assert.equal(parseAuthoritativeFirstTenDeliveryAudit([{...row,reentry_fields:["fabric_identity","fabric_identity"]}]),null);
+  assert.equal(parseAuthoritativeFirstTenDeliveryAudit([{...row,reentry_fields:["unknown"]}]),null);
+  assert.equal(parseAuthoritativeFirstTenDeliveryAudit([{...row,evidence_id:null}]),null);
 });

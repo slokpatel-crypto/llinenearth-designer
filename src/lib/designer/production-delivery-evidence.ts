@@ -51,6 +51,8 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
 
 export type ProductionEvidenceOrder={
   order_id:string;
+  revision_id?:string;
+  recipe_hash?:string;
   status:string;
   created_at:string;
   delivered_at?:string;
@@ -65,7 +67,9 @@ export type ProductionDeliveryEvidenceRow={
 };
 
 const ORDER_STATUSES=new Set(["created","cloth_reserved","cutting","stitching","fitting","ready","delivered","cancelled"]);
+const REENTRY_FIELDS=new Set(PRODUCTION_REENTRY_FIELDS.map((item)=>item.id));
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const RECIPE_HASH=/^[a-f0-9]{64}$/;
 
 function validTimestamp(value:unknown):value is string{
   return typeof value==="string"&&Number.isFinite(Date.parse(value));
@@ -77,6 +81,7 @@ export function parseAuthoritativeFirstTenDeliveryAudit(input:unknown){
   const orders:ProductionEvidenceOrder[]=[];
   const evidence:ProductionDeliveryEvidenceRow[]=[];
   const seen=new Set<string>();
+  const seenEvidence=new Set<string>();
   let deliveredCount:number|null=null;
   let priorKey="";
   for(const value of input){
@@ -84,8 +89,10 @@ export function parseAuthoritativeFirstTenDeliveryAudit(input:unknown){
     const row=value as Record<string,unknown>;
     if(typeof row.order_id!=="string"||!UUID.test(row.order_id)||seen.has(row.order_id)) return null;
     if(typeof row.current_status!=="string"||!ORDER_STATUSES.has(row.current_status)) return null;
-    if(typeof row.revision_id!=="string"||typeof row.recipe_hash!=="string"||
+    if(typeof row.revision_id!=="string"||row.revision_id.trim().length<3||row.revision_id.length>240||
+       typeof row.recipe_hash!=="string"||!RECIPE_HASH.test(row.recipe_hash)||
        !validTimestamp(row.order_created_at)||!validTimestamp(row.delivered_at)) return null;
+    if(Date.parse(row.delivered_at)<Date.parse(row.order_created_at)) return null;
     if(typeof row.total_delivered_count!=="number"||!Number.isInteger(row.total_delivered_count)||row.total_delivered_count<input.length) return null;
     if(deliveredCount===null) deliveredCount=Number(row.total_delivered_count);
     else if(deliveredCount!==Number(row.total_delivered_count)) return null;
@@ -94,13 +101,25 @@ export function parseAuthoritativeFirstTenDeliveryAudit(input:unknown){
     priorKey=chronologyKey;
     seen.add(row.order_id);
     orders.push({
-      order_id:row.order_id,status:row.current_status,
+      order_id:row.order_id,revision_id:row.revision_id,recipe_hash:row.recipe_hash,status:row.current_status,
       created_at:row.order_created_at,delivered_at:row.delivered_at,
     });
-    if(row.evidence_id===null||row.evidence_id===undefined) continue;
-    if(typeof row.evidence_id!=="string"||!UUID.test(row.evidence_id)||
+    if(row.evidence_id===null||row.evidence_id===undefined){
+      if([row.evidence_revision_id,row.evidence_recipe_hash,row.manual_design_reentry,row.reentry_fields,row.note,
+          row.operator,row.evidence_reference,row.evidence_created_at].some((item)=>item!==null&&item!==undefined)) return null;
+      continue;
+    }
+    if(typeof row.evidence_id!=="string"||!UUID.test(row.evidence_id)||seenEvidence.has(row.evidence_id)||
+       row.evidence_revision_id!==row.revision_id||row.evidence_recipe_hash!==row.recipe_hash||
        typeof row.manual_design_reentry!=="boolean"||!validTimestamp(row.evidence_created_at)||
-       typeof row.operator!=="string"||typeof row.evidence_reference!=="string") return null;
+       Date.parse(row.evidence_created_at)<Date.parse(row.delivered_at)||
+       !Array.isArray(row.reentry_fields)||row.reentry_fields.length>REENTRY_FIELDS.size||
+       !row.reentry_fields.every((item)=>typeof item==="string"&&REENTRY_FIELDS.has(item as ProductionReentryField))||
+       new Set(row.reentry_fields).size!==row.reentry_fields.length||
+       typeof row.note!=="string"||typeof row.operator!=="string"||typeof row.evidence_reference!=="string") return null;
+    if((row.manual_design_reentry===false&&row.reentry_fields.length>0)||
+       (row.manual_design_reentry===true&&row.reentry_fields.length===0&&row.note.trim().length<3)) return null;
+    seenEvidence.add(row.evidence_id);
     evidence.push({
       order_id:row.order_id,
       manual_design_reentry:row.manual_design_reentry,
