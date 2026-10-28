@@ -113,6 +113,31 @@ export function normalizeGarmentViewerBoundaries(value:unknown):Phase1BoundaryCh
   return {neck:input.neck===true,cuffs:input.cuffs===true,waist:input.waist===true,trouserGap:input.trouserGap===true};
 }
 
+export function normalizeGarmentViewerOperatorEvidencePayload(payload:Record<string,unknown>){
+  const patterns=payload.patternScaleSamples;
+  const timings=payload.interactionLatencyMs;
+  const reviews=payload.realismAssessments;
+  const boundaries=payload.boundaryChecks;
+  if(!Array.isArray(patterns)||patterns.length>20
+    ||!Array.isArray(timings)||timings.length>120
+    ||!Array.isArray(reviews)||reviews.length>50
+    ||!boundaries||typeof boundaries!=="object"||Array.isArray(boundaries)) return null;
+  const checks=boundaries as Record<string,unknown>;
+  if(["neck","cuffs","waist","trouserGap"].some((key)=>typeof checks[key]!=="boolean")) return null;
+  const patternScaleSamples=normalizeGarmentViewerPatternSamples(patterns);
+  const interactionLatencyMs=normalizeGarmentViewerLatencies(timings);
+  const realismAssessments=normalizeGarmentViewerRealism(reviews);
+  // Never silently discard malformed evidence during authenticated writes:
+  // otherwise a forged null/boolean becomes a seemingly complete QA receipt.
+  if(patternScaleSamples.length!==patterns.length
+    ||interactionLatencyMs.length!==timings.length
+    ||realismAssessments.length!==reviews.length) return null;
+  return {
+    patternScaleSamples,interactionLatencyMs,realismAssessments,
+    boundaryChecks:normalizeGarmentViewerBoundaries(boundaries),
+  };
+}
+
 export type GarmentViewerPromotionInput = {
   contract:GarmentViewerModelContractResult|null;
   manifest:GarmentViewerManifestValidation|null;

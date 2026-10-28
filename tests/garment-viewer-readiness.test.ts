@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness, normalizeGarmentViewerPatternSamples, normalizeGarmentViewerLatencies, normalizeGarmentViewerRealism, parseGarmentViewerScaleSampleInput } from "../src/lib/garment-viewer-readiness.ts";
+import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness, normalizeGarmentViewerPatternSamples, normalizeGarmentViewerLatencies, normalizeGarmentViewerRealism, parseGarmentViewerScaleSampleInput, normalizeGarmentViewerOperatorEvidencePayload } from "../src/lib/garment-viewer-readiness.ts";
 import {
   GARMENT_VIEWER_CONTRACT_VERSION,
   REQUIRED_GARMENT_VIEWER_MATERIALS,
@@ -221,4 +221,44 @@ test("operator-only QA receipts cannot promote 3D without trusted native scene e
   assert.ok(server.includes("nativePreflightVerified:false"));
   assert.ok(operator.includes("latest.readiness.nativePreflightReady"));
   assert.equal(garmentViewerPromotionReadiness(passingInput()).ready,true);
+});
+
+
+test("authenticated GarmentViewer event writes reject coerced or silently truncated evidence",()=>{
+  const payload={
+    patternScaleSamples:[{fabricId:"stripe-a",pattern:"stripe",errorPct:4,verified:true}],
+    interactionLatencyMs:[100,120],
+    realismAssessments:[{viewerId:"reviewer-1",rating:4,recordedAt:"2026-10-28T00:00:00Z"}],
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  };
+  assert.deepEqual(normalizeGarmentViewerOperatorEvidencePayload(payload),payload);
+  for(const errorPct of [null,false,true,"0",NaN,Infinity]){
+    assert.equal(normalizeGarmentViewerOperatorEvidencePayload({
+      ...payload,patternScaleSamples:[{...payload.patternScaleSamples[0],errorPct}],
+    }),null);
+  }
+  for(const value of [null,false,true,"100",NaN,Infinity]){
+    assert.equal(normalizeGarmentViewerOperatorEvidencePayload({
+      ...payload,interactionLatencyMs:[100,value],
+    }),null);
+  }
+  for(const rating of [null,false,true,"5",4.5,NaN,Infinity]){
+    assert.equal(normalizeGarmentViewerOperatorEvidencePayload({
+      ...payload,realismAssessments:[{viewerId:"reviewer-1",rating}],
+    }),null);
+  }
+  assert.equal(normalizeGarmentViewerOperatorEvidencePayload({
+    ...payload,boundaryChecks:{...payload.boundaryChecks,neck:"true"},
+  }),null);
+  assert.equal(normalizeGarmentViewerOperatorEvidencePayload({
+    ...payload,interactionLatencyMs:Array(121).fill(100),
+  }),null);
+  const route=readFileSync("src/app/api/memory/event/route.ts","utf8");
+  const start=route.indexOf('if (subtype === "garment_viewer_readiness")');
+  const end=route.indexOf('if (subtype === "designer_device_qa")',start);
+  const section=route.slice(start,end);
+  assert.ok(section.includes("normalizeGarmentViewerOperatorEvidencePayload(payload)"));
+  assert.ok(!section.includes("Number(row.errorPct)"));
+  assert.ok(!section.includes("Math.round(Number(row.rating))"));
+  assert.ok(!section.includes("interactionLatencyMs.map(Number)"));
 });
