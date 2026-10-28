@@ -83,6 +83,7 @@ export default async function GarmentViewerOperatorPage(){
         {([
           ["Model contract",latest.readiness.contractReady],
           ["Physical manifest",latest.readiness.manifestReady],
+          ["Native Blender + four-angle QA",latest.readiness.nativePreflightReady],
           ["Stripe + check scale",latest.readiness.scaleReady],
           ["Interaction p95",latest.readiness.latencyReady],
           ["Independent realism",latest.readiness.realismReady],

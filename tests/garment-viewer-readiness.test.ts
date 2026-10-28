@@ -38,6 +38,7 @@ function passingInput() {
   return {
     contract,
     manifest,
+    nativePreflightVerified:true,
     patternScaleSamples:[
       {fabricId:"stripe-a",pattern:"stripe" as const,errorPct:4.1,verified:true},
       {fabricId:"check-b",pattern:"check" as const,errorPct:6.4,verified:true},
@@ -205,4 +206,19 @@ test("direct GarmentViewer promotion API cannot bypass strict latency and realis
   const valid=garmentViewerPromotionReadiness(passingInput());
   assert.equal(valid.realismReady,true);
   assert.equal(valid.latencyReady,true);
+});
+
+
+test("operator-only QA receipts cannot promote 3D without trusted native scene evidence",()=>{
+  const input=passingInput();
+  input.nativePreflightVerified=false;
+  const result=garmentViewerPromotionReadiness(input);
+  assert.equal(result.nativePreflightReady,false);
+  assert.equal(result.ready,false);
+  assert.ok(result.reasons.some((reason)=>reason.includes("Native Blender")));
+  const server=readFileSync("src/lib/garment-viewer-evidence-server.ts","utf8");
+  const operator=readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
+  assert.ok(server.includes("nativePreflightVerified:false"));
+  assert.ok(operator.includes("latest.readiness.nativePreflightReady"));
+  assert.equal(garmentViewerPromotionReadiness(passingInput()).ready,true);
 });

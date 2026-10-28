@@ -116,6 +116,7 @@ export function normalizeGarmentViewerBoundaries(value:unknown):Phase1BoundaryCh
 export type GarmentViewerPromotionInput = {
   contract:GarmentViewerModelContractResult|null;
   manifest:GarmentViewerManifestValidation|null;
+  nativePreflightVerified?:boolean;
   patternScaleSamples:GarmentViewerPatternScaleSample[];
   interactionLatencyMs:number[];
   realismAssessments:RealismAssessment[];
@@ -125,6 +126,9 @@ export type GarmentViewerPromotionInput = {
 export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInput) {
   const contractReady=input.contract?.readiness==="contract_ready" && input.contract.physicallyScalable;
   const manifestReady=input.manifest?.valid===true;
+  // Only a trusted server-side native scene/QA registry may set this. The
+  // operator-submitted readiness event is never itself native Blender proof.
+  const nativePreflightReady=input.nativePreflightVerified===true;
 
   const scaleSamples=normalizeGarmentViewerPatternSamples(input.patternScaleSamples)
     .filter((sample)=>sample.verified);
@@ -149,6 +153,7 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   const reasons:string[]=[];
   if(!contractReady) reasons.push("Approved GLB has not passed the six-panel production material contract.");
   if(!manifestReady) reasons.push("Approved GLB physical panel manifest is missing or invalid.");
+  if(!nativePreflightReady) reasons.push("Native Blender geometry/UV and four-angle candidate evidence have not been independently verified.");
   if(!scaleReady) reasons.push("Verified stripe and check renders must both stay within the <=8% physical-scale gate.");
   if(!latencyReady) reasons.push("3D interaction needs at least 12 samples with p95 below 300 ms.");
   if(!realismReady) reasons.push("At least 6 of 8 independent viewers must rate the realistic model 4/5 or 5/5.");
@@ -156,9 +161,10 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
 
   return {
     version:"linen-earth-garment-viewer-readiness-v1" as const,
-    ready:contractReady&&manifestReady&&scaleReady&&latencyReady&&realismReady&&boundaryReady,
+    ready:contractReady&&manifestReady&&nativePreflightReady&&scaleReady&&latencyReady&&realismReady&&boundaryReady,
     contractReady,
     manifestReady,
+    nativePreflightReady,
     scaleReady,
     latencyReady,
     realismReady,

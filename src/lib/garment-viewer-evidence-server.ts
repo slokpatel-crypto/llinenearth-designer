@@ -54,6 +54,9 @@ export async function loadLatestGarmentViewerReadiness(){
       const readiness=garmentViewerPromotionReadiness({
         contract:identityMatches?asset.model?.contract||null:null,
         manifest:identityMatches?asset.manifest||null:null,
+        // No trusted native scene/turntable registry is connected yet. Never
+        // let operator self-attested JSON claim a passed Blender gate.
+        nativePreflightVerified:false,
         ...evidence,
       });
       if(!identityMatches) readiness.reasons.unshift("Recorded QA evidence belongs to a different or missing GarmentViewer asset revision.");
