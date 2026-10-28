@@ -93,7 +93,7 @@ export type OperatorSyncReadRow={
 export function validateOperatorSyncReadRows(value:unknown,limit:number):OperatorSyncReadRow[]|null{
   if(!Array.isArray(value)||value.length>limit)return null;
   let previousTime=-Infinity;
-  let previousId="";
+  const seenIds=new Set<string>();
   for(const row of value){
     if(!row||typeof row!=="object"||Array.isArray(row))return null;
     const item=row as Record<string,unknown>;
@@ -103,10 +103,12 @@ export function validateOperatorSyncReadRows(value:unknown,limit:number):Operato
        !item.payload||typeof item.payload!=="object"||Array.isArray(item.payload))
       return null;
     const received=parseVaultTimestamptz(item.received_at)!;
-    if(received<previousTime||(received===previousTime&&item.id<=previousId))
-      return null;
+    // PostgreSQL text collation and microsecond timestamps do not have
+    // JavaScript's code-point/millisecond ordering. Only reject real
+    // descending instants and duplicate IDs; preserve the server's tie order.
+    if(received<previousTime||seenIds.has(item.id))return null;
     previousTime=received;
-    previousId=item.id;
+    seenIds.add(item.id);
   }
   return value as OperatorSyncReadRow[];
 }
