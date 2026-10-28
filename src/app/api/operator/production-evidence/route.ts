@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeProductionDeliveryEvidence } from "@/lib/designer/production-delivery-evidence";
@@ -36,7 +37,10 @@ export async function GET(){
       rpc<unknown[]>("production_order_list",{p_limit:500}),
       rpc<unknown[]>("production_delivery_evidence_list",{p_limit:500}),
     ]);
-    return NextResponse.json({configured:true,orders,evidence},{headers:{"cache-control":"private, no-store"}});
+    // Both RPCs cap their result sets at 500. A capped response cannot prove
+    // that these are the first ten delivered orders in the complete ledger.
+    const historyComplete=orders.length<500&&evidence.length<500;
+    return NextResponse.json({configured:true,orders,evidence,historyComplete},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/production-evidence]",error);
     return NextResponse.json({error:"Production completion evidence could not be read."},{status:503});
@@ -45,12 +49,21 @@ export async function GET(){
 
 export async function POST(request:Request){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,16_384);
+  if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
   try{
-    const body=await request.json() as Record<string,unknown>;
-    if(String(body.action||"")!=="record") return NextResponse.json({error:"Unsupported evidence action."},{status:400});
-    const orderId=String(body.orderId||"").trim();
-    if(!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(orderId)) return NextResponse.json({error:"Valid delivered order ID is required."},{status:400});
-    const draft=normalizeProductionDeliveryEvidence(body);
+    const body=await readSecureJsonObject(request,16_384);
+    if(body.action!=="record") return NextResponse.json({error:"Unsupported evidence action."},{status:400});
+    const orderId=typeof body.orderId==="string"?body.orderId.trim():"";
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId))
+      return NextResponse.json({error:"Valid delivered order ID is required."},{status:400});
+    let draft:ReturnType<typeof normalizeProductionDeliveryEvidence>;
+    try{
+      draft=normalizeProductionDeliveryEvidence(body);
+    }catch(error){
+      // Only locally generated validation messages may reach the operator.
+      return NextResponse.json({error:error instanceof Error?error.message:"Invalid production completion evidence."},{status:400});
+    }
     const evidenceId=await rpc<string>("production_delivery_evidence_record_v2",{
       p_order_id:orderId,
       p_manual_design_reentry:draft.manualDesignReentry,
@@ -61,7 +74,9 @@ export async function POST(request:Request){
     });
     return NextResponse.json({evidenceId});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
+    if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
     console.error("[operator/production-evidence]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Production completion evidence could not be recorded."},{status:409});
+    return NextResponse.json({error:"Production completion evidence could not be recorded."},{status:503});
   }
 }

@@ -62,3 +62,18 @@ test("legacy delivery audits without provenance stay visible but cannot satisfy 
   assert.equal(summary.legacyOrUnverifiedCount,10);
   assert.equal(summary.gateComplete,false);
 });
+
+test("capped or unverified ledger history cannot prove the first-ten production gate",()=>{
+  const orders=Array.from({length:10},(_,index)=>({
+    order_id:"order-"+index,status:"delivered",created_at:"2026-10-"+String(index+1).padStart(2,"0")+"T10:00:00Z",
+  }));
+  const evidence=orders.map((order,index)=>({
+    order_id:order.order_id,manual_design_reentry:false,operator:"SP",
+    evidence_reference:"job-card-"+index,created_at:"2026-10-20T10:00:00Z",
+  }));
+  assert.equal(summarizeProductionDeliveryEvidence(orders,evidence).gateComplete,true);
+  const truncated=summarizeProductionDeliveryEvidence(orders,evidence,10,false);
+  assert.equal(truncated.historyComplete,false);
+  assert.equal(truncated.auditedTargetCount,10);
+  assert.equal(truncated.gateComplete,false);
+});

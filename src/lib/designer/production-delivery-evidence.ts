@@ -59,6 +59,7 @@ export function summarizeProductionDeliveryEvidence(
   orders:ProductionEvidenceOrder[],
   evidence:ProductionDeliveryEvidenceRow[],
   target=10,
+  historyComplete=true,
 ){
   const delivered=[...orders]
     .filter((item)=>item.status==="delivered")
@@ -82,6 +83,7 @@ export function summarizeProductionDeliveryEvidence(
   const missingEvidenceCount=firstTarget.length-recordedTargetCount;
   return {
     target,
+    historyComplete,
     deliveredCount:delivered.length,
     firstTargetOrderCount:firstTarget.length,
     recordedTargetCount,
@@ -90,6 +92,6 @@ export function summarizeProductionDeliveryEvidence(
     zeroReentryTargetCount,
     reentryIncidentCount,
     missingEvidenceCount,
-    gateComplete:firstTarget.length>=target&&auditedTargetCount===target&&reentryIncidentCount===0,
+    gateComplete:historyComplete&&firstTarget.length>=target&&auditedTargetCount===target&&reentryIncidentCount===0,
   };
 }

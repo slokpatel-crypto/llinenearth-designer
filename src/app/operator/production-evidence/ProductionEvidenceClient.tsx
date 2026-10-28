@@ -14,6 +14,7 @@ export default function ProductionEvidenceClient(){
   const [orders,setOrders]=useState<Order[]>([]);
   const [evidence,setEvidence]=useState<Evidence[]>([]);
   const [configured,setConfigured]=useState(true);
+  const [historyComplete,setHistoryComplete]=useState(false);
   const [selectedOrderId,setSelectedOrderId]=useState("");
   const [manualChoice,setManualChoice]=useState<"unset"|"yes"|"no">("unset");
   const [reentryFields,setReentryFields]=useState<string[]>([]);
@@ -31,6 +32,7 @@ export default function ProductionEvidenceClient(){
     const nextOrders=Array.isArray(data.orders)?data.orders:[];
     const nextEvidence=Array.isArray(data.evidence)?data.evidence:[];
     setConfigured(data.configured!==false);
+    setHistoryComplete(data.historyComplete===true);
     setOrders(nextOrders);
     setEvidence(nextEvidence);
     const requested=new URLSearchParams(window.location.search).get("order");
@@ -43,7 +45,7 @@ export default function ProductionEvidenceClient(){
   useEffect(()=>{void load();},[]);
 
   const delivered=useMemo(()=>[...orders].filter((item)=>item.status==="delivered").sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at)),[orders]);
-  const summary=useMemo(()=>summarizeProductionDeliveryEvidence(orders,evidence),[orders,evidence]);
+  const summary=useMemo(()=>summarizeProductionDeliveryEvidence(orders,evidence,10,historyComplete),[orders,evidence,historyComplete]);
   const selected=delivered.find((item)=>item.order_id===selectedOrderId)||delivered[0]||null;
   const selectedEvidence=selected?evidence.find((item)=>item.order_id===selected.order_id)||null:null;
   const choiceValid=manualChoice!=="unset"&&operator.trim().length>=2&&evidenceReference.trim().length>=3&&(manualChoice==="no"||reentryFields.length>0||note.trim().length>=3);
@@ -100,6 +102,7 @@ export default function ProductionEvidenceClient(){
     </header>
 
     {!configured&&<section className="productionEvidenceNotice">Production evidence migration is not installed yet.</section>}
+    {configured&&!historyComplete&&<section className="productionEvidenceNotice">Complete production history is not verified (the backend may have reached its 500-record cap). Phase 8 stays OPEN until the earliest delivered orders and their audits can be checked without truncation.</section>}
     {message&&<section className="productionEvidenceNotice">{message}</section>}
 
     <section className="productionEvidenceScore">
