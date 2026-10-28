@@ -55,7 +55,7 @@ export async function POST(request:Request){
   if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
   try{
     const body=await readBoundedStockMutationJson(request);
-    const action=String(body.action||"");
+    const action=typeof body.action==="string"?body.action:"";
     if(action==="record"){
       const draft=normalizeManualStockEvent(body);
       assertCurrentFabricId(draft.fabricId);
