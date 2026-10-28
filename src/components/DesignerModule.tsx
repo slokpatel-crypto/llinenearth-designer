@@ -495,7 +495,8 @@ export function DesignerModule() {
         const routedPantFabric = DESIGNER_PANTS.find((item) => item.id === nextPantId);
         if (routedShirtFabric && routedPantFabric) {
           const context: DesignerContext = { climate: nextClimate, intention: nextIntention };
-          const expectedIdentity=JSON.stringify([nextShirtId,nextPantId,nextOccasion,styleIdentity(nextStyle),nextStyleSpec || fromLegacyStyle(nextStyle),nextClimate,nextIntention,measurementProfile,tailorObservations,nextBodyProfile || DEFAULT_BODY_PREVIEW_PROFILE]);
+          const routedFabricIdentity=JSON.stringify([fabricRevisionKey(routedShirtFabric),fabricRevisionKey(routedPantFabric)]);
+          const expectedIdentity=JSON.stringify([nextShirtId,nextPantId,routedFabricIdentity,nextOccasion,styleIdentity(nextStyle),nextStyleSpec || fromLegacyStyle(nextStyle),nextClimate,nextIntention,measurementProfile,tailorObservations,nextBodyProfile || DEFAULT_BODY_PREVIEW_PROFILE]);
           void requestLookAssessment({
             shirtId:nextShirtId,pantId:nextPantId,occasion:nextOccasion,style:nextStyle,styleSpec:nextStyleSpec || fromLegacyStyle(nextStyle),context,
             bodyProfile:nextBodyProfile || DEFAULT_BODY_PREVIEW_PROFILE,
@@ -899,7 +900,13 @@ export function DesignerModule() {
     const nextOccasion=source?.occasion || result.recommendation.occasion;
     const nextContext=source?.context || {climate,intention};
     const nextStyleSpec=result.styleSpec??fromLegacyStyle(result.style);
-    const expectedIdentity=JSON.stringify([result.shirt.id,result.pant.id,nextOccasion,styleIdentity(result.style),nextStyleSpec,nextContext.climate,nextContext.intention,measurementProfile,tailorObservations,bodyProfile]);
+    // The UI renders the currently selected catalogue snapshots, not the
+    // possibly older fabric objects embedded in an asynchronous search result.
+    const selectedFabricIdentity=JSON.stringify([
+      fabricRevisionKey(shirtOptions.find((item)=>item.id===result.shirt.id)),
+      fabricRevisionKey(pantOptions.find((item)=>item.id===result.pant.id)),
+    ]);
+    const expectedIdentity=JSON.stringify([result.shirt.id,result.pant.id,selectedFabricIdentity,nextOccasion,styleIdentity(result.style),nextStyleSpec,nextContext.climate,nextContext.intention,measurementProfile,tailorObservations,bodyProfile]);
     setActiveCreative(null);
     setCreativeVisualReview(null);
     setShirtId(result.shirt.id);
@@ -947,7 +954,7 @@ export function DesignerModule() {
     if (!shirt || !pant || assessRunRef.current) return;
     const nextStyleSpec=mergeLegacyIntoStyleSpec(styleSpec,nextStyle);
     const expectedIdentity=JSON.stringify([
-      shirt.id,pant.id,occasion,styleIdentity(nextStyle),nextStyleSpec,
+      shirt.id,pant.id,fabricIdentity,occasion,styleIdentity(nextStyle),nextStyleSpec,
       climate,intention,measurementProfile,tailorObservations,bodyProfile,
     ]);
     const controller=new AbortController();
