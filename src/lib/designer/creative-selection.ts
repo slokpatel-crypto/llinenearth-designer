@@ -24,7 +24,7 @@ const FABRIC_REVISION_FIELDS=[
   "renderScale","weightGsm","weightClass","bestSeason","roleTags","weave",
   "texture","fiberContent","confirmedAvailableMetres","availabilityVerified",
   "colorVerified","patternScaleVerified","fiberContentVerified","drape",
-  "opacity","comfortTags","physicsProfile","garmentCompatibility",
+  "opacity","comfortTags","physicsProfile",
   "source","allowedGarments",
 ] as const satisfies readonly (keyof DesignerFabric)[];
 
