@@ -93,7 +93,11 @@ test("Designer restore, live invalidation and generation lifecycle use the same 
   assert.match(source,/const assessmentIdentity=JSON\.stringify\(\[shirtId,pantId,fabricIdentity,/);
   assert.match(source,/shirt:DESIGNER_SHIRTS\.find\(\(item\)=>item\.id===nextShirtId\)\?\?null/);
   assert.match(source,/pant:DESIGNER_PANTS\.find\(\(item\)=>item\.id===nextPantId\)\?\?null/);
-  assert.match(source,/\[shirtId,pantId,fabricIdentity,styleSpec,bodyProfile,measurementProfile,activeCreative\]/);
+  assert.match(source,/\[assessmentIdentity,activeCreative\]/);
+  assert.match(source,/lockedRevisionSelectionIdentityRef\.current=null;\s*setLockedRevision\(null\)/);
+  assert.match(source,/currentSelectionIdentityRef\.current!==selectionAtLock/);
+  assert.match(source,/const revision=currentLockedRevision\(\)/);
+  assert.match(source,/currentSelectionIdentityRef\.current!==identity/);
   assert.match(source,/\[shirtId,pantId,occasion,style,styleSpec,climate,intention,craftRequest\]/);
 });
 
