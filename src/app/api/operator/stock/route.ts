@@ -4,6 +4,7 @@ import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { assertCurrentFabricId, readBoundedStockMutationJson, StockMutationPayloadTooLarge, stockMutationRequestError, validateOperatorStockSnapshot } from "@/lib/designer/operator-stock-safety";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
+import {normalizeVaultId} from "@/lib/vault-id";
 
 export const runtime="nodejs";
 
@@ -58,27 +59,29 @@ export async function POST(request:Request){
     if(action==="record"){
       const draft=normalizeManualStockEvent(body);
       assertCurrentFabricId(draft.fabricId);
-      const eventId=await rpc<string>("fabric_stock_record_v2",{
+      const eventId=normalizeVaultId(await rpc<unknown>("fabric_stock_record_v2",{
         p_fabric_id:draft.fabricId,
         p_event_type:draft.eventType,
         p_quantity_metres:draft.quantityMetres,
         p_note:draft.note,
         p_recorded_by:draft.recordedBy,
         p_source_reference:draft.sourceReference,
-      });
+      }));
+      if(!eventId) return NextResponse.json({error:"Stock backend did not confirm a valid event ID."},{status:502});
       return NextResponse.json({eventId});
     }
     if(action==="reserve"){
       const draft=normalizeStockReservation(body);
       assertCurrentFabricId(draft.fabricId);
-      const reservationId=await rpc<string>("fabric_stock_reserve_v2",{
+      const reservationId=normalizeVaultId(await rpc<unknown>("fabric_stock_reserve_v2",{
         p_fabric_id:draft.fabricId,
         p_quantity_metres:draft.quantityMetres,
         p_revision_id:draft.revisionId,
         p_request_key:draft.requestKey,
         p_requested_by:draft.requestedBy,
         p_source_reference:draft.sourceReference,
-      });
+      }));
+      if(!reservationId) return NextResponse.json({error:"Stock backend did not confirm a valid reservation ID."},{status:502});
       return NextResponse.json({reservationId});
     }
     if(action==="release"){
