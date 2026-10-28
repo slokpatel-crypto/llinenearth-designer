@@ -129,3 +129,12 @@ def verify_turntable(manifest_path: Path, candidate_path: Path,
         "photographicMatchApproved": False,
         "tailorApproved": False,
     }
+
+
+def verify_canonical_reference(reference_path: Path, repo_root: Path) -> Path:
+    """Do not label a substituted photograph as the locked studio original."""
+    expected = (Path(repo_root) / "public" / "designer" / "studio-tucked.webp").resolve(strict=True)
+    actual = Path(reference_path).resolve(strict=True)
+    _expect(actual == expected and actual.is_file(),
+            "Reference is not the canonical checked-out Designer Studio photograph")
+    return actual
