@@ -16,6 +16,8 @@ returns table(
   delivered_at timestamptz,
   total_delivered_count integer,
   evidence_id uuid,
+  evidence_revision_id text,
+  evidence_recipe_hash text,
   manual_design_reentry boolean,
   reentry_fields jsonb,
   note text,
@@ -49,7 +51,9 @@ as $$
   select
     item.order_id,item.revision_id,item.recipe_hash,item.current_status,
     item.order_created_at,item.delivered_at,item.total_delivered_count,
-    evidence.evidence_id,evidence.manual_design_reentry,evidence.reentry_fields,
+    evidence.evidence_id,evidence.revision_id as evidence_revision_id,
+    evidence.recipe_hash as evidence_recipe_hash,
+    evidence.manual_design_reentry,evidence.reentry_fields,
     evidence.note,evidence.operator,evidence.evidence_reference,
     evidence.created_at as evidence_created_at
   from first_ten item

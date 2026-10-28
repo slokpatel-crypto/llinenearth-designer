@@ -52,6 +52,8 @@ test("authoritative audit migration derives chronology from delivery events and 
   assert.ok(migration.includes("count(*) over ()::integer as total_delivered_count"));
   assert.ok(migration.includes("order by delivered_at asc,order_id asc\n    limit 10"));
   assert.ok(migration.includes("o.status as current_status"));
+  assert.ok(migration.includes("evidence.revision_id as evidence_revision_id"));
+  assert.ok(migration.includes("evidence.recipe_hash as evidence_recipe_hash"));
   assert.ok(migration.includes("order by evidence.created_at desc,evidence.evidence_id desc"));
   assert.ok(migration.includes("security definer\nset search_path=''"));
   assert.ok(migration.includes("revoke all on function public.production_delivery_first_ten_audit() from public,anon,authenticated"));
