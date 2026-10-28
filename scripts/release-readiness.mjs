@@ -1005,6 +1005,22 @@ requireTokens("src/app/api/operator/production-evidence/route.ts", ["secureJsonR
 requireTokens("src/lib/designer/production-delivery-evidence.ts", ["orderLineage.set(key,","evidence.recipe_hash!==lineage.hash","evidenceIds.has(evidenceId)"]);
 requireTokens("scripts/check-cloud-readiness.mjs", ["orderLineageById.set(key,","row.recipe_hash===lineage.recipeHash","seenEvidenceIds.has(evidenceId)"]);
 
+// Owner-bound enquiry intent and manual WhatsApp draft separation.
+requireTokens("src/app/api/designer/enquiry/route.ts",[
+  "secureJsonRequestError(request,ENQUIRY_MAX_BYTES)",
+  "readSecureJsonObject(request,ENQUIRY_MAX_BYTES)",
+  "designer_locked_revision_vault_get_owned",
+  "designer_locked_revision_vault_get",
+  "normalizeVaultId(await rpc(\"design_enquiry_audit_record\"",
+  "operatorReceived:false",
+]);
+requireTokens("src/lib/designer/enquiry-intent.ts",[
+  "consentToContact !== true","legacy_draft","sameLockedEnquiryRevision",
+]);
+requireTokens("scripts/verify-designer-enquiry.cjs",[
+  "cross-site origin","unconsented envelope","oversized JSON body",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);

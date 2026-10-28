@@ -16,6 +16,8 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [ ] Confirm **new exact-head** quality, complete Node tests, engine, preview performance, release check, production build and real Chromium HTTP/viewport checks before promoting PR #452.
 - [x] Compare overlapping #444–#447 and #448–#452 source-level security and first-ten RPC contracts; selectively port vault bounds + order lineage without replacing newer modules. See `docs/TITAN_20261028_DRAFT_STACK_RECONCILIATION.md`.
 - [ ] Complete full stacked-draft ancestry review/integration; keep older SQL incompatible with current v2 RPC unapplied, and do not merge draft stacks straight to `main`.
+- [x] Implement owner-bound, consented **enquiry intent** path with strict JSON limits and explicit unsent WhatsApp draft fallback; add unit and HTTP regressions. Source change only until exact-head CI passes.
+- [ ] Verify exact-head CI + browser QA for owner-enquiry patch, including its new same-origin HTTP boundary test.
 - [ ] Verify real authenticated Supabase lock/recovery/enquiry path and selected stock; do not treat local browser storage as production durability.
 - [ ] Obtain owner-controlled fabric scale/stock truth, real tailor signoff, novice beta/device/edge QA, primary production runtime identity and customer consent before opening beta.
 - [ ] Keep 3D Blender/photo four-angle parity, automatic production delivery, FASHN final render and ecommerce **outside this smallest beta** until separately approved and evidenced.

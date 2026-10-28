@@ -14,7 +14,7 @@ This is the only journey that must work for the first beta. The supported photo 
 2. **Existing photographic Designer:** fixed `linen-earth-studio-model-v1` / `/designer/studio-tucked.webp`, deterministic front preview, physically honest coverage labels, responsive controls at 390/768/1440px and no paid AI per edit.
 3. **Canonical selections:** existing closed option vocabularies, StyleSpec v2 compatibility, valid fabric IDs and supported construction; edits invalidate stale preview/assessment.
 4. **Measurements and lock:** invalid tape/fit receipts fail closed; locked spec includes version, both exact fabrics, options and hash; recovery/share and manual tailor packet refer to the same immutable revision.
-5. **Manual lead handoff:** durable account-owned saved design + authenticated recovery/enquiry, customer contact/consent, operator access and human confirmation before any tailoring or payment. No browser-only record may be treated as an accepted order.
+5. **Manual lead handoff:** durable account-owned saved design + authenticated recovery/enquiry, customer contact/consent, operator access and human confirmation before any tailoring or payment. No browser-only record may be treated as an accepted order. **An audited enquiry intent does not prove a WhatsApp message was sent, nor provide an operator inbox; both require separate acceptance.**
 6. **Minimum operations:** operator can review current stock/provenance and the canonical tech pack; errors and missing live database evidence prevent readiness.
 
 ## Explicitly deferred
