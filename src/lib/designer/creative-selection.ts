@@ -59,8 +59,10 @@ export function creativeDirectionMatchesSelection(
   // Current UI always supplies both selected catalogue snapshots. A missing
   // snapshot or a same-ID revision change invalidates prior creative evidence.
   if("shirt" in selection && (!selection.shirt ||
+    fabricRevisionKey(selection.shirt)==="missing" ||
     fabricRevisionKey(selection.shirt)!==fabricRevisionKey(recommendation.shirt))) return false;
   if("pant" in selection && (!selection.pant ||
+    fabricRevisionKey(selection.pant)==="missing" ||
     fabricRevisionKey(selection.pant)!==fabricRevisionKey(recommendation.pant))) return false;
 
   const expected=fromLegacyStyle(direction.baseStyle);
