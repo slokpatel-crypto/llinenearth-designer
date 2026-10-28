@@ -601,3 +601,13 @@ test("malformed recorded proof envelopes return blocked evidence without throwin
     assert.equal(result.realism.uniqueViewers,0);
   }
 });
+
+
+test("direct realism aggregator treats malformed envelope types as no evidence",()=>{
+  for(const malformed of [null,undefined,{},42,"reviewer",false]){
+    const result=summarizeIndependentRealism(malformed);
+    assert.equal(result.uniqueViewers,0);
+    assert.equal(result.ready,false);
+  }
+  assert.equal(summarizeIndependentRealism([{viewerId:"valid",rating:5}]).uniqueViewers,1);
+});
