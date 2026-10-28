@@ -465,7 +465,7 @@ else:
         self.assertIn('"referencePhotoSha256": reference_photo_sha', renderer)
         self.assertGreaterEqual(renderer.count("require_unchanged_sources(sources)"), 3)
         self.assertLess(renderer.index("require_unchanged_sources(sources)"),
-                        renderer.index("setup_studio(mid_height, floor_z, options)"))
+                        renderer.index("        camera = setup_studio(mid_height, floor_z, options)"))
         self.assertLess(renderer.rindex("require_unchanged_sources(sources)"),
                         renderer.index("os.rename(staging, output)"))
 
