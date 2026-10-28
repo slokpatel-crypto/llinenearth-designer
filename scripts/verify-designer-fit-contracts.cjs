@@ -84,6 +84,27 @@ async function verifyDesignerFitContracts(baseURL='http://127.0.0.1:3000') {
       results.push({mode,label,status:response.status});
     }
   }
+  // Supply strings only: arrays used to stringify to valid catalogue IDs,
+  // occasions and search scopes; the legacy brief could silently substitute a roll.
+  const selectorCases=[
+    ['assessment array fabric','assess',{...selection,shirtId:[pair.shirtId]}],
+    ['assessment coercible occasion','assess',{...selection,occasion:[pair.occasion]}],
+    ['assessment overlength fabric','assess',{...selection,pantId:pair.pantId+'x'.repeat(161)}],
+    ['search array fabric','search',{...selection,pantId:[pair.pantId],scope:'open'}],
+    ['search array scope','search',{...selection,scope:['open']}],
+    ['advisor array fabric','brief',{...brief,brief:'Review shirt fit',currentStyle:style,occasion:pair.occasion,context,currentShirtId:[pair.shirtId]}],
+    ['legacy object fabric','brief',{...brief,currentPantId:{id:pair.pantId}}],
+    ['legacy non-text prompt','brief',{...brief,brief:{text:'Business meeting'}}],
+  ];
+  for(const [label,route,body] of selectorCases){
+    const response=await fetch(`${baseURL}/api/designer/${route}`,{
+      method:'POST',headers:{'content-type':'application/json','x-forwarded-for':'192.0.2.246'},
+      body:JSON.stringify(body),
+    });
+    const data=await response.json();
+    assert.equal(response.status,400,`untrusted selector: ${label}: ${data.error||'unexpected response'}`);
+    results.push({mode:route,label,status:response.status});
+  }
   // A missing fabric must not mask malformed explicit fit evidence. The
   // client must correct the tape reading before any catalogue lookup.
   const invalidFirst=await fetch(`${baseURL}/api/designer/assess`,{

@@ -81,10 +81,12 @@ export async function POST(request:Request) {
       measurements?:unknown;
       observations?:unknown;
     };
-    const shirtId=String(body.shirtId||"").slice(0,160);
-    const pantId=String(body.pantId||"").slice(0,160);
-    const occasion=String(body.occasion||"") as OccasionTier;
-    const scope=String(body.scope||"keep_shirt") as DesignerSearchScope;
+    // A coerced JSON array may stringify to a real fabric ID or occasion.
+    // Reject the supplied type and overlength IDs rather than laundering/truncating evidence.
+    const shirtId=typeof body.shirtId==="string"&&body.shirtId.length<=160?body.shirtId:"";
+    const pantId=typeof body.pantId==="string"&&body.pantId.length<=160?body.pantId:"";
+    const occasion=(typeof body.occasion==="string"?body.occasion:"") as OccasionTier;
+    const scope=(body.scope==null?"keep_shirt":typeof body.scope==="string"?body.scope:"") as DesignerSearchScope;
     if(!shirtId || !pantId || !OCCASIONS.includes(occasion) || !SCOPES.includes(scope) || !validStyle(body.style) || !validContext(body.context)) {
       return NextResponse.json({error:"A valid fabric pair, occasion and supported style are required."},{status:400});
     }

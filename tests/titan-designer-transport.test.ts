@@ -55,3 +55,21 @@ test("three Designer API POST paths use bounded streamed JSON before doing work"
     assert.ok(!src.includes("await request.json()"),`${route} may bypass stream limit`);
   }
 });
+
+
+test("Designer routes reject coerced or truncated fabric identity before catalogue access",()=>{
+  for(const route of ["assess","search"]){
+    const src=readFileSync(new URL(`../src/app/api/designer/${route}/route.ts`,import.meta.url),"utf8");
+    assert.match(src,/typeof body\.shirtId==="string"&&body\.shirtId\.length<=160/);
+    assert.match(src,/typeof body\.pantId==="string"&&body\.pantId\.length<=160/);
+    assert.match(src,/typeof body\.occasion==="string"/);
+    assert.doesNotMatch(src,/String\(body\.(?:shirtId|pantId|occasion)/);
+  }
+  const search=readFileSync(new URL("../src/app/api/designer/search/route.ts",import.meta.url),"utf8");
+  assert.match(search,/typeof body\.scope==="string"/);
+  const brief=readFileSync(new URL("../src/app/api/designer/brief/route.ts",import.meta.url),"utf8");
+  assert.match(brief,/typeof body\.currentShirtId!=="string"/);
+  assert.match(brief,/typeof body\.currentPantId!=="string"/);
+  assert.match(brief,/typeof body\.brief==="string"/);
+  assert.doesNotMatch(brief,/String\(body\.(?:currentShirtId|currentPantId|brief)/);
+});
