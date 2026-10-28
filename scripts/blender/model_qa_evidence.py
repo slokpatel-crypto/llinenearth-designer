@@ -127,12 +127,27 @@ def sha256_file(path: Path) -> str:
 
 
 def png_dimensions(path: Path) -> tuple[int, int]:
-    """Reject incomplete/truncated or corrupt PNG chunks, not only file extensions."""
+    """Check bounded, decodable Blender PNG scanlines as well as chunk integrity."""
     with path.open("rb") as handle:
         if handle.read(8) != PNG_SIGNATURE:
             raise ValueError("Invalid PNG signature")
         width = height = None
-        saw_image_data = False
+        expected_bytes = row_stride = decoded_bytes = 0
+        decoder = None
+        ended_image_data = False
+
+        def inspect_scanlines(data: bytes) -> None:
+            nonlocal decoded_bytes
+            if decoded_bytes + len(data) > expected_bytes:
+                raise ValueError("PNG inflated scanlines exceed declared dimensions")
+            # PNG filter bytes start every scanline. CRC-valid compressed data
+            # can still contain invalid filters or an incomplete raster.
+            offset = (-decoded_bytes) % row_stride
+            for index in range(offset, len(data), row_stride):
+                if data[index] > 4:
+                    raise ValueError("PNG scanline has an invalid filter")
+            decoded_bytes += len(data)
+
         while True:
             header = handle.read(8)
             if len(header) != 8:
@@ -144,24 +159,60 @@ def png_dimensions(path: Path) -> tuple[int, int]:
             checksum = handle.read(4)
             if len(payload) != size or len(checksum) != 4:
                 raise ValueError("Truncated PNG chunk")
-            actual_crc = zlib.crc32(kind + payload) & 0xFFFFFFFF
-            if actual_crc != struct.unpack(">I", checksum)[0]:
+            if zlib.crc32(kind + payload) & 0xFFFFFFFF != struct.unpack(">I", checksum)[0]:
                 raise ValueError("PNG chunk CRC mismatch")
             if width is None:
                 if kind != b"IHDR" or size != 13:
                     raise ValueError("PNG must start with a valid IHDR")
                 width, height = struct.unpack(">II", payload[:8])
+                depth, color, compression, filter_method, interlace = payload[8:13]
                 if not (0 < width <= 8192 and 0 < height <= 8192):
                     raise ValueError("PNG dimensions outside inspection bounds")
-            elif kind == b"IHDR":
+                if (depth not in (8, 16) or color not in (2, 6)
+                    or compression != 0 or filter_method != 0 or interlace != 0):
+                    raise ValueError("Unsupported PNG raster encoding for Blender QA")
+                row_stride = 1 + width * (4 if color == 6 else 3) * (depth // 8)
+                expected_bytes = row_stride * height
+                continue
+            if kind == b"IHDR":
                 raise ValueError("Duplicate PNG IHDR")
             if kind == b"IDAT":
-                saw_image_data = True
+                if ended_image_data:
+                    raise ValueError("PNG IDAT chunks must be consecutive")
+                if decoder is None:
+                    decoder = zlib.decompressobj()
+                try:
+                    for offset in range(0, len(payload), 65536):
+                        pending = payload[offset:offset + 65536]
+                        while pending:
+                            before = len(pending)
+                            decoded = decoder.decompress(pending, 1024 * 1024)
+                            inspect_scanlines(decoded)
+                            pending = decoder.unconsumed_tail
+                            if decoder.unused_data:
+                                raise ValueError("PNG has trailing compressed image data")
+                            if not decoded and len(pending) >= before:
+                                raise ValueError("PNG decompressor made no progress")
+                except zlib.error as error:
+                    raise ValueError("PNG image data is not decodable") from error
+            elif decoder is not None:
+                ended_image_data = True
             if kind == b"IEND":
-                if size or not saw_image_data or handle.read(1):
+                if size or decoder is None or handle.read(1):
                     raise ValueError("PNG IEND invalid, no image data or trailing bytes")
+                try:
+                    while True:
+                        decoded = decoder.flush(1024 * 1024)
+                        if not decoded:
+                            break
+                        inspect_scanlines(decoded)
+                except zlib.error as error:
+                    raise ValueError("PNG image data is not decodable") from error
+                if not decoder.eof or decoded_bytes != expected_bytes:
+                    raise ValueError("PNG compressed raster is truncated or dimension-mismatched")
                 return width, height
-
+            if kind[0] & 0x20 == 0 and kind not in (b"PLTE", b"IDAT", b"IEND"):
+                raise ValueError("Unexpected critical PNG chunk")
 
 def validate_candidate_manifest(manifest: object, directory: Path,
                                 *, source: Path | None = None,
