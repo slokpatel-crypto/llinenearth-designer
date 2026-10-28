@@ -104,3 +104,11 @@ test("cloud schema health requires a literal numeric v5 acknowledgement",()=>{
   assert.ok(route.includes('typeof version !== "number" || version !== 5'));
   assert.ok(!route.includes('Number(await response.json())'));
 });
+
+test("desktop cloud replay includes equal-timestamp events, relying on idempotent IDs",()=>{
+  const rust=readFileSync("desktop/src-tauri/src/main.rs","utf8");
+  assert.ok(rust.includes('event.at >= *cursor'));
+  assert.ok(!rust.includes('event.at > *cursor'));
+  assert.ok(rust.includes('Re-send the timestamp boundary'));
+  assert.ok(rust.includes('.get("accepted")'));
+});
