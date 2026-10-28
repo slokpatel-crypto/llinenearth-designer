@@ -91,6 +91,8 @@ export type OperatorSyncReadRow={
 /** A malformed backend page must not advance the desktop's durable cursor. */
 export function validateOperatorSyncReadRows(value:unknown,limit:number):OperatorSyncReadRow[]|null{
   if(!Array.isArray(value)||value.length>limit)return null;
+  let previousTime=-Infinity;
+  let previousId="";
   for(const row of value){
     if(!row||typeof row!=="object"||Array.isArray(row))return null;
     const item=row as Record<string,unknown>;
@@ -99,6 +101,11 @@ export function validateOperatorSyncReadRows(value:unknown,limit:number):Operato
        !validOperatorSyncTimestamp(item.at)||!validOperatorSyncTimestamp(item.received_at)||
        !item.payload||typeof item.payload!=="object"||Array.isArray(item.payload))
       return null;
+    const received=parseVaultTimestamptz(item.received_at)!;
+    if(received<previousTime||(received===previousTime&&item.id<=previousId))
+      return null;
+    previousTime=received;
+    previousId=item.id;
   }
   return value as OperatorSyncReadRow[];
 }
