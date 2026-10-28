@@ -150,8 +150,35 @@ async function visualReviewContracts(){
   }
   console.log("PASS "+cases.length+" actual visual-review HTTP boundary contracts");
 }
+async function measurementReceiptContracts(){
+  const base={
+    shirtId:engine.DESIGNER_REVIEWED_PAIRING.shirtId,
+    pantId:engine.DESIGNER_REVIEWED_PAIRING.pantId,
+    occasion:engine.DESIGNER_REVIEWED_PAIRING.occasion,
+    style:engine.designerStyleForOccasion(engine.DESIGNER_REVIEWED_PAIRING.occasion),
+    context:{climate:"Air-conditioned",intention:"Balanced"},
+  };
+  const measurements={version:1,unit:"cm",shirt:{chest:100},pants:{inseam:78},
+    updatedAt:"2028-02-29T12:00:00+05:30"};
+  for(const [label,receipt,status] of [
+    ["valid tape receipt",measurements,200],
+    ["reject array unit",{...measurements,unit:["cm"]},422],
+    ["reject impossible leap day",{...measurements,updatedAt:"2027-02-29T12:00:00Z"},422],
+    ["reject invalid clock",{...measurements,updatedAt:"2028-02-29T24:00:00Z"},422],
+  ]){
+    const response=await fetch(baseURL+"/api/designer/assess",{
+      method:"POST",headers:{"content-type":"application/json","x-forwarded-for":"192.0.2.246"},
+      body:JSON.stringify({...base,measurements:receipt}),
+    });
+    const data=await response.json();
+    assert.equal(response.status,status,label+": "+(data.error||"unexpected response"));
+    if(status===200) assert.ok(data.assessment?.garmentSpec,label+": valid receipt must assess");
+    else assert.match(data.error||"",/measurement|timestamp|display unit/i,label);
+  }
+  console.log("PASS 4 actual measurement-receipt HTTP boundary contracts");
+}
 (async()=>{
-  fs.mkdirSync(output,{recursive:true});await apiContracts();await visualReviewContracts();browser=await chromium.launch({headless:true});
+  fs.mkdirSync(output,{recursive:true});await apiContracts();await visualReviewContracts();await measurementReceiptContracts();browser=await chromium.launch({headless:true});
   for(const width of [390,768,1440]){
     const {page,context}=await freshPage(width),pixels=await mainPixels(page);
     const heroLayout=await page.evaluate(()=>{
