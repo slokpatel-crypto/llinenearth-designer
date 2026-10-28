@@ -37,6 +37,10 @@ async function run(){fs.mkdirSync(out,{recursive:true});const valid=await http("
   const stale=structuredClone(chosen);stale.recommendation.shirt.source+="-tampered";
   assert.equal((await http("/api/designer/assess",{...input,style:stale.baseStyle,creative:stale})).status,409);
   summary.http.push("same-ID physical provenance mismatch fails closed");
+  assert.equal((await http("/api/designer/creative-generate",{
+    ...input,mode:"redesign",style:stale.baseStyle,current:stale,reason:"visual_balance",
+  })).status,409);
+  summary.http.push("same-ID stale creative redesign fails closed");
   browser=await chromium.launch({headless:true});
   for(const width of [390,768,1440]){const state=await pageAt(width),{page,context}=state,lab=page.locator("#designerCreativeLab");
     await page.getByRole("textbox",{name:"Creative design brief",exact:true}).fill("Subtle leaf embroidery on the cuff");await page.getByRole("combobox",{name:"Accent fabric",exact:true}).selectOption(e.DESIGNER_SHIRTS[1].id);await page.getByRole("combobox",{name:"Craft surface",exact:true}).selectOption("embroidery");
