@@ -907,3 +907,9 @@ The Designer previously called `window.open` only after awaiting an HTTP request
 The Designer now keeps an enquiry link bound to the exact locked revision ID, discards the old link on re-lock, verifies the `wa.me` HTTPS destination and requires a visible second click labeled **Open WhatsApp and send**. It never promises that the shop received a message; the customer must send it in WhatsApp. No external account identity, order placement, tailor approval, backend delivery verification or live Supabase result is inferred.
 
 A non-sensitive public share token still excludes body measurements; the customer recovery token is never put into a WhatsApp URL. In-app secure vault storage remains a separate explicit operation. See `docs/TITAN_VERIFIED_HANDOFF_GATE.md`.
+
+## 2026-10-29 — Operator recovery must not turn malformed vault rows into production quotes
+
+Production quote/order actions previously coerced arrays and other JSON values through `String(body.revisionId||"")`, `String(body.recoveryToken||"")` and silently truncated notes. The operator's token-backed vault RPC also trusted the first row without checking the response envelope, expiry or ambiguous duplicates. These are dangerous precisely where a customer-selected locked recipe crosses into manual quoting.
+
+**Decision:** share a literal bounded selector for quote and order creation; reject non-string or overlong values instead of trimming into a different fact. Keep legacy empty optional notes and quote IDs, the existing operator cookie, and deterministic quote schema. Use the same `selectVaultReadRow` invariant as the customer vault before checking the signed locked revision hash. A valid token alone does not certify customer identity or physical stock; real operator acceptance still requires verified Supabase, the original immutable recipe and human tailoring review.

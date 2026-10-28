@@ -7,6 +7,8 @@ import { normalizeProductionQuoteDraft } from "@/lib/designer/production-quote";
 import { parseDesignVaultRecoveryToken } from "@/lib/designer/design-vault";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { buildProductionLearningContext } from "@/lib/designer/production-learning-context";
+import { parseOperatorLockedSelection } from "@/lib/designer/operator-locked-selection";
+import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
 
@@ -34,11 +36,12 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 async function loadVerifiedLockedRevision(recoveryToken:string){
   const parsed=parseDesignVaultRecoveryToken(recoveryToken);
   if(!parsed) throw new Error("A valid locked-design recovery token is required.");
-  const rows=await rpc<Array<{payload:LockedDesignRevision}>>("designer_locked_revision_vault_get",{
+  const rows=await rpc<unknown>("designer_locked_revision_vault_get",{
     p_vault_id:parsed.vaultId,
     p_access_hash:parsed.accessHash,
   });
-  const revision=rows[0]?.payload;
+  const row=selectVaultReadRow(rows);
+  const revision=row?.payload as LockedDesignRevision|undefined;
   if(!revision||!await verifyLockedDesignRevision(revision)){
     throw new Error("The locked design could not be verified for production.");
   }
@@ -88,13 +91,9 @@ export async function POST(request:Request){
     const body=await readSecureJsonObject(request,65536);
     const action=typeof body.action==="string"?body.action:"";
     if(action==="create_quote"){
-      const revisionId=String(body.revisionId||"").trim();
-      const recipeHash=String(body.recipeHash||"").trim().toLowerCase();
-      const note=String(body.note||"").slice(0,1000);
-      const recoveryToken=String(body.recoveryToken||"").trim();
-      if(revisionId.length<12||!/^[a-f0-9]{64}$/.test(recipeHash)) {
-        return NextResponse.json({error:"Locked revision and recipe hash are required."},{status:400});
-      }
+      const identity=parseOperatorLockedSelection(body);
+      if(!identity) return NextResponse.json({error:"Literal locked revision, recipe hash and recovery token are required; notes must be text."},{status:400});
+      const {revisionId,recipeHash,recoveryToken,note}=identity;
       const revision=await loadVerifiedLockedRevision(recoveryToken);
       if(revision.revisionId!==revisionId||revision.recipeHash.toLowerCase()!==recipeHash){
         return NextResponse.json({error:"The verified locked design does not match the quote revision/hash."},{status:409});
@@ -118,14 +117,9 @@ export async function POST(request:Request){
       return NextResponse.json({updated:Boolean(updated)});
     }
     if(action==="create_order"){
-      const revisionId=String(body.revisionId||"").trim();
-      const recipeHash=String(body.recipeHash||"").trim().toLowerCase();
-      const quoteId=String(body.quoteId||"").trim()||null;
-      const note=String(body.note||"").slice(0,1000);
-      const recoveryToken=String(body.recoveryToken||"").trim();
-      if(revisionId.length<12||!/^[a-f0-9]{64}$/.test(recipeHash)) {
-        return NextResponse.json({error:"Locked revision and recipe hash are required."},{status:400});
-      }
+      const identity=parseOperatorLockedSelection(body);
+      if(!identity) return NextResponse.json({error:"Literal locked revision, recipe hash and recovery token are required; quote IDs/notes must be text."},{status:400});
+      const {revisionId,recipeHash,recoveryToken,note,quoteId}=identity;
       const revision=await loadVerifiedLockedRevision(recoveryToken);
       if(revision.revisionId!==revisionId||revision.recipeHash.toLowerCase()!==recipeHash){
         return NextResponse.json({error:"The verified locked design does not match the order revision/hash."},{status:409});
