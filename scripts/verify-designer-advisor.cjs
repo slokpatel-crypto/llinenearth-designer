@@ -121,8 +121,37 @@ async function apiContracts(){
   const learnedCapsule=await post("occasion-scoped learned capsule construction",{...base,brief:"Create a capsule for office, dinner and weekend",tasteProfile:{version:1,evidence:4,preferredConstruction:{...base.currentStyle,button:"Horn"}}});assert.deepEqual(learnedCapsule.results.map(r=>r.occasion),["Semi-Formal","Smart-Casual","Casual"]);assert.equal(learnedCapsule.results[0].style.button,"Horn");for(const r of learnedCapsule.results.slice(1))assert.deepEqual(r.style,capsule.results.find(original=>original.occasion===r.occasion).style);
   console.log("PASS "+summary.apiContracts.length+" actual Designer HTTP contracts");
 }
+async function visualReviewContracts(){
+  const base={
+    shirtId:engine.DESIGNER_REVIEWED_PAIRING.shirtId,
+    pantId:engine.DESIGNER_REVIEWED_PAIRING.pantId,
+    occasion:engine.DESIGNER_REVIEWED_PAIRING.occasion,
+    style:engine.designerStyleForOccasion(engine.DESIGNER_REVIEWED_PAIRING.occasion),
+    context:{climate:"Air-conditioned",intention:"Balanced"},
+  };
+  const valid={status:"pass",heroVisibility:96,boundaryIntegrity:94,protectedChange:2,
+    evidenceAvailable:true,semanticAvailable:true,semanticStatus:"pass"};
+  const cases=[
+    ["literal valid review",valid,200],
+    ["reject coerced status",{...valid,status:["pass"]},422],
+    ["reject numeric string score",{...valid,heroVisibility:"100"},422],
+    ["reject string boolean evidence",{...valid,evidenceAvailable:"false"},422],
+    ["reject missing semantic verdict",{...valid,semanticStatus:undefined},422],
+  ];
+  for(const [label,creativeVisualReview,expected] of cases){
+    const response=await fetch(baseURL+"/api/designer/assess",{
+      method:"POST",headers:{"content-type":"application/json","x-forwarded-for":"192.0.2.247"},
+      body:JSON.stringify({...base,creativeVisualReview}),
+    });
+    const data=await response.json();
+    assert.equal(response.status,expected,label+": "+(data.error||"unexpected response"));
+    if(expected===422) assert.match(data.error||"",/Invalid creative visual-review evidence/,label);
+    else assert.ok(data.assessment?.garmentSpec,label+": valid review must produce an assessment");
+  }
+  console.log("PASS "+cases.length+" actual visual-review HTTP boundary contracts");
+}
 (async()=>{
-  fs.mkdirSync(output,{recursive:true});await apiContracts();browser=await chromium.launch({headless:true});
+  fs.mkdirSync(output,{recursive:true});await apiContracts();await visualReviewContracts();browser=await chromium.launch({headless:true});
   for(const width of [390,768,1440]){
     const {page,context}=await freshPage(width),pixels=await mainPixels(page);
     const heroLayout=await page.evaluate(()=>{

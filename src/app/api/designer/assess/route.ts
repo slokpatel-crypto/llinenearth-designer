@@ -13,7 +13,8 @@ import { assessFitConstruction } from "@/lib/designer/fit-construction";
 import { assessBlockStrategy } from "@/lib/designer/block-strategy";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
 import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation";
-import { buildCanonicalGarmentSpec, type CanonicalCreativeVisualReview } from "@/lib/designer/garment-spec";
+import { buildCanonicalGarmentSpec } from "@/lib/designer/garment-spec";
+import { parseCanonicalCreativeVisualReview } from "@/lib/designer/visual-review-input";
 import { loadActiveDesignerCatalogueFabrics } from "@/lib/designer/catalog-stock-server";
 import type { MeasurementProfile } from "@/lib/measurements";
 import { normalizeMeasuredBodyInput } from "@/lib/designer/measurement-input-validation";
@@ -65,24 +66,6 @@ function safeMeasurements(value:unknown):MeasurementProfile|null {
 
 function safeObservations(value:unknown):TailorObservationProfile|null {
   return validStoredTailorObservationProfile(value);
-}
-
-function safeVisualReview(value:unknown):CanonicalCreativeVisualReview|null {
-  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
-  const input=value as Record<string,unknown>;
-  const status=String(input.status||"");
-  if(!["pass","review"].includes(status)) return null;
-  return {
-    status:status as "pass"|"review",
-    heroVisibility:Math.max(0,Math.min(100,Number(input.heroVisibility)||0)),
-    boundaryIntegrity:Math.max(0,Math.min(100,Number(input.boundaryIntegrity)||0)),
-    protectedChange:Math.max(0,Math.min(100,Number(input.protectedChange)||0)),
-    evidenceAvailable:Boolean(input.evidenceAvailable),
-    semanticAvailable:Boolean(input.semanticAvailable),
-    ...(["pass","review"].includes(String(input.semanticStatus))?{semanticStatus:String(input.semanticStatus) as "pass"|"review"}:{}),
-    ...(typeof input.semanticIssue==="string"?{semanticIssue:input.semanticIssue.slice(0,180)}:{}),
-    ...(typeof input.redesignReason==="string"?{redesignReason:input.redesignReason.slice(0,40)}:{}),
-  };
 }
 
 function safeCreative(value:unknown):CreativeDirection|null {
@@ -164,7 +147,10 @@ export async function POST(request:Request) {
       error:"Creative direction no longer matches the selected fabric revision, context or cut.",
     },{status:409});
     if(creative?.craft){const canonical=resolveCraftFabrics(creative.craft,fabrics,shirtId,pantId);if(!canonical)return NextResponse.json({error:"Craft fabrics are unavailable or do not match this look."},{status:409});creative.craft=canonical;}
-    const visualReview=safeVisualReview(body.creativeVisualReview);
+    const visualReview=parseCanonicalCreativeVisualReview(body.creativeVisualReview);
+    if(body.creativeVisualReview!==undefined && body.creativeVisualReview!==null && !visualReview) {
+      return NextResponse.json({error:"Invalid creative visual-review evidence; please review the current render again."},{status:422});
+    }
     const recommendation=evaluateDesignerCombo(shirt,pant,occasion,resolvedStyle,undefined,body.context,styleSpec);
     const fitConstruction=assessFitConstruction(measurements,resolvedStyle,{
       climate:body.context.climate,
