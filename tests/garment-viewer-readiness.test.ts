@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness } from "../src/lib/garment-viewer-readiness.ts";
+import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness, normalizeGarmentViewerPatternSamples, normalizeGarmentViewerLatencies, normalizeGarmentViewerRealism, parseGarmentViewerScaleSampleInput, normalizeGarmentViewerOperatorEvidencePayload } from "../src/lib/garment-viewer-readiness.ts";
 import {
   GARMENT_VIEWER_CONTRACT_VERSION,
   REQUIRED_GARMENT_VIEWER_MATERIALS,
@@ -38,6 +38,7 @@ function passingInput() {
   return {
     contract,
     manifest,
+    nativePreflightVerified:true,
     patternScaleSamples:[
       {fabricId:"stripe-a",pattern:"stripe" as const,errorPct:4.1,verified:true},
       {fabricId:"check-b",pattern:"check" as const,errorPct:6.4,verified:true},
@@ -113,4 +114,151 @@ test("viewer late-load recovery is bounded by the original twenty-second loading
   assert.ok(source.includes("if(attempt<160) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125)"));
   assert.ok(source.includes("setModelReady(true);setProgress(1);setError(\"\")"));
   assert.ok(!source.includes("if(attempt<80) readinessTimer="));
+});
+
+
+test("stored GarmentViewer evidence rejects numeric coercion, rounded ratings and forged fabric IDs",()=>{
+  const sample={fabricId:"stripe-a",pattern:"stripe",errorPct:0,verified:true};
+  assert.deepEqual(normalizeGarmentViewerPatternSamples([sample]),[sample]);
+  for(const value of [null,false,true,"0","4.5",{},[],Infinity,NaN]){
+    assert.deepEqual(normalizeGarmentViewerPatternSamples([{...sample,errorPct:value}]),[]);
+  }
+  assert.deepEqual(normalizeGarmentViewerPatternSamples([{...sample,fabricId:{toString:()=>"stripe-a"}}]),[]);
+  assert.deepEqual(normalizeGarmentViewerPatternSamples([{...sample,verified:"true"}]),[]);
+  assert.deepEqual(normalizeGarmentViewerLatencies([100,110,120]),[100,110,120]);
+  for(const value of [null,false,true,"100",{},[],Infinity,NaN]){
+    assert.deepEqual(normalizeGarmentViewerLatencies([100,value,120]),[]);
+  }
+  assert.deepEqual(normalizeGarmentViewerRealism([{viewerId:"Reviewer-1",rating:5}]),[
+    {viewerId:"reviewer-1",rating:5,recordedAt:""},
+  ]);
+  for(const value of [null,false,true,"5",4.5,{},[],Infinity,NaN]){
+    assert.deepEqual(normalizeGarmentViewerRealism([{viewerId:"reviewer-1",rating:value}]),[]);
+  }
+});
+
+test("same-fabric or duplicate stripe/check receipts cannot certify independent physical-scale evidence",()=>{
+  const sameFabric=passingInput();
+  sameFabric.patternScaleSamples[1].fabricId="stripe-a";
+  assert.equal(garmentViewerPromotionReadiness(sameFabric).scaleReady,false);
+  const duplicated=passingInput();
+  duplicated.patternScaleSamples.push({...duplicated.patternScaleSamples[0]});
+  assert.equal(garmentViewerPromotionReadiness(duplicated).scaleReady,false);
+  const malformed=passingInput();
+  malformed.patternScaleSamples[0].errorPct=Number.NaN;
+  assert.equal(garmentViewerPromotionReadiness(malformed).scaleReady,false);
+  assert.equal(garmentViewerPromotionReadiness(passingInput()).scaleReady,true);
+});
+
+test("malformed operator evidence never becomes a passing viewer-readiness sample set",()=>{
+  const input=passingInput();
+  input.patternScaleSamples=normalizeGarmentViewerPatternSamples([
+    {fabricId:"stripe-a",pattern:"stripe",errorPct:null,verified:true},
+    {fabricId:"check-b",pattern:"check",errorPct:0,verified:true},
+  ]);
+  input.interactionLatencyMs=normalizeGarmentViewerLatencies([null,...Array(12).fill(10)]);
+  input.realismAssessments=normalizeGarmentViewerRealism(
+    Array.from({length:8},(_,i)=>({viewerId:"reviewer-"+i,rating:"5"})),
+  );
+  const result=garmentViewerPromotionReadiness(input);
+  assert.equal(result.scaleReady,false);
+  assert.equal(result.latencyReady,false);
+  assert.equal(result.realismReady,false);
+  assert.equal(result.ready,false);
+});
+
+
+test("operator physical-scale input cannot turn blank fields or rounding into verified zero drift",()=>{
+  assert.equal(parseGarmentViewerScaleSampleInput("stripe-a","","stripe",true),null);
+  assert.equal(parseGarmentViewerScaleSampleInput("stripe-a","  ","stripe",true),null);
+  assert.equal(parseGarmentViewerScaleSampleInput("stripe-a","1e1","stripe",true),null);
+  assert.equal(parseGarmentViewerScaleSampleInput("stripe-a","true","stripe",true),null);
+  assert.equal(parseGarmentViewerScaleSampleInput("stripe-a","NaN","stripe",true),null);
+  assert.equal(parseGarmentViewerScaleSampleInput("","0","stripe",true),null);
+  assert.deepEqual(parseGarmentViewerScaleSampleInput("stripe-a","0","stripe",true),
+    {fabricId:"stripe-a",pattern:"stripe",errorPct:0,verified:true});
+  const precise=parseGarmentViewerScaleSampleInput("stripe-a","8.0001","stripe",true);
+  assert.equal(precise?.errorPct,8.0001);
+  const input=passingInput();
+  input.patternScaleSamples[0]=precise!;
+  assert.equal(garmentViewerPromotionReadiness(input).scaleReady,false);
+});
+
+test("operator 3D evidence form cannot re-coerce corrupt browser samples or submit duplicate physical IDs",()=>{
+  const source=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
+  assert.ok(source.includes("normalizeGarmentViewerLatencies("));
+  assert.ok(source.includes("normalizeGarmentViewerRealism("));
+  assert.ok(source.includes("parseGarmentViewerScaleSampleInput("));
+  assert.ok(source.includes("stripeSample.fabricId===checkSample.fabricId"));
+  assert.ok(source.includes("stripeVerified&&!stripeSample"));
+  assert.ok(!source.includes(".map(Number).filter("));
+  assert.ok(!source.includes("Math.round(Number(item.rating))"));
+});
+
+
+test("direct GarmentViewer promotion API cannot bypass strict latency and realism normalization",()=>{
+  const fractional=passingInput();
+  fractional.realismAssessments[0].rating=4.5;
+  assert.equal(garmentViewerPromotionReadiness(fractional).realismReady,false);
+  const coerced=passingInput();
+  coerced.interactionLatencyMs[0]=Number.NaN;
+  assert.equal(garmentViewerPromotionReadiness(coerced).latencyReady,false);
+  const valid=garmentViewerPromotionReadiness(passingInput());
+  assert.equal(valid.realismReady,true);
+  assert.equal(valid.latencyReady,true);
+});
+
+
+test("operator-only QA receipts cannot promote 3D without trusted native scene evidence",()=>{
+  const input=passingInput();
+  input.nativePreflightVerified=false;
+  const result=garmentViewerPromotionReadiness(input);
+  assert.equal(result.nativePreflightReady,false);
+  assert.equal(result.ready,false);
+  assert.ok(result.reasons.some((reason)=>reason.includes("Native Blender")));
+  const server=readFileSync("src/lib/garment-viewer-evidence-server.ts","utf8");
+  const operator=readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
+  assert.ok(server.includes("nativePreflightVerified:false"));
+  assert.ok(operator.includes("latest.readiness.nativePreflightReady"));
+  assert.equal(garmentViewerPromotionReadiness(passingInput()).ready,true);
+});
+
+
+test("authenticated GarmentViewer event writes reject coerced or silently truncated evidence",()=>{
+  const payload={
+    patternScaleSamples:[{fabricId:"stripe-a",pattern:"stripe",errorPct:4,verified:true}],
+    interactionLatencyMs:[100,120],
+    realismAssessments:[{viewerId:"reviewer-1",rating:4,recordedAt:"2026-10-28T00:00:00Z"}],
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  };
+  assert.deepEqual(normalizeGarmentViewerOperatorEvidencePayload(payload),payload);
+  for(const errorPct of [null,false,true,"0",NaN,Infinity]){
+    assert.equal(normalizeGarmentViewerOperatorEvidencePayload({
+      ...payload,patternScaleSamples:[{...payload.patternScaleSamples[0],errorPct}],
+    }),null);
+  }
+  for(const value of [null,false,true,"100",NaN,Infinity]){
+    assert.equal(normalizeGarmentViewerOperatorEvidencePayload({
+      ...payload,interactionLatencyMs:[100,value],
+    }),null);
+  }
+  for(const rating of [null,false,true,"5",4.5,NaN,Infinity]){
+    assert.equal(normalizeGarmentViewerOperatorEvidencePayload({
+      ...payload,realismAssessments:[{viewerId:"reviewer-1",rating}],
+    }),null);
+  }
+  assert.equal(normalizeGarmentViewerOperatorEvidencePayload({
+    ...payload,boundaryChecks:{...payload.boundaryChecks,neck:"true"},
+  }),null);
+  assert.equal(normalizeGarmentViewerOperatorEvidencePayload({
+    ...payload,interactionLatencyMs:Array(121).fill(100),
+  }),null);
+  const route=readFileSync("src/app/api/memory/event/route.ts","utf8");
+  const start=route.indexOf('if (subtype === "garment_viewer_readiness")');
+  const end=route.indexOf('if (subtype === "designer_device_qa")',start);
+  const section=route.slice(start,end);
+  assert.ok(section.includes("normalizeGarmentViewerOperatorEvidencePayload(payload)"));
+  assert.ok(!section.includes("Number(row.errorPct)"));
+  assert.ok(!section.includes("Math.round(Number(row.rating))"));
+  assert.ok(!section.includes("interactionLatencyMs.map(Number)"));
 });

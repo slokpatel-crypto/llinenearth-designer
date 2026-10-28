@@ -232,6 +232,8 @@ def main():
     else:
         print(f"Linen Earth candidate four-angle QA written to {output}")
     print("NOT APPROVED: visual identity, real drape, pattern scale and tailor signoff remain required.")
+    if options.diagnostic_rejected:
+        raise SystemExit(2)  # Preserve diagnostics but never return a successful native QA process.
 
 if __name__ == "__main__":
     main()

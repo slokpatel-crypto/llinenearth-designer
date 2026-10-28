@@ -1,5 +1,12 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-10-28 — 3D promotion evidence is strictly typed and independent
+
+**Decision:** Treat both authenticated operator event writes and stored GarmentViewer QA payloads as untrusted JSON. Reject malformed evidence before persistence as well as at read/promotion boundaries; otherwise write-time Number(null)/Math.round conversions permanently erase the original invalid type. Reject coerced timing, physical-scale and realism ratings, including null, booleans, numeric strings, fractional ratings and nonfinite numbers. Do not round evidence into a passing review or round >8% physical error down to 8%. Blank operator error fields cannot become numeric zero. Browser-restored latency/reviewer arrays must pass the same strict normalizer before re-submission. Require independent stripe/check fabric IDs and no duplicate verified pattern receipts before scale acceptance.
+
+**Compatibility:** Valid numeric records and exact existing closed-vocabulary pattern labels retain their values; malformed historical records fail closed until reviewed and resubmitted. Native Blender geometry/four-angle proof is a separate mandatory server-controlled promotion gate, currently false until a trusted registry is implemented; operator JSON must never set it. No schema, paid provider, canonical model or customer rollout changes. Exact-head CI and real physical/operator review remain required.
+
+
 ## 2026-10-28 — Native candidate four-angle evidence must be complete and scene-bound
 
 **Decision:** Candidate four-angle Blender renders require a passing native geometry/UV scene preflight before any frame is generated. Use the existing identity-locked source scene and canonical `linen-earth-studio-model-v1` / `/designer/studio-tucked.webp`; do not generate a substitute model.
