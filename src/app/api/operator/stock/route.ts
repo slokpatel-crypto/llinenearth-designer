@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
-import { assertCurrentFabricId, readBoundedStockMutationJson, StockMutationPayloadTooLarge, stockMutationRequestError } from "@/lib/designer/operator-stock-safety";
+import { assertCurrentFabricId, readBoundedStockMutationJson, StockMutationPayloadTooLarge, stockMutationRequestError, validateOperatorStockSnapshot } from "@/lib/designer/operator-stock-safety";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 
@@ -38,7 +38,9 @@ export async function GET(){
       manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;
       provenance_ready:boolean;last_event_at:string|null;
     }>>("fabric_stock_snapshot_v2",{p_fabric_ids:null});
-    return NextResponse.json({configured:true,stock},{headers:{"cache-control":"private, no-store"}});
+    const verified=validateOperatorStockSnapshot(stock);
+    if(!verified) return NextResponse.json({error:"Stock ledger returned inconsistent rows; do not reserve or cut."},{status:503,headers:{"cache-control":"private, no-store"}});
+    return NextResponse.json({configured:true,stock:verified},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/stock]",error);
     return NextResponse.json({error:"Stock ledger could not be read."},{status:503});
