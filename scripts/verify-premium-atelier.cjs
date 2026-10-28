@@ -9,7 +9,7 @@ if (!runtime) throw Error('Set LINEN_BROWSER_QA_RUNTIME');
 const { chromium } = createRequire(path.join(runtime, 'package.json'))('playwright');
 const base = process.env.LINEN_BROWSER_QA_URL || 'http://127.0.0.1:3000';
 const out = path.resolve('artifacts/preview-lifecycle/premium-atelier');
-const summary = { browser: 'Chromium', model: 'existing local fallback', providerCalls: 0, viewports: [], checks: [], errors: [] };
+const summary = { browser: 'Chromium', model: 'existing local fallback', providerCalls: 0, browserTimingScope: 'Warm-session navigation + deterministic preview readiness in CI Chromium; not a device, cold-cache, paint SLA or physical acceptance', viewports: [], checks: [], errors: [] };
 let browser, activePage;
 async function open(width, reducedMotion = 'no-preference', javaScriptEnabled = true) {
   const recordVideo = width === 1440 && reducedMotion === 'no-preference' && javaScriptEnabled ? { dir: path.join(out, 'recordings'), size: { width: 1440, height: 1000 } } : undefined;
@@ -232,7 +232,11 @@ async function run() {
               'five phone navigation targets remain readable and unclipped: ' + JSON.stringify(link));
           }
         }
+        const studioStarted = Date.now();
         await page.goto(base + '/designer-studio', { waitUntil: 'networkidle' });
+        await page.locator('.newDesignerPhotoStage[data-ready="true"]').waitFor({ timeout: 30000 });
+        const studioReadyMs = Date.now() - studioStarted;
+        summary.viewports[summary.viewports.length - 1].studioReadyMs = studioReadyMs;
         await page.locator('.newDesignerPhotoSummaryCompact').waitFor();
         const studio = await page.evaluate(() => {
           const px = selector => parseFloat(getComputedStyle(document.querySelector(selector)).fontSize);

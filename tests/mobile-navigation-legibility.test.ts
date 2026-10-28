@@ -64,3 +64,12 @@ test("fabric and preview readiness changes are announced without claiming verifi
   assert.match(photo,/Fit and drape require physical verification\./);
   assert.match(css,/\.newDesigner \.newDesignerSrOnly\{[^}]*clip-path:inset\(50%\)/);
 });
+
+test("Chromium UI records actual preview-ready diagnostics without inventing a device SLA",()=>{
+  const script=readFileSync("scripts/verify-premium-atelier.cjs","utf8");
+  assert.match(script,/const studioStarted = Date\.now\(\)/);
+  assert.match(script,/\.newDesignerPhotoStage\[data-ready="true"\]/);
+  assert.match(script,/studioReadyMs = Date\.now\(\) - studioStarted/);
+  assert.match(script,/not a device, cold-cache, paint SLA or physical acceptance/);
+  assert.doesNotMatch(script,/assert\.ok\(studioReadyMs\s*[<>=]/);
+});
