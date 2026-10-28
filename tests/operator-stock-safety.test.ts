@@ -174,3 +174,9 @@ test("unconfigured Supabase stock is unavailable, not a verified empty ledger",(
   assert.ok(route.includes('Stock backend is not configured; availability is unavailable.'));
   assert.ok(!route.includes('return NextResponse.json({configured:false,stock:[]})'));
 });
+
+test("privileged operator stock actions require literal strings",()=>{
+  const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
+  assert.ok(route.includes('const action=typeof body.action==="string"?body.action:"";'));
+  assert.ok(!route.includes('const action=String(body.action||"");'));
+});
