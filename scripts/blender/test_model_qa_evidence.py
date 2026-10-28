@@ -1,4 +1,6 @@
+import json
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -128,6 +130,23 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
         script.write_text("pass\n", encoding="utf-8")
         with self.assertRaisesRegex(RuntimeError, "main"):
             run_native_preflight(script)
+
+    def test_independent_cli_rechecks_exact_source_and_frames(self):
+        manifest_path = self.directory / "model-qa-manifest.json"
+        manifest_path.write_text(json.dumps(self.manifest), encoding="utf-8")
+        command = [sys.executable, str(Path(__file__).with_name("model_qa_evidence.py")),
+                   "--manifest", str(manifest_path), "--source-blend", str(self.source),
+                   "--preflight-script", str(self.preflight)]
+        valid = subprocess.run(command, capture_output=True, text=True, check=False)
+        self.assertEqual(valid.returncode, 0, valid.stdout + valid.stderr)
+        self.assertIn("candidate file integrity only", valid.stdout)
+        self.source.write_bytes(b"altered")
+        invalid = subprocess.run(command, capture_output=True, text=True, check=False)
+        self.assertEqual(invalid.returncode, 1)
+        self.assertIn("sourceBlendSha256", invalid.stdout)
+        manifest_path.write_text("{not JSON", encoding="utf-8")
+        corrupt = subprocess.run(command, capture_output=True, text=True, check=False)
+        self.assertEqual(corrupt.returncode, 1)
 
     def test_invalid_png_signature_and_trailing_bytes(self):
         frame = self.directory / "linen-earth-model-front.png"

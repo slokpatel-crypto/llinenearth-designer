@@ -163,3 +163,37 @@ def validate_candidate_manifest(manifest: object, directory: Path,
         except (OSError, ValueError) as error:
             reasons.append(f"Invalid {view} frame: {error}")
     return reasons
+
+
+def main() -> int:
+    """Independently recheck the exact candidate files without running Blender."""
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="Validate candidate four-angle QA file integrity (not visual approval).")
+    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--source-blend", type=Path, required=True)
+    parser.add_argument("--preflight-script", type=Path, required=True)
+    args = parser.parse_args()
+    try:
+        if args.manifest.is_symlink() or not args.manifest.is_file():
+            raise ValueError("Manifest missing or symlinked")
+        if args.manifest.stat().st_size > 100_000:
+            raise ValueError("Candidate manifest exceeds size limit")
+        payload = json.loads(args.manifest.read_text(encoding="utf-8"))
+        reasons = validate_candidate_manifest(
+            payload, args.manifest.parent,
+            source=args.source_blend, preflight_script=args.preflight_script,
+        )
+    except (OSError, ValueError, UnicodeError) as error:
+        reasons = [f"Could not inspect candidate manifest: {error}"]
+    if reasons:
+        for reason in reasons:
+            print(f"FAIL: {reason}")
+        return 1
+    print("PASS: candidate file integrity only; photo parity, physical drape and tailor approval remain unverified.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
