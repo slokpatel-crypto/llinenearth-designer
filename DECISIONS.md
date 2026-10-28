@@ -4,7 +4,7 @@
 
 **Decision:** Candidate four-angle Blender renders require a passing native geometry/UV scene preflight before any frame is generated. Use the existing identity-locked source scene and canonical `linen-earth-studio-model-v1` / `/designer/studio-tucked.webp`; do not generate a substitute model.
 
-**Integrity:** Write into a fresh temporary output directory and publish the four frames plus manifest together only after checking exact angle labels/yaws, PNG structure/CRC/dimensions, file SHA-256, source .blend SHA-256 and preflight-script SHA-256. Never overwrite previous evidence in place. Python regressions run in CI without Blender.
+**Integrity:** Write into a fresh temporary output directory and publish the four frames, native geometry/UV preflight report and manifest together only after checking exact angle labels/yaws, PNG structure/CRC/dimensions, file SHA-256, source .blend SHA-256, preflight-script SHA-256 and report SHA-256. Reject contradictory sleeve/leg spacing, UV seam or body-intersection findings even if a report says ready. Never overwrite previous evidence in place. Python regressions run in CI without Blender.
 
 **Limit:** The manifest remains `candidateOnly: true` and all photographic/realism/tailor/drape approval flags remain false. This does not demonstrate a successful native Blender run or actual four-angle likeness, physical fabric calibration or production readiness. No schema/dependency changes or customer rollout.
 

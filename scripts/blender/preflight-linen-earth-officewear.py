@@ -534,6 +534,7 @@ def main():
     print(json.dumps(report, indent=2))
     if reasons:
         raise SystemExit(1)
+    return report
 
 
 if __name__ == "__main__":

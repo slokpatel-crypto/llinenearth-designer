@@ -151,7 +151,7 @@ def main():
         raise RuntimeError("Choose a new, non-existing --output-dir for each QA candidate.")
     preflight_script = Path(__file__).with_name("preflight-linen-earth-officewear.py")
     preflight_sha = sha256_file(preflight_script)
-    run_native_preflight(preflight_script)
+    native_report = run_native_preflight(preflight_script)
     if sha256_file(preflight_script) != preflight_sha:
         raise RuntimeError("Native preflight changed while the scene was inspected.")
     if bpy.data.is_dirty:
@@ -162,6 +162,10 @@ def main():
     try:
         camera = setup_studio(mid_height, floor_z, options)
         scene = bpy.context.scene
+        preflight_report_path = staging / "model-qa-native-preflight.json"
+        preflight_report_path.write_text(
+            json.dumps(native_report, indent=2) + "\n", encoding="utf-8"
+        )
         manifest = {
             "version": MANIFEST_VERSION,
             "referenceImage": REFERENCE_IMAGE,
@@ -171,6 +175,8 @@ def main():
             "nativePreflightGate": PREFLIGHT_GATE,
             "nativePreflightPassed": True,
             "nativePreflightScriptSha256": preflight_sha,
+            "nativePreflightReportFile": "model-qa-native-preflight.json",
+            "nativePreflightReportSha256": sha256_file(preflight_report_path),
             "identityLocked": True,
             "candidateOnly": True,
             "photographicMatchApproved": False,

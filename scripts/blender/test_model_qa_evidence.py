@@ -9,8 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from model_qa_evidence import (VIEWS, MODEL_IDENTITY_ID, REFERENCE_IMAGE,
-                               MANIFEST_VERSION, PREFLIGHT_GATE,
-                               sha256_file, validate_candidate_manifest, run_native_preflight)
+                               MANIFEST_VERSION, PREFLIGHT_GATE, PREFLIGHT_REPORT_FILE, GARMENT_OBJECTS,
+                               sha256_file, validate_candidate_manifest, run_native_preflight, validate_native_preflight_report)
 
 
 def chunk(kind, data):
@@ -44,6 +44,7 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
             "nativePreflightGate": PREFLIGHT_GATE,
             "nativePreflightPassed": True,
             "nativePreflightScriptSha256": sha256_file(self.preflight),
+            "nativePreflightReportFile": PREFLIGHT_REPORT_FILE,
             "identityLocked": True,
             "candidateOnly": True,
             "photographicMatchApproved": False,
@@ -54,6 +55,22 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
             "resolution": [480, 640],
             "angles": [],
         }
+        self.report = {
+            "gate": PREFLIGHT_GATE, "ready": True, "reasons": [],
+            "modelIdentity": {"id": MODEL_IDENTITY_ID, "referenceImage": REFERENCE_IMAGE, "locked": True},
+            "requiredGarmentObjects": list(GARMENT_OBJECTS),
+            "identityFitMeasurementsMm": {"sleeveCenterSpacingMm": 500.0, "legCenterSpacingMm": 210.0},
+            "objects": {name: {"present": True, "inExportCollection": True,
+                               "uvQuality": {"invalidUvFaces": 0, "nonfiniteUvFaces": 0,
+                                             "collapsedUvFaces": 0, "discontinuousSharedUvEdges": 0,
+                                             "nonmanifoldUvEdges": 0, "sharedUvEdges": 50}}
+                        for name in GARMENT_OBJECTS},
+            "boundaryIntersections": {key: 0 for key in
+                ("bodyShirtTorso", "bodySleeveL", "bodySleeveR", "bodyTrouserWaist",
+                 "bodyTrouserLegL", "bodyTrouserLegR", "shirtTrouserTuck")},
+        }
+        (self.directory / PREFLIGHT_REPORT_FILE).write_text(json.dumps(self.report), encoding="utf-8")
+        self.manifest["nativePreflightReportSha256"] = sha256_file(self.directory / PREFLIGHT_REPORT_FILE)
         for label, yaw in VIEWS:
             filename = f"linen-earth-model-{label}.png"
             (self.directory / filename).write_bytes(png())
@@ -126,7 +143,10 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "preflight failed"):
             run_native_preflight(script)
         script.write_text("def main():\n    return None\n", encoding="utf-8")
-        run_native_preflight(script)
+        with self.assertRaisesRegex(RuntimeError, "evidence failed"):
+            run_native_preflight(script)
+        script.write_text("def main():\n    return " + repr(self.report) + "\n", encoding="utf-8")
+        self.assertEqual(run_native_preflight(script), self.report)
         script.write_text("pass\n", encoding="utf-8")
         with self.assertRaisesRegex(RuntimeError, "main"):
             run_native_preflight(script)
@@ -188,6 +208,24 @@ else:
         manifest_path.write_text("{not JSON", encoding="utf-8")
         corrupt = subprocess.run(command, capture_output=True, text=True, check=False)
         self.assertEqual(corrupt.returncode, 1)
+
+    def test_native_report_blocks_old_sleeve_spacing_and_uv_seam_failures(self):
+        self.report["identityFitMeasurementsMm"]["sleeveCenterSpacingMm"] = 563.4
+        self.report["objects"]["ShirtSleeveLFabric"]["uvQuality"]["discontinuousSharedUvEdges"] = 83
+        report_path = self.directory / PREFLIGHT_REPORT_FILE
+        report_path.write_text(json.dumps(self.report), encoding="utf-8")
+        self.manifest["nativePreflightReportSha256"] = sha256_file(report_path)
+        errors = self.validate()
+        self.assertTrue(any("sleeveCenterSpacingMm" in x for x in errors))
+        self.assertTrue(any("discontinuousSharedUvEdges" in x for x in errors))
+
+    def test_native_report_rejects_missing_or_tampered_geometry(self):
+        report_path = self.directory / PREFLIGHT_REPORT_FILE
+        report_path.unlink()
+        self.assertTrue(any("native preflight report" in x.lower() for x in self.validate()))
+        self.report["ready"] = False
+        self.report["objects"].pop("TrouserLegRFabric")
+        self.assertTrue(validate_native_preflight_report(self.report))
 
     def test_invalid_png_signature_and_trailing_bytes(self):
         frame = self.directory / "linen-earth-model-front.png"
