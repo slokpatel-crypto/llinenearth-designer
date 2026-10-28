@@ -848,6 +848,9 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
         final_sleeves = source_fit_collision_pairs(sleeves[0], sleeves[1])
         if (final_body != [0, 0] or final_sleeves != 0
                 or any(now > old for now, old in zip(final_torso, torso_baseline_pairs))):
+            # A late evaluated-mesh/contact change must not strand the scene
+            # at a geometry snapshot that has just failed release safety.
+            restore(original)
             raise RuntimeError("Accepted sleeve geometry failed independent final contact recheck")
         evidence = {
             "requestedMmPerSleeve": requested_mm,
