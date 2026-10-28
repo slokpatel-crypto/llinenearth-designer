@@ -28,9 +28,34 @@ const FABRIC_REVISION_FIELDS=[
   "source","allowedGarments",
 ] as const satisfies readonly (keyof DesignerFabric)[];
 
+function canonicalEvidence(value:unknown,seen:WeakSet<object>):unknown{
+  if(value===null||value===undefined) return null;
+  if(typeof value==="number"){
+    if(!Number.isFinite(value)) throw new Error("Nonfinite fabric evidence");
+    return value;
+  }
+  if(typeof value==="string"||typeof value==="boolean") return value;
+  if(typeof value!=="object"||seen.has(value)) throw new Error("Invalid fabric evidence");
+  seen.add(value);
+  try {
+    if(Array.isArray(value)) return value.map((item)=>canonicalEvidence(item,seen));
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null) throw new Error("Non-JSON fabric evidence");
+    return Object.fromEntries(Object.keys(value).sort().map((key)=>[
+      key,canonicalEvidence((value as Record<string,unknown>)[key],seen),
+    ]));
+  } finally {seen.delete(value);}
+}
+
 export function fabricRevisionKey(fabric:DesignerFabric|null|undefined):string{
   if(!fabric||typeof fabric.id!=="string"||!fabric.id.trim()) return "missing";
-  return JSON.stringify([fabric.id,...FABRIC_REVISION_FIELDS.map((field)=>fabric[field]??null)]);
+  try {
+    // Sorting nested JSON keys prevents harmless API serialization order from
+    // revoking a still-identical fabric, while invalid/nonfinite data blocks.
+    return JSON.stringify(canonicalEvidence([
+      fabric.id,...FABRIC_REVISION_FIELDS.map((field)=>fabric[field]??null),
+    ],new WeakSet<object>()));
+  } catch {return "missing";}
 }
 
 function sameFields(left:Record<string,string>,right:Record<string,string>) {
