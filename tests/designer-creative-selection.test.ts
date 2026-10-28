@@ -90,6 +90,9 @@ test("Designer restore, live invalidation and generation lifecycle use the same 
   assert.match(source,/\[draftReady,shirtId,pantId,shirt,pant,occasion,climate,intention,style,styleSpec\]/);
   assert.match(source,/shirt:shirt\?\?null,pant:pant\?\?null/);
   assert.match(source,/const fabricIdentity=JSON\.stringify\(\[fabricRevisionKey\(shirt\),fabricRevisionKey\(pant\)\]\)/);
+  assert.match(source,/const assessmentIdentity=JSON\.stringify\(\[shirtId,pantId,fabricIdentity,/);
+  assert.match(source,/shirt:DESIGNER_SHIRTS\.find\(\(item\)=>item\.id===nextShirtId\)\?\?null/);
+  assert.match(source,/pant:DESIGNER_PANTS\.find\(\(item\)=>item\.id===nextPantId\)\?\?null/);
   assert.match(source,/\[shirtId,pantId,fabricIdentity,styleSpec,bodyProfile,measurementProfile,activeCreative\]/);
   assert.match(source,/\[shirtId,pantId,occasion,style,styleSpec,climate,intention,craftRequest\]/);
 });
@@ -136,6 +139,7 @@ test("same-ID catalogue revisions revoke creative direction and physical preview
   }
   assert.equal(creativeDirectionMatchesSelection(concept,{...selected,pant:{...pant,source:"supplier-revised"}}),false);
   assert.equal(creativeDirectionMatchesSelection(concept,{...selected,shirt:null}),false);
+  assert.equal(creativeDirectionMatchesSelection(concept,{...selected,shirt:{...shirt,id:""}}),false);
   assert.equal(creativeDirectionMatchesSelection(direction,selected),false,
     "a legacy ID-only concept must not certify a current physical catalogue snapshot");
   assert.equal(creativeDirectionMatchesSelection(direction,selection),true,
