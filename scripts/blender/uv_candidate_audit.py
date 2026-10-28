@@ -378,7 +378,6 @@ def phase_align_cylindrical_charts(faces, *, radius_m, excluded_face_indices=(),
             for edge, uses in shared.items() if len(uses) == 2
         }
 
-    before_jumps = source_edge_jumps(faces)
     before_continuous = continuous_source_edges(faces)
     # Components are independent only under the *proven integer phase*
     # adjacency graph. Rejection of one component must never erase a valid,
@@ -431,10 +430,11 @@ def phase_align_cylindrical_charts(faces, *, radius_m, excluded_face_indices=(),
         # A net seam-count improvement can conceal a worse physical tear on
         # another real source edge. Refuse trading one cut for another, even
         # when the global maximum jump or the first sampled seams look fine.
+        current_jumps = source_edge_jumps(aligned)
         trial_jumps = source_edge_jumps(tentative)
         worsened_edges = sum(
             trial_jumps[edge] > jump + tolerance_m
-            for edge, jump in before_jumps.items()
+            for edge, jump in current_jumps.items()
         )
         if torn_protected:
             rejected_components.append("previously_continuous_edge_broken")
