@@ -186,6 +186,61 @@ for obj in (left, right):
         assert abs(vertex.co.y - origin[1]) < 1e-6
         assert abs(vertex.co.z - origin[2]) < 1e-6
 
+# A bounded garment-only torso-normal repair can rescue a larger cuff
+# correction, but only after independently rechecking skin and both sleeves.
+# The mock intentionally simulates a new torso contact resolved by a 3-mm
+# Y relief; no physical tailoring approval is inferred.
+relief_start = {
+    obj.name: tuple(tuple(vertex.co) for vertex in obj.data.vertices)
+    for obj in (left, right)
+}
+
+
+def torso_contact_relieved(first, second):
+    if first is torso and second in (left, right):
+        origin = relief_start[second.name][0]
+        current = second.data.vertices[0].co
+        shift_mm = abs(current.x - origin[0]) * 1000
+        if shift_mm > 10.0001 and abs(current.y - origin[1]) < .002:
+            return 1
+    return 0
+
+
+def bounded_torso_repair(target, sleeve, passes):
+    assert target is torso and passes == 3
+    for vertex in sleeve.data.vertices:
+        vertex.co.y += .003
+    sleeve.data.update()
+    bpy.context.view_layer.update()
+    return {
+        "contactPairsByPass": [1, 0],
+        "maxVertexCorrectionMm": 3.0,
+        "remainingContactPairs": 0,
+    }
+
+
+try:
+    author.source_fit_collision_pairs = torso_contact_relieved
+    author.repair_body_intersections = bounded_torso_repair
+    relieved = author.try_collision_safe_cuff_spacing(body, 0, 1, 22)
+finally:
+    author.source_fit_collision_pairs = actual_contact
+    author.repair_body_intersections = actual_repair
+assert relieved["selectedMmPerSleeve"] == 22.0, relieved
+assert relieved["nativeWorldSpaceCollisionFree"] is True, relieved
+assert relieved["shirtTorsoPairsAtSelected"] == [0, 0]
+assert relieved["trials"][0]["shirtTorsoPairsAfterBodyRepair"] == [1, 1]
+assert relieved["trials"][0]["shirtTorsoPairsAfterRepair"] == [0, 0]
+assert len(relieved["trials"][0]["boundedShirtTorsoContactCorrections"]) == 2
+for obj in (left, right):
+    for vertex, origin in zip(obj.data.vertices, relief_start[obj.name]):
+        expected = author.candidate_sleeve_inboard_mm(obj.name, origin[2], 22) / 1000
+        assert abs(vertex.co.x - (origin[0] + expected)) < 1e-6
+        assert abs(vertex.co.y - (origin[1] + .003)) < 1e-6
+        assert abs(vertex.co.z - origin[2]) < 1e-6
+assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
+assert tuple(tuple(vertex.co) for vertex in torso.data.vertices) == torso_before
+
 # Missing torso must not be silently treated as zero contact.
 bpy.data.objects.remove(torso, do_unlink=True)
 try:
