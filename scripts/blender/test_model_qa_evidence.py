@@ -383,5 +383,35 @@ else:
                                     validate_candidate_manifest(self.manifest, self.directory, **kwargs)))
 
 
+    def test_duplicate_or_nonfinite_json_receipts_fail_closed(self):
+        manifest_path = self.directory / "model-qa-manifest.json"
+        command = [
+            sys.executable, str(Path(__file__).with_name("model_qa_evidence.py")),
+            "--manifest", str(manifest_path), "--source-blend", str(self.source),
+            "--preflight-script", str(self.preflight),
+            "--reference-photo", str(self.photo),
+        ]
+        manifest_path.write_text('{"version": "a", "version": "b"}', encoding="utf-8")
+        duplicate = subprocess.run(command, capture_output=True, text=True, check=False)
+        self.assertEqual(duplicate.returncode, 1)
+        self.assertIn("Duplicate JSON evidence key", duplicate.stdout)
+        manifest_path.write_text('{"nativePreflightPassed": NaN}', encoding="utf-8")
+        nonfinite = subprocess.run(command, capture_output=True, text=True, check=False)
+        self.assertEqual(nonfinite.returncode, 1)
+        self.assertIn("Nonfinite JSON evidence constant", nonfinite.stdout)
+
+        report_path = self.directory / PREFLIGHT_REPORT_FILE
+        for raw in (
+            json.dumps(self.report).replace('"ready": true',
+                                            '"ready": true, "ready": true', 1),
+            json.dumps(self.report)[:-1] + ', "unexpected": Infinity}',
+        ):
+            with self.subTest(raw=raw[:80]):
+                report_path.write_text(raw, encoding="utf-8")
+                self.manifest["nativePreflightReportSha256"] = sha256_file(report_path)
+                self.assertTrue(any("native preflight report" in reason.lower()
+                                    for reason in self.validate()))
+
+
 if __name__ == "__main__":
     unittest.main()

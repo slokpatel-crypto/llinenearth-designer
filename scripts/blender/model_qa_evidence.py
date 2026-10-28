@@ -118,6 +118,23 @@ def run_native_preflight(script: Path, *, allow_rejected: bool = False) -> dict:
     return report
 
 
+def strict_json_loads(raw: str) -> object:
+    """Reject ambiguous duplicate keys and nonfinite constants in QA receipts."""
+    def unique_keys(pairs: list[tuple[str, object]]) -> dict:
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"Duplicate JSON evidence key: {key}")
+            result[key] = value
+        return result
+
+    def reject_nonfinite(value: str) -> None:
+        raise ValueError(f"Nonfinite JSON evidence constant: {value}")
+
+    return json.loads(raw, object_pairs_hook=unique_keys,
+                      parse_constant=reject_nonfinite)
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -274,7 +291,7 @@ def validate_candidate_manifest(manifest: object, directory: Path,
                 raise ValueError("Native preflight report missing, symlinked or oversized")
             if sha256_file(report_path) != report_sha:
                 raise ValueError("Native preflight report SHA-256 differs from manifest")
-            report = json.loads(report_path.read_text(encoding="utf-8"))
+            report = strict_json_loads(report_path.read_text(encoding="utf-8"))
             reasons.extend(validate_native_preflight_report(report, allow_rejected=allow_rejected))
         except (OSError, ValueError, UnicodeError) as error:
             reasons.append(f"Invalid native preflight report: {error}")
@@ -335,7 +352,7 @@ def main() -> int:
             raise ValueError("Manifest missing or symlinked")
         if args.manifest.stat().st_size > 100_000:
             raise ValueError("Candidate manifest exceeds size limit")
-        payload = json.loads(args.manifest.read_text(encoding="utf-8"))
+        payload = strict_json_loads(args.manifest.read_text(encoding="utf-8"))
         reasons = validate_candidate_manifest(
             payload, args.manifest.parent,
             source=args.source_blend, preflight_script=args.preflight_script,
