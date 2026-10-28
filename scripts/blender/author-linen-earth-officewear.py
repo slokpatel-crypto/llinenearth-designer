@@ -725,6 +725,16 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
         obj.name: [vertex.co.copy() for vertex in obj.data.vertices]
         for obj in sleeves
     }
+    # Body clearance alone is insufficient: a cuff repair can pull the
+    # garment through its own shirt torso while avoiding the source skin.
+    # The source armhole is an intentionally sewn junction, so compare to
+    # its actual pre-trial contact count rather than falsely requiring zero.
+    torso = bpy.data.objects.get("ShirtTorsoFabric")
+    if torso is None or torso.type != "MESH":
+        raise RuntimeError("Source shirt torso is required for sleeve/torso collision QA")
+    torso_baseline_pairs = [
+        source_fit_collision_pairs(torso, obj) for obj in sleeves
+    ]
 
     def restore(source):
         for obj in sleeves:
@@ -753,6 +763,7 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
             obj.data.update()
         bpy.context.view_layer.update()
         before = [source_fit_collision_pairs(body, obj) for obj in sleeves]
+        torso_before = [source_fit_collision_pairs(torso, obj) for obj in sleeves]
         repairs = {}
         for obj, count in zip(sleeves, before):
             if count > 0:
@@ -761,17 +772,67 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
                     "contactPairsByPass": report["contactPairsByPass"],
                     "maxVertexCorrectionMm": report["maxVertexCorrectionMm"],
                     "remainingContactPairs": report["remainingContactPairs"],
+                    "remainingContactHeightDeciles": report.get("remainingContactHeightDeciles"),
+                    "remainingContactLateralZones": report.get("remainingContactLateralZones"),
+                    "remainingContactSampleWorldMetres": report.get("remainingContactSampleWorldMetres"),
+                }
+        # A skin-normal repair can push the cuff into the shirt's armhole.
+        # Attempt a small, bounded torso-normal correction only for NEW
+        # intersections beyond the sewn-junction baseline. Every correction
+        # is separately checked against source skin and the opposite sleeve;
+        # an unsuccessful attempt is rolled back by the next evaluate().
+        torso_after_body_repair = [
+            source_fit_collision_pairs(torso, obj) for obj in sleeves
+        ]
+        torso_repairs = {}
+        for obj, count, baseline in zip(sleeves, torso_after_body_repair, torso_baseline_pairs):
+            # The generic BVH repair cannot distinguish a legitimate
+            # preexisting sewn armhole face from a newly intersecting face.
+            # Never move an existing seam: only attempt bounded relief when
+            # this sleeve had ZERO original torso contacts.
+            if count > baseline and baseline == 0:
+                report = repair_body_intersections(torso, obj, 3)
+                torso_repairs[obj.name] = {
+                    "contactPairsByPass": report["contactPairsByPass"],
+                    "maxVertexCorrectionMm": report["maxVertexCorrectionMm"],
+                    "remainingContactPairs": report["remainingContactPairs"],
+                    "remainingContactHeightDeciles": report.get("remainingContactHeightDeciles"),
+                    "remainingContactLateralZones": report.get("remainingContactLateralZones"),
+                    "remainingContactSampleWorldMetres": report.get("remainingContactSampleWorldMetres"),
                 }
         after = [source_fit_collision_pairs(body, obj) for obj in sleeves]
+        torso_after = [source_fit_collision_pairs(torso, obj) for obj in sleeves]
         sleeve_pairs = source_fit_collision_pairs(sleeves[0], sleeves[1])
+        # Only accept a shift if it did not introduce additional contact
+        # with the actual fitted shirt. This is not proof of a sewn seam or
+        # a visually approved armhole; the native preflight still applies.
+        torso_not_worsened = all(
+            current <= baseline for current, baseline in
+            zip(torso_after, torso_baseline_pairs)
+        )
         evidence = {
             "requestedCuffInboardMmPerSleeve": mm,
             "bodyPairsBeforeRepair": before,
             "bodyPairsAfterRepair": after,
+            "shirtTorsoPairsAtOriginal": torso_baseline_pairs,
+            "shirtTorsoPairsBeforeRepair": torso_before,
+            "shirtTorsoPairsAfterBodyRepair": torso_after_body_repair,
+            "shirtTorsoPairsAfterRepair": torso_after,
+            "boundedShirtTorsoContactCorrections": torso_repairs,
+            "shirtTorsoContactNotWorsened": torso_not_worsened,
             "sleeveToSleevePairs": sleeve_pairs,
             "boundedBodyContactCorrections": repairs,
         }
-        return evidence, after == [0, 0] and sleeve_pairs == 0
+        return evidence, after == [0, 0] and sleeve_pairs == 0 and torso_not_worsened
+
+    def evaluate_with_rollback(mm):
+        try:
+            return evaluate(mm)
+        except Exception:
+            # A Blender BVH/normal-repair failure can happen after mutating
+            # some XYZ. Never leave a half-repaired garment in the scene.
+            restore(original)
+            raise
 
     values = [round(max(0.0, requested_mm-i), 6)
               for i in range(math.ceil(requested_mm)+1)]
@@ -780,7 +841,7 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
     attempts = []
     last_rejected = None
     for mm in dict.fromkeys(values):
-        trial, safe = evaluate(mm)
+        trial, safe = evaluate_with_rollback(mm)
         attempts.append(trial)
         if not safe:
             last_rejected = mm
@@ -792,7 +853,7 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
         # monotonically improving clearance as cloth moves towards the body.
         if last_rejected is not None and last_rejected > mm:
             for fine_mm in bounded_sleeve_cuff_refinement_trials(last_rejected, mm):
-                fine_trial, fine_safe = evaluate(fine_mm)
+                fine_trial, fine_safe = evaluate_with_rollback(fine_mm)
                 attempts.append(fine_trial)
                 if fine_safe:
                     selected_mm = fine_mm
@@ -801,9 +862,21 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
         # Failed fine probes may alter all XYZ through normal-direction
         # repairs. Commit ONLY the last independently safe full XYZ snapshot.
         restore(safe_positions)
+        final_body = [source_fit_collision_pairs(body, obj) for obj in sleeves]
+        final_torso = [source_fit_collision_pairs(torso, obj) for obj in sleeves]
+        final_sleeves = source_fit_collision_pairs(sleeves[0], sleeves[1])
+        if (final_body != [0, 0] or final_sleeves != 0
+                or any(now > old for now, old in zip(final_torso, torso_baseline_pairs))):
+            # A late evaluated-mesh/contact change must not strand the scene
+            # at a geometry snapshot that has just failed release safety.
+            restore(original)
+            raise RuntimeError("Accepted sleeve geometry failed independent final contact recheck")
         evidence = {
             "requestedMmPerSleeve": requested_mm,
             "selectedMmPerSleeve": selected_mm,
+            "shirtTorsoPairsAtOriginal": torso_baseline_pairs,
+            "shirtTorsoPairsAtSelected": final_torso,
+            "shirtTorsoContactNotWorsened": True,
             "nativeWorldSpaceCollisionFree": True,
             "trials": attempts,
             "submillimetreContactRefinementAttempted": last_rejected is not None,
@@ -821,6 +894,11 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
     evidence = {
         "requestedMmPerSleeve": requested_mm,
         "selectedMmPerSleeve": 0.0,
+        "shirtTorsoPairsAtOriginal": torso_baseline_pairs,
+        "shirtTorsoPairsAtSelected": [
+            source_fit_collision_pairs(torso, obj) for obj in sleeves
+        ],
+        "shirtTorsoContactNotWorsened": False,
         "nativeWorldSpaceCollisionFree": False,
         "trials": attempts,
         "submillimetreContactRefinementAttempted": False,
