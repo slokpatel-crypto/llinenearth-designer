@@ -35,7 +35,10 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
   // Duplicate known choices carry no extra meaning; unknown or coerced values
   // are rejected above rather than disappearing into a false clean audit.
   const reentryFields=[...new Set(submittedFields as ProductionReentryField[])];
-  const note=String(source.note||"").trim().slice(0,1200);
+  if(source.note!==undefined&&source.note!==null&&typeof source.note!=="string")
+    throw new Error("Production completion note must be text.");
+  const note=typeof source.note==="string"?source.note.trim():"";
+  if(note.length>1200) throw new Error("Production completion note cannot exceed 1200 characters.");
   const operator=typeof source.operator==="string"?source.operator.trim():"";
   const evidenceReference=typeof source.evidenceReference==="string"
     ?source.evidenceReference.replace(/\s+/g," ").trim():"";

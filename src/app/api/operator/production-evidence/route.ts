@@ -56,10 +56,13 @@ export async function GET(){
 export async function POST(request:Request){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
   try{
-    const body=await request.json() as Record<string,unknown>;
-    if(String(body.action||"")!=="record") return NextResponse.json({error:"Unsupported evidence action."},{status:400});
-    const orderId=String(body.orderId||"").trim();
-    if(!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(orderId)) return NextResponse.json({error:"Valid delivered order ID is required."},{status:400});
+    const parsed:unknown=await request.json();
+    if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))
+      return NextResponse.json({error:"Evidence submission must be an object."},{status:400});
+    const body=parsed as Record<string,unknown>;
+    if(body.action!=="record") return NextResponse.json({error:"Unsupported evidence action."},{status:400});
+    const orderId=typeof body.orderId==="string"?body.orderId.trim():"";
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) return NextResponse.json({error:"Valid delivered order ID is required."},{status:400});
     const draft=normalizeProductionDeliveryEvidence(body);
     const evidenceId=await rpc<string>("production_delivery_evidence_record_v2",{
       p_order_id:orderId,

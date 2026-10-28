@@ -543,3 +543,20 @@ test("cloud health checks immutable order/audit lineage and unique evidence",asy
   assert.match(cloud,/row.order_created_at===lineage.createdAt/);
   assert.match(cloud,/seenEvidenceIds.has\(evidenceId\)/);
 });
+
+test("operator evidence submission rejects coerced record actions and fabric-order identities",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const route=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
+  assert.match(route,/if\(body.action!=="record"\)/);
+  assert.match(route,/typeof body.orderId==="string"/);
+  assert.match(route,/Array.isArray\(parsed\)/);
+  assert.match(route,/\[0-9a-f\]\{8\}/);
+  assert.throws(()=>normalizeProductionDeliveryEvidence({
+    manualDesignReentry:false,reentryFields:[],note:["not text"],operator:"Checker",
+    evidenceReference:"Job Card 100",
+  }),/note must be text/i);
+  assert.throws(()=>normalizeProductionDeliveryEvidence({
+    manualDesignReentry:false,reentryFields:[],note:"x".repeat(1201),operator:"Checker",
+    evidenceReference:"Job Card 100",
+  }),/1200 characters/i);
+});
