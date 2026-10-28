@@ -209,6 +209,53 @@ async function run() {
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
         summary.checks.push('navigation preserves usable designer and removes homepage motion');
       }
+      if (reducedMotion === 'reduce') {
+        const skip = page.getByRole('link', { name: 'Skip to main content' });
+        assert.equal(await skip.count(), 1, 'main content skip link is present');
+        await skip.focus();
+        assert.equal(await skip.evaluate(n => getComputedStyle(n).visibility), 'visible');
+        await skip.press('Enter');
+        assert.equal(await page.evaluate(() => location.hash), '#main-content');
+        assert.equal(await page.locator('#main-content').count(), 1);
+        if (width === 390) {
+          const mobileLinks = await page.locator('.atelierMobileDock a').evaluateAll(nodes => nodes.map(n => ({
+            font: parseFloat(getComputedStyle(n).fontSize),
+            height: n.getBoundingClientRect().height,
+            left: n.getBoundingClientRect().left,
+            right: n.getBoundingClientRect().right,
+            scroll: n.scrollWidth,
+            client: n.clientWidth,
+          })));
+          assert.equal(mobileLinks.length, 5);
+          for (const link of mobileLinks) {
+            assert.ok(link.font >= 11 && link.height >= 44 && link.left >= 0 && link.right <= width + 1 && link.scroll <= link.client + 1,
+              'five phone navigation targets remain readable and unclipped: ' + JSON.stringify(link));
+          }
+        }
+        await page.goto(base + '/designer-studio', { waitUntil: 'networkidle' });
+        await page.locator('.newDesignerPhotoSummaryCompact').waitFor();
+        const studio = await page.evaluate(() => {
+          const px = selector => parseFloat(getComputedStyle(document.querySelector(selector)).fontSize);
+          const action = document.querySelector('.newDesignerPhotoActionsCompact button');
+          return {
+            overflow: document.documentElement.scrollWidth > innerWidth + 2,
+            summaryLabel: px('.newDesignerPhotoSummaryCompact span'),
+            summaryValue: px('.newDesignerPhotoSummaryCompact strong'),
+            actionLabel: action ? parseFloat(getComputedStyle(action).fontSize) : 0,
+            actionHeight: action ? action.getBoundingClientRect().height : 0,
+            garmentLabel: px('.newDesignerGarmentScope article label span'),
+            garmentSelect: px('.newDesignerGarmentScope article select'),
+            garmentSelectHeight: document.querySelector('.newDesignerGarmentScope article select').getBoundingClientRect().height,
+          };
+        });
+        assert.equal(studio.overflow, false, 'Designer stays within the viewport at ' + width);
+        assert.ok(studio.summaryLabel >= 11 && studio.summaryValue >= 13 && studio.actionLabel >= 12 && studio.actionHeight >= 44,
+          'fabric identity and lock controls remain readable: ' + JSON.stringify(studio));
+        assert.ok(studio.garmentLabel >= 11 && studio.garmentSelect >= 13 && studio.garmentSelectHeight >= 44,
+          'garment construction selectors remain readable: ' + JSON.stringify(studio));
+        await page.screenshot({ path: path.join(out, `designer-legibility-${width}.png`) });
+        summary.checks.push('keyboard skip link and responsive Designer control legibility at ' + width + 'px');
+      }
       const video = page.video();
       await context.close();
       if (video) await video.saveAs(path.join(out, 'linen-earth-brand-motion.webm'));

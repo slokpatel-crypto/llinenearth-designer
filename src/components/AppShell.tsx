@@ -33,6 +33,7 @@ function PinIcon() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const whatsappHref = buildWhatsAppUrl({ topic: "Premium fabric and tailoring" });
   return <div className="siteShell atelierShell premiumAtelier">
+    <a className="atelierSkipLink" href="#main-content">Skip to main content</a>
     <header className="atelierBrandBand">
       <Link href="/" className="atelierBrand" aria-label="Linen Earth home">
         <Image src={BRAND_LOGO_SRC} alt="Linen Earth" {...BRAND_LOGO_SIZE} unoptimized />
@@ -50,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="atelierContent">
-        <main>{children}</main>
+        <main id="main-content" tabIndex={-1}>{children}</main>
         <footer className="atelierFooter wrap">
           <div><strong>Linen Earth</strong><span>Premium fabric. Considered tailoring.</span></div>
           <nav aria-label="Footer navigation">

@@ -1,0 +1,16 @@
+/* Compact photo-preview controls contain real customer decisions and proof states.
+   Do not shrink them to 6–9px on phones or desktop; wrap long fabric names. */
+.newDesigner .newDesignerPhotoSummaryCompact span{font-size:11px!important;letter-spacing:.05em}
+.newDesigner .newDesignerPhotoSummaryCompact strong{font-size:13px!important;line-height:1.35;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+.newDesigner .newDesignerPhotoActionsCompact button{font-size:12px!important;line-height:1.3;min-height:44px;padding:10px 12px!important;white-space:normal}
+.newDesigner .newDesignerPhotoTag{font-size:11px;letter-spacing:.08em}
+.newDesigner :is(.newDesignerPhotoLock,.newDesignerPhotoCache,.newDesignerPhotoQaHold){font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.newDesigner :is(.newDesignerPhotoLock,.newDesignerPhotoQaHold) strong{font-size:11px;letter-spacing:.06em}
+.newDesigner :is(.newDesignerResultChips b,.newDesignerPhotoCreativeTags b,.newDesignerResultReasons span,.newDesignerFeedbackCompact>span,.newDesignerPreferenceDrawer label,.newDesignerResearchDrawer>summary){font-size:11px!important;line-height:1.45}
+.newDesigner .newDesignerGarmentScope article{min-width:0}
+.newDesigner .newDesignerGarmentScope article :is(span,p,small,label>span){font-size:11px;line-height:1.45;overflow-wrap:break-word}
+.newDesigner .newDesignerGarmentScope article select{font-size:13px;min-height:44px}
+@media(max-width:560px){
+  .newDesigner .newDesignerPhotoSummaryCompact{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+  .newDesigner .newDesignerGarmentScope{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
