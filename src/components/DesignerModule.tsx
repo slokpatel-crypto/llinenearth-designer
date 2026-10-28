@@ -190,6 +190,10 @@ export function DesignerModule() {
   const handoffIdentity=JSON.stringify([shirtId,pantId,fabricIdentity,occasion,styleIdentity(style),styleSpec,climate,intention]);
   const directorHandoffCurrent=directorHandoffIdentity===handoffIdentity;
   const assessmentIdentity=JSON.stringify([shirtId,pantId,fabricIdentity,occasion,styleIdentity(style),styleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+  const currentSelectionIdentityRef=useRef(assessmentIdentity);
+  const lockedRevisionSelectionIdentityRef=useRef<string|null>(null);
+  useLayoutEffect(()=>{currentSelectionIdentityRef.current=assessmentIdentity;},[assessmentIdentity]);
+  const verifiedLockedRevision=lockedRevisionSelectionIdentityRef.current===assessmentIdentity?lockedRevision:null;
   const searchIdentity=JSON.stringify([assessmentIdentity,searchScope]);
   const committedAssessmentIdentity=useRef(assessmentIdentity);
   const assessRunRef=useRef<{identity:string;controller:AbortController}|null>(null);
@@ -297,6 +301,7 @@ export function DesignerModule() {
   const garmentSpec=assessment?.garmentSpec || null;
 
   useEffect(()=>{
+    lockedRevisionSelectionIdentityRef.current=null;
     setLockedRevision(null);
     setVaultRecoveryToken("");
     setVaultMessage("");
@@ -1145,11 +1150,21 @@ export function DesignerModule() {
     URL.revokeObjectURL(url);
   }
 
+  function currentLockedRevision():LockedDesignRevision|null{
+    return lockedRevisionSelectionIdentityRef.current===assessmentIdentity ? verifiedLockedRevision : null;
+  }
+
   async function lockAndDownloadRevision() {
     if(!garmentSpec || lockBusy) return;
     setLockBusy(true);
     try {
+      const selectionAtLock=assessmentIdentity;
       const revision=await lockGarmentSpec(garmentSpec,{parentRevisionId:lastLockedRevisionId});
+      if(currentSelectionIdentityRef.current!==selectionAtLock){
+        setShareMessage("Fabric or design evidence changed during locking. Review and lock the current selection again.");
+        return;
+      }
+      lockedRevisionSelectionIdentityRef.current=selectionAtLock;
       setLockedRevision(revision);
       setLastLockedRevisionId(revision.revisionId);
       recordStyleMemoryEvent(designerSession(),"design_locked",{
@@ -1176,20 +1191,22 @@ export function DesignerModule() {
   }
 
   async function downloadProductionHandoff() {
-    if(!lockedRevision) return;
+    const revision=currentLockedRevision();
+    const identity=assessmentIdentity;
+    if(!revision) return;
     // Verify locked SHA-256 before a customer can generate a production
     // handoff. If any editable measurement or selected cut was changed in
     // the revision, fail closed rather than exporting an untrusted packet.
-    const handoff=await buildVerifiedProductionHandoff(lockedRevision).catch(()=>{
+    const handoff=await buildVerifiedProductionHandoff(revision).catch(()=>{
       setShareMessage("The locked recipe is no longer valid. Review the design and lock a new revision before downloading.");
       return null;
     });
-    if(!handoff) return;
+    if(!handoff||currentSelectionIdentityRef.current!==identity) return;
     const blob=new Blob([JSON.stringify(handoff,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);
     const anchor=document.createElement("a");
     anchor.href=url;
-    anchor.download=`linen-earth-production-handoff-${lockedRevision.revisionId.toLowerCase()}.json`;
+    anchor.download=`linen-earth-production-handoff-${revision.revisionId.toLowerCase()}.json`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -1197,12 +1214,14 @@ export function DesignerModule() {
   }
 
   async function downloadTailorTechPack() {
-    if(!lockedRevision) return;
-    const handoff=await buildVerifiedProductionHandoff(lockedRevision).catch(()=>{
+    const revision=currentLockedRevision();
+    const identity=assessmentIdentity;
+    if(!revision) return;
+    const handoff=await buildVerifiedProductionHandoff(revision).catch(()=>{
       setShareMessage("The locked recipe is no longer valid. Lock a new design before exporting its tailor tech pack.");
       return null;
     });
-    if(!handoff) return;
+    if(!handoff||currentSelectionIdentityRef.current!==identity) return;
     const html=buildTailorTechPackHtml(handoff);
     const blob=new Blob([html],{type:"text/html;charset=utf-8"});
     const url=URL.createObjectURL(blob);
@@ -1216,15 +1235,18 @@ export function DesignerModule() {
   }
 
   async function shareLockedRevision() {
-    if(!lockedRevision||shareBusy) return;
+    const revision=currentLockedRevision();
+    const identity=assessmentIdentity;
+    if(!revision||shareBusy) return;
     setShareBusy(true);setShareMessage("");
     try{
       const response=await fetch("/api/designer/share",{
         method:"POST",
         headers:{"content-type":"application/json"},
-        body:JSON.stringify(lockedRevision),
+        body:JSON.stringify(revision),
       });
       const result=await response.json() as {token?:string;expiresInDays?:number;audited?:boolean;error?:string};
+      if(currentSelectionIdentityRef.current!==identity) return;
       if(!response.ok||!result.token) throw new Error(result.error||"Share link could not be created.");
       const url=new URL(`/share/${result.token}`,window.location.origin).toString();
       try{
@@ -1241,15 +1263,18 @@ export function DesignerModule() {
   }
 
   async function openLockedRevisionEnquiry() {
-    if(!lockedRevision||enquiryBusy) return;
+    const revision=currentLockedRevision();
+    const identity=assessmentIdentity;
+    if(!revision||enquiryBusy) return;
     setEnquiryBusy(true);setEnquiryMessage("");
     try{
       const response=await fetch("/api/designer/enquiry",{
         method:"POST",
         headers:{"content-type":"application/json"},
-        body:JSON.stringify(lockedRevision),
+        body:JSON.stringify(revision),
       });
       const result=await response.json() as {href?:string;audited?:boolean;revisionId?:string;error?:string};
+      if(currentSelectionIdentityRef.current!==identity) return;
       if(!response.ok||!result.href) throw new Error(result.error||"Locked-look enquiry could not be created.");
       setEnquiryMessage(result.audited?"Verified enquiry audit recorded for this locked revision.":"WhatsApp enquiry opened · beta audit unavailable.");
       window.open(result.href,"_blank","noopener,noreferrer");
@@ -1261,15 +1286,18 @@ export function DesignerModule() {
   }
 
   async function saveLockedRevisionToVault() {
-    if(!lockedRevision||vaultBusy) return;
+    const revision=currentLockedRevision();
+    const identity=assessmentIdentity;
+    if(!revision||vaultBusy) return;
     setVaultBusy(true);setVaultMessage("");
     try{
       const response=await fetch("/api/designer/vault",{
         method:"POST",
         headers:{"content-type":"application/json"},
-        body:JSON.stringify({action:"store",revision:lockedRevision}),
+        body:JSON.stringify({action:"store",revision:revision}),
       });
       const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;ownershipWarning?:string;error?:string};
+      if(currentSelectionIdentityRef.current!==identity) return;
       if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure cloud copy could not be saved.");
       setVaultRecoveryToken(result.recoveryToken);
       let tokenCopied=false;
@@ -1587,8 +1615,8 @@ export function DesignerModule() {
             {garmentSpec && <>
               <button type="button" onClick={downloadGarmentSpec}>Export garment spec ↗</button>
               <button type="button" onClick={()=>void lockAndDownloadRevision()} disabled={lockBusy}>{lockBusy?"Locking…":"Lock recipe revision ↗"}</button>
-              {lockedRevision&&<>
-                <p><b>Locked revision:</b> {lockedRevision.revisionId} · recipe {lockedRevision.recipeHash.slice(0,12).toUpperCase()}</p>
+              {verifiedLockedRevision&&<>
+                <p><b>Locked revision:</b> {verifiedLockedRevision.revisionId} · recipe {verifiedLockedRevision.recipeHash.slice(0,12).toUpperCase()}</p>
                 <button type="button" onClick={downloadProductionHandoff}>Export tailor handoff ↗</button>
                 <button type="button" onClick={downloadTailorTechPack}>Export printable tech pack ↗</button>
                 <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
