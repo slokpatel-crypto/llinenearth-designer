@@ -897,3 +897,13 @@ The assessment endpoint used to fetch the live catalogue and approved house ease
 The prior #444–#447 and newer Designer #448–#452 branches diverge deeply; changing entire files across stacks would drop newer custody, locked-design validation or production chronology. **Decision:** forward-port only missing invariants to the newer branch: same-origin, strict JSON and streamed size bounds on both vaults and privileged operator mutations; first-ten evidence revision ID, immutable recipe hash, unique evidence IDs and valid post-delivery chronology in the newer JSON v2 audit and cloud verifier. Current recovery-token issuance precedes optional owner association, and stock snapshot / operator checks remain unchanged.
 
 The older authoritative-table-returning first-ten migration is NOT the same RPC contract as the newer `20261103` JSON v2 migration and is not replayed. No migrations deployed or real first-ten operator evidence confirmed. Exact-head CI plus real browser and authenticated environment acceptance remain prerequisites to promotion. File decisions: `docs/TITAN_20261028_DRAFT_STACK_RECONCILIATION.md`.
+
+## 2026-10-29 — Distinguish prepared locked WhatsApp drafts from real delivery
+
+The Designer previously called `window.open` only after awaiting an HTTP request, exposing mobile popup blockers, and described an audit as verified merely because the Supabase RPC returned HTTP 2xx. It also labeled a WhatsApp deep link as opened, with no proof the customer tapped Send or staff received it.
+
+**Decision:** share and enquiry POSTs now share strict same-origin JSON parsing with streamed 96 KiB payload bounds, explicit invalid-body errors, private no-store responses and bounded process-local throttling. An audit counts as recorded only when a valid database-generated UUID is received. This protects against bogus success payloads, but an audit records *preparation*, not actual delivery.
+
+The Designer now keeps an enquiry link bound to the exact locked revision ID, discards the old link on re-lock, verifies the `wa.me` HTTPS destination and requires a visible second click labeled **Open WhatsApp and send**. It never promises that the shop received a message; the customer must send it in WhatsApp. No external account identity, order placement, tailor approval, backend delivery verification or live Supabase result is inferred.
+
+A non-sensitive public share token still excludes body measurements; the customer recovery token is never put into a WhatsApp URL. In-app secure vault storage remains a separate explicit operation. See `docs/TITAN_VERIFIED_HANDOFF_GATE.md`.

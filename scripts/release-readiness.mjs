@@ -1005,6 +1005,26 @@ requireTokens("src/app/api/operator/production-evidence/route.ts", ["secureJsonR
 requireTokens("src/lib/designer/production-delivery-evidence.ts", ["orderLineage.set(key,","evidence.recipe_hash!==lineage.hash","evidenceIds.has(evidenceId)"]);
 requireTokens("scripts/check-cloud-readiness.mjs", ["orderLineageById.set(key,","row.recipe_hash===lineage.recipeHash","seenEvidenceIds.has(evidenceId)"]);
 
+// Public design handoffs carry the same bounded source security as the
+// private recovery vault. A prepared WhatsApp link is not a delivered enquiry.
+requireTokens("src/lib/designer/locked-handoff-request.ts",[
+  "LOCKED_HANDOFF_JSON_MAX_BYTES","readSecureJsonObject(request,LOCKED_HANDOFF_JSON_MAX_BYTES)",
+  "secureJsonRequestError(request,LOCKED_HANDOFF_JSON_MAX_BYTES)",
+  "vaultRateBlocked(handoffRequests,ip)","verifiedLockedHandoffAuditId",
+]);
+for(const kind of ["share","enquiry"]){
+  requireTokens(`src/app/api/designer/${kind}/route.ts`,[
+    "readLockedHandoffRequest(request)","verifiedLockedHandoffAuditId(await audit.json().catch(()=>null))",
+    "cache-control","private, no-store","verifyLockedDesignRevision(revision)",
+  ]);
+}
+requireTokens("src/app/api/designer/enquiry/route.ts",["handoffStatus:\"prepared_not_sent\""]);
+requireTokens("src/components/DesignerModule.tsx",[
+  "result.handoffStatus!==\"prepared_not_sent\"","result.revisionId!==revision.revisionId",
+  "enquiryResult?.revisionId===verifiedLockedRevision.revisionId",
+  "Open WhatsApp and send","destination.hostname!==\"wa.me\"",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
