@@ -444,11 +444,16 @@ for obj in (left, right):
 # A contact query exception after partial XYZ mutation must restore source.
 def broken_outer_contact(first, second):
     if first is torso and second is left:
-        left.data.vertices[0].co.y += .007
-        left.data.vertices[0].co.z += .002
-        left.data.update()
-        bpy.context.view_layer.update()
-        raise RuntimeError("simulated exterior BVH exception")
+        # Baseline receipt must succeed; fail only after the candidate
+        # changes the original cuff, simulating a mid-trial BVH exception.
+        changed = any(abs(v.co.x - xyz[0]) > 1e-8
+                      for v, xyz in zip(left.data.vertices, late_start[left.name]))
+        if changed:
+            left.data.vertices[0].co.y += .007
+            left.data.vertices[0].co.z += .002
+            left.data.update()
+            bpy.context.view_layer.update()
+            raise RuntimeError("simulated exterior BVH exception")
     return 0
 try:
     author.source_fit_collision_pairs = broken_outer_contact
