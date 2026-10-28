@@ -45,8 +45,9 @@ test("both vault routes retain recovery-token issuance ahead of optional owner-l
     const response=route.indexOf('ownershipWarning:optionalOwner?.lookupFailed?vaultOwnershipWarning("unavailable"):vaultOwnershipWarning(linkStatus)');
     assert.ok(issue>=0&&owner>issue&&response>owner,path);
     assert.match(route,/accountOwned:linkStatus==="linked"/);
-    assert.match(route,/const input:unknown=await request\.json\(\)\.catch\(\(\)=>null\)/);
-    assert.match(route,/Array\.isArray\(input\)/);
+    assert.match(route,/const input:unknown=await readSecureJsonObject\(request,\d+\)/);
+    assert.match(route,/secureJsonRequestError\(request,\d+\)/);
+    assert.match(route,/SecureJsonBodyInvalid/);
     assert.match(route,/typeof action!=="string"/);
     assert.match(route,/status:400/);
     assert.ok(route.indexOf('["store","listOwned","loadOwned","deleteOwned","claim","load","delete"].includes(action)')>=0);
