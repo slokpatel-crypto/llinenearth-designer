@@ -75,3 +75,24 @@ test("route validates before privileged RPC, rejects silent truncation and guard
   assert.ok(!route.includes("body.events.slice(0,250)"));
   assert.ok(!route.includes('new Date(String(body.at || ""))'));
 });
+
+test("cloud event ordering and identical-instant ID tie-breaks are enforced",()=>{
+  const row={id:"evt-a",session_id:"s-a",type:"operator_note",
+    at:"2026-10-28T00:00:00Z",received_at:"2026-10-28T00:01:00Z",
+    source:"operator-desktop",payload:{note:"ok"}};
+  assert.deepEqual(validateOperatorSyncReadRows([row,{...row,id:"evt-b"}],2)?.length,2);
+  assert.equal(validateOperatorSyncReadRows([{...row,id:"evt-b"},row],2),null);
+  assert.equal(validateOperatorSyncReadRows([row,row],2),null);
+  assert.equal(validateOperatorSyncReadRows([{...row,id:"evt-b",received_at:"2026-10-28T00:02:00Z"},row],2),null);
+});
+test("operator route refuses truncated date/time fields and coerced financial evidence",()=>{
+  const route=readFileSync("src/app/api/operator/sync/route.ts","utf8");
+  assert.ok(route.includes('validOperatorLocalDate(dueDate)'));
+  assert.ok(route.includes('validOperatorLocalDateTime(dateTime)'));
+  assert.ok(route.includes('operatorSyncNumber(payload.amount,0,100_000_000)'));
+  assert.ok(route.includes('operatorSyncNumber(rawValue,0,max)'));
+  assert.ok(!route.includes('text(payload.dueDate, 10)'));
+  assert.ok(!route.includes('text(payload.dateTime, 16)'));
+  assert.ok(!route.includes('Number(rawValue)'));
+  assert.ok(route.includes('stored: null'));
+});
