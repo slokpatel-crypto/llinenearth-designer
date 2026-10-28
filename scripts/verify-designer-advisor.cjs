@@ -177,8 +177,36 @@ async function measurementReceiptContracts(){
   }
   console.log("PASS 4 actual measurement-receipt HTTP boundary contracts");
 }
+async function fitInputContracts(){
+  const base={
+    shirtId:engine.DESIGNER_REVIEWED_PAIRING.shirtId,
+    pantId:engine.DESIGNER_REVIEWED_PAIRING.pantId,
+    occasion:engine.DESIGNER_REVIEWED_PAIRING.occasion,
+    style:engine.designerStyleForOccasion(engine.DESIGNER_REVIEWED_PAIRING.occasion),
+    context:{climate:"Air-conditioned",intention:"Balanced"},
+  };
+  const bodyProfile={version:1,build:"regular",heightCm:178,skinTone:"medium",source:"default"};
+  const observations={version:1,shoulderBalance:"unknown",posture:"balanced",
+    seatBalance:"unknown",mobilityPriority:"standard",updatedAt:"2026-10-28T10:00:00+05:30"};
+  for(const [label,body,status] of [
+    ["valid body and tailor notes",{bodyProfile,observations},200],
+    ["reject array build",{bodyProfile:{...bodyProfile,build:["regular"]},observations},422],
+    ["reject array posture",{bodyProfile,observations:{...observations,posture:["balanced"]}},422],
+    ["reject impossible tailor date",{bodyProfile,observations:{...observations,updatedAt:"2027-02-29T12:00:00Z"}},422],
+  ]){
+    const response=await fetch(baseURL+"/api/designer/assess",{
+      method:"POST",headers:{"content-type":"application/json","x-forwarded-for":"192.0.2.245"},
+      body:JSON.stringify({...base,...body}),
+    });
+    const data=await response.json();
+    assert.equal(response.status,status,label+": "+(data.error||"unexpected response"));
+    if(status===200) assert.ok(data.assessment?.garmentSpec,label+": valid fit inputs must assess");
+    else assert.match(data.error||"",/Invalid body preview profile|Invalid tailor observations/,label);
+  }
+  console.log("PASS 4 actual fit-input HTTP boundary contracts");
+}
 (async()=>{
-  fs.mkdirSync(output,{recursive:true});await apiContracts();await visualReviewContracts();await measurementReceiptContracts();browser=await chromium.launch({headless:true});
+  fs.mkdirSync(output,{recursive:true});await apiContracts();await visualReviewContracts();await measurementReceiptContracts();await fitInputContracts();browser=await chromium.launch({headless:true});
   for(const width of [390,768,1440]){
     const {page,context}=await freshPage(width),pixels=await mainPixels(page);
     const heroLayout=await page.evaluate(()=>{
