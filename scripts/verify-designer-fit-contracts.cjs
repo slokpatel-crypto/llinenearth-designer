@@ -52,6 +52,38 @@ async function verifyDesignerFitContracts(baseURL='http://127.0.0.1:3000') {
       results.push({mode,label,status:response.status});
     }
   }
+  // Protect against clients that omit or understate Content-Length. This is
+  // a real streamed HTTP request, not a mocked route-handler assertion.
+  const unsafeCases=[
+    ['foreign origin',()=>({body:'{}',headers:{origin:'https://outside.example'}}),403],
+    ['same-site subdomain',()=>({body:'{}',headers:{'sec-fetch-site':'same-site'}}),403],
+    ['non-JSON content',()=>({body:'{}',headers:{'content-type':'text/plain'}}),415],
+    ['array JSON',()=>({body:'[]',headers:{}}),400],
+    ['malformed JSON',()=>({body:'{"broken":',headers:{}}),400],
+    ['oversized chunked JSON',()=>({
+      body:new ReadableStream({start(controller){
+        const encoder=new TextEncoder();
+        controller.enqueue(encoder.encode('{"junk":"'));
+        controller.enqueue(encoder.encode('x'.repeat(180_010)+'"}'));
+        controller.close();
+      }}),
+      headers:{},
+    }),413],
+  ];
+  for(const [mode,route] of modes) {
+    for(const [label,make,expected] of unsafeCases) {
+      const {body,headers}=make();
+      const response=await fetch(`${baseURL}/api/designer/${route}`,{
+        method:'POST',
+        headers:{'content-type':'application/json','x-forwarded-for':'192.0.2.248',...headers},
+        body,
+        ...(body instanceof ReadableStream?{duplex:'half'}:{}),
+      });
+      const data=await response.json();
+      assert.equal(response.status,expected,`${mode}: ${label}: ${data.error||'unexpected response'}`);
+      results.push({mode,label,status:response.status});
+    }
+  }
   console.log(`PASS ${results.length} actual HTTP fit-input contracts across assessment, search and both brief modes`);
   return results;
 }
