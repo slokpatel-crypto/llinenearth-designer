@@ -13,7 +13,7 @@ import hashlib
 import json
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageOps
-from model_turntable_evidence import verify_turntable
+from model_turntable_evidence import verify_turntable, verify_canonical_reference
 
 def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -37,6 +37,7 @@ def main():
         if not source.is_file() or source.stat().st_size < 12000:
             raise SystemExit(f"Missing/invalid visual source: {source}")
 
+    verify_canonical_reference(options.reference, Path(__file__).resolve().parents[2])
     provenance = verify_turntable(options.manifest, options.candidate,
                                   options.source_blend)
     # SHA and PNG header checks do not prove decodability: inspect all four
