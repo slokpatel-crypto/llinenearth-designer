@@ -772,6 +772,9 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
                     "contactPairsByPass": report["contactPairsByPass"],
                     "maxVertexCorrectionMm": report["maxVertexCorrectionMm"],
                     "remainingContactPairs": report["remainingContactPairs"],
+                    "remainingContactHeightDeciles": report.get("remainingContactHeightDeciles"),
+                    "remainingContactLateralZones": report.get("remainingContactLateralZones"),
+                    "remainingContactSampleWorldMetres": report.get("remainingContactSampleWorldMetres"),
                 }
         # A skin-normal repair can push the cuff into the shirt's armhole.
         # Attempt a small, bounded torso-normal correction only for NEW
@@ -789,6 +792,9 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
                     "contactPairsByPass": report["contactPairsByPass"],
                     "maxVertexCorrectionMm": report["maxVertexCorrectionMm"],
                     "remainingContactPairs": report["remainingContactPairs"],
+                    "remainingContactHeightDeciles": report.get("remainingContactHeightDeciles"),
+                    "remainingContactLateralZones": report.get("remainingContactLateralZones"),
+                    "remainingContactSampleWorldMetres": report.get("remainingContactSampleWorldMetres"),
                 }
         after = [source_fit_collision_pairs(body, obj) for obj in sleeves]
         torso_after = [source_fit_collision_pairs(torso, obj) for obj in sleeves]
