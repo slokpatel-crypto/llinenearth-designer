@@ -84,7 +84,7 @@ export function normalizeManualStockEvent(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock event evidence is required.");
   const source=input as Record<string,unknown>;
   const fabricId=requiredStockIdentity(source.fabricId,"Fabric ID",1,160);
-  const eventType=String(source.eventType||"") as StockEventType;
+  const eventType=typeof source.eventType==="string"?source.eventType as StockEventType:null;
   const quantityMetres=exactStockMetres(source.quantityMetres,"Stock quantity",100000);
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
   const recordedBy=requiredStockAuditText(source.recordedBy,"Named stock checker / recorder",2,120);
@@ -131,7 +131,7 @@ export function normalizeStockReservation(input:unknown){
 export function normalizeStockConsumption(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock consumption evidence is required.");
   const source=input as Record<string,unknown>;
-  const reservationId=String(source.reservationId||"").trim();
+  const reservationId=typeof source.reservationId==="string"?source.reservationId.trim():"";
   const actualMetres=exactStockMetres(source.actualMetres,"Actual consumed metres",100);
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
   const checkedBy=requiredStockAuditText(source.checkedBy,"Named consumption checker",2,120);
@@ -153,7 +153,7 @@ export function normalizeStockConsumption(input:unknown){
 export function normalizeStockRelease(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock release evidence is required.");
   const source=input as Record<string,unknown>;
-  const reservationId=String(source.reservationId||"").trim();
+  const reservationId=typeof source.reservationId==="string"?source.reservationId.trim():"";
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
   const releasedBy=requiredStockAuditText(source.releasedBy,"Named reservation release checker",2,120);
   const sourceReference=requiredStockAuditText(source.sourceReference,"Reservation release reference",3,240);
