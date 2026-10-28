@@ -136,12 +136,12 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
     &&uniqueSamples&&independentStripeAndCheck
     &&scaleSamples.every((sample)=>sample.errorPct<=ROADMAP_SCALE_TOLERANCE_PCT);
 
-  const latency=summarizeLatencySamples(input.interactionLatencyMs);
+  const latency=summarizeLatencySamples(normalizeGarmentViewerLatencies(input.interactionLatencyMs));
   const latencyReady=latency.count>=PHASE1_PROOF_MIN_LATENCY_SAMPLES
     && latency.p95Ms!==null
     && latency.p95Ms<PHASE1_PROOF_MAX_P95_MS;
 
-  const realism=summarizeIndependentRealism(input.realismAssessments);
+  const realism=summarizeIndependentRealism(normalizeGarmentViewerRealism(input.realismAssessments));
   const realismReady=realism.uniqueViewers>=PHASE1_PROOF_MIN_REALISM_VIEWERS
     && realism.strongRatings>=PHASE1_PROOF_MIN_STRONG_REALISM;
 

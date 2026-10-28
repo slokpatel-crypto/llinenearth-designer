@@ -193,3 +193,16 @@ test("operator 3D evidence form cannot re-coerce corrupt browser samples or subm
   assert.ok(!source.includes(".map(Number).filter("));
   assert.ok(!source.includes("Math.round(Number(item.rating))"));
 });
+
+
+test("direct GarmentViewer promotion API cannot bypass strict latency and realism normalization",()=>{
+  const fractional=passingInput();
+  fractional.realismAssessments[0].rating=4.5;
+  assert.equal(garmentViewerPromotionReadiness(fractional).realismReady,false);
+  const coerced=passingInput();
+  coerced.interactionLatencyMs[0]=Number.NaN;
+  assert.equal(garmentViewerPromotionReadiness(coerced).latencyReady,false);
+  const valid=garmentViewerPromotionReadiness(passingInput());
+  assert.equal(valid.realismReady,true);
+  assert.equal(valid.latencyReady,true);
+});
