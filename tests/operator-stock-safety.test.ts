@@ -74,7 +74,7 @@ test("streamed operator stock body is limited even without Content-Length header
 test("actual stock mutation handler applies byte limit before privileged RPC",()=>{
   const code=readFileSync("src/app/api/operator/stock/route.ts","utf8");
   const parse=code.indexOf("readBoundedStockMutationJson(request)");
-  const firstRpc=code.indexOf('rpc<string>("fabric_stock_record_v2"');
+  const firstRpc=code.indexOf('rpc<unknown>("fabric_stock_record_v2"');
   assert.ok(parse>0&&firstRpc>parse);
   assert.ok(code.includes("error instanceof StockMutationPayloadTooLarge"));
   assert.ok(code.includes("{status:413}"));
