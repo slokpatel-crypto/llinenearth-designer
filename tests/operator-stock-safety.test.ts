@@ -168,3 +168,9 @@ test("operator stock mutations require UUID RPC acknowledgements before claiming
   assert.ok(route.includes('if(released!==true) return NextResponse.json'));
   assert.ok(route.includes('if(consumed!==true) return NextResponse.json'));
 });
+
+test("unconfigured Supabase stock is unavailable, not a verified empty ledger",()=>{
+  const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
+  assert.ok(route.includes('Stock backend is not configured; availability is unavailable.'));
+  assert.ok(!route.includes('return NextResponse.json({configured:false,stock:[]})'));
+});
