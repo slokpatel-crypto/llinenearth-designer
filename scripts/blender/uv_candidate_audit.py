@@ -334,6 +334,28 @@ def phase_align_cylindrical_charts(faces, *, radius_m, excluded_face_indices=(),
            for i in ignored):
         raise ValueError("Phase excluded face indices must refer to real polygons")
     period = 2 * math.pi * radius_m
+    # An edge with >2 faces or equal-direction face traversal has no
+    # unambiguous sewing neighbour. Refuse even an apparently alignable
+    # periodic subgraph until the original mesh topology is repaired.
+    if initial["nonManifoldEdges"] or initial["inconsistentWindingEdges"]:
+        return [[(vid, tuple(uv)) for vid, uv in face] for face in faces], {
+            "geometryEstimatedCircumferenceMm": round(period * 1000, 5),
+            "phaseShiftedFaces": 0,
+            "phaseAlignableInteriorEdges": 0,
+            "phaseCycleConflicts": 0,
+            "phaseCandidateRolledBack": True,
+            "phaseRollbackReason": "invalid_source_topology",
+            "phaseRejectedComponents": 0,
+            "phaseAcceptedComponents": 0,
+            "phaseRollbackReasons": ["invalid_source_topology"],
+            "wouldBreakPreviouslyContinuousSourceEdges": 0,
+            "excludedUnapprovedFaceCharts": len(ignored),
+            "unapprovedInteriorUvSeamsBefore": initial["unapprovedInteriorUvSeams"],
+            "unapprovedInteriorUvSeamsAfter": initial["unapprovedInteriorUvSeams"],
+            "supplierRepeatVerified": False,
+            "supplierGrainVerified": False,
+            "productionApproved": False,
+        }
     edges = defaultdict(list)
     for face_index, face in enumerate(faces):
         if face_index in ignored:
@@ -364,6 +386,18 @@ def phase_align_cylindrical_charts(faces, *, radius_m, excluded_face_indices=(),
         return {
             edge for edge, uses in shared.items() if len(uses) == 2
             and max(math.dist(uses[0][vid], uses[1][vid]) for vid in edge) <= tolerance_m
+        }
+
+    def source_edge_jumps(mesh_faces):
+        """All source-edge UV jumps, not just pass/fail counts or samples."""
+        shared = defaultdict(list)
+        for face in mesh_faces:
+            for a, b in zip(face, face[1:] + face[:1]):
+                key = (min(a[0], b[0]), max(a[0], b[0]))
+                shared[key].append({a[0]: a[1], b[0]: b[1]})
+        return {
+            edge: max(math.dist(uses[0][vid], uses[1][vid]) for vid in edge)
+            for edge, uses in shared.items() if len(uses) == 2
         }
 
     before_continuous = continuous_source_edges(faces)
@@ -415,10 +449,21 @@ def phase_align_cylindrical_charts(faces, *, radius_m, excluded_face_indices=(),
         trial_audit = audit_shared_uv_edges(tentative, tolerance_m=tolerance_m)
         torn_protected = len(before_continuous - continuous_source_edges(tentative))
         protected_edge_regressions += torn_protected
+        # A net seam-count improvement can conceal a worse physical tear on
+        # another real source edge. Refuse trading one cut for another, even
+        # when the global maximum jump or the first sampled seams look fine.
+        current_jumps = source_edge_jumps(aligned)
+        trial_jumps = source_edge_jumps(tentative)
+        worsened_edges = sum(
+            trial_jumps[edge] > jump + tolerance_m
+            for edge, jump in current_jumps.items()
+        )
         if torn_protected:
             rejected_components.append("previously_continuous_edge_broken")
-        elif trial_audit["unapprovedInteriorUvSeams"] > current_audit["unapprovedInteriorUvSeams"]:
-            rejected_components.append("uv_seam_count_increased")
+        elif worsened_edges:
+            rejected_components.append("existing_source_edge_uv_jump_worsened")
+        elif trial_audit["unapprovedInteriorUvSeams"] >= current_audit["unapprovedInteriorUvSeams"]:
+            rejected_components.append("uv_seam_count_not_reduced")
         else:
             aligned = tentative
             current_audit = trial_audit
@@ -484,7 +529,8 @@ def align_metric_tangent_charts(faces, *, tangent_face_indices, tolerance_m=1e-5
             "rigidlyAlignedTangentChartFaces": len(aligned),
             "alignedSourcePolygonIndices": sorted(aligned),
             "unresolvedTangentChartFaces": len(tangent_indices - aligned),
-            "nonManifoldTopologyRejected": rejected_topology,
+            "nonManifoldTopologyRejected": rejected_topology and before["nonManifoldEdges"] > 0,
+            "inconsistentWindingTopologyRejected": rejected_topology and before["inconsistentWindingEdges"] > 0,
             "supplierRepeatVerified": False,
             "supplierGrainVerified": False,
             "seamLayoutApproved": False,
@@ -493,7 +539,7 @@ def align_metric_tangent_charts(faces, *, tangent_face_indices, tolerance_m=1e-5
 
     # Never edit charts on ambiguous edge adjacency. Genuine nonmanifold
     # geometry must be repaired upstream instead of masked by UV changes.
-    if before["nonManifoldEdges"]:
+    if before["nonManifoldEdges"] or before["inconsistentWindingEdges"]:
         return report(set(), rejected_topology=True)
 
     edge_uses = collections.defaultdict(list)
@@ -554,7 +600,10 @@ def align_metric_tangent_charts(faces, *, tangent_face_indices, tolerance_m=1e-5
                 for other, shared_edge in neighbours[index]:
                     previous = edge_jump(index, other, shared_edge)
                     resulting = edge_jump(index, other, shared_edge, changed)
-                    if previous <= tolerance_m and resulting > tolerance_m:
+                    # Do not trade two repaired seams for one enlarged tear.
+                    # Existing unapproved source edges also have to improve or
+                    # stay unchanged; continuity counts alone are insufficient.
+                    if resulting > previous + tolerance_m:
                         broken_good_edge = True
                         break
                     before_bad += previous > tolerance_m
