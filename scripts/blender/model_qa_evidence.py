@@ -57,22 +57,52 @@ def validate_native_preflight_report(report: object, *, allow_rejected: bool = F
         reasons.append("Native preflight bodyHeightMm fails the locked 1727±20mm silhouette")
     guide = report.get("identityGuideMeasurementsMm")
     if not isinstance(guide, dict):
-        reasons.append("Native preflight lacks measured hand/leg identity guides")
+        reasons.append("Native preflight lacks measured identity guides")
     else:
-        for key, target in (("handCenterSpacing", 500.0), ("legCenterSpacing", 210.0)):
+        # The native script measures these physical guide segments independently
+        # of garment meshes. Missing, coerced or nonfinite samples cannot certify
+        # the original studio-model identity.
+        guide_targets = (
+            ("LE_GUIDE_SHIRT_SHOULDER", 388.0, 2.0),
+            ("LE_GUIDE_SHIRT_WAIST", 294.0, 2.0),
+            ("LE_GUIDE_TROUSER_WAIST", 344.0, 2.0),
+            ("LE_GUIDE_LEFT_HEM", 64.0, 2.0),
+            ("LE_GUIDE_RIGHT_HEM", 64.0, 2.0),
+            ("LE_GUIDE_OUTER_ARM_SILHOUETTE", 574.0, 3.0),
+            ("LE_GUIDE_HEIGHT", 1727.0, 3.0),
+            ("handCenterSpacing", 500.0, 3.0),
+            ("legCenterSpacing", 210.0, 3.0),
+        )
+        for key, target, tolerance in guide_targets:
             value = guide.get(key)
-            if type(value) not in (int, float) or not math.isfinite(value) or abs(value - target) > 3.0:
-                reasons.append(f"Native preflight {key} guide spacing fails locked identity")
+            if type(value) not in (int, float) or not math.isfinite(value) or abs(value - target) > tolerance:
+                reasons.append(f"Native preflight {key} fails locked identity guide")
     fit = report.get("identityFitMeasurementsMm")
     if not isinstance(fit, dict):
         reasons.append("Native preflight lacks silhouette measurements")
     else:
-        for key, target, tolerance in (("sleeveCenterSpacingMm", 500.0, 36.0),
-                                       ("legCenterSpacingMm", 210.0, 24.0)):
+        # The original Blender preflight previously emitted warnings for
+        # unsampled garment widths and centerlines while still saying ready.
+        # Require every measured zone and reject drift even if ready=True.
+        fit_targets = (
+            ("shirtShoulderWidthMm", 388.0, 42.0),
+            ("shirtWaistWidthMm", 294.0, 38.0),
+            ("trouserWaistWidthMm", 344.0, 38.0),
+            ("leftHemWidthMm", 64.0, 28.0),
+            ("rightHemWidthMm", 64.0, 28.0),
+            ("shirtCenterOffsetMm", 0.0, 18.0),
+            ("trouserCenterOffsetMm", 0.0, 18.0),
+            ("sleeveCenterSpacingMm", 500.0, 36.0),
+            ("cuffWidthAsymmetryMm", 0.0, 14.0),
+            ("hemWidthAsymmetryMm", 0.0, 10.0),
+            ("legCenterSpacingMm", 210.0, 24.0),
+        )
+        for key, target, tolerance in fit_targets:
             value = fit.get(key)
             if type(value) not in (int, float) or not math.isfinite(value) or abs(value - target) > tolerance:
                 reasons.append(f"Native preflight {key} fails locked silhouette target")
     objects = report.get("objects")
+    counted_triangles = counted_vertices = 0
     if not isinstance(objects, dict):
         reasons.append("Native preflight has no evaluated garment objects")
     else:
@@ -81,6 +111,31 @@ def validate_native_preflight_report(report: object, *, allow_rejected: bool = F
             if not isinstance(entry, dict) or entry.get("present") is not True or entry.get("inExportCollection") is not True:
                 reasons.append(f"Native preflight missing canonical garment mesh {name}")
                 continue
+            # Do not accept ready=True with empty geometry, unapplied
+            # transforms or fabricated summary counts. These are native
+            # evaluated-mesh facts, not photographic/tailor acceptance.
+            for field in ("vertices", "polygons", "triangles"):
+                count = entry.get(field)
+                if type(count) is not int or count <= 0:
+                    reasons.append(f"Native preflight {name} has invalid {field}")
+            if entry.get("transformApplied") is not True:
+                reasons.append(f"Native preflight {name} has unapplied transforms")
+            if type(entry.get("uvLayers")) is not int or entry["uvLayers"] <= 0 or not isinstance(entry.get("activeUv"), str) or not entry["activeUv"].strip():
+                reasons.append(f"Native preflight {name} lacks an active UV layer")
+            ratio = entry.get("degenerateRatio")
+            degenerate = entry.get("degenerateFaces")
+            polygons = entry.get("polygons")
+            if (type(ratio) not in (int, float) or not math.isfinite(ratio)
+                or ratio < 0 or ratio > 0.001
+                or type(degenerate) is not int or degenerate < 0
+                or type(polygons) is not int or polygons <= 0
+                or degenerate > polygons
+                or abs(ratio - degenerate / polygons) > 1e-9):
+                reasons.append(f"Native preflight {name} has invalid degenerate geometry")
+            if type(entry.get("triangles")) is int and entry["triangles"] > 0:
+                counted_triangles += entry["triangles"]
+            if type(entry.get("vertices")) is int and entry["vertices"] > 0:
+                counted_vertices += entry["vertices"]
             uv = entry.get("uvQuality")
             if not isinstance(uv, dict):
                 reasons.append(f"Native preflight missing UV continuity evidence for {name}")
@@ -91,6 +146,19 @@ def validate_native_preflight_report(report: object, *, allow_rejected: bool = F
                     reasons.append(f"Native preflight {name} has unreviewed {key}")
             if type(uv.get("sharedUvEdges")) is not int or uv["sharedUvEdges"] <= 0:
                 reasons.append(f"Native preflight {name} lacks shared-edge UV evidence")
+    totals = report.get("totals")
+    if (not isinstance(totals, dict)
+        or type(totals.get("triangles")) is not int
+        or type(totals.get("vertices")) is not int
+        or totals["triangles"] != counted_triangles
+        or totals["vertices"] != counted_vertices
+        or type(totals.get("triangleBudget")) is not int
+        or type(totals.get("vertexBudget")) is not int
+        or totals["triangleBudget"] != 220_000
+        or totals["vertexBudget"] != 280_000
+        or counted_triangles <= 0 or counted_triangles > 220_000
+        or counted_vertices <= 0 or counted_vertices > 280_000):
+        reasons.append("Native preflight evaluated mesh totals exceed budget or contradict garment objects")
     intersections = report.get("boundaryIntersections")
     if not isinstance(intersections, dict):
         reasons.append("Native preflight lacks body/garment intersection evidence")
@@ -154,6 +222,23 @@ def sha256_file(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def require_unchanged_sources(sources: tuple[tuple[Path, str], ...]) -> None:
+    """Recheck the actual source files against pre-render SHA-256 snapshots.
+
+    Native preflight inspects the loaded Blender scene; a concurrent on-disk
+    .blend/photo/script replacement must not be bound to those older findings.
+    """
+    for path, expected_sha in sources:
+        try:
+            if (path.is_symlink() or not path.is_file()
+                or not isinstance(expected_sha, str)
+                or not HASH_PATTERN.fullmatch(expected_sha)
+                or sha256_file(path) != expected_sha):
+                raise RuntimeError(f"Native QA source changed or is unsafe: {path.name}")
+        except OSError as error:
+            raise RuntimeError(f"Native QA source cannot be rechecked: {path.name}") from error
 
 
 def png_dimensions(path: Path) -> tuple[int, int]:

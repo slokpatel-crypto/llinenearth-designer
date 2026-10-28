@@ -10,7 +10,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from model_qa_evidence import (VIEWS, MODEL_IDENTITY_ID, REFERENCE_IMAGE,
                                MANIFEST_VERSION, PREFLIGHT_GATE, PREFLIGHT_REPORT_FILE, GARMENT_OBJECTS,
-                               sha256_file, validate_candidate_manifest, run_native_preflight, validate_native_preflight_report)
+                               sha256_file, validate_candidate_manifest, run_native_preflight,
+                               validate_native_preflight_report, require_unchanged_sources)
 
 
 def chunk(kind, data):
@@ -67,14 +68,36 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
             "gate": PREFLIGHT_GATE, "ready": True, "reasons": [],
             "modelIdentity": {"id": MODEL_IDENTITY_ID, "referenceImage": REFERENCE_IMAGE, "locked": True},
             "referenceBody": "Body", "bodyHeightMm": 1727.0,
-            "identityGuideMeasurementsMm": {"handCenterSpacing": 500.0, "legCenterSpacing": 210.0},
+            "identityGuideMeasurementsMm": {
+                "LE_GUIDE_SHIRT_SHOULDER": 388.0,
+                "LE_GUIDE_SHIRT_WAIST": 294.0,
+                "LE_GUIDE_TROUSER_WAIST": 344.0,
+                "LE_GUIDE_LEFT_HEM": 64.0,
+                "LE_GUIDE_RIGHT_HEM": 64.0,
+                "LE_GUIDE_OUTER_ARM_SILHOUETTE": 574.0,
+                "LE_GUIDE_HEIGHT": 1727.0,
+                "handCenterSpacing": 500.0, "legCenterSpacing": 210.0,
+            },
             "requiredGarmentObjects": list(GARMENT_OBJECTS),
-            "identityFitMeasurementsMm": {"sleeveCenterSpacingMm": 500.0, "legCenterSpacingMm": 210.0},
+            "identityFitMeasurementsMm": {
+                "shirtShoulderWidthMm": 388.0, "shirtWaistWidthMm": 294.0,
+                "trouserWaistWidthMm": 344.0, "leftHemWidthMm": 64.0,
+                "rightHemWidthMm": 64.0, "shirtCenterOffsetMm": 0.0,
+                "trouserCenterOffsetMm": 0.0, "sleeveCenterSpacingMm": 500.0,
+                "cuffWidthAsymmetryMm": 0.0, "hemWidthAsymmetryMm": 0.0,
+                "legCenterSpacingMm": 210.0,
+            },
             "objects": {name: {"present": True, "inExportCollection": True,
+                               "vertices": 100, "polygons": 50, "triangles": 100,
+                               "degenerateFaces": 0, "degenerateRatio": 0.0,
+                               "uvLayers": 1, "activeUv": "UVMap",
+                               "transformApplied": True,
                                "uvQuality": {"invalidUvFaces": 0, "nonfiniteUvFaces": 0,
                                              "collapsedUvFaces": 0, "discontinuousSharedUvEdges": 0,
                                              "nonmanifoldUvEdges": 0, "sharedUvEdges": 50}}
                         for name in GARMENT_OBJECTS},
+            "totals": {"triangles": 600, "vertices": 600,
+                       "triangleBudget": 220000, "vertexBudget": 280000},
             "boundaryIntersections": {key: 0 for key in
                 ("bodyShirtTorso", "bodySleeveL", "bodySleeveR", "bodyTrouserWaist",
                  "bodyTrouserLegL", "bodyTrouserLegR", "shirtTrouserTuck")},
@@ -414,6 +437,117 @@ else:
                 self.assertTrue(any("native preflight report" in reason.lower()
                                     for reason in self.validate()))
 
+
+    def test_native_render_source_snapshots_reject_midrun_file_drift(self):
+        sources = (
+            (self.source, sha256_file(self.source)),
+            (self.photo, sha256_file(self.photo)),
+            (self.preflight, sha256_file(self.preflight)),
+        )
+        require_unchanged_sources(sources)
+        for path, _ in sources:
+            with self.subTest(path=path.name):
+                original = path.read_bytes()
+                path.write_bytes(original + b"changed during rendering")
+                with self.assertRaisesRegex(RuntimeError, "source changed"):
+                    require_unchanged_sources(sources)
+                path.write_bytes(original)
+        self.assertEqual(require_unchanged_sources(sources), None)
+        self.preflight.unlink()
+        self.preflight.symlink_to(self.source)
+        with self.assertRaisesRegex(RuntimeError, "source changed"):
+            require_unchanged_sources(sources)
+
+    def test_renderer_snapshots_and_rechecks_all_sources_before_publication(self):
+        renderer = Path(__file__).with_name("render-linen-earth-model-qa.py").read_text(encoding="utf-8")
+        self.assertIn("source_sha, reference_photo_sha, preflight_sha", renderer)
+        self.assertIn('"sourceBlendSha256": source_sha', renderer)
+        self.assertIn('"referencePhotoSha256": reference_photo_sha', renderer)
+        self.assertGreaterEqual(renderer.count("require_unchanged_sources(sources)"), 3)
+        self.assertLess(renderer.index("require_unchanged_sources(sources)"),
+                        renderer.index("        camera = setup_studio(mid_height, floor_z, options)"))
+        self.assertLess(renderer.rindex("require_unchanged_sources(sources)"),
+                        renderer.index("os.rename(staging, output)"))
+
+    def test_native_ready_rejects_missing_geometry_uv_or_false_mesh_totals(self):
+        self.assertEqual(validate_native_preflight_report(self.report), [])
+        panel = self.report["objects"]["ShirtTorsoFabric"]
+        for key, invalid in (
+            ("vertices", 0), ("vertices", True), ("polygons", -1),
+            ("triangles", "100"), ("transformApplied", False),
+            ("uvLayers", 0), ("activeUv", ""),
+            ("degenerateFaces", -1), ("degenerateFaces", 1),
+            ("degenerateRatio", float("nan")),
+            ("degenerateRatio", 0.002),
+        ):
+            original = panel[key]
+            panel[key] = invalid
+            with self.subTest(key=key, invalid=invalid):
+                self.assertTrue(validate_native_preflight_report(self.report))
+            panel[key] = original
+        for key, invalid in (
+            ("triangles", 601), ("vertices", 599),
+            ("triangleBudget", 220001), ("vertexBudget", 280001),
+        ):
+            original = self.report["totals"][key]
+            self.report["totals"][key] = invalid
+            with self.subTest(total=key):
+                self.assertTrue(any("totals" in reason for reason in
+                                    validate_native_preflight_report(self.report)))
+            self.report["totals"][key] = original
+        self.assertEqual(validate_native_preflight_report(self.report), [])
+
+    def test_native_ready_cannot_skip_any_silhouette_or_identity_guide_sample(self):
+        # A report saying ready=True is insufficient when Blender could not
+        # sample a waist, hem, cuff, centerline or canonical guide.
+        self.assertEqual(validate_native_preflight_report(self.report), [])
+        for field in tuple(self.report["identityFitMeasurementsMm"]):
+            for invalid in (None, True, "0", float("nan"), float("inf")):
+                with self.subTest(kind="fit", field=field, invalid=invalid):
+                    original = self.report["identityFitMeasurementsMm"][field]
+                    self.report["identityFitMeasurementsMm"][field] = invalid
+                    self.assertTrue(any(field in reason for reason in
+                                        validate_native_preflight_report(self.report)))
+                    self.report["identityFitMeasurementsMm"][field] = original
+            original = self.report["identityFitMeasurementsMm"].pop(field)
+            with self.subTest(kind="missing-fit", field=field):
+                self.assertTrue(any(field in reason for reason in
+                                    validate_native_preflight_report(self.report)))
+            self.report["identityFitMeasurementsMm"][field] = original
+        for field in tuple(self.report["identityGuideMeasurementsMm"]):
+            original = self.report["identityGuideMeasurementsMm"].pop(field)
+            with self.subTest(kind="missing-guide", field=field):
+                self.assertTrue(any(field in reason for reason in
+                                    validate_native_preflight_report(self.report)))
+            self.report["identityGuideMeasurementsMm"][field] = original
+        self.assertEqual(validate_native_preflight_report(self.report), [])
+
+    def test_native_ready_cannot_accept_out_of_tolerance_silhouette_receipts(self):
+        for field, invalid in (
+            ("shirtShoulderWidthMm", 431.0),
+            ("shirtWaistWidthMm", 333.0),
+            ("trouserWaistWidthMm", 383.0),
+            ("leftHemWidthMm", 93.0),
+            ("rightHemWidthMm", 93.0),
+            ("shirtCenterOffsetMm", 19.0),
+            ("trouserCenterOffsetMm", -19.0),
+            ("cuffWidthAsymmetryMm", 15.0),
+            ("hemWidthAsymmetryMm", 11.0),
+        ):
+            original = self.report["identityFitMeasurementsMm"][field]
+            self.report["identityFitMeasurementsMm"][field] = invalid
+            with self.subTest(field=field):
+                self.assertTrue(any(field in reason for reason in
+                                    validate_native_preflight_report(self.report)))
+            self.report["identityFitMeasurementsMm"][field] = original
+        self.assertEqual(validate_native_preflight_report(self.report), [])
+
+    def test_native_script_does_not_warn_only_on_missing_silhouette_samples(self):
+        source = Path(__file__).with_name("preflight-linen-earth-officewear.py").read_text(encoding="utf-8")
+        self.assertIn("required_fit_samples = (", source)
+        self.assertIn("required_identity_guides = (", source)
+        self.assertIn('reasons.append(f"Native silhouette sample {key} is missing or nonfinite.")', source)
+        self.assertIn('reasons.append(f"Native identity guide {key} is missing or nonfinite.")', source)
 
     def test_native_report_cannot_omit_body_height_or_spoof_identity_guides(self):
         original = json.loads(json.dumps(self.report))

@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from model_qa_evidence import (
     MANIFEST_VERSION, MODEL_IDENTITY_ID, PREFLIGHT_GATE, REFERENCE_IMAGE, VIEWS,
     run_native_preflight, sha256_file, validate_candidate_manifest,
+    require_unchanged_sources,
 )
 
 import bpy
@@ -154,12 +155,18 @@ def main():
     if output.exists() or output.is_symlink():
         raise RuntimeError("Choose a new, non-existing --output-dir for each QA candidate.")
     preflight_script = Path(__file__).with_name("preflight-linen-earth-officewear.py")
-    preflight_sha = sha256_file(preflight_script)
+    # Bind the same three physical files before scene inspection, not only
+    # after the renderer has already generated its evidence.
+    sources = (
+        (source, sha256_file(source)),
+        (reference_photo, sha256_file(reference_photo)),
+        (preflight_script, sha256_file(preflight_script)),
+    )
+    source_sha, reference_photo_sha, preflight_sha = (digest for _, digest in sources)
     native_report = run_native_preflight(preflight_script, allow_rejected=options.diagnostic_rejected)
     if options.diagnostic_rejected and native_report.get("ready") is True:
         raise RuntimeError("Diagnostic mode is only for a rejected native scene; use normal QA mode for a passing scene.")
-    if sha256_file(preflight_script) != preflight_sha:
-        raise RuntimeError("Native preflight changed while the scene was inspected.")
+    require_unchanged_sources(sources)
     if bpy.data.is_dirty:
         raise RuntimeError("Native preflight left unsaved scene edits; refuse to bind frames to the saved .blend.")
 
@@ -177,8 +184,8 @@ def main():
             "referenceImage": REFERENCE_IMAGE,
             "modelIdentityId": IDENTITY_ID,
             "sourceBlendName": source.name,
-            "sourceBlendSha256": sha256_file(source),
-            "referencePhotoSha256": sha256_file(reference_photo),
+            "sourceBlendSha256": source_sha,
+            "referencePhotoSha256": reference_photo_sha,
             "nativePreflightGate": PREFLIGHT_GATE,
             "nativePreflightPassed": not options.diagnostic_rejected,
             "rejectedDiagnostic": options.diagnostic_rejected,
@@ -210,6 +217,9 @@ def main():
                 "view": label, "yawDeg": yaw_deg, "file": filename,
                 "sha256": sha256_file(destination),
             })
+        # A source changed during the four-angle render must invalidate the
+        # entire candidate, even if the final manifest could hash the new file.
+        require_unchanged_sources(sources)
         reasons = validate_candidate_manifest(
             manifest, staging, source=source, preflight_script=preflight_script,
             reference_photo=reference_photo,
@@ -220,6 +230,7 @@ def main():
         (staging / "model-qa-manifest.json").write_text(
             json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
         )
+        require_unchanged_sources(sources)
         if output.exists() or output.is_symlink():
             raise RuntimeError("QA destination appeared during render; refusing to overwrite it.")
         # Publish the complete four-angle set and manifest together. Failed
