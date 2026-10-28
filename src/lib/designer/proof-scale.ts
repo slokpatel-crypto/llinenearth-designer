@@ -73,9 +73,9 @@ export type RealismAssessment={
   recordedAt?:string;
 };
 
-export function summarizeIndependentRealism(assessments:RealismAssessment[]){
+export function summarizeIndependentRealism(assessments:unknown){
   const latest=new Map<string,RealismAssessment>();
-  for(const item of assessments){
+  for(const item of Array.isArray(assessments)?assessments:[]){
     if(!item||typeof item!=="object"||Array.isArray(item)) continue;
     // Reviewer identity and the closed 1..5 rating must be genuine JSON types.
     // Coercing object IDs or rounding 3.5/4.5 would fabricate independent proof.
