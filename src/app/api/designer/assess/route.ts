@@ -19,7 +19,8 @@ import type { MeasurementProfile } from "@/lib/measurements";
 import { normalizeMeasuredBodyInput } from "@/lib/designer/measurement-input-validation";
 import { validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
-import { toLegacyStyle, validateStyleSpecV2, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
+import { fromLegacyStyle, toLegacyStyle, validateStyleSpecV2, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
+import { creativeDirectionMatchesSelection } from "@/lib/designer/creative-selection";
 import { validBodyPreviewProfile, type BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { loadApprovedHouseEaseModel } from "@/lib/designer/house-ease-server";
 
@@ -153,6 +154,15 @@ export async function POST(request:Request) {
     const observations=safeObservations(body.observations);
     const creative=safeCreative(body.creative);
     if(body.creative&&!creative)return NextResponse.json({error:"Invalid creative recipe."},{status:400});
+    // Revalidate the complete creative recipe against the live catalogue, not
+    // merely the fabric IDs. A stale same-ID roll cannot enter a new tech pack.
+    if(creative&&!creativeDirectionMatchesSelection(creative,{
+      shirtId,pantId,shirt,pant,occasion,
+      climate:body.context.climate,intention:body.context.intention,
+      style:resolvedStyle,styleSpec:styleSpec??fromLegacyStyle(resolvedStyle),
+    }))return NextResponse.json({
+      error:"Creative direction no longer matches the selected fabric revision, context or cut.",
+    },{status:409});
     if(creative?.craft){const canonical=resolveCraftFabrics(creative.craft,fabrics,shirtId,pantId);if(!canonical)return NextResponse.json({error:"Craft fabrics are unavailable or do not match this look."},{status:409});creative.craft=canonical;}
     const visualReview=safeVisualReview(body.creativeVisualReview);
     const recommendation=evaluateDesignerCombo(shirt,pant,occasion,resolvedStyle,undefined,body.context,styleSpec);
