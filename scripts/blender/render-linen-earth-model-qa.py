@@ -46,8 +46,11 @@ def args():
 
 def verify_source():
     source = Path(bpy.data.filepath)
-    if not source.is_file() or not source.name.endswith(".blend"):
+    if not source.is_file() or source.is_symlink() or not source.name.endswith(".blend"):
         raise RuntimeError("Load the actual identity-locked Linen Earth .blend before rendering.")
+    # An on-disk SHA cannot identify unsaved in-memory garment edits.
+    if bpy.data.is_dirty:
+        raise RuntimeError("Unsaved Blender scene edits cannot be bound to the source .blend SHA; save and reload first.")
     scene = bpy.context.scene
     if (scene.get("linen_earth_model_identity_id") != IDENTITY_ID
         or scene.get("linen_earth_model_reference_image") != REFERENCE_IMAGE
@@ -151,6 +154,8 @@ def main():
     run_native_preflight(preflight_script)
     if sha256_file(preflight_script) != preflight_sha:
         raise RuntimeError("Native preflight changed while the scene was inspected.")
+    if bpy.data.is_dirty:
+        raise RuntimeError("Native preflight left unsaved scene edits; refuse to bind frames to the saved .blend.")
 
     output.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".linen-earth-model-qa-", dir=output.parent))

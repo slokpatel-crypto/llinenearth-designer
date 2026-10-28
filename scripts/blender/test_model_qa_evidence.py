@@ -131,6 +131,30 @@ class CandidateFourAngleEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "main"):
             run_native_preflight(script)
 
+    def test_unsaved_blender_scene_cannot_claim_saved_source_digest(self):
+        code = """
+import runpy, sys, types
+bpy = types.ModuleType("bpy")
+bpy.data = types.SimpleNamespace(filepath=sys.argv[2], is_dirty=True)
+sys.modules["bpy"] = bpy
+mathutils = types.ModuleType("mathutils")
+mathutils.Vector = object
+sys.modules["mathutils"] = mathutils
+namespace = runpy.run_path(sys.argv[1], run_name="candidate_import_only")
+try:
+    namespace["verify_source"]()
+except RuntimeError as error:
+    assert "Unsaved Blender scene" in str(error)
+else:
+    raise AssertionError("Unsaved scene incorrectly accepted")
+"""
+        renderer = Path(__file__).with_name("render-linen-earth-model-qa.py")
+        result = subprocess.run(
+            [sys.executable, "-I", "-c", code, str(renderer), str(self.source)],
+            cwd=self.directory, capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_blender_script_resolves_local_helper_under_isolated_python(self):
         # Blender's --python runner may execute a file without adding its
         # directory to sys.path. Simulate that with isolated Python and bpy stubs.
