@@ -1068,5 +1068,39 @@ class CandidateUvAuditTests(unittest.TestCase):
         self.assertFalse(receipt["seamLayoutApproved"])
 
 
+
+    def test_phase_alignment_rejects_same_direction_source_edge(self):
+        import math
+        period = 2 * math.pi * .1
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            # Shared edge 1 -> 2 traversed in the SAME direction.
+            [(1, (.02-period, 0)), (2, (.02-period, .05)),
+             (3, (.04-period, .05))],
+        ]
+        self.assertEqual(audit.audit_shared_uv_edges(faces)["inconsistentWindingEdges"], 1)
+        unchanged, receipt = audit.phase_align_cylindrical_charts(
+            faces, radius_m=.1
+        )
+        self.assertEqual(unchanged, faces)
+        self.assertEqual(receipt["phaseRollbackReason"], "invalid_source_topology")
+        self.assertEqual(receipt["phaseShiftedFaces"], 0)
+        self.assertFalse(receipt["productionApproved"])
+
+    def test_tangent_alignment_rejects_same_direction_source_edge(self):
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            # Rigid translation would align, but the source winding is invalid.
+            [(1, (0, 0)), (2, (0, .05)), (3, (.02, .05))],
+        ]
+        unchanged, receipt = audit.align_metric_tangent_charts(
+            faces, tangent_face_indices=[1]
+        )
+        self.assertEqual(unchanged, faces)
+        self.assertTrue(receipt["inconsistentWindingTopologyRejected"])
+        self.assertEqual(receipt["rigidlyAlignedTangentChartFaces"], 0)
+        self.assertFalse(receipt["seamLayoutApproved"])
+
+
 if __name__ == "__main__":
     unittest.main()
