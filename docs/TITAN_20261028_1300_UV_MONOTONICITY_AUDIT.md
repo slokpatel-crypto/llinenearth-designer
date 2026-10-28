@@ -11,6 +11,9 @@ The full-turn cylindrical phase alignment guarded previously continuous edges an
 
 The local tangent chart aligner previously used a greedy seam-count gain and protected only already continuous edges. A rigid translation fixing two torn edges while enlarging a third was therefore accepted. Every adjacent edge must now be non-worsening; existing source tears are not fungible. Rigid metric UV scale, 8-degree grain-rotation cap, no invented supplier repeat, and nonmanifold rejection remain unchanged.
 
+## Additional topology hardening
+Phase and tangent UV aligners now reject ambiguous shared source edges when face winding is inconsistent or edges are nonmanifold. The phase receipt records `invalid_source_topology` without changing UVs; tangent receipts distinguish winding from nonmanifold rejection. New negative fixtures exercise same-direction shared-edge winding. This is source-mesh safety, not a claim of physical seam approval.
+
 ## Regressions and verification
 New negative fixtures cover a periodic phase candidate that trades one source tear for a larger one, and a tangent face with two agreeing anchors plus one contradictory anchor. Existing positive exact-period and bounded rigid-alignment tests remain. Run `python -m unittest discover -s tests/python`, matching-head CI, and original-source Blender author/preflight. A green software CI does **not** establish sewn seam correctness, fabric repeat, four-angle photographic parity or tailor acceptance.
 
