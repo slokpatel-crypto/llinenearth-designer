@@ -224,6 +224,23 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def require_unchanged_sources(sources: tuple[tuple[Path, str], ...]) -> None:
+    """Recheck the actual source files against pre-render SHA-256 snapshots.
+
+    Native preflight inspects the loaded Blender scene; a concurrent on-disk
+    .blend/photo/script replacement must not be bound to those older findings.
+    """
+    for path, expected_sha in sources:
+        try:
+            if (path.is_symlink() or not path.is_file()
+                or not isinstance(expected_sha, str)
+                or not HASH_PATTERN.fullmatch(expected_sha)
+                or sha256_file(path) != expected_sha):
+                raise RuntimeError(f"Native QA source changed or is unsafe: {path.name}")
+        except OSError as error:
+            raise RuntimeError(f"Native QA source cannot be rechecked: {path.name}") from error
+
+
 def png_dimensions(path: Path) -> tuple[int, int]:
     """Check bounded, decodable Blender PNG scanlines as well as chunk integrity."""
     with path.open("rb") as handle:
