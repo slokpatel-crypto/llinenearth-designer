@@ -7,6 +7,7 @@ on:
       - 'tests/python/**'
       - 'tests/blender/**'
       - 'scripts/qa/model-reference-contact-sheet.py'
+      - 'scripts/qa/model_turntable_evidence.py'
       - 'docs/REALISTIC_MODEL_SOURCE_PLAN.md'
       - '.github/workflows/model-source-candidate.yml'
   workflow_dispatch:
@@ -30,7 +31,7 @@ jobs:
 
       - name: Verify candidate math and Python syntax
         run: |
-          python3 -m py_compile scripts/blender/*.py
+          python3 -m py_compile scripts/blender/*.py scripts/qa/*.py
           python3 -m unittest discover -s tests/python -p 'test_*.py' -v
 
       - name: Install headless Blender runtime dependencies
@@ -122,6 +123,8 @@ jobs:
           "$RUNNER_TEMP/le-qa-pillow/bin/python" scripts/qa/model-reference-contact-sheet.py \
             --reference public/designer/studio-tucked.webp \
             --candidate artifacts/model-qa/linen-earth-model-front.png \
+            --manifest artifacts/model-qa/model-qa-manifest.json \
+            --source-blend .cache/linen-earth/linen-earth-officewear-authored.blend \
             --output artifacts/model-qa/original-vs-3d-UNAPPROVED.jpg
 
       - name: Keep production candidate gate closed on failed preflight
