@@ -171,6 +171,9 @@ assert torso_safe["nativeWorldSpaceCollisionFree"] is True, torso_safe
 assert torso_safe["trials"][0]["shirtTorsoPairsAtOriginal"] == [2, 2]
 assert torso_safe["trials"][0]["shirtTorsoPairsAfterRepair"] == [3, 3]
 assert torso_safe["trials"][0]["shirtTorsoContactNotWorsened"] is False
+assert torso_safe["trials"][0]["boundedShirtTorsoContactCorrections"] == {}, (
+    "Preexisting sewn-armhole contact must never trigger a whole-seam repair"
+)
 # Fine probes after the selected safe 10-mm trial are rejected; the final
 # trial list entry is not the retained geometry. Trust only the independently
 # rechecked selected-geometry receipt, never the last attempted probe.
