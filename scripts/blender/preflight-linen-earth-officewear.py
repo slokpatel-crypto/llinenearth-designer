@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from uv_candidate_audit import audit_shared_uv_edges, audit_uv_triangles, classify_unapproved_uv_seams, validate_recomputed_source_cut_evidence, verify_evaluated_tube_radius_m, validate_independent_uv_hotspots
 from sleeve_stance_math import source_arm_band_geometry, optimistic_sleeve_spacing_budget
-from sleeve_torso_gate import validate_sleeve_torso_receipts
+from sleeve_torso_gate import validate_sleeve_torso_receipts, validate_outer_cuff_torso_receipts
 
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
@@ -777,8 +777,26 @@ def main():
                 for sleeve in source_sleeves
             ]
             try:
+                # The source author may perform a second, exterior-only
+                # contour AFTER the whole-sleeve shift. Verify the final mesh
+                # against the second-stage receipt, and its baseline against
+                # the first-stage selected receipt. Checking only the first
+                # receipt against final geometry can reject safe contours or
+                # silently misattribute which source stage was measured.
+                outer_receipts = [
+                    sleeve.get("linen_earth_sleeve_outer_cuff_taper_evidence_json")
+                    if sleeve is not None else None
+                    for sleeve in source_sleeves
+                ]
+                whole_stage_measured = torso_sleeve_pairs
+                if any(value is not None for value in outer_receipts):
+                    outer_contact_receipt = validate_outer_cuff_torso_receipts(
+                        outer_receipts, torso_sleeve_pairs
+                    )
+                    whole_stage_measured = outer_contact_receipt["shirtTorsoPairsAtOriginal"]
+                    boundary_intersections["shirtTorsoOuterCuffContactReceipt"] = outer_contact_receipt
                 contact_receipt = validate_sleeve_torso_receipts(
-                    receipts, torso_sleeve_pairs
+                    receipts, whole_stage_measured
                 )
                 boundary_intersections["shirtTorsoSleeveContactReceipt"] = contact_receipt
             except ValueError as error:
