@@ -91,6 +91,43 @@ class SleeveStanceTests(unittest.TestCase):
         self.assertFalse(result["bodyContactOrFitApproved"])
         self.assertFalse(result["productionApproved"])
 
+    def test_exterior_cuff_candidate_preserves_inside_half_and_source_pose(self):
+        outer = module.candidate_outer_cuff_taper_mm
+        self.assertEqual(outer("ShirtSleeveLFabric", .54, 1.0, 30), 30)
+        self.assertEqual(outer("ShirtSleeveRFabric", .54, 1.0, 30), -30)
+        self.assertEqual(outer("ShirtSleeveLFabric", .54, .45, 30), 0)
+        self.assertEqual(outer("ShirtSleeveRFabric", .54, .20, 30), 0)
+        self.assertEqual(outer("ShirtSleeveLFabric", .79, 1.0, 30), 0)
+        self.assertEqual(outer("ShirtSleeveLFabric", .54, 1.0, 0), 0)
+        samples = [outer("ShirtSleeveLFabric", .54, j/100, 36)
+                   for j in range(101)]
+        self.assertTrue(all(0 <= a <= b <= 36
+                            for a, b in zip(samples, samples[1:])))
+        # Inboard source shell stays at its original body-contact-safe XYZ.
+        self.assertTrue(all(value == 0 for value in samples[:46]))
+        # No signed move can increase outer width away from the body.
+        self.assertTrue(all(outer("ShirtSleeveRFabric", .54, j/100, 36) <= 0
+                            for j in range(101)))
+
+    def test_exterior_cuff_candidates_reject_untrusted_geometry_parameters(self):
+        func = module.candidate_outer_cuff_taper_mm
+        for panel, height, outside, requested in (
+            ("ShirtTorsoFabric", .54, 1, 30),
+            ("ShirtSleeveLFabric", float("nan"), 1, 30),
+            ("ShirtSleeveLFabric", .54, float("inf"), 30),
+            ("ShirtSleeveLFabric", .54, 1, float("nan")),
+            ("ShirtSleeveLFabric", .54, True, 30),
+            ("ShirtSleeveRFabric", .54, "1", 30),
+            ("ShirtSleeveRFabric", 1.1, 1, 30),
+            ("ShirtSleeveRFabric", .54, -.01, 30),
+            ("ShirtSleeveRFabric", .54, 1.01, 30),
+            ("ShirtSleeveRFabric", .54, 1, 36.1),
+            ("ShirtSleeveLFabric", .54, 1, -1),
+        ):
+            with self.subTest(panel=panel, height=height, outside=outside,
+                              requested=requested), self.assertRaises(ValueError):
+                func(panel, height, outside, requested)
+
     def test_sleeve_budget_never_equates_numeric_reach_to_real_fit(self):
         result = module.optimistic_sleeve_spacing_budget(542, 11)
         self.assertTrue(result["guideNumericallyReachableWithinExistingContourCap"])
