@@ -84,6 +84,16 @@ async function verifyDesignerFitContracts(baseURL='http://127.0.0.1:3000') {
       results.push({mode,label,status:response.status});
     }
   }
+  // A missing fabric must not mask malformed explicit fit evidence. The
+  // client must correct the tape reading before any catalogue lookup.
+  const invalidFirst=await fetch(`${baseURL}/api/designer/assess`,{
+    method:'POST',
+    headers:{'content-type':'application/json','x-forwarded-for':'192.0.2.247'},
+    body:JSON.stringify({...selection,shirtId:'TITAN-MISSING-FABRIC',measurements:{...measurements,shirt:{chest:-1}}}),
+  });
+  const invalidData=await invalidFirst.json();
+  assert.equal(invalidFirst.status,422,`fit input before catalogue lookup: ${invalidData.error||'unexpected response'}`);
+  results.push({mode:'assessment',label:'malformed fit overrides missing catalogue',status:422});
   console.log(`PASS ${results.length} actual HTTP fit-input contracts across assessment, search and both brief modes`);
   return results;
 }
