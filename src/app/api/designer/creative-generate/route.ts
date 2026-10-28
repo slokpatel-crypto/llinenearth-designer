@@ -16,7 +16,8 @@ import {
 import type { CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { loadDesignerCreativeContext } from "@/lib/designer/creative-context";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
-import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
+import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
+import { attachCatalogFabricPhysics } from "@/lib/designer/fabric-physics-catalog";
 
 import { attachCreativeCraft, craftClarifications, DEFAULT_CRAFT_REQUEST, resolveCraftRequest, reviseCreativeCraft, validCraftRequest, validCreativeCraft, resolveCraftFabrics } from "@/lib/designer/creative-spec";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -103,7 +104,10 @@ export async function POST(request:Request) {
     const metadata=await loadDesignerFabricMetadata();
     const stock=(await applyLiveVerifiedStockAvailability(applyDesignerFabricMetadataToStock(metadata))).stock.filter((fabric)=>fabric.inStock);
     const baseFabrics=stock.map(designerFabricFromStock);
-    const {fabrics}=await enrichDesignerFabricsWithIntelligence(baseFabrics);
+    // Match /api/designer/catalog exactly: Creative Lab must generate from the
+    // same reviewed physical/provenance snapshot the customer is previewing.
+    const intelligence=await loadDesignerFabricIntelligence(baseFabrics.map((fabric)=>fabric.id));
+    const fabrics=baseFabrics.map((fabric)=>attachCatalogFabricPhysics(fabric,intelligence[fabric.id]));
     const shirt=fabrics.find((fabric)=>fabric.id===shirtId && fabric.allowedGarments.includes("shirt"));
     const pant=fabrics.find((fabric)=>fabric.id===pantId && fabric.allowedGarments.includes("pant"));
     if(!shirt || !pant) return NextResponse.json({error:"The selected fabrics are no longer available in the current Designer catalogue."},{status:409});
