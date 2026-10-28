@@ -8,6 +8,7 @@ counts from evaluated meshes. This is not tailor seam or photo approval.
 from __future__ import annotations
 
 import json
+import math
 
 
 def _unique_keys(pairs):
@@ -59,6 +60,15 @@ def validate_sleeve_torso_receipts(receipt_json_by_sleeve, measured_pairs):
     if (receipt.get("nativeWorldSpaceCollisionFree") is not True or
             receipt.get("shirtTorsoContactNotWorsened") is not True):
         raise ValueError("Sleeve contact author did not approve the collision trial")
+    requested = receipt.get("requestedMmPerSleeve")
+    selected_shift = receipt.get("selectedMmPerSleeve")
+    for name, value in (("requestedMmPerSleeve", requested),
+                        ("selectedMmPerSleeve", selected_shift)):
+        if (type(value) not in (int, float) or not math.isfinite(value)
+                or not 0 <= value <= 22):
+            raise ValueError(f"{name} must be a bounded finite source shift")
+    if selected_shift > requested:
+        raise ValueError("Selected sleeve shift exceeds the author request")
     baseline = _pairs(receipt.get("shirtTorsoPairsAtOriginal"), "original sleeve/torso")
     selected = _pairs(receipt.get("shirtTorsoPairsAtSelected"), "selected sleeve/torso")
     if any(after > before for before, after in zip(baseline, selected)):
