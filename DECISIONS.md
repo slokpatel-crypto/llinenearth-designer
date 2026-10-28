@@ -557,3 +557,9 @@ Architecture and product decisions that must persist across coding sessions.
 **Validation state:** New CI/npm/TS tests must complete on the latest SHA. Full native six-panel collision and 4-angle review, posture/identity parity, 0 UV fallbacks, precise photo comparison, stock truth, verified supplier repeat and owner/tailor approval still block publication. Do not merge or deploy this draft.
 
 **Native leg-to-leg countercheck (run 39108423917, 2026-10-18):** the formerly untested 7mm-per-leg inward shape passed the 210.10mm centre spacing and skin/body contact checks but **caused 156 actual left-vs-right trouser fabric BVH triangle intersections**. This is a rejected candidate, not a pass. The new cross-leg gate correctly detected it. The default inward trial is now limited to **3mm/side**, and still requires an independent zero-collision Blender run; do not infer success from the earlier 210.10mm figure. The original body, photo reference, pattern scale thresholds and supplier flags remain unchanged.
+
+## 2026-10-28 — Four-angle source QA must be bound to one original scene
+
+**Decision:** human-review contact sheets from the isolated native Blender model are only archived after checking the complete four-view manifest against the exact source .blend digest and all four rendered PNG digests, dimensions and yaw identities. A front PNG alone is insufficient; missing, duplicated, altered or source-mismatched views fail closed. The native workflow checks full PNG decodability.
+
+**Scope:** the added manifest verification is an internal QA artifact contract, not a production schema migration. Existing public model identity, photographic Designer, scene geometry and saved designs remain unchanged. Diagnostic render colors and software hashes are not fabric color/repeat calibration, visual parity, tailor signoff or production authorization. See `docs/TITAN_20261028_1400_FOUR_ANGLE_EVIDENCE_AUDIT.md`.
