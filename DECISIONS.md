@@ -1,3 +1,9 @@
+## 2026-10-29 — Finished-garment QC is a typed, receipt-confirmed physical release gate
+
+**Decision:** A forged/coerced QC decision, unsupported defect, unknown or nonboolean check, or truncated inspection note must not become evidence that a physical garment passed. Require literal approved/rework, supported boolean check IDs and defect tags, note <=1200 characters, named inspector and physical inspection reference. Before privileged RPC, enforce same-origin JSON with a 16 KiB actual streamed limit and exact UUID production order identity. A valid returned inspection UUID is required before the UI can report success; malformed/oversized JSON returns 400/413, and responses are private no-store. Preserve the existing operator form payloads and source model/photo.
+
+**Limits:** A validated receipt is not real physical garment inspection, actual tailor signoff, stock proof or a verified Supabase session. No schema, customer data, paid AI, deployment or merge changes; exact-head CI and live human acceptance remain separate gates.
+
 # DECISIONS.md — Linen Earth
 
 ## 2026-10-29 — Human outcome learning evidence is typed and receipt-confirmed

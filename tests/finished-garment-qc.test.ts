@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { FINISHED_GARMENT_QC_CHECKS, normalizeFinishedGarmentQcDraft, latestQcDecision } from "../src/lib/designer/finished-garment-qc.ts";
 
 function passingChecks(){
@@ -26,7 +27,7 @@ test("rework requires a recorded reason",()=>{
 
 test("approved QC normalizes fields",()=>{
   const result=normalizeFinishedGarmentQcDraft({
-    decision:"approved",checks:passingChecks(),defects:["stitching","not-real"],
+    decision:"approved",checks:passingChecks(),defects:["stitching","stitching"],
     note:" Final inspection passed. ",inspector:" SP ",inspectionReference:" Tailor QC sheet 42 ",
   });
   assert.equal(result.decision,"approved");
@@ -53,4 +54,37 @@ test("QC refuses lossy or coerced physical inspector identities and references",
   }
   assert.equal(normalizeFinishedGarmentQcDraft({...base,inspector:"Q".repeat(120)}).inspector.length,120);
   assert.equal(normalizeFinishedGarmentQcDraft({...base,inspectionReference:"R".repeat(240)}).inspectionReference.length,240);
+});
+
+test("finished-garment QC rejects coerced or silently discarded release evidence",()=>{
+  const base={decision:"approved",checks:passingChecks(),defects:[],note:"Checked against garment",inspector:"Quality Checker",inspectionReference:"QC sheet 123"};
+  for(const decision of [["approved"],{value:"approved"},true,null,1]){
+    assert.throws(()=>normalizeFinishedGarmentQcDraft({...base,decision}),/QC decision/,JSON.stringify(decision));
+  }
+  for(const note of [["Looks fine"],{text:"Looks fine"},false,42,"x".repeat(1201)]){
+    assert.throws(()=>normalizeFinishedGarmentQcDraft({...base,note}),/QC note/,JSON.stringify(note));
+  }
+  for(const defects of [[["stitching"]],["invented"],["stitching",true],["stitching".repeat(30)],"stitching",Array(13).fill("stitching")]){
+    assert.throws(()=>normalizeFinishedGarmentQcDraft({...base,defects}),/QC defects/,JSON.stringify(defects));
+  }
+  for(const checks of [[true],{recipe_match:"true"},{invented:true},{...passingChecks(),fabric_match:1},null]){
+    assert.throws(()=>normalizeFinishedGarmentQcDraft({...base,checks}),/QC checks/,JSON.stringify(checks));
+  }
+  assert.equal(normalizeFinishedGarmentQcDraft({...base,note:"n".repeat(1200)}).note.length,1200);
+  assert.deepEqual(normalizeFinishedGarmentQcDraft({...base,defects:["stitching","stitching"]}).defects,["stitching"]);
+});
+
+test("privileged finished-garment QC endpoint refuses forged identities and unconfirmed database receipts",()=>{
+  const source=readFileSync("src/app/api/operator/garment-qc/route.ts","utf8");
+  const http=readFileSync("scripts/verify-customer-production-boundary.cjs","utf8");
+  assert.match(source,/secureJsonRequestError\(request,16384\)/);
+  assert.match(source,/readSecureJsonObject\(request,16384\)/);
+  assert.match(source,/normalizeVaultId\(body\.orderId\)/);
+  assert.match(source,/normalizeVaultId\(receipt\)/);
+  assert.match(source,/if\(!inspectionId\) return respond\(/);
+  assert.match(source,/error instanceof SecureJsonBodyTooLarge/);
+  assert.match(source,/error instanceof SecureJsonBodyInvalid/);
+  assert.match(source,/private, no-store/);
+  assert.doesNotMatch(source,/String\(body\.(?:action|orderId)/);
+  assert.match(http,/\/api\/operator\/garment-qc/);
 });
