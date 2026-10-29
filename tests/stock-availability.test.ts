@@ -129,3 +129,10 @@ test("live RPC adapter never coerces non-string fabric IDs to catalogue IDs",()=
   assert.match(source,/fabric_id:typeof row\.fabric_id==="string"\?row\.fabric_id:""/);
   assert.doesNotMatch(source,/fabric_id:String\(row\.fabric_id/);
 });
+
+
+test("customer stock catalogue response is never publicly cached",()=>{
+  const route=readFileSync(new URL("../src/app/api/designer/catalog/route.ts",import.meta.url),"utf8");
+  assert.match(route,/loadActiveDesignerCatalogueFabrics\(\)/);
+  assert.match(route,/cache-control":"private, no-store"/);
+});

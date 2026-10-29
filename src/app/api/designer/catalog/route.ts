@@ -12,5 +12,5 @@ export async function GET() {
     calibrated:live.calibratedFabrics>0,
     calibratedFabrics:live.calibratedFabrics,
     verifiedStockFabrics:live.verifiedStockFabrics,
-  });
+  },{headers:{"cache-control":"private, no-store"}});
 }
