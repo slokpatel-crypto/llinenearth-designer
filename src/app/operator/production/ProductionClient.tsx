@@ -251,7 +251,7 @@ export default function ProductionClient(){
         <div><span>ORDERS</span><h2>Production status.</h2></div>
         {!orders.length&&<p>No production orders recorded yet.</p>}
         {orders.map((item)=>{
-          const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id);
+          const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id,250);
           const nextStatuses=(ORDER_TRANSITIONS[item.status as ProductionOrderStatus]||[]).filter((status)=>status!=="delivered"||deliveryQcVerified);
           const customerOutcome=customerOutcomes.find((outcome)=>outcome.order_id===item.order_id);
           const learningContext=learningContexts.find((context)=>context.order_id===item.order_id);

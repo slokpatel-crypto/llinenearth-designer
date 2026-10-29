@@ -1,3 +1,8 @@
+## 2026-10-30 — J5 saturated global QC pages cannot authorize delivery (stacked draft)
+- [x] Reproduced that a full `finished_garment_qc_list` page (500 server / 250 operator UI) could be accepted as proof of latest-by-order QC even though the list is capped and may omit relevant history.
+- [x] Fail closed at the exact configured row cap and on invalid caps in the shared latest-QC guard; wire 500 to the privileged delivery transition and 250 to the operator UI. Add saturated/unsaturated and invalid-limit regressions; preserve existing strict timestamp/provenance checks.
+- [ ] Verify this exact stacked head in quality, full Node tests, engine, preview-performance, release check, production build, 390/768/1440 Chromium and Non-3D. A sub-cap list is still not an atomic latest-by-order database receipt; owner-approved DB change would be required for a complete guarantee. Real supplier stock, signed-in customer/operator, tailor, devices, native Blender, five beta cases, ten deliveries, security/privacy and release approval remain BLOCKED/PENDING. No live writes, migration, paid AI, main merge or deployment.
+
 ## 2026-10-30 — J5 impossible QC timestamps must never outrank physical rework (stacked draft)
 - [x] Reproduced `Date.parse("2026-02-31T12:00:00Z")` normalizing to March 3; a nonexistent approved inspection could outrank a genuine March 2 rework and falsely allow delivered status.
 - [x] Validate literal full calendar day and 00–23/00–59/00–59 wall-clock before parsing the timezone instant. Preserve valid leap-day, fractional-second and offset timestamps. Add phantom-approval/rework and positive/negative regressions. This shared guard covers both server and operator UI.
