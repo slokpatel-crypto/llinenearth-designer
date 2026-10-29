@@ -234,3 +234,10 @@ Canonical criteria: [TITAN_RELEASE_CHECKLIST.md](./TITAN_RELEASE_CHECKLIST.md). 
 - **Correction:** Scope the no-reflection assertion to the unexpected operator production catch after server-side `console.error`, while retaining valid 400 request-body diagnostics. No production logic, supplier data, schema, human evidence or UI/model changed. Prior failed runs must not be reused.
 - **PENDING:** new matching-head quality, Node, engine, preview, release, build, 390/768/1440 Chromium and Non-3D. External T1–T6/J1–J6 physical/human blockers unchanged. Next: inspect new CI, repair any failure; only then stage independent strict QC calendar work on a new descendant branch.
 
+
+## 2026-10-29T21:51:43.007Z — M17 second CI test correction (GET/POST catch selection)
+
+- **Exact prior head → repair:** `2397fd45449ed873ad4f7cd623e3fe66a3831e5e` → `24f2ec74ae6c4bb368578f958a44677be76d550b` (test only); this checkpoint append creates the new final SHA.
+- **Observed:** CI `40961100406` **FAILED** Node test #721 because the test selected the first `console.error("[operator/production]",error)` (GET handler), not the final unexpected POST handler. No source-level security regression was observed; the test targeted the wrong catch. Non-3D `40961100408` was still in progress when inspected.
+- **Fix:** select the last matching catch using `.at(-1)` and continue asserting the fixed generic private response, while allowing explicit user input diagnostics. **PENDING** matching-head CI/Non-3D. No live mutation, merge, deployment or fabricated external acceptance. A newer QC calendar draft will be reconciled onto the repaired parent after verification.
+
