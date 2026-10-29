@@ -4,20 +4,22 @@ import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import type { DesignerFabricMetadata, DesignerFabricMetadataMap } from "@/lib/designer-fabric-metadata-types";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
-import { verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence, OPERATOR_METADATA_PAGE_LIMIT, type OperatorMetadataRowCursor } from "@/lib/designer/metadata-ledger-page";
+import { verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence, validateOperatorMetadataAvailability, OPERATOR_METADATA_PAGE_LIMIT, type OperatorMetadataRowCursor } from "@/lib/designer/metadata-ledger-page";
 
 type MetadataRow = { at:string; payload?:Record<string,unknown> };
+const CATALOGUE_FABRIC_IDS=new Set(FABRIC_STOCK.map((fabric)=>fabric.id));
 
 function safe(value:unknown,max=180) {
   return String(value ?? "").trim().slice(0,max);
 }
 
 function parseMetadata(payload:Record<string,unknown>,at:string):DesignerFabricMetadata|null {
-  if (safe(payload.subtype,80) !== "designer_fabric_metadata") return null;
-  const fabricId = safe(payload.fabricId,140);
-  if (!fabricId || !FABRIC_STOCK.some((item)=>item.id===fabricId)) return null;
+  if (payload.subtype !== "designer_fabric_metadata") return null;
+  const fabricId = payload.fabricId;
+  if (typeof fabricId !== "string" || !CATALOGUE_FABRIC_IDS.has(fabricId)) return null;
 
-  const availability = safe(payload.availability,20);
+  const availability = payload.availability;
+  if (availability !== "unknown" && availability !== "available" && availability !== "unavailable") return null;
   const weightClass = safe(payload.weightClass,20);
   const drape = safe(payload.drape,20);
   const rawSeasons = Array.isArray(payload.seasonTags) ? payload.seasonTags.map((item)=>safe(item,30)) : [];
@@ -32,7 +34,7 @@ function parseMetadata(payload:Record<string,unknown>,at:string):DesignerFabricM
 
   return {
     fabricId,
-    availability:["available","unavailable"].includes(availability) ? availability as "available"|"unavailable" : "unknown",
+    availability,
     ...(Number.isFinite(weightGsmRaw) && weightGsmRaw >= 40 && weightGsmRaw <= 1000 ? {weightGsm:Math.round(weightGsmRaw)} : {}),
     ...(["Light","Medium","Heavy"].includes(weightClass) ? {weightClass:weightClass as DesignerFabricMetadata["weightClass"]} : {}),
     ...(safe(payload.weave,100) ? {weave:safe(payload.weave,100)} : {}),
@@ -111,8 +113,15 @@ export async function loadDesignerFabricMetadataWithStatus():Promise<DesignerFab
            ||typeof (rawRow as MetadataRow).at!=="string") return unavailable();
         const row=rawRow as MetadataRow;
         if(row.payload!=null && (typeof row.payload!=="object"||Array.isArray(row.payload))) return unavailable();
-        const metadata=parseMetadata(row.payload||{},row.at);
-        if(!metadata||result[metadata.fabricId]) continue;
+        const status=validateOperatorMetadataAvailability(row.payload,CATALOGUE_FABRIC_IDS);
+        if(status==="invalid"){
+          console.error("[designer/fabric-metadata] malformed operator availability evidence",page);
+          return unavailable();
+        }
+        if(status==="unrelated") continue;
+        const metadata=parseMetadata(row.payload!,row.at);
+        if(!metadata) return unavailable();
+        if(result[metadata.fabricId]) continue;
         result[metadata.fabricId]=metadata;
       }
       if(receipt.status==="complete") return {metadata:result,sourceVerified:true};

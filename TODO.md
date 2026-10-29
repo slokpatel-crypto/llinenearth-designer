@@ -1,3 +1,8 @@
+## 2026-10-29 — malformed operator availability cannot erase a sold-out veto (draft)
+- [x] Reproduced the fail-open path: a newer `designer_fabric_metadata` event with JSON-coerced `availability:["available"]` or padded fabric identity was parsed as a valid available record and masked an older explicit sold-out override, even with verified physical stock.
+- [x] Validate literal subtype, exact catalogue ID and explicit `unknown|available|unavailable` before selecting the newest operator metadata. A malformed current-catalogue override makes the entire metadata read unavailable, so both customer stock paths fail closed; unrelated notes and retired catalogue IDs remain ignored. Add positive/negative pure and loader wiring regressions.
+- [ ] Require exact-head quality, full Node, engine, preview, release, build and pinned Chromium/Non-3D QA; verify actual authenticated owner-scoped Supabase lock/recovery/enquiry/operator workflow and physical stock separately. No fabricated approvals, live write, migration, main merge or deploy.
+
 ## 2026-10-29 — reject shifted operator metadata pagination (draft)
 - [x] Reproduced a count-valid, contiguous `Content-Range` page sequence that can still repeat a row across offset pages and omit an older sold-out veto during concurrent changes.
 - [x] Require strictly descending `at.desc,id.desc` row identity across every page, including the boundary, and fail closed on missing IDs, malformed timestamps, repeated/shifted rows or incorrect tie order. Added positive and negative pure regressions plus source-wiring guard.
