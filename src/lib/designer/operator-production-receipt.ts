@@ -1,4 +1,4 @@
-import { parseCustomerProductionRecordId } from "./customer-production-outcomes.ts";
+import { parseCustomerProductionRecordId } from "./customer-production-outcomes";
 
 /** A successful privileged creation RPC must return its exact UUID scalar.
  * Do not report a created quote/order from a truthy object, array, boolean,
