@@ -47,3 +47,27 @@ export function verifyOperatorMetadataPage(
   if(rows.length<pageSize&&total!==end+1) return invalid;
   return {status:total===end+1?"complete":"continue",total};
 }
+
+/** A matching total and Content-Range cannot detect repeated/shifted rows
+ * between offset pages. Verify the actual ordered identity boundary too.
+ * PostgREST returns canonical timestamps/IDs for the at.desc,id.desc query.
+ * This is a fail-closed consistency guard, not an atomic database snapshot.
+ */
+export type OperatorMetadataRowCursor={at:string;id:string};
+export function verifyOperatorMetadataRowSequence(
+  rows:unknown[],previous:OperatorMetadataRowCursor|null,
+):OperatorMetadataRowCursor|null {
+  let last=previous;
+  for(const raw of rows){
+    if(!raw||typeof raw!=="object"||Array.isArray(raw)) return null;
+    const {at,id}=raw as Record<string,unknown>;
+    if(typeof at!=="string"||typeof id!=="string"||
+       !/^\d{4}-\d{2}-\d{2}T/.test(at)||!Number.isFinite(Date.parse(at))||
+       !id||id!==id.trim()) return null;
+    // Descending timestamp, with descending stable ID for timestamp ties.
+    // A duplicate across pages, offset shift or out-of-order row fails closed.
+    if(last&&(at>last.at||(at===last.at&&id>=last.id))) return null;
+    last={at,id};
+  }
+  return last;
+}
