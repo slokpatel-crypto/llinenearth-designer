@@ -1,11 +1,29 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { applyVerifiedStockAvailability, verifiedStockAvailabilityMap } from "../src/lib/designer/stock-availability.ts";
+import { applyVerifiedStockAvailability, verifiedStockAvailabilityMap, stockSnapshotHasConfirmedProvenance } from "../src/lib/designer/stock-availability.ts";
 
 const fabric=(id:string,inStock=true)=>({
   id,family:"Linen",line:"Test",colorName:id,hex:"#AAAAAA",swatchImageUrl:"/test.webp",
   suitableFor:["shirt" as const],pattern:"Plain",sourceDocument:"test",sourcePage:1,inStock,
+});
+
+test("live stock v2 receipt needs positive exact corroborated manual event counts",()=>{
+  const valid={provenance_ready:true,manual_event_count:2,provenance_event_count:2,legacy_unverified_event_count:0};
+  assert.equal(stockSnapshotHasConfirmedProvenance(valid),true);
+  for(const invalid of [
+    {...valid,manual_event_count:0},
+    {...valid,manual_event_count:"2"},
+    {...valid,manual_event_count:1.5},
+    {...valid,provenance_event_count:1},
+    {...valid,provenance_event_count:"2"},
+    {...valid,legacy_unverified_event_count:1},
+    {...valid,legacy_unverified_event_count:"0"},
+    {...valid,provenance_ready:"true"},
+    {provenance_ready:true},
+  ]){
+    assert.equal(stockSnapshotHasConfirmedProvenance(invalid),false);
+  }
 });
 
 test("only provenance-ready ledger rows may advertise positive catalogue availability",()=>{

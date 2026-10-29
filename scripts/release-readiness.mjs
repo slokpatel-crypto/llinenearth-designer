@@ -798,6 +798,7 @@ requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","normalizeMan
 requireTokens("src/lib/fabric-stock.ts", ["availabilityVerified?: boolean"]);
 requireTokens("src/lib/designer/stock-availability.ts", [
   "verifiedStockAvailabilityMap",
+  "stockSnapshotHasConfirmedProvenance",
   "provenance_ready",
   "uniqueCatalogueIds.has(fabric.id)&&verified.has(fabric.id)",
   "uniqueCatalogueIds.has(fabric.id)&&fabric.inStock&&verified.get(fabric.id)===true",
@@ -811,7 +812,7 @@ for (const workflow of [".github/workflows/ci.yml",".github/workflows/deep-engin
 
 requireTokens("src/lib/designer/engine.ts", ["availabilityVerified?: boolean","verified physical stock status","provenance-ready positive stock status"]);
 requireTokens("tests/stock-availability.test.ts", ["availabilityVerified,true","availabilityVerified,false","missing or unreachable stock ledger"]);
-requireTokens("src/lib/designer/stock-availability-server.ts", ["fabric_stock_snapshot_v2","applyLiveVerifiedStockAvailability","cache:\"no-store\""]);
+requireTokens("src/lib/designer/stock-availability-server.ts", ["fabric_stock_snapshot_v2","applyLiveVerifiedStockAvailability","stockSnapshotHasConfirmedProvenance","cache:\"no-store\""]);
 requireTokens("src/lib/designer/catalog-stock-server.ts", ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability","verifiedStockFabrics","loadActiveDesignerCatalogueFabrics","loadDesignerFabricIntelligence","attachCatalogFabricPhysics","filter((fabric)=>fabric.inStock)"]);
 requireTokens("src/app/api/designer/catalog/route.ts", ["loadActiveDesignerCatalogueFabrics","verifiedStockFabrics"]);
 requireTokens("src/lib/garment-viewer-model-contract.ts", ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest"]);

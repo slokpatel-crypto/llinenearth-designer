@@ -13,7 +13,8 @@ function rowsFor(payload){
   if(!Array.isArray(ids)||ids.length>500||ids.some(id=>typeof id!=="string"||id.length<1||id.length>160||id!==id.trim())) return null;
   if(new Set(ids).size!==ids.length) return null;
   // Deliberately synthesized only inside the GitHub Actions mock server.
-  return ids.map(fabric_id=>({fabric_id,available_metres:"5.000",provenance_ready:true}));
+  return ids.map(fabric_id=>({fabric_id,available_metres:"5.000",provenance_ready:true,
+    manual_event_count:1,provenance_event_count:1,legacy_unverified_event_count:0}));
 }
 function send(res,status,payload){
   res.writeHead(status,{"content-type":"application/json","cache-control":"private, no-store"});

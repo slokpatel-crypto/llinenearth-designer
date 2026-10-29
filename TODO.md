@@ -1,3 +1,8 @@
+## 29 October 2026 — cross-check physical stock RPC provenance receipts (draft)
+- [x] Read v2 stock SQL: the RPC returns manual, provenance and legacy-unverified event counts in addition to provenance_ready. Customer adapter previously trusted the boolean alone.
+- [x] Require positive safe-integer manual events, equal provenance event count and exactly zero legacy-unverified events before accepting a v2 RPC's provenance_ready. Missing/coerced/inconsistent counts fail closed. Update isolated CI-only mock and negative tests; no physical stock or live write.
+- [ ] Verify this exact draft commit with quality, Node, engine, preview, release, build and real 390/768/1440 browser CI. Live owner-confirmed rolls, signed-in customer/operator Supabase, device/tailor/native geometry and human release approval remain required.
+
 ## 29 October 2026 — catalogue identity / live-stock binding (draft)
 - [x] Prevent a valid stock RPC row from advertising multiple distinct swatches with the same catalogue fabric ID; both duplicates now fail closed.
 - [x] Restrict the verified-stock count to uniquely represented catalogue IDs; an unexpected RPC fabric can no longer inflate customer-visible evidence metrics.
