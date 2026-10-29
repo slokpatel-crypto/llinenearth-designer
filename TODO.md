@@ -1,3 +1,8 @@
+## 2026-10-29 — bounded RPC adapter source-test reconciliation (draft)
+- [x] Read exact-head #495 CI failure: one Node source-wiring assertion still required `row.fabric_id` after the bounded JSON adapter introduced a validated `record` alias. This was a stale test, not a customer stock bypass.
+- [x] Update the assertion to require literal `record.fabric_id`, reject coercion, and assert bounded 1 MiB upstream JSON plus row-shape checks. Preserve all functional tests and production fail-closed behavior.
+- [ ] Verify new exact-head full CI and pinned real browser/Non-3D QA; physical stock and human acceptance remain outstanding. No merge or deploy.
+
 ## 2026-10-29 — physical stock rounding tolerance cannot sell dust (draft)
 - [x] Reproduced a provenance-ready RPC row with tiny positive `available_metres` (e.g. `1e-12`) passing the 0.001m rounding tolerance and being advertised `inStock:true` despite zero physical ledger units.
 - [x] Reject positive quantities that round to zero millimetres and decide availability using integer 0.001m units; preserve verified exact zero and valid positive metreage. Add positive/negative Node regressions.
