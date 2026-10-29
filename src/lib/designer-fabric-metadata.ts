@@ -4,6 +4,7 @@ import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import type { DesignerFabricMetadata, DesignerFabricMetadataMap } from "@/lib/designer-fabric-metadata-types";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
+import { metadataPageDisposition } from "@/lib/designer/metadata-pagination";
 
 type MetadataRow = { at:string; payload?:Record<string,unknown> };
 
@@ -87,7 +88,7 @@ export async function loadDesignerFabricMetadataWithStatus():Promise<DesignerFab
         return unavailable();
       }
       const rows = await response.json() as unknown;
-      if(!Array.isArray(rows)||rows.length>PAGE_SIZE) {
+      if(!Array.isArray(rows)||metadataPageDisposition(rows,PAGE_SIZE)==="invalid") {
         console.error("[designer/fabric-metadata] invalid ledger page",page);
         return unavailable();
       }
@@ -101,7 +102,7 @@ export async function loadDesignerFabricMetadataWithStatus():Promise<DesignerFab
         result[metadata.fabricId]=metadata;
       }
       // Only a short final page proves that no older override was omitted.
-      if(rows.length<PAGE_SIZE) return {metadata:result,sourceVerified:true};
+      if(metadataPageDisposition(rows,PAGE_SIZE)==="complete") return {metadata:result,sourceVerified:true};
     }
     console.error("[designer/fabric-metadata] operator history exceeds bounded read; availability unverified");
     return unavailable();
