@@ -4,31 +4,39 @@ type UnknownRecord=Record<string,unknown>;
 function record(value:unknown):UnknownRecord{
   return value&&typeof value==="object"&&!Array.isArray(value)?value as UnknownRecord:{};
 }
-function clean(value:unknown,limit:number){
-  return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
-}
-function finite(value:unknown){
-  const number=Number(value);
-  return Number.isFinite(number)?number:null;
-}
-
-export function normalizeNoviceDesignerAttempt(input:unknown){
-  const source=record(input);
-  const caseId=clean(source.caseId,80);
-  if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) throw new Error("Anonymous novice-test case ID is required.");
-  const deviceClass=clean(source.deviceClass,20) as NoviceDesignerDevice;
-  if(!["mobile","tablet","desktop"].includes(deviceClass)) throw new Error("A device class is required.");
-  const durationSeconds=finite(source.durationSeconds);
-  if(durationSeconds===null||durationSeconds<=0||durationSeconds>7200) throw new Error("Observed completion time must be between 1 second and 2 hours.");
-  if(typeof source.noviceConfirmed!=="boolean"||typeof source.likedDesignCompleted!=="boolean"||typeof source.blockingIssue!=="boolean"){
-    throw new Error("Novice status, liked-design completion and blocking result must all be recorded.");
+function literalText(value:unknown,limit:number,label:string,min=0){
+  if(value===undefined||value===null){
+    if(min>0) throw new Error(label+" is required.");
+    return "";
   }
-  const note=clean(source.note,1200);
+  if(typeof value!=="string") throw new Error(label+" must be text.");
+  const cleaned=value.replace(/\s+/g," ").trim();
+  if(cleaned.length>limit) throw new Error(label+" is too long.");
+  if(cleaned.length<min) throw new Error(label+" is required.");
+  return cleaned;
+}
+function literalSeconds(value:unknown,label:string){
+  if(typeof value!=="number"||!Number.isFinite(value)||value<1||value>7200)
+    throw new Error(label+" must be a number between 1 second and 2 hours.");
+  return Math.round(value);
+}
+function caseIdentity(value:unknown){
+  const caseId=literalText(value,80,"Anonymous novice-test case ID",3);
+  if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId))
+    throw new Error("Anonymous novice-test case ID is required.");
+  return caseId;
+}
+function deviceIdentity(value:unknown):NoviceDesignerDevice{
+  if(value!=="mobile"&&value!=="tablet"&&value!=="desktop")
+    throw new Error("A valid literal device class is required.");
+  return value;
+}
+function outcomes(source:UnknownRecord){
+  if(typeof source.noviceConfirmed!=="boolean"||typeof source.likedDesignCompleted!=="boolean"||typeof source.blockingIssue!=="boolean")
+    throw new Error("Novice status, liked-design completion and blocking result must all be recorded.");
+  const note=literalText(source.note,1200,"Novice study note");
   if(source.blockingIssue&&note.length<3) throw new Error("Blocking issues require a short note.");
   return {
-    caseId,
-    deviceClass,
-    durationSeconds:Math.round(durationSeconds),
     noviceConfirmed:source.noviceConfirmed,
     likedDesignCompleted:source.likedDesignCompleted,
     blockingIssue:source.blockingIssue,
@@ -36,22 +44,38 @@ export function normalizeNoviceDesignerAttempt(input:unknown){
   };
 }
 
+/** Physical/beta acceptance requires literal evidence, never JSON-coerced values or truncated notes. */
+export function normalizeNoviceTimerStart(input:unknown){
+  const source=record(input);
+  return {caseId:caseIdentity(source.caseId),deviceClass:deviceIdentity(source.deviceClass)};
+}
+
+export function normalizeNoviceTimedAttempt(input:unknown){
+  const source=record(input);
+  if(typeof source.timingSessionId!=="string") throw new Error("A valid server timing session is required.");
+  return {timingSessionId:source.timingSessionId,...outcomes(source)};
+}
+
+export function normalizeNoviceDesignerAttempt(input:unknown){
+  const source=record(input);
+  return {
+    caseId:caseIdentity(source.caseId),
+    deviceClass:deviceIdentity(source.deviceClass),
+    durationSeconds:literalSeconds(source.durationSeconds,"Observed completion time"),
+    ...outcomes(source),
+  };
+}
+
 export function normalizeNoviceStudyDecision(input:unknown){
   const source=record(input);
-  const status=clean(source.status,20);
-  if(status!=="approved"&&status!=="review") throw new Error("Study decision must be approved or review.");
-  const targetSeconds=finite(source.targetSeconds);
-  if(targetSeconds===null||targetSeconds<=0||targetSeconds>7200) throw new Error("Enter the documented roadmap target time in seconds.");
-  const signedBy=clean(source.signedBy,120);
-  if(signedBy.length<2) throw new Error("Named owner/reviewer sign-off is required.");
-  const note=clean(source.note,1200);
+  if(source.status!=="approved"&&source.status!=="review")
+    throw new Error("Study decision must be approved or review.");
+  const status=source.status;
+  const targetSeconds=literalSeconds(source.targetSeconds,"Enter the documented roadmap target time in seconds");
+  const signedBy=literalText(source.signedBy,120,"Named owner/reviewer sign-off",2);
+  const note=literalText(source.note,1200,"Study decision note");
   if(status==="review"&&note.length<3) throw new Error("Review status requires a short note.");
-  return {
-    status:status as "approved"|"review",
-    targetSeconds:Math.round(targetSeconds),
-    signedBy,
-    note,
-  };
+  return {status,targetSeconds,signedBy,note};
 }
 
 export type NoviceDesignerAttemptRow={
@@ -89,9 +113,22 @@ export function summarizeNoviceDesignerStudy(
   }
   const latest=[...latestByCase.values()];
   const latestDecision=[...decisions].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))[0]||null;
-  const targetSeconds=latestDecision?.target_seconds||null;
-  const eligible=latest.filter((row)=>row.novice_confirmed&&row.liked_design_completed&&!row.blocking_issue);
-  const serverTimed=eligible.filter((row)=>Boolean(row.timing_session_id));
+  const targetSeconds=typeof latestDecision?.target_seconds==="number"&&
+    Number.isFinite(latestDecision.target_seconds)&&latestDecision.target_seconds>=1&&latestDecision.target_seconds<=7200
+      ?latestDecision.target_seconds:null;
+  const eligible=latest.filter((row)=>row.novice_confirmed===true&&row.liked_design_completed===true&&
+    row.blocking_issue===false&&typeof row.duration_seconds==="number"&&
+    Number.isFinite(row.duration_seconds)&&row.duration_seconds>=1&&row.duration_seconds<=7200);
+  // One genuine server timer cannot count as five independent novice cases.
+  const seenTimers=new Set<string>();
+  const serverTimed=eligible.filter((row)=>{
+    const id=row.timing_session_id;
+    if(typeof id!=="string"||
+       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)||
+       seenTimers.has(id.toLowerCase())) return false;
+    seenTimers.add(id.toLowerCase());
+    return true;
+  });
   const withinTarget=targetSeconds===null?[]:serverTimed.filter((row)=>row.duration_seconds<=targetSeconds);
   return {
     uniqueCases:latest.length,
@@ -99,12 +136,13 @@ export function summarizeNoviceDesignerStudy(
     likedDesignCases:eligible.length,
     serverTimedLikedCases:serverTimed.length,
     blockingCases:latest.filter((row)=>row.blocking_issue).length,
-    medianLikedDesignSeconds:median(eligible.map((row)=>Number(row.duration_seconds))),
+    medianLikedDesignSeconds:median(eligible.map((row)=>row.duration_seconds)),
     targetSeconds,
     withinTargetCases:withinTarget.length,
     latestDecisionStatus:latestDecision?.status||"pending",
     latestSignedBy:latestDecision?.signed_by||null,
     evidenceReady:serverTimed.length>=5,
-    gateComplete:Boolean(targetSeconds&&withinTarget.length>=5&&latestDecision?.status==="approved"),
+    gateComplete:Boolean(targetSeconds!==null&&withinTarget.length>=5&&latestDecision?.status==="approved"&&
+      typeof latestDecision.signed_by==="string"&&latestDecision.signed_by.trim().length>=2),
   };
 }

@@ -158,6 +158,27 @@ async function verifyCustomerProductionBoundary(baseURL="http://127.0.0.1:3000")
     assert.equal(data.eventId,undefined);
     assert.match(response.headers.get("cache-control")||"",/no-store/);
   }
+  // Five-novice acceptance must never be created by unauthenticated,
+  // cross-site, non-JSON or oversized requests. No operator login or DB write.
+  const noviceCases=[
+    ["foreign origin","{}",{origin:"https://outside.example"},403],
+    ["same-site subdomain","{}",{"sec-fetch-site":"same-site"},403],
+    ["non-JSON","{}",{"content-type":"text/plain"},415],
+    ["oversized JSON",JSON.stringify({action:"record_decision",note:"x".repeat(20_000)}),{},413],
+  ];
+  for(const [label,body,headers,expected] of noviceCases){
+    const response=await fetch(`${baseURL}/api/operator/novice-designer-study`,{
+      method:"POST",headers:{"content-type":"application/json",...headers},body,
+    });
+    const data=await response.json();
+    assert.equal(response.status,expected,`novice study ${label}: ${data.error||"unexpected response"}`);
+    assert.equal(typeof data.error,"string");
+    assert.equal(data.attemptId,undefined);
+    assert.equal(data.eventId,undefined);
+    assert.equal(data.session,undefined);
+    assert.match(response.headers.get("cache-control")||"",/no-store/);
+  }
+  console.log(`PASS ${noviceCases.length} real novice study transport rejection contracts`);
   console.log(`PASS ${launchCases.length} real launch readiness transport rejection contracts`);
   console.log(`PASS ${meterageCases.length} real meterage model transport rejection contracts`);
   console.log(`PASS ${cutCases.length} real production cut transport rejection contracts`);
