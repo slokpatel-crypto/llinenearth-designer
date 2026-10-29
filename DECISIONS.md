@@ -1,3 +1,9 @@
+## 2026-10-29 — Measurement calibration must not silently trim physical proof or fake stored evidence
+
+**Decision:** Real self-versus-tailor tape comparisons are physical release evidence, not forgiving form text. Reject notes longer than 1200 characters rather than silently truncating findings, preserve the existing strict numeric and checker/source contracts, and accept only a valid database UUID event receipt before returning `stored:true`. Require same-origin JSON with an actual 16 KiB streamed byte cap before privileged writes, 400/413 for invalid bodies and private no-store responses. Existing valid operator payloads and stored case formats remain compatible.
+
+**Limits:** Typed software evidence cannot establish an actual tape session, independent tailor approval, live Supabase access, or physical garment fit. No schema, model/photo, supplier facts, paid credits, merge or production deployment.
+
 ## 2026-10-29 — Delivery audits require an exact confirmed immutable receipt
 
 **Decision:** A production delivery audit cannot count as recorded because the service-role RPC returned HTTP 200 or an arbitrary truthy JSON value. Validate the delivered order ID with the shared strict UUID contract and require a returned evidence UUID before reporting success. Reject cross-site/media-type/oversized streamed JSON before privileged mutation, preserve 400/413 for malformed/oversized bodies, and make every POST response private no-store. Retain the existing closed re-entry field vocabulary and physical provenance requirements; no fabrication of zero-reentry evidence.

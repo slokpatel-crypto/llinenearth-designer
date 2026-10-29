@@ -90,6 +90,24 @@ async function verifyCustomerProductionBoundary(baseURL="http://127.0.0.1:3000")
     assert.equal(data.evidenceId,undefined);
     assert.match(response.headers.get("cache-control")||"",/no-store/);
   }
+  const measurementCases=[
+    ["foreign origin","{}",{origin:"https://outside.example"},403],
+    ["same-site subdomain","{}",{"sec-fetch-site":"same-site"},403],
+    ["non-JSON","{}",{"content-type":"text/plain"},415],
+    ["oversized JSON",JSON.stringify({note:"x".repeat(20_000)}),{},413],
+  ];
+  for(const [label,body,headers,expected] of measurementCases){
+    const response=await fetch(`${baseURL}/api/operator/measurement-calibration`,{
+      method:"POST",headers:{"content-type":"application/json",...headers},body,
+    });
+    const data=await response.json();
+    assert.equal(response.status,expected,`measurement calibration ${label}: ${data.error||"unexpected response"}`);
+    assert.equal(typeof data.error,"string");
+    assert.equal(data.stored,undefined);
+    assert.equal(data.eventId,undefined);
+    assert.match(response.headers.get("cache-control")||"",/no-store/);
+  }
+  console.log(`PASS ${measurementCases.length} real measurement calibration transport rejection contracts`);
   console.log(`PASS ${deliveryCases.length} real delivery evidence transport rejection contracts`);
   console.log(`PASS ${qcCases.length} real operator QC transport rejection contracts`);
   console.log(`PASS ${operatorCases.length} operator outcome transport rejection contracts`);

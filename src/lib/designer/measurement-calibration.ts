@@ -86,7 +86,8 @@ export function normalizeMeasurementCalibrationDraft(input:unknown){
   if(!checkedBy) throw new Error("Named checker/tailor is required.");
   if(source.note!==undefined&&source.note!==null&&typeof source.note!=="string")
     throw new Error("Calibration note must be text.");
-  const note=(source.note??"").replace(/\s+/g," ").trim().slice(0,1200);
+  const note=(source.note??"").replace(/\s+/g," ").trim();
+  if(note.length>1200) throw new Error("Calibration note cannot exceed 1200 characters.");
   return {caseId,selfChestCm,tailorChestCm,selfSleeveCm,tailorSleeveCm,evidenceSource,checkedBy,note};
 }
 

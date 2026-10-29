@@ -1,3 +1,9 @@
+## 29 October 2026 — physical measurement calibration evidence integrity (draft)
+
+- [x] Reproduced unbounded operator calibration JSON, silently truncated physical notes, and unverified RPC event IDs that could falsely report `stored:true`.
+- [x] Added 16 KiB same-origin streamed JSON, literal nontruncated note <=1200 chars, exact UUID receipt before stored success, 400/413 body errors and private no-store responses. Added Node and negative-only real HTTP regressions.
+- [ ] Require exact-head CI/Node/engine/preview/release/build/Chromium. No live Supabase, physical tape measurements, supplier/tailor/native Blender acceptance, migration, merge or deploy.
+
 ## 29 October 2026 — immutable production delivery evidence receipt (draft)
 
 - [x] Reproduced permissive delivery order UUID regex, unauthenticated transport not checked before session, malformed JSON mapped to generic 409, and unverified RPC evidence IDs reported as success.

@@ -127,3 +127,22 @@ test("conflicting same-instant revisions cannot be ordered by API row order",()=
   }
   assert.equal(summarizeMeasurementCalibration([original,{...original}]).total,1);
 });
+
+test("measurement calibration refuses truncated physical notes and unconfirmed RPC receipts",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const good={caseId:"CASE-101",selfChestCm:100,tailorChestCm:100,selfSleeveCm:64,tailorSleeveCm:64,
+    evidenceSource:"physical tape comparison",checkedBy:"Tailor"};
+  assert.throws(()=>normalizeMeasurementCalibrationDraft({...good,note:"n".repeat(1201)}),/Calibration note cannot exceed/);
+  assert.equal(normalizeMeasurementCalibrationDraft({...good,note:"n".repeat(1200)}).note.length,1200);
+  const route=readFileSync("src/app/api/operator/measurement-calibration/route.ts","utf8");
+  const http=readFileSync("scripts/verify-customer-production-boundary.cjs","utf8");
+  assert.match(route,/secureJsonRequestError\(request,16384\)/);
+  assert.match(route,/readSecureJsonObject\(request,16384\)/);
+  assert.match(route,/normalizeVaultId\(receipt\)/);
+  assert.match(route,/if\(!eventId\) return respond\(/);
+  assert.match(route,/error instanceof SecureJsonBodyTooLarge/);
+  assert.match(route,/error instanceof SecureJsonBodyInvalid/);
+  assert.match(route,/private, no-store/);
+  assert.doesNotMatch(route,/await request\.json\(\)/);
+  assert.match(http,/\/api\/operator\/measurement-calibration/);
+});
