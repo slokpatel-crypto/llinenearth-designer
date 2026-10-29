@@ -1,3 +1,9 @@
+## 2026-10-29 — Novice Designer proof must be server-timed and receipt-confirmed
+
+**Decision:** Novice user testing is a release gate, not an arbitrary form submission. Require literal case/device/outcome/seconds/approver fields and nontruncated human notes. Enforce same-origin, JSON media and actual 16 KiB streamed request bounds. A started timer is accepted only if the single backend row contains a UUID matching the requested case and device; a finished timer must match the requested session UUID and have finite positive elapsed seconds. Recorded attempts and human approval must return a valid UUID receipt. Reject unconfirmed writes instead of reporting a successful study. Legacy manual-timing attempts remain available but do not satisfy the server-timed five-case gate.
+
+**Limits:** No fabricated novice users, human review, device QA, live Supabase, supplier stock, tailor fit or Blender approval. Existing model/photo, deterministic no-credit preview and database schema unchanged; no merge or deployment.
+
 ## 2026-10-29 — Launch-readiness evidence requires literal human facts and confirmed audit IDs
 
 **Decision:** A beta completion or launch checklist sign-off cannot become verified because arrays stringify to device/revision/approver IDs, notes silently truncate incidents, or a service-role RPC returns an arbitrary truthy response. Require literal closed device/evidence/status vocabulary, bounded case/revision/human IDs and notes, same-origin 16 KiB streamed JSON, and a valid UUID receipt for verified beta, legacy beta and checklist events. Only after the verified-beta RPC confirms the receipt may the API return `verifiedFlowAudit:true`. Return 400/413 for invalid bodies and private no-store responses.
