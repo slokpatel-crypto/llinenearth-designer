@@ -88,3 +88,27 @@ test("operator desk clears stale production records and disables mutation contro
   assert.ok(ui.includes("disabled={busy||!configured||!canQuote}"));
   assert.ok(ui.includes("disabled={busy||!configured||!loadedRevision"));
 });
+
+test("J5: impossible QC calendar dates cannot outrank a real later rework",()=>{
+  const realRework={...rework,created_at:"2026-03-02T12:00:00Z"};
+  const phantomApproval={...approved,created_at:"2026-02-31T12:00:00Z"};
+  // Date.parse(phantomApproval.created_at) normalizes to March 3, after rework.
+  assert.equal(hasVerifiedLatestDeliveryQc([realRework,phantomApproval],orderId),false);
+  assert.equal(hasVerifiedLatestDeliveryQc([phantomApproval,realRework],orderId),false);
+  for(const created_at of [
+    "2026-02-29T12:00:00Z",
+    "2026-04-31T12:00:00Z",
+    "2026-10-29T24:00:00Z",
+    "2026-10-29T12:60:00Z",
+    "2026-10-29T12:00:60Z",
+  ]){
+    assert.equal(hasVerifiedLatestDeliveryQc([{...approved,created_at}],orderId),false,created_at);
+  }
+  for(const created_at of [
+    "2024-02-29T12:00:00Z",
+    "2026-10-29T12:00:00.123456Z",
+    "2026-10-29T12:00:00+05:30",
+  ]){
+    assert.equal(hasVerifiedLatestDeliveryQc([{...approved,created_at}],orderId),true,created_at);
+  }
+});
