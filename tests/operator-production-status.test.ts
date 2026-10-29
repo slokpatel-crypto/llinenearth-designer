@@ -45,3 +45,14 @@ test("privileged production route parses both status changes before QC or RPC an
   assert.doesNotMatch(source,/String\(body\.note\|\|""\)\.slice/);
   assert.ok(source.indexOf('parseOperatorProductionStatus(body,"order")')<source.indexOf('if(status==="delivered")'));
 });
+
+test("privileged production errors do not reflect upstream SQL, owner or RPC details to the browser", () => {
+  const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
+  assert.match(source,/console\.error\("\[operator\/production\]",error\)/);
+  assert.match(source,/error:"Production operation could not be completed\.".*status:409,headers:\{"cache-control":"private, no-store"\}/);
+  assert.doesNotMatch(source,/error:error instanceof Error\?error\.message/);
+  assert.doesNotMatch(source,/error:\s*error\.message/);
+  // Client-visible validation remains explicit; unexpected backend diagnostics do not.
+  assert.match(source,/error:"Valid quote UUID, allowed status/);
+  assert.match(source,/error:"Valid order UUID, allowed status/);
+});
