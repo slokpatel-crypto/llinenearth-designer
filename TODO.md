@@ -1,3 +1,8 @@
+## 29 October 2026 — stacked stock + device QA source integration (draft)
+- [x] Combine PR #474 fail-closed verified stock and isolated CI browser fixture with PR #475 exact v2 device QA receipt validation on a new branch, preserving both parents and the canonical fixed Studio photo.
+- [ ] Require both CI workflows at the **integration commit SHA**; do not transfer green status from either sibling PR.
+- [ ] Live Supabase read-only audit: stock ledger, locked revisions, novice/beta attempts and production orders are empty. Obtain real owner-scoped authenticated customer/operator acceptance, verified shirt/trouser stock, native Blender, tailor and target-device human approvals. Synthetic fixture does not meet release gates. No merge, migration or deploy.
+
 ## 29 October 2026 — isolated browser stock fixture for honest test coverage (draft)
 - [x] Verified source tests pass but unconfigured CI browser calls return 409 after correctly rejecting absent physical inventory.
 - [x] Add a loopback-only synthetic stock RPC fixture launched solely by GitHub Actions browser jobs, with explicit CI-only process guard, fake key, bounded exact IDs and no real Supabase mutations. Keep real production stock fail-closed; add fixture regressions.
