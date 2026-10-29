@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { normalizeCustomerEmail } from "../src/lib/customer-account.ts";
+import { secureSameOriginRequestError } from "../src/lib/secure-json-request.ts";
 import {
   CUSTOMER_AUTH_JSON_MAX_BYTES,
   MAX_CUSTOMER_AUTH_RATE_KEYS,
@@ -71,6 +72,22 @@ test("auth request counters are memory-bounded and reject malformed forwarded id
   assert.equal(customerAuthRateBlocked(malformed,"otp","",1_000),false);
   assert.equal(malformed.identities.get("otp:unknown")?.count,2);
   assert.equal(customerAuthRateBlocked(malformed,"otp","203.0.113.1",Number.NaN),true);
+});
+
+test("cross-site logout is rejected without changing the cookie contract",()=>{
+  const target="https://linenearth.example/api/customer-auth/logout";
+  const req=(headers:Record<string,string>)=>new Request(target,{method:"POST",headers});
+  assert.deepEqual(secureSameOriginRequestError(req({origin:"https://other.example"})),{
+    status:403,error:"Cross-site changes are not allowed.",
+  });
+  assert.deepEqual(secureSameOriginRequestError(req({"sec-fetch-site":"same-site"})),{
+    status:403,error:"Cross-site changes are not allowed.",
+  });
+  assert.equal(secureSameOriginRequestError(req({origin:"https://linenearth.example","sec-fetch-site":"same-origin"})),null);
+  const source=readFileSync("src/app/api/customer-auth/logout/route.ts","utf8");
+  assert.match(source,/secureSameOriginRequestError\\(request\\)/);
+  assert.match(source,/if\\(unsafe\\) return NextResponse\\.json/);
+  assert.match(source,/response\\.cookies\\.set\\(name,""/);
 });
 
 test("both customer auth POST routes reject unsafe JSON before reaching Supabase",()=>{
