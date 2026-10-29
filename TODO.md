@@ -1,3 +1,8 @@
+## 2026-10-29 — integrate padded metadata subtype strictness into latest stacked draft
+- [x] Preserve independent PR #494 finding: whitespace-padded or one-element-array designer_fabric_metadata subtype must fail closed instead of hiding operator sold-out history.
+- [x] Add positive/negative subtype regression cases alongside active-fabric ambiguity and literal material tags fixes; update legacy source assertions for the typed text parser.
+- [ ] Recheck exact-head CI and physical/human launch gates. No main merge, production write, migration or deployment.
+
 ## 2026-10-29 — strict operator textile tags and ambiguous sold-out metadata (draft)
 - [x] Guard active-catalogue operator notes with an availability key against malformed/typo subtype: fail closed instead of discarding a possible sold-out override.
 - [x] Do not convert nested JSON arrays into seemingly reviewed season/role tags; accept literal vocabulary strings only and deduplicate. Preserve full literal weave, texture and operator note or omit invalid/overlong text rather than silently clipping.

@@ -65,8 +65,8 @@ test("verified physical fabric metadata cannot be coerced from JSON arrays or nu
   assert.match(loader,/literalOperatorPhysicalNumber\(payload\.weightGsm,40,1000\)/);
   assert.match(loader,/literalOperatorPhysicalEnum\(payload\.drape,/);
   assert.match(loader,/literalOperatorPhysicalEnum\(payload\.weightClass,/);
-  assert.match(loader,/typeof payload\.weave==="string"/);
-  assert.match(loader,/typeof payload\.texture==="string"/);
+  assert.match(loader,/literalOperatorText\(payload\.weave,100\)/);
+  assert.match(loader,/literalOperatorText\(payload\.texture,100\)/);
   assert.doesNotMatch(loader,/Number\(payload\.weightGsm\)/);
   assert.doesNotMatch(loader,/Number\(payload\.formalityScore\)/);
 });

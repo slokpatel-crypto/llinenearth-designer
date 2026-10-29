@@ -82,6 +82,9 @@ test("operator availability evidence rejects JSON-coerced overrides that could h
     "linen-plain-60-sky-blue ",null,{},true])
     assert.equal(validateOperatorMetadataAvailability({...valid,fabricId},ids),"invalid",JSON.stringify(fabricId));
   assert.equal(validateOperatorMetadataAvailability({...valid,subtype:["designer_fabric_metadata"]},ids),"invalid");
+  for(const subtype of [" designer_fabric_metadata","designer_fabric_metadata ",
+    "\tdesigner_fabric_metadata\n",[" designer_fabric_metadata "],["designer_fabric_metadata\n"]])
+    assert.equal(validateOperatorMetadataAvailability({...valid,subtype},ids),"invalid",JSON.stringify(subtype));
   assert.equal(validateOperatorMetadataAvailability({...valid,fabricId:"retired-catalogue-fabric"},ids),"unrelated");
   assert.equal(validateOperatorMetadataAvailability({subtype:"other_note",fabricId:valid.fabricId},ids),"unrelated");
   assert.equal(validateOperatorMetadataAvailability({note:"operator"},ids),"unrelated");

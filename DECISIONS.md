@@ -1,3 +1,7 @@
+## 2026-10-29 — include sibling padded-subtype safety guard in the stacked release candidate
+
+**Decision:** Include PR #494 independent padded/array subtype strictness in this integrated draft; do not let whitespace or one-item JSON arrays bury a possible sold-out operator event. Source-wiring tests were updated to reflect literal non-clipping text parsing rather than the older inline type guard. This is code evidence only; real supplier stock and human release approval remain open.
+
 ## 2026-10-29 — avoid synthetic operator material labels and concealment of ambiguous availability events
 
 **Decision:** A malformed subtype on an active catalogue fabric carrying an availability field is not safely unrelated: it could otherwise hide a sold-out operator veto. Treat that complete metadata lookup as unverified, so both customer stock paths fail closed. Seasonal/role tags must be literal strings in the existing shared vocabulary; never derive "Summer" or "base_safe" from nested arrays or objects. Reject rather than truncate overlong weave, texture or note text, while preserving valid literal values and existing provenance. No schema/dependency/model/photo changes, paid-AI credit, main merge, live mutation or deployment. CI on the exact new stacked head is required; physical stock and human QA remain separate.

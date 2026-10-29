@@ -87,8 +87,10 @@ export function validateOperatorMetadataAvailability(
   if(subtype!=="designer_fabric_metadata"){
     // A mistyped metadata subtype on an active fabric may hide its sold-out
     // instruction. Do not certify a complete ledger with that ambiguity.
-    if((typeof fabricId==="string"&&knownFabricIds.has(fabricId)&&"availability" in payload)
-       || (Array.isArray(subtype)&&subtype.length===1&&subtype[0]==="designer_fabric_metadata"))
+    const possibleSubtype=typeof subtype==="string"?subtype:
+      Array.isArray(subtype)&&subtype.length===1&&typeof subtype[0]==="string"?subtype[0]:null;
+    if((possibleSubtype!==null&&possibleSubtype.trim()==="designer_fabric_metadata")
+       || (typeof fabricId==="string"&&knownFabricIds.has(fabricId)&&"availability" in payload))
       return "invalid";
     return "unrelated";
   }
