@@ -179,6 +179,9 @@ test("forged truthy timing IDs and coerced physical outcomes cannot complete the
     ...row,timing_session_id:`123e4567-e89b-42d3-a456-42661417400${index}`,
   }));
   assert.equal(summarizeNoviceDesignerStudy(valid,approved).gateComplete,true);
+  const reusedTimer=valid.map((row)=>({...row,timing_session_id:valid[0].timing_session_id}));
+  assert.equal(summarizeNoviceDesignerStudy(reusedTimer,approved).serverTimedLikedCases,1);
+  assert.equal(summarizeNoviceDesignerStudy(reusedTimer,approved).gateComplete,false);
   assert.equal(summarizeNoviceDesignerStudy(valid,[{...approved[0],signed_by:""}]).gateComplete,false);
   assert.equal(summarizeNoviceDesignerStudy(valid,[{...approved[0],target_seconds:"300" as unknown as number}]).gateComplete,false);
   assert.equal(summarizeNoviceDesignerStudy(valid.map((row)=>({...row,blocking_issue:null as unknown as boolean})),approved).gateComplete,false);
