@@ -1,5 +1,13 @@
 # TITAN — prioritized execution queue
 
+## 29 October 2026 — strict operator production status boundary
+
+- [x] Reproduced quote/order status mutations that coerced array/object IDs, statuses and notes with `String(...)`, silently truncated notes at 1000 characters, and reported HTTP success even when the privileged RPC returned false.
+- [x] Added pure typed status parser with exact UUIDs, existing transition-destination vocabularies and literal notes; reject invalid requests before QC lookups or privileged database RPC. Require exact boolean `true` before reporting an update, and preserve proper 400/413 for malformed/oversized streamed JSON.
+- [x] Added negative/positive Node regression cases and source-route guards. No DB migration, schema changes, customer record writes or production deployment.
+- [ ] Check the final branch head in quality, Node, engine, preview, release, production build and real-browser CI. Live Supabase, physical stock/tailor and native 3D approval remain unverified.
+
+
 ## 29 October 2026 — operator login transport/security hardening
 
 - [x] Reproduced the operator login's unbounded `request.json()`, array/object password coercion and silent 300-character truncation, Origin-only cross-site check, and unbounded forwarded-IP attempt map.
