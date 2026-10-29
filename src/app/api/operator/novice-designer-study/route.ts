@@ -74,7 +74,8 @@ function confirmedTimerStart(receipt:unknown,caseId:string,deviceClass:string){
   const row=receipt[0] as Record<string,unknown>|null;
   if(!row||typeof row!=="object"||Array.isArray(row)) return null;
   const id=normalizeVaultId(row.session_id);
-  if(!id||row.case_id!==caseId||row.device_class!==deviceClass||typeof row.started_at!=="string")
+  if(!id||row.case_id!==caseId||row.device_class!==deviceClass||
+     typeof row.started_at!=="string"||!Number.isFinite(Date.parse(row.started_at)))
     return null;
   return {session_id:id,case_id:caseId,device_class:deviceClass,started_at:row.started_at};
 }
@@ -83,10 +84,12 @@ function confirmedTimerFinish(receipt:unknown,sessionId:string){
   const row=receipt[0] as Record<string,unknown>|null;
   if(!row||typeof row!=="object"||Array.isArray(row)) return null;
   if(normalizeVaultId(row.session_id)!==sessionId||typeof row.case_id!=="string"||
-     !["mobile","tablet","desktop"].includes(String(row.device_class))||
+     (row.device_class!=="mobile"&&row.device_class!=="tablet"&&row.device_class!=="desktop")||
      typeof row.duration_seconds!=="number"||!Number.isFinite(row.duration_seconds)||
      row.duration_seconds<=0||row.duration_seconds>7200||
-     typeof row.started_at!=="string"||typeof row.finished_at!=="string")
+     typeof row.started_at!=="string"||typeof row.finished_at!=="string"||
+     !Number.isFinite(Date.parse(row.started_at))||!Number.isFinite(Date.parse(row.finished_at))||
+     Date.parse(row.finished_at)<Date.parse(row.started_at))
     return null;
   return row;
 }
