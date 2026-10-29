@@ -1,3 +1,7 @@
+## 2026-10-29 — device dashboard must respect persisted human review and full v2 receipt
+
+**Decision:** The operator device dashboard must not reclassify a persisted v2 `review` as accepted merely because raw samples and checkboxes pass. Only a fully normalized v2 receipt explicitly marked accepted can satisfy the display gate; contradictory v2 metrics are review-only with uncertified summary fields. Historical v1 remains review-only. This is code integrity, not a physical-device acceptance.
+
 ## 2026-10-29 — match browser/server device latency and missing-data semantics
 
 **Decision:** A browser session with no latency samples reports `withinTarget:null` (not a fabricated failure). The client and server both compare the rounded displayed p95 to the 100 ms acceptance threshold, conservatively treating 99.96 ms as 100.0 ms and requiring review. Real target-device signoff is still required; this only fixes the audit transport contract.

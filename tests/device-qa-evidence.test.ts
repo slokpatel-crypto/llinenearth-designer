@@ -192,8 +192,10 @@ test("operator device evidence write/read paths preserve fail-closed acceptance"
   assert.match(writer,/return=\$\{deviceReceipt\?"representation":"minimal"\}/);
   assert.match(writer,/Device QA evidence receipt could not be confirmed/);
   assert.match(writer,/readSecureJsonObject\(request,MEMORY_EVENT_JSON_MAX_BYTES\)/);
-  assert.match(reader,/evaluation\.versionValid\?evaluation\.p95Ms:legacyP95/);
-  assert.match(reader,/evaluation\.versionValid\?evaluation\.samples:legacySamples/);
+  assert.match(reader,/normalizeDeviceQaEvidenceReceipt\(payload\)/);
+  assert.match(reader,/verifiedV2\?\.status==="accepted"&&evaluation\.accepted/);
+  assert.match(reader,/evaluation\.versionValid\?\(verifiedV2\?evaluation\.p95Ms:null\):legacyP95/);
+  assert.match(reader,/evaluation\.versionValid\?\(verifiedV2\?evaluation\.samples:0\):legacySamples/);
   assert.doesNotMatch(reader,/Number\(payload\.p95Ms\)/);
 });
 
@@ -228,4 +230,14 @@ test("device QA client preserves unmeasured review as null instead of false",()=
     note:"No latency observations yet.",
   });
   assert.equal(review?.status,"review");
+});
+
+
+test("an explicitly reviewed v2 session stays review even if raw latency and visuals pass",()=>{
+  const raw=completeDeviceQaReceipt();
+  const reviewed=normalizeDeviceQaEvidenceReceipt({...raw,status:"review"});
+  assert.equal(reviewed?.status,"review");
+  assert.equal(evaluateDeviceQaEvidence(raw).accepted,true);
+  const invalid=normalizeDeviceQaEvidenceReceipt({...raw,status:"accepted",p95Ms:0});
+  assert.equal(invalid,null);
 });

@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { evaluateDeviceQaEvidence } from "@/lib/designer/device-qa-evidence";
+import { DEVICE_QA_EVIDENCE_VERSION, evaluateDeviceQaEvidence, normalizeDeviceQaEvidenceReceipt } from "@/lib/designer/device-qa-evidence";
 
 export const runtime="nodejs";
 
@@ -40,14 +40,19 @@ export async function GET() {
       const requestedClass=typeof payload.deviceClass==="string"?payload.deviceClass:"";
       if(!["mobile","tablet","desktop"].includes(requestedClass) || latest[requestedClass]) continue;
       const evaluation=evaluateDeviceQaEvidence(payload);
+      // Historical v2 rows with contradictory metadata or an explicit human
+      // review must never be promoted into an accepted device gate by raw
+      // latency/checkboxes alone. V1 remains visible but review-only.
+      const verifiedV2=payload.version===DEVICE_QA_EVIDENCE_VERSION
+        ?normalizeDeviceQaEvidenceReceipt(payload):null;
       const legacyP95=typeof payload.p95Ms==="number" && Number.isFinite(payload.p95Ms) && payload.p95Ms>=0 && payload.p95Ms<=10000?payload.p95Ms:null;
       const legacySamples=typeof payload.samples==="number" && Number.isSafeInteger(payload.samples) && payload.samples>=0 && payload.samples<=500?payload.samples:0;
       latest[requestedClass]={
         at:row.at,
-        status:evaluation.accepted?"accepted":"review",
+        status:verifiedV2?.status==="accepted"&&evaluation.accepted?"accepted":"review",
         viewport:typeof payload.viewport==="string"?payload.viewport:"",
-        p95Ms:evaluation.versionValid?evaluation.p95Ms:legacyP95,
-        samples:evaluation.versionValid?evaluation.samples:legacySamples,
+        p95Ms:evaluation.versionValid?(verifiedV2?evaluation.p95Ms:null):legacyP95,
+        samples:evaluation.versionValid?(verifiedV2?evaluation.samples:0):legacySamples,
         note:typeof payload.note==="string"?payload.note.slice(0,400):"",
         evidenceVersion:typeof payload.version==="string"?payload.version:"designer-device-qa-v1",
         performancePass:evaluation.performancePass,

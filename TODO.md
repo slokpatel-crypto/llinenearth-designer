@@ -2,6 +2,7 @@
 - [x] Combine PR #474 fail-closed verified stock and isolated CI browser fixture with PR #475 exact v2 device QA receipt validation on a new branch, preserving both parents and the canonical fixed Studio photo.
 - [x] Reject non-string/padded live RPC fabric identifiers and contradictory padded duplicates before advertising exact physical stock. Add regression cases; no inventory was created.
 - [x] Align browser/server device QA p95 rounding and preserve null for unmeasured review receipts; regression-test near-threshold and empty sessions. No human device evidence was recorded.
+- [x] Fail closed on historical contradictory v2 device rows and preserve an operator's explicit `review` verdict in the device dashboard, even when raw latency/checkboxes pass. Add reader regression; still no real device signoff.
 - [ ] Require both CI workflows at the **integration commit SHA**; do not transfer green status from either sibling PR.
 - [ ] Live Supabase read-only audit: stock ledger, locked revisions, novice/beta attempts and production orders are empty. Obtain real owner-scoped authenticated customer/operator acceptance, verified shirt/trouser stock, native Blender, tailor and target-device human approvals. Synthetic fixture does not meet release gates. No merge, migration or deploy.
 
