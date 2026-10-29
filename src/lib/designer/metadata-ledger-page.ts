@@ -96,3 +96,17 @@ export function validateOperatorMetadataAvailability(
     return "invalid";
   return "valid";
 }
+
+
+/** Operator physical measurements must retain their JSON types. Number()
+ * accepts ["145"], "145" and other values that are not measured GSM.
+ */
+export function literalOperatorPhysicalNumber(value:unknown,min:number,max:number):number|null {
+  return typeof value==="number"&&Number.isFinite(value)&&value>=min&&value<=max?value:null;
+}
+
+export function literalOperatorPhysicalEnum<T extends string>(
+  value:unknown,allowed:readonly T[],
+):T|null {
+  return typeof value==="string"&&allowed.includes(value as T)?value as T:null;
+}
