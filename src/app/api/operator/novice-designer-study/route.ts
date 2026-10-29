@@ -1,3 +1,5 @@
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
+import { normalizeVaultId } from "@/lib/vault-id";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -5,6 +7,8 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import {
   normalizeNoviceDesignerAttempt,
   normalizeNoviceStudyDecision,
+  normalizeNoviceTimerStart,
+  normalizeNoviceTimedAttempt,
   summarizeNoviceDesignerStudy,
   type NoviceDesignerAttemptRow,
   type NoviceDesignerDecisionRow,
@@ -59,86 +63,106 @@ export async function GET(){
   }
 }
 
+function respond(body:unknown,status=200){
+  return NextResponse.json(body,{status,headers:{"cache-control":"private, no-store","pragma":"no-cache"}});
+}
+function invalid(error:unknown){
+  return respond({error:error instanceof Error?error.message:"Invalid novice study evidence."},400);
+}
+function confirmedTimerStart(receipt:unknown,caseId:string,deviceClass:string){
+  if(!Array.isArray(receipt)||receipt.length!==1) return null;
+  const row=receipt[0] as Record<string,unknown>|null;
+  if(!row||typeof row!=="object"||Array.isArray(row)) return null;
+  const id=normalizeVaultId(row.session_id);
+  if(!id||row.case_id!==caseId||row.device_class!==deviceClass||typeof row.started_at!=="string")
+    return null;
+  return {session_id:id,case_id:caseId,device_class:deviceClass,started_at:row.started_at};
+}
+function confirmedTimerFinish(receipt:unknown,sessionId:string){
+  if(!Array.isArray(receipt)||receipt.length!==1) return null;
+  const row=receipt[0] as Record<string,unknown>|null;
+  if(!row||typeof row!=="object"||Array.isArray(row)) return null;
+  if(normalizeVaultId(row.session_id)!==sessionId||typeof row.case_id!=="string"||
+     !["mobile","tablet","desktop"].includes(String(row.device_class))||
+     typeof row.duration_seconds!=="number"||!Number.isFinite(row.duration_seconds)||
+     row.duration_seconds<=0||row.duration_seconds>7200||
+     typeof row.started_at!=="string"||typeof row.finished_at!=="string")
+    return null;
+  return row;
+}
+
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,16384);
+  if(unsafe) return respond({error:unsafe.error},unsafe.status);
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
   try{
-    const body=await request.json() as Record<string,unknown>;
-    const action=String(body.action||"");
-
-    if(action==="start_timer"){
-      const caseId=String(body.caseId||"").trim();
-      const deviceClass=String(body.deviceClass||"").trim();
-      const rows=await rpc<Array<{session_id:string;case_id:string;device_class:string;started_at:string}>>("designer_novice_timer_start",{
-        p_case_id:caseId,
-        p_device_class:deviceClass,
+    const body=await readSecureJsonObject(request,16384);
+    if(body.action==="start_timer"){
+      let draft;
+      try{draft=normalizeNoviceTimerStart(body);}catch(error){return invalid(error);}
+      const receipt=await rpc<unknown>("designer_novice_timer_start",{
+        p_case_id:draft.caseId,p_device_class:draft.deviceClass,
       });
-      const session=rows[0];
-      if(!session) throw new Error("Novice timing session could not be started.");
-      return NextResponse.json({session});
+      const session=confirmedTimerStart(receipt,draft.caseId,draft.deviceClass);
+      if(!session) return respond({error:"Server timing session was not confirmed."},409);
+      return respond({session});
     }
-
-    if(action==="finish_timer"){
-      const timingSessionId=String(body.timingSessionId||"").trim();
-      if(!/^[0-9a-f-]{36}$/i.test(timingSessionId)) throw new Error("Valid novice timing session is required.");
-      const rows=await rpc<Array<{session_id:string;case_id:string;device_class:string;duration_seconds:number;started_at:string;finished_at:string}>>("designer_novice_timer_finish",{
+    if(body.action==="finish_timer"){
+      const timingSessionId=normalizeVaultId(body.timingSessionId);
+      if(!timingSessionId) return respond({error:"Valid novice timing session is required."},400);
+      const receipt=await rpc<unknown>("designer_novice_timer_finish",{
         p_session_id:timingSessionId,
       });
-      const session=rows[0];
-      if(!session) throw new Error("Novice timing session could not be finished.");
-      return NextResponse.json({session});
+      const session=confirmedTimerFinish(receipt,timingSessionId);
+      if(!session) return respond({error:"Finished timing session was not confirmed."},409);
+      return respond({session});
     }
-
-    if(action==="record_timed_attempt"){
-      const timingSessionId=String(body.timingSessionId||"").trim();
-      if(!/^[0-9a-f-]{36}$/i.test(timingSessionId)) throw new Error("Finish a valid server timing session first.");
-      const noviceConfirmed=body.noviceConfirmed;
-      const likedDesignCompleted=body.likedDesignCompleted;
-      const blockingIssue=body.blockingIssue;
-      if(typeof noviceConfirmed!=="boolean"||typeof likedDesignCompleted!=="boolean"||typeof blockingIssue!=="boolean"){
-        throw new Error("Novice status, liked-design completion and blocking result must all be recorded.");
-      }
-      const note=String(body.note||"").replace(/\s+/g," ").trim().slice(0,1200);
-      if(blockingIssue&&note.length<3) throw new Error("Blocking issues require a short note.");
-      const attemptId=await rpc<string>("designer_novice_attempt_record_v2",{
+    if(body.action==="record_timed_attempt"){
+      let draft;
+      try{draft=normalizeNoviceTimedAttempt(body);}catch(error){return invalid(error);}
+      const timingSessionId=normalizeVaultId(draft.timingSessionId);
+      if(!timingSessionId) return respond({error:"Finish a valid server timing session first."},400);
+      const receipt=await rpc<unknown>("designer_novice_attempt_record_v2",{
         p_timing_session_id:timingSessionId,
-        p_novice_confirmed:noviceConfirmed,
-        p_liked_design_completed:likedDesignCompleted,
-        p_blocking_issue:blockingIssue,
-        p_note:note,
+        p_novice_confirmed:draft.noviceConfirmed,
+        p_liked_design_completed:draft.likedDesignCompleted,
+        p_blocking_issue:draft.blockingIssue,
+        p_note:draft.note,
       });
-      return NextResponse.json({attemptId});
+      const attemptId=normalizeVaultId(receipt);
+      if(!attemptId) return respond({error:"Timed novice attempt was not confirmed."},409);
+      return respond({attemptId});
     }
-
-    if(action==="record_attempt"){
-      const attempt=normalizeNoviceDesignerAttempt(body);
-      const attemptId=await rpc<string>("designer_novice_attempt_record",{
-        p_case_id:attempt.caseId,
-        p_device_class:attempt.deviceClass,
-        p_duration_seconds:attempt.durationSeconds,
-        p_novice_confirmed:attempt.noviceConfirmed,
-        p_liked_design_completed:attempt.likedDesignCompleted,
-        p_blocking_issue:attempt.blockingIssue,
-        p_note:attempt.note,
+    if(body.action==="record_attempt"){
+      let draft;
+      try{draft=normalizeNoviceDesignerAttempt(body);}catch(error){return invalid(error);}
+      const receipt=await rpc<unknown>("designer_novice_attempt_record",{
+        p_case_id:draft.caseId,p_device_class:draft.deviceClass,
+        p_duration_seconds:draft.durationSeconds,
+        p_novice_confirmed:draft.noviceConfirmed,
+        p_liked_design_completed:draft.likedDesignCompleted,
+        p_blocking_issue:draft.blockingIssue,p_note:draft.note,
       });
-      return NextResponse.json({attemptId,legacyManualTiming:true});
+      const attemptId=normalizeVaultId(receipt);
+      if(!attemptId) return respond({error:"Legacy novice attempt was not confirmed."},409);
+      return respond({attemptId,legacyManualTiming:true});
     }
-
-    if(action==="record_decision"){
-      const decision=normalizeNoviceStudyDecision(body);
-      const eventId=await rpc<string>("designer_novice_study_decision_record",{
-        p_status:decision.status,
-        p_target_seconds:decision.targetSeconds,
-        p_signed_by:decision.signedBy,
-        p_note:decision.note,
+    if(body.action==="record_decision"){
+      let draft;
+      try{draft=normalizeNoviceStudyDecision(body);}catch(error){return invalid(error);}
+      const receipt=await rpc<unknown>("designer_novice_study_decision_record",{
+        p_status:draft.status,p_target_seconds:draft.targetSeconds,
+        p_signed_by:draft.signedBy,p_note:draft.note,
       });
-      return NextResponse.json({eventId});
+      const eventId=normalizeVaultId(receipt);
+      if(!eventId) return respond({error:"Human novice-study decision was not confirmed."},409);
+      return respond({eventId});
     }
-
-    return NextResponse.json({error:"Unsupported novice-study action."},{status:400});
+    return respond({error:"Unsupported novice-study action."},400);
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
     console.error("[operator/novice-designer-study]",error);
-    return NextResponse.json({
-      error:error instanceof Error?error.message:"Novice Designer study operation failed.",
-    },{status:409});
+    return respond({error:"Novice Designer study operation failed."},409);
   }
 }
