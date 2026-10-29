@@ -12,6 +12,7 @@ import { parseOperatorLockedSelection } from "@/lib/designer/operator-locked-sel
 import { parseOperatorProductionStatus } from "@/lib/designer/operator-production-status";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval";
+import { verifiedOptionalProductionRows } from "@/lib/designer/optional-production-ledger";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
@@ -19,6 +20,11 @@ export const runtime="nodejs";
 async function authorized(){
   const jar=await cookies();
   return verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value);
+}
+class ProductionRpcHttpError extends Error {
+  constructor(readonly status:number){
+    super("Production request failed ("+status+").");
+  }
 }
 async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
   const config=getSupabaseAdminConfig();
@@ -31,11 +37,25 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     signal:AbortSignal.timeout(8_000),
   });
   if(!response.ok){
-    throw new Error(`Production request failed (${response.status}).`);
+    throw new ProductionRpcHttpError(response.status);
   }
   // Lists and snapshots are capped separately from single mutation receipts.
   const maxBytes=name.endsWith("_list")?4 * 1024 * 1024:256 * 1024;
   return await readBoundedJsonResponse(response,maxBytes) as T;
+}
+
+async function readOptionalProductionLedger(name:string,limit:number){
+  try{
+    const rows=verifiedOptionalProductionRows(await rpc<unknown>(name,{p_limit:limit}));
+    return {rows,installed:true};
+  }catch(error){
+    // Only a missing optional RPC preserves compatibility with an older
+    // deployment. A 200 malformed body, timeout or 5xx is not an empty ledger.
+    if(error instanceof ProductionRpcHttpError && error.status===404){
+      return {rows:[] as unknown[],installed:false};
+    }
+    throw error;
+  }
 }
 
 async function loadVerifiedLockedRevision(recoveryToken:string){
@@ -64,25 +84,20 @@ export async function GET(){
     // A malformed upstream response must not look like a legitimately empty
     // shop quote/order ledger in the operator console.
     if(!Array.isArray(quotes)||!Array.isArray(orders)) throw new Error("Malformed production quote/order list receipts.");
-    let qcInspections:unknown[]=[];
-    let customerOutcomes:unknown[]=[];
-    let learningContexts:unknown[]=[];
-    try{
-      qcInspections=await rpc<unknown[]>("finished_garment_qc_list",{p_limit:250});
-    }catch{
-      // Keep quote/order operations readable while a new QC migration is being installed.
-    }
-    try{
-      customerOutcomes=await rpc<unknown[]>("production_customer_outcome_list",{p_limit:250});
-    }catch{
-      // Keep the production desk usable while the Phase 11 outcome migration is being installed.
-    }
-    try{
-      learningContexts=await rpc<unknown[]>("production_order_learning_context_list",{p_limit:500});
-    }catch{
-      // Older/manual orders remain readable while durable lineage support is being installed.
-    }
-    return NextResponse.json({configured:true,quotes,orders,qcInspections,customerOutcomes,learningContexts},{headers:{"cache-control":"private, no-store"}});
+    const [qc,outcomes,contexts]=await Promise.all([
+      readOptionalProductionLedger("finished_garment_qc_list",250),
+      readOptionalProductionLedger("production_customer_outcome_list",250),
+      readOptionalProductionLedger("production_order_learning_context_list",500),
+    ]);
+    return NextResponse.json({
+      configured:true,quotes,orders,
+      qcInspections:qc.rows,customerOutcomes:outcomes.rows,learningContexts:contexts.rows,
+      optionalEvidenceSources:{
+        qcInstalled:qc.installed,
+        customerOutcomesInstalled:outcomes.installed,
+        learningContextInstalled:contexts.installed,
+      },
+    },{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
     if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
