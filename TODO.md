@@ -1,3 +1,10 @@
+## 29 October 2026 — catalogue identity / live-stock binding (draft)
+- [x] Prevent a valid stock RPC row from advertising multiple distinct swatches with the same catalogue fabric ID; both duplicates now fail closed.
+- [x] Restrict the verified-stock count to uniquely represented catalogue IDs; an unexpected RPC fabric can no longer inflate customer-visible evidence metrics.
+- [x] Add positive and negative pure regressions for duplicate catalogue IDs, unknown RPC rows and preservation of valid stock.
+- [ ] Verify PR #477's exact commit in quality, Node, engine, preview, release, production build and pinned Chromium. PR #476's matching-head CI/Non-3D QA were cancelled and cannot be counted as passed.
+- [ ] Live Supabase has zero private fabric stock ledger rows and zero locked revisions, so genuine stock and signed-in owner/recovery/enquiry/operator acceptance remain unverified. Supplier, tailor, native Blender, physical devices and launch approvals are separate human gates. No live writes, merge or deploy.
+
 ## 29 October 2026 — stacked stock + device QA source integration (draft)
 - [x] Combine PR #474 fail-closed verified stock and isolated CI browser fixture with PR #475 exact v2 device QA receipt validation on a new branch, preserving both parents and the canonical fixed Studio photo.
 - [x] Reject non-string/padded live RPC fabric identifiers and contradictory padded duplicates before advertising exact physical stock. Add regression cases; no inventory was created.
