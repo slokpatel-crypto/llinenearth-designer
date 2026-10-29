@@ -1,3 +1,8 @@
+## 2026-10-30 — J5 impossible QC timestamps must never outrank physical rework (stacked draft)
+- [x] Reproduced `Date.parse("2026-02-31T12:00:00Z")` normalizing to March 3; a nonexistent approved inspection could outrank a genuine March 2 rework and falsely allow delivered status.
+- [x] Validate literal full calendar day and 00–23/00–59/00–59 wall-clock before parsing the timezone instant. Preserve valid leap-day, fractional-second and offset timestamps. Add phantom-approval/rework and positive/negative regressions. This shared guard covers both server and operator UI.
+- [ ] Require exact-head quality, Node, engine, preview-performance, release, build, Chromium 390/768/1440 and Non-3D. A 500-row list is not atomic latest-by-order proof. Genuine physical tailor/QC, supplier stock, owner/operator, devices, native Blender, five beta, ten deliveries, privacy/security and release approval remain BLOCKED/PENDING. No live write, migration, paid provider, main merge or deployment.
+
 ## 2026-10-30 — J5 operator production errors must not reveal private backend diagnostics (stacked draft)
 - [x] Reproduced the privileged operator production POST exception handler reflecting raw SQL/RPC error.message into HTTP 409, potentially exposing internal owner/order/schema details.
 - [x] Keep server-side diagnostic logging; use a constant generic private no-store error for unexpected failures, while preserving explicit 400 validation and 409 verified-receipt errors. Add regression against reintroducing exception-message reflection.
