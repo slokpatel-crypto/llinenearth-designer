@@ -1,3 +1,8 @@
+## 2026-10-30 — J3 both durable vault stores require exact UUID receipts (stacked draft)
+- [x] Reproduced design/measurement store routes accepting a padded or coerced upstream store ID via the recovery-token UUID normalizer. A malformed successful RPC could produce an apparently durable recovery credential and trigger owner-link attempts.
+- [x] Validate the literal PostgreSQL UUID scalar before issuing a design or measurement recovery token or linking owner. Shared strict helper, positive uppercase UUID and negative padded/array/object receipt regressions, both route source guards. Preserve existing owner-scoped actions, recovery token formats and no-paid-AI Studio.
+- [ ] Exact-head quality, full Node tests, engine, preview-performance, release check, build, responsive 390/768/1440 browser and Non-3D must PASS. No real owner authenticated vault store/load/recovery, physical supplier/tailor, native Blender, device, beta/delivery, privacy/security or owner release approval claimed. No live write/migration, paid AI, main merge or deploy.
+
 ## 2026-10-30 — J4 share/enquiry audit receipts must be exact literal UUIDs (stacked draft)
 - [x] Reproduced `verifiedLockedHandoffAuditId` trimming padded upstream UUID strings and `/api/designer/enquiry` using the same permissive `normalizeVaultId` directly. Both could claim `audited:true` from an altered RPC receipt rather than a literal database ID.
 - [x] Require an exact scalar UUID receipt (case-insensitive hex only, no whitespace/coercion) in the shared share/enquiry audit helper, and use it in the owner-scoped enquiry API. Add positive uppercase and negative padded/array tests, source regression and release contract.
