@@ -85,3 +85,12 @@ Canonical criteria: [TITAN_RELEASE_CHECKLIST.md](./TITAN_RELEASE_CHECKLIST.md). 
 - **Verification at child head:** GitHub contents writes confirmed above SHAs and draft PR #503 opened. **PENDING** matching-head `npm run quality`, `npm test`, `npm run eval:engine`, `npm run eval:preview-performance`, `npm run release:check`, `npm run build`, browser 390/768/1440 and Non-3D QA. Do not transfer parent #502 CI results.
 - **BLOCKED external evidence:** real supplier-approved physical stock, real authenticated owner/customer/operator save/lock/recovery/enquiry/quote/order, tailor/ease and physical cutting, independent device/novice beta, native Blender identity/UV/geometry, production delivery and security/privacy/owner approvals. No production writes, provider charges, main merge or deployment.
 - **Next exact action:** check PR #503 current SHA and its own CI/Non-3D run IDs; inspect any failed step and repair. If green, inspect J5 optional quote lineage/owner boundary or next independent T2/T5 integrity defect; preserve all physical/human gates as pending.
+
+
+## 2026-10-29T18:50:30.139Z — M7 verification repair: Node ESM source import
+
+- **Criterion:** T5/J5/T6, exact-head source test compatibility.
+- **Failed exact head:** `ec6733e8f77b1886d41e7ee03b02e92aae0a90e9`, Non-3D QA `40934364344` **FAIL** in `npm test`: `ERR_MODULE_NOT_FOUND` for extensionless `customer-production-outcomes` imported by the new receipt validator. This is an actual regression; the other 1,134 tests passed in that job, but neither full CI nor browser QA is certified.
+- **Repair parent → result:** `ec6733e8f77b1886d41e7ee03b02e92aae0a90e9` → `89f3b0b9513c75cb2ed0de06e08d53cf9d6da064`. Use explicit `.ts` import, consistent with Node's strip-types tests and allowed by repository `allowImportingTsExtensions:true`. No business validation relaxed.
+- **New verification:** matching-head quality, full Node, engine, preview, release, build, browser 390/768/1440 and Non-3D **PENDING** after this checkpoint. The old failed run is not transferable.
+- **External blockers and next:** unchanged real supplier stock, owner-authenticated production flow, tailor/device/native Blender, beta/delivery/security and owner approvals. Check latest PR #503 exact head and new CI; fix actual failures, no production writes/merge/deploy.
