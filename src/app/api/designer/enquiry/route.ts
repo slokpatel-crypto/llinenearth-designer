@@ -67,8 +67,8 @@ export async function POST(request:Request){
       });
     }
 
-    const parsed=parseDesignVaultRecoveryToken(intent.recoveryToken);
-    if(!parsed) return respond({error:"A valid saved-design recovery token is required."},400);
+    const access=parseDesignVaultRecoveryToken(intent.recoveryToken);
+    if(!access) return respond({error:"A valid saved-design recovery token is required."},400);
     const customer=await getCustomerIdentity(request);
     if(!customer) return respond({error:"Sign in to record an owner-verified enquiry intent."},401);
     if(!getSupabaseAdminConfig()) return respond({error:"Enquiry audit storage is not configured."},503);
@@ -77,10 +77,10 @@ export async function POST(request:Request){
     // check. Both are needed; a self-hashed client recipe proves neither.
     const [ownedResult,tokenResult]=await Promise.all([
       rpc("designer_locked_revision_vault_get_owned",{
-        p_vault_id:parsed.vaultId,p_owner_user_id:customer.id,
+        p_vault_id:access.vaultId,p_owner_user_id:customer.id,
       }),
       rpc("designer_locked_revision_vault_get",{
-        p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
+        p_vault_id:access.vaultId,p_access_hash:access.accessHash,
       }),
     ]);
     const owned=selectVaultReadRow(ownedResult);
