@@ -6,6 +6,7 @@ import {
   CUSTOMER_AUTH_JSON_MAX_BYTES,
   MAX_CUSTOMER_AUTH_RATE_KEYS,
   customerAuthRateBlocked,
+  customerAuthEmailRateBlocked,
   parseCustomerAuthEmail,
   parseCustomerOtpCode,
   type CustomerAuthRateState,
@@ -45,6 +46,17 @@ test("rotating forwarded addresses cannot bypass the global best-effort OTP budg
     assert.equal(customerAuthRateBlocked(s,"otp",`192.0.${Math.floor(i/256)}.${i%256}`,1_000),false);
   assert.equal(customerAuthRateBlocked(s,"otp","198.51.100.1",1_000),true);
   assert.equal(customerAuthRateBlocked(s,"otp","198.51.100.1",601_001),false);
+});
+
+test("mailbox-level throttling resists rotating IPs without retaining plaintext email",()=>{
+  const s=state();
+  const email="customer@example.com";
+  for(let i=0;i<4;i++) assert.equal(customerAuthEmailRateBlocked(s,"otp",email,1_000),false);
+  assert.equal(customerAuthEmailRateBlocked(s,"otp",email,1_000),true);
+  for(let i=0;i<10;i++) assert.equal(customerAuthEmailRateBlocked(s,"verify",email,1_000),false);
+  assert.equal(customerAuthEmailRateBlocked(s,"verify",email,1_000),true);
+  assert.equal([...s.identities.keys()].some(key=>key.includes(email)),false);
+  assert.equal(customerAuthEmailRateBlocked(s,"otp",email,601_001),false);
 });
 
 test("auth request counters are memory-bounded and reject malformed forwarded identities",()=>{
