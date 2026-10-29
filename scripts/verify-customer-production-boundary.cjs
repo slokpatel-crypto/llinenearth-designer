@@ -178,6 +178,26 @@ async function verifyCustomerProductionBoundary(baseURL="http://127.0.0.1:3000")
     assert.equal(data.session,undefined);
     assert.match(response.headers.get("cache-control")||"",/no-store/);
   }
+  // Physical fabric policy writes are privileged; only unauthenticated
+  // negative transport cases are exercised, never a real supplier sign-off.
+  const fabricPolicyCases=[
+    ["foreign origin","{}",{origin:"https://outside.example"},403],
+    ["same-site subdomain","{}",{"sec-fetch-site":"same-site"},403],
+    ["non-JSON","{}",{"content-type":"text/plain"},415],
+    ["oversized JSON",JSON.stringify({status:"approved",note:"x".repeat(20_000)}),{},413],
+  ];
+  for(const [label,body,headers,expected] of fabricPolicyCases){
+    const response=await fetch(`${baseURL}/api/operator/fabric-truth-policy`,{
+      method:"POST",headers:{"content-type":"application/json",...headers},body,
+    });
+    const data=await response.json();
+    assert.equal(response.status,expected,`fabric policy ${label}: ${data.error||"unexpected response"}`);
+    assert.equal(typeof data.error,"string");
+    assert.equal(data.policy,undefined);
+    assert.equal(data.eventId,undefined);
+    assert.match(response.headers.get("cache-control")||"",/no-store/);
+  }
+  console.log(`PASS ${fabricPolicyCases.length} real fabric truth policy transport rejection contracts`);
   console.log(`PASS ${noviceCases.length} real novice study transport rejection contracts`);
   console.log(`PASS ${launchCases.length} real launch readiness transport rejection contracts`);
   console.log(`PASS ${meterageCases.length} real meterage model transport rejection contracts`);
