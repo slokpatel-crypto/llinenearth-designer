@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { normalizeProductionQuoteDraft } from "@/lib/designer/production-quote";
 import { parseDesignVaultRecoveryToken } from "@/lib/designer/design-vault";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
@@ -28,10 +29,11 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     signal:AbortSignal.timeout(8_000),
   });
   if(!response.ok){
-    const detail=(await response.text()).slice(0,300);
-    throw new Error(`Production request failed (${response.status}): ${detail}`);
+    throw new Error(`Production request failed (${response.status}).`);
   }
-  return await response.json() as T;
+  // Lists and snapshots are capped separately from single mutation receipts.
+  const maxBytes=name.endsWith("_list")?4 * 1024 * 1024:256 * 1024;
+  return await readBoundedJsonResponse(response,maxBytes) as T;
 }
 
 async function loadVerifiedLockedRevision(recoveryToken:string){
