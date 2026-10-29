@@ -1,3 +1,8 @@
+## 29 October 2026 — stock audit note provenance integrity (draft)
+- [x] Reproduced silently truncated or JSON-coerced physical stock notes on manual ledger record, reservation consumption and release.
+- [x] Reject non-text or overlong (>600 normalized chars) notes while preserving optional blank notes and adding negative/positive regression tests.
+- [ ] Verify this exact stacked draft head in GitHub CI, Node, engine, preview, release, build and real 390/768/1440 browser checks; confirm actual authenticated operator/Supabase acceptance separately. Live stock ledger, locked revisions, beta attempts and orders were still empty at read-only audit. Supplier, tailor, native geometry, target devices and explicit major-milestone approvals remain required; no merge or deploy.
+
 ## 29 October 2026 — cross-check physical stock RPC provenance receipts (draft)
 - [x] Read v2 stock SQL: the RPC returns manual, provenance and legacy-unverified event counts in addition to provenance_ready. Customer adapter previously trusted the boolean alone.
 - [x] Require positive safe-integer manual events, equal provenance event count and exactly zero legacy-unverified events before accepting a v2 RPC's provenance_ready. Missing/coerced/inconsistent counts fail closed. Update isolated CI-only mock and negative tests; no physical stock or live write.
