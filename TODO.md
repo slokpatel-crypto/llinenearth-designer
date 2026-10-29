@@ -1,3 +1,9 @@
+## 29 October 2026 — physical fabric truth policy must have a confirmed ledger receipt (draft)
+
+- [x] Reproduced silently truncated signer/rationale, unbounded operator JSON, and success-shaped physical-evidence policy save after only HTTP 2xx with no returned record.
+- [x] Added literal nontruncated human evidence, 16 KiB same-origin streamed JSON, explicit 400/413 failures, private no-store responses, and PostgREST returned event ID/time verification. Added Node and four negative-only real HTTP regressions; no actual supplier evidence recorded.
+- [ ] Require exact-head CI, Node, engine, preview, release, build and Chromium. Confirm actual live service-role ledger representation and real owner/supplier approval once Supabase connectivity is restored; no migration, merge, deploy, native Blender or tailor signoff.
+
 ## 29 October 2026 — novice Designer timing and human acceptance evidence integrity (draft)
 
 - [x] Reproduced coercible novice case/device/time/decision/signer values, truncated blocking notes, unbounded privileged JSON and unverified timer/attempt/approval receipts.

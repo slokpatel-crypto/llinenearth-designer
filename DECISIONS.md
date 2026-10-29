@@ -1,3 +1,9 @@
+## 2026-10-29 — Physical fabric truth policy needs an actual persisted receipt
+
+**Decision:** The operator cannot claim an approved physical-evidence policy merely because PostgREST returned HTTP 201 without a row. Require a returned representation with exactly one event ID matching the submitted immutable ID and a parseable persisted timestamp. Reject coerced policy status and overlong human signer/rationale instead of truncating; require same-origin, actual streamed 16 KiB JSON and private no-store errors. Missing/mismatched receipts fail closed; a live end-to-end write must be separately tested with owner authorization.
+
+**Limits:** This is evidence-integrity engineering, not supplier-measured scale, GSM, fibre, drape, stock, real human signoff or a production approval. No model/photo replacement, paid per-edit AI, schema migration, customer data mutation, merge or deployment.
+
 ## 2026-10-29 — Novice Designer proof must be server-timed and receipt-confirmed
 
 **Decision:** Novice user testing is a release gate, not an arbitrary form submission. Require literal case/device/outcome/seconds/approver fields and nontruncated human notes. Enforce same-origin, JSON media and actual 16 KiB streamed request bounds. A started timer is accepted only if the single backend row contains a UUID matching the requested case and device; a finished timer must match the requested session UUID and have finite positive elapsed seconds. Recorded attempts and human approval must return a valid UUID receipt. Reject unconfirmed writes instead of reporting a successful study. Legacy manual-timing attempts remain available but do not satisfy the server-timed five-case gate.
