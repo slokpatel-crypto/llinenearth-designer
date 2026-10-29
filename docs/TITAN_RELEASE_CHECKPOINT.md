@@ -36,3 +36,11 @@ Canonical criteria: [TITAN_RELEASE_CHECKLIST.md](./TITAN_RELEASE_CHECKLIST.md). 
 - **Current working branch:** `work/titan-release-gates-handoff-20261029`; latest observed source/test commit before this documentation checkpoint: `71977605913d11743e2bc7b036f03d71e3f8c700`. Always resolve GitHub head, not this text, before changes.
 - **PENDING:** matching-head CI; browser 390/768/1440, quality, tests, engine, preview, release, build; genuine human/operator stock and all release signoffs. Base #501's passed runs apply only to `b15cfd5`.
 - **Forbidden without explicit user approval:** merge into main, force update existing branches, publish/deploy production, run supplier-facing or real paid image jobs, change production Supabase records or apply migrations.
+
+
+## 2026-10-29 — M3: require release records in the static code gate (CI pending)
+
+- **Criterion:** T6 documentation/reproducibility. Parent source SHA before this milestone: `35b01c64422f0490222c6ada430186a9b248ada2`.
+- **Commits:** `6a6fbaaf61bc49ec5140cd6570b92f1acd105bdf` adds checklist and checkpoint to `scripts/release-readiness.mjs` required files; `d939b09a0d20459957251c8fe3ba8b43573967a0` adds automated six-area/J1–J6 and bounded customer-handoff source guards; `48122ea15faca4b067bdda937d217af953b820e9` corrects regex escaping in new test. File contents were reread in the connected repository.
+- **State:** automated exact-new-head quality/Node/engine/preview/build/browser/Non-3D CI **PENDING** until the draft PR check completes; static file presence does not substitute for live physical/human approvals. No `main` merge or production deploy.
+- **Next:** open a draft PR stacked on #501 (do not retarget earlier PRs); verify its actual head SHA and both GitHub Actions runs. Repair failures on the new branch and then assess next J3 customer recovery path, preserving signed-in owner boundaries and backwards compatibility.
