@@ -71,3 +71,28 @@ export function verifyOperatorMetadataRowSequence(
   }
   return last;
 }
+
+
+/** The newest operator metadata event must not shadow an older sold-out veto
+ * through JSON coercion (e.g. availability:["available"]) or a padded ID.
+ * Unrelated operator notes and retired catalogue IDs are not availability
+ * instructions. A malformed current-catalogue instruction is an outage,
+ * never a verified absence of an operator veto.
+ */
+export function validateOperatorMetadataAvailability(
+  payload:unknown,knownFabricIds:ReadonlySet<string>,
+):"unrelated"|"valid"|"invalid" {
+  if(!payload||typeof payload!=="object"||Array.isArray(payload)) return "unrelated";
+  const {subtype,fabricId,availability}=payload as Record<string,unknown>;
+  if(subtype!=="designer_fabric_metadata"){
+    // A one-element array must not be coerced into the metadata subtype.
+    if(Array.isArray(subtype)&&subtype.length===1&&subtype[0]==="designer_fabric_metadata")
+      return "invalid";
+    return "unrelated";
+  }
+  if(typeof fabricId!=="string"||!fabricId||fabricId!==fabricId.trim()) return "invalid";
+  if(!knownFabricIds.has(fabricId)) return "unrelated";
+  if(availability!=="unknown"&&availability!=="available"&&availability!=="unavailable")
+    return "invalid";
+  return "valid";
+}
