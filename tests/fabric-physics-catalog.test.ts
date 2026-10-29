@@ -136,21 +136,21 @@ test("Analyzer adapter accepts only numeric 0-1 physics indices", () => {
 });
 
 test("catalogue GET retains stock filtering and accepted metadata while attaching six bounded results", async (t) => {
-  const originals = { metadata: metadata.loadDesignerFabricMetadata, intelligence: intelligenceStore.loadDesignerFabricIntelligence,
+  const originals = { metadata: metadata.loadDesignerFabricMetadataWithStatus, intelligence: intelligenceStore.loadDesignerFabricIntelligence,
     stock: stockStore.applyLiveVerifiedStockAvailability, fetch: globalThis.fetch };
   t.after(() => {
-    metadata.loadDesignerFabricMetadata = originals.metadata;
+    metadata.loadDesignerFabricMetadataWithStatus = originals.metadata;
     intelligenceStore.loadDesignerFabricIntelligence = originals.intelligence;
     stockStore.applyLiveVerifiedStockAvailability = originals.stock;
     globalThis.fetch = originals.fetch;
   });
   globalThis.fetch = async () => { throw new Error("Catalogue contract must not call external providers"); };
   const unavailable = engine.DESIGNER_SHIRTS[1].id;
-  metadata.loadDesignerFabricMetadata = async () => ({
+  metadata.loadDesignerFabricMetadataWithStatus = async () => ({metadata:{
     [base.id]: { fabricId: base.id, availability: "available", weightGsm: 160, drape: "fluid",
       physicalEvidence: { sourceType: "physical_roll", reference: "roll-1", checkedBy: "test checker" } },
     [unavailable]: { fabricId: unavailable, availability: "unavailable" },
-  });
+  },sourceVerified:true});
   stockStore.applyLiveVerifiedStockAvailability = async (stock: any[]) => ({
     stock: stock.map((fabric) => fabric.id === base.id ? { ...fabric, availableMetres: 12 } : fabric), verifiedFabricIds: [base.id],
   });
@@ -204,4 +204,28 @@ test("physics indices reject pending reviews and unsafe or coerced provenance",(
   assert.equal(attachCatalogFabricPhysics(base,https).physicsProfile?.structure.evidence,"reviewed");
   const corrected={...https,reviewStatus:"corrected" as const};
   assert.equal(attachCatalogFabricPhysics(base,corrected).physicsProfile?.gsm.evidence,"reviewed");
+});
+
+
+test("customer catalogue rejects stock promotion during operator metadata outage",async (t)=>{
+  const originals={metadata:metadata.loadDesignerFabricMetadataWithStatus,
+    intelligence:intelligenceStore.loadDesignerFabricIntelligence,
+    stock:stockStore.applyLiveVerifiedStockAvailability};
+  t.after(()=>{
+    metadata.loadDesignerFabricMetadataWithStatus=originals.metadata;
+    intelligenceStore.loadDesignerFabricIntelligence=originals.intelligence;
+    stockStore.applyLiveVerifiedStockAvailability=originals.stock;
+  });
+  metadata.loadDesignerFabricMetadataWithStatus=async()=>({metadata:{},sourceVerified:false});
+  stockStore.applyLiveVerifiedStockAvailability=async()=>{throw new Error("Stock RPC must not run when overrides cannot be checked");};
+  intelligenceStore.loadDesignerFabricIntelligence=async(ids:string[])=>{
+    assert.deepEqual(ids,[]);return {};
+  };
+  const response=await api.GET();
+  assert.equal(response.status,200);
+  const data=await response.json();
+  assert.deepEqual(data.shirts,[]);
+  assert.deepEqual(data.pants,[]);
+  assert.equal(data.calibrated,false);
+  assert.equal(data.verifiedStockFabrics,0);
 });
