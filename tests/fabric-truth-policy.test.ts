@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { evaluateFabricTruthPolicy, normalizeFabricTruthPolicy } from "../src/lib/designer/fabric-truth-policy.ts";
 
 test("Fabric Truth policy requires a named human decision and explicit thresholds",()=>{
@@ -81,4 +82,23 @@ test("contradictory and coerced fabric coverage counts fail closed",()=>{
   for(const bad of ["20",true,20.5,Number.POSITIVE_INFINITY]){
     assert.equal(evaluateFabricTruthPolicy(policy,{...valid,physicalScale:bad as number}).gateComplete,false);
   }
+});
+
+test("fabric truth approval never silently truncates signer or rationale",()=>{
+  const valid={status:"approved",physicalScalePercent:100,gsmPercent:80,drapePercent:75,fiberPercent:90,
+    signedBy:"Owner",note:"Supplier and owner reviewed physical roll evidence."};
+  assert.equal(normalizeFabricTruthPolicy(valid).status,"approved");
+  assert.throws(()=>normalizeFabricTruthPolicy({...valid,signedBy:"x".repeat(121)}),/too long/i);
+  assert.throws(()=>normalizeFabricTruthPolicy({...valid,note:"x".repeat(1201)}),/too long/i);
+  assert.throws(()=>normalizeFabricTruthPolicy({...valid,status:["approved"]}),/status must/i);
+});
+
+test("fabric truth operator POST requires bounded JSON and matching persisted ledger event",()=>{
+  const source=readFileSync("src/app/api/operator/fabric-truth-policy/route.ts","utf8");
+  assert.match(source,/secureJsonRequestError\(request,16384\)/);
+  assert.match(source,/readSecureJsonObject\(request,16384\)/);
+  assert.match(source,/return=representation/);
+  assert.match(source,/saved\.id!==event\.id/);
+  assert.doesNotMatch(source,/request\.json\(\)/);
+  assert.doesNotMatch(source,/return=minimal/);
 });
