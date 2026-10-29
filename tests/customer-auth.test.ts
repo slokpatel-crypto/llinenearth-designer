@@ -74,6 +74,37 @@ test("auth request counters are memory-bounded and reject malformed forwarded id
   assert.equal(customerAuthRateBlocked(malformed,"otp","203.0.113.1",Number.NaN),true);
 });
 
+
+test("full auth rate cache fails closed without evicting live mailbox budgets",()=>{
+  const s=state();
+  const victim="victim@example.com";
+  for(let i=0;i<4;i++)
+    assert.equal(customerAuthEmailRateBlocked(s,"otp",victim,1_000),false);
+  // A flood of distinct valid addresses used to evict the victim's active
+  // counter at capacity, allowing a fifth OTP request through.
+  for(let i=1;i<MAX_CUSTOMER_AUTH_RATE_KEYS;i++)
+    assert.equal(customerAuthEmailRateBlocked(s,"otp",`other${i}@example.com`,1_000),false);
+  assert.equal(s.identities.size,MAX_CUSTOMER_AUTH_RATE_KEYS);
+  assert.equal(customerAuthEmailRateBlocked(s,"otp","new@example.com",1_000),true);
+  assert.equal(s.identities.size,MAX_CUSTOMER_AUTH_RATE_KEYS);
+  assert.equal(customerAuthEmailRateBlocked(s,"otp",victim,1_000),true);
+  // Capacity can recover naturally after the ten-minute window.
+  assert.equal(customerAuthEmailRateBlocked(s,"otp","new@example.com",601_001),false);
+  assert.ok(s.identities.size<=MAX_CUSTOMER_AUTH_RATE_KEYS);
+});
+
+test("full auth rate cache preserves live IP verification limits",()=>{
+  const s=state();
+  for(let i=0;i<12;i++)
+    assert.equal(customerAuthRateBlocked(s,"verify","203.0.113.7",1_000),false);
+  for(let i=1;i<MAX_CUSTOMER_AUTH_RATE_KEYS;i++)
+    assert.equal(customerAuthEmailRateBlocked(s,"verify",`address${i}@example.com`,1_000),false);
+  assert.equal(s.identities.size,MAX_CUSTOMER_AUTH_RATE_KEYS);
+  assert.equal(customerAuthRateBlocked(s,"verify","198.51.100.8",1_000),true);
+  assert.equal(customerAuthRateBlocked(s,"verify","203.0.113.7",1_000),true);
+  assert.equal(s.identities.size,MAX_CUSTOMER_AUTH_RATE_KEYS);
+});
+
 test("cross-site logout is rejected without changing the cookie contract",()=>{
   const target="https://linenearth.example/api/customer-auth/logout";
   const req=(headers:Record<string,string>)=>new Request(target,{method:"POST",headers});
