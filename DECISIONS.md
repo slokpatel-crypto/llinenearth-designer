@@ -1,3 +1,9 @@
+## 2026-10-29 — Device QA acceptance must use literal raw measurements and confirmed visual checks
+
+**Decision:** Reject JSON-coerced device class, viewport and evidence version; do not drop malformed latency samples and then count the remaining values as a 12-sample pass. For v2 operator memory writes, require the complete bounded literal numeric sample set and deny a claimed accepted status unless the server recomputes the existing p95/visual gates. Reject overlong device observations rather than silently truncating them. Read-side history must not coerce numeric strings/null into displayed legacy latency or sample counts. Keep historic v1 events visible only as review, not approved target-device evidence.
+
+**Limits:** A typed receipt cannot prove the device was tested by an independent operator, that visual checks were performed, or that a real browser/production environment passed. Preserve original model/photo, no-paid-credit deterministic core, database schema and customer records; no merge or deployment.
+
 ## 2026-10-29 — Physical colour proof must use literal LAB and a confirmed check receipt
 
 **Decision:** Instrument LAB coordinates cannot be created from `Number(...)`-coerced JSON strings, arrays, booleans or null. Reject malformed supplied LAB even when a fallback hex is present, and require literal fabric/profile/hex/method/checker/illuminant/reference fields without truncating provenance. Only literal finite database Delta E and genuine named checker/reference fields can count toward the ten-fabric evidence gate. Require same-origin 16 KiB streamed JSON, approved Analyzer hex identity and a valid returned UUID before claiming the physical check was recorded.
