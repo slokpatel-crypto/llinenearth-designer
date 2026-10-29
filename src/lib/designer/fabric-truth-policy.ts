@@ -27,8 +27,11 @@ type UnknownRecord=Record<string,unknown>;
 function record(value:unknown):UnknownRecord{
   return value&&typeof value==="object"&&!Array.isArray(value)?value as UnknownRecord:{};
 }
-function text(value:unknown,limit:number){
-  return typeof value==="string"?value.replace(/\s+/g," ").trim().slice(0,limit):"";
+function text(value:unknown,limit:number,label:string){
+  if(typeof value!=="string") return "";
+  const normalized=value.replace(/\s+/g," ").trim();
+  if(normalized.length>limit) throw new Error(label+" is too long; evidence must not be truncated.");
+  return normalized;
 }
 function percent(value:unknown,label:string){
   if(typeof value!=="number"||!Number.isFinite(value)||value<1||value>100) {
@@ -40,11 +43,11 @@ function percent(value:unknown,label:string){
 
 export function normalizeFabricTruthPolicy(input:unknown):FabricTruthPolicy{
   const source=record(input);
-  const status=text(source.status,20) as FabricTruthPolicyStatus;
+  const status=source.status;
   if(status!=="approved"&&status!=="review") throw new Error("Fabric Truth policy status must be approved or review.");
-  const signedBy=text(source.signedBy,120);
+  const signedBy=text(source.signedBy,120,"Named owner or supplier reviewer");
   if(signedBy.length<2) throw new Error("Named owner or supplier reviewer is required.");
-  const note=text(source.note,1200);
+  const note=text(source.note,1200,"Physical-evidence rationale");
   if(note.length<8) throw new Error("Record a short rationale for the physical-evidence thresholds.");
   return {
     version:FABRIC_TRUTH_POLICY_VERSION,
