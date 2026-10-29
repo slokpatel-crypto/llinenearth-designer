@@ -1,3 +1,9 @@
+## 29 October 2026 — novice Designer timing and human acceptance evidence integrity (draft)
+
+- [x] Reproduced coercible novice case/device/time/decision/signer values, truncated blocking notes, unbounded privileged JSON and unverified timer/attempt/approval receipts.
+- [x] Added literal evidence normalizers, strict server-session UUID and matching start/finish receipt checks, UUID attempt/decision receipts, 16 KiB same-origin streamed JSON, 400/413 body errors and private no-store responses. Added Node regressions and four negative-only real HTTP checks; no live user/session/database write.
+- [ ] Verify exact-head quality, full tests, engine, preview, release, production build and pinned Chromium. Real five-novice acceptance, owner/tailor/device signoff, live Supabase, supplier facts and native Blender remain unverified; no migration, merge or deploy.
+
 ## 29 October 2026 — launch/beta human proof cannot be coerced or falsely recorded (draft)
 
 - [x] Reproduced coerced beta case/device/revision/evidence-kind/checklist signers, silently truncated notes, unbounded launch JSON and success-shaped beta/checklist audit IDs without a confirmed RPC receipt.
