@@ -161,3 +161,9 @@ test("duplicate catalogue identities cannot inherit one verified physical roll",
   assert.equal(result.stock[0].swatchImageUrl,"/fabric-a.webp");
   assert.equal(result.stock[1].swatchImageUrl,"/fabric-b.webp");
 });
+
+test("customer stock catalogue response is never publicly cached",()=>{
+  const route=readFileSync(new URL("../src/app/api/designer/catalog/route.ts",import.meta.url),"utf8");
+  assert.match(route,/loadActiveDesignerCatalogueFabrics\(\)/);
+  assert.match(route,/cache-control":"private, no-store"/);
+});
