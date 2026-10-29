@@ -797,6 +797,12 @@ requireTokens("src/lib/designer/production-packet.ts", ["linen-earth-production-
 requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","normalizeManualStockEvent","normalizeStockReservation","normalizeStockConsumption","normalizeStockRelease","recordedBy","requestedBy","checkedBy","releasedBy","sourceReference","reservedMetres","availableMetres"]);
 requireTokens("src/lib/fabric-stock.ts", ["availabilityVerified?: boolean"]);
 requireTokens("src/lib/designer/stock-availability.ts", ["verifiedStockAvailabilityMap","provenance_ready","availabilityVerified:verified.has(fabric.id)","fabric.inStock&&verified.get(fabric.id)===true"]);
+requireTokens("scripts/ci-verified-stock-fixture.cjs", ["GITHUB_ACTIONS","127.0.0.1","fabric_stock_snapshot_v2","physicalEvidence:false"]);
+requireTokens("tests/ci-verified-stock-fixture.test.ts", ["refuses to start outside GitHub Actions"]);
+for (const workflow of [".github/workflows/ci.yml",".github/workflows/deep-engine-non3d.yml"]) {
+  requireTokens(workflow, ["scripts/ci-verified-stock-fixture.cjs","SUPABASE_URL=http://127.0.0.1:54324","sb_secret_titan_ci_fixture_only"]);
+}
+
 requireTokens("src/lib/designer/engine.ts", ["availabilityVerified?: boolean","verified physical stock status","provenance-ready positive stock status"]);
 requireTokens("tests/stock-availability.test.ts", ["availabilityVerified,true","availabilityVerified,false","missing or unreachable stock ledger"]);
 requireTokens("src/lib/designer/stock-availability-server.ts", ["fabric_stock_snapshot_v2","applyLiveVerifiedStockAvailability","cache:\"no-store\""]);

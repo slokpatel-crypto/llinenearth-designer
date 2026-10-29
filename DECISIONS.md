@@ -1,3 +1,7 @@
+## 2026-10-29 — Browser QA may use isolated synthetic stock, production may not
+
+**Decision:** Production customer stock stays fail-closed without one genuine provenance-ready live ledger row per offered fabric. Existing real-browser Designer regressions previously assumed bundled/demo stock and returned HTTP 200 without physical proof. Rather than weakening that production boundary, run a separate loopback mock Supabase stock endpoint only in GitHub Actions browser jobs. Its process refuses to start without CI/GITHUB_ACTIONS, uses a fake fixed test-only key and never writes a real database. Tests assert its exact typed fixture rows and guard. It does not demonstrate supplier stock, physical fabric scale, human approvals or a live Supabase login/handoff.
+
 ## 2026-10-29 — Customer stock must fail closed when physical ledger evidence is missing
 
 **Decision:** A catalogue swatch's bundled `inStock` bit is merchandising metadata, not verified roll availability. The customer-facing verified-stock projection now sets `inStock:false` whenever the exact fabric lacks one valid provenance-ready live snapshot, including missing, duplicate, malformed and failed backend reads. `availabilityVerified` is false for unknown data, true for valid zero/positive evidence. Even a valid positive ledger row cannot override a catalogue item explicitly marked unavailable. Real stock must be recorded and reviewed by an authorized operator before the customer journey can advertise it. Preserve the deterministic no-paid-credit editor and canonical mannequin identity.

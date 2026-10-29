@@ -1,3 +1,8 @@
+## 29 October 2026 — isolated browser stock fixture for honest test coverage (draft)
+- [x] Verified source tests pass but unconfigured CI browser calls return 409 after correctly rejecting absent physical inventory.
+- [x] Add a loopback-only synthetic stock RPC fixture launched solely by GitHub Actions browser jobs, with explicit CI-only process guard, fake key, bounded exact IDs and no real Supabase mutations. Keep real production stock fail-closed; add fixture regressions.
+- [ ] Check revised exact-head CI / Non-3D QA, then still require real signed-in owner/tailor/stock/device acceptance. Synthetic QA evidence must never be reported as physical stock or production readiness.
+
 ## 29 October 2026 — customer catalogue must fail closed without live physical stock (draft)
 
 - [x] Verified that live Supabase SQL now responds but fabric stock ledger has zero records; the customer stock adapter previously preserved bundled `inStock:true` when the trusted snapshot was absent.
