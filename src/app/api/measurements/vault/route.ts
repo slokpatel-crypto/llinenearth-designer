@@ -4,7 +4,7 @@ import { parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity } from "
 import { vaultRateBlocked } from "@/lib/vault-rate-guard";
 import { isVaultListRowEnvelope } from "@/lib/vault-owned-list-integrity";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
-import { requireVaultBooleanResult } from "@/lib/vault-write-integrity";
+import { requireVaultBooleanResult, requireVaultStoreId } from "@/lib/vault-write-integrity";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
@@ -88,12 +88,12 @@ export async function POST(request:Request){
       }
       const accessKey=createMeasurementVaultAccessKey();
       const accessHash=hashMeasurementVaultAccessKey(accessKey);
-      const vaultId=await rpc<string>("measurement_profile_vault_store",{
+      const vaultId=requireVaultStoreId(await rpc<unknown>("measurement_profile_vault_store",{
         p_access_hash:accessHash,
         p_profile:profile,
         p_observations:observations,
         p_ttl_days:180,
-      });
+      }));
 
       // Construct the recovery credential as soon as storage has been confirmed.
       // An optional account-link RPC must not turn this successful store into a 503.
