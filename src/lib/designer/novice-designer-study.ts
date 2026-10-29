@@ -4,31 +4,39 @@ type UnknownRecord=Record<string,unknown>;
 function record(value:unknown):UnknownRecord{
   return value&&typeof value==="object"&&!Array.isArray(value)?value as UnknownRecord:{};
 }
-function clean(value:unknown,limit:number){
-  return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
-}
-function finite(value:unknown){
-  const number=Number(value);
-  return Number.isFinite(number)?number:null;
-}
-
-export function normalizeNoviceDesignerAttempt(input:unknown){
-  const source=record(input);
-  const caseId=clean(source.caseId,80);
-  if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) throw new Error("Anonymous novice-test case ID is required.");
-  const deviceClass=clean(source.deviceClass,20) as NoviceDesignerDevice;
-  if(!["mobile","tablet","desktop"].includes(deviceClass)) throw new Error("A device class is required.");
-  const durationSeconds=finite(source.durationSeconds);
-  if(durationSeconds===null||durationSeconds<=0||durationSeconds>7200) throw new Error("Observed completion time must be between 1 second and 2 hours.");
-  if(typeof source.noviceConfirmed!=="boolean"||typeof source.likedDesignCompleted!=="boolean"||typeof source.blockingIssue!=="boolean"){
-    throw new Error("Novice status, liked-design completion and blocking result must all be recorded.");
+function literalText(value:unknown,limit:number,label:string,min=0){
+  if(value===undefined||value===null){
+    if(min>0) throw new Error(label+" is required.");
+    return "";
   }
-  const note=clean(source.note,1200);
+  if(typeof value!=="string") throw new Error(label+" must be text.");
+  const cleaned=value.replace(/\s+/g," ").trim();
+  if(cleaned.length>limit) throw new Error(label+" is too long.");
+  if(cleaned.length<min) throw new Error(label+" is required.");
+  return cleaned;
+}
+function literalSeconds(value:unknown,label:string){
+  if(typeof value!=="number"||!Number.isFinite(value)||value<1||value>7200)
+    throw new Error(label+" must be a number between 1 second and 2 hours.");
+  return Math.round(value);
+}
+function caseIdentity(value:unknown){
+  const caseId=literalText(value,80,"Anonymous novice-test case ID",3);
+  if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId))
+    throw new Error("Anonymous novice-test case ID is required.");
+  return caseId;
+}
+function deviceIdentity(value:unknown):NoviceDesignerDevice{
+  if(value!=="mobile"&&value!=="tablet"&&value!=="desktop")
+    throw new Error("A valid literal device class is required.");
+  return value;
+}
+function outcomes(source:UnknownRecord){
+  if(typeof source.noviceConfirmed!=="boolean"||typeof source.likedDesignCompleted!=="boolean"||typeof source.blockingIssue!=="boolean")
+    throw new Error("Novice status, liked-design completion and blocking result must all be recorded.");
+  const note=literalText(source.note,1200,"Novice study note");
   if(source.blockingIssue&&note.length<3) throw new Error("Blocking issues require a short note.");
   return {
-    caseId,
-    deviceClass,
-    durationSeconds:Math.round(durationSeconds),
     noviceConfirmed:source.noviceConfirmed,
     likedDesignCompleted:source.likedDesignCompleted,
     blockingIssue:source.blockingIssue,
@@ -36,22 +44,38 @@ export function normalizeNoviceDesignerAttempt(input:unknown){
   };
 }
 
+/** Physical/beta acceptance requires literal evidence, never JSON-coerced values or truncated notes. */
+export function normalizeNoviceTimerStart(input:unknown){
+  const source=record(input);
+  return {caseId:caseIdentity(source.caseId),deviceClass:deviceIdentity(source.deviceClass)};
+}
+
+export function normalizeNoviceTimedAttempt(input:unknown){
+  const source=record(input);
+  if(typeof source.timingSessionId!=="string") throw new Error("A valid server timing session is required.");
+  return {timingSessionId:source.timingSessionId,...outcomes(source)};
+}
+
+export function normalizeNoviceDesignerAttempt(input:unknown){
+  const source=record(input);
+  return {
+    caseId:caseIdentity(source.caseId),
+    deviceClass:deviceIdentity(source.deviceClass),
+    durationSeconds:literalSeconds(source.durationSeconds,"Observed completion time"),
+    ...outcomes(source),
+  };
+}
+
 export function normalizeNoviceStudyDecision(input:unknown){
   const source=record(input);
-  const status=clean(source.status,20);
-  if(status!=="approved"&&status!=="review") throw new Error("Study decision must be approved or review.");
-  const targetSeconds=finite(source.targetSeconds);
-  if(targetSeconds===null||targetSeconds<=0||targetSeconds>7200) throw new Error("Enter the documented roadmap target time in seconds.");
-  const signedBy=clean(source.signedBy,120);
-  if(signedBy.length<2) throw new Error("Named owner/reviewer sign-off is required.");
-  const note=clean(source.note,1200);
+  if(source.status!=="approved"&&source.status!=="review")
+    throw new Error("Study decision must be approved or review.");
+  const status=source.status;
+  const targetSeconds=literalSeconds(source.targetSeconds,"Enter the documented roadmap target time in seconds");
+  const signedBy=literalText(source.signedBy,120,"Named owner/reviewer sign-off",2);
+  const note=literalText(source.note,1200,"Study decision note");
   if(status==="review"&&note.length<3) throw new Error("Review status requires a short note.");
-  return {
-    status:status as "approved"|"review",
-    targetSeconds:Math.round(targetSeconds),
-    signedBy,
-    note,
-  };
+  return {status,targetSeconds,signedBy,note};
 }
 
 export type NoviceDesignerAttemptRow={
