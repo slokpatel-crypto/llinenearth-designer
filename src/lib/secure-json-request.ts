@@ -2,6 +2,17 @@
 export class SecureJsonBodyTooLarge extends Error {}
 export class SecureJsonBodyInvalid extends Error {}
 
+/** For bodyless state-changing endpoints such as sign-out; JSON routes use
+ * the same check before parsing any attacker-controlled request bytes.
+ */
+export function secureSameOriginRequestError(
+  request:Pick<Request,"url"|"headers">,
+):{status:number;error:string}|null{
+  const unsafeOrigin=secureSameOriginRequestError(request);
+  if(unsafeOrigin) return unsafeOrigin;
+  return null;
+}
+
 export function secureJsonRequestError(
   request:Pick<Request,"url"|"headers">,
   maxBytes:number,
