@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { applyVerifiedStockAvailability, verifiedStockAvailabilityMap } from "../src/lib/designer/stock-availability.ts";
 
 const fabric=(id:string,inStock=true)=>({
@@ -97,4 +98,34 @@ test("a verified positive snapshot cannot resurrect an explicitly unavailable fa
   ]);
   assert.equal(result.stock[0].inStock,false);
   assert.equal(result.stock[0].availabilityVerified,true);
+});
+
+
+test("only literal, unpadded exact fabric IDs can certify physical stock",()=>{
+  const rows=[
+    {fabric_id:" shirt ",available_metres:"5.000",provenance_ready:true},
+    {fabric_id:["trouser"] as unknown as string,available_metres:"5.000",provenance_ready:true},
+    {fabric_id:123 as unknown as string,available_metres:"5.000",provenance_ready:true},
+    {fabric_id:"valid",available_metres:"2.500",provenance_ready:true},
+  ];
+  assert.deepEqual([...verifiedStockAvailabilityMap(rows).entries()],[["valid",true]]);
+  const result=applyVerifiedStockAvailability([
+    fabric("shirt"),fabric("trouser"),fabric("123"),fabric("valid"),
+  ],rows);
+  assert.deepEqual(result.stock.map((item)=>item.inStock),[false,false,false,true]);
+  assert.deepEqual(result.verifiedFabricIds,["valid"]);
+});
+
+test("padded duplicate evidence invalidates even an otherwise exact stock row",()=>{
+  const rows=[
+    {fabric_id:"shirt",available_metres:5,provenance_ready:true},
+    {fabric_id:" shirt ",available_metres:5,provenance_ready:true},
+  ];
+  assert.equal(verifiedStockAvailabilityMap(rows).has("shirt"),false);
+});
+
+test("live RPC adapter never coerces non-string fabric IDs to catalogue IDs",()=>{
+  const source=readFileSync(new URL("../src/lib/designer/stock-availability-server.ts",import.meta.url),"utf8");
+  assert.match(source,/fabric_id:typeof row\.fabric_id==="string"\?row\.fabric_id:""/);
+  assert.doesNotMatch(source,/fabric_id:String\(row\.fabric_id/);
 });

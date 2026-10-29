@@ -1,5 +1,6 @@
 ## 29 October 2026 — stacked stock + device QA source integration (draft)
 - [x] Combine PR #474 fail-closed verified stock and isolated CI browser fixture with PR #475 exact v2 device QA receipt validation on a new branch, preserving both parents and the canonical fixed Studio photo.
+- [x] Reject non-string/padded live RPC fabric identifiers and contradictory padded duplicates before advertising exact physical stock. Add regression cases; no inventory was created.
 - [ ] Require both CI workflows at the **integration commit SHA**; do not transfer green status from either sibling PR.
 - [ ] Live Supabase read-only audit: stock ledger, locked revisions, novice/beta attempts and production orders are empty. Obtain real owner-scoped authenticated customer/operator acceptance, verified shirt/trouser stock, native Blender, tailor and target-device human approvals. Synthetic fixture does not meet release gates. No merge, migration or deploy.
 

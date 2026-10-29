@@ -19,6 +19,7 @@ export function verifiedStockAvailabilityMap(rows:VerifiedStockSnapshotRow[]){
   }
   for(const row of rows){
     const id=typeof row.fabric_id==="string"?row.fabric_id.trim():"";
+    const rawId=typeof row.fabric_id==="string"?row.fabric_id:"";
     const raw=row.available_metres;
     // Postgres decimal strings are acceptable; JS Number() also accepts hex,
     // binary and exponent spellings that are not measured metreage evidence.
@@ -28,7 +29,10 @@ export function verifiedStockAvailabilityMap(rows:VerifiedStockSnapshotRow[]){
     // Availability is the sum of exact 0.001m ledger movements. A finer
     // fraction or an unsafe integer is inconsistent with physical provenance.
     const millimetres=Math.round(available*1000);
-    if(!id||counts.get(id)!==1||row.provenance_ready!==true
+    // A padded or coerced RPC identifier is not an exact physical fabric ID.
+    // Count its canonical duplicate above so it also invalidates a competing
+    // exact row instead of silently letting inconsistent evidence through.
+    if(!id||rawId!==id||counts.get(id)!==1||row.provenance_ready!==true
        ||!Number.isFinite(available)||available<0
        ||!Number.isSafeInteger(millimetres)
        ||Math.abs(available*1000-millimetres)>1e-7) continue;
