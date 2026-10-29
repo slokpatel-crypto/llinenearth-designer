@@ -1,3 +1,8 @@
+## 2026-10-29 — physical stock rounding tolerance cannot sell dust (draft)
+- [x] Reproduced a provenance-ready RPC row with tiny positive `available_metres` (e.g. `1e-12`) passing the 0.001m rounding tolerance and being advertised `inStock:true` despite zero physical ledger units.
+- [x] Reject positive quantities that round to zero millimetres and decide availability using integer 0.001m units; preserve verified exact zero and valid positive metreage. Add positive/negative Node regressions.
+- [ ] Verify this stacked draft's exact-head quality, full Node, engine, preview, release, build and 390/768/1440 browser/Non-3D QA. Real supplier-confirmed stock, authenticated owner-scoped Supabase lock/recovery/enquiry/operator, tailor/device/native Blender, security and human release acceptance remain missing. No merge, migration, production write or deploy.
+
 ## 2026-10-29 — malformed operator metadata subtype cannot silently disappear (draft)
 - [x] Reproduced a padded `designer_fabric_metadata` subtype being classified as unrelated operator note; a malformed sold-out instruction could be silently excluded from otherwise complete stock-override history.
 - [x] Fail closed on whitespace-padded literal subtype and single-element array coercions; preserve unrelated operator notes and valid literal metadata. Add positive/negative regression cases.
