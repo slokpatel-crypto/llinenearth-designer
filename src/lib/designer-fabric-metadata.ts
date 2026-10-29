@@ -4,6 +4,7 @@ import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import type { DesignerFabricMetadata, DesignerFabricMetadataMap } from "@/lib/designer-fabric-metadata-types";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
+import { metadataPageDisposition } from "@/lib/designer/metadata-pagination";
 
 type MetadataRow = { at:string; payload?:Record<string,unknown> };
 
@@ -61,41 +62,50 @@ export async function loadDesignerFabricMetadataWithStatus():Promise<DesignerFab
   if (!cloud) return unavailable();
 
   try {
-    const params = new URLSearchParams({
-      select:"at,payload",
-      type:"eq.operator_note",
-      source:"eq.operator",
-      order:"at.desc",
-      limit:"1000",
-    });
-    const response = await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`,{
-      headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},
-      cache:"no-store",
-      signal:AbortSignal.timeout(8_000),
-    });
-    if (!response.ok) {
-      console.error("[designer/fabric-metadata] lookup failed",response.status);
-      return unavailable();
-    }
-
-    const rows = await response.json() as unknown;
-    if(!Array.isArray(rows)) {
-      console.error("[designer/fabric-metadata] expected an array of ledger rows");
-      return unavailable();
-    }
+    // A 1,000-row slice is not a complete override ledger: an older
+    // operator sold-out veto might fall beyond it. Walk stable pages and
+    // reject the entire snapshot if the scan cannot be completed safely.
+    const PAGE_SIZE=1_000;
+    const MAX_PAGES=5;
+    const signal=AbortSignal.timeout(8_000);
     const result:DesignerFabricMetadataMap = {};
-    for (const rawRow of rows) {
-      if(!rawRow||typeof rawRow!=="object"||Array.isArray(rawRow)
-         ||typeof (rawRow as MetadataRow).at!=="string") return unavailable();
-      const row=rawRow as MetadataRow;
-      // Old operator events may legitimately omit payload; they are not
-      // physical metadata. Malformed non-object metadata is not trustworthy.
-      if(row.payload!=null && (typeof row.payload!=="object"||Array.isArray(row.payload))) return unavailable();
-      const metadata = parseMetadata(row.payload || {},row.at);
-      if (!metadata || result[metadata.fabricId]) continue;
-      result[metadata.fabricId] = metadata;
+    for(let page=0;page<MAX_PAGES;page++){
+      const params = new URLSearchParams({
+        select:"id,at,payload",
+        type:"eq.operator_note",
+        source:"eq.operator",
+        order:"at.desc,id.desc",
+        limit:String(PAGE_SIZE),
+        offset:String(page*PAGE_SIZE),
+      });
+      const response = await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`,{
+        headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},
+        cache:"no-store",
+        signal,
+      });
+      if(!response.ok) {
+        console.error("[designer/fabric-metadata] page lookup failed",response.status,page);
+        return unavailable();
+      }
+      const rows = await response.json() as unknown;
+      if(!Array.isArray(rows)||metadataPageDisposition(rows,PAGE_SIZE)==="invalid") {
+        console.error("[designer/fabric-metadata] invalid ledger page",page);
+        return unavailable();
+      }
+      for(const rawRow of rows){
+        if(!rawRow||typeof rawRow!=="object"||Array.isArray(rawRow)
+           ||typeof (rawRow as MetadataRow).at!=="string") return unavailable();
+        const row=rawRow as MetadataRow;
+        if(row.payload!=null && (typeof row.payload!=="object"||Array.isArray(row.payload))) return unavailable();
+        const metadata=parseMetadata(row.payload||{},row.at);
+        if(!metadata||result[metadata.fabricId]) continue;
+        result[metadata.fabricId]=metadata;
+      }
+      // Only a short final page proves that no older override was omitted.
+      if(metadataPageDisposition(rows,PAGE_SIZE)==="complete") return {metadata:result,sourceVerified:true};
     }
-    return {metadata:result,sourceVerified:true};
+    console.error("[designer/fabric-metadata] operator history exceeds bounded read; availability unverified");
+    return unavailable();
   } catch (error) {
     console.error("[designer/fabric-metadata] lookup failed",error);
     return unavailable();
