@@ -309,8 +309,8 @@ export function DesignerModule() {
 
   useEffect(()=>{
     lockedRevisionSelectionIdentityRef.current=null;
-    enquiryGenerationRef.current+=1;
     setLockedRevision(null);
+    enquiryGenerationRef.current+=1;
     setVaultRecoveryToken("");
     setVaultAccountOwned(false);
     setEnquiryConsent(false);
