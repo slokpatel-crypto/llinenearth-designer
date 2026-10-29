@@ -1,3 +1,7 @@
+## 2026-10-29 — optional legacy-site inventory cannot stall verified stock
+
+**Decision:** The first-party verified stock path remains authoritative. A slow, broken or oversized old-site product gallery must not consume the `/api/inventory` request budget indefinitely or allocate unbounded HTML. Preserve fallback to unverified bundled legacy gallery, add 5-second abort and 2 MiB streamed HTML maximum, retain `no-store` and protect multi-byte text decoding. No changes to supplier quantities, approved stock, render model, physical truth, schema, live database, or deployment.
+
 ## 2026-10-29 — customer stock requires a reachable operator metadata ledger
 
 **Decision:** Successful *empty* `style_events` operator metadata is different from no config, 4xx/5xx, invalid response, timeout or broken lookup. Physical stock may be customer-available only when both verified stock and the operator's override ledger have been read. Preserve the old best-effort metadata helper for operator display; use new status-bearing fetch in Designer and legacy `/api/inventory`. The latter returns all structured fabrics unavailable when metadata read is unhealthy. Limit network delay to 8 seconds and keep synthetic empty metadata fixture strictly in CI browser QA. No fake inventory, human operator signoff, stored-data schema or production mutation.
