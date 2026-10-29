@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasCompleteOperatorMetadataPage, OPERATOR_METADATA_PAGE_LIMIT, verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence, validateOperatorMetadataAvailability } from "../src/lib/designer/metadata-ledger-page.ts";
+import { hasCompleteOperatorMetadataPage, OPERATOR_METADATA_PAGE_LIMIT, verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence, validateOperatorMetadataAvailability, literalOperatorPhysicalNumber, literalOperatorPhysicalEnum } from "../src/lib/designer/metadata-ledger-page.ts";
 
 test("complete PostgREST metadata histories are distinguishable from empty and truncated histories", () => {
   assert.equal(hasCompleteOperatorMetadataPage([], "*/0"), true);
@@ -86,4 +86,16 @@ test("operator availability evidence rejects JSON-coerced overrides that could h
   assert.equal(validateOperatorMetadataAvailability({subtype:"other_note",fabricId:valid.fabricId},ids),"unrelated");
   assert.equal(validateOperatorMetadataAvailability({note:"operator"},ids),"unrelated");
   assert.equal(validateOperatorMetadataAvailability(null,ids),"unrelated");
+});
+
+
+test("physical metadata refuses numeric coercion and array-backed enum evidence",()=>{
+  for(const bad of ["145",["145"],[145],true,false,null,{},NaN,Infinity,-1,39.9,1000.1])
+    assert.equal(literalOperatorPhysicalNumber(bad,40,1000),null,JSON.stringify(bad));
+  for(const good of [40,145,1000])
+    assert.equal(literalOperatorPhysicalNumber(good,40,1000),good);
+  for(const bad of [["soft"],"Soft",{},null,true,145])
+    assert.equal(literalOperatorPhysicalEnum(bad,["soft","structured"] as const),null);
+  assert.equal(literalOperatorPhysicalEnum("soft",["soft","structured"] as const),"soft");
+  assert.equal(literalOperatorPhysicalEnum("structured",["soft","structured"] as const),"structured");
 });

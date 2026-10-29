@@ -1,3 +1,8 @@
+## 2026-10-29 — operator physical metadata must be literal (draft)
+- [x] Reproduced `Number(payload.weightGsm)` accepting `"145"` and `[145]`, and `String(payload.drape)` accepting `["soft"]`; when a provenance receipt existed, these values could become apparently verified physical GSM/drape.
+- [x] Require literal finite numeric GSM/formality and literal enum weight class/drape; ignore coerced physical fields while preserving the operator's valid availability veto and existing valid numeric metadata. Reject nonstring weave/texture; add positive/negative pure and loader regressions.
+- [ ] Verify this exact stacked draft with quality, Node, engine, preview, release, production build and pinned browser/Non-3D QA. Real supplier GSM/stock, signed-in Supabase operator/customer flow, tailor, device, native Blender and security/release acceptance remain unverified. No live write, migration, merge or deployment.
+
 ## 2026-10-29 — malformed operator availability cannot erase a sold-out veto (draft)
 - [x] Reproduced the fail-open path: a newer `designer_fabric_metadata` event with JSON-coerced `availability:["available"]` or padded fabric identity was parsed as a valid available record and masked an older explicit sold-out override, even with verified physical stock.
 - [x] Validate literal subtype, exact catalogue ID and explicit `unknown|available|unavailable` before selecting the newest operator metadata. A malformed current-catalogue override makes the entire metadata read unavailable, so both customer stock paths fail closed; unrelated notes and retired catalogue IDs remain ignored. Add positive/negative pure and loader wiring regressions.

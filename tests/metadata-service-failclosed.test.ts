@@ -58,3 +58,15 @@ test("malformed newest operator availability cannot mask an older sold-out veto"
   assert.doesNotMatch(loader,/safe\(payload\.availability/);
   assert.doesNotMatch(loader,/safe\(payload\.fabricId/);
 });
+
+
+test("verified physical fabric metadata cannot be coerced from JSON arrays or numeric strings",()=>{
+  const loader=source("../src/lib/designer-fabric-metadata.ts");
+  assert.match(loader,/literalOperatorPhysicalNumber\(payload\.weightGsm,40,1000\)/);
+  assert.match(loader,/literalOperatorPhysicalEnum\(payload\.drape,/);
+  assert.match(loader,/literalOperatorPhysicalEnum\(payload\.weightClass,/);
+  assert.match(loader,/typeof payload\.weave==="string"/);
+  assert.match(loader,/typeof payload\.texture==="string"/);
+  assert.doesNotMatch(loader,/Number\(payload\.weightGsm\)/);
+  assert.doesNotMatch(loader,/Number\(payload\.formalityScore\)/);
+});
