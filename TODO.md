@@ -342,3 +342,10 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [ ] Validate combined head: quality, Node tests, engine, preview, release check, build and both pinned Chromium workflows; real Supabase account/token/operator and stock/tailor acceptance still required. No merge, migration or production deployment.
 
 - [x] 2026-10-29: Invalidated pending customer enquiry replies when explicit consent changes, a lock is replaced, or the selection identity changes. Prevents a late audit/draft response from reappearing after the user unchecks consent. Source/test/release guard staged; exact-head browser QA still required.
+
+## 29 October 2026 — exact device QA audit receipt integrity (draft)
+
+- [x] Reproduced coercible DPR/sample count/summary/hardware/browser metadata, contradictory client summaries beside raw latency samples, unbounded event JSON, and a success-shaped device write after an ignored duplicate or unverified PostgREST response.
+- [x] Added a literal, internally consistent v2 device receipt normalizer; bounded same-origin JSON; and exact returned event/payload verification before reporting device evidence stored. Added focused negative regressions. No real device session or database mutation is claimed.
+- [x] Local quality, 1,078 Node tests, engine, preview, static release and clean production build passed. This is source verification, not a real-device acceptance.
+- [ ] Verify the exact published head in both CI workflows and pinned Chromium. Actual mobile/tablet/desktop operator sessions, live Supabase receipt, supplier/tailor/native Blender acceptance, merge and deployment remain external gates.

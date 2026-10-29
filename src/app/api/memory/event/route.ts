@@ -7,7 +7,18 @@ import { CREATIVE_FEEDBACK_REASONS } from "@/lib/designer/creative-learning";
 import { legacyMemoryHeader } from "@/lib/runtime-compat";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
 import { normalizeGarmentViewerOperatorEvidencePayload } from "@/lib/garment-viewer-readiness";
-import { DEVICE_QA_EVIDENCE_VERSION, evaluateDeviceQaEvidence } from "@/lib/designer/device-qa-evidence";
+import { DEVICE_QA_EVIDENCE_VERSION, normalizeDeviceQaEvidenceReceipt } from "@/lib/designer/device-qa-evidence";
+import { readSecureJsonObject, SecureJsonBodyInvalid, SecureJsonBodyTooLarge, secureJsonRequestError } from "@/lib/secure-json-request";
+
+const MEMORY_EVENT_JSON_MAX_BYTES=64*1024;
+
+function canonicalJson(value:unknown):string{
+  if(Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if(value&&typeof value==="object") return `{${Object.entries(value as Record<string,unknown>)
+    .sort(([left],[right])=>left.localeCompare(right))
+    .map(([key,item])=>`${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+  return JSON.stringify(value);
+}
 
 const PUBLIC_TYPES = new Set([
   "session_started",
@@ -392,21 +403,16 @@ function cleanPayload(type:string, input:unknown) {
     }
 
     if (subtype === "designer_device_qa") {
-      // A human/device release receipt must not be created by String/Number
-      // coercion, partial sample filtering, or silent truncation of findings.
-      if(payload.subtype!=="designer_device_qa" ||
-         typeof payload.deviceClass!=="string" ||
-         typeof payload.status!=="string" ||
-         typeof payload.viewport!=="string") return null;
-      const deviceClass=payload.deviceClass.trim();
-      const status=payload.status;
-      const viewport=payload.viewport.trim();
-      const requestedVersion=payload.version;
-      if(requestedVersion!==undefined &&
-         requestedVersion!=="designer-device-qa-v1" &&
-         requestedVersion!==DEVICE_QA_EVIDENCE_VERSION) return null;
-      const version=requestedVersion===DEVICE_QA_EVIDENCE_VERSION
-        ? "designer-device-qa-v2" : "designer-device-qa-v1";
+      if(payload.version==="designer-device-qa-v2"){
+        const receipt=normalizeDeviceQaEvidenceReceipt(payload);
+        if(!receipt) return null;
+        return {...receipt,sampleDurationsMs:receipt.sampleDurationsMs};
+      }
+      // Historical v1 rows remain recordable for review, but can never satisfy
+      // the v2 acceptance evaluator used by release readiness.
+      if(payload.version!==undefined&&payload.version!=="designer-device-qa-v1") return null;
+      if(typeof payload.deviceClass!=="string"||typeof payload.status!=="string"||typeof payload.viewport!=="string") return null;
+      const deviceClass=payload.deviceClass.trim(),status=payload.status,viewport=payload.viewport.trim();
       const checks=payload.checks && typeof payload.checks==="object" && !Array.isArray(payload.checks)
         ? Object.fromEntries(Object.entries(payload.checks as Record<string,unknown>)
           .slice(0,12)
@@ -416,28 +422,14 @@ function cleanPayload(type:string, input:unknown) {
          !["accepted","review"].includes(status) || !viewport) return null;
       if(payload.note!==undefined &&
          (typeof payload.note!=="string" || payload.note.trim().length>600)) return null;
-      if(version===DEVICE_QA_EVIDENCE_VERSION &&
-         (!Array.isArray(payload.sampleDurationsMs) ||
-          payload.sampleDurationsMs.length>120 ||
-          payload.sampleDurationsMs.some((value)=>
-            typeof value!=="number" || !Number.isFinite(value) || value<0 || value>10000
-          ))) return null;
-      const sampleDurationsMs=version===DEVICE_QA_EVIDENCE_VERSION
-        ? (payload.sampleDurationsMs as number[]).map((value)=>Math.round(value*10)/10)
-        : [];
-      if(version===DEVICE_QA_EVIDENCE_VERSION && status==="accepted" &&
-         !evaluateDeviceQaEvidence({
-           version,deviceClass,viewport,checks,sampleDurationsMs,
-         }).accepted) return null;
       return {
         subtype,
-        version,
+        version:"designer-device-qa-v1",
         deviceClass,
         status,
         viewport,
         dpr:Math.max(.5,Math.min(8,Number(payload.dpr)||1)),
         samples:Math.max(0,Math.min(500,Math.floor(Number(payload.samples)||0))),
-        ...(version===DEVICE_QA_EVIDENCE_VERSION?{sampleDurationsMs}:{}),
         medianMs:Number.isFinite(Number(payload.medianMs))?Math.max(0,Math.min(10000,Number(payload.medianMs))):null,
         p95Ms:Number.isFinite(Number(payload.p95Ms))?Math.max(0,Math.min(10000,Number(payload.p95Ms))):null,
         maxMs:Number.isFinite(Number(payload.maxMs))?Math.max(0,Math.min(10000,Number(payload.maxMs))):null,
@@ -705,7 +697,9 @@ export async function POST(request:Request) {
   }
 
   try {
-    const body = await request.json() as IncomingEvent;
+    const unsafe=secureJsonRequestError(request,MEMORY_EVENT_JSON_MAX_BYTES);
+    if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
+    const body = await readSecureJsonObject(request,MEMORY_EVENT_JSON_MAX_BYTES) as IncomingEvent;
     let operatorAuthorized = false;
 
     if (OPERATOR_TYPES.has(String(body.type || ""))) {
@@ -731,12 +725,13 @@ export async function POST(request:Request) {
       return NextResponse.json({stored:false,provider:"not_configured"},{status:202});
     }
 
+    const deviceReceipt=event.type==="operator_note"&&event.payload.subtype==="designer_device_qa"&&event.payload.version===DEVICE_QA_EVIDENCE_VERSION;
     const response = await fetch(`${cloud.url}/rest/v1/style_events`,{
       method:"POST",
       headers:{
         ...supabaseAdminHeaders(cloud),
         "content-type":"application/json",
-        prefer:"return=minimal,resolution=ignore-duplicates",
+        prefer:`return=${deviceReceipt?"representation":"minimal"},resolution=ignore-duplicates`,
       },
       body:JSON.stringify(event),
       cache:"no-store",
@@ -748,8 +743,19 @@ export async function POST(request:Request) {
       return NextResponse.json({error:"Cloud memory is temporarily unavailable."},{status:502});
     }
 
-    return NextResponse.json({stored:true,provider:"supabase"});
+    if(deviceReceipt){
+      const rows=await response.json() as unknown;
+      const row=Array.isArray(rows)&&rows.length===1&&rows[0]&&typeof rows[0]==="object"
+        ? rows[0] as Record<string,unknown> : null;
+      if(!row||row.id!==event.id||row.session_id!==event.session_id||row.type!==event.type||row.source!==event.source||
+         canonicalJson(row.payload)!==canonicalJson(event.payload)){
+        return NextResponse.json({error:"Device QA evidence receipt could not be confirmed."},{status:409});
+      }
+    }
+    return NextResponse.json({stored:true,provider:"supabase",...(deviceReceipt?{eventId:event.id}:{})});
   } catch (error) {
+    if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:"Request payload is too large."},{status:413});
+    if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:"Request body must be valid JSON."},{status:400});
     console.error("[memory/event]",error);
     return NextResponse.json({error:"Unable to record memory event."},{status:500});
   }
