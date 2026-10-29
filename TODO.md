@@ -1,3 +1,9 @@
+## 29 October 2026 — immutable production delivery evidence receipt (draft)
+
+- [x] Reproduced permissive delivery order UUID regex, unauthenticated transport not checked before session, malformed JSON mapped to generic 409, and unverified RPC evidence IDs reported as success.
+- [x] Added exact UUID order and receipt validation, strict action, bounded 16 KiB same-origin streamed JSON, 400/413 body failures and private no-store responses. Focused Node source tests and four negative-only actual HTTP cases; no real delivery audit is recorded.
+- [ ] Verify exact new head in CI, tests, engine, preview, release, build and browser. Real first-ten physical delivery history, Supabase, supplier/tailor and native Blender remain unverified; no migration, merge or deployment.
+
 ## 29 October 2026 — finished-garment physical QC integrity (draft)
 
 - [x] Reproduced unbounded QC JSON, coerced decision/order IDs/defect tags, silently truncated notes, and a success-shaped inspection ID without a validated RPC receipt.

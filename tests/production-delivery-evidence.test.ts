@@ -548,9 +548,9 @@ test("operator evidence submission rejects coerced record actions and fabric-ord
   const {readFileSync}=await import("node:fs");
   const route=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
   assert.match(route,/if\(body.action!=="record"\)/);
-  assert.match(route,/typeof body.orderId==="string"/);
+  assert.match(route,/normalizeVaultId\(body\.orderId\)/);
   assert.match(route,/readSecureJsonObject\(request,16_?384\)/);
-  assert.match(route,/\[0-9a-f\]\{8\}/);
+  assert.match(route,/if\(!orderId\) return respond\(/);
   assert.throws(()=>normalizeProductionDeliveryEvidence({
     manualDesignReentry:false,reentryFields:[],note:["not text"],operator:"Checker",
     evidenceReference:"Job Card 100",
@@ -559,4 +559,20 @@ test("operator evidence submission rejects coerced record actions and fabric-ord
     manualDesignReentry:false,reentryFields:[],note:"x".repeat(1201),operator:"Checker",
     evidenceReference:"Job Card 100",
   }),/1200 characters/i);
+});
+
+test("delivery audit POST requires exact order and recorded evidence UUID, bounded JSON and private responses",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const route=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
+  const http=readFileSync("scripts/verify-customer-production-boundary.cjs","utf8");
+  assert.match(route,/secureJsonRequestError\(request,16384\)/);
+  assert.match(route,/readSecureJsonObject\(request,16384\)/);
+  assert.match(route,/normalizeVaultId\(body\.orderId\)/);
+  assert.match(route,/normalizeVaultId\(receipt\)/);
+  assert.match(route,/if\(!evidenceId\) return respond\(/);
+  assert.match(route,/error instanceof SecureJsonBodyTooLarge/);
+  assert.match(route,/error instanceof SecureJsonBodyInvalid/);
+  assert.match(route,/private, no-store/);
+  assert.doesNotMatch(route,/String\(body\.(?:action|orderId)/);
+  assert.match(http,/\/api\/operator\/production-evidence/);
 });

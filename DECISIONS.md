@@ -1,3 +1,9 @@
+## 2026-10-29 — Delivery audits require an exact confirmed immutable receipt
+
+**Decision:** A production delivery audit cannot count as recorded because the service-role RPC returned HTTP 200 or an arbitrary truthy JSON value. Validate the delivered order ID with the shared strict UUID contract and require a returned evidence UUID before reporting success. Reject cross-site/media-type/oversized streamed JSON before privileged mutation, preserve 400/413 for malformed/oversized bodies, and make every POST response private no-store. Retain the existing closed re-entry field vocabulary and physical provenance requirements; no fabrication of zero-reentry evidence.
+
+**Limits:** A syntactically valid UUID is not proof of actual delivery or operator signoff. The database remains the authority on delivered order status and immutable lineage. No schema/data mutation, model/photo, paid AI, merge or deployment; real Supabase and human first-ten delivery acceptance are still blocked.
+
 ## 2026-10-29 — Finished-garment QC is a typed, receipt-confirmed physical release gate
 
 **Decision:** A forged/coerced QC decision, unsupported defect, unknown or nonboolean check, or truncated inspection note must not become evidence that a physical garment passed. Require literal approved/rework, supported boolean check IDs and defect tags, note <=1200 characters, named inspector and physical inspection reference. Before privileged RPC, enforce same-origin JSON with a 16 KiB actual streamed limit and exact UUID production order identity. A valid returned inspection UUID is required before the UI can report success; malformed/oversized JSON returns 400/413, and responses are private no-store. Preserve the existing operator form payloads and source model/photo.

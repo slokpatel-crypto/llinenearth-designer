@@ -1,3 +1,4 @@
+import { normalizeVaultId } from "@/lib/vault-id";
 import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -6,6 +7,10 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { normalizeProductionDeliveryEvidence } from "@/lib/designer/production-delivery-evidence";
 
 export const runtime="nodejs";
+
+function respond(body:unknown,status=200){
+  return NextResponse.json(body,{status,headers:{"cache-control":"private, no-store","pragma":"no-cache"}});
+}
 
 async function authorized(){
   const jar=await cookies();
@@ -57,16 +62,18 @@ export async function GET(){
 }
 
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
   const unsafe=secureJsonRequestError(request,16384);
-  if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
+  if(unsafe) return respond({error:unsafe.error},unsafe.status);
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
   try{
     const body=await readSecureJsonObject(request,16384);
-    if(body.action!=="record") return NextResponse.json({error:"Unsupported evidence action."},{status:400});
-    const orderId=typeof body.orderId==="string"?body.orderId.trim():"";
-    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) return NextResponse.json({error:"Valid delivered order ID is required."},{status:400});
-    const draft=normalizeProductionDeliveryEvidence(body);
-    const evidenceId=await rpc<string>("production_delivery_evidence_record_v2",{
+    if(body.action!=="record") return respond({error:"Unsupported evidence action."},400);
+    const orderId=normalizeVaultId(body.orderId);
+    if(!orderId) return respond({error:"Valid delivered order ID is required."},400);
+    let draft;
+    try{draft=normalizeProductionDeliveryEvidence(body);}
+    catch(error){return respond({error:error instanceof Error?error.message:"Invalid production completion evidence."},400);}
+    const receipt=await rpc<unknown>("production_delivery_evidence_record_v2",{
       p_order_id:orderId,
       p_manual_design_reentry:draft.manualDesignReentry,
       p_reentry_fields:draft.reentryFields,
@@ -74,9 +81,13 @@ export async function POST(request:Request){
       p_operator:draft.operator,
       p_evidence_reference:draft.evidenceReference,
     });
-    return NextResponse.json({evidenceId});
+    const evidenceId=normalizeVaultId(receipt);
+    if(!evidenceId) return respond({error:"Production delivery evidence backend did not confirm an evidence ID."},409);
+    return respond({evidenceId});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
     console.error("[operator/production-evidence]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Production completion evidence could not be recorded."},{status:409});
+    return respond({error:"Production completion evidence could not be recorded."},409);
   }
 }
