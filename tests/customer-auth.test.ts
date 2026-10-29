@@ -79,6 +79,7 @@ test("both customer auth POST routes reject unsafe JSON before reaching Supabase
     assert.match(source,/secureJsonRequestError\(request,CUSTOMER_AUTH_JSON_MAX_BYTES\)/);
     assert.match(source,/readSecureJsonObject\(request,CUSTOMER_AUTH_JSON_MAX_BYTES\)/);
     assert.match(source,/customerAuthRateBlocked\(rate,/);
+    assert.match(source,/customerAuthEmailRateBlocked\(rate,/);
     assert.match(source,/SecureJsonBodyTooLarge/);
     assert.match(source,/SecureJsonBodyInvalid/);
     assert.doesNotMatch(source,/await request\.json\(\)/);
