@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {readFileSync} from "node:fs";
 import {readLockedHandoffRequest,verifiedLockedHandoffAuditId,LOCKED_HANDOFF_JSON_MAX_BYTES} from "../src/lib/designer/locked-handoff-request.ts";
+import {readBoundedJsonResponse} from "../src/lib/designer/bounded-json-response.ts";
 
 const target="https://linenearth.example/api/designer/enquiry";
 function req(body:string,headers:Record<string,string>={},route=target){
@@ -65,7 +66,10 @@ test("share/enquiry and customer UI retain privacy, lineage and explicit-send co
   const share=readFileSync("src/app/api/designer/share/route.ts","utf8");
   const ui=readFileSync("src/components/DesignerModule.tsx","utf8");
   assert.match(share,/readLockedHandoffRequest\(request\)/);
-  assert.match(share,/verifiedLockedHandoffAuditId\(await audit\.json\(\)\.catch\(\(\)=>null\)\)/);
+  assert.match(share,/verifiedLockedHandoffAuditId\\(await readBoundedJsonResponse\\(audit,4 \\* 1024\\)\\.catch\\(\\(\\)=>null\\)\\)/);
+  assert.match(enquiry,/readBoundedJsonResponse\\(response,256 \\* 1024\\)/);
+  assert.doesNotMatch(enquiry,/response\\.json\\(\\)/);
+  assert.doesNotMatch(share,/audit\\.json\\(\\)/);
   assert.match(share,/cache-control":"private, no-store"/);
   assert.match(enquiry,/readLockedHandoffRequest\(request\)/);
   assert.match(enquiry,/parseEnquiryIntent\(parsed.revision\)/);
@@ -83,4 +87,16 @@ test("share/enquiry and customer UI retain privacy, lineage and explicit-send co
   assert.match(ui,/enquiryResult\?\.revisionId===verifiedLockedRevision\.revisionId/);
   assert.match(ui,/Open WhatsApp and send/);
   assert.doesNotMatch(ui,/window\.open\(result\.href/);
+});
+
+test("locked customer handoff RPC receipts are bounded, and share receipts require real UUIDs",async()=>{
+  const uuid="123e4567-e89b-42d3-a456-426614174000";
+  const audit=await readBoundedJsonResponse(new Response(JSON.stringify(uuid)),4*1024);
+  assert.equal(verifiedLockedHandoffAuditId(audit),uuid);
+  assert.equal(verifiedLockedHandoffAuditId(await readBoundedJsonResponse(new Response(JSON.stringify({audit_id:uuid})),4*1024)),null);
+  await assert.rejects(readBoundedJsonResponse(new Response(JSON.stringify("x".repeat(4096))),4*1024),/exceeds/);
+  await assert.rejects(readBoundedJsonResponse(new Response("broken"),4*1024),SyntaxError);
+  const owned=JSON.stringify([{expires_at:"2099-01-01T00:00:00Z",payload:{revisionId:"original"}}]);
+  assert.deepEqual(await readBoundedJsonResponse(new Response(owned),256*1024),JSON.parse(owned));
+  await assert.rejects(readBoundedJsonResponse(new Response(" ".repeat(256*1024+1)),256*1024),/exceeds/);
 });
