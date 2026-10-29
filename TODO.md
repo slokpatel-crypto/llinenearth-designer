@@ -1,3 +1,9 @@
+## 29 October 2026 — launch/beta human proof cannot be coerced or falsely recorded (draft)
+
+- [x] Reproduced coerced beta case/device/revision/evidence-kind/checklist signers, silently truncated notes, unbounded launch JSON and success-shaped beta/checklist audit IDs without a confirmed RPC receipt.
+- [x] Added literal launch evidence fields, 16 KiB same-origin streamed JSON, exact UUID receipts for verified beta, legacy beta and checklist, 400/413 errors and private no-store responses; Node and negative-only HTTP regressions.
+- [ ] Verify exact-head CI/Node/engine/preview/release/build/Chromium. No actual five-customer beta, human legal/privacy approval, live Supabase, supplier/tailor/native Blender acceptance, migration, merge or deployment.
+
 ## 29 October 2026 — meterage model human approval integrity (draft)
 
 - [x] Reproduced coerced model/approver identities, silently truncated approval notes, truthy RPC approval/retirement, unbounded model JSON and coerced physical band measurements.

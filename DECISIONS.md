@@ -1,3 +1,9 @@
+## 2026-10-29 — Launch-readiness evidence requires literal human facts and confirmed audit IDs
+
+**Decision:** A beta completion or launch checklist sign-off cannot become verified because arrays stringify to device/revision/approver IDs, notes silently truncate incidents, or a service-role RPC returns an arbitrary truthy response. Require literal closed device/evidence/status vocabulary, bounded case/revision/human IDs and notes, same-origin 16 KiB streamed JSON, and a valid UUID receipt for verified beta, legacy beta and checklist events. Only after the verified-beta RPC confirms the receipt may the API return `verifiedFlowAudit:true`. Return 400/413 for invalid bodies and private no-store responses.
+
+**Limits:** A UUID audit does not prove actual five-customer flow, legal/privacy owner signoff, supplier stock, live Supabase, tailor fit or native Blender. No migration, production data, paid AI, model/photo change, merge or deployment.
+
 ## 2026-10-29 — Meterage approval requires typed physical bands and real RPC confirmation
 
 **Decision:** A production metre-estimation model cannot become approved because a JSON string/array coerces to a measured width, a forged model ID or approver is truncated, or a truthy RPC response masquerades as a confirmed change. Require literal numeric physical bands and bounded notes, strict UUID model identities, a valid model UUID creation receipt, and exact boolean true for approve/retire. Bound operator JSON to 16 KiB actual streamed bytes and same-origin media, with 400/413 body errors and private no-store responses. Preserve the 20 distinct real cut-case threshold and existing garment vocabulary.

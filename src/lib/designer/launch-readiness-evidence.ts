@@ -19,9 +19,9 @@ function record(value:unknown):UnknownRecord{
 
 export function normalizeBetaAttempt(input:unknown){
   const source=record(input);
-  const caseId=String(source.caseId||"").trim();
+  const caseId=typeof source.caseId==="string"?source.caseId.trim():"";
   if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) throw new Error("Anonymous beta case ID is required.");
-  const deviceClass=String(source.deviceClass||"") as LaunchDeviceClass;
+  const deviceClass=typeof source.deviceClass==="string"?source.deviceClass as LaunchDeviceClass:"" as LaunchDeviceClass;
   if(!["mobile","tablet","desktop"].includes(deviceClass)) throw new Error("Beta device class is required.");
   if(typeof source.designLocked!=="boolean"||typeof source.shareOrEnquiryCompleted!=="boolean"||typeof source.blockingBug!=="boolean"){
     throw new Error("Design-lock, share/enquiry and blocking-bug results must all be recorded.");
@@ -29,7 +29,9 @@ export function normalizeBetaAttempt(input:unknown){
   if(source.shareOrEnquiryCompleted&&!source.designLocked){
     throw new Error("Share/enquiry completion requires a locked design first.");
   }
-  const note=String(source.note||"").trim().slice(0,1200);
+  if(source.note!==undefined&&source.note!==null&&typeof source.note!=="string") throw new Error("Launch evidence note must be text.");
+  const note=typeof source.note==="string"?source.note.trim():"";
+  if(note.length>1200) throw new Error("Launch evidence note cannot exceed 1200 characters.");
   if(source.blockingBug&&note.length<3) throw new Error("Blocking beta bugs require a short note.");
   return {
     caseId,
@@ -44,16 +46,19 @@ export function normalizeBetaAttempt(input:unknown){
 
 export function normalizeVerifiedBetaAttempt(input:unknown){
   const source=record(input);
-  const caseId=String(source.caseId||"").trim();
+  const caseId=typeof source.caseId==="string"?source.caseId.trim():"";
   if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) throw new Error("Anonymous beta case ID is required.");
-  const deviceClass=String(source.deviceClass||"") as LaunchDeviceClass;
+  const deviceClass=typeof source.deviceClass==="string"?source.deviceClass as LaunchDeviceClass:"" as LaunchDeviceClass;
   if(!["mobile","tablet","desktop"].includes(deviceClass)) throw new Error("Beta device class is required.");
-  const revisionId=String(source.revisionId||"").trim();
+  const revisionId=typeof source.revisionId==="string"?source.revisionId.trim():"";
   if(revisionId.length<3||revisionId.length>180) throw new Error("Locked revision ID must be 3–180 characters, without truncation.");
-  const evidenceKind=String(source.evidenceKind||"share").trim();
+  const evidenceKind=source.evidenceKind===undefined||source.evidenceKind===null?"share":source.evidenceKind;
+  if(typeof evidenceKind!=="string") throw new Error("Verified beta evidence must be share or enquiry.");
   if(!["share","enquiry"].includes(evidenceKind)) throw new Error("Verified beta evidence must be share or enquiry.");
   if(typeof source.blockingBug!=="boolean") throw new Error("Blocking-bug result must be recorded.");
-  const note=String(source.note||"").trim().slice(0,1200);
+  if(source.note!==undefined&&source.note!==null&&typeof source.note!=="string") throw new Error("Launch evidence note must be text.");
+  const note=typeof source.note==="string"?source.note.trim():"";
+  if(note.length>1200) throw new Error("Launch evidence note cannot exceed 1200 characters.");
   if(source.blockingBug&&note.length<3) throw new Error("Blocking beta bugs require a short note.");
   return {caseId,deviceClass,revisionId,evidenceKind:evidenceKind as "share"|"enquiry",blockingBug:source.blockingBug,note};
 }
@@ -61,13 +66,15 @@ export function normalizeVerifiedBetaAttempt(input:unknown){
 export function normalizeLaunchChecklistDecision(input:unknown){
   const source=record(input);
   const known=new Set(LAUNCH_CHECKLIST_ITEMS.map((item)=>item.id));
-  const itemId=String(source.itemId||"") as LaunchChecklistItemId;
+  const itemId=typeof source.itemId==="string"?source.itemId as LaunchChecklistItemId:"" as LaunchChecklistItemId;
   if(!known.has(itemId)) throw new Error("Unknown launch checklist item.");
-  const status=String(source.status||"");
+  const status=source.status;
   if(status!=="approved"&&status!=="review") throw new Error("Checklist status must be approved or review.");
-  const signedBy=String(source.signedBy||"").trim();
+  const signedBy=typeof source.signedBy==="string"?source.signedBy.trim():"";
   if(signedBy.length<2||signedBy.length>120) throw new Error("Named human sign-off (2–120 characters) is required.");
-  const note=String(source.note||"").trim().slice(0,1200);
+  if(source.note!==undefined&&source.note!==null&&typeof source.note!=="string") throw new Error("Launch evidence note must be text.");
+  const note=typeof source.note==="string"?source.note.trim():"";
+  if(note.length>1200) throw new Error("Launch evidence note cannot exceed 1200 characters.");
   if(status==="review"&&note.length<3) throw new Error("Review status requires a short note.");
   return {itemId,status,signedBy,note};
 }

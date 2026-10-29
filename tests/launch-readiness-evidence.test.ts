@@ -272,3 +272,48 @@ test("invalid stored device classes cannot count toward the beta flow gate",()=>
   assert.equal(summary.successfulBetaCases,4);
   assert.equal(summary.betaGateComplete,false);
 });
+
+test("launch human signoff and verified beta receipts refuse JSON coercion and truncation",()=>{
+  const beta={caseId:"BETA-001",deviceClass:"mobile",designLocked:true,shareOrEnquiryCompleted:true,blockingBug:false};
+  const verified={caseId:"BETA-001",deviceClass:"mobile",revisionId:"LOCKED-REV-1",evidenceKind:"share",blockingBug:false};
+  const checklist={itemId:"privacy_notice",status:"approved",signedBy:"Owner Reviewer"};
+  for(const value of [["BETA-001"],{id:"BETA-001"}]){
+    assert.throws(()=>normalizeBetaAttempt({...beta,caseId:value}),/Anonymous beta case ID/);
+    assert.throws(()=>normalizeVerifiedBetaAttempt({...verified,caseId:value}),/Anonymous beta case ID/);
+  }
+  for(const value of [["mobile"],{device:"mobile"}]){
+    assert.throws(()=>normalizeBetaAttempt({...beta,deviceClass:value}),/Beta device class/);
+    assert.throws(()=>normalizeVerifiedBetaAttempt({...verified,deviceClass:value}),/Beta device class/);
+  }
+  for(const value of [["LOCKED-REV-1"],{id:"LOCKED-REV-1"}])
+    assert.throws(()=>normalizeVerifiedBetaAttempt({...verified,revisionId:value}),/Locked revision ID/);
+  for(const value of [["share"],{kind:"share"}])
+    assert.throws(()=>normalizeVerifiedBetaAttempt({...verified,evidenceKind:value}),/Verified beta evidence/);
+  for(const value of [["privacy_notice"],{id:"privacy_notice"}])
+    assert.throws(()=>normalizeLaunchChecklistDecision({...checklist,itemId:value}),/Unknown launch checklist/);
+  for(const value of [["approved"],{status:"approved"}])
+    assert.throws(()=>normalizeLaunchChecklistDecision({...checklist,status:value}),/Checklist status/);
+  for(const value of [["Owner Reviewer"],{name:"Owner Reviewer"}])
+    assert.throws(()=>normalizeLaunchChecklistDecision({...checklist,signedBy:value}),/human sign-off/);
+  for(const value of [["note"],{text:"note"},true,"n".repeat(1201)]){
+    assert.throws(()=>normalizeBetaAttempt({...beta,note:value}),/Launch evidence note/);
+    assert.throws(()=>normalizeVerifiedBetaAttempt({...verified,note:value}),/Launch evidence note/);
+    assert.throws(()=>normalizeLaunchChecklistDecision({...checklist,note:value}),/Launch evidence note/);
+  }
+  assert.equal(normalizeVerifiedBetaAttempt({...verified,note:"n".repeat(1200)}).note.length,1200);
+});
+
+test("launch-readiness POST requires bounded same-origin JSON and exact RPC receipts",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const route=readFileSync("src/app/api/operator/launch-readiness/route.ts","utf8");
+  const http=readFileSync("scripts/verify-customer-production-boundary.cjs","utf8");
+  assert.match(route,/secureJsonRequestError\(request,16384\)/);
+  assert.match(route,/readSecureJsonObject\(request,16384\)/);
+  assert.match(route,/normalizeVaultId\(receipt\)/);
+  assert.match(route,/if\(!attemptId\) return respond\(/);
+  assert.match(route,/if\(!eventId\) return respond\(/);
+  assert.match(route,/error instanceof SecureJsonBodyTooLarge/);
+  assert.match(route,/error instanceof SecureJsonBodyInvalid/);
+  assert.match(route,/private, no-store/);
+  assert.match(http,/\/api\/operator\/launch-readiness/);
+});
