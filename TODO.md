@@ -1,3 +1,9 @@
+## 29 October 2026 — operator metadata outage cannot erase sold-out veto (draft)
+- [x] Reproduced fail-open condition: failed `style_events` fetch returns `{}` indistinguishable from a valid empty ledger; a positive roll could then be promoted despite a hidden operator `unavailable` override.
+- [x] Add explicit `sourceVerified` read status and bounded 8-second fetch; make Designer customer stock empty and legacy API stock unavailable on metadata outage. Keep operator best-effort compatibility read.
+- [x] Update CI-only loopback stock fixture to supply a valid *empty* operator ledger, not manufactured approvals; add negative/positive fixture and route contract tests.
+- [ ] Verify exact-head Node, quality, engine, preview, release, production build and pinned Chromium, and real authenticated owner-scoped Supabase customer/operator workflow. Live supplier stock, tailor/device/native Blender and owner release remain outstanding. No migration, live data write, merge or deploy.
+
 ## 29 October 2026 — no clipped physical fabric provenance (draft)
 - [x] Reproduced shared physical-evidence normalizer silently slicing long roll/source references, checker names or supplier URLs and returning a seemingly verified physical receipt.
 - [x] Reject overlong normalized fields rather than truncating, preserving valid literal boundary-length text and adding source/worksheet regression tests.

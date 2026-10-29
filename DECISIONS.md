@@ -1,3 +1,7 @@
+## 2026-10-29 — customer stock requires a reachable operator metadata ledger
+
+**Decision:** Successful *empty* `style_events` operator metadata is different from no config, 4xx/5xx, invalid response, timeout or broken lookup. Physical stock may be customer-available only when both verified stock and the operator's override ledger have been read. Preserve the old best-effort metadata helper for operator display; use new status-bearing fetch in Designer and legacy `/api/inventory`. The latter returns all structured fabrics unavailable when metadata read is unhealthy. Limit network delay to 8 seconds and keep synthetic empty metadata fixture strictly in CI browser QA. No fake inventory, human operator signoff, stored-data schema or production mutation.
+
 ## 2026-10-29 — physical source/signer strings must be complete
 
 **Decision:** Shared physical fabric provenance normalizer must reject human checker names longer than 120 normalized characters, roll/source references over 220, and URLs over 500 instead of silently truncating them into a different-looking valid receipt. Valid boundary-length evidence remains accepted; missing/unknown physical checks remain unknown. This is source-level evidence integrity, not supplier measurement or owner signoff. No schema change, live write, canonical model/image change, paid per-edit AI, merge or deployment.

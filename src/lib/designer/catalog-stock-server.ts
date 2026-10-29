@@ -1,13 +1,16 @@
 import "server-only";
 
-import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
+import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadataWithStatus } from "@/lib/designer-fabric-metadata";
 import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
 import { designerFabricFromStock } from "@/lib/designer/engine";
 import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
 import { attachCatalogFabricPhysics } from "@/lib/designer/fabric-physics-catalog";
 
 export async function loadActiveDesignerFabricStock(){
-  const metadata=await loadDesignerFabricMetadata();
+  const {metadata,sourceVerified}=await loadDesignerFabricMetadataWithStatus();
+  // A failed metadata read might hide an operator's explicit sold-out veto.
+  // Do not promote physical availability until that ledger has been read.
+  if(!sourceVerified) return {stock:[],calibratedFabrics:0,verifiedStockFabrics:0};
   const metadataStock=applyDesignerFabricMetadataToStock(metadata);
   const liveStock=await applyLiveVerifiedStockAvailability(metadataStock);
   return {

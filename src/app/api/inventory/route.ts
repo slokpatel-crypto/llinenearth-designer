@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { loadDesignerFabricMetadata, applyDesignerFabricMetadataToStock } from "@/lib/designer-fabric-metadata";
+import { loadDesignerFabricMetadataWithStatus, applyDesignerFabricMetadataToStock } from "@/lib/designer-fabric-metadata";
 import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
+import { applyVerifiedStockAvailability } from "@/lib/designer/stock-availability";
 import { LEGACY_WEBSITE_STOCK } from "@/lib/legacy-website-stock";
 import { legacyFabricsFromScan, scanLegacySite } from "@/lib/legacy-site-inventory";
 
@@ -12,8 +13,14 @@ export async function GET() {
   // The old catalogue uses optimistic inStock flags that are NOT physical receipts.
   // Keep this older inventory API aligned with the fail-closed Designer catalogue:
   // only live, provenance-verified ledger rows may promote physical availability.
-  const metadata = await loadDesignerFabricMetadata();
-  const liveStock = await applyLiveVerifiedStockAvailability(applyDesignerFabricMetadataToStock(metadata));
+  const {metadata,sourceVerified} = await loadDesignerFabricMetadataWithStatus();
+  const structured = applyDesignerFabricMetadataToStock(metadata);
+  // A failed metadata fetch cannot prove the absence of an explicit
+  // operator "unavailable" override. Even a positive physical stock row
+  // cannot authorize availability until the full metadata read succeeds.
+  const liveStock = sourceVerified
+    ? await applyLiveVerifiedStockAvailability(structured)
+    : applyVerifiedStockAvailability(structured,[]);
 
   let legacy = LEGACY_WEBSITE_STOCK;
   let legacySource: "live" | "bundled-fallback" = "bundled-fallback";
