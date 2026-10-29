@@ -29,3 +29,11 @@ test("operator production desk only tolerates absent optional RPC, never malform
   assert.ok(!api.includes("customerOutcomes=await rpc<unknown[]>"));
   assert.ok(!api.includes("learningContexts=await rpc<unknown[]>"));
 });
+
+test("operator UI exposes missing optional migrations instead of silently implying empty evidence",()=>{
+  const ui=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  assert.ok(ui.includes("setOptionalEvidenceSources(data.optionalEvidenceSources"));
+  assert.ok(ui.includes("setOptionalEvidenceSources(null)"));
+  assert.ok(ui.includes("Some optional production evidence services are not installed."));
+  assert.ok(ui.includes("Missing history is unverified"));
+});
