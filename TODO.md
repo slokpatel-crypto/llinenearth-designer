@@ -1,3 +1,9 @@
+## 29 October 2026 — physical fabric colour measurement provenance and receipt integrity (draft)
+
+- [x] Reproduced coerced LAB channels, fabric/profile IDs, colour hex/method/checker/reference, silently truncated notes, unbounded JSON, and success-shaped colour check IDs without a validated database receipt.
+- [x] Added literal finite physical LAB and typed nontruncated provenance, strict reviewed Analyzer colour matching, 16 KiB same-origin streamed JSON, 400/413 body errors, exact UUID check receipt, and fail-closed ten-fabric colour evidence summary. Node and four negative-only real HTTP regressions; no actual instrument/booth sample or database mutation.
+- [ ] Verify exact-head quality, tests, engine, preview, release, build and Chromium. Real approved Analyzer profile, calibrated physical colour samples, live Supabase, supplier/tailor and native Blender remain unverified; no migration, merge or deploy.
+
 ## 29 October 2026 — house-ease physical evidence and tailor model receipt integrity (draft)
 
 - [x] Reproduced coerced body/finished centimetres, ease-table ranges, case/garment/fit/tailor fields, silently truncated notes, unbounded privileged JSON and success-shaped model/evidence/approval IDs.
