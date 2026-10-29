@@ -796,7 +796,13 @@ requireTokens("src/lib/designer/production-packet.ts", ["packetBuiltFromLockedRe
 requireTokens("src/lib/designer/production-packet.ts", ["linen-earth-production-packet-v1","noDesignDataReEntry"]);
 requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","normalizeManualStockEvent","normalizeStockReservation","normalizeStockConsumption","normalizeStockRelease","recordedBy","requestedBy","checkedBy","releasedBy","sourceReference","reservedMetres","availableMetres"]);
 requireTokens("src/lib/fabric-stock.ts", ["availabilityVerified?: boolean"]);
-requireTokens("src/lib/designer/stock-availability.ts", ["verifiedStockAvailabilityMap","provenance_ready","availabilityVerified:verified.has(fabric.id)","fabric.inStock&&verified.get(fabric.id)===true"]);
+requireTokens("src/lib/designer/stock-availability.ts", [
+  "verifiedStockAvailabilityMap",
+  "provenance_ready",
+  "uniqueCatalogueIds.has(fabric.id)&&verified.has(fabric.id)",
+  "uniqueCatalogueIds.has(fabric.id)&&fabric.inStock&&verified.get(fabric.id)===true",
+  "verifiedFabricIds:[...verified.keys()].filter((id)=>uniqueCatalogueIds.has(id))",
+]);
 requireTokens("scripts/ci-verified-stock-fixture.cjs", ["GITHUB_ACTIONS","127.0.0.1","fabric_stock_snapshot_v2","physicalEvidence:false"]);
 requireTokens("tests/ci-verified-stock-fixture.test.ts", ["refuses to start outside GitHub Actions"]);
 for (const workflow of [".github/workflows/ci.yml",".github/workflows/deep-engine-non3d.yml"]) {

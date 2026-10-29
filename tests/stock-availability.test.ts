@@ -167,3 +167,11 @@ test("customer stock catalogue response is never publicly cached",()=>{
   assert.match(route,/loadActiveDesignerCatalogueFabrics\(\)/);
   assert.match(route,/cache-control":"private, no-store"/);
 });
+
+test("release readiness guards unique catalogue identity stock semantics",()=>{
+  const release=readFileSync(new URL("../scripts/release-readiness.mjs",import.meta.url),"utf8");
+  assert.match(release,/uniqueCatalogueIds\.has\(fabric\.id\)&&verified\.has\(fabric\.id\)/);
+  assert.match(release,/uniqueCatalogueIds\.has\(fabric\.id\)&&fabric\.inStock&&verified\.get\(fabric\.id\)===true/);
+  assert.match(release,/verifiedFabricIds:\[\.\.\.verified\.keys\(\)\]\.filter\(\(id\)=>uniqueCatalogueIds\.has\(id\)\)/);
+  assert.doesNotMatch(release,/["']availabilityVerified:verified\.has\(fabric\.id\)["']/);
+});
