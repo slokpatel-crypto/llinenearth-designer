@@ -64,3 +64,27 @@ test("release gate verifies the latest typed QC guard instead of obsolete first-
   assert.match(release,/ambiguous/);
   assert.doesNotMatch(release,/"Finished-garment QC approval is required before delivery\."\,/);
 });
+
+test("operator production desk never offers delivery based on first matching stale QC",()=>{
+  const ui=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  assert.ok(ui.includes('import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval"'));
+  assert.ok(ui.includes("const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id)"));
+  assert.ok(ui.includes('status!=="delivered"||deliveryQcVerified'));
+  assert.ok(ui.includes('deliveryQcVerified?"approved with provenance":"pending / rework / unverified"'));
+  assert.ok(!ui.includes("qcInspections.find("));
+  assert.ok(!ui.includes('latestQc?.decision==="approved"'));
+  assert.equal(hasVerifiedLatestDeliveryQc([earlier,rework],orderId),false);
+  assert.equal(hasVerifiedLatestDeliveryQc([rework,approved],orderId),true);
+});
+
+test("operator desk clears stale production records and disables mutation controls on ledger failure",()=>{
+  const ui=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  const load=ui.split("async function load(){")[1]?.split("useEffect(()=>{void load();},[])")[0]||"";
+  assert.ok(load.includes("if(!response.ok) throw new Error"));
+  assert.ok(load.includes("!Array.isArray(data.quotes)||!Array.isArray(data.orders)"));
+  for(const reset of ["setConfigured(false)","setQuotes([])","setOrders([])","setQcInspections([])","setCustomerOutcomes([])","setLearningContexts([])"]){
+    assert.ok(load.includes(reset),`missing fail-closed reset: ${reset}`);
+  }
+  assert.ok(ui.includes("disabled={busy||!configured||!canQuote}"));
+  assert.ok(ui.includes("disabled={busy||!configured||!loadedRevision"));
+});
