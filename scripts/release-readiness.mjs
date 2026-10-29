@@ -1048,7 +1048,7 @@ requireTokens("src/app/api/designer/enquiry/route.ts",[
   "selectVaultReadRow(ownedResult)","selectVaultReadRow(tokenResult)",
   "sameLockedEnquiryRevision(intent.revision",
   "readBoundedJsonResponse(response,256 * 1024)",
-  "normalizeVaultId(await rpc(\"design_enquiry_audit_record\"",
+  "verifiedLockedHandoffAuditId(await rpc(\"design_enquiry_audit_record\"",
   "operatorReceived:false","handoffStatus:\"prepared_not_sent\"",
 ]);
 requireTokens("src/lib/designer/enquiry-intent.ts",[
