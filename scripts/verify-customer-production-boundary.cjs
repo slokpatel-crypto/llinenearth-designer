@@ -197,6 +197,27 @@ async function verifyCustomerProductionBoundary(baseURL="http://127.0.0.1:3000")
     assert.equal(data.eventId,undefined);
     assert.match(response.headers.get("cache-control")||"",/no-store/);
   }
+  // House-ease calibration is real tailor evidence. Only rejected requests
+  // are tested here; no authenticated measurement or model write is attempted.
+  const easeCases=[
+    ["foreign origin","{}",{origin:"https://outside.example"},403],
+    ["same-site subdomain","{}",{"sec-fetch-site":"same-site"},403],
+    ["non-JSON","{}",{"content-type":"text/plain"},415],
+    ["oversized JSON",JSON.stringify({action:"record_evidence",note:"x".repeat(20_000)}),{},413],
+  ];
+  for(const [label,body,headers,expected] of easeCases){
+    const response=await fetch(`${baseURL}/api/operator/ease-calibration`,{
+      method:"POST",headers:{"content-type":"application/json",...headers},body,
+    });
+    const data=await response.json();
+    assert.equal(response.status,expected,`house ease ${label}: ${data.error||"unexpected response"}`);
+    assert.equal(typeof data.error,"string");
+    assert.equal(data.evidenceId,undefined);
+    assert.equal(data.modelId,undefined);
+    assert.equal(data.updated,undefined);
+    assert.match(response.headers.get("cache-control")||"",/no-store/);
+  }
+  console.log(`PASS ${easeCases.length} real house-ease transport rejection contracts`);
   console.log(`PASS ${fabricPolicyCases.length} real fabric truth policy transport rejection contracts`);
   console.log(`PASS ${noviceCases.length} real novice study transport rejection contracts`);
   console.log(`PASS ${launchCases.length} real launch readiness transport rejection contracts`);
