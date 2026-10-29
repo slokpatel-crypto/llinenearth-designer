@@ -144,7 +144,7 @@ test("padded duplicate evidence invalidates even an otherwise exact stock row",(
 
 test("live RPC adapter never coerces non-string fabric IDs to catalogue IDs",()=>{
   const source=readFileSync(new URL("../src/lib/designer/stock-availability-server.ts",import.meta.url),"utf8");
-  assert.match(source,/fabric_id:typeof row\.fabric_id==="string"\?row\.fabric_id:""/);
+  assert.match(source,/fabric_id:typeof record\.fabric_id==="string"\?record\.fabric_id:""/);
   assert.doesNotMatch(source,/fabric_id:String\(row\.fabric_id/);
 });
 

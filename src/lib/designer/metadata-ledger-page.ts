@@ -85,8 +85,12 @@ export function validateOperatorMetadataAvailability(
   if(!payload||typeof payload!=="object"||Array.isArray(payload)) return "unrelated";
   const {subtype,fabricId,availability}=payload as Record<string,unknown>;
   if(subtype!=="designer_fabric_metadata"){
-    // A one-element array must not be coerced into the metadata subtype.
-    if(Array.isArray(subtype)&&subtype.length===1&&subtype[0]==="designer_fabric_metadata")
+    // A mistyped metadata subtype on an active fabric may hide its sold-out
+    // instruction. Do not certify a complete ledger with that ambiguity.
+    const possibleSubtype=typeof subtype==="string"?subtype:
+      Array.isArray(subtype)&&subtype.length===1&&typeof subtype[0]==="string"?subtype[0]:null;
+    if((possibleSubtype!==null&&possibleSubtype.trim()==="designer_fabric_metadata")
+       || (typeof fabricId==="string"&&knownFabricIds.has(fabricId)&&"availability" in payload))
       return "invalid";
     return "unrelated";
   }
@@ -109,4 +113,25 @@ export function literalOperatorPhysicalEnum<T extends string>(
   value:unknown,allowed:readonly T[],
 ):T|null {
   return typeof value==="string"&&allowed.includes(value as T)?value as T:null;
+}
+
+
+/** Preserve the literal source type and entire text. Silently shortening an
+ * operator's weave or texture changes the physical claim being displayed. */
+export function literalOperatorText(value:unknown,max:number):string|null {
+  if(typeof value!=="string"||!Number.isSafeInteger(max)||max<1) return null;
+  const result=value.trim();
+  return result.length>0&&result.length<=max?result:null;
+}
+
+/** Only explicit string labels from the shared vocabulary may be projected.
+ * String(["Summer"]) is not an operator-confirmed season assignment. */
+export function literalOperatorTags<T extends string>(value:unknown,allowed:readonly T[]):T[] {
+  if(!Array.isArray(value)) return [];
+  const result:T[]=[];
+  for(const item of value) {
+    if(typeof item==="string"&&allowed.includes(item as T)&&!result.includes(item as T))
+      result.push(item as T);
+  }
+  return result;
 }

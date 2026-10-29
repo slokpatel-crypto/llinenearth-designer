@@ -1,3 +1,15 @@
+## 2026-10-29 — decoded JSON byte budgets for stock evidence reads
+
+**Decision:** Both operator-history and physical-stock RPC responses have explicit decoded-stream size ceilings independent of upstream Content-Length. Abort/invalid/oversize JSON or malformed RPC row structure yields unavailable customer stock rather than a success-shaped answer or unbounded memory consumption. Preserve 8-second network aborts, exact-count pagination, material provenance, original model/photo and no-credit deterministic preview. Caps: 4 MiB per metadata page, 1 MiB per stock RPC. This cannot certify live supplier stock, authenticated user flows or physical/tailor/Blender/device acceptance and does not authorize production mutation or deploy.
+
+## 2026-10-29 — include sibling padded-subtype safety guard in the stacked release candidate
+
+**Decision:** Include PR #494 independent padded/array subtype strictness in this integrated draft; do not let whitespace or one-item JSON arrays bury a possible sold-out operator event. Source-wiring tests were updated to reflect literal non-clipping text parsing rather than the older inline type guard. This is code evidence only; real supplier stock and human release approval remain open.
+
+## 2026-10-29 — avoid synthetic operator material labels and concealment of ambiguous availability events
+
+**Decision:** A malformed subtype on an active catalogue fabric carrying an availability field is not safely unrelated: it could otherwise hide a sold-out operator veto. Treat that complete metadata lookup as unverified, so both customer stock paths fail closed. Seasonal/role tags must be literal strings in the existing shared vocabulary; never derive "Summer" or "base_safe" from nested arrays or objects. Reject rather than truncate overlong weave, texture or note text, while preserving valid literal values and existing provenance. No schema/dependency/model/photo changes, paid-AI credit, main merge, live mutation or deployment. CI on the exact new stacked head is required; physical stock and human QA remain separate.
+
 ## 2026-10-29 — physical metadata must not be manufactured by JavaScript coercion
 
 **Decision:** Physical GSM, fabric weight class and drape may be projected from an operator metadata receipt only when their JSON values are literal in-contract numbers or strings. Previously `Number("145")` and `Number([145])` could yield a physical GSM value, and `String(["soft"])` could yield an apparently measured drape. Keep existing valid numeric/enum data and the availability veto, but omit malformed physical fields; do not fabricate supplier measurements. Formality, weave and texture also refuse coerced JSON types. No schema, new dependency, paid AI, model/photo change, live mutation, merge or deployment.

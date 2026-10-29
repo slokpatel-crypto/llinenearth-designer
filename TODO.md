@@ -1,3 +1,19 @@
+## 2026-10-29 — bound JSON reads on both customer stock evidence services (draft)
+- [x] Operator override pages and verified stock RPC use streaming bounded JSON reading instead of unbounded response.json(), with decoded body caps of 4 MiB/page and 1 MiB/stock snapshot under existing 8-second aborts. Oversize, invalid UTF-8/JSON and malformed stock row shapes all fail closed.
+- [x] Add real stream/Unicode, exact-byte-boundary, overflow, body absence and malformed response regressions plus both service wiring checks; preserve legitimate stock and no-store semantics.
+- [ ] Run exact new-head full CI, Node tests, preview, engine, release, build and pinned browser/Non-3D QA; real supplier stock, authenticated end-to-end customer/operator, physical tailor/device/native geometry, security and owner launch acceptance remain missing. No DB write, schema migration, main merge or deployment.
+
+## 2026-10-29 — integrate padded metadata subtype strictness into latest stacked draft
+- [x] Preserve independent PR #494 finding: whitespace-padded or one-element-array designer_fabric_metadata subtype must fail closed instead of hiding operator sold-out history.
+- [x] Add positive/negative subtype regression cases alongside active-fabric ambiguity and literal material tags fixes; update legacy source assertions for the typed text parser.
+- [ ] Recheck exact-head CI and physical/human launch gates. No main merge, production write, migration or deployment.
+
+## 2026-10-29 — strict operator textile tags and ambiguous sold-out metadata (draft)
+- [x] Guard active-catalogue operator notes with an availability key against malformed/typo subtype: fail closed instead of discarding a possible sold-out override.
+- [x] Do not convert nested JSON arrays into seemingly reviewed season/role tags; accept literal vocabulary strings only and deduplicate. Preserve full literal weave, texture and operator note or omit invalid/overlong text rather than silently clipping.
+- [x] Add pure regression cases and loader source-contract tests; preserve verified stock contract and deterministic no-paid-AI core.
+- [ ] Exact-head quality, tests, engine, preview, release, build, browser/Non-3D CI and separate actual supplier stock, authenticated customer/operator, tailor, device, native Blender, security and release approvals still required. No production write, schema migration, merge or deploy.
+
 ## 2026-10-29 — operator physical metadata must be literal (draft)
 - [x] Reproduced `Number(payload.weightGsm)` accepting `"145"` and `[145]`, and `String(payload.drape)` accepting `["soft"]`; when a provenance receipt existed, these values could become apparently verified physical GSM/drape.
 - [x] Require literal finite numeric GSM/formality and literal enum weight class/drape; ignore coerced physical fields while preserving the operator's valid availability veto and existing valid numeric metadata. Reject nonstring weave/texture; add positive/negative pure and loader regressions.
