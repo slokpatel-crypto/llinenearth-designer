@@ -149,7 +149,7 @@ test("coercible device QA identity never counts as acceptance",()=>{
 test("malformed or oversized raw samples invalidate the whole device receipt",()=>{
   const valid=validDeviceQaPayload();
   for(const bad of ["42",null,true,[],{},-1,10001,Number.NaN]){
-    const durations=[...valid.sampleDurationsMs as number[],bad];
+    const durations=[...(valid.sampleDurationsMs as number[]),bad];
     assert.deepEqual(summarizeDeviceQaDurations(durations),{samples:0,p95Ms:null});
     assert.equal(evaluateDeviceQaEvidence({...valid,sampleDurationsMs:durations}).accepted,false);
   }
