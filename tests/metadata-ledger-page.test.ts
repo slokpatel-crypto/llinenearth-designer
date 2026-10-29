@@ -82,6 +82,14 @@ test("operator availability evidence rejects JSON-coerced overrides that could h
     "linen-plain-60-sky-blue ",null,{},true])
     assert.equal(validateOperatorMetadataAvailability({...valid,fabricId},ids),"invalid",JSON.stringify(fabricId));
   assert.equal(validateOperatorMetadataAvailability({...valid,subtype:["designer_fabric_metadata"]},ids),"invalid");
+  for(const subtype of [" designer_fabric_metadata","designer_fabric_metadata ",
+    "\\tdesigner_fabric_metadata\\n",[" designer_fabric_metadata "],["designer_fabric_metadata\\n"]])
+    assert.equal(validateOperatorMetadataAvailability({...valid,subtype},ids),"invalid",JSON.stringify(subtype));
+  // A malformed older sold-out event cannot be ignored just because a newer
+  // record happens to say available. The entire read must fail closed.
+  assert.equal(validateOperatorMetadataAvailability({...valid,availability:"unavailable",
+    subtype:" designer_fabric_metadata "},ids),"invalid");
+  assert.equal(validateOperatorMetadataAvailability({...valid,subtype:"designer_fabric_metadata_v2"},ids),"unrelated");
   assert.equal(validateOperatorMetadataAvailability({...valid,fabricId:"retired-catalogue-fabric"},ids),"unrelated");
   assert.equal(validateOperatorMetadataAvailability({subtype:"other_note",fabricId:valid.fabricId},ids),"unrelated");
   assert.equal(validateOperatorMetadataAvailability({note:"operator"},ids),"unrelated");
