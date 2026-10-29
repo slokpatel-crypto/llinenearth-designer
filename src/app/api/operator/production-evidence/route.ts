@@ -7,6 +7,7 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { normalizeProductionDeliveryEvidence } from "@/lib/designer/production-delivery-evidence";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
+import { verifiedFirstTenAuditReceipt } from "@/lib/designer/production-first-ten-receipt";
 
 export const runtime="nodejs";
 
@@ -17,6 +18,10 @@ function respond(body:unknown,status=200){
 async function authorized(){
   const jar=await cookies();
   return verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value);
+}
+
+class ProductionEvidenceRpcHttpError extends Error {
+  constructor(readonly status:number){super("Production evidence request failed ("+status+").");}
 }
 
 async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
@@ -31,7 +36,7 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
   });
   if(!response.ok){
     // Never buffer or reflect untrusted upstream error bodies in audit responses.
-    throw new Error("Production evidence request failed ("+response.status+").");
+    throw new ProductionEvidenceRpcHttpError(response.status);
   }
   const maxBytes=name.endsWith("_list")||name==="production_first_ten_delivery_audit"
     ?4 * 1024 * 1024:4 * 1024;
@@ -52,12 +57,22 @@ export async function GET(){
     // Keep browsing/recording functional before this migration is installed,
     // but never return a release-capable audit basis without the new DB RPC.
     let firstTenBasis:unknown=null;
+    let firstTenAuditInstalled=true;
     try {
-      firstTenBasis=await rpc<unknown>("production_first_ten_delivery_audit",{});
-    } catch {
-      // The first-ten evidence gate remains blocked until the migration exists.
+      firstTenBasis=verifiedFirstTenAuditReceipt(
+        await rpc<unknown>("production_first_ten_delivery_audit",{}),
+      );
+    } catch(error) {
+      // Only a genuinely absent optional RPC is compatible with older
+      // deployments. An installed but failing/malformed audit must not be
+      // reported as an ordinary empty or unavailable history.
+      if(error instanceof ProductionEvidenceRpcHttpError && error.status===404){
+        firstTenAuditInstalled=false;
+      }else{
+        throw error;
+      }
     }
-    return NextResponse.json({configured:true,orders,evidence,firstTenBasis},{headers:{"cache-control":"private, no-store"}});
+    return NextResponse.json({configured:true,orders,evidence,firstTenBasis,firstTenAuditInstalled},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
     if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
