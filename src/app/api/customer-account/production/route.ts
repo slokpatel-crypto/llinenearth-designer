@@ -41,6 +41,14 @@ export async function GET(request:Request){
       rpc("production_customer_outcome_list_owned",{p_owner_user_id:customer.id,p_limit:100}),
     ]);
 
+    // A malformed owner-scoped RPC response is not an empty production
+    // history. Never return a success-shaped customer status snapshot when
+    // any of its four independently fetched ledgers is unverified.
+    if(!Array.isArray(quotes)||!Array.isArray(orders)
+      ||!Array.isArray(orderEvents)||!Array.isArray(outcomes)){
+      throw new Error("Malformed customer production history list receipts.");
+    }
+
     return NextResponse.json(
       {quotes,orders,orderEvents,outcomes},
       {headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"}},
