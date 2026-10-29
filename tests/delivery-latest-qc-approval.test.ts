@@ -112,3 +112,19 @@ test("J5: impossible QC calendar dates cannot outrank a real later rework",()=>{
     assert.equal(hasVerifiedLatestDeliveryQc([{...approved,created_at}],orderId),true,created_at);
   }
 });
+
+test("J5: a saturated global QC ledger cannot certify latest-by-order delivery",()=>{
+  // A list limited to N rows cannot prove that it includes every inspection.
+  // Fail closed even when a valid approval is visible in the returned page.
+  const full500=[approved,...Array.from({length:499},()=>({...earlier,order_id:"unrelated-order"}))];
+  assert.equal(hasVerifiedLatestDeliveryQc(full500,orderId,500),false);
+  assert.equal(hasVerifiedLatestDeliveryQc(full500.slice(0,499),orderId,500),true);
+  assert.equal(hasVerifiedLatestDeliveryQc(full500,orderId,501),true);
+  const full250=full500.slice(0,250);
+  assert.equal(hasVerifiedLatestDeliveryQc(full250,orderId,250),false);
+  assert.equal(hasVerifiedLatestDeliveryQc(full250.slice(0,249),orderId,250),true);
+  for(const invalidLimit of [0,-1,1.5,NaN]) {
+    assert.equal(hasVerifiedLatestDeliveryQc([approved],orderId,invalidLimit),false);
+  }
+  assert.equal(hasVerifiedLatestDeliveryQc([approved],orderId),true);
+});
