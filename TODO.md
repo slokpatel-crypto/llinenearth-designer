@@ -1,3 +1,8 @@
+## 2026-10-30 — J5 delivery must use latest provenance-backed QC (stacked draft)
+- [x] Reproduced the delivered-status gate using `inspections.find` and `String(inspector/reference)`, which could promote an older approved inspection ahead of a newer rework or accept coerced upstream provenance.
+- [x] Add pure latest-by-timestamp, fail-closed physical QC reader: require a typed list, literal order identity, parseable timestamp, supported decision and literal bounded inspector/reference; reject same-millisecond ambiguity and latest rework. Use before `production_order_set_status`, preserve DB transition authorization and existing 500-row bound. Add positive/negative out-of-order, stale, tie and coercion regressions.
+- [ ] Require exact-head quality, Node, engine, preview, release, build, Chromium 390/768/1440 and Non-3D. Real tailor QC, owner/operator production, supplier stock, physical devices/native Blender, beta/delivery/security/privacy and owner release approvals remain BLOCKED. A capped list is not an atomic database latest-by-order receipt; consider a dedicated DB RPC after owner-reviewed migration planning. No live write, schema change, merge or deploy.
+
 ## 2026-10-30 — J5 owner-scoped customer production history must fail closed (stacked draft)
 - [x] Reproduced customer production GET returning a success-shaped `{quotes,orders,orderEvents,outcomes}` even when one of the four authenticated Supabase RPCs returned a malformed non-array body.
 - [x] Require all four independent owner-scoped RPCs to return actual arrays before returning a customer history snapshot; preserve valid empty lists, owner authentication, bounded decoded reads, no-store and 503 failure semantics. Add pure positive/negative receipt tests and API source regression.
