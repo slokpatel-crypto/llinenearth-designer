@@ -1,3 +1,7 @@
+## 2026-10-29 — zero physical stock units must never be reported as positive
+
+**Decision:** A `fabric_stock_snapshot_v2` decimal that is positive but rounds to zero at the ledger's 0.001m resolution is not verified sellable stock. The existing floating-point tolerance could otherwise accept a microscopic positive number and promote `inStock:true` through `available>0`. Reject sub-resolution positive dust and base customer availability on integer 0.001m units, preserving exact zero and genuine positive ledger units. This does not create inventory or replace owner/supplier confirmation; no schema, paid AI, model/photo, live write, merge or deployment.
+
 ## 2026-10-29 — include sibling padded-subtype safety guard in the stacked release candidate
 
 **Decision:** Include PR #494 independent padded/array subtype strictness in this integrated draft; do not let whitespace or one-item JSON arrays bury a possible sold-out operator event. Source-wiring tests were updated to reflect literal non-clipping text parsing rather than the older inline type guard. This is code evidence only; real supplier stock and human release approval remain open.
