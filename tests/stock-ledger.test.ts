@@ -234,3 +234,27 @@ test("stock event types and reservation UUIDs cannot be laundered through String
     assert.throws(()=>normalizeStockConsumption({...close,reservationId}),/Valid reservation ID/);
   }
 });
+
+test("human stock audit notes must not be coerced or silently truncated",()=>{
+  const base={
+    fabricId:"formal-shirt-01",eventType:"receipt",quantityMetres:2.125,
+    recordedBy:"Stock checker",sourceReference:"Physical roll LE-42",
+    reservationId:"11111111-1111-4111-8111-111111111111",
+    actualMetres:1.25,checkedBy:"Cutting checker",releasedBy:"Release checker",
+  };
+  const normalize=[
+    normalizeManualStockEvent,
+    normalizeStockConsumption,
+    normalizeStockRelease,
+  ];
+  for(const fn of normalize){
+    for(const note of [["claimed human note"],{message:"claimed human note"},42,true]){
+      assert.throws(()=>fn({...base,note}),/Stock note must be text/i);
+    }
+    assert.throws(()=>fn({...base,note:"x".repeat(600)+"missing-end"}),/Stock note exceeds 600/i);
+    assert.equal(fn({...base,note:"x".repeat(600)}).note.length,600);
+    assert.equal(fn({...base,note:"  Checked  against   roll  "}).note,"Checked against roll");
+    assert.equal(fn({...base}).note,"");
+    assert.equal(fn({...base,note:null}).note,"");
+  }
+});
