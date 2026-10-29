@@ -173,7 +173,7 @@ export async function POST(request:Request){
         }catch{
           return NextResponse.json({error:"Finished-garment QC backend must be installed before delivery can be recorded."},{status:409});
         }
-        if(!hasVerifiedLatestDeliveryQc(inspections,orderId)){
+        if(!hasVerifiedLatestDeliveryQc(inspections,orderId,500)){
           return NextResponse.json({error:"The latest provenance-backed finished-garment QC approval is required before delivery."},{status:409});
         }
       }
