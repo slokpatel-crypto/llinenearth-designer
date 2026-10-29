@@ -61,6 +61,7 @@ export async function loadDesignerFabricMetadata():Promise<DesignerFabricMetadat
     const response = await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`,{
       headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},
       cache:"no-store",
+      signal:AbortSignal.timeout(8_000),
     });
     if (!response.ok) {
       console.error("[designer/fabric-metadata] lookup failed",response.status);
