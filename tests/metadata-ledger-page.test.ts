@@ -109,8 +109,21 @@ test("malformed active-fabric availability instructions cannot masquerade as unr
   const event={fabricId:"linen-plain-60-sky-blue",availability:"unavailable"};
   for(const subtype of [null,undefined,"designer_fabric_metadta","other_note",{},["other_note"]])
     assert.equal(validateOperatorMetadataAvailability({...event,subtype},ids),"invalid",String(subtype));
+  // Even when the subtype is mistyped, an active fabric's padded or
+  // array-coerced identity may be a concealed sold-out operator instruction.
+  for(const fabricId of [
+    " linen-plain-60-sky-blue","linen-plain-60-sky-blue ",
+    ["linen-plain-60-sky-blue"],[" linen-plain-60-sky-blue "],
+  ]) {
+    for(const subtype of ["designer_fabric_metadta","other_note",null])
+      assert.equal(validateOperatorMetadataAvailability({...event,subtype,fabricId},ids),
+        "invalid",JSON.stringify({subtype,fabricId}));
+  }
   assert.equal(validateOperatorMetadataAvailability({subtype:"other_note",fabricId:event.fabricId},ids),"unrelated");
   assert.equal(validateOperatorMetadataAvailability({...event,fabricId:"retired-id",subtype:"other_note"},ids),"unrelated");
+  assert.equal(validateOperatorMetadataAvailability({...event,fabricId:" retired-id ",subtype:"other_note"},ids),"unrelated");
+  assert.equal(validateOperatorMetadataAvailability({...event,fabricId:["retired-id"],subtype:"other_note"},ids),"unrelated");
+  assert.equal(validateOperatorMetadataAvailability({subtype:"other_note",fabricId:["linen-plain-60-sky-blue"]},ids),"unrelated");
 });
 
 test("operator seasonal labels and technical text do not coerce or truncate source evidence",()=>{
