@@ -89,8 +89,15 @@ export function validateOperatorMetadataAvailability(
     // instruction. Do not certify a complete ledger with that ambiguity.
     const possibleSubtype=typeof subtype==="string"?subtype:
       Array.isArray(subtype)&&subtype.length===1&&typeof subtype[0]==="string"?subtype[0]:null;
+    // A padded or one-element-array fabric identity must not disguise a
+    // current fabric's possible sold-out veto as an unrelated note when its
+    // subtype is also mistyped. Never normalize it into a valid identity;
+    // ambiguity invalidates the entire customer-facing metadata receipt.
+    const possibleFabricId=typeof fabricId==="string"?fabricId:
+      Array.isArray(fabricId)&&fabricId.length===1&&typeof fabricId[0]==="string"?fabricId[0]:null;
     if((possibleSubtype!==null&&possibleSubtype.trim()==="designer_fabric_metadata")
-       || (typeof fabricId==="string"&&knownFabricIds.has(fabricId)&&"availability" in payload))
+       || (possibleFabricId!==null&&knownFabricIds.has(possibleFabricId.trim())
+           && "availability" in payload))
       return "invalid";
     return "unrelated";
   }
