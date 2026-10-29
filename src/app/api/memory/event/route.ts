@@ -406,7 +406,7 @@ function cleanPayload(type:string, input:unknown) {
          requestedVersion!=="designer-device-qa-v1" &&
          requestedVersion!==DEVICE_QA_EVIDENCE_VERSION) return null;
       const version=requestedVersion===DEVICE_QA_EVIDENCE_VERSION
-        ? DEVICE_QA_EVIDENCE_VERSION : "designer-device-qa-v1";
+        ? "designer-device-qa-v2" : "designer-device-qa-v1";
       const checks=payload.checks && typeof payload.checks==="object" && !Array.isArray(payload.checks)
         ? Object.fromEntries(Object.entries(payload.checks as Record<string,unknown>)
           .slice(0,12)
