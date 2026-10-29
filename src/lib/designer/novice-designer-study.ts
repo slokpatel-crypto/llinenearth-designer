@@ -113,9 +113,15 @@ export function summarizeNoviceDesignerStudy(
   }
   const latest=[...latestByCase.values()];
   const latestDecision=[...decisions].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))[0]||null;
-  const targetSeconds=latestDecision?.target_seconds||null;
-  const eligible=latest.filter((row)=>row.novice_confirmed&&row.liked_design_completed&&!row.blocking_issue);
-  const serverTimed=eligible.filter((row)=>Boolean(row.timing_session_id));
+  const targetSeconds=typeof latestDecision?.target_seconds==="number"&&
+    Number.isFinite(latestDecision.target_seconds)&&latestDecision.target_seconds>=1&&latestDecision.target_seconds<=7200
+      ?latestDecision.target_seconds:null;
+  const eligible=latest.filter((row)=>row.novice_confirmed===true&&row.liked_design_completed===true&&
+    row.blocking_issue===false&&typeof row.duration_seconds==="number"&&
+    Number.isFinite(row.duration_seconds)&&row.duration_seconds>=1&&row.duration_seconds<=7200);
+  // A truthy arbitrary string is not a server-issued timer receipt.
+  const serverTimed=eligible.filter((row)=>typeof row.timing_session_id==="string"&&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.timing_session_id));
   const withinTarget=targetSeconds===null?[]:serverTimed.filter((row)=>row.duration_seconds<=targetSeconds);
   return {
     uniqueCases:latest.length,
@@ -123,12 +129,13 @@ export function summarizeNoviceDesignerStudy(
     likedDesignCases:eligible.length,
     serverTimedLikedCases:serverTimed.length,
     blockingCases:latest.filter((row)=>row.blocking_issue).length,
-    medianLikedDesignSeconds:median(eligible.map((row)=>Number(row.duration_seconds))),
+    medianLikedDesignSeconds:median(eligible.map((row)=>row.duration_seconds)),
     targetSeconds,
     withinTargetCases:withinTarget.length,
     latestDecisionStatus:latestDecision?.status||"pending",
     latestSignedBy:latestDecision?.signed_by||null,
     evidenceReady:serverTimed.length>=5,
-    gateComplete:Boolean(targetSeconds&&withinTarget.length>=5&&latestDecision?.status==="approved"),
+    gateComplete:Boolean(targetSeconds!==null&&withinTarget.length>=5&&latestDecision?.status==="approved"&&
+      typeof latestDecision.signed_by==="string"&&latestDecision.signed_by.trim().length>=2),
   };
 }
