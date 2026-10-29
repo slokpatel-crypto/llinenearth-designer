@@ -269,13 +269,13 @@ test("physical fabric IDs and reservation UUIDs cannot be silently trimmed into 
     reservationId:"11111111-1111-4111-8111-111111111111",
     actualMetres:1.25,checkedBy:"Cutting checker",releasedBy:"Release checker",
   };
-  for(const fabricId of [" formal-shirt-01","formal-shirt-01 ","\\nformal-shirt-01","\\tformal-shirt-01"]){
+  for(const fabricId of [" formal-shirt-01","formal-shirt-01 ","\nformal-shirt-01","\tformal-shirt-01"]){
     assert.throws(()=>normalizeManualStockEvent({...base,fabricId}),/Fabric ID must match/);
     assert.throws(()=>normalizeStockReservation({...base,fabricId}),/Fabric ID must match/);
   }
   assert.equal(normalizeManualStockEvent(base).fabricId,base.fabricId);
   assert.equal(normalizeStockReservation(base).fabricId,base.fabricId);
-  for(const reservationId of [" "+base.reservationId,base.reservationId+" ","\\n"+base.reservationId]){
+  for(const reservationId of [" "+base.reservationId,base.reservationId+" ","\n"+base.reservationId]){
     assert.throws(()=>normalizeStockConsumption({...base,reservationId}),/Valid reservation ID/);
     assert.throws(()=>normalizeStockRelease({...base,reservationId}),/Valid reservation ID/);
   }
