@@ -70,6 +70,10 @@ for (const path of [
   "package-lock.json",
   "AGENTS.md",
   "DECISIONS.md",
+  // A passing static release check is NOT human deployment readiness.
+  // Keep the measurable gate and exact-head checkpoint discoverable.
+  "docs/TITAN_RELEASE_CHECKLIST.md",
+  "docs/TITAN_RELEASE_CHECKPOINT.md",
   "docs/ARCHITECTURE_AUDIT.md",
   "src/app/lab/proof/page.tsx",
   "src/components/PremiumShirtProof.tsx",
