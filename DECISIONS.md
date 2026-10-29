@@ -1,3 +1,7 @@
+## 2026-10-29 — bounded operator metadata must be proven complete
+
+**Decision:** A successful HTTP 200 with a partial `style_events` page is not proof that the operator's sold-out override ledger was fully read. Request an exact PostgREST count and accept only an entire, contiguous 0-based page with matching total, or the literal empty `*/0` response. Missing, partial, inconsistent and over-limit histories fail closed on both public stock paths. The CI-only metadata fixture supplies an explicit empty exact-count header; it does not create stock or operator approval. Larger ledgers require a separately tested paginated reader before they can be customer-visible. No schema, physical evidence, identity, paid-AI, production write or deployment changes.
+
 ## 2026-10-29 — customer stock requires a reachable operator metadata ledger
 
 **Decision:** Successful *empty* `style_events` operator metadata is different from no config, 4xx/5xx, invalid response, timeout or broken lookup. Physical stock may be customer-available only when both verified stock and the operator's override ledger have been read. Preserve the old best-effort metadata helper for operator display; use new status-bearing fetch in Designer and legacy `/api/inventory`. The latter returns all structured fabrics unavailable when metadata read is unhealthy. Limit network delay to 8 seconds and keep synthetic empty metadata fixture strictly in CI browser QA. No fake inventory, human operator signoff, stored-data schema or production mutation.

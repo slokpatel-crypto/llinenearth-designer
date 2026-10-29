@@ -36,7 +36,9 @@ async function handle(req,res){
   if(req.method==="GET"&&req.url==="/__fixture/health") return send(res,200,{ciFixture:true,physicalEvidence:false});
   if(req.method==="GET"&&req.url?.startsWith(METADATA_PATH+"?")){
     const rows=metadataRowsFor(req.method,req.url,req.headers.apikey);
-    return rows===null?send(res,403,{error:"Not a CI metadata fixture request"}):send(res,200,rows);
+    if(rows===null||req.headers.prefer!=="count=exact") return send(res,403,{error:"Not a CI metadata fixture request"});
+    res.writeHead(200,{"content-type":"application/json","cache-control":"private, no-store","content-range":"*/0"});
+    return res.end(JSON.stringify(rows));
   }
   if(req.method!=="POST"||req.url!==STOCK_PATH) return send(res,404,{error:"Unknown CI mock route"});
   if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
