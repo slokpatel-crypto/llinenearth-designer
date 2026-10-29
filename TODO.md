@@ -1,3 +1,8 @@
+## 29 October 2026 — exact physical stock identity boundary (draft)
+- [x] Reproduced operator stock writes silently trimming padded catalogue fabric IDs and reservation UUIDs into different existing physical stock subjects.
+- [x] Reject padded fabric IDs in manual receipts/adjustments and reservation creation; reject padded UUIDs on consumption/release. Preserve normalization of human names, notes and source references, and existing valid keys.
+- [ ] Verify exact-head Node, quality, engine, preview, release, build and 390/768/1440 browser QA. Real supplier/owner stock and signed-in Supabase operator handoff remain unverified; no migration, live write, merge or deployment.
+
 ## 29 October 2026 — stock audit note provenance integrity (draft)
 - [x] Reproduced silently truncated or JSON-coerced physical stock notes on manual ledger record, reservation consumption and release.
 - [x] Reject non-text or overlong (>600 normalized chars) notes while preserving optional blank notes and adding negative/positive regression tests.

@@ -1,3 +1,7 @@
+## 2026-10-29 — never alias a physical stock identity by trimming it
+
+**Decision:** A catalogue fabric ID or reservation UUID supplied for physical inventory mutation must be an exact identifier. Reject surrounding whitespace instead of silently normalizing a mistyped stock subject into a valid different one. Keep existing human name, source-reference and optional note normalization, and preserve accepted canonical IDs and idempotency-key compatibility. Add positive/negative Node regressions; no schema, live stock write, migration, main merge or deployment. This is not evidence of real supplier inventory, tailor fit or owner approval.
+
 ## 2026-10-29 — preserve complete human stock audit notes
 
 **Decision:** Manual receipt/adjustment, reservation consumption and release audit notes are optional, but supplied notes must be literal strings of at most 600 normalized characters. Reject arrays, objects, booleans, numbers and overlong notes instead of coercing or silently truncating physical evidence. Missing/null notes remain empty for backwards compatibility. No schema change, new inventory, migration, production mutation or deployment. Preserve deterministic Designer and fixed model/photo.
