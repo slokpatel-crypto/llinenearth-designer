@@ -1,3 +1,7 @@
+## 2026-10-29 — match browser/server device latency and missing-data semantics
+
+**Decision:** A browser session with no latency samples reports `withinTarget:null` (not a fabricated failure). The client and server both compare the rounded displayed p95 to the 100 ms acceptance threshold, conservatively treating 99.96 ms as 100.0 ms and requiring review. Real target-device signoff is still required; this only fixes the audit transport contract.
+
 ## 2026-10-29 — integrate fail-closed stock and verified device audit receipts without promoting release
 
 **Decision:** The verified-stock fail-closed source and isolated CI-only browser stock fixture from draft PR #474 coexist with strict v2 device evidence and confirmed PostgREST event receipts from sibling draft PR #475. Integration is a new stacked draft branch based on #474, copying the three non-overlapping source/test files from #475. Keep real inventory unknown until owner-reviewed ledger facts exist, keep v1 device evidence review-only, and require exact integration-head CI plus real human/device/tailor/model/owner acceptance before any launch. Do not merge main or deploy from this branch.

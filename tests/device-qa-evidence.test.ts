@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { summarizePreviewPerformanceDurations } from "../src/lib/designer/preview-performance-client.ts";
 import {
   DEVICE_QA_EVIDENCE_VERSION,
   evaluateDeviceQaEvidence,
@@ -194,4 +195,37 @@ test("operator device evidence write/read paths preserve fail-closed acceptance"
   assert.match(reader,/evaluation\.versionValid\?evaluation\.p95Ms:legacyP95/);
   assert.match(reader,/evaluation\.versionValid\?evaluation\.samples:legacySamples/);
   assert.doesNotMatch(reader,/Number\(payload\.p95Ms\)/);
+});
+
+
+test("browser and server agree on the rounded p95 device acceptance boundary",()=>{
+  const durations=Array.from({length:12},()=>99.96);
+  const browser=summarizePreviewPerformanceDurations(durations);
+  const server=evaluateDeviceQaEvidence({
+    version:DEVICE_QA_EVIDENCE_VERSION,deviceClass:"mobile",viewport:"390x844",
+    sampleDurationsMs:durations,
+    checks:{fourViews:true,controlsLegible:true,noOverflow:true,fabricReadable:true,modelStable:true},
+  });
+  assert.equal(browser.p95Ms,100);
+  assert.equal(browser.withinTarget,false);
+  assert.equal(server.performancePass,false);
+  assert.equal(server.accepted,false);
+  assert.deepEqual(summarizePreviewPerformanceDurations([]),{
+    samples:0,medianMs:null,p95Ms:null,maxMs:null,withinTarget:null,
+  });
+});
+
+test("device QA client preserves unmeasured review as null instead of false",()=>{
+  const source=readFileSync(new URL("../src/app/operator/device-qa/DeviceQaClient.tsx",import.meta.url),"utf8");
+  assert.match(source,/withinTarget:summary\.withinTarget,/);
+  assert.doesNotMatch(source,/withinTarget:summary\.withinTarget===true/);
+  const review=normalizeDeviceQaEvidenceReceipt({
+    subtype:"designer_device_qa",version:DEVICE_QA_EVIDENCE_VERSION,
+    deviceClass:"mobile",status:"review",viewport:"390x844",dpr:2,
+    samples:0,sampleDurationsMs:[],medianMs:null,p95Ms:null,maxMs:null,
+    withinTarget:null,hardwareConcurrency:4,userAgent:"Observed device",
+    checks:{fourViews:false,controlsLegible:false,noOverflow:false,fabricReadable:false,modelStable:false},
+    note:"No latency observations yet.",
+  });
+  assert.equal(review?.status,"review");
 });
