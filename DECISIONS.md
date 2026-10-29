@@ -1,3 +1,7 @@
+## 2026-10-29 — legacy inventory endpoint must not bypass verified stock
+
+**Decision:** `/api/inventory` retains its existing swatch list and category counts but derives structured `inStock` and stock totals from the same operator metadata + live `fabric_stock_snapshot_v2` verification used by the Designer catalogue. Bundled `FABRIC_STOCK.inStock` is not physical proof; an absent/invalid/unreachable live ledger fails closed, while legacy website scans remain unverified. An explicit sold-out override stays sold out. The endpoint responds `private, no-store` and disables static caching. This is a source-only consistency fix, not confirmation of actual rolls, human fit or rollout. No schema, paid provider, migration, database write, original model/photo change, merge or deployment.
+
 ## 2026-10-29 — preserve complete human stock audit notes
 
 **Decision:** Manual receipt/adjustment, reservation consumption and release audit notes are optional, but supplied notes must be literal strings of at most 600 normalized characters. Reject arrays, objects, booleans, numbers and overlong notes instead of coercing or silently truncating physical evidence. Missing/null notes remain empty for backwards compatibility. No schema change, new inventory, migration, production mutation or deployment. Preserve deterministic Designer and fixed model/photo.
