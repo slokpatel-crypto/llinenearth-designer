@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasCompleteOperatorMetadataPage, OPERATOR_METADATA_PAGE_LIMIT, verifyOperatorMetadataPage } from "../src/lib/designer/metadata-ledger-page.ts";
+import { hasCompleteOperatorMetadataPage, OPERATOR_METADATA_PAGE_LIMIT, verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence } from "../src/lib/designer/metadata-ledger-page.ts";
 
 test("complete PostgREST metadata histories are distinguishable from empty and truncated histories", () => {
   assert.equal(hasCompleteOperatorMetadataPage([], "*/0"), true);
@@ -42,4 +42,30 @@ test("exact paginated metadata rejects moving, incomplete and uncounted pages",(
     [false, "*/0",0,null],
   ] as Array<[unknown,string|null,number,number|null]>)
     assert.deepEqual(verifyOperatorMetadataPage(rows,range,offset,previous),{status:"invalid",total:null},String(range));
+});
+
+test("operator metadata page identities must be strictly ordered across page boundaries",()=>{
+  const first=[
+    {at:"2026-10-29T20:20:03.000Z",id:"z"},
+    {at:"2026-10-29T20:20:02.000Z",id:"x"},
+  ];
+  const cursor=verifyOperatorMetadataRowSequence(first,null);
+  assert.deepEqual(cursor,{at:"2026-10-29T20:20:02.000Z",id:"x"});
+  assert.deepEqual(verifyOperatorMetadataRowSequence([
+    {at:"2026-10-29T20:20:02.000Z",id:"w"},
+    {at:"2026-10-29T20:20:01.000Z",id:"q"},
+  ],cursor),{at:"2026-10-29T20:20:01.000Z",id:"q"});
+  for(const rows of [
+    [first[1]], // duplicate at the next offset page despite matching total
+    [{at:"2026-10-29T20:20:02.000Z",id:"z"}], // wrong tie-break order
+    [{at:"2026-10-29T20:20:04.000Z",id:"a"}], // newer event shifted into next page
+    [{at:"not-a-timestamp",id:"a"}],
+    [{at:"2026-10-29T20:20:01.000Z",id:"  a"}],
+    [{at:"2026-10-29T20:20:01.000Z",id:null}],
+    [null],
+  ]) assert.equal(verifyOperatorMetadataRowSequence(rows,cursor),null,JSON.stringify(rows));
+  assert.equal(verifyOperatorMetadataRowSequence([
+    {at:"2026-10-29T20:20:01.000Z",id:"z"},
+    {at:"2026-10-29T20:20:01.000Z",id:"z"},
+  ],null),null);
 });
