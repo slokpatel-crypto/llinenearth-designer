@@ -1,3 +1,9 @@
+## 2026-10-30 — J5 operator delivery UI and stale-ledger controls (stacked draft)
+- [x] Reproduced production desk offering "delivered" based on first matching QC row even when latest physical QC was rework or lacked literal provenance; server already rejected such transitions. Reuse the same fail-closed latest-QC helper for the operator affordance and show an unverified state instead of stale approval.
+- [x] Reproduced a failed/malformed production ledger refresh leaving stale quotes/orders and mutation controls enabled. Clear stale records, disable create controls and show an explicit retry message on backend failure; preserve unauthenticated redirect and legacy optional-list compatibility.
+- [x] Added regression source wiring and latest-QC positive/negative checks. No schema, supplier inventory, live writes, model/photo changes, paid AI, merge or deployment.
+- [ ] Verify exact-head quality, full Node, engine, preview-performance, release, build, 390/768/1440 Chromium and Non-3D. Genuine owner/operator/tailor QC, physical stock, device/native Blender, five beta, ten deliveries and security/privacy/owner approvals remain BLOCKED.
+
 ## 2026-10-30 — J5 delivery must use latest provenance-backed QC (stacked draft)
 - [x] Reproduced the delivered-status gate using `inspections.find` and `String(inspector/reference)`, which could promote an older approved inspection ahead of a newer rework or accept coerced upstream provenance.
 - [x] Add pure latest-by-timestamp, fail-closed physical QC reader: require a typed list, literal order identity, parseable timestamp, supported decision and literal bounded inspector/reference; reject same-millisecond ambiguity and latest rework. Use before `production_order_set_status`, preserve DB transition authorization and existing 500-row bound. Add positive/negative out-of-order, stale, tie and coercion regressions.
