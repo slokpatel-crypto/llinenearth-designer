@@ -46,15 +46,26 @@ export function applyVerifiedStockAvailability(
   rows:VerifiedStockSnapshotRow[],
 ){
   const verified=verifiedStockAvailabilityMap(rows);
+  // A valid physical ledger row is not enough when the catalogue itself
+  // contains duplicate identities: two different swatches must not both
+  // inherit the same verified roll. Nor may an unexpected RPC row inflate
+  // the customer-facing count of catalogue fabrics with verified stock.
+  const catalogueCounts=new Map<string,number>();
+  for(const fabric of stock){
+    catalogueCounts.set(fabric.id,(catalogueCounts.get(fabric.id)||0)+1);
+  }
+  const uniqueCatalogueIds=new Set(
+    [...catalogueCounts].filter(([,count])=>count===1).map(([id])=>id),
+  );
   return {
     stock:stock.map((fabric)=>({
       ...fabric,
       // Bundled catalogue availability is not proof of a physical roll.
       // A missing, invalid, duplicate or unreachable live ledger snapshot
       // must never be promoted to customer-facing "in stock".
-      inStock:fabric.inStock&&verified.get(fabric.id)===true,
-      availabilityVerified:verified.has(fabric.id),
+      inStock:uniqueCatalogueIds.has(fabric.id)&&fabric.inStock&&verified.get(fabric.id)===true,
+      availabilityVerified:uniqueCatalogueIds.has(fabric.id)&&verified.has(fabric.id),
     })),
-    verifiedFabricIds:[...verified.keys()],
+    verifiedFabricIds:[...verified.keys()].filter((id)=>uniqueCatalogueIds.has(id)),
   };
 }
