@@ -1,3 +1,8 @@
+## 2026-10-29 — ambiguous operator stock identity must not erase a sold-out veto (draft)
+- [x] Reproduced a mistyped operator metadata subtype with a padded or single-element-array active fabric ID being ignored as unrelated, even when it carried an `availability` instruction. That could hide an explicit sold-out veto behind otherwise positive stock.
+- [x] Fail closed for ambiguous current-catalogue identities without treating them as valid IDs; preserve genuinely unrelated notes and retired fabrics. Added positive/negative pure regressions.
+- [ ] Verify this exact stacked head in full quality, Node, engine, preview-performance, release, build and real 390/768/1440 browser/Non-3D CI. No live supplier stock, owner-authenticated customer/operator acceptance, tailor/device/native Blender or human release approval. No DB writes, migrations, main merge or deployment.
+
 ## 2026-10-29 — integrated stock dust and bounded RPC source-test verification (draft)
 - [x] Reproduced a tiny positive `available_metres` (e.g. `1e-12`) passing the floating 0.001m tolerance and incorrectly advertising `inStock:true` despite zero ledger units. Reject positive quantities rounding to zero and use integer physical units for customer availability; add Node regressions.
 - [x] Reconciled #495's bounded JSON RPC adapter with its renamed validated `record` alias in the existing source-contract test; require literal IDs, a 1 MiB response cap and row-shape validation without weakening checks.
