@@ -11,6 +11,7 @@ import { buildProductionLearningContext } from "@/lib/designer/production-learni
 import { parseOperatorLockedSelection } from "@/lib/designer/operator-locked-selection";
 import { parseOperatorProductionStatus } from "@/lib/designer/operator-production-status";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
+import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
@@ -151,18 +152,14 @@ export async function POST(request:Request){
       if(!change) return NextResponse.json({error:"Valid order UUID, allowed status and literal note (max 1000 characters) are required."},{status:400});
       const {recordId:orderId,status,note}=change;
       if(status==="delivered"){
-        let inspections:Array<{order_id:string;decision:string;inspector?:string;inspection_reference?:string}>=[];
+        let inspections:unknown;
         try{
-          inspections=await rpc<Array<{order_id:string;decision:string;inspector?:string;inspection_reference?:string}>>("finished_garment_qc_list",{p_limit:500});
+          inspections=await rpc<unknown>("finished_garment_qc_list",{p_limit:500});
         }catch{
           return NextResponse.json({error:"Finished-garment QC backend must be installed before delivery can be recorded."},{status:409});
         }
-        const latest=inspections.find((item)=>item.order_id===orderId);
-        if(latest?.decision!=="approved"){
-          return NextResponse.json({error:"Finished-garment QC approval is required before delivery."},{status:409});
-        }
-        if(String(latest.inspector||"").trim().length<2||String(latest.inspection_reference||"").trim().length<3){
-          return NextResponse.json({error:"Provenance-backed finished-garment QC approval is required before delivery."},{status:409});
+        if(!hasVerifiedLatestDeliveryQc(inspections,orderId)){
+          return NextResponse.json({error:"The latest provenance-backed finished-garment QC approval is required before delivery."},{status:409});
         }
       }
       const updated=await rpc<unknown>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note});
