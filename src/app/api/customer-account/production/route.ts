@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
+import { hasCompleteCustomerProductionHistory } from "@/lib/designer/customer-production-history";
 import { normalizeCustomerProductionOutcome, parseCustomerProductionRecordId } from "@/lib/designer/customer-production-outcomes";
 import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 
@@ -44,8 +45,7 @@ export async function GET(request:Request){
     // A malformed owner-scoped RPC response is not an empty production
     // history. Never return a success-shaped customer status snapshot when
     // any of its four independently fetched ledgers is unverified.
-    if(!Array.isArray(quotes)||!Array.isArray(orders)
-      ||!Array.isArray(orderEvents)||!Array.isArray(outcomes)){
+    if(!hasCompleteCustomerProductionHistory(quotes,orders,orderEvents,outcomes)){
       throw new Error("Malformed customer production history list receipts.");
     }
 
