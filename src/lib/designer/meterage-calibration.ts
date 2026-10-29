@@ -75,7 +75,7 @@ export function normalizeMeterageCalibrationDraft(input:unknown){
   if(source.note!==undefined&&source.note!==null&&typeof source.note!=="string") throw new Error("Meterage model note must be text.");
   const note=typeof source.note==="string"?source.note.trim():"";
   if(note.length>1200) throw new Error("Meterage model note cannot exceed 1200 characters.");
-  return {garment,version,bands,note};
+  return {garment:garment as MeterageGarment,version,bands,note};
 }
 
 export function meterageForWidth(
