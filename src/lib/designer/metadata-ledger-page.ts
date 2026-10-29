@@ -36,7 +36,7 @@ export function verifyOperatorMetadataPage(
   if(rows.length===0&&offset===0&&contentRange==="*/0"&&expectedTotal===null)
     return {status:"complete",total:0};
   if(rows.length===0||!contentRange) return invalid;
-  const match=/^(\\d+)-(\\d+)\\/(\\d+)$/.exec(contentRange);
+  const match=/^(\d+)-(\d+)\/(\d+)$/.exec(contentRange);
   if(!match) return invalid;
   const start=Number(match[1]),end=Number(match[2]),total=Number(match[3]);
   if(![start,end,total].every(Number.isSafeInteger)||start!==offset||
