@@ -147,6 +147,18 @@ async function verifyDesignerFitContracts(baseURL='http://127.0.0.1:3000') {
       results.push({mode:`customer-auth ${route}`,label,status:response.status});
     }
   }
+  for(const [label,headers] of [
+    ['cross-origin logout',{origin:'https://outside.example'}],
+    ['same-site logout',{'sec-fetch-site':'same-site'}],
+  ]){
+    const response=await fetch(`${baseURL}/api/customer-auth/logout`,{
+      method:'POST',headers,
+    });
+    const data=await response.json();
+    assert.equal(response.status,403,`customer-auth ${label}: ${data.error||'unexpected response'}`);
+    assert.equal(response.headers.get('set-cookie'),null,'Rejected logout must not clear session cookies');
+    results.push({mode:'customer-auth logout',label,status:403});
+  }
   console.log(`PASS ${results.length} actual HTTP fit-input contracts across assessment, search and both brief modes`);
   return results;
 }
