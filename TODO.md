@@ -1,3 +1,8 @@
+## 2026-10-30 — J5 operator production errors must not reveal private backend diagnostics (stacked draft)
+- [x] Reproduced the privileged operator production POST exception handler reflecting raw SQL/RPC error.message into HTTP 409, potentially exposing internal owner/order/schema details.
+- [x] Keep server-side diagnostic logging; use a constant generic private no-store error for unexpected failures, while preserving explicit 400 validation and 409 verified-receipt errors. Add regression against reintroducing exception-message reflection.
+- [ ] Verify this exact child SHA in quality, full Node, engine, preview-performance, release check, production build, Chromium 390/768/1440 and Non-3D QA. This is code-level security hardening, not human security/privacy signoff. Live supplier stock, signed-in owner/operator acceptance, physical tailor, devices, native Blender, beta/deliveries and owner approval remain BLOCKED/PENDING. No migration, live write, paid provider, merge or deployment.
+
 ## 2026-10-30 — J5 first-ten delivery audit RPC failure must not be mistaken for absent migration (stacked draft)
 - [x] Reproduced operator delivery evidence GET catching every first-ten RPC failure (malformed 200, upstream 5xx, timeout and missing migration) and returning a success-shaped `firstTenBasis:null` ledger.
 - [x] Preserve compatibility only for an actual HTTP 404 missing optional RPC, with explicit `firstTenAuditInstalled:false`; reject installed malformed, unreachable or oversized responses and validate typed first-ten receipt. Valid `historyValid:false` remains visible but never release-capable.

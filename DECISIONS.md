@@ -1,3 +1,7 @@
+## 2026-10-30 — privileged production API errors are not public diagnostics
+
+**Decision:** Unexpected operator production RPC/SQL errors must be logged only server-side, never returned verbatim in the operator-facing HTTP response. The previous catch returned raw `error.message` and could expose private owner/order/schema or backend details. Return a constant generic HTTP 409 with private no-store while retaining existing explicit input validation and confirmed receipt failures. This is a source-level T5/J5 security guard, not complete live authentication or privacy acceptance. No new dependency, schema, supplier facts, model/photo change, paid AI, live write, main merge or deployment.
+
 ## 2026-10-30 — first-ten delivery audit failure is not an absent optional migration
 
 **Decision:** The operator delivery-evidence endpoint may return `firstTenBasis:null` only when the optional first-ten audit RPC is actually absent (HTTP 404), with an explicit installed flag. An installed RPC returning malformed 200 JSON, 5xx or a timeout must fail the whole evidence read closed; otherwise an operator could confuse a broken chronological audit with an uninstalled migration. Require a typed versioned receipt and preserve legitimate `historyValid:false` as blocked history, not approved deliveries. This is source-level J5/T5 integrity; no genuine ten-delivery proof, production data writes, migration, paid provider, main merge or deployment.
