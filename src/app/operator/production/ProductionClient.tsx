@@ -22,6 +22,7 @@ export default function ProductionClient(){
   const [customerOutcomes,setCustomerOutcomes]=useState<CustomerOutcome[]>([]);
   const [learningContexts,setLearningContexts]=useState<LearningContext[]>([]);
   const [configured,setConfigured]=useState(true);
+  const [optionalEvidenceSources,setOptionalEvidenceSources]=useState<{qcInstalled:boolean;customerOutcomesInstalled:boolean;learningContextInstalled:boolean}|null>(null);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
   const [quote,setQuote]=useState({revisionId:"",recipeHash:"",currency:"INR",adjustment:"0",note:"",line1Label:"Shirt fabric",line1Amount:"",line2Label:"Tailoring",line2Amount:""});
@@ -44,6 +45,7 @@ export default function ProductionClient(){
       setQcInspections(Array.isArray(data.qcInspections)?data.qcInspections:[]);
       setCustomerOutcomes(Array.isArray(data.customerOutcomes)?data.customerOutcomes:[]);
       setLearningContexts(Array.isArray(data.learningContexts)?data.learningContexts:[]);
+      setOptionalEvidenceSources(data.optionalEvidenceSources&&typeof data.optionalEvidenceSources==="object"?data.optionalEvidenceSources:null);
     }catch{
       // Never keep stale quotes/orders or leave mutation controls enabled when
       // the operator's current production ledger cannot be verified.
@@ -53,6 +55,7 @@ export default function ProductionClient(){
       setQcInspections([]);
       setCustomerOutcomes([]);
       setLearningContexts([]);
+      setOptionalEvidenceSources(null);
       setMessage("Production records could not be verified. Retry after the operator backend is available.");
     }
   }
@@ -224,6 +227,9 @@ export default function ProductionClient(){
     </section>
 
     {message&&<p className="productionMessage">{message}</p>}
+    {optionalEvidenceSources&&(!optionalEvidenceSources.qcInstalled||!optionalEvidenceSources.customerOutcomesInstalled||!optionalEvidenceSources.learningContextInstalled)&&
+      <p className="productionMessage" role="status">Some optional production evidence services are not installed. Missing history is unverified, not proof that no inspection, customer outcome or design lineage exists.</p>}
+
 
     <section className="productionRecords">
       <article>
