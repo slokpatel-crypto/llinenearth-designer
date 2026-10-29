@@ -40,7 +40,7 @@ export function normalizeMeterageCalibrationDraft(input:unknown){
     const minFabricWidthCm=typeof item.minFabricWidthCm==="number"&&Number.isFinite(item.minFabricWidthCm)?item.minFabricWidthCm:null;
     const maxFabricWidthCm=typeof item.maxFabricWidthCm==="number"&&Number.isFinite(item.maxFabricWidthCm)?item.maxFabricWidthCm:null;
     const baseMetres=typeof item.baseMetres==="number"&&Number.isFinite(item.baseMetres)?item.baseMetres:null;
-    const allowance=item.patternAllowanceMetres??0;
+    const allowance=item.patternAllowanceMetres===undefined?0:item.patternAllowanceMetres;
     const patternAllowanceMetres=typeof allowance==="number"&&Number.isFinite(allowance)?allowance:null;
     if(item.cutContext!==undefined&&item.cutContext!==null&&typeof item.cutContext!=="string") throw new Error("Band "+(index+1)+" cut context must be text.");
     const cutContext=typeof item.cutContext==="string"?item.cutContext.trim():"";
