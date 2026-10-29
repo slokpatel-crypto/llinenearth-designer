@@ -1,3 +1,7 @@
+## 2026-10-29 — preserve integer physical stock units through bounded RPC integration
+
+**Decision:** A positive decimal that rounds to zero at the 0.001m ledger resolution is not verified sellable stock. Reject sub-resolution positive dust rather than using `available>0`, and base availability on integer physical units. Preserve the newer bounded 1 MiB upstream JSON adapter and literal fabric ID guard; update its source test to check the validated `record` alias without weakening the no-coercion contract. No fabricated supplier inventory, new schema, paid AI, model/photo changes, production writes, main merge or deploy.
+
 ## 2026-10-29 — decoded JSON byte budgets for stock evidence reads
 
 **Decision:** Both operator-history and physical-stock RPC responses have explicit decoded-stream size ceilings independent of upstream Content-Length. Abort/invalid/oversize JSON or malformed RPC row structure yields unavailable customer stock rather than a success-shaped answer or unbounded memory consumption. Preserve 8-second network aborts, exact-count pagination, material provenance, original model/photo and no-credit deterministic preview. Caps: 4 MiB per metadata page, 1 MiB per stock RPC. This cannot certify live supplier stock, authenticated user flows or physical/tailor/Blender/device acceptance and does not authorize production mutation or deploy.

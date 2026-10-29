@@ -99,6 +99,27 @@ test("an invalid numeric notation or missing RPC metreage cannot certify supplie
   assert.deepEqual([...map.entries()],[["zero",false],["valid",true]]);
 });
 
+test("sub-resolution positive dust never becomes verified sellable stock",()=>{
+  // The ledger moves in exact 0.001m units. The numeric rounding tolerance
+  // must not classify a tiny nonzero as one available unit.
+  const map=verifiedStockAvailabilityMap([
+    {fabric_id:"tiny-number",available_metres:1e-12,provenance_ready:true},
+    {fabric_id:"tiny-decimal",available_metres:"0.000000000001",provenance_ready:true},
+    {fabric_id:"min-number",available_metres:Number.MIN_VALUE,provenance_ready:true},
+    {fabric_id:"zero",available_metres:"0.000",provenance_ready:true},
+    {fabric_id:"one-unit",available_metres:"0.001",provenance_ready:true},
+  ]);
+  assert.deepEqual([...map.entries()],[["zero",false],["one-unit",true]]);
+  const stock=applyVerifiedStockAvailability([fabric("tiny-number"),fabric("one-unit")],[
+    {fabric_id:"tiny-number",available_metres:1e-12,provenance_ready:true},
+    {fabric_id:"one-unit",available_metres:0.001,provenance_ready:true},
+  ]);
+  assert.equal(stock.stock[0].inStock,false);
+  assert.equal(stock.stock[0].availabilityVerified,false);
+  assert.equal(stock.stock[1].inStock,true);
+  assert.equal(stock.stock[1].availabilityVerified,true);
+});
+
 test("missing or unreachable stock ledger cannot sell bundled catalogue swatches",()=>{
   const result=applyVerifiedStockAvailability([fabric("shirt"),fabric("trouser")],[]);
   assert.deepEqual(result.verifiedFabricIds,[]);
@@ -145,7 +166,9 @@ test("padded duplicate evidence invalidates even an otherwise exact stock row",(
 test("live RPC adapter never coerces non-string fabric IDs to catalogue IDs",()=>{
   const source=readFileSync(new URL("../src/lib/designer/stock-availability-server.ts",import.meta.url),"utf8");
   assert.match(source,/fabric_id:typeof record\.fabric_id==="string"\?record\.fabric_id:""/);
-  assert.doesNotMatch(source,/fabric_id:String\(row\.fabric_id/);
+  assert.doesNotMatch(source,/fabric_id:String\(record\.fabric_id/);
+  assert.match(source,/readBoundedJsonResponse\(response,1024 \* 1024\)/);
+  assert.match(source,/Array\.isArray\(row\)/);
 });
 
 test("unrequested ledger identities cannot inflate verified catalogue stock metrics",()=>{
