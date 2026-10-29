@@ -160,6 +160,8 @@ export function DesignerModule() {
   const [shareBusy,setShareBusy]=useState(false);
   const [shareMessage,setShareMessage]=useState("");
   const [enquiryBusy,setEnquiryBusy]=useState(false);
+  const [enquiryConsent,setEnquiryConsent]=useState(false);
+  const [vaultAccountOwned,setVaultAccountOwned]=useState(false);
   const [enquiryResult,setEnquiryResult]=useState<{revisionId:string;href:string|null;message:string}|null>(null);
   const [vaultBusy,setVaultBusy]=useState(false);
   const [vaultMessage,setVaultMessage]=useState("");
@@ -308,6 +310,9 @@ export function DesignerModule() {
     lockedRevisionSelectionIdentityRef.current=null;
     setLockedRevision(null);
     setVaultRecoveryToken("");
+    setVaultAccountOwned(false);
+    setEnquiryConsent(false);
+    setEnquiryResult(null);
     setVaultMessage("");
   },[lockIdentity]);
 
@@ -1194,6 +1199,7 @@ export function DesignerModule() {
       lockedRevisionSelectionIdentityRef.current=selectionAtLock;
       setLockedRevision(revision);
       setEnquiryResult(null);
+      setEnquiryConsent(false);
       setLastLockedRevisionId(revision.revisionId);
       recordStyleMemoryEvent(designerSession(),"design_locked",{
         revisionId:revision.revisionId,
@@ -1296,32 +1302,45 @@ export function DesignerModule() {
   async function openLockedRevisionEnquiry() {
     const revision=currentLockedRevision();
     const identity=lockIdentity;
-    if(!revision||enquiryBusy) return;
+    if(!revision||enquiryBusy||!enquiryConsent) return;
     setEnquiryBusy(true);setEnquiryResult(null);
     try{
       const response=await fetch("/api/designer/enquiry",{
         method:"POST",
         headers:{"content-type":"application/json"},
-        body:JSON.stringify(revision),
+        body:JSON.stringify({
+          revision,consentToContact:true,
+          ...(vaultAccountOwned&&vaultRecoveryToken?{recoveryToken:vaultRecoveryToken}:{}),
+        }),
       });
       const result=await response.json() as {
-        href?:string;audited?:boolean;revisionId?:string;
+        href?:string;audited?:boolean;auditId?:string|null;ownerVerified?:boolean;
+        operatorReceived?:boolean;revisionId?:string;status?:string;
         handoffStatus?:string;error?:string;
       };
       if(currentSelectionIdentityRef.current!==identity) return;
-      if(!response.ok||!result.href||result.revisionId!==revision.revisionId
-         ||result.handoffStatus!=="prepared_not_sent")
-        throw new Error(result.error||"A verified WhatsApp draft could not be prepared.");
-      // Sending is a separate, explicit customer click. Audit != delivery.
+      if(!response.ok||typeof result.href!=="string"||result.revisionId!==revision.revisionId
+          ||result.handoffStatus!=="prepared_not_sent")
+        throw new Error(result.error||"A locked-design WhatsApp draft could not be prepared.");
+
+      const validAudit=typeof result.auditId==="string"
+        && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(result.auditId);
+      const ownerIntentRecorded=result.status==="intent_recorded"
+        && result.audited===true&&result.ownerVerified===true&&validAudit;
+      const draftOnly=result.status==="whatsapp_draft"
+        && result.audited===false&&result.ownerVerified===false&&result.auditId===null;
+      if(result.operatorReceived!==false||(!ownerIntentRecorded&&!draftOnly))
+        throw new Error("Enquiry verification returned an inconsistent receipt.");
+
+      // The user must make a separate deliberate click to open WhatsApp and press Send.
       const destination=new URL(result.href);
       if(destination.protocol!=="https:"||destination.hostname!=="wa.me")
         throw new Error("Invalid WhatsApp destination.");
       setEnquiryResult({
-        revisionId:revision.revisionId,
-        href:result.href,
-        message:result.audited
-          ?"WhatsApp draft prepared; preparation audit recorded. Open WhatsApp and press Send. The store has not received a confirmed message yet."
-          :"WhatsApp draft prepared, but the beta audit is unavailable. Open WhatsApp and press Send; no store receipt is confirmed.",
+        revisionId:revision.revisionId,href:result.href,
+        message:ownerIntentRecorded
+          ?`Signed-in enquiry intent recorded · receipt ${result.auditId!.slice(0,8)}. WhatsApp still needs to be sent manually; no operator receipt is confirmed.`
+          :"WhatsApp draft ready. No verified operator receipt or confirmed message delivery. Open WhatsApp and press Send.",
       });
     }catch(error){
       if(currentSelectionIdentityRef.current!==identity) return;
@@ -1343,10 +1362,11 @@ export function DesignerModule() {
         headers:{"content-type":"application/json"},
         body:JSON.stringify({action:"store",revision:revision}),
       });
-      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;ownershipWarning?:string;error?:string};
+      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;accountOwned?:boolean;ownershipWarning?:string;error?:string};
       if(currentSelectionIdentityRef.current!==identity) return;
       if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure cloud copy could not be saved.");
       setVaultRecoveryToken(result.recoveryToken);
+      setVaultAccountOwned(result.accountOwned===true);
       let tokenCopied=false;
       try{
         await navigator.clipboard.writeText(result.recoveryToken);
@@ -1671,7 +1691,11 @@ export function DesignerModule() {
                 <button type="button" onClick={downloadTailorTechPack}>Export printable tech pack ↗</button>
                 <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
                 {shareMessage&&<p>{shareMessage}</p>}
-                <button type="button" onClick={()=>void openLockedRevisionEnquiry()} disabled={enquiryBusy}>{enquiryBusy?"Preparing WhatsApp…":"Prepare WhatsApp enquiry ↗"}</button>
+                <label className="newDesignerEnquiryConsent">
+                  <input type="checkbox" checked={enquiryConsent} onChange={(event)=>{setEnquiryConsent(event.target.checked);setEnquiryResult(null);}}/>
+                  I agree to share this locked outfit enquiry with Linen Earth staff.
+                </label>
+                <button type="button" onClick={()=>void openLockedRevisionEnquiry()} disabled={enquiryBusy||!enquiryConsent}>{enquiryBusy?"Preparing WhatsApp…":"Prepare WhatsApp enquiry ↗"}</button>
                 {enquiryResult?.revisionId===verifiedLockedRevision.revisionId&&<>
                   <p role="status">{enquiryResult.message}</p>
                   {enquiryResult.href&&<a href={enquiryResult.href} target="_blank" rel="noopener noreferrer">Open WhatsApp and send ↗</a>}
