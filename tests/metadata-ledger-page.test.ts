@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasCompleteOperatorMetadataPage, OPERATOR_METADATA_PAGE_LIMIT, verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence } from "../src/lib/designer/metadata-ledger-page.ts";
+import { hasCompleteOperatorMetadataPage, OPERATOR_METADATA_PAGE_LIMIT, verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence, validateOperatorMetadataAvailability } from "../src/lib/designer/metadata-ledger-page.ts";
 
 test("complete PostgREST metadata histories are distinguishable from empty and truncated histories", () => {
   assert.equal(hasCompleteOperatorMetadataPage([], "*/0"), true);
@@ -68,4 +68,22 @@ test("operator metadata page identities must be strictly ordered across page bou
     {at:"2026-10-29T20:20:01.000Z",id:"z"},
     {at:"2026-10-29T20:20:01.000Z",id:"z"},
   ],null),null);
+});
+
+
+test("operator availability evidence rejects JSON-coerced overrides that could hide an older sold-out veto",()=>{
+  const ids=new Set(["linen-plain-60-sky-blue"]);
+  const valid={subtype:"designer_fabric_metadata",fabricId:"linen-plain-60-sky-blue",availability:"unavailable"};
+  for(const availability of ["unknown","available","unavailable"])
+    assert.equal(validateOperatorMetadataAvailability({...valid,availability},ids),"valid");
+  for(const availability of [["available"],["unknown"],{},null,true,false,0,undefined,"AVAILABLE",""])
+    assert.equal(validateOperatorMetadataAvailability({...valid,availability},ids),"invalid",JSON.stringify(availability));
+  for(const fabricId of [["linen-plain-60-sky-blue"]," linen-plain-60-sky-blue",
+    "linen-plain-60-sky-blue ",null,{},true])
+    assert.equal(validateOperatorMetadataAvailability({...valid,fabricId},ids),"invalid",JSON.stringify(fabricId));
+  assert.equal(validateOperatorMetadataAvailability({...valid,subtype:["designer_fabric_metadata"]},ids),"invalid");
+  assert.equal(validateOperatorMetadataAvailability({...valid,fabricId:"retired-catalogue-fabric"},ids),"unrelated");
+  assert.equal(validateOperatorMetadataAvailability({subtype:"other_note",fabricId:valid.fabricId},ids),"unrelated");
+  assert.equal(validateOperatorMetadataAvailability({note:"operator"},ids),"unrelated");
+  assert.equal(validateOperatorMetadataAvailability(null,ids),"unrelated");
 });
