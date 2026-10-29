@@ -4,14 +4,10 @@ import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import type { DesignerFabricMetadata, DesignerFabricMetadataMap } from "@/lib/designer-fabric-metadata-types";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
-import { verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence, validateOperatorMetadataAvailability, literalOperatorPhysicalNumber, literalOperatorPhysicalEnum, OPERATOR_METADATA_PAGE_LIMIT, type OperatorMetadataRowCursor } from "@/lib/designer/metadata-ledger-page";
+import { verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence, validateOperatorMetadataAvailability, literalOperatorPhysicalNumber, literalOperatorPhysicalEnum, literalOperatorText, literalOperatorTags, OPERATOR_METADATA_PAGE_LIMIT, type OperatorMetadataRowCursor } from "@/lib/designer/metadata-ledger-page";
 
 type MetadataRow = { at:string; payload?:Record<string,unknown> };
 const CATALOGUE_FABRIC_IDS=new Set(FABRIC_STOCK.map((fabric)=>fabric.id));
-
-function safe(value:unknown,max=180) {
-  return String(value ?? "").trim().slice(0,max);
-}
 
 function parseMetadata(payload:Record<string,unknown>,at:string):DesignerFabricMetadata|null {
   if (payload.subtype !== "designer_fabric_metadata") return null;
@@ -22,29 +18,28 @@ function parseMetadata(payload:Record<string,unknown>,at:string):DesignerFabricM
   if (availability !== "unknown" && availability !== "available" && availability !== "unavailable") return null;
   const weightClass = literalOperatorPhysicalEnum(payload.weightClass,["Light","Medium","Heavy"] as const);
   const drape = literalOperatorPhysicalEnum(payload.drape,["fluid","soft","medium","structured"] as const);
-  const rawSeasons = Array.isArray(payload.seasonTags) ? payload.seasonTags.map((item)=>safe(item,30)) : [];
-  const rawRoles = Array.isArray(payload.roleTags) ? payload.roleTags.map((item)=>safe(item,30)) : [];
-
+  const seasonTags = literalOperatorTags(payload.seasonTags,["Spring","Summer","Autumn","Winter","All-season"] as const);
+  const roleTags = literalOperatorTags(payload.roleTags,["base_safe","accent_safe"] as const);
+  const weave = literalOperatorText(payload.weave,100);
+  const texture = literalOperatorText(payload.texture,100);
+  const note = literalOperatorText(payload.note,500);
   const weightGsmRaw = literalOperatorPhysicalNumber(payload.weightGsm,40,1000);
   const formalityRaw = literalOperatorPhysicalNumber(payload.formalityScore,1,5);
   const physicalEvidence = normalizeFabricPhysicalEvidenceProvenance(payload.physicalEvidence);
-
-  const seasonTags = rawSeasons.filter((item)=>["Spring","Summer","Autumn","Winter","All-season"].includes(item)) as DesignerFabricMetadata["seasonTags"];
-  const roleTags = rawRoles.filter((item)=>["base_safe","accent_safe"].includes(item)) as DesignerFabricMetadata["roleTags"];
 
   return {
     fabricId,
     availability,
     ...(weightGsmRaw !== null ? {weightGsm:Math.round(weightGsmRaw)} : {}),
     ...(weightClass ? {weightClass} : {}),
-    ...(typeof payload.weave==="string" && safe(payload.weave,100) ? {weave:safe(payload.weave,100)} : {}),
-    ...(typeof payload.texture==="string" && safe(payload.texture,100) ? {texture:safe(payload.texture,100)} : {}),
+    ...(weave ? {weave} : {}),
+    ...(texture ? {texture} : {}),
     ...(drape ? {drape} : {}),
     ...(seasonTags?.length ? {seasonTags} : {}),
     ...(formalityRaw !== null ? {formalityScore:Math.round(formalityRaw*10)/10} : {}),
     ...(roleTags?.length ? {roleTags} : {}),
     ...(physicalEvidence ? {physicalEvidence} : {}),
-    ...(safe(payload.note,500) ? {note:safe(payload.note,500)} : {}),
+    ...(note ? {note} : {}),
     verifiedAt:at,
   };
 }

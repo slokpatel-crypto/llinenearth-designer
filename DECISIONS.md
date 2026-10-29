@@ -1,3 +1,7 @@
+## 2026-10-29 — avoid synthetic operator material labels and concealment of ambiguous availability events
+
+**Decision:** A malformed subtype on an active catalogue fabric carrying an availability field is not safely unrelated: it could otherwise hide a sold-out operator veto. Treat that complete metadata lookup as unverified, so both customer stock paths fail closed. Seasonal/role tags must be literal strings in the existing shared vocabulary; never derive "Summer" or "base_safe" from nested arrays or objects. Reject rather than truncate overlong weave, texture or note text, while preserving valid literal values and existing provenance. No schema/dependency/model/photo changes, paid-AI credit, main merge, live mutation or deployment. CI on the exact new stacked head is required; physical stock and human QA remain separate.
+
 ## 2026-10-29 — physical metadata must not be manufactured by JavaScript coercion
 
 **Decision:** Physical GSM, fabric weight class and drape may be projected from an operator metadata receipt only when their JSON values are literal in-contract numbers or strings. Previously `Number("145")` and `Number([145])` could yield a physical GSM value, and `String(["soft"])` could yield an apparently measured drape. Keep existing valid numeric/enum data and the availability veto, but omit malformed physical fields; do not fabricate supplier measurements. Formality, weave and texture also refuse coerced JSON types. No schema, new dependency, paid AI, model/photo change, live mutation, merge or deployment.

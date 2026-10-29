@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasCompleteOperatorMetadataPage, OPERATOR_METADATA_PAGE_LIMIT, verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence, validateOperatorMetadataAvailability, literalOperatorPhysicalNumber, literalOperatorPhysicalEnum } from "../src/lib/designer/metadata-ledger-page.ts";
+import { hasCompleteOperatorMetadataPage, OPERATOR_METADATA_PAGE_LIMIT, verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence, validateOperatorMetadataAvailability, literalOperatorPhysicalNumber, literalOperatorPhysicalEnum, literalOperatorTags, literalOperatorText } from "../src/lib/designer/metadata-ledger-page.ts";
 
 test("complete PostgREST metadata histories are distinguishable from empty and truncated histories", () => {
   assert.equal(hasCompleteOperatorMetadataPage([], "*/0"), true);
@@ -98,4 +98,28 @@ test("physical metadata refuses numeric coercion and array-backed enum evidence"
     assert.equal(literalOperatorPhysicalEnum(bad,["soft","structured"] as const),null);
   assert.equal(literalOperatorPhysicalEnum("soft",["soft","structured"] as const),"soft");
   assert.equal(literalOperatorPhysicalEnum("structured",["soft","structured"] as const),"structured");
+});
+
+
+test("malformed active-fabric availability instructions cannot masquerade as unrelated operator notes",()=>{
+  const ids=new Set(["linen-plain-60-sky-blue"]);
+  const event={fabricId:"linen-plain-60-sky-blue",availability:"unavailable"};
+  for(const subtype of [null,undefined,"designer_fabric_metadta","other_note",{},["other_note"]])
+    assert.equal(validateOperatorMetadataAvailability({...event,subtype},ids),"invalid",String(subtype));
+  assert.equal(validateOperatorMetadataAvailability({subtype:"other_note",fabricId:event.fabricId},ids),"unrelated");
+  assert.equal(validateOperatorMetadataAvailability({...event,fabricId:"retired-id",subtype:"other_note"},ids),"unrelated");
+});
+
+test("operator seasonal labels and technical text do not coerce or truncate source evidence",()=>{
+  const seasons=["Spring","Summer","Autumn","Winter","All-season"] as const;
+  assert.deepEqual(literalOperatorTags([["Summer"],"Summer",{"toString":"Winter"},"Winter","Summer",false],seasons),["Summer","Winter"]);
+  assert.deepEqual(literalOperatorTags("Summer",seasons),[]);
+  assert.deepEqual(literalOperatorTags([["Summer"],null,1],seasons),[]);
+  assert.deepEqual(literalOperatorTags(["All-season"],seasons),["All-season"]);
+  assert.equal(literalOperatorText(["twill"],100),null);
+  assert.equal(literalOperatorText({value:"twill"},100),null);
+  assert.equal(literalOperatorText("    twill  ",100),"twill");
+  assert.equal(literalOperatorText("a".repeat(100),100),"a".repeat(100));
+  assert.equal(literalOperatorText("a".repeat(101),100),null);
+  assert.equal(literalOperatorText(123,100),null);
 });

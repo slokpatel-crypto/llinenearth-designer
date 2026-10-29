@@ -70,3 +70,15 @@ test("verified physical fabric metadata cannot be coerced from JSON arrays or nu
   assert.doesNotMatch(loader,/Number\(payload\.weightGsm\)/);
   assert.doesNotMatch(loader,/Number\(payload\.formalityScore\)/);
 });
+
+
+test("metadata parser never manufactures seasonal suitability or clipped textile details",()=>{
+  const loader=source("../src/lib/designer-fabric-metadata.ts");
+  assert.match(loader,/literalOperatorTags\(payload\.seasonTags,/);
+  assert.match(loader,/literalOperatorTags\(payload\.roleTags,/);
+  assert.match(loader,/literalOperatorText\(payload\.weave,100\)/);
+  assert.match(loader,/literalOperatorText\(payload\.texture,100\)/);
+  assert.match(loader,/literalOperatorText\(payload\.note,500\)/);
+  assert.doesNotMatch(loader,/String\(value/);
+  assert.doesNotMatch(loader,/\.slice\(0,max\)/);
+});

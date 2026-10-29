@@ -1,3 +1,9 @@
+## 2026-10-29 — strict operator textile tags and ambiguous sold-out metadata (draft)
+- [x] Guard active-catalogue operator notes with an availability key against malformed/typo subtype: fail closed instead of discarding a possible sold-out override.
+- [x] Do not convert nested JSON arrays into seemingly reviewed season/role tags; accept literal vocabulary strings only and deduplicate. Preserve full literal weave, texture and operator note or omit invalid/overlong text rather than silently clipping.
+- [x] Add pure regression cases and loader source-contract tests; preserve verified stock contract and deterministic no-paid-AI core.
+- [ ] Exact-head quality, tests, engine, preview, release, build, browser/Non-3D CI and separate actual supplier stock, authenticated customer/operator, tailor, device, native Blender, security and release approvals still required. No production write, schema migration, merge or deploy.
+
 ## 2026-10-29 — operator physical metadata must be literal (draft)
 - [x] Reproduced `Number(payload.weightGsm)` accepting `"145"` and `[145]`, and `String(payload.drape)` accepting `["soft"]`; when a provenance receipt existed, these values could become apparently verified physical GSM/drape.
 - [x] Require literal finite numeric GSM/formality and literal enum weight class/drape; ignore coerced physical fields while preserving the operator's valid availability veto and existing valid numeric metadata. Reject nonstring weave/texture; add positive/negative pure and loader regressions.
