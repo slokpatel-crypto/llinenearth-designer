@@ -125,24 +125,35 @@ export function verifiedMeterageEvidenceCase(input:unknown,expectedGarment?:Mete
 
 export function normalizeProductionCutEvidenceDraft(input:unknown){
   const source=record(input);
-  const caseId=String(source.caseId||"").trim();
+  const caseId=typeof source.caseId==="string"?source.caseId.trim():"";
   if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) throw new Error("Anonymous cut case ID is required.");
-  const orderId=String(source.orderId||"").trim();
+  const orderId=typeof source.orderId==="string"?source.orderId.trim():"";
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId)){
     throw new Error("Valid production order ID is required.");
   }
-  const garment=String(source.garment||"") as MeterageGarment;
+  const garment=source.garment;
   if(garment!=="shirt"&&garment!=="trouser") throw new Error("Garment must be shirt or trouser.");
   const fabricId=typeof source.fabricId==="string"?source.fabricId.trim():"";
   if(fabricId.length<2||fabricId.length>160) throw new Error("Locked fabric ID must be 2–160 characters without truncation.");
-  const fabricWidthCm=finite(source.fabricWidthCm);
+  const fabricWidthCm=typeof source.fabricWidthCm==="number"&&Number.isFinite(source.fabricWidthCm)?source.fabricWidthCm:null;
   if(fabricWidthCm===null||fabricWidthCm<60||fabricWidthCm>220) throw new Error("Fabric width must be between 60 and 220 cm.");
-  const actualMetres=finite(source.actualMetres);
+  const actualMetres=typeof source.actualMetres==="number"&&Number.isFinite(source.actualMetres)?source.actualMetres:null;
   if(actualMetres===null||actualMetres<=0||actualMetres>12) throw new Error("Actual cloth usage must be greater than 0 and at most 12 metres.");
-  const repeatRaw=source.patternRepeatMm===null||source.patternRepeatMm===undefined||String(source.patternRepeatMm).trim()===""
-    ? null
-    : finite(source.patternRepeatMm);
-  if(repeatRaw!==null&&(repeatRaw<=0||repeatRaw>1000)) throw new Error("Pattern repeat must be between 0 and 1000 mm.");
+  const rawRepeat=source.patternRepeatMm;
+  const repeatOmitted=rawRepeat===undefined||rawRepeat===null||rawRepeat==="";
+  const repeatRaw=repeatOmitted?null:(typeof rawRepeat==="number"&&Number.isFinite(rawRepeat)?rawRepeat:null);
+  if(!repeatOmitted&&(repeatRaw===null||repeatRaw<=0||repeatRaw>1000))
+    throw new Error("Pattern repeat must be a measured number between 0 and 1000 mm.");
+  if(source.patternMatching!==undefined&&typeof source.patternMatching!=="boolean")
+    throw new Error("Pattern matching must be a literal boolean.");
+  if(source.cutContext!==undefined&&source.cutContext!==null&&typeof source.cutContext!=="string")
+    throw new Error("Cut context must be text.");
+  const cutContext=typeof source.cutContext==="string"?source.cutContext.replace(/\s+/g," ").trim():"";
+  if(cutContext.length>160) throw new Error("Cut context cannot exceed 160 characters.");
+  if(source.note!==undefined&&source.note!==null&&typeof source.note!=="string")
+    throw new Error("Cut evidence note must be text.");
+  const note=typeof source.note==="string"?source.note.replace(/\s+/g," ").trim():"";
+  if(note.length>1200) throw new Error("Cut evidence note cannot exceed 1200 characters.");
   const checkedBy=typeof source.checkedBy==="string"?source.checkedBy.replace(/\s+/g," ").trim():"";
   if(checkedBy.length<2||checkedBy.length>120) throw new Error("Named tailor or checker must be 2–120 characters.");
   const evidenceReference=typeof source.evidenceReference==="string"?source.evidenceReference.replace(/\s+/g," ").trim():"";
@@ -153,9 +164,9 @@ export function normalizeProductionCutEvidenceDraft(input:unknown){
     actualMetres:Math.round(actualMetres*1000)/1000,
     patternRepeatMm:repeatRaw===null?null:Math.round(repeatRaw*100)/100,
     patternMatching:source.patternMatching===true,
-    cutContext:String(source.cutContext||"").replace(/\s+/g," ").trim().slice(0,160),
+    cutContext,
     checkedBy,evidenceReference,
-    note:String(source.note||"").replace(/\s+/g," ").trim().slice(0,1200),
+    note,
   };
 }
 

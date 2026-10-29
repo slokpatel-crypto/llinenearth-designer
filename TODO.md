@@ -1,3 +1,9 @@
+## 29 October 2026 — physical cutting/meterage proof boundary (draft)
+
+- [x] Reproduced coerced case/garment/cloth width/usage/repeat/matching, silently truncated cut notes/contexts, unbounded privileged JSON and unverified cut evidence IDs.
+- [x] Added literal physical inputs, 16 KiB same-origin streamed JSON, exact UUID receipt, 400/413 body errors, private no-store responses, Node and negative-only HTTP tests.
+- [ ] Verify exact-head CI/Node/engine/preview/release/build/Chromium; real supplier rolls, cut tickets, tailor review, live Supabase and native Blender remain unverified. No migration, merge or deploy.
+
 ## 29 October 2026 — physical measurement calibration evidence integrity (draft)
 
 - [x] Reproduced unbounded operator calibration JSON, silently truncated physical notes, and unverified RPC event IDs that could falsely report `stored:true`.
