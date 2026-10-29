@@ -7,7 +7,11 @@ const route = readFileSync(new URL("../src/app/api/inventory/route.ts", import.m
 
 test("legacy inventory endpoint uses live reviewed stock, not optimistic bundled flags", () => {
   assert.match(route, /applyDesignerFabricMetadataToStock\(metadata\)/);
-  assert.match(route, /applyLiveVerifiedStockAvailability\(applyDesignerFabricMetadataToStock\(metadata\)\)/);
+  assert.match(route, /loadDesignerFabricMetadataWithStatus\\(\\)/);
+  assert.match(route, /applyDesignerFabricMetadataToStock\\(metadata\\)/);
+  assert.match(route, /sourceVerified\\s*\\?/);
+  assert.match(route, /\\? await applyLiveVerifiedStockAvailability\\(structured\\)/);
+  assert.match(route, /: applyVerifiedStockAvailability\\(structured,\\[\\]\\)/);
   assert.match(route, /const fabrics = \[\.\.\.liveStock\.stock, \.\.\.legacy\]/);
   assert.match(route, /inStock: fabrics\.filter\(\(fabric\) => fabric\.inStock\)\.length/);
   assert.match(route, /"cache-control": "private, no-store"/);
