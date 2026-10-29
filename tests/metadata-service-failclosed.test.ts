@@ -11,6 +11,8 @@ test("metadata transport returns explicit availability status, not a success-sha
   assert.match(loader,/sourceVerified:false/);
   assert.match(loader,/sourceVerified:true/);
   assert.match(loader,/verifyOperatorMetadataPage\(/);
+  assert.match(loader,/verifyOperatorMetadataRowSequence\(rows,previousRow\)/);
+  assert.match(loader,/previousRow=lastRow/);
   assert.match(loader,/response\.headers\.get\("content-range"\)/);
   assert.match(loader,/order:"at.desc,id.desc"/);
   assert.match(loader,/offset:String\(offset\)/);

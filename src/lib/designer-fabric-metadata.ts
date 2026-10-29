@@ -4,7 +4,7 @@ import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import type { DesignerFabricMetadata, DesignerFabricMetadataMap } from "@/lib/designer-fabric-metadata-types";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
-import { verifyOperatorMetadataPage, OPERATOR_METADATA_PAGE_LIMIT } from "@/lib/designer/metadata-ledger-page";
+import { verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence, OPERATOR_METADATA_PAGE_LIMIT, type OperatorMetadataRowCursor } from "@/lib/designer/metadata-ledger-page";
 
 type MetadataRow = { at:string; payload?:Record<string,unknown> };
 
@@ -70,6 +70,7 @@ export async function loadDesignerFabricMetadataWithStatus():Promise<DesignerFab
     const MAX_PAGES=5;
     const result:DesignerFabricMetadataMap={};
     let expectedTotal:number|null=null;
+    let previousRow:OperatorMetadataRowCursor|null=null;
     for(let page=0;page<MAX_PAGES;page++){
       const offset=page*PAGE_SIZE;
       const params=new URLSearchParams({
@@ -97,6 +98,14 @@ export async function loadDesignerFabricMetadataWithStatus():Promise<DesignerFab
         console.error("[designer/fabric-metadata] inconsistent operator metadata page",page);
         return unavailable();
       }
+      // Content-Range/count can remain unchanged while offset pages repeat
+      // a row and omit a sold-out override. Check the actual stable ordering.
+      const lastRow=verifyOperatorMetadataRowSequence(rows,previousRow);
+      if(rows.length>0&&!lastRow){
+        console.error("[designer/fabric-metadata] shifted or unordered operator page",page);
+        return unavailable();
+      }
+      previousRow=lastRow;
       for(const rawRow of rows){
         if(!rawRow||typeof rawRow!=="object"||Array.isArray(rawRow)
            ||typeof (rawRow as MetadataRow).at!=="string") return unavailable();

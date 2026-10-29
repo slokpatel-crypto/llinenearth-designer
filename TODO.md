@@ -1,3 +1,8 @@
+## 2026-10-29 — reject shifted operator metadata pagination (draft)
+- [x] Reproduced a count-valid, contiguous `Content-Range` page sequence that can still repeat a row across offset pages and omit an older sold-out veto during concurrent changes.
+- [x] Require strictly descending `at.desc,id.desc` row identity across every page, including the boundary, and fail closed on missing IDs, malformed timestamps, repeated/shifted rows or incorrect tie order. Added positive and negative pure regressions plus source-wiring guard.
+- [ ] Require exact-head quality, full Node tests, engine, preview-performance, release, build and pinned browser/Non-3D QA. This is not an atomic database snapshot; real owner-verified stock and signed-in customer/operator, tailor, device, native Blender and security/release acceptance remain outstanding. No merge or deploy.
+
 ## 29 October 2026 — integrated exact-count paginated operator ledger (draft)
 - [x] Reconcile PR #486 exact `Content-Range` completeness with PR #488's stable paginated reads, based on PR #487's verified stock/legacy integration; never drop either security property.
 - [x] Add pure positive/negative receipt regressions for valid multi-page scans, missing/shifted ranges, changing totals, unexpectedly short pages and oversized evidence. Preserve existing single-page helper tests.
