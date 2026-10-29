@@ -55,8 +55,10 @@ export async function GET() {
         samples:evaluation.versionValid?(verifiedV2?evaluation.samples:0):legacySamples,
         note:typeof payload.note==="string"?payload.note.slice(0,400):"",
         evidenceVersion:typeof payload.version==="string"?payload.version:"designer-device-qa-v1",
-        performancePass:evaluation.performancePass,
-        visualPass:evaluation.visualPass,
+        // Raw latency and checkboxes alone cannot certify an invalid or
+        // legacy receipt, even when the displayed status remains review.
+        performancePass:Boolean(verifiedV2&&evaluation.performancePass),
+        visualPass:Boolean(verifiedV2&&evaluation.visualPass),
       };
     }
     return NextResponse.json({configured:true,latest},{headers:{"cache-control":"private, no-store"}});

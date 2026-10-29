@@ -194,6 +194,8 @@ test("operator device evidence write/read paths preserve fail-closed acceptance"
   assert.match(writer,/readSecureJsonObject\(request,MEMORY_EVENT_JSON_MAX_BYTES\)/);
   assert.match(reader,/normalizeDeviceQaEvidenceReceipt\(payload\)/);
   assert.match(reader,/verifiedV2\?\.status==="accepted"&&evaluation\.accepted/);
+  assert.match(reader,/performancePass:Boolean\(verifiedV2&&evaluation\.performancePass\)/);
+  assert.match(reader,/visualPass:Boolean\(verifiedV2&&evaluation\.visualPass\)/);
   assert.match(reader,/evaluation\.versionValid\?\(verifiedV2\?evaluation\.p95Ms:null\):legacyP95/);
   assert.match(reader,/evaluation\.versionValid\?\(verifiedV2\?evaluation\.samples:0\):legacySamples/);
   assert.doesNotMatch(reader,/Number\(payload\.p95Ms\)/);
