@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { readLockedHandoffRequest } from "@/lib/designer/locked-handoff-request";
+import { readLockedHandoffRequest, verifiedLockedHandoffAuditId } from "@/lib/designer/locked-handoff-request";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { parseEnquiryIntent, sameLockedEnquiryRevision } from "@/lib/designer/enquiry-intent";
 import { parseDesignVaultRecoveryToken } from "@/lib/designer/design-vault";
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
-import { normalizeVaultId } from "@/lib/vault-id";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
@@ -99,7 +98,7 @@ export async function POST(request:Request){
     // This audit records only the *intent to open WhatsApp*, not that a
     // message was sent, read, accepted or that an operator received an order.
     const verified=owned.payload as LockedDesignRevision;
-    const auditId=normalizeVaultId(await rpc("design_enquiry_audit_record",{
+    const auditId=verifiedLockedHandoffAuditId(await rpc("design_enquiry_audit_record",{
       p_revision_id:verified.revisionId,p_recipe_hash:verified.recipeHash,
     }));
     if(!auditId) return respond({error:"The enquiry audit did not return a valid receipt."},503);
