@@ -118,23 +118,24 @@ async function verifyDesignerFitContracts(baseURL='http://127.0.0.1:3000') {
   // The customer-auth POSTs are public and can trigger OTP provider calls.
   // Exercise only rejected requests so CI never sends a real sign-in email.
   const authUnsafe=[
-    ['cross-origin',{body:'{}',headers:{origin:'https://outside.example'}},403],
-    ['same-site subdomain',{body:'{}',headers:{'sec-fetch-site':'same-site'}},403],
-    ['non-JSON',{body:'{}',headers:{'content-type':'text/plain'}},415],
-    ['malformed JSON',{body:'{"broken":',headers:{}},400],
-    ['array JSON',{body:'[]',headers:{}},400],
-    ['oversized chunked JSON',{body:new ReadableStream({start(controller){
+    ['cross-origin',()=>({body:'{}',headers:{origin:'https://outside.example'}}),403],
+    ['same-site subdomain',()=>({body:'{}',headers:{'sec-fetch-site':'same-site'}}),403],
+    ['non-JSON',()=>({body:'{}',headers:{'content-type':'text/plain'}}),415],
+    ['malformed JSON',()=>({body:'{"broken":',headers:{}}),400],
+    ['array JSON',()=>({body:'[]',headers:{}}),400],
+    ['oversized chunked JSON',()=>({body:new ReadableStream({start(controller){
       controller.enqueue(new TextEncoder().encode(JSON.stringify({email:'x'.repeat(5_000)})));
       controller.close();
-    }}),headers:{}},413],
-    ['array email',{body:JSON.stringify({email:['user@example.com'],token:'123456'}),headers:{}},400],
+    }}),headers:{}}),413],
+    ['array email',()=>({body:JSON.stringify({email:['user@example.com'],token:'123456'}),headers:{}}),400],
   ];
   for(const [route,extra] of [['otp',[]],['verify',[
-    ['array code',{body:JSON.stringify({email:'user@example.com',token:['123456']}),headers:{}},400],
-    ['numeric code',{body:JSON.stringify({email:'user@example.com',token:123456}),headers:{}},400],
+    ['array code',()=>({body:JSON.stringify({email:'user@example.com',token:['123456']}),headers:{}}),400],
+    ['numeric code',()=>({body:JSON.stringify({email:'user@example.com',token:123456}),headers:{}}),400],
   ]]]) {
     let caseIndex=0;
-    for(const [label,input,expected] of [...authUnsafe,...extra]) {
+    for(const [label,make,expected] of [...authUnsafe,...extra]) {
+      const input=make();
       const response=await fetch(`${baseURL}/api/customer-auth/${route}`,{
         method:'POST',
         headers:{'content-type':'application/json','x-forwarded-for':`198.51.100.${++caseIndex}`,...input.headers},
