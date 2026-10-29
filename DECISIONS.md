@@ -1,3 +1,9 @@
+## 2026-10-29 — Verified inventory must match one unique catalogue identity
+
+**Decision:** A physically verified stock snapshot row can only promote a customer swatch if that fabric ID occurs exactly once in the catalogue. Duplicate catalogue IDs (including two different swatch photos) fail closed instead of sharing one physical roll's availability. A valid but unexpected RPC fabric ID is not a verified catalogue fabric and must not inflate verifiedStockFabrics. Preserve existing valid positive/zero evidence, catalogue sold-out overrides, option IDs, model/photo and deterministic no-credit Designer behavior.
+
+**Limits:** This is a source-level identity consistency guard, not supplier-verified stock, a physical reservation, or proof of fit. Live private stock and locked revision tables are empty at inspection; authenticated Supabase customer/operator tests, exact-head CI/browser, supplier/tailor/device/native Blender signoffs and explicit major milestone approval remain required. No schema, production data, main merge or deployment.
+
 ## 2026-10-29 — internal GarmentViewer must not freeze live stock at build time
 
 **Decision:** The internal 3D viewer reads the same owner-reviewed live stock as the customer Designer, so its server page must render dynamically. Without request-time rendering, a build performed without Supabase credentials statically freezes zero available fabrics, causing verified Style Director-to-3D fabric handoff to lose both IDs even when runtime stock becomes available. This fix does not bypass fail-closed production inventory, approve the prototype model, or fabricate stock. Keep the CI-only stock fixture isolated.
