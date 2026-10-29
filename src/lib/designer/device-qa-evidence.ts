@@ -34,7 +34,7 @@ export function classifyDeviceQaViewport(width:number):DeviceQaClass|null {
 }
 
 export function parseDeviceQaViewport(value:unknown){
-  const viewport=String(value||"").trim();
+  const viewport=typeof value==="string"?value.trim():"";
   const match=viewport.match(/^(\d{2,5})x(\d{2,5})$/);
   if(!match) return {viewport,width:null,height:null,deviceClass:null as DeviceQaClass|null};
   const width=Number(match[1]),height=Number(match[2]);
@@ -45,17 +45,20 @@ export function parseDeviceQaViewport(value:unknown){
 }
 
 export function summarizeDeviceQaDurations(values:unknown){
-  const durations=Array.isArray(values)
-    ? values.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000).slice(-120).sort((a,b)=>a-b)
-    : [];
+  // Reject the entire receipt: dropping invalid samples could turn a failing
+  // physical-device session into an apparent 12-sample performance pass.
+  if(!Array.isArray(values)||values.length>120||values.some((value)=>
+    typeof value!=="number"||!Number.isFinite(value)||value<0||value>10000
+  )) return {samples:0,p95Ms:null as number|null};
+  const durations=[...values].sort((a,b)=>a-b);
   if(!durations.length) return {samples:0,p95Ms:null as number|null};
   const index=Math.min(durations.length-1,Math.floor((durations.length-1)*.95));
   return {samples:durations.length,p95Ms:round(durations[index])};
 }
 
 export function evaluateDeviceQaEvidence(payload:Record<string,unknown>):DeviceQaEvaluation {
-  const versionValid=String(payload.version||"")===DEVICE_QA_EVIDENCE_VERSION;
-  const requestedClass=String(payload.deviceClass||"");
+  const versionValid=payload.version===DEVICE_QA_EVIDENCE_VERSION;
+  const requestedClass=typeof payload.deviceClass==="string"?payload.deviceClass:"";
   const parsed=parseDeviceQaViewport(payload.viewport);
   const deviceClassValid=Boolean(parsed.deviceClass&&parsed.deviceClass===requestedClass);
   const performance=summarizeDeviceQaDurations(payload.sampleDurationsMs);
