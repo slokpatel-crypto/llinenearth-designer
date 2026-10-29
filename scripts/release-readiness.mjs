@@ -240,7 +240,7 @@ for (const path of [
   "supabase/migrations/20261023_render_manual_review_signoff.sql",
 ]) requireFile(path);
 
-requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/designer-studio", "/real-model", "Open Real Model Designer"]);
+requireTokens("src/app/page.tsx", ["/designer/studio-tucked.webp", "/style-director", "/designer-studio", "/real-model", "Open Real Model Designer"]);
 requireTokens("src/lib/designer/proof-scale.ts", ["evaluateRecordedPhase1ProofEvidence","summarizeLatencySamples","realModelSampleDurationsMs","phase1BoundaryChecksReady","boundaryReady","validateVerifiedPhysicalEvidence","physicalEvidenceReady","PHASE1_PROOF_EVIDENCE_VERSION","PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM","summarizeIndependentRealism","PHASE1_PROOF_MIN_REALISM_VIEWERS","PHASE1_PROOF_MIN_STRONG_REALISM","phase1ProofAcceptance"]);
 requireTokens("src/components/PremiumShirtProof.tsx", ["linen-earth-phase1-proof-v4","Anonymous viewer code","boundaryChecks","Garment boundary review","realismAssessments","uniqueRealismViewers","physicalEvidenceNote","WAITING FOR PROVENANCE","photoReferenceMm","photoReferencePx","pxPerMmFromMarker","photo-1024x1536-fixture"]);
 requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["proofBoundaries","proofMobileAccepted","target-mobile acceptance","garment boundaries","mobile ${proofMobileAccepted?"]);
@@ -979,8 +979,13 @@ if (live) {
         fail(`Homepage model health returned HTTP ${response.status}.`);
       } else {
         const health = await response.json();
-        if (!health?.configured) fail("FASHN_API_KEY is not configured in the live deployment.");
-        else ok(`FASHN live route configured (${health.provider || "provider"} / ${health.model || "model"}).`);
+        // Paid renders are opt-in. The normal homepage uses the fixed Studio photo
+        // and must remain launchable with no generative API key.
+        if (!health || typeof health.configured !== "boolean" || health.provider !== "fashn")
+          fail("Optional homepage render status contract is invalid.");
+        else if (!health.configured)
+          warn("Optional FASHN is not configured; canonical Studio homepage needs no paid render.");
+        else ok(`Optional FASHN render route configured (${health.provider} / ${health.model || "model"}).`);
       }
     } catch (error) {
       fail(`Live homepage model check failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -994,7 +999,7 @@ if (live) {
   if (cloud.status !== 0) fail("Cloud readiness check failed.");
   else ok("Cloud readiness check passed.");
 } else {
-  warn("Live FASHN + Supabase checks are skipped. Run npm run release:check:live with RELEASE_URL and production env vars before launch.");
+  warn("Optional image-provider status and live Supabase checks are skipped. Run npm run release:check:live with RELEASE_URL and production env vars before launch.");
 }
 
 
