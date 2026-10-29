@@ -1,3 +1,8 @@
+## 2026-10-30 — J5 owner-scoped customer production history must fail closed (stacked draft)
+- [x] Reproduced customer production GET returning a success-shaped `{quotes,orders,orderEvents,outcomes}` even when one of the four authenticated Supabase RPCs returned a malformed non-array body.
+- [x] Require all four independent owner-scoped RPCs to return actual arrays before returning a customer history snapshot; preserve valid empty lists, owner authentication, bounded decoded reads, no-store and 503 failure semantics. Add pure positive/negative receipt tests and API source regression.
+- [ ] Verify exact-head quality, full Node tests, engine, preview-performance, release check, build and 390/768/1440 browser/Non-3D. Live authenticated owner recovery, supplier stock, tailor/device/native Blender, five beta cases, first ten deliveries, security/privacy and owner approval remain blocked. No live writes, migration, merge, deployment or paid AI.
+
 ## 2026-10-30 — J5 delivery evidence read and write must fail closed (stacked draft)
 - [x] Reproduced unbounded upstream Supabase success/error reads in first-ten delivery audit and evidence browsing, allowing a malformed non-array ledger to appear configured or a padded RPC UUID to become a recorded audit.
 - [x] Bounded all delivery evidence RPC reads: 4 MiB list and chronological first-ten basis, 4 KiB write receipt; 8-second abort, private no-store and missing-migration null basis preserved. Require literal exact UUID audit receipt and array-shaped history before a success-shaped configured response.
