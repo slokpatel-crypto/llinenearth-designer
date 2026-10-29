@@ -20,8 +20,10 @@ function parseLiteralQcTimestamp(value:unknown):number|null{
   return Number.isFinite(time)?time:null;
 }
 
-export function hasVerifiedLatestDeliveryQc(receipts:unknown,orderId:string):boolean{
-  if(!Array.isArray(receipts)) return false;
+/** A saturated capped ledger cannot prove that the latest inspection was read.
+ * This is still not a transactionally consistent database latest-by-order proof. */
+export function hasVerifiedLatestDeliveryQc(receipts:unknown,orderId:string,maxRows=Number.POSITIVE_INFINITY):boolean{
+  if(!Array.isArray(receipts)||receipts.length>=maxRows) return false;
   let latest:{time:number;decision:string;inspector:unknown;reference:unknown}|null=null;
   let ambiguous=false;
   for(const value of receipts){
