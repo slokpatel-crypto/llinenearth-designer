@@ -1,3 +1,7 @@
+## 2026-10-29 — operator production create success requires a confirmed UUID receipt
+
+**Decision:** A successful HTTP response from `production_quote_create` or `production_order_create_with_context` is not proof of a created quote/order. Both are SQL `uuid`-returning operations; require an exact literal UUID scalar and reject missing, coerced, padded or malformed upstream values with 409 before returning `lockedRevisionVerified` or `learningContextAttached` success flags. Reuse the shared customer production UUID contract and preserve canonical revision verification, current option IDs and owner boundaries. This is code-only J5/T5 integrity, not an authenticated live operator order, supplier inventory, paid provider call, migration, production mutation, merge or deployment.
+
 ## 2026-10-29 — legacy gallery resources must be exact same-origin HTTPS
 
 **Decision:** The optional unverified legacy-site HTML scan may only ingest image and link URLs that resolve to the scanned page's exact HTTPS origin without URL credentials. A string-prefix hostname check accepts lookalikes, and unrestricted `<img src>` can publish third-party tracking or spoofed swatches in the inventory API. Preserve valid same-origin relative/absolute URLs and the existing fail-closed `inStock:false` on all legacy swatches. No supplier verification, schema, paid AI, canonical Studio model/photo, live data write, merge or deployment; this does not substitute for a complete security audit.
