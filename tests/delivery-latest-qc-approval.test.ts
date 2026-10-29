@@ -65,15 +65,14 @@ test("release gate verifies the latest typed QC guard instead of obsolete first-
   assert.doesNotMatch(release,/"Finished-garment QC approval is required before delivery\."\,/);
 });
 
-
 test("operator production desk never offers delivery based on first matching stale QC",()=>{
   const ui=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
-  assert.match(ui,/import \{ hasVerifiedLatestDeliveryQc \} from "@\\/lib\\/designer\\/delivery-qc-approval"/);
-  assert.match(ui,/const deliveryQcVerified=hasVerifiedLatestDeliveryQc\(qcInspections,item\.order_id\)/);
-  assert.match(ui,/status!=="delivered"\|\|deliveryQcVerified/);
-  assert.match(ui,/deliveryQcVerified\?"approved with provenance":"pending \\/ rework \\/ unverified"/);
-  assert.doesNotMatch(ui,/qcInspections\.find\(/);
-  assert.doesNotMatch(ui,/latestQc\?\.decision==="approved"/);
+  assert.ok(ui.includes('import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval"'));
+  assert.ok(ui.includes("const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id)"));
+  assert.ok(ui.includes('status!=="delivered"||deliveryQcVerified'));
+  assert.ok(ui.includes('deliveryQcVerified?"approved with provenance":"pending / rework / unverified"'));
+  assert.ok(!ui.includes("qcInspections.find("));
+  assert.ok(!ui.includes('latestQc?.decision==="approved"'));
   assert.equal(hasVerifiedLatestDeliveryQc([earlier,rework],orderId),false);
   assert.equal(hasVerifiedLatestDeliveryQc([rework,approved],orderId),true);
 });
