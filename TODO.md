@@ -1,3 +1,8 @@
+## 29 October 2026 — exact-count operator override ledger read (draft)
+- [x] Reproduced a bounded `limit=1000` metadata fetch that could treat a truncated operator history as complete, concealing older sold-out vetoes.
+- [x] Require PostgREST `Prefer: count=exact` and a complete `Content-Range` matching the entire returned page; missing/partial/mismatched counts fail closed. Add pure boundary regressions and CI-only mock count headers.
+- [ ] Verify exact stacked draft head with quality, full Node tests, engine, preview, release, build and pinned Chromium. Paginate large operator histories before supporting >1000 events. Genuine stock, owner-authenticated flow, native/tailor/device human evidence and launch approval remain outstanding; no live mutation, migration, merge or deployment.
+
 ## 29 October 2026 — operator metadata outage cannot erase sold-out veto (draft)
 - [x] Reproduced fail-open condition: failed `style_events` fetch returns `{}` indistinguishable from a valid empty ledger; a positive roll could then be promoted despite a hidden operator `unavailable` override.
 - [x] Add explicit `sourceVerified` read status and bounded 8-second fetch; make Designer customer stock empty and legacy API stock unavailable on metadata outage. Keep operator best-effort compatibility read.

@@ -4,6 +4,7 @@ import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import type { DesignerFabricMetadata, DesignerFabricMetadataMap } from "@/lib/designer-fabric-metadata-types";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
+import { hasCompleteOperatorMetadataPage, OPERATOR_METADATA_PAGE_LIMIT } from "@/lib/designer/metadata-ledger-page";
 
 type MetadataRow = { at:string; payload?:Record<string,unknown> };
 
@@ -66,10 +67,10 @@ export async function loadDesignerFabricMetadataWithStatus():Promise<DesignerFab
       type:"eq.operator_note",
       source:"eq.operator",
       order:"at.desc",
-      limit:"1000",
+      limit:String(OPERATOR_METADATA_PAGE_LIMIT),
     });
     const response = await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`,{
-      headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},
+      headers:{...supabaseAdminHeaders(cloud),accept:"application/json",prefer:"count=exact"},
       cache:"no-store",
       signal:AbortSignal.timeout(8_000),
     });
@@ -79,8 +80,8 @@ export async function loadDesignerFabricMetadataWithStatus():Promise<DesignerFab
     }
 
     const rows = await response.json() as unknown;
-    if(!Array.isArray(rows)) {
-      console.error("[designer/fabric-metadata] expected an array of ledger rows");
+    if(!hasCompleteOperatorMetadataPage(rows,response.headers.get("content-range"))) {
+      console.error("[designer/fabric-metadata] operator ledger response missing exact complete row count");
       return unavailable();
     }
     const result:DesignerFabricMetadataMap = {};
