@@ -2,17 +2,28 @@
 export class SecureJsonBodyTooLarge extends Error {}
 export class SecureJsonBodyInvalid extends Error {}
 
-export function secureJsonRequestError(
+/** For bodyless state-changing endpoints such as sign-out; JSON routes use
+ * the same check before parsing any attacker-controlled request bytes.
+ */
+export function secureSameOriginRequestError(
   request:Pick<Request,"url"|"headers">,
-  maxBytes:number,
 ):{status:number;error:string}|null{
-  if(!Number.isSafeInteger(maxBytes)||maxBytes<1) throw new Error("Invalid JSON request byte limit.");
   const origin=request.headers.get("origin");
   if(origin&&origin!==new URL(request.url).origin)
     return {status:403,error:"Cross-site changes are not allowed."};
   const fetchSite=request.headers.get("sec-fetch-site");
   if(fetchSite&&fetchSite!=="same-origin"&&fetchSite!=="none")
     return {status:403,error:"Cross-site changes are not allowed."};
+  return null;
+}
+
+export function secureJsonRequestError(
+  request:Pick<Request,"url"|"headers">,
+  maxBytes:number,
+):{status:number;error:string}|null{
+  if(!Number.isSafeInteger(maxBytes)||maxBytes<1) throw new Error("Invalid JSON request byte limit.");
+  const unsafeOrigin=secureSameOriginRequestError(request);
+  if(unsafeOrigin) return unsafeOrigin;
   if(!/^application\/json(?:\s*;\s*charset=utf-8\s*)?$/i.test(request.headers.get("content-type")||""))
     return {status:415,error:"This operation requires JSON."};
   const length=request.headers.get("content-length");

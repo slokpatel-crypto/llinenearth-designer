@@ -115,6 +115,50 @@ async function verifyDesignerFitContracts(baseURL='http://127.0.0.1:3000') {
   const invalidData=await invalidFirst.json();
   assert.equal(invalidFirst.status,422,`fit input before catalogue lookup: ${invalidData.error||'unexpected response'}`);
   results.push({mode:'assessment',label:'malformed fit overrides missing catalogue',status:422});
+  // The customer-auth POSTs are public and can trigger OTP provider calls.
+  // Exercise only rejected requests so CI never sends a real sign-in email.
+  const authUnsafe=[
+    ['cross-origin',()=>({body:'{}',headers:{origin:'https://outside.example'}}),403],
+    ['same-site subdomain',()=>({body:'{}',headers:{'sec-fetch-site':'same-site'}}),403],
+    ['non-JSON',()=>({body:'{}',headers:{'content-type':'text/plain'}}),415],
+    ['malformed JSON',()=>({body:'{"broken":',headers:{}}),400],
+    ['array JSON',()=>({body:'[]',headers:{}}),400],
+    ['oversized chunked JSON',()=>({body:new ReadableStream({start(controller){
+      controller.enqueue(new TextEncoder().encode(JSON.stringify({email:'x'.repeat(5_000)})));
+      controller.close();
+    }}),headers:{}}),413],
+    ['array email',()=>({body:JSON.stringify({email:['user@example.com'],token:'123456'}),headers:{}}),400],
+  ];
+  for(const [route,extra] of [['otp',[]],['verify',[
+    ['array code',()=>({body:JSON.stringify({email:'user@example.com',token:['123456']}),headers:{}}),400],
+    ['numeric code',()=>({body:JSON.stringify({email:'user@example.com',token:123456}),headers:{}}),400],
+  ]]]) {
+    let caseIndex=0;
+    for(const [label,make,expected] of [...authUnsafe,...extra]) {
+      const input=make();
+      const response=await fetch(`${baseURL}/api/customer-auth/${route}`,{
+        method:'POST',
+        headers:{'content-type':'application/json','x-forwarded-for':`198.51.100.${++caseIndex}`,...input.headers},
+        body:input.body,
+        ...(input.body instanceof ReadableStream?{duplex:'half'}:{}),
+      });
+      const data=await response.json();
+      assert.equal(response.status,expected,`customer-auth ${route}: ${label}: ${data.error||'unexpected response'}`);
+      results.push({mode:`customer-auth ${route}`,label,status:response.status});
+    }
+  }
+  for(const [label,headers] of [
+    ['cross-origin logout',{origin:'https://outside.example'}],
+    ['same-site logout',{'sec-fetch-site':'same-site'}],
+  ]){
+    const response=await fetch(`${baseURL}/api/customer-auth/logout`,{
+      method:'POST',headers,
+    });
+    const data=await response.json();
+    assert.equal(response.status,403,`customer-auth ${label}: ${data.error||'unexpected response'}`);
+    assert.equal(response.headers.get('set-cookie'),null,'Rejected logout must not clear session cookies');
+    results.push({mode:'customer-auth logout',label,status:403});
+  }
   console.log(`PASS ${results.length} actual HTTP fit-input contracts across assessment, search and both brief modes`);
   return results;
 }

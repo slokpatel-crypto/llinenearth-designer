@@ -1,28 +1,50 @@
 import { NextResponse } from "next/server";
-import { normalizeCustomerEmail, requestCustomerOtp } from "@/lib/customer-auth";
+import { requestCustomerOtp } from "@/lib/customer-auth";
+import {
+  CUSTOMER_AUTH_JSON_MAX_BYTES,
+  customerAuthRateBlocked,
+  customerAuthEmailRateBlocked,
+  parseCustomerAuthEmail,
+  type CustomerAuthRateState,
+} from "@/lib/customer-auth-request";
+import {
+  readSecureJsonObject, secureJsonRequestError,
+  SecureJsonBodyInvalid, SecureJsonBodyTooLarge,
+} from "@/lib/secure-json-request";
 
 export const runtime="nodejs";
 
-const rate=(globalThis as typeof globalThis & {__linenCustomerOtpRate?:Map<string,{at:number;count:number}>}).__linenCustomerOtpRate ||= new Map();
+const rate=(globalThis as typeof globalThis & {
+  __linenCustomerAuthRate?:CustomerAuthRateState;
+}).__linenCustomerAuthRate ||= {identities:new Map(),global:new Map()};
 
-function blocked(request:Request){
-  const ip=request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()||"unknown";
-  const now=Date.now(), current=rate.get(ip);
-  if(!current||now-current.at>10*60_000){rate.set(ip,{at:now,count:1});return false;}
-  current.count+=1;
-  return current.count>8;
+function respond(body:unknown,status=200){
+  return NextResponse.json(body,{status,headers:{"cache-control":"private, no-store, max-age=0"}});
 }
 
 export async function POST(request:Request){
-  if(blocked(request)) return NextResponse.json({error:"Too many sign-in requests. Try again later."},{status:429});
+  const unsafe=secureJsonRequestError(request,CUSTOMER_AUTH_JSON_MAX_BYTES);
+  if(unsafe) return respond({error:unsafe.error},unsafe.status);
+  const ip=request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()||"unknown";
+  if(customerAuthRateBlocked(rate,"otp",ip))
+    return respond({error:"Too many sign-in requests. Try again later."},429);
+  let email:string|null;
   try{
-    const body=await request.json() as {email?:string};
-    const email=normalizeCustomerEmail(body.email);
-    if(!email) return NextResponse.json({error:"Enter a valid email address."},{status:400});
-    await requestCustomerOtp(email);
-    return NextResponse.json({ok:true},{headers:{"cache-control":"private, no-store"}});
+    const body=await readSecureJsonObject(request,CUSTOMER_AUTH_JSON_MAX_BYTES);
+    email=parseCustomerAuthEmail(body.email);
   }catch(error){
-    console.error("[customer-auth/otp]",error);
-    return NextResponse.json({error:"Sign-in code could not be sent."},{status:503});
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
+    return respond({error:"Sign-in request could not be read."},400);
+  }
+  if(!email) return respond({error:"Enter a valid email address."},400);
+  if(customerAuthEmailRateBlocked(rate,"otp",email))
+    return respond({error:"Too many codes requested for this email. Try again later."},429);
+  try{
+    await requestCustomerOtp(email);
+    return respond({ok:true});
+  }catch(error){
+    console.error("[customer-auth/otp] OTP provider unavailable.",error instanceof Error?error.name:"Unknown error");
+    return respond({error:"Sign-in code could not be sent."},503);
   }
 }
