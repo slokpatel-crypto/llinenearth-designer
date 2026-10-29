@@ -33,3 +33,11 @@ No automated ordering, payment, AI credits, 3D identity replacement, or assertio
 - [ ] Test real operator session, genuine vault expiry/replay, customer ownership and quote rejection using an isolated Supabase test environment; database schema introspection previously timed out.
 
 The operator UI still asks for the customer's recovery token, which is an independent secret; do not add it to public share/WhatsApp links. No order is created simply by preparing an enquiry.
+
+## Reconciled owner enquiry + operator handoff (29 October 2026)
+
+The divergent #454 and #455 drafts now converge in the follow-on branch. The signed-in customer must consent and present a live saved-design recovery token; an independent owner-scoped vault read and access-key-scoped vault read must both match the unmodified locked recipe before a valid UUID can document **intent**, never delivery. The client preserves #453's revision-bound, manual second-click WhatsApp link and verifies that the RPC cannot claim an operator receipt. The #455 quote/order inputs and exactly-one-unexpired operator vault row remain intact. Legacy raw design revisions create draft-only WhatsApp messages.
+
+- [ ] Combined exact-head CI, Node security/HTTP regression tests, performance, release check, build, 390/768/1440px Chromium.
+- [ ] Live isolated Supabase signed-in owner/token/replay/expiry and operator retrieval/stock acceptance.
+- [ ] Customer consent plus human-confirmed WhatsApp receipt and tailor signoff; beta not yet authorized.

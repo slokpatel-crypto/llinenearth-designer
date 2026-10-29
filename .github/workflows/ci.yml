@@ -73,6 +73,7 @@ jobs:
           timeout --signal=TERM --kill-after=10s 12m node scripts/verify-garment-viewer.cjs
           node scripts/verify-premium-atelier.cjs
           node scripts/verify-measurement-recovery.cjs
+          node scripts/verify-designer-enquiry.cjs
           node scripts/verify-designer-advisor.cjs
           node scripts/verify-photo-form.cjs
           node scripts/verify-photo-craft.cjs

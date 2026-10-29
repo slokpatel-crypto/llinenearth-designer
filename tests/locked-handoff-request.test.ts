@@ -64,17 +64,21 @@ test("share/enquiry and customer UI retain privacy, lineage and explicit-send co
   const enquiry=readFileSync("src/app/api/designer/enquiry/route.ts","utf8");
   const share=readFileSync("src/app/api/designer/share/route.ts","utf8");
   const ui=readFileSync("src/components/DesignerModule.tsx","utf8");
-  for(const source of [enquiry,share]){
-    assert.match(source,/readLockedHandoffRequest\(request\)/);
-    assert.match(source,/verifiedLockedHandoffAuditId\(await audit\.json\(\)\.catch\(\(\)=>null\)\)/);
-    assert.match(source,/cache-control":"private, no-store"/);
-    assert.doesNotMatch(source,/await request\.json\(\)/);
-  }
+  assert.match(share,/readLockedHandoffRequest\(request\)/);
+  assert.match(share,/verifiedLockedHandoffAuditId\(await audit\.json\(\)\.catch\(\(\)=>null\)\)/);
+  assert.match(share,/cache-control":"private, no-store"/);
+  assert.match(enquiry,/readLockedHandoffRequest\(request\)/);
+  assert.match(enquiry,/parseEnquiryIntent\(parsed.revision\)/);
+  assert.match(enquiry,/designer_locked_revision_vault_get_owned/);
+  assert.match(enquiry,/sameLockedEnquiryRevision\(intent.revision/);
   assert.match(enquiry,/handoffStatus:"prepared_not_sent"/);
-  assert.match(enquiry,/verifyLockedDesignRevision\(revision\)/);
+  assert.match(enquiry,/verifyLockedDesignRevision\(intent.revision\)/);
+  for(const source of [enquiry,share]) assert.doesNotMatch(source,/await request\.json\(\)/);
   assert.match(share,/verifyLockedDesignRevision\(revision\)/);
   assert.match(ui,/result\.revisionId!==revision\.revisionId/);
   assert.match(ui,/result\.handoffStatus!=="prepared_not_sent"/);
+  assert.match(ui,/checked=\{enquiryConsent\}/);
+  assert.match(ui,/disabled=\{enquiryBusy\|\|!enquiryConsent\}/);
   assert.match(ui,/hostname!=="wa\.me"/);
   assert.match(ui,/enquiryResult\?\.revisionId===verifiedLockedRevision\.revisionId/);
   assert.match(ui,/Open WhatsApp and send/);
