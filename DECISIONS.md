@@ -1,3 +1,7 @@
+## 2026-10-30 — physical QC timestamps require valid literal calendar dates
+
+**Decision:** A purported approved finished-garment inspection with a syntactically ISO-like but impossible civil date must never be normalized by JavaScript `Date.parse` into a later real date that outranks a physical rework. Validate the actual year/month/day and 24-hour clock before comparing instants; preserve real leap days, fractional seconds and timezone offsets. This shared operator/server J5 guard does not replace an atomic latest-inspection database receipt or physical tailor signoff. No supplier facts, schema, paid AI, model/photo changes, live writes, main merge or deployment.
+
 ## 2026-10-30 — privileged production API errors are not public diagnostics
 
 **Decision:** Unexpected operator production RPC/SQL errors must be logged only server-side, never returned verbatim in the operator-facing HTTP response. The previous catch returned raw `error.message` and could expose private owner/order/schema or backend details. Return a constant generic HTTP 409 with private no-store while retaining existing explicit input validation and confirmed receipt failures. This is a source-level T5/J5 security guard, not complete live authentication or privacy acceptance. No new dependency, schema, supplier facts, model/photo change, paid AI, live write, main merge or deployment.
