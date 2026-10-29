@@ -1,3 +1,9 @@
+## 2026-10-29 — legacy inventory public availability consistency (draft)
+
+- [x] Reproduced `/api/inventory` reporting all bundled structured swatches `inStock:true` and advertising the optimistic total even when the verified live stock ledger has no entries; Designer already fails closed.
+- [x] Reused exact Designer operator-metadata + reviewed-live-stock loader for the legacy inventory API; preserve old response shape and unverified legacy website swatches; add explicit no-store, source and positive/negative stock regressions on a stacked draft branch.
+- [ ] Verify exact-head quality, full Node tests, engine, preview, release, production build and pinned browser QA. Real supplier/owner stock, end-to-end authenticated customer/operator, tailor/device/native geometry and release acceptance remain external blockers. Do not merge/deploy based on synthetic test stock.
+
 ## 29 October 2026 — stock audit note provenance integrity (draft)
 - [x] Reproduced silently truncated or JSON-coerced physical stock notes on manual ledger record, reservation consumption and release.
 - [x] Reject non-text or overlong (>600 normalized chars) notes while preserving optional blank notes and adding negative/positive regression tests.
