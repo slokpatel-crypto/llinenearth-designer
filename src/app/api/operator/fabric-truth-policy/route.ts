@@ -1,3 +1,4 @@
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -5,6 +6,8 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { FABRIC_TRUTH_POLICY_VERSION, normalizeFabricTruthPolicy, type FabricTruthPolicy } from "@/lib/designer/fabric-truth-policy";
 
 export const runtime="nodejs";
+
+function respond(body:unknown,status=200){return NextResponse.json(body,{status,headers:{"cache-control":"private, no-store","pragma":"no-cache"}});}
 
 type EventRow={at:string;payload?:Record<string,unknown>};
 
@@ -14,8 +17,8 @@ async function authorized(){
 }
 
 function policyFromPayload(payload:Record<string,unknown>|undefined):FabricTruthPolicy|null{
-  if(!payload || String(payload.subtype||"")!=="fabric_truth_evidence_policy") return null;
-  if(String(payload.version||"")!==FABRIC_TRUTH_POLICY_VERSION) return null;
+  if(!payload || payload.subtype!=="fabric_truth_evidence_policy") return null;
+  if(payload.version!==FABRIC_TRUTH_POLICY_VERSION) return null;
   try{return normalizeFabricTruthPolicy(payload);}catch{return null;}
 }
 
@@ -50,12 +53,16 @@ export async function GET(){
 }
 
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,16384);
+  if(unsafe) return respond({error:unsafe.error},unsafe.status);
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
   const cloud=getSupabaseAdminConfig();
-  if(!cloud) return NextResponse.json({error:"Cloud evidence ledger is not configured."},{status:503});
+  if(!cloud) return respond({error:"Cloud evidence ledger is not configured."},503);
   try{
-    const body=await request.json() as Record<string,unknown>;
-    const policy=normalizeFabricTruthPolicy(body);
+    const body=await readSecureJsonObject(request,16384);
+    let policy:FabricTruthPolicy;
+    try{policy=normalizeFabricTruthPolicy(body);}
+    catch(error){return respond({error:error instanceof Error?error.message:"Invalid fabric truth policy."},400);}
     const at=new Date().toISOString();
     const event={
       id:`EV-FABRIC-TRUTH-POLICY-${crypto.randomUUID()}`,
@@ -63,29 +70,33 @@ export async function POST(request:Request){
       type:"operator_note",
       at,
       source:"operator",
-      payload:{
-        subtype:"fabric_truth_evidence_policy",
-        ...policy,
-      },
+      payload:{subtype:"fabric_truth_evidence_policy",...policy},
     };
-    const response=await fetch(`${cloud.url}/rest/v1/style_events`,{
+    const response=await fetch(`${cloud.url.replace(/\/$/,"")}/rest/v1/style_events?select=id,at`,{
       method:"POST",
       headers:{
         ...supabaseAdminHeaders(cloud),
         "content-type":"application/json",
-        prefer:"return=minimal",
+        accept:"application/json",
+        prefer:"return=representation",
       },
       body:JSON.stringify(event),
       cache:"no-store",
       signal:AbortSignal.timeout(8_000),
     });
-    if(!response.ok){
-      const detail=(await response.text()).replace(/\s+/g," ").slice(0,280);
-      throw new Error(`Fabric Truth policy write failed (${response.status}): ${detail}`);
-    }
-    return NextResponse.json({policy,recordedAt:at});
+    if(!response.ok) throw new Error("Fabric Truth policy write was rejected by the ledger.");
+    const receipt:unknown=await response.json();
+    if(!Array.isArray(receipt)||receipt.length!==1||
+       !receipt[0]||typeof receipt[0]!=="object"||Array.isArray(receipt[0]))
+      return respond({error:"Fabric Truth policy write was not confirmed."},409);
+    const saved=receipt[0] as Record<string,unknown>;
+    if(saved.id!==event.id||typeof saved.at!=="string"||!Number.isFinite(Date.parse(saved.at)))
+      return respond({error:"Fabric Truth policy receipt does not match the submitted event."},409);
+    return respond({policy,recordedAt:saved.at,eventId:event.id});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
     console.error("[operator/fabric-truth-policy:post]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Fabric Truth evidence policy could not be saved."},{status:409});
+    return respond({error:"Fabric Truth evidence policy could not be saved."},409);
   }
 }
