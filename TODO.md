@@ -1,3 +1,9 @@
+## 2026-10-30 — J5 optional operator evidence receipts must be distinguishable from missing migrations (stacked draft)
+- [x] Reproduced operator production GET treating malformed 200 QC, customer-outcome or learning-context RPC bodies as success-shaped empty/invalid optional lists; all upstream failures were also silently converted to empty history.
+- [x] Require literal arrays for installed optional RPCs; a malformed 200, 5xx, timeout or invalid JSON now fails the operator production GET closed. Preserve legacy compatibility only for HTTP 404 missing optional RPCs and expose explicit installed-status flags rather than representing absent migration as verified zero history.
+- [x] Display missing optional evidence status on operator Production Desk. Add positive/negative pure response-shape tests and source wiring; no schema or new dependency.
+- [ ] Verify exact-head quality, Node, engine, preview-performance, release, build, 390/768/1440 browser and Non-3D. Human physical supplier/stock, signed-in owner/operator/tailor, devices/native Blender, beta/delivery, security/privacy/owner approvals remain BLOCKED. No live writes, migration, merge or deployment.
+
 ## 2026-10-30 — J5 operator delivery UI and stale-ledger controls (stacked draft)
 - [x] Reproduced production desk offering "delivered" based on first matching QC row even when latest physical QC was rework or lacked literal provenance; server already rejected such transitions. Reuse the same fail-closed latest-QC helper for the operator affordance and show an unverified state instead of stale approval.
 - [x] Reproduced a failed/malformed production ledger refresh leaving stale quotes/orders and mutation controls enabled. Clear stale records, disable create controls and show an explicit retry message on backend failure; preserve unauthenticated redirect and legacy optional-list compatibility.
