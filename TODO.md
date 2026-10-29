@@ -1,3 +1,9 @@
+## 29 October 2026 — customer catalogue must fail closed without live physical stock (draft)
+
+- [x] Verified that live Supabase SQL now responds but fabric stock ledger has zero records; the customer stock adapter previously preserved bundled `inStock:true` when the trusted snapshot was absent.
+- [x] Patch the shared verified-stock projection so unverified, duplicate, malformed or unavailable ledger evidence never promotes catalogue-only stock as customer-available; preserve verified zero and explicit catalogue unavailability, add positive/negative tests and update release contract checks.
+- [ ] Require exact new-head CI, Node, engine, preview, release, production build and real browser checks. Obtain genuine owner-verified stock for a shirt and trouser plus an isolated real Supabase customer/operator test before claiming beta launch. No fake stock record, migration, production data mutation, merge or deployment.
+
 ## 29 October 2026 — physical fabric colour measurement provenance and receipt integrity (draft)
 
 - [x] Reproduced coerced LAB channels, fabric/profile IDs, colour hex/method/checker/reference, silently truncated notes, unbounded JSON, and success-shaped colour check IDs without a validated database receipt.

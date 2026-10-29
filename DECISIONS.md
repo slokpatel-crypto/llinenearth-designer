@@ -1,3 +1,9 @@
+## 2026-10-29 — Customer stock must fail closed when physical ledger evidence is missing
+
+**Decision:** A catalogue swatch's bundled `inStock` bit is merchandising metadata, not verified roll availability. The customer-facing verified-stock projection now sets `inStock:false` whenever the exact fabric lacks one valid provenance-ready live snapshot, including missing, duplicate, malformed and failed backend reads. `availabilityVerified` is false for unknown data, true for valid zero/positive evidence. Even a valid positive ledger row cannot override a catalogue item explicitly marked unavailable. Real stock must be recorded and reviewed by an authorized operator before the customer journey can advertise it. Preserve the deterministic no-paid-credit editor and canonical mannequin identity.
+
+**Limits:** This is a fail-closed source safeguard, not proof of physical metreage, supplier approval, the live authenticated enquiry flow, 3D parity or production readiness. The current live stock ledger is empty. Do not synthesize rows, run migrations or merge/deploy without the separate release gates.
+
 ## 2026-10-29 — Device QA acceptance must use literal raw measurements and confirmed visual checks
 
 **Decision:** Reject JSON-coerced device class, viewport and evidence version; do not drop malformed latency samples and then count the remaining values as a 12-sample pass. For v2 operator memory writes, require the complete bounded literal numeric sample set and deny a claimed accepted status unless the server recomputes the existing p95/visual gates. Reject overlong device observations rather than silently truncating them. Read-side history must not coerce numeric strings/null into displayed legacy latency or sample counts. Keep historic v1 events visible only as review, not approved target-device evidence.

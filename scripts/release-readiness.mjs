@@ -796,9 +796,9 @@ requireTokens("src/lib/designer/production-packet.ts", ["packetBuiltFromLockedRe
 requireTokens("src/lib/designer/production-packet.ts", ["linen-earth-production-packet-v1","noDesignDataReEntry"]);
 requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","normalizeManualStockEvent","normalizeStockReservation","normalizeStockConsumption","normalizeStockRelease","recordedBy","requestedBy","checkedBy","releasedBy","sourceReference","reservedMetres","availableMetres"]);
 requireTokens("src/lib/fabric-stock.ts", ["availabilityVerified?: boolean"]);
-requireTokens("src/lib/designer/stock-availability.ts", ["verifiedStockAvailabilityMap","provenance_ready","availabilityVerified:true","fabric.inStock&&verified.get(fabric.id)===true"]);
+requireTokens("src/lib/designer/stock-availability.ts", ["verifiedStockAvailabilityMap","provenance_ready","availabilityVerified:verified.has(fabric.id)","fabric.inStock&&verified.get(fabric.id)===true"]);
 requireTokens("src/lib/designer/engine.ts", ["availabilityVerified?: boolean","verified physical stock status","provenance-ready positive stock status"]);
-requireTokens("tests/stock-availability.test.ts", ["availabilityVerified,true","availabilityVerified,undefined"]);
+requireTokens("tests/stock-availability.test.ts", ["availabilityVerified,true","availabilityVerified,false","missing or unreachable stock ledger"]);
 requireTokens("src/lib/designer/stock-availability-server.ts", ["fabric_stock_snapshot_v2","applyLiveVerifiedStockAvailability","cache:\"no-store\""]);
 requireTokens("src/lib/designer/catalog-stock-server.ts", ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability","verifiedStockFabrics","loadActiveDesignerCatalogueFabrics","loadDesignerFabricIntelligence","attachCatalogFabricPhysics","filter((fabric)=>fabric.inStock)"]);
 requireTokens("src/app/api/designer/catalog/route.ts", ["loadActiveDesignerCatalogueFabrics","verifiedStockFabrics"]);
