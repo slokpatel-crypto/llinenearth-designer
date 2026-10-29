@@ -1,6 +1,7 @@
 import "server-only";
 import type { FabricColorway, GarmentKind } from "@/lib/fabric-stock";
 import { readBoundedLegacyGalleryHtml } from "@/lib/legacy-gallery-response";
+import { sameOriginLegacyGalleryUrl } from "@/lib/legacy-gallery-url";
 
 export const LEGACY_CATEGORIES = [
   { id: "60lea-plain", label: "60 Lea Plain", path: "/60lea-plain.php", family: "Linen", pattern: "Plain", suitableFor: ["shirt"] as GarmentKind[] },
@@ -14,10 +15,6 @@ export const LEGACY_CATEGORIES = [
 ] as const;
 
 const BASE = "https://" + "l" + "linenearth.com";
-
-function absoluteUrl(value: string, pageUrl: string) {
-  try { return new URL(value, pageUrl).toString(); } catch { return null; }
-}
 
 function decodeHtml(value: string) {
   return value
@@ -56,7 +53,7 @@ function extractImages(html: string, pageUrl: string) {
     const tag = match[0];
     const raw = attr(tag, "src") || attr(tag, "data-src") || attr(tag, "data-lazy-src");
     if (!raw) continue;
-    const src = absoluteUrl(raw, pageUrl);
+    const src = sameOriginLegacyGalleryUrl(raw, pageUrl);
     if (!src || seen.has(src) || looksLikeUiAsset(src)) continue;
     seen.add(src);
     const index = match.index ?? 0;
@@ -75,9 +72,9 @@ function extractLinks(html: string, pageUrl: string) {
   const links: Array<{ href: string; text: string }> = [];
   const seen = new Set<string>();
   for (const match of html.matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
-    const href = absoluteUrl(match[1], pageUrl);
+    const href = sameOriginLegacyGalleryUrl(match[1], pageUrl);
     const text = stripHtml(match[2]).slice(0, 140);
-    if (!href || !text || seen.has(href) || !href.startsWith(BASE)) continue;
+    if (!href || !text || seen.has(href)) continue;
     seen.add(href);
     links.push({ href, text });
   }
