@@ -85,9 +85,9 @@ test("cross-site logout is rejected without changing the cookie contract",()=>{
   });
   assert.equal(secureSameOriginRequestError(req({origin:"https://linenearth.example","sec-fetch-site":"same-origin"})),null);
   const source=readFileSync("src/app/api/customer-auth/logout/route.ts","utf8");
-  assert.match(source,/secureSameOriginRequestError\\(request\\)/);
-  assert.match(source,/if\\(unsafe\\) return NextResponse\\.json/);
-  assert.match(source,/response\\.cookies\\.set\\(name,""/);
+  assert.ok(source.includes("secureSameOriginRequestError(request)"));
+  assert.ok(source.includes("if(unsafe) return NextResponse.json"));
+  assert.ok(source.includes('response.cookies.set(name,""'));
 });
 
 test("both customer auth POST routes reject unsafe JSON before reaching Supabase",()=>{
