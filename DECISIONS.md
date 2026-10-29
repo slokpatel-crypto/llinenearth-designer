@@ -1,3 +1,7 @@
+## 2026-10-30 — saturated finished-garment QC pages cannot release orders
+
+**Decision:** A globally capped QC ledger is not complete latest-by-order evidence if the returned row count reaches the requested limit. The shared delivery QC guard must fail closed at the cap (500 for privileged server transition, 250 for operator Production Desk) and for malformed limits, even when an apparently valid approval is present. This preserves the original latest-timestamp, calendar, inspector and reference checks, but does not establish an atomic DB receipt for sub-cap reads. A dedicated owner-reviewed latest-QC RPC is a separate migration/release decision. No real garment QC, supplier stock, model/photo, paid AI, live write, migration, main merge or deployment.
+
 ## 2026-10-30 — physical QC timestamps require valid literal calendar dates
 
 **Decision:** A purported approved finished-garment inspection with a syntactically ISO-like but impossible civil date must never be normalized by JavaScript `Date.parse` into a later real date that outranks a physical rework. Validate the actual year/month/day and 24-hour clock before comparing instants; preserve real leap days, fractional seconds and timezone offsets. This shared operator/server J5 guard does not replace an atomic latest-inspection database receipt or physical tailor signoff. No supplier facts, schema, paid AI, model/photo changes, live writes, main merge or deployment.
