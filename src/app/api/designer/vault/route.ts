@@ -4,7 +4,7 @@ import { parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity } from "
 import { vaultRateBlocked } from "@/lib/vault-rate-guard";
 import { ownedDesignVaultRowMatchesPayload } from "@/lib/vault-owned-list-integrity";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
-import { requireVaultBooleanResult } from "@/lib/vault-write-integrity";
+import { requireVaultBooleanResult, requireVaultStoreId } from "@/lib/vault-write-integrity";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
@@ -88,13 +88,13 @@ export async function POST(request:Request){
       }
       const accessKey=createDesignVaultAccessKey();
       const accessHash=hashDesignVaultAccessKey(accessKey);
-      const vaultId=await rpc<string>("designer_locked_revision_vault_store",{
+      const vaultId=requireVaultStoreId(await rpc<unknown>("designer_locked_revision_vault_store",{
         p_revision_id:revision.revisionId,
         p_recipe_hash:revision.recipeHash.toLowerCase(),
         p_access_hash:accessHash,
         p_payload:revision,
         p_ttl_days:180,
-      });
+      }));
       if(!vaultId) throw new Error("The design vault did not return an id.");
 
       // A successful remote store must still yield a recovery credential if
