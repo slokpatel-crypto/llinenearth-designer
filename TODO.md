@@ -1,3 +1,8 @@
+## 2026-10-29 — bounded inventory metadata service dependency (draft)
+- [x] Reproduced unbounded Supabase operator metadata fetch on the legacy inventory and Designer stock paths; a stalled lookup could prevent returning the fail-closed verified-stock state.
+- [x] Added an 8-second abort to the metadata read (matching the verified stock snapshot deadline), preserving the existing empty-metadata fallback; add source and stock route regressions.
+- [ ] Verify new-head Node, quality, engine, preview, release, build and real browser QA. Real supplier stock, authenticated owner/operator testing and human release approval are still required.
+
 ## 29 October 2026 — exact physical stock identity boundary (draft)
 - [x] Reproduced operator stock writes silently trimming padded catalogue fabric IDs and reservation UUIDs into different existing physical stock subjects.
 - [x] Reject padded fabric IDs in manual receipts/adjustments and reservation creation; reject padded UUIDs on consumption/release. Preserve normalization of human names, notes and source references, and existing valid keys.

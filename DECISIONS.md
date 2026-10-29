@@ -1,3 +1,7 @@
+## 2026-10-29 — operator metadata lookup must be bounded
+
+**Decision:** The public inventory and Designer stock paths must not wait indefinitely for an unavailable Supabase metadata read. Abort the server-only operator metadata query after eight seconds and use its existing empty-metadata fallback, then continue the live verified-stock gate (which itself fails closed). This cannot advertise bundled stock as verified, and does not represent a supplier receipt or a live owner/customer acceptance. No schema/write/migration, merge or deployment.
+
 ## 2026-10-29 — never alias a physical stock identity by trimming it
 
 **Decision:** A catalogue fabric ID or reservation UUID supplied for physical inventory mutation must be an exact identifier. Reject surrounding whitespace instead of silently normalizing a mistyped stock subject into a valid different one. Keep existing human name, source-reference and optional note normalization, and preserve accepted canonical IDs and idempotency-key compatibility. Add positive/negative Node regressions; no schema, live stock write, migration, main merge or deployment. This is not evidence of real supplier inventory, tailor fit or owner approval.
