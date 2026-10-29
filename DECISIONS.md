@@ -1,3 +1,9 @@
+## 2026-10-29 — Tailor ease calibration cannot be JSON-coerced or falsely approved
+
+**Decision:** Physical body/finished-garment centimetres and model ease ranges must be literal finite numbers, not `Number(...)`-coerced strings, arrays or null. Case, garment, fit, field, tailor and finished-garment references must be typed, with notes rejected rather than truncated. Only literal numeric database evidence can satisfy the existing 35-cell coverage gate. Bound same-origin operator JSON to 16 KiB and require UUID evidence/model creation receipts and exact `true` approval/retirement RPC responses. Keep legacy approved-model read adapters unchanged for compatibility.
+
+**Limits:** No fabricated tape readings, actual tailor or owner approval, live database verification, physical fit, supplier measurements or native Blender. No schema, paid AI, original model/photo, merge or deployment.
+
 ## 2026-10-29 — Physical fabric truth policy needs an actual persisted receipt
 
 **Decision:** The operator cannot claim an approved physical-evidence policy merely because PostgREST returned HTTP 201 without a row. Require a returned representation with exactly one event ID matching the submitted immutable ID and a parseable persisted timestamp. Reject coerced policy status and overlong human signer/rationale instead of truncating; require same-origin, actual streamed 16 KiB JSON and private no-store errors. Missing/mismatched receipts fail closed; a live end-to-end write must be separately tested with owner authorization.
