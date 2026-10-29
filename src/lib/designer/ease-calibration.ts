@@ -30,40 +30,50 @@ function finite(value:unknown){
 function text(value:unknown,limit:number){
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
 }
+function literalText(value:unknown,limit:number,label:string){
+  if(value===undefined||value===null) return "";
+  if(typeof value!=="string") throw new Error(label+" must be literal text.");
+  const cleaned=value.replace(/\s+/g," ").trim();
+  if(cleaned.length>limit) throw new Error(label+" is too long; physical evidence must not be truncated.");
+  return cleaned;
+}
+function literalFinite(value:unknown){
+  return typeof value==="number"&&Number.isFinite(value)?value:null;
+}
 function round(value:number){
   return Math.round(value*100)/100;
 }
 
 export function normalizeEaseEvidenceDraft(input:unknown){
   const source=record(input);
-  const caseId=text(source.caseId,80);
+  const caseId=literalText(source.caseId,80,"Anonymous garment-evidence case ID");
   if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) throw new Error("Anonymous garment-evidence case ID is required.");
 
-  const garment=text(source.garment,20) as EaseCalibrationGarment;
+  const garment=source.garment;
   if(garment!=="shirt"&&garment!=="trouser") throw new Error("Garment must be shirt or trouser.");
 
-  const fitClass=text(source.fitClass,30);
+  const fitClass=literalText(source.fitClass,30,"Fit class");
   const validClass=garment==="shirt"
     ? SHIRT_EASE_CLASSES.includes(fitClass as ShirtEaseClass)
     : TROUSER_EASE_CLASSES.includes(fitClass as TrouserEaseClass);
   if(!validClass) throw new Error("Fit class does not match the selected garment.");
 
-  const field=text(source.field,30);
+  const field=literalText(source.field,30,"Measurement field");
   const validField=garment==="shirt"
     ? SHIRT_EASE_FIELDS.includes(field as ShirtEaseField)
     : TROUSER_EASE_FIELDS.includes(field as TrouserEaseField);
   if(!validField) throw new Error("Measurement field does not match the selected garment.");
 
-  const bodyCm=finite(source.bodyCm);
-  const finishedCm=finite(source.finishedCm);
+  const bodyCm=literalFinite(source.bodyCm);
+  const finishedCm=literalFinite(source.finishedCm);
   if(bodyCm===null||finishedCm===null||bodyCm<=0||finishedCm<=0||bodyCm>300||finishedCm>350){
     throw new Error("Body and finished-garment measurements must be valid centimetre values.");
   }
 
   const easeCm=round(finishedCm-bodyCm);
-  const tailor=text(source.tailor,120);
-  const garmentRef=text(source.garmentRef,120);
-  const note=text(source.note,1000);
+  const tailor=literalText(source.tailor,120,"Tailor/inspector");
+  const garmentRef=literalText(source.garmentRef,120,"Finished-garment reference");
+  const note=literalText(source.note,1000,"Physical ease observation");
   if(tailor.length<2) throw new Error("Tailor/inspector initials or name are required.");
   if(garmentRef.length<2) throw new Error("A real finished-garment reference is required.");
 
@@ -83,8 +93,8 @@ export function normalizeEaseEvidenceDraft(input:unknown){
 
 function range(value:unknown,label:string):EaseRangeCm{
   const item=record(value);
-  const min=finite(item.min);
-  const max=finite(item.max);
+  const min=literalFinite(item.min);
+  const max=literalFinite(item.max);
   if(min===null||max===null||min<0||max<min||max>80){
     throw new Error(label+" has an invalid ease range.");
   }
@@ -112,14 +122,14 @@ function normalizeGarmentTable(
 
 export function normalizeHouseEaseCalibrationDraft(input:unknown){
   const source=record(input);
-  const version=text(source.version,80);
+  const version=literalText(source.version,80,"Ease model version");
   if(!/^[A-Za-z0-9._-]{3,80}$/.test(version)){
     throw new Error("Version must be 3–80 characters using letters, numbers, dot, dash or underscore.");
   }
 
   const shirt=normalizeGarmentTable(source.shirt,"shirt") as HouseEaseCalibrationTable["shirt"];
   const trouser=normalizeGarmentTable(source.trouser,"trouser") as HouseEaseCalibrationTable["trouser"];
-  const note=text(source.note,1200);
+  const note=literalText(source.note,1200,"Ease model rationale");
   return {version,shirt,trouser,note};
 }
 
@@ -143,12 +153,12 @@ export function summarizeEaseEvidence(
 ){
   const keyCases=new Map<string,Set<string>>();
   for(const row of rows){
-    const garment=text(row.garment,20);
-    const fitClass=text(row.fit_class,30);
-    const field=text(row.field,30);
-    const caseId=text(row.case_id,80);
-    const ease=finite(row.ease_cm);
-    if(!caseId||ease===null) continue;
+    const garment=typeof row.garment==="string"?row.garment:"";
+    const fitClass=typeof row.fit_class==="string"?row.fit_class:"";
+    const field=typeof row.field==="string"?row.field:"";
+    const caseId=typeof row.case_id==="string"?row.case_id:"";
+    const ease=literalFinite(row.ease_cm);
+    if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)||ease===null) continue;
     const key=easeEvidenceKey({garment,fitClass,field});
     if(!keyCases.has(key)) keyCases.set(key,new Set());
     keyCases.get(key)!.add(caseId);
