@@ -1,3 +1,8 @@
+## 29 October 2026 — bounded optional legacy inventory discovery (draft)
+- [x] Reproduced unbounded external gallery response body and no request timeout in `scanLegacySite()`, which could stall the inventory route despite fail-closed live structured stock.
+- [x] Add 5-second remote fetch timeout and 2 MiB streamed response guard; preserve bundled unverified website fallback and UTF-8 decoding. Add real streaming and negative source regressions.
+- [ ] Require latest exact-head quality, Node, engine, preview, release, build, real 390/768/1440 browser and Non-3D QA. Real supplier/owner stock, customer/operator, tailor/device/native Blender and major release approvals remain outstanding. No live writes, migration, merge or deploy.
+
 ## 29 October 2026 — operator metadata outage cannot erase sold-out veto (draft)
 - [x] Reproduced fail-open condition: failed `style_events` fetch returns `{}` indistinguishable from a valid empty ledger; a positive roll could then be promoted despite a hidden operator `unavailable` override.
 - [x] Add explicit `sourceVerified` read status and bounded 8-second fetch; make Designer customer stock empty and legacy API stock unavailable on metadata outage. Keep operator best-effort compatibility read.
