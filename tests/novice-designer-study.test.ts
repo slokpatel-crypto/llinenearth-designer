@@ -42,7 +42,7 @@ test("five latest novice liked-design cases within target plus approval complete
     novice_confirmed:true,
     liked_design_completed:true,
     blocking_issue:false,
-    timing_session_id:`TIMER-${index}`,
+    timing_session_id:`123e4567-e89b-42d3-a456-42661417400${index}`,
     created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
   }));
   const decisions=[{
@@ -63,7 +63,7 @@ test("one latest case over target keeps the five-novice gate open",()=>{
     novice_confirmed:true,
     liked_design_completed:true,
     blocking_issue:false,
-    timing_session_id:`TIMER-${index}`,
+    timing_session_id:`123e4567-e89b-42d3-a456-42661417400${index}`,
     created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
   }));
   const decisions=[{
@@ -80,12 +80,12 @@ test("latest attempt per case replaces earlier success",()=>{
   const attempts=[
     {
       case_id:"NOVICE-A",device_class:"mobile",duration_seconds:250,
-      novice_confirmed:true,liked_design_completed:true,blocking_issue:false,timing_session_id:"TIMER-A1",
+      novice_confirmed:true,liked_design_completed:true,blocking_issue:false,timing_session_id:"123e4567-e89b-42d3-a456-426614174011",
       created_at:"2026-10-01T10:00:00Z",
     },
     {
       case_id:"NOVICE-A",device_class:"mobile",duration_seconds:280,
-      novice_confirmed:true,liked_design_completed:false,blocking_issue:true,timing_session_id:"TIMER-A2",
+      novice_confirmed:true,liked_design_completed:false,blocking_issue:true,timing_session_id:"123e4567-e89b-42d3-a456-426614174012",
       created_at:"2026-10-02T10:00:00Z",
     },
   ];
@@ -164,4 +164,22 @@ test("novice study route requires secure JSON and confirmed UUID receipts before
   assert.match(source,/confirmedTimerStart\(receipt,draft\.caseId,draft\.deviceClass\)/);
   assert.match(source,/confirmedTimerFinish\(receipt,timingSessionId\)/);
   assert.doesNotMatch(source,/request\.json\(\)/);
+});
+
+test("forged truthy timing IDs and coerced physical outcomes cannot complete the novice gate",()=>{
+  const attempts=Array.from({length:5},(_,index)=>({
+    case_id:"NOVICE-"+index,device_class:"mobile",duration_seconds:240,
+    novice_confirmed:true,liked_design_completed:true,blocking_issue:false,
+    timing_session_id:"TIMER-"+index,created_at:"2026-10-01T10:00:00Z",
+  }));
+  const approved=[{status:"approved",target_seconds:300,signed_by:"Owner",created_at:"2026-10-10T10:00:00Z"}];
+  assert.equal(summarizeNoviceDesignerStudy(attempts,approved).gateComplete,false);
+  assert.equal(summarizeNoviceDesignerStudy(attempts,approved).serverTimedLikedCases,0);
+  const valid=attempts.map((row,index)=>({
+    ...row,timing_session_id:`123e4567-e89b-42d3-a456-42661417400${index}`,
+  }));
+  assert.equal(summarizeNoviceDesignerStudy(valid,approved).gateComplete,true);
+  assert.equal(summarizeNoviceDesignerStudy(valid,[{...approved[0],signed_by:""}]).gateComplete,false);
+  assert.equal(summarizeNoviceDesignerStudy(valid,[{...approved[0],target_seconds:"300" as unknown as number}]).gateComplete,false);
+  assert.equal(summarizeNoviceDesignerStudy(valid.map((row)=>({...row,blocking_issue:null as unknown as boolean})),approved).gateComplete,false);
 });
