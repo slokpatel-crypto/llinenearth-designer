@@ -1,3 +1,8 @@
+## 29 October 2026 — no clipped physical fabric provenance (draft)
+- [x] Reproduced shared physical-evidence normalizer silently slicing long roll/source references, checker names or supplier URLs and returning a seemingly verified physical receipt.
+- [x] Reject overlong normalized fields rather than truncating, preserving valid literal boundary-length text and adding source/worksheet regression tests.
+- [ ] Require combined exact-head quality, Node, engine, preview, release, production build and pinned real browser QA; supplier measurements and owner/tailor review remain unverified. No migrations, live stock mutations, merge or deploy.
+
 ## 29 October 2026 — exact physical stock identity boundary (draft)
 - [x] Reproduced operator stock writes silently trimming padded catalogue fabric IDs and reservation UUIDs into different existing physical stock subjects.
 - [x] Reject padded fabric IDs in manual receipts/adjustments and reservation creation; reject padded UUIDs on consumption/release. Preserve normalization of human names, notes and source references, and existing valid keys.

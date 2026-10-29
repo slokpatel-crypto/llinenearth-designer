@@ -15,8 +15,8 @@ export type FabricPhysicalEvidenceProvenance={
   sourceUrl?:string;
 };
 
-function clean(value:string,limit:number){
-  return value.replace(/\s+/g," ").trim().slice(0,limit);
+function clean(value:string){
+  return value.replace(/\s+/g," ").trim();
 }
 
 export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricPhysicalEvidenceProvenance|null{
@@ -27,13 +27,15 @@ export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricP
   for(const key of ["evidenceDate","sourceUrl"]){
     if(source[key]!=null && typeof source[key]!=="string") return null;
   }
-  const sourceType=clean(source.sourceType,40) as FabricPhysicalEvidenceSourceType;
+  const sourceType=clean(source.sourceType) as FabricPhysicalEvidenceSourceType;
   if(!FABRIC_PHYSICAL_EVIDENCE_SOURCE_TYPES.includes(sourceType)) return null;
-  const reference=clean(source.reference,220);
-  const checkedBy=clean(source.checkedBy,120);
-  if(reference.length<2||checkedBy.length<2) return null;
+  const reference=clean(source.reference);
+  const checkedBy=clean(source.checkedBy);
+  // A truncated roll/source reference or checker identity is not genuine
+  // evidence for the original physical material. Reject the whole receipt.
+  if(reference.length<2||reference.length>220||checkedBy.length<2||checkedBy.length>120) return null;
 
-  const evidenceDate=clean((source.evidenceDate as string|undefined)??"",20);
+  const evidenceDate=clean((source.evidenceDate as string|undefined)??"");
   if(evidenceDate){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(evidenceDate)) return null;
     const [year,month,day]=evidenceDate.split("-").map(Number);
@@ -44,7 +46,8 @@ export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricP
       calendarDate.getUTCDate()!==day) return null;
   }
 
-  const sourceUrl=clean((source.sourceUrl as string|undefined)??"",500);
+  const sourceUrl=clean((source.sourceUrl as string|undefined)??"");
+  if(sourceUrl.length>500) return null;
   if(sourceUrl){
     try{
       const parsed=new URL(sourceUrl);

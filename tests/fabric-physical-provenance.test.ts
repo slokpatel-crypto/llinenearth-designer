@@ -41,3 +41,21 @@ test('catalogue worksheet cannot label invalid or out-of-contract GSM as verifie
     assert.equal(catalogPhysicalCsvPrefill({physicalEvidence:evidence,weightGsm}).verifiedGsm,weightGsm);
   }
 });
+
+
+test('physical roll provenance rejects missing-tail identities instead of silently slicing them',()=>{
+  for(const update of [
+    {reference:'R'.repeat(220)+'-actual-roll-tail'},
+    {checkedBy:'C'.repeat(120)+'-different-person'},
+    {sourceUrl:'https://supplier.example/'+ 'p'.repeat(490)+'-other-card'},
+  ]){
+    assert.equal(normalizeFabricPhysicalEvidenceProvenance({...evidence,...update}),null);
+    assert.equal(hasFabricPhysicalEvidenceProvenance({...evidence,...update}),false);
+    assert.deepEqual(catalogPhysicalCsvPrefill({physicalEvidence:{...evidence,...update},weightGsm:145,drape:'structured'}),{
+      verifiedGsm:'',verifiedDrape:'',verifiedPhysicalSourceUrl:'',verifiedPhysicalEvidenceNote:'',
+    });
+  }
+  assert.equal(normalizeFabricPhysicalEvidenceProvenance({...evidence,reference:'R'.repeat(220)})?.reference.length,220);
+  assert.equal(normalizeFabricPhysicalEvidenceProvenance({...evidence,checkedBy:'C'.repeat(120)})?.checkedBy.length,120);
+  assert.equal(normalizeFabricPhysicalEvidenceProvenance({...evidence,sourceUrl:'https://supplier.example/'+ 'p'.repeat(470)})?.sourceUrl?.startsWith('https://supplier.example/'),true);
+});

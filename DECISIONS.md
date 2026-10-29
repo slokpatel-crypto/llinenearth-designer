@@ -1,3 +1,7 @@
+## 2026-10-29 — physical source/signer strings must be complete
+
+**Decision:** Shared physical fabric provenance normalizer must reject human checker names longer than 120 normalized characters, roll/source references over 220, and URLs over 500 instead of silently truncating them into a different-looking valid receipt. Valid boundary-length evidence remains accepted; missing/unknown physical checks remain unknown. This is source-level evidence integrity, not supplier measurement or owner signoff. No schema change, live write, canonical model/image change, paid per-edit AI, merge or deployment.
+
 ## 2026-10-29 — never alias a physical stock identity by trimming it
 
 **Decision:** A catalogue fabric ID or reservation UUID supplied for physical inventory mutation must be an exact identifier. Reject surrounding whitespace instead of silently normalizing a mistyped stock subject into a valid different one. Keep existing human name, source-reference and optional note normalization, and preserve accepted canonical IDs and idempotency-key compatibility. Add positive/negative Node regressions; no schema, live stock write, migration, main merge or deployment. This is not evidence of real supplier inventory, tailor fit or owner approval.
