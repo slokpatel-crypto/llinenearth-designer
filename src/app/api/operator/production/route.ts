@@ -186,6 +186,8 @@ export async function POST(request:Request){
     if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
     if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
     console.error("[operator/production]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Production operation failed."},{status:409});
+    // SQL, RPC and backend errors may include private order, owner or schema
+    // details. Keep the diagnostic server-side; never echo it to an operator.
+    return NextResponse.json({error:"Production operation could not be completed."},{status:409,headers:{"cache-control":"private, no-store"}});
   }
 }
