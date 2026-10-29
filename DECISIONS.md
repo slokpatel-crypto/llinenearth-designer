@@ -1,3 +1,7 @@
+## 2026-10-29 — decoded JSON byte budgets for stock evidence reads
+
+**Decision:** Both operator-history and physical-stock RPC responses have explicit decoded-stream size ceilings independent of upstream Content-Length. Abort/invalid/oversize JSON or malformed RPC row structure yields unavailable customer stock rather than a success-shaped answer or unbounded memory consumption. Preserve 8-second network aborts, exact-count pagination, material provenance, original model/photo and no-credit deterministic preview. Caps: 4 MiB per metadata page, 1 MiB per stock RPC. This cannot certify live supplier stock, authenticated user flows or physical/tailor/Blender/device acceptance and does not authorize production mutation or deploy.
+
 ## 2026-10-29 — include sibling padded-subtype safety guard in the stacked release candidate
 
 **Decision:** Include PR #494 independent padded/array subtype strictness in this integrated draft; do not let whitespace or one-item JSON arrays bury a possible sold-out operator event. Source-wiring tests were updated to reflect literal non-clipping text parsing rather than the older inline type guard. This is code evidence only; real supplier stock and human release approval remain open.

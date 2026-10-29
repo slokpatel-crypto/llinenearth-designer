@@ -3,6 +3,7 @@ import "server-only";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { applyVerifiedStockAvailability, stockSnapshotHasConfirmedProvenance, type VerifiedStockSnapshotRow } from "@/lib/designer/stock-availability";
 import type { FabricColorway } from "@/lib/fabric-stock";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 
 export async function loadVerifiedStockSnapshot(fabricIds:string[]):Promise<VerifiedStockSnapshotRow[]>{
   const config=getSupabaseAdminConfig();
@@ -20,17 +21,22 @@ export async function loadVerifiedStockSnapshot(fabricIds:string[]):Promise<Veri
       console.error("[designer/stock-availability] snapshot failed",response.status);
       return [];
     }
-    const rows=await response.json() as Array<Record<string,unknown>>;
-    return rows.map((row)=>({
+    const rows=await readBoundedJsonResponse(response,1024 * 1024);
+    if(!Array.isArray(rows)) return [];
+    return rows.map((row)=>{
+      if(!row||typeof row!=="object"||Array.isArray(row)) throw new Error("Invalid stock snapshot row");
+      const record=row as Record<string,unknown>;
+      return ({
       // Preserve the RPC type; never turn ["fabric-id"] or other JSON
       // values into a convincing exact inventory identifier.
-      fabric_id:typeof row.fabric_id==="string"?row.fabric_id:"",
+      fabric_id:typeof record.fabric_id==="string"?record.fabric_id:"",
       // Never convert a missing/null RPC value into the number zero: that
       // would falsely label an absent measurement as verified zero stock.
-      available_metres:typeof row.available_metres==="number"||typeof row.available_metres==="string"
-        ?row.available_metres:NaN,
-      provenance_ready:stockSnapshotHasConfirmedProvenance(row),
-    }));
+      available_metres:typeof record.available_metres==="number"||typeof record.available_metres==="string"
+        ?record.available_metres:NaN,
+      provenance_ready:stockSnapshotHasConfirmedProvenance(record),
+    });
+    });
   }catch(error){
     console.error("[designer/stock-availability] snapshot failed",error);
     return [];

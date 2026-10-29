@@ -1,3 +1,8 @@
+## 2026-10-29 — bound JSON reads on both customer stock evidence services (draft)
+- [x] Operator override pages and verified stock RPC use streaming bounded JSON reading instead of unbounded response.json(), with decoded body caps of 4 MiB/page and 1 MiB/stock snapshot under existing 8-second aborts. Oversize, invalid UTF-8/JSON and malformed stock row shapes all fail closed.
+- [x] Add real stream/Unicode, exact-byte-boundary, overflow, body absence and malformed response regressions plus both service wiring checks; preserve legitimate stock and no-store semantics.
+- [ ] Run exact new-head full CI, Node tests, preview, engine, release, build and pinned browser/Non-3D QA; real supplier stock, authenticated end-to-end customer/operator, physical tailor/device/native geometry, security and owner launch acceptance remain missing. No DB write, schema migration, main merge or deployment.
+
 ## 2026-10-29 — integrate padded metadata subtype strictness into latest stacked draft
 - [x] Preserve independent PR #494 finding: whitespace-padded or one-element-array designer_fabric_metadata subtype must fail closed instead of hiding operator sold-out history.
 - [x] Add positive/negative subtype regression cases alongside active-fabric ambiguity and literal material tags fixes; update legacy source assertions for the typed text parser.

@@ -4,6 +4,7 @@ import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import type { DesignerFabricMetadata, DesignerFabricMetadataMap } from "@/lib/designer-fabric-metadata-types";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { verifyOperatorMetadataPage, verifyOperatorMetadataRowSequence, validateOperatorMetadataAvailability, literalOperatorPhysicalNumber, literalOperatorPhysicalEnum, literalOperatorText, literalOperatorTags, OPERATOR_METADATA_PAGE_LIMIT, type OperatorMetadataRowCursor } from "@/lib/designer/metadata-ledger-page";
 
 type MetadataRow = { at:string; payload?:Record<string,unknown> };
@@ -87,7 +88,7 @@ export async function loadDesignerFabricMetadataWithStatus():Promise<DesignerFab
         console.error("[designer/fabric-metadata] incomplete operator page",response.status,page);
         return unavailable();
       }
-      const rows=await response.json() as unknown;
+      const rows=await readBoundedJsonResponse(response,4 * 1024 * 1024);
       const receipt=verifyOperatorMetadataPage(
         rows,response.headers.get("content-range"),offset,expectedTotal,PAGE_SIZE,
       );
