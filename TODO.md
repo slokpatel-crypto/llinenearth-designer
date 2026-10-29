@@ -1,3 +1,8 @@
+## 2026-10-29 — malformed operator metadata subtype cannot silently disappear (draft)
+- [x] Reproduced a padded `designer_fabric_metadata` subtype being classified as unrelated operator note; a malformed sold-out instruction could be silently excluded from otherwise complete stock-override history.
+- [x] Fail closed on whitespace-padded literal subtype and single-element array coercions; preserve unrelated operator notes and valid literal metadata. Add positive/negative regression cases.
+- [ ] Require matching-head quality, full Node, engine, preview, release, build and pinned browser/Non-3D QA. Real supplier stock, authenticated Supabase owner/customer/operator handoff, tailor/device/native geometry, security and owner release evidence remain separate. No merge, migration, paid AI or deploy.
+
 ## 2026-10-29 — operator physical metadata must be literal (draft)
 - [x] Reproduced `Number(payload.weightGsm)` accepting `"145"` and `[145]`, and `String(payload.drape)` accepting `["soft"]`; when a provenance receipt existed, these values could become apparently verified physical GSM/drape.
 - [x] Require literal finite numeric GSM/formality and literal enum weight class/drape; ignore coerced physical fields while preserving the operator's valid availability veto and existing valid numeric metadata. Reject nonstring weave/texture; add positive/negative pure and loader regressions.

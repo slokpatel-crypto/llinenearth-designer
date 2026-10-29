@@ -1,3 +1,7 @@
+## 2026-10-29 — a padded operator stock instruction is not unrelated evidence
+
+**Decision:** Treat `designer_fabric_metadata` subtype with surrounding whitespace or a single JSON-array string equivalent as malformed operator stock evidence, not an unrelated note. The operator metadata reader already fails closed when `validateOperatorMetadataAvailability` returns `invalid`; this prevents silently omitting a possible sold-out instruction while accepting a later available state. Keep literal valid metadata and genuinely unrelated notes compatible. No supplier stock fabricated, schema changes, model/photo changes, paid AI, production writes, merge or deployment.
+
 ## 2026-10-29 — physical metadata must not be manufactured by JavaScript coercion
 
 **Decision:** Physical GSM, fabric weight class and drape may be projected from an operator metadata receipt only when their JSON values are literal in-contract numbers or strings. Previously `Number("145")` and `Number([145])` could yield a physical GSM value, and `String(["soft"])` could yield an apparently measured drape. Keep existing valid numeric/enum data and the availability veto, but omit malformed physical fields; do not fabricate supplier measurements. Formality, weave and texture also refuse coerced JSON types. No schema, new dependency, paid AI, model/photo change, live mutation, merge or deployment.
