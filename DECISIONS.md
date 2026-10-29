@@ -1,3 +1,7 @@
+## 2026-10-29 — zero physical stock units must never be reported as positive
+
+**Decision:** A `fabric_stock_snapshot_v2` decimal that is positive but rounds to zero at the ledger's 0.001m resolution is not verified sellable stock. The existing floating-point tolerance could otherwise accept a microscopic positive number and promote `inStock:true` through `available>0`. Reject sub-resolution positive dust and base customer availability on integer 0.001m units, preserving exact zero and genuine positive ledger units. This does not create inventory or replace owner/supplier confirmation; no schema, paid AI, model/photo, live write, merge or deployment.
+
 ## 2026-10-29 — decoded JSON byte budgets for stock evidence reads
 
 **Decision:** Both operator-history and physical-stock RPC responses have explicit decoded-stream size ceilings independent of upstream Content-Length. Abort/invalid/oversize JSON or malformed RPC row structure yields unavailable customer stock rather than a success-shaped answer or unbounded memory consumption. Preserve 8-second network aborts, exact-count pagination, material provenance, original model/photo and no-credit deterministic preview. Caps: 4 MiB per metadata page, 1 MiB per stock RPC. This cannot certify live supplier stock, authenticated user flows or physical/tailor/Blender/device acceptance and does not authorize production mutation or deploy.
