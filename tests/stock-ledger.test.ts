@@ -258,3 +258,27 @@ test("human stock audit notes must not be coerced or silently truncated",()=>{
     assert.equal(fn({...base,note:null}).note,"");
   }
 });
+
+
+test("physical fabric IDs and reservation UUIDs cannot be silently trimmed into another stock identity",()=>{
+  const base={
+    fabricId:"formal-shirt-01",eventType:"receipt",quantityMetres:2.125,
+    recordedBy:"Stock checker",requestedBy:"Tailor checker",
+    sourceReference:"Physical roll LE-42",
+    revisionId:"LE-LOCK-123456",requestKey:"REQUEST-123456",
+    reservationId:"11111111-1111-4111-8111-111111111111",
+    actualMetres:1.25,checkedBy:"Cutting checker",releasedBy:"Release checker",
+  };
+  for(const fabricId of [" formal-shirt-01","formal-shirt-01 ","\\nformal-shirt-01","\\tformal-shirt-01"]){
+    assert.throws(()=>normalizeManualStockEvent({...base,fabricId}),/Fabric ID must match/);
+    assert.throws(()=>normalizeStockReservation({...base,fabricId}),/Fabric ID must match/);
+  }
+  assert.equal(normalizeManualStockEvent(base).fabricId,base.fabricId);
+  assert.equal(normalizeStockReservation(base).fabricId,base.fabricId);
+  for(const reservationId of [" "+base.reservationId,base.reservationId+" ","\\n"+base.reservationId]){
+    assert.throws(()=>normalizeStockConsumption({...base,reservationId}),/Valid reservation ID/);
+    assert.throws(()=>normalizeStockRelease({...base,reservationId}),/Valid reservation ID/);
+  }
+  assert.equal(normalizeStockConsumption(base).reservationId,base.reservationId);
+  assert.equal(normalizeStockRelease(base).reservationId,base.reservationId);
+});
