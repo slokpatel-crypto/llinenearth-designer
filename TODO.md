@@ -1,3 +1,8 @@
+## 29 October 2026 — integrated exact-count paginated operator ledger (draft)
+- [x] Reconcile PR #486 exact `Content-Range` completeness with PR #488's stable paginated reads, based on PR #487's verified stock/legacy integration; never drop either security property.
+- [x] Add pure positive/negative receipt regressions for valid multi-page scans, missing/shifted ranges, changing totals, unexpectedly short pages and oversized evidence. Preserve existing single-page helper tests.
+- [ ] Verify final exact-head Node, quality, engine, preview, release, build, pinned browser and Non-3D QA; then real human supplier stock, signed-in customer/operator acceptance, tailor/device/native Blender and major release approvals. No merge or production DB writes.
+
 ## 29 October 2026 — bounded optional legacy inventory discovery (draft)
 - [x] Reproduced unbounded external gallery response body and no request timeout in `scanLegacySite()`, which could stall the inventory route despite fail-closed live structured stock.
 - [x] Add 5-second remote fetch timeout and 2 MiB streamed response guard; preserve bundled unverified website fallback and UTF-8 decoding. Add real streaming and negative source regressions.
