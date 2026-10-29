@@ -1,3 +1,7 @@
+## 2026-10-29 — zero physical stock units must never be reported as positive
+
+**Decision:** A `fabric_stock_snapshot_v2` decimal that is positive but rounds to zero at the ledger's 0.001m resolution is not verified sellable stock. The existing floating-point tolerance could otherwise accept a microscopic positive number and promote `inStock:true` through `available>0`. Reject sub-resolution positive dust and base customer availability on integer 0.001m units, preserving exact zero and genuine positive ledger units. This does not create inventory or replace owner/supplier confirmation; no schema, paid AI, model/photo, live write, merge or deployment.
+
 ## 2026-10-29 — a padded operator stock instruction is not unrelated evidence
 
 **Decision:** Treat `designer_fabric_metadata` subtype with surrounding whitespace or a single JSON-array string equivalent as malformed operator stock evidence, not an unrelated note. The operator metadata reader already fails closed when `validateOperatorMetadataAvailability` returns `invalid`; this prevents silently omitting a possible sold-out instruction while accepting a later available state. Keep literal valid metadata and genuinely unrelated notes compatible. No supplier stock fabricated, schema changes, model/photo changes, paid AI, production writes, merge or deployment.
