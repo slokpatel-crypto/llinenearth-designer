@@ -1,3 +1,9 @@
+## 29 October 2026 — house-ease physical evidence and tailor model receipt integrity (draft)
+
+- [x] Reproduced coerced body/finished centimetres, ease-table ranges, case/garment/fit/tailor fields, silently truncated notes, unbounded privileged JSON and success-shaped model/evidence/approval IDs.
+- [x] Added literal physical measurements, bounded human provenance, nontruncated notes, fail-closed 35-cell evidence summary, 16 KiB same-origin streamed JSON, exact UUID creation/evidence receipts and exact true approval/retirement receipts. Added Node and four negative-only real HTTP regressions; no physical tape session or database write.
+- [ ] Verify exact-head quality, tests, engine, preview, release, build and pinned browser QA. Real tailor measurements, model approval, live Supabase, supplier stock and native Blender remain unverified; no migration, merge or deploy.
+
 ## 29 October 2026 — physical fabric truth policy must have a confirmed ledger receipt (draft)
 
 - [x] Reproduced silently truncated signer/rationale, unbounded operator JSON, and success-shaped physical-evidence policy save after only HTTP 2xx with no returned record.
