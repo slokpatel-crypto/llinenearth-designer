@@ -1012,14 +1012,31 @@ requireTokens("src/lib/designer/locked-handoff-request.ts",[
   "secureJsonRequestError(request,LOCKED_HANDOFF_JSON_MAX_BYTES)",
   "vaultRateBlocked(handoffRequests,ip)","verifiedLockedHandoffAuditId",
 ]);
-for(const kind of ["share","enquiry"]){
-  requireTokens(`src/app/api/designer/${kind}/route.ts`,[
-    "readLockedHandoffRequest(request)","verifiedLockedHandoffAuditId(await audit.json().catch(()=>null))",
-    "cache-control","private, no-store","verifyLockedDesignRevision(revision)",
-  ]);
-}
-requireTokens("src/app/api/designer/enquiry/route.ts",["handoffStatus:\"prepared_not_sent\""]);
+requireTokens("src/app/api/designer/share/route.ts",[
+  "readLockedHandoffRequest(request)",
+  "verifiedLockedHandoffAuditId(await audit.json().catch(()=>null))",
+  "cache-control","private, no-store","verifyLockedDesignRevision(revision)",
+]);
+// Owner-scoped recovery and token-scoped recovery must BOTH verify the lock
+// before a receipt can be called an authenticated customer enquiry intent.
+requireTokens("src/app/api/designer/enquiry/route.ts",[
+  "readLockedHandoffRequest(request)","parseEnquiryIntent(parsed.revision)",
+  "designer_locked_revision_vault_get_owned","designer_locked_revision_vault_get",
+  "selectVaultReadRow(ownedResult)","selectVaultReadRow(tokenResult)",
+  "sameLockedEnquiryRevision(intent.revision",
+  "normalizeVaultId(await rpc(\"design_enquiry_audit_record\"",
+  "operatorReceived:false","handoffStatus:\"prepared_not_sent\"",
+]);
+requireTokens("src/lib/designer/enquiry-intent.ts",[
+  "consentToContact !== true","legacy_draft","sameLockedEnquiryRevision",
+]);
+requireTokens("scripts/verify-designer-enquiry.cjs",[
+  "cross-site origin","unconsented envelope","oversized JSON body",
+]);
 requireTokens("src/components/DesignerModule.tsx",[
+  "checked={enquiryConsent}","disabled={enquiryBusy||!enquiryConsent}",
+  "consentToContact:true","vaultAccountOwned&&vaultRecoveryToken",
+  "result.status===\"intent_recorded\"","result.operatorReceived!==false",
   "result.handoffStatus!==\"prepared_not_sent\"","result.revisionId!==revision.revisionId",
   "enquiryResult?.revisionId===verifiedLockedRevision.revisionId",
   "Open WhatsApp and send","destination.hostname!==\"wa.me\"",
