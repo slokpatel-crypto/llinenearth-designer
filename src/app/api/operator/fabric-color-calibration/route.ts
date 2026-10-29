@@ -1,3 +1,5 @@
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
+import { normalizeVaultId } from "@/lib/vault-id";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -48,48 +50,51 @@ export async function GET(){
   }
 }
 
+function respond(body:unknown,status=200){
+  return NextResponse.json(body,{status,headers:{"cache-control":"private, no-store","pragma":"no-cache"}});
+}
+
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,16384);
+  if(unsafe) return respond({error:unsafe.error},unsafe.status);
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
   try{
-    const body=await request.json() as Record<string,unknown>;
-    const check=normalizeFabricPhysicalColorCheck({
-      fabricId:body.fabricId,
-      profileId:body.profileId,
-      digitalHex:body.digitalHex,
-      method:body.method,
-      physicalLab:body.physicalLab,
-      physicalHex:body.physicalHex,
-      illuminant:body.illuminant,
-      device:body.device,
-      checkedBy:body.checkedBy,
-      evidenceReference:body.evidenceReference,
-      note:body.note,
-    });
-    if(!check.profileId) throw new Error("A reviewed Analyzer profile is required for the digital colour reference.");
+    const body=await readSecureJsonObject(request,16384);
+    let check;
+    try{
+      check=normalizeFabricPhysicalColorCheck({
+        fabricId:body.fabricId,profileId:body.profileId,digitalHex:body.digitalHex,
+        method:body.method,physicalLab:body.physicalLab,physicalHex:body.physicalHex,
+        illuminant:body.illuminant,device:body.device,checkedBy:body.checkedBy,
+        evidenceReference:body.evidenceReference,note:body.note,
+      });
+      if(!check.profileId) throw new Error("A reviewed Analyzer profile is required for the digital colour reference.");
+    }catch(error){
+      return respond({error:error instanceof Error?error.message:"Invalid physical colour evidence."},400);
+    }
     const profiles=await loadFabricAnalysesForFabricIds([check.fabricId],{includeUnreviewed:false});
-    const profile=profiles.find((item)=>item.id===check.profileId && ["approved","corrected"].includes(item.review_status));
-    if(!profile) throw new Error("The selected Analyzer profile is not an approved/corrected profile bound to this fabric.");
-    const measuredHex=String(profile.profile?.measured?.colour?.hex||"").trim().toUpperCase();
-    if(measuredHex!==check.digitalHex) throw new Error("Digital colour reference must match the selected reviewed Analyzer measurement.");
-    const checkId=await rpc<string>("fabric_physical_color_check_record_v2",{
-      p_fabric_id:check.fabricId,
-      p_profile_id:check.profileId,
-      p_digital_hex:check.digitalHex,
-      p_method:check.method,
-      p_physical_l:check.physicalLab.l,
-      p_physical_a:check.physicalLab.a,
-      p_physical_b:check.physicalLab.b,
-      p_physical_hex:check.physicalHex,
-      p_delta_e:check.deltaE,
-      p_illuminant:check.illuminant,
-      p_device:check.device,
-      p_checked_by:check.checkedBy,
-      p_evidence_reference:check.evidenceReference,
-      p_note:check.note,
+    const profile=profiles.find((item)=>item.id===check.profileId&&
+      (item.review_status==="approved"||item.review_status==="corrected"));
+    if(!profile) return respond({error:"The selected Analyzer profile is not an approved/corrected profile bound to this fabric."},409);
+    const measured=profile.profile?.measured?.colour?.hex;
+    const measuredHex=typeof measured==="string"?measured.trim().toUpperCase():"";
+    if(measuredHex!==check.digitalHex) return respond({error:"Digital colour reference must match the selected reviewed Analyzer measurement."},409);
+    const receipt=await rpc<unknown>("fabric_physical_color_check_record_v2",{
+      p_fabric_id:check.fabricId,p_profile_id:check.profileId,
+      p_digital_hex:check.digitalHex,p_method:check.method,
+      p_physical_l:check.physicalLab.l,p_physical_a:check.physicalLab.a,
+      p_physical_b:check.physicalLab.b,p_physical_hex:check.physicalHex,
+      p_delta_e:check.deltaE,p_illuminant:check.illuminant,
+      p_device:check.device,p_checked_by:check.checkedBy,
+      p_evidence_reference:check.evidenceReference,p_note:check.note,
     });
-    return NextResponse.json({checkId,check});
+    const checkId=normalizeVaultId(receipt);
+    if(!checkId) return respond({error:"Physical colour check was not confirmed by the backend."},409);
+    return respond({checkId,check});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
     console.error("[operator/fabric-color-calibration]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Physical colour check could not be saved."},{status:400});
+    return respond({error:"Physical colour check could not be saved."},409);
   }
 }

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   normalizeFabricPhysicalColorCheck,
   summarizeFabricPhysicalColorChecks,
@@ -86,4 +87,37 @@ test("physical colour evidence requires controlled lighting, checker and referen
     fabricId:"FAB-PROV",digitalHex:"#334455",method:"calibrated_capture",physicalHex:"#334455",illuminant:"D65",
     checkedBy:"SP",note:"Grey-card corrected physical capture.",
   }),/evidence reference/i);
+});
+
+test("physical colour measurements and provenance cannot be coerced or truncated",()=>{
+  const good={fabricId:"FAB-001",profileId:"ANALYZER-001",digitalHex:"#C8B9A6",
+    method:"calibrated_capture",physicalHex:"#C5B7A5",illuminant:"D65",
+    checkedBy:"SP",evidenceReference:"Colour booth session 001",
+    note:"D65 booth with grey-card corrected capture."};
+  assert.equal(normalizeFabricPhysicalColorCheck(good).fabricId,"FAB-001");
+  assert.throws(()=>normalizeFabricPhysicalColorCheck({...good,fabricId:["FAB-001"]}),/literal text/i);
+  assert.throws(()=>normalizeFabricPhysicalColorCheck({...good,digitalHex:["#C8B9A6"]}),/literal text/i);
+  assert.throws(()=>normalizeFabricPhysicalColorCheck({...good,method:["calibrated_capture"]}),/literal text/i);
+  assert.throws(()=>normalizeFabricPhysicalColorCheck({...good,physicalLab:{l:"50",a:0,b:0}}),/literal finite measurements/i);
+  assert.throws(()=>normalizeFabricPhysicalColorCheck({...good,checkedBy:["SP"]}),/literal text/i);
+  assert.throws(()=>normalizeFabricPhysicalColorCheck({...good,note:"x".repeat(801)}),/too long/i);
+  assert.throws(()=>normalizeFabricPhysicalColorCheck({...good,profileId:["ANALYZER-001"]}),/literal text/i);
+});
+
+test("coerced physical colour database rows cannot complete ten-fabric evidence gate",()=>{
+  const rows=Array.from({length:10},(_,index)=>({
+    fabric_id:"FAB-"+index,delta_e:2.5,checked_by:"SP",
+    evidence_reference:"Booth "+index,illuminant:"D65",
+  }));
+  assert.equal(summarizeFabricPhysicalColorChecks(rows).evidenceGateComplete,true);
+  assert.equal(summarizeFabricPhysicalColorChecks(rows.map(row=>({...row,delta_e:"2.5"}))).evidenceGateComplete,false);
+  assert.equal(summarizeFabricPhysicalColorChecks(rows.map(row=>({...row,checked_by:["SP"]}))).evidenceGateComplete,false);
+});
+
+test("physical colour operator route enforces bounded JSON and confirmed UUID receipts",()=>{
+  const source=readFileSync("src/app/api/operator/fabric-color-calibration/route.ts","utf8");
+  assert.match(source,/secureJsonRequestError\(request,16384\)/);
+  assert.match(source,/readSecureJsonObject\(request,16384\)/);
+  assert.match(source,/normalizeVaultId\(receipt\)/);
+  assert.doesNotMatch(source,/request\.json\(\)/);
 });

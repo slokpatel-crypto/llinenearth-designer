@@ -1,3 +1,9 @@
+## 2026-10-29 — Physical colour proof must use literal LAB and a confirmed check receipt
+
+**Decision:** Instrument LAB coordinates cannot be created from `Number(...)`-coerced JSON strings, arrays, booleans or null. Reject malformed supplied LAB even when a fallback hex is present, and require literal fabric/profile/hex/method/checker/illuminant/reference fields without truncating provenance. Only literal finite database Delta E and genuine named checker/reference fields can count toward the ten-fabric evidence gate. Require same-origin 16 KiB streamed JSON, approved Analyzer hex identity and a valid returned UUID before claiming the physical check was recorded.
+
+**Limits:** Software cannot certify actual instrument calibration, D65 booth capture, fabric colour fidelity, supplier stock, human signoff, tailor fit or Blender parity. No production schema/data mutation, paid per-edit AI, model/photo replacement, merge or deployment.
+
 ## 2026-10-29 — Tailor ease calibration cannot be JSON-coerced or falsely approved
 
 **Decision:** Physical body/finished-garment centimetres and model ease ranges must be literal finite numbers, not `Number(...)`-coerced strings, arrays or null. Case, garment, fit, field, tailor and finished-garment references must be typed, with notes rejected rather than truncated. Only literal numeric database evidence can satisfy the existing 35-cell coverage gate. Bound same-origin operator JSON to 16 KiB and require UUID evidence/model creation receipts and exact `true` approval/retirement RPC responses. Keep legacy approved-model read adapters unchanged for compatibility.
