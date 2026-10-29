@@ -1,3 +1,7 @@
+## 2026-10-29 — legacy gallery resources must be exact same-origin HTTPS
+
+**Decision:** The optional unverified legacy-site HTML scan may only ingest image and link URLs that resolve to the scanned page's exact HTTPS origin without URL credentials. A string-prefix hostname check accepts lookalikes, and unrestricted `<img src>` can publish third-party tracking or spoofed swatches in the inventory API. Preserve valid same-origin relative/absolute URLs and the existing fail-closed `inStock:false` on all legacy swatches. No supplier verification, schema, paid AI, canonical Studio model/photo, live data write, merge or deployment; this does not substitute for a complete security audit.
+
 ## 2026-10-29 — ambiguous active fabric identities in operator veto history fail closed
 
 **Decision:** A mistyped operator subtype plus a padded or single-element-array current fabric ID and an availability field is not an unrelated operator note. Treat the entire customer availability metadata receipt as unverified instead of hiding a possible sold-out veto. Do **not** accept a normalized ID as a valid physical stock subject. Preserve unrelated notes with no availability instruction and retired catalogue identities. This is a source-only safety change with regression tests; it creates no supplier inventory or human approval and does not change schema, the canonical model/photo, deterministic no-credit Designer, main or production.
