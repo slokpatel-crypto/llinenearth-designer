@@ -51,9 +51,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/deep-engine-browser artifacts/preview-lifecycle
-          npm run start > artifacts/deep-engine-browser/server.log 2>&1 &
+          # Synthetic stock is confined to this CI runner; no real Supabase writes.
+          node scripts/ci-verified-stock-fixture.cjs > artifacts/deep-engine-browser/stock-fixture.log 2>&1 &
+          fixture_pid=$!
+          SUPABASE_URL=http://127.0.0.1:54324 SUPABASE_SECRET_KEY=sb_secret_titan_ci_fixture_only npm run start > artifacts/deep-engine-browser/server.log 2>&1 &
           pid=$!
-          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          trap 'kill "$pid" "$fixture_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 40); do
             if curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null; then break; fi
             sleep 1

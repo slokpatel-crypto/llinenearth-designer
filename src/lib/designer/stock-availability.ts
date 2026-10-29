@@ -43,7 +43,14 @@ export function applyVerifiedStockAvailability(
 ){
   const verified=verifiedStockAvailabilityMap(rows);
   return {
-    stock:stock.map((fabric)=>verified.has(fabric.id)?{...fabric,inStock:fabric.inStock&&verified.get(fabric.id)===true,availabilityVerified:true}:fabric),
+    stock:stock.map((fabric)=>({
+      ...fabric,
+      // Bundled catalogue availability is not proof of a physical roll.
+      // A missing, invalid, duplicate or unreachable live ledger snapshot
+      // must never be promoted to customer-facing "in stock".
+      inStock:fabric.inStock&&verified.get(fabric.id)===true,
+      availabilityVerified:verified.has(fabric.id),
+    })),
     verifiedFabricIds:[...verified.keys()],
   };
 }

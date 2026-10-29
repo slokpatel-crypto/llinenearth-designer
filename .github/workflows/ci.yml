@@ -57,9 +57,12 @@ jobs:
           LINEN_OPERATOR_SESSION_SECRET: creative-browser-qa-session-${{ github.run_id }}
         run: |
           mkdir -p artifacts/preview-lifecycle
-          npm run start > artifacts/preview-lifecycle/server.log 2>&1 &
+          # Separate local synthetic inventory only for HTTP/visual CI, never real stock proof.
+          node scripts/ci-verified-stock-fixture.cjs > artifacts/preview-lifecycle/stock-fixture.log 2>&1 &
+          fixture_pid=$!
+          SUPABASE_URL=http://127.0.0.1:54324 SUPABASE_SECRET_KEY=sb_secret_titan_ci_fixture_only npm run start > artifacts/preview-lifecycle/server.log 2>&1 &
           preview_server_pid=$!
-          trap 'kill "$preview_server_pid" 2>/dev/null || true' EXIT
+          trap 'kill "$preview_server_pid" "$fixture_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null; then break; fi
             sleep 1

@@ -7,16 +7,16 @@ const fabric=(id:string,inStock=true)=>({
   suitableFor:["shirt" as const],pattern:"Plain",sourceDocument:"test",sourcePage:1,inStock,
 });
 
-test("only provenance-ready ledger rows can override catalogue availability",()=>{
+test("only provenance-ready ledger rows may advertise positive catalogue availability",()=>{
   const result=applyVerifiedStockAvailability([fabric("a"),fabric("b"),fabric("c")],[
     {fabric_id:"a",available_metres:0,provenance_ready:true},
     {fabric_id:"b",available_metres:0,provenance_ready:false},
   ]);
   assert.equal(result.stock.find((item)=>item.id==="a")?.inStock,false);
   assert.equal(result.stock.find((item)=>item.id==="a")?.availabilityVerified,true);
-  assert.equal(result.stock.find((item)=>item.id==="b")?.inStock,true);
-  assert.equal(result.stock.find((item)=>item.id==="b")?.availabilityVerified,undefined);
-  assert.equal(result.stock.find((item)=>item.id==="c")?.inStock,true);
+  assert.equal(result.stock.find((item)=>item.id==="b")?.inStock,false);
+  assert.equal(result.stock.find((item)=>item.id==="b")?.availabilityVerified,false);
+  assert.equal(result.stock.find((item)=>item.id==="c")?.inStock,false);
   assert.deepEqual(result.verifiedFabricIds,["a"]);
 });
 
@@ -51,7 +51,7 @@ test("conflicting or repeated supplier snapshot IDs must not be treated as verif
     {fabric_id:"trouser",available_metres:1,provenance_ready:true},
   ]);
   assert.deepEqual(result.verifiedFabricIds,["trouser"]);
-  assert.equal(result.stock[0].availabilityVerified,undefined);
+  assert.equal(result.stock[0].availabilityVerified,false);
 });
 test("negative, empty and malformed physical quantities cannot certify a fabric as available",()=>{
   const map=verifiedStockAvailabilityMap([
@@ -78,4 +78,23 @@ test("an invalid numeric notation or missing RPC metreage cannot certify supplie
   ];
   const map=verifiedStockAvailabilityMap(rows);
   assert.deepEqual([...map.entries()],[["zero",false],["valid",true]]);
+});
+
+test("missing or unreachable stock ledger cannot sell bundled catalogue swatches",()=>{
+  const result=applyVerifiedStockAvailability([fabric("shirt"),fabric("trouser")],[]);
+  assert.deepEqual(result.verifiedFabricIds,[]);
+  assert.deepEqual(result.stock.map((item)=>({
+    id:item.id,inStock:item.inStock,availabilityVerified:item.availabilityVerified,
+  })),[
+    {id:"shirt",inStock:false,availabilityVerified:false},
+    {id:"trouser",inStock:false,availabilityVerified:false},
+  ]);
+});
+
+test("a verified positive snapshot cannot resurrect an explicitly unavailable fabric",()=>{
+  const result=applyVerifiedStockAvailability([fabric("sold-out",false)],[
+    {fabric_id:"sold-out",available_metres:"4.250",provenance_ready:true},
+  ]);
+  assert.equal(result.stock[0].inStock,false);
+  assert.equal(result.stock[0].availabilityVerified,true);
 });
