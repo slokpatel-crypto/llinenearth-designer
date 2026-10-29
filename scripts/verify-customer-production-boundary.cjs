@@ -19,11 +19,18 @@ async function verifyCustomerProductionBoundary(baseURL="http://127.0.0.1:3000")
     ["coerced wear",JSON.stringify({...validOutcome,wornConfirmed:"false"}),{},400],
     ["coerced note",JSON.stringify({...validOutcome,note:["ok"]}),{},400],
     ["overlength note",JSON.stringify({...validOutcome,note:"x".repeat(1001)}),{},400],
-    ["oversized streamed JSON",JSON.stringify({action:"record_outcome",note:"x".repeat(20_000)}),{},413],
+    ["oversized declared JSON",JSON.stringify({action:"record_outcome",note:"x".repeat(20_000)}),{},413],
+    ["oversized chunked JSON",new ReadableStream({start(controller){
+      const encoder=new TextEncoder();
+      controller.enqueue(encoder.encode('{"action":"record_outcome","note":"'));
+      controller.enqueue(encoder.encode("x".repeat(20_000)+'"}'));
+      controller.close();
+    }}),{},413],
   ];
   for(const [label,body,headers,expected] of cases){
     const response=await fetch(`${baseURL}/api/customer-account/production`,{
       method:"POST",headers:{"content-type":"application/json",...headers},body,
+      ...(body instanceof ReadableStream?{duplex:"half"}:{}),
     });
     const data=await response.json();
     assert.equal(response.status,expected,`${label}: ${data.error||"unexpected response"}`);

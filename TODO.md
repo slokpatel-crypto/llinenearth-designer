@@ -4,7 +4,7 @@
 
 - [x] Confirmed PR #460 exact-head CI #40842666927 and Non-3D QA #40842666847 completed successfully, including browser/mobile steps; no live Supabase acceptance is implied.
 - [x] Reproduced unbounded customer quote/feedback JSON, coerced quote/order IDs and rating/fit/note values, silently truncated feedback, and truthy/non-UUID RPC responses that could falsely report success.
-- [x] Added 16 KiB streamed JSON and same-origin request checks, literal UUIDs, typed feedback with no silent truncation, exact boolean quote acceptance and validated outcome UUID receipt. Added pure tests and 14 actual HTTP *negative-only* checks wired into the existing pinned browser QA; no real account/quote/order is used.
+- [x] Added 16 KiB streamed JSON and same-origin request checks, literal UUIDs, typed feedback with no silent truncation, exact boolean quote acceptance and validated outcome UUID receipt. Added pure tests and 15 actual HTTP *negative-only* checks (including undeclared chunked bytes) wired into the existing pinned browser QA; no real account/quote/order is used.
 - [ ] Verify new exact-head CI, full Node/engine/preview/release/build and Chromium checks; live owner-scoped Supabase, supplier/tailor/device, and native Blender gates remain outstanding. No migration, production data mutation, merge or deploy.
 
 
