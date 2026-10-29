@@ -217,6 +217,25 @@ async function verifyCustomerProductionBoundary(baseURL="http://127.0.0.1:3000")
     assert.equal(data.updated,undefined);
     assert.match(response.headers.get("cache-control")||"",/no-store/);
   }
+  // No actual physical colour sample, approved Analyzer profile or
+  // privileged database write is used by these transport rejection cases.
+  const colourCases=[
+    ["foreign origin","{}",{origin:"https://outside.example"},403],
+    ["same-site subdomain","{}",{"sec-fetch-site":"same-site"},403],
+    ["non-JSON","{}",{"content-type":"text/plain"},415],
+    ["oversized JSON",JSON.stringify({note:"x".repeat(20_000)}),{},413],
+  ];
+  for(const [label,body,headers,expected] of colourCases){
+    const response=await fetch(`${baseURL}/api/operator/fabric-color-calibration`,{
+      method:"POST",headers:{"content-type":"application/json",...headers},body,
+    });
+    const data=await response.json();
+    assert.equal(response.status,expected,`physical colour ${label}: ${data.error||"unexpected response"}`);
+    assert.equal(typeof data.error,"string");
+    assert.equal(data.checkId,undefined);
+    assert.match(response.headers.get("cache-control")||"",/no-store/);
+  }
+  console.log(`PASS ${colourCases.length} real physical colour transport rejection contracts`);
   console.log(`PASS ${easeCases.length} real house-ease transport rejection contracts`);
   console.log(`PASS ${fabricPolicyCases.length} real fabric truth policy transport rejection contracts`);
   console.log(`PASS ${noviceCases.length} real novice study transport rejection contracts`);
