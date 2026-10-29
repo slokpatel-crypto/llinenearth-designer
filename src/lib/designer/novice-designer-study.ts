@@ -119,9 +119,16 @@ export function summarizeNoviceDesignerStudy(
   const eligible=latest.filter((row)=>row.novice_confirmed===true&&row.liked_design_completed===true&&
     row.blocking_issue===false&&typeof row.duration_seconds==="number"&&
     Number.isFinite(row.duration_seconds)&&row.duration_seconds>=1&&row.duration_seconds<=7200);
-  // A truthy arbitrary string is not a server-issued timer receipt.
-  const serverTimed=eligible.filter((row)=>typeof row.timing_session_id==="string"&&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.timing_session_id));
+  // One genuine server timer cannot count as five independent novice cases.
+  const seenTimers=new Set<string>();
+  const serverTimed=eligible.filter((row)=>{
+    const id=row.timing_session_id;
+    if(typeof id!=="string"||
+       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)||
+       seenTimers.has(id.toLowerCase())) return false;
+    seenTimers.add(id.toLowerCase());
+    return true;
+  });
   const withinTarget=targetSeconds===null?[]:serverTimed.filter((row)=>row.duration_seconds<=targetSeconds);
   return {
     uniqueCases:latest.length,
