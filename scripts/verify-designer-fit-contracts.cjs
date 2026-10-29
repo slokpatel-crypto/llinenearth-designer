@@ -184,6 +184,7 @@ async function verifyDesignerFitContracts(baseURL='http://127.0.0.1:3000') {
     assert.equal(response.headers.get('set-cookie'),null,'Rejected operator login must not issue a session');
     results.push({mode:'operator login',label,status:response.status});
   }
+  await require("./verify-customer-production-boundary.cjs").verifyCustomerProductionBoundary(baseURL);
   console.log(`PASS ${results.length} actual HTTP fit-input contracts across assessment, search and both brief modes`);
   return results;
 }
