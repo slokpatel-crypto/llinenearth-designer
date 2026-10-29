@@ -7,6 +7,7 @@ import { CREATIVE_FEEDBACK_REASONS } from "@/lib/designer/creative-learning";
 import { legacyMemoryHeader } from "@/lib/runtime-compat";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
 import { normalizeGarmentViewerOperatorEvidencePayload } from "@/lib/garment-viewer-readiness";
+import { DEVICE_QA_EVIDENCE_VERSION, evaluateDeviceQaEvidence } from "@/lib/designer/device-qa-evidence";
 
 const PUBLIC_TYPES = new Set([
   "session_started",
@@ -391,20 +392,43 @@ function cleanPayload(type:string, input:unknown) {
     }
 
     if (subtype === "designer_device_qa") {
-      const deviceClass=text(payload.deviceClass,20);
-      const status=text(payload.status,20);
-      const viewport=text(payload.viewport,40);
-      const requestedVersion=text(payload.version,80);
-      const version=requestedVersion==="designer-device-qa-v2" ? requestedVersion : "designer-device-qa-v1";
+      // A human/device release receipt must not be created by String/Number
+      // coercion, partial sample filtering, or silent truncation of findings.
+      if(payload.subtype!=="designer_device_qa" ||
+         typeof payload.deviceClass!=="string" ||
+         typeof payload.status!=="string" ||
+         typeof payload.viewport!=="string") return null;
+      const deviceClass=payload.deviceClass.trim();
+      const status=payload.status;
+      const viewport=payload.viewport.trim();
+      const requestedVersion=payload.version;
+      if(requestedVersion!==undefined &&
+         requestedVersion!=="designer-device-qa-v1" &&
+         requestedVersion!==DEVICE_QA_EVIDENCE_VERSION) return null;
+      const version=requestedVersion===DEVICE_QA_EVIDENCE_VERSION
+        ? DEVICE_QA_EVIDENCE_VERSION : "designer-device-qa-v1";
       const checks=payload.checks && typeof payload.checks==="object" && !Array.isArray(payload.checks)
         ? Object.fromEntries(Object.entries(payload.checks as Record<string,unknown>)
           .slice(0,12)
           .map(([key,value])=>[text(key,80),value===true]))
         : {};
-      if(!["mobile","tablet","desktop"].includes(deviceClass) || !["accepted","review"].includes(status) || !viewport) return null;
-      const sampleDurationsMs=version==="designer-device-qa-v2" && Array.isArray(payload.sampleDurationsMs)
-        ? payload.sampleDurationsMs.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000).slice(-120).map((value)=>Math.round(value*10)/10)
+      if(!["mobile","tablet","desktop"].includes(deviceClass) ||
+         !["accepted","review"].includes(status) || !viewport) return null;
+      if(payload.note!==undefined &&
+         (typeof payload.note!=="string" || payload.note.trim().length>600)) return null;
+      if(version===DEVICE_QA_EVIDENCE_VERSION &&
+         (!Array.isArray(payload.sampleDurationsMs) ||
+          payload.sampleDurationsMs.length>120 ||
+          payload.sampleDurationsMs.some((value)=>
+            typeof value!=="number" || !Number.isFinite(value) || value<0 || value>10000
+          ))) return null;
+      const sampleDurationsMs=version===DEVICE_QA_EVIDENCE_VERSION
+        ? (payload.sampleDurationsMs as number[]).map((value)=>Math.round(value*10)/10)
         : [];
+      if(version===DEVICE_QA_EVIDENCE_VERSION && status==="accepted" &&
+         !evaluateDeviceQaEvidence({
+           version,deviceClass,viewport,checks,sampleDurationsMs,
+         }).accepted) return null;
       return {
         subtype,
         version,
@@ -413,7 +437,7 @@ function cleanPayload(type:string, input:unknown) {
         viewport,
         dpr:Math.max(.5,Math.min(8,Number(payload.dpr)||1)),
         samples:Math.max(0,Math.min(500,Math.floor(Number(payload.samples)||0))),
-        ...(version==="designer-device-qa-v2"?{sampleDurationsMs}:{}),
+        ...(version===DEVICE_QA_EVIDENCE_VERSION?{sampleDurationsMs}:{}),
         medianMs:Number.isFinite(Number(payload.medianMs))?Math.max(0,Math.min(10000,Number(payload.medianMs))):null,
         p95Ms:Number.isFinite(Number(payload.p95Ms))?Math.max(0,Math.min(10000,Number(payload.p95Ms))):null,
         maxMs:Number.isFinite(Number(payload.maxMs))?Math.max(0,Math.min(10000,Number(payload.maxMs))):null,
