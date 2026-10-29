@@ -1,5 +1,12 @@
 # TITAN — prioritized execution queue
 
+## 29 October 2026 — operator learning evidence cannot be JSON-coerced
+
+- [x] Reproduced unbounded operator outcome review/policy JSON, coerced outcome IDs, decisions, reviewers, notes and numeric policy thresholds, silent truncation and unverified RPC success IDs.
+- [x] Require 16 KiB same-origin streamed JSON, literal reviewer/policy evidence, exact UUID receipt before review or policy is reported saved, and private no-store POST responses. Preserve existing operator UI's numeric threshold and optional review note. Added pure/source tests and negative-only actual HTTP transport checks.
+- [ ] Verify final exact-head CI/Node/engine/preview/release/build/Chromium. Live operator sign-in, human approval, owner-scoped Supabase and physical/tailor/native Blender acceptance remain unverified. No migration, production data change, merge or deployment.
+
+
 ## 29 October 2026 — customer quote/feedback transport and receipt integrity
 
 - [x] Confirmed PR #460 exact-head CI #40842666927 and Non-3D QA #40842666847 completed successfully, including browser/mobile steps; no live Supabase acceptance is implied.

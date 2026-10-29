@@ -1,5 +1,12 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-10-29 — Human outcome learning evidence is typed and receipt-confirmed
+
+**Decision:** A human reviewer or learning-policy threshold must not be forged by JSON coercion, permissive UUID shapes, silent note truncation, or a truthy/non-UUID RPC response. Enforce exact literal outcome UUID, approved/rejected decision, reviewer/approver text (2–120 characters), optional review note (<=1200), required policy source note (3–1200), and numeric safe-integer threshold 1–10000. The operator POST now bounds actual streamed JSON to 16 KiB, rejects cross-site/media-type abuse before auth, checks the operator session before reading the body, and requires a valid returned UUID for a recorded review or policy. Keep the database as the final human evidence authority; no review is auto-approved by code.
+
+**Compatibility and limits:** The existing UI sends numeric thresholds and literal strings. Existing migrations, owner/operator authorization, model/photo, deterministic no-credit Designer and saved data are unchanged. Negative-only HTTP and unit checks cannot prove a real human review, live Supabase, fabric/tailor evidence, or launch readiness. No merge or deployment.
+
+
 ## 2026-10-29 — Customer production actions require typed, bounded, confirmed evidence
 
 **Decision:** Customer quote acceptance and post-delivery feedback are security-sensitive owner-scoped writes. Reject cross-site and non-JSON POSTs, malformed/oversized streamed JSON (16 KiB), coerced quote/order UUIDs, coerced action/rating/fit/wear/note values, and overlength feedback before identity lookup or privileged RPC. Preserve normal valid UI payloads and omitted optional note/wear fields. Only an exact boolean `true` quote-acceptance RPC receipt counts as accepted; false remains unavailable, and an invalid receipt is a 409. Only a valid returned outcome UUID counts as recorded feedback. Every POST response uses private no-store headers; negative-only real HTTP regressions cannot create production records.

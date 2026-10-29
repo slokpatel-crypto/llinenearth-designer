@@ -39,6 +39,26 @@ async function verifyCustomerProductionBoundary(baseURL="http://127.0.0.1:3000")
     assert.equal(data.recorded,undefined,`${label}: cannot claim recorded feedback`);
     assert.match(response.headers.get("cache-control")||"",/no-store/,`${label}: must not cache private response`);
   }
+  // Operator learning evidence is privileged. Only rejected requests are
+  // exercised without a valid operator session or a database write.
+  const operatorCases=[
+    ["foreign origin","{}",{origin:"https://outside.example"},403],
+    ["same-site subdomain","{}",{"sec-fetch-site":"same-site"},403],
+    ["non-JSON","{}",{"content-type":"text/plain"},415],
+    ["oversized JSON",JSON.stringify({action:"policy",note:"x".repeat(20_000)}),{},413],
+  ];
+  for(const [label,body,headers,expected] of operatorCases){
+    const response=await fetch(`${baseURL}/api/operator/customer-outcomes`,{
+      method:"POST",headers:{"content-type":"application/json",...headers},body,
+    });
+    const data=await response.json();
+    assert.equal(response.status,expected,`operator outcome ${label}: ${data.error||"unexpected response"}`);
+    assert.equal(typeof data.error,"string");
+    assert.equal(data.reviewId,undefined);
+    assert.equal(data.policyId,undefined);
+    assert.match(response.headers.get("cache-control")||"",/no-store/);
+  }
+  console.log(`PASS ${operatorCases.length} operator outcome transport rejection contracts`);
   console.log(`PASS ${cases.length} real customer production HTTP rejection contracts`);
   return cases.length;
 }
