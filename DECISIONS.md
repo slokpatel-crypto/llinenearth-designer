@@ -1,3 +1,7 @@
+## 2026-10-29 — ambiguous active fabric identities in operator veto history fail closed
+
+**Decision:** A mistyped operator subtype plus a padded or single-element-array current fabric ID and an availability field is not an unrelated operator note. Treat the entire customer availability metadata receipt as unverified instead of hiding a possible sold-out veto. Do **not** accept a normalized ID as a valid physical stock subject. Preserve unrelated notes with no availability instruction and retired catalogue identities. This is a source-only safety change with regression tests; it creates no supplier inventory or human approval and does not change schema, the canonical model/photo, deterministic no-credit Designer, main or production.
+
 ## 2026-10-29 — preserve integer physical stock units through bounded RPC integration
 
 **Decision:** A positive decimal that rounds to zero at the 0.001m ledger resolution is not verified sellable stock. Reject sub-resolution positive dust rather than using `available>0`, and base availability on integer physical units. Preserve the newer bounded 1 MiB upstream JSON adapter and literal fabric ID guard; update its source test to check the validated `record` alias without weakening the no-coercion contract. No fabricated supplier inventory, new schema, paid AI, model/photo changes, production writes, main merge or deploy.
