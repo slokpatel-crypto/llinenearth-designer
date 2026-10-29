@@ -3,6 +3,7 @@ import { requestCustomerOtp } from "@/lib/customer-auth";
 import {
   CUSTOMER_AUTH_JSON_MAX_BYTES,
   customerAuthRateBlocked,
+  customerAuthEmailRateBlocked,
   parseCustomerAuthEmail,
   type CustomerAuthRateState,
 } from "@/lib/customer-auth-request";
@@ -37,6 +38,8 @@ export async function POST(request:Request){
     return respond({error:"Sign-in request could not be read."},400);
   }
   if(!email) return respond({error:"Enter a valid email address."},400);
+  if(customerAuthEmailRateBlocked(rate,"otp",email))
+    return respond({error:"Too many codes requested for this email. Try again later."},429);
   try{
     await requestCustomerOtp(email);
     return respond({ok:true});
