@@ -1,3 +1,5 @@
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
+import { normalizeVaultId } from "@/lib/vault-id";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -57,67 +59,88 @@ export async function GET(){
   }
 }
 
+function respond(body:unknown,status=200){
+  return NextResponse.json(body,{status,headers:{"cache-control":"private, no-store","pragma":"no-cache"}});
+}
+function literalApprovalText(value:unknown,max:number,label:string,min=0){
+  if(value===undefined||value===null){
+    if(min>0) throw new Error(label+" is required.");
+    return "";
+  }
+  if(typeof value!=="string") throw new Error(label+" must be text.");
+  const normalized=value.replace(/\s+/g," ").trim();
+  if(normalized.length>max) throw new Error(label+" is too long.");
+  if(normalized.length<min) throw new Error(label+" is required.");
+  return normalized;
+}
+function invalid(error:unknown){
+  return respond({error:error instanceof Error?error.message:"Invalid house-ease evidence."},400);
+}
+
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,16384);
+  if(unsafe) return respond({error:unsafe.error},unsafe.status);
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
   try{
-    const body=await request.json() as Record<string,unknown>;
-    const action=String(body.action||"");
-
-    if(action==="record_evidence"){
-      const draft=normalizeEaseEvidenceDraft(body);
-      const evidenceId=await rpc<string>("house_ease_evidence_record",{
-        p_case_id:draft.caseId,
-        p_garment:draft.garment,
-        p_fit_class:draft.fitClass,
-        p_field:draft.field,
-        p_body_cm:draft.bodyCm,
-        p_finished_cm:draft.finishedCm,
-        p_tailor:draft.tailor,
-        p_garment_ref:draft.garmentRef,
-        p_note:draft.note,
+    const body=await readSecureJsonObject(request,16384);
+    if(body.action==="record_evidence"){
+      let draft;
+      try{draft=normalizeEaseEvidenceDraft(body);}catch(error){return invalid(error);}
+      const receipt=await rpc<unknown>("house_ease_evidence_record",{
+        p_case_id:draft.caseId,p_garment:draft.garment,p_fit_class:draft.fitClass,
+        p_field:draft.field,p_body_cm:draft.bodyCm,p_finished_cm:draft.finishedCm,
+        p_tailor:draft.tailor,p_garment_ref:draft.garmentRef,p_note:draft.note,
       });
-      return NextResponse.json({evidenceId,easeCm:draft.easeCm});
+      const evidenceId=normalizeVaultId(receipt);
+      if(!evidenceId) return respond({error:"Physical ease evidence was not confirmed by the backend."},409);
+      return respond({evidenceId,easeCm:draft.easeCm});
     }
-
-    if(action==="create_model"){
-      const draft=normalizeHouseEaseCalibrationDraft(body);
+    if(body.action==="create_model"){
+      let draft;
+      try{draft=normalizeHouseEaseCalibrationDraft(body);}catch(error){return invalid(error);}
       const evidence=await rpc<Array<Record<string,unknown>>>("house_ease_evidence_list",{p_limit:5000});
+      if(!Array.isArray(evidence)) return respond({error:"Physical ease evidence list is invalid."},409);
       const summary=summarizeEaseEvidence(evidence);
       if(!summary.evidenceCoverageComplete){
-        return NextResponse.json({
+        return respond({
           error:"Real finished-garment evidence is required for every current ease-table cell before a replacement draft can be registered.",
           summary,
-        },{status:409});
+        },409);
       }
-      const modelId=await rpc<string>("house_ease_model_create",{
-        p_version:draft.version,
-        p_shirt_table:draft.shirt,
-        p_trouser_table:draft.trouser,
-        p_note:draft.note,
+      const receipt=await rpc<unknown>("house_ease_model_create",{
+        p_version:draft.version,p_shirt_table:draft.shirt,
+        p_trouser_table:draft.trouser,p_note:draft.note,
       });
-      return NextResponse.json({modelId,summary});
+      const modelId=normalizeVaultId(receipt);
+      if(!modelId) return respond({error:"House-ease model creation was not confirmed."},409);
+      return respond({modelId,summary});
     }
-
-    if(action==="approve_model"){
-      const modelId=String(body.modelId||"").trim();
-      const approvedBy=String(body.approvedBy||"").trim().slice(0,120);
-      const approvalNote=String(body.approvalNote||"").trim().slice(0,1200);
-      if(approvedBy.length<2) return NextResponse.json({error:"Owner/tailor approver is required."},{status:400});
-      const updated=await rpc<boolean>("house_ease_model_approve",{
+    if(body.action==="approve_model"){
+      const modelId=normalizeVaultId(body.modelId);
+      if(!modelId) return respond({error:"A valid house-ease model ID is required."},400);
+      let approvedBy:string,approvalNote:string;
+      try{
+        approvedBy=literalApprovalText(body.approvedBy,120,"Owner/tailor approver",2);
+        approvalNote=literalApprovalText(body.approvalNote,1200,"Approval note");
+      }catch(error){return invalid(error);}
+      const receipt=await rpc<unknown>("house_ease_model_approve",{
         p_model_id:modelId,p_approved_by:approvedBy,p_approval_note:approvalNote,
       });
-      return NextResponse.json({updated:Boolean(updated)});
+      if(receipt!==true) return respond({error:"House-ease approval was not confirmed."},409);
+      return respond({updated:true});
     }
-
-    if(action==="retire_model"){
-      const modelId=String(body.modelId||"").trim();
-      const updated=await rpc<boolean>("house_ease_model_retire",{p_model_id:modelId});
-      return NextResponse.json({updated:Boolean(updated)});
+    if(body.action==="retire_model"){
+      const modelId=normalizeVaultId(body.modelId);
+      if(!modelId) return respond({error:"A valid house-ease model ID is required."},400);
+      const receipt=await rpc<unknown>("house_ease_model_retire",{p_model_id:modelId});
+      if(receipt!==true) return respond({error:"House-ease retirement was not confirmed."},409);
+      return respond({updated:true});
     }
-
-    return NextResponse.json({error:"Unsupported house-ease calibration action."},{status:400});
+    return respond({error:"Unsupported house-ease calibration action."},400);
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
     console.error("[operator/ease-calibration]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"House-ease calibration operation failed."},{status:409});
+    return respond({error:"House-ease calibration operation failed."},409);
   }
 }
