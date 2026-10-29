@@ -35,6 +35,17 @@ function requiredStockAuditText(value:unknown,label:string,min:number,max:number
 }
 
 
+/** Optional human stock notes are audit evidence: never silently truncate or
+ * coerce JSON objects/arrays/numbers into a fabricated text explanation.
+ */
+function optionalStockAuditNote(value:unknown):string {
+  if(value===undefined||value===null) return "";
+  if(typeof value!=="string") throw new Error("Stock note must be text.");
+  const note=value.replace(/\s+/g," ").trim();
+  if(note.length>600) throw new Error("Stock note exceeds 600 characters; evidence cannot be truncated.");
+  return note;
+}
+
 export function stockSnapshot(events:StockEvent[]){
   // Local ledger replay must agree with the server's no-oversell invariants.
   // A "plausible" negative number is not usable physical stock evidence.
@@ -87,7 +98,7 @@ export function normalizeManualStockEvent(input:unknown){
   if(typeof source.eventType!=="string") throw new Error("Unsupported manual stock event.");
   const eventType=source.eventType as StockEventType;
   const quantityMetres=exactStockMetres(source.quantityMetres,"Stock quantity",100000);
-  const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
+  const note=optionalStockAuditNote(source.note);
   const recordedBy=requiredStockAuditText(source.recordedBy,"Named stock checker / recorder",2,120);
   const sourceReference=requiredStockAuditText(source.sourceReference,"Physical stock source reference",3,240);
 
@@ -134,7 +145,7 @@ export function normalizeStockConsumption(input:unknown){
   const source=input as Record<string,unknown>;
   const reservationId=typeof source.reservationId==="string"?source.reservationId.trim():"";
   const actualMetres=exactStockMetres(source.actualMetres,"Actual consumed metres",100);
-  const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
+  const note=optionalStockAuditNote(source.note);
   const checkedBy=requiredStockAuditText(source.checkedBy,"Named consumption checker",2,120);
   const sourceReference=requiredStockAuditText(source.sourceReference,"Actual cloth-usage evidence reference",3,240);
 
@@ -155,7 +166,7 @@ export function normalizeStockRelease(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock release evidence is required.");
   const source=input as Record<string,unknown>;
   const reservationId=typeof source.reservationId==="string"?source.reservationId.trim():"";
-  const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
+  const note=optionalStockAuditNote(source.note);
   const releasedBy=requiredStockAuditText(source.releasedBy,"Named reservation release checker",2,120);
   const sourceReference=requiredStockAuditText(source.sourceReference,"Reservation release reference",3,240);
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reservationId)) throw new Error("Valid reservation ID is required.");
