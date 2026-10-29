@@ -60,6 +60,14 @@
 
 # TITAN — prioritized execution queue
 
+## 2026-10-29 — Device QA acceptance integrity (draft)
+- [x] Reject JSON-coerced viewport/version/class and malformed or >120 duration samples rather than filtering them into a passing 12-sample receipt.
+- [x] Fail closed when a new v2 device event claims `accepted` without all actual numeric latency and literal visual checks; reject overlong human notes instead of silently cutting findings.
+- [x] Keep historical v1 evidence visible as review only; prevent numeric-string legacy fallback from masquerading as measured p95 or sample counts.
+- [ ] Verify the new exact branch head with quality, all Node tests, engine, preview, release, build and actual 390/768/1440 browser checks; then review CI failures and fix without weakening tests.
+- [ ] Obtain actual independent target-device sessions and operator signoff; software tests are not physical QA acceptance.
+
+
 ## 29 October 2026 — operator learning evidence cannot be JSON-coerced
 
 - [x] Reproduced unbounded operator outcome review/policy JSON, coerced outcome IDs, decisions, reviewers, notes and numeric policy thresholds, silent truncation and unverified RPC success IDs.

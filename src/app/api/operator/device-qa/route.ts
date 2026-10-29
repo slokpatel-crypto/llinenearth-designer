@@ -36,20 +36,20 @@ export async function GET() {
     }>={};
     for(const row of rows){
       const payload=row.payload||{};
-      if(String(payload.subtype||"")!=="designer_device_qa") continue;
-      const requestedClass=String(payload.deviceClass||"").slice(0,20);
+      if(payload.subtype!=="designer_device_qa") continue;
+      const requestedClass=typeof payload.deviceClass==="string"?payload.deviceClass:"";
       if(!["mobile","tablet","desktop"].includes(requestedClass) || latest[requestedClass]) continue;
       const evaluation=evaluateDeviceQaEvidence(payload);
-      const legacyP95=Number.isFinite(Number(payload.p95Ms))?Number(payload.p95Ms):null;
-      const legacySamples=Math.max(0,Math.floor(Number(payload.samples)||0));
+      const legacyP95=typeof payload.p95Ms==="number" && Number.isFinite(payload.p95Ms) && payload.p95Ms>=0 && payload.p95Ms<=10000?payload.p95Ms:null;
+      const legacySamples=typeof payload.samples==="number" && Number.isSafeInteger(payload.samples) && payload.samples>=0 && payload.samples<=500?payload.samples:0;
       latest[requestedClass]={
         at:row.at,
         status:evaluation.accepted?"accepted":"review",
-        viewport:String(payload.viewport||""),
-        p95Ms:evaluation.p95Ms??legacyP95,
-        samples:evaluation.samples||legacySamples,
-        note:String(payload.note||"").slice(0,400),
-        evidenceVersion:String(payload.version||"designer-device-qa-v1"),
+        viewport:typeof payload.viewport==="string"?payload.viewport:"",
+        p95Ms:evaluation.versionValid?evaluation.p95Ms:legacyP95,
+        samples:evaluation.versionValid?evaluation.samples:legacySamples,
+        note:typeof payload.note==="string"?payload.note.slice(0,400):"",
+        evidenceVersion:typeof payload.version==="string"?payload.version:"designer-device-qa-v1",
         performancePass:evaluation.performancePass,
         visualPass:evaluation.visualPass,
       };
