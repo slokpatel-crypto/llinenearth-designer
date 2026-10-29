@@ -23,7 +23,7 @@ test("both vault routes validate owned delete, token claim and token delete repl
     "src/app/api/designer/vault/route.ts",
   ]){
     const source=readFileSync(path,"utf8");
-    assert.match(source,/import \{ requireVaultBooleanResult \} from "@\/lib\/vault-write-integrity"/,path);
+    assert.ok(source.includes('import { requireVaultBooleanResult, requireVaultStoreId } from "@/lib/vault-write-integrity"'),path);
     assert.equal((source.match(/=requireVaultBooleanResult\(await rpc<unknown>\(/g)||[]).length,3,path);
     assert.doesNotMatch(source,/Boolean\((?:claimed|deleted)\)/,path);
     assert.match(source,/return jsonNoStore\(\{claimed\}\)/,path);
@@ -56,7 +56,7 @@ test("both vault stores validate literal receipt before returning a recovery tok
     ["src/app/api/measurements/vault/route.ts","measurement_profile_vault_store"],
   ]){
     const source=readFileSync(path,"utf8");
-    assert.match(source,/import \\{ requireVaultBooleanResult, requireVaultStoreId \\} from "@\\/lib\\/vault-write-integrity"/);
+    assert.ok(source.includes('import { requireVaultBooleanResult, requireVaultStoreId } from "@/lib/vault-write-integrity"'),path);
     assert.ok(source.includes(`const vaultId=requireVaultStoreId(await rpc<unknown>("${store}",`),path);
     const verified=source.indexOf(`const vaultId=requireVaultStoreId(await rpc<unknown>("${store}",`);
     const token=source.indexOf("const recoveryToken=create",verified);
