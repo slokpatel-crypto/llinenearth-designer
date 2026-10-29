@@ -46,3 +46,15 @@ test("unknown metadata source never promotes even a positive provenance-backed r
   assert.equal(fallback.stock[0]?.availabilityVerified,false);
   assert.deepEqual(fallback.verifiedFabricIds,[]);
 });
+
+
+test("malformed newest operator availability cannot mask an older sold-out veto",()=>{
+  const loader=source("../src/lib/designer-fabric-metadata.ts");
+  assert.match(loader,/validateOperatorMetadataAvailability\(row\.payload,CATALOGUE_FABRIC_IDS\)/);
+  assert.match(loader,/if\(status==="invalid"\)\{[\s\S]*?return unavailable\(\)/);
+  assert.match(loader,/if\(status==="unrelated"\) continue/);
+  assert.match(loader,/payload\.subtype !== "designer_fabric_metadata"/);
+  assert.match(loader,/availability !== "unknown" && availability !== "available" && availability !== "unavailable"/);
+  assert.doesNotMatch(loader,/safe\(payload\.availability/);
+  assert.doesNotMatch(loader,/safe\(payload\.fabricId/);
+});
