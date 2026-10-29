@@ -27,7 +27,7 @@ test("rework requires a recorded reason",()=>{
 
 test("approved QC normalizes fields",()=>{
   const result=normalizeFinishedGarmentQcDraft({
-    decision:"approved",checks:passingChecks(),defects:["stitching","not-real"],
+    decision:"approved",checks:passingChecks(),defects:["stitching","stitching"],
     note:" Final inspection passed. ",inspector:" SP ",inspectionReference:" Tailor QC sheet 42 ",
   });
   assert.equal(result.decision,"approved");
