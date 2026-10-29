@@ -1,3 +1,8 @@
+## 29 October 2026 — complete bounded operator sold-out override history (draft)
+- [x] Reproduced 1,000-row metadata cap: a valid older operator `unavailable` override could be silently omitted while metadata read reported healthy and a positive stock RPC promoted its fabric.
+- [x] Add bounded stable paging `at.desc,id.desc` under a shared eight-second deadline; only a short final page establishes completeness, and malformed/overflow history fails closed. Add pure completeness decision regressions and source-wiring checks; no schema or real writes.
+- [ ] Verify exact-head quality, full Node tests, engine, preview, release, build and browser QA; only human-reviewed real stock and signed-in end-to-end Supabase acceptance can satisfy beta readiness. No supplier/tailor/device/native Blender proof, merge or deployment.
+
 ## 29 October 2026 — bounded optional legacy inventory discovery (draft)
 - [x] Reproduced unbounded external gallery response body and no request timeout in `scanLegacySite()`, which could stall the inventory route despite fail-closed live structured stock.
 - [x] Add 5-second remote fetch timeout and 2 MiB streamed response guard; preserve bundled unverified website fallback and UTF-8 decoding. Add real streaming and negative source regressions.
