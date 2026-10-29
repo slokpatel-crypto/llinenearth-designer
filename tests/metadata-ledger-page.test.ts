@@ -83,7 +83,7 @@ test("operator availability evidence rejects JSON-coerced overrides that could h
     assert.equal(validateOperatorMetadataAvailability({...valid,fabricId},ids),"invalid",JSON.stringify(fabricId));
   assert.equal(validateOperatorMetadataAvailability({...valid,subtype:["designer_fabric_metadata"]},ids),"invalid");
   for(const subtype of [" designer_fabric_metadata","designer_fabric_metadata ",
-    "\\tdesigner_fabric_metadata\\n",[" designer_fabric_metadata "],["designer_fabric_metadata\\n"]])
+    "\tdesigner_fabric_metadata\n",[" designer_fabric_metadata "],["designer_fabric_metadata\n"]])
     assert.equal(validateOperatorMetadataAvailability({...valid,subtype},ids),"invalid",JSON.stringify(subtype));
   // A malformed older sold-out event cannot be ignored just because a newer
   // record happens to say available. The entire read must fail closed.
