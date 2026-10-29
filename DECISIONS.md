@@ -1,3 +1,7 @@
+## 2026-10-29 — verify complete operator metadata history, not newest 1,000 rows
+
+**Decision:** Before selling a physically stocked fabric, load the complete relevant operator metadata history with deterministic `at.desc,id.desc` pagination in 1,000-row pages under one 8-second time budget. Only a short final page proves older sold-out vetoes were not omitted. Malformed pages, failed fetches and more than five full pages fail closed rather than claiming the absence of an override. The database's `public.style_events` schema was checked read-only and contains both `id` and `at`. Synthetic CI history remains empty and unverified as physical evidence. No migrations, approved stock, customer mutation, merge or deploy.
+
 ## 2026-10-29 — optional legacy-site inventory cannot stall verified stock
 
 **Decision:** The first-party verified stock path remains authoritative. A slow, broken or oversized old-site product gallery must not consume the `/api/inventory` request budget indefinitely or allocate unbounded HTML. Preserve fallback to unverified bundled legacy gallery, add 5-second abort and 2 MiB streamed HTML maximum, retain `no-store` and protect multi-byte text decoding. No changes to supplier quantities, approved stock, render model, physical truth, schema, live database, or deployment.
