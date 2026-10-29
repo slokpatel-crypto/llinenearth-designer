@@ -50,7 +50,7 @@ test("privileged delivery status uses latest typed QC gate before status RPC",()
   const delivered=source.split('if(status==="delivered")')[1]?.split('const updated=await rpc<unknown>("production_order_set_status"')[0]||"";
   assert.match(source,/import \{ hasVerifiedLatestDeliveryQc \} from "@\/lib\/designer\/delivery-qc-approval"/);
   assert.match(delivered,/rpc<unknown>\("finished_garment_qc_list",\{p_limit:500\}\)/);
-  assert.match(delivered,/if\(!hasVerifiedLatestDeliveryQc\(inspections,orderId\)\)/);
+  assert.match(delivered,/if\(!hasVerifiedLatestDeliveryQc\(inspections,orderId,500\)\)/);
   assert.doesNotMatch(delivered,/inspections\.find/);
   assert.doesNotMatch(delivered,/String\(latest\.(?:inspector|inspection_reference)/);
   assert.match(delivered,/status:409/);
@@ -59,7 +59,7 @@ test("privileged delivery status uses latest typed QC gate before status RPC",()
 test("release gate verifies the latest typed QC guard instead of obsolete first-match wording",()=>{
   const release=readFileSync("scripts/release-readiness.mjs","utf8");
   assert.match(release,/requireTokens\("src\/lib\/designer\/delivery-qc-approval\.ts"/);
-  assert.match(release,/hasVerifiedLatestDeliveryQc\(inspections,orderId\)/);
+  assert.match(release,/hasVerifiedLatestDeliveryQc\(inspections,orderId,500\)/);
   assert.match(release,/latest\.decision/);
   assert.match(release,/ambiguous/);
   assert.doesNotMatch(release,/"Finished-garment QC approval is required before delivery\."\,/);
@@ -68,7 +68,7 @@ test("release gate verifies the latest typed QC guard instead of obsolete first-
 test("operator production desk never offers delivery based on first matching stale QC",()=>{
   const ui=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
   assert.ok(ui.includes('import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval"'));
-  assert.ok(ui.includes("const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id)"));
+  assert.ok(ui.includes("const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id,250)"));
   assert.ok(ui.includes('status!=="delivered"||deliveryQcVerified'));
   assert.ok(ui.includes('deliveryQcVerified?"approved with provenance":"pending / rework / unverified"'));
   assert.ok(!ui.includes("qcInspections.find("));
