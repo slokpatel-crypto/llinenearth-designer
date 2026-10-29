@@ -1,5 +1,15 @@
 # TITAN — prioritized execution queue
 
+## 29 October 2026 — 12 PM customer authentication security sprint
+
+- [x] Rechecked PR #456 exact head `e2c78c04`: CI #40805041551 and Non-3D QA #40805041648 **both completed successfully**, including pinned browser/mobile checks. This is source QA, not live launch acceptance.
+- [x] Reproduced a public auth request gap in source: OTP and verification endpoints used unbounded `request.json()`, accepted JSON array/number coercion and had no same-origin transport guard; verification had no local attempt throttle and OTP's process map could grow unbounded.
+- [x] Draft implementation: both endpoints now enforce 4 KiB streamed JSON, same-origin/fetch-metadata checks, literal email/code types, private no-store responses and bounded process-local OTP/verify attempt budgets. Added pure regressions and real HTTP *negative-only* checks; no actual sign-in emails are sent by tests.
+- [ ] Require **new exact-head** quality, Node tests, engine, preview, release, build and Chromium checks on the auth draft before calling it verified; retain unmerged draft status.
+- [ ] Live Supabase acceptance still blocked: read-only migrations, table list and SQL timed out, while security advisor reported hibernation despite management `ACTIVE_HEALTHY`. Do not apply migrations or assume owner/recovery/intent/operator verification passed.
+- [ ] Process-local rate limiting is not distributed abuse protection. A trusted edge/store-backed limiter, actual provider/OTP flow and human operator signoff are still needed for production release.
+
+
 Prepared: 2026-10-24 (Asia/Kolkata). This is a **planned 8-hour work allocation**, not a background-job runner or a claim that work has executed. Check boxes only after implementation and exact-head verification.
 
 Repository: `slokpatel-crypto/llinenearth-designer`
