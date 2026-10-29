@@ -49,8 +49,11 @@ export function verifiedStockAvailabilityMap(rows:VerifiedStockSnapshotRow[]){
     if(!id||rawId!==id||counts.get(id)!==1||row.provenance_ready!==true
        ||!Number.isFinite(available)||available<0
        ||!Number.isSafeInteger(millimetres)
-       ||Math.abs(available*1000-millimetres)>1e-7) continue;
-    out.set(id,available>0);
+       ||Math.abs(available*1000-millimetres)>1e-7
+       // Sub-resolution positive dust is not one 0.001m ledger unit.
+       // A floating-point tolerance must never turn it into sellable stock.
+       ||(available>0&&millimetres===0)) continue;
+    out.set(id,millimetres>0);
   }
   return out;
 }
