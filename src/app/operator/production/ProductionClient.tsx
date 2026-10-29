@@ -7,6 +7,7 @@ import { buildVerifiedProductionHandoff } from "@/lib/designer/production-handof
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet";
 import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
+import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
@@ -223,8 +224,8 @@ export default function ProductionClient(){
         <div><span>ORDERS</span><h2>Production status.</h2></div>
         {!orders.length&&<p>No production orders recorded yet.</p>}
         {orders.map((item)=>{
-          const latestQc=qcInspections.find((inspection)=>inspection.order_id===item.order_id);
-          const nextStatuses=(ORDER_TRANSITIONS[item.status as ProductionOrderStatus]||[]).filter((status)=>status!=="delivered"||latestQc?.decision==="approved");
+          const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id);
+          const nextStatuses=(ORDER_TRANSITIONS[item.status as ProductionOrderStatus]||[]).filter((status)=>status!=="delivered"||deliveryQcVerified);
           const customerOutcome=customerOutcomes.find((outcome)=>outcome.order_id===item.order_id);
           const learningContext=learningContexts.find((context)=>context.order_id===item.order_id);
           return <section key={item.order_id} className="productionRecord">
@@ -234,7 +235,7 @@ export default function ProductionClient(){
             <small className={learningContext?"productionLineageAttached":"productionLineageMissing"}>
               Outcome lineage · {learningContext?"durable context attached":"context missing"}
             </small>
-            {item.status==="ready"&&<Link className="productionQcLink" href={"/operator/garment-qc?order="+encodeURIComponent(item.order_id)}>Finished garment QC · {latestQc?.decision||"pending"}</Link>}
+            {item.status==="ready"&&<Link className="productionQcLink" href={"/operator/garment-qc?order="+encodeURIComponent(item.order_id)}>Finished garment QC · {deliveryQcVerified?"approved with provenance":"pending / rework / unverified"}</Link>}
             {item.status==="delivered"&&<Link className="productionEvidenceLink" href={"/operator/production-evidence?order="+encodeURIComponent(item.order_id)}>Record zero-reentry evidence</Link>}
             {customerOutcome&&<div className="productionCustomerOutcome">
               <small>CUSTOMER OUTCOME · {new Date(customerOutcome.created_at).toLocaleDateString("en-IN")}</small>
