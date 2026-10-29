@@ -1,3 +1,8 @@
+## 2026-10-29 — J5 privileged quote/order creation receipts must be exact (draft)
+- [x] Reproduced operator quote and order create routes returning `lockedRevisionVerified:true` and `learningContextAttached:true` without validating the create RPC's returned UUID; null, objects, arrays or padded strings could appear as successful creations.
+- [x] Require literal exact UUID scalar from both creation RPCs before reporting success; reject invalid receipts with 409, preserving real locked revision integrity and no-cost deterministic preview. Added positive/negative receipt and route-source regressions.
+- [ ] Verify matching-head quality, full Node, engine, preview-performance, release, build, 390/768/1440 browser and Non-3D QA. Real owner/operator Supabase quote/order, genuine supplier stock, tailor/device/native Blender and security/owner approvals remain blocked or pending. No live writes, merge or deploy.
+
 ## 2026-10-29 — legacy gallery URL origin spoofing (draft)
 - [x] Reproduced the unverified legacy HTML parser accepting arbitrary image URLs and checking links with a string-prefix host test; `https://llinenearth.com.evil.example/` passed the prefix test.
 - [x] Enforce HTTPS, exact page origin and no embedded credentials on both discovered images and links. Preserve legitimate relative, protocol-relative and absolute same-origin swatches; add positive/negative pure regressions and parser-wiring assertions.
