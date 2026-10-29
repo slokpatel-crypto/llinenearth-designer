@@ -1031,7 +1031,7 @@ requireTokens("src/lib/designer/locked-handoff-request.ts",[
 ]);
 requireTokens("src/app/api/designer/share/route.ts",[
   "readLockedHandoffRequest(request)",
-  "verifiedLockedHandoffAuditId(await audit.json().catch(()=>null))",
+  "verifiedLockedHandoffAuditId(await readBoundedJsonResponse(audit,4 * 1024).catch(()=>null))",
   "cache-control","private, no-store","verifyLockedDesignRevision(revision)",
 ]);
 // Owner-scoped recovery and token-scoped recovery must BOTH verify the lock
@@ -1041,6 +1041,7 @@ requireTokens("src/app/api/designer/enquiry/route.ts",[
   "designer_locked_revision_vault_get_owned","designer_locked_revision_vault_get",
   "selectVaultReadRow(ownedResult)","selectVaultReadRow(tokenResult)",
   "sameLockedEnquiryRevision(intent.revision",
+  "readBoundedJsonResponse(response,256 * 1024)",
   "normalizeVaultId(await rpc(\"design_enquiry_audit_record\"",
   "operatorReceived:false","handoffStatus:\"prepared_not_sent\"",
 ]);
