@@ -85,8 +85,12 @@ export function validateOperatorMetadataAvailability(
   if(!payload||typeof payload!=="object"||Array.isArray(payload)) return "unrelated";
   const {subtype,fabricId,availability}=payload as Record<string,unknown>;
   if(subtype!=="designer_fabric_metadata"){
-    // A one-element array must not be coerced into the metadata subtype.
-    if(Array.isArray(subtype)&&subtype.length===1&&subtype[0]==="designer_fabric_metadata")
+    // A malformed event that only differs by padding or JSON array coercion
+    // may be a lost sold-out instruction. Never count its absence as a
+    // complete, healthy operator override history.
+    const possibleSubtype=typeof subtype==="string"?subtype:
+      Array.isArray(subtype)&&subtype.length===1&&typeof subtype[0]==="string"?subtype[0]:null;
+    if(possibleSubtype!==null&&possibleSubtype.trim()==="designer_fabric_metadata")
       return "invalid";
     return "unrelated";
   }
