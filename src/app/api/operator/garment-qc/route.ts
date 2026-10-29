@@ -1,3 +1,5 @@
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
+import { normalizeVaultId } from "@/lib/vault-id";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -5,6 +7,10 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { normalizeFinishedGarmentQcDraft } from "@/lib/designer/finished-garment-qc";
 
 export const runtime="nodejs";
+
+function respond(body:unknown,status=200){
+  return NextResponse.json(body,{status,headers:{"cache-control":"private, no-store","pragma":"no-cache"}});
+}
 
 async function authorized(){
   const jar=await cookies();
@@ -44,14 +50,18 @@ export async function GET(){
 }
 
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,16384);
+  if(unsafe) return respond({error:unsafe.error},unsafe.status);
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
   try{
-    const body=await request.json() as Record<string,unknown>;
-    if(String(body.action||"")!=="record") return NextResponse.json({error:"Unsupported QC action."},{status:400});
-    const orderId=String(body.orderId||"").trim();
-    if(!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(orderId)) return NextResponse.json({error:"Valid production order ID is required."},{status:400});
-    const draft=normalizeFinishedGarmentQcDraft(body);
-    const inspectionId=await rpc<string>("finished_garment_qc_record_v2",{
+    const body=await readSecureJsonObject(request,16384);
+    if(body.action!=="record") return respond({error:"Unsupported QC action."},400);
+    const orderId=normalizeVaultId(body.orderId);
+    if(!orderId) return respond({error:"Valid production order ID is required."},400);
+    let draft;
+    try{draft=normalizeFinishedGarmentQcDraft(body);}
+    catch(error){return respond({error:error instanceof Error?error.message:"Invalid finished-garment QC evidence."},400);}
+    const receipt=await rpc<unknown>("finished_garment_qc_record_v2",{
       p_order_id:orderId,
       p_decision:draft.decision,
       p_checks:draft.checks,
@@ -60,9 +70,13 @@ export async function POST(request:Request){
       p_inspector:draft.inspector,
       p_inspection_reference:draft.inspectionReference,
     });
-    return NextResponse.json({inspectionId});
+    const inspectionId=normalizeVaultId(receipt);
+    if(!inspectionId) return respond({error:"Finished-garment QC backend did not confirm an inspection ID."},409);
+    return respond({inspectionId});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
     console.error("[operator/garment-qc]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Finished-garment QC could not be recorded."},{status:409});
+    return respond({error:"Finished-garment QC could not be recorded."},409);
   }
 }

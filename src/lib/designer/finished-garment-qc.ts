@@ -30,18 +30,33 @@ function record(value:unknown):UnknownRecord{
 
 export function normalizeFinishedGarmentQcDraft(input:unknown){
   const source=record(input);
-  const decision=String(source.decision||"") as FinishedGarmentQcDecision;
+  const decision=source.decision;
   if(decision!=="approved"&&decision!=="rework") throw new Error("QC decision must be approved or rework.");
 
-  const rawChecks=record(source.checks);
+  // Physical QC is a human release gate. Do not turn coerced, unknown or
+  // silently discarded evidence into a passing inspection.
+  const suppliedChecks=source.checks===undefined?{}:source.checks;
+  if(!suppliedChecks||typeof suppliedChecks!=="object"||Array.isArray(suppliedChecks))
+    throw new Error("QC checks must be a named boolean record.");
+  const rawChecks=suppliedChecks as Record<string,unknown>;
+  const knownCheckIds=new Set<string>(FINISHED_GARMENT_QC_CHECKS.map((item)=>item.id));
+  for(const [id,passed] of Object.entries(rawChecks)){
+    if(!knownCheckIds.has(id)||typeof passed!=="boolean")
+      throw new Error("QC checks must use supported names and literal booleans.");
+  }
   const checks={} as Record<FinishedGarmentQcCheckId,boolean>;
   for(const item of FINISHED_GARMENT_QC_CHECKS) checks[item.id]=rawChecks[item.id]===true;
 
-  const knownDefects=new Set(FINISHED_GARMENT_QC_DEFECTS.map((item)=>item.id));
-  const defects=Array.isArray(source.defects)
-    ? [...new Set(source.defects.map(String).filter((item)=>knownDefects.has(item as FinishedGarmentQcDefectId)))].slice(0,12) as FinishedGarmentQcDefectId[]
-    : [];
-  const note=String(source.note||"").trim().slice(0,1200);
+  const knownDefects=new Set<string>(FINISHED_GARMENT_QC_DEFECTS.map((item)=>item.id));
+  const rawDefects=source.defects===undefined?[]:source.defects;
+  if(!Array.isArray(rawDefects)||rawDefects.length>12
+    ||!rawDefects.every((item)=>typeof item==="string"&&knownDefects.has(item)))
+    throw new Error("QC defects must use the supported physical defect list (maximum 12).");
+  const defects=[...new Set(rawDefects)] as FinishedGarmentQcDefectId[];
+  if(source.note!==undefined&&source.note!==null&&typeof source.note!=="string")
+    throw new Error("QC note must be literal text.");
+  const note=typeof source.note==="string"?source.note.trim():"";
+  if(note.length>1200) throw new Error("QC note cannot exceed 1200 characters.");
   // Identity-bearing physical evidence must not be coerced or silently truncated.
   const inspector=typeof source.inspector==="string"?source.inspector.trim():"";
   const inspectionReference=typeof source.inspectionReference==="string"

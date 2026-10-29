@@ -1,3 +1,9 @@
+## 29 October 2026 — finished-garment physical QC integrity (draft)
+
+- [x] Reproduced unbounded QC JSON, coerced decision/order IDs/defect tags, silently truncated notes, and a success-shaped inspection ID without a validated RPC receipt.
+- [x] Added 16 KiB same-origin streamed JSON, strict UUID order and receipt, literal physical checks/defects/notes and private no-store responses. Added focused Node regressions and negative-only real HTTP transport cases; no real inspection is recorded.
+- [ ] Verify this exact new head in CI, full Node/engine/preview/release/build and Chromium; live Supabase/operator, supplier/tailor, physical QC and native Blender approval remain blocked. No migration, merge or deployment.
+
 # TITAN — prioritized execution queue
 
 ## 29 October 2026 — operator learning evidence cannot be JSON-coerced
