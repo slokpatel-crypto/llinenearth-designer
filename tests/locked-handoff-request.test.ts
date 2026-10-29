@@ -57,7 +57,8 @@ test("best-effort handoff request throttle does not treat a repeated write as a 
 test("HTTP 200 is not proof of a durable share or enquiry audit receipt",()=>{
   const uuid="123e4567-e89b-42d3-a456-426614174000";
   assert.equal(verifiedLockedHandoffAuditId(uuid),uuid);
-  for(const receipt of [null,undefined,false,true,1,{},[],{audit_id:uuid},"",uuid+"junk"])
+  assert.equal(verifiedLockedHandoffAuditId(uuid.toUpperCase()),uuid);
+  for(const receipt of [null,undefined,false,true,1,{},[],{audit_id:uuid},"",uuid+"junk"," "+uuid,uuid+" ",[uuid]])
     assert.equal(verifiedLockedHandoffAuditId(receipt),null);
 });
 
@@ -68,6 +69,8 @@ test("share/enquiry and customer UI retain privacy, lineage and explicit-send co
   assert.match(share,/readLockedHandoffRequest\(request\)/);
   assert.match(share,/verifiedLockedHandoffAuditId\(await readBoundedJsonResponse\(audit,4 \* 1024\)\.catch\(\(\)=>null\)\)/);
   assert.match(enquiry,/readBoundedJsonResponse\(response,256 \* 1024\)/);
+  assert.match(enquiry,/verifiedLockedHandoffAuditId\(await rpc\("design_enquiry_audit_record"/);
+  assert.doesNotMatch(enquiry,/normalizeVaultId\(await rpc\("design_enquiry_audit_record"/);
   assert.doesNotMatch(enquiry,/response\.json\(\)/);
   assert.doesNotMatch(share,/audit\.json\(\)/);
   assert.match(share,/cache-control":"private, no-store"/);

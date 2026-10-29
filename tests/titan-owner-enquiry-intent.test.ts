@@ -55,7 +55,8 @@ test("enquiry handler rejects unsigned audit claims and checks two independent v
   assert.match(source,/selectVaultReadRow\(ownedResult\)/);
   assert.match(source,/selectVaultReadRow\(tokenResult\)/);
   assert.match(source,/sameLockedEnquiryRevision\(intent.revision,owned.payload/);
-  assert.match(source,/normalizeVaultId\(await rpc\("design_enquiry_audit_record"/);
+  assert.match(source,/verifiedLockedHandoffAuditId\(await rpc\("design_enquiry_audit_record"/);
+  assert.doesNotMatch(source,/normalizeVaultId\(await rpc\("design_enquiry_audit_record"/);
   assert.match(source,/if\(!auditId\) return respond/);
   assert.match(source,/audited:false,auditId:null,ownerVerified:false,operatorReceived:false/);
   assert.match(source,/audited:true,auditId,ownerVerified:true/);

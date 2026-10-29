@@ -28,5 +28,8 @@ export async function readLockedHandoffRequest(request:Request):Promise<LockedHa
 
 /** A successful HTTP status alone cannot prove that a durable audit row exists. */
 export function verifiedLockedHandoffAuditId(receipt:unknown):string|null{
-  return normalizeVaultId(receipt);
+  const id=normalizeVaultId(receipt);
+  // Database UUID receipts are literal values, not user-entered identifiers.
+  // Never trim a padded success-shaped reply into an apparently durable audit.
+  return typeof receipt==="string"&&id&&receipt.toLowerCase()===id?id:null;
 }

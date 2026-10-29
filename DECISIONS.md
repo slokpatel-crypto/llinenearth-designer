@@ -1,3 +1,7 @@
+## 2026-10-30 — share and enquiry audit success requires literal UUID receipts
+
+**Decision:** A privileged audit RPC returning a padded UUID must not be silently normalized into an apparently durable share/enquiry event. Reuse one exact scalar UUID guard for both routes: preserve uppercase UUID hex but reject padding, objects, arrays, null and malformed IDs. A verified audit means intent was recorded, not that WhatsApp was sent or the operator accepted the enquiry. This is source-level T5/J4 integrity, not real authenticated customer/operator acceptance or privacy signoff. No schema, stock, model/photo, paid AI, live writes, migration, main merge or deployment.
+
 ## 2026-10-30 — saturated finished-garment QC pages cannot release orders
 
 **Decision:** A globally capped QC ledger is not complete latest-by-order evidence if the returned row count reaches the requested limit. The shared delivery QC guard must fail closed at the cap (500 for privileged server transition, 250 for operator Production Desk) and for malformed limits, even when an apparently valid approval is present. This preserves the original latest-timestamp, calendar, inspector and reference checks, but does not establish an atomic DB receipt for sub-cap reads. A dedicated owner-reviewed latest-QC RPC is a separate migration/release decision. No real garment QC, supplier stock, model/photo, paid AI, live write, migration, main merge or deployment.
