@@ -1,3 +1,8 @@
+## 2026-10-29 — legacy gallery URL origin spoofing (draft)
+- [x] Reproduced the unverified legacy HTML parser accepting arbitrary image URLs and checking links with a string-prefix host test; `https://llinenearth.com.evil.example/` passed the prefix test.
+- [x] Enforce HTTPS, exact page origin and no embedded credentials on both discovered images and links. Preserve legitimate relative, protocol-relative and absolute same-origin swatches; add positive/negative pure regressions and parser-wiring assertions.
+- [ ] Verify this exact stacked head with quality, full Node, engine, preview-performance, release, build, 390/768/1440 Chromium and Non-3D QA. Real stock, owner-scoped Supabase lock/recovery/enquiry/operator, tailor/device/native geometry, security and human release signoffs remain unverified. No live writes, migrations, main merge or deploy.
+
 ## 2026-10-29 — ambiguous operator stock identity must not erase a sold-out veto (draft)
 - [x] Reproduced a mistyped operator metadata subtype with a padded or single-element-array active fabric ID being ignored as unrelated, even when it carried an `availability` instruction. That could hide an explicit sold-out veto behind otherwise positive stock.
 - [x] Fail closed for ambiguous current-catalogue identities without treating them as valid IDs; preserve genuinely unrelated notes and retired fabrics. Added positive/negative pure regressions.
