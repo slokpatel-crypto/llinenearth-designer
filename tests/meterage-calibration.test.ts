@@ -170,3 +170,39 @@ test("production-calibration routes consume de-duplicated physical evidence subj
   assert.ok(model.includes("distinctMeasuredCutCaseIds(rows,garment)"));
   assert.ok(model.includes("if(identities===null) throw new Error"));
 });
+
+test("physical cut receipts reject JSON-coerced numbers, repeat, matching and notes",()=>{
+  const base={caseId:"CUT-ORDER-VALID",orderId:"11111111-1111-4111-8111-111111111111",
+    garment:"shirt",fabricId:"linen-formal-60",fabricWidthCm:150,actualMetres:1.8,
+    checkedBy:"Tailor RJ",evidenceReference:"physical-cut-ticket-12"};
+  for(const value of [null,false,true,"150","",[],{}]){
+    assert.throws(()=>normalizeProductionCutEvidenceDraft({...base,fabricWidthCm:value}),/Fabric width/);
+    assert.throws(()=>normalizeProductionCutEvidenceDraft({...base,actualMetres:value}),/Actual cloth usage/);
+  }
+  for(const value of [false,true,"12.3",[],{},-1,0])
+    assert.throws(()=>normalizeProductionCutEvidenceDraft({...base,patternRepeatMm:value}),/Pattern repeat/);
+  for(const value of ["true",1,null,[],{}])
+    assert.throws(()=>normalizeProductionCutEvidenceDraft({...base,patternMatching:value}),/Pattern matching/);
+  for(const value of [["shirt"],{label:"shirt"},true])
+    assert.throws(()=>normalizeProductionCutEvidenceDraft({...base,garment:value}),/Garment must/);
+  for(const value of [["CUT-ORDER-VALID"],{id:"CUT-ORDER-VALID"}])
+    assert.throws(()=>normalizeProductionCutEvidenceDraft({...base,caseId:value}),/Anonymous cut case ID/);
+  for(const value of [["cut"],{},true,"c".repeat(161)])
+    assert.throws(()=>normalizeProductionCutEvidenceDraft({...base,cutContext:value}),/Cut context/);
+  for(const value of [["note"],{},true,"n".repeat(1201)])
+    assert.throws(()=>normalizeProductionCutEvidenceDraft({...base,note:value}),/Cut evidence note/);
+  assert.equal(normalizeProductionCutEvidenceDraft({...base,patternRepeatMm:null,patternMatching:false,note:"n".repeat(1200)}).note.length,1200);
+});
+test("production cut API requires a confirmed UUID and bounded operator JSON",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const route=readFileSync("src/app/api/operator/production-calibration/route.ts","utf8");
+  const http=readFileSync("scripts/verify-customer-production-boundary.cjs","utf8");
+  assert.match(route,/secureJsonRequestError\(request,16384\)/);
+  assert.match(route,/readSecureJsonObject\(request,16384\)/);
+  assert.match(route,/normalizeVaultId\(receipt\)/);
+  assert.match(route,/if\(!evidenceId\) return respond\(/);
+  assert.match(route,/error instanceof SecureJsonBodyTooLarge/);
+  assert.match(route,/error instanceof SecureJsonBodyInvalid/);
+  assert.match(route,/private, no-store/);
+  assert.match(http,/\/api\/operator\/production-calibration/);
+});

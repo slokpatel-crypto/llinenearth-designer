@@ -1,3 +1,5 @@
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
+import { normalizeVaultId } from "@/lib/vault-id";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -5,6 +7,8 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { normalizeProductionCutEvidenceDraft, distinctMeasuredCutCaseIds } from "@/lib/designer/meterage-calibration";
 
 export const runtime="nodejs";
+
+function respond(body:unknown,status=200){return NextResponse.json(body,{status,headers:{"cache-control":"private, no-store","pragma":"no-cache"}});}
 
 type CutRow={
   evidence_id:string;
@@ -104,28 +108,29 @@ export async function GET(){
 }
 
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,16384);
+  if(unsafe) return respond({error:unsafe.error},unsafe.status);
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
   try{
-    const body=await request.json() as Record<string,unknown>;
-    if(String(body.action||"record")!=="record") return NextResponse.json({error:"Unsupported production calibration action."},{status:400});
-    const draft=normalizeProductionCutEvidenceDraft(body);
-    const evidenceId=await rpc<string>("production_cut_evidence_record",{
-      p_case_id:draft.caseId,
-      p_order_id:draft.orderId,
-      p_garment:draft.garment,
-      p_fabric_id:draft.fabricId,
-      p_fabric_width_cm:draft.fabricWidthCm,
-      p_actual_metres:draft.actualMetres,
-      p_pattern_repeat_mm:draft.patternRepeatMm,
-      p_pattern_matching:draft.patternMatching,
-      p_cut_context:draft.cutContext,
-      p_checked_by:draft.checkedBy,
-      p_evidence_reference:draft.evidenceReference,
-      p_note:draft.note,
+    const body=await readSecureJsonObject(request,16384);
+    if(body.action!==undefined&&body.action!=="record") return respond({error:"Unsupported production calibration action."},400);
+    let draft;
+    try{draft=normalizeProductionCutEvidenceDraft(body);}
+    catch(error){return respond({error:error instanceof Error?error.message:"Invalid physical cut evidence."},400);}
+    const receipt=await rpc<unknown>("production_cut_evidence_record",{
+      p_case_id:draft.caseId,p_order_id:draft.orderId,p_garment:draft.garment,p_fabric_id:draft.fabricId,
+      p_fabric_width_cm:draft.fabricWidthCm,p_actual_metres:draft.actualMetres,
+      p_pattern_repeat_mm:draft.patternRepeatMm,p_pattern_matching:draft.patternMatching,
+      p_cut_context:draft.cutContext,p_checked_by:draft.checkedBy,
+      p_evidence_reference:draft.evidenceReference,p_note:draft.note,
     });
-    return NextResponse.json({evidenceId});
+    const evidenceId=normalizeVaultId(receipt);
+    if(!evidenceId) return respond({error:"Physical cut backend did not confirm an evidence ID."},409);
+    return respond({evidenceId});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
     console.error("[operator/production-calibration:post]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Production cut evidence could not be recorded."},{status:409});
+    return respond({error:"Production cut evidence could not be recorded."},409);
   }
 }
