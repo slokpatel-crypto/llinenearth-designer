@@ -10,7 +10,11 @@ test("metadata transport returns explicit availability status, not a success-sha
   assert.match(loader,/loadDesignerFabricMetadataWithStatus/);
   assert.match(loader,/sourceVerified:false/);
   assert.match(loader,/sourceVerified:true/);
-  assert.match(loader,/hasCompleteOperatorMetadataPage\(rows,response\.headers\.get\("content-range"\)\)/);
+  assert.match(loader,/verifyOperatorMetadataPage\\(/);
+  assert.match(loader,/response\\.headers\\.get\\("content-range"\\)/);
+  assert.match(loader,/order:"at.desc,id.desc"/);
+  assert.match(loader,/offset:String\\(offset\\)/);
+  assert.match(loader,/receipt.status==="complete"/);
   assert.match(loader,/prefer:"count=exact"/);
   assert.match(loader,/AbortSignal\.timeout\(8_000\)/);
   assert.match(loader,/return unavailable\(\)/);
