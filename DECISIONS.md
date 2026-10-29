@@ -1,3 +1,19 @@
+## 2026-10-29 — internal GarmentViewer must not freeze live stock at build time
+
+**Decision:** The internal 3D viewer reads the same owner-reviewed live stock as the customer Designer, so its server page must render dynamically. Without request-time rendering, a build performed without Supabase credentials statically freezes zero available fabrics, causing verified Style Director-to-3D fabric handoff to lose both IDs even when runtime stock becomes available. This fix does not bypass fail-closed production inventory, approve the prototype model, or fabricate stock. Keep the CI-only stock fixture isolated.
+
+## 2026-10-29 — device dashboard must respect persisted human review and full v2 receipt
+
+**Decision:** The operator device dashboard must not reclassify a persisted v2 `review` as accepted merely because raw samples and checkboxes pass. Only a fully normalized v2 receipt explicitly marked accepted can satisfy the display gate; contradictory v2 metrics are review-only with uncertified summary fields. Historical v1 remains review-only. This is code integrity, not a physical-device acceptance.
+
+## 2026-10-29 — match browser/server device latency and missing-data semantics
+
+**Decision:** A browser session with no latency samples reports `withinTarget:null` (not a fabricated failure). The client and server both compare the rounded displayed p95 to the 100 ms acceptance threshold, conservatively treating 99.96 ms as 100.0 ms and requiring review. Real target-device signoff is still required; this only fixes the audit transport contract.
+
+## 2026-10-29 — integrate fail-closed stock and verified device audit receipts without promoting release
+
+**Decision:** The verified-stock fail-closed source and isolated CI-only browser stock fixture from draft PR #474 coexist with strict v2 device evidence and confirmed PostgREST event receipts from sibling draft PR #475. Integration is a new stacked draft branch based on #474, copying the three non-overlapping source/test files from #475. Keep real inventory unknown until owner-reviewed ledger facts exist, keep v1 device evidence review-only, and require exact integration-head CI plus real human/device/tailor/model/owner acceptance before any launch. Do not merge main or deploy from this branch.
+
 ## 2026-10-29 — Browser QA may use isolated synthetic stock, production may not
 
 **Decision:** Production customer stock stays fail-closed without one genuine provenance-ready live ledger row per offered fabric. Existing real-browser Designer regressions previously assumed bundled/demo stock and returned HTTP 200 without physical proof. Rather than weakening that production boundary, run a separate loopback mock Supabase stock endpoint only in GitHub Actions browser jobs. Its process refuses to start without CI/GITHUB_ACTIONS, uses a fake fixed test-only key and never writes a real database. Tests assert its exact typed fixture rows and guard. It does not demonstrate supplier stock, physical fabric scale, human approvals or a live Supabase login/handoff.

@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { summarizePreviewPerformanceDurations } from "../src/lib/designer/preview-performance-client.ts";
 import {
   DEVICE_QA_EVIDENCE_VERSION,
   evaluateDeviceQaEvidence,
+  normalizeDeviceQaEvidenceReceipt,
   parseDeviceQaViewport,
   summarizeDeviceQaDurations,
 } from "../src/lib/designer/device-qa-evidence.ts";
@@ -130,6 +132,31 @@ function validDeviceQaPayload():Record<string,unknown>{
   };
 }
 
+function completeDeviceQaReceipt():Record<string,unknown>{
+  return {
+    subtype:"designer_device_qa",...validDeviceQaPayload(),status:"accepted",
+    dpr:3,samples:12,medianMs:42,p95Ms:42,maxMs:42,withinTarget:true,
+    hardwareConcurrency:8,userAgent:"Real target browser",note:"Observed on the named device.",
+  };
+}
+
+test("complete device receipts preserve literal, internally consistent audit metadata",()=>{
+  const valid=completeDeviceQaReceipt();
+  const receipt=normalizeDeviceQaEvidenceReceipt(valid);
+  assert.equal(receipt?.status,"accepted");
+  assert.equal(receipt?.samples,12);
+  for(const [key,value] of [
+    ["dpr","3"],["samples","12"],["hardwareConcurrency","8"],
+    ["medianMs","42"],["withinTarget",1],["userAgent",["browser"]],
+  ] as const){
+    assert.equal(normalizeDeviceQaEvidenceReceipt({...valid,[key]:value}),null,`coerced ${key} must fail`);
+  }
+  assert.equal(normalizeDeviceQaEvidenceReceipt({...valid,samples:11}),null);
+  assert.equal(normalizeDeviceQaEvidenceReceipt({...valid,p95Ms:41}),null);
+  assert.equal(normalizeDeviceQaEvidenceReceipt({...valid,viewport:"1440x900"}),null);
+  assert.equal(normalizeDeviceQaEvidenceReceipt({...valid,note:"x".repeat(601)}),null);
+});
+
 test("coercible device QA identity never counts as acceptance",()=>{
   const valid=validDeviceQaPayload();
   assert.equal(evaluateDeviceQaEvidence(valid).accepted,true);
@@ -161,11 +188,58 @@ test("malformed or oversized raw samples invalidate the whole device receipt",()
 test("operator device evidence write/read paths preserve fail-closed acceptance",()=>{
   const writer=readFileSync(new URL("../src/app/api/memory/event/route.ts",import.meta.url),"utf8");
   const reader=readFileSync(new URL("../src/app/api/operator/device-qa/route.ts",import.meta.url),"utf8");
-  assert.match(writer,/payload\.subtype!=="designer_device_qa"/);
-  assert.match(writer,/payload\.sampleDurationsMs\.some/);
-  assert.match(writer,/status==="accepted" &&/);
-  assert.match(writer,/!evaluateDeviceQaEvidence\(/);
-  assert.match(reader,/evaluation\.versionValid\?evaluation\.p95Ms:legacyP95/);
-  assert.match(reader,/evaluation\.versionValid\?evaluation\.samples:legacySamples/);
+  assert.match(writer,/normalizeDeviceQaEvidenceReceipt\(payload\)/);
+  assert.match(writer,/return=\$\{deviceReceipt\?"representation":"minimal"\}/);
+  assert.match(writer,/Device QA evidence receipt could not be confirmed/);
+  assert.match(writer,/readSecureJsonObject\(request,MEMORY_EVENT_JSON_MAX_BYTES\)/);
+  assert.match(reader,/normalizeDeviceQaEvidenceReceipt\(payload\)/);
+  assert.match(reader,/verifiedV2\?\.status==="accepted"&&evaluation\.accepted/);
+  assert.match(reader,/performancePass:Boolean\(verifiedV2&&evaluation\.performancePass\)/);
+  assert.match(reader,/visualPass:Boolean\(verifiedV2&&evaluation\.visualPass\)/);
+  assert.match(reader,/evaluation\.versionValid\?\(verifiedV2\?evaluation\.p95Ms:null\):legacyP95/);
+  assert.match(reader,/evaluation\.versionValid\?\(verifiedV2\?evaluation\.samples:0\):legacySamples/);
   assert.doesNotMatch(reader,/Number\(payload\.p95Ms\)/);
+});
+
+
+test("browser and server agree on the rounded p95 device acceptance boundary",()=>{
+  const durations=Array.from({length:12},()=>99.96);
+  const browser=summarizePreviewPerformanceDurations(durations);
+  const server=evaluateDeviceQaEvidence({
+    version:DEVICE_QA_EVIDENCE_VERSION,deviceClass:"mobile",viewport:"390x844",
+    sampleDurationsMs:durations,
+    checks:{fourViews:true,controlsLegible:true,noOverflow:true,fabricReadable:true,modelStable:true},
+  });
+  assert.equal(browser.p95Ms,100);
+  assert.equal(browser.withinTarget,false);
+  assert.equal(server.performancePass,false);
+  assert.equal(server.accepted,false);
+  assert.deepEqual(summarizePreviewPerformanceDurations([]),{
+    samples:0,medianMs:null,p95Ms:null,maxMs:null,withinTarget:null,
+  });
+});
+
+test("device QA client preserves unmeasured review as null instead of false",()=>{
+  const source=readFileSync(new URL("../src/app/operator/device-qa/DeviceQaClient.tsx",import.meta.url),"utf8");
+  assert.match(source,/withinTarget:summary\.withinTarget,/);
+  assert.doesNotMatch(source,/withinTarget:summary\.withinTarget===true/);
+  const review=normalizeDeviceQaEvidenceReceipt({
+    subtype:"designer_device_qa",version:DEVICE_QA_EVIDENCE_VERSION,
+    deviceClass:"mobile",status:"review",viewport:"390x844",dpr:2,
+    samples:0,sampleDurationsMs:[],medianMs:null,p95Ms:null,maxMs:null,
+    withinTarget:null,hardwareConcurrency:4,userAgent:"Observed device",
+    checks:{fourViews:false,controlsLegible:false,noOverflow:false,fabricReadable:false,modelStable:false},
+    note:"No latency observations yet.",
+  });
+  assert.equal(review?.status,"review");
+});
+
+
+test("an explicitly reviewed v2 session stays review even if raw latency and visuals pass",()=>{
+  const raw=completeDeviceQaReceipt();
+  const reviewed=normalizeDeviceQaEvidenceReceipt({...raw,status:"review"});
+  assert.equal(reviewed?.status,"review");
+  assert.equal(evaluateDeviceQaEvidence(raw).accepted,true);
+  const invalid=normalizeDeviceQaEvidenceReceipt({...raw,status:"accepted",p95Ms:0});
+  assert.equal(invalid,null);
 });

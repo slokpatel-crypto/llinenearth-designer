@@ -1,3 +1,12 @@
+## 29 October 2026 — stacked stock + device QA source integration (draft)
+- [x] Combine PR #474 fail-closed verified stock and isolated CI browser fixture with PR #475 exact v2 device QA receipt validation on a new branch, preserving both parents and the canonical fixed Studio photo.
+- [x] Reject non-string/padded live RPC fabric identifiers and contradictory padded duplicates before advertising exact physical stock. Add regression cases; no inventory was created.
+- [x] Align browser/server device QA p95 rounding and preserve null for unmeasured review receipts; regression-test near-threshold and empty sessions. No human device evidence was recorded.
+- [x] Fail closed on historical contradictory v2 device rows and preserve an operator's explicit `review` verdict in the device dashboard, even when raw latency/checkboxes pass. Add reader regression; still no real device signoff.
+- [x] Reproduced PR #474 Non-3D QA browser failure: 3D handoff fabric selector was empty after build-time stock had been frozen into a static lab page. Force request-time inventory on the internal viewer and assert this contract; require fresh exact-head browser CI.
+- [ ] Require both CI workflows at the **integration commit SHA**; do not transfer green status from either sibling PR.
+- [ ] Live Supabase read-only audit: stock ledger, locked revisions, novice/beta attempts and production orders are empty. Obtain real owner-scoped authenticated customer/operator acceptance, verified shirt/trouser stock, native Blender, tailor and target-device human approvals. Synthetic fixture does not meet release gates. No merge, migration or deploy.
+
 ## 29 October 2026 — isolated browser stock fixture for honest test coverage (draft)
 - [x] Verified source tests pass but unconfigured CI browser calls return 409 after correctly rejecting absent physical inventory.
 - [x] Add a loopback-only synthetic stock RPC fixture launched solely by GitHub Actions browser jobs, with explicit CI-only process guard, fake key, bounded exact IDs and no real Supabase mutations. Keep real production stock fail-closed; add fixture regressions.

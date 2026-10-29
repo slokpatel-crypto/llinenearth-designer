@@ -12,6 +12,8 @@ test("GarmentViewer and customer Designer share the same active stock loader",()
   assert.match(shared,/loadDesignerFabricIntelligence/);
   assert.match(shared,/attachCatalogFabricPhysics/);
   assert.match(viewer,/loadActiveDesignerFabricStock/);
+  // This server-rendered lab must not freeze absent build-time stock as live inventory.
+  assert.match(viewer,/export const dynamic="force-dynamic"/);
   for(const token of ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability"]) {
     assert.match(shared,new RegExp(token));
   }

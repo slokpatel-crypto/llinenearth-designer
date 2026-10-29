@@ -105,7 +105,9 @@ export default function DeviceQaClient(){
             medianMs:summary.medianMs,
             p95Ms:summary.p95Ms,
             maxMs:summary.maxMs,
-            withinTarget:summary.withinTarget===true,
+            // Null is meaningful when no samples exist: a review receipt
+            // must not claim a measured failure that was never observed.
+            withinTarget:summary.withinTarget,
             hardwareConcurrency:navigator.hardwareConcurrency||0,
             userAgent:navigator.userAgent,
             checks,

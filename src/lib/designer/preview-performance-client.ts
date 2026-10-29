@@ -11,8 +11,8 @@ export type PreviewPerformanceSummary={
 };
 
 function round(value:number){return Math.round(value*10)/10;}
-function summarize(samples:PreviewPerformanceSample[]):PreviewPerformanceSummary {
-  const values=samples.map((item)=>item.durationMs).filter(Number.isFinite).sort((a,b)=>a-b);
+export function summarizePreviewPerformanceDurations(durations:number[]):PreviewPerformanceSummary {
+  const values=durations.filter(Number.isFinite).sort((a,b)=>a-b);
   if(!values.length) return {samples:0,medianMs:null,p95Ms:null,maxMs:null,withinTarget:null};
   const at=(p:number)=>values[Math.min(values.length-1,Math.floor((values.length-1)*p))];
   const p95=at(.95);
@@ -21,8 +21,14 @@ function summarize(samples:PreviewPerformanceSample[]):PreviewPerformanceSummary
     medianMs:round(at(.5)),
     p95Ms:round(p95),
     maxMs:round(values.at(-1) || 0),
-    withinTarget:p95<PREVIEW_PERFORMANCE_TARGET_MS,
+    // The displayed one-decimal p95 and the server's device acceptance
+    // evaluator must use the same conservative threshold decision.
+    withinTarget:round(p95)<PREVIEW_PERFORMANCE_TARGET_MS,
   };
+}
+
+function summarize(samples:PreviewPerformanceSample[]):PreviewPerformanceSummary {
+  return summarizePreviewPerformanceDurations(samples.map((item)=>item.durationMs));
 }
 
 function readSamples():PreviewPerformanceSample[] {

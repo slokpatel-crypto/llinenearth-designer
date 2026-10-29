@@ -22,7 +22,9 @@ export async function loadVerifiedStockSnapshot(fabricIds:string[]):Promise<Veri
     }
     const rows=await response.json() as Array<Record<string,unknown>>;
     return rows.map((row)=>({
-      fabric_id:String(row.fabric_id||""),
+      // Preserve the RPC type; never turn ["fabric-id"] or other JSON
+      // values into a convincing exact inventory identifier.
+      fabric_id:typeof row.fabric_id==="string"?row.fabric_id:"",
       // Never convert a missing/null RPC value into the number zero: that
       // would falsely label an absent measurement as verified zero stock.
       available_metres:typeof row.available_metres==="number"||typeof row.available_metres==="string"
