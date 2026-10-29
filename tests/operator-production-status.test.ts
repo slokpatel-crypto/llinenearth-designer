@@ -51,7 +51,11 @@ test("privileged production errors do not reflect upstream SQL, owner or RPC det
   assert.match(source,/console\.error\("\[operator\/production\]",error\)/);
   assert.match(source,/error:"Production operation could not be completed\.".*status:409,headers:\{"cache-control":"private, no-store"\}/);
   assert.doesNotMatch(source,/error:error instanceof Error\?error\.message/);
-  assert.doesNotMatch(source,/error:\s*error\.message/);
+  // Validation error.message is intentionally shown for malformed user input;
+  // only the unexpected privileged RPC catch must not reflect backend details.
+  const unexpected=source.split('console.error("[operator/production]",error);')[1]||"";
+  assert.ok(unexpected.includes('Production operation could not be completed.'));
+  assert.doesNotMatch(unexpected,/error:\s*error\.message/);
   // Client-visible validation remains explicit; unexpected backend diagnostics do not.
   assert.match(source,/error:"Valid quote UUID, allowed status/);
   assert.match(source,/error:"Valid order UUID, allowed status/);
