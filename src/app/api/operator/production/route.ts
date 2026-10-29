@@ -10,6 +10,7 @@ import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/des
 import { buildProductionLearningContext } from "@/lib/designer/production-learning-context";
 import { parseOperatorLockedSelection } from "@/lib/designer/operator-locked-selection";
 import { parseOperatorProductionStatus } from "@/lib/designer/operator-production-status";
+import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
@@ -110,7 +111,9 @@ export async function POST(request:Request){
         p_revision_id:revisionId,p_recipe_hash:recipeHash,p_currency:draft.currency,
         p_line_items:draft.lineItems,p_adjustment:draft.adjustment,p_note:note,
       });
-      return NextResponse.json({quoteId,lockedRevisionVerified:true});
+      const confirmedQuoteId=verifiedOperatorProductionCreateId(quoteId);
+      if(!confirmedQuoteId) return NextResponse.json({error:"Quote creation receipt could not be verified."},{status:409});
+      return NextResponse.json({quoteId:confirmedQuoteId,lockedRevisionVerified:true});
     }
     if(action==="quote_status"){
       const change=parseOperatorProductionStatus(body,"quote");
@@ -136,7 +139,9 @@ export async function POST(request:Request){
         p_note:note,
         p_context:buildProductionLearningContext(revision),
       });
-      return NextResponse.json({orderId,learningContextAttached:true,lockedRevisionVerified:true});
+      const confirmedOrderId=verifiedOperatorProductionCreateId(orderId);
+      if(!confirmedOrderId) return NextResponse.json({error:"Order creation receipt could not be verified."},{status:409});
+      return NextResponse.json({orderId:confirmedOrderId,learningContextAttached:true,lockedRevisionVerified:true});
     }
     if(action==="order_status"){
       const change=parseOperatorProductionStatus(body,"order");
