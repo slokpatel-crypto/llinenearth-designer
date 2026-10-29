@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {
   normalizeCustomerOutcomePolicy,
   normalizeCustomerOutcomeReview,
@@ -109,4 +110,36 @@ test("malformed or mismatched durable context cannot satisfy the learning thresh
   );
   assert.equal(missingPair.learningEligible,0);
   assert.equal(missingPair.gateComplete,false);
+});
+
+const reviewUuid="123e4567-e89b-42d3-a456-426614174000";
+
+test("review evidence requires literal UUID, decision, reviewer and note",()=>{
+  assert.deepEqual(normalizeCustomerOutcomeReview({outcomeId:reviewUuid.toUpperCase(),decision:"approved",reviewer:" Owner ",note:null}),{outcomeId:reviewUuid,decision:"approved",reviewer:"Owner",note:""});
+  const base={outcomeId:reviewUuid,decision:"approved",reviewer:"Owner",note:"ok"};
+  for(const [field,invalid] of [["outcomeId",[reviewUuid]],["outcomeId","-".repeat(36)],["decision",["approved"]],["reviewer",["Owner"]],["reviewer","x".repeat(121)],["note",["ok"]],["note","x".repeat(1201)]] as const)
+    assert.throws(()=>normalizeCustomerOutcomeReview({...base,[field]:invalid}));
+  assert.throws(()=>normalizeCustomerOutcomeReview({...base,decision:"rejected",note:""}),/rejection reason/);
+});
+
+test("policy cannot infer human approval from coerced thresholds or text",()=>{
+  assert.deepEqual(normalizeCustomerOutcomePolicy({minimumApprovedCases:25,approvedBy:" Owner ",note:"source"}),{minimumApprovedCases:25,approvedBy:"Owner",note:"source"});
+  const base={minimumApprovedCases:25,approvedBy:"Owner",note:"source"};
+  for(const invalid of ["25",[25],true,null,0,1.5,10001,NaN,Infinity])
+    assert.throws(()=>normalizeCustomerOutcomePolicy({...base,minimumApprovedCases:invalid}),/whole-number/);
+  for(const [field,invalid] of [["approvedBy",["Owner"]],["approvedBy","x".repeat(121)],["note",["source"]],["note","x".repeat(1201)]] as const)
+    assert.throws(()=>normalizeCustomerOutcomePolicy({...base,[field]:invalid}));
+});
+
+test("operator outcome route bounds transport and confirms actual review/policy IDs",()=>{
+  const source=readFileSync("src/app/api/operator/customer-outcomes/route.ts","utf8");
+  const post=source.split("export async function POST")[1];
+  assert.match(post,/secureJsonRequestError\(request,16384\)/);
+  assert.match(post,/readSecureJsonObject\(request,16384\)/);
+  assert.match(post,/parseCustomerProductionRecordId\(reviewId\)/);
+  assert.match(post,/parseCustomerProductionRecordId\(policyId\)/);
+  assert.match(post,/SecureJsonBodyTooLarge/);
+  assert.match(post,/SecureJsonBodyInvalid/);
+  assert.doesNotMatch(post,/await request\.json\(\)/);
+  assert.doesNotMatch(post,/String\(body\.action/);
 });

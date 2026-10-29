@@ -1,3 +1,5 @@
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
+import { parseCustomerProductionRecordId } from "@/lib/designer/customer-production-outcomes";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -35,6 +37,10 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
   return await response.json() as T;
 }
 
+function respond(body:unknown,status=200){
+  return NextResponse.json(body,{status,headers:{"cache-control":"private, no-store","pragma":"no-cache"}});
+}
+
 export async function GET(){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
   if(!getSupabaseAdminConfig()){
@@ -60,37 +66,44 @@ export async function GET(){
 }
 
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,16384);
+  if(unsafe) return respond({error:unsafe.error},unsafe.status);
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
   try{
-    const body=await request.json() as Record<string,unknown>;
-    const action=String(body.action||"");
-
-    if(action==="review"){
-      const review=normalizeCustomerOutcomeReview(body);
-      const reviewId=await rpc<string>("production_customer_outcome_review_record",{
+    const body=await readSecureJsonObject(request,16384);
+    if(body.action==="review"){
+      let review;
+      try{review=normalizeCustomerOutcomeReview(body);}
+      catch(error){return respond({error:error instanceof Error?error.message:"Invalid customer outcome review."},400);}
+      const reviewId=await rpc<unknown>("production_customer_outcome_review_record",{
         p_outcome_id:review.outcomeId,
         p_decision:review.decision,
         p_reviewer:review.reviewer,
         p_note:review.note,
       });
-      return NextResponse.json({reviewId});
+      const confirmedId=parseCustomerProductionRecordId(reviewId);
+      if(!confirmedId) return respond({error:"Customer outcome review could not be confirmed."},409);
+      return respond({reviewId:confirmedId});
     }
 
-    if(action==="policy"){
-      const policy=normalizeCustomerOutcomePolicy(body);
-      const policyId=await rpc<string>("production_customer_outcome_policy_record",{
+    if(body.action==="policy"){
+      let policy;
+      try{policy=normalizeCustomerOutcomePolicy(body);}
+      catch(error){return respond({error:error instanceof Error?error.message:"Invalid customer outcome policy."},400);}
+      const policyId=await rpc<unknown>("production_customer_outcome_policy_record",{
         p_minimum_approved_cases:policy.minimumApprovedCases,
         p_approved_by:policy.approvedBy,
         p_note:policy.note,
       });
-      return NextResponse.json({policyId});
+      const confirmedId=parseCustomerProductionRecordId(policyId);
+      if(!confirmedId) return respond({error:"Customer outcome policy could not be confirmed."},409);
+      return respond({policyId:confirmedId});
     }
-
-    return NextResponse.json({error:"Unsupported customer-outcome action."},{status:400});
+    return respond({error:"Unsupported customer-outcome action."},400);
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
     console.error("[operator/customer-outcomes]",error);
-    return NextResponse.json({
-      error:error instanceof Error?error.message:"Customer outcome operation failed.",
-    },{status:409});
+    return respond({error:"Customer outcome operation failed."},409);
   }
 }

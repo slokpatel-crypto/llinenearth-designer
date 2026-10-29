@@ -30,31 +30,31 @@ export type CustomerOutcomePolicyRow={
   created_at:string;
 };
 
+const REVIEW_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export function normalizeCustomerOutcomeReview(input:Record<string,unknown>){
-  const outcomeId=String(input.outcomeId||"").trim();
-  const decision=String(input.decision||"") as CustomerOutcomeReviewDecision;
-  const reviewer=String(input.reviewer||"").trim().slice(0,120);
-  const note=String(input.note||"").trim().slice(0,1200);
+  const outcomeId=typeof input.outcomeId==="string"?input.outcomeId.trim():"";
+  const decision=input.decision;
+  const reviewer=typeof input.reviewer==="string"?input.reviewer.trim():"";
+  if(input.note!==undefined&&input.note!==null&&typeof input.note!=="string") throw new Error("Review note must be text.");
+  const note=typeof input.note==="string"?input.note.trim():"";
 
-  if(!/^[0-9a-f-]{36}$/i.test(outcomeId)) throw new Error("Valid outcome ID is required.");
-  if(!["approved","rejected"].includes(decision)) throw new Error("Choose an outcome review decision.");
-  if(reviewer.length<2) throw new Error("Named reviewer is required.");
+  if(!REVIEW_UUID.test(outcomeId)) throw new Error("Valid outcome ID is required.");
+  if(decision!=="approved"&&decision!=="rejected") throw new Error("Choose an outcome review decision.");
+  if(reviewer.length<2||reviewer.length>120) throw new Error("Named reviewer must be 2–120 characters.");
+  if(note.length>1200) throw new Error("Review note must be 1200 characters or fewer.");
   if(decision==="rejected"&&note.length<3) throw new Error("Add a short rejection reason.");
-
-  return {outcomeId,decision,reviewer,note};
+  return {outcomeId:outcomeId.toLowerCase(),decision,reviewer,note};
 }
 
 export function normalizeCustomerOutcomePolicy(input:Record<string,unknown>){
-  const minimumApprovedCases=Number(input.minimumApprovedCases);
-  const approvedBy=String(input.approvedBy||"").trim().slice(0,120);
-  const note=String(input.note||"").trim().slice(0,1200);
-
-  if(!Number.isInteger(minimumApprovedCases)||minimumApprovedCases<1||minimumApprovedCases>10000) {
+  const minimumApprovedCases=input.minimumApprovedCases;
+  const approvedBy=typeof input.approvedBy==="string"?input.approvedBy.trim():"";
+  const note=typeof input.note==="string"?input.note.trim():"";
+  if(typeof minimumApprovedCases!=="number"||!Number.isSafeInteger(minimumApprovedCases)||minimumApprovedCases<1||minimumApprovedCases>10000)
     throw new Error("Enter a whole-number approved-case threshold.");
-  }
-  if(approvedBy.length<2) throw new Error("Named policy approver is required.");
-  if(note.length<3) throw new Error("Document the source or reasoning for this threshold.");
-
+  if(approvedBy.length<2||approvedBy.length>120) throw new Error("Named policy approver must be 2–120 characters.");
+  if(note.length<3||note.length>1200) throw new Error("Document the source or reasoning for this threshold (3–1200 characters).");
   return {minimumApprovedCases,approvedBy,note};
 }
 
