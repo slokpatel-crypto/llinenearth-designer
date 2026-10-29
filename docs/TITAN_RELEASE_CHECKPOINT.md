@@ -94,3 +94,22 @@ Canonical criteria: [TITAN_RELEASE_CHECKLIST.md](./TITAN_RELEASE_CHECKLIST.md). 
 - **Repair parent → result:** `ec6733e8f77b1886d41e7ee03b02e92aae0a90e9` → `89f3b0b9513c75cb2ed0de06e08d53cf9d6da064`. Use explicit `.ts` import, consistent with Node's strip-types tests and allowed by repository `allowImportingTsExtensions:true`. No business validation relaxed.
 - **New verification:** matching-head quality, full Node, engine, preview, release, build, browser 390/768/1440 and Non-3D **PENDING** after this checkpoint. The old failed run is not transferable.
 - **External blockers and next:** unchanged real supplier stock, owner-authenticated production flow, tailor/device/native Blender, beta/delivery/security and owner approvals. Check latest PR #503 exact head and new CI; fix actual failures, no production writes/merge/deploy.
+
+
+## 2026-10-29T19:02:51.145Z — M8: J5 bounded finished-garment QC and exact inspection receipts
+
+- **Criteria:** T5/J5/T6, security and physical-QC receipt integrity (source-only; not human acceptance).
+- **Stack:** draft branch `work/titan-j5-qc-rpc-bounds-20261030` starts from #503 exact `5f3b19d97ac58a1df60396f39dc4e08c5ed7dde0` (which stacks on #502 → #501 → #500 → #499); unchanged parent and no force updates.
+- **Parent → implementation:** `5f3b19d97ac58a1df60396f39dc4e08c5ed7dde0` → `3493e0ce1153b4b3aa656530e9c8c9e724f5c233` → `111ab77ed30ac27236d7f4ae26c639f254069acf` → `588e9637b4b9e1fdd60dd36a9fd7f71d9ae009ff`.
+- **Defect and fix:** `src/app/api/operator/garment-qc/route.ts` accepted unrestricted JSON and echoed partially buffered, untrusted error responses; a non-array GET body appeared configured, and a padded QC mutation UUID could be promoted to confirmed inspection. Reused the existing 8-second, decoded-stream-safe bounded JSON helper (4 MiB list / 4 KiB mutation), suppressed upstream error bodies, required list arrays and literal exact UUID scalar. `tests/finished-garment-qc.test.ts` and new `tests/operator-garment-qc-rpc-boundary.test.ts` cover source wiring and valid/invalid receipts. Existing original model, preview, operator auth and migrations remain unchanged.
+- **Verification:** GitHub writes returned exact commit SHAs; source and tests exist in the draft. **PENDING on final candidate:** full quality, Node, engine, preview-performance, static release check, build, 390/768/1440 browser and Non-3D. Parent #503 workflow runs `40934597897` (CI) and `40934597608` (Non-3D) were in progress at inspection and are NOT evidence for this new branch.
+- **BLOCKED separately:** real tailor QC and live owner/operator receipts; no genuine supplier/measurement, physical garment, target device, native 3D, beta/first-ten, privacy/security and owner approval.
+- **Next:** verify the draft branch exact-head CI; if failed inspect logs, correct the production source/test regressions without bypassing gates.
+
+## 2026-10-29T19:02:51.145Z — M9: J5 operator quote/order list completeness at public desk
+
+- **Criteria:** T5/J5/T6. Valid zero-row ledger is distinct from malformed non-array backend response.
+- **Parent → implementation:** `588e9637b4b9e1fdd60dd36a9fd7f71d9ae009ff` → `22bf9e005941ff3d7821195cf030f4ddc065dc85` → `5dbf4475cf781b7dd09e26b64235738a69401cb2` → `df801a14e57dd86e3333a520a0a3837e98c3d9dd` (TODO).
+- **Defect and fix:** operator quote/order GET returned `configured:true` even if Supabase sent malformed list JSON; client silently converted each to `[]`, hiding active production work. Require both arrays before response or return 503. `tests/titan-production-rpc-bounds.test.ts` now asserts the fail-closed shape; `TODO.md` tracks the same boundary. No schema change, provider call, production write, merge or deployment.
+- **Verification:** new code and test writes were confirmed by GitHub SHA; runtime tests and browser evidence at the final checkpoint commit are **PENDING**. J5 remains **BLOCKED** for physical/human acceptance even if source-level CI later passes.
+- **Next:** open a stacked draft PR based on #503, inspect exact-head actions CI and Non-3D; repair failures, then inspect the next J5 customer/operator order boundary. Never call deployment ready until all T1–T6/J1–J6 gates pass on one integrated SHA.
