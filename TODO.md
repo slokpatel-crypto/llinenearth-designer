@@ -1,3 +1,8 @@
+## 2026-10-29 — physical stock rounding tolerance cannot sell dust (draft)
+- [x] Reproduced a provenance-ready RPC row with tiny positive `available_metres` (e.g. `1e-12`) passing the 0.001m rounding tolerance and being advertised `inStock:true` despite zero physical ledger units.
+- [x] Reject positive quantities that round to zero millimetres and decide availability using integer 0.001m units; preserve verified exact zero and valid positive metreage. Add positive/negative Node regressions.
+- [ ] Verify this stacked draft's exact-head quality, full Node, engine, preview, release, build and 390/768/1440 browser/Non-3D QA. Real supplier-confirmed stock, authenticated owner-scoped Supabase lock/recovery/enquiry/operator, tailor/device/native Blender, security and human release acceptance remain missing. No merge, migration, production write or deploy.
+
 ## 2026-10-29 — integrate padded metadata subtype strictness into latest stacked draft
 - [x] Preserve independent PR #494 finding: whitespace-padded or one-element-array designer_fabric_metadata subtype must fail closed instead of hiding operator sold-out history.
 - [x] Add positive/negative subtype regression cases alongside active-fabric ambiguity and literal material tags fixes; update legacy source assertions for the typed text parser.
