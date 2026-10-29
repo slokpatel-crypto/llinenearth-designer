@@ -1,3 +1,7 @@
+## 2026-10-29 — stock availability needs a corroborated v2 ledger receipt
+
+**Decision:** Do not trust a lone `provenance_ready:true` from the stock snapshot RPC. The existing SQL v2 contract includes manual, provenance and legacy-unverified event counts. Require positive safe-integer manual count, equal provenance count and zero legacy count; malformed or missing counts fail closed. The CI-only loopback fixture emits synthetic matching counts solely to exercise UI and never represents real inventory. This adds consistency checks, not physical supplier evidence, human approval or a stock reservation. No schema, real database write, merge or deployment.
+
 ## 2026-10-29 — Verified inventory must match one unique catalogue identity
 
 **Decision:** A physically verified stock snapshot row can only promote a customer swatch if that fabric ID occurs exactly once in the catalogue. Duplicate catalogue IDs (including two different swatch photos) fail closed instead of sharing one physical roll's availability. A valid but unexpected RPC fabric ID is not a verified catalogue fabric and must not inflate verifiedStockFabrics. Preserve existing valid positive/zero evidence, catalogue sold-out overrides, option IDs, model/photo and deterministic no-credit Designer behavior.
