@@ -1,3 +1,9 @@
+## 2026-10-30 — J5 QC and operator ledger fail-closed transport (stacked draft)
+- [x] Reproduced the finished-garment QC endpoint reading unbounded upstream success/error JSON, accepting trimmed QC receipt UUIDs, and allowing malformed list bodies to appear successful; bounded JSON reader reused with 4 MiB list and 4 KiB mutation caps, 8-second timeout, non-reflected errors, exact scalar UUID receipt and array-shape checks.
+- [x] Reproduced the operator production desk converting malformed quote/order RPC list values into apparently empty quote/order ledgers; reject non-array receipts before returning a configured shop snapshot.
+- [x] Added positive/negative source and UUID regression coverage; preserved original model, deterministic no-paid-AI core, existing migrations, operator authentication and prior stacked draft changes.
+- [ ] Run exact-head quality, Node suite, engine, preview, static release, build, Chromium 390/768/1440, Non-3D QA. Real owner/operator Supabase and genuine supplier/tailor/device/native geometry evidence remain mandatory; do not merge/deploy.
+
 ## 2026-10-29 — J5 privileged quote/order creation receipts must be exact (draft)
 - [x] Reproduced operator quote and order create routes returning `lockedRevisionVerified:true` and `learningContextAttached:true` without validating the create RPC's returned UUID; null, objects, arrays or padded strings could appear as successful creations.
 - [x] Require literal exact UUID scalar from both creation RPCs before reporting success; reject invalid receipts with 409, preserving real locked revision integrity and no-cost deterministic preview. Added positive/negative receipt and route-source regressions.

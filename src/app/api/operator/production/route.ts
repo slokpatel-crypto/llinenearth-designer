@@ -60,6 +60,9 @@ export async function GET(){
       rpc("production_quote_list",{p_limit:100}),
       rpc("production_order_list",{p_limit:100}),
     ]);
+    // A malformed upstream response must not look like a legitimately empty
+    // shop quote/order ledger in the operator console.
+    if(!Array.isArray(quotes)||!Array.isArray(orders)) throw new Error("Malformed production quote/order list receipts.");
     let qcInspections:unknown[]=[];
     let customerOutcomes:unknown[]=[];
     let learningContexts:unknown[]=[];

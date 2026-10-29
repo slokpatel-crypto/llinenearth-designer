@@ -31,3 +31,10 @@ test("production RPC caps preserve small valid receipts and bounded histories",a
   await assert.rejects(readBoundedJsonResponse(new Response("x".repeat(256*1024+1)),256*1024),/exceeds/);
   await assert.rejects(readBoundedJsonResponse(new Response("[invalid"),256*1024),SyntaxError);
 });
+
+test("operator quote and order ledgers never present malformed RPC responses as empty records",()=>{
+  const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
+  assert.match(source,/if\(!Array\.isArray\(quotes\)\|\|!Array\.isArray\(orders\)\) throw/);
+  assert.match(source,/Malformed production quote\/order list receipts/);
+  assert.match(source,/error:"Production records could not be read\."\},\{status:503\}/);
+});
