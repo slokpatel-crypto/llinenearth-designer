@@ -7,6 +7,7 @@ import {
 import {
   CUSTOMER_AUTH_JSON_MAX_BYTES,
   customerAuthRateBlocked,
+  customerAuthEmailRateBlocked,
   parseCustomerAuthEmail,
   parseCustomerOtpCode,
   type CustomerAuthRateState,
@@ -49,6 +50,8 @@ export async function POST(request:Request){
     return respond({error:"Sign-in request could not be read."},400);
   }
   if(!email||!token) return respond({error:"Enter the email and code you received."},400);
+  if(customerAuthEmailRateBlocked(rate,"verify",email))
+    return respond({error:"Too many sign-in attempts for this email. Try again later."},429);
 
   try{
     const session=await verifyCustomerOtp(email,token);
