@@ -1,3 +1,8 @@
+## 2026-10-29 — integrated stock dust and bounded RPC source-test verification (draft)
+- [x] Reproduced a tiny positive `available_metres` (e.g. `1e-12`) passing the floating 0.001m tolerance and incorrectly advertising `inStock:true` despite zero ledger units. Reject positive quantities rounding to zero and use integer physical units for customer availability; add Node regressions.
+- [x] Reconciled #495's bounded JSON RPC adapter with its renamed validated `record` alias in the existing source-contract test; require literal IDs, a 1 MiB response cap and row-shape validation without weakening checks.
+- [ ] Verify exact-head quality, full Node, engine, preview, release, production build and real 390/768/1440 browser/Non-3D QA. Live supplier stock, owner-scoped lock/recovery/enquiry/operator, tailor/device/native Blender, security and human release approvals remain unverified. No live mutation, merge or deployment.
+
 ## 2026-10-29 — bound JSON reads on both customer stock evidence services (draft)
 - [x] Operator override pages and verified stock RPC use streaming bounded JSON reading instead of unbounded response.json(), with decoded body caps of 4 MiB/page and 1 MiB/stock snapshot under existing 8-second aborts. Oversize, invalid UTF-8/JSON and malformed stock row shapes all fail closed.
 - [x] Add real stream/Unicode, exact-byte-boundary, overflow, body absence and malformed response regressions plus both service wiring checks; preserve legitimate stock and no-store semantics.
