@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { assertCurrentFabricId, readBoundedStockMutationJson, StockMutationPayloadTooLarge, stockMutationRequestError, validateOperatorStockSnapshot } from "@/lib/designer/operator-stock-safety";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 import {normalizeVaultId} from "@/lib/vault-id";
 
@@ -19,10 +20,11 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     signal:AbortSignal.timeout(8_000),
   });
   if(!response.ok){
-    const detail=(await response.text()).slice(0,300);
-    throw new Error(`Stock operation failed (${response.status}): ${detail}`);
+    throw new Error(`Stock operation failed (${response.status}).`);
   }
-  return await response.json() as T;
+  // Physical stock list receipts can be larger than mutation receipts, but never unbounded.
+  const maxBytes=name==="fabric_stock_snapshot_v2"?4 * 1024 * 1024:256 * 1024;
+  return await readBoundedJsonResponse(response,maxBytes) as T;
 }
 
 async function authorized(){
