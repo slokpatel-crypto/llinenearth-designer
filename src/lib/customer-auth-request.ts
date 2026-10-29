@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { normalizeCustomerEmail } from "./customer-account.ts";
 
 /** A small, fail-closed public OTP transport boundary. No email is sent until these checks pass. */
@@ -35,6 +36,41 @@ function countRequest(entries:Map<string,Entry>,key:string,limit:number,now:numb
   return previous.count+1>limit;
 }
 
+
+function reserveIdentityKey(entries:Map<string,Entry>,key:string,now:number):void {
+  if(entries.has(key)||entries.size<MAX_CUSTOMER_AUTH_RATE_KEYS) return;
+  // Oldest entries are at the front. Preserve a hard memory bound even
+  // during a flood of distinct IPs and email identities.
+  for(let i=0;i<8&&entries.size>=MAX_CUSTOMER_AUTH_RATE_KEYS;i++){
+    const oldest=entries.keys().next().value;
+    if(oldest===undefined) break;
+    const entry=entries.get(oldest)!;
+    if(now>=entry.at&&now-entry.at<=WINDOW_MS) break;
+    entries.delete(oldest);
+  }
+  if(entries.size>=MAX_CUSTOMER_AUTH_RATE_KEYS){
+    const oldest=entries.keys().next().value;
+    if(oldest!==undefined) entries.delete(oldest);
+  }
+}
+
+/** A hashed per-address budget prevents simple IP rotation from spamming
+ * one mailbox or brute-forcing one OTP. No plaintext email is stored.
+ * It remains per-instance and cannot replace distributed/provider limits.
+ */
+export function customerAuthEmailRateBlocked(
+  state:CustomerAuthRateState,
+  action:AuthAction,
+  normalizedEmail:string,
+  now:number=Date.now(),
+):boolean {
+  if(!Number.isFinite(now)) return true;
+  const digest=createHash("sha256").update(normalizedEmail,"utf8").digest("hex");
+  const key="email:"+action+":"+digest;
+  reserveIdentityKey(state.identities,key,now);
+  return countRequest(state.identities,key,action==="otp"?4:10,now);
+}
+
 /**
  * Bounded, process-local best-effort OTP throttling. Forwarded IP headers are
  * untrusted; a separate global bucket limits trivial header rotation. This
@@ -51,21 +87,7 @@ export function customerAuthRateBlocked(
   const ip=candidate.length<=45 && /^[0-9a-fA-F.:]{3,45}$/.test(candidate)
     ? candidate.toLowerCase() : "unknown";
   const key=action+":"+ip;
-  if(!state.identities.has(key)&&state.identities.size>=MAX_CUSTOMER_AUTH_RATE_KEYS){
-    // Oldest entries are at the front. Retain a strict memory bound even if
-    // every identity is fresh; the global bucket still limits IP rotation.
-    for(let i=0;i<8&&state.identities.size>=MAX_CUSTOMER_AUTH_RATE_KEYS;i++){
-      const oldest=state.identities.keys().next().value;
-      if(oldest===undefined) break;
-      const entry=state.identities.get(oldest)!;
-      if(now>=entry.at && now-entry.at<=WINDOW_MS) break;
-      state.identities.delete(oldest);
-    }
-    if(state.identities.size>=MAX_CUSTOMER_AUTH_RATE_KEYS){
-      const oldest=state.identities.keys().next().value;
-      if(oldest!==undefined) state.identities.delete(oldest);
-    }
-  }
+  reserveIdentityKey(state.identities,key,now);
   const globalBlocked=countRequest(state.global,action,action==="otp"?300:1_000,now);
   const identityBlocked=countRequest(state.identities,key,action==="otp"?8:12,now);
   return globalBlocked||identityBlocked;
