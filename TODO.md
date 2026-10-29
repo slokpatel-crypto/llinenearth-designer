@@ -1,3 +1,9 @@
+## 2026-10-30 — J5 delivery evidence read and write must fail closed (stacked draft)
+- [x] Reproduced unbounded upstream Supabase success/error reads in first-ten delivery audit and evidence browsing, allowing a malformed non-array ledger to appear configured or a padded RPC UUID to become a recorded audit.
+- [x] Bounded all delivery evidence RPC reads: 4 MiB list and chronological first-ten basis, 4 KiB write receipt; 8-second abort, private no-store and missing-migration null basis preserved. Require literal exact UUID audit receipt and array-shaped history before a success-shaped configured response.
+- [x] Added positive/negative real-stream JSON size, malformed reply, exact UUID and endpoint source regressions; no production data or schema mutations, no fake delivered customers, no paid AI or model/feature change.
+- [ ] Exact-head CI, tests, engine, preview, release, build and browser/Non-3D must pass. Live first-ten RPC remains missing; real supplier stock, owner/customer/operator, tailor, device, native model and human release signoffs still BLOCKED. No main merge or deployment.
+
 ## 2026-10-30 — J5 QC and operator ledger fail-closed transport (stacked draft)
 - [x] Reproduced the finished-garment QC endpoint reading unbounded upstream success/error JSON, accepting trimmed QC receipt UUIDs, and allowing malformed list bodies to appear successful; bounded JSON reader reused with 4 MiB list and 4 KiB mutation caps, 8-second timeout, non-reflected errors, exact scalar UUID receipt and array-shape checks.
 - [x] Reproduced the operator production desk converting malformed quote/order RPC list values into apparently empty quote/order ledgers; reject non-array receipts before returning a configured shop snapshot.

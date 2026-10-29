@@ -568,7 +568,7 @@ test("delivery audit POST requires exact order and recorded evidence UUID, bound
   assert.match(route,/secureJsonRequestError\(request,16384\)/);
   assert.match(route,/readSecureJsonObject\(request,16384\)/);
   assert.match(route,/normalizeVaultId\(body\.orderId\)/);
-  assert.match(route,/normalizeVaultId\(receipt\)/);
+  assert.match(route,/verifiedOperatorProductionCreateId\(receipt\)/);
   assert.match(route,/if\(!evidenceId\) return respond\(/);
   assert.match(route,/error instanceof SecureJsonBodyTooLarge/);
   assert.match(route,/error instanceof SecureJsonBodyInvalid/);
