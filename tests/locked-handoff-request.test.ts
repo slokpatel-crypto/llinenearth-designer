@@ -66,10 +66,10 @@ test("share/enquiry and customer UI retain privacy, lineage and explicit-send co
   const share=readFileSync("src/app/api/designer/share/route.ts","utf8");
   const ui=readFileSync("src/components/DesignerModule.tsx","utf8");
   assert.match(share,/readLockedHandoffRequest\(request\)/);
-  assert.match(share,/verifiedLockedHandoffAuditId\\(await readBoundedJsonResponse\\(audit,4 \\* 1024\\)\\.catch\\(\\(\\)=>null\\)\\)/);
-  assert.match(enquiry,/readBoundedJsonResponse\\(response,256 \\* 1024\\)/);
-  assert.doesNotMatch(enquiry,/response\\.json\\(\\)/);
-  assert.doesNotMatch(share,/audit\\.json\\(\\)/);
+  assert.match(share,/verifiedLockedHandoffAuditId\(await readBoundedJsonResponse\(audit,4 \* 1024\)\.catch\(\(\)=>null\)\)/);
+  assert.match(enquiry,/readBoundedJsonResponse\(response,256 \* 1024\)/);
+  assert.doesNotMatch(enquiry,/response\.json\(\)/);
+  assert.doesNotMatch(share,/audit\.json\(\)/);
   assert.match(share,/cache-control":"private, no-store"/);
   assert.match(enquiry,/readLockedHandoffRequest\(request\)/);
   assert.match(enquiry,/parseEnquiryIntent\(parsed.revision\)/);
