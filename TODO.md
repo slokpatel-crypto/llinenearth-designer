@@ -1,3 +1,9 @@
+## 2026-10-30 — J5 first-ten delivery audit RPC failure must not be mistaken for absent migration (stacked draft)
+- [x] Reproduced operator delivery evidence GET catching every first-ten RPC failure (malformed 200, upstream 5xx, timeout and missing migration) and returning a success-shaped `firstTenBasis:null` ledger.
+- [x] Preserve compatibility only for an actual HTTP 404 missing optional RPC, with explicit `firstTenAuditInstalled:false`; reject installed malformed, unreachable or oversized responses and validate typed first-ten receipt. Valid `historyValid:false` remains visible but never release-capable.
+- [x] Added positive/negative receipt and route-wiring regressions, and updated previous source contract for the strengthened first-ten check. No schema change, live write, provider charge, main merge or deployment.
+- [ ] Verify matching-head quality, full Node, engine, preview-performance, release check, build, real 390/768/1440 Chromium and Non-3D. Genuine first-ten RPC migration, real ten deliveries, stock, signed-in owner/operator, tailor, devices, native Blender, security/privacy and owner approvals remain BLOCKED/PENDING.
+
 ## 2026-10-30 — J5 optional operator evidence receipts must be distinguishable from missing migrations (stacked draft)
 - [x] Reproduced operator production GET treating malformed 200 QC, customer-outcome or learning-context RPC bodies as success-shaped empty/invalid optional lists; all upstream failures were also silently converted to empty history.
 - [x] Require literal arrays for installed optional RPCs; a malformed 200, 5xx, timeout or invalid JSON now fails the operator production GET closed. Preserve legacy compatibility only for HTTP 404 missing optional RPCs and expose explicit installed-status flags rather than representing absent migration as verified zero history.
