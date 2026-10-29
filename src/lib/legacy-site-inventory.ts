@@ -1,5 +1,6 @@
 import "server-only";
 import type { FabricColorway, GarmentKind } from "@/lib/fabric-stock";
+import { readBoundedLegacyGalleryHtml } from "@/lib/legacy-gallery-response";
 
 export const LEGACY_CATEGORIES = [
   { id: "60lea-plain", label: "60 Lea Plain", path: "/60lea-plain.php", family: "Linen", pattern: "Plain", suitableFor: ["shirt"] as GarmentKind[] },
@@ -102,9 +103,10 @@ async function readCategory(category: (typeof LEGACY_CATEGORIES)[number]): Promi
         accept: "text/html,application/xhtml+xml",
       },
       cache: "no-store",
+      signal: AbortSignal.timeout(5_000),
     });
     if (!response.ok) return { ...category, pageUrl, ok: false, status: response.status, images: [], links: [] };
-    const html = await response.text();
+    const html = await readBoundedLegacyGalleryHtml(response);
     return {
       ...category,
       pageUrl,

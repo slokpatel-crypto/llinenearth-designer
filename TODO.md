@@ -1,3 +1,8 @@
+## 29 October 2026 — bounded optional legacy inventory discovery (draft)
+- [x] Reproduced unbounded external gallery response body and no request timeout in `scanLegacySite()`, which could stall the inventory route despite fail-closed live structured stock.
+- [x] Add 5-second remote fetch timeout and 2 MiB streamed response guard; preserve bundled unverified website fallback and UTF-8 decoding. Add real streaming and negative source regressions.
+- [ ] Require latest exact-head quality, Node, engine, preview, release, build, real 390/768/1440 browser and Non-3D QA. Real supplier/owner stock, customer/operator, tailor/device/native Blender and major release approvals remain outstanding. No live writes, migration, merge or deploy.
+
 ## 29 October 2026 — exact-count operator override ledger read (draft)
 - [x] Reproduced a bounded `limit=1000` metadata fetch that could treat a truncated operator history as complete, concealing older sold-out vetoes.
 - [x] Require PostgREST `Prefer: count=exact` and a complete `Content-Range` matching the entire returned page; missing/partial/mismatched counts fail closed. Add pure boundary regressions and CI-only mock count headers.

@@ -1,3 +1,7 @@
+## 2026-10-29 — optional legacy-site inventory cannot stall verified stock
+
+**Decision:** The first-party verified stock path remains authoritative. A slow, broken or oversized old-site product gallery must not consume the `/api/inventory` request budget indefinitely or allocate unbounded HTML. Preserve fallback to unverified bundled legacy gallery, add 5-second abort and 2 MiB streamed HTML maximum, retain `no-store` and protect multi-byte text decoding. No changes to supplier quantities, approved stock, render model, physical truth, schema, live database, or deployment.
+
 ## 2026-10-29 — bounded operator metadata must be proven complete
 
 **Decision:** A successful HTTP 200 with a partial `style_events` page is not proof that the operator's sold-out override ledger was fully read. Request an exact PostgREST count and accept only an entire, contiguous 0-based page with matching total, or the literal empty `*/0` response. Missing, partial, inconsistent and over-limit histories fail closed on both public stock paths. The CI-only metadata fixture supplies an explicit empty exact-count header; it does not create stock or operator approval. Larger ledgers require a separately tested paginated reader before they can be customer-visible. No schema, physical evidence, identity, paid-AI, production write or deployment changes.
