@@ -3,7 +3,7 @@
  * newer rework inspection, even if the upstream list arrives out of order.
  * This is a defensive read contract, not a replacement for human QC evidence.
  */
-const QC_TIMESTAMP=/^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$/;
+const QC_TIMESTAMP=/^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$/;
 
 /** Date.parse normalizes impossible dates (e.g. February 31 → March 3).
  * A normalized phantom inspection must never outrank a real rework receipt. */
