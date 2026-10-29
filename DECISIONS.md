@@ -1,5 +1,12 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-10-29 — Operator production status changes require literal identities and confirmed RPC receipts
+
+**Decision:** Privileged quote/order status writes previously stringified arbitrary JSON ID/status/note values, silently truncated overlong notes, and returned HTTP 200 `{updated:false}` when the database rejected an update. Validate an exact UUID, one of the existing `production-state` transition destination IDs, and an optional literal note up to 1000 characters before any QC lookup or RPC. Preserve normal whitespace trimming, uppercase UUID compatibility and omitted/null notes; never invent or infer a status. Leave the database as the authority on actual state transitions. Only an exact `true` RPC response counts as an updated status; a false/invalid receipt returns 409 so the operator UI cannot display success. Streamed oversized/invalid JSON now returns the established 413/400 responses instead of being swallowed by the generic 409 catch.
+
+**Compatibility and boundaries:** No schema migration, status vocabulary expansion, production data mutation, identity/photo/3D change, provider spend, merge or deployment. Existing operator UI uses exact UUIDs and known statuses. Source and unit regressions are not live database/stock/tailor acceptance; matching-head CI and authenticated operator checks remain required.
+
+
 ## 2026-10-29 — Operator password sign-in is a bounded same-origin JSON operation
 
 **Decision:** The operator login previously parsed unlimited streamed JSON, stringified and silently truncated passwords, used an Origin-only check that allowed same-site subdomain requests, and kept an unbounded per-forwarded-IP attempt map. Reuse the shared same-origin/Fetch Metadata and 4 KiB streamed JSON guard, require a literal 1–300 character opaque password without trim/truncation, and fail closed on malformed JSON or values before calling the verifier. Preserve existing operator password verification, session cookie attributes and generic error responses. Limit best-effort local attempts to eight per IP and 300 global in 15 minutes with a 1,024-key cap; never evict active counters to admit a new identity. Add pure and real HTTP negative regressions without attempting a real operator sign-in.
