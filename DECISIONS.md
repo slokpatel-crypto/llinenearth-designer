@@ -1,5 +1,12 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-10-29 — Customer production actions require typed, bounded, confirmed evidence
+
+**Decision:** Customer quote acceptance and post-delivery feedback are security-sensitive owner-scoped writes. Reject cross-site and non-JSON POSTs, malformed/oversized streamed JSON (16 KiB), coerced quote/order UUIDs, coerced action/rating/fit/wear/note values, and overlength feedback before identity lookup or privileged RPC. Preserve normal valid UI payloads and omitted optional note/wear fields. Only an exact boolean `true` quote-acceptance RPC receipt counts as accepted; false remains unavailable, and an invalid receipt is a 409. Only a valid returned outcome UUID counts as recorded feedback. Every POST response uses private no-store headers; negative-only real HTTP regressions cannot create production records.
+
+**Compatibility and limits:** The existing service-role RPCs still authorize owner and delivered-order state; no new schema, option ID, model/photo, provider call, customer data change, merge or deployment. A green source/browser test cannot replace live authenticated Supabase, real fabric stock, tailor review or native Blender evidence.
+
+
 ## 2026-10-29 — Operator production status changes require literal identities and confirmed RPC receipts
 
 **Decision:** Privileged quote/order status writes previously stringified arbitrary JSON ID/status/note values, silently truncated overlong notes, and returned HTTP 200 `{updated:false}` when the database rejected an update. Validate an exact UUID, one of the existing `production-state` transition destination IDs, and an optional literal note up to 1000 characters before any QC lookup or RPC. Preserve normal whitespace trimming, uppercase UUID compatibility and omitted/null notes; never invent or infer a status. Leave the database as the authority on actual state transitions. Only an exact `true` RPC response counts as an updated status; a false/invalid receipt returns 409 so the operator UI cannot display success. Streamed oversized/invalid JSON now returns the established 413/400 responses instead of being swallowed by the generic 409 catch.

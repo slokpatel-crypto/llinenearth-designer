@@ -1,5 +1,13 @@
 # TITAN — prioritized execution queue
 
+## 29 October 2026 — customer quote/feedback transport and receipt integrity
+
+- [x] Confirmed PR #460 exact-head CI #40842666927 and Non-3D QA #40842666847 completed successfully, including browser/mobile steps; no live Supabase acceptance is implied.
+- [x] Reproduced unbounded customer quote/feedback JSON, coerced quote/order IDs and rating/fit/note values, silently truncated feedback, and truthy/non-UUID RPC responses that could falsely report success.
+- [x] Added 16 KiB streamed JSON and same-origin request checks, literal UUIDs, typed feedback with no silent truncation, exact boolean quote acceptance and validated outcome UUID receipt. Added pure tests and 15 actual HTTP *negative-only* checks (including undeclared chunked bytes) wired into the existing pinned browser QA; no real account/quote/order is used.
+- [ ] Verify new exact-head CI, full Node/engine/preview/release/build and Chromium checks; live owner-scoped Supabase, supplier/tailor/device, and native Blender gates remain outstanding. No migration, production data mutation, merge or deploy.
+
+
 ## 29 October 2026 — strict operator production status boundary
 
 - [x] Reproduced quote/order status mutations that coerced array/object IDs, statuses and notes with `String(...)`, silently truncated notes at 1000 characters, and reported HTTP success even when the privileged RPC returned false.
