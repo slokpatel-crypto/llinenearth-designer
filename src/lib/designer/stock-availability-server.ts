@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { applyVerifiedStockAvailability, type VerifiedStockSnapshotRow } from "@/lib/designer/stock-availability";
+import { applyVerifiedStockAvailability, stockSnapshotHasConfirmedProvenance, type VerifiedStockSnapshotRow } from "@/lib/designer/stock-availability";
 import type { FabricColorway } from "@/lib/fabric-stock";
 
 export async function loadVerifiedStockSnapshot(fabricIds:string[]):Promise<VerifiedStockSnapshotRow[]>{
@@ -29,7 +29,7 @@ export async function loadVerifiedStockSnapshot(fabricIds:string[]):Promise<Veri
       // would falsely label an absent measurement as verified zero stock.
       available_metres:typeof row.available_metres==="number"||typeof row.available_metres==="string"
         ?row.available_metres:NaN,
-      provenance_ready:row.provenance_ready===true,
+      provenance_ready:stockSnapshotHasConfirmedProvenance(row),
     }));
   }catch(error){
     console.error("[designer/stock-availability] snapshot failed",error);
