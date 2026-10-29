@@ -3,7 +3,7 @@ import {
   QUOTE_TRANSITIONS,
   type ProductionOrderStatus,
   type ProductionQuoteStatus,
-} from "./production-state";
+} from "./production-state.ts";
 
 /**
  * Privileged status changes must use exact DB UUIDs and closed transition
