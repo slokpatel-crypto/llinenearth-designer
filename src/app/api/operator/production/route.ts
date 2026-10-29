@@ -8,6 +8,7 @@ import { parseDesignVaultRecoveryToken } from "@/lib/designer/design-vault";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { buildProductionLearningContext } from "@/lib/designer/production-learning-context";
 import { parseOperatorLockedSelection } from "@/lib/designer/operator-locked-selection";
+import { parseOperatorProductionStatus } from "@/lib/designer/operator-production-status";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
@@ -110,11 +111,13 @@ export async function POST(request:Request){
       return NextResponse.json({quoteId,lockedRevisionVerified:true});
     }
     if(action==="quote_status"){
-      const quoteId=String(body.quoteId||"");
-      const status=String(body.status||"");
-      const note=String(body.note||"").slice(0,1000);
-      const updated=await rpc<boolean>("production_quote_set_status",{p_quote_id:quoteId,p_status:status,p_note:note});
-      return NextResponse.json({updated:Boolean(updated)});
+      const change=parseOperatorProductionStatus(body,"quote");
+      if(!change) return NextResponse.json({error:"Valid quote UUID, allowed status and literal note (max 1000 characters) are required."},{status:400});
+      const updated=await rpc<unknown>("production_quote_set_status",{
+        p_quote_id:change.recordId,p_status:change.status,p_note:change.note,
+      });
+      if(updated!==true) return NextResponse.json({error:"Quote status was not updated."},{status:409});
+      return NextResponse.json({updated:true});
     }
     if(action==="create_order"){
       const identity=parseOperatorLockedSelection(body);
@@ -134,9 +137,9 @@ export async function POST(request:Request){
       return NextResponse.json({orderId,learningContextAttached:true,lockedRevisionVerified:true});
     }
     if(action==="order_status"){
-      const orderId=String(body.orderId||"");
-      const status=String(body.status||"");
-      const note=String(body.note||"").slice(0,1000);
+      const change=parseOperatorProductionStatus(body,"order");
+      if(!change) return NextResponse.json({error:"Valid order UUID, allowed status and literal note (max 1000 characters) are required."},{status:400});
+      const {recordId:orderId,status,note}=change;
       if(status==="delivered"){
         let inspections:Array<{order_id:string;decision:string;inspector?:string;inspection_reference?:string}>=[];
         try{
@@ -152,11 +155,14 @@ export async function POST(request:Request){
           return NextResponse.json({error:"Provenance-backed finished-garment QC approval is required before delivery."},{status:409});
         }
       }
-      const updated=await rpc<boolean>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note});
-      return NextResponse.json({updated:Boolean(updated)});
+      const updated=await rpc<unknown>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note});
+      if(updated!==true) return NextResponse.json({error:"Order status was not updated."},{status:409});
+      return NextResponse.json({updated:true});
     }
     return NextResponse.json({error:"Unsupported production action."},{status:400});
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
+    if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
     console.error("[operator/production]",error);
     return NextResponse.json({error:error instanceof Error?error.message:"Production operation failed."},{status:409});
   }
