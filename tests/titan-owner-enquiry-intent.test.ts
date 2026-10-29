@@ -72,6 +72,8 @@ test("Designer requires express contact consent and never claims WhatsApp delive
   assert.match(ui,/vaultAccountOwned&&vaultRecoveryToken/);
   assert.match(ui,/setVaultAccountOwned\(result.accountOwned===true\)/);
   assert.match(ui,/setEnquiryConsent\(false\)/);
+  assert.match(ui,/enquiryGenerationRef\.current\+=1/);
+  assert.match(ui,/enquiryGenerationRef\.current!==generation/);
   assert.match(ui,/setEnquiryResult\(null\)/);
   assert.match(ui,/WhatsApp still needs to be sent manually/);
   assert.match(ui,/No verified operator receipt or confirmed message delivery/);

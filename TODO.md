@@ -223,3 +223,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 
 - [x] 2026-10-29: Reconciled #454 owner/token enquiry and consent onto #455 operator handoff while preserving #453 explicit second-click WhatsApp anchor and shared bounded/throttled transport; changes committed in a stacked draft, not yet validated on exact integrated head.
 - [ ] Validate combined head: quality, Node tests, engine, preview, release check, build and both pinned Chromium workflows; real Supabase account/token/operator and stock/tailor acceptance still required. No merge, migration or production deployment.
+
+- [x] 2026-10-29: Invalidated pending customer enquiry replies when explicit consent changes, a lock is replaced, or the selection identity changes. Prevents a late audit/draft response from reappearing after the user unchecks consent. Source/test/release guard staged; exact-head browser QA still required.

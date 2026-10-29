@@ -1035,6 +1035,7 @@ requireTokens("scripts/verify-designer-enquiry.cjs",[
 ]);
 requireTokens("src/components/DesignerModule.tsx",[
   "checked={enquiryConsent}","disabled={enquiryBusy||!enquiryConsent}",
+  "enquiryGenerationRef.current+=1","enquiryGenerationRef.current!==generation",
   "consentToContact:true","vaultAccountOwned&&vaultRecoveryToken",
   "result.status===\"intent_recorded\"","result.operatorReceived!==false",
   "result.handoffStatus!==\"prepared_not_sent\"","result.revisionId!==revision.revisionId",

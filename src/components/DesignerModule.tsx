@@ -161,6 +161,7 @@ export function DesignerModule() {
   const [shareMessage,setShareMessage]=useState("");
   const [enquiryBusy,setEnquiryBusy]=useState(false);
   const [enquiryConsent,setEnquiryConsent]=useState(false);
+  const enquiryGenerationRef=useRef(0);
   const [vaultAccountOwned,setVaultAccountOwned]=useState(false);
   const [enquiryResult,setEnquiryResult]=useState<{revisionId:string;href:string|null;message:string}|null>(null);
   const [vaultBusy,setVaultBusy]=useState(false);
@@ -308,6 +309,7 @@ export function DesignerModule() {
 
   useEffect(()=>{
     lockedRevisionSelectionIdentityRef.current=null;
+    enquiryGenerationRef.current+=1;
     setLockedRevision(null);
     setVaultRecoveryToken("");
     setVaultAccountOwned(false);
@@ -1198,6 +1200,7 @@ export function DesignerModule() {
       }
       lockedRevisionSelectionIdentityRef.current=selectionAtLock;
       setLockedRevision(revision);
+      enquiryGenerationRef.current+=1;
       setEnquiryResult(null);
       setEnquiryConsent(false);
       setLastLockedRevisionId(revision.revisionId);
@@ -1302,6 +1305,7 @@ export function DesignerModule() {
   async function openLockedRevisionEnquiry() {
     const revision=currentLockedRevision();
     const identity=lockIdentity;
+    const generation=enquiryGenerationRef.current;
     if(!revision||enquiryBusy||!enquiryConsent) return;
     setEnquiryBusy(true);setEnquiryResult(null);
     try{
@@ -1318,7 +1322,7 @@ export function DesignerModule() {
         operatorReceived?:boolean;revisionId?:string;status?:string;
         handoffStatus?:string;error?:string;
       };
-      if(currentSelectionIdentityRef.current!==identity) return;
+      if(currentSelectionIdentityRef.current!==identity||enquiryGenerationRef.current!==generation) return;
       if(!response.ok||typeof result.href!=="string"||result.revisionId!==revision.revisionId
           ||result.handoffStatus!=="prepared_not_sent")
         throw new Error(result.error||"A locked-design WhatsApp draft could not be prepared.");
@@ -1343,7 +1347,7 @@ export function DesignerModule() {
           :"WhatsApp draft ready. No verified operator receipt or confirmed message delivery. Open WhatsApp and press Send.",
       });
     }catch(error){
-      if(currentSelectionIdentityRef.current!==identity) return;
+      if(currentSelectionIdentityRef.current!==identity||enquiryGenerationRef.current!==generation) return;
       setEnquiryResult({revisionId:revision.revisionId,href:null,
         message:error instanceof Error?error.message:"Locked-look enquiry could not be prepared."});
     }finally{
@@ -1692,7 +1696,7 @@ export function DesignerModule() {
                 <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
                 {shareMessage&&<p>{shareMessage}</p>}
                 <label className="newDesignerEnquiryConsent">
-                  <input type="checkbox" checked={enquiryConsent} onChange={(event)=>{setEnquiryConsent(event.target.checked);setEnquiryResult(null);}}/>
+                  <input type="checkbox" checked={enquiryConsent} onChange={(event)=>{enquiryGenerationRef.current+=1;setEnquiryConsent(event.target.checked);setEnquiryResult(null);}}/>
                   I agree to share this locked outfit enquiry with Linen Earth staff.
                 </label>
                 <button type="button" onClick={()=>void openLockedRevisionEnquiry()} disabled={enquiryBusy||!enquiryConsent}>{enquiryBusy?"Preparing WhatsApp…":"Prepare WhatsApp enquiry ↗"}</button>
