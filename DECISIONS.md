@@ -1,3 +1,7 @@
+## 2026-10-29 — reconcile exact-count metadata receipts with bounded pagination
+
+**Decision:** The operator sold-out override ledger is customer-availability evidence only after all pages have been read with contiguous `Content-Range` and exact, consistent totals. Page through stable `at.desc,id.desc` IDs in 1,000-row slices, sharing one eight-second deadline; return unavailable on any missing/moving count, noncontiguous page, malformed row or history beyond five pages. Preserve the initial exact-count contract from PR #486, the bounded legacy gallery from #487, and prior sold-out/stock protections. Human stock and authenticated launch signoffs remain unproven; no schema, data mutation, merge or deploy.
+
 ## 2026-10-29 — optional legacy-site inventory cannot stall verified stock
 
 **Decision:** The first-party verified stock path remains authoritative. A slow, broken or oversized old-site product gallery must not consume the `/api/inventory` request budget indefinitely or allocate unbounded HTML. Preserve fallback to unverified bundled legacy gallery, add 5-second abort and 2 MiB streamed HTML maximum, retain `no-store` and protect multi-byte text decoding. No changes to supplier quantities, approved stock, render model, physical truth, schema, live database, or deployment.
