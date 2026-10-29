@@ -1,5 +1,12 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-10-29 — Auth limiter capacity must not evict active abuse counters
+
+**Decision:** A bounded in-memory OTP/verification rate-key map must not make room for a new untrusted identity by deleting an unexpired IP or mailbox counter. Under a 2,048-identity flood, the former oldest-key eviction could reset a targeted customer's attempt history before its ten-minute window ended. At capacity, scan for an expired key and reclaim it; if all entries are live, fail closed for a new identity with the existing 429 behavior, while still counting known identities. Keep the existing per-IP, hashed-mailbox and global budgets unchanged. Add negative regression cases for both email and IP and a positive recovery case after expiry. This deliberately favors temporary denial over bypass during a sustained flood.
+
+**Limitations:** A process-local counter can be reset by instance restart and is not a substitute for a distributed edge/provider limiter. No live OTP, Supabase database write, production migration, new paid service, model/photo change or deployment. Exact-head CI and real-browser verification remain required.
+
+
 ## 2026-10-29 — Customer OTP endpoints fail closed on untrusted public JSON
 
 **Decision:** The existing OTP request and code verification endpoints accepted unlimited streamed JSON, untrusted `String()`-coercible email/code values, and verification attempts without any process-local throttling. Reuse the shared streamed-size, JSON content-type and same-origin boundary for both routes with a 4 KiB limit; reject arrays, objects and numeric codes before any Supabase call. Preserve normal string email normalization and whitespace-tolerant six-to-twelve-character OTP entry. Respond with private/no-store headers on both success and errors. The bodyless logout POST reuses the same origin/fetch-metadata guard without requiring a JSON body, so cross-site forms cannot clear customer cookies. Use separate eight-send and twelve-verification-attempt per-IP ten-minute budgets, bounded to 2,048 process-local keys, plus independent global best-effort caps against simple forwarded-IP rotation and hashed per-mailbox limits (four OTP sends or ten code attempts per ten minutes). Do not store plaintext email addresses in rate keys. Add pure and actual HTTP negative regressions that never trigger a real OTP email.

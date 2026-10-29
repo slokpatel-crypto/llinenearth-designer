@@ -37,21 +37,20 @@ function countRequest(entries:Map<string,Entry>,key:string,limit:number,now:numb
 }
 
 
-function reserveIdentityKey(entries:Map<string,Entry>,key:string,now:number):void {
-  if(entries.has(key)||entries.size<MAX_CUSTOMER_AUTH_RATE_KEYS) return;
-  // Oldest entries are at the front. Preserve a hard memory bound even
-  // during a flood of distinct IPs and email identities.
-  for(let i=0;i<8&&entries.size>=MAX_CUSTOMER_AUTH_RATE_KEYS;i++){
-    const oldest=entries.keys().next().value;
-    if(oldest===undefined) break;
-    const entry=entries.get(oldest)!;
-    if(now>=entry.at&&now-entry.at<=WINDOW_MS) break;
-    entries.delete(oldest);
+function reserveIdentityKey(entries:Map<string,Entry>,key:string,now:number):boolean {
+  if(entries.has(key)||entries.size<MAX_CUSTOMER_AUTH_RATE_KEYS) return true;
+  // Never evict a live mailbox/IP counter: an attacker could rotate identities
+  // to erase the victim's OTP/verify attempt history. The map is capped, so
+  // an exhaustive stale-entry scan happens only at capacity.
+  for(const [identity,entry] of entries){
+    if(now<entry.at||now-entry.at>WINDOW_MS){
+      entries.delete(identity);
+      break;
+    }
   }
-  if(entries.size>=MAX_CUSTOMER_AUTH_RATE_KEYS){
-    const oldest=entries.keys().next().value;
-    if(oldest!==undefined) entries.delete(oldest);
-  }
+  // If every tracked identity is still active, reject new identities (429).
+  // Existing identities can continue to be counted against their own limits.
+  return entries.size<MAX_CUSTOMER_AUTH_RATE_KEYS;
 }
 
 /** A hashed per-address budget prevents simple IP rotation from spamming
@@ -67,7 +66,7 @@ export function customerAuthEmailRateBlocked(
   if(!Number.isFinite(now)) return true;
   const digest=createHash("sha256").update(normalizedEmail,"utf8").digest("hex");
   const key="email:"+action+":"+digest;
-  reserveIdentityKey(state.identities,key,now);
+  if(!reserveIdentityKey(state.identities,key,now)) return true;
   return countRequest(state.identities,key,action==="otp"?4:10,now);
 }
 
@@ -87,7 +86,7 @@ export function customerAuthRateBlocked(
   const ip=candidate.length<=45 && /^[0-9a-fA-F.:]{3,45}$/.test(candidate)
     ? candidate.toLowerCase() : "unknown";
   const key=action+":"+ip;
-  reserveIdentityKey(state.identities,key,now);
+  if(!reserveIdentityKey(state.identities,key,now)) return true;
   const globalBlocked=countRequest(state.global,action,action==="otp"?300:1_000,now);
   const identityBlocked=countRequest(state.identities,key,action==="otp"?8:12,now);
   return globalBlocked||identityBlocked;

@@ -1,5 +1,13 @@
 # TITAN — prioritized execution queue
 
+## 29 October 2026 — 1 PM auth counter exhaustion hardening
+
+- [x] PR #457 exact-head CI #40830722822 and Non-3D QA #40830722830 completed successfully (source, Node, engine, preview, release, build, pinned Chromium/mobile). Live Supabase and human acceptance remain unverified.
+- [x] Identified active-rate-key eviction at the 2,048-key limit: rotating distinct IP/mailbox identities could delete a live victim counter, allowing its next OTP or verification request to restart at one.
+- [x] In a new stacked draft, preserve all live identity counters and reject new identities when full; reclaim expired keys after the ten-minute window. Add regression coverage for both mailbox and IP paths. No provider calls, production data changes, model/photo changes, merge or deploy.
+- [ ] Require exact-head CI, real browser, release and build checks on the final draft commit. Process-local counters are not a distributed abuse control; edge/provider protection and live authenticated acceptance remain release gates.
+
+
 ## 29 October 2026 — 12 PM customer authentication security sprint
 
 - [x] Rechecked PR #456 exact head `e2c78c04`: CI #40805041551 and Non-3D QA #40805041648 **both completed successfully**, including pinned browser/mobile checks. This is source QA, not live launch acceptance.
