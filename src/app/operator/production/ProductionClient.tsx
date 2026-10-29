@@ -30,10 +30,31 @@ export default function ProductionClient(){
   const [loadedRevision,setLoadedRevision]=useState<LockedDesignRevision|null>(null);
 
   async function load(){
-    const response=await fetch("/api/operator/production",{cache:"no-store"});
-    if(response.status===401){window.location.href="/operator/login?next=/operator/production";return;}
-    const data=await response.json();
-    if(response.ok){setConfigured(data.configured!==false);setQuotes(Array.isArray(data.quotes)?data.quotes:[]);setOrders(Array.isArray(data.orders)?data.orders:[]);setQcInspections(Array.isArray(data.qcInspections)?data.qcInspections:[]);setCustomerOutcomes(Array.isArray(data.customerOutcomes)?data.customerOutcomes:[]);setLearningContexts(Array.isArray(data.learningContexts)?data.learningContexts:[]);}
+    try{
+      const response=await fetch("/api/operator/production",{cache:"no-store"});
+      if(response.status===401){window.location.href="/operator/login?next=/operator/production";return;}
+      if(!response.ok) throw new Error("Production records are unavailable.");
+      const data=await response.json();
+      if(!data||typeof data!=="object"||!Array.isArray(data.quotes)||!Array.isArray(data.orders)){
+        throw new Error("Production ledger response is malformed.");
+      }
+      setConfigured(data.configured!==false);
+      setQuotes(data.quotes);
+      setOrders(data.orders);
+      setQcInspections(Array.isArray(data.qcInspections)?data.qcInspections:[]);
+      setCustomerOutcomes(Array.isArray(data.customerOutcomes)?data.customerOutcomes:[]);
+      setLearningContexts(Array.isArray(data.learningContexts)?data.learningContexts:[]);
+    }catch{
+      // Never keep stale quotes/orders or leave mutation controls enabled when
+      // the operator's current production ledger cannot be verified.
+      setConfigured(false);
+      setQuotes([]);
+      setOrders([]);
+      setQcInspections([]);
+      setCustomerOutcomes([]);
+      setLearningContexts([]);
+      setMessage("Production records could not be verified. Retry after the operator backend is available.");
+    }
   }
   useEffect(()=>{void load();},[]);
 
