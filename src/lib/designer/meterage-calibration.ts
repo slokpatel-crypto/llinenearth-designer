@@ -22,10 +22,10 @@ function finite(value:unknown){
 
 export function normalizeMeterageCalibrationDraft(input:unknown){
   const source=record(input);
-  const garment=String(source.garment||"") as MeterageGarment;
+  const garment=source.garment;
   if(garment!=="shirt"&&garment!=="trouser") throw new Error("Garment must be shirt or trouser.");
 
-  const version=String(source.version||"").trim();
+  const version=typeof source.version==="string"?source.version.trim():"";
   if(!/^[A-Za-z0-9._-]{3,80}$/.test(version)) {
     throw new Error("Version must be 3–80 characters using letters, numbers, dot, dash or underscore.");
   }
@@ -36,12 +36,15 @@ export function normalizeMeterageCalibrationDraft(input:unknown){
 
   const bands:MeterageCalibrationBand[]=source.bands.map((raw,index)=>{
     const item=record(raw);
-    const label=String(item.label||"").trim();
-    const minFabricWidthCm=finite(item.minFabricWidthCm);
-    const maxFabricWidthCm=finite(item.maxFabricWidthCm);
-    const baseMetres=finite(item.baseMetres);
-    const patternAllowanceMetres=finite(item.patternAllowanceMetres??0);
-    const cutContext=String(item.cutContext||"").trim().slice(0,160);
+    const label=typeof item.label==="string"?item.label.trim():"";
+    const minFabricWidthCm=typeof item.minFabricWidthCm==="number"&&Number.isFinite(item.minFabricWidthCm)?item.minFabricWidthCm:null;
+    const maxFabricWidthCm=typeof item.maxFabricWidthCm==="number"&&Number.isFinite(item.maxFabricWidthCm)?item.maxFabricWidthCm:null;
+    const baseMetres=typeof item.baseMetres==="number"&&Number.isFinite(item.baseMetres)?item.baseMetres:null;
+    const allowance=item.patternAllowanceMetres??0;
+    const patternAllowanceMetres=typeof allowance==="number"&&Number.isFinite(allowance)?allowance:null;
+    if(item.cutContext!==undefined&&item.cutContext!==null&&typeof item.cutContext!=="string") throw new Error("Band "+(index+1)+" cut context must be text.");
+    const cutContext=typeof item.cutContext==="string"?item.cutContext.trim():"";
+    if(cutContext.length>160) throw new Error("Band "+(index+1)+" cut context cannot exceed 160 characters.");
 
     if(!label||label.length>80) throw new Error("Band "+(index+1)+" needs a label of at most 80 characters.");
     if(minFabricWidthCm===null||maxFabricWidthCm===null||minFabricWidthCm<60||maxFabricWidthCm>220||maxFabricWidthCm<minFabricWidthCm){
@@ -69,7 +72,9 @@ export function normalizeMeterageCalibrationDraft(input:unknown){
     }
   }
 
-  const note=String(source.note||"").trim().slice(0,1200);
+  if(source.note!==undefined&&source.note!==null&&typeof source.note!=="string") throw new Error("Meterage model note must be text.");
+  const note=typeof source.note==="string"?source.note.trim():"";
+  if(note.length>1200) throw new Error("Meterage model note cannot exceed 1200 characters.");
   return {garment,version,bands,note};
 }
 

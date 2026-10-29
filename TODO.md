@@ -1,3 +1,9 @@
+## 29 October 2026 — meterage model human approval integrity (draft)
+
+- [x] Reproduced coerced model/approver identities, silently truncated approval notes, truthy RPC approval/retirement, unbounded model JSON and coerced physical band measurements.
+- [x] Added literal physical band values and bounded provenance, strict UUID model/receipt, exact true approval/retirement, 16 KiB same-origin streamed JSON, 400/413 errors, private no-store responses and regression/negative-only HTTP checks.
+- [ ] Verify exact-head CI/Node/engine/preview/release/build/Chromium; no actual cut cases, owner/tailor approval, live Supabase, native Blender, migration, merge or deployment.
+
 ## 29 October 2026 — physical cutting/meterage proof boundary (draft)
 
 - [x] Reproduced coerced case/garment/cloth width/usage/repeat/matching, silently truncated cut notes/contexts, unbounded privileged JSON and unverified cut evidence IDs.
