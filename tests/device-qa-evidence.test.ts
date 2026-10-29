@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   DEVICE_QA_EVIDENCE_VERSION,
   evaluateDeviceQaEvidence,
+  normalizeDeviceQaEvidenceReceipt,
   parseDeviceQaViewport,
   summarizeDeviceQaDurations,
 } from "../src/lib/designer/device-qa-evidence.ts";
@@ -130,6 +131,31 @@ function validDeviceQaPayload():Record<string,unknown>{
   };
 }
 
+function completeDeviceQaReceipt():Record<string,unknown>{
+  return {
+    subtype:"designer_device_qa",...validDeviceQaPayload(),status:"accepted",
+    dpr:3,samples:12,medianMs:42,p95Ms:42,maxMs:42,withinTarget:true,
+    hardwareConcurrency:8,userAgent:"Real target browser",note:"Observed on the named device.",
+  };
+}
+
+test("complete device receipts preserve literal, internally consistent audit metadata",()=>{
+  const valid=completeDeviceQaReceipt();
+  const receipt=normalizeDeviceQaEvidenceReceipt(valid);
+  assert.equal(receipt?.status,"accepted");
+  assert.equal(receipt?.samples,12);
+  for(const [key,value] of [
+    ["dpr","3"],["samples","12"],["hardwareConcurrency","8"],
+    ["medianMs","42"],["withinTarget",1],["userAgent",["browser"]],
+  ] as const){
+    assert.equal(normalizeDeviceQaEvidenceReceipt({...valid,[key]:value}),null,`coerced ${key} must fail`);
+  }
+  assert.equal(normalizeDeviceQaEvidenceReceipt({...valid,samples:11}),null);
+  assert.equal(normalizeDeviceQaEvidenceReceipt({...valid,p95Ms:41}),null);
+  assert.equal(normalizeDeviceQaEvidenceReceipt({...valid,viewport:"1440x900"}),null);
+  assert.equal(normalizeDeviceQaEvidenceReceipt({...valid,note:"x".repeat(601)}),null);
+});
+
 test("coercible device QA identity never counts as acceptance",()=>{
   const valid=validDeviceQaPayload();
   assert.equal(evaluateDeviceQaEvidence(valid).accepted,true);
@@ -161,10 +187,10 @@ test("malformed or oversized raw samples invalidate the whole device receipt",()
 test("operator device evidence write/read paths preserve fail-closed acceptance",()=>{
   const writer=readFileSync(new URL("../src/app/api/memory/event/route.ts",import.meta.url),"utf8");
   const reader=readFileSync(new URL("../src/app/api/operator/device-qa/route.ts",import.meta.url),"utf8");
-  assert.match(writer,/payload\.subtype!=="designer_device_qa"/);
-  assert.match(writer,/payload\.sampleDurationsMs\.some/);
-  assert.match(writer,/status==="accepted" &&/);
-  assert.match(writer,/!evaluateDeviceQaEvidence\(/);
+  assert.match(writer,/normalizeDeviceQaEvidenceReceipt\(payload\)/);
+  assert.match(writer,/return=\$\{deviceReceipt\?"representation":"minimal"\}/);
+  assert.match(writer,/Device QA evidence receipt could not be confirmed/);
+  assert.match(writer,/readSecureJsonObject\(request,MEMORY_EVENT_JSON_MAX_BYTES\)/);
   assert.match(reader,/evaluation\.versionValid\?evaluation\.p95Ms:legacyP95/);
   assert.match(reader,/evaluation\.versionValid\?evaluation\.samples:legacySamples/);
   assert.doesNotMatch(reader,/Number\(payload\.p95Ms\)/);
