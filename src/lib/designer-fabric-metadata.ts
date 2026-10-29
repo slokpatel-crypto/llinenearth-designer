@@ -4,7 +4,7 @@ import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import type { DesignerFabricMetadata, DesignerFabricMetadataMap } from "@/lib/designer-fabric-metadata-types";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
-import { hasCompleteOperatorMetadataPage, OPERATOR_METADATA_PAGE_LIMIT } from "@/lib/designer/metadata-ledger-page";
+import { verifyOperatorMetadataPage, OPERATOR_METADATA_PAGE_LIMIT } from "@/lib/designer/metadata-ledger-page";
 
 type MetadataRow = { at:string; payload?:Record<string,unknown> };
 
@@ -62,41 +62,55 @@ export async function loadDesignerFabricMetadataWithStatus():Promise<DesignerFab
   if (!cloud) return unavailable();
 
   try {
-    const params = new URLSearchParams({
-      select:"at,payload",
-      type:"eq.operator_note",
-      source:"eq.operator",
-      order:"at.desc",
-      limit:String(OPERATOR_METADATA_PAGE_LIMIT),
-    });
-    const response = await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`,{
-      headers:{...supabaseAdminHeaders(cloud),accept:"application/json",prefer:"count=exact"},
-      cache:"no-store",
-      signal:AbortSignal.timeout(8_000),
-    });
-    if (!response.ok) {
-      console.error("[designer/fabric-metadata] lookup failed",response.status);
-      return unavailable();
+    // A successful first page is not proof of complete operator history.
+    // Every page needs an exact, contiguous PostgREST count receipt under
+    // one shared deadline. An incomplete/moving ledger stays unavailable.
+    const signal=AbortSignal.timeout(8_000);
+    const PAGE_SIZE=OPERATOR_METADATA_PAGE_LIMIT;
+    const MAX_PAGES=5;
+    const result:DesignerFabricMetadataMap={};
+    let expectedTotal:number|null=null;
+    for(let page=0;page<MAX_PAGES;page++){
+      const offset=page*PAGE_SIZE;
+      const params=new URLSearchParams({
+        select:"id,at,payload",
+        type:"eq.operator_note",
+        source:"eq.operator",
+        order:"at.desc,id.desc",
+        limit:String(PAGE_SIZE),
+        offset:String(offset),
+      });
+      const response=await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`,{
+        headers:{...supabaseAdminHeaders(cloud),accept:"application/json",prefer:"count=exact"},
+        cache:"no-store",
+        signal,
+      });
+      if(!response.ok){
+        console.error("[designer/fabric-metadata] incomplete operator page",response.status,page);
+        return unavailable();
+      }
+      const rows=await response.json() as unknown;
+      const receipt=verifyOperatorMetadataPage(
+        rows,response.headers.get("content-range"),offset,expectedTotal,PAGE_SIZE,
+      );
+      if(!Array.isArray(rows)||receipt.status==="invalid"){
+        console.error("[designer/fabric-metadata] inconsistent operator metadata page",page);
+        return unavailable();
+      }
+      for(const rawRow of rows){
+        if(!rawRow||typeof rawRow!=="object"||Array.isArray(rawRow)
+           ||typeof (rawRow as MetadataRow).at!=="string") return unavailable();
+        const row=rawRow as MetadataRow;
+        if(row.payload!=null && (typeof row.payload!=="object"||Array.isArray(row.payload))) return unavailable();
+        const metadata=parseMetadata(row.payload||{},row.at);
+        if(!metadata||result[metadata.fabricId]) continue;
+        result[metadata.fabricId]=metadata;
+      }
+      if(receipt.status==="complete") return {metadata:result,sourceVerified:true};
+      expectedTotal=receipt.total;
     }
-
-    const rows = await response.json() as unknown;
-    if(!hasCompleteOperatorMetadataPage(rows,response.headers.get("content-range"))) {
-      console.error("[designer/fabric-metadata] operator ledger response missing exact complete row count");
-      return unavailable();
-    }
-    const result:DesignerFabricMetadataMap = {};
-    for (const rawRow of rows) {
-      if(!rawRow||typeof rawRow!=="object"||Array.isArray(rawRow)
-         ||typeof (rawRow as MetadataRow).at!=="string") return unavailable();
-      const row=rawRow as MetadataRow;
-      // Old operator events may legitimately omit payload; they are not
-      // physical metadata. Malformed non-object metadata is not trustworthy.
-      if(row.payload!=null && (typeof row.payload!=="object"||Array.isArray(row.payload))) return unavailable();
-      const metadata = parseMetadata(row.payload || {},row.at);
-      if (!metadata || result[metadata.fabricId]) continue;
-      result[metadata.fabricId] = metadata;
-    }
-    return {metadata:result,sourceVerified:true};
+    console.error("[designer/fabric-metadata] operator history exceeds bounded paginated read");
+    return unavailable();
   } catch (error) {
     console.error("[designer/fabric-metadata] lookup failed",error);
     return unavailable();
