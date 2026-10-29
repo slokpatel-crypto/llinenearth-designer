@@ -46,9 +46,19 @@ function parseMetadata(payload:Record<string,unknown>,at:string):DesignerFabricM
   };
 }
 
-export async function loadDesignerFabricMetadata():Promise<DesignerFabricMetadataMap> {
+/** A missing metadata service is not a verified empty list. Without this
+ * distinction a failed lookup can erase an operator's sold-out override while
+ * leaving a positive stock ledger row customer-visible.
+ */
+export type DesignerFabricMetadataRead = {
+  metadata:DesignerFabricMetadataMap;
+  sourceVerified:boolean;
+};
+
+export async function loadDesignerFabricMetadataWithStatus():Promise<DesignerFabricMetadataRead> {
+  const unavailable=():DesignerFabricMetadataRead=>({metadata:{},sourceVerified:false});
   const cloud = getSupabaseAdminConfig();
-  if (!cloud) return {};
+  if (!cloud) return unavailable();
 
   try {
     const params = new URLSearchParams({
@@ -61,24 +71,42 @@ export async function loadDesignerFabricMetadata():Promise<DesignerFabricMetadat
     const response = await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`,{
       headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},
       cache:"no-store",
+      signal:AbortSignal.timeout(8_000),
     });
     if (!response.ok) {
       console.error("[designer/fabric-metadata] lookup failed",response.status);
-      return {};
+      return unavailable();
     }
 
-    const rows = await response.json() as MetadataRow[];
+    const rows = await response.json() as unknown;
+    if(!Array.isArray(rows)) {
+      console.error("[designer/fabric-metadata] expected an array of ledger rows");
+      return unavailable();
+    }
     const result:DesignerFabricMetadataMap = {};
-    for (const row of rows) {
+    for (const rawRow of rows) {
+      if(!rawRow||typeof rawRow!=="object"||Array.isArray(rawRow)
+         ||typeof (rawRow as MetadataRow).at!=="string") return unavailable();
+      const row=rawRow as MetadataRow;
+      // Old operator events may legitimately omit payload; they are not
+      // physical metadata. Malformed non-object metadata is not trustworthy.
+      if(row.payload!=null && (typeof row.payload!=="object"||Array.isArray(row.payload))) return unavailable();
       const metadata = parseMetadata(row.payload || {},row.at);
       if (!metadata || result[metadata.fabricId]) continue;
       result[metadata.fabricId] = metadata;
     }
-    return result;
+    return {metadata:result,sourceVerified:true};
   } catch (error) {
     console.error("[designer/fabric-metadata] lookup failed",error);
-    return {};
+    return unavailable();
   }
+}
+
+/** Compatibility read for operator tooling that displays empty metadata on
+ * backend failure. Customer availability must use the status-bearing loader.
+ */
+export async function loadDesignerFabricMetadata():Promise<DesignerFabricMetadataMap> {
+  return (await loadDesignerFabricMetadataWithStatus()).metadata;
 }
 
 export function applyDesignerFabricMetadata(fabric:FabricColorway,metadata?:DesignerFabricMetadata):FabricColorway {
