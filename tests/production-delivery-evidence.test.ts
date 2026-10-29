@@ -548,9 +548,9 @@ test("operator evidence submission rejects coerced record actions and fabric-ord
   const {readFileSync}=await import("node:fs");
   const route=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
   assert.match(route,/if\(body.action!=="record"\)/);
-  assert.match(route,/typeof body.orderId==="string"/);
+  assert.match(route,/normalizeVaultId\(body\.orderId\)/);
   assert.match(route,/readSecureJsonObject\(request,16_?384\)/);
-  assert.match(route,/\[0-9a-f\]\{8\}/);
+  assert.match(route,/if\(!orderId\) return respond\(/);
   assert.throws(()=>normalizeProductionDeliveryEvidence({
     manualDesignReentry:false,reentryFields:[],note:["not text"],operator:"Checker",
     evidenceReference:"Job Card 100",
