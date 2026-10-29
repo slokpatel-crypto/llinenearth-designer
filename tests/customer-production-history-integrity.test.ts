@@ -9,12 +9,12 @@ test("J5: four legitimate empty owner-scoped lists remain a valid empty customer
 });
 
 test("J5: malformed owned RPC list cannot be promoted to an empty customer history",()=>{
-  const valid=[[],[],[],[]];
+  const valid:unknown[]=[[],[],[],[]];
   for(let index=0;index<4;index++){
     for(const malformed of [null,undefined,false,true,0,{}, {rows:[]}, "[]", "", ["valid"].join(",")]){
       const values=[...valid];
       values[index]=malformed;
-      assert.equal(hasCompleteCustomerProductionHistory(...values),false,`ledger ${index}: ${String(malformed)}`);
+      assert.equal(hasCompleteCustomerProductionHistory(values[0],values[1],values[2],values[3]),false,`ledger ${index}: ${String(malformed)}`);
     }
   }
 });
