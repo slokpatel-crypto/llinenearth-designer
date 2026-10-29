@@ -55,3 +55,12 @@ test("privileged delivery status uses latest typed QC gate before status RPC",()
   assert.doesNotMatch(delivered,/String\(latest\.(?:inspector|inspection_reference)/);
   assert.match(delivered,/status:409/);
 });
+
+test("release gate verifies the latest typed QC guard instead of obsolete first-match wording",()=>{
+  const release=readFileSync("scripts/release-readiness.mjs","utf8");
+  assert.match(release,/requireTokens\("src\/lib\/designer\/delivery-qc-approval\.ts"/);
+  assert.match(release,/hasVerifiedLatestDeliveryQc\(inspections,orderId\)/);
+  assert.match(release,/latest\.decision/);
+  assert.match(release,/ambiguous/);
+  assert.doesNotMatch(release,/"Finished-garment QC approval is required before delivery\."\,/);
+});
