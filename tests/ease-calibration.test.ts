@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   normalizeEaseEvidenceDraft,
   normalizeHouseEaseCalibrationDraft,
@@ -98,4 +99,46 @@ test("draft or malformed ease models cannot enter runtime",()=>{
     status:"approved",
     approved_by:"RJ",
   }),null);
+});
+
+test("physical ease cannot be forged with JSON-coerced measurements or truncated notes",()=>{
+  const good={caseId:"EASE-001",garment:"shirt",fitClass:"regular",field:"chest",
+    bodyCm:100,finishedCm:112.4,tailor:"RJ",garmentRef:"SHIRT-07",note:"Measured"};
+  assert.equal(normalizeEaseEvidenceDraft(good).easeCm,12.4);
+  assert.throws(()=>normalizeEaseEvidenceDraft({...good,bodyCm:"100"}),/centimetre/i);
+  assert.throws(()=>normalizeEaseEvidenceDraft({...good,finishedCm:[112.4]}),/centimetre/i);
+  assert.throws(()=>normalizeEaseEvidenceDraft({...good,garment:["shirt"]}),/Garment must/i);
+  assert.throws(()=>normalizeEaseEvidenceDraft({...good,caseId:["EASE-001"]}),/literal text/i);
+  assert.throws(()=>normalizeEaseEvidenceDraft({...good,tailor:["RJ"]}),/literal text/i);
+  assert.throws(()=>normalizeEaseEvidenceDraft({...good,note:"x".repeat(1001)}),/too long/i);
+});
+
+test("house ease model rejects coerced physical range and silently truncated rationale",()=>{
+  const good={version:"house-ease-test-v1",shirt:HOUSE_SHIRT_EASE,trouser:HOUSE_TROUSER_EASE,note:"Tailor-reviewed"};
+  assert.equal(normalizeHouseEaseCalibrationDraft(good).version,"house-ease-test-v1");
+  assert.throws(()=>normalizeHouseEaseCalibrationDraft({...good,version:["house-ease-test-v1"]}),/literal text/i);
+  assert.throws(()=>normalizeHouseEaseCalibrationDraft({...good,note:"x".repeat(1201)}),/too long/i);
+  const shirt={...HOUSE_SHIRT_EASE,regular:{...HOUSE_SHIRT_EASE.regular,
+    chest:{...HOUSE_SHIRT_EASE.regular.chest,min:"2"}}};
+  assert.throws(()=>normalizeHouseEaseCalibrationDraft({...good,shirt}),/invalid ease range/i);
+});
+
+test("coerced database ease evidence cannot complete all 35 physical cells",()=>{
+  const rows=requiredEaseEvidenceKeys().map((key,index)=>{
+    const [garment,fit_class,field]=key.split(":");
+    return {garment,fit_class,field,case_id:"CASE-"+index,ease_cm:5};
+  });
+  assert.equal(summarizeEaseEvidence(rows).evidenceCoverageComplete,true);
+  assert.equal(summarizeEaseEvidence(rows.map((row)=>({...row,ease_cm:"5"}))).evidenceCoverageComplete,false);
+  assert.equal(summarizeEaseEvidence(rows.map((row)=>({...row,case_id:[row.case_id]}))).evidenceCoverageComplete,false);
+});
+
+test("house ease operator POST bounds JSON and requires confirmed UUID/boolean RPC receipts",()=>{
+  const source=readFileSync("src/app/api/operator/ease-calibration/route.ts","utf8");
+  assert.match(source,/secureJsonRequestError\(request,16384\)/);
+  assert.match(source,/readSecureJsonObject\(request,16384\)/);
+  assert.match(source,/normalizeVaultId\(receipt\)/);
+  assert.match(source,/receipt!==true/);
+  assert.doesNotMatch(source,/request\.json\(\)/);
+  assert.doesNotMatch(source,/Boolean\(updated\)/);
 });
