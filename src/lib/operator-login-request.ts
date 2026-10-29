@@ -38,7 +38,7 @@ export function operatorLoginRateBlocked(
   state.global={at:globalCount===1?now:previousGlobal!.at,count:globalCount};
 
   const key=rateKey(forwardedIp);
-  let previous=state.identities.get(key);
+  const previous=state.identities.get(key);
   if(!previous&&state.identities.size>=MAX_OPERATOR_LOGIN_RATE_KEYS){
     for(const [identity,entry] of state.identities){
       if(now<entry.at||now-entry.at>WINDOW_MS){
