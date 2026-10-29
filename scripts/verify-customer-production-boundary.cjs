@@ -74,6 +74,23 @@ async function verifyCustomerProductionBoundary(baseURL="http://127.0.0.1:3000")
     assert.equal(data.inspectionId,undefined);
     assert.match(response.headers.get("cache-control")||"",/no-store/);
   }
+  const deliveryCases=[
+    ["foreign origin","{}",{origin:"https://outside.example"},403],
+    ["same-site subdomain","{}",{"sec-fetch-site":"same-site"},403],
+    ["non-JSON","{}",{"content-type":"text/plain"},415],
+    ["oversized JSON",JSON.stringify({action:"record",note:"x".repeat(20_000)}),{},413],
+  ];
+  for(const [label,body,headers,expected] of deliveryCases){
+    const response=await fetch(`${baseURL}/api/operator/production-evidence`,{
+      method:"POST",headers:{"content-type":"application/json",...headers},body,
+    });
+    const data=await response.json();
+    assert.equal(response.status,expected,`delivery evidence ${label}: ${data.error||"unexpected response"}`);
+    assert.equal(typeof data.error,"string");
+    assert.equal(data.evidenceId,undefined);
+    assert.match(response.headers.get("cache-control")||"",/no-store/);
+  }
+  console.log(`PASS ${deliveryCases.length} real delivery evidence transport rejection contracts`);
   console.log(`PASS ${qcCases.length} real operator QC transport rejection contracts`);
   console.log(`PASS ${operatorCases.length} operator outcome transport rejection contracts`);
   console.log(`PASS ${cases.length} real customer production HTTP rejection contracts`);
