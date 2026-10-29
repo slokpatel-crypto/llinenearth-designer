@@ -80,7 +80,7 @@ test("privileged finished-garment QC endpoint refuses forged identities and unco
   assert.match(source,/secureJsonRequestError\(request,16384\)/);
   assert.match(source,/readSecureJsonObject\(request,16384\)/);
   assert.match(source,/normalizeVaultId\(body\.orderId\)/);
-  assert.match(source,/normalizeVaultId\(receipt\)/);
+  assert.match(source,/verifiedOperatorProductionCreateId\(receipt\)/);
   assert.match(source,/if\(!inspectionId\) return respond\(/);
   assert.match(source,/error instanceof SecureJsonBodyTooLarge/);
   assert.match(source,/error instanceof SecureJsonBodyInvalid/);
