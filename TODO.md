@@ -1,3 +1,8 @@
+## 2026-10-29 — physical stock rounding tolerance cannot sell dust (draft)
+- [x] Reproduced a provenance-ready RPC row with tiny positive `available_metres` (e.g. `1e-12`) passing the 0.001m rounding tolerance and being advertised `inStock:true` despite zero physical ledger units.
+- [x] Reject positive quantities that round to zero millimetres and decide availability using integer 0.001m units; preserve verified exact zero and valid positive metreage. Add positive/negative Node regressions.
+- [ ] Verify this stacked draft's exact-head quality, full Node, engine, preview, release, build and 390/768/1440 browser/Non-3D QA. Real supplier-confirmed stock, authenticated owner-scoped Supabase lock/recovery/enquiry/operator, tailor/device/native Blender, security and human release acceptance remain missing. No merge, migration, production write or deploy.
+
 ## 2026-10-29 — bound JSON reads on both customer stock evidence services (draft)
 - [x] Operator override pages and verified stock RPC use streaming bounded JSON reading instead of unbounded response.json(), with decoded body caps of 4 MiB/page and 1 MiB/stock snapshot under existing 8-second aborts. Oversize, invalid UTF-8/JSON and malformed stock row shapes all fail closed.
 - [x] Add real stream/Unicode, exact-byte-boundary, overflow, body absence and malformed response regressions plus both service wiring checks; preserve legitimate stock and no-store semantics.
