@@ -23,10 +23,6 @@ type UnknownRecord=Record<string,unknown>;
 function record(value:unknown):UnknownRecord{
   return value&&typeof value==="object"&&!Array.isArray(value)?value as UnknownRecord:{};
 }
-function finite(value:unknown){
-  const number=Number(value);
-  return Number.isFinite(number)?number:null;
-}
 function text(value:unknown,limit:number){
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
 }
