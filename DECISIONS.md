@@ -1,3 +1,7 @@
+## 2026-10-29 — internal GarmentViewer must not freeze live stock at build time
+
+**Decision:** The internal 3D viewer reads the same owner-reviewed live stock as the customer Designer, so its server page must render dynamically. Without request-time rendering, a build performed without Supabase credentials statically freezes zero available fabrics, causing verified Style Director-to-3D fabric handoff to lose both IDs even when runtime stock becomes available. This fix does not bypass fail-closed production inventory, approve the prototype model, or fabricate stock. Keep the CI-only stock fixture isolated.
+
 ## 2026-10-29 — device dashboard must respect persisted human review and full v2 receipt
 
 **Decision:** The operator device dashboard must not reclassify a persisted v2 `review` as accepted merely because raw samples and checkboxes pass. Only a fully normalized v2 receipt explicitly marked accepted can satisfy the display gate; contradictory v2 metrics are review-only with uncertified summary fields. Historical v1 remains review-only. This is code integrity, not a physical-device acceptance.

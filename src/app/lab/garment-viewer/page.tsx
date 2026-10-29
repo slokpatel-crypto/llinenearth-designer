@@ -7,6 +7,11 @@ import { PROTOTYPE_MODEL_ID } from "@/lib/garment-viewer-prototype";
 import { loadActiveDesignerFabricStock } from "@/lib/designer/catalog-stock-server";
 import "./garment-viewer.css";
 
+// Live verified physical inventory must be resolved at request time. A static
+// build without Supabase credentials would otherwise bake an empty catalogue
+// into this internal lab even after real stock becomes available.
+export const dynamic="force-dynamic";
+
 export const metadata={
   title:"GarmentViewer M7.46 · Linen Earth",
   description:"Linen Earth locked 3D mannequin with live fabric mapping and tailoring construction variants.",
