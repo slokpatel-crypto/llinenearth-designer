@@ -6,6 +6,20 @@ export type VerifiedStockSnapshotRow={
   provenance_ready:boolean;
 };
 
+/** The trusted v2 RPC must corroborate its boolean with actual manual-ledger
+ * counts. An omitted, coerced or internally contradictory receipt is unknown,
+ * never customer-available stock. This does not replace human roll verification.
+ */
+export function stockSnapshotHasConfirmedProvenance(row:Record<string,unknown>):boolean{
+  const manual=row.manual_event_count;
+  const provenance=row.provenance_event_count;
+  const legacy=row.legacy_unverified_event_count;
+  return row.provenance_ready===true
+    && typeof manual==="number" && Number.isSafeInteger(manual) && manual>0
+    && typeof provenance==="number" && Number.isSafeInteger(provenance) && provenance===manual
+    && typeof legacy==="number" && legacy===0;
+}
+
 export function verifiedStockAvailabilityMap(rows:VerifiedStockSnapshotRow[]){
   const out=new Map<string,boolean>();
   // A duplicated or contradictory server snapshot is not physical inventory
