@@ -1,5 +1,13 @@
 # TITAN — prioritized execution queue
 
+## 29 October 2026 — operator login transport/security hardening
+
+- [x] Reproduced the operator login's unbounded `request.json()`, array/object password coercion and silent 300-character truncation, Origin-only cross-site check, and unbounded forwarded-IP attempt map.
+- [x] Stacked draft implementation: shared 4 KiB streamed JSON/same-origin gate, strict literal opaque password, bounded 15-minute per-IP/global fail-closed attempts, negative pure/real HTTP regressions. Preserve existing verifier and operator cookie.
+- [ ] Require exact-head CI/Node/engine/preview/release/build/real-browser checks. Do not send actual operator credentials in CI, claim live authentication or merge/deploy.
+- [ ] Distributed edge/provider throttling, live Supabase customer-owner recovery and real operator/tailor acceptance remain release blockers.
+
+
 ## 29 October 2026 — 1 PM auth counter exhaustion hardening
 
 - [x] PR #457 exact-head CI #40830722822 and Non-3D QA #40830722830 completed successfully (source, Node, engine, preview, release, build, pinned Chromium/mobile). Live Supabase and human acceptance remain unverified.

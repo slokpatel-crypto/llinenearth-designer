@@ -1,5 +1,12 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-10-29 — Operator password sign-in is a bounded same-origin JSON operation
+
+**Decision:** The operator login previously parsed unlimited streamed JSON, stringified and silently truncated passwords, used an Origin-only check that allowed same-site subdomain requests, and kept an unbounded per-forwarded-IP attempt map. Reuse the shared same-origin/Fetch Metadata and 4 KiB streamed JSON guard, require a literal 1–300 character opaque password without trim/truncation, and fail closed on malformed JSON or values before calling the verifier. Preserve existing operator password verification, session cookie attributes and generic error responses. Limit best-effort local attempts to eight per IP and 300 global in 15 minutes with a 1,024-key cap; never evict active counters to admit a new identity. Add pure and real HTTP negative regressions without attempting a real operator sign-in.
+
+**Limits:** Forwarded IPs and process-local maps are not trusted distributed abuse controls. Missing live Supabase, operator/tailor/stock and native 3D proof remain release blockers. No password, provider, customer data, migration, model/photo, paid API, merge or production deployment changed.
+
+
 ## 2026-10-29 — Auth limiter capacity must not evict active abuse counters
 
 **Decision:** A bounded in-memory OTP/verification rate-key map must not make room for a new untrusted identity by deleting an unexpired IP or mailbox counter. Under a 2,048-identity flood, the former oldest-key eviction could reset a targeted customer's attempt history before its ten-minute window ended. At capacity, scan for an expired key and reclaim it; if all entries are live, fail closed for a new identity with the existing 429 behavior, while still counting known identities. Keep the existing per-IP, hashed-mailbox and global budgets unchanged. Add negative regression cases for both email and IP and a positive recovery case after expiry. This deliberately favors temporary denial over bypass during a sustained flood.

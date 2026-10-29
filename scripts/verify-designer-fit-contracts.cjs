@@ -159,6 +159,31 @@ async function verifyDesignerFitContracts(baseURL='http://127.0.0.1:3000') {
     assert.equal(response.headers.get('set-cookie'),null,'Rejected logout must not clear session cookies');
     results.push({mode:'customer-auth logout',label,status:403});
   }
+  // Operator login is security-sensitive. Only send malformed/rejected requests:
+  // no password is verified and no operator session is issued during CI.
+  const operatorUnsafe=[
+    ['foreign origin','{}',{origin:'https://outside.example'},403],
+    ['same-site subdomain','{}',{'sec-fetch-site':'same-site'},403],
+    ['non-JSON','{}',{'content-type':'text/plain'},415],
+    ['array JSON','[]',{},400],
+    ['malformed JSON','{"broken":',{},400],
+    ['coerced password',JSON.stringify({password:['secret']}),{},400],
+    ['numeric password',JSON.stringify({password:123456}),{},400],
+    ['overlength password',JSON.stringify({password:'x'.repeat(301)}),{},400],
+    ['oversized streamed JSON',JSON.stringify({password:'x'.repeat(5_000)}),{},413],
+  ];
+  let operatorCase=0;
+  for(const [label,body,headers,expected] of operatorUnsafe){
+    const response=await fetch(`${baseURL}/api/operator/login`,{
+      method:'POST',
+      headers:{'content-type':'application/json','x-forwarded-for':`203.0.113.${++operatorCase+20}`,...headers},
+      body,
+    });
+    const data=await response.json();
+    assert.equal(response.status,expected,`operator login ${label}: ${data.error||'unexpected response'}`);
+    assert.equal(response.headers.get('set-cookie'),null,'Rejected operator login must not issue a session');
+    results.push({mode:'operator login',label,status:response.status});
+  }
   console.log(`PASS ${results.length} actual HTTP fit-input contracts across assessment, search and both brief modes`);
   return results;
 }
