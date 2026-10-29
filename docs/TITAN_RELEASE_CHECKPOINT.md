@@ -226,3 +226,11 @@ Canonical criteria: [TITAN_RELEASE_CHECKLIST.md](./TITAN_RELEASE_CHECKLIST.md). 
 - **BLOCKED external:** prior read-only live Supabase evidence showed zero genuine physical stock, locked revisions, quotes/orders/QC/deliveries and missing first-ten RPC. No real signed-in owner/customer/operator full journey, supplier/tailor physical evidence, target devices, native Blender identity/UV/drape, five beta cases, ten deliveries, privacy/security review or explicit owner approval. No production writes or fabricated evidence.
 - **Next:** open stacked draft PR on #510, verify final SHA and both matching-head workflows; repair any failure without weakening security. Then continue an independent J3 owner-scoped lock/recovery or J5 receipt-boundary defect. Release remains BLOCKED/PENDING.
 
+
+## 2026-10-29T21:50:13.357Z — M17 CI test-scoping correction
+
+- **Exact prior M17 head → repair:** `f9c357f84df4196a4fa25818d882b638228eb011` → `dbf48d3b356c28de3d5572acc691a26e4eece573` (`tests/operator-production-status.test.ts` only); this checkpoint append creates another final SHA.
+- **Observed failure at exact old head:** CI `40960802298` and Non-3D `40960802219` both **FAILED** at full Node tests, 1159/1160 passed. Test #721 incorrectly asserted no `error:error.message` anywhere in the source, including existing intentional validation responses for malformed request bodies. The actual unexpected RPC catch was already generic and private no-store.
+- **Correction:** Scope the no-reflection assertion to the unexpected operator production catch after server-side `console.error`, while retaining valid 400 request-body diagnostics. No production logic, supplier data, schema, human evidence or UI/model changed. Prior failed runs must not be reused.
+- **PENDING:** new matching-head quality, Node, engine, preview, release, build, 390/768/1440 Chromium and Non-3D. External T1–T6/J1–J6 physical/human blockers unchanged. Next: inspect new CI, repair any failure; only then stage independent strict QC calendar work on a new descendant branch.
+
