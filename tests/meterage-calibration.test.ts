@@ -206,3 +206,40 @@ test("production cut API requires a confirmed UUID and bounded operator JSON",as
   assert.match(route,/private, no-store/);
   assert.match(http,/\/api\/operator\/production-calibration/);
 });
+
+test("meterage model bands refuse coerced physical values and silently truncated provenance",()=>{
+  const base={garment:"shirt",version:"linen-shirting-v1",
+    bands:[{label:"standard",minFabricWidthCm:140,maxFabricWidthCm:160,baseMetres:1.8,patternAllowanceMetres:.25}]};
+  for(const garment of [["shirt"],{value:"shirt"},true])
+    assert.throws(()=>normalizeMeterageCalibrationDraft({...base,garment}),/Garment must/);
+  for(const version of [["linen-shirting-v1"],{value:"linen-shirting-v1"}])
+    assert.throws(()=>normalizeMeterageCalibrationDraft({...base,version}),/Version must/);
+  for(const key of ["minFabricWidthCm","maxFabricWidthCm","baseMetres","patternAllowanceMetres"]){
+    for(const value of [null,false,true,"1.8",[],{}]){
+      const band={...base.bands[0],[key]:value};
+      assert.throws(()=>normalizeMeterageCalibrationDraft({...base,bands:[band]}),/Band 1/);
+    }
+  }
+  for(const label of [["standard"],{text:"standard"}])
+    assert.throws(()=>normalizeMeterageCalibrationDraft({...base,bands:[{...base.bands[0],label}]}),/Band 1/);
+  for(const cutContext of [["cut"],{text:"cut"},true,"c".repeat(161)])
+    assert.throws(()=>normalizeMeterageCalibrationDraft({...base,bands:[{...base.bands[0],cutContext}]}),/cut context/);
+  for(const note of [["note"],{text:"note"},true,"n".repeat(1201)])
+    assert.throws(()=>normalizeMeterageCalibrationDraft({...base,note}),/Meterage model note/);
+  assert.equal(normalizeMeterageCalibrationDraft({...base,note:"n".repeat(1200)}).note.length,1200);
+});
+
+test("meterage approval/retirement API requires strict human identity and confirmed database changes",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const route=readFileSync("src/app/api/operator/meterage-model/route.ts","utf8");
+  const http=readFileSync("scripts/verify-customer-production-boundary.cjs","utf8");
+  assert.match(route,/secureJsonRequestError\(request,16384\)/);
+  assert.match(route,/readSecureJsonObject\(request,16384\)/);
+  assert.match(route,/normalizeVaultId\(body\.modelId\)/);
+  assert.match(route,/normalizeVaultId\(receipt\)/);
+  assert.match(route,/updated!==true/);
+  assert.match(route,/error instanceof SecureJsonBodyTooLarge/);
+  assert.match(route,/error instanceof SecureJsonBodyInvalid/);
+  assert.match(route,/private, no-store/);
+  assert.match(http,/\/api\/operator\/meterage-model/);
+});

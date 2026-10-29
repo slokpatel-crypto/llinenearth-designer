@@ -1,3 +1,5 @@
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
+import { normalizeVaultId } from "@/lib/vault-id";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -5,6 +7,8 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { normalizeMeterageCalibrationDraft, distinctMeasuredCutCaseIds } from "@/lib/designer/meterage-calibration";
 
 export const runtime="nodejs";
+
+function respond(body:unknown,status=200){return NextResponse.json(body,{status,headers:{"cache-control":"private, no-store","pragma":"no-cache"}});}
 
 async function authorized(){
   const jar=await cookies();
@@ -48,50 +52,55 @@ export async function GET(){
 }
 
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,16384);
+  if(unsafe) return respond({error:unsafe.error},unsafe.status);
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
   try{
-    const body=await request.json() as Record<string,unknown>;
-    const action=String(body.action||"");
-
-    if(action==="create"){
-      const draft=normalizeMeterageCalibrationDraft(body);
+    const body=await readSecureJsonObject(request,16384);
+    if(body.action==="create"){
+      let draft;
+      try{draft=normalizeMeterageCalibrationDraft(body);}
+      catch(error){return respond({error:error instanceof Error?error.message:"Invalid meterage calibration."},400);}
       const caseIds=await evidenceCaseIds(draft.garment);
-      if(caseIds.length<20){
-        return NextResponse.json({
-          error:"At least 20 production-order-backed real cut cases for "+draft.garment+" are required before a calibration draft can be registered.",
-          evidenceCount:caseIds.length,
-        },{status:409});
-      }
-      const modelId=await rpc<string>("production_meterage_model_create_v4",{
-        p_garment:draft.garment,
-        p_version:draft.version,
-        p_bands:draft.bands,
-        p_evidence_case_ids:caseIds,
-        p_note:draft.note,
+      if(caseIds.length<20) return respond({
+        error:"At least 20 production-order-backed real cut cases for "+draft.garment+" are required before a calibration draft can be registered.",
+        evidenceCount:caseIds.length,
+      },409);
+      const receipt=await rpc<unknown>("production_meterage_model_create_v4",{
+        p_garment:draft.garment,p_version:draft.version,p_bands:draft.bands,
+        p_evidence_case_ids:caseIds,p_note:draft.note,
       });
-      return NextResponse.json({modelId,evidenceCount:caseIds.length});
+      const modelId=normalizeVaultId(receipt);
+      if(!modelId) return respond({error:"Meterage model backend did not confirm a model ID."},409);
+      return respond({modelId,evidenceCount:caseIds.length});
     }
-
-    if(action==="approve"){
-      const modelId=String(body.modelId||"").trim();
-      const approvedBy=String(body.approvedBy||"").trim().slice(0,120);
-      const approvalNote=String(body.approvalNote||"").trim().slice(0,1200);
-      if(approvedBy.length<2) return NextResponse.json({error:"Owner/tailor approver is required."},{status:400});
-      const updated=await rpc<boolean>("production_meterage_model_approve_v4",{
+    if(body.action==="approve"){
+      const modelId=normalizeVaultId(body.modelId);
+      const approvedBy=typeof body.approvedBy==="string"?body.approvedBy.trim():"";
+      if(!modelId) return respond({error:"Valid meterage model ID is required."},400);
+      if(approvedBy.length<2||approvedBy.length>120) return respond({error:"Owner/tailor approver must be 2–120 characters."},400);
+      if(body.approvalNote!==undefined&&body.approvalNote!==null&&typeof body.approvalNote!=="string")
+        return respond({error:"Approval note must be text."},400);
+      const approvalNote=typeof body.approvalNote==="string"?body.approvalNote.trim():"";
+      if(approvalNote.length>1200) return respond({error:"Approval note cannot exceed 1200 characters."},400);
+      const updated=await rpc<unknown>("production_meterage_model_approve_v4",{
         p_model_id:modelId,p_approved_by:approvedBy,p_approval_note:approvalNote,
       });
-      return NextResponse.json({updated:Boolean(updated)});
+      if(updated!==true) return respond({error:"Meterage model approval was not confirmed."},409);
+      return respond({updated:true});
     }
-
-    if(action==="retire"){
-      const modelId=String(body.modelId||"").trim();
-      const updated=await rpc<boolean>("production_meterage_model_retire",{p_model_id:modelId});
-      return NextResponse.json({updated:Boolean(updated)});
+    if(body.action==="retire"){
+      const modelId=normalizeVaultId(body.modelId);
+      if(!modelId) return respond({error:"Valid meterage model ID is required."},400);
+      const updated=await rpc<unknown>("production_meterage_model_retire",{p_model_id:modelId});
+      if(updated!==true) return respond({error:"Meterage model retirement was not confirmed."},409);
+      return respond({updated:true});
     }
-
-    return NextResponse.json({error:"Unsupported meterage calibration action."},{status:400});
+    return respond({error:"Unsupported meterage calibration action."},400);
   }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
     console.error("[operator/meterage-model]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Meterage calibration operation failed."},{status:409});
+    return respond({error:"Meterage calibration operation failed."},409);
   }
 }

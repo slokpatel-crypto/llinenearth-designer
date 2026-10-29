@@ -1,3 +1,9 @@
+## 2026-10-29 — Meterage approval requires typed physical bands and real RPC confirmation
+
+**Decision:** A production metre-estimation model cannot become approved because a JSON string/array coerces to a measured width, a forged model ID or approver is truncated, or a truthy RPC response masquerades as a confirmed change. Require literal numeric physical bands and bounded notes, strict UUID model identities, a valid model UUID creation receipt, and exact boolean true for approve/retire. Bound operator JSON to 16 KiB actual streamed bytes and same-origin media, with 400/413 body errors and private no-store responses. Preserve the 20 distinct real cut-case threshold and existing garment vocabulary.
+
+**Limits:** Software gates do not prove real cloth usage, actual owner/tailor signoff, supplier provenance, live Supabase or native Blender. No schema/data mutation, paid AI, model/photo change, merge or deployment.
+
 ## 2026-10-29 — Production cut evidence cannot be coerced into physical truth
 
 **Decision:** Reject JSON-coerced physical widths, actual usage, repeat, matching, case/garment IDs and silently truncated cut context/notes. Preserve existing precision and garment vocabulary. Require 16 KiB actual streamed same-origin JSON, a confirmed UUID evidence receipt, 400/413 body failures and private no-store responses.
