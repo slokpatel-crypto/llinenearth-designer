@@ -1,3 +1,7 @@
+## 2026-10-29 — paginated operator sold-out evidence needs ordered row identity
+
+**Decision:** Exact `Content-Range` and stable totals are insufficient to detect repeated or shifted offset pages that omit a sold-out event during concurrent writes. Require every returned `style_events` row to carry a valid canonical timestamp and nonblank ID and require strictly descending `(at,id)` order across and within pages; otherwise both customer stock paths fail closed. This reduces silent omission risk but is not a transactionally consistent snapshot; a future atomic ledger RPC remains preferable. No stock mutation, schema, new dependency, AI cost, model/photo change, merge or deployment.
+
 ## 2026-10-29 — reconcile exact-count metadata receipts with bounded pagination
 
 **Decision:** The operator sold-out override ledger is customer-availability evidence only after all pages have been read with contiguous `Content-Range` and exact, consistent totals. Page through stable `at.desc,id.desc` IDs in 1,000-row slices, sharing one eight-second deadline; return unavailable on any missing/moving count, noncontiguous page, malformed row or history beyond five pages. Preserve the initial exact-count contract from PR #486, the bounded legacy gallery from #487, and prior sold-out/stock protections. Human stock and authenticated launch signoffs remain unproven; no schema, data mutation, merge or deploy.
