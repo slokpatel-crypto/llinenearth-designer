@@ -17,7 +17,8 @@ test("delivery evidence service bounds all success and error RPC responses witho
   assert.doesNotMatch(code,/response\.text\(\)/);
   assert.match(code,/if\(!Array\.isArray\(orders\)\|\|!Array\.isArray\(evidence\)\) throw/);
   assert.match(code,/Malformed delivery evidence list receipts/);
-  assert.match(code,/firstTenBasis=await rpc<unknown>\("production_first_ten_delivery_audit",\{\}\)/);
+  assert.match(code,/firstTenBasis=verifiedFirstTenAuditReceipt\(/);
+  assert.match(code,/await rpc<unknown>\("production_first_ten_delivery_audit",\{\}\)/);
 });
 
 test("delivery audit write cannot confirm malformed or padded receipt, while exact UUID remains valid",()=>{

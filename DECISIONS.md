@@ -1,3 +1,7 @@
+## 2026-10-30 — first-ten delivery audit failure is not an absent optional migration
+
+**Decision:** The operator delivery-evidence endpoint may return `firstTenBasis:null` only when the optional first-ten audit RPC is actually absent (HTTP 404), with an explicit installed flag. An installed RPC returning malformed 200 JSON, 5xx or a timeout must fail the whole evidence read closed; otherwise an operator could confuse a broken chronological audit with an uninstalled migration. Require a typed versioned receipt and preserve legitimate `historyValid:false` as blocked history, not approved deliveries. This is source-level J5/T5 integrity; no genuine ten-delivery proof, production data writes, migration, paid provider, main merge or deployment.
+
 ## 2026-10-30 — optional production evidence must not silently become empty history
 
 **Decision:** The operator Production Desk may remain compatible with an older database missing an optional QC, outcome or learning-context RPC, but a 200 non-array body, timeout or upstream 5xx is not evidence of zero inspections or outcomes. Accept only literal arrays for installed optional evidence, fail the overall GET closed on malformed/unreachable installed evidence, and tolerate only an explicit HTTP 404 as missing optional migration with separate installed-status flags and a visible operator warning. Core quote/order history remains mandatory. This is source integrity, not physical tailoring or customer approval; it does not authorize migrations, production writes, provider charges, main merge or deployment.
