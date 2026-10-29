@@ -1,3 +1,8 @@
+## 2026-10-30 — J4 share/enquiry audit receipts must be exact literal UUIDs (stacked draft)
+- [x] Reproduced `verifiedLockedHandoffAuditId` trimming padded upstream UUID strings and `/api/designer/enquiry` using the same permissive `normalizeVaultId` directly. Both could claim `audited:true` from an altered RPC receipt rather than a literal database ID.
+- [x] Require an exact scalar UUID receipt (case-insensitive hex only, no whitespace/coercion) in the shared share/enquiry audit helper, and use it in the owner-scoped enquiry API. Add positive uppercase and negative padded/array tests, source regression and release contract.
+- [ ] Verify new exact-head quality, full Node tests, engine, preview, release, build, 390/768/1440 Chromium and Non-3D. Real authenticated owner-scoped enquiry/operator receipt and actual WhatsApp send remain unverified; physical stock, tailor, devices, native Blender, beta, delivery, security/privacy and owner approval BLOCKED/PENDING. No DB writes, migrations, provider charges, main merge or deployment.
+
 ## 2026-10-30 — J5 saturated global QC pages cannot authorize delivery (stacked draft)
 - [x] Reproduced that a full `finished_garment_qc_list` page (500 server / 250 operator UI) could be accepted as proof of latest-by-order QC even though the list is capped and may omit relevant history.
 - [x] Fail closed at the exact configured row cap and on invalid caps in the shared latest-QC guard; wire 500 to the privileged delivery transition and 250 to the operator UI. Add saturated/unsaturated and invalid-limit regressions; preserve existing strict timestamp/provenance checks.
