@@ -1,3 +1,7 @@
+## 2026-10-29 — preserve complete human stock audit notes
+
+**Decision:** Manual receipt/adjustment, reservation consumption and release audit notes are optional, but supplied notes must be literal strings of at most 600 normalized characters. Reject arrays, objects, booleans, numbers and overlong notes instead of coercing or silently truncating physical evidence. Missing/null notes remain empty for backwards compatibility. No schema change, new inventory, migration, production mutation or deployment. Preserve deterministic Designer and fixed model/photo.
+
 ## 2026-10-29 — stock availability needs a corroborated v2 ledger receipt
 
 **Decision:** Do not trust a lone `provenance_ready:true` from the stock snapshot RPC. The existing SQL v2 contract includes manual, provenance and legacy-unverified event counts. Require positive safe-integer manual count, equal provenance count and zero legacy count; malformed or missing counts fail closed. The CI-only loopback fixture emits synthetic matching counts solely to exercise UI and never represents real inventory. This adds consistency checks, not physical supplier evidence, human approval or a stock reservation. No schema, real database write, merge or deployment.
