@@ -1,3 +1,5 @@
+import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
+import { normalizeVaultId } from "@/lib/vault-id";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -5,6 +7,10 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { normalizeMeasurementCalibrationDraft, summarizeMeasurementCalibration, type MeasurementCalibrationCaseRow } from "@/lib/designer/measurement-calibration";
 
 export const runtime="nodejs";
+
+function respond(body:unknown,status=200){
+  return NextResponse.json(body,{status,headers:{"cache-control":"private, no-store","pragma":"no-cache"}});
+}
 
 async function operatorAuthorized(){
   const jar=await cookies();
@@ -46,10 +52,15 @@ export async function GET(){
 }
 
 export async function POST(request:Request){
-  if(!await operatorAuthorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  const unsafe=secureJsonRequestError(request,16384);
+  if(unsafe) return respond({error:unsafe.error},unsafe.status);
+  if(!await operatorAuthorized()) return respond({error:"Unauthorized."},401);
   try{
-    const draft=normalizeMeasurementCalibrationDraft(await request.json());
-    const eventId=await rpc<string>("measurement_calibration_case_record",{
+    const body=await readSecureJsonObject(request,16384);
+    let draft;
+    try{draft=normalizeMeasurementCalibrationDraft(body);}
+    catch(error){return respond({error:error instanceof Error?error.message:"Invalid measurement calibration evidence."},400);}
+    const receipt=await rpc<unknown>("measurement_calibration_case_record",{
       p_case_id:draft.caseId,
       p_self_chest_cm:draft.selfChestCm,
       p_tailor_chest_cm:draft.tailorChestCm,
@@ -59,8 +70,13 @@ export async function POST(request:Request){
       p_checked_by:draft.checkedBy,
       p_note:draft.note,
     });
-    return NextResponse.json({eventId,stored:true});
+    const eventId=normalizeVaultId(receipt);
+    if(!eventId) return respond({error:"Measurement calibration backend did not confirm an evidence ID."},409);
+    return respond({eventId,stored:true});
   }catch(error){
-    return NextResponse.json({error:error instanceof Error?error.message:"Measurement calibration evidence could not be stored."},{status:400});
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
+    console.error("[measurement-calibration:post]",error);
+    return respond({error:"Measurement calibration evidence could not be stored."},409);
   }
 }
