@@ -1,3 +1,8 @@
+## 29 October 2026 — exact physical stock identity boundary (draft)
+- [x] Reproduced operator stock writes silently trimming padded catalogue fabric IDs and reservation UUIDs into different existing physical stock subjects.
+- [x] Reject padded fabric IDs in manual receipts/adjustments and reservation creation; reject padded UUIDs on consumption/release. Preserve normalization of human names, notes and source references, and existing valid keys.
+- [ ] Verify exact-head Node, quality, engine, preview, release, build and 390/768/1440 browser QA. Real supplier/owner stock and signed-in Supabase operator handoff remain unverified; no migration, live write, merge or deployment.
+
 ## 2026-10-29 — legacy inventory public availability consistency (draft)
 
 - [x] Reproduced `/api/inventory` reporting all bundled structured swatches `inStock:true` and advertising the optimistic total even when the verified live stock ledger has no entries; Designer already fails closed.
