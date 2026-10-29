@@ -129,3 +129,35 @@ test("live RPC adapter never coerces non-string fabric IDs to catalogue IDs",()=
   assert.match(source,/fabric_id:typeof row\.fabric_id==="string"\?row\.fabric_id:""/);
   assert.doesNotMatch(source,/fabric_id:String\(row\.fabric_id/);
 });
+
+test("unrequested ledger identities cannot inflate verified catalogue stock metrics",()=>{
+  const result=applyVerifiedStockAvailability([fabric("shirt")],[
+    {fabric_id:"shirt",available_metres:"3.500",provenance_ready:true},
+    {fabric_id:"unexpected-rpc-fabric",available_metres:"9.000",provenance_ready:true},
+  ]);
+  assert.deepEqual(result.verifiedFabricIds,["shirt"]);
+  assert.equal(result.stock.length,1);
+  assert.equal(result.stock[0].inStock,true);
+  assert.equal(result.stock[0].availabilityVerified,true);
+});
+
+test("duplicate catalogue identities cannot inherit one verified physical roll",()=>{
+  const result=applyVerifiedStockAvailability([
+    {...fabric("same-id"),swatchImageUrl:"/fabric-a.webp"},
+    {...fabric("same-id"),swatchImageUrl:"/fabric-b.webp"},
+    fabric("unique"),
+  ],[
+    {fabric_id:"same-id",available_metres:"5.000",provenance_ready:true},
+    {fabric_id:"unique",available_metres:"3.000",provenance_ready:true},
+  ]);
+  assert.deepEqual(result.verifiedFabricIds,["unique"]);
+  assert.deepEqual(result.stock.map((item)=>({
+    inStock:item.inStock,availabilityVerified:item.availabilityVerified,
+  })),[
+    {inStock:false,availabilityVerified:false},
+    {inStock:false,availabilityVerified:false},
+    {inStock:true,availabilityVerified:true},
+  ]);
+  assert.equal(result.stock[0].swatchImageUrl,"/fabric-a.webp");
+  assert.equal(result.stock[1].swatchImageUrl,"/fabric-b.webp");
+});
