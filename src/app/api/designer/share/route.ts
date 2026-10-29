@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readLockedHandoffRequest, verifiedLockedHandoffAuditId } from "@/lib/designer/locked-handoff-request";
 import { createDesignShareToken, designShareConfigured } from "@/lib/designer/design-share";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 
@@ -39,7 +40,7 @@ export async function POST(request:Request){
           signal:AbortSignal.timeout(8_000),
         });
         if(audit.ok){
-          const auditId=verifiedLockedHandoffAuditId(await audit.json().catch(()=>null));
+          const auditId=verifiedLockedHandoffAuditId(await readBoundedJsonResponse(audit,4 * 1024).catch(()=>null));
           audited=Boolean(auditId);
           if(!audited) console.error("[designer/share] audit RPC did not return a valid audit ID");
         }else{

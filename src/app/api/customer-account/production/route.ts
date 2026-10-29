@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { normalizeCustomerProductionOutcome, parseCustomerProductionRecordId } from "@/lib/designer/customer-production-outcomes";
 import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 
@@ -17,10 +18,11 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     signal:AbortSignal.timeout(8_000),
   });
   if(!response.ok){
-    const detail=(await response.text()).slice(0,240);
-    throw new Error(`Customer production request failed (${response.status}): ${detail}`);
+    throw new Error(`Customer production request failed (${response.status}).`);
   }
-  return await response.json() as T;
+  // Customer-owned order histories have a finite list budget; mutations remain small.
+  const maxBytes=name.includes("_list_owned")?4 * 1024 * 1024:256 * 1024;
+  return await readBoundedJsonResponse(response,maxBytes) as T;
 }
 
 function respond(body:unknown,status=200){

@@ -7,6 +7,7 @@ import { getCustomerIdentity } from "@/lib/customer-auth";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 import { normalizeVaultId } from "@/lib/vault-id";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 
 export const runtime="nodejs";
@@ -29,7 +30,9 @@ async function rpc(name:string,payload:Record<string,unknown>):Promise<unknown>{
     signal:AbortSignal.timeout(8_000),
   });
   if(!response.ok) throw new Error("Enquiry audit RPC failed ("+response.status+").");
-  return await response.json() as unknown;
+  // A vault row can contain a locked recipe; bound upstream response bytes
+  // before JSON.parse. Oversize/malformed RPC evidence must fail closed.
+  return await readBoundedJsonResponse(response,256 * 1024);
 }
 
 function whatsappDraft(revision:LockedDesignRevision){

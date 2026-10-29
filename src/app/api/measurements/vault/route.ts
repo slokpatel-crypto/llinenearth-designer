@@ -5,6 +5,7 @@ import { vaultRateBlocked } from "@/lib/vault-rate-guard";
 import { isVaultListRowEnvelope } from "@/lib/vault-owned-list-integrity";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 import { requireVaultBooleanResult } from "@/lib/vault-write-integrity";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
@@ -46,10 +47,13 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     signal:AbortSignal.timeout(8_000),
   });
   if(!response.ok){
-    const detail=(await response.text()).slice(0,300);
-    throw new Error(`Measurement vault request failed (${response.status}): ${detail}`);
+    // Never buffer an untrusted error response or surface remote body details.
+    throw new Error(`Measurement vault request failed (${response.status}).`);
   }
-  return await response.json() as T;
+  // Single revisions/profiles are small; owned lists have a larger finite cap.
+  // Oversized, malformed or interrupted upstream evidence fails closed.
+  const maxBytes=name.endsWith("_list_owned")?4 * 1024 * 1024:256 * 1024;
+  return await readBoundedJsonResponse(response,maxBytes) as T;
 }
 
 export async function POST(request:Request){

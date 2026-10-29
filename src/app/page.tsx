@@ -60,7 +60,7 @@ export default function Home() {
         </div>
         <div className="gatewayHeroModel" aria-label="Linen Earth menswear studio preview">
           <div className="gatewayHeroGlow" />
-          <img src="/api/homepage-model" alt="Menswear studio preview for Linen Earth" fetchPriority="high" decoding="async" />
+          <img src="/designer/studio-tucked.webp" alt="Linen Earth original fixed Studio model preview" fetchPriority="high" decoding="async" />
           <div className="gatewayHeroBadge"><span>LINEN EARTH STUDIO</span><b>FABRIC · FIT · FORM</b></div>
           <div className="gatewayHeroCaption"><span>REALISTIC SILHOUETTE</span><i/> <span>FABRIC-LED STYLING</span></div>
         </div>
