@@ -45,7 +45,8 @@ export function validGarmentQcDeskResponse(value:unknown):value is {
       ||!row.defects.every((defect:unknown)=>typeof defect==="string"&&defect.length<=120)) return false;
     // SQL-approved QC must contain all six actual physical checks. Extra
     // historical check/defect labels remain display-only, not new approvals.
-    if(row.decision==="approved"&&FINISHED_GARMENT_QC_CHECKS.some(check=>row.checks[check.id]!==true))
+    const verifiedChecks=row.checks as Record<string,boolean>; // narrowed above before callback
+    if(row.decision==="approved"&&FINISHED_GARMENT_QC_CHECKS.some(check=>verifiedChecks[check.id]!==true))
       return false;
     if(row.decision==="rework"&&row.defects.length===0&&row.note.trim().length<3)
       return false;
