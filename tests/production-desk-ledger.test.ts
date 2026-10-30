@@ -25,7 +25,7 @@ test("J5 valid quote/order ledgers accept exact SQL receipt fields and capped hi
   assert.equal(validProductionDeskLedgers([quote],[order]),true);
   assert.equal(validProductionDeskLedgers([{...quote,quote_id:qid.toUpperCase()}],[order]),true);
   assert.equal(validProductionDeskLedgers([],[order]),true,"older linked quotes may be outside the newest 100");
-  assert.equal(validProductionDeskLedgers([{...quote,line_items:[{label:"Historic detailed instruction ".repeat(9),amount:1.005}]}],[order]),true,"do not reject historic SQL-permitted labels or precision");
+  assert.equal(validProductionDeskLedgers([{...quote,line_items:[{label:"Historic detailed instruction ".repeat(9),amount:1.005}],subtotal:1.01,adjustment:-0.01,total:1.00}],[order]),true,"do not reject historic SQL-permitted labels or precision");
 });
 
 test("J5 rejects success-shaped malformed rows, dates, money and identifiers",()=>{
@@ -36,6 +36,7 @@ test("J5 rejects success-shaped malformed rows, dates, money and identifiers",()
     {...quote,line_items:"[]"}, {...quote,line_items:[{label:["Tailoring"],amount:100}]},
     {...quote,line_items:[{label:"Tailoring",amount:"1200"}]},
     {...quote,total:"1200.11"}, {...quote,total:-1},
+    {...quote,total:100}, {...quote,subtotal:100},
     {...quote,subtotal:Number.NaN}, {...quote,created_at:"2026-02-31T10:00:00Z"},
     {...quote,updated_at:"2026-10-29T10:00:00Z"},
     {...quote,note:null},
