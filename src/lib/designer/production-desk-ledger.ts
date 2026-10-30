@@ -34,9 +34,17 @@ function validQuote(value:unknown):value is Record<string,unknown>{
     ||!Array.isArray(value.line_items)||value.line_items.length<1||value.line_items.length>30) return false;
   // Existing SQL allowed longer historical labels and separately rounded
   // monetary totals. Preserve them rather than rewriting legacy receipts.
-  return value.line_items.every((line:unknown)=>record(line)
+  if(!value.line_items.every((line:unknown)=>record(line)
     &&typeof line.label==="string"&&line.label.trim().length>0
-    &&money(line.amount)&&line.amount>=0&&line.amount<=10_000_000);
+    &&money(line.amount)&&line.amount>=0&&line.amount<=10_000_000)) return false;
+  const linesTotal=(value.line_items as Array<{amount:number}>)
+    .reduce((sum,line)=>sum+line.amount,0);
+  // Older SQL rounded raw numeric line totals, adjustment and final total
+  // separately. Allow up to two paise of legacy rounding drift, never a
+  // materially different customer-facing total or subtotal.
+  return Math.abs(Math.round(linesTotal*100)-Math.round((value.subtotal as number)*100))<=2
+    &&Math.abs(Math.round(((value.subtotal as number)+(value.adjustment as number))*100)
+      -Math.round((value.total as number)*100))<=2;
 }
 function validOrder(value:unknown):value is Record<string,unknown>{
   return record(value)&&Boolean(verifiedOperatorProductionCreateId(value.order_id))
