@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { validProductionDeskLedgers } from "../src/lib/designer/production-desk-ledger.ts";
+import { validProductionDeskLedgers, validProductionDeskResponse } from "../src/lib/designer/production-desk-ledger.ts";
 
 const qid="123e4567-e89b-42d3-a456-426614174000";
 const oid="123e4567-e89b-42d3-a456-426614174001";
@@ -71,4 +71,38 @@ test("operator route validates typed ledgers before returning them to UI",()=>{
   assert.ok(validation>0&&response>validation);
   assert.match(route,/import \{ validProductionDeskLedgers \} from "@\/lib\/designer\/production-desk-ledger"/);
   assert.match(route,/if\(!validProductionDeskLedgers\(quotes,orders\)\) throw/);
+});
+
+test("J5 operator HTTP envelope fails closed on forged success, missing evidence sources and malformed ledgers",()=>{
+  const configured={
+    configured:true,quotes:[quote],orders:[order],
+    qcInspections:[],customerOutcomes:[],learningContexts:[],
+    optionalEvidenceSources:{qcInstalled:false,customerOutcomesInstalled:false,learningContextInstalled:false},
+  };
+  assert.equal(validProductionDeskResponse(configured),true);
+  assert.equal(validProductionDeskResponse({configured:false,quotes:[],orders:[]}),true);
+  assert.equal(validProductionDeskResponse({...configured,quotes:[{...quote,total:100}]}),false);
+  assert.equal(validProductionDeskResponse({...configured,orders:[{...order,status:"invented"}]}),false);
+  assert.equal(validProductionDeskResponse({...configured,configured:"true"}),false);
+  assert.equal(validProductionDeskResponse({...configured,optionalEvidenceSources:undefined}),false);
+  assert.equal(validProductionDeskResponse({...configured,optionalEvidenceSources:{qcInstalled:"false",customerOutcomesInstalled:false,learningContextInstalled:false}}),false);
+  assert.equal(validProductionDeskResponse({...configured,qcInspections:null}),false);
+  assert.equal(validProductionDeskResponse({...configured,qcInspections:[{}]}),false,"an uninstalled optional source cannot claim records");
+  assert.equal(validProductionDeskResponse({...configured,customerOutcomes:[{}]}),false);
+  assert.equal(validProductionDeskResponse({...configured,learningContexts:[{}]}),false);
+  assert.equal(validProductionDeskResponse({configured:false,quotes:[quote],orders:[]}),false);
+  assert.equal(validProductionDeskResponse({configured:false,quotes:[],orders:[],qcInspections:[]}),false);
+});
+
+test("J5 operator browser independently validates network receipts and clears old recovery identity",()=>{
+  const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  const guard=client.indexOf("if(!validProductionDeskResponse(data))");
+  const setQuotes=client.indexOf("setQuotes(data.quotes as Quote[])");
+  assert.ok(guard>0&&setQuotes>guard,"the client cannot trust a successful HTTP JSON array without the typed receipt guard");
+  assert.match(client,/setConfigured\(data\.configured\)/);
+  assert.doesNotMatch(client,/setConfigured\(data\.configured!==false\)/);
+  assert.match(client,/setLoadedRevision\(null\);\s*try\{\s*const response=await fetch\("\/api\/designer\/vault"/);
+  assert.match(client,/value=\{recoveryToken\} disabled=\{busy\} onChange=\{\(e\)=>\{/);
+  assert.match(client,/setRecoveryToken\(e\.target\.value\);\s*setLoadedRevision\(null\)/);
+  assert.match(client,/setOrder\(\(current\)=>\(\{\.\.\.current,revisionId:revision\.revisionId,recipeHash:revision\.recipeHash,quoteId:""\}\)\)/);
 });
