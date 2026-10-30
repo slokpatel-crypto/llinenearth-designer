@@ -124,6 +124,27 @@ test("authoritative first-ten and recent browsing cannot contradict overlapping 
   }],basis),true);
 });
 
+test("newer browse audits cannot be missing from authoritative first-ten history",()=>{
+  const basis={version:"linen-earth-production-first-ten-audit-v2",historyValid:true,
+    orders:[order],evidence:[audit]};
+  const laterIncident={...audit,evidence_id:"10000000-0000-4000-8000-000000000002",
+    manual_design_reentry:true,reentry_fields:["fabric_identity"],
+    note:"Fabric code was manually entered",created_at:"2026-10-04T10:00:00Z"};
+  assert.equal(validProductionDeliveryBrowseReceipt([order],[audit,laterIncident]),true);
+  // Without this cross-snapshot check, the authoritative clean row could
+  // certify a first-ten order despite a newer visible re-entry incident.
+  assert.equal(validProductionBrowseFirstTenAgreement([order],[audit,laterIncident],basis),false);
+  assert.equal(validProductionBrowseFirstTenAgreement([order],[laterIncident],basis),false);
+  assert.equal(validProductionBrowseFirstTenAgreement([order],[audit],{...basis,evidence:[]}),false);
+  // An unrelated historical order may lie outside the bounded browse page.
+  const historical={...laterIncident,order_id:"00000000-0000-4000-8000-000000000002"};
+  assert.equal(validProductionBrowseFirstTenAgreement([],[historical],basis),true);
+  // Incomplete history remains explicitly blocked from certification; the
+  // consistency helper must not turn it into a complete first-ten basis.
+  assert.equal(validProductionBrowseFirstTenAgreement([order],[audit,laterIncident],
+    {...basis,historyValid:false}),true);
+});
+
 test("operator server and client enforce separate-snapshot consistency",()=>{
   const route=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
   const client=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
