@@ -37,7 +37,7 @@ export async function POST(request:Request){
     }
 
     async function rpc(name:string,payload:Record<string,unknown>,maxBytes:number){
-      const response=await fetch(cloud!.url.replace(/\\/$/,"")+"/rest/v1/rpc/"+name,{
+      const response=await fetch(cloud!.url.replace(/\/$/,"")+"/rest/v1/rpc/"+name,{
         method:"POST",
         headers:{...supabaseAdminHeaders(cloud!),"content-type":"application/json",accept:"application/json"},
         body:JSON.stringify(payload),
