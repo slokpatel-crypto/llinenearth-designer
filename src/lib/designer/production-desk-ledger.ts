@@ -140,14 +140,20 @@ function validOptionalOrderLineage(orders:unknown[],outcomes:unknown[],contexts:
     if(!id) return false;
     byId.set(id,order);
   }
-  for(const row of [...outcomes,...contexts]){
+  for(const row of outcomes){
+    if(!record(row)) return false;
+    const id=verifiedOperatorProductionCreateId(row.order_id);
+    const order=id?byId.get(id):undefined;
+    if(order&&row.revision_id!==order.revision_id) return false;
+  }
+  for(const row of contexts){
     if(!record(row)) return false;
     const id=verifiedOperatorProductionCreateId(row.order_id);
     const order=id?byId.get(id):undefined;
     if(!order) continue; // an older order may be outside this capped page
-    if(row.revision_id!==order.revision_id) return false;
-    if(contexts.includes(row)&&String(row.recipe_hash).toLowerCase()!==String(order.recipe_hash).toLowerCase())
-      return false;
+    if(row.revision_id!==order.revision_id
+      ||typeof row.recipe_hash!=="string"||typeof order.recipe_hash!=="string"
+      ||row.recipe_hash.toLowerCase()!==order.recipe_hash.toLowerCase()) return false;
   }
   return true;
 }
