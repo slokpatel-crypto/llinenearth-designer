@@ -339,9 +339,9 @@ requireTokens("supabase/migrations/20261010_house_ease_calibration_registry.sql"
 requireTokens("supabase/migrations/20261011_launch_beta_flow_detail.sql", ["design_locked","share_or_enquiry_completed","launch_beta_attempt_record_v2","share/enquiry completion cannot precede a locked design"]);
 requireTokens("src/app/api/operator/launch-readiness/route.ts", ["record_verified_beta","launch_beta_attempt_record_v4","verifiedFlowAudit","p_evidence_kind"]);
 requireTokens("src/app/operator/launch-readiness/LaunchReadinessClient.tsx", ["LOCK → VERIFIED SHARE/ENQUIRY","record_verified_beta","Verified action","share_audit_confirmed","enquiry_audit_confirmed"]);
-requireTokens("src/app/api/designer/share/route.ts", ["design_share_audit_record","p_revision_id:revision.revisionId","audited"]);
+requireTokens("src/app/api/designer/share/route.ts", ["design_share_audit_record","p_revision_id:verified.revisionId","audited"]);
 requireTokens("src/app/api/designer/enquiry/route.ts", ["verifyLockedDesignRevision","design_enquiry_audit_record","Locked Designer look","audited"]);
-requireTokens("src/components/DesignerModule.tsx", ["verified share audit recorded","beta audit unavailable"]);
+requireTokens("src/components/DesignerModule.tsx", ["verified share audit recorded","checked={shareConsent}"]);
 requireTokens("supabase/migrations/20261020_verified_beta_share_flow.sql", ["design_share_audit","design_enquiry_audit","launch_beta_attempt_record_v4","share_audit_confirmed","enquiry_audit_confirmed","no verified % audit exists for this locked revision"]);
 requireTokens("src/lib/designer/launch-readiness-evidence.ts", ["normalizeVerifiedBetaAttempt","evidenceKind","row.design_locked===true","row.share_or_enquiry_completed===true","row.enquiry_audit_confirmed===true","distinctVerifiedRevisions","uniqueSuccessfulByRevision"]);
 requireTokens("src/lib/designer/block-strategy.ts", ["block-strategy-provisional-1","assessBlockStrategy","shaped-shirt","roomy-seat-block","suggestedPatch"]);
@@ -1042,12 +1042,12 @@ requireTokens("src/app/api/designer/share/route.ts",[
   "designer_locked_revision_vault_get","selectVaultReadRow(ownedResult)",
   "selectVaultReadRow(tokenResult)","sameLockedEnquiryRevision(revision,owned.payload",
   "readBoundedJsonResponse(response,maxBytes)",
-  "verifiedLockedHandoffAuditId(await rpc(\\"design_share_audit_record\\"",
+  "verifiedLockedHandoffAuditId(await rpc(\"design_share_audit_record\"",
   "if(!auditId) return privateJson","createDesignShareToken(verified)",
   "audited:true,auditId,ownerVerified:true","cache-control","private, no-store",
 ]);
 requireTokens("src/lib/designer/share-intent.ts",[
-  "consentToShare !== true","typeof input.recoveryToken !== \\"string\\"",
+  "consentToShare !== true","typeof input.recoveryToken !== \"string\"",
 ]);
 requireTokens("src/components/DesignerModule.tsx",[
   "checked={shareConsent}","disabled={shareBusy||!shareConsent||!vaultAccountOwned||!vaultRecoveryToken}",
