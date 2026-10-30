@@ -13,7 +13,7 @@ import { parseOperatorProductionStatus } from "@/lib/designer/operator-productio
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval";
 import { verifiedOptionalProductionRows } from "@/lib/designer/optional-production-ledger";
-import { validProductionDeskLedgers } from "@/lib/designer/production-desk-ledger";
+import { validProductionDeskLedgers, validProductionDeskResponse } from "@/lib/designer/production-desk-ledger";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
@@ -91,7 +91,7 @@ export async function GET(){
       readOptionalProductionLedger("production_customer_outcome_list",250),
       readOptionalProductionLedger("production_order_learning_context_list",500),
     ]);
-    return NextResponse.json({
+    const receipt={
       configured:true,quotes,orders,
       qcInspections:qc.rows,customerOutcomes:outcomes.rows,learningContexts:contexts.rows,
       optionalEvidenceSources:{
@@ -99,7 +99,11 @@ export async function GET(){
         customerOutcomesInstalled:outcomes.installed,
         learningContextInstalled:contexts.installed,
       },
-    },{headers:{"cache-control":"private, no-store"}});
+    };
+    // Even a 200 array from an installed optional RPC can contain malformed
+    // rows. Never hand those rows to the operator as credible production proof.
+    if(!validProductionDeskResponse(receipt)) throw new Error("Malformed optional production evidence receipts.");
+    return NextResponse.json(receipt,{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
     if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});

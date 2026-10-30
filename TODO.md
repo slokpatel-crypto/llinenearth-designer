@@ -1,3 +1,8 @@
+## 2026-10-31 — J5 optional production evidence rows must be typed (stacked draft)
+- [x] Reproduced that installed optional QC/outcome/context RPCs could return HTTP 200 arrays containing arbitrary objects; the server and browser previously checked array caps/source flags only. A forged outcome could crash the operator UI at `overall_rating.replaceAll`, while empty or malformed learning context could be displayed as attached production lineage.
+- [x] Fail closed on invalid QC, outcome and context row identity, calendar timestamps, required UI fields and duplicate inspection/outcome IDs in both server and client response guards. Preserve nullable historical QC inspector/reference (never counts as approved delivery). Add positive/negative regressions.
+- [ ] Verify exact-head audit, quality, full Node, engine, preview, release, build, responsive Chromium 390/768/1440 and Non-3D. Human/physical stock, customer/operator, tailor, native Blender, devices, beta/deliveries, privacy/security and owner approvals remain BLOCKED/PENDING. No merge or deploy.
+
 ## 2026-10-30 — J4 public bearer-link referrer and indexing privacy (stacked draft)
 - [x] Reproduced that the signed public share page inherited the site-wide `strict-origin-when-cross-origin` header, which exposes the full bearer URL to same-origin navigation and lacks a route-specific noindex/no-store policy. A consented public link is not a private account page.
 - [x] Add later-matching `/share/:token` response headers `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow, noarchive`, `Cache-Control: private, no-store`, plus page robots/referrer metadata and regression coverage of header precedence. Preserve existing signed links, expiry, deterministic original model/photo and no paid AI.

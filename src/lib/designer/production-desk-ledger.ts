@@ -1,5 +1,7 @@
 import { verifiedOperatorProductionCreateId } from "./operator-production-receipt.ts";
 import { parseProductionEvidenceTimestamp } from "./production-delivery-evidence.ts";
+import { CUSTOMER_OUTCOME_RATINGS, CUSTOMER_FIT_RESULTS } from "./customer-production-outcomes.ts";
+import { PRODUCTION_LEARNING_CONTEXT_VERSION } from "./production-learning-context.ts";
 
 const QUOTE_STATUSES=new Set(["draft","sent","accepted","void"]);
 const ORDER_STATUSES=new Set(["created","cloth_reserved","cutting","stitching","fitting","ready","delivered","cancelled"]);
@@ -88,6 +90,74 @@ export function validProductionDeskLedgers(quotes:unknown,orders:unknown):boolea
   return true;
 }
 
+/** Optional RPCs can return a literal array containing forged or malformed rows.
+ * The operator renders outcome fields directly and uses QC/context presence as
+ * production evidence. A successful HTTP status is not a typed row receipt.
+ * Preserve historical nullable QC provenance (which cannot approve delivery). */
+function validOptionalEvidenceRows(rows:unknown,kind:"qc"|"outcome"|"context"):rows is unknown[]{
+  if(!Array.isArray(rows)) return false;
+  const seen=new Set<string>();
+  for(const value of rows){
+    if(!record(value)||!verifiedOperatorProductionCreateId(value.order_id)
+      ||!Number.isFinite(parseProductionEvidenceTimestamp(value.created_at))) return false;
+    if(kind==="qc"){
+      const id=verifiedOperatorProductionCreateId(value.inspection_id);
+      if(!id||(value.decision!=="approved"&&value.decision!=="rework")) return false;
+      if(value.inspector!==null&&value.inspector!==undefined&&typeof value.inspector!=="string") return false;
+      if(value.inspection_reference!==null&&value.inspection_reference!==undefined
+        &&typeof value.inspection_reference!=="string") return false;
+      if(seen.has(id)) return false;
+      seen.add(id);
+    }else if(kind==="outcome"){
+      const id=verifiedOperatorProductionCreateId(value.outcome_id);
+      if(!id||!revision(value.revision_id)
+        ||typeof value.overall_rating!=="string"||!CUSTOMER_OUTCOME_RATINGS.some(rating=>rating===value.overall_rating)
+        ||typeof value.fit_result!=="string"||!CUSTOMER_FIT_RESULTS.some(fit=>fit===value.fit_result)
+        ||typeof value.worn_confirmed!=="boolean"
+        ||(value.note!==null&&typeof value.note!=="string")) return false;
+      if(seen.has(id)) return false;
+      seen.add(id);
+    }else{
+      if(!revision(value.revision_id)||!hash(value.recipe_hash)
+        ||!record(value.context)
+        ||value.context.version!==PRODUCTION_LEARNING_CONTEXT_VERSION
+        ||value.context.revisionId!==value.revision_id
+        ||typeof value.context.recipeHash!=="string"
+        ||value.context.recipeHash.toLowerCase()!==String(value.recipe_hash).toLowerCase()) return false;
+    }
+  }
+  return true;
+}
+
+/** Optional evidence can be older than the newest-100 order page, but when
+ * the linked order IS present, its immutable recipe lineage must agree.
+ * Otherwise a forged outcome/context can be displayed on the wrong order. */
+function validOptionalOrderLineage(orders:unknown[],outcomes:unknown[],contexts:unknown[]):boolean{
+  const byId=new Map<string,Record<string,unknown>>();
+  for(const order of orders){
+    if(!record(order)) return false;
+    const id=verifiedOperatorProductionCreateId(order.order_id);
+    if(!id) return false;
+    byId.set(id,order);
+  }
+  for(const row of outcomes){
+    if(!record(row)) return false;
+    const id=verifiedOperatorProductionCreateId(row.order_id);
+    const order=id?byId.get(id):undefined;
+    if(order&&row.revision_id!==order.revision_id) return false;
+  }
+  for(const row of contexts){
+    if(!record(row)) return false;
+    const id=verifiedOperatorProductionCreateId(row.order_id);
+    const order=id?byId.get(id):undefined;
+    if(!order) continue; // an older order may be outside this capped page
+    if(row.revision_id!==order.revision_id
+      ||typeof row.recipe_hash!=="string"||typeof order.recipe_hash!=="string"
+      ||row.recipe_hash.toLowerCase()!==order.recipe_hash.toLowerCase()) return false;
+  }
+  return true;
+}
+
 /** The browser must independently reject success-shaped, untrusted HTTP JSON.
  * A configured production desk needs explicit evidence source availability;
  * a backend-not-configured response cannot carry apparently real records. */
@@ -107,13 +177,14 @@ export function validProductionDeskResponse(value:unknown):value is VerifiedProd
       &&value.learningContexts===undefined&&value.optionalEvidenceSources===undefined;
   }
   const sources=value.optionalEvidenceSources;
-  return Array.isArray(value.qcInspections)&&value.qcInspections.length<=250
-    &&Array.isArray(value.customerOutcomes)&&value.customerOutcomes.length<=250
-    &&Array.isArray(value.learningContexts)&&value.learningContexts.length<=500
+  return validOptionalEvidenceRows(value.qcInspections,"qc")&&value.qcInspections.length<=250
+    &&validOptionalEvidenceRows(value.customerOutcomes,"outcome")&&value.customerOutcomes.length<=250
+    &&validOptionalEvidenceRows(value.learningContexts,"context")&&value.learningContexts.length<=500
     &&record(sources)&&typeof sources.qcInstalled==="boolean"
     &&typeof sources.customerOutcomesInstalled==="boolean"
     &&typeof sources.learningContextInstalled==="boolean"
     &&(sources.qcInstalled||value.qcInspections.length===0)
     &&(sources.customerOutcomesInstalled||value.customerOutcomes.length===0)
-    &&(sources.learningContextInstalled||value.learningContexts.length===0);
+    &&(sources.learningContextInstalled||value.learningContexts.length===0)
+    &&validOptionalOrderLineage(value.orders,value.customerOutcomes,value.learningContexts);
 }
