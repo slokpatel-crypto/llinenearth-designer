@@ -13,6 +13,7 @@ import { parseOperatorProductionStatus } from "@/lib/designer/operator-productio
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval";
 import { verifiedOptionalProductionRows } from "@/lib/designer/optional-production-ledger";
+import { validProductionDeskLedgers } from "@/lib/designer/production-desk-ledger";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
@@ -84,6 +85,7 @@ export async function GET(){
     // A malformed upstream response must not look like a legitimately empty
     // shop quote/order ledger in the operator console.
     if(!Array.isArray(quotes)||!Array.isArray(orders)) throw new Error("Malformed production quote/order list receipts.");
+    if(!validProductionDeskLedgers(quotes,orders)) throw new Error("Malformed production quote/order list receipts.");
     const [qc,outcomes,contexts]=await Promise.all([
       readOptionalProductionLedger("finished_garment_qc_list",250),
       readOptionalProductionLedger("production_customer_outcome_list",250),
