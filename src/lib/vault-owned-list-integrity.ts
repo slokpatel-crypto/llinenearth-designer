@@ -34,8 +34,11 @@ export function ownedDesignVaultRowMatchesPayload(value:unknown,nowMs:number=Dat
  * Never report an empty/partial saved-design list when an installed RPC
  * returned a malformed row or repeated vault ID. UUID case is not identity.
  */
-export function requireCompleteOwnedVaultRows(value:unknown):asserts value is Array<Record<string,unknown>>{
-  if(!Array.isArray(value))throw new Error("Malformed owned vault list acknowledgement.");
+export function requireCompleteOwnedVaultRows(value:unknown,rowLimit?:number):asserts value is Array<Record<string,unknown>>{
+  if(!Array.isArray(value)||
+    (rowLimit!==undefined&&(!Number.isSafeInteger(rowLimit)||rowLimit<1||value.length>=rowLimit))){
+    throw new Error("Malformed or incomplete owned vault list acknowledgement.");
+  }
   const seen=new Set<string>();
   for(const row of value){
     if(!isVaultListRowEnvelope(row))throw new Error("Malformed owned vault list acknowledgement.");
