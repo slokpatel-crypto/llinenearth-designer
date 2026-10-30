@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
+import { sameLockedVaultRevision } from "@/lib/designer/vault-revision-agreement";
 import {
   createDesignVaultAccessKey,
   createDesignVaultRecoveryToken,
@@ -114,7 +115,7 @@ export async function POST(request:Request){
         );
         const ownedRevision=selectVaultReadRow(ownedRows)?.payload as LockedDesignRevision | undefined;
         return !!ownedRevision&&await verifyLockedDesignRevision(ownedRevision)&&
-          ownedRevision.revisionId===revision.revisionId&&ownedRevision.recipeHash===revision.recipeHash;
+          sameLockedVaultRevision(revision,ownedRevision);
       });
       if(linkStatus==="linked"&&customer){
         try{
@@ -213,7 +214,7 @@ export async function POST(request:Request){
         );
         const ownedRevision=selectVaultReadRow(ownedRows)?.payload as LockedDesignRevision | undefined;
         if(!ownedRevision||!await verifyLockedDesignRevision(ownedRevision)||
-          ownedRevision.revisionId!==revision.revisionId||ownedRevision.recipeHash!==revision.recipeHash){
+          !sameLockedVaultRevision(revision,ownedRevision)){
           throw new Error("Owner-scoped locked design recovery could not be confirmed.");
         }
         try{
