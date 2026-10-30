@@ -73,7 +73,7 @@ test("both owned-list endpoints validate untrusted row envelopes before UI seria
   const measurements=readFileSync("src/app/api/measurements/vault/route.ts","utf8");
   assert.match(designer,/requireCompleteOwnedVaultRows\(rows,100\)/);
   assert.match(designer,/if\(!ownedDesignVaultRowMatchesPayload\(row\)\|\|!await verifyLockedDesignRevision\(row\.payload\)\)/);
-  assert.match(measurements,/requireCompleteOwnedVaultRows\(rows\)/);
+  assert.match(measurements,/requireCompleteOwnedVaultRows\(rows,50\)/);
   assert.match(measurements,/if\(!profile\|\|!observations\) throw new Error\("Invalid owned measurement vault row\."\)/);
   // The positive guard above checks that corrupt rows throw before serialization.
   // A valid designs.push followed by loop closure must remain allowed.
