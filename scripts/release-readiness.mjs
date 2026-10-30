@@ -1036,9 +1036,23 @@ requireTokens("src/lib/designer/locked-handoff-request.ts",[
   "vaultRateBlocked(handoffRequests,ip)","verifiedLockedHandoffAuditId",
 ]);
 requireTokens("src/app/api/designer/share/route.ts",[
-  "readLockedHandoffRequest(request)",
-  "verifiedLockedHandoffAuditId(await readBoundedJsonResponse(audit,4 * 1024).catch(()=>null))",
-  "cache-control","private, no-store","verifyLockedDesignRevision(revision)",
+  "readLockedHandoffRequest(request)","parseConsentedShareIntent(parsed.revision)",
+  "verifyLockedDesignRevision(revision)","parseDesignVaultRecoveryToken(intent.recoveryToken)",
+  "getCustomerIdentity(request)","designer_locked_revision_vault_get_owned",
+  "designer_locked_revision_vault_get","selectVaultReadRow(ownedResult)",
+  "selectVaultReadRow(tokenResult)","sameLockedEnquiryRevision(revision,owned.payload",
+  "readBoundedJsonResponse(response,maxBytes)",
+  "verifiedLockedHandoffAuditId(await rpc(\\"design_share_audit_record\\"",
+  "if(!auditId) return privateJson","createDesignShareToken(verified)",
+  "audited:true,auditId,ownerVerified:true","cache-control","private, no-store",
+]);
+requireTokens("src/lib/designer/share-intent.ts",[
+  "consentToShare !== true","typeof input.recoveryToken !== \\"string\\"",
+]);
+requireTokens("src/components/DesignerModule.tsx",[
+  "checked={shareConsent}","disabled={shareBusy||!shareConsent||!vaultAccountOwned||!vaultRecoveryToken}",
+  "consentToShare:true,recoveryToken:vaultRecoveryToken",
+  "result.ownerVerified!==true","result.audited!==true","shareGenerationRef.current!==generation",
 ]);
 // Owner-scoped recovery and token-scoped recovery must BOTH verify the lock
 // before a receipt can be called an authenticated customer enquiry intent.
