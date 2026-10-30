@@ -312,3 +312,12 @@ Canonical criteria: [TITAN_RELEASE_CHECKLIST.md](./TITAN_RELEASE_CHECKLIST.md). 
 - **Verification:** GitHub content updates confirmed exact source/test commit SHAs. **PENDING on final child head:** quality, full Node, engine, preview-performance, release check, build, 390/768/1440 Chromium and Non-3D. Parent #516 green cannot be used as child proof.
 - **BLOCKED external:** latest read-only audit M20 found zero genuine supplier stock, locked revisions, enquiries, quotes, orders, QC/deliveries, beta and calibration evidence. Authenticated owner recovery/handoff, physical tailor, native Blender four-view identity/UV/drape, real devices, five beta cases, ten deliveries, privacy/security and owner approvals remain unverified.
 - **Next:** create stacked draft on #516; check matching-head CI and repair failures. Then investigate next independently verifiable J3/J5 security/recovery boundary. No production writes, migrations, provider charges, main merge or deployment.
+
+
+## 2026-10-30T00:55Z — M22 exact-head regression correction and read-only evidence
+
+- **Failed exact head:** a9fc5419a581809f7e4ac0577eb16e8b18d34058; CI 40982470151 and Non-3D 40982470177 both FAILED at Node test 1115 (1164/1165 passed). The source test incorrectly rejected the valid designs.push followed by loop braces. All other owned-list positive fail-closed source assertions were intact; browser stages did not execute on this failed head.
+- **Repair:** a9fc5419a581809f7e4ac0577eb16e8b18d34058 → 897070d201e760e97c271003d87fa45cee3ca37c, test-only removal of the overbroad negative regex. The positive guard still asserts every design/measurement list calls requireCompleteOwnedVaultRows and rejects invalid payloads. No production validation was weakened.
+- **Fresh read-only Supabase:** project wfplvqmsdzwhwwupsbfu showed 0 rows in physical stock ledger, design vault, measurement vault, quotes, orders, finished garment QC, delivery evidence and beta attempts. This does not authorize fabricated stock or a human launch signoff.
+- **PENDING:** new matching-head CI quality, full Node, engine, preview, release, build, responsive Chromium and Non-3D. This checkpoint append creates another SHA; fetch actual live head and workflows. External T1–T6/J1–J6 human/physical gates remain BLOCKED/PENDING.
+- **Next:** inspect repaired exact-head workflows, fix any failures, and continue independent J3/J5 engineering. No live write, migration, provider charge, main merge or deployment.
