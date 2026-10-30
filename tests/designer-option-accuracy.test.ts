@@ -1,10 +1,43 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { DESIGNER_STYLE_CHOICES, designerStyleForOccasion } from "../src/lib/designer/engine.ts";
-import { photoTemplateForStyle, photoTemplateGaps } from "../src/lib/designer/photo-preview.ts";
-import { photoPreviewSupportForChoice } from "../src/lib/designer/photo-preview-support.ts";
-import { fromLegacyStyle, mergeLegacyIntoStyleSpec, styleSpecHashInput, toLegacyStyle, validateStyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
+import path from "node:path";
+import Module from "node:module";
+import ts from "typescript";
+
+// Production's legacy engine imports JSON without an ESM import attribute.
+// Load the real TypeScript modules as the established check-designer script does,
+// rather than rewriting functioning app imports merely for test execution.
+const cache=new Map<string,any>();
+function load(file:string):any {
+  const full=path.resolve(file);
+  if(cache.has(full))return cache.get(full)!.exports;
+  if(full.endsWith(".json"))return JSON.parse(readFileSync(full,"utf8"));
+  const code=ts.transpileModule(readFileSync(full,"utf8"),{
+    compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}
+  }).outputText;
+  const loaded=new Module(full);loaded.filename=full;
+  loaded.paths=Module._nodeModulePaths(path.dirname(full));
+  cache.set(full,loaded);
+  const nativeRequire=loaded.require.bind(loaded);
+  loaded.require=((specifier:string)=>{
+    if(specifier.startsWith("@/"))return load(path.resolve("src",specifier.slice(2))+".ts");
+    if(specifier.startsWith("./")||specifier.startsWith("../")){
+      const resolved=path.resolve(path.dirname(full),specifier);
+      if(resolved.endsWith(".json"))return load(resolved);
+      if(resolved.endsWith(".ts")||resolved.endsWith(".tsx"))return load(resolved);
+      return load(resolved+".ts");
+    }
+    return nativeRequire(specifier);
+  }) as typeof loaded.require;
+  loaded._compile(code,full);
+  return loaded.exports;
+}
+const {DESIGNER_STYLE_CHOICES,designerStyleForOccasion}=load("src/lib/designer/engine.ts");
+const {photoTemplateForStyle,photoTemplateGaps}=load("src/lib/designer/photo-preview.ts");
+const {photoPreviewSupportForChoice}=load("src/lib/designer/photo-preview-support.ts");
+const {fromLegacyStyle,mergeLegacyIntoStyleSpec,styleSpecHashInput,toLegacyStyle,validateStyleSpecV2}=load("src/lib/designer/style-spec-v2.ts");
+
 
 const checkedKeys=["collar","cuff","placket","shirtWear","trouser"] as const;
 const baseline=designerStyleForOccasion("Semi-Formal");
