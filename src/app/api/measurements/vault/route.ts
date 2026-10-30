@@ -2,7 +2,7 @@ import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, Se
 import { linkVaultOwnerBestEffort, resolveVaultStoreOwnerBestEffort, vaultOwnershipWarning } from "@/lib/vault-owner-link";
 import { parseVaultRequestIdentifiers, vaultActionNeedsCustomerIdentity } from "@/lib/vault-request-identifiers";
 import { vaultRateBlocked } from "@/lib/vault-rate-guard";
-import { isVaultListRowEnvelope } from "@/lib/vault-owned-list-integrity";
+import { requireCompleteOwnedVaultRows } from "@/lib/vault-owned-list-integrity";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 import { requireVaultBooleanResult, requireVaultStoreId } from "@/lib/vault-write-integrity";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
@@ -117,13 +117,21 @@ export async function POST(request:Request){
         vault_id:string;profile:MeasurementProfile;observations:TailorObservationProfile;
         created_at:string;expires_at:string;
       }>>("measurement_profile_vault_list_owned",{p_owner_user_id:customer.id});
-      if(!Array.isArray(rows)) throw new Error("Invalid owned measurement vault response.");
-      const profiles=rows.filter((row)=>isVaultListRowEnvelope(row)&&validStoredMeasurementProfile(row.profile)&&validStoredTailorObservationProfile(row.observations)).map((row)=>({
-        vaultId:row.vault_id,
-        unit:row.profile.unit,
-        createdAt:row.created_at,
-        expiresAt:row.expires_at,
-      }));
+      // An installed RPC returning corrupt or repeated rows is not a verified
+      // empty/partial account vault. Preserve the error rather than hiding it.
+      requireCompleteOwnedVaultRows(rows);
+      const profiles=[];
+      for(const row of rows){
+        const profile=validStoredMeasurementProfile(row.profile);
+        const observations=validStoredTailorObservationProfile(row.observations);
+        if(!profile||!observations) throw new Error("Invalid owned measurement vault row.");
+        profiles.push({
+          vaultId:row.vault_id,
+          unit:profile.unit,
+          createdAt:row.created_at,
+          expiresAt:row.expires_at,
+        });
+      }
       return jsonNoStore({profiles,customer:{email:customer.email}});
     }
 
