@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { validProductionDeliveryBrowseReceipt } from "../src/lib/designer/production-browse-receipt.ts";
+import { validProductionDeliveryBrowseReceipt, validProductionBrowseFirstTenAgreement } from "../src/lib/designer/production-browse-receipt.ts";
 
 const orderId="00000000-0000-4000-8000-000000000001";
 const evidenceId="10000000-0000-4000-8000-000000000001";
@@ -99,4 +99,36 @@ test("server and operator UI reject malformed success-shaped browse lists",()=>{
   assert.match(client,/validProductionDeliveryBrowseReceipt\(data\.orders,data\.evidence\)/);
   assert.match(client,/setLoadError\(true\)/);
   assert.match(client,/setOrders\(\[\]\);\s*setEvidence\(\[\]\)/);
+});
+
+test("authoritative first-ten and recent browsing cannot contradict overlapping receipts",()=>{
+  const basis={version:"linen-earth-production-first-ten-audit-v2",historyValid:true,
+    orders:[order],evidence:[audit]};
+  assert.equal(validProductionBrowseFirstTenAgreement([order],[audit],basis),true);
+  assert.equal(validProductionBrowseFirstTenAgreement([],[],basis),true);
+  assert.equal(validProductionBrowseFirstTenAgreement([],[],{...basis,orders:[],evidence:[]}),true);
+  assert.equal(validProductionBrowseFirstTenAgreement([],[],{...basis,historyValid:false}),true);
+  assert.equal(validProductionBrowseFirstTenAgreement([{...order,recipe_hash:"b".repeat(64)}],[],basis),false);
+  assert.equal(validProductionBrowseFirstTenAgreement([{...order,revision_id:"changed-revision"}],[],basis),false);
+  assert.equal(validProductionBrowseFirstTenAgreement([{...order,created_at:"2026-10-01T10:00:01Z"}],[],basis),false);
+  assert.equal(validProductionBrowseFirstTenAgreement([],[{...audit,note:"Changed"}],basis),false);
+  assert.equal(validProductionBrowseFirstTenAgreement([],[{
+    ...audit,manual_design_reentry:true,reentry_fields:["fabric_identity"],
+  }],basis),false);
+  assert.equal(validProductionBrowseFirstTenAgreement([order],[],{...basis,orders:[],evidence:[]}),false);
+  assert.equal(validProductionBrowseFirstTenAgreement([{
+    ...order,order_id:orderId.toUpperCase(),created_at:"2026-10-01T15:30:00+05:30",
+  }],[{
+    ...audit,evidence_id:evidenceId.toUpperCase(),order_id:orderId.toUpperCase(),
+    created_at:"2026-10-03T15:30:00+05:30",
+  }],basis),true);
+});
+
+test("operator server and client enforce separate-snapshot consistency",()=>{
+  const route=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
+  const client=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
+  assert.match(route,/validProductionBrowseFirstTenAgreement\(orders,evidence,firstTenBasis\)/);
+  assert.match(client,/validProductionBrowseFirstTenAgreement\(nextOrders,nextEvidence,rawBasis\)/);
+  assert.match(client,/item\.order_id\.toLowerCase\(\)/);
+  assert.match(client,/item\.evidence_id\.toLowerCase\(\)/);
 });

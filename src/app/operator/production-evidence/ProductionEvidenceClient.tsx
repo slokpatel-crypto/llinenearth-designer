@@ -7,7 +7,7 @@ import {
   summarizeProductionDeliveryEvidence,
   validProductionFirstTenAuditBasis,
 } from "@/lib/designer/production-delivery-evidence";
-import { validProductionDeliveryBrowseReceipt } from "@/lib/designer/production-browse-receipt";
+import { validProductionDeliveryBrowseReceipt, validProductionBrowseFirstTenAgreement } from "@/lib/designer/production-browse-receipt";
 
 type Order={order_id:string;revision_id:string;recipe_hash:string;status:string;note:string;created_at:string;delivered_at?:string|null};
 type Evidence={evidence_id:string;order_id:string;revision_id:string;recipe_hash:string;manual_design_reentry:boolean;reentry_fields:string[];note:string;operator:string;evidence_reference?:string;created_at:string;order_created_at:string};
@@ -62,6 +62,8 @@ export default function ProductionEvidenceClient(){
       const nextOrders=data.orders as Order[];
       const nextEvidence=data.evidence as Evidence[];
       const rawBasis=data.firstTenBasis as Partial<FirstTenBasis>|null;
+      if(!validProductionBrowseFirstTenAgreement(nextOrders,nextEvidence,rawBasis))
+        throw new Error("Conflicting production history snapshots.");
       const basis:FirstTenBasis|null=validProductionFirstTenAuditBasis(rawBasis)
         &&rawBasis?.version==="linen-earth-production-first-ten-audit-v2"
         &&rawBasis.historyValid===true
@@ -70,9 +72,9 @@ export default function ProductionEvidenceClient(){
         ?rawBasis as FirstTenBasis:null;
       // Include the oldest ten deliveries even if the browse RPC omits them.
       const browseOrders=[...new Map([...nextOrders,...(basis?.orders||[])]
-        .map((item:Order)=>[item.order_id,item])).values()];
+        .map((item:Order)=>[item.order_id.toLowerCase(),item])).values()];
       const browseEvidence=[...new Map([...nextEvidence,...(basis?.evidence||[])]
-        .map((item:Evidence)=>[item.evidence_id,item])).values()];
+        .map((item:Evidence)=>[item.evidence_id.toLowerCase(),item])).values()];
       setConfigured(data.configured!==false);
       setFirstTenBasis(basis);
       setDeliveryHistoryInvalid(rawBasis?.version==="linen-earth-production-first-ten-audit-v2"&&rawBasis.historyValid!==true);
@@ -80,10 +82,10 @@ export default function ProductionEvidenceClient(){
       setEvidence(browseEvidence);
       const requested=new URLSearchParams(window.location.search).get("order");
       const delivered=browseOrders.filter((item:Order)=>item.status==="delivered");
-      const requestedDelivered=delivered.find((item:Order)=>item.order_id===requested);
-      const firstMissing=[...(basis?.orders||[]),...delivered].find((item:Order)=>!browseEvidence.some((row:Evidence)=>row.order_id===item.order_id));
-      setSelectedOrderId((current)=>delivered.some((item:Order)=>item.order_id===current)
-        ?current:requestedDelivered?.order_id||firstMissing?.order_id||delivered[0]?.order_id||"");
+      const requestedDelivered=delivered.find((item:Order)=>item.order_id.toLowerCase()===requested?.toLowerCase());
+      const firstMissing=[...(basis?.orders||[]),...delivered].find((item:Order)=>!browseEvidence.some((row:Evidence)=>row.order_id.toLowerCase()===item.order_id.toLowerCase()));
+      setSelectedOrderId((current)=>delivered.find((item:Order)=>item.order_id.toLowerCase()===current.toLowerCase())?.order_id
+        ||requestedDelivered?.order_id||firstMissing?.order_id||delivered[0]?.order_id||"");
     } catch {
       if(requestId!==latestLoad.current) return;
       setFirstTenBasis(null);
@@ -98,13 +100,13 @@ export default function ProductionEvidenceClient(){
   useEffect(()=>{void load();return ()=>{latestLoad.current++;};},[]);
 
   const delivered=useMemo(()=>[...orders].filter((item)=>item.status==="delivered").sort((a,b)=>Date.parse(a.delivered_at||a.created_at)-Date.parse(b.delivered_at||b.created_at)),[orders]);
-  const firstTenOrderIds=useMemo(()=>new Set(firstTenBasis?.orders.map((row)=>row.order_id)||[]),[firstTenBasis]);
+  const firstTenOrderIds=useMemo(()=>new Set(firstTenBasis?.orders.map((row)=>row.order_id.toLowerCase())||[]),[firstTenBasis]);
   // A positive first-ten proof must come from the oldest-ten SQL audit basis,
   // never from the operator browsing lists that have 500-row caps.
   const summary=useMemo(()=>summarizeProductionDeliveryEvidence(
     firstTenBasis?.orders||[],firstTenBasis?.evidence||[]),[firstTenBasis]);
   // Never silently target the first order when the selected ID went stale.
-  const selected=delivered.find((item)=>item.order_id===selectedOrderId)||null;
+  const selected=delivered.find((item)=>item.order_id.toLowerCase()===selectedOrderId.toLowerCase())||null;
   const selectedEvidenceRows=selected?evidence.filter((item)=>
     item.order_id.toLowerCase()===selected.order_id.toLowerCase()):[];
   const selectedEvidence=selectedEvidenceRows[0]||null;
@@ -188,11 +190,11 @@ export default function ProductionEvidenceClient(){
         <div className="productionEvidenceSectionHead"><span>DELIVERED ORDER AUDITS</span><b>{delivered.length}</b></div>
         {!delivered.length&&<p>No delivered orders exist yet.</p>}
         {delivered.map((item)=>{
-          const row=evidence.find((entry)=>entry.order_id===item.order_id);
-          return <button key={item.order_id} className={selected?.order_id===item.order_id?"active":""} onClick={()=>chooseOrder(item.order_id)}>
-            <span><b>{item.revision_id}</b>{firstTenOrderIds.has(item.order_id)&&<em>FIRST 10</em>}</span>
+          const row=evidence.find((entry)=>entry.order_id.toLowerCase()===item.order_id.toLowerCase());
+          return <button key={item.order_id} className={selected?.order_id.toLowerCase()===item.order_id.toLowerCase()?"active":""} onClick={()=>chooseOrder(item.order_id)}>
+            <span><b>{item.revision_id}</b>{firstTenOrderIds.has(item.order_id.toLowerCase())&&<em>FIRST 10</em>}</span>
             <small>{item.order_id}</small>
-            <i data-state={!row?"pending":evidence.some((entry)=>entry.order_id===item.order_id&&entry.manual_design_reentry===true)?"incident":"clean"}>{!row?"audit pending":evidence.some((entry)=>entry.order_id===item.order_id&&entry.manual_design_reentry===true)?"re-entry recorded":"audit recorded"}</i>
+            <i data-state={!row?"pending":evidence.some((entry)=>entry.order_id.toLowerCase()===item.order_id.toLowerCase()&&entry.manual_design_reentry===true)?"incident":"clean"}>{!row?"audit pending":evidence.some((entry)=>entry.order_id.toLowerCase()===item.order_id.toLowerCase()&&entry.manual_design_reentry===true)?"re-entry recorded":"audit recorded"}</i>
           </button>;
         })}
       </aside>

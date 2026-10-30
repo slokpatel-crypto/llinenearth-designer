@@ -1,5 +1,5 @@
 import { verifiedOperatorProductionCreateId } from "./operator-production-receipt.ts";
-import { parseProductionEvidenceTimestamp, validProductionReentryFields } from "./production-delivery-evidence.ts";
+import { parseProductionEvidenceTimestamp, validProductionReentryFields, validProductionFirstTenAuditBasis } from "./production-delivery-evidence.ts";
 
 const productionStatuses=new Set(["created","cloth_reserved","cutting","stitching","fitting","ready","delivered","cancelled"]);
 const validRecipeHash=(value:unknown):value is string=>typeof value==="string"&&/^[a-f0-9]{64}$/i.test(value);
@@ -66,6 +66,51 @@ export function validProductionDeliveryBrowseReceipt(orders:unknown,evidence:unk
       ||(relatedOrder&&(auditAt<relatedOrder.createdAt
         ||(relatedOrder.deliveredAt!==null&&auditAt<relatedOrder.deliveredAt)))) return false;
     evidenceIds.add(id);
+  }
+  return true;
+}
+
+/**
+ * Both production browsing and the authoritative first-ten SQL RPC are
+ * independent reads. Contradictory overlapping receipts must trigger a new
+ * read, not silently be merged into a credible-looking operator queue.
+ * Historical orders legitimately can be outside the newest-500 browse page.
+ */
+export function validProductionBrowseFirstTenAgreement(orders:unknown,evidence:unknown,basis:unknown):boolean{
+  if(!validProductionDeliveryBrowseReceipt(orders,evidence)) return false;
+  if(basis===null||basis===undefined) return true;
+  if(!row(basis)) return false;
+  if(basis.historyValid===false) return true; // explicit incomplete history cannot grant release
+  if(!validProductionFirstTenAuditBasis(basis)) return false;
+  const earliestOrders=basis.orders as Record<string,unknown>[];
+  const earliestEvidence=basis.evidence as Record<string,unknown>[];
+  const newestOrders=orders as Record<string,unknown>[];
+  const newestEvidence=evidence as Record<string,unknown>[];
+  const firstIds=new Set(earliestOrders.map((item)=>String(item.order_id).toLowerCase()));
+  // With fewer than 10 total lifetime deliveries, every delivered recent
+  // record must appear in the authoritative history.
+  if(earliestOrders.length<10&&newestOrders.some((item)=>item.status==="delivered"
+    &&!firstIds.has(String(item.order_id).toLowerCase()))) return false;
+  const orderMap=new Map(newestOrders.map((item)=>[String(item.order_id).toLowerCase(),item]));
+  for(const item of earliestOrders){
+    const current=orderMap.get(String(item.order_id).toLowerCase());
+    if(!current) continue;
+    if(current.status!==item.status||current.revision_id!==item.revision_id
+      ||current.recipe_hash!==item.recipe_hash
+      ||parseProductionEvidenceTimestamp(current.created_at)!==parseProductionEvidenceTimestamp(item.created_at)) return false;
+  }
+  const auditMap=new Map(newestEvidence.map((item)=>[String(item.evidence_id).toLowerCase(),item]));
+  for(const item of earliestEvidence){
+    const current=auditMap.get(String(item.evidence_id).toLowerCase());
+    if(!current) continue;
+    if(String(current.order_id).toLowerCase()!==String(item.order_id).toLowerCase()
+      ||current.revision_id!==item.revision_id||current.recipe_hash!==item.recipe_hash
+      ||current.manual_design_reentry!==item.manual_design_reentry
+      ||current.note!==item.note||current.operator!==item.operator
+      ||current.evidence_reference!==item.evidence_reference
+      ||JSON.stringify(current.reentry_fields)!==JSON.stringify(item.reentry_fields)
+      ||parseProductionEvidenceTimestamp(current.created_at)!==parseProductionEvidenceTimestamp(item.created_at)
+      ||parseProductionEvidenceTimestamp(current.order_created_at)!==parseProductionEvidenceTimestamp(item.order_created_at)) return false;
   }
   return true;
 }
