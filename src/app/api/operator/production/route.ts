@@ -11,9 +11,9 @@ import { buildProductionLearningContext } from "@/lib/designer/production-learni
 import { parseOperatorLockedSelection } from "@/lib/designer/operator-locked-selection";
 import { parseOperatorProductionStatus } from "@/lib/designer/operator-production-status";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
-import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval";
+import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
 import { verifiedOptionalProductionRows } from "@/lib/designer/optional-production-ledger";
-import { validProductionDeskLedgers, validProductionDeskResponse } from "@/lib/designer/production-desk-ledger";
+import { validProductionDeskLedgers, validProductionDeskResponse, validProductionQcOrderRows } from "@/lib/designer/production-desk-ledger";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
@@ -174,13 +174,26 @@ export async function POST(request:Request){
       const {recordId:orderId,status,note}=change;
       if(status==="delivered"){
         let inspections:unknown;
+        let candidateOrders:unknown;
         try{
-          inspections=await rpc<unknown>("finished_garment_qc_list",{p_limit:500});
+          [inspections,candidateOrders]=await Promise.all([
+            rpc<unknown>("finished_garment_qc_list",{p_limit:500}),
+            rpc<unknown>("production_order_list",{p_limit:150}),
+          ]);
         }catch{
-          return NextResponse.json({error:"Finished-garment QC backend must be installed before delivery can be recorded."},{status:409});
+          return NextResponse.json({error:"Finished-garment QC and production order records must be available before delivery."},{status:409});
         }
+        // The capped order page cannot certify a missing or stale target.
+        // Never trust an inspection for another recipe with the same order ID.
+        if(!validProductionQcOrderRows(candidateOrders)||candidateOrders.length>=150){
+          return NextResponse.json({error:"A complete verified production order page is required before delivery."},{status:409});
+        }
+        const currentOrder=candidateOrders.find(row=>row.order_id===orderId);
         if(!hasVerifiedLatestDeliveryQc(inspections,orderId,500)){
           return NextResponse.json({error:"The latest provenance-backed finished-garment QC approval is required before delivery."},{status:409});
+        }
+        if(!hasVerifiedDeliveryQcOrderLineage(inspections,currentOrder)){
+          return NextResponse.json({error:"Physical QC must match the current ready order, revision, recipe and creation time."},{status:409});
         }
       }
       const updated=await rpc<unknown>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note});
