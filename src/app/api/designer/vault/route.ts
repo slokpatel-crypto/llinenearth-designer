@@ -134,7 +134,7 @@ export async function POST(request:Request){
       }>>("designer_locked_revision_vault_list_owned",{p_owner_user_id:customer.id});
       // A malformed or duplicated RPC row must never be hidden as a shorter
       // apparently complete account list. Validate every saved revision.
-      requireCompleteOwnedVaultRows(rows);
+      requireCompleteOwnedVaultRows(rows,100);
       const designs=[];
       for(const row of rows){
         if(!ownedDesignVaultRowMatchesPayload(row)||!await verifyLockedDesignRevision(row.payload)){
