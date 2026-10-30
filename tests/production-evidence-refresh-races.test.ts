@@ -40,7 +40,9 @@ test("Phase 10 and Roadmap reject late successful completions and redirects",()=
 test("a refreshed order list cannot redirect a drafted immutable audit to another delivery",()=>{
   const source=readFileSync(paths[0],"utf8");
   assert.match(source,/setManualChoice\("unset"\);\s*setReentryFields\(\[\]\);\s*setNote\(""\);\s*setOperator\(""\);\s*setEvidenceReference\(""\);/);
-  assert.match(source,/setSelectedOrderId\(\(current\)=>delivered\.some/);
-  assert.match(source,/const selected=delivered\.find\(\(item\)=>item\.order_id===selectedOrderId\)\|\|null/);
+  // Case-variant canonical UUIDs are the same physical order. The new
+  // selection must still preserve only the currently delivered matching ID.
+  assert.match(source,/setSelectedOrderId\(\(current\)=>delivered\.find\(\(item:Order\)=>item\.order_id\.toLowerCase\(\)===current\.toLowerCase\(\)\)\?\.order_id/);
+  assert.match(source,/const selected=delivered\.find\(\(item\)=>item\.order_id\.toLowerCase\(\)===selectedOrderId\.toLowerCase\(\)\)\|\|null/);
   assert.doesNotMatch(source,/const selected=delivered\.find\([^\n]*\)\|\|delivered\[0\]/);
 });

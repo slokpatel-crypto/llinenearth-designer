@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeProductionDeliveryEvidence } from "@/lib/designer/production-delivery-evidence";
-import { validProductionDeliveryBrowseReceipt } from "@/lib/designer/production-browse-receipt";
+import { validProductionDeliveryBrowseReceipt, validProductionBrowseFirstTenAgreement } from "@/lib/designer/production-browse-receipt";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 import { verifiedFirstTenAuditReceipt } from "@/lib/designer/production-first-ten-receipt";
@@ -72,6 +72,8 @@ export async function GET(){
         throw error;
       }
     }
+    if(!validProductionBrowseFirstTenAgreement(orders,evidence,firstTenBasis))
+      throw new Error("Contradictory first-ten and browsing receipts.");
     return NextResponse.json({configured:true,orders,evidence,firstTenBasis,firstTenAuditInstalled},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
