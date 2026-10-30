@@ -113,6 +113,10 @@ test("expanded options only synchronize labels supported by visible legacy contr
     "a legacy-unselectable wing collar must not be represented as a photographed control");
   assert.equal(legacyLabelForSelectedOption("shirt.placket","contrast_placket",["Contrast Placket"]),null);
   assert.equal(legacyLabelForSelectedOption("shirt.cuff","open_short_hem_cuff",["Barrel Cuff (1-button)"]),null);
+  assert.equal(legacyLabelForSelectedOption("shirt.cuff","open_short_hem_cuff",["Open Short-Sleeve Hem"]),null,
+    "a legacy-listed but unphotographed precision cuff must not replace the photo control");
+  assert.equal(legacyLabelForSelectedOption("shirt.cuff","cocktail_cuff",["Cocktail Cuff"]),null,
+    "provisional livePreview:none construction cannot claim photographic parity");
   assert.equal(legacyLabelForSelectedOption("pant.rise","high_rise",["Low Rise"]),null);
   assert.equal(legacyLabelForSelectedOption("pant.rise","spread_collar",["Spread Collar"]),null);
 });

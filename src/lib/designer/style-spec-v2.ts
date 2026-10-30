@@ -93,26 +93,24 @@ export function fromLegacyStyle(style:DesignerStyle):StyleSpecV2 {
 
 function labelFor(id:string,fallback:string,group:Parameters<typeof legacyOptionByLabel>[0]) {
   const option=optionById(id);
-  if(!option||option.group!==group||option.legacySelectable===false)return fallback;
+  if(!option||option.group!==group||option.legacySelectable===false||option.renderSupport.livePreview==="none")return fallback;
   if(option.legacyLabel)return option.legacyLabel;
-  // The UI actively offers these provisional labels in the *legacy* selector.
-  // Their identity must survive canonical handoff and saved revision hashing.
-  // An advanced-only selection does not equal the stored legacy control and
-  // must NOT overwrite it (for example Open Short-Sleeve Hem vs a barrel cuff).
-  // Future-only garment types, pleats and hems are deliberately excluded.
-  if(EXTENDED_LEGACY_GROUPS.has(group)&&option.legacySelectable!==false&&option.label===fallback)return option.label;
+  // No additional label projection is needed: the only safe non-legacyLabel
+  // match is option.label === fallback, which already returns fallback below.
+  // Keep advanced-only options in the canonical v2 recipe, never in the photo.
   return fallback;
 }
 
-/** Synchronize a v2 selection with a real visible legacy control only.
- * Advanced-only constructions must not fabricate an unselectable photo option. */
+/** Synchronize a v2 selection with a real supported legacy photo control only.
+ * A visible option with livePreview:none is still an unphotographed construction;
+ * do not rewrite the original control when selecting it in precision tailoring. */
 export function legacyLabelForSelectedOption(
   group:Parameters<typeof legacyOptionByLabel>[0],
   id:string,
   selectableLabels:readonly string[],
 ):string|null {
   const option=optionById(id);
-  if(!option||option.group!==group||option.legacySelectable===false) return null;
+  if(!option||option.group!==group||option.legacySelectable===false||option.renderSupport.livePreview==="none") return null;
   for(const label of [option.legacyLabel,option.label]){
     if(typeof label==="string"&&selectableLabels.includes(label)) return label;
   }

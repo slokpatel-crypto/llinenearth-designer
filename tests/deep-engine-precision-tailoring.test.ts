@@ -43,13 +43,15 @@ test("advanced-cut state reaches server rule evaluation and NEVER silently downg
   assert.ok(server.includes('status:422'));
   assert.ok(server.includes("body.styleSpec!==undefined && body.styleSpec!==null && !styleSpec"));
   assert.ok(schema.includes("if(option.legacyLabel)return option.legacyLabel;"));
-  assert.ok(schema.includes("if(EXTENDED_LEGACY_GROUPS.has(group)&&option.legacySelectable!==false&&option.label===fallback)return option.label;"));
+  assert.ok(!schema.includes("option.legacySelectable!==false&&option.label===fallback"),"unreachable narrowed comparison must not block TypeScript build");
   assert.ok(schema.includes("return fallback;"));
   assert.ok(!schema.includes("option?.legacyLabel || option?.label || fallback;"));
   // The earlier cuff-only bridge was replaced with a stricter seven-group
   // guard. Assert the actual selected option is both visible and selectable
   // before the legacy photo state can change; v2-only cuts remain untouched.
   assert.ok(schema.includes("option.legacySelectable===false"));
+  assert.ok(schema.includes('option.renderSupport.livePreview==="none"'),
+    "precision-only cuts must not overwrite the original photographed selector");
   assert.ok(designer.includes("legacyLabelForSelectedOption(group,value,DESIGNER_STYLE_CHOICES[legacyKey])"));
   assert.ok(designer.includes("if(label) next.legacy[legacyKey]=label;"));
   for(const group of ["shirt.collar","shirt.cuff","shirt.placket","shirt.fit",
