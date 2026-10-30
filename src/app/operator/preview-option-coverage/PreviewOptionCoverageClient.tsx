@@ -17,6 +17,7 @@ type Summary={
   total:number;invalidRows:number;previewApproved:number;previewRejected:number;previewPending:number;
   noPreviewSupport:number;constructionBlocked:number;constructionPending:number;
   fullyCleared:number;coveragePercent:number;gateComplete:boolean;
+  exactlyCleared:number;exactPercent:number;accuracyGateComplete:boolean;
 };
 
 const panel:React.CSSProperties={background:"#fff",border:"1px solid #ddd7cc",borderRadius:18,padding:20};
@@ -105,11 +106,13 @@ export default function PreviewOptionCoverageClient(){
       <section style={{...panel,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:12}}>
         <article><small>CUSTOMER CHOICES</small><div style={{fontSize:34,fontWeight:800}}>{summary?.total??0}</div></article>
         <article><small>FULLY CLEARED</small><div style={{fontSize:34,fontWeight:800}}>{summary?.fullyCleared??0}</div></article>
+        <article><small>PHOTO-EXACT</small><div style={{fontSize:34,fontWeight:800}}>{summary?.exactlyCleared??0}</div></article>
         <article><small>INVALID / DUPLICATE</small><div style={{fontSize:34,fontWeight:800}}>{summary?.invalidRows??0}</div></article>
         <article><small>PREVIEW PENDING</small><div style={{fontSize:34,fontWeight:800}}>{summary?.previewPending??0}</div></article>
         <article><small>CONSTRUCTION PENDING</small><div style={{fontSize:34,fontWeight:800}}>{summary?.constructionPending??0}</div></article>
         <article><small>COVERAGE</small><div style={{fontSize:30,fontWeight:800}}>{summary?.coveragePercent??0}%</div></article>
         <article><small>GATE</small><div style={{fontSize:24,fontWeight:800}}>{summary?.gateComplete?"COMPLETE":"OPEN"}</div></article>
+        <article><small>EXACT ACCURACY</small><div style={{fontSize:24,fontWeight:800}}>{summary?.accuracyGateComplete?"COMPLETE":"OPEN"}</div><small>{summary?.exactPercent??0}% exact · approximations do not count</small></article>
       </section>
 
       {(summary?.invalidRows??0)>0&&<section role="alert" style={{...panel,background:"#fff0e8"}}>Preview coverage contains invalid or duplicate option rows. The release gate remains open until the catalogue and review evidence are corrected.</section>}
