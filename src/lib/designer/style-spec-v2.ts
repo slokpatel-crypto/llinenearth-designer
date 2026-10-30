@@ -97,8 +97,10 @@ function labelFor(id:string,fallback:string,group:Parameters<typeof legacyOption
   if(option.legacyLabel)return option.legacyLabel;
   // The UI actively offers these provisional labels in the *legacy* selector.
   // Their identity must survive canonical handoff and saved revision hashing.
+  // An advanced-only selection does not equal the stored legacy control and
+  // must NOT overwrite it (for example Open Short-Sleeve Hem vs a barrel cuff).
   // Future-only garment types, pleats and hems are deliberately excluded.
-  if(EXTENDED_LEGACY_GROUPS.has(group)&&option.legacySelectable!==false)return option.label;
+  if(EXTENDED_LEGACY_GROUPS.has(group)&&option.legacySelectable!==false&&option.label===fallback)return option.label;
   return fallback;
 }
 
