@@ -71,7 +71,7 @@ test("owned list excludes expired, impossible and ambiguous timestamped RPC rows
 test("both owned-list endpoints validate untrusted row envelopes before UI serialization",()=>{
   const designer=readFileSync("src/app/api/designer/vault/route.ts","utf8");
   const measurements=readFileSync("src/app/api/measurements/vault/route.ts","utf8");
-  assert.match(designer,/requireCompleteOwnedVaultRows\(rows\)/);
+  assert.match(designer,/requireCompleteOwnedVaultRows\(rows,100\)/);
   assert.match(designer,/if\(!ownedDesignVaultRowMatchesPayload\(row\)\|\|!await verifyLockedDesignRevision\(row\.payload\)\)/);
   assert.match(measurements,/requireCompleteOwnedVaultRows\(rows\)/);
   assert.match(measurements,/if\(!profile\|\|!observations\) throw new Error\("Invalid owned measurement vault row\."\)/);
