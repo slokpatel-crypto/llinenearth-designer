@@ -43,7 +43,7 @@ test("advanced-cut state reaches server rule evaluation and NEVER silently downg
   assert.ok(server.includes('status:422'));
   assert.ok(server.includes("body.styleSpec!==undefined && body.styleSpec!==null && !styleSpec"));
   assert.ok(schema.includes("if(option.legacyLabel)return option.legacyLabel;"));
-  assert.ok(schema.includes("if(EXTENDED_LEGACY_GROUPS.has(group)&&option.legacySelectable!==false&&option.label===fallback)return option.label;"));
+  assert.ok(!schema.includes("option.legacySelectable!==false&&option.label===fallback"),"unreachable narrowed comparison must not block TypeScript build");
   assert.ok(schema.includes("return fallback;"));
   assert.ok(!schema.includes("option?.legacyLabel || option?.label || fallback;"));
   // The earlier cuff-only bridge was replaced with a stricter seven-group
