@@ -101,3 +101,16 @@ test("customer source uses context-aware photo support while preserving the exis
   assert.match(preview,/DESIGNER_PHOTO_TEMPLATES/);
   assert.match(preview,/Instant preview/);
 });
+
+test("precision-only cuff does not overwrite a legacy photographed cuff, even after other selector changes",()=>{
+  const start=fromLegacyStyle(baseline);
+  const expanded={...start,shirt:{...start.shirt,cuff:"open_short_hem_cuff",sleeve:"half_sleeve"}};
+  assert(validateStyleSpecV2(expanded));
+  assert.equal(toLegacyStyle(expanded).cuff,baseline.cuff);
+  const changed={...baseline,collar:"English Spread / British Collar"};
+  const preserved=mergeLegacyIntoStyleSpec(expanded,changed);
+  assert.equal(preserved.shirt.cuff,"open_short_hem_cuff");
+  assert.equal(toLegacyStyle(preserved).cuff,baseline.cuff);
+  assert.equal(toLegacyStyle(preserved).collar,"English Spread / British Collar");
+  assert.equal(preserved.shirt.sleeve,"half_sleeve");
+});
