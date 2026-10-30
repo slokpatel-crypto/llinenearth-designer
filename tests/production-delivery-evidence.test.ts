@@ -548,7 +548,8 @@ test("operator evidence submission rejects coerced record actions and fabric-ord
   const {readFileSync}=await import("node:fs");
   const route=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
   assert.match(route,/if\(body.action!=="record"\)/);
-  assert.match(route,/normalizeVaultId\(body\.orderId\)/);
+  assert.match(route,/verifiedOperatorProductionCreateId\(body\.orderId\)/);
+  assert.doesNotMatch(route,/normalizeVaultId\(body\.orderId\)/);
   assert.match(route,/readSecureJsonObject\(request,16_?384\)/);
   assert.match(route,/if\(!orderId\) return respond\(/);
   assert.throws(()=>normalizeProductionDeliveryEvidence({
@@ -567,7 +568,8 @@ test("delivery audit POST requires exact order and recorded evidence UUID, bound
   const http=readFileSync("scripts/verify-customer-production-boundary.cjs","utf8");
   assert.match(route,/secureJsonRequestError\(request,16384\)/);
   assert.match(route,/readSecureJsonObject\(request,16384\)/);
-  assert.match(route,/normalizeVaultId\(body\.orderId\)/);
+  assert.match(route,/verifiedOperatorProductionCreateId\(body\.orderId\)/);
+  assert.doesNotMatch(route,/normalizeVaultId\(body\.orderId\)/);
   assert.match(route,/verifiedOperatorProductionCreateId\(receipt\)/);
   assert.match(route,/if\(!evidenceId\) return respond\(/);
   assert.match(route,/error instanceof SecureJsonBodyTooLarge/);
