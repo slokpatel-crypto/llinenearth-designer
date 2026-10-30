@@ -1,3 +1,29 @@
+/** Parse an exact, offset-bearing PostgreSQL timestamp without JS calendar rollover.
+ * Date.parse normalizes impossible days such as February 31 into March, which
+ * must never count as real physical delivery or inspection evidence. */
+export function parseProductionEvidenceTimestamp(value:unknown):number{
+  if(typeof value!=="string") return Number.NaN;
+  const match=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/i.exec(value);
+  if(!match) return Number.NaN;
+  const year=Number(match[1]);
+  const month=Number(match[2]);
+  const day=Number(match[3]);
+  const hour=Number(match[4]);
+  const minute=Number(match[5]);
+  const second=Number(match[6]);
+  const zone=match[7];
+  const leap=year%4===0&&(year%100!==0||year%400===0);
+  const days=[31,leap?29:28,31,30,31,30,31,31,30,31,30,31];
+  if(year<1||month<1||month>12||day<1||day>days[month-1]
+    ||hour>23||minute>59||second>59) return Number.NaN;
+  if(zone.toUpperCase()!=="Z"){
+    const offsetHour=Number(zone.slice(1,3));
+    const offsetMinute=Number(zone.slice(4,6));
+    if(offsetHour>23||offsetMinute>59) return Number.NaN;
+  }
+  return Date.parse(value);
+}
+
 export const PRODUCTION_REENTRY_FIELDS=[
   {id:"fabric_identity",label:"Fabric identity / code"},
   {id:"construction",label:"Collar / cuff / placket / pocket construction"},
@@ -71,11 +97,7 @@ export function validProductionFirstTenAuditBasis(input:unknown):boolean{
     ||basis.historyValid!==true
     ||!Array.isArray(basis.orders)||basis.orders.length>10
     ||!Array.isArray(basis.evidence)) return false;
-  const time=(value:unknown):number=>{
-    if(typeof value!=="string"
-      ||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) return Number.NaN;
-    return Date.parse(value);
-  };
+  const time=parseProductionEvidenceTimestamp;
   const deliveredAtByOrder=new Map<string,number>();
   const orderLineage=new Map<string,{revision:string;hash:string;created:string}>();
   const evidenceIds=new Set<string>();
@@ -164,11 +186,11 @@ export function summarizeProductionDeliveryEvidence(
   let malformedDeliveryCount=0;
   for(const order of rawDelivered){
     const id=typeof order.order_id==="string"?order.order_id.trim():"";
-    const timestamp=typeof order.created_at==="string"?Date.parse(order.created_at):Number.NaN;
+    const timestamp=typeof order.created_at==="string"?parseProductionEvidenceTimestamp(order.created_at):Number.NaN;
     const deliveredAt=order.delivered_at;
     const deliveryTimestamp=deliveredAt===undefined
       ?timestamp
-      :typeof deliveredAt==="string"?Date.parse(deliveredAt):Number.NaN;
+      :typeof deliveredAt==="string"?parseProductionEvidenceTimestamp(deliveredAt):Number.NaN;
     if(!id||!Number.isFinite(timestamp)||!Number.isFinite(deliveryTimestamp)
       ||deliveryTimestamp<timestamp){
       malformedDeliveryCount++;
@@ -179,7 +201,7 @@ export function summarizeProductionDeliveryEvidence(
     else orderById.set(key,order);
   }
   const delivered=[...orderById.values()]
-    .sort((a,b)=>Date.parse(a.delivered_at||a.created_at)-Date.parse(b.delivered_at||b.created_at));
+    .sort((a,b)=>parseProductionEvidenceTimestamp(a.delivered_at||a.created_at)-parseProductionEvidenceTimestamp(b.delivered_at||b.created_at));
   const firstTarget=delivered.slice(0,requestedTargetValid?target:10);
   const evidenceByOrder=new Map<string,ProductionDeliveryEvidenceRow[]>();
   for(const row of evidence){
@@ -202,8 +224,8 @@ export function summarizeProductionDeliveryEvidence(
         || (Array.isArray(row.reentry_fields)&&row.reentry_fields.length===0))
       && typeof row.operator==="string"&&row.operator.trim().length>=2&&row.operator.trim().length<=120
       && typeof row.evidence_reference==="string"&&row.evidence_reference.trim().length>=3&&row.evidence_reference.trim().length<=240
-      && typeof row.created_at==="string"&&Number.isFinite(Date.parse(row.created_at))
-      && (!order.delivered_at||Date.parse(row.created_at)>=Date.parse(order.delivered_at))
+      && typeof row.created_at==="string"&&Number.isFinite(parseProductionEvidenceTimestamp(row.created_at))
+      && (!order.delivered_at||parseProductionEvidenceTimestamp(row.created_at)>=parseProductionEvidenceTimestamp(order.delivered_at))
     );
     const disputed=rows.length>1&&rows.some((row)=>
       row.manual_design_reentry!==rows[0].manual_design_reentry);
