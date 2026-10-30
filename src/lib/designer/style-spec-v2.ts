@@ -95,12 +95,9 @@ function labelFor(id:string,fallback:string,group:Parameters<typeof legacyOption
   const option=optionById(id);
   if(!option||option.group!==group||option.legacySelectable===false)return fallback;
   if(option.legacyLabel)return option.legacyLabel;
-  // The UI actively offers these provisional labels in the *legacy* selector.
-  // Their identity must survive canonical handoff and saved revision hashing.
-  // An advanced-only selection does not equal the stored legacy control and
-  // must NOT overwrite it (for example Open Short-Sleeve Hem vs a barrel cuff).
-  // Future-only garment types, pleats and hems are deliberately excluded.
-  if(EXTENDED_LEGACY_GROUPS.has(group)&&option.legacySelectable!==false&&option.label===fallback)return option.label;
+  // No additional label projection is needed: the only safe non-legacyLabel
+  // match is option.label === fallback, which already returns fallback below.
+  // Keep advanced-only options in the canonical v2 recipe, never in the photo.
   return fallback;
 }
 
