@@ -49,8 +49,21 @@ export function summarizePreviewOptionCoverage(rows:PreviewCoverageRow[]){
     row.previewStatus==="approved" &&
     (row.constructionStatus==="approved"||row.constructionStatus==="not_required")
   ).length;
+  // A reviewer can approve an honestly labelled approximation for customer
+  // exploration. That does not make the photograph construction-accurate.
+  // Keep the existing usability gate but expose a separate strict accuracy
+  // gate so release reports cannot confuse the two.
+  const exactlyCleared=input.filter((row,index)=>
+    valid[index] &&
+    row.livePreview==="exact" &&
+    row.previewStatus==="approved" &&
+    (row.constructionStatus==="approved"||row.constructionStatus==="not_required")
+  ).length;
   return {
     total,
+    exactlyCleared,
+    exactPercent:total?Math.round(exactlyCleared/total*100):0,
+    accuracyGateComplete:total>0&&invalidRows===0&&exactlyCleared===total,
     invalidRows,
     previewApproved,
     previewRejected,
