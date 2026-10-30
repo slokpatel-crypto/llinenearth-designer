@@ -124,3 +124,14 @@ test("responsive browser QA exhausts each actual selectable option at 390/768/14
   assert.match(script,/responsive option drift/);
   assert.match(script,/assert\.equal\(summary\.responsive\.length,3/);
 });
+
+test("expanded Style Director controls synchronize only actually selectable legacy photographic labels",()=>{
+  const module=readFileSync("src/components/DesignerModule.tsx","utf8");
+  for(const group of ["shirt.collar","shirt.cuff","shirt.placket","shirt.fit",
+    "pant.rise","pant.waistband","pant.break"]){
+    assert(module.includes('"'+group+'":'),"missing legacy selector bridge: "+group);
+  }
+  assert.match(module,/legacyLabelForSelectedOption\(group,value,DESIGNER_STYLE_CHOICES\[legacyKey\]\)/);
+  assert.match(module,/if\(label\) next\.legacy\[legacyKey\]=label/);
+  assert.doesNotMatch(module,/if\(field==="cuff" && option\.legacyLabel/);
+});

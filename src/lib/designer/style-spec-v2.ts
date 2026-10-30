@@ -93,7 +93,7 @@ export function fromLegacyStyle(style:DesignerStyle):StyleSpecV2 {
 
 function labelFor(id:string,fallback:string,group:Parameters<typeof legacyOptionByLabel>[0]) {
   const option=optionById(id);
-  if(!option||option.group!==group)return fallback;
+  if(!option||option.group!==group||option.legacySelectable===false)return fallback;
   if(option.legacyLabel)return option.legacyLabel;
   // The UI actively offers these provisional labels in the *legacy* selector.
   // Their identity must survive canonical handoff and saved revision hashing.
@@ -104,9 +104,25 @@ function labelFor(id:string,fallback:string,group:Parameters<typeof legacyOption
   return fallback;
 }
 
+/** Synchronize a v2 selection with a real visible legacy control only.
+ * Advanced-only constructions must not fabricate an unselectable photo option. */
+export function legacyLabelForSelectedOption(
+  group:Parameters<typeof legacyOptionByLabel>[0],
+  id:string,
+  selectableLabels:readonly string[],
+):string|null {
+  const option=optionById(id);
+  if(!option||option.group!==group||option.legacySelectable===false) return null;
+  for(const label of [option.legacyLabel,option.label]){
+    if(typeof label==="string"&&selectableLabels.includes(label)) return label;
+  }
+  return null;
+}
+
 export function toLegacyStyle(spec:StyleSpecV2):DesignerStyle {
   return {
     ...spec.legacy,
+    collarFinish:spec.shirt.collarFinish,
     collar:labelFor(spec.shirt.collar,spec.legacy.collar,"shirt.collar"),
     cuff:labelFor(spec.shirt.cuff,spec.legacy.cuff,"shirt.cuff"),
     placket:labelFor(spec.shirt.placket,spec.legacy.placket,"shirt.placket"),

@@ -1,3 +1,9 @@
+## 2026-10-30 — J2 advanced controls must not diverge from visible photographic selections (stacked draft)
+
+- [x] Reproduced that `changeExpandedCut` synchronized only cuffs, so a selectable expanded collar/placket/fit/rise/waistband/break could change the canonical construction without updating the legacy control rendered on the original Studio photograph. Also found that `toLegacyStyle` could surface legacy-unselectable Wing Collar/Contrast Placket and retained stale collar-cloth finish.
+- [x] Bridge all seven compatible expanded groups to existing actual `DESIGNER_STYLE_CHOICES`, reject advanced-only/unselectable labels, preserve versioned v2-only selections, and make canonical collar finish reconstruct correctly. Added positive/negative pure and source regressions. Original model/photo, stock and paid-AI behavior unchanged.
+- [ ] Verify this exact draft head's dependency audit, quality, full Node tests, engine, preview-performance, release check, build, 390/768/1440 browser option matrix and Non-3D. Real photo shape accuracy, supplier rolls/metres, authenticated owner/operator, tailor/QC, native Blender, devices, five beta, ten genuine deliveries, security/privacy and owner approvals remain PENDING/BLOCKED. No live writes, migrations, paid providers, main merge or deployment.
+
 ## 2026-10-30 — StyleSpec v2 JSON envelope cannot coerce option identities (stacked draft)
 
 - [x] Reproduced that `validateStyleSpecV2` converted single-element array/object-like garment IDs and shirt-wear/collar-finish fields to strings and accepted incomplete/incorrect legacy envelopes.
