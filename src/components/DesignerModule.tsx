@@ -254,7 +254,7 @@ export function DesignerModule() {
     const photographed=fromLegacyStyle(style);
     const legacyRows=choices.map(([key,label])=>({
       key,label,
-      support:photoPreviewSupportForChoice(key,style[key]),
+      support:photoPreviewSupportForChoice(key,style[key],style),
     }));
     // The live photograph must not report DIRECT when the selected v2 cut
     // is only a tailor specification and has no matching photographed shape.
