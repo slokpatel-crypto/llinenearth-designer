@@ -20,6 +20,7 @@ jobs:
     env:
       LINEN_BROWSER_QA_RUNTIME: /tmp/linen-deep-engine-browser
       LINEN_OPERATOR_SESSION_SECRET: deep-engine-browser-${{ github.run_id }}
+      LINEN_DESIGN_SHARE_SECRET: titan-local-share-http-fixture-${{ github.run_id }}-not-production
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -62,6 +63,7 @@ jobs:
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null
+          node scripts/verify-share-response-headers.cjs
           node scripts/verify-deep-engine-fabric-discovery.cjs
           node scripts/verify-measurement-recovery.cjs
           node scripts/verify-designer-enquiry.cjs
