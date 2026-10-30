@@ -37,6 +37,7 @@ import {
 import { optionById, optionsFor } from "@/lib/designer/options/library";
 import {
   fromLegacyStyle,
+  legacyLabelForSelectedOption,
   mergeLegacyIntoStyleSpec,
   toLegacyStyle,
   validateStyleSpecV2,
@@ -55,6 +56,17 @@ const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"
 const SESSION_KEY = "linen-earth:designer-session:v1";
 const DRAFT_KEY = "linen-earth:real-designer-draft:v2";
 const FACT_INTERVAL_MS = 15_000;
+// An advanced selection may update the original photographic control only
+// when that exact label is actually offered by the existing legacy selector.
+const EXPANDED_LEGACY_FIELDS={
+  "shirt.collar":"collar",
+  "shirt.cuff":"cuff",
+  "shirt.placket":"placket",
+  "shirt.fit":"shirtFit",
+  "pant.rise":"rise",
+  "pant.waistband":"waistband",
+  "pant.break":"break",
+} as const;
 type ShirtFabricFilter = ShirtFabricFamily;
 type PantFabricFilter = TrouserFabricTone;
 type DesignerSearchOption = {
@@ -1100,15 +1112,17 @@ export function DesignerModule() {
     };
     if(garment==="shirt") {
       (next.shirt as unknown as Record<string,string>)[field]=value;
-      // Synchronize the older photographic selector only when it has a
-      // genuine compatible legacy label; future-only details stay v2-only.
-      if(field==="cuff" && option.legacyLabel
-        && DESIGNER_STYLE_CHOICES.cuff.includes(option.legacyLabel)) {
-        next.legacy.cuff=option.legacyLabel;
-      }
     } else {
       (next.pant as unknown as Record<string,string>)[field]=value;
     }
+    const group=`${garment}.${field}` as keyof typeof EXPANDED_LEGACY_FIELDS;
+    const legacyKey=EXPANDED_LEGACY_FIELDS[group];
+    if(legacyKey){
+      const label=legacyLabelForSelectedOption(group,value,DESIGNER_STYLE_CHOICES[legacyKey]);
+      if(label) next.legacy[legacyKey]=label;
+    }
+    // applyStyleSpec renders next.legacy on the original fixed Studio photo.
+    // Unphotographed/advanced-only selections stay v2-only, not fake geometry.
     applyStyleSpec(next);
   }
 
