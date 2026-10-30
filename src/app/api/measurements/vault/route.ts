@@ -98,11 +98,24 @@ export async function POST(request:Request){
       // Construct the recovery credential as soon as storage has been confirmed.
       // An optional account-link RPC must not turn this successful store into a 503.
       const recoveryToken=createMeasurementVaultRecoveryToken(vaultId,accessKey);
-      const linkStatus=await linkVaultOwnerBestEffort(customer?.id,ownerId=>
-        rpc<boolean>("measurement_profile_vault_set_owner",{
+      const linkStatus=await linkVaultOwnerBestEffort(customer?.id,async ownerId=>{
+        const attached=requireVaultBooleanResult(await rpc<unknown>("measurement_profile_vault_set_owner",{
           p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:ownerId,
-        }),
-      );
+        }));
+        if(!attached)return false;
+        // Do not claim account persistence from the owner-link boolean alone.
+        // A failed owner read preserves the already-issued recovery token.
+        const ownedRows=await rpc<Array<{profile:MeasurementProfile;observations:TailorObservationProfile;expires_at:string}>>(
+          "measurement_profile_vault_get_owned",
+          {p_vault_id:vaultId,p_owner_user_id:ownerId},
+        );
+        const ownedRow=selectVaultReadRow(ownedRows);
+        const ownedProfile=validStoredMeasurementProfile(ownedRow?.profile);
+        const ownedObservations=validStoredTailorObservationProfile(ownedRow?.observations);
+        return !!ownedRow&&!!ownedProfile&&!!ownedObservations&&
+          JSON.stringify(ownedProfile)===JSON.stringify(profile)&&
+          JSON.stringify(ownedObservations)===JSON.stringify(observations);
+      });
       return jsonNoStore({
         vaultId,recoveryToken,expiresInDays:180,
         accountOwned:linkStatus==="linked",

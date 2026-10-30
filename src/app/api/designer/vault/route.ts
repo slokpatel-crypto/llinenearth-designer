@@ -100,11 +100,22 @@ export async function POST(request:Request){
       // A successful remote store must still yield a recovery credential if
       // account linking or optional production ownership propagation fails.
       const recoveryToken=createDesignVaultRecoveryToken(vaultId,accessKey);
-      const linkStatus=await linkVaultOwnerBestEffort(customer?.id,ownerId=>
-        rpc<boolean>("designer_locked_revision_vault_set_owner",{
+      const linkStatus=await linkVaultOwnerBestEffort(customer?.id,async ownerId=>{
+        const attached=requireVaultBooleanResult(await rpc<unknown>("designer_locked_revision_vault_set_owner",{
           p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:ownerId,
-        }),
-      );
+        }));
+        if(!attached)return false;
+        // A true owner-link acknowledgement does not prove that the newly
+        // stored design can be recovered by this authenticated account.
+        // Keep the recovery token available if this optional check fails.
+        const ownedRows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>(
+          "designer_locked_revision_vault_get_owned",
+          {p_vault_id:vaultId,p_owner_user_id:ownerId},
+        );
+        const ownedRevision=selectVaultReadRow(ownedRows)?.payload as LockedDesignRevision | undefined;
+        return !!ownedRevision&&await verifyLockedDesignRevision(ownedRevision)&&
+          ownedRevision.revisionId===revision.revisionId&&ownedRevision.recipeHash===revision.recipeHash;
+      });
       if(linkStatus==="linked"&&customer){
         try{
           await rpc("production_claim_revision_ownership",{

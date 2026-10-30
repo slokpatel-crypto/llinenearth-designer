@@ -101,3 +101,53 @@ test("vault store routes treat optional auth failures as recovery-only copies, n
     assert.match(source,/accountOwned:linkStatus==="linked"/);
   }
 });
+
+
+test("design secure store verifies signed-in owner recovery before accountOwned success",()=>{
+  const source=readFileSync("src/app/api/designer/vault/route.ts","utf8");
+  const store=source.slice(source.indexOf('if(action==="store")'),source.indexOf('if(action==="listOwned")'));
+  const token=store.indexOf("const recoveryToken=createDesignVaultRecoveryToken");
+  const attach=store.indexOf('"designer_locked_revision_vault_set_owner"');
+  const owned=store.indexOf('"designer_locked_revision_vault_get_owned"',attach);
+  const selection=store.indexOf("selectVaultReadRow(ownedRows)",owned);
+  const integrity=store.indexOf("verifyLockedDesignRevision(ownedRevision)",selection);
+  const revision=store.indexOf("ownedRevision.revisionId===revision.revisionId",integrity);
+  const hash=store.indexOf("ownedRevision.recipeHash===revision.recipeHash",revision);
+  const propagation=store.indexOf('"production_claim_revision_ownership"',hash);
+  const result=store.indexOf('accountOwned:linkStatus==="linked"',propagation);
+  assert.ok(token>=0&&attach>token&&owned>attach&&selection>owned&&integrity>selection
+    &&revision>integrity&&hash>revision&&propagation>hash&&result>propagation);
+  assert.match(store,/if\(!attached\)return false/);
+  assert.match(store,/linkVaultOwnerBestEffort\(customer\?\.id,async ownerId=>/);
+  assert.match(store,/ownershipWarning:optionalOwner\?\.lookupFailed\?vaultOwnershipWarning\("unavailable"\):vaultOwnershipWarning\(linkStatus\)/);
+});
+
+test("measurement secure store verifies the actual owner-scoped profile and tailoring data",()=>{
+  const source=readFileSync("src/app/api/measurements/vault/route.ts","utf8");
+  const store=source.slice(source.indexOf('if(action==="store")'),source.indexOf('if(action==="listOwned")'));
+  const token=store.indexOf("const recoveryToken=createMeasurementVaultRecoveryToken");
+  const attach=store.indexOf('"measurement_profile_vault_set_owner"');
+  const owned=store.indexOf('"measurement_profile_vault_get_owned"',attach);
+  const selection=store.indexOf("selectVaultReadRow(ownedRows)",owned);
+  const profile=store.indexOf("validStoredMeasurementProfile(ownedRow?.profile)",selection);
+  const observations=store.indexOf("validStoredTailorObservationProfile(ownedRow?.observations)",profile);
+  const profileMatch=store.indexOf("JSON.stringify(ownedProfile)===JSON.stringify(profile)",observations);
+  const observationsMatch=store.indexOf("JSON.stringify(ownedObservations)===JSON.stringify(observations)",profileMatch);
+  const result=store.indexOf('accountOwned:linkStatus==="linked"',observationsMatch);
+  assert.ok(token>=0&&attach>token&&owned>attach&&selection>owned&&profile>selection
+    &&observations>profile&&profileMatch>observations&&observationsMatch>profileMatch&&result>observationsMatch);
+  assert.match(store,/if\(!attached\)return false/);
+  assert.match(store,/linkVaultOwnerBestEffort\(customer\?\.id,async ownerId=>/);
+  assert.match(store,/ownershipWarning:optionalOwner\?\.lookupFailed\?vaultOwnershipWarning\("unavailable"\):vaultOwnershipWarning\(linkStatus\)/);
+});
+
+test("owner-link confirmation failure after successful mutation never discards secure recovery",async()=>{
+  for(const confirm of [async()=>false,async()=>{throw Error("injected owner read outage");}]){
+    const status=await linkVaultOwnerBestEffort("account-1",async()=>{
+      const attached=true;
+      return attached&&await confirm();
+    });
+    assert.equal(status,"unavailable");
+    assert.match(vaultOwnershipWarning(status)||"",/recovery token/);
+  }
+});
