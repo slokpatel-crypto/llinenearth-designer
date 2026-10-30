@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { GARMENT_OPTION_LIBRARY, optionsFor, validateGarmentOptionLibrary } from "../src/lib/designer/options/library.ts";
-import { fromLegacyStyle, legacyStyleHashInput, mergeLegacyIntoStyleSpec, styleSpecHashInput, toLegacyStyle, validateStyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
+import { fromLegacyStyle, legacyLabelForSelectedOption, legacyStyleHashInput, mergeLegacyIntoStyleSpec, styleSpecHashInput, toLegacyStyle, validateStyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
 
 const legacy={
   collar:"Spread Collar",
@@ -100,4 +100,37 @@ test("StyleSpec v2 refuses coerced construction IDs and incomplete legacy handof
   const legitimateAdvanced={...original,shirt:{...original.shirt,cuff:"open_short_hem_cuff"}};
   assert.equal(validateStyleSpecV2(legitimateAdvanced),true,
     "typed provisional garment options remain backward compatible");
+});
+
+test("expanded options only synchronize labels supported by visible legacy controls",()=>{
+  assert.equal(legacyLabelForSelectedOption("shirt.collar","spread_collar",["Spread Collar"]),"Spread Collar");
+  assert.equal(legacyLabelForSelectedOption("shirt.cuff","french_double_cuff",["French / Double Cuff"]),"French / Double Cuff");
+  assert.equal(legacyLabelForSelectedOption("shirt.placket","hidden_fly_front",["Hidden / Fly-front"]),"Hidden / Fly-front");
+  assert.equal(legacyLabelForSelectedOption("pant.rise","high_rise",["High Rise"]),"High Rise");
+  assert.equal(legacyLabelForSelectedOption("pant.waistband","side_adjuster_tabs",["Side-Adjuster Tabs"]),"Side-Adjuster Tabs");
+  assert.equal(legacyLabelForSelectedOption("pant.break","slight_break",["Slight Break"]),"Slight Break");
+  assert.equal(legacyLabelForSelectedOption("shirt.collar","wing_collar",["Wing Collar"]),null,
+    "a legacy-unselectable wing collar must not be represented as a photographed control");
+  assert.equal(legacyLabelForSelectedOption("shirt.placket","contrast_placket",["Contrast Placket"]),null);
+  assert.equal(legacyLabelForSelectedOption("shirt.cuff","open_short_hem_cuff",["Barrel Cuff (1-button)"]),null);
+  assert.equal(legacyLabelForSelectedOption("pant.rise","high_rise",["Low Rise"]),null);
+  assert.equal(legacyLabelForSelectedOption("pant.rise","spread_collar",["Spread Collar"]),null);
+});
+
+test("canonical collar cloth and advanced-only choices cannot rewrite photographed legacy selection",()=>{
+  const base=fromLegacyStyle(legacy);
+  const advanced={...base,shirt:{...base.shirt,
+    collarFinish:"White contrast collar + cuffs",
+    collar:"wing_collar",placket:"contrast_placket"}};
+  assert.equal(validateStyleSpecV2(advanced),true);
+  const displayed=toLegacyStyle(advanced);
+  assert.equal(displayed.collarFinish,"White contrast collar + cuffs");
+  assert.equal(displayed.collar,legacy.collar);
+  assert.equal(displayed.placket,legacy.placket);
+  assert.notEqual(styleSpecHashInput(advanced),styleSpecHashInput(base));
+  const afterUnrelatedChange=mergeLegacyIntoStyleSpec(advanced,{...displayed,button:"Horn"});
+  assert.equal(afterUnrelatedChange.shirt.collarFinish,"White contrast collar + cuffs");
+  assert.equal(afterUnrelatedChange.shirt.collar,"wing_collar");
+  assert.equal(afterUnrelatedChange.shirt.placket,"contrast_placket");
+  assert.equal(toLegacyStyle(afterUnrelatedChange).button,"Horn");
 });
