@@ -181,6 +181,25 @@ const LEGACY_STYLE_FIELDS=[
   "trouser","rise","waistband","break","button",
 ] as const;
 
+// Persisted legacy labels are untrusted JSON. Reuse the existing option
+// library's selectable vocabulary, including its supported expanded labels;
+// arbitrary nonempty text is not a reconstructable photo/tailor selection.
+const LEGACY_STYLE_OPTION_GROUPS={
+  collar:"shirt.collar",cuff:"shirt.cuff",placket:"shirt.placket",
+  shirtFit:"shirt.fit",trouser:"pant.type",rise:"pant.rise",
+  waistband:"pant.waistband",break:"pant.break",button:"shirt.button",
+} as const;
+
+function supportedLegacyChoice(key:typeof LEGACY_STYLE_FIELDS[number],label:string):boolean {
+  if(key==="collarFinish")return ["Self-fabric","White contrast collar","White contrast collar + cuffs"].includes(label);
+  if(key==="shirtWear")return label==="Tucked"||label==="Untucked";
+  return optionsFor(LEGACY_STYLE_OPTION_GROUPS[key]).some(option=>
+    option.legacySelectable!==false &&
+    (key!=="trouser"&&key!=="button"||Boolean(option.legacyLabel)) &&
+    (option.legacyLabel||option.label)===label
+  );
+}
+
 function isStyleRecord(value:unknown):value is Record<string,unknown> {
   return value!==null && typeof value==="object" && !Array.isArray(value);
 }
@@ -194,7 +213,7 @@ export function validateStyleSpecV2(value:unknown):value is StyleSpecV2 {
   // to the tailor as though they were a complete prior selection.
   for(const key of LEGACY_STYLE_FIELDS){
     const label=legacy[key];
-    if(typeof label!=="string" || !label.trim()) return false;
+    if(typeof label!=="string" || !supportedLegacyChoice(key,label)) return false;
   }
   if(typeof shirt.wear!=="string" || !["tucked","untucked"].includes(shirt.wear)) return false;
   if(typeof shirt.collarFinish!=="string" ||

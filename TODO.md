@@ -1,3 +1,9 @@
+## 2026-10-30 — J3 persisted legacy labels must match the supported photo/tailor vocabulary (stacked draft)
+
+- [x] Reproduced that a saved StyleSpec v2 could contain arbitrary nonempty legacy labels, including withheld Wing Collar/Contrast Placket, and still pass lock/recovery validation even though no supported photographic selector could reconstruct them.
+- [x] Validate all eleven persisted legacy fields against existing selectable option-library labels and the two fixed collar-finish/shirt-wear vocabularies; preserve supported provisional labels and canonical advanced-only IDs. Add forged-label and compatibility regressions.
+- [ ] Require exact-head dependency audit, quality, full Node tests, engine, preview-performance, release:check, build, Chromium 390/768/1440 and Non-3D. Genuine owner-scoped Supabase recovery, physical stock/tailor, native Blender, real devices, five beta, ten deliveries, security/privacy and owner approval remain BLOCKED/PENDING. No live writes, schema, paid providers, main merge or deploy.
+
 ## 2026-10-30 — J2 advanced controls must not diverge from visible photographic selections (stacked draft)
 
 - [x] Reproduced that `changeExpandedCut` synchronized only cuffs, so a selectable expanded collar/placket/fit/rise/waistband/break could change the canonical construction without updating the legacy control rendered on the original Studio photograph. Also found that `toLegacyStyle` could surface legacy-unselectable Wing Collar/Contrast Placket and retained stale collar-cloth finish.
