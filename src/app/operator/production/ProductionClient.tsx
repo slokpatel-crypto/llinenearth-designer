@@ -8,6 +8,7 @@ import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-p
 import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet";
 import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
 import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval";
+import { validProductionDeskResponse } from "@/lib/designer/production-desk-ledger";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
@@ -35,17 +36,17 @@ export default function ProductionClient(){
       const response=await fetch("/api/operator/production",{cache:"no-store"});
       if(response.status===401){window.location.href="/operator/login?next=/operator/production";return;}
       if(!response.ok) throw new Error("Production records are unavailable.");
-      const data=await response.json();
-      if(!data||typeof data!=="object"||!Array.isArray(data.quotes)||!Array.isArray(data.orders)){
+      const data:unknown=await response.json();
+      if(!validProductionDeskResponse(data)){
         throw new Error("Production ledger response is malformed.");
       }
-      setConfigured(data.configured!==false);
-      setQuotes(data.quotes);
-      setOrders(data.orders);
-      setQcInspections(Array.isArray(data.qcInspections)?data.qcInspections:[]);
-      setCustomerOutcomes(Array.isArray(data.customerOutcomes)?data.customerOutcomes:[]);
-      setLearningContexts(Array.isArray(data.learningContexts)?data.learningContexts:[]);
-      setOptionalEvidenceSources(data.optionalEvidenceSources&&typeof data.optionalEvidenceSources==="object"?data.optionalEvidenceSources:null);
+      setConfigured(data.configured);
+      setQuotes(data.quotes as Quote[]);
+      setOrders(data.orders as Order[]);
+      setQcInspections(data.configured?data.qcInspections as QcInspection[]:[]);
+      setCustomerOutcomes(data.configured?data.customerOutcomes as CustomerOutcome[]:[]);
+      setLearningContexts(data.configured?data.learningContexts as LearningContext[]:[]);
+      setOptionalEvidenceSources(data.configured?data.optionalEvidenceSources:null);
     }catch{
       // Never keep stale quotes/orders or leave mutation controls enabled when
       // the operator's current production ledger cannot be verified.
@@ -76,6 +77,9 @@ export default function ProductionClient(){
   async function loadLockedDesign(){
     if(!recoveryToken.trim()||busy) return;
     setBusy(true);setMessage("");
+    // A new recovery attempt invalidates any previously verified design.
+    // Never allow exports from the old lock while a different token loads.
+    setLoadedRevision(null);
     try{
       const response=await fetch("/api/designer/vault",{
         method:"POST",headers:{"content-type":"application/json"},
@@ -86,7 +90,7 @@ export default function ProductionClient(){
       const revision=data.revision;
       setLoadedRevision(revision);
       setQuote((current)=>({...current,revisionId:revision.revisionId,recipeHash:revision.recipeHash}));
-      setOrder((current)=>({...current,revisionId:revision.revisionId,recipeHash:revision.recipeHash}));
+      setOrder((current)=>({...current,revisionId:revision.revisionId,recipeHash:revision.recipeHash,quoteId:""}));
       setMessage("Locked recipe loaded. Quote and order fields were filled from the same immutable revision.");
     }catch(error){
       setLoadedRevision(null);
@@ -178,7 +182,12 @@ export default function ProductionClient(){
         <p>Paste the secure recovery token from Designer. New quotes and production orders are blocked until this immutable revision is verified, so recipe identity cannot be typed or guessed manually.</p>
       </div>
       <div className="productionLoadForm">
-        <textarea rows={3} value={recoveryToken} onChange={(e)=>setRecoveryToken(e.target.value)} placeholder="lev1.…" spellCheck={false}/>
+        <textarea rows={3} value={recoveryToken} disabled={busy} onChange={(e)=>{
+          setRecoveryToken(e.target.value);
+          setLoadedRevision(null);
+          setQuote((current)=>({...current,revisionId:"",recipeHash:""}));
+          setOrder((current)=>({...current,revisionId:"",recipeHash:"",quoteId:""}));
+        }} placeholder="lev1.…" spellCheck={false}/>
         <button disabled={busy||!recoveryToken.trim()} onClick={()=>void loadLockedDesign()}>{busy?"Loading…":"Load locked design"}</button>
       </div>
       {loadedRevision&&<div className="productionLoadedRecipe">

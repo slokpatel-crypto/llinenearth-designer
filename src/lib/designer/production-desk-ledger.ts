@@ -87,3 +87,33 @@ export function validProductionDeskLedgers(quotes:unknown,orders:unknown):boolea
   }
   return true;
 }
+
+/** The browser must independently reject success-shaped, untrusted HTTP JSON.
+ * A configured production desk needs explicit evidence source availability;
+ * a backend-not-configured response cannot carry apparently real records. */
+export type VerifiedProductionDeskResponse =
+  | {configured:false;quotes:unknown[];orders:unknown[]}
+  | {configured:true;quotes:unknown[];orders:unknown[];
+      qcInspections:unknown[];customerOutcomes:unknown[];learningContexts:unknown[];
+      optionalEvidenceSources:{qcInstalled:boolean;customerOutcomesInstalled:boolean;learningContextInstalled:boolean}};
+
+export function validProductionDeskResponse(value:unknown):value is VerifiedProductionDeskResponse{
+  if(!record(value)||typeof value.configured!=="boolean"
+    ||!Array.isArray(value.quotes)||!Array.isArray(value.orders)
+    ||!validProductionDeskLedgers(value.quotes,value.orders)) return false;
+  if(value.configured===false){
+    return value.quotes.length===0&&value.orders.length===0
+      &&value.qcInspections===undefined&&value.customerOutcomes===undefined
+      &&value.learningContexts===undefined&&value.optionalEvidenceSources===undefined;
+  }
+  const sources=value.optionalEvidenceSources;
+  return Array.isArray(value.qcInspections)&&value.qcInspections.length<=250
+    &&Array.isArray(value.customerOutcomes)&&value.customerOutcomes.length<=250
+    &&Array.isArray(value.learningContexts)&&value.learningContexts.length<=500
+    &&record(sources)&&typeof sources.qcInstalled==="boolean"
+    &&typeof sources.customerOutcomesInstalled==="boolean"
+    &&typeof sources.learningContextInstalled==="boolean"
+    &&(sources.qcInstalled||value.qcInspections.length===0)
+    &&(sources.customerOutcomesInstalled||value.customerOutcomes.length===0)
+    &&(sources.learningContextInstalled||value.learningContexts.length===0);
+}

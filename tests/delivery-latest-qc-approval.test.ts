@@ -81,7 +81,8 @@ test("operator desk clears stale production records and disables mutation contro
   const ui=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
   const load=ui.split("async function load(){")[1]?.split("useEffect(()=>{void load();},[])")[0]||"";
   assert.ok(load.includes("if(!response.ok) throw new Error"));
-  assert.ok(load.includes("!Array.isArray(data.quotes)||!Array.isArray(data.orders)"));
+  assert.ok(load.includes("if(!validProductionDeskResponse(data))"),"the browser must validate the complete typed ledger envelope, not merely two arrays");
+  assert.ok(load.includes("setConfigured(data.configured)"),"never assume missing configured means true");
   for(const reset of ["setConfigured(false)","setQuotes([])","setOrders([])","setQcInspections([])","setCustomerOutcomes([])","setLearningContexts([])"]){
     assert.ok(load.includes(reset),`missing fail-closed reset: ${reset}`);
   }
