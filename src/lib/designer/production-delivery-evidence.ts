@@ -106,6 +106,7 @@ export function validProductionFirstTenAuditBasis(input:unknown):boolean{
     if(!value||typeof value!=="object"||Array.isArray(value)) return false;
     const order=value as Record<string,unknown>;
     if(typeof order.order_id!=="string"||!order.order_id.trim()
+      ||order.order_id!==order.order_id.trim()
       ||order.status!=="delivered"
       ||typeof order.revision_id!=="string"||order.revision_id.trim().length<3||order.revision_id.length>240
       ||typeof order.recipe_hash!=="string"||!/^[a-f0-9]{64}$/i.test(order.recipe_hash)) return false;
@@ -124,7 +125,11 @@ export function validProductionFirstTenAuditBasis(input:unknown):boolean{
   for(const value of basis.evidence){
     if(!value||typeof value!=="object"||Array.isArray(value)) return false;
     const evidence=value as Record<string,unknown>;
-    const key=typeof evidence.order_id==="string"?evidence.order_id.trim().toLowerCase():"";
+    // Database UUID identities are exact receipts; do not silently repair
+    // whitespace-padded order/evidence selectors into credible audit proof.
+    if(typeof evidence.order_id!=="string"||evidence.order_id!==evidence.order_id.trim()
+      ||typeof evidence.evidence_id!=="string"||evidence.evidence_id!==evidence.evidence_id.trim()) return false;
+    const key=evidence.order_id.toLowerCase();
     const deliveryAt=deliveredAtByOrder.get(key);
     const lineage=orderLineage.get(key);
     const evidenceId=typeof evidence.evidence_id==="string"?evidence.evidence_id.trim().toLowerCase():"";
