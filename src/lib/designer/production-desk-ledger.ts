@@ -88,6 +88,41 @@ export function validProductionDeskLedgers(quotes:unknown,orders:unknown):boolea
   return true;
 }
 
+/** Optional RPCs can return a literal array containing forged or malformed rows.
+ * The operator renders outcome fields directly and uses QC/context presence as
+ * production evidence. A successful HTTP status is not a typed row receipt.
+ * Preserve historical nullable QC provenance (which cannot approve delivery). */
+function validOptionalEvidenceRows(rows:unknown,kind:"qc"|"outcome"|"context"):boolean{
+  if(!Array.isArray(rows)) return false;
+  const seen=new Set<string>();
+  for(const value of rows){
+    if(!record(value)||!verifiedOperatorProductionCreateId(value.order_id)
+      ||!Number.isFinite(parseProductionEvidenceTimestamp(value.created_at))) return false;
+    if(kind==="qc"){
+      const id=verifiedOperatorProductionCreateId(value.inspection_id);
+      if(!id||(value.decision!=="approved"&&value.decision!=="rework")) return false;
+      if(value.inspector!==null&&value.inspector!==undefined&&typeof value.inspector!=="string") return false;
+      if(value.inspection_reference!==null&&value.inspection_reference!==undefined
+        &&typeof value.inspection_reference!=="string") return false;
+      if(seen.has(id)) return false;
+      seen.add(id);
+    }else if(kind==="outcome"){
+      const id=verifiedOperatorProductionCreateId(value.outcome_id);
+      if(!id||!revision(value.revision_id)
+        ||typeof value.overall_rating!=="string"||!value.overall_rating.trim()
+        ||typeof value.fit_result!=="string"||!value.fit_result.trim()
+        ||typeof value.worn_confirmed!=="boolean"
+        ||(value.note!==null&&typeof value.note!=="string")) return false;
+      if(seen.has(id)) return false;
+      seen.add(id);
+    }else{
+      if(!revision(value.revision_id)||!hash(value.recipe_hash)
+        ||!record(value.context)||Object.keys(value.context).length===0) return false;
+    }
+  }
+  return true;
+}
+
 /** The browser must independently reject success-shaped, untrusted HTTP JSON.
  * A configured production desk needs explicit evidence source availability;
  * a backend-not-configured response cannot carry apparently real records. */
@@ -107,9 +142,9 @@ export function validProductionDeskResponse(value:unknown):value is VerifiedProd
       &&value.learningContexts===undefined&&value.optionalEvidenceSources===undefined;
   }
   const sources=value.optionalEvidenceSources;
-  return Array.isArray(value.qcInspections)&&value.qcInspections.length<=250
-    &&Array.isArray(value.customerOutcomes)&&value.customerOutcomes.length<=250
-    &&Array.isArray(value.learningContexts)&&value.learningContexts.length<=500
+  return validOptionalEvidenceRows(value.qcInspections,"qc")&&value.qcInspections.length<=250
+    &&validOptionalEvidenceRows(value.customerOutcomes,"outcome")&&value.customerOutcomes.length<=250
+    &&validOptionalEvidenceRows(value.learningContexts,"context")&&value.learningContexts.length<=500
     &&record(sources)&&typeof sources.qcInstalled==="boolean"
     &&typeof sources.customerOutcomesInstalled==="boolean"
     &&typeof sources.learningContextInstalled==="boolean"
