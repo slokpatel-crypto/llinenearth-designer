@@ -129,14 +129,12 @@ test("design claim confirms same signed-in owner can read the claimed lock",()=>
   const ownedRead=claim.indexOf('"designer_locked_revision_vault_get_owned"',successfulClaim);
   const ownedSelection=claim.indexOf("selectVaultReadRow(ownedRows)",ownedRead);
   const ownedVerification=claim.indexOf("verifyLockedDesignRevision(ownedRevision)",ownedSelection);
-  const revisionMatch=claim.indexOf("ownedRevision.revisionId!==revision.revisionId",ownedVerification);
-  const hashMatch=claim.indexOf("ownedRevision.recipeHash!==revision.recipeHash",revisionMatch);
-  const productionPropagation=claim.indexOf('"production_claim_revision_ownership"',hashMatch);
+  const agreement=claim.indexOf("sameLockedVaultRevision(revision,ownedRevision)",ownedVerification);
+  const productionPropagation=claim.indexOf('"production_claim_revision_ownership"',agreement);
   const success=claim.indexOf("return jsonNoStore({claimed})",productionPropagation);
   assert.ok(ownerMutation>=0&&successfulClaim>ownerMutation&&ownedRead>successfulClaim
     &&ownedSelection>ownedRead&&ownedVerification>ownedSelection
-    &&revisionMatch>ownedVerification&&hashMatch>revisionMatch
-    &&productionPropagation>hashMatch&&success>productionPropagation);
+    &&agreement>ownedVerification&&productionPropagation>agreement&&success>productionPropagation);
   assert.match(claim,/throw new Error\("Owner-scoped locked design recovery could not be confirmed\."\)/);
   // A missing, duplicate or expired owner-scoped read cannot certify claim.
   for(const invalid of [[],[row,row],[{...row,expires_at:"2020-01-01T00:00:00Z"}]]){
