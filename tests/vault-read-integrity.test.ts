@@ -73,3 +73,27 @@ test("both vault routes validate all token and account read RPC envelopes",()=>{
   const designer=readFileSync("src/app/api/designer/vault/route.ts","utf8");
   assert.match(designer,/const revision=selectVaultReadRow\(rows\)\?\.payload/);
 });
+
+test("design account claim verifies the recoverable revision before owner mutation",()=>{
+  const code=readFileSync("src/app/api/designer/vault/route.ts","utf8");
+  const start=code.indexOf('if(action==="claim")');
+  const end=code.indexOf('if(action==="load")',start);
+  assert.ok(start>=0&&end>start);
+  const claim=code.slice(start,end);
+  const read=claim.indexOf('"designer_locked_revision_vault_get"');
+  const select=claim.indexOf('selectVaultReadRow(rows)?.payload');
+  const missing=claim.indexOf('if(!revision) return jsonNoStore');
+  const verify=claim.indexOf('if(!await verifyLockedDesignRevision(revision))');
+  const attach=claim.indexOf('"designer_locked_revision_vault_set_owner"');
+  const production=claim.indexOf('"production_claim_revision_ownership"');
+  const success=claim.indexOf('return jsonNoStore({claimed})');
+  assert.ok(read>=0&&select>read&&missing>select&&verify>missing
+    &&attach>verify&&production>attach&&success>production);
+  assert.match(claim,/if\(!revision\) return jsonNoStore\(\{error:"Design not found or recovery token expired\."\},\{status:404\}\)/);
+  assert.match(claim,/if\(!await verifyLockedDesignRevision\(revision\)\)/);
+  assert.match(claim,/\{error:"Stored design failed integrity verification\."\},\{status:409\}/);
+  // A missing, duplicated, expired or invalid revision never reaches set_owner.
+  for(const invalid of [[],[row,row],[{...row,expires_at:"2020-01-01T00:00:00Z"}]]){
+    assert.equal(selectVaultReadRow(invalid,now),null);
+  }
+});
