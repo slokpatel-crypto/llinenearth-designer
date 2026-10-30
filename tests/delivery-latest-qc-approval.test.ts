@@ -119,7 +119,7 @@ test("release gate verifies the latest typed QC guard instead of obsolete first-
 
 test("operator production desk never offers delivery based on first matching stale QC",()=>{
   const ui=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
-  assert.ok(ui.includes('import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval"'));
+  assert.ok(ui.includes('import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval"'));
   assert.ok(ui.includes("const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id,250)"));
   assert.ok(ui.includes("hasVerifiedDeliveryQcOrderLineage(qcInspections,item)"));
   assert.ok(ui.includes('status!=="delivered"||deliveryQcVerified'));
