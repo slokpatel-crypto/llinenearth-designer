@@ -162,19 +162,40 @@ const STYLE_OPTION_GROUPS={
   },
 } as const;
 
+const LEGACY_STYLE_FIELDS=[
+  "collar","collarFinish","cuff","placket","shirtFit","shirtWear",
+  "trouser","rise","waistband","break","button",
+] as const;
+
+function isStyleRecord(value:unknown):value is Record<string,unknown> {
+  return value!==null && typeof value==="object" && !Array.isArray(value);
+}
+
 export function validateStyleSpecV2(value:unknown):value is StyleSpecV2 {
-  if(!value || typeof value!=="object") return false;
-  const spec=value as Partial<StyleSpecV2>;
-  if(spec.styleSchemaVersion!==2 || !spec.shirt || !spec.pant || !spec.legacy) return false;
-  if(!["tucked","untucked"].includes(String(spec.shirt.wear))) return false;
-  if(!["Self-fabric","White contrast collar","White contrast collar + cuffs"].includes(String(spec.shirt.collarFinish))) return false;
+  if(!isStyleRecord(value) || value.styleSchemaVersion!==2) return false;
+  const {shirt,pant,legacy}=value;
+  if(!isStyleRecord(shirt) || !isStyleRecord(pant) || !isStyleRecord(legacy)) return false;
+  // A versioned saved design must contain literal labels for its legacy
+  // reconstruction. Arrays, numbers and partial envelopes cannot be handed
+  // to the tailor as though they were a complete prior selection.
+  for(const key of LEGACY_STYLE_FIELDS){
+    const label=legacy[key];
+    if(typeof label!=="string" || !label.trim()) return false;
+  }
+  if(typeof shirt.wear!=="string" || !["tucked","untucked"].includes(shirt.wear)) return false;
+  if(typeof shirt.collarFinish!=="string" ||
+    !["Self-fabric","White contrast collar","White contrast collar + cuffs"].includes(shirt.collarFinish)) return false;
   for(const [key,group] of Object.entries(STYLE_OPTION_GROUPS.shirt)) {
-    const id=String((spec.shirt as Record<string,unknown>)[key]||"");
+    const id=shirt[key];
+    // String([validId]) previously coerced a forged JSON array into a
+    // seemingly valid construction ID, altering saved/recovered data shapes.
+    if(typeof id!=="string") return false;
     const option=optionById(id);
     if(!option || option.group!==group) return false;
   }
   for(const [key,group] of Object.entries(STYLE_OPTION_GROUPS.pant)) {
-    const id=String((spec.pant as Record<string,unknown>)[key]||"");
+    const id=pant[key];
+    if(typeof id!=="string") return false;
     const option=optionById(id);
     if(!option || option.group!==group) return false;
   }

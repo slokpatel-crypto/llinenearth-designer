@@ -76,3 +76,28 @@ test("StyleSpec v2 canonical hash changes only when canonical construction chang
   const expanded={...base,pant:{...base.pant,fit:"korean_straight_wide"}};
   assert.notEqual(styleSpecHashInput(base),styleSpecHashInput(expanded));
 });
+
+test("StyleSpec v2 refuses coerced construction IDs and incomplete legacy handoffs",()=>{
+  const original=fromLegacyStyle(legacy);
+  assert.equal(validateStyleSpecV2(original),true);
+  const invalid:unknown[]=[
+    {...original,shirt:{...original.shirt,collar:[original.shirt.collar]}},
+    {...original,shirt:{...original.shirt,cuff:[original.shirt.cuff]}},
+    {...original,pant:{...original.pant,rise:[original.pant.rise]}},
+    {...original,pant:{...original.pant,type:{toString:()=>original.pant.type}}},
+    {...original,shirt:{...original.shirt,wear:["tucked"]}},
+    {...original,shirt:{...original.shirt,collarFinish:["Self-fabric"]}},
+    {...original,legacy:["Spread Collar"]},
+    {...original,legacy:"not an object"},
+    {...original,legacy:{...legacy,button:["Mother-of-Pearl"]}},
+    {...original,legacy:{...legacy,button:undefined}},
+    {...original,legacy:{...legacy,button:"  "}},
+  ];
+  for(const candidate of invalid){
+    assert.equal(validateStyleSpecV2(candidate),false,
+      "malformed JSON must not become a valid saved design/tailor receipt");
+  }
+  const legitimateAdvanced={...original,shirt:{...original.shirt,cuff:"open_short_hem_cuff"}};
+  assert.equal(validateStyleSpecV2(legitimateAdvanced),true,
+    "typed provisional garment options remain backward compatible");
+});

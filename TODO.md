@@ -1,3 +1,9 @@
+## 2026-10-30 — StyleSpec v2 JSON envelope cannot coerce option identities (stacked draft)
+
+- [x] Reproduced that `validateStyleSpecV2` converted single-element array/object-like garment IDs and shirt-wear/collar-finish fields to strings and accepted incomplete/incorrect legacy envelopes.
+- [x] Require literal IDs, non-array shirt/pant/legacy records and all eleven nonempty legacy labels; keep supported advanced options and hash inputs unchanged. Add positive and negative regressions.
+- [ ] Verify this child SHA's dependency audit, quality, full Node tests, engine, preview-performance, release:check, build, responsive 390/768/1440 browser, and Non-3D QA. Authenticated owner/operator, genuine supplier inventory, tailoring, native Blender, real devices, beta/delivery, security/privacy and owner approval remain PENDING/BLOCKED. No production writes, migration, provider charges, main merge or deployment.
+
 ## 2026-10-30 — J5 operator delivery browse receipts must be typed before display or evidence recording (stacked draft)
 - [x] Reproduced that a successful delivery-order/evidence RPC returning an array with null, coerced IDs, malformed timestamps or invalid re-entry fields passed the API array-only check. The operator UI then dereferenced row IDs or called .join on unverified fields; it could crash or display a misleading partial history.
 - [x] Add shared pure 500-row-cap, exact UUID, duplicate-ID, calendar and safe-field-array browse validation. Fail the privileged GET closed with 503 and make the client reject malformed success-shaped responses before rendering or offering audit controls. Preserve nullable legacy notes, optional delivery timestamp and original first-ten SQL release authority; tests cover positive and negative cases.
