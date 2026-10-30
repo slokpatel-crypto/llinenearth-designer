@@ -143,6 +143,13 @@ test("J5 installed optional evidence must contain typed rows, not arbitrary succ
   assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,context:{...context.context,recipeHash:"b".repeat(64)}}]}),false);
   assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,context:{...context.context,version:"invented"}}]}),false);
   assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,order_id:null}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,customerOutcomes:[{...outcome,revision_id:"LE-LOCK-20261001090000-OTHER123456"}]}),false,
+    "outcome cannot claim another visible order's locked revision");
+  assert.equal(validProductionDeskResponse({...valid,learningContexts:[{
+    ...context,recipe_hash:"b".repeat(64),context:{...context.context,recipeHash:"b".repeat(64)},
+  }]}),false,"self-consistent context cannot contradict the visible order hash");
+  assert.equal(validProductionDeskResponse({...valid,orders:[]}),true,
+    "older optional evidence may be outside the independently capped order page");
   assert.equal(validProductionDeskResponse({...valid,qcInspections:[]}),true,"empty installed source is valid");
   assert.equal(validProductionDeskResponse({...valid,qcInspections:[{...qc,inspector:null,inspection_reference:null}]}),true,
     "older unapproved QC provenance remains visible but cannot prove delivery");
