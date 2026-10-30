@@ -60,3 +60,25 @@ test("tampered share token is rejected",()=>{
   parts[1]=parts[1].slice(0,-1)+(parts[1].endsWith("A")?"B":"A");
   assert.equal(verifyDesignShareToken(parts.join("."),1_010),null);
 });
+
+
+test("public bearer share pages have route-specific no-referrer, noindex and no-store protections",async()=>{
+  const {default:nextConfig}=await import("../next.config.ts");
+  const routes=await nextConfig.headers?.();
+  assert.ok(routes,"Next.js response headers must be configured");
+  const globalIndex=routes.findIndex(route=>route.source==="/:path*");
+  const shareIndex=routes.findIndex(route=>route.source==="/share/:token");
+  assert.ok(globalIndex>=0 && shareIndex>globalIndex,"share header policy must override the global route");
+  const share=routes[shareIndex];
+  const header=(key:string)=>share.headers.find(item=>item.key.toLowerCase()===key.toLowerCase())?.value;
+  assert.equal(header("Referrer-Policy"),"no-referrer");
+  assert.equal(header("X-Robots-Tag"),"noindex, nofollow, noarchive");
+  assert.match(header("Cache-Control")||"",/private/);
+  assert.match(header("Cache-Control")||"",/no-store/);
+
+  const {readFileSync}=await import("node:fs");
+  const page=readFileSync("src/app/share/[token]/page.tsx","utf8");
+  assert.match(page,/export const dynamic="force-dynamic"/);
+  assert.match(page,/robots:\{index:false,follow:false\}/);
+  assert.match(page,/referrer:"no-referrer"/);
+});

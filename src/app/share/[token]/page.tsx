@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
@@ -6,6 +7,14 @@ import { verifyDesignShareToken } from "@/lib/designer/design-share";
 import "./share.css";
 
 export const dynamic="force-dynamic";
+
+// Public bearer links must not inherit indexable homepage metadata.
+// HTTP response headers separately enforce no-referrer and no-store.
+export const metadata: Metadata = {
+  title:"Shared locked design — Linen Earth",
+  robots:{index:false,follow:false},
+  referrer:"no-referrer",
+};
 
 export default async function SharedDesignPage({params}:{params:Promise<{token:string}>}){
   const {token}=await params;
