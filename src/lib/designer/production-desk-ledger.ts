@@ -1,5 +1,7 @@
 import { verifiedOperatorProductionCreateId } from "./operator-production-receipt.ts";
 import { parseProductionEvidenceTimestamp } from "./production-delivery-evidence.ts";
+import { CUSTOMER_OUTCOME_RATINGS, CUSTOMER_FIT_RESULTS } from "./customer-production-outcomes.ts";
+import { PRODUCTION_LEARNING_CONTEXT_VERSION } from "./production-learning-context.ts";
 
 const QUOTE_STATUSES=new Set(["draft","sent","accepted","void"]);
 const ORDER_STATUSES=new Set(["created","cloth_reserved","cutting","stitching","fitting","ready","delivered","cancelled"]);
@@ -109,15 +111,19 @@ function validOptionalEvidenceRows(rows:unknown,kind:"qc"|"outcome"|"context"):r
     }else if(kind==="outcome"){
       const id=verifiedOperatorProductionCreateId(value.outcome_id);
       if(!id||!revision(value.revision_id)
-        ||typeof value.overall_rating!=="string"||!value.overall_rating.trim()
-        ||typeof value.fit_result!=="string"||!value.fit_result.trim()
+        ||typeof value.overall_rating!=="string"||!CUSTOMER_OUTCOME_RATINGS.some(rating=>rating===value.overall_rating)
+        ||typeof value.fit_result!=="string"||!CUSTOMER_FIT_RESULTS.some(fit=>fit===value.fit_result)
         ||typeof value.worn_confirmed!=="boolean"
         ||(value.note!==null&&typeof value.note!=="string")) return false;
       if(seen.has(id)) return false;
       seen.add(id);
     }else{
       if(!revision(value.revision_id)||!hash(value.recipe_hash)
-        ||!record(value.context)||Object.keys(value.context).length===0) return false;
+        ||!record(value.context)
+        ||value.context.version!==PRODUCTION_LEARNING_CONTEXT_VERSION
+        ||value.context.revisionId!==value.revision_id
+        ||typeof value.context.recipeHash!=="string"
+        ||value.context.recipeHash.toLowerCase()!==String(value.recipe_hash).toLowerCase()) return false;
     }
   }
   return true;
