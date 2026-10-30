@@ -65,11 +65,11 @@ test("legacy delivery audits without provenance stay visible but cannot satisfy 
 
 function tenAuditedDeliveries(){
   const orders=Array.from({length:10},(_,i)=>({
-    order_id:`le-order-${i}`,status:"delivered",revision_id:`locked-revision-${i}`,recipe_hash:"a".repeat(64),
+    order_id:`00000000-0000-4000-8000-${String(i+1).padStart(12,"0")}`,status:"delivered",revision_id:`locked-revision-${i}`,recipe_hash:"a".repeat(64),
     created_at:`2026-10-${String(i+1).padStart(2,"0")}T10:00:00Z`,
   }));
   const evidence=orders.map((order,i)=>({
-    order_id:order.order_id,evidence_id:`audit-${i}`,revision_id:order.revision_id,
+    order_id:order.order_id,evidence_id:`10000000-0000-4000-8000-${String(i+1).padStart(12,"0")}`,revision_id:order.revision_id,
     recipe_hash:order.recipe_hash,order_created_at:order.created_at,
     manual_design_reentry:false,reentry_fields:[],note:"",
     operator:"Independent checker",evidence_reference:`delivery-job-card-${i}`,
@@ -385,6 +385,9 @@ test("first-ten audit guard rejects missing chronology, duplicate orders and mal
     {...basis,evidence:[{...evidence[0],recipe_hash:"b".repeat(64)},...evidence.slice(1)]},
     {...basis,evidence:[{...evidence[0],order_created_at:"2026-10-01T00:00:00Z"},...evidence.slice(1)]},
     {...basis,evidence:[{...evidence[0],evidence_id:""},...evidence.slice(1)]},
+    {...basis,orders:[{...basis.orders[0],order_id:"not-a-uuid"},...basis.orders.slice(1)]},
+    {...basis,evidence:[{...evidence[0],order_id:"not-a-uuid"},...evidence.slice(1)]},
+    {...basis,evidence:[{...evidence[0],evidence_id:"fake-audit-id"},...evidence.slice(1)]},
     {...basis,evidence:[{...evidence[0],evidence_id:evidence[1].evidence_id},...evidence.slice(1)]},
     {...basis,evidence:[{...evidence[0],reentry_fields:["fabric_identity","fabric_identity"]},...evidence.slice(1)]},
     {...basis,evidence:[{...evidence[0],note:null},...evidence.slice(1)]},
