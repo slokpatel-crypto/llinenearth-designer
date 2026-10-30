@@ -92,7 +92,7 @@ export function validProductionDeskLedgers(quotes:unknown,orders:unknown):boolea
  * The operator renders outcome fields directly and uses QC/context presence as
  * production evidence. A successful HTTP status is not a typed row receipt.
  * Preserve historical nullable QC provenance (which cannot approve delivery). */
-function validOptionalEvidenceRows(rows:unknown,kind:"qc"|"outcome"|"context"):boolean{
+function validOptionalEvidenceRows(rows:unknown,kind:"qc"|"outcome"|"context"):rows is unknown[]{
   if(!Array.isArray(rows)) return false;
   const seen=new Set<string>();
   for(const value of rows){
