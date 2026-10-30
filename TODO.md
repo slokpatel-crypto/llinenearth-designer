@@ -614,3 +614,5 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] Reproduce and fix raw-adjustment versus persisted-paise total discrepancy; nine quote regressions pass. Source/test a24434c93d4f6f4d2d86ea04ee357fad02d1d6be.
 - [ ] Exact-head Linux full suite/build/390/768/1440 Chromium/Non-3D; local process spawning blocked by EPERM. Human/physical/stock/owner gates remain pending. Next independent J4 share/consent validation.
 
+
+- [x] 2026-10-30: T5/J4 real HTTP privacy regression for signed public share links: both full CI and Non-3D now start a LOCAL Next server with an ephemeral CI-only share secret and fetch a synthetic signed 200 share, rejected 404 share, and ordinary homepage. Assert actual no-referrer, private/no-store and noindex/nofollow response headers; the fixture has deliberately unverified non-stock fabrics. This is code/browser-server evidence only, NOT real customer consent, live Supabase owner verification, physical inventory or security signoff. Exact new-head workflows and genuine human gates remain pending.
