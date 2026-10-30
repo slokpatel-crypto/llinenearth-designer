@@ -7,6 +7,7 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { normalizeFinishedGarmentQcDraft } from "@/lib/designer/finished-garment-qc";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
+import { validGarmentQcDeskResponse } from "@/lib/designer/garment-qc-ledger";
 
 export const runtime="nodejs";
 
@@ -47,6 +48,7 @@ export async function GET(){
       rpc<unknown[]>("finished_garment_qc_list",{p_limit:250}),
     ]);
     if(!Array.isArray(orders)||!Array.isArray(inspections)) throw new Error("Malformed production QC list receipts.");
+    if(!validGarmentQcDeskResponse({configured:true,orders,inspections})) throw new Error("Malformed production QC row receipts.");
     return NextResponse.json({configured:true,orders,inspections},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/garment-qc]",error);

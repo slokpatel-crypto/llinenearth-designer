@@ -90,6 +90,21 @@ export function validProductionDeskLedgers(quotes:unknown,orders:unknown):boolea
   return true;
 }
 
+/** The QC desk fetches 150 orders independently of the production desk's
+ * newest-100 quote/order pages. Validate that complete, capped order page
+ * without pretending an older missing quote is a contradiction. */
+export function validProductionQcOrderRows(orders:unknown):orders is Record<string,unknown>[]{
+  if(!Array.isArray(orders)||orders.length>150) return false;
+  const seen=new Set<string>();
+  for(const order of orders){
+    if(!validOrder(order)) return false;
+    const id=verifiedOperatorProductionCreateId(order.order_id)!.toLowerCase();
+    if(seen.has(id)) return false;
+    seen.add(id);
+  }
+  return true;
+}
+
 /** Optional RPCs can return a literal array containing forged or malformed rows.
  * The operator renders outcome fields directly and uses QC/context presence as
  * production evidence. A successful HTTP status is not a typed row receipt.
