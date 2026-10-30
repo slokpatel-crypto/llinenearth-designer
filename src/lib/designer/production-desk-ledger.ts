@@ -129,6 +129,29 @@ function validOptionalEvidenceRows(rows:unknown,kind:"qc"|"outcome"|"context"):r
   return true;
 }
 
+/** Optional evidence can be older than the newest-100 order page, but when
+ * the linked order IS present, its immutable recipe lineage must agree.
+ * Otherwise a forged outcome/context can be displayed on the wrong order. */
+function validOptionalOrderLineage(orders:unknown[],outcomes:unknown[],contexts:unknown[]):boolean{
+  const byId=new Map<string,Record<string,unknown>>();
+  for(const order of orders){
+    if(!record(order)) return false;
+    const id=verifiedOperatorProductionCreateId(order.order_id);
+    if(!id) return false;
+    byId.set(id,order);
+  }
+  for(const row of [...outcomes,...contexts]){
+    if(!record(row)) return false;
+    const id=verifiedOperatorProductionCreateId(row.order_id);
+    const order=id?byId.get(id):undefined;
+    if(!order) continue; // an older order may be outside this capped page
+    if(row.revision_id!==order.revision_id) return false;
+    if(contexts.includes(row)&&String(row.recipe_hash).toLowerCase()!==String(order.recipe_hash).toLowerCase())
+      return false;
+  }
+  return true;
+}
+
 /** The browser must independently reject success-shaped, untrusted HTTP JSON.
  * A configured production desk needs explicit evidence source availability;
  * a backend-not-configured response cannot carry apparently real records. */
@@ -156,5 +179,6 @@ export function validProductionDeskResponse(value:unknown):value is VerifiedProd
     &&typeof sources.learningContextInstalled==="boolean"
     &&(sources.qcInstalled||value.qcInspections.length===0)
     &&(sources.customerOutcomesInstalled||value.customerOutcomes.length===0)
-    &&(sources.learningContextInstalled||value.learningContexts.length===0);
+    &&(sources.learningContextInstalled||value.learningContexts.length===0)
+    &&validOptionalOrderLineage(value.orders,value.customerOutcomes,value.learningContexts);
 }
