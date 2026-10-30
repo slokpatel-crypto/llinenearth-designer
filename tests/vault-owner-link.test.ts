@@ -111,12 +111,11 @@ test("design secure store verifies signed-in owner recovery before accountOwned 
   const owned=store.indexOf('"designer_locked_revision_vault_get_owned"',attach);
   const selection=store.indexOf("selectVaultReadRow(ownedRows)",owned);
   const integrity=store.indexOf("verifyLockedDesignRevision(ownedRevision)",selection);
-  const revision=store.indexOf("ownedRevision.revisionId===revision.revisionId",integrity);
-  const hash=store.indexOf("ownedRevision.recipeHash===revision.recipeHash",revision);
-  const propagation=store.indexOf('"production_claim_revision_ownership"',hash);
+  const agreement=store.indexOf("sameLockedVaultRevision(revision,ownedRevision)",integrity);
+  const propagation=store.indexOf('"production_claim_revision_ownership"',agreement);
   const result=store.indexOf('accountOwned:linkStatus==="linked"',propagation);
   assert.ok(token>=0&&attach>token&&owned>attach&&selection>owned&&integrity>selection
-    &&revision>integrity&&hash>revision&&propagation>hash&&result>propagation);
+    &&agreement>integrity&&propagation>agreement&&result>propagation);
   assert.match(store,/if\(!attached\)return false/);
   assert.match(store,/linkVaultOwnerBestEffort\(customer\?\.id,async ownerId=>/);
   assert.match(store,/ownershipWarning:optionalOwner\?\.lookupFailed\?vaultOwnershipWarning\("unavailable"\):vaultOwnershipWarning\(linkStatus\)/);
