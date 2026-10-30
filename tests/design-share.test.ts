@@ -82,3 +82,19 @@ test("public bearer share pages have route-specific no-referrer, noindex and no-
   assert.match(page,/robots:\{index:false,follow:false\}/);
   assert.match(page,/referrer:"no-referrer"/);
 });
+
+test("both CI lanes exercise actual signed and invalid share HTTP privacy responses",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const script=readFileSync("scripts/verify-share-response-headers.cjs","utf8");
+  assert.match(script,/fixtureToken\(\)/);
+  assert.match(script,/good\.status,200/);
+  assert.match(script,/invalid\.status,404/);
+  assert.match(script,/assertPrivateShareHeaders\(good/);
+  assert.match(script,/assertPrivateShareHeaders\(invalid/);
+  assert.match(script,/strict-origin-when-cross-origin/);
+  for(const workflow of [".github/workflows/ci.yml",".github/workflows/deep-engine-non3d.yml"]){
+    const text=readFileSync(workflow,"utf8");
+    assert.match(text,/LINEN_DESIGN_SHARE_SECRET:/,workflow);
+    assert.match(text,/node scripts\/verify-share-response-headers\.cjs/,workflow);
+  }
+});
