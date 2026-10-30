@@ -1,4 +1,6 @@
 import { FINISHED_GARMENT_QC_CHECKS } from "./finished-garment-qc.ts";
+import { verifiedOperatorProductionCreateId } from "./operator-production-receipt.ts";
+import { parseProductionEvidenceTimestamp } from "./production-delivery-evidence.ts";
 
 /**
  * Delivery is a physical release action: an older approval must never mask a
@@ -64,4 +66,38 @@ export function hasVerifiedLatestDeliveryQc(receipts:unknown,orderId:string,maxR
     &&inspector.length>=2&&inspector.length<=120
     &&typeof reference==="string"&&reference===reference.trim()
     &&reference.length>=3&&reference.length<=240;
+}
+
+
+/** The physical QC receipt must belong to the exact immutable order recipe.
+ * An inspection carrying a reused order UUID but another revision/hash, a
+ * missing database inspection UUID, or a date before the order was created
+ * cannot authorize delivery. This is a source guard, not an atomic SQL proof.
+ */
+export function hasVerifiedDeliveryQcOrderLineage(receipts:unknown,order:unknown):boolean{
+  if(!Array.isArray(receipts)||!order||typeof order!=="object"||Array.isArray(order)) return false;
+  const target=order as Record<string,unknown>;
+  const orderId=verifiedOperatorProductionCreateId(target.order_id);
+  const created=parseProductionEvidenceTimestamp(target.created_at);
+  if(!orderId||target.status!=="ready"
+    ||typeof target.revision_id!=="string"||target.revision_id.length<12
+    ||target.revision_id.length>220||target.revision_id!==target.revision_id.trim()
+    ||typeof target.recipe_hash!=="string"||!/^[a-f0-9]{64}$/i.test(target.recipe_hash)
+    ||!Number.isFinite(created)) return false;
+  let matched=0;
+  for(const value of receipts){
+    if(!value||typeof value!=="object"||Array.isArray(value)) return false;
+    const row=value as Record<string,unknown>;
+    if(typeof row.order_id!=="string") return false;
+    if(row.order_id.toLowerCase()!==orderId.toLowerCase()) continue;
+    const inspected=parseProductionEvidenceTimestamp(row.created_at);
+    if(!verifiedOperatorProductionCreateId(row.order_id)
+      ||!verifiedOperatorProductionCreateId(row.inspection_id)
+      ||row.revision_id!==target.revision_id
+      ||typeof row.recipe_hash!=="string"
+      ||row.recipe_hash.toLowerCase()!==target.recipe_hash.toLowerCase()
+      ||!Number.isFinite(inspected)||inspected<created) return false;
+    matched++;
+  }
+  return matched>0;
 }
