@@ -43,7 +43,7 @@ test("advanced-cut state reaches server rule evaluation and NEVER silently downg
   assert.ok(server.includes('status:422'));
   assert.ok(server.includes("body.styleSpec!==undefined && body.styleSpec!==null && !styleSpec"));
   assert.ok(schema.includes("if(option.legacyLabel)return option.legacyLabel;"));
-  assert.ok(schema.includes("if(EXTENDED_LEGACY_GROUPS.has(group)&&option.legacySelectable!==false)return option.label;"));
+  assert.ok(schema.includes("if(EXTENDED_LEGACY_GROUPS.has(group)&&option.legacySelectable!==false&&option.label===fallback)return option.label;"));
   assert.ok(schema.includes("return fallback;"));
   assert.ok(!schema.includes("option?.legacyLabel || option?.label || fallback;"));
   assert.ok(designer.includes("next.legacy.cuff=option.legacyLabel"));
