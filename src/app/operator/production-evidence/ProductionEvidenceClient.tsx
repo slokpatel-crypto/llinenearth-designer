@@ -7,6 +7,7 @@ import {
   summarizeProductionDeliveryEvidence,
   validProductionFirstTenAuditBasis,
 } from "@/lib/designer/production-delivery-evidence";
+import { validProductionDeliveryBrowseReceipt } from "@/lib/designer/production-browse-receipt";
 
 type Order={order_id:string;revision_id:string;recipe_hash:string;status:string;note:string;created_at:string;delivered_at?:string|null};
 type Evidence={evidence_id:string;order_id:string;revision_id:string;recipe_hash:string;manual_design_reentry:boolean;reentry_fields:string[];note:string;operator:string;evidence_reference?:string;created_at:string;order_created_at:string};
@@ -54,8 +55,12 @@ export default function ProductionEvidenceClient(){
       const data=await response.json();
       if(requestId!==latestLoad.current) return;
       if(!response.ok) throw new Error(data.error||"Production evidence could not be loaded.");
-      const nextOrders=Array.isArray(data.orders)?data.orders:[];
-      const nextEvidence=Array.isArray(data.evidence)?data.evidence:[];
+      // A malformed successful list is not an empty production history. Reject
+      // it before rendering rows or allowing a new physical evidence audit.
+      if(!validProductionDeliveryBrowseReceipt(data.orders,data.evidence))
+        throw new Error("Malformed delivery evidence browse receipt.");
+      const nextOrders=data.orders as Order[];
+      const nextEvidence=data.evidence as Evidence[];
       const rawBasis=data.firstTenBasis as Partial<FirstTenBasis>|null;
       const basis:FirstTenBasis|null=validProductionFirstTenAuditBasis(rawBasis)
         &&rawBasis?.version==="linen-earth-production-first-ten-audit-v2"
