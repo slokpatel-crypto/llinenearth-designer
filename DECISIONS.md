@@ -1190,3 +1190,8 @@ The operator production-evidence POST previously normalized `body.orderId` using
 ## 2026-10-30 — Physical delivery audit timestamps must be literal calendar evidence
 
 JavaScript Date.parse may normalize nonexistent days such as February 31 into March. **Decision:** first-ten authoritative delivery receipts and operator summary must share strict offset-bearing Gregorian date/time validation before a record can count as delivery or physical audit evidence. Preserve valid leap days, fractional seconds, explicit timezone offsets, original photo/model and no-paid-AI Designer. Invalid or ambiguous timestamps fail closed; no historical rows are rewritten. This is T5/J5/T6 code integrity, not supplier inventory, ten real deliveries, tailor/device/native/security or owner release approval. No production database writes, migrations, provider charges, main merge or deployment.
+
+
+## 2026-10-30 — First-ten physical delivery identity receipts are literal
+
+The authoritative first-ten audit guard previously trimmed order IDs and evidence receipt IDs before checking uniqueness and lineage. A whitespace-padded upstream identity could therefore be silently normalized into apparently valid physical delivery proof. **Decision:** reject padded order, audit-order and audit-receipt identifiers at the first-ten response boundary. Preserve case-insensitive identity matching and existing legitimate non-padded IDs; do not change the SQL schema, model/photo, deterministic Designer or legacy browsing UI. The guard is source-level integrity only, not ten actual deliveries, verified stock, customer/operator signoff or release approval. No live database writes, migrations, provider charges, main merge or production deploy.
