@@ -1,3 +1,5 @@
+import { FINISHED_GARMENT_QC_CHECKS } from "./finished-garment-qc.ts";
+
 /**
  * Delivery is a physical release action: an older approval must never mask a
  * newer rework inspection, even if the upstream list arrives out of order.
@@ -20,13 +22,24 @@ function parseLiteralQcTimestamp(value:unknown):number|null{
   return Number.isFinite(time)?time:null;
 }
 
+/** An approved decision is not physical release evidence if any of the six
+ * actual garment checks is missing, false, coerced or supplemented by an
+ * unrecognized field. The QC write contract persists precisely these IDs. */
+function verifiedApprovalChecks(value:unknown):boolean{
+  if(!value||typeof value!=="object"||Array.isArray(value)) return false;
+  const checks=value as Record<string,unknown>;
+  const ids=FINISHED_GARMENT_QC_CHECKS.map(check=>check.id);
+  return Object.keys(checks).length===ids.length
+    &&ids.every(id=>checks[id]===true);
+}
+
 /** A saturated capped ledger cannot prove that the latest inspection was read.
  * This is still not a transactionally consistent database latest-by-order proof. */
 export function hasVerifiedLatestDeliveryQc(receipts:unknown,orderId:string,maxRows=Number.POSITIVE_INFINITY):boolean{
   if(!Array.isArray(receipts)
     ||(maxRows!==Number.POSITIVE_INFINITY&&(!Number.isSafeInteger(maxRows)||maxRows<=0))
     ||receipts.length>=maxRows) return false;
-  let latest:{time:number;decision:string;inspector:unknown;reference:unknown}|null=null;
+  let latest:{time:number;decision:string;inspector:unknown;reference:unknown;checks:unknown}|null=null;
   let ambiguous=false;
   for(const value of receipts){
     if(!value||typeof value!=="object"||Array.isArray(value)) return false;
@@ -36,7 +49,7 @@ export function hasVerifiedLatestDeliveryQc(receipts:unknown,orderId:string,maxR
     const time=parseLiteralQcTimestamp(row.created_at);
     if(time===null||(row.decision!=="approved"&&row.decision!=="rework")) return false;
     if(!latest||time>latest.time){
-      latest={time,decision:row.decision,inspector:row.inspector,reference:row.inspection_reference};
+      latest={time,decision:row.decision,inspector:row.inspector,reference:row.inspection_reference,checks:row.checks};
       ambiguous=false;
     }else if(time===latest.time){
       // Two inspections in the same JS timestamp resolution cannot be
@@ -44,7 +57,7 @@ export function hasVerifiedLatestDeliveryQc(receipts:unknown,orderId:string,maxR
       ambiguous=true;
     }
   }
-  if(!latest||ambiguous||latest.decision!=="approved") return false;
+  if(!latest||ambiguous||latest.decision!=="approved"||!verifiedApprovalChecks(latest.checks)) return false;
   const inspector=latest.inspector;
   const reference=latest.reference;
   return typeof inspector==="string"&&inspector===inspector.trim()

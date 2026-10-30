@@ -2,9 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {hasVerifiedLatestDeliveryQc} from "../src/lib/designer/delivery-qc-approval.ts";
+import {FINISHED_GARMENT_QC_CHECKS} from "../src/lib/designer/finished-garment-qc.ts";
 
 const orderId="123e4567-e89b-42d3-a456-426614174000";
-const earlier={order_id:orderId,decision:"approved",inspector:"Checker A",inspection_reference:"QC-1",created_at:"2026-10-29T10:00:00.000Z"};
+const passingChecks=Object.fromEntries(FINISHED_GARMENT_QC_CHECKS.map(item=>[item.id,true]));
+const earlier={order_id:orderId,decision:"approved",checks:passingChecks,inspector:"Checker A",inspection_reference:"QC-1",created_at:"2026-10-29T10:00:00.000Z"};
 const rework={...earlier,decision:"rework",created_at:"2026-10-29T11:00:00.000Z"};
 const approved={...earlier,decision:"approved",created_at:"2026-10-29T12:00:00.000Z"};
 
@@ -37,6 +39,21 @@ test("J5: malformed or coerced QC provenance cannot become a delivery approval",
   ]){
     assert.equal(hasVerifiedLatestDeliveryQc([invalid],orderId),false,JSON.stringify(invalid));
   }
+});
+
+test("J5: a forged approval cannot unlock delivery without six literal physical checks",()=>{
+  for(const invalidChecks of [
+    undefined,null,{},[],{"recipe_match":true},
+    {...passingChecks,recipe_match:false},
+    {...passingChecks,fabric_match:"true"},
+    {...passingChecks,unverified_extra:true},
+  ]){
+    assert.equal(hasVerifiedLatestDeliveryQc([{...approved,checks:invalidChecks}],orderId),false,
+      JSON.stringify(invalidChecks));
+  }
+  assert.equal(hasVerifiedLatestDeliveryQc([{...approved,checks:passingChecks}],orderId),true);
+  assert.equal(hasVerifiedLatestDeliveryQc([earlier,{...rework,checks:{}}],orderId),false,
+    "newer rework must still veto an earlier passing approval");
 });
 
 test("J5: timestamp ties cannot promote an ambiguous older approval",()=>{
