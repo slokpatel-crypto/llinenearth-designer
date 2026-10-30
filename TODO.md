@@ -1,6 +1,6 @@
 ## 2026-10-30 — J3 owner-scoped vault list completeness and duplicate identity safety (stacked draft)
 - [x] Reproduced both authenticated owned-list routes silently omitting malformed, expired or invalid rows and allowing repeated UUID identities. A corrupt RPC could return an apparently complete but truncated saved-design/measurement list.
-- [x] Require every returned row to have a valid, current, exact UUID envelope and reject duplicate IDs case-insensitively; fail the whole list on invalid design payload/hash/signature or measurement/observation profile. Preserve empty valid lists, existing account identity and recovery-token semantics.
+- [x] Require every returned row to have a valid, current, exact UUID envelope and reject duplicate IDs case-insensitively; fail the whole list on invalid design payload/hash/signature or measurement/observation profile. Reject saturated SQL-capped owner lists (100 designs, 50 measurements) rather than reporting a truncated history as complete. Preserve empty valid lists, existing account identity and recovery-token semantics.
 - [ ] Verify exact-head quality, full Node tests, engine, preview, release, build, Chromium 390/768/1440 and Non-3D. Genuine authenticated owner save/list/recover/claim, supplier inventory, physical tailor, devices, native Blender, beta/delivery, privacy/security and owner signoff remain BLOCKED/PENDING. No production writes, migrations, provider charges, main merge or deploy.
 
 ## 2026-10-30 — J3 both durable vault stores require exact UUID receipts (stacked draft)
