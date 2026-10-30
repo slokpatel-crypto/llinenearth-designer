@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {hasVerifiedLatestDeliveryQc} from "../src/lib/designer/delivery-qc-approval.ts";
+import {hasVerifiedLatestDeliveryQc,hasVerifiedDeliveryQcOrderLineage} from "../src/lib/designer/delivery-qc-approval.ts";
 import {FINISHED_GARMENT_QC_CHECKS} from "../src/lib/designer/finished-garment-qc.ts";
 
 const orderId="123e4567-e89b-42d3-a456-426614174000";
@@ -62,12 +62,47 @@ test("J5: timestamp ties cannot promote an ambiguous older approval",()=>{
   assert.equal(hasVerifiedLatestDeliveryQc([{...approved,created_at:"2026-10-29T12:00:00+00:00"}],orderId),true);
 });
 
+test("J5: only a physical inspection for the current ready order and immutable recipe can release delivery",()=>{
+  const order={order_id:orderId,revision_id:"locked-revision-001",recipe_hash:"a".repeat(64),
+    status:"ready",created_at:"2026-10-29T09:00:00.000Z"};
+  const physical={...approved,inspection_id:"123e4567-e89b-42d3-a456-426614174111",
+    revision_id:order.revision_id,recipe_hash:order.recipe_hash};
+  assert.equal(hasVerifiedDeliveryQcOrderLineage([physical],order),true);
+  assert.equal(hasVerifiedLatestDeliveryQc([physical],orderId,500),true);
+  for(const forged of [
+    {...physical,inspection_id:undefined},
+    {...physical,inspection_id:" 123e4567-e89b-42d3-a456-426614174111 "},
+    {...physical,inspection_id:[physical.inspection_id]},
+    {...physical,revision_id:"different-revision-001"},
+    {...physical,recipe_hash:"b".repeat(64)},
+    {...physical,recipe_hash:["a".repeat(64)]},
+    {...physical,created_at:"2026-10-29T08:59:59Z"},
+    {...physical,created_at:"2026-02-31T12:00:00Z"},
+  ]){
+    assert.equal(hasVerifiedDeliveryQcOrderLineage([forged],order),false,JSON.stringify(forged));
+    assert.equal(hasVerifiedDeliveryQcOrderLineage([physical,forged],order),false,
+      "an older forged matching-order inspection must not be ignored");
+  }
+  assert.equal(hasVerifiedDeliveryQcOrderLineage([physical],{...order,status:"stitching"}),false);
+  assert.equal(hasVerifiedDeliveryQcOrderLineage([physical],{...order,created_at:"2026-10-29T13:00:00Z"}),false);
+  assert.equal(hasVerifiedDeliveryQcOrderLineage([physical],{...order,recipe_hash:"b".repeat(64)}),false);
+  assert.equal(hasVerifiedDeliveryQcOrderLineage([],order),false);
+  assert.equal(hasVerifiedDeliveryQcOrderLineage([physical],null),false);
+  assert.equal(hasVerifiedDeliveryQcOrderLineage([physical,{...physical,order_id:"another-order"}],order),true,
+    "unrelated historical QC does not change the current order's recipe");
+});
+
 test("privileged delivery status uses latest typed QC gate before status RPC",()=>{
   const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
   const delivered=source.split('if(status==="delivered")')[1]?.split('const updated=await rpc<unknown>("production_order_set_status"')[0]||"";
   assert.match(source,/import \{ hasVerifiedLatestDeliveryQc \} from "@\/lib\/designer\/delivery-qc-approval"/);
   assert.match(delivered,/rpc<unknown>\("finished_garment_qc_list",\{p_limit:500\}\)/);
   assert.match(delivered,/if\(!hasVerifiedLatestDeliveryQc\(inspections,orderId,500\)\)/);
+  assert.match(delivered,/rpc<unknown>\("production_order_list",\{p_limit:150\}\)/);
+  assert.match(delivered,/validProductionQcOrderRows\(candidateOrders\)/);
+  assert.match(delivered,/candidateOrders\.length>=150/);
+  assert.match(delivered,/hasVerifiedDeliveryQcOrderLineage\(inspections,currentOrder\)/);
+  assert.ok(delivered.indexOf("hasVerifiedDeliveryQcOrderLineage")<delivered.indexOf("status:409"),"lineage guard must precede status mutation");
   assert.doesNotMatch(delivered,/inspections\.find/);
   assert.doesNotMatch(delivered,/String\(latest\.(?:inspector|inspection_reference)/);
   assert.match(delivered,/status:409/);
@@ -86,6 +121,7 @@ test("operator production desk never offers delivery based on first matching sta
   const ui=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
   assert.ok(ui.includes('import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval"'));
   assert.ok(ui.includes("const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id,250)"));
+  assert.ok(ui.includes("hasVerifiedDeliveryQcOrderLineage(qcInspections,item)"));
   assert.ok(ui.includes('status!=="delivered"||deliveryQcVerified'));
   assert.ok(ui.includes('deliveryQcVerified?"approved with provenance":"pending / rework / unverified"'));
   assert.ok(!ui.includes("qcInspections.find("));
