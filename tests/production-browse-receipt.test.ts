@@ -56,6 +56,25 @@ test("malformed, duplicated or coerced evidence cannot appear as a safe audit",(
     "Invalid evidence accepted: "+JSON.stringify(evidence).slice(0,120));
 });
 
+test("browse history rejects delivery before booking and audits before physical delivery",()=>{
+  // A successful RPC with calendar-valid but contradictory chronology is not
+  // credible production evidence. A nullable legacy delivered_at remains
+  // browsable, but its audit still cannot predate the order itself.
+  assert.equal(validProductionDeliveryBrowseReceipt(
+    [{...order,delivered_at:"2026-09-30T10:00:00Z"}],[audit]),false);
+  assert.equal(validProductionDeliveryBrowseReceipt(
+    [order],[{...audit,created_at:"2026-10-01T11:00:00Z"}]),false);
+  assert.equal(validProductionDeliveryBrowseReceipt(
+    [order],[{...audit,created_at:"2026-10-02T09:59:59Z"}]),false);
+  assert.equal(validProductionDeliveryBrowseReceipt(
+    [{...order,delivered_at:null}],[{...audit,created_at:"2026-09-30T10:00:00Z"}]),false);
+  assert.equal(validProductionDeliveryBrowseReceipt(
+    [order],[{...audit,created_at:order.delivered_at}]),true);
+  // Evidence can refer to an older order omitted by the newest-500 browse
+  // page. Its chronology cannot be checked without that source order.
+  assert.equal(validProductionDeliveryBrowseReceipt([],[audit]),true);
+});
+
 test("server and operator UI reject malformed success-shaped browse lists",()=>{
   const route=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
   const client=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
