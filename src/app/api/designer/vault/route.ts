@@ -179,24 +179,28 @@ export async function POST(request:Request){
 
     if(action==="claim"){
       if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
+      // A claim is a durable owner-scoped recovery assertion. Verify the
+      // token's single unexpired, integrity-checked revision BEFORE changing
+      // ownership; a successful set_owner RPC alone cannot certify recovery.
+      const rows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>("designer_locked_revision_vault_get",{
+        p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
+      });
+      const revision=selectVaultReadRow(rows)?.payload as LockedDesignRevision | undefined;
+      if(!revision) return jsonNoStore({error:"Design not found or recovery token expired."},{status:404});
+      if(!await verifyLockedDesignRevision(revision))
+        return jsonNoStore({error:"Stored design failed integrity verification."},{status:409});
       const claimed=requireVaultBooleanResult(await rpc<unknown>("designer_locked_revision_vault_set_owner",{
         p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,p_owner_user_id:customer.id,
       }));
       if(claimed){
-        const rows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>("designer_locked_revision_vault_get",{
-          p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
-        });
-        const revision=selectVaultReadRow(rows)?.payload as LockedDesignRevision | undefined;
-        if(revision&&await verifyLockedDesignRevision(revision)){
-          try{
-            await rpc("production_claim_revision_ownership",{
-              p_revision_id:revision.revisionId,
-              p_recipe_hash:revision.recipeHash.toLowerCase(),
-              p_owner_user_id:customer.id,
-            });
-          }catch{
-            // Keep account claim available while the production-ownership migration rolls out.
-          }
+        try{
+          await rpc("production_claim_revision_ownership",{
+            p_revision_id:revision.revisionId,
+            p_recipe_hash:revision.recipeHash.toLowerCase(),
+            p_owner_user_id:customer.id,
+          });
+        }catch{
+          // Keep verified vault claim available while the production-ownership migration rolls out.
         }
       }
       return jsonNoStore({claimed});
