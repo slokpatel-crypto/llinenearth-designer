@@ -19,7 +19,17 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers(){
-    return [{source:"/:path*",headers:securityHeaders}];
+    return [
+      {source:"/:path*",headers:securityHeaders},
+      // A share URL is a public bearer credential. Never forward its path in
+      // same-origin Referer headers or invite crawlers to index the token.
+      // This route-specific policy must follow the global header rule.
+      {source:"/share/:token",headers:[
+        {key:"Referrer-Policy",value:"no-referrer"},
+        {key:"X-Robots-Tag",value:"noindex, nofollow, noarchive"},
+        {key:"Cache-Control",value:"private, no-store, max-age=0"},
+      ]},
+    ];
   },
 };
 export default nextConfig;
