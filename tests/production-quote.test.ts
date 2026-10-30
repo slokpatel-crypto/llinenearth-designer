@@ -85,11 +85,11 @@ test("quote labels reject coerced, control-bearing or silently truncated operato
   assert.equal(good.lineItems[0].label,"Hand-loom tailoring");
   for(const invalid of [
     null,false,true,0,["Fabric"],{label:"Fabric"},[],{},undefined,
-    "","   ","X".repeat(161),"Fabric\\nDiscount","Tailor\\tInstruction","Fabric\\u0000",
+    "","   ","X".repeat(161),"Fabric\nDiscount","Tailor\tInstruction","Fabric\u0000",
   ]){
     assert.throws(()=>normalizeProductionQuoteDraft({
       ...base,lineItems:[{label:invalid,amount:100}],
-    }),/quote line item label/,JSON.stringify(invalid));
+    }),/line item label/,JSON.stringify(invalid));
   }
   assert.equal(normalizeProductionQuoteDraft({
     lineItems:[{label:"X".repeat(160),amount:100}],
