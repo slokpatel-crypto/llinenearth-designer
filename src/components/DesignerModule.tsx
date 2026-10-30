@@ -171,6 +171,8 @@ export function DesignerModule() {
   const [lockBusy,setLockBusy]=useState(false);
   const [shareBusy,setShareBusy]=useState(false);
   const [shareMessage,setShareMessage]=useState("");
+  const [shareConsent,setShareConsent]=useState(false);
+  const shareGenerationRef=useRef(0);
   const [enquiryBusy,setEnquiryBusy]=useState(false);
   const [enquiryConsent,setEnquiryConsent]=useState(false);
   const enquiryGenerationRef=useRef(0);
@@ -325,6 +327,9 @@ export function DesignerModule() {
     enquiryGenerationRef.current+=1;
     setVaultRecoveryToken("");
     setVaultAccountOwned(false);
+    shareGenerationRef.current+=1;
+    setShareConsent(false);
+    setShareMessage("");
     setEnquiryConsent(false);
     setEnquiryResult(null);
     setVaultMessage("");
@@ -1217,6 +1222,9 @@ export function DesignerModule() {
       enquiryGenerationRef.current+=1;
       setEnquiryResult(null);
       setEnquiryConsent(false);
+      shareGenerationRef.current+=1;
+      setShareConsent(false);
+      setShareMessage("");
       setLastLockedRevisionId(revision.revisionId);
       recordStyleMemoryEvent(designerSession(),"design_locked",{
         revisionId:revision.revisionId,
@@ -1288,28 +1296,33 @@ export function DesignerModule() {
   async function shareLockedRevision() {
     const revision=currentLockedRevision();
     const identity=lockIdentity;
-    if(!revision||shareBusy) return;
+    const generation=shareGenerationRef.current;
+    if(!revision||shareBusy||!shareConsent||!vaultAccountOwned||!vaultRecoveryToken) return;
     setShareBusy(true);setShareMessage("");
     try{
       const response=await fetch("/api/designer/share",{
         method:"POST",
         headers:{"content-type":"application/json"},
-        body:JSON.stringify(revision),
+        body:JSON.stringify({revision,consentToShare:true,recoveryToken:vaultRecoveryToken}),
       });
-      const result=await response.json() as {token?:string;expiresInDays?:number;audited?:boolean;error?:string};
-      if(currentSelectionIdentityRef.current!==identity) return;
-      if(!response.ok||!result.token) throw new Error(result.error||"Share link could not be created.");
+      const result=await response.json() as {token?:string;expiresInDays?:number;audited?:boolean;auditId?:string;ownerVerified?:boolean;revisionId?:string;error?:string};
+      if(currentSelectionIdentityRef.current!==identity||shareGenerationRef.current!==generation) return;
+      const validAudit=typeof result.auditId==="string"
+        && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(result.auditId);
+      if(!response.ok||!result.token||result.audited!==true||result.ownerVerified!==true
+          ||!validAudit||result.revisionId!==revision.revisionId)
+        throw new Error(result.error||"Verified share link could not be created.");
       const url=new URL(`/share/${result.token}`,window.location.origin).toString();
       try{
         await navigator.clipboard.writeText(url);
-        if(currentSelectionIdentityRef.current!==identity) return;
-        setShareMessage(`Share link copied · expires in ${result.expiresInDays||30} days${result.audited?" · verified share audit recorded":" · beta audit unavailable"}.`);
+        if(currentSelectionIdentityRef.current!==identity||shareGenerationRef.current!==generation) return;
+        setShareMessage(`Share link copied · expires in ${result.expiresInDays||30} days · verified share audit recorded.`);
       }catch{
-        if(currentSelectionIdentityRef.current!==identity) return;
+        if(currentSelectionIdentityRef.current!==identity||shareGenerationRef.current!==generation) return;
         setShareMessage(url);
       }
     }catch(error){
-      if(currentSelectionIdentityRef.current!==identity) return;
+      if(currentSelectionIdentityRef.current!==identity||shareGenerationRef.current!==generation) return;
       setShareMessage(error instanceof Error?error.message:"Share link could not be created.");
     }finally{
       setShareBusy(false);
@@ -1707,7 +1720,11 @@ export function DesignerModule() {
                 <p><b>Locked revision:</b> {verifiedLockedRevision.revisionId} · recipe {verifiedLockedRevision.recipeHash.slice(0,12).toUpperCase()}</p>
                 <button type="button" onClick={downloadProductionHandoff}>Export tailor handoff ↗</button>
                 <button type="button" onClick={downloadTailorTechPack}>Export printable tech pack ↗</button>
-                <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
+                <label className="newDesignerEnquiryConsent">
+                  <input type="checkbox" checked={shareConsent} onChange={(event)=>{shareGenerationRef.current+=1;setShareConsent(event.target.checked);setShareMessage("");}}/>
+                  I agree to create a shareable outfit link. Anyone with this link can view the locked design for 30 days; measurements are excluded.
+                </label>
+                <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy||!shareConsent||!vaultAccountOwned||!vaultRecoveryToken}>{shareBusy?"Creating share…":"Copy shareable design link ↗"}</button>
                 {shareMessage&&<p>{shareMessage}</p>}
                 <label className="newDesignerEnquiryConsent">
                   <input type="checkbox" checked={enquiryConsent} onChange={(event)=>{enquiryGenerationRef.current+=1;setEnquiryConsent(event.target.checked);setEnquiryResult(null);}}/>

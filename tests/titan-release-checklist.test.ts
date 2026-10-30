@@ -28,7 +28,9 @@ test("customer handoff cannot silently restore unbounded Supabase response JSON"
   const enquiry=readFileSync("src/app/api/designer/enquiry/route.ts","utf8");
   const share=readFileSync("src/app/api/designer/share/route.ts","utf8");
   assert.match(enquiry,/readBoundedJsonResponse\(response,256 \* 1024\)/);
-  assert.match(share,/verifiedLockedHandoffAuditId\(await readBoundedJsonResponse\(audit,4 \* 1024\)/);
+  assert.match(share,/verifiedLockedHandoffAuditId\(await rpc\("design_share_audit_record"/);
+  assert.match(share,/return await readBoundedJsonResponse\(response,maxBytes\)/);
+  assert.match(share,/},4\*1024\)\)/);
   assert.doesNotMatch(enquiry,/response\.json\(\)/);
   assert.doesNotMatch(share,/audit\.json\(\)/);
   assert.match(enquiry,/operatorReceived:false,status:"intent_recorded"/);
