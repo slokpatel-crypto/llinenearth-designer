@@ -1,5 +1,5 @@
 import type { DesignerStyle } from "./engine.ts";
-import { legacyOptionByLabel, optionById } from "./options/library.ts";
+import { legacyOptionByLabel, optionById, optionsFor } from "./options/library.ts";
 
 export const STYLE_SCHEMA_VERSION=2 as const;
 
@@ -32,8 +32,22 @@ export type StyleSpecV2={
   legacy:DesignerStyle;
 };
 
+// Only these groups admit new provisional labels directly in the customer
+// legacy selectors. Other v2-only variants must remain a canonical spec
+// without silently changing the closed legacy vocabulary.
+const EXTENDED_LEGACY_GROUPS=new Set([
+  "shirt.collar","shirt.cuff","shirt.placket","shirt.fit",
+  "pant.rise","pant.waistband","pant.break",
+]);
+
 function legacyId(group:Parameters<typeof legacyOptionByLabel>[0],label:string,fallback:string) {
-  return legacyOptionByLabel(group,label)?.id ?? fallback;
+  const exact=legacyOptionByLabel(group,label);
+  if(exact)return exact.id;
+  if(EXTENDED_LEGACY_GROUPS.has(group)){
+    const selected=optionsFor(group).find(option=>option.legacySelectable!==false&&option.label===label);
+    if(selected)return selected.id;
+  }
+  return fallback;
 }
 
 export function fromLegacyStyle(style:DesignerStyle):StyleSpecV2 {
@@ -77,30 +91,30 @@ export function fromLegacyStyle(style:DesignerStyle):StyleSpecV2 {
   };
 }
 
-function labelFor(id:string,fallback:string) {
+function labelFor(id:string,fallback:string,group:Parameters<typeof legacyOptionByLabel>[0]) {
   const option=optionById(id);
-  // Advanced cuts such as an open short-sleeve hem, Korean-wide trouser,
-  // and box pleats have no legacy DesignerStyle label. Do NOT substitute
-  // their new customer-facing labels into the closed legacy vocabulary:
-  // server-side validStyle would reject the entire advanced recipe.
-  // Keep the last valid legacy value for the photographic compositor, while
-  // preserving the real selected construction in StyleSpec v2.
-  return option?.legacyLabel || fallback;
+  if(!option||option.group!==group)return fallback;
+  if(option.legacyLabel)return option.legacyLabel;
+  // The UI actively offers these provisional labels in the *legacy* selector.
+  // Their identity must survive canonical handoff and saved revision hashing.
+  // Future-only garment types, pleats and hems are deliberately excluded.
+  if(EXTENDED_LEGACY_GROUPS.has(group)&&option.legacySelectable!==false)return option.label;
+  return fallback;
 }
 
 export function toLegacyStyle(spec:StyleSpecV2):DesignerStyle {
   return {
     ...spec.legacy,
-    collar:labelFor(spec.shirt.collar,spec.legacy.collar),
-    cuff:labelFor(spec.shirt.cuff,spec.legacy.cuff),
-    placket:labelFor(spec.shirt.placket,spec.legacy.placket),
-    shirtFit:labelFor(spec.shirt.fit,spec.legacy.shirtFit),
+    collar:labelFor(spec.shirt.collar,spec.legacy.collar,"shirt.collar"),
+    cuff:labelFor(spec.shirt.cuff,spec.legacy.cuff,"shirt.cuff"),
+    placket:labelFor(spec.shirt.placket,spec.legacy.placket,"shirt.placket"),
+    shirtFit:labelFor(spec.shirt.fit,spec.legacy.shirtFit,"shirt.fit"),
     shirtWear:spec.shirt.wear==="tucked"?"Tucked":spec.shirt.wear==="untucked"?"Untucked":spec.legacy.shirtWear,
-    trouser:labelFor(spec.pant.type,spec.legacy.trouser),
-    rise:labelFor(spec.pant.rise,spec.legacy.rise),
-    waistband:labelFor(spec.pant.waistband,spec.legacy.waistband),
-    break:labelFor(spec.pant.break,spec.legacy.break),
-    button:labelFor(spec.shirt.button,spec.legacy.button),
+    trouser:labelFor(spec.pant.type,spec.legacy.trouser,"pant.type"),
+    rise:labelFor(spec.pant.rise,spec.legacy.rise,"pant.rise"),
+    waistband:labelFor(spec.pant.waistband,spec.legacy.waistband,"pant.waistband"),
+    break:labelFor(spec.pant.break,spec.legacy.break,"pant.break"),
+    button:labelFor(spec.shirt.button,spec.legacy.button,"shirt.button"),
   };
 }
 
