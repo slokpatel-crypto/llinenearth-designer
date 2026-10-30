@@ -95,14 +95,14 @@ test("J5: only a physical inspection for the current ready order and immutable r
 test("privileged delivery status uses latest typed QC gate before status RPC",()=>{
   const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
   const delivered=source.split('if(status==="delivered")')[1]?.split('const updated=await rpc<unknown>("production_order_set_status"')[0]||"";
-  assert.match(source,/import \{ hasVerifiedLatestDeliveryQc \} from "@\/lib\/designer\/delivery-qc-approval"/);
+  assert.match(source,/import \{ hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage \} from "@\/lib\/designer\/delivery-qc-approval"/);
   assert.match(delivered,/rpc<unknown>\("finished_garment_qc_list",\{p_limit:500\}\)/);
   assert.match(delivered,/if\(!hasVerifiedLatestDeliveryQc\(inspections,orderId,500\)\)/);
   assert.match(delivered,/rpc<unknown>\("production_order_list",\{p_limit:150\}\)/);
   assert.match(delivered,/validProductionQcOrderRows\(candidateOrders\)/);
   assert.match(delivered,/candidateOrders\.length>=150/);
   assert.match(delivered,/hasVerifiedDeliveryQcOrderLineage\(inspections,currentOrder\)/);
-  assert.ok(delivered.indexOf("hasVerifiedDeliveryQcOrderLineage")<delivered.indexOf("status:409"),"lineage guard must precede status mutation");
+  assert.ok(delivered.includes("if(!hasVerifiedDeliveryQcOrderLineage(inspections,currentOrder))"),"lineage guard must precede status mutation");
   assert.doesNotMatch(delivered,/inspections\.find/);
   assert.doesNotMatch(delivered,/String\(latest\.(?:inspector|inspection_reference)/);
   assert.match(delivered,/status:409/);
