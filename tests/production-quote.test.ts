@@ -65,3 +65,33 @@ test("operator form cannot silently quote unentered fabric and tailoring prices 
   assert.ok(!source.includes("amount:Number(quote.line1Amount)"));
   assert.ok(!source.includes("amount:Number(quote.line2Amount)"));
 });
+
+test("quote currency is a literal operator choice, never a coerced JSON value",()=>{
+  const valid=normalizeProductionQuoteDraft({
+    currency:" inr ",lineItems:[{label:"Fabric",amount:100}],
+  });
+  assert.equal(valid.currency,"INR");
+  assert.equal(normalizeProductionQuoteDraft({lineItems:[{label:"Fabric",amount:100}]}).currency,"INR");
+  for(const invalid of [null,false,true,0,["INR"],{value:"INR"},"","  ","INR1"]){
+    assert.throws(()=>normalizeProductionQuoteDraft({
+      currency:invalid,lineItems:[{label:"Fabric",amount:100}],
+    }),/Invalid quote currency/,JSON.stringify(invalid));
+  }
+});
+
+test("quote labels reject coerced, control-bearing or silently truncated operator instructions",()=>{
+  const base={currency:"INR",adjustment:0};
+  const good=normalizeProductionQuoteDraft({...base,lineItems:[{label:"  Hand-loom tailoring  ",amount:100}]});
+  assert.equal(good.lineItems[0].label,"Hand-loom tailoring");
+  for(const invalid of [
+    null,false,true,0,["Fabric"],{label:"Fabric"},[],{},undefined,
+    "","   ","X".repeat(161),"Fabric\nDiscount","Tailor\tInstruction","Fabric\u0000",
+  ]){
+    assert.throws(()=>normalizeProductionQuoteDraft({
+      ...base,lineItems:[{label:invalid,amount:100}],
+    }),/line item label/,JSON.stringify(invalid));
+  }
+  assert.equal(normalizeProductionQuoteDraft({
+    lineItems:[{label:"X".repeat(160),amount:100}],
+  }).lineItems[0].label.length,160);
+});

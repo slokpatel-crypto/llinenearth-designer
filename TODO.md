@@ -1,3 +1,9 @@
+## 2026-10-30 — J5 operator quote labels and currency must be literal, complete receipts (stacked draft)
+
+- [x] Reproduced that quote normalization coerced JSON arrays/objects into valid-looking three-letter currencies and line-item labels, and silently truncated labels longer than 160 characters. A misleading quote could be persisted and handed to a customer/tailor.
+- [x] Keep the existing omitted-currency INR default and supported literal three-letter currencies, but reject other JSON types. Require exact scalar nonempty line-item labels, reject overlength or control-bearing labels instead of silently changing operator instructions; add positive/negative quote regressions. No schema, production writes or currency whitelist change.
+- [ ] Require exact-head audit, quality, full Node tests, engine, preview-performance, release check, build, Chromium 390/768/1440 and Non-3D. Real operator/customer quote acceptance, supplier stock, tailor/QC, native Blender, devices, beta/delivery, privacy/security and owner signoff remain BLOCKED/PENDING. No main merge, paid AI or deploy.
+
 ## 2026-10-30 — J3 persisted legacy labels must match the supported photo/tailor vocabulary (stacked draft)
 
 - [x] Reproduced that a saved StyleSpec v2 could contain arbitrary nonempty legacy labels, including withheld Wing Collar/Contrast Placket, and still pass lock/recovery validation even though no supported photographic selector could reconstruct them.

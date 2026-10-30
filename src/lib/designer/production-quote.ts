@@ -22,7 +22,10 @@ export function normalizeProductionQuoteDraft(input:{
   lineItems?:unknown;
   adjustment?:unknown;
 }):ProductionQuoteDraft{
-  const currency=String(input.currency||"INR").trim().toUpperCase();
+  // Only an absent currency uses the legacy INR default. Arrays, objects and
+  // null must not become apparently authoritative three-letter currency codes.
+  const currency=input.currency===undefined?"INR":
+    typeof input.currency==="string"?input.currency.trim().toUpperCase():"";
   if(!/^[A-Z]{3}$/.test(currency)) throw new Error("Invalid quote currency.");
 
   if(!Array.isArray(input.lineItems) || input.lineItems.length<1 || input.lineItems.length>30) {
@@ -31,9 +34,14 @@ export function normalizeProductionQuoteDraft(input:{
 
   const lineItems:ProductionQuoteLine[]=input.lineItems.map((raw)=>{
     const item=raw&&typeof raw==="object"&&!Array.isArray(raw)?raw as Record<string,unknown>:{};
-    const label=String(item.label||"").trim().slice(0,160);
+    // A production quote label is an operator-entered scalar, not a coerced
+    // JSON array/object or a silently truncated tailor/customer instruction.
+    if(typeof item.label!=="string" || !item.label.trim())
+      throw new Error("Quote line item label is required.");
+    const label=item.label.trim();
+    if(label.length>160 || /[\u0000-\u001F\u007F]/.test(label))
+      throw new Error("Invalid quote line item label.");
     const amount=enteredMoney(item.amount,"quote line item amount");
-    if(!label) throw new Error("Quote line item label is required.");
     if(!Number.isFinite(amount)||amount<0||amount>10_000_000) throw new Error("Invalid quote line item amount.");
     return {label,amount:Math.round(amount*100)/100};
   });
