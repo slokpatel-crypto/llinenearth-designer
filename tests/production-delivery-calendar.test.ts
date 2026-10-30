@@ -90,7 +90,7 @@ test("first-ten proof rejects padded order and audit receipt identities without 
     {...basis,orders:[{...basis.orders[0],order_id:" "+basis.orders[0].order_id},...basis.orders.slice(1)]},
     {...basis,orders:[{...basis.orders[0],order_id:basis.orders[0].order_id+" "},...basis.orders.slice(1)]},
     {...basis,evidence:[{...basis.evidence[0],order_id:" "+basis.evidence[0].order_id},...basis.evidence.slice(1)]},
-    {...basis,evidence:[{...basis.evidence[0],order_id:basis.evidence[0].order_id+"\\n"},...basis.evidence.slice(1)]},
+    {...basis,evidence:[{...basis.evidence[0],order_id:basis.evidence[0].order_id+"\n"},...basis.evidence.slice(1)]},
     {...basis,evidence:[{...basis.evidence[0],evidence_id:" "+basis.evidence[0].evidence_id},...basis.evidence.slice(1)]},
     {...basis,evidence:[{...basis.evidence[0],evidence_id:basis.evidence[0].evidence_id+" "},...basis.evidence.slice(1)]},
     {...basis,evidence:[{...basis.evidence[0],evidence_id:[basis.evidence[0].evidence_id]},...basis.evidence.slice(1)]},
