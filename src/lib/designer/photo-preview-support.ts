@@ -17,6 +17,7 @@ export type PhotoPreviewSupportDetail={
 export function photoPreviewSupportForChoice(
   styleKey:keyof DesignerStyle,
   label:string,
+  style?:Pick<DesignerStyle,"shirtWear"|"trouser">,
 ):PhotoPreviewSupportDetail {
   switch(styleKey){
     case "collar":
@@ -45,7 +46,9 @@ export function photoPreviewSupportForChoice(
         : {status:"none",reason:"No photographed shirt-wear template exists for this choice."};
     case "trouser":
       if(label==="Pleated Trouser") return {status:"exact",reason:"The photographed straight-leg trouser template is single-pleated."};
-      if(label==="Wide-leg / Relaxed Drape Trouser") return {status:"approximate",reason:"A photographed wide-leg template exists for untucked looks; tucked looks still use the tucked straight-leg template."};
+      if(label==="Wide-leg / Relaxed Drape Trouser") return style?.shirtWear==="Untucked"
+        ? {status:"exact",reason:"This untucked combination selects the dedicated photographed wide-leg template."}
+        : {status:"approximate",reason:"The wide-leg photograph is available only for untucked looks; the tucked Studio model retains a straight-leg silhouette."};
       return {status:"approximate",reason:"The selected trouser fabric is photographic, but this trouser cut is not represented by a matching source photo."};
     case "rise":
       return label==="Mid Rise"
