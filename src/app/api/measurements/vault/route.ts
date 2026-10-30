@@ -163,6 +163,16 @@ export async function POST(request:Request){
 
     if(action==="claim"){
       if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
+      // Confirm a single unexpired, usable profile before linking an account.
+      // A set_owner success without a valid recoverable profile is not proof
+      // of a successful owner-scoped measurement recovery.
+      const rows=await rpc<Array<{profile:MeasurementProfile;observations:TailorObservationProfile;expires_at:string}>>("measurement_profile_vault_get",{
+        p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
+      });
+      const row=selectVaultReadRow(rows);
+      if(!row) return jsonNoStore({error:"Measurement profile was not found or has expired."},{status:404});
+      if(!validStoredMeasurementProfile(row.profile)||!validStoredTailorObservationProfile(row.observations))
+        return jsonNoStore({error:"Stored measurement profile failed integrity verification."},{status:409});
       const claimed=requireVaultBooleanResult(await rpc<unknown>("measurement_profile_vault_set_owner",{
         p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,p_owner_user_id:customer.id,
       }));
