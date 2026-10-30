@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeProductionDeliveryEvidence } from "@/lib/designer/production-delivery-evidence";
+import { validProductionDeliveryBrowseReceipt } from "@/lib/designer/production-browse-receipt";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 import { verifiedFirstTenAuditReceipt } from "@/lib/designer/production-first-ten-receipt";
@@ -50,7 +51,7 @@ export async function GET(){
       rpc<unknown[]>("production_order_list",{p_limit:500}),
       rpc<unknown[]>("production_delivery_evidence_list",{p_limit:500}),
     ]);
-    if(!Array.isArray(orders)||!Array.isArray(evidence)) throw new Error("Malformed delivery evidence list receipts.");
+    if(!validProductionDeliveryBrowseReceipt(orders,evidence)) throw new Error("Malformed delivery evidence list receipts.");
     // The browsing RPCs have 500-row caps and cannot certify the earliest ten
     // lifetime deliveries after a shop accumulates larger order history.
     // Keep browsing/recording functional before this migration is installed,
