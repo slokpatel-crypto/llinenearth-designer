@@ -86,8 +86,9 @@ async function screenshot(name){
     assert.notEqual(pleatedPixels,widePixels,"untucked wide-leg must change photographed trousers at "+width);
     await screenshot("untucked-wide-"+width);
     summary.responsive.push({width,originalModel:true,overflow:false,tuckChangesPixels:wearPixels!==startPixels,wideChangesPixels:pleatedPixels!==widePixels});
-    if(width===1440){
-      // Exhaust every actual selectable value from the rendered customer UI.
+    {
+      // Exhaust every actual selectable value at EACH responsive viewport.
+      // A desktop-only pass cannot establish mobile/tablet option correctness.
       // This catches drift between the library and UI without a hard-coded count.
       for(const [key,label] of groups){
         const select=page.locator('select[aria-label="'+label+'"]');
@@ -103,12 +104,12 @@ async function screenshot(name){
           const pixels=await pixelSignature();
           assert(match.total>0 && match.exact<=match.total,"invalid preview count for "+key+"="+value);
           assert.equal(await select.inputValue(),value,"selected value reverted: "+key+"="+value);
-          const filename=key+"-"+records.length;
+          const filename=key+"-"+width+"-"+records.length;
           await screenshot(filename);
           records.push({option:value,exactCount:match.exact,total:match.total,pixelSignature:pixels,screenshot:filename+".png"});
           summary.actualOptionChecks++;
         }
-        summary.groups[key]=records;
+        (summary.groups[width]??={})[key]=records;
       }
       // Unphotographed collars, cuffs and plackets must not masquerade as
       // geometry changes: the accurate specification and limitation are visible.
@@ -127,14 +128,25 @@ async function screenshot(name){
       await change("Shirt finish","Tucked");const tucked=await matchCount();
       assert.equal(untucked.exact,tucked.exact+1,"tucked wide-leg should lose exact photo-match status");
       await screenshot("tucked-wide-is-not-exact");
-      summary.contextualWideLeg={untuckedExact:untucked.exact,tuckedExact:tucked.exact};
+      (summary.contextualWideLeg??={})[width]={untuckedExact:untucked.exact,tuckedExact:tucked.exact};
     }
     await context.close();
   }
+  // The actual set of enabled choices must remain consistent at all three
+  // viewport sizes; hiding or omitting controls on mobile is a release defect.
+  for(const [key] of groups){
+    const desktop=summary.groups[1440]?.[key]?.map(row=>row.option);
+    assert(desktop?.length>0,"missing desktop matrix for "+key);
+    for(const width of [390,768]){
+      const mobile=summary.groups[width]?.[key]?.map(row=>row.option);
+      assert.deepEqual(mobile,desktop,"responsive option drift for "+key+" at "+width);
+    }
+  }
+  assert.equal(summary.responsive.length,3,"all three target widths must finish");
   assert.equal(summary.paidCalls,0,"no paid AI/provider calls permitted");
   assert.deepEqual(summary.errors,[],"no client-side exceptions permitted");
   fs.writeFileSync(path.join(output,"summary.json"),JSON.stringify(summary,null,2));
-  console.log("PASS designer option browser matrix: "+summary.actualOptionChecks+" values, 3 viewport sizes, original model preserved, no paid calls.");
+  console.log("PASS designer option browser matrix: "+summary.actualOptionChecks+" responsive option selections across 390/768/1440, original model preserved, no paid calls.");
 })().catch(async error=>{
   summary.errors.push(error.stack||String(error));
   if(page&&!page.isClosed())await page.screenshot({path:path.join(output,"failure.png"),fullPage:true}).catch(()=>{});
