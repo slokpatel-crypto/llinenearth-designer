@@ -69,7 +69,7 @@ test("operator route validates typed ledgers before returning them to UI",()=>{
   const validation=route.indexOf("validProductionDeskLedgers(quotes,orders)");
   const response=route.indexOf("configured:true,quotes,orders");
   assert.ok(validation>0&&response>validation);
-  assert.match(route,/import \{ validProductionDeskLedgers \} from "@\/lib\/designer\/production-desk-ledger"/);
+  assert.match(route,/import \{ validProductionDeskLedgers, validProductionDeskResponse \} from "@\/lib\/designer\/production-desk-ledger"/);
   assert.match(route,/if\(!validProductionDeskLedgers\(quotes,orders\)\) throw/);
 });
 
@@ -105,4 +105,49 @@ test("J5 operator browser independently validates network receipts and clears ol
   assert.match(client,/value=\{recoveryToken\} disabled=\{busy\} onChange=\{\(e\)=>\{/);
   assert.match(client,/setRecoveryToken\(e\.target\.value\);\s*setLoadedRevision\(null\)/);
   assert.match(client,/setOrder\(\(current\)=>\(\{\.\.\.current,revisionId:revision\.revisionId,recipeHash:revision\.recipeHash,quoteId:""\}\)\)/);
+});
+
+test("J5 installed optional evidence must contain typed rows, not arbitrary success-shaped objects",()=>{
+  const qc={
+    inspection_id:"123e4567-e89b-42d3-a456-426614174002",order_id:oid,
+    decision:"approved",inspector:"Tailor A",inspection_reference:"QC-2026-01",created_at:updated,
+  };
+  const outcome={
+    outcome_id:"123e4567-e89b-42d3-a456-426614174003",order_id:oid,
+    revision_id:revisionId,overall_rating:"good",fit_result:"good",
+    worn_confirmed:true,note:"",created_at:updated,
+  };
+  const context={
+    order_id:oid,revision_id:revisionId,recipe_hash:recipeHash,
+    context:{version:"linen-earth-production-learning-context-v1"},created_at:updated,
+  };
+  const valid={
+    configured:true,quotes:[quote],orders:[order],
+    qcInspections:[qc],customerOutcomes:[outcome],learningContexts:[context],
+    optionalEvidenceSources:{qcInstalled:true,customerOutcomesInstalled:true,learningContextInstalled:true},
+  };
+  assert.equal(validProductionDeskResponse(valid),true);
+  assert.equal(validProductionDeskResponse({...valid,qcInspections:[{...qc,decision:"invented"}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,qcInspections:[{...qc,created_at:"2026-02-31T10:00:00Z"}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,qcInspections:[qc,{...qc}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,customerOutcomes:[{...outcome,overall_rating:null}]}),false,
+    "the UI must not call replaceAll on a forged rating");
+  assert.equal(validProductionDeskResponse({...valid,customerOutcomes:[{...outcome,fit_result:["good"]}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,customerOutcomes:[{...outcome,worn_confirmed:"true"}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,customerOutcomes:[outcome,{...outcome}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,context:[]}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,recipe_hash:"wrong"}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,context:{}}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,order_id:null}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,qcInspections:[]}),true,"empty installed source is valid");
+  assert.equal(validProductionDeskResponse({...valid,qcInspections:[{...qc,inspector:null,inspection_reference:null}]}),true,
+    "older unapproved QC provenance remains visible but cannot prove delivery");
+});
+
+test("J5 server rejects malformed installed optional rows before returning a successful operator ledger",()=>{
+  const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
+  const guard=route.indexOf("if(!validProductionDeskResponse(receipt))");
+  const response=route.indexOf('return NextResponse.json(receipt,{headers:');
+  assert.ok(guard>0&&response>guard);
+  assert.match(route,/Malformed optional production evidence receipts/);
 });
