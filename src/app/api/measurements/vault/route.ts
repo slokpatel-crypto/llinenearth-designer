@@ -171,11 +171,29 @@ export async function POST(request:Request){
       });
       const row=selectVaultReadRow(rows);
       if(!row) return jsonNoStore({error:"Measurement profile was not found or has expired."},{status:404});
-      if(!validStoredMeasurementProfile(row.profile)||!validStoredTailorObservationProfile(row.observations))
+      const profile=validStoredMeasurementProfile(row.profile);
+      const observations=validStoredTailorObservationProfile(row.observations);
+      if(!profile||!observations)
         return jsonNoStore({error:"Stored measurement profile failed integrity verification."},{status:409});
       const claimed=requireVaultBooleanResult(await rpc<unknown>("measurement_profile_vault_set_owner",{
         p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,p_owner_user_id:customer.id,
       }));
+      if(claimed){
+        // Confirm the same usable measurements are visible through the
+        // authenticated owner's read, not merely through a bearer token.
+        const ownedRows=await rpc<Array<{profile:MeasurementProfile;observations:TailorObservationProfile;expires_at:string}>>(
+          "measurement_profile_vault_get_owned",
+          {p_vault_id:parsed.vaultId,p_owner_user_id:customer.id},
+        );
+        const ownedRow=selectVaultReadRow(ownedRows);
+        const ownedProfile=validStoredMeasurementProfile(ownedRow?.profile);
+        const ownedObservations=validStoredTailorObservationProfile(ownedRow?.observations);
+        if(!ownedRow||!ownedProfile||!ownedObservations||
+          JSON.stringify(ownedProfile)!==JSON.stringify(profile)||
+          JSON.stringify(ownedObservations)!==JSON.stringify(observations)){
+          throw new Error("Owner-scoped measurement recovery could not be confirmed.");
+        }
+      }
       return jsonNoStore({claimed});
     }
 

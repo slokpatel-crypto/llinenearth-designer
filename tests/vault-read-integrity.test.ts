@@ -120,3 +120,48 @@ test("measurement account claim verifies profile and tailor observations before 
     assert.equal(selectVaultReadRow(invalid,now),null);
   }
 });
+
+test("design claim confirms same signed-in owner can read the claimed lock",()=>{
+  const code=readFileSync("src/app/api/designer/vault/route.ts","utf8");
+  const claim=code.slice(code.indexOf('if(action==="claim")'),code.indexOf('if(action==="load")'));
+  const ownerMutation=claim.indexOf('"designer_locked_revision_vault_set_owner"');
+  const successfulClaim=claim.indexOf("if(claimed){",ownerMutation);
+  const ownedRead=claim.indexOf('"designer_locked_revision_vault_get_owned"',successfulClaim);
+  const ownedSelection=claim.indexOf("selectVaultReadRow(ownedRows)",ownedRead);
+  const ownedVerification=claim.indexOf("verifyLockedDesignRevision(ownedRevision)",ownedSelection);
+  const revisionMatch=claim.indexOf("ownedRevision.revisionId!==revision.revisionId",ownedVerification);
+  const hashMatch=claim.indexOf("ownedRevision.recipeHash!==revision.recipeHash",revisionMatch);
+  const productionPropagation=claim.indexOf('"production_claim_revision_ownership"',hashMatch);
+  const success=claim.indexOf("return jsonNoStore({claimed})",productionPropagation);
+  assert.ok(ownerMutation>=0&&successfulClaim>ownerMutation&&ownedRead>successfulClaim
+    &&ownedSelection>ownedRead&&ownedVerification>ownedSelection
+    &&revisionMatch>ownedVerification&&hashMatch>revisionMatch
+    &&productionPropagation>hashMatch&&success>productionPropagation);
+  assert.match(claim,/throw new Error\("Owner-scoped locked design recovery could not be confirmed\."\)/);
+  // A missing, duplicate or expired owner-scoped read cannot certify claim.
+  for(const invalid of [[],[row,row],[{...row,expires_at:"2020-01-01T00:00:00Z"}]]){
+    assert.equal(selectVaultReadRow(invalid,now),null);
+  }
+});
+
+test("measurement claim verifies typed owner read and original profile after link",()=>{
+  const code=readFileSync("src/app/api/measurements/vault/route.ts","utf8");
+  const claim=code.slice(code.indexOf('if(action==="claim")'),code.indexOf('if(action==="load")'));
+  const ownerMutation=claim.indexOf('"measurement_profile_vault_set_owner"');
+  const successfulClaim=claim.indexOf("if(claimed){",ownerMutation);
+  const ownedRead=claim.indexOf('"measurement_profile_vault_get_owned"',successfulClaim);
+  const ownedSelection=claim.indexOf("selectVaultReadRow(ownedRows)",ownedRead);
+  const profileValidation=claim.indexOf("validStoredMeasurementProfile(ownedRow?.profile)",ownedSelection);
+  const observationsValidation=claim.indexOf("validStoredTailorObservationProfile(ownedRow?.observations)",profileValidation);
+  const profileMatch=claim.indexOf("JSON.stringify(ownedProfile)!==JSON.stringify(profile)",observationsValidation);
+  const observationsMatch=claim.indexOf("JSON.stringify(ownedObservations)!==JSON.stringify(observations)",profileMatch);
+  const success=claim.indexOf("return jsonNoStore({claimed})",observationsMatch);
+  assert.ok(ownerMutation>=0&&successfulClaim>ownerMutation&&ownedRead>successfulClaim
+    &&ownedSelection>ownedRead&&profileValidation>ownedSelection
+    &&observationsValidation>profileValidation&&profileMatch>observationsValidation
+    &&observationsMatch>profileMatch&&success>observationsMatch);
+  assert.match(claim,/throw new Error\("Owner-scoped measurement recovery could not be confirmed\."\)/);
+  for(const invalid of [null,[],[row,row],[{...row,expires_at:"2020-01-01T00:00:00Z"}]]){
+    assert.equal(selectVaultReadRow(invalid,now),null);
+  }
+});

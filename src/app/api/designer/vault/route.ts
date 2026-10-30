@@ -193,6 +193,18 @@ export async function POST(request:Request){
         p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,p_owner_user_id:customer.id,
       }));
       if(claimed){
+        // A successful set_owner receipt alone cannot prove that this signed-in
+        // account can actually recover the same immutable locked revision.
+        // Re-read through the owner-scoped RPC before reporting claimed:true.
+        const ownedRows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>(
+          "designer_locked_revision_vault_get_owned",
+          {p_vault_id:parsed.vaultId,p_owner_user_id:customer.id},
+        );
+        const ownedRevision=selectVaultReadRow(ownedRows)?.payload as LockedDesignRevision | undefined;
+        if(!ownedRevision||!await verifyLockedDesignRevision(ownedRevision)||
+          ownedRevision.revisionId!==revision.revisionId||ownedRevision.recipeHash!==revision.recipeHash){
+          throw new Error("Owner-scoped locked design recovery could not be confirmed.");
+        }
         try{
           await rpc("production_claim_revision_ownership",{
             p_revision_id:revision.revisionId,
