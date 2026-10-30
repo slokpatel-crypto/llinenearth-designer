@@ -49,9 +49,12 @@ export function normalizeProductionQuoteDraft(input:{
   const adjustment=input.adjustment===undefined ? 0 : enteredMoney(input.adjustment,"quote adjustment");
   if(!Number.isFinite(adjustment)||Math.abs(adjustment)>10_000_000) throw new Error("Invalid quote adjustment.");
 
-  const subtotal=Math.round(lineItems.reduce((sum,item)=>sum+item.amount,0)*100)/100;
-  const total=Math.round((subtotal+adjustment)*100)/100;
-  if(total<0) throw new Error("Quote total cannot be negative.");
+  // Sum the same integer paise that will be persisted/displayed. Rounding a
+  // raw adjustment only after adding it can disagree with its saved value.
+  const subtotalPaise=lineItems.reduce((sum,item)=>sum+Math.round(item.amount*100),0);
+  const adjustmentPaise=Math.round(adjustment*100);
+  const totalPaise=subtotalPaise+adjustmentPaise;
+  if(totalPaise<0) throw new Error("Quote total cannot be negative.");
 
-  return {currency,lineItems,adjustment:Math.round(adjustment*100)/100,subtotal,total};
+  return {currency,lineItems,adjustment:adjustmentPaise/100,subtotal:subtotalPaise/100,total:totalPaise/100};
 }

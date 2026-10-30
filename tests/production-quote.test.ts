@@ -23,6 +23,19 @@ test("quote helper refuses missing or negative operator-entered values",()=>{
   assert.throws(()=>normalizeProductionQuoteDraft({lineItems:[{label:"",amount:1}]}),/label is required/);
 });
 
+test("quote total reconciles with persisted rounded line items and adjustment",()=>{
+  for(const adjustment of [0.145,0.285,-0.545,1.005,-1.005]){
+    const quote=normalizeProductionQuoteDraft({
+      lineItems:[{label:"Fabric",amount:10.01},{label:"Tailoring",amount:0.145}],
+      adjustment,
+    });
+    const linePaise=quote.lineItems.reduce((sum,item)=>sum+Math.round(item.amount*100),0);
+    assert.equal(Math.round(quote.subtotal*100),linePaise);
+    assert.equal(Math.round(quote.total*100),linePaise+Math.round(quote.adjustment*100));
+    assert.deepEqual(normalizeProductionQuoteDraft(quote),quote,"saved quote can be normalized without changing its total");
+  }
+});
+
 test("quote helper never allows an adjustment to make the total negative",()=>{
   assert.throws(()=>normalizeProductionQuoteDraft({
     lineItems:[{label:"Fabric",amount:500}],

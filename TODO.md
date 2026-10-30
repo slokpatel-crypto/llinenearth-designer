@@ -599,3 +599,8 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [ ] Verify new child PR exact-head dependency audit, quality, 1,201+ Node tests, engine, preview-performance, release check, production build, 390/768/1440 Chromium and Non-3D; retain human/photo/stock/tailor/owner gates as BLOCKED/PENDING.
 
 - [x] 2026-10-30: M40 exact-head Non-3D browser exposed a second J2 defect: `open_short_hem_cuff` (livePreview:none) was auto-written into the legacy photo cuff because the legacy selector lists provisional options. Both adapter directions now refuse photo projection of unphotographed cuts; canonical v2 construction is preserved. Added positive/negative pure and source regressions. Re-run exact-new-head browser and CI; physical/photo signoff still pending.
+
+## 2026-10-30 — M43 quote reconciliation
+- [x] Reproduce and fix raw-adjustment versus persisted-paise total discrepancy; nine quote regressions pass. Source/test a24434c93d4f6f4d2d86ea04ee357fad02d1d6be.
+- [ ] Exact-head Linux full suite/build/390/768/1440 Chromium/Non-3D; local process spawning blocked by EPERM. Human/physical/stock/owner gates remain pending. Next independent J4 share/consent validation.
+
