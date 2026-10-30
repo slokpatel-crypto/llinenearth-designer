@@ -1,3 +1,8 @@
+## 2026-10-30 — J3 owner-scoped vault list completeness and duplicate identity safety (stacked draft)
+- [x] Reproduced both authenticated owned-list routes silently omitting malformed, expired or invalid rows and allowing repeated UUID identities. A corrupt RPC could return an apparently complete but truncated saved-design/measurement list.
+- [x] Require every returned row to have a valid, current, exact UUID envelope and reject duplicate IDs case-insensitively; fail the whole list on invalid design payload/hash/signature or measurement/observation profile. Preserve empty valid lists, existing account identity and recovery-token semantics.
+- [ ] Verify exact-head quality, full Node tests, engine, preview, release, build, Chromium 390/768/1440 and Non-3D. Genuine authenticated owner save/list/recover/claim, supplier inventory, physical tailor, devices, native Blender, beta/delivery, privacy/security and owner signoff remain BLOCKED/PENDING. No production writes, migrations, provider charges, main merge or deploy.
+
 ## 2026-10-30 — J3 both durable vault stores require exact UUID receipts (stacked draft)
 - [x] Reproduced design/measurement store routes accepting a padded or coerced upstream store ID via the recovery-token UUID normalizer. A malformed successful RPC could produce an apparently durable recovery credential and trigger owner-link attempts.
 - [x] Validate the literal PostgreSQL UUID scalar before issuing a design or measurement recovery token or linking owner. Shared strict helper, positive uppercase UUID and negative padded/array/object receipt regressions, both route source guards. Preserve existing owner-scoped actions, recovery token formats and no-paid-AI Studio.
