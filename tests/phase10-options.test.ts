@@ -102,6 +102,38 @@ test("StyleSpec v2 refuses coerced construction IDs and incomplete legacy handof
     "typed provisional garment options remain backward compatible");
 });
 
+test("persisted v2 legacy photo controls reject unsupported and withheld labels",()=>{
+  const original=fromLegacyStyle(legacy);
+  assert.equal(validateStyleSpecV2(original),true);
+  const invalid=[
+    ["collar","Invented Collar"],
+    ["collar","Wing Collar"],
+    ["collarFinish","Fabric supplied by unknown seller"],
+    ["cuff","Not a cuff"],
+    ["placket","Contrast Placket"],
+    ["shirtFit","Unverified fit"],
+    ["shirtWear","Tucked or Untucked"],
+    ["trouser","Imaginary trouser"],
+    ["rise","Extra Highish Rise"],
+    ["waistband","Custom seller waistband"],
+    ["break","Unlimited Break"],
+    ["button","Seller-supplied mystery button"],
+  ] as const;
+  for(const [key,label] of invalid){
+    assert.equal(validateStyleSpecV2({...original,legacy:{...legacy,[key]:label}}),false,
+      `unsupported legacy photo/tailor label must fail closed: ${key}=${label}`);
+  }
+  // A provisional advanced v2 construction is still valid while the original
+  // photographic control remains a supported, honest legacy selection.
+  assert.equal(validateStyleSpecV2({...original,shirt:{...original.shirt,cuff:"open_short_hem_cuff"}}),true);
+  const supportedCuff=optionsFor("shirt.cuff").find(option=>
+    option.legacySelectable!==false && option.renderSupport.livePreview==="none" && option.legacyLabel);
+  if(supportedCuff){
+    assert.equal(validateStyleSpecV2({...original,legacy:{...legacy,cuff:supportedCuff.legacyLabel!}}),true,
+      "previously selectable provisional labels remain backward compatible");
+  }
+});
+
 test("expanded options only synchronize labels supported by visible legacy controls",()=>{
   assert.equal(legacyLabelForSelectedOption("shirt.collar","spread_collar",["Spread Collar"]),"Spread Collar");
   assert.equal(legacyLabelForSelectedOption("shirt.cuff","french_double_cuff",["French / Double Cuff"]),"French / Double Cuff");
