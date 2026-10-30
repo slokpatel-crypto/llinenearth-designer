@@ -114,12 +114,12 @@ test("J5 installed optional evidence must contain typed rows, not arbitrary succ
   };
   const outcome={
     outcome_id:"123e4567-e89b-42d3-a456-426614174003",order_id:oid,
-    revision_id:revisionId,overall_rating:"good",fit_result:"good",
+    revision_id:revisionId,overall_rating:"good",fit_result:"clean_first_fit",
     worn_confirmed:true,note:"",created_at:updated,
   };
   const context={
     order_id:oid,revision_id:revisionId,recipe_hash:recipeHash,
-    context:{version:"linen-earth-production-learning-context-v1"},created_at:updated,
+    context:{version:"linen-earth-production-learning-context-v1",revisionId,recipeHash},created_at:updated,
   };
   const valid={
     configured:true,quotes:[quote],orders:[order],
@@ -133,11 +133,15 @@ test("J5 installed optional evidence must contain typed rows, not arbitrary succ
   assert.equal(validProductionDeskResponse({...valid,customerOutcomes:[{...outcome,overall_rating:null}]}),false,
     "the UI must not call replaceAll on a forged rating");
   assert.equal(validProductionDeskResponse({...valid,customerOutcomes:[{...outcome,fit_result:["good"]}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,customerOutcomes:[{...outcome,overall_rating:"excellent"}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,customerOutcomes:[{...outcome,fit_result:"invented"}]}),false);
   assert.equal(validProductionDeskResponse({...valid,customerOutcomes:[{...outcome,worn_confirmed:"true"}]}),false);
   assert.equal(validProductionDeskResponse({...valid,customerOutcomes:[outcome,{...outcome}]}),false);
   assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,context:[]}]}),false);
   assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,recipe_hash:"wrong"}]}),false);
   assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,context:{}}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,context:{...context.context,recipeHash:"b".repeat(64)}}]}),false);
+  assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,context:{...context.context,version:"invented"}}]}),false);
   assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,order_id:null}]}),false);
   assert.equal(validProductionDeskResponse({...valid,qcInspections:[]}),true,"empty installed source is valid");
   assert.equal(validProductionDeskResponse({...valid,qcInspections:[{...qc,inspector:null,inspection_reference:null}]}),true,
