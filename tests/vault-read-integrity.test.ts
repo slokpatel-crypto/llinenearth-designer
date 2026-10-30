@@ -67,7 +67,7 @@ test("both vault routes validate all token and account read RPC envelopes",()=>{
     const code=readFileSync(path,"utf8");
     assert.match(code,/import \{ selectVaultReadRow \} from "@\/lib\/vault-read-integrity"/);
     // Account load + recovery-token load must independently check the RPC row.
-    assert.equal((code.match(/const row=selectVaultReadRow\(rows\);/g)||[]).length,2,path);
+    assert.ok((code.match(/const row=selectVaultReadRow\(rows\);/g)||[]).length>=2,path);
     assert.doesNotMatch(code,/const row=rows\[0\]/,path);
   }
   const designer=readFileSync("src/app/api/designer/vault/route.ts","utf8");
@@ -94,6 +94,29 @@ test("design account claim verifies the recoverable revision before owner mutati
   assert.match(claim,/\{error:"Stored design failed integrity verification\."\},\{status:409\}/);
   // A missing, duplicated, expired or invalid revision never reaches set_owner.
   for(const invalid of [[],[row,row],[{...row,expires_at:"2020-01-01T00:00:00Z"}]]){
+    assert.equal(selectVaultReadRow(invalid,now),null);
+  }
+});
+
+test("measurement account claim verifies profile and tailor observations before owner mutation",()=>{
+  const code=readFileSync("src/app/api/measurements/vault/route.ts","utf8");
+  const start=code.indexOf('if(action==="claim")');
+  const end=code.indexOf('if(action==="load")',start);
+  assert.ok(start>=0&&end>start);
+  const claim=code.slice(start,end);
+  const read=claim.indexOf('"measurement_profile_vault_get"');
+  const select=claim.indexOf('const row=selectVaultReadRow(rows)');
+  const missing=claim.indexOf('if(!row) return jsonNoStore');
+  const measurement=claim.indexOf('validStoredMeasurementProfile(row.profile)');
+  const observations=claim.indexOf('validStoredTailorObservationProfile(row.observations)');
+  const attach=claim.indexOf('"measurement_profile_vault_set_owner"');
+  const success=claim.indexOf('return jsonNoStore({claimed})');
+  assert.ok(read>=0&&select>read&&missing>select
+    &&measurement>missing&&observations>measurement&&attach>observations&&success>attach);
+  assert.match(claim,/\{status:404\}/);
+  assert.match(claim,/\{error:"Stored measurement profile failed integrity verification\."\},\{status:409\}/);
+  // No owner-link call can precede envelope or profile validation.
+  for(const invalid of [null,[],[row,row],[{...row,expires_at:"2020-01-01T00:00:00Z"}]]){
     assert.equal(selectVaultReadRow(invalid,now),null);
   }
 });
