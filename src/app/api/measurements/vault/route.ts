@@ -119,7 +119,7 @@ export async function POST(request:Request){
       }>>("measurement_profile_vault_list_owned",{p_owner_user_id:customer.id});
       // An installed RPC returning corrupt or repeated rows is not a verified
       // empty/partial account vault. Preserve the error rather than hiding it.
-      requireCompleteOwnedVaultRows(rows);
+      requireCompleteOwnedVaultRows(rows,50);
       const profiles=[];
       for(const row of rows){
         const profile=validStoredMeasurementProfile(row.profile);
