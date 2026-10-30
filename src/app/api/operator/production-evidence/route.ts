@@ -1,4 +1,3 @@
-import { normalizeVaultId } from "@/lib/vault-id";
 import { readSecureJsonObject, secureJsonRequestError, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -88,7 +87,9 @@ export async function POST(request:Request){
   try{
     const body=await readSecureJsonObject(request,16384);
     if(body.action!=="record") return respond({error:"Unsupported evidence action."},400);
-    const orderId=normalizeVaultId(body.orderId);
+    // The order identity is an immutable production receipt, not a value to
+    // trim or coerce into a different valid UUID before recording evidence.
+    const orderId=verifiedOperatorProductionCreateId(body.orderId);
     if(!orderId) return respond({error:"Valid delivered order ID is required."},400);
     let draft;
     try{draft=normalizeProductionDeliveryEvidence(body);}

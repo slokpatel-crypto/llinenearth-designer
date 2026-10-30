@@ -38,3 +38,17 @@ test("bounded decoder reads real small delivery audit snapshots and fails closed
   await assert.rejects(readBoundedJsonResponse(new Response(JSON.stringify({large:"x".repeat(4096)})),4*1024),/exceeds allowed size/);
   await assert.rejects(readBoundedJsonResponse(new Response("{incomplete"),4*1024),SyntaxError);
 });
+
+
+test("delivery evidence order selection requires exact literal UUID before RPC",()=>{
+  const code=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
+  assert.match(code,/const orderId=verifiedOperatorProductionCreateId\(body\.orderId\)/);
+  assert.match(code,/if\(!orderId\) return respond\(\{error:/);
+  assert.match(code,/p_order_id:orderId/);
+  assert.doesNotMatch(code,/normalizeVaultId\(body\.orderId\)/);
+  assert.equal(verifiedOperatorProductionCreateId(id),id);
+  assert.equal(verifiedOperatorProductionCreateId(id.toUpperCase()),id);
+  for(const value of [null,false,[],[id],{orderId:id}," "+id,id+" ",id+"\\n","not-a-uuid"]){
+    assert.equal(verifiedOperatorProductionCreateId(value),null,JSON.stringify(value));
+  }
+});
