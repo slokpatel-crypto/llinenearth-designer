@@ -7,7 +7,7 @@ import { buildVerifiedProductionHandoff } from "@/lib/designer/production-handof
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet";
 import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
-import { hasVerifiedLatestDeliveryQc } from "@/lib/designer/delivery-qc-approval";
+import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
 import { validProductionDeskResponse } from "@/lib/designer/production-desk-ledger";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
@@ -260,7 +260,8 @@ export default function ProductionClient(){
         <div><span>ORDERS</span><h2>Production status.</h2></div>
         {!orders.length&&<p>No production orders recorded yet.</p>}
         {orders.map((item)=>{
-          const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id,250);
+          const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id,250)
+            &&hasVerifiedDeliveryQcOrderLineage(qcInspections,item);
           const nextStatuses=(ORDER_TRANSITIONS[item.status as ProductionOrderStatus]||[]).filter((status)=>status!=="delivered"||deliveryQcVerified);
           const customerOutcome=customerOutcomes.find((outcome)=>outcome.order_id===item.order_id);
           const learningContext=learningContexts.find((context)=>context.order_id===item.order_id);
