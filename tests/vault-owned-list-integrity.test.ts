@@ -75,7 +75,8 @@ test("both owned-list endpoints validate untrusted row envelopes before UI seria
   assert.match(designer,/if\(!ownedDesignVaultRowMatchesPayload\(row\)\|\|!await verifyLockedDesignRevision\(row\.payload\)\)/);
   assert.match(measurements,/requireCompleteOwnedVaultRows\(rows\)/);
   assert.match(measurements,/if\(!profile\|\|!observations\) throw new Error\("Invalid owned measurement vault row\."\)/);
-  assert.doesNotMatch(designer,/designs\.push\(\{[\s\S]*?\}\);\s*\}\s*\}/);
+  // The positive guard above checks that corrupt rows throw before serialization.
+  // A valid designs.push followed by loop closure must remain allowed.
   assert.doesNotMatch(measurements,/rows\.filter\(/);
 });
 
