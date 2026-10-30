@@ -8,9 +8,17 @@ import {
   type FinishedGarmentQcCheckId,
   type FinishedGarmentQcDecision,
 } from "@/lib/designer/finished-garment-qc";
+import { validGarmentQcDeskResponse } from "@/lib/designer/garment-qc-ledger";
+import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
 type Inspection={inspection_id:string;order_id:string;revision_id:string;recipe_hash:string;decision:"approved"|"rework";checks:Record<string,boolean>;defects:string[];note:string;inspector:string;inspection_reference?:string;created_at:string};
+
+function recordError(value:unknown):string|null{
+  if(!value||typeof value!=="object"||Array.isArray(value)) return null;
+  const error=(value as Record<string,unknown>).error;
+  return typeof error==="string"?error:null;
+}
 
 function emptyChecks(){
   return Object.fromEntries(FINISHED_GARMENT_QC_CHECKS.map((item)=>[item.id,false])) as Record<FinishedGarmentQcCheckId,boolean>;
@@ -30,18 +38,29 @@ export default function GarmentQcClient(){
   const [message,setMessage]=useState("");
 
   async function load(){
-    const response=await fetch("/api/operator/garment-qc",{cache:"no-store"});
-    if(response.status===401){window.location.href="/operator/login?next=/operator/garment-qc";return;}
-    const data=await response.json();
-    if(!response.ok){setMessage(data.error||"Finished-garment QC could not be loaded.");return;}
-    const nextOrders=Array.isArray(data.orders)?data.orders:[];
-    setConfigured(data.configured!==false);
-    setOrders(nextOrders);
-    setInspections(Array.isArray(data.inspections)?data.inspections:[]);
-    const requested=new URLSearchParams(window.location.search).get("order");
-    const requestedReady=nextOrders.find((item:Order)=>item.status==="ready"&&item.order_id===requested);
-    const firstReady=nextOrders.find((item:Order)=>item.status==="ready");
-    setSelectedOrderId((current)=>current||requestedReady?.order_id||firstReady?.order_id||"");
+    try{
+      const response=await fetch("/api/operator/garment-qc",{cache:"no-store"});
+      if(response.status===401){window.location.href="/operator/login?next=/operator/garment-qc";return;}
+      const data:unknown=await response.json();
+      if(!response.ok){
+        const error=recordError(data);
+        throw new Error(error||"Finished-garment QC could not be loaded.");
+      }
+      if(!validGarmentQcDeskResponse(data)) throw new Error("Finished-garment QC returned unverified production records.");
+      const nextOrders=data.orders as Order[];
+      setConfigured(data.configured);
+      setOrders(nextOrders);
+      setInspections(data.inspections as Inspection[]);
+      const requested=new URLSearchParams(window.location.search).get("order");
+      const requestedReady=nextOrders.find(item=>item.status==="ready"&&item.order_id===requested);
+      const firstReady=nextOrders.find(item=>item.status==="ready");
+      setSelectedOrderId(current=>nextOrders.some(item=>item.status==="ready"&&item.order_id===current)
+        ?current:(requestedReady?.order_id||firstReady?.order_id||""));
+    }catch(error){
+      // A failed reload must not leave an earlier ready order actionable.
+      setConfigured(false);setOrders([]);setInspections([]);setSelectedOrderId("");
+      setMessage(error instanceof Error?error.message:"Finished-garment QC could not be loaded.");
+    }
   }
 
   useEffect(()=>{void load();},[]);
@@ -50,6 +69,8 @@ export default function GarmentQcClient(){
   const selected=readyOrders.find((item)=>item.order_id===selectedOrderId)||readyOrders[0]||null;
   const selectedHistory=useMemo(()=>selected?inspections.filter((item)=>item.order_id===selected.order_id):[],[inspections,selected]);
   const latest=selectedHistory[0]||null;
+  const latestHasProvenance=Boolean(latest&&latest.inspector.trim().length>=2
+    &&(latest.inspection_reference||"").trim().length>=3);
   const allPass=FINISHED_GARMENT_QC_CHECKS.every((item)=>checks[item.id]);
   const provenanceReady=inspector.trim().length>=2&&inspectionReference.trim().length>=3;
   const reworkHasReason=(defects.length>0||note.trim().length>=3)&&provenanceReady;
@@ -71,6 +92,7 @@ export default function GarmentQcClient(){
       });
       const data=await response.json();
       if(!response.ok) throw new Error(data.error||"Finished-garment QC could not be recorded.");
+      if(!verifiedOperatorProductionCreateId(data?.inspectionId)) throw new Error("Finished-garment QC backend did not confirm an inspection receipt.");
       setMessage(decision==="approved"?"QC approved. Delivery is now unlocked for this order.":"Rework recorded. The order was returned to stitching automatically.");
       setChecks(emptyChecks());setDefects([]);setNote("");setInspector("");setInspectionReference("");await load();
     }catch(error){
@@ -110,7 +132,7 @@ export default function GarmentQcClient(){
             <span><small>ORDER</small><b>{selected.order_id}</b></span>
             <span><small>REVISION</small><b>{selected.revision_id}</b></span>
             <span><small>RECIPE HASH</small><b>{selected.recipe_hash}</b></span>
-            <span><small>LATEST QC</small><b>{latest?latest.decision.toUpperCase():"NOT INSPECTED"}</b></span>
+            <span><small>LATEST QC</small><b>{latest?(latest.decision==="approved"&&!latestHasProvenance?"LEGACY / UNVERIFIED":latest.decision.toUpperCase()):"NOT INSPECTED"}</b></span>
           </div>
 
           <div className="garmentQcChecks">
