@@ -76,3 +76,36 @@ test("operator UI visibly reports invalid or duplicate preview evidence",()=>{
   assert.match(source,/summary\?\.invalidRows/);
   assert.match(source,/role="alert"/);
 });
+
+test("approved approximations cannot complete the strict photographic accuracy gate",()=>{
+  const result=summarizePreviewOptionCoverage([
+    {id:"preview:collar:point",styleKey:"collar",label:"Point",livePreview:"exact",constructionStatus:"approved",previewStatus:"approved"},
+    {id:"preview:trouser:wide",styleKey:"trouser",label:"Wide",livePreview:"approximate",constructionStatus:"not_required",previewStatus:"approved"},
+  ]);
+  assert.equal(result.gateComplete,true,"existing customer exploration approval remains separate");
+  assert.equal(result.exactlyCleared,1);
+  assert.equal(result.exactPercent,50);
+  assert.equal(result.accuracyGateComplete,false);
+});
+
+test("strict photo accuracy requires every row exact and independently approved",()=>{
+  const result=summarizePreviewOptionCoverage([
+    {id:"a",styleKey:"collar",label:"Point",livePreview:"exact",constructionStatus:"approved",previewStatus:"approved"},
+    {id:"b",styleKey:"shirtWear",label:"Tucked",livePreview:"exact",constructionStatus:"not_required",previewStatus:"approved"},
+  ]);
+  assert.equal(result.exactlyCleared,2);
+  assert.equal(result.exactPercent,100);
+  assert.equal(result.accuracyGateComplete,true);
+  const invalid=summarizePreviewOptionCoverage([
+    {id:"a",styleKey:"collar",label:"Point",livePreview:"exact",constructionStatus:"approved",previewStatus:"approved"},
+    {id:"a",styleKey:"collar",label:"Point",livePreview:"exact",constructionStatus:"approved",previewStatus:"approved"},
+  ]);
+  assert.equal(invalid.accuracyGateComplete,false,"duplicate evidence cannot certify exactness");
+});
+
+test("operator surface distinguishes exactness from usable approximate coverage",()=>{
+  const source=readFileSync("src/app/operator/preview-option-coverage/PreviewOptionCoverageClient.tsx","utf8");
+  assert.match(source,/EXACT ACCURACY/);
+  assert.match(source,/accuracyGateComplete/);
+  assert.match(source,/PHOTO-EXACT/);
+});
