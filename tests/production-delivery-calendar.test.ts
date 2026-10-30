@@ -9,7 +9,7 @@ import { verifiedFirstTenAuditReceipt } from "../src/lib/designer/production-fir
 
 function physicalAuditFixture(){
   const orders=Array.from({length:10},(_,index)=>({
-    order_id:`order-${index}`,
+    order_id:`00000000-0000-4000-8000-${String(index+1).padStart(12,"0")}`,
     status:"delivered",
     revision_id:`locked-revision-${index}`,
     recipe_hash:"a".repeat(64),
@@ -18,7 +18,7 @@ function physicalAuditFixture(){
   }));
   const evidence=orders.map((order,index)=>({
     order_id:order.order_id,
-    evidence_id:`evidence-${index}`,
+    evidence_id:`10000000-0000-4000-8000-${String(index+1).padStart(12,"0")}`,
     revision_id:order.revision_id,
     recipe_hash:order.recipe_hash,
     order_created_at:order.created_at,
@@ -94,6 +94,9 @@ test("first-ten proof rejects padded order and audit receipt identities without 
     {...basis,evidence:[{...basis.evidence[0],evidence_id:" "+basis.evidence[0].evidence_id},...basis.evidence.slice(1)]},
     {...basis,evidence:[{...basis.evidence[0],evidence_id:basis.evidence[0].evidence_id+" "},...basis.evidence.slice(1)]},
     {...basis,evidence:[{...basis.evidence[0],evidence_id:[basis.evidence[0].evidence_id]},...basis.evidence.slice(1)]},
+    {...basis,orders:[{...basis.orders[0],order_id:"synthetic-order-1"},...basis.orders.slice(1)]},
+    {...basis,evidence:[{...basis.evidence[0],order_id:"synthetic-order-1"},...basis.evidence.slice(1)]},
+    {...basis,evidence:[{...basis.evidence[0],evidence_id:"synthetic-evidence-1"},...basis.evidence.slice(1)]},
   ];
   for(const altered of corrupted){
     assert.equal(validProductionFirstTenAuditBasis(altered),false,JSON.stringify(altered).slice(0,200));
