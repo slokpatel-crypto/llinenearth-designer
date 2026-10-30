@@ -24,7 +24,14 @@ test("both vault routes validate owned delete, token claim and token delete repl
   ]){
     const source=readFileSync(path,"utf8");
     assert.ok(source.includes('import { requireVaultBooleanResult, requireVaultStoreId } from "@/lib/vault-write-integrity"'),path);
-    assert.equal((source.match(/=requireVaultBooleanResult\(await rpc<unknown>\(/g)||[]).length,3,path);
+    const acknowledgements=(source.match(/=requireVaultBooleanResult\(await rpc<unknown>\(/g)||[]).length;
+    // Three owned-delete/claim/token-delete mutations, plus the newly
+    // verified optional owner-link receipt during secure store.
+    const store=source.slice(source.indexOf('if(action==="store")'),source.indexOf('if(action==="listOwned")'));
+    const mutations=source.slice(source.indexOf('if(action==="deleteOwned")'));
+    assert.equal(acknowledgements,4,path);
+    assert.equal((store.match(/=requireVaultBooleanResult\(await rpc<unknown>\(/g)||[]).length,1,path);
+    assert.equal((mutations.match(/=requireVaultBooleanResult\(await rpc<unknown>\(/g)||[]).length,3,path);
     assert.doesNotMatch(source,/Boolean\((?:claimed|deleted)\)/,path);
     assert.match(source,/return jsonNoStore\(\{claimed\}\)/,path);
     assert.equal((source.match(/return jsonNoStore\(\{deleted\}\)/g)||[]).length,2,path);
