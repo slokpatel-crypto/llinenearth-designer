@@ -93,3 +93,12 @@ test("owned vault lists reject malformed, repeated and padded identities instead
     [{...row,created_at:"not-a-date"}],
   ])assert.throws(()=>requireCompleteOwnedVaultRows(invalid),/Malformed owned vault list acknowledgement/);
 });
+
+test("owned list pages at their SQL cap cannot prove complete account history",()=>{
+  assert.doesNotThrow(()=>requireCompleteOwnedVaultRows([],1));
+  assert.doesNotThrow(()=>requireCompleteOwnedVaultRows([row],2));
+  for(const limit of [1,0,-1,1.5,Number.NaN,Number.POSITIVE_INFINITY]){
+    assert.throws(()=>requireCompleteOwnedVaultRows([row],limit),/Malformed or incomplete owned vault list acknowledgement/);
+  }
+  assert.throws(()=>requireCompleteOwnedVaultRows([row,row],2),/Malformed or incomplete owned vault list acknowledgement/);
+});
