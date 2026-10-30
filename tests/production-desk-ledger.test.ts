@@ -69,7 +69,7 @@ test("operator route validates typed ledgers before returning them to UI",()=>{
   const validation=route.indexOf("validProductionDeskLedgers(quotes,orders)");
   const response=route.indexOf("configured:true,quotes,orders");
   assert.ok(validation>0&&response>validation);
-  assert.match(route,/import \{ validProductionDeskLedgers, validProductionDeskResponse \} from "@\/lib\/designer\/production-desk-ledger"/);
+  assert.match(route,/import \{ validProductionDeskLedgers, validProductionDeskResponse, validProductionQcOrderRows \} from "@\/lib\/designer\/production-desk-ledger"/);
   assert.match(route,/if\(!validProductionDeskLedgers\(quotes,orders\)\) throw/);
 });
 
