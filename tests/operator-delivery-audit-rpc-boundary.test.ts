@@ -15,7 +15,7 @@ test("delivery evidence service bounds all success and error RPC responses witho
   assert.match(code,/readBoundedJsonResponse\(response,maxBytes\) as T/);
   assert.doesNotMatch(code,/response\.json\(\)/);
   assert.doesNotMatch(code,/response\.text\(\)/);
-  assert.match(code,/if\(!Array\.isArray\(orders\)\|\|!Array\.isArray\(evidence\)\) throw/);
+  assert.match(code,/validProductionDeliveryBrowseReceipt\(orders,evidence\)/);
   assert.match(code,/Malformed delivery evidence list receipts/);
   assert.match(code,/firstTenBasis=verifiedFirstTenAuditReceipt\(/);
   assert.match(code,/await rpc<unknown>\("production_first_ten_delivery_audit",\{\}\)/);

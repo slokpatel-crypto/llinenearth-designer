@@ -26,7 +26,7 @@ test("empty and well-formed bounded browse receipts remain compatible",()=>{
 
 test("malformed, duplicated or coerced operator browse orders fail closed",()=>{
   const bad=[
-    null,[],{},[{...order,order_id:" "+orderId}], [{...order,order_id:[orderId]}],
+    null,{},[{...order,order_id:" "+orderId}], [{...order,order_id:[orderId]}],
     [{...order,created_at:"2026-02-31T10:00:00Z"}],
     [{...order,delivered_at:"2026-04-31T10:00:00Z"}],
     [{...order,status:null}], [{...order,revision_id:null}],
