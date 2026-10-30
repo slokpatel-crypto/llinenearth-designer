@@ -114,3 +114,13 @@ test("precision-only cuff does not overwrite a legacy photographed cuff, even af
   assert.equal(toLegacyStyle(preserved).collar,"English Spread / British Collar");
   assert.equal(preserved.shirt.sleeve,"half_sleeve");
 });
+
+test("responsive browser QA exhausts each actual selectable option at 390/768/1440 without desktop-only shortcuts",()=>{
+  const script=readFileSync("scripts/verify-designer-option-accuracy.cjs","utf8");
+  assert.match(script,/for\(const width of \[390,768,1440\]\)/);
+  assert.doesNotMatch(script,/if\(width===1440\)/);
+  assert.match(script,/\(summary\.groups\[width\]\?\?=\{\}\)\[key\]=records/);
+  assert.match(script,/key\+"-"\+width\+"-"\+records\.length/);
+  assert.match(script,/responsive option drift/);
+  assert.match(script,/assert\.equal\(summary\.responsive\.length,3/);
+});
