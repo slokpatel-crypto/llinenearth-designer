@@ -99,6 +99,15 @@ export function validProductionBrowseFirstTenAgreement(orders:unknown,evidence:u
       ||current.recipe_hash!==item.recipe_hash
       ||parseProductionEvidenceTimestamp(current.created_at)!==parseProductionEvidenceTimestamp(item.created_at)) return false;
   }
+  // A newer browse snapshot must not reveal a first-ten audit omitted by
+  // the supposedly authoritative complete history. In particular, a later
+  // re-entry incident cannot coexist with a clean first-ten release claim.
+  // Audit rows for orders outside the oldest ten remain ordinary browse data.
+  const authoritativeAuditIds=new Set(earliestEvidence.map((item)=>String(item.evidence_id).toLowerCase()));
+  for(const item of newestEvidence){
+    if(firstIds.has(String(item.order_id).toLowerCase())
+      &&!authoritativeAuditIds.has(String(item.evidence_id).toLowerCase())) return false;
+  }
   const auditMap=new Map(newestEvidence.map((item)=>[String(item.evidence_id).toLowerCase(),item]));
   for(const item of earliestEvidence){
     const current=auditMap.get(String(item.evidence_id).toLowerCase());
