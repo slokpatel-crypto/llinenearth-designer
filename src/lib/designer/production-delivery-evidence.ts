@@ -107,13 +107,14 @@ export function validProductionFirstTenAuditBasis(input:unknown):boolean{
   for(const value of basis.orders){
     if(!value||typeof value!=="object"||Array.isArray(value)) return false;
     const order=value as Record<string,unknown>;
-    if(!verifiedOperatorProductionCreateId(order.order_id)
+    const exactOrderId=verifiedOperatorProductionCreateId(order.order_id);
+    if(!exactOrderId
       ||order.status!=="delivered"
       ||typeof order.revision_id!=="string"||order.revision_id.trim().length<3||order.revision_id.length>240
       ||typeof order.recipe_hash!=="string"||!/^[a-f0-9]{64}$/i.test(order.recipe_hash)) return false;
     const createdAt=time(order.created_at);
     const deliveredAt=time(order.delivered_at);
-    const key=order.order_id.toLowerCase();
+    const key=exactOrderId;
     if(!Number.isFinite(createdAt)||!Number.isFinite(deliveredAt)
       ||deliveredAt<createdAt||deliveredAtByOrder.has(key)
       ||deliveredAt<previousDeliveredAt) return false;
@@ -128,12 +129,13 @@ export function validProductionFirstTenAuditBasis(input:unknown):boolean{
     const evidence=value as Record<string,unknown>;
     // Database UUID identities are exact receipts; do not silently repair
     // whitespace-padded order/evidence selectors into credible audit proof.
-    if(!verifiedOperatorProductionCreateId(evidence.order_id)
-      ||!verifiedOperatorProductionCreateId(evidence.evidence_id)) return false;
-    const key=evidence.order_id.toLowerCase();
+    const exactEvidenceOrderId=verifiedOperatorProductionCreateId(evidence.order_id);
+    const exactEvidenceId=verifiedOperatorProductionCreateId(evidence.evidence_id);
+    if(!exactEvidenceOrderId||!exactEvidenceId) return false;
+    const key=exactEvidenceOrderId;
     const deliveryAt=deliveredAtByOrder.get(key);
     const lineage=orderLineage.get(key);
-    const evidenceId=evidence.evidence_id.toLowerCase();
+    const evidenceId=exactEvidenceId;
     const auditedAt=time(evidence.created_at);
     if(deliveryAt===undefined||!lineage||!Number.isFinite(auditedAt)||auditedAt<deliveryAt
       ||!evidenceId||evidenceIds.has(evidenceId)
