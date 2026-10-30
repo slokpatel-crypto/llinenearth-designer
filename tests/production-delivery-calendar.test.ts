@@ -76,3 +76,27 @@ test("first-ten authoritative RPC and operator summary reject impossible dates, 
   assert.equal(validProductionFirstTenAuditBasis(badAudit),false);
   assert.equal(summarizeProductionDeliveryEvidence(basis.orders,badAudit.evidence).gateComplete,false);
 });
+
+test("first-ten proof rejects padded order and audit receipt identities without rewriting them",()=>{
+  const basis=physicalAuditFixture();
+  assert.equal(validProductionFirstTenAuditBasis(basis),true);
+  const caseVariant={
+    ...basis,
+    orders:[{...basis.orders[0],order_id:basis.orders[0].order_id.toUpperCase()},...basis.orders.slice(1)],
+    evidence:[{...basis.evidence[0],evidence_id:basis.evidence[0].evidence_id.toUpperCase()},...basis.evidence.slice(1)],
+  };
+  assert.equal(validProductionFirstTenAuditBasis(caseVariant),true);
+  const corrupted=[
+    {...basis,orders:[{...basis.orders[0],order_id:" "+basis.orders[0].order_id},...basis.orders.slice(1)]},
+    {...basis,orders:[{...basis.orders[0],order_id:basis.orders[0].order_id+" "},...basis.orders.slice(1)]},
+    {...basis,evidence:[{...basis.evidence[0],order_id:" "+basis.evidence[0].order_id},...basis.evidence.slice(1)]},
+    {...basis,evidence:[{...basis.evidence[0],order_id:basis.evidence[0].order_id+"\\n"},...basis.evidence.slice(1)]},
+    {...basis,evidence:[{...basis.evidence[0],evidence_id:" "+basis.evidence[0].evidence_id},...basis.evidence.slice(1)]},
+    {...basis,evidence:[{...basis.evidence[0],evidence_id:basis.evidence[0].evidence_id+" "},...basis.evidence.slice(1)]},
+    {...basis,evidence:[{...basis.evidence[0],evidence_id:[basis.evidence[0].evidence_id]},...basis.evidence.slice(1)]},
+  ];
+  for(const altered of corrupted){
+    assert.equal(validProductionFirstTenAuditBasis(altered),false,JSON.stringify(altered).slice(0,200));
+    assert.throws(()=>verifiedFirstTenAuditReceipt(altered),/Malformed first-ten/);
+  }
+});
