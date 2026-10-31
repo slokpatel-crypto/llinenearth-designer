@@ -30,6 +30,12 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/ci/verify-stock-record-db.sh "$PG_CONTAINER"
+      - name: Test real chronological stock migrations and cross-RPC ledger invariants
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          bash scripts/ci/verify-stock-record-db.sh "$PG_CONTAINER" historical
       - name: Preserve isolated DB diagnostics on failure
         if: failure()
         env:
