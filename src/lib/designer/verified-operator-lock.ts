@@ -4,9 +4,9 @@
  * by the latest successful, independently verified vault recovery.
  * Revoke the ref before changing recovery credentials or starting another load.
  */
-export function isCurrentVerifiedOperatorLock(
-  displayed: object | null,
-  verified: object | null,
-): boolean {
+export function isCurrentVerifiedOperatorLock<T extends object>(
+  displayed: T | null,
+  verified: T | null,
+): displayed is T {
   return displayed !== null && displayed === verified;
 }
