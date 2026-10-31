@@ -6,8 +6,10 @@
 export function isCurrentVerifiedProductionLedger(
   latestReadVersion: number,
   verifiedReadVersion: number,
+  renderedReadVersion: number,
 ): boolean {
   return Number.isSafeInteger(latestReadVersion)
     && latestReadVersion > 0
-    && verifiedReadVersion === latestReadVersion;
+    && verifiedReadVersion === latestReadVersion
+    && renderedReadVersion === latestReadVersion;
 }
