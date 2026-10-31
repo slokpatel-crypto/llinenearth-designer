@@ -31,9 +31,17 @@ function requireDistinctIds(ids:string[],kind:string):void{
     seen.add(key);
   }
 }
-function date(x:unknown):string{
+// A small bounded skew permits clock drift between the database and app
+// server; a human review or policy recorded hours or days in the future is
+// not present-day approval evidence.
+const MAX_EVIDENCE_CLOCK_SKEW_MS=5*60*1000;
+function date(x:unknown,observedAt:number):string{
   const s=str(x,64);
-  if(!Number.isFinite(parseProductionEvidenceTimestamp(s)))throw new Error("Invalid customer learning timestamp.");
+  const instant=parseProductionEvidenceTimestamp(s);
+  if(!Number.isFinite(instant))
+    throw new Error("Invalid customer learning timestamp.");
+  if(instant>observedAt+MAX_EVIDENCE_CLOCK_SKEW_MS)
+    throw new Error("Future-dated customer learning timestamp.");
   return s;
 }
 function exactContext(x:unknown){
@@ -52,7 +60,10 @@ function exactContext(x:unknown){
 }
 export function safeOutcomeReviewEvidence(
   rawOutcomes:unknown,rawReviews:unknown,rawPolicies:unknown,
+  observedAt:number=Date.now(),
 ):{outcomes:CustomerOutcomeEvidenceRow[];reviews:CustomerOutcomeReviewRow[];policies:CustomerOutcomePolicyRow[]}{
+  if(!Number.isSafeInteger(observedAt)||observedAt<0)
+    throw new Error("Invalid customer evidence observation clock.");
   const outcomes=rows(rawOutcomes,1000).map(o=>{
     const worn=o.worn_confirmed;
     if(typeof worn!=="boolean")throw new Error("Invalid customer wear confirmation.");
@@ -60,7 +71,7 @@ export function safeOutcomeReviewEvidence(
       outcome_id:str(o.outcome_id,80),order_id:str(o.order_id,80),
       revision_id:str(o.revision_id,220),
       overall_rating:str(o.overall_rating,40),fit_result:str(o.fit_result,50),
-      worn_confirmed:worn,note:str(o.note,1200),created_at:date(o.created_at),
+      worn_confirmed:worn,note:str(o.note,1200),created_at:date(o.created_at,observedAt),
       learning_context:exactContext(o.learning_context),
     };
   });
@@ -70,7 +81,7 @@ export function safeOutcomeReviewEvidence(
     return {
       review_id:str(r.review_id,80),outcome_id:str(r.outcome_id,80),
       decision:r.decision as CustomerOutcomeReviewRow["decision"],reviewer:str(r.reviewer,120),
-      note:str(r.note,1200),created_at:date(r.created_at),
+      note:str(r.note,1200),created_at:date(r.created_at,observedAt),
     };
   });
   const policies=rows(rawPolicies,100).map(p=>{
@@ -82,7 +93,7 @@ export function safeOutcomeReviewEvidence(
       policy_id:str(p.policy_id,80),
       minimum_approved_cases:p.minimum_approved_cases as number,
       approved_by:str(p.approved_by,120),
-      note:str(p.note,1200),created_at:date(p.created_at),
+      note:str(p.note,1200),created_at:date(p.created_at,observedAt),
     };
   });
   requireDistinctIds(outcomes.map(row=>row.outcome_id),"outcome");
