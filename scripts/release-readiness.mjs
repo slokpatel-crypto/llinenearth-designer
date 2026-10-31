@@ -341,6 +341,19 @@ requireTokens("src/app/api/operator/launch-readiness/route.ts", ["record_verifie
 requireTokens("src/app/operator/launch-readiness/LaunchReadinessClient.tsx", ["LOCK → VERIFIED SHARE/ENQUIRY","record_verified_beta","Verified action","share_audit_confirmed","enquiry_audit_confirmed"]);
 requireTokens("src/app/api/designer/share/route.ts", ["design_share_audit_record","p_revision_id:verified.revisionId","audited"]);
 requireTokens("src/app/api/designer/enquiry/route.ts", ["verifyLockedDesignRevision","design_enquiry_audit_record","Locked Designer look","audited"]);
+requireTokens("scripts/verify-enquiry-prepared-not-sent-http.cjs", [
+  "127.0.0.1", 'new URL("/api/designer/enquiry",base)',
+  'assert.equal(data.audited,false', 'assert.equal(data.auditId,null',
+  'assert.equal(data.ownerVerified,false', 'assert.equal(data.operatorReceived,false',
+  'assert.equal(data.status,"whatsapp_draft")',
+  'assert.equal(data.handoffStatus,"prepared_not_sent")',
+  'assert.equal(url.hostname,"wa.me"', 'assert.equal(tampered.status,409',
+  'assert.equal(token.status,400', 'await prepared(revision,',
+]);
+requireTokens(".github/workflows/ci.yml", [
+  "node scripts/verify-enquiry-prepared-not-sent-http.cjs",
+]);
+
 requireTokens("src/components/DesignerModule.tsx", ["verified share audit recorded","checked={shareConsent}"]);
 requireTokens("supabase/migrations/20261020_verified_beta_share_flow.sql", ["design_share_audit","design_enquiry_audit","launch_beta_attempt_record_v4","share_audit_confirmed","enquiry_audit_confirmed","no verified % audit exists for this locked revision"]);
 requireTokens("src/lib/designer/launch-readiness-evidence.ts", ["normalizeVerifiedBetaAttempt","evidenceKind","row.design_locked===true","row.share_or_enquiry_completed===true","row.enquiry_audit_confirmed===true","distinctVerifiedRevisions","uniqueSuccessfulByRevision"]);

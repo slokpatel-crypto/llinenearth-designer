@@ -106,3 +106,24 @@ test("locked customer handoff RPC receipts are bounded, and share receipts requi
   assert.deepEqual(await readBoundedJsonResponse(new Response(owned),256*1024),JSON.parse(owned));
   await assert.rejects(readBoundedJsonResponse(new Response(" ".repeat(256*1024+1)),256*1024),/exceeds/);
 });
+
+test("built Next HTTP enquiry smoke distinguishes composed draft from sent or operator-accepted order",()=>{
+  const file=readFileSync("scripts/verify-enquiry-prepared-not-sent-http.cjs","utf8");
+  const ci=readFileSync(".github/workflows/ci.yml","utf8");
+  assert.ok(ci.includes("node scripts/verify-enquiry-prepared-not-sent-http.cjs"));
+  assert.ok(file.includes('new URL("/api/designer/enquiry",base)'));
+  assert.ok(file.includes('assert.equal(data.handoffStatus,"prepared_not_sent")'));
+  assert.ok(file.includes('assert.equal(data.operatorReceived,false'));
+  assert.ok(file.includes('assert.equal(data.audited,false'));
+  assert.ok(file.includes('assert.equal(data.auditId,null'));
+  assert.ok(file.includes('assert.equal(data.ownerVerified,false'));
+  assert.ok(file.includes('assert.equal(data.status,"whatsapp_draft")'));
+  assert.ok(file.includes('assert.equal(url.hostname,"wa.me"'));
+  assert.ok(file.includes('await prepared({revision,consentToContact:true}'));
+  assert.ok(file.includes('await prepared(revision,"legacy locked-revision composition")'));
+  assert.ok(file.includes('assert.equal(tampered.status,409'));
+  assert.ok(file.includes('assert.equal(token.status,400'));
+  assert.ok(file.includes('assert.ok(!Object.hasOwn(data,"orderId")'));
+  assert.ok(file.includes('url.searchParams.get("text")'));
+  assert.ok(!file.includes('await fetch(data.href'));
+});
