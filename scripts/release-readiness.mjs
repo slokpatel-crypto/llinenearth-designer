@@ -338,6 +338,26 @@ requireTokens("src/app/operator/ease-calibration/EaseCalibrationClient.tsx", ["H
 requireTokens("supabase/migrations/20261010_house_ease_calibration_registry.sql", ["house_ease_evidence","house_ease_models","real finished-garment evidence is required for every house-ease cell","service_role"]);
 requireTokens("supabase/migrations/20261011_launch_beta_flow_detail.sql", ["design_locked","share_or_enquiry_completed","launch_beta_attempt_record_v2","share/enquiry completion cannot precede a locked design"]);
 requireTokens("src/app/api/operator/launch-readiness/route.ts", ["record_verified_beta","launch_beta_attempt_record_v4","verifiedFlowAudit","p_evidence_kind"]);
+
+requireTokens("src/lib/designer/launch-readiness-transport.ts", [
+  "safeLaunchReadinessRows", "BETA_STRING_LIMITS", "CHECKLIST_STRING_LIMITS",
+  "source.length>500", "Invalid operator launch evidence boolean.",
+]);
+requireTokens("src/app/api/operator/launch-readiness/route.ts", [
+  "return respond({error:\"Unauthorized.\"},401)",
+  "return respond({configured:false,betaAttempts:[],checklistEvents:[]})",
+  "readBoundedJsonResponse(response,maxBytes)",
+  'safeLaunchReadinessRows(rawBeta,"beta")',
+  'safeLaunchReadinessRows(rawChecklist,"checklist")',
+]);
+requireTokens("scripts/verify-launch-readiness-private-http.cjs", [
+  "signed synthetic operator", "privateHeaders(r)",
+  "DO-NOT-LEAK-CI-", "LAUNCH_LISTS",
+]);
+requireTokens(".github/workflows/ci.yml", [
+  "node scripts/verify-launch-readiness-private-http.cjs",
+]);
+
 requireTokens("src/app/operator/launch-readiness/LaunchReadinessClient.tsx", ["LOCK → VERIFIED SHARE/ENQUIRY","record_verified_beta","Verified action","share_audit_confirmed","enquiry_audit_confirmed"]);
 requireTokens("src/app/api/designer/share/route.ts", ["design_share_audit_record","p_revision_id:verified.revisionId","audited"]);
 requireTokens("src/app/api/designer/enquiry/route.ts", ["verifyLockedDesignRevision","design_enquiry_audit_record","Locked Designer look","audited"]);
