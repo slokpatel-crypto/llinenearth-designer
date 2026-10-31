@@ -114,10 +114,8 @@ export default function ProductionClient(){
       }
       if(!validProductionDeskMutationReceipt(body.action,data)) throw new Error("Production operation receipt could not be verified.");
       const confirmed=await load({action:body.action,body,receipt:data});
-      if(confirmed){
-        setPendingWriteReview(null);
-        setMessage(success);
-      }else{
+      if(confirmed)setMessage(success);
+      else{
         // Keep the submitted instruction frozen even if the editable form
         // changes while the operator inspects the capped production ledger.
         setPendingWriteReview(attempt);
