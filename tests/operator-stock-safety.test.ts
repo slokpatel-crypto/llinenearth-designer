@@ -290,3 +290,26 @@ test("manual physical stock retries require exact database keys and cannot silen
   assert.ok(sql.includes("to service_role;"));
   assert.ok(sql.includes("from public,anon,authenticated;"));
 });
+
+test("disposable PostgreSQL CI runs real stock v3 transaction and concurrency checks",()=>{
+  const workflow=readFileSync(".github/workflows/titan-stock-record-db.yml","utf8");
+  const script=readFileSync("scripts/ci/verify-stock-record-db.sh","utf8");
+  const fixture=readFileSync("scripts/ci/stock-record-db-setup.sql","utf8");
+  const tests=readFileSync("scripts/ci/stock-record-db-assertions.sql","utf8");
+  assert.ok(workflow.includes("image: postgres:16"));
+  assert.ok(workflow.includes("job.services.postgres.id"));
+  assert.ok(workflow.includes("verify-stock-record-db.sh"));
+  assert.ok(!workflow.includes("SUPABASE_URL"));
+  assert.ok(!workflow.includes("SUPABASE_SECRET_KEY"));
+  assert.ok(script.includes("supabase/migrations/20261031_stock_record_exact_retry.sql"));
+  assert.ok(script.includes("stock-record-db-setup.sql"));
+  assert.ok(script.includes("stock-record-db-assertions.sql"));
+  assert.ok(script.includes('wait "$pid1"'));
+  assert.ok(script.includes('wait "$pid2"'));
+  assert.ok(script.includes("Concurrent same-key physical receipts"));
+  assert.ok(script.includes("Concurrent overdraw must allow exactly one adjustment."));
+  assert.ok(fixture.includes("create unique index fabric_stock_ledger_request_key_uidx"));
+  assert.ok(tests.includes("same-key same-evidence retry returned a different physical event"));
+  assert.ok(tests.includes("stock request key already belongs to different evidence"));
+  assert.ok(tests.includes("privileged stock RPC role grants are not restricted"));
+});
