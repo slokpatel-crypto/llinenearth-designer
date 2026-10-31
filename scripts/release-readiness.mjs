@@ -846,7 +846,7 @@ requireTokens("src/app/api/operator/stock/route.ts", [
 ]);
 requireTokens("scripts/verify-operator-private-response-headers.cjs", ['"/api/operator/stock"']);
 
-requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Physical source reference","Reservation quantity source","Close action source","PHYSICAL PROVENANCE","provenance_ready","Create reservation","Consume","Release","validateOperatorStockSnapshot(data.stock)","setStock(verifiedStock)","verifiedOperatorStockMutationReceipt(body.action,data)"]);
+requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Physical source reference","Meterage sheet + documented line reference","Close action source","PHYSICAL PROVENANCE","provenance_ready","Create reservation","Consume","Release","validateOperatorStockSnapshot(data.stock)","setStock(verifiedStock)","verifiedOperatorStockMutationReceipt(body.action,data)"]);
 
 requireTokens("src/lib/designer/stock-ledger.ts", [
   "stockReservationAttempt(", "stockReservationSignature(", "existing.get(signature)??newKey()",
