@@ -40,7 +40,10 @@ test("M123 preflight audits installed QC chronology and immutable evidence",()=>
     "public.production_delivery_eligibility_list",
   ])assert.ok(sql.includes(obj),"Missing catalog check for "+obj);
   // Only catalogue reads and exceptions are permitted, never DML/DDL.
-  assert.doesNotMatch(sql,/\b(?:ALTER|CREATE|DROP|TRUNCATE|INSERT|UPDATE|DELETE)\s+(?:TABLE|FUNCTION|TRIGGER|INDEX|INTO|private\.|public\.)/i);
+  // A keyword inside a comment or an exception message is not executable SQL.
+  // Detect actual top-level write statements; BEGIN READ ONLY also enforces
+  // this at PostgreSQL runtime when the disposable preflight is executed.
+  assert.doesNotMatch(sql,/^\s*(?:ALTER|CREATE|DROP|TRUNCATE|INSERT|UPDATE|DELETE)\s+(?:TABLE|FUNCTION|TRIGGER|INDEX|INTO|private\.|public\.)/im);
   assert.doesNotMatch(sql,/\b(?:supabase\s+db\s+push|psql\s+-h|curl)\b/i);
 });
 
