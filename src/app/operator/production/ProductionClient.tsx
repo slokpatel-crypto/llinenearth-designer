@@ -15,6 +15,8 @@ import {
   PRODUCTION_WRITE_HOLD_KEY,productionWriteHoldPending,beginProductionWriteHold,
   releaseProductionWriteHold,acknowledgeProductionWriteHold,readProductionWriteHoldKey,
   captureProductionWriteEpoch,productionWriteEpochUnchanged,
+  PRODUCTION_WRITE_EPOCH_KEY,captureProductionWriteReviewSnapshot,
+  productionWriteReviewSnapshotUnchanged,type ProductionWriteReviewSnapshot,
 } from "@/lib/designer/production-write-hold";
 import {productionWriteReviewSummary, type ProductionWriteReviewSummary} from "@/lib/designer/production-review-summary";
 import {parseProductionCreationReceipts, type ProductionCreationReceipt} from "@/lib/designer/production-creation-receipt-lookup";
@@ -56,6 +58,7 @@ export default function ProductionClient(){
   // A late initial GET must never overwrite a newer post-mutation refresh.
   const ledgerReadVersion=useRef(0);
   const verifiedLedgerReadVersion=useRef(0);
+  const verifiedWriteReviewSnapshot=useRef<ProductionWriteReviewSnapshot|null>(null);
   // A verified HTTP response is not yet visible to an operator until React
   // commits its corresponding history. Do not acknowledge an unseen ledger.
   const [renderedLedgerReadVersion,setRenderedLedgerReadVersion]=useState(0);
@@ -74,6 +77,8 @@ export default function ProductionClient(){
 
   async function load(expected?:{action:unknown;body:Record<string,unknown>;receipt:unknown}):Promise<boolean>{
     const readVersion=++ledgerReadVersion.current;
+    const reviewSnapshot=captureProductionWriteReviewSnapshot(safeProductionHoldStorage());
+    verifiedWriteReviewSnapshot.current=null;
     verifiedLedgerReadVersion.current=0;
     setRenderedLedgerReadVersion(0);
     // Clear old receipts immediately; stale rows must not authorize actions.
@@ -93,12 +98,16 @@ export default function ProductionClient(){
         throw new Error("Production ledger response is malformed.");
       }
       if(readVersion!==ledgerReadVersion.current) return false;
+      if(!productionWriteReviewSnapshotUnchanged(safeProductionHoldStorage(),reviewSnapshot)){
+        throw new Error("Production write marker changed during history refresh.");
+      }
       // A mutation is not confirmed until this newly verified ledger contains
       // the exact created UUID or updated status on the intended quote/order.
       if(expected&&(!data.configured||!verifiedProductionMutationReadback(
         expected.action,expected.body,expected.receipt,data.quotes,data.orders,data.learningContexts,
       )))throw new Error("The changed production record was not confirmed in refreshed history.");
       // Commit the verified generation synchronously; React state is only UI.
+      verifiedWriteReviewSnapshot.current=data.configured?reviewSnapshot:null;
       verifiedLedgerReadVersion.current=data.configured?readVersion:0;
       setRenderedLedgerReadVersion(data.configured?readVersion:0);
       setConfigured(data.configured);
@@ -133,6 +142,7 @@ export default function ProductionClient(){
       return data.configured;
     }catch{
       if(readVersion!==ledgerReadVersion.current) return false;
+      verifiedWriteReviewSnapshot.current=null;
       // Never keep stale quotes/orders or leave mutation controls enabled when
       // the operator's current production ledger cannot be verified.
       setConfigured(false);
@@ -155,9 +165,17 @@ export default function ProductionClient(){
     // it after a GET, and never persist private production request bodies.
     if(productionWriteHoldPending(safeProductionHoldStorage()))setRequiresWriteReview(true);
     const onStorage=(event:StorageEvent)=>{
-      if(event.key===PRODUCTION_WRITE_HOLD_KEY){
+      if(event.key===PRODUCTION_WRITE_HOLD_KEY||event.key===PRODUCTION_WRITE_EPOCH_KEY){
+        // Another tab may have begun AND confirmed a write. React state from
+        // an earlier GET must not permit same-turn acknowledgement or mutation.
+        ledgerReadVersion.current+=1;
+        verifiedLedgerReadVersion.current=0;
+        verifiedWriteReviewSnapshot.current=null;
+        setRenderedLedgerReadVersion(0);
+        setConfigured(false);
         setRecoveredCreationReceipts(null);
-        if(event.newValue!==null)setRequiresWriteReview(true);
+        setRequiresWriteReview(true);
+        setMessage("Production writes changed in another tab. Refresh current history before acknowledging or exporting.");
       }
     };
     window.addEventListener("storage",onStorage);
@@ -286,8 +304,17 @@ export default function ProductionClient(){
     // are required; this never certifies the previous write did not commit.
     if(!requiresWriteReview||!configured||busy||actionInFlight.current)return;
     if(!hasCurrentVerifiedLedger())return;
-    if(!acknowledgeProductionWriteHold(safeProductionHoldStorage())){
-      setMessage("Unable to clear the pending production review marker. Check protected browser storage and refresh the ledger before making another write.");
+    const storage=safeProductionHoldStorage();
+    const snapshot=verifiedWriteReviewSnapshot.current;
+    if(!snapshot||!productionWriteReviewSnapshotUnchanged(storage,snapshot)){
+      setMessage("Production write history changed after the last verified refresh. Refresh again before acknowledging.");
+      return;
+    }
+    // A remote write may have already confirmed and removed its marker.
+    // In that case explicit review can clear this tab's stale UI hold without
+    // deleting any storage key. A still-present key must match the reviewed UUID.
+    if(snapshot.holdToken!==null&&!acknowledgeProductionWriteHold(storage,snapshot.holdToken)){
+      setMessage("Pending production request changed. Do not clear another write; refresh history and review again.");
       return;
     }
     setRequiresWriteReview(false);
