@@ -197,7 +197,7 @@ test("operator stock privacy and generic backend errors cover every response",()
   assert.ok(source.includes("function respond(body:unknown"));
   assert.ok(source.includes('"cache-control":"private, no-store"'));
   assert.ok(source.includes('pragma:"no-cache"'));
-  assert.equal((source.match(/NextResponse\\.json\\(/g)||[]).length,1);
+  assert.equal(source.split("NextResponse.json(").length-1,1);
   assert.ok(source.includes('error:"Stock operation could not be completed."'));
   assert.ok(!source.includes("error instanceof Error?error.message"));
   assert.ok(source.includes('verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_record_v2"'));
