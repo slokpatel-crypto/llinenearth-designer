@@ -1138,6 +1138,26 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   'disabled={busy||!configured||requiresWriteReview||!loadedRevision',
   'disabled={busy||!configured||requiresWriteReview} defaultValue=""',
 ]);
+// M107: an uncertain SQL mutation may commit even if its browser tab crashes.
+// Require a token-only fail-closed local marker BEFORE POST; only a matching
+// confirmed request or definite prewrite reject may release it automatically.
+requireTokens("src/lib/designer/production-write-hold.ts",[
+  "PRODUCTION_WRITE_HOLD_KEY", "productionWriteHoldPending",
+  "beginProductionWriteHold", "releaseProductionWriteHold",
+  "acknowledgeProductionWriteHold",
+  "storage.getItem(PRODUCTION_WRITE_HOLD_KEY)",
+  "storage.setItem(PRODUCTION_WRITE_HOLD_KEY,token)",
+  "storage.removeItem(PRODUCTION_WRITE_HOLD_KEY)",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "productionWriteHoldPending(window.localStorage)",
+  'window.addEventListener("storage",onStorage)',
+  "event.key===PRODUCTION_WRITE_HOLD_KEY&&event.newValue!==null",
+  "const holdToken=crypto.randomUUID()",
+  "if(!beginProductionWriteHold(window.localStorage,holdToken))",
+  "if(releaseProductionWriteHold(window.localStorage,holdToken))",
+  "if(!acknowledgeProductionWriteHold(window.localStorage))",
+]);
 // M104: a post-write review is meaningless if the operator cannot compare
 // the frozen submitted note/prices with real durable quote and order fields.
 // Never carry recovery tokens or arbitrary request payloads into that panel.
