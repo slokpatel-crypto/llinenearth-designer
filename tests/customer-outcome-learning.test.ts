@@ -188,3 +188,25 @@ test("clean first-fit metric excludes alterations even when reviewers approve ad
   assert.match(ui,/CLEAN FIRST-FIT CASES/);
   assert.doesNotMatch(ui,/APPROVED FIT CASES/);
 });
+
+
+test("operator customer learning gate invalidates stale or malformed reads",()=>{
+  const source=readFileSync("src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx","utf8");
+  const reload=source.slice(source.indexOf("async function load()"),source.indexOf("useEffect(()=>"));
+  const invalidate=reload.indexOf("setVerified(false)");
+  const fetchStart=reload.indexOf('fetch("/api/operator/customer-outcomes"');
+  assert.ok(invalidate>=0&&invalidate<fetchStart,"Clear previous trust before requesting new evidence");
+  for(const reset of ["setOutcomes([]);","setReviews([]);","setPolicies([]);"])
+    assert.ok(reload.includes(reset),"Missing fail-closed reset: "+reset);
+  assert.match(reload,/refreshSequence\.current/);
+  assert.match(reload,/if\(generation!==refreshSequence\.current\)return false/);
+  assert.match(reload,/safeOutcomeReviewEvidence\(record\.outcomes,record\.reviews,record\.policies\)/);
+  assert.match(reload,/if\(typeof record\.configured!=="boolean"\)/);
+  assert.match(reload,/setVerified\(record\.configured\)/);
+  assert.match(reload,/catch\{/);
+  assert.match(source,/!ready\?"UNVERIFIED":summary\.gateComplete\?"MET":"OPEN"/);
+  assert.match(source,/ready&&outcomes\.map/);
+  assert.match(source,/disabled=\{busy\|\|!ready/);
+  assert.match(source,/if\(!refreshed\)return false/);
+  assert.doesNotMatch(source,/Array\.isArray\(data\.reviews\)\?data\.reviews:\[\]/);
+});
