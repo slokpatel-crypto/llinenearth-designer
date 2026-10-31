@@ -2,6 +2,9 @@
  * A pending marker is written BEFORE a potentially durable production POST.
  * Local storage is an operator UI crash/reload safeguard, not SQL idempotency. */
 export const PRODUCTION_WRITE_HOLD_KEY="linen-earth:production:unverified-write:v1";
+// Anonymous last-write generation survives a confirmed marker release, so an
+// in-flight export can detect another tab's completed write, not just its hold.
+export const PRODUCTION_WRITE_EPOCH_KEY="linen-earth:production:write-epoch:v1";
 
 export type ProductionHoldStorage={
   getItem(key:string):string|null;
@@ -34,7 +37,12 @@ export function beginProductionWriteHold(storage:ProductionHoldStorage|null|unde
   try{
     if(storage.getItem(PRODUCTION_WRITE_HOLD_KEY)!==null)return false;
     storage.setItem(PRODUCTION_WRITE_HOLD_KEY,token);
-    return storage.getItem(PRODUCTION_WRITE_HOLD_KEY)===token;
+    if(storage.getItem(PRODUCTION_WRITE_HOLD_KEY)!==token)return false;
+    // Keep this anonymous generation after successful release. A failed epoch
+    // write leaves the hold in place and MUST NOT authorize a production POST.
+    storage.setItem(PRODUCTION_WRITE_EPOCH_KEY,token);
+    return storage.getItem(PRODUCTION_WRITE_HOLD_KEY)===token
+      && storage.getItem(PRODUCTION_WRITE_EPOCH_KEY)===token;
   }catch{return false;}
 }
 
@@ -58,4 +66,26 @@ export function acknowledgeProductionWriteHold(storage:ProductionHoldStorage|nul
     return typeof token==="string"&&token.length>0
       &&releaseProductionWriteHold(storage,token);
   }catch{return false;}
+}
+
+/** Capture a stable, privacy-safe generation only when there is no pending
+ * cross-tab write. The empty string represents a pre-upgrade clean browser.
+ * Invalid or inaccessible storage fails closed. */
+export function captureProductionWriteEpoch(storage:ProductionHoldStorage|null|undefined):string|null{
+  if(!storage)return null;
+  try{
+    if(storage.getItem(PRODUCTION_WRITE_HOLD_KEY)!==null)return null;
+    const epoch=storage.getItem(PRODUCTION_WRITE_EPOCH_KEY);
+    if(epoch===null)return "";
+    return /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(epoch)
+      ?epoch.toLowerCase():null;
+  }catch{return null;}
+}
+
+/** A packet may be downloaded only if no other tab began a production write
+ * (even one already confirmed) since its fresh ledger read started. */
+export function productionWriteEpochUnchanged(
+  storage:ProductionHoldStorage|null|undefined, captured:string|null,
+):boolean{
+  return captured!==null&&captureProductionWriteEpoch(storage)===captured;
 }
