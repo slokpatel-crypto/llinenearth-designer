@@ -471,7 +471,7 @@ export default function ProductionClient(){
         <p>Submitted note: {pendingWriteReview.note||"(empty / unchanged for status updates)"}</p>
         <small>Recovery tokens and other private request fields are never displayed or saved in this summary.</small>
       </div>}
-      <button disabled={busy||actionInFlight.current} onClick={()=>void load()}>Refresh production history</button>
+
       <button disabled={busy||actionInFlight.current} onClick={()=>void lookupPendingCreationReceipt()}>Find original quote/order receipt by request ID</button>
       {recoveredCreationReceipts!==null&&<div className="productionRecord" aria-label="Original committed creation receipts">
         {recoveredCreationReceipts.length>0
@@ -486,6 +486,13 @@ export default function ProductionClient(){
       <p className="productionMessage" role="status">Some optional production evidence services are not installed. Missing history is unverified, not proof that no inspection, customer outcome or design lineage exists.</p>}
 
 
+    {/* Verified history can be refreshed in normal operation as well as while
+        a lost-write acknowledgement is held for manual inspection. This also
+        reloads the current SQL QC hint, never assuming the previous one. */}
+    <div className="productionRecordsToolbar">
+      <button type="button" disabled={busy||actionInFlight.current}
+        onClick={()=>void load()}>Refresh production history</button>
+    </div>
     <section className="productionRecords">
       <article>
         <div><span>QUOTES</span><h2>Quote history.</h2></div>

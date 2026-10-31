@@ -1820,6 +1820,35 @@ requireTokens("tests/production-nonblocking-qc-hint.test.ts",[
   "readVersion===ledgerReadVersion", "production_order_deliver_idempotent",
 ]);
 
+// M120: the UI order records must stay visible while the optional QC hint
+// stalls, ignore an old positive hint after a newer 503 and only expose a
+// delivery OPTION on a fresh matching synthetic read (write SQL still rules).
+requireTokens("scripts/verify-production-qc-hint-browser.cjs",[
+  "GITHUB_ACTIONS", "LINEN_BROWSER_QA_RUNTIME",
+  "firstIntercepted", "firstRelease", 'status:503',
+  "Refresh production history", "stale positive answer",
+  'option[value="delivered"]', "deliveryPosted:false",
+  "for(const width of [390,1440])",
+]);
+requireTokens("tests/production-qc-hint-browser-contract.test.ts",[
+  "M120 real browser regression", "chromium",
+  "M120 production UI browser check",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  'className="productionRecordsToolbar"',
+  "onClick={()=>void load()}>Refresh production history",
+]);
+requireTokens("src/app/operator/production/production.css",[
+  ".productionRecordsToolbar button", "min-height:44px",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-qc-hint-browser.cjs",
+]);
+requireTokens(".github/workflows/deep-engine-non3d.yml",[
+  "node scripts/verify-production-qc-hint-browser.cjs",
+]);
+
+
 requireTokens("src/app/api/operator/production/delivery-eligibility/route.ts",[
   "if(!await verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value))", "production_delivery_eligibility_list",
   "parseProductionDeliveryEligibility(raw)", 'cache:"no-store"', "private, no-store",

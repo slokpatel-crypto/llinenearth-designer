@@ -66,6 +66,7 @@ jobs:
           node scripts/verify-share-response-headers.cjs
           node scripts/verify-operator-private-response-headers.cjs
           node scripts/verify-production-delivery-eligibility-private-http.cjs
+          node scripts/verify-production-qc-hint-browser.cjs
           node scripts/verify-deep-engine-fabric-discovery.cjs
           node scripts/verify-measurement-recovery.cjs
           node scripts/verify-designer-enquiry.cjs
