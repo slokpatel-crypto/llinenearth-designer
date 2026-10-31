@@ -6,7 +6,7 @@ import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/des
 import { buildVerifiedProductionHandoff } from "@/lib/designer/production-handoff";
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet";
-import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
+import { ORDER_TRANSITIONS, canTransitionQuote, type ProductionOrderStatus, type ProductionQuoteStatus } from "@/lib/designer/production-state";
 import {verifiedProductionMutationReadback} from "@/lib/designer/production-desk-readback";
 import {isCertainProductionPrewriteRejection} from "@/lib/designer/production-post-retry";
 import {productionWriteReviewSummary, type ProductionWriteReviewSummary} from "@/lib/designer/production-review-summary";
@@ -373,7 +373,7 @@ export default function ProductionClient(){
           <div className="productionRecordActions">
             {item.status==="draft"&&<button disabled={busy||!configured||requiresWriteReview} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"sent"},"Quote marked sent.")}>Mark sent</button>}
             {item.status==="sent"&&<button disabled={busy||!configured||requiresWriteReview} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"accepted"},"Quote accepted.")}>Accept</button>}
-            {item.status!=="void"&&<button disabled={busy||!configured||requiresWriteReview} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"void"},"Quote voided.")}>Void</button>}
+            {canTransitionQuote(item.status as ProductionQuoteStatus,"void")&&<button disabled={busy||!configured||requiresWriteReview} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"void"},"Quote voided.")}>Void</button>}
           </div>
         </section>)}
       </article>

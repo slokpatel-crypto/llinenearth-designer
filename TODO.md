@@ -1,3 +1,10 @@
+## 2026-10-31 — M106: integrate latest M105 fresh packet + canonical quote controls
+- [x] Reconcile independent M105 drafts on M104 #605: packet freshness #606 and terminal quote Void #607. The #606 head advanced from `0920f43e0f3c93c4447489209f55baaf8f4d6d05` to `92e2d48d3203c277bf7b014a146bbb5ffbfcdf52` after its own old cached-packet test repairs. Start this integrated draft from the **newer** exact #606 head, not a stale ancestor; never override either original branch.
+- [x] Keep the fresh no-store authenticated/verified production packet export and its strengthened J5 Node tests; add SQL-aligned `canTransitionQuote` for Void visibility and shared-state/SQL/UI test from sibling #607.
+- [x] Add combined static release assertions for both packet freshness and accepted-quote terminal state. Original model, deterministic no-required-paid-AI core and uncertain-write human review hold unchanged.
+- [ ] Verify final integrated M106 head quality/Node, engine/preview/release, optimized Next build, authenticated localhost HTTP, actual 390/768/1440 browser, independent Non-3D and disposable PostgreSQL. Parent and sibling evidence cannot certify integration.
+- [ ] Real stock metres/rolls, customer/operator consent, physical fit/QC, native Blender, novice beta/first 10 deliveries and owner privacy/security/schema/main merge/production deploy approval remain separate blocked gates. No live SQL, new dependency, merge or deploy.
+
 ## 2026-10-31 — M105: do not export a production packet from stale or uncertain records
 - [x] J5/T5 defect: packet export used previously displayed React quote/order arrays and remained enabled during the M103 ambiguous-write hold; another operator or a lost acknowledgement could make the exported financial/status packet outdated.
 - [x] Require a fresh authenticated no-store production GET and full independent ledger-envelope validation before selecting exact linked quote/order; fail closed on HTTP, malformed/unconfigured history or ambiguous matches. Hold the existing synchronous action lock through packet generation, and disable export while an uncertain POST awaits human review.
