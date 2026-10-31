@@ -10,7 +10,7 @@ if(new URL(base).hostname!=="127.0.0.1") throw Error("Loopback only");
       const response=await fetch(base+endpoint,{
         method,redirect:"manual",cache:"no-store",
         ...(method==="POST"?{
-          headers:{"content-type":"application/json","origin":base},
+          headers:{"content-type":"application/json"},
           body:JSON.stringify({action:"probe-no-auth"}),
         }:{}),
       });
