@@ -12,6 +12,15 @@ const BETA_LIST_PATH="/rest/v1/rpc/launch_beta_attempt_list";
 const CHECKLIST_LIST_PATH="/rest/v1/rpc/launch_checklist_event_list";
 const QUOTE_LIST_PATH="/rest/v1/rpc/production_quote_list";
 const ORDER_LIST_PATH="/rest/v1/rpc/production_order_list";
+const ELIGIBILITY_LIST_PATH="/rest/v1/rpc/production_delivery_eligibility_list";
+// Only the local GitHub Actions fake server can switch this. NEVER imported or
+// used to synthesize actual physical QC, order delivery or supplier receipts.
+let ciEligibilityMode="absent";
+const CI_ELIGIBILITY_EXAMPLE=Object.freeze({
+  order_id:"123e4567-e89b-42d3-a456-426614174051",
+  revision_id:"CI-LOCKED-DESIGN-M117",recipe_hash:"f".repeat(64),
+  status:"ready",updated_at:"2026-10-31T18:59:00Z",eligible:true,
+});
 const DELIVERY_EVIDENCE_LIST_PATH="/rest/v1/rpc/production_delivery_evidence_list";
 const DELIVERY_FIRST_TEN_PATH="/rest/v1/rpc/production_first_ten_delivery_audit";
 const QC_LIST_PATH="/rest/v1/rpc/finished_garment_qc_list";
@@ -225,13 +234,30 @@ function send(res,status,payload){
 }
 async function handle(req,res){
   if(req.method==="GET"&&req.url==="/__fixture/health") return send(res,200,{ciFixture:true,physicalEvidence:false});
+  // A private, loopback-only test switch. Production never has this route.
+  // Deliberately uses a CI-only secret so public/browser requests cannot
+  // alter fake service responses while a test is running.
+  if(req.method==="POST"&&req.url==="/__fixture/eligibility-mode"){
+    if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
+    let raw="";
+    for await(const chunk of req){
+      raw+=chunk.toString("utf8");
+      if(Buffer.byteLength(raw)>128)return send(res,413,{error:"CI mode too large"});
+    }
+    let mode;
+    try{mode=JSON.parse(raw).mode;}catch{return send(res,400,{error:"Invalid CI mode"});}
+    if(!["absent","valid","poisoned"].includes(mode))
+      return send(res,400,{error:"Invalid CI eligibility mode"});
+    ciEligibilityMode=mode;
+    return send(res,200,{ciFixture:true,mode});
+  }
   if(req.method==="GET"&&req.url?.startsWith(METADATA_PATH+"?")){
     const rows=metadataRowsFor(req.method,req.url,req.headers.apikey);
     if(rows===null||req.headers.prefer!=="count=exact") return send(res,403,{error:"Not a CI metadata fixture request"});
     res.writeHead(200,{"content-type":"application/json","cache-control":"private, no-store","content-range":"*/0"});
     return res.end(JSON.stringify(rows));
   }
-  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,DELIVERY_EVIDENCE_LIST_PATH,DELIVERY_FIRST_TEN_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,LEARNING_CONTEXT_LIST_PATH,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH,OUTCOME_REVIEW_RECORD_PATH,OUTCOME_POLICY_RECORD_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
+  if(req.method!=="POST"||![ELIGIBILITY_LIST_PATH,STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,DELIVERY_EVIDENCE_LIST_PATH,DELIVERY_FIRST_TEN_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,LEARNING_CONTEXT_LIST_PATH,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH,OUTCOME_REVIEW_RECORD_PATH,OUTCOME_POLICY_RECORD_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
   if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
   let raw="";
   try{
@@ -240,6 +266,16 @@ async function handle(req,res){
       if(Buffer.byteLength(raw)>8192) return send(res,413,{error:"CI fixture request too large"});
     }
     const payload=JSON.parse(raw);
+    if(req.url===ELIGIBILITY_LIST_PATH){
+      if(!payload||typeof payload!=="object"||Array.isArray(payload)||
+         payload.p_limit!==100||Object.keys(payload).length!==1)
+        return send(res,400,{error:"Invalid CI eligibility read request"});
+      if(ciEligibilityMode==="absent") return send(res,404,{error:"CI SQL RPC not installed"});
+      if(ciEligibilityMode==="poisoned")
+        return send(res,200,[{...CI_ELIGIBILITY_EXAMPLE,
+          inspection_reference:"DO-NOT-LEAK-CI-QC-PROVENANCE"}]);
+      return send(res,200,[CI_ELIGIBILITY_EXAMPLE]);
+    }
     if(req.url===QUOTE_LIST_PATH||req.url===ORDER_LIST_PATH){
       // The production desk uses 100-row pages. Delivery evidence uses its
       // own 500-row browse contract; keep the synthetic shapes independent.
