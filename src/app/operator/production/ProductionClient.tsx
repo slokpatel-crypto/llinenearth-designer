@@ -10,6 +10,7 @@ import { ORDER_TRANSITIONS, canTransitionQuote, type ProductionOrderStatus, type
 import {verifiedProductionMutationReadback} from "@/lib/designer/production-desk-readback";
 import {isCertainProductionPrewriteRejection} from "@/lib/designer/production-post-retry";
 import {isCurrentVerifiedProductionLedger} from "@/lib/designer/production-ledger-generation";
+import {isCurrentVerifiedOperatorLock} from "@/lib/designer/verified-operator-lock";
 import {
   PRODUCTION_WRITE_HOLD_KEY,productionWriteHoldPending,beginProductionWriteHold,
   releaseProductionWriteHold,acknowledgeProductionWriteHold,readProductionWriteHoldKey,
@@ -168,7 +169,7 @@ export default function ProductionClient(){
     if(!configured||requiresWriteReview) return;
     if(!hasCurrentVerifiedLedger()) return;
     if((body.action==="create_quote"||body.action==="create_order")
-      &&(!loadedRevision||verifiedLockedRevision.current!==loadedRevision))return;
+      &&(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current)))return;
     // Persist an anonymous uncertainty marker *before* the network request:
     // a crash or navigation while the SQL transaction commits must still
     // leave this desk blocked on the next page load.
@@ -343,20 +344,20 @@ export default function ProductionClient(){
   }
 
   async function exportHandoff(){
-    if(!loadedRevision||verifiedLockedRevision.current!==loadedRevision||busy||actionInFlight.current)return;
+    if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current)||busy||actionInFlight.current)return;
     try{
       const handoff=await buildVerifiedProductionHandoff(loadedRevision);
-      if(verifiedLockedRevision.current!==loadedRevision)throw new Error("locked design changed during handoff export.");
+      if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current))throw new Error("locked design changed during handoff export.");
       download(`linen-earth-production-handoff-${handoff.designRevisionId.toLowerCase()}.json`,
         "application/json",JSON.stringify(handoff,null,2));
     }catch(error){exportError(error);}
   }
 
   async function exportTechPack(){
-    if(!loadedRevision||verifiedLockedRevision.current!==loadedRevision||busy||actionInFlight.current)return;
+    if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current)||busy||actionInFlight.current)return;
     try{
       const handoff=await buildVerifiedProductionHandoff(loadedRevision);
-      if(verifiedLockedRevision.current!==loadedRevision)throw new Error("locked design changed during tech-pack export.");
+      if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current))throw new Error("locked design changed during tech-pack export.");
       download(techPackFilename(handoff),"text/html;charset=utf-8",buildTailorTechPackHtml(handoff));
     }catch(error){exportError(error);}
   }
@@ -365,7 +366,7 @@ export default function ProductionClient(){
     // An uncertain mutation may be missing from a capped history page. Never
     // export a production-status packet while the operator review hold is on.
     if(!loadedRevision||!configured||requiresWriteReview||busy||actionInFlight.current) return;
-    if(verifiedLockedRevision.current!==loadedRevision)return;
+    if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current))return;
     if(!hasCurrentVerifiedLedger()) return;
     const packetLedgerVersion=ledgerReadVersion.current;
     actionInFlight.current=true;
@@ -397,7 +398,7 @@ export default function ProductionClient(){
         ||ledgerReadVersion.current!==packetLedgerVersion){
         throw new Error("production history changed during packet export; refresh and review before retrying.");
       }
-      if(verifiedLockedRevision.current!==loadedRevision)throw new Error("locked design changed during packet export.");
+      if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current))throw new Error("locked design changed during packet export.");
       download(`linen-earth-production-packet-${packet.revisionId.toLowerCase()}.json`,
         "application/json",JSON.stringify(packet,null,2));
     }catch(error){exportError(error);}
