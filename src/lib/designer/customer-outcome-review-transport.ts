@@ -38,8 +38,10 @@ const MAX_EVIDENCE_CLOCK_SKEW_MS=5*60*1000;
 function date(x:unknown,observedAt:number):string{
   const s=str(x,64);
   const instant=parseProductionEvidenceTimestamp(s);
-  if(!Number.isFinite(instant)||instant>observedAt+MAX_EVIDENCE_CLOCK_SKEW_MS)
-    throw new Error("Invalid or future-dated customer learning timestamp.");
+  if(!Number.isFinite(instant))
+    throw new Error("Invalid customer learning timestamp.");
+  if(instant>observedAt+MAX_EVIDENCE_CLOCK_SKEW_MS)
+    throw new Error("Future-dated customer learning timestamp.");
   return s;
 }
 function exactContext(x:unknown){
