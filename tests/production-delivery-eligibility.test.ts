@@ -15,6 +15,12 @@ test("M114 advisory SQL proof requires literal schema, booleans and bounded uniq
   const good=parseProductionDeliveryEligibility([row]);
   assert.equal(good?.length,1);
   assert.equal(hasVerifiedSqlDeliveryEligibility(good!,order),true);
+  // PostgreSQL SHA-256 hex casing is immaterial, but malformed or coerced
+  // identities must never turn an advisory hint into a delivery action.
+  assert.equal(hasVerifiedSqlDeliveryEligibility(good!,{...order,recipe_hash:order.recipe_hash.toUpperCase()}),true);
+  for(const malformedHash of [null,42,["a".repeat(64)],"a".repeat(63),"g".repeat(64)]) {
+    assert.equal(hasVerifiedSqlDeliveryEligibility(good!,{...order,recipe_hash:malformedHash}),false);
+  }
   assert.deepEqual(parseProductionDeliveryEligibility([]),[]);
   for(const invalid of [
     null,{},[null],[false],[{...row,eligible:"true"}],
