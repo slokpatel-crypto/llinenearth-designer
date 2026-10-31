@@ -329,10 +329,16 @@ test("stock SQL integration runs historical stock-only migration chain, not just
     "20261031_stock_reservation_concurrency_provenance.sql",
     "20261031_stock_record_exact_retry.sql",
   ];
+  // The fixture mode loads the newest v3 migration BEFORE the historical
+  // loop. Check order only INSIDE that chronological loop, not across modes.
+  const listStart=script.indexOf("for migration in ");
+  const listEnd=script.indexOf("\n  do",listStart);
+  assert.ok(listStart>=0&&listEnd>listStart,"Historical migration loop is required");
+  const historicalChain=script.slice(listStart,listEnd);
   let previous=-1;
   for(const migration of ordered){
-    const index=script.indexOf("supabase/migrations/"+migration);
-    assert.ok(index>previous, `Missing/misordered actual migration: ${migration}`);
+    const index=historicalChain.indexOf("supabase/migrations/"+migration);
+    assert.ok(index>previous, `Missing/misordered historical stock migration: ${migration}`);
     previous=index;
   }
   assert.ok(script.includes('run_sql_file scripts/ci/stock-record-historical-assertions.sql'));
