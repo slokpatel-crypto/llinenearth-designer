@@ -1581,6 +1581,27 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
 ]);
 
  
+// M133: A React state update is not a synchronous safety barrier. An in-flight
+// production history refresh must immediately revoke all mutation/review and
+// packet permissions, including within the same browser event turn.
+requireTokens("src/lib/designer/production-ledger-generation.ts",[
+  "isCurrentVerifiedProductionLedger", "Number.isSafeInteger(latestReadVersion)",
+  "verifiedReadVersion === latestReadVersion",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "const verifiedLedgerReadVersion=useRef(0)",
+  "verifiedLedgerReadVersion.current=0",
+  "verifiedLedgerReadVersion.current=data.configured?readVersion:0",
+  "if(!hasCurrentVerifiedLedger()) return;",
+  "if(!hasCurrentVerifiedLedger())return;",
+  "const packetLedgerVersion=ledgerReadVersion.current",
+  "ledgerReadVersion.current!==packetLedgerVersion",
+]);
+requireTokens("tests/production-ledger-generation.test.ts",[
+  "refresh started before React commits disabled controls",
+  "operator review, mutations and packet export",
+]);
+
 // M80: Human customer outcome/review/policy ledgers must never forward raw
 // service-role fields or make malformed latest evidence count as accepted.
 requireTokens("src/lib/designer/customer-outcome-review-transport.ts",[
