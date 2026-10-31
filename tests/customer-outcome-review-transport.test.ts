@@ -113,3 +113,47 @@ test("duplicate durable evidence IDs cannot inflate the human learning threshold
     [{...outcome,outcome_id:"  "}],[approved],[policy],
   ),/Duplicate or missing customer outcome evidence ID/);
 });
+
+
+test("human-learning transport rejects impossible calendar timestamps instead of Date.parse rollover",()=>{
+  for(const invalid of [
+    "2026-02-31T03:00:00Z","2025-02-29T03:00:00Z",
+    "2026-04-31T03:00:00Z","2026-13-01T03:00:00Z",
+    "2026-10-31T25:00:00Z","2026-10-31T03:61:00Z",
+    "2026-10-31T03:00:00","2026-10-31 03:00:00Z",
+  ]){
+    assert.throws(()=>safeOutcomeReviewEvidence(
+      [{...outcome,created_at:invalid}],[review],[policy],
+    ),/Invalid customer learning timestamp/);
+    assert.throws(()=>safeOutcomeReviewEvidence(
+      [outcome],[{...review,created_at:invalid}],[policy],
+    ),/Invalid customer learning timestamp/);
+    assert.throws(()=>safeOutcomeReviewEvidence(
+      [outcome],[review],[{...policy,created_at:invalid}],
+    ),/Invalid customer learning timestamp/);
+  }
+  const leap="2024-02-29T03:00:00+00:00";
+  const good=safeOutcomeReviewEvidence(
+    [{...outcome,created_at:leap}],
+    [{...review,created_at:"2024-02-29T03:00:01Z"}],
+    [{...policy,created_at:leap}],
+  );
+  assert.equal(good.outcomes[0].created_at,leap);
+});
+
+test("human review cannot claim customer feedback recorded later than the review",()=>{
+  assert.throws(()=>safeOutcomeReviewEvidence(
+    [outcome],[{...review,created_at:"2026-10-31T02:59:59.999Z"}],[policy],
+  ),/Customer review predates the recorded outcome/);
+  assert.throws(()=>safeOutcomeReviewEvidence(
+    [{...outcome,created_at:"2026-10-31T08:30:00+05:30"}],
+    [{...review,created_at:"2026-10-31T02:59:59Z"}],[policy],
+  ),/Customer review predates the recorded outcome/);
+  assert.doesNotThrow(()=>safeOutcomeReviewEvidence(
+    [outcome],[{...review,created_at:"2026-10-31T08:30:00+05:30"}],[policy],
+  ),"Equal instants with different offsets are a valid transaction boundary");
+  assert.doesNotThrow(()=>safeOutcomeReviewEvidence(
+    [outcome],[{...review,outcome_id:"123e4567-e89b-42d3-a456-426614174099",
+      created_at:"2026-10-01T01:00:00Z"}],[policy],
+  ),"Older reviews may refer to outcomes outside the bounded latest-1000 page");
+});
