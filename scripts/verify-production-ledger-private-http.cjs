@@ -3,7 +3,7 @@
 // supplier/customer/operator records are never queried or altered.
 const assert=require("node:assert/strict");
 const {createHmac}=require("node:crypto");
-const {PRODUCTION_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH}=require("./ci-verified-stock-fixture.cjs");
+const {PRODUCTION_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LISTS,QC_LIST_PATH}=require("./ci-verified-stock-fixture.cjs");
 const base=new URL(process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000");
 if(process.env.GITHUB_ACTIONS!=="true"||process.env.CI!=="true")
   throw Error("Private production ledger HTTP tests run only in GitHub Actions CI.");
@@ -80,9 +80,18 @@ async function main(){
   assert.equal(Object.hasOwn(data.quotes[0].line_items[0],"secret_factory_cost"),false);
   assert.doesNotMatch(JSON.stringify(data),/DO-NOT-LEAK-CI-/);
   assert.deepEqual(data.optionalEvidenceSources,{
-    qcInstalled:false,customerOutcomesInstalled:false,learningContextInstalled:false,
-  },"Missing optional QC cannot create a false verified delivery");
-  console.log("Signed operator real HTTP production ledger PASS; untrusted quote/order/line-item extras filtered, private session required.");
+    qcInstalled:true,customerOutcomesInstalled:false,learningContextInstalled:false,
+  },"Synthetic rework is not an approved physical inspection");
+  assert.equal(data.qcInspections.length,1);
+  assert.equal(data.qcInspections[0].decision,"rework");
+  assert.equal(data.qcInspections[0].inspection_id,QC_LISTS[QC_LIST_PATH][0].inspection_id);
+  assert.equal(data.qcInspections[0].checks.recipe_match,false);
+  assert.equal(Object.hasOwn(data.qcInspections[0],"private_customer_phone"),false);
+  assert.deepEqual(Object.keys(data.qcInspections[0]).sort(),[
+    "inspection_id","order_id","revision_id","recipe_hash","decision",
+    "checks","defects","note","inspector","inspection_reference","created_at",
+  ].sort());
+  console.log("Signed operator real HTTP production ledger PASS; untrusted quote/order/QC extras filtered, private session required.");
   console.log("CI fixture only; no genuine supplier inventory, user data, operator approval or production deployment.");
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
