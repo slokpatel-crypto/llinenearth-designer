@@ -1135,7 +1135,9 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "Production writes paused for manual review",
   "I reviewed history — enable writes",
   'disabled={busy||!configured||requiresWriteReview||!canQuote}',
-  'disabled={busy||!configured||requiresWriteReview||!loadedRevision',
+  'disabled={busy||!configured||requiresWriteReview||!lockedOrderMatches}',
+  'const lockedOrderMatches=Boolean(loadedRevision)&&order.revisionId===loadedRevision?.revisionId',
+  'sameProductionRecipeHash(order.recipeHash,loadedRevision?.recipeHash)',
   'disabled={busy||!configured||requiresWriteReview} defaultValue=""',
 ]);
 // M109: a lost acknowledgement or browser crash must be reconcilable by
