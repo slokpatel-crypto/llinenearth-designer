@@ -56,7 +56,7 @@ test("M128 installed-schema catalog audit verifies all three triggers and client
   const plan=readFileSync("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md","utf8");
   assert.match(plan,/20261118_production_request_receipts_immutable\.sql/);
   // Subsequent reviewed tail migrations extend the same numbered plan.
-  const entries=[...plan.matchAll(/^\\| \\d+ \\| \\x60(?:20\\d{6}_[^\\x60]+)\\x60 \\|/gm)];
+  const entries=plan.split("\n").filter(line=>/^\| \d+ \| `20\d{6}_/.test(line));
   const claimed=plan.match(/Apply the ([a-z]+) migrations/);
   const numberWords:Record<string,number>={nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15};
   assert.ok(claimed&&numberWords[claimed[1]]===entries.length,
