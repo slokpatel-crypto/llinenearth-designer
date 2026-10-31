@@ -34,6 +34,7 @@ run_file scripts/ci/production-order-status-idempotency-assertions.sql
 run_file supabase/migrations/20261110_delivery_qc_sql_gate.sql
 run_file scripts/ci/m112-delivery-qc-gate-assertions.sql
 run_file supabase/migrations/20261111_delivery_idempotency.sql
+run_file scripts/ci/m112-delivery-idempotency-assertions.sql
 run_file scripts/ci/production-create-idempotency-assertions.sql
 run_file scripts/ci/production-creation-receipt-lookup-assertions.sql
 
@@ -121,4 +122,32 @@ if [[ $(tr -d '\r\n' < "$tmpdir/os1") != "t" ]] ||
    [[ $(query "select count(*) from private.production_order_status_request_receipts where order_id='$status_order'::uuid") != "1" ]]; then
   echo "Concurrent same-key order status replay duplicated a transition" >&2; exit 1
 fi
-echo "TITAN isolated PostgreSQL quote/order create and non-delivery status idempotency PASS"
+# Two independent PostgreSQL sessions replay the SAME delivered request UUID.
+# They must serialize under the per-request advisory transaction lock, with
+# only one delivery event, one private receipt and one order transition.
+delivery_order=$(query "select public.production_order_create('LE-M112-DELIVERY-RACE',repeat('a',64),null,'');")
+query "select public.production_order_set_status('$delivery_order'::uuid,'cloth_reserved','');" >/dev/null
+query "select public.production_order_set_status('$delivery_order'::uuid,'cutting','');" >/dev/null
+query "select public.production_order_set_status('$delivery_order'::uuid,'stitching','');" >/dev/null
+query "select public.production_order_set_status('$delivery_order'::uuid,'ready','');" >/dev/null
+query "select public.finished_garment_qc_record_v2('$delivery_order'::uuid,'approved',
+  '{\"recipe_match\":true,\"fabric_match\":true,\"measurement_check\":true,\"pattern_alignment\":true,\"stitching_finish\":true,\"clean_damage_free\":true}'::jsonb,
+  '[]'::jsonb,'','CI inspector','CI-M112-RACE');" >/dev/null
+delivery_call="select public.production_order_deliver_idempotent(
+  '123e4567-e89b-42d3-a456-426614174343'::uuid,
+  '$delivery_order'::uuid,'CI delivered'
+);"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$db" -Atc "$delivery_call" >"$tmpdir/d1" 2>"$tmpdir/d1.err" &
+pid1=$!
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$db" -Atc "$delivery_call" >"$tmpdir/d2" 2>"$tmpdir/d2.err" &
+pid2=$!
+wait "$pid1"
+wait "$pid2"
+if [[ $(tr -d '\r\n' < "$tmpdir/d1") != "t" ]] ||
+   [[ $(tr -d '\r\n' < "$tmpdir/d2") != "t" ]] ||
+   [[ $(query "select count(*) from private.production_order_events where order_id='$delivery_order'::uuid and status='delivered'") != "1" ]] ||
+   [[ $(query "select count(*) from private.production_delivery_request_receipts where order_id='$delivery_order'::uuid") != "1" ]] ||
+   [[ $(query "select status from private.production_orders where order_id='$delivery_order'::uuid") != "delivered" ]]; then
+  echo "Concurrent same-key delivery replay duplicated or lost a transition" >&2; exit 1
+fi
+echo "TITAN isolated PostgreSQL quote/order create, statuses and M112 delivery replay PASS"
