@@ -1,0 +1,37 @@
+name: TITAN Production Creation — Disposable PostgreSQL
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-idempotency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify actual quote/order SQL creation retries and concurrency
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          bash scripts/ci/verify-production-create-idempotency.sh "$PG_CONTAINER"
+      - name: Preserve disposable SQL diagnostics on failure
+        if: failure()
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          if [ -n "$PG_CONTAINER" ]; then docker logs "$PG_CONTAINER" | tail -n 120; fi
