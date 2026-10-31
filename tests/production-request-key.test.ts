@@ -28,8 +28,8 @@ test("every privileged quote/order creation uses exact atomic request-key RPC",(
     "Both creates, both statuses and read-only committed receipt lookup validate the same literal UUID");
   assert.match(route,/rpc<string>\("production_quote_create_idempotent",\{/);
   assert.match(route,/rpc<string>\("production_order_create_with_context_idempotent",\{/);
-  assert.equal((route.match(/p_request_key:requestKey/g)||[]).length,4,
-    "Both atomic creates and both atomic status transitions pass the original key to SQL");
+  assert.equal((route.match(/p_request_key:requestKey/g)||[]).length,5,
+    "Both atomic creates, quote status, non-delivery status and delivery use the original key in SQL");
   assert.doesNotMatch(route,/rpc<string>\("production_quote_create",\{/);
   assert.doesNotMatch(route,/rpc<string>\("production_order_create_with_context",\{/);
   assert.match(migration,/primary key\(action,request_key\)/);

@@ -41,7 +41,7 @@ test("J5: uppercase PostgreSQL UUIDs cannot hide a newer same-order rework",()=>
   assert.equal(hasVerifiedLatestDeliveryQc([earlier,matching],orderId,500),false);
 });
 
-test("J5: uppercase SQL order UUID still resolves the exact current ready order",()=>{
+test("J5: database delivery uses canonical UUID identity, not raw-cased client-page joins",()=>{
   const order={order_id:orderId.toUpperCase(),revision_id:"locked-revision-001",
     recipe_hash:"a".repeat(64),status:"ready",created_at:"2026-10-29T09:00:00.000Z"};
   const inspection={...approved,inspection_id:"123e4567-e89b-42d3-a456-426614174111",
@@ -49,11 +49,13 @@ test("J5: uppercase SQL order UUID still resolves the exact current ready order"
   assert.equal(hasVerifiedLatestDeliveryQc([inspection],orderId,500),true);
   assert.equal(hasVerifiedDeliveryQcOrderLineage([inspection],order),true);
   const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
-  const delivered=source.split('if(status==="delivered")')[1]?.split('const updated=await rpc<unknown>("production_order_set_status"')[0]||"";
-  assert.match(delivered,/candidateOrders\.find\(row=>verifiedOperatorProductionCreateId\(row\.order_id\)===orderId\)/,
-    "the typed SQL row must be joined by canonical UUID, not raw hex casing");
-  assert.doesNotMatch(delivered,/candidateOrders\.find\(row=>row\.order_id===orderId\)/);
-  assert.match(delivered,/hasVerifiedDeliveryQcOrderLineage\(inspections,currentOrder\)/);
+  const sql=readFileSync("supabase/migrations/20261110_delivery_qc_sql_gate.sql","utf8");
+  const delivered=source.split('if(status==="delivered"){')[1]?.split('const updated=await rpc<unknown>("production_order_set_status_idempotent"')[0]||"";
+  assert.match(delivered,/production_order_deliver_idempotent/);
+  assert.match(delivered,/p_order_id:orderId/);
+  assert.match(sql,/where order_id=p_order_id for update/);
+  assert.match(sql,/v_latest_recipe is distinct from v_order_recipe/);
+  assert.doesNotMatch(delivered,/candidateOrders\.find|row\.order_id===orderId/);
 });
 
 test("J5: malformed or coerced QC provenance cannot become a delivery approval",()=>{
@@ -127,28 +129,31 @@ test("J5: only a physical inspection for the current ready order and immutable r
     "unrelated historical QC does not change the current order's recipe");
 });
 
-test("privileged delivery status uses latest typed QC gate before status RPC",()=>{
+test("privileged delivery uses atomic SQL gate, not a capped browser-page preflight",()=>{
   const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
-  const delivered=source.split('if(status==="delivered")')[1]?.split('const updated=await rpc<unknown>("production_order_set_status"')[0]||"";
-  assert.match(source,/import \{ hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage \} from "@\/lib\/designer\/delivery-qc-approval"/);
-  assert.match(delivered,/rpc<unknown>\("finished_garment_qc_list",\{p_limit:500\}\)/);
-  assert.match(delivered,/if\(!hasVerifiedLatestDeliveryQc\(inspections,orderId,500\)\)/);
-  assert.match(delivered,/rpc<unknown>\("production_order_list",\{p_limit:150\}\)/);
-  assert.match(delivered,/validProductionQcOrderRows\(candidateOrders\)/);
-  assert.match(delivered,/candidateOrders\.length>=150/);
-  assert.match(delivered,/hasVerifiedDeliveryQcOrderLineage\(inspections,currentOrder\)/);
-  assert.ok(delivered.includes("if(!hasVerifiedDeliveryQcOrderLineage(inspections,currentOrder))"),"lineage guard must precede status mutation");
-  assert.doesNotMatch(delivered,/inspections\.find/);
+  const delivered=source.split('if(status==="delivered"){')[1]?.split('const updated=await rpc<unknown>("production_order_set_status_idempotent"')[0]||"";
+  const gate=readFileSync("supabase/migrations/20261110_delivery_qc_sql_gate.sql","utf8");
+  const receipt=readFileSync("supabase/migrations/20261111_delivery_idempotency.sql","utf8");
+  assert.match(delivered,/rpc<unknown>\("production_order_deliver_idempotent",\{/);
+  assert.match(delivered,/p_request_key:requestKey,p_order_id:orderId,p_note:note/);
+  assert.doesNotMatch(delivered,/finished_garment_qc_list|production_order_list|candidateOrders|hasVerifiedLatestDeliveryQc/);
+  assert.match(gate,/where order_id=p_order_id for update/);
+  assert.match(gate,/ambiguous latest QC inspection/);
+  assert.match(gate,/six exact passing physical QC checks/);
+  assert.match(gate,/v_latest_revision is distinct from v_order_revision/);
+  assert.match(receipt,/public\.production_order_set_status\(p_order_id,'delivered',p_note\)/);
+  assert.match(receipt,/pg_advisory_xact_lock/);
   assert.doesNotMatch(delivered,/String\(latest\.(?:inspector|inspection_reference)/);
-  assert.match(delivered,/return respond\(\{error:[^\n]+\},409\)/);
 });
 
-test("release gate verifies the latest typed QC guard instead of obsolete first-match wording",()=>{
+test("release gate checks transactional M112 QC and original-key delivery receipts",()=>{
   const release=readFileSync("scripts/release-readiness.mjs","utf8");
   assert.match(release,/requireTokens\("src\/lib\/designer\/delivery-qc-approval\.ts"/);
-  assert.match(release,/hasVerifiedLatestDeliveryQc\(inspections,orderId,500\)/);
-  assert.match(release,/latest\.decision/);
-  assert.match(release,/ambiguous/);
+  assert.match(release,/20261110_delivery_qc_sql_gate\.sql/);
+  assert.match(release,/20261111_delivery_idempotency\.sql/);
+  assert.match(release,/ambiguous latest QC inspection/);
+  assert.match(release,/six exact passing physical QC checks/);
+  assert.match(release,/production_delivery_request_receipts/);
   assert.doesNotMatch(release,/"Finished-garment QC approval is required before delivery\."\,/);
 });
 

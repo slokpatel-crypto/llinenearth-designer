@@ -73,7 +73,7 @@ test("operator route validates typed ledgers before returning them to UI",()=>{
     "Complete original ledger verification must precede field filtering and browser disclosure");
   assert.equal(route.includes("configured:true,quotes,orders"),false,
     "Raw SQL rows must never be forwarded as production desk output");
-  assert.match(route,/import \{ validProductionDeskLedgers, validProductionDeskResponse, validProductionQcOrderRows \} from "@\/lib\/designer\/production-desk-ledger"/);
+  assert.match(route,/import \{ validProductionDeskLedgers, validProductionDeskResponse \} from "@\/lib\/designer\/production-desk-ledger"/);
   assert.match(route,/if\(!validProductionDeskLedgers\(quotes,orders\)\) throw/);
 });
 
