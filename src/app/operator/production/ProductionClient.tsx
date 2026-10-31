@@ -23,6 +23,13 @@ type QcInspection={inspection_id:string;order_id:string;decision:"approved"|"rew
 type CustomerOutcome={outcome_id:string;order_id:string;revision_id:string;overall_rating:string;fit_result:string;worn_confirmed:boolean;note:string;created_at:string};
 type LearningContext={order_id:string;revision_id:string;recipe_hash:string;context:Record<string,unknown>;created_at:string};
 
+// Browsers may throw when retrieving localStorage itself (privacy policy,
+// sandboxed frames or browser configuration). Do not let that bypass the hold.
+function safeProductionHoldStorage():Storage|null{
+  try{return window.localStorage;}
+  catch{return null;}
+}
+
 export default function ProductionClient(){
   const [quotes,setQuotes]=useState<Quote[]>([]);
   const [orders,setOrders]=useState<Order[]>([]);
@@ -98,7 +105,7 @@ export default function ProductionClient(){
     // This marker contains only a random UUID; it survives reloads and
     // broadcasts pending writes from other same-origin tabs. Never auto-clear
     // it after a GET, and never persist private production request bodies.
-    if(productionWriteHoldPending(window.localStorage))setRequiresWriteReview(true);
+    if(productionWriteHoldPending(safeProductionHoldStorage()))setRequiresWriteReview(true);
     const onStorage=(event:StorageEvent)=>{
       if(event.key===PRODUCTION_WRITE_HOLD_KEY&&event.newValue!==null){
         setRequiresWriteReview(true);
@@ -116,7 +123,7 @@ export default function ProductionClient(){
     // a crash or navigation while the SQL transaction commits must still
     // leave this desk blocked on the next page load.
     const holdToken=crypto.randomUUID();
-    if(!beginProductionWriteHold(window.localStorage,holdToken)){
+    if(!beginProductionWriteHold(safeProductionHoldStorage(),holdToken)){
       setRequiresWriteReview(true);
       setMessage("Cannot safely start production write: another write may be pending or protected browser storage is unavailable. Inspect production history before retrying.");
       return;
@@ -142,7 +149,7 @@ export default function ProductionClient(){
       if(!validProductionDeskMutationReceipt(body.action,data)) throw new Error("Production operation receipt could not be verified.");
       const confirmed=await load({action:body.action,body,receipt:data});
       if(confirmed){
-        if(releaseProductionWriteHold(window.localStorage,holdToken)){
+        if(releaseProductionWriteHold(safeProductionHoldStorage(),holdToken)){
           setRequiresWriteReview(false);
           setMessage(success);
         }else{
@@ -170,7 +177,7 @@ export default function ProductionClient(){
       if(certainPrewriteRejection){
         // An explicit route-level denial before SQL can safely release only
         // this write's matching marker, never one owned by another tab.
-        if(releaseProductionWriteHold(window.localStorage,holdToken)){
+        if(releaseProductionWriteHold(safeProductionHoldStorage(),holdToken)){
           setRequiresWriteReview(false);
         }
         setMessage(error instanceof Error?error.message:"Production operation rejected before saving.");
@@ -187,7 +194,7 @@ export default function ProductionClient(){
     // A validated, configured ledger and explicit operator acknowledgement
     // are required; this never certifies the previous write did not commit.
     if(!requiresWriteReview||!configured||busy||actionInFlight.current)return;
-    if(!acknowledgeProductionWriteHold(window.localStorage)){
+    if(!acknowledgeProductionWriteHold(safeProductionHoldStorage())){
       setMessage("Unable to clear the pending production review marker. Check protected browser storage and refresh the ledger before making another write.");
       return;
     }
