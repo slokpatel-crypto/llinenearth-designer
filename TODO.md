@@ -1077,3 +1077,14 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [ ] Genuine supplier stock, authenticated customer/operator journey, physical tailoring/QC, native Blender, devices, beta deliveries, security/privacy/schema and owner merge/deploy approvals remain BLOCKED/PENDING. No live writes, migrations, main merge, production deploy or paid AI.
 
 - [x] M134 signed browser proof added: CI-only signed loopback Chromium at 390px/1440px uses two synthetically valid SHA-256 locked revisions and a deferred second vault read; verifies positive A/B handoff downloads, rejects stale same-event handoff/tech-pack/packet exports, clears old selection on token edit and sends zero production POSTs. Exact-head browser run is PENDING, not human approval.
+
+
+## 2026-11-01 — M135 cross-tab production packet write-epoch safety (stacked draft)
+- [x] Reproduced a J5 packet race: another same-origin operator tab can start AND confirm a write while this tab awaits a fresh ledger/packet; a pending-only localStorage marker is already gone by download time, and React storage-event state may lag.
+- [x] Persist an anonymous UUID write epoch when beginning each production POST; never clear it with the matching confirmed hold. Capture only a clean epoch before fresh packet GET, recheck after async packet build, invalidate the verified ledger and block download if changed or storage unavailable. Do not persist design/price/customer fields.
+- [x] Add positive/negative pure regression (pending, completed, malformed and storage failure), source-path ordering assertions and static release contract.
+- [ ] Verify exact M135 head dependency audit, quality, full Node, engine, preview-performance, release, Next build, browser 390/768/1440, independent Non-3D and both disposable PostgreSQL jobs. Prior M134 PASS does not transfer.
+- [ ] Next 30–40-minute slice: signed two-tab Chromium packet-export race, including marker set/cleared before download, and safe cross-tab review acknowledgement after the marker is gone. Do not treat synthetic browser evidence as real owner/operator signoff.
+- [ ] Real supplier rolls, authenticated customer/operator, physical tailor/QC, Blender source/UV, physical devices, beta/first-ten, security/privacy/schema and separate owner merge/deploy approvals remain BLOCKED/PENDING. No live writes, migrations, main merge, production deploy or paid AI.
+
+- [x] M135 signed two-tab Chromium scenario added to full CI: positive synthetic packet, deferred fresh production GET, second tab sets then clears anonymous hold while advancing write epoch, stale packet download veto at 390/1440, zero production POSTs. Added Node source contract and release gate. **Browser execution remains PENDING until exact-head CI finishes**; no real operator/stock/tailor proof.

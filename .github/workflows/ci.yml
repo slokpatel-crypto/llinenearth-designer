@@ -78,6 +78,7 @@ jobs:
           node scripts/verify-production-qc-hint-browser.cjs
           node scripts/verify-production-ledger-refresh-barrier-browser.cjs
           node scripts/verify-operator-verified-lock-export-race-browser.cjs
+          node scripts/verify-production-packet-cross-tab-browser.cjs
           node scripts/verify-customer-outcome-review-private-http.cjs
           node scripts/verify-customer-review-write-readback-http.cjs
           node scripts/verify-delivery-evidence-private-http.cjs

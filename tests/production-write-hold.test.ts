@@ -2,8 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {
-  PRODUCTION_WRITE_HOLD_KEY,beginProductionWriteHold,releaseProductionWriteHold,
+  PRODUCTION_WRITE_HOLD_KEY,PRODUCTION_WRITE_EPOCH_KEY,
+  beginProductionWriteHold,releaseProductionWriteHold,
   acknowledgeProductionWriteHold,productionWriteHoldPending,
+  captureProductionWriteEpoch,productionWriteEpochUnchanged,
 } from "../src/lib/designer/production-write-hold.ts";
 
 const id="123e4567-e89b-42d3-a456-426614174000";
@@ -94,4 +96,60 @@ test("browser production write barrier is saved BEFORE POST and reviewed after f
   assert.doesNotMatch(source,/localStorage\.setItem\([^\n]*pendingWriteReview/);
   const helper=readFileSync("src/lib/designer/production-write-hold.ts","utf8");
   assert.doesNotMatch(helper,/recoveryToken|lineItems|customerPhone|sessionCookie/);
+});
+
+
+test("M135 packet snapshot detects cross-tab writes even after their pending marker clears",()=>{
+  const s=storage();
+  const before=captureProductionWriteEpoch(s);
+  assert.equal(before,"","clean legacy browser can capture its first epoch");
+  assert.equal(productionWriteEpochUnchanged(s,before),true);
+  assert.equal(beginProductionWriteHold(s,id),true);
+  assert.equal(captureProductionWriteEpoch(s),null,"no export while the write is pending");
+  assert.equal(productionWriteEpochUnchanged(s,before),false);
+  assert.equal(releaseProductionWriteHold(s,id),true);
+  assert.equal(productionWriteEpochUnchanged(s,before),false,
+    "a completed concurrent write still invalidates the in-flight packet");
+  const after=captureProductionWriteEpoch(s);
+  assert.equal(after,id);
+  assert.equal(productionWriteEpochUnchanged(s,after),true);
+  assert.equal(beginProductionWriteHold(s,id2),true);
+  assert.equal(releaseProductionWriteHold(s,id2),true);
+  assert.equal(productionWriteEpochUnchanged(s,after),false);
+  assert.equal(s.items.get(PRODUCTION_WRITE_EPOCH_KEY),id2);
+});
+
+test("M135 malformed/unavailable write epochs fail closed without disclosing production data",()=>{
+  const s=storage();
+  assert.equal(captureProductionWriteEpoch(null),null);
+  assert.equal(productionWriteEpochUnchanged(null,""),false);
+  s.setItem(PRODUCTION_WRITE_EPOCH_KEY,"malformed");
+  assert.equal(captureProductionWriteEpoch(s),null);
+  assert.equal(productionWriteEpochUnchanged(s,""),false);
+  s.removeItem(PRODUCTION_WRITE_EPOCH_KEY);
+  const noEpochWrite=storage();
+  noEpochWrite.setItem=(key:string,value:string)=>{
+    if(key===PRODUCTION_WRITE_EPOCH_KEY)throw Error("epoch persistence denied");
+    noEpochWrite.items.set(key,value);
+  };
+  assert.equal(beginProductionWriteHold(noEpochWrite,id),false,
+    "no SQL POST may proceed if the cross-tab epoch cannot be persisted");
+  assert.equal(productionWriteHoldPending(noEpochWrite),true,
+    "a failed epoch write must leave the uncertain hold in place");
+});
+
+test("M135 packet export checks the anonymous epoch before GET and after async packet build",()=>{
+  const src=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  const packet=src.split("async function exportProductionPacket()")[1]?.split("const quoteRows=")[0]||"";
+  const capture=packet.indexOf("const packetWriteEpoch=captureProductionWriteEpoch(safeProductionHoldStorage())");
+  const fetch=packet.indexOf('await fetch("/api/operator/production",{cache:"no-store"})');
+  const build=packet.indexOf("await buildVerifiedProductionPacket(");
+  const verify=packet.indexOf("productionWriteEpochUnchanged(safeProductionHoldStorage(),packetWriteEpoch)");
+  const download=packet.indexOf("download(`linen-earth-production-packet-");
+  assert.ok(capture>=0&&capture<fetch&&fetch<build&&build<verify&&verify<download,
+    "a concurrent tab must not produce an export before or after an async ledger read");
+  assert.match(packet,/if\(packetWriteEpoch===null\)\{/);
+  assert.match(packet,/verifiedLedgerReadVersion\.current=0;\s*setRenderedLedgerReadVersion\(0\);\s*setConfigured\(false\);/);
+  assert.match(packet,/if\(productionWriteHoldPending\(safeProductionHoldStorage\(\)\)\)setRequiresWriteReview\(true\)/);
+  assert.doesNotMatch(src,/localStorage\.setItem\([^\n]*(?:recoveryToken|lineItems|customerPhone)/);
 });

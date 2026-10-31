@@ -2228,6 +2228,44 @@ requireTokens(".github/workflows/ci.yml",[
   "node scripts/verify-operator-verified-lock-export-race-browser.cjs",
 ]);
 
+
+// M135: a packet's fresh SQL GET is not sufficient if another browser tab
+// begins and confirms a write while packet construction is still in flight.
+// The persisted anonymous epoch must be captured before GET and rechecked
+// after await, with pending/invalid storage failing closed.
+requireTokens("src/lib/designer/production-write-hold.ts",[
+  "PRODUCTION_WRITE_EPOCH_KEY",
+  "storage.setItem(PRODUCTION_WRITE_EPOCH_KEY,token)",
+  "captureProductionWriteEpoch",
+  "productionWriteEpochUnchanged",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "const packetWriteEpoch=captureProductionWriteEpoch(safeProductionHoldStorage())",
+  "if(packetWriteEpoch===null)",
+  "productionWriteEpochUnchanged(safeProductionHoldStorage(),packetWriteEpoch)",
+  "production writes changed in another tab during packet export",
+]);
+requireTokens("scripts/verify-production-packet-cross-tab-browser.cjs",[
+  "GITHUB_ACTIONS", "LINEN_BROWSER_QA_RUNTIME",
+  "syntheticRevision", "positivePacket:true",
+  "localStorage.setItem(epochKey,token)",
+  "localStorage.removeItem(holdKey)",
+  "completedCrossTabWriteBlocked:true",
+  "No production POST is allowed",
+  "for(const width of [390,1440])",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-packet-cross-tab-browser.cjs",
+]);
+requireTokens("tests/production-packet-cross-tab-browser-contract.test.ts",[
+  "M135 signed Chromium tests a positive packet",
+]);
+requireTokens("tests/production-write-hold.test.ts",[
+  "M135 packet snapshot detects cross-tab writes",
+  "M135 malformed/unavailable write epochs fail closed",
+  "M135 packet export checks the anonymous epoch",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
