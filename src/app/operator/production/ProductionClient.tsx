@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { buildVerifiedProductionHandoff } from "@/lib/designer/production-handoff";
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
@@ -25,6 +25,9 @@ export default function ProductionClient(){
   const [configured,setConfigured]=useState(true);
   const [optionalEvidenceSources,setOptionalEvidenceSources]=useState<{qcInstalled:boolean;customerOutcomesInstalled:boolean;learningContextInstalled:boolean}|null>(null);
   const [busy,setBusy]=useState(false);
+  // State updates are asynchronous: a second click in the same render must
+  // not create a second quote/order or overlap a locked-design recovery.
+  const actionInFlight=useRef(false);
   const [message,setMessage]=useState("");
   const [quote,setQuote]=useState({revisionId:"",recipeHash:"",currency:"INR",adjustment:"0",note:"",line1Label:"Shirt fabric",line1Amount:"",line2Label:"Tailoring",line2Amount:""});
   const [order,setOrder]=useState({revisionId:"",recipeHash:"",quoteId:"",note:""});
@@ -63,7 +66,8 @@ export default function ProductionClient(){
   useEffect(()=>{void load();},[]);
 
   async function post(body:Record<string,unknown>,success:string){
-    if(busy) return;
+    if(busy||actionInFlight.current) return;
+    actionInFlight.current=true;
     setBusy(true);setMessage("");
     try{
       const response=await fetch("/api/operator/production",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
@@ -72,11 +76,12 @@ export default function ProductionClient(){
       if(!validProductionDeskMutationReceipt(body.action,data)) throw new Error("Production operation receipt could not be verified.");
       setMessage(success);await load();
     }catch(error){setMessage(error instanceof Error?error.message:"Production operation failed.");}
-    finally{setBusy(false);}
+    finally{actionInFlight.current=false;setBusy(false);}
   }
 
   async function loadLockedDesign(){
-    if(!recoveryToken.trim()||busy) return;
+    if(!recoveryToken.trim()||busy||actionInFlight.current) return;
+    actionInFlight.current=true;
     setBusy(true);setMessage("");
     // A new recovery attempt invalidates any previously verified design.
     // Never allow exports from the old lock while a different token loads.
@@ -103,7 +108,7 @@ export default function ProductionClient(){
     }catch(error){
       setLoadedRevision(null);
       setMessage(error instanceof Error?error.message:"Locked design could not be recovered.");
-    }finally{setBusy(false);}
+    }finally{actionInFlight.current=false;setBusy(false);}
   }
 
   function download(name:string,type:string,content:string){

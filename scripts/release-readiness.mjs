@@ -1125,6 +1125,17 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "quotes,orders,loadedRevision.revisionId,loadedRevision.recipeHash",
 ]);
 
+
+ // React busy state alone cannot stop two same-render operator mutations.
+ // Require a synchronous guard shared by quote/order writes and vault recovery.
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "useRef","const actionInFlight=useRef(false)",
+  "if(busy||actionInFlight.current) return;",
+  "if(!recoveryToken.trim()||busy||actionInFlight.current) return;",
+  "actionInFlight.current=true;",
+  "finally{actionInFlight.current=false;setBusy(false);}",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
