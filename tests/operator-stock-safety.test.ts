@@ -313,3 +313,34 @@ test("disposable PostgreSQL CI runs real stock v3 transaction and concurrency ch
   assert.ok(tests.includes("stock request key already belongs to different evidence"));
   assert.ok(tests.includes("privileged stock RPC role grants are not restricted"));
 });
+
+test("stock SQL integration runs historical stock-only migration chain, not just a mock fixture",()=>{
+  const workflow=readFileSync(".github/workflows/titan-stock-record-db.yml","utf8");
+  const script=readFileSync("scripts/ci/verify-stock-record-db.sh","utf8");
+  const checks=readFileSync("scripts/ci/stock-record-historical-assertions.sql","utf8");
+  assert.ok(workflow.includes('verify-stock-record-db.sh "$PG_CONTAINER" historical'));
+  assert.ok(script.includes("database=titan_stock_historical"));
+  assert.ok(script.includes('createdb -U postgres "$database"'));
+  const ordered=[
+    "20261001_fabric_stock_ledger.sql",
+    "20261028_fabric_stock_provenance.sql",
+    "20261029_stock_reservation_provenance.sql",
+    "20261030_stock_consumption_provenance.sql",
+    "20261031_stock_reservation_concurrency_provenance.sql",
+    "20261031_stock_record_exact_retry.sql",
+  ];
+  let previous=-1;
+  for(const migration of ordered){
+    const index=script.indexOf("supabase/migrations/"+migration);
+    assert.ok(index>previous, `Missing/misordered actual migration: ${migration}`);
+    previous=index;
+  }
+  assert.ok(script.includes('run_sql_file scripts/ci/stock-record-historical-assertions.sql'));
+  assert.ok(checks.includes("public.fabric_stock_reserve_v2("));
+  assert.ok(checks.includes("public.fabric_stock_consume_reservation_v2("));
+  assert.ok(checks.includes("public.fabric_stock_release_v2("));
+  assert.ok(checks.includes("v_physical<>3.750"));
+  assert.ok(checks.includes("v_reserved<>0.000"));
+  assert.ok(checks.includes("historic physical ledger RLS was not enabled"));
+  assert.ok(checks.includes("historic manual source was counted more than once"));
+});
