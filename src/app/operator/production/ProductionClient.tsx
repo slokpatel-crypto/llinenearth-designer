@@ -54,8 +54,11 @@ export default function ProductionClient(){
   // A late initial GET must never overwrite a newer post-mutation refresh.
   const ledgerReadVersion=useRef(0);
   const verifiedLedgerReadVersion=useRef(0);
+  // A verified HTTP response is not yet visible to an operator until React
+  // commits its corresponding history. Do not acknowledge an unseen ledger.
+  const [renderedLedgerReadVersion,setRenderedLedgerReadVersion]=useState(0);
   function hasCurrentVerifiedLedger(){
-    return isCurrentVerifiedProductionLedger(ledgerReadVersion.current,verifiedLedgerReadVersion.current);
+    return isCurrentVerifiedProductionLedger(ledgerReadVersion.current,verifiedLedgerReadVersion.current,renderedLedgerReadVersion);
   }
   const [message,setMessage]=useState("");
   const [quote,setQuote]=useState({revisionId:"",recipeHash:"",currency:"INR",adjustment:"0",note:"",line1Label:"Shirt fabric",line1Amount:"",line2Label:"Tailoring",line2Amount:""});
@@ -66,6 +69,7 @@ export default function ProductionClient(){
   async function load(expected?:{action:unknown;body:Record<string,unknown>;receipt:unknown}):Promise<boolean>{
     const readVersion=++ledgerReadVersion.current;
     verifiedLedgerReadVersion.current=0;
+    setRenderedLedgerReadVersion(0);
     // Clear old receipts immediately; stale rows must not authorize actions.
     setConfigured(false);
     setQuotes([]);setOrders([]);setQcInspections([]);setDeliveryEligibility([]);
@@ -90,6 +94,7 @@ export default function ProductionClient(){
       )))throw new Error("The changed production record was not confirmed in refreshed history.");
       // Commit the verified generation synchronously; React state is only UI.
       verifiedLedgerReadVersion.current=data.configured?readVersion:0;
+      setRenderedLedgerReadVersion(data.configured?readVersion:0);
       setConfigured(data.configured);
       setQuotes(data.quotes as Quote[]);
       setOrders(data.orders as Order[]);
@@ -172,6 +177,7 @@ export default function ProductionClient(){
     // Invalidate any in-flight GET before sending a potentially durable write.
     ledgerReadVersion.current+=1;
     verifiedLedgerReadVersion.current=0;
+    setRenderedLedgerReadVersion(0);
     setConfigured(false);
     setBusy(true);setMessage("");
     setRecoveredCreationReceipts(null);
@@ -375,7 +381,7 @@ export default function ProductionClient(){
           orderId:orderMatch.order_id,status:orderMatch.status,createdAt:orderMatch.created_at,
         }:null,
       });
-      if(!isCurrentVerifiedProductionLedger(ledgerReadVersion.current,verifiedLedgerReadVersion.current)
+      if(!isCurrentVerifiedProductionLedger(ledgerReadVersion.current,verifiedLedgerReadVersion.current,renderedLedgerReadVersion)
         ||ledgerReadVersion.current!==packetLedgerVersion){
         throw new Error("production history changed during packet export; refresh and review before retrying.");
       }
