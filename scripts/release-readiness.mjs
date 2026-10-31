@@ -832,7 +832,7 @@ requireTokens("src/app/api/designer/assess/route.ts", ["loadActiveDesignerCatalo
 requireTokens("src/app/api/style-director/route.ts", ["applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
 requireTokens("src/app/style-director/page.tsx", ["verified ledger availability enforced where recorded"]);
 requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","New quotes and production orders are blocked","Quote created from verified locked revision","Production order created from verified locked revision","durable design context","learningContexts","Outcome lineage","context missing","CUSTOMER OUTCOME","not automatically applied to Designer ranking","/operator/customer-outcomes","Outcome Review"]);
-requireTokens("src/app/api/operator/stock/route.ts", ["fabric_stock_snapshot_v2","fabric_stock_record_v2","fabric_stock_reserve_v2","fabric_stock_release_v2","fabric_stock_consume_reservation_v2","p_recorded_by","p_requested_by","p_released_by","p_checked_by","p_source_reference"]);
+requireTokens("src/app/api/operator/stock/route.ts", ["fabric_stock_snapshot_v2","fabric_stock_record_v3","fabric_stock_reserve_v2","fabric_stock_release_v2","fabric_stock_consume_reservation_v2","p_recorded_by","p_requested_by","p_released_by","p_checked_by","p_source_reference","normalizeStockMutationRequestKey(body.requestKey)","p_request_key:requestKey"]);
 
 // T3/J1/T5: No stock mutation receipt, private response or raw backend error
 // can silently regress while the physical inventory remains unverified.
@@ -859,6 +859,20 @@ requireTokens("src/app/operator/stock/StockClient.tsx", [
 
 requireTokens("supabase/migrations/20261001_fabric_stock_ledger.sql", ["fabric_stock_snapshot","fabric_stock_reserve","request_key","service_role"]);
 requireTokens("supabase/migrations/20261028_fabric_stock_provenance.sql", ["fabric_stock_record_v2","fabric_stock_snapshot_v2","recorded_by","source_reference","legacy_unverified_event_count","provenance_ready","service_role"]);
+requireTokens("supabase/migrations/20261031_stock_record_exact_retry.sql", [
+  "fabric_stock_record_v3","pg_advisory_xact_lock","stock-request:","stock-fabric:",
+  "v_existing.source_reference<>p_source_reference","return v_existing.event_id",
+  "revoke all on function public.fabric_stock_record_v3","service_role",
+]);
+requireTokens("src/lib/designer/stock-ledger.ts", [
+  "normalizeStockMutationRequestKey", "stockManualRecordAttempt", "stockManualRecordSignature",
+]);
+requireTokens("src/app/operator/stock/StockClient.tsx", [
+  "manualRecordKeys.current.set(attempt.signature,attempt.requestKey)",
+  'void post({action:"record",...intent,requestKey:attempt.requestKey}',
+  "confirmedManualRecords.has(manualRecordSignature)",
+]);
+
 requireTokens("supabase/migrations/20261029_stock_reservation_provenance.sql", ["fabric_stock_reserve_v2","p_requested_by","p_source_reference","reservation quantity evidence reference is required","service_role"]);
 requireTokens("supabase/migrations/20261030_stock_consumption_provenance.sql", ["fabric_stock_consume_reservation_v2","p_checked_by","p_source_reference","actual cloth-usage evidence reference is required","service_role"]);
 requireTokens("supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql", ["stock-request:","stock-reservation:","fabric_stock_release_v2","fabric_stock_reserve_v2","fabric_stock_consume_reservation_v2","reservation release reference is required","service_role"]);
