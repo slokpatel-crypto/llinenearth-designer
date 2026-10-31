@@ -79,6 +79,24 @@ test("M114 operator GET uses authenticated bounded SQL read; failure hides deliv
   assert.match(pg,/m114-delivery-eligibility-assertions\.sql/);
 });
 
+test("M117 authenticated 200/401/503 HTTP contract cannot leak extra QC fields",()=>{
+  const fixture=readFileSync("scripts/ci-verified-stock-fixture.cjs","utf8");
+  const smoke=readFileSync("scripts/verify-production-delivery-eligibility-private-http.cjs","utf8");
+  assert.match(fixture,/let ciEligibilityMode="absent"/);
+  assert.match(fixture,/req\.url==="\/__fixture\/eligibility-mode"/);
+  assert.match(fixture,/req\.headers\.apikey!==FIXTURE_KEY/);
+  assert.match(fixture,/ciEligibilityMode==="valid"|ciEligibilityMode==="poisoned"/);
+  assert.match(smoke,/await setMode\("valid"\)/);
+  assert.match(smoke,/approved\.status,200/);
+  assert.match(smoke,/anonymousPositive\.status,401/);
+  assert.match(smoke,/await setMode\("poisoned"\)/);
+  assert.match(smoke,/poisoned\.status,503/);
+  assert.match(smoke,/assert\.deepEqual\(Object\.keys\(hint\)\.sort\(\)/);
+  assert.match(smoke,/assert\.doesNotMatch\(JSON\.stringify\(approvedPayload\),\/DO-NOT-LEAK-CI-\//);
+  assert.match(smoke,/finally\{/);
+  assert.match(smoke,/await setMode\("absent"\)/);
+});
+
 test("M115 private HTTP smoke runs in both real CI browser jobs",()=>{
   const file="scripts/verify-production-delivery-eligibility-private-http.cjs";
   const smoke=readFileSync(file,"utf8");
