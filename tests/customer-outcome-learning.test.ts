@@ -192,7 +192,7 @@ test("clean first-fit metric excludes alterations even when reviewers approve ad
 
 test("operator customer learning gate invalidates stale or malformed reads",()=>{
   const source=readFileSync("src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx","utf8");
-  const reload=source.slice(source.indexOf("async function load()"),source.indexOf("useEffect(()=>"));
+  const reload=source.slice(source.indexOf("async function load("),source.indexOf("useEffect(()=>"));
   const invalidate=reload.indexOf("setVerified(false)");
   const fetchStart=reload.indexOf('fetch("/api/operator/customer-outcomes"');
   assert.ok(invalidate>=0&&invalidate<fetchStart,"Clear previous trust before requesting new evidence");
