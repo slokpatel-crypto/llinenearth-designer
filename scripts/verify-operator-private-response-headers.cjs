@@ -5,7 +5,7 @@ const assert=require("node:assert/strict");
 const base="http://127.0.0.1:3000";
 if(new URL(base).hostname!=="127.0.0.1") throw Error("Loopback only");
 (async()=>{
-  for(const endpoint of ["/api/operator/production","/api/operator/garment-qc"]){
+  for(const endpoint of ["/api/operator/production","/api/operator/garment-qc","/api/operator/stock"]){
     for(const method of ["GET","POST"]){
       const response=await fetch(base+endpoint,{
         method,redirect:"manual",cache:"no-store",
@@ -24,5 +24,5 @@ if(new URL(base).hostname!=="127.0.0.1") throw Error("Loopback only");
       assert.equal(body?.error,"Unauthorized.");
     }
   }
-  process.stdout.write("Operator production/QC private response HTTP smoke PASS (anonymous; no live writes).\n");
+  process.stdout.write("Operator production/QC/stock private response HTTP smoke PASS (anonymous; no live writes).\n");
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -1,5 +1,6 @@
 import { FABRIC_STOCK } from "../fabric-stock.ts";
 import {parseVaultTimestamptz} from "../vault-read-integrity.ts";
+import {normalizeVaultId} from "../vault-id.ts";
 
 const KNOWN_CATALOGUE_FABRICS=new Set(FABRIC_STOCK.map(fabric=>fabric.id));
 
@@ -61,6 +62,14 @@ export async function readBoundedStockMutationJson(request:Request):Promise<Reco
   if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))
     throw new Error("Stock mutation JSON must be an object.");
   return parsed as Record<string,unknown>;
+}
+
+/** Never count an altered upstream stock RPC receipt as a recorded real event.
+ * Reject padded, non-scalar or coerced UUIDs; upper-case hex is legitimate. */
+export function verifiedOperatorStockReceiptId(value:unknown):string|null{
+  if(typeof value!=="string") return null;
+  const normalized=normalizeVaultId(value);
+  return normalized&&value.toLowerCase()===normalized?normalized:null;
 }
 
 /** Fail closed on inconsistent privileged stock snapshots before a dashboard can
