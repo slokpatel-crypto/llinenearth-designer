@@ -1,5 +1,6 @@
 import {verifiedOperatorProductionCreateId} from "./operator-production-receipt.ts";
 import {sameProductionRecipeHash} from "./production-desk-ledger.ts";
+import {normalizeProductionQuoteDraft} from "./production-quote.ts";
 
 type Row=Record<string,unknown>;
 function rows(value:unknown):Row[]{
@@ -13,6 +14,32 @@ function asRow(value:unknown):Row|null{
 function sameId(a:unknown,b:unknown):boolean{
   const id=verifiedOperatorProductionCreateId(a);
   return id!==null&&id===verifiedOperatorProductionCreateId(b);
+}
+
+/** A newly created quote is a financial instruction, not merely a UUID.
+ * Re-read the exact normalized operator-entered lines, paise totals and note;
+ * a wrong-price quote with the correct recipe/currency must never say saved. */
+function sameCreatedQuoteFinancials(row:Row,body:Row):boolean{
+  let draft:ReturnType<typeof normalizeProductionQuoteDraft>;
+  try{
+    draft=normalizeProductionQuoteDraft({
+      currency:body.currency,lineItems:body.lineItems,adjustment:body.adjustment,
+    });
+  }catch{return false;}
+  const note=body.note===undefined||body.note===null?"":body.note;
+  if(typeof note!=="string"||row.note!==note.trim()
+    ||row.currency!==draft.currency||row.status!=="draft"
+    ||!Array.isArray(row.line_items)||row.line_items.length!==draft.lineItems.length) return false;
+  const paise=(value:unknown):number|null=>
+    typeof value==="number"&&Number.isFinite(value)?Math.round(value*100):null;
+  if(paise(row.subtotal)!==paise(draft.subtotal)
+    ||paise(row.adjustment)!==paise(draft.adjustment)
+    ||paise(row.total)!==paise(draft.total)) return false;
+  return draft.lineItems.every((line,index)=>{
+    const saved=asRow((row.line_items as unknown[])[index]);
+    return saved!==null&&saved.label===line.label
+      &&paise(saved.amount)===paise(line.amount);
+  });
 }
 
 /** Mutation RPC success is not production history. This pure readback gate
@@ -32,7 +59,7 @@ export function verifiedProductionMutationReadback(
     return quotes.some(row=>sameId(row.quote_id,id)
       &&row.revision_id===body.revisionId
       &&sameProductionRecipeHash(row.recipe_hash,body.recipeHash)
-      &&row.currency===body.currency);
+      &&sameCreatedQuoteFinancials(row,body));
   }
   if(action==="create_order"){
     const id=verifiedOperatorProductionCreateId(created.orderId);
