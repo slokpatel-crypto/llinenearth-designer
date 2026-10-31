@@ -72,4 +72,26 @@ if [[ $(query "select count(*) from private.production_order_events where order_
    [[ $(query "select count(*) from private.production_order_learning_context where order_id='$o1'::uuid") != "1" ]]; then
   echo "Concurrent order replay duplicated event or learning context" >&2; exit 1
 fi
-echo "TITAN isolated PostgreSQL atomic quote/order creation idempotency PASS"
+# Two separate SQL sessions racing the same quote transition must create one
+# event and one receipt, even when both clients lose their HTTP response.
+status_quote=$(query "select public.production_quote_create(
+  'LE-RACE-STATUS-20261031',repeat('a',64),'INR',
+  '[{\"label\":\"CI quote status\",\"amount\":1}]'::jsonb,0,''
+);")
+status_call="select public.production_quote_set_status_idempotent(
+  '123e4567-e89b-42d3-a456-426614174224'::uuid,
+  '$status_quote'::uuid,'sent','Race status'
+);"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$db" -Atc "$status_call" >"$tmpdir/s1" 2>"$tmpdir/s1.err" &
+pid1=$!
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$db" -Atc "$status_call" >"$tmpdir/s2" 2>"$tmpdir/s2.err" &
+pid2=$!
+wait "$pid1"
+wait "$pid2"
+if [[ $(tr -d '\r\n' < "$tmpdir/s1") != "t" ]] ||
+   [[ $(tr -d '\r\n' < "$tmpdir/s2") != "t" ]] ||
+   [[ $(query "select count(*) from private.production_quote_events where quote_id='$status_quote'::uuid and event_type='sent'") != "1" ]] ||
+   [[ $(query "select count(*) from private.production_quote_status_request_receipts where quote_id='$status_quote'::uuid") != "1" ]]; then
+  echo "Concurrent same-key quote status replay duplicated a transition" >&2; exit 1
+fi
+echo "TITAN isolated PostgreSQL quote/order create and quote status idempotency PASS"
