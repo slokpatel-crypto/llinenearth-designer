@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { stockReservationAttempt, stockReservationSignature } from "@/lib/designer/stock-ledger";
+import { validateOperatorStockSnapshot, verifiedOperatorStockMutationReceipt } from "@/lib/designer/operator-stock-safety";
 
 type StockRow={fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;provenance_ready:boolean;last_event_at:string|null};
 
@@ -35,11 +36,15 @@ export default function StockClient(){
       if(!response.ok) throw new Error("Stock ledger request failed.");
       const data:unknown=await response.json();
       if(generation!==readGeneration.current) return false;
-      if(!data||typeof data!=="object"||!("stock" in data)||!Array.isArray(data.stock)||
+      if(!data||typeof data!=="object"||!("stock" in data)||
          !("configured" in data)||data.configured!==true)
         throw new Error("Stock ledger response is invalid.");
+      // A 200 response cannot authorize a physical metre count by itself.
+      // Recheck every SKU, quantity, provenance and duplicate in the browser.
+      const verifiedStock=validateOperatorStockSnapshot(data.stock);
+      if(verifiedStock===null)throw new Error("Stock ledger rows are inconsistent.");
       setConfigured(true);
-      setStock(data.stock as StockRow[]);
+      setStock(verifiedStock);
       setSnapshotState("ready");
       return true;
     }catch{
@@ -87,13 +92,12 @@ export default function StockClient(){
           ?data.error:"Stock operation failed.";
         throw new Error(error);
       }
-      if(reservationSignature){
-        // A 200 without a confirmed reservation ID cannot prove a hold exists.
-        if(!data||typeof data!=="object"||!("reservationId" in data)||
-           typeof data.reservationId!=="string")
-          throw new Error("Reservation receipt could not be verified.");
+      // A success-shaped HTTP response must contain the exact event UUID,
+      // reservation UUID or literal close acknowledgement for this action.
+      if(!verifiedOperatorStockMutationReceipt(body.action,data))
+        throw new Error("Stock operation receipt could not be verified.");
+      if(reservationSignature)
         setConfirmedReservations(previous=>new Set([...previous,reservationSignature]));
-      }
       setMessage(success);
     }catch(error){
       const detail=error instanceof Error?error.message:"Stock operation failed.";

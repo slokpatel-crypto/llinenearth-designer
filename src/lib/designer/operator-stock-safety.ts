@@ -72,6 +72,19 @@ export function verifiedOperatorStockReceiptId(value:unknown):string|null{
   return normalized&&value.toLowerCase()===normalized?normalized:null;
 }
 
+/** A 200 HTTP status is not a stock mutation receipt. Verify the exact action
+ * and typed acknowledgement independently in the operator browser before
+ * showing success or marking a reservation as confirmed. */
+export function verifiedOperatorStockMutationReceipt(action:unknown,value:unknown):boolean{
+  if(!value||typeof value!=="object"||Array.isArray(value))return false;
+  const receipt=value as Record<string,unknown>;
+  if(action==="record")return verifiedOperatorStockReceiptId(receipt.eventId)!==null;
+  if(action==="reserve")return verifiedOperatorStockReceiptId(receipt.reservationId)!==null;
+  if(action==="release")return receipt.released===true;
+  if(action==="consume")return receipt.consumed===true;
+  return false;
+}
+
 /** Fail closed on inconsistent privileged stock snapshots before a dashboard can
  * display or reserve against invented availability. This is NOT roll certification.
  */

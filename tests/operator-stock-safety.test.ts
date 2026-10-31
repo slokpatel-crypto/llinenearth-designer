@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {FABRIC_STOCK} from "../src/lib/fabric-stock.ts";
-import {assertCurrentFabricId,readBoundedStockMutationJson,StockMutationPayloadTooLarge,stockMutationRequestError,validateOperatorStockSnapshot,verifiedOperatorStockReceiptId}
+import {assertCurrentFabricId,readBoundedStockMutationJson,StockMutationPayloadTooLarge,stockMutationRequestError,validateOperatorStockSnapshot,verifiedOperatorStockReceiptId,verifiedOperatorStockMutationReceipt}
   from "../src/lib/designer/operator-stock-safety.ts";
 import {readFileSync} from "node:fs";
 
@@ -225,4 +225,42 @@ test("operator stock UI serializes writes and reconciles ambiguous receipts befo
   assert.ok(sql.includes("pg_advisory_xact_lock(hashtext('stock-request:'||v_key))"));
   assert.ok(sql.includes("where request_key=v_key limit 1"));
   // Client retries alone do not prove the SQL migration is installed or live.
+});
+
+test("operator stock mutation receipts require the exact action acknowledgement",()=>{
+  const id="f90e2d9c-60cc-45ad-a9e2-72e6b521d1d5";
+  for(const [action,receipt] of [
+    ["record",{eventId:id}],
+    ["reserve",{reservationId:id.toUpperCase()}],
+    ["release",{released:true}],
+    ["consume",{consumed:true}],
+  ] as const)assert.equal(verifiedOperatorStockMutationReceipt(action,receipt),true,action);
+  for(const action of ["record","reserve","release","consume"]){
+    for(const forged of [null,{},[],{eventId:[id]},{eventId:id+" "},
+      {reservationId:[id]},{reservationId:id+" "},{released:"true"},{consumed:1},
+      {eventId:id,confirmed:false}]){
+      if(action==="record"&&typeof forged==="object"&&forged!==null&&
+         !Array.isArray(forged)&&"eventId" in forged&&forged.eventId===id)continue;
+      assert.equal(verifiedOperatorStockMutationReceipt(action,forged),false,
+        `${action}: ${JSON.stringify(forged)}`);
+    }
+  }
+  assert.equal(verifiedOperatorStockMutationReceipt("reserve",{eventId:id}),false);
+  assert.equal(verifiedOperatorStockMutationReceipt("record",{reservationId:id}),false);
+  assert.equal(verifiedOperatorStockMutationReceipt("release",{consumed:true}),false);
+  assert.equal(verifiedOperatorStockMutationReceipt("consume",{released:true}),false);
+  assert.equal(verifiedOperatorStockMutationReceipt("unknown",{eventId:id}),false);
+});
+
+test("stock browser independently checks GET rows and every POST receipt before success",()=>{
+  const code=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
+  assert.ok(code.includes("validateOperatorStockSnapshot(data.stock)"));
+  assert.ok(code.includes("if(verifiedStock===null)throw new Error"));
+  assert.ok(code.includes("setStock(verifiedStock)"));
+  assert.ok(!code.includes("setStock(data.stock as StockRow[])"));
+  const checked=code.indexOf("verifiedOperatorStockMutationReceipt(body.action,data)");
+  const confirmed=code.indexOf("setConfirmedReservations(previous=>");
+  const success=code.indexOf("setMessage(success)");
+  assert.ok(checked>0&&confirmed>checked&&success>confirmed);
+  assert.ok(code.includes("await load();"));
 });

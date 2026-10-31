@@ -838,6 +838,7 @@ requireTokens("src/app/api/operator/stock/route.ts", ["fabric_stock_snapshot_v2"
 // can silently regress while the physical inventory remains unverified.
 requireTokens("src/lib/designer/operator-stock-safety.ts", [
   "verifiedOperatorStockReceiptId", "normalizeVaultId(value)", "value.toLowerCase()===normalized",
+  "verifiedOperatorStockMutationReceipt", "receipt.released===true", "receipt.consumed===true",
 ]);
 requireTokens("src/app/api/operator/stock/route.ts", [
   "function respond(body:unknown", "private, no-store", 'pragma:"no-cache"',
@@ -845,7 +846,7 @@ requireTokens("src/app/api/operator/stock/route.ts", [
 ]);
 requireTokens("scripts/verify-operator-private-response-headers.cjs", ['"/api/operator/stock"']);
 
-requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Physical source reference","Reservation quantity source","Close action source","PHYSICAL PROVENANCE","provenance_ready","Create reservation","Consume","Release"]);
+requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Physical source reference","Reservation quantity source","Close action source","PHYSICAL PROVENANCE","provenance_ready","Create reservation","Consume","Release","validateOperatorStockSnapshot(data.stock)","setStock(verifiedStock)","verifiedOperatorStockMutationReceipt(body.action,data)"]);
 
 requireTokens("src/lib/designer/stock-ledger.ts", [
   "stockReservationAttempt(", "stockReservationSignature(", "existing.get(signature)??newKey()",
