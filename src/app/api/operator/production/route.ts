@@ -11,6 +11,7 @@ import { buildProductionLearningContext } from "@/lib/designer/production-learni
 import { parseOperatorLockedSelection } from "@/lib/designer/operator-locked-selection";
 import { parseOperatorProductionStatus } from "@/lib/designer/operator-production-status";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
+import {safeOperatorProductionErrorCode} from "@/lib/designer/operator-production-error";
 import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
 import { verifiedOptionalProductionRows } from "@/lib/designer/optional-production-ledger";
 import { validProductionDeskLedgers, validProductionDeskResponse, validProductionQcOrderRows } from "@/lib/designer/production-desk-ledger";
@@ -127,7 +128,8 @@ export async function GET(){
   }catch(error){
     if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
     if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
-    console.error("[operator/production]",error);
+    console.error("[operator/production:read]",
+      error instanceof ProductionRpcHttpError?"upstream_http_"+error.status:safeOperatorProductionErrorCode(error));
     return respond({error:"Production records could not be read."},503);
   }
 }
@@ -227,7 +229,8 @@ export async function POST(request:Request){
   }catch(error){
     if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
     if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
-    console.error("[operator/production]",error);
+    console.error("[operator/production:write]",
+      error instanceof ProductionRpcHttpError?"upstream_http_"+error.status:safeOperatorProductionErrorCode(error));
     // SQL, RPC and backend errors may include private order, owner or schema
     // details. Keep the diagnostic server-side; never echo it to an operator.
     return respond({error:"Production operation could not be completed."},409);

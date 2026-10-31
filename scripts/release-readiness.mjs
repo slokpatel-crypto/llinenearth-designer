@@ -1081,6 +1081,17 @@ requireTokens("src/lib/designer/production-desk-ledger.ts", [
 // not lose customer-facing receipts or be misreported as completed work.
 requireTokens("src/lib/designer/production-desk-ledger.ts", ["validProductionDeskMutationReceipt","sameProductionRecordId","sameProductionRecipeHash"]);
 requireTokens("src/app/operator/production/ProductionClient.tsx", ["if(!validProductionDeskMutationReceipt(body.action,data))","sameProductionRecordId(outcome.order_id,item.order_id)","sameProductionRecipeHash(item.recipe_hash,order.recipeHash)"]);
+// M99: production RPC failures must never print customer or backend exception
+// objects, stack traces or request details to the operator server log.
+requireTokens("src/lib/designer/operator-production-error.ts",[
+  "safeOperatorProductionErrorCode", "backend_timeout",
+  "backend_transport", "production_integrity_failure",
+]);
+requireTokens("src/app/api/operator/production/route.ts",[
+  "safeOperatorProductionErrorCode(error)",
+  'console.error("[operator/production:read]"',
+  'console.error("[operator/production:write]"',
+]);
 requireTokens("src/lib/designer/production-desk-readback.ts",[
   "verifiedProductionMutationReadback", "verifiedOperatorProductionCreateId",
   'action==="create_quote"', 'action==="create_order"',

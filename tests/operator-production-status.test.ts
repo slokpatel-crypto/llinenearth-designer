@@ -48,12 +48,14 @@ test("privileged production route parses both status changes before QC or RPC an
 
 test("privileged production errors do not reflect upstream SQL, owner or RPC details to the browser", () => {
   const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
-  assert.match(source,/console\.error\("\[operator\/production\]",error\)/);
+  assert.match(source,/console\.error\("\[operator\/production:read\]",/);
+  assert.match(source,/console\.error\("\[operator\/production:write\]",/);
+  assert.doesNotMatch(source,/console\.error\("\[operator\/production\]",error\)/);
   assert.match(source,/return respond\(\{error:"Production operation could not be completed\."\},409\)/);
   assert.doesNotMatch(source,/error:error instanceof Error\?error\.message/);
   // Validation error.message is intentionally shown for malformed user input;
   // only the unexpected privileged RPC catch must not reflect backend details.
-  const unexpected=source.split('console.error("[operator/production]",error);').at(-1)||"";
+  const unexpected=source.split('console.error("[operator/production:write]",').at(-1)||"";
   assert.ok(unexpected.includes('Production operation could not be completed.'));
   assert.doesNotMatch(unexpected,/error:\s*error\.message/);
   // Client-visible validation remains explicit; unexpected backend diagnostics do not.
