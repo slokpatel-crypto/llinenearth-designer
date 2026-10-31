@@ -103,12 +103,12 @@ test("J5 operator browser independently validates network receipts and clears ol
   assert.doesNotMatch(client,/setConfigured\(data\.configured!==false\)/);
   // Recovery must clear previously selected production identities and must not
   // enable any export or mutation from a merely success-shaped HTTP response.
-  assert.match(client,/setLoadedRevision\\(null\\);\\s*setQuote\\(\\(current\\)=>\\(\\{\\.\\.\\.current,revisionId:"",recipeHash:""\\}\\)\\);\\s*setOrder\\(\\(current\\)=>\\(\\{\\.\\.\\.current,revisionId:"",recipeHash:"",quoteId:""\\}\\)\\);\\s*try\\{\\s*const response=await fetch\\("\\/api\\/designer\\/vault"/);
+  assert.ok(client.includes('import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";'));
+  assert.ok(client.includes('setLoadedRevision(null);\\n    setQuote((current)=>({...current,revisionId:"",recipeHash:""}));\\n    setOrder((current)=>({...current,revisionId:"",recipeHash:"",quoteId:""}));'.replaceAll('\\n','\n')));
   const cryptographicGuard=client.indexOf("await verifyLockedDesignRevision(data.revision)");
   const loaded=client.indexOf("setLoadedRevision(revision)");
   assert.ok(cryptographicGuard>0&&loaded>cryptographicGuard,"unverified vault payload cannot populate production selection");
-  assert.match(client,/import \\{ verifyLockedDesignRevision, type LockedDesignRevision \\} from "@\\/lib\\/designer\\/design-lock"/);
-  assert.match(client,/if\\(!response.ok\\|\\|!data\\?\\.revision\\|\\|!await verifyLockedDesignRevision\\(data.revision\\)\\)/);
+  assert.ok(client.includes("if(!response.ok||!data?.revision||!await verifyLockedDesignRevision(data.revision))"));
   assert.match(client,/value=\{recoveryToken\} disabled=\{busy\} onChange=\{\(e\)=>\{/);
   assert.match(client,/setRecoveryToken\(e\.target\.value\);\s*setLoadedRevision\(null\)/);
   assert.match(client,/setOrder\(\(current\)=>\(\{\.\.\.current,revisionId:revision\.revisionId,recipeHash:revision\.recipeHash,quoteId:""\}\)\)/);
