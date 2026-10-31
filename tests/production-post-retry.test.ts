@@ -45,11 +45,13 @@ test("an uncertain write keeps every production mutation disabled until verified
   assert.match(client,/const \[requiresWriteReview,setRequiresWriteReview\]=useState\(false\)/);
   assert.match(post,/if\(!configured\|\|requiresWriteReview\) return;/);
   const claim=post.indexOf("actionInFlight.current=true;");
-  const pause=post.indexOf("if(!certainPrewriteRejection)setRequiresWriteReview(true)");
+  const pause=post.indexOf("if(!certainPrewriteRejection){");
+  const snapshot=post.indexOf("setPendingWriteReview(attempt);",pause);
+  const hold=post.indexOf("setRequiresWriteReview(true);",snapshot);
   const refresh=post.indexOf("const refreshed=await load();");
   const unlock=post.indexOf("finally{actionInFlight.current=false;setBusy(false);}");
-  assert.ok(claim>=0&&pause>claim&&refresh>pause&&unlock>refresh,
-    "Ambiguous failure must acquire the review hold before refreshing and releasing the network lock");
+  assert.ok(claim>=0&&pause>claim&&snapshot>pause&&hold>snapshot&&refresh>hold&&unlock>refresh,
+    "Ambiguous failure must capture the submitted instruction and acquire the hold before refreshing");
   assert.doesNotMatch(post,/setRequiresWriteReview\(false\)/,
     "A normal or apparently healthy GET cannot automatically clear the human review hold");
   assert.match(post,/if\(confirmed\)setMessage\(success\);\s*else\{\s*\/\/[^]*?setRequiresWriteReview\(true\);/,
