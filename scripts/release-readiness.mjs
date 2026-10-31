@@ -1138,6 +1138,31 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   'disabled={busy||!configured||requiresWriteReview||!loadedRevision',
   'disabled={busy||!configured||requiresWriteReview} defaultValue=""',
 ]);
+// M108: quote and order creation must use one client-provided UUID whose
+// exact intent is deduplicated atomically by private PostgreSQL, not a new
+// server-generated UUID on each retry. Only the service role may execute.
+requireTokens("src/lib/designer/production-request-key.ts",[
+  "parseOperatorProductionRequestKey", "typeof value!==\"string\"",
+]);
+requireTokens("src/app/api/operator/production/route.ts",[
+  "parseOperatorProductionRequestKey(body.requestKey)",
+  '"production_quote_create_idempotent"',
+  '"production_order_create_with_context_idempotent"',
+  "p_request_key:requestKey",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "body:JSON.stringify({...body,requestKey:holdToken})",
+]);
+requireTokens("supabase/migrations/20261106_production_create_request_idempotency.sql",[
+  "private.production_creation_request_receipts", "primary key(action,request_key)",
+  "pg_advisory_xact_lock", "sha256(convert_to(jsonb_build_object",
+  "production_quote_create_idempotent",
+  "production_order_create_with_context_idempotent",
+  "production creation request key belongs to different quote instructions",
+  "production creation request key belongs to different order instructions",
+  "revoke all on private.production_creation_request_receipts from public,anon,authenticated",
+  "grant execute on function public.production_quote_create_idempotent",
+]);
 // M107: an uncertain SQL mutation may commit even if its browser tab crashes.
 // Require a token-only fail-closed local marker BEFORE POST; only a matching
 // confirmed request or definite prewrite reject may release it automatically.
