@@ -19,6 +19,8 @@ const CUSTOMER_OUTCOME_LIST_PATH="/rest/v1/rpc/production_customer_outcome_list"
 const OUTCOME_LEARNING_PATH="/rest/v1/rpc/production_customer_outcome_learning_list";
 const OUTCOME_REVIEW_PATH="/rest/v1/rpc/production_customer_outcome_review_list";
 const OUTCOME_POLICY_PATH="/rest/v1/rpc/production_customer_outcome_policy_list";
+const OUTCOME_REVIEW_RECORD_PATH="/rest/v1/rpc/production_customer_outcome_review_record";
+const OUTCOME_POLICY_RECORD_PATH="/rest/v1/rpc/production_customer_outcome_policy_record";
 // Deliberately negative, fictional customer feedback; never a real delivery.
 const OUTCOME_REVIEW_FIXTURE=Object.freeze({
   [OUTCOME_LEARNING_PATH]:[{
@@ -55,6 +57,12 @@ const OUTCOME_REVIEW_FIXTURE=Object.freeze({
     private_signoff_token:"DO-NOT-LEAK-CI-POLICY",
   }],
 });
+// Isolated CI-only write/readback. One negative review and one high-threshold
+// policy can be recorded; neither is real human approval or a live DB write.
+const CI_REVIEW_RECEIPT="123e4567-e89b-42d3-a456-426614174037";
+const CI_POLICY_RECEIPT="123e4567-e89b-42d3-a456-426614174038";
+const ciRecordedReviews=[];
+const ciRecordedPolicies=[];
 const LEARNING_CONTEXT_LIST_PATH="/rest/v1/rpc/production_order_learning_context_list";
 const LEARNING_CONTEXT_LISTS=Object.freeze({
   [LEARNING_CONTEXT_LIST_PATH]:[{
@@ -223,7 +231,7 @@ async function handle(req,res){
     res.writeHead(200,{"content-type":"application/json","cache-control":"private, no-store","content-range":"*/0"});
     return res.end(JSON.stringify(rows));
   }
-  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,DELIVERY_EVIDENCE_LIST_PATH,DELIVERY_FIRST_TEN_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,LEARNING_CONTEXT_LIST_PATH,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
+  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,DELIVERY_EVIDENCE_LIST_PATH,DELIVERY_FIRST_TEN_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,LEARNING_CONTEXT_LIST_PATH,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH,OUTCOME_REVIEW_RECORD_PATH,OUTCOME_POLICY_RECORD_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
   if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
   let raw="";
   try{
@@ -255,12 +263,49 @@ async function handle(req,res){
         return send(res,400,{error:"Invalid CI first-ten audit request"});
       return send(res,200,DELIVERY_FIXTURE_BASIS);
     }
+    if(req.url===OUTCOME_REVIEW_RECORD_PATH){
+      if(!payload||typeof payload!=="object"||Array.isArray(payload)
+        ||Object.keys(payload).sort().join(",")!=="p_decision,p_note,p_outcome_id,p_reviewer"
+        ||payload.p_outcome_id!==OUTCOME_REVIEW_FIXTURE[OUTCOME_LEARNING_PATH][0].outcome_id
+        ||payload.p_decision!=="rejected"
+        ||payload.p_reviewer!=="CI synthetic reviewer"
+        ||payload.p_note!=="CI synthetic review: actual tailoring fit unverified")
+        return send(res,400,{error:"CI only: invalid synthetic review write"});
+      if(ciRecordedReviews.length)return send(res,409,{error:"CI review already recorded"});
+      ciRecordedReviews.push({
+        review_id:CI_REVIEW_RECEIPT,outcome_id:payload.p_outcome_id,
+        decision:payload.p_decision,reviewer:payload.p_reviewer,
+        note:payload.p_note,created_at:new Date().toISOString(),
+        private_reviewer_secret:"DO-NOT-LEAK-CI-POST-REVIEW",
+      });
+      return send(res,200,CI_REVIEW_RECEIPT);
+    }
+    if(req.url===OUTCOME_POLICY_RECORD_PATH){
+      if(!payload||typeof payload!=="object"||Array.isArray(payload)
+        ||Object.keys(payload).sort().join(",")!=="p_approved_by,p_minimum_approved_cases,p_note"
+        ||payload.p_minimum_approved_cases!==3
+        ||payload.p_approved_by!=="CI synthetic policy signer"
+        ||payload.p_note!=="CI only: three authentic customer approvals still required")
+        return send(res,400,{error:"CI only: invalid synthetic policy write"});
+      if(ciRecordedPolicies.length)return send(res,409,{error:"CI policy already recorded"});
+      ciRecordedPolicies.push({
+        policy_id:CI_POLICY_RECEIPT,minimum_approved_cases:payload.p_minimum_approved_cases,
+        approved_by:payload.p_approved_by,note:payload.p_note,
+        created_at:new Date().toISOString(),
+        private_policy_secret:"DO-NOT-LEAK-CI-POST-POLICY",
+      });
+      return send(res,200,CI_POLICY_RECEIPT);
+    }
     if([OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH].includes(req.url)){
       const limit=req.url===OUTCOME_LEARNING_PATH?1000:req.url===OUTCOME_REVIEW_PATH?5000:100;
       if(!payload||typeof payload!=="object"||Array.isArray(payload)||
          payload.p_limit!==limit||Object.keys(payload).length!==1)
         return send(res,400,{error:"Invalid synthetic outcome learning review request"});
-      return send(res,200,OUTCOME_REVIEW_FIXTURE[req.url]);
+      return send(res,200,req.url===OUTCOME_REVIEW_PATH
+        ?[...ciRecordedReviews,...OUTCOME_REVIEW_FIXTURE[req.url]]
+        :req.url===OUTCOME_POLICY_PATH
+          ?[...ciRecordedPolicies,...OUTCOME_REVIEW_FIXTURE[req.url]]
+          :OUTCOME_REVIEW_FIXTURE[req.url]);
     }
     if(req.url===LEARNING_CONTEXT_LIST_PATH){
       if(!payload||typeof payload!=="object"||Array.isArray(payload)||
@@ -307,4 +352,4 @@ if(require.main===module){
     console.log("Synthetic CI-only stock fixture listening on loopback; NOT physical evidence");
   });
 }
-module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,QC_LIST_PATH,QC_LISTS,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS,LEARNING_CONTEXT_LIST_PATH,LEARNING_CONTEXT_LISTS,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH,OUTCOME_REVIEW_FIXTURE,METADATA_PATH,DELIVERY_EVIDENCE_LIST_PATH,DELIVERY_FIRST_TEN_PATH,DELIVERY_FIXTURE_ORDER,DELIVERY_FIXTURE_EVIDENCE,DELIVERY_FIXTURE_BASIS};
+module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,QC_LIST_PATH,QC_LISTS,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS,LEARNING_CONTEXT_LIST_PATH,LEARNING_CONTEXT_LISTS,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH,OUTCOME_REVIEW_RECORD_PATH,OUTCOME_POLICY_RECORD_PATH,CI_REVIEW_RECEIPT,CI_POLICY_RECEIPT,OUTCOME_REVIEW_FIXTURE,METADATA_PATH,DELIVERY_EVIDENCE_LIST_PATH,DELIVERY_FIRST_TEN_PATH,DELIVERY_FIXTURE_ORDER,DELIVERY_FIXTURE_EVIDENCE,DELIVERY_FIXTURE_BASIS};

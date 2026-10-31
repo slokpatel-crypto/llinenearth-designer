@@ -61,3 +61,28 @@ test("operator review and policy confirmations require readback after POST befor
   assert.match(ui,/Inspect existing records before retrying to avoid duplicate human decisions/);
   assert.doesNotMatch(post,/const refreshed=await load\(\);/);
 });
+
+
+test("built Next CI invokes signed human receipt write/readback after the immutable baseline",()=>{
+  const workflow=readFileSync(".github/workflows/ci.yml","utf8");
+  const script=readFileSync("scripts/verify-customer-review-write-readback-http.cjs","utf8");
+  const fixture=readFileSync("scripts/ci-verified-stock-fixture.cjs","utf8");
+  const baseline=workflow.indexOf("node scripts/verify-customer-outcome-review-private-http.cjs");
+  const writeReadback=workflow.indexOf("node scripts/verify-customer-review-write-readback-http.cjs");
+  const delivery=workflow.indexOf("node scripts/verify-delivery-evidence-private-http.cjs");
+  assert.ok(baseline>=0&&writeReadback>baseline&&delivery>writeReadback,
+    "The baseline is verified before synthetic CI-only mutations");
+  assert.match(script,/if\(process\.env\.CI!=="true"\|\|process\.env\.GITHUB_ACTIONS!=="true"\)/);
+  assert.match(script,/createHmac\("sha256",secret\)/);
+  assert.match(script,/const createdReview=await expectedBody\(await request\(signed,reviewBody\),200\)/);
+  assert.match(script,/storedReview\.decision,"rejected"/);
+  assert.match(script,/createdReview\.reviewId/);
+  assert.match(script,/storedPolicy\.minimum_approved_cases,3/);
+  assert.match(script,/final\.summary\.gateComplete,false/);
+  assert.match(script,/assert\.doesNotMatch\(JSON\.stringify\(final\),\/DO-NOT-LEAK-CI-\/,/);
+  assert.match(fixture,/const OUTCOME_REVIEW_RECORD_PATH=/);
+  assert.match(fixture,/const OUTCOME_POLICY_RECORD_PATH=/);
+  assert.match(fixture,/if\(ciRecordedReviews\.length\)return send\(res,409/);
+  assert.match(fixture,/if\(ciRecordedPolicies\.length\)return send\(res,409/);
+  assert.match(fixture,/private_policy_secret:"DO-NOT-LEAK-CI-POST-POLICY"/);
+});
