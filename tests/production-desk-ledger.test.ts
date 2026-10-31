@@ -101,7 +101,14 @@ test("J5 operator browser independently validates network receipts and clears ol
   assert.ok(guard>0&&setQuotes>guard,"the client cannot trust a successful HTTP JSON array without the typed receipt guard");
   assert.match(client,/setConfigured\(data\.configured\)/);
   assert.doesNotMatch(client,/setConfigured\(data\.configured!==false\)/);
-  assert.match(client,/setLoadedRevision\(null\);\s*try\{\s*const response=await fetch\("\/api\/designer\/vault"/);
+  // Recovery must clear previously selected production identities and must not
+  // enable any export or mutation from a merely success-shaped HTTP response.
+  assert.ok(client.includes('import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";'));
+  assert.ok(client.includes('setLoadedRevision(null);\\n    setQuote((current)=>({...current,revisionId:"",recipeHash:""}));\\n    setOrder((current)=>({...current,revisionId:"",recipeHash:"",quoteId:""}));'.replaceAll('\\n','\n')));
+  const cryptographicGuard=client.indexOf("await verifyLockedDesignRevision(data.revision)");
+  const loaded=client.indexOf("setLoadedRevision(revision)");
+  assert.ok(cryptographicGuard>0&&loaded>cryptographicGuard,"unverified vault payload cannot populate production selection");
+  assert.ok(client.includes("if(!response.ok||!data?.revision||!await verifyLockedDesignRevision(data.revision))"));
   assert.match(client,/value=\{recoveryToken\} disabled=\{busy\} onChange=\{\(e\)=>\{/);
   assert.match(client,/setRecoveryToken\(e\.target\.value\);\s*setLoadedRevision\(null\)/);
   assert.match(client,/setOrder\(\(current\)=>\(\{\.\.\.current,revisionId:revision\.revisionId,recipeHash:revision\.recipeHash,quoteId:""\}\)\)/);
