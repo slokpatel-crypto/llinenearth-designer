@@ -1136,6 +1136,20 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "finally{actionInFlight.current=false;setBusy(false);}",
 ]);
 
+
+// An older operator GET must not repopulate stale quote/QC evidence after
+// a mutation, failed refresh or later verified ledger response.
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "const [configured,setConfigured]=useState(false)",
+  "const ledgerReadVersion=useRef(0)",
+  "const readVersion=++ledgerReadVersion.current",
+  "if(readVersion!==ledgerReadVersion.current) return;",
+  "ledgerReadVersion.current+=1;",
+  "if(!configured) return;",
+  "if(!loadedRevision||!configured||busy||actionInFlight.current) return;",
+  "disabled={busy||!configured}",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
