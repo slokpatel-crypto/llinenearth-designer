@@ -69,3 +69,24 @@ test("M114 operator GET uses authenticated bounded SQL read; failure hides deliv
   assert.match(pg,/20261114_delivery_eligibility_read\.sql/);
   assert.match(pg,/m114-delivery-eligibility-assertions\.sql/);
 });
+
+test("M115 private HTTP smoke runs in both real CI browser jobs",()=>{
+  const file="scripts/verify-production-delivery-eligibility-private-http.cjs";
+  const smoke=readFileSync(file,"utf8");
+  for(const workflow of [".github/workflows/ci.yml",".github/workflows/deep-engine-non3d.yml"]){
+    const source=readFileSync(workflow,"utf8");
+    assert.ok(source.includes("node "+file),
+      "The signed operator regression must run against a real local Next.js server");
+  }
+  assert.match(smoke,/GITHUB_ACTIONS/);
+  assert.match(smoke,/CI!==/);
+  assert.match(smoke,/127\.0\.0\.1/);
+  assert.match(smoke,/signedCookie/);
+  assert.match(smoke,/response\.status,401/);
+  assert.match(smoke,/response\.status,503/);
+  assert.match(smoke,/private\\b/);
+  assert.match(smoke,/no-store/);
+  assert.match(smoke,/Delivery verification unavailable/);
+  assert.match(smoke,/ledger\.status,200/);
+  assert.match(smoke,/Object\.hasOwn\(data,"deliveryEligibility"\),false/);
+});
