@@ -55,8 +55,14 @@ export function hasVerifiedSqlDeliveryEligibility(
     ||typeof order.revision_id!=="string"
     ||typeof order.recipe_hash!=="string"
     ||typeof order.updated_at!=="string")return false;
+  // The callback executes outside TypeScript's narrowing scope for unknown
+  // record properties. Capture only strictly validated primitive values.
+  const recipeHash=order.recipe_hash.toLowerCase();
+  const revisionId=order.revision_id;
+  const status=order.status;
+  const updatedAt=order.updated_at;
   return rows.some(row=>row.order_id===id&&row.eligible===true
-    &&row.status===order.status&&row.revision_id===order.revision_id
-    &&row.recipe_hash===order.recipe_hash.toLowerCase()
-    &&row.updated_at===order.updated_at);
+    &&row.status===status&&row.revision_id===revisionId
+    &&row.recipe_hash===recipeHash
+    &&row.updated_at===updatedAt);
 }
