@@ -303,7 +303,7 @@ test("J5 operator ledger refresh discards stale GETs and disables mutations unti
   assert.match(client,/if\(readVersion!==ledgerReadVersion\.current\) return false;/);
   assert.equal((client.match(/if\(readVersion!==ledgerReadVersion\.current\) return false;/g)||[]).length,2,
     "both stale successful and stale failed GETs must be discarded");
-  assert.match(client,/ledgerReadVersion\.current\+=1;\s*setConfigured\(false\)/);
+  assert.match(client,/ledgerReadVersion\.current\+=1;\s*verifiedLedgerReadVersion\.current=0;\s*setRenderedLedgerReadVersion\(0\);\s*setConfigured\(false\)/);
   const postGuard=client.split("async function post(")[1]?.split("function confirmReviewedProductionHistory(")[0]||"";
   const enabled=postGuard.indexOf("if(!configured||requiresWriteReview) return;");
   const persistent=postGuard.indexOf("beginProductionWriteHold(safeProductionHoldStorage(),holdToken)",enabled);
