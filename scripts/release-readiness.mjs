@@ -1108,6 +1108,17 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "const confirmed=await load({action:body.action,body,receipt:data});",
   "if(confirmed)setMessage(success);",
 ]);
+// M102: a lost POST acknowledgement may follow a committed mutation; only
+// definite prewrite input/auth/size/rate denials may use a normal reject message.
+requireTokens("src/lib/designer/production-post-retry.ts",[
+  "isCertainProductionPrewriteRejection", "400,401,403,413,429",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "certainPrewriteRejection=isCertainProductionPrewriteRejection(response.status)",
+  "const refreshed=await load();",
+  "The production mutation may already have been saved",
+  "Do not retry until the production ledger can be inspected",
+]);
 // A successful recovery HTTP status must not unlock operator exports or mutations
 // without a locally verified immutable revision/hash, or retain an old selection.
 requireTokens("src/app/operator/production/ProductionClient.tsx", [
