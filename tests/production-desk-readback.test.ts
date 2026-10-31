@@ -9,7 +9,8 @@ const anotherId="123e4567-e89b-42d3-a456-426614174033";
 const revisionId="LE-LOCKED-REVISION-20261031";
 const recipeHash="a".repeat(64);
 const quote={quote_id:quoteId,revision_id:revisionId,recipe_hash:recipeHash,
-  currency:"INR",status:"draft"};
+  currency:"INR",status:"draft",line_items:[{label:"Shirt fabric",amount:1200.12},{label:"Tailoring",amount:350.35}],
+  subtotal:1550.47,adjustment:-0.01,total:1550.46,note:"Customer approved"};
 const order={order_id:orderId,quote_id:quoteId,revision_id:revisionId,
   recipe_hash:recipeHash,status:"created"};
 const context={order_id:orderId,revision_id:revisionId,recipe_hash:recipeHash,
@@ -23,7 +24,9 @@ function verifiedProductionMutationReadback(
 
 
 test("quote creation is never confirmed without the exact immutable quote and locked recipe",()=>{
-  const body={action:"create_quote",revisionId,recipeHash,currency:"INR"};
+  const body={action:"create_quote",revisionId,recipeHash,currency:"INR",
+    lineItems:[{label:" Shirt fabric ",amount:1200.12},{label:"Tailoring",amount:350.35}],
+    adjustment:-0.01,note:" Customer approved "};
   const receipt={quoteId,lockedRevisionVerified:true};
   assert.equal(verifiedProductionMutationReadback("create_quote",body,receipt,[quote],[]),true);
   assert.equal(verifiedProductionMutationReadback("create_quote",body,receipt,[],[]),false);
@@ -41,6 +44,33 @@ test("quote creation is never confirmed without the exact immutable quote and lo
     {...receipt,lockedRevisionVerified:false},[quote],[]),false);
   assert.equal(verifiedProductionMutationReadback("create_quote",
     {...body,recipeHash:recipeHash.toUpperCase()},receipt,[quote],[]),true);
+});
+
+
+test("new quote success requires the exact operator-entered prices, lines, adjustment and note",()=>{
+  const body={action:"create_quote",revisionId,recipeHash,currency:"INR",
+    lineItems:[{label:" Shirt fabric ",amount:1200.12},{label:"Tailoring",amount:350.35}],
+    adjustment:-0.01,note:" Customer approved "};
+  const receipt={quoteId,lockedRevisionVerified:true};
+  const verify=(saved:unknown,requested:unknown=body)=>
+    verifiedProductionMutationReadback("create_quote",requested,receipt,[saved],[]);
+  assert.equal(verify(quote),true,"Trimmed labels/notes preserve legitimate normalized writes");
+  assert.equal(verify({...quote,line_items:[{label:"Shirt fabric",amount:1200.11},{label:"Tailoring",amount:350.36}]}),false,
+    "Equal subtotal cannot hide changed customer line prices");
+  assert.equal(verify({...quote,line_items:[...quote.line_items].reverse()}),false,
+    "Reordered line items cannot silently change quote meaning");
+  assert.equal(verify({...quote,line_items:[{label:"Shirt fabric",amount:1200.12}]}),false);
+  assert.equal(verify({...quote,line_items:[{label:"Shirt fabric",amount:1200.12},{label:"Fabric",amount:350.35}]}),false);
+  assert.equal(verify({...quote,adjustment:0,total:1550.47}),false);
+  assert.equal(verify({...quote,subtotal:1550.48,total:1550.47}),false);
+  assert.equal(verify({...quote,total:1550.45}),false);
+  assert.equal(verify({...quote,note:"Different customer instruction"}),false);
+  assert.equal(verify({...quote,status:"sent"}),false,
+    "A newly created quote must be in draft state at confirmation");
+  assert.equal(verify({...quote,line_items:[{label:"Shirt fabric",amount:"1200.12"},quote.line_items[1]]}),false);
+  assert.equal(verify(quote,{...body,lineItems:[{label:"Shirt fabric",amount:1200.12}]}),false);
+  assert.equal(verify(quote,{...body,lineItems:[{label:"Shirt fabric",amount:-2}]}),false);
+  assert.equal(verify(quote,{...body,note:["Customer approved"]}),false);
 });
 
 test("order creation readback binds exact order, revision, hash and quote association",()=>{
