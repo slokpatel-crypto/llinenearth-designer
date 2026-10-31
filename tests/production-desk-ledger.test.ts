@@ -269,7 +269,7 @@ test("J5 packet export refuses ambiguous order or quote identities",()=>{
     "a uniquely accepted quote remains selectable without an order");
   assert.throws(()=>selectProductionPacketRecords([quote],[],revisionId,"not-a-hash"),/verified locked recipe/);
   const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
-  assert.match(client,/selectProductionPacketRecords\(\s*quotes,orders,loadedRevision\.revisionId,loadedRevision\.recipeHash/);
+  assert.match(client,/selectProductionPacketRecords\(\s*fresh\.quotes as Quote\[\],fresh\.orders as Order\[\],\s*loadedRevision\.revisionId,loadedRevision\.recipeHash/);
   assert.doesNotMatch(client,/const quoteMatch=quotes\.find/);
 });
 
@@ -316,8 +316,13 @@ test("J5 operator ledger refresh discards stale GETs and disables mutations unti
     "An ambiguous write must refresh before warning and release the single-flight lock in finally");
   assert.match(post,/if\(certainPrewriteRejection\)\{/);
   assert.match(post,/Do not retry until the production ledger can be inspected/);
-  assert.match(client,/async function exportProductionPacket\(\)\{\s*if\(!loadedRevision\|\|!configured\|\|busy\|\|actionInFlight\.current\) return;/);
-  assert.match(client,/disabled=\{!configured\|\|busy\} onClick=\{\(\)=>void exportProductionPacket\(\)\}/);
+  const exportCode=client.split("async function exportProductionPacket(){")[1]
+    ?.split("const quoteRows=useMemo(")[0]||"";
+  assert.match(exportCode,/if\(!loadedRevision\|\|!configured\|\|requiresWriteReview\|\|busy\|\|actionInFlight\.current\) return;/);
+  assert.match(exportCode,/await fetch\("\/api\/operator\/production",\{cache:"no-store"\}\)/);
+  assert.match(exportCode,/validProductionDeskResponse\(fresh\)/);
+  assert.match(exportCode,/fresh\.quotes as Quote\[\],fresh\.orders as Order\[\]/);
+  assert.match(client,/disabled=\{!configured\|\|requiresWriteReview\|\|busy\} onClick=\{\(\)=>void exportProductionPacket\(\)\}/);
   assert.match(client,/\{nextStatuses\.length>0&&<select disabled=\{busy\|\|!configured\|\|requiresWriteReview\}/);
   assert.equal((client.match(/<button disabled=\{busy\|\|!configured\|\|requiresWriteReview\}/g)||[]).length,3,
     "quote status actions must also be disabled when the ledger is unverified");
