@@ -7,6 +7,7 @@ import { buildVerifiedProductionHandoff } from "@/lib/designer/production-handof
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet";
 import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
+import {verifiedProductionMutationReadback} from "@/lib/designer/production-desk-readback";
 import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
 import { validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash, selectProductionPacketRecords } from "@/lib/designer/production-desk-ledger";
 
@@ -37,7 +38,7 @@ export default function ProductionClient(){
   const [recoveryToken,setRecoveryToken]=useState("");
   const [loadedRevision,setLoadedRevision]=useState<LockedDesignRevision|null>(null);
 
-  async function load(){
+  async function load(expected?:{action:unknown;body:Record<string,unknown>;receipt:unknown}):Promise<boolean>{
     const readVersion=++ledgerReadVersion.current;
     // Clear old receipts immediately; stale rows must not authorize actions.
     setConfigured(false);
@@ -46,13 +47,18 @@ export default function ProductionClient(){
     setOptionalEvidenceSources(null);
     try{
       const response=await fetch("/api/operator/production",{cache:"no-store"});
-      if(response.status===401){window.location.href="/operator/login?next=/operator/production";return;}
+      if(response.status===401){window.location.href="/operator/login?next=/operator/production";return false;}
       if(!response.ok) throw new Error("Production records are unavailable.");
       const data:unknown=await response.json();
       if(!validProductionDeskResponse(data)){
         throw new Error("Production ledger response is malformed.");
       }
-      if(readVersion!==ledgerReadVersion.current) return;
+      if(readVersion!==ledgerReadVersion.current) return false;
+      // A mutation is not confirmed until this newly verified ledger contains
+      // the exact created UUID or updated status on the intended quote/order.
+      if(expected&&(!data.configured||!verifiedProductionMutationReadback(
+        expected.action,expected.body,expected.receipt,data.quotes,data.orders,
+      )))throw new Error("The changed production record was not confirmed in refreshed history.");
       setConfigured(data.configured);
       setQuotes(data.quotes as Quote[]);
       setOrders(data.orders as Order[]);
@@ -60,8 +66,9 @@ export default function ProductionClient(){
       setCustomerOutcomes(data.configured?data.customerOutcomes as CustomerOutcome[]:[]);
       setLearningContexts(data.configured?data.learningContexts as LearningContext[]:[]);
       setOptionalEvidenceSources(data.configured?data.optionalEvidenceSources:null);
+      return data.configured;
     }catch{
-      if(readVersion!==ledgerReadVersion.current) return;
+      if(readVersion!==ledgerReadVersion.current) return false;
       // Never keep stale quotes/orders or leave mutation controls enabled when
       // the operator's current production ledger cannot be verified.
       setConfigured(false);
@@ -71,7 +78,10 @@ export default function ProductionClient(){
       setCustomerOutcomes([]);
       setLearningContexts([]);
       setOptionalEvidenceSources(null);
-      setMessage("Production records could not be verified. Retry after the operator backend is available.");
+      setMessage(expected
+        ?"The mutation may have been saved, but its exact quote/order history could not be verified. Inspect the records before retrying to avoid duplicate orders or status changes."
+        :"Production records could not be verified. Retry after the operator backend is available.");
+      return false;
     }
   }
   useEffect(()=>{void load();},[]);
@@ -89,7 +99,8 @@ export default function ProductionClient(){
       const data=await response.json() as {error?:unknown};
       if(!response.ok) throw new Error(typeof data?.error==="string"?data.error:"Production operation failed.");
       if(!validProductionDeskMutationReceipt(body.action,data)) throw new Error("Production operation receipt could not be verified.");
-      setMessage(success);await load();
+      const confirmed=await load({action:body.action,body,receipt:data});
+      if(confirmed)setMessage(success);
     }catch(error){
       setMessage(error instanceof Error?error.message:"Production operation failed.");
       // A timed-out mutation may still have committed. Reload rather than
