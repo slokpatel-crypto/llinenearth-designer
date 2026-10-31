@@ -127,6 +127,30 @@ test("J5 installed optional evidence must contain typed rows, not arbitrary succ
     optionalEvidenceSources:{qcInstalled:true,customerOutcomesInstalled:true,learningContextInstalled:true},
   };
   assert.equal(validProductionDeskResponse(valid),true);
+  // A valid-looking optional 200 row must not rewrite the visible order's
+  // physical chronology or immutable recipe, even when the QC desk itself
+  // has a separate stricter delivery-approval gate.
+  const beforeOrder="2026-10-30T10:00:30.000Z";
+  const linkedQc={...qc,revision_id:revisionId,recipe_hash:recipeHash};
+  assert.equal(validProductionDeskResponse({...valid,qcInspections:[linkedQc]}),true);
+  assert.equal(validProductionDeskResponse({...valid,qcInspections:[{...linkedQc,recipe_hash:recipeHash.toUpperCase()}]}),true,
+    "PostgreSQL hashes may have equivalent uppercase hex");
+  assert.equal(validProductionDeskResponse({...valid,qcInspections:[{...qc,inspector:null,inspection_reference:null}]}),true,
+    "historical nullable physical provenance remains readable, not approved");
+  for(const forged of [
+    {...qc,created_at:beforeOrder},
+    {...linkedQc,revision_id:"LE-LOCK-20261001090000-OTHER123456"},
+    {...linkedQc,recipe_hash:"b".repeat(64)},
+    {...linkedQc,recipe_hash:[recipeHash]},
+  ]){
+    assert.equal(validProductionDeskResponse({...valid,qcInspections:[forged]}),false,JSON.stringify(forged));
+  }
+  assert.equal(validProductionDeskResponse({...valid,customerOutcomes:[{...outcome,created_at:beforeOrder}]}),false,
+    "customer outcome cannot precede its visible production order");
+  assert.equal(validProductionDeskResponse({...valid,learningContexts:[{...context,created_at:beforeOrder}]}),false,
+    "learning context cannot precede its visible production order");
+  assert.equal(validProductionDeskResponse({...valid,qcInspections:[{...linkedQc,order_id:"123e4567-e89b-42d3-a456-426614174099",created_at:beforeOrder}]}),true,
+    "independently capped order pages cannot certify chronology of older omitted orders");
   assert.equal(validProductionDeskResponse({...valid,qcInspections:[{...qc,decision:"invented"}]}),false);
   assert.equal(validProductionDeskResponse({...valid,qcInspections:[{...qc,created_at:"2026-02-31T10:00:00Z"}]}),false);
   assert.equal(validProductionDeskResponse({...valid,qcInspections:[qc,{...qc}]}),false);

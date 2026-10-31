@@ -147,7 +147,7 @@ function validOptionalEvidenceRows(rows:unknown,kind:"qc"|"outcome"|"context"):r
 /** Optional evidence can be older than the newest-100 order page, but when
  * the linked order IS present, its immutable recipe lineage must agree.
  * Otherwise a forged outcome/context can be displayed on the wrong order. */
-function validOptionalOrderLineage(orders:unknown[],outcomes:unknown[],contexts:unknown[]):boolean{
+function validOptionalOrderLineage(orders:unknown[],qc:unknown[],outcomes:unknown[],contexts:unknown[]):boolean{
   const byId=new Map<string,Record<string,unknown>>();
   for(const order of orders){
     if(!record(order)) return false;
@@ -155,18 +155,35 @@ function validOptionalOrderLineage(orders:unknown[],outcomes:unknown[],contexts:
     if(!id) return false;
     byId.set(id,order);
   }
+  // An installed optional QC ledger is not authoritative if its visible
+  // inspection predates the order or claims another immutable recipe.
+  // Historical blank/null provenance remains readable but unverified.
+  for(const row of qc){
+    if(!record(row)) return false;
+    const id=verifiedOperatorProductionCreateId(row.order_id);
+    const order=id?byId.get(id):undefined;
+    if(!order) continue; // independently capped order page
+    if(parseProductionEvidenceTimestamp(row.created_at)<parseProductionEvidenceTimestamp(order.created_at)
+      ||(row.revision_id!==null&&row.revision_id!==undefined&&row.revision_id!==""
+        &&row.revision_id!==order.revision_id)
+      ||(row.recipe_hash!==null&&row.recipe_hash!==undefined&&row.recipe_hash!==""
+        &&(typeof row.recipe_hash!=="string"
+          ||row.recipe_hash.toLowerCase()!==String(order.recipe_hash).toLowerCase()))) return false;
+  }
   for(const row of outcomes){
     if(!record(row)) return false;
     const id=verifiedOperatorProductionCreateId(row.order_id);
     const order=id?byId.get(id):undefined;
-    if(order&&row.revision_id!==order.revision_id) return false;
+    if(order&&(row.revision_id!==order.revision_id
+      ||parseProductionEvidenceTimestamp(row.created_at)<parseProductionEvidenceTimestamp(order.created_at))) return false;
   }
   for(const row of contexts){
     if(!record(row)) return false;
     const id=verifiedOperatorProductionCreateId(row.order_id);
     const order=id?byId.get(id):undefined;
     if(!order) continue; // an older order may be outside this capped page
-    if(row.revision_id!==order.revision_id
+    if(parseProductionEvidenceTimestamp(row.created_at)<parseProductionEvidenceTimestamp(order.created_at)
+      ||row.revision_id!==order.revision_id
       ||typeof row.recipe_hash!=="string"||typeof order.recipe_hash!=="string"
       ||row.recipe_hash.toLowerCase()!==order.recipe_hash.toLowerCase()) return false;
   }
@@ -201,5 +218,5 @@ export function validProductionDeskResponse(value:unknown):value is VerifiedProd
     &&(sources.qcInstalled||value.qcInspections.length===0)
     &&(sources.customerOutcomesInstalled||value.customerOutcomes.length===0)
     &&(sources.learningContextInstalled||value.learningContexts.length===0)
-    &&validOptionalOrderLineage(value.orders,value.customerOutcomes,value.learningContexts);
+    &&validOptionalOrderLineage(value.orders,value.qcInspections,value.customerOutcomes,value.learningContexts);
 }
