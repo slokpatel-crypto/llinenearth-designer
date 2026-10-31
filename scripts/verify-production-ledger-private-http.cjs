@@ -59,7 +59,12 @@ async function main(){
   ]){
     for(const [key,value] of Object.entries(row)){
       assert.ok(Object.hasOwn(fixture,key),"Unexpected field exposed: "+key);
-      assert.deepEqual(value,fixture[key],"Verified production field differs");
+      // The original CI fixture deliberately includes a private nested cost.
+      // The safe HTTP quote must match only the documented line-item fields.
+      const expected=key==="line_items"
+        ?fixture[key].map(({label,amount})=>({label,amount}))
+        :fixture[key];
+      assert.deepEqual(value,expected,"Verified public operator field differs");
     }
   }
   assert.equal(Object.hasOwn(data.quotes[0],"private_customer_phone"),false);
