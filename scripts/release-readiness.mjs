@@ -1805,6 +1805,21 @@ requireTokens("tests/operator-async-auth-route-audit.test.ts",[
   "unawaited direct and wrapped guards",
 ]);
 
+// M119: production history loads without awaiting optional SQL eligibility.
+// Delivery remains hidden until newest-generation SQL receipt is validated.
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  'const response=await fetch("/api/operator/production",{cache:"no-store"})',
+  'setOrders(data.orders as Order[])',
+  'void (async()=>{',
+  'fetch("/api/operator/production/delivery-eligibility",{cache:"no-store"})',
+  'if(readVersion===ledgerReadVersion.current)setDeliveryEligibility(rows)',
+  'setDeliveryEligibility([])',
+]);
+requireTokens("tests/production-nonblocking-qc-hint.test.ts",[
+  "await Promise", "ledgerCommit", "hintFetch",
+  "readVersion===ledgerReadVersion", "production_order_deliver_idempotent",
+]);
+
 requireTokens("src/app/api/operator/production/delivery-eligibility/route.ts",[
   "if(!await verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value))", "production_delivery_eligibility_list",
   "parseProductionDeliveryEligibility(raw)", 'cache:"no-store"', "private, no-store",
