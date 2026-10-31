@@ -248,7 +248,7 @@ export async function POST(request:Request){
       // browser UUID. Delivery still uses its separate physical-QC preflight;
       // it must not be treated as transactionally QC-verified by this change.
       const updated=status==="delivered"
-        ?await rpc<unknown>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note})
+        ?await rpc<unknown>("production_order_deliver_idempotent",{p_request_key:requestKey,p_order_id:orderId,p_note:note})
         :await rpc<unknown>("production_order_set_status_idempotent",{
           p_request_key:requestKey,p_order_id:orderId,p_status:status,p_note:note,
         });
