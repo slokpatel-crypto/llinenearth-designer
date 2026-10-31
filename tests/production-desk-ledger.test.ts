@@ -300,8 +300,8 @@ test("J5 operator ledger refresh discards stale GETs and disables mutations unti
   assert.match(client,/const \[configured,setConfigured\]=useState\(false\)/);
   assert.match(client,/const ledgerReadVersion=useRef\(0\)/);
   assert.match(client,/const readVersion=\+\+ledgerReadVersion\.current/);
-  assert.match(client,/if\(readVersion!==ledgerReadVersion\.current\) return;/);
-  assert.equal((client.match(/if\(readVersion!==ledgerReadVersion\.current\) return;/g)||[]).length,2,
+  assert.match(client,/if\(readVersion!==ledgerReadVersion\.current\) return false;/);
+  assert.equal((client.match(/if\(readVersion!==ledgerReadVersion\.current\) return false;/g)||[]).length,2,
     "both stale successful and stale failed GETs must be discarded");
   assert.match(client,/ledgerReadVersion\.current\+=1;\s*setConfigured\(false\)/);
   assert.match(client,/if\(!configured\) return;\s*actionInFlight\.current=true/);

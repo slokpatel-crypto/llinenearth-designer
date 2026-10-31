@@ -167,7 +167,7 @@ test("operator production desk never offers delivery based on first matching sta
 
 test("operator desk clears stale production records and disables mutation controls on ledger failure",()=>{
   const ui=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
-  const load=ui.split("async function load(){")[1]?.split("useEffect(()=>{void load();},[])")[0]||"";
+  const load=ui.split("async function load(")[1]?.split("useEffect(()=>{void load();},[])")[0]||"";
   assert.ok(load.includes("if(!response.ok) throw new Error"));
   assert.ok(load.includes("if(!validProductionDeskResponse(data))"),"the browser must validate the complete typed ledger envelope, not merely two arrays");
   assert.ok(load.includes("setConfigured(data.configured)"),"never assume missing configured means true");
