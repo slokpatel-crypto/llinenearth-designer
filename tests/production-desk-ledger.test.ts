@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { validProductionDeskLedgers, validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash } from "../src/lib/designer/production-desk-ledger.ts";
+import { validProductionDeskLedgers, validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash, selectProductionPacketRecords } from "../src/lib/designer/production-desk-ledger.ts";
 
 const qid="123e4567-e89b-42d3-a456-426614174000";
 const oid="123e4567-e89b-42d3-a456-426614174001";
@@ -231,4 +231,35 @@ test("J5 operator packet and evidence links use canonical UUID and hash identity
   assert.match(client,/sameProductionRecordId\(context\.order_id,item\.order_id\)/);
   assert.match(client,/sameProductionRecipeHash\(item\.recipe_hash,loadedRevision\.recipeHash\)/);
   assert.match(client,/sameProductionRecipeHash\(item\.recipe_hash,order\.recipeHash\)/);
+});
+
+test("J5 packet export only links an order to its actual immutable quote receipt",()=>{
+  const unrelated={...quote,quote_id:"123e4567-e89b-42d3-a456-426614174002"};
+  const matching={...quote,quote_id:qid.toUpperCase(),recipe_hash:recipeHash.toUpperCase()};
+  const selected=selectProductionPacketRecords([unrelated,matching],[order],revisionId,recipeHash);
+  assert.equal(selected.order?.order_id,oid);
+  assert.equal(selected.quote?.quote_id,matching.quote_id,
+    "a newer unrelated accepted quote for the same recipe must not enter this order's packet");
+  assert.equal(selectProductionPacketRecords([unrelated],[order],revisionId,recipeHash).quote,null,
+    "a linked quote outside the independently capped list is unverified, not substituted");
+  assert.equal(selectProductionPacketRecords([quote],[{...order,quote_id:null}],revisionId,recipeHash).quote,null,
+    "an unquoted order must never inherit a separate quote for the same recipe");
+  assert.equal(selectProductionPacketRecords([quote],[],revisionId,recipeHash).quote?.quote_id,qid);
+  assert.equal(selectProductionPacketRecords([],[],revisionId,recipeHash).order,null);
+});
+
+test("J5 packet export refuses ambiguous order or quote identities",()=>{
+  const secondOrder={...order,order_id:"123e4567-e89b-42d3-a456-426614174003",quote_id:null};
+  assert.throws(()=>selectProductionPacketRecords([quote],[order,secondOrder],revisionId,recipeHash),
+    /Multiple production orders/);
+  assert.throws(()=>selectProductionPacketRecords([quote,{...quote,quote_id:"123e4567-e89b-42d3-a456-426614174004"}],[],revisionId,recipeHash),
+    /Multiple quotes/);
+  assert.equal(selectProductionPacketRecords([
+    {...quote,status:"draft"},quote,
+  ],[],revisionId,recipeHash).quote?.status,"accepted",
+    "a uniquely accepted quote remains selectable without an order");
+  assert.throws(()=>selectProductionPacketRecords([quote],[],revisionId,"not-a-hash"),/verified locked recipe/);
+  const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  assert.match(client,/selectProductionPacketRecords\(\s*quotes,orders,loadedRevision\.revisionId,loadedRevision\.recipeHash/);
+  assert.doesNotMatch(client,/const quoteMatch=quotes\.find/);
 });
