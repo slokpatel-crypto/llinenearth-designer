@@ -1469,7 +1469,8 @@ requireTokens("src/lib/designer/production-desk-ledger.ts",[
 ]);
 requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "selectProductionPacketRecords(",
-  "quotes,orders,loadedRevision.revisionId,loadedRevision.recipeHash",
+  "validProductionDeskResponse(fresh)",
+  "fresh.quotes as Quote[],fresh.orders as Order[]",
 ]);
 
 
