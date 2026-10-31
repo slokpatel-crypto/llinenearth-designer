@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect,useMemo,useState } from "react";
+import { useEffect,useMemo,useRef,useState } from "react";
+import {safeOutcomeReviewEvidence} from "@/lib/designer/customer-outcome-review-transport";
 import {
   summarizeCustomerOutcomeLearning,
   type CustomerOutcomeEvidenceRow,
@@ -18,6 +19,8 @@ function label(value:string){return value.replaceAll("_"," ");}
 
 export default function CustomerOutcomesClient(){
   const [configured,setConfigured]=useState(true);
+  const [verified,setVerified]=useState(false);
+  const refreshSequence=useRef(0);
   const [outcomes,setOutcomes]=useState<CustomerOutcomeEvidenceRow[]>([]);
   const [reviews,setReviews]=useState<CustomerOutcomeReviewRow[]>([]);
   const [policies,setPolicies]=useState<CustomerOutcomePolicyRow[]>([]);
@@ -29,19 +32,47 @@ export default function CustomerOutcomesClient(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
 
-  async function load(){
-    const response=await fetch("/api/operator/customer-outcomes",{cache:"no-store"});
-    if(response.status===401){window.location.href="/operator/login?next=/operator/customer-outcomes";return;}
-    const data=await response.json();
-    if(!response.ok){setMessage(data.error||"Customer outcomes could not be loaded.");return;}
-    setConfigured(data.configured!==false);
-    setOutcomes(Array.isArray(data.outcomes)?data.outcomes:[]);
-    setReviews(Array.isArray(data.reviews)?data.reviews:[]);
-    setPolicies(Array.isArray(data.policies)?data.policies:[]);
+  async function load():Promise<boolean>{
+    // Old or failed reads cannot keep a previously green learning gate on screen.
+    const generation=++refreshSequence.current;
+    setVerified(false);
+    setOutcomes([]);
+    setReviews([]);
+    setPolicies([]);
+    try{
+      const response=await fetch("/api/operator/customer-outcomes",{cache:"no-store"});
+      if(generation!==refreshSequence.current)return false;
+      if(response.status===401){
+        window.location.href="/operator/login?next=/operator/customer-outcomes";
+        return false;
+      }
+      const data:unknown=await response.json();
+      if(generation!==refreshSequence.current)return false;
+      if(!response.ok)throw new Error("Current customer outcome evidence could not be loaded.");
+      if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("Invalid customer outcome evidence.");
+      const record=data as Record<string,unknown>;
+      if(typeof record.configured!=="boolean")throw new Error("Invalid customer outcome configuration.");
+      // Never coerce a malformed review/policy list into empty, approved history.
+      const evidence=safeOutcomeReviewEvidence(record.outcomes,record.reviews,record.policies);
+      setConfigured(record.configured);
+      setOutcomes(evidence.outcomes);
+      setReviews(evidence.reviews);
+      setPolicies(evidence.policies);
+      setVerified(record.configured);
+      return record.configured;
+    }catch{
+      if(generation!==refreshSequence.current)return false;
+      setMessage("Current customer outcome evidence is unavailable. The previous learning gate has been cleared.");
+      return false;
+    }
   }
-  useEffect(()=>{void load();},[]);
+  useEffect(()=>{
+    void load();
+    return ()=>{refreshSequence.current+=1;};
+  },[]);
 
   const summary=useMemo(()=>summarizeCustomerOutcomeLearning(outcomes,reviews,policies),[outcomes,reviews,policies]);
+  const ready=verified&&configured;
   const latestReviewByOutcome=useMemo(()=>{
     const map=new Map<string,CustomerOutcomeReviewRow>();
     for(const row of [...reviews].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))){
@@ -59,7 +90,9 @@ export default function CustomerOutcomesClient(){
       });
       const data=await response.json();
       if(!response.ok) throw new Error(data.error||"Customer outcome evidence could not be saved.");
-      setMessage(success);await load();return true;
+      const refreshed=await load();
+      if(!refreshed)return false;
+      setMessage(success);return true;
     }catch(error){
       setMessage(error instanceof Error?error.message:"Customer outcome evidence could not be saved.");
       return false;
@@ -95,17 +128,18 @@ export default function CustomerOutcomesClient(){
       </header>
 
       {!configured&&<section style={{...panel,background:"#fff4df"}}>Phase 11 customer-outcome migrations are not installed yet.</section>}
+      {!ready&&<section style={{...panel,background:"#fff4df"}}>Current human-review evidence has not been verified. No learning gate or fit metric can be treated as complete.</section>}
       {message&&<section style={{...panel,background:"#ece8df"}}>{message}</section>}
 
       <section style={{...panel,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:12}}>
-        <article><small>OUTCOMES</small><div style={{fontSize:34,fontWeight:800}}>{summary.totalOutcomes}</div></article>
-        <article><small>APPROVED</small><div style={{fontSize:34,fontWeight:800}}>{summary.approved}</div></article>
-        <article><small>REJECTED</small><div style={{fontSize:34,fontWeight:800}}>{summary.rejected}</div></article>
-        <article><small>UNREVIEWED</small><div style={{fontSize:34,fontWeight:800}}>{summary.unreviewed}</div></article>
-        <article><small>LEARNING ELIGIBLE</small><div style={{fontSize:34,fontWeight:800}}>{summary.learningEligible}</div></article>
-        <article><small>CLEAN FIRST-FIT CASES</small><div style={{fontSize:34,fontWeight:800}}>{summary.approvedFitCases}</div></article>
-        <article><small>HUMAN THRESHOLD</small><div style={{fontSize:34,fontWeight:800}}>{summary.threshold??"—"}</div></article>
-        <article><small>EVIDENCE GATE</small><div style={{fontSize:24,fontWeight:800}}>{summary.gateComplete?"MET":"OPEN"}</div></article>
+        <article><small>OUTCOMES</small><div style={{fontSize:34,fontWeight:800}}>{ready?summary.totalOutcomes:"—"}</div></article>
+        <article><small>APPROVED</small><div style={{fontSize:34,fontWeight:800}}>{ready?summary.approved:"—"}</div></article>
+        <article><small>REJECTED</small><div style={{fontSize:34,fontWeight:800}}>{ready?summary.rejected:"—"}</div></article>
+        <article><small>UNREVIEWED</small><div style={{fontSize:34,fontWeight:800}}>{ready?summary.unreviewed:"—"}</div></article>
+        <article><small>LEARNING ELIGIBLE</small><div style={{fontSize:34,fontWeight:800}}>{ready?summary.learningEligible:"—"}</div></article>
+        <article><small>CLEAN FIRST-FIT CASES</small><div style={{fontSize:34,fontWeight:800}}>{ready?summary.approvedFitCases:"—"}</div></article>
+        <article><small>HUMAN THRESHOLD</small><div style={{fontSize:34,fontWeight:800}}>{ready?(summary.threshold??"—"):"—"}</div></article>
+        <article><small>EVIDENCE GATE</small><div style={{fontSize:24,fontWeight:800}}>{!ready?"UNVERIFIED":summary.gateComplete?"MET":"OPEN"}</div></article>
       </section>
 
       <section style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(340px,1fr))",gap:18}}>
@@ -122,16 +156,16 @@ export default function CustomerOutcomesClient(){
           <label style={{display:"grid",gap:5}}><span>Minimum approved cases</span><input style={input} type="number" min="1" max="10000" step="1" value={threshold} onChange={e=>setThreshold(e.target.value)}/></label>
           <label style={{display:"grid",gap:5,marginTop:10}}><span>Policy approver</span><input style={input} value={approvedBy} onChange={e=>setApprovedBy(e.target.value.slice(0,120))} placeholder="Named owner / approver"/></label>
           <label style={{display:"grid",gap:5,marginTop:10}}><span>Source / reasoning</span><textarea style={{...input,minHeight:90}} value={policyNote} onChange={e=>setPolicyNote(e.target.value.slice(0,1200))} placeholder="Document where this threshold comes from."/></label>
-          <button style={{...button,marginTop:12}} disabled={busy||!threshold||approvedBy.trim().length<2||policyNote.trim().length<3} onClick={()=>void savePolicy()}>Record threshold policy</button>
-          {summary.policy&&<p style={{fontSize:12,opacity:.62,lineHeight:1.5,marginBottom:0}}>Latest policy: {summary.policy.minimum_approved_cases} approved cases · {summary.policy.approved_by} · {new Date(summary.policy.created_at).toLocaleDateString("en-IN")}</p>}
+          <button style={{...button,marginTop:12}} disabled={busy||!ready||!threshold||approvedBy.trim().length<2||policyNote.trim().length<3} onClick={()=>void savePolicy()}>Record threshold policy</button>
+          {ready&&summary.policy&&<p style={{fontSize:12,opacity:.62,lineHeight:1.5,marginBottom:0}}>Latest policy: {summary.policy.minimum_approved_cases} approved cases · {summary.policy.approved_by} · {new Date(summary.policy.created_at).toLocaleDateString("en-IN")}</p>}
         </article>
       </section>
 
       <section style={panel}>
         <h2 style={{marginTop:0}}>Delivered-order outcome evidence</h2>
-        {!outcomes.length&&<p style={{opacity:.65}}>No authenticated post-delivery customer outcome has been recorded yet.</p>}
+        {ready&&!outcomes.length&&<p style={{opacity:.65}}>No authenticated post-delivery customer outcome has been recorded yet.</p>}
         <div style={{display:"grid",gap:12}}>
-          {outcomes.map(outcome=>{
+          {ready&&outcomes.map(outcome=>{
             const reviewRow=latestReviewByOutcome.get(outcome.outcome_id);
             const context=outcome.learning_context as null|{
               context?:{occasion?:string};
@@ -154,8 +188,8 @@ export default function CustomerOutcomesClient(){
               {outcome.note&&<p style={{margin:"2px 0",fontSize:13,lineHeight:1.5}}>{outcome.note}</p>}
               {reviewRow&&<small style={{opacity:.62}}>Latest review by {reviewRow.reviewer} · {new Date(reviewRow.created_at).toLocaleString("en-IN")}{reviewRow.note?" · "+reviewRow.note:""}</small>}
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                <button style={{...button,background:"#6b7a63"}} disabled={busy||reviewer.trim().length<2||!context} onClick={()=>void review(outcome.outcome_id,"approved")}>Approve evidence</button>
-                <button style={{...button,background:"#7a2f2f"}} disabled={busy||reviewer.trim().length<2||reviewNote.trim().length<3} onClick={()=>void review(outcome.outcome_id,"rejected")}>Reject evidence</button>
+                <button style={{...button,background:"#6b7a63"}} disabled={busy||!ready||reviewer.trim().length<2||!context} onClick={()=>void review(outcome.outcome_id,"approved")}>Approve evidence</button>
+                <button style={{...button,background:"#7a2f2f"}} disabled={busy||!ready||reviewer.trim().length<2||reviewNote.trim().length<3} onClick={()=>void review(outcome.outcome_id,"rejected")}>Reject evidence</button>
               </div>
             </article>;
           })}
