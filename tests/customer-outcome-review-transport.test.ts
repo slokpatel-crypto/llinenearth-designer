@@ -111,7 +111,7 @@ test("duplicate durable evidence IDs cannot inflate the human learning threshold
   ),/Duplicate or missing customer policy evidence ID/);
   assert.throws(()=>safeOutcomeReviewEvidence(
     [{...outcome,outcome_id:"  "}],[approved],[policy],
-  ),/Duplicate or missing customer outcome evidence ID/);
+  ),/Invalid customer outcome evidence UUID/);
 });
 
 
@@ -240,4 +240,69 @@ test("adverse customer evidence requires the actual submitted problem reason",()
     "not_checked");
   assert.equal(safeOutcomeReviewEvidence([outcome],[review],[policy]).outcomes[0].note,
     "CI bad fit","Valid negative fit feedback is preserved, never suppressed");
+});
+
+
+test("customer human approval transport requires literal durable PostgreSQL UUID identities",()=>{
+  const row={...outcome,overall_rating:"good",fit_result:"clean_first_fit",note:"Fit checked"};
+  for(const [label,patch] of [
+    ["outcome",{outcome_id:"legacy-customer-001"}],
+    ["order",{order_id:"some-order"}],
+    ["outcome padded",{outcome_id:" "+outcome.outcome_id}],
+    ["order padded",{order_id:outcome.order_id+" "}],
+    ["outcome wrong type",{outcome_id:{uuid:outcome.outcome_id}}],
+  ] as Array<[string,Record<string,unknown>]>){
+    assert.throws(()=>safeOutcomeReviewEvidence([{...row,...patch}],[review],[policy]),
+      /Invalid customer (outcome|order) evidence UUID/,label);
+  }
+  for(const [label,patch] of [
+    ["review",{review_id:"some-review"}],
+    ["review outcome",{outcome_id:"unknown-order"}],
+    ["review id padded",{review_id:" "+review.review_id}],
+    ["review outcome padded",{outcome_id:review.outcome_id+" "}],
+    ["review wrong type",{review_id:[review.review_id]}],
+  ] as Array<[string,Record<string,unknown>]>){
+    assert.throws(()=>safeOutcomeReviewEvidence([row],[{...review,...patch}],[policy]),
+      /Invalid customer (review|review outcome) evidence UUID/,label);
+  }
+  for(const id of ["legacy-policy",policy.policy_id+" "," "+policy.policy_id,[policy.policy_id]]){
+    assert.throws(()=>safeOutcomeReviewEvidence([row],[review],[{...policy,policy_id:id}]),
+      /Invalid customer policy evidence UUID/);
+  }
+  const canonical=safeOutcomeReviewEvidence(
+    [{...row,outcome_id:outcome.outcome_id.toUpperCase(),
+      order_id:outcome.order_id.toUpperCase()}],
+    [{...review,review_id:review.review_id.toUpperCase(),
+      outcome_id:review.outcome_id.toUpperCase()}],
+    [{...policy,policy_id:policy.policy_id.toUpperCase()}],
+  );
+  assert.equal(canonical.outcomes[0].outcome_id,outcome.outcome_id);
+  assert.equal(canonical.outcomes[0].order_id,outcome.order_id);
+  assert.equal(canonical.reviews[0].review_id,review.review_id);
+  assert.equal(canonical.policies[0].policy_id,policy.policy_id);
+  assert.equal(canonical.reviews[0].outcome_id,outcome.outcome_id);
+});
+
+test("private learning evidence never accepts unsigned or unreasoned human decisions",()=>{
+  const row={...outcome,overall_rating:"good",fit_result:"clean_first_fit",note:""};
+  for(const patch of [
+    {reviewer:" "},{reviewer:"A"},{reviewer:""},{reviewer:"x".repeat(121)},
+    {decision:"rejected",note:""},{decision:"rejected",note:"  "},
+    {decision:"rejected",note:"no"},
+  ]){
+    assert.throws(()=>safeOutcomeReviewEvidence([row],[{...review,...patch}],[policy]),
+      /Customer human reviewer name is missing|Customer rejected review requires a reason|Invalid customer learning text/);
+  }
+  for(const patch of [
+    {approved_by:" "},{approved_by:"A"},{note:""},{note:"  "},
+    {note:"no"},{approved_by:"x".repeat(121)},
+  ]){
+    assert.throws(()=>safeOutcomeReviewEvidence([row],[review],[{...policy,...patch}]),
+      /Customer policy needs a named approver and documented reason|Invalid customer learning text/);
+  }
+  assert.doesNotThrow(()=>safeOutcomeReviewEvidence(
+    [row],[{...review,decision:"approved",note:""}],[policy],
+  ),"A named human approval may omit a review note, matching the existing write contract");
+  assert.equal(safeOutcomeReviewEvidence([row],[review],[policy]).reviews[0].decision,
+    "rejected","A valid adverse review and full author evidence remain visible");
 });
