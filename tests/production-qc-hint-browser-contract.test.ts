@@ -38,4 +38,12 @@ test("M120 production UI browser check runs in full and independent Non-3D CI",(
   assert.match(ui,/const response=await fetch\("\/api\/operator\/production"/);
   assert.match(ui,/if\(readVersion===ledgerReadVersion\.current\)setDeliveryEligibility\(rows\)/);
   assert.match(ui,/hasVerifiedSqlDeliveryEligibility\(deliveryEligibility,item\)/);
+  // Operators must be able to refresh normally, not only during a
+  // lost-write/manual-review hold. That refresh also re-reads current QC.
+  assert.match(ui,/className="productionRecordsToolbar"/);
+  assert.match(ui,/onClick=\{\(\)=>void load\(\)\}>Refresh production history/);
+  assert.equal((ui.match(/Refresh production history/g)??[]).length,1);
+  const css=readFileSync("src/app/operator/production/production.css","utf8");
+  assert.match(css,/\.productionRecordsToolbar button/);
+
 });
