@@ -1040,3 +1040,9 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] J5/T5: Validate original optional QC evidence and then copy only 11 operator-consumed fields, with literal known physical check/defect keys. Unknown nested keys fail closed, historical incomplete QC remains unapproved. Signed real built-Next CI fixture includes a fake private QC column and synthetic rework (not physical approval).
 - [ ] M77 exact-head quality, full Node tests, engine, preview, release check, build, PostgreSQL, signed HTTP, responsive browser and Non-3D must pass. Real owner/operator, supplier rolls, tailoring, native Blender, devices, five novice cases, ten deliveries, security/privacy and release approvals remain BLOCKED/PENDING.
 - [ ] Next independent 30–40-minute slice: privacy review/allowlist of optional customer outcomes and learning-context rows (including nested context), with genuine data/human evidence still separate.
+
+## 2026-11-01 — M115 integrated delivery eligibility acceptance (stacked draft)
+- [x] Confirm M114 PR #616 exact `05811c7` CI and Non-3D failed TypeScript build; reconcile concurrent parent repair `b4f4d29583d2197ae8b5e9c92ed250bd66d1ab7d` before modifying child. Do not replace its stronger captured status/revision/hash/timestamp values.
+- [x] On that latest parent, reject malformed order SHA-256 hashes and add positive uppercase-equivalence plus negative coerced/nonhex/short hash regressions. Supersede stale child #617 without merging.
+- [ ] Verify new exact-head quality, full Node, engine, preview, release, build, browser 390/768/1440, independent Non-3D, stock and production PostgreSQL. No local project test run in connector-only environment.
+- [ ] Real supplier inventory, authenticated owner/operator, physical tailor/QC, Blender four-view, devices, beta/first-ten, security/privacy/schema and separate owner merge/deploy approvals remain BLOCKED/PENDING.
