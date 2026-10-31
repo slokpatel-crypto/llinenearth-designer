@@ -41,8 +41,11 @@ function cookie(){
 async function testViewport(browser,width){
   const ctx=await browser.newContext({viewport:{width,height:880},reducedMotion:"reduce"});
   await ctx.addCookies([cookie()]);
-  let call=0,firstRelease,firstStarted;
-  const firstIntercepted=new Promise(resolve=>{firstStarted=resolve;});
+  // Control optional fetch promises inside this browser document. Holding a
+  // Playwright route callback open can serialize route handlers on some
+  // Chromium/Playwright versions and makes the later refresh unobservable.
+  // The independent M117 test still exercises the real signed HTTP endpoint.
+  const firstRelease=()=>page.evaluate(()=>window.__titanQcHints.releaseFirst());
   const errors=[];
   const page=await ctx.newPage();
   page.on("pageerror",e=>errors.push(e.message));
@@ -57,29 +60,41 @@ async function testViewport(browser,width){
       data.orders=[fakeReady];
       await route.fulfill({response,json:data});
     });
-    await ctx.route("**/api/operator/production/delivery-eligibility",async route=>{
-      call++;
-      if(call===1){
-        firstStarted();
-        await new Promise(resolve=>{
-          firstRelease=async()=>{
-            await route.fulfill({status:200,json:{eligibility:[positive]}});
-            resolve();
-          };
-        });
-      }else if(call===2){
-        await route.fulfill({status:503,json:{error:"Delivery verification unavailable."}});
-      }else{
-        await route.fulfill({status:200,json:{eligibility:[positive]}});
-      }
-    });
+    await page.addInitScript(({positive})=>{
+      const originalFetch=window.fetch.bind(window);
+      let calls=0;
+      let completeFirst=null;
+      window.__titanQcHints={
+        get calls(){return calls;},
+        releaseFirst(){
+          if(!completeFirst)throw Error("First synthetic QC hint was never held");
+          completeFirst(new Response(JSON.stringify(positive),{
+            status:200,headers:{"content-type":"application/json"},
+          }));
+          completeFirst=null;
+        },
+      };
+      window.fetch=(input,options)=>{
+        const raw=typeof input==="string"?input:input.url;
+        if(new URL(raw,location.href).pathname!=="/api/operator/production/delivery-eligibility"){
+          return originalFetch(input,options);
+        }
+        calls++;
+        if(calls===1)return new Promise(resolve=>{completeFirst=resolve;});
+        if(calls===2)return Promise.resolve(new Response(JSON.stringify({
+          error:"Delivery verification unavailable.",
+        }),{status:503,headers:{"content-type":"application/json"}}));
+        return Promise.resolve(new Response(JSON.stringify(positive),{
+          status:200,headers:{"content-type":"application/json"},
+        }));
+      };
+    },{positive:{eligibility:[positive]}});
     await page.goto(new URL("/operator/production",base).toString(),{
       waitUntil:"domcontentloaded",timeout:20_000,
     });
-    await Promise.race([
-      firstIntercepted,
-      new Promise((_,reject)=>setTimeout(()=>reject(Error("Optional SQL hint was never requested")),15_000)),
-    ]);
+    const firstIntercepted=page.waitForFunction(
+      ()=>window.__titanQcHints?.calls>=1,{},{timeout:15_000});
+    await firstIntercepted;
     const order=page.locator("section.productionRecord").filter({
       hasText:"CI-only production order",
     });
@@ -92,16 +107,12 @@ async function testViewport(browser,width){
 
     // Refresh the verified ledger while the OLD positive hint is still
     // pending. A later 503 must not prevent history from appearing.
-    const nextHint=page.waitForResponse(resp=>
-      new URL(resp.url()).pathname==="/api/operator/production/delivery-eligibility"
-        &&resp.status()===503,{timeout:15_000});
     await page.getByRole("button",{name:"Refresh production history"}).click();
-    await nextHint;
+    await page.waitForFunction(()=>window.__titanQcHints?.calls>=2,{}, {timeout:15_000});
     await order.waitFor({state:"visible",timeout:15_000});
     assert.equal(await order.locator('option[value="delivered"]').count(),0,
       "Missing current hint must fail closed without hiding production history");
 
-    assert.equal(typeof firstRelease,"function");
     await firstRelease();
     await page.waitForTimeout(250);
     assert.equal(await order.locator('option[value="delivered"]').count(),0,
@@ -109,13 +120,11 @@ async function testViewport(browser,width){
 
     // Fresh matching SQL hint can update the UI, but no delivery mutation
     // may be sent from this synthetic browser test.
-    const freshHint=page.waitForResponse(resp=>
-      new URL(resp.url()).pathname==="/api/operator/production/delivery-eligibility"
-        &&resp.status()===200,{timeout:15_000});
     await page.getByRole("button",{name:"Refresh production history"}).click();
-    await freshHint;
+    await page.waitForFunction(()=>window.__titanQcHints?.calls>=3,{}, {timeout:15_000});
     await order.locator('option[value="delivered"]').waitFor({state:"attached",timeout:15_000});
-    assert.equal(call,3,"Expected stalled, failed and newly valid QC hint reads");
+    assert.equal(await page.evaluate(()=>window.__titanQcHints.calls),3,
+      "Expected stalled, failed and newly valid QC hint reads");
     assert.deepEqual(errors,[],"Production Desk must not crash on delayed QC reads");
     await mkdir(out,{recursive:true});
     await page.screenshot({path:path.join(out,"desk-"+width+".png"),fullPage:true});
