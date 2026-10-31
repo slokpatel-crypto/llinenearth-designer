@@ -1,3 +1,10 @@
+## 2026-10-31 — M91: prevent future-dated human learning evidence from granting approval today
+- [x] After M90's strict real-calendar parsing, discovered that valid ISO dates in 2032 still sort as latest signed human approval today. Such reviews/policies can falsely certify a human learning sample threshold despite being dated far in the future.
+- [x] `safeOutcomeReviewEvidence` now validates every outcome/review/policy instant against one consistent observation clock, with at most five minutes to allow bounded database/app clock skew. A future human record cannot reach a `MET` learning gate. No policy or review row is silently discarded; invalid evidence rejects the whole response.
+- [x] Deterministic Node regressions inject a fixed 2026-10-31 clock: valid 4m59s skew, invalid 5m01s/next-day/2032, each of the three evidence kinds, invalid observation clocks and consistent list processing.
+- [ ] Require exact M91 head PostgreSQL, quality/full Node, engine/preview/release, Next production build, authenticated actual HTTP, browser 390/768/1440 and independent Non-3D. Parent M90 results cannot certify M91.
+- [ ] Real owner/case consent, supplier roll/metreage, tailoring QC, native Blender original-model likeness, five beta customers, ten authentic deliveries, security/privacy/schema/main merge/production deploy approvals remain blocked; no paid-required AI or live SQL.
+
 ## 2026-10-31 — M90: physical customer feedback and review dates must be real and chronological
 - [x] Discovered customer-review private transport accepted `Date.parse` rollover dates such as 2026-02-31T03:00:00Z as valid. That could make nonexistent evidence appear sortable or count toward human learning approval.
 - [x] Replaced permissive parsing with the repository's strict offset-bearing, leap-year-aware `parseProductionEvidenceTimestamp`, preserving canonical timestamp strings and genuine ISO offsets.
