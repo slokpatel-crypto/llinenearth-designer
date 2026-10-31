@@ -2202,7 +2202,7 @@ requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
 // old displayed lock before React commits. No stale quote/order or production,
 // tailor or tech-pack export may use a previous recovered revision.
 requireTokens("src/lib/designer/verified-operator-lock.ts",[
-  "displayed !== null && displayed === verified",
+  "displayed is T", "displayed !== null && displayed === verified",
 ]);
 requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "const verifiedLockedRevision=useRef<LockedDesignRevision|null>(null)",
