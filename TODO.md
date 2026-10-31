@@ -1,3 +1,10 @@
+## 2026-10-31 — M105: quote Void control follows real production transitions
+- [x] Source audit found Production Desk offered a Void button whenever a quote was not already void, including accepted quotes. The canonical `QUOTE_TRANSITIONS` and SQL `production_quote_set_status` both make accepted terminal: only draft→void and sent→void are valid. The visible accepted-quote Void action was guaranteed to fail against production RPC.
+- [x] Require `canTransitionQuote(item.status as ProductionQuoteStatus,"void")` to render Void, preserving existing write-review/busy/configuration gates, and leave mark-sent/accept controls unchanged.
+- [x] Add Node source and state/SQL transition regressions and strict release token. No SQL/schema migration, additional dependency, paid AI or model identity change.
+- [ ] Exact M105 head quality, Node, engine/preview/release, Next build, authenticated browser 390/768/1440, independent Non-3D and disposable PostgreSQL. M104 parent checks are nontransferable.
+- [ ] Real supplier stock and metres, actual fit/QC, customer consent, beta/ten real deliveries, original model Blender and owner privacy/security/schema/main merge/deployment approvals remain blocked.
+
 ## 2026-10-31 — M104: make uncertain-write review actionable with exact visible evidence
 - [x] Found a J5 operator review usability and safety gap: the manual review hold requested comparison of the submitted note, quote line prices and persisted order/quote status, but existing history cards only showed total, status and IDs. An operator could approve retry without seeing the details the acknowledgement purported to review.
 - [x] Capture only a bounded in-memory frozen summary of the submitted action/revision/hash/IDs/status/line prices/adjustment/note before the POST; never retain the recovery token, service credential or arbitrary request fields. Keep that summary through ambiguous network/JSON/receipt failures and unmatched exact readback, clear after explicit reviewed resumption.
