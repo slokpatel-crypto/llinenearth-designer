@@ -52,3 +52,29 @@ test("delivery evidence order selection requires exact literal UUID before RPC",
     assert.equal(verifiedOperatorProductionCreateId(value),null,JSON.stringify(value));
   }
 });
+
+
+test("delivery evidence GET never bypasses private no-store, and errors log no private backend objects",()=>{
+  const source=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
+  const get=source.split("export async function GET()")[1].split("export async function POST(")[0];
+  assert.match(source,/function respond\(body:unknown,status=200\)/);
+  assert.match(source,/"cache-control":"private, no-store","pragma":"no-cache"/);
+  assert.equal((source.match(/NextResponse\.json\(/g)||[]).length,1,"all GET and POST paths must use the private responder");
+  assert.doesNotMatch(get,/NextResponse\.json\(/);
+  assert.match(get,/return respond\(\{error:"Unauthorized\."\},401\)/);
+  assert.match(get,/return respond\(\{configured:true,orders,evidence,firstTenBasis,firstTenAuditInstalled\}\)/);
+  assert.equal(source.split('console.error("[operator/production-evidence]",error instanceof Error?error.name:"UnknownError");').length-1,2);
+});
+
+test("delivery evidence browser rejects a success-shaped 200 without the literal durable evidence UUID",()=>{
+  const source=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
+  const save=source.split("async function saveEvidence()")[1];
+  const receipt=save.indexOf("verifiedOperatorProductionCreateId(data?.evidenceId)");
+  const success=save.indexOf('setMessage("Immutable completion audit saved for this delivered order.")');
+  assert.ok(receipt>0&&success>receipt,"receipt must be validated before the success message");
+  assert.match(save,/if\(!verifiedOperatorProductionCreateId\(data\?\.evidenceId\)\)/);
+  assert.match(save,/Production completion evidence receipt could not be verified/);
+  assert.equal(verifiedOperatorProductionCreateId(id),id);
+  for(const invalid of [null,false,{},[],[id],{evidenceId:id}," "+id,id+" ","not-an-id"])
+    assert.equal(verifiedOperatorProductionCreateId(invalid),null);
+});
