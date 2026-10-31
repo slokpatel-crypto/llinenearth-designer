@@ -37,3 +37,32 @@ test("production POST never displays generic retryable failure after ambiguous n
     "Success remains gated on the exact independently verified readback");
   assert.match(post,/finally\{actionInFlight.current=false;setBusy\(false\);\}/);
 });
+
+test("an uncertain write keeps every production mutation disabled until verified human review",()=>{
+  const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  const post=client.split("async function post(")[1]?.split("function confirmReviewedProductionHistory(")[0]||"";
+  const review=client.split("function confirmReviewedProductionHistory(")[1]?.split("async function loadLockedDesign(")[0]||"";
+  assert.match(client,/const \[requiresWriteReview,setRequiresWriteReview\]=useState\(false\)/);
+  assert.match(post,/if\(!configured\|\|requiresWriteReview\) return;/);
+  const claim=post.indexOf("actionInFlight.current=true;");
+  const pause=post.indexOf("if(!certainPrewriteRejection)setRequiresWriteReview(true)");
+  const refresh=post.indexOf("const refreshed=await load();");
+  const unlock=post.indexOf("finally{actionInFlight.current=false;setBusy(false);}");
+  assert.ok(claim>=0&&pause>claim&&refresh>pause&&unlock>refresh,
+    "Ambiguous failure must acquire the review hold before refreshing and releasing the network lock");
+  assert.doesNotMatch(post,/setRequiresWriteReview\(false\)/,
+    "A normal or apparently healthy GET cannot automatically clear the human review hold");
+  assert.match(post,/if\(confirmed\)setMessage\(success\);\s*else\{\s*\/\/[^]*?setRequiresWriteReview\(true\);/,
+    "Even a valid success receipt with unconfirmed fresh history must leave the review hold active");
+  assert.match(post,/its exact record could not be confirmed/);
+  assert.match(review,/if\(!requiresWriteReview\|\|!configured\|\|busy\|\|actionInFlight.current\)return;/);
+  assert.match(review,/setRequiresWriteReview\(false\)/);
+  assert.match(review,/may still exist outside the visible ledger/);
+  assert.match(client,/role="alert" aria-label="Production write review required"/);
+  assert.match(client,/onClick=\{\(\)=>void load\(\)\}>Refresh production history/);
+  assert.match(client,/disabled=\{!configured\|\|busy\|\|actionInFlight.current\} onClick=\{confirmReviewedProductionHistory\}/);
+  assert.equal((client.match(/disabled=\{busy\|\|!configured\|\|requiresWriteReview\} onClick=\{\(\)=>void post\(\{action:"quote_status"/g)||[]).length,3);
+  assert.match(client,/disabled=\{busy\|\|!configured\|\|requiresWriteReview\|\|!canQuote\}/);
+  assert.match(client,/disabled=\{busy\|\|!configured\|\|requiresWriteReview\|\|!loadedRevision/);
+  assert.match(client,/\{nextStatuses\.length>0&&<select disabled=\{busy\|\|!configured\|\|requiresWriteReview\}/);
+});

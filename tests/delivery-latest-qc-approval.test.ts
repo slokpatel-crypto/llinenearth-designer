@@ -174,8 +174,8 @@ test("operator desk clears stale production records and disables mutation contro
   for(const reset of ["setConfigured(false)","setQuotes([])","setOrders([])","setQcInspections([])","setCustomerOutcomes([])","setLearningContexts([])"]){
     assert.ok(load.includes(reset),`missing fail-closed reset: ${reset}`);
   }
-  assert.ok(ui.includes("disabled={busy||!configured||!canQuote}"));
-  assert.ok(ui.includes("disabled={busy||!configured||!loadedRevision"));
+  assert.ok(ui.includes("disabled={busy||!configured||requiresWriteReview||!canQuote}"));
+  assert.ok(ui.includes("disabled={busy||!configured||requiresWriteReview||!loadedRevision"));
 });
 
 test("J5: impossible QC calendar dates cannot outrank a real later rework",()=>{

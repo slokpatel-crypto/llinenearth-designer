@@ -304,7 +304,7 @@ test("J5 operator ledger refresh discards stale GETs and disables mutations unti
   assert.equal((client.match(/if\(readVersion!==ledgerReadVersion\.current\) return false;/g)||[]).length,2,
     "both stale successful and stale failed GETs must be discarded");
   assert.match(client,/ledgerReadVersion\.current\+=1;\s*setConfigured\(false\)/);
-  assert.match(client,/if\(!configured\) return;\s*actionInFlight\.current=true/);
+  assert.match(client,/if\(!configured\|\|requiresWriteReview\) return;\s*actionInFlight\.current=true/);
   // A post-commit fetch failure must reload, then preserve an explicit
   // uncertain-write warning; the previous regex assumed catch did nothing
   // after await load(), and would reject this stronger safety handling.
@@ -318,7 +318,7 @@ test("J5 operator ledger refresh discards stale GETs and disables mutations unti
   assert.match(post,/Do not retry until the production ledger can be inspected/);
   assert.match(client,/async function exportProductionPacket\(\)\{\s*if\(!loadedRevision\|\|!configured\|\|busy\|\|actionInFlight\.current\) return;/);
   assert.match(client,/disabled=\{!configured\|\|busy\} onClick=\{\(\)=>void exportProductionPacket\(\)\}/);
-  assert.match(client,/\{nextStatuses\.length>0&&<select disabled=\{busy\|\|!configured\}/);
-  assert.equal((client.match(/<button disabled=\{busy\|\|!configured\}/g)||[]).length,3,
+  assert.match(client,/\{nextStatuses\.length>0&&<select disabled=\{busy\|\|!configured\|\|requiresWriteReview\}/);
+  assert.equal((client.match(/<button disabled=\{busy\|\|!configured\|\|requiresWriteReview\}/g)||[]).length,3,
     "quote status actions must also be disabled when the ledger is unverified");
 });
