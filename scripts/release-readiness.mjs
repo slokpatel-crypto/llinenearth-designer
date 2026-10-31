@@ -1811,8 +1811,9 @@ requireTokens("src/app/api/operator/production/delivery-eligibility/route.ts",[
 ]);
 requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "hasVerifiedSqlDeliveryEligibility(deliveryEligibility,item)",
-  "parseProductionDeliveryEligibility(eligibilityBody.eligibility)??[]",
+  "parseProductionDeliveryEligibility(payload.eligibility)??[]",
   "setDeliveryEligibility([])",
+  'if(readVersion===ledgerReadVersion.current)setDeliveryEligibility(rows)',
   'status!=="delivered"||deliveryQcVerified',
 ]);
 requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
