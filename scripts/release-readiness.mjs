@@ -2250,6 +2250,14 @@ requireTokens("tests/production-write-hold.test.ts",[
   "M136 unreadable or corrupted review marker",
   "M136 storage events synchronously revoke history review",
 ]);
+requireTokens("scripts/verify-production-packet-cross-tab-browser.cjs",[
+  "staleReviewBlocked:true",
+  "completedRemoteReviewRecovered:true",
+  "An acknowledgement from stale history must not erase",
+]);
+requireTokens("tests/production-packet-cross-tab-browser-contract.test.ts",[
+  "staleReviewBlocked:true", "completedRemoteReviewRecovered:true",
+]);
 
 // M135: a packet's fresh SQL GET is not sufficient if another browser tab
 // begins and confirms a write while packet construction is still in flight.
