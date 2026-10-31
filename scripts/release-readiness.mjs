@@ -928,6 +928,24 @@ requireTokens("supabase/migrations/20261031_stock_source_audit_rpc.sql", [
   "revoke all on function public.fabric_stock_source_audit_v1()",
   "to service_role;",
 ]);
+requireTokens("scripts/ci-verified-stock-fixture.cjs", [
+  "AUDIT_PATH", "fabric_stock_source_audit_v1", "AUDIT_FIXTURE",
+  'process.env.GITHUB_ACTIONS!=="true"||process.env.CI!=="true"',
+  "Object.keys(payload).length!==0",
+]);
+requireTokens("scripts/verify-operator-stock-audit-http.cjs", [
+  "GITHUB_ACTIONS", "signedOperatorCookie", "createHmac",
+  'await unauthorized(undefined,"anonymous")',
+  'await unauthorized("linen_operator_session=forged.token","forged")',
+  "assert.deepEqual(data,{audit:AUDIT_FIXTURE}",
+  "assert.equal(Object.keys(data.audit).length,10)",
+  "READ-ONLY SOURCE AUDIT",
+]);
+requireTokens(".github/workflows/ci.yml", [
+  "node scripts/ci-verified-stock-fixture.cjs",
+  "node scripts/verify-operator-stock-audit-http.cjs",
+  "LINEN_OPERATOR_SESSION_SECRET",
+]);
 requireTokens("src/app/api/operator/stock/audit/route.ts", [
   "verifyOperatorSession", "cache-control", "private, no-store",
   "fabric_stock_source_audit_v1", "readBoundedJsonResponse(response,8_192)",
