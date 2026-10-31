@@ -163,7 +163,7 @@ test("operator production desk only offers delivery after SQL QC eligibility",()
   assert.ok(ui.includes('status!=="delivered"||deliveryQcVerified'));
   assert.ok(ui.includes('deliveryQcVerified?"SQL QC verified · rechecked on delivery":"pending / rework / unverified"'));
   assert.ok(ui.includes('setDeliveryEligibility([])'));
-  assert.ok(ui.includes('parseProductionDeliveryEligibility(eligibilityBody.eligibility)??[]'));
+  assert.ok(ui.includes('parseProductionDeliveryEligibility(payload.eligibility)??[]'));
   assert.ok(!ui.includes("qcInspections.find("));
   assert.ok(!ui.includes('const deliveryQcVerified=hasVerifiedLatestDeliveryQc('));
   // Historical timestamp-only helper remains covered as a defensive read,
