@@ -71,20 +71,22 @@ export function safeOutcomeReviewEvidence(
     // The signed human learning gate must obey the same closed customer
     // feedback vocabulary and wear/fit consistency as the customer POST.
     // Unknown SQL labels and contradictory fit claims are not real evidence.
-    if(!CUSTOMER_OUTCOME_RATINGS.some(value=>value===o.overall_rating))
+    const rating=str(o.overall_rating,40);
+    const fit=str(o.fit_result,50);
+    if(!CUSTOMER_OUTCOME_RATINGS.some(value=>value===rating))
       throw new Error("Invalid recorded customer overall rating.");
-    if(!CUSTOMER_FIT_RESULTS.some(value=>value===o.fit_result))
+    if(!CUSTOMER_FIT_RESULTS.some(value=>value===fit))
       throw new Error("Invalid recorded customer fit result.");
-    if(!worn&&o.fit_result!=="not_checked")
+    if(!worn&&fit!=="not_checked")
       throw new Error("Customer fit result lacks confirmed garment wear.");
     const note=str(o.note,1200);
-    if((o.overall_rating==="needs_work"||o.fit_result==="major_alteration")
+    if((rating==="needs_work"||fit==="major_alteration")
       &&note.trim().length<3)
       throw new Error("Adverse customer fit evidence requires a recorded reason.");
     return {
       outcome_id:str(o.outcome_id,80),order_id:str(o.order_id,80),
       revision_id:str(o.revision_id,220),
-      overall_rating:o.overall_rating,fit_result:o.fit_result,
+      overall_rating:rating,fit_result:fit,
       worn_confirmed:worn,note,created_at:date(o.created_at,observedAt),
       learning_context:exactContext(o.learning_context),
     };
