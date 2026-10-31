@@ -894,3 +894,9 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] J5/T5: Validate original optional QC evidence and then copy only 11 operator-consumed fields, with literal known physical check/defect keys. Unknown nested keys fail closed, historical incomplete QC remains unapproved. Signed real built-Next CI fixture includes a fake private QC column and synthetic rework (not physical approval).
 - [ ] M77 exact-head quality, full Node tests, engine, preview, release check, build, PostgreSQL, signed HTTP, responsive browser and Non-3D must pass. Real owner/operator, supplier rolls, tailoring, native Blender, devices, five novice cases, ten deliveries, security/privacy and release approvals remain BLOCKED/PENDING.
 - [ ] Next independent 30–40-minute slice: privacy review/allowlist of optional customer outcomes and learning-context rows (including nested context), with genuine data/human evidence still separate.
+
+
+## 2026-10-31 — M92 canonical customer review identity, reconciled on M91 future-date veto
+- [x] Integrate the M91 future-dated human evidence veto from PR #589, then fix case-sensitive UUID joins in T5/J5 human review summary and operator screen without discarding that newer sibling work.
+- [x] Regressions: uppercase review ID matches lowercase outcome; tied opposite decisions in either row order block the learning gate; later explicit rejection supersedes approval. Retain M91 fixed-clock future-date tests.
+- [ ] M92 exact-head full Node, quality, engine, preview, release, build, PostgreSQL, signed HTTP, responsive browser and Non-3D pending. Genuine stock, customer/operator consent, tailor/QC, Blender, devices, beta deliveries and owner privacy/security/schema/main merge/deploy signoffs remain blocked. No live writes, paid mandatory AI, merge or deploy.
