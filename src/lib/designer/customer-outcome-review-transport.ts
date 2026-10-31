@@ -1,4 +1,5 @@
 import type {CustomerOutcomeEvidenceRow,CustomerOutcomeReviewRow,CustomerOutcomePolicyRow} from "./customer-outcome-learning.ts";
+import {parseProductionEvidenceTimestamp} from "./production-delivery-evidence.ts";
 
 /** Operator-only evidence. Database columns (including nested learning
  * metadata) are NOT automatically authorized browser fields. Reject malformed
@@ -32,7 +33,7 @@ function requireDistinctIds(ids:string[],kind:string):void{
 }
 function date(x:unknown):string{
   const s=str(x,64);
-  if(!Number.isFinite(Date.parse(s)))throw new Error("Invalid customer learning timestamp.");
+  if(!Number.isFinite(parseProductionEvidenceTimestamp(s)))throw new Error("Invalid customer learning timestamp.");
   return s;
 }
 function exactContext(x:unknown){
@@ -87,5 +88,18 @@ export function safeOutcomeReviewEvidence(
   requireDistinctIds(outcomes.map(row=>row.outcome_id),"outcome");
   requireDistinctIds(reviews.map(row=>row.review_id),"review");
   requireDistinctIds(policies.map(row=>row.policy_id),"policy");
+  // Never grant a human review to customer feedback that did not yet exist.
+  // Reviews of older outcomes outside the bounded latest-outcomes window stay
+  // historically visible without falsely assuming the source is absent.
+  const outcomeTimes=new Map(outcomes.map(o=>[
+    o.outcome_id.toLowerCase(),parseProductionEvidenceTimestamp(o.created_at),
+  ]));
+  for(const review of reviews){
+    const recordedAt=outcomeTimes.get(review.outcome_id.toLowerCase());
+    if(recordedAt!==undefined
+      &&parseProductionEvidenceTimestamp(review.created_at)<recordedAt)
+      throw new Error("Customer review predates the recorded outcome.");
+  }
+
   return {outcomes,reviews,policies};
 }
