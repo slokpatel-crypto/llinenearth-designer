@@ -242,6 +242,8 @@ test("J5 packet export only links an order to its actual immutable quote receipt
     "a newer unrelated accepted quote for the same recipe must not enter this order's packet");
   assert.equal(selectProductionPacketRecords([unrelated],[order],revisionId,recipeHash).quote,null,
     "a linked quote outside the independently capped list is unverified, not substituted");
+  assert.equal(selectProductionPacketRecords([{...quote,status:"draft"}],[order],revisionId,recipeHash).quote,null,
+    "a quote not currently accepted cannot be attached as approved order evidence");
   assert.equal(selectProductionPacketRecords([quote],[{...order,quote_id:null}],revisionId,recipeHash).quote,null,
     "an unquoted order must never inherit a separate quote for the same recipe");
   assert.equal(selectProductionPacketRecords([quote],[],revisionId,recipeHash).quote?.quote_id,qid);
