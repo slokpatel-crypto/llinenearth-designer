@@ -37,8 +37,8 @@ test("privileged production route parses both status changes before QC or RPC an
   const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
   assert.match(source,/parseOperatorProductionStatus\(body,"quote"\)/);
   assert.match(source,/parseOperatorProductionStatus\(body,"order"\)/);
-  assert.match(source,/if\(!change\) return NextResponse\.json\(/);
-  assert.match(source,/if\(updated!==true\) return NextResponse\.json\(/);
+  assert.match(source,/if\(!change\) return respond\(/);
+  assert.match(source,/if\(updated!==true\) return respond\(/);
   assert.match(source,/if\(error instanceof SecureJsonBodyTooLarge\).*status:413/);
   assert.match(source,/if\(error instanceof SecureJsonBodyInvalid\).*status:400/);
   assert.doesNotMatch(source,/String\(body\.(?:quoteId|orderId|status|note)/);
@@ -49,7 +49,7 @@ test("privileged production route parses both status changes before QC or RPC an
 test("privileged production errors do not reflect upstream SQL, owner or RPC details to the browser", () => {
   const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
   assert.match(source,/console\.error\("\[operator\/production\]",error\)/);
-  assert.match(source,/error:"Production operation could not be completed\.".*status:409,headers:\{"cache-control":"private, no-store"\}/);
+  assert.match(source,/return respond\(\{error:"Production operation could not be completed\."\},409\)/);
   assert.doesNotMatch(source,/error:error instanceof Error\?error\.message/);
   // Validation error.message is intentionally shown for malformed user input;
   // only the unexpected privileged RPC catch must not reflect backend details.
