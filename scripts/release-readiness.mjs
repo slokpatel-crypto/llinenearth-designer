@@ -918,6 +918,10 @@ requireTokens("supabase/migrations/20261029_stock_reservation_provenance.sql", [
 requireTokens("supabase/migrations/20261030_stock_consumption_provenance.sql", ["fabric_stock_consume_reservation_v2","p_checked_by","p_source_reference","actual cloth-usage evidence reference is required","service_role"]);
 requireTokens("supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql", ["stock-request:","stock-reservation:","fabric_stock_release_v2","fabric_stock_reserve_v2","fabric_stock_consume_reservation_v2","reservation release reference is required","service_role"]);
 
+requireTokens("src/lib/designer/stock-ledger.ts", [
+  "normalizeStockReservation", "Locked revision ID must match exactly.",
+  "Reservation request key must match exactly.",
+]);
 requireTokens("supabase/migrations/20261031_stock_reservation_exact_key_evidence.sql", [
   "fabric_stock_reserve_v2", "v_existing.event_type<>'reserve'",
   "v_existing.fabric_id<>p_fabric_id",
