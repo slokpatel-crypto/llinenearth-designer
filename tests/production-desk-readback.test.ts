@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {verifiedProductionMutationReadback} from "../src/lib/designer/production-desk-readback.ts";
+import {verifiedProductionMutationReadback as exactMutationReadback} from "../src/lib/designer/production-desk-readback.ts";
 
 const quoteId="123e4567-e89b-42d3-a456-426614174031";
 const orderId="123e4567-e89b-42d3-a456-426614174032";
@@ -12,6 +12,15 @@ const quote={quote_id:quoteId,revision_id:revisionId,recipe_hash:recipeHash,
   currency:"INR",status:"draft"};
 const order={order_id:orderId,quote_id:quoteId,revision_id:revisionId,
   recipe_hash:recipeHash,status:"created"};
+const context={order_id:orderId,revision_id:revisionId,recipe_hash:recipeHash,
+  context:{version:"linen-earth-production-learning-context-v1"}};
+function verifiedProductionMutationReadback(
+  action:unknown,request:unknown,receipt:unknown,
+  quotes:unknown,orders:unknown,contexts:unknown=[context],
+):boolean{
+  return exactMutationReadback(action,request,receipt,quotes,orders,contexts);
+}
+
 
 test("quote creation is never confirmed without the exact immutable quote and locked recipe",()=>{
   const body={action:"create_quote",revisionId,recipeHash,currency:"INR"};
@@ -43,6 +52,12 @@ test("order creation readback binds exact order, revision, hash and quote associ
     [{...order,order_id:anotherId}]),false);
   assert.equal(verifiedProductionMutationReadback("create_order",body,receipt,[],
     [{...order,quote_id:null}]),false);
+  assert.equal(verifiedProductionMutationReadback("create_order",body,receipt,[],[order],[]),false,
+    "A created order without the matching durable design context is not confirmed");
+  assert.equal(verifiedProductionMutationReadback("create_order",body,receipt,[],[order],
+    [{...context,order_id:anotherId}]),false);
+  assert.equal(verifiedProductionMutationReadback("create_order",body,receipt,[],[order],
+    [{...context,recipe_hash:"b".repeat(64)}]),false);
   assert.equal(verifiedProductionMutationReadback("create_order",body,receipt,[],
     [{...order,revision_id:"DIFFERENT"}]),false);
   assert.equal(verifiedProductionMutationReadback("create_order",body,
@@ -89,7 +104,7 @@ test("operator production UI requires exact readback before displaying saved mut
   assert.match(load,/validProductionDeskResponse\(data\)/);
   assert.match(load,/if\(readVersion!==ledgerReadVersion\.current\) return false/);
   assert.match(load,/verifiedProductionMutationReadback\(/);
-  assert.match(load,/expected\.action,expected\.body,expected\.receipt,data\.quotes,data\.orders/);
+  assert.match(load,/expected\.action,expected\.body,expected\.receipt,data\.quotes,data\.orders,data\.learningContexts/);
   assert.match(load,/if\(expected&&\(!data\.configured/);
   const receipt=post.indexOf("validProductionDeskMutationReceipt(body.action,data)");
   const readback=post.indexOf("const confirmed=await load({action:body.action,body,receipt:data});");
