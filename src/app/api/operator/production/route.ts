@@ -215,6 +215,8 @@ export async function POST(request:Request){
       const change=parseOperatorProductionStatus(body,"order");
       if(!change) return respond({error:"Valid order UUID, allowed status and literal note (max 1000 characters) are required."},400);
       const {recordId:orderId,status,note}=change;
+      const requestKey=parseOperatorProductionRequestKey(body.requestKey);
+      if(!requestKey) return respond({error:"Original order status request UUID is required."},400);
       if(status==="delivered"){
         let inspections:unknown;
         let candidateOrders:unknown;
@@ -242,7 +244,14 @@ export async function POST(request:Request){
           return respond({error:"Physical QC must match the current ready order, revision, recipe and creation time."},409);
         }
       }
-      const updated=await rpc<unknown>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note});
+      // Non-delivery transitions are atomic and replay-safe under the original
+      // browser UUID. Delivery still uses its separate physical-QC preflight;
+      // it must not be treated as transactionally QC-verified by this change.
+      const updated=status==="delivered"
+        ?await rpc<unknown>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note})
+        :await rpc<unknown>("production_order_set_status_idempotent",{
+          p_request_key:requestKey,p_order_id:orderId,p_status:status,p_note:note,
+        });
       if(updated!==true) return respond({error:"Order status was not updated."},409);
       return respond({updated:true});
     }

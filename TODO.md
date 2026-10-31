@@ -1,3 +1,10 @@
+## 2026-10-31 — M111: non-delivery order status replay-safe by original UUID (draft)
+- [x] Source-verified T5/J5 defect: order status ignored the persisted original request UUID, so a lost HTTP acknowledgement could not be safely replayed without risking an invalid duplicate transition.
+- [x] New additive, private RLS order-status receipt ledger and service-role-only SQL wrapper; identical original-key/non-delivery intent replays once, conflicting intent rejects, failed transition consumes no key. Privileged route forwards the existing literal v4 UUID.
+- [x] Real disposable PostgreSQL sequential and two-session replay/conflict/grants tests, Node/source regression, release invariant. No live migration, main merge, production deploy or paid AI.
+- [ ] Physical **delivered** status deliberately remains on the existing QC preflight/legacy transition; it is NOT transactionally QC-safe or replay-confirmable. Separate owner-reviewed atomic delivery/QC migration and real tailor proof are mandatory.
+- [ ] Verify matching-head quality, all Node, engine, preview, release, optimized build, responsive browser, Non-3D, stock PG and production PG before code acceptance. Real stock, customer/operator acceptance, native Blender, devices, five novice beta, ten genuine deliveries and owner privacy/security/schema/merge/deploy approval BLOCKED.
+
 ## 2026-10-31 — M110: atomic original-key quote status transitions (draft)
 - [x] Source audit: quote status POST already sends the crash-safe M107 UUID but the privileged route ignored it and called the legacy SQL transition directly. A lost acknowledgement followed by a repeated original HTTP request could cause an invalid second transition instead of a replay receipt.
 - [x] Draft additive private RLS status-request receipt table and service-role-only `production_quote_set_status_idempotent` wrapper: same key + same intent returns confirmed true without another event; changed intent fails; invalid transition never consumes the key. Existing canonical SQL transition remains the only state machine.

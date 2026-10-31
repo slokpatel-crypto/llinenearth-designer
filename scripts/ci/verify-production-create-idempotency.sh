@@ -27,6 +27,8 @@ run_file supabase/migrations/20261106_production_create_request_idempotency.sql
 run_file supabase/migrations/20261107_production_creation_receipt_lookup.sql
 run_file supabase/migrations/20261108_production_quote_status_idempotency.sql
 run_file scripts/ci/production-quote-status-idempotency-assertions.sql
+run_file supabase/migrations/20261109_production_order_status_idempotency.sql
+run_file scripts/ci/production-order-status-idempotency-assertions.sql
 run_file scripts/ci/production-create-idempotency-assertions.sql
 run_file scripts/ci/production-creation-receipt-lookup-assertions.sql
 
@@ -94,4 +96,24 @@ if [[ $(tr -d '\r\n' < "$tmpdir/s1") != "t" ]] ||
    [[ $(query "select count(*) from private.production_quote_status_request_receipts where quote_id='$status_quote'::uuid") != "1" ]]; then
   echo "Concurrent same-key quote status replay duplicated a transition" >&2; exit 1
 fi
-echo "TITAN isolated PostgreSQL quote/order create and quote status idempotency PASS"
+# Two separate sessions replay a non-delivery order status using the same key.
+status_order=$(query "select public.production_order_create(
+  'LE-RACE-ORDER-STATUS-20261031',repeat('a',64),null,''
+);")
+order_status_call="select public.production_order_set_status_idempotent(
+  '123e4567-e89b-42d3-a456-426614174234'::uuid,
+  '$status_order'::uuid,'cloth_reserved','Race reserve'
+);"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$db" -Atc "$order_status_call" >"$tmpdir/os1" 2>"$tmpdir/os1.err" &
+pid1=$!
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$db" -Atc "$order_status_call" >"$tmpdir/os2" 2>"$tmpdir/os2.err" &
+pid2=$!
+wait "$pid1"
+wait "$pid2"
+if [[ $(tr -d '\r\n' < "$tmpdir/os1") != "t" ]] ||
+   [[ $(tr -d '\r\n' < "$tmpdir/os2") != "t" ]] ||
+   [[ $(query "select count(*) from private.production_order_events where order_id='$status_order'::uuid and status='cloth_reserved'") != "1" ]] ||
+   [[ $(query "select count(*) from private.production_order_status_request_receipts where order_id='$status_order'::uuid") != "1" ]]; then
+  echo "Concurrent same-key order status replay duplicated a transition" >&2; exit 1
+fi
+echo "TITAN isolated PostgreSQL quote/order create and non-delivery status idempotency PASS"
