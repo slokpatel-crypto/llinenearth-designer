@@ -42,7 +42,8 @@ else
     supabase/migrations/20261029_stock_reservation_provenance.sql \
     supabase/migrations/20261030_stock_consumption_provenance.sql \
     supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql \
-    supabase/migrations/20261031_stock_record_exact_retry.sql
+    supabase/migrations/20261031_stock_record_exact_retry.sql \
+    supabase/migrations/20261031_stock_reservation_exact_key_evidence.sql
   do
     run_sql_file "$migration"
   done
@@ -101,5 +102,34 @@ fi
 if [[ $(query "select available_metres from public.fabric_stock_snapshot_v2(array['fabric-par'])") != "1.000" ]]; then
   echo "Concurrent adjustment left incorrect available metres." >&2
   exit 1
+fi
+if [[ "$mode" == "historical" ]]; then
+  # Real separate sessions with the same key but opposing order evidence:
+  # exactly one may commit. The other must fail with the provenance veto.
+  query "select public.fabric_stock_record_v3('fabric-reserve-race-a','receipt',5.000,'','Checker One','ROLL-RACE-A','reserve-race-record-a');" >/dev/null
+  query "select public.fabric_stock_record_v3('fabric-reserve-race-b','receipt',5.000,'','Checker One','ROLL-RACE-B','reserve-race-record-b');" >/dev/null
+  reserve_a="select public.fabric_stock_reserve_v2('fabric-reserve-race-a',2.000,'locked-revision-race-a','reserve-race-shared-0001','Checker One','METERAGE-RACE-A');"
+  reserve_b="select public.fabric_stock_reserve_v2('fabric-reserve-race-b',3.000,'locked-revision-race-b','reserve-race-shared-0001','Checker Two','METERAGE-RACE-B');"
+  docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" -Atc "$reserve_a" > "$tmpdir/res1.out" 2> "$tmpdir/res1.err" &
+  pid1=$!
+  docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" -Atc "$reserve_b" > "$tmpdir/res2.out" 2> "$tmpdir/res2.err" &
+  pid2=$!
+  set +e
+  wait "$pid1"; status1=$?
+  wait "$pid2"; status2=$?
+  set -e
+  if ! { [[ $status1 -eq 0 && $status2 -ne 0 ]] || [[ $status1 -ne 0 && $status2 -eq 0 ]]; }; then
+    echo "Conflicting same-key reservations did not serialize to one winner." >&2
+    cat "$tmpdir/res1.err" "$tmpdir/res2.err" >&2
+    exit 1
+  fi
+  if ! grep -q 'stock reservation request key belongs to different evidence' "$tmpdir/res1.err" "$tmpdir/res2.err"; then
+    echo "Losing reservation did not fail its exact-evidence veto." >&2
+    exit 1
+  fi
+  if [[ $(query "select count(*) from private.fabric_stock_ledger where request_key='reserve-race-shared-0001' and event_type='reserve'") != "1" ]]; then
+    echo "Two conflicting physical reservations committed against one key." >&2
+    exit 1
+  fi
 fi
 echo "Disposable PostgreSQL ($mode) stock idempotency, conflict and concurrency PASS."
