@@ -1824,6 +1824,7 @@ requireTokens("tests/production-nonblocking-qc-hint.test.ts",[
 // A new inspection is the only correction path; no backdated signoff edits.
 requireTokens("supabase/migrations/20261115_finished_garment_qc_immutable.sql",[
   "before update or delete on private.finished_garment_qc_inspections",
+  "before truncate on private.finished_garment_qc_inspections",
   "private.reject_finished_garment_qc_mutation()", "errcode='55000'",
 ]);
 requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
