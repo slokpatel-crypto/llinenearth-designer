@@ -1408,7 +1408,10 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
 requireTokens("src/lib/designer/customer-outcome-review-transport.ts",[
   "safeOutcomeReviewEvidence", "Invalid or oversized customer learning evidence.",
   "minimum_approved_cases", "learning_context:exactContext",
-  "fit_result:str", "decision:r.decision",
+  "CUSTOMER_OUTCOME_RATINGS.some", "CUSTOMER_FIT_RESULTS.some",
+  'if(!worn&&fit!=="not_checked")',
+  "Adverse customer fit evidence requires a recorded reason.",
+  "decision:r.decision",
 ]);
 requireTokens("src/app/api/operator/customer-outcomes/route.ts",[
   "readBoundedJsonResponse(response,maxBytes)",

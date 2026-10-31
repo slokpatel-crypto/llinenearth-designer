@@ -191,3 +191,53 @@ test("future-dated human feedback, reviews and policies cannot approve present-d
     [caseRow],[reviewRow],[policyRow],asOf),
   "One consistent observation clock prevents a race between three evidence lists");
 });
+
+
+test("human learning transport never treats invented fit labels or unworn fit claims as evidence",()=>{
+  const positive={...outcome,overall_rating:"good",fit_result:"clean_first_fit",
+    worn_confirmed:true,note:""};
+  const clean=safeOutcomeReviewEvidence([positive],[review],[policy]);
+  assert.equal(clean.outcomes[0].fit_result,"clean_first_fit");
+  assert.equal(clean.outcomes[0].worn_confirmed,true);
+  assert.equal(clean.outcomes[0].overall_rating,"good");
+  // A garment not worn may have useful overall feedback, but it cannot claim
+  // a clean first fit or alterations before wear has been confirmed.
+  const unchecked={...outcome,overall_rating:"good",fit_result:"not_checked",
+    worn_confirmed:false,note:""};
+  assert.doesNotThrow(()=>safeOutcomeReviewEvidence([unchecked],[review],[policy]));
+  for(const fit of ["clean_first_fit","minor_alteration","major_alteration"]){
+    assert.throws(()=>safeOutcomeReviewEvidence(
+      [{...outcome,fit_result:fit,worn_confirmed:false}],[review],[policy],
+    ),/Customer fit result lacks confirmed garment wear/);
+  }
+  for(const rating of ["excellent","unknown","approved","GOOD","needs_work_now"]){
+    assert.throws(()=>safeOutcomeReviewEvidence(
+      [{...outcome,overall_rating:rating}],[review],[policy],
+    ),/Invalid recorded customer overall rating/);
+  }
+  for(const fit of ["no_changes","perfect","alteration_complete","CLEAN_FIRST_FIT"]){
+    assert.throws(()=>safeOutcomeReviewEvidence(
+      [{...outcome,fit_result:fit}],[review],[policy],
+    ),/Invalid recorded customer fit result/);
+  }
+});
+
+test("adverse customer evidence requires the actual submitted problem reason",()=>{
+  for(const alteration of [
+    {...outcome,note:""},
+    {...outcome,note:"  "},
+    {...outcome,note:"ok"},
+    {...outcome,overall_rating:"good",fit_result:"major_alteration",note:" "},
+    {...outcome,overall_rating:"needs_work",fit_result:"not_checked",note:" "},
+  ]){
+    assert.throws(()=>safeOutcomeReviewEvidence(
+      [alteration],[review],[policy],
+    ),/Adverse customer fit evidence requires a recorded reason/);
+  }
+  const allowed={...outcome,overall_rating:"needs_work",fit_result:"not_checked",
+    worn_confirmed:false,note:"Customer unhappy with delivery"};
+  assert.equal(safeOutcomeReviewEvidence([allowed],[review],[policy]).outcomes[0].fit_result,
+    "not_checked");
+  assert.equal(safeOutcomeReviewEvidence([outcome],[review],[policy]).outcomes[0].note,
+    "CI bad fit","Valid negative fit feedback is preserved, never suppressed");
+});

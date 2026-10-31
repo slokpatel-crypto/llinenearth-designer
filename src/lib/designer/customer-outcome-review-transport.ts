@@ -1,5 +1,6 @@
 import type {CustomerOutcomeEvidenceRow,CustomerOutcomeReviewRow,CustomerOutcomePolicyRow} from "./customer-outcome-learning.ts";
 import {parseProductionEvidenceTimestamp} from "./production-delivery-evidence.ts";
+import {CUSTOMER_OUTCOME_RATINGS,CUSTOMER_FIT_RESULTS} from "./customer-production-outcomes.ts";
 
 /** Operator-only evidence. Database columns (including nested learning
  * metadata) are NOT automatically authorized browser fields. Reject malformed
@@ -67,11 +68,26 @@ export function safeOutcomeReviewEvidence(
   const outcomes=rows(rawOutcomes,1000).map(o=>{
     const worn=o.worn_confirmed;
     if(typeof worn!=="boolean")throw new Error("Invalid customer wear confirmation.");
+    // The signed human learning gate must obey the same closed customer
+    // feedback vocabulary and wear/fit consistency as the customer POST.
+    // Unknown SQL labels and contradictory fit claims are not real evidence.
+    const rating=str(o.overall_rating,40);
+    const fit=str(o.fit_result,50);
+    if(!CUSTOMER_OUTCOME_RATINGS.some(value=>value===rating))
+      throw new Error("Invalid recorded customer overall rating.");
+    if(!CUSTOMER_FIT_RESULTS.some(value=>value===fit))
+      throw new Error("Invalid recorded customer fit result.");
+    if(!worn&&fit!=="not_checked")
+      throw new Error("Customer fit result lacks confirmed garment wear.");
+    const note=str(o.note,1200);
+    if((rating==="needs_work"||fit==="major_alteration")
+      &&note.trim().length<3)
+      throw new Error("Adverse customer fit evidence requires a recorded reason.");
     return {
       outcome_id:str(o.outcome_id,80),order_id:str(o.order_id,80),
       revision_id:str(o.revision_id,220),
-      overall_rating:str(o.overall_rating,40),fit_result:str(o.fit_result,50),
-      worn_confirmed:worn,note:str(o.note,1200),created_at:date(o.created_at,observedAt),
+      overall_rating:rating,fit_result:fit,
+      worn_confirmed:worn,note,created_at:date(o.created_at,observedAt),
       learning_context:exactContext(o.learning_context),
     };
   });
