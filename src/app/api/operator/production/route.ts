@@ -218,40 +218,18 @@ export async function POST(request:Request){
       const requestKey=parseOperatorProductionRequestKey(body.requestKey);
       if(!requestKey) return respond({error:"Original order status request UUID is required."},400);
       if(status==="delivered"){
-        let inspections:unknown;
-        let candidateOrders:unknown;
-        try{
-          [inspections,candidateOrders]=await Promise.all([
-            rpc<unknown>("finished_garment_qc_list",{p_limit:500}),
-            rpc<unknown>("production_order_list",{p_limit:150}),
-          ]);
-        }catch{
-          return respond({error:"Finished-garment QC and production order records must be available before delivery."},409);
-        }
-        // The capped order page cannot certify a missing or stale target.
-        // Never trust an inspection for another recipe with the same order ID.
-        if(!validProductionQcOrderRows(candidateOrders)||candidateOrders.length>=150){
-          return respond({error:"A complete verified production order page is required before delivery."},409);
-        }
-        // PostgreSQL UUID identity is case-insensitive. The status parser
-        // canonicalizes the request ID, but a typed SQL order row may use
-        // uppercase hex; do not reject valid physical QC lineage on casing.
-        const currentOrder=candidateOrders.find(row=>verifiedOperatorProductionCreateId(row.order_id)===orderId);
-        if(!hasVerifiedLatestDeliveryQc(inspections,orderId,500)){
-          return respond({error:"The latest provenance-backed finished-garment QC approval is required before delivery."},409);
-        }
-        if(!hasVerifiedDeliveryQcOrderLineage(inspections,currentOrder)){
-          return respond({error:"Physical QC must match the current ready order, revision, recipe and creation time."},409);
-        }
-      }
-      // Non-delivery transitions are atomic and replay-safe under the original
-      // browser UUID. Delivery still uses its separate physical-QC preflight;
-      // it must not be treated as transactionally QC-verified by this change.
-      const updated=status==="delivered"
-        ?await rpc<unknown>("production_order_deliver_idempotent",{p_request_key:requestKey,p_order_id:orderId,p_note:note})
-        :await rpc<unknown>("production_order_set_status_idempotent",{
-          p_request_key:requestKey,p_order_id:orderId,p_status:status,p_note:note,
+        // The M112 RPC locks the order, validates current QC and records a
+        // replay receipt atomically. No capped read preflight may reject a
+        // committed same-key retry before this receipt is consulted.
+        const delivered=await rpc<unknown>("production_order_deliver_idempotent",{
+          p_request_key:requestKey,p_order_id:orderId,p_note:note,
         });
+        if(delivered!==true) return respond({error:"Delivery was not confirmed."},409);
+        return respond({updated:true});
+      }
+      const updated=await rpc<unknown>("production_order_set_status_idempotent",{
+        p_request_key:requestKey,p_order_id:orderId,p_status:status,p_note:note,
+      });
       if(updated!==true) return respond({error:"Order status was not updated."},409);
       return respond({updated:true});
     }
