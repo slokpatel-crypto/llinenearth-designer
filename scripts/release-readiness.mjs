@@ -1795,6 +1795,16 @@ requireTokens("supabase/migrations/20261114_delivery_eligibility_read.sql",[
   '"recipe_match":true', '"clean_damage_free":true',
   "from public,anon,authenticated", "to service_role",
 ]);
+// M118: verify every nested operator API keeps async session checks awaited.
+// The new SQL eligibility endpoint previously treated Promise<boolean> as a
+// truthy authorization guard. This audit scans all operator route.ts files.
+requireTokens("tests/operator-async-auth-route-audit.test.ts",[
+  'const ROOT="src/app/api/operator"',
+  "async function", "unsafeOperatorAuthLines",
+  "readdirSync", "await\\s+verifyOperatorSession",
+  "unawaited direct and wrapped guards",
+]);
+
 requireTokens("src/app/api/operator/production/delivery-eligibility/route.ts",[
   "if(!await verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value))", "production_delivery_eligibility_list",
   "parseProductionDeliveryEligibility(raw)", 'cache:"no-store"', "private, no-store",
