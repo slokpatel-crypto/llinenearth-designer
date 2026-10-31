@@ -452,3 +452,36 @@ test("read-only operator meterage source audit identifies legacy anomalies befor
   const migration=runner.indexOf('run_sql_file "$migration"',auditHook);
   assert.ok(auditHook>=0&&migration>auditHook,"Audit must precede actual migration installation");
 });
+
+
+test("documented physical receipt lines cannot be counted twice across independent keys",()=>{
+  const migration=readFileSync("supabase/migrations/20261031_stock_receipt_source_line_dedupe.sql","utf8");
+  const audit=readFileSync("scripts/ci/stock-receipt-source-audit.sql","utf8");
+  const fixture=readFileSync("scripts/ci/stock-receipt-source-audit-fixture.sql","utf8");
+  const sql=readFileSync("scripts/ci/stock-receipt-source-line-assertions.sql","utf8");
+  const runner=readFileSync("scripts/ci/verify-stock-record-db.sh","utf8");
+  assert.ok(migration.includes("existing duplicate physical receipt source lines require owner reconciliation"));
+  assert.ok(migration.includes("create unique index if not exists fabric_stock_receipt_source_line_uidx"));
+  assert.ok(migration.includes("lower(btrim(source_reference))"));
+  assert.ok(migration.includes("p_event_type='receipt' and exists"));
+  assert.ok(migration.includes("lower(btrim(l.source_reference))=lower(btrim(p_source_reference))"));
+  assert.ok(migration.includes("physical receipt source line already recorded for fabric"));
+  assert.ok(migration.indexOf("return v_existing.event_id")<migration.indexOf("p_event_type='receipt' and exists"));
+  assert.ok(migration.includes("pg_advisory_xact_lock(hashtext('stock-fabric:'||p_fabric_id))"));
+  assert.ok(migration.includes("grant execute on function public.fabric_stock_record_v3"));
+  assert.ok(audit.includes("BEGIN TRANSACTION READ ONLY"));
+  assert.ok(audit.includes("SELECT concat_ws('|',"));
+  assert.ok(!audit.includes("source_reference AS "));
+  assert.ok(fixture.includes("ci-receipt-audit-fabric"));
+  assert.ok(sql.includes("different-key duplicate receipt unexpectedly succeeded"));
+  assert.ok(sql.includes("direct duplicate receipt bypassed natural-key index"));
+  assert.ok(runner.includes("stock-receipt-source-audit-fixture.sql"));
+  assert.ok(runner.includes("receipt_audit"));
+  assert.ok(runner.includes("receipt_after"));
+  assert.ok(runner.includes("stock-receipt-source-line-assertions.sql"));
+  assert.ok(runner.includes("Concurrent different-key same-line receipts must have one winner."));
+  const client=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
+  assert.ok(client.includes("Actual roll tag + supplier receipt LINE ID"));
+  assert.ok(client.includes("Never invent a line ID."));
+  assert.ok(runner.includes('if [[ "${GITHUB_ACTIONS:-}" != "true" ]]'));
+});
