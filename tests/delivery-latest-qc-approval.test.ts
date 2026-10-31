@@ -21,6 +21,26 @@ test("J5: only the newest same-order QC event can release a garment",()=>{
   assert.equal(hasVerifiedLatestDeliveryQc([earlier],"another-order"),false);
 });
 
+test("J5: uppercase PostgreSQL UUIDs cannot hide a newer same-order rework",()=>{
+  const upper=orderId.toUpperCase();
+  const upperRework={...rework,order_id:upper};
+  const upperApproval={...approved,order_id:upper};
+  assert.equal(hasVerifiedLatestDeliveryQc([earlier,upperRework],orderId),false,
+    "a newer uppercase UUID rework must veto lowercase approval");
+  assert.equal(hasVerifiedLatestDeliveryQc([upperRework,earlier],orderId),false);
+  assert.equal(hasVerifiedLatestDeliveryQc([upperApproval,rework],orderId),true,
+    "a newer uppercase UUID approval should be recognized");
+  assert.equal(hasVerifiedLatestDeliveryQc([upperApproval,rework],upper),true);
+  assert.equal(hasVerifiedLatestDeliveryQc([earlier,upperRework],upper),false);
+  const order={order_id:orderId,revision_id:"locked-revision-001",
+    recipe_hash:"a".repeat(64),status:"ready",created_at:"2026-10-29T09:00:00.000Z"};
+  const matching={...upperRework,inspection_id:"123e4567-e89b-42d3-a456-426614174111",
+    revision_id:order.revision_id,recipe_hash:order.recipe_hash};
+  assert.equal(hasVerifiedDeliveryQcOrderLineage([matching],order),true,
+    "lineage guard already treats equivalent UUID hex casing as one order");
+  assert.equal(hasVerifiedLatestDeliveryQc([earlier,matching],orderId,500),false);
+});
+
 test("J5: malformed or coerced QC provenance cannot become a delivery approval",()=>{
   for(const value of [null,undefined,false,{}, {rows:[approved]}, "[]", [null], [false], [approved,{}]]){
     assert.equal(hasVerifiedLatestDeliveryQc(value,orderId),false,String(value));
