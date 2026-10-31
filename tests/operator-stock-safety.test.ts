@@ -543,3 +543,31 @@ test("operator source audit route is private and cannot reveal live physical sou
   assert.ok(checks.includes("source audit RPC grants permit non-service-role access"));
   assert.ok(checks.includes("source audit RPC leaked unapproved stock fields"));
 });
+
+test("built Next HTTP operator stock source audit is tested with signed synthetic CI sessions",()=>{
+  const fixture=readFileSync("scripts/ci-verified-stock-fixture.cjs","utf8");
+  const http=readFileSync("scripts/verify-operator-stock-audit-http.cjs","utf8");
+  const workflow=readFileSync(".github/workflows/ci.yml","utf8");
+  assert.ok(fixture.includes("const AUDIT_PATH=\"/rest/v1/rpc/fabric_stock_source_audit_v1\""));
+  assert.ok(fixture.includes("const AUDIT_FIXTURE=Object.freeze({"));
+  assert.ok(fixture.includes("duplicateLineGroups:1,duplicateLineRows:2"));
+  assert.ok(fixture.includes('process.env.GITHUB_ACTIONS!=="true"||process.env.CI!=="true"'));
+  assert.ok(fixture.includes('if(req.headers.apikey!==FIXTURE_KEY)'));
+  assert.ok(fixture.includes("Object.keys(payload).length!==0"));
+  assert.ok(http.includes("GITHUB_ACTIONS"));
+  assert.ok(http.includes("new URL(\"/api/operator/stock/audit\",base)"));
+  assert.ok(http.includes('signedOperatorCookie(Date.now()-60_000)'));
+  assert.ok(http.includes('signedOperatorCookie(Date.now()+3*60_000)'));
+  assert.ok(http.includes('await unauthorized(undefined,"anonymous")'));
+  assert.ok(http.includes('await unauthorized("linen_operator_session=forged.token","forged")'));
+  assert.ok(http.includes("assert.equal(authorized.status,200"));
+  assert.ok(http.includes("assert.deepEqual(data,{audit:AUDIT_FIXTURE}"));
+  assert.ok(http.includes("assert.equal(Object.keys(data.audit).length,10)"));
+  assert.ok(http.includes('new URL("/operator/stock",base)'));
+  assert.ok(http.includes("Run aggregate audit"));
+  assert.ok(http.includes("READ-ONLY SOURCE AUDIT"));
+  assert.ok(http.includes("cannot certify real paper documents"));
+  assert.ok(workflow.includes("node scripts/verify-operator-stock-audit-http.cjs"));
+  assert.ok(workflow.includes("node scripts/ci-verified-stock-fixture.cjs"));
+  assert.ok(workflow.includes("LINEN_OPERATOR_SESSION_SECRET: creative-browser-qa-session-"));
+});
