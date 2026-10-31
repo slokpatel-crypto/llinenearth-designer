@@ -36,5 +36,5 @@ test("operator quote and order ledgers never present malformed RPC responses as 
   const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
   assert.match(source,/if\(!Array\.isArray\(quotes\)\|\|!Array\.isArray\(orders\)\) throw/);
   assert.match(source,/Malformed production quote\/order list receipts/);
-  assert.match(source,/error:"Production records could not be read\."\},\{status:503\}/);
+  assert.match(source,/return respond\(\{error:"Production records could not be read\."\},503\)/);
 });

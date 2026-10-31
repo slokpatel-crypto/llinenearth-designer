@@ -18,6 +18,12 @@ import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
 
+// Operator quotes, immutable recipe identities and order/QC receipts are private
+// even on failed or unauthenticated requests. Never let intermediaries cache them.
+function respond(body:unknown,status=200){
+  return NextResponse.json(body,{status,headers:{"cache-control":"private, no-store","pragma":"no-cache"}});
+}
+
 async function authorized(){
   const jar=await cookies();
   return verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value);
@@ -75,8 +81,8 @@ async function loadVerifiedLockedRevision(recoveryToken:string){
 }
 
 export async function GET(){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,quotes:[],orders:[]});
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
+  if(!getSupabaseAdminConfig()) return respond({configured:false,quotes:[],orders:[]});
   try{
     const [quotes,orders]=await Promise.all([
       rpc("production_quote_list",{p_limit:100}),
@@ -103,29 +109,29 @@ export async function GET(){
     // Even a 200 array from an installed optional RPC can contain malformed
     // rows. Never hand those rows to the operator as credible production proof.
     if(!validProductionDeskResponse(receipt)) throw new Error("Malformed optional production evidence receipts.");
-    return NextResponse.json(receipt,{headers:{"cache-control":"private, no-store"}});
+    return respond(receipt);
   }catch(error){
-    if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
-    if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
     console.error("[operator/production]",error);
-    return NextResponse.json({error:"Production records could not be read."},{status:503});
+    return respond({error:"Production records could not be read."},503);
   }
 }
 
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
   const unsafe=secureJsonRequestError(request,65536);
-  if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
+  if(unsafe) return respond({error:unsafe.error},unsafe.status);
   try{
     const body=await readSecureJsonObject(request,65536);
     const action=typeof body.action==="string"?body.action:"";
     if(action==="create_quote"){
       const identity=parseOperatorLockedSelection(body);
-      if(!identity) return NextResponse.json({error:"Literal locked revision, recipe hash and recovery token are required; notes must be text."},{status:400});
+      if(!identity) return respond({error:"Literal locked revision, recipe hash and recovery token are required; notes must be text."},400);
       const {revisionId,recipeHash,recoveryToken,note}=identity;
       const revision=await loadVerifiedLockedRevision(recoveryToken);
       if(revision.revisionId!==revisionId||revision.recipeHash.toLowerCase()!==recipeHash){
-        return NextResponse.json({error:"The verified locked design does not match the quote revision/hash."},{status:409});
+        return respond({error:"The verified locked design does not match the quote revision/hash."},409);
       }
       const draft=normalizeProductionQuoteDraft({
         currency:body.currency,
@@ -137,25 +143,25 @@ export async function POST(request:Request){
         p_line_items:draft.lineItems,p_adjustment:draft.adjustment,p_note:note,
       });
       const confirmedQuoteId=verifiedOperatorProductionCreateId(quoteId);
-      if(!confirmedQuoteId) return NextResponse.json({error:"Quote creation receipt could not be verified."},{status:409});
-      return NextResponse.json({quoteId:confirmedQuoteId,lockedRevisionVerified:true});
+      if(!confirmedQuoteId) return respond({error:"Quote creation receipt could not be verified."},409);
+      return respond({quoteId:confirmedQuoteId,lockedRevisionVerified:true});
     }
     if(action==="quote_status"){
       const change=parseOperatorProductionStatus(body,"quote");
-      if(!change) return NextResponse.json({error:"Valid quote UUID, allowed status and literal note (max 1000 characters) are required."},{status:400});
+      if(!change) return respond({error:"Valid quote UUID, allowed status and literal note (max 1000 characters) are required."},400);
       const updated=await rpc<unknown>("production_quote_set_status",{
         p_quote_id:change.recordId,p_status:change.status,p_note:change.note,
       });
-      if(updated!==true) return NextResponse.json({error:"Quote status was not updated."},{status:409});
-      return NextResponse.json({updated:true});
+      if(updated!==true) return respond({error:"Quote status was not updated."},409);
+      return respond({updated:true});
     }
     if(action==="create_order"){
       const identity=parseOperatorLockedSelection(body);
-      if(!identity) return NextResponse.json({error:"Literal locked revision, recipe hash and recovery token are required; quote IDs/notes must be text."},{status:400});
+      if(!identity) return respond({error:"Literal locked revision, recipe hash and recovery token are required; quote IDs/notes must be text."},400);
       const {revisionId,recipeHash,recoveryToken,note,quoteId}=identity;
       const revision=await loadVerifiedLockedRevision(recoveryToken);
       if(revision.revisionId!==revisionId||revision.recipeHash.toLowerCase()!==recipeHash){
-        return NextResponse.json({error:"The verified locked design does not match the order revision/hash."},{status:409});
+        return respond({error:"The verified locked design does not match the order revision/hash."},409);
       }
       const orderId=await rpc<string>("production_order_create_with_context",{
         p_revision_id:revisionId,
@@ -165,12 +171,12 @@ export async function POST(request:Request){
         p_context:buildProductionLearningContext(revision),
       });
       const confirmedOrderId=verifiedOperatorProductionCreateId(orderId);
-      if(!confirmedOrderId) return NextResponse.json({error:"Order creation receipt could not be verified."},{status:409});
-      return NextResponse.json({orderId:confirmedOrderId,learningContextAttached:true,lockedRevisionVerified:true});
+      if(!confirmedOrderId) return respond({error:"Order creation receipt could not be verified."},409);
+      return respond({orderId:confirmedOrderId,learningContextAttached:true,lockedRevisionVerified:true});
     }
     if(action==="order_status"){
       const change=parseOperatorProductionStatus(body,"order");
-      if(!change) return NextResponse.json({error:"Valid order UUID, allowed status and literal note (max 1000 characters) are required."},{status:400});
+      if(!change) return respond({error:"Valid order UUID, allowed status and literal note (max 1000 characters) are required."},400);
       const {recordId:orderId,status,note}=change;
       if(status==="delivered"){
         let inspections:unknown;
@@ -181,35 +187,35 @@ export async function POST(request:Request){
             rpc<unknown>("production_order_list",{p_limit:150}),
           ]);
         }catch{
-          return NextResponse.json({error:"Finished-garment QC and production order records must be available before delivery."},{status:409});
+          return respond({error:"Finished-garment QC and production order records must be available before delivery."},409);
         }
         // The capped order page cannot certify a missing or stale target.
         // Never trust an inspection for another recipe with the same order ID.
         if(!validProductionQcOrderRows(candidateOrders)||candidateOrders.length>=150){
-          return NextResponse.json({error:"A complete verified production order page is required before delivery."},{status:409});
+          return respond({error:"A complete verified production order page is required before delivery."},409);
         }
         // PostgreSQL UUID identity is case-insensitive. The status parser
         // canonicalizes the request ID, but a typed SQL order row may use
         // uppercase hex; do not reject valid physical QC lineage on casing.
         const currentOrder=candidateOrders.find(row=>verifiedOperatorProductionCreateId(row.order_id)===orderId);
         if(!hasVerifiedLatestDeliveryQc(inspections,orderId,500)){
-          return NextResponse.json({error:"The latest provenance-backed finished-garment QC approval is required before delivery."},{status:409});
+          return respond({error:"The latest provenance-backed finished-garment QC approval is required before delivery."},409);
         }
         if(!hasVerifiedDeliveryQcOrderLineage(inspections,currentOrder)){
-          return NextResponse.json({error:"Physical QC must match the current ready order, revision, recipe and creation time."},{status:409});
+          return respond({error:"Physical QC must match the current ready order, revision, recipe and creation time."},409);
         }
       }
       const updated=await rpc<unknown>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note});
-      if(updated!==true) return NextResponse.json({error:"Order status was not updated."},{status:409});
-      return NextResponse.json({updated:true});
+      if(updated!==true) return respond({error:"Order status was not updated."},409);
+      return respond({updated:true});
     }
-    return NextResponse.json({error:"Unsupported production action."},{status:400});
+    return respond({error:"Unsupported production action."},400);
   }catch(error){
-    if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
-    if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
     console.error("[operator/production]",error);
     // SQL, RPC and backend errors may include private order, owner or schema
     // details. Keep the diagnostic server-side; never echo it to an operator.
-    return NextResponse.json({error:"Production operation could not be completed."},{status:409,headers:{"cache-control":"private, no-store"}});
+    return respond({error:"Production operation could not be completed."},409);
   }
 }

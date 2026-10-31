@@ -140,7 +140,7 @@ test("privileged delivery status uses latest typed QC gate before status RPC",()
   assert.ok(delivered.includes("if(!hasVerifiedDeliveryQcOrderLineage(inspections,currentOrder))"),"lineage guard must precede status mutation");
   assert.doesNotMatch(delivered,/inspections\.find/);
   assert.doesNotMatch(delivered,/String\(latest\.(?:inspector|inspection_reference)/);
-  assert.match(delivered,/status:409/);
+  assert.match(delivered,/return respond\(\{error:[^\n]+\},409\)/);
 });
 
 test("release gate verifies the latest typed QC guard instead of obsolete first-match wording",()=>{

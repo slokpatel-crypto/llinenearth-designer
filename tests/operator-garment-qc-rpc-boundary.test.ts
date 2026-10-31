@@ -12,7 +12,7 @@ test("garment QC service caps list and mutation RPC reply bodies without echoing
   assert.doesNotMatch(source,/response\.json\(\)/);
   assert.doesNotMatch(source,/response\.text\(\)/);
   assert.match(source,/if\(!Array\.isArray\(orders\)\|\|!Array\.isArray\(inspections\)\) throw/);
-  assert.match(source,/return NextResponse\.json\(\{error:"Finished-garment QC records could not be read\."\},\{status:503\}\)/);
+  assert.match(source,/return respond\(\{error:"Finished-garment QC records could not be read\."\},503\)/);
 });
 
 test("garment QC inspection creation returns success only after literal exact UUID evidence",()=>{

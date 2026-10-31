@@ -22,10 +22,10 @@ test("privileged quote/order create routes require confirmed IDs before reportin
   const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
   assert.match(source,/const confirmedQuoteId=verifiedOperatorProductionCreateId\(quoteId\)/);
   assert.match(source,/const confirmedOrderId=verifiedOperatorProductionCreateId\(orderId\)/);
-  assert.match(source,/if\(!confirmedQuoteId\) return NextResponse\.json\(\{error:/);
-  assert.match(source,/if\(!confirmedOrderId\) return NextResponse\.json\(\{error:/);
+  assert.match(source,/if\(!confirmedQuoteId\) return respond\(\{error:/);
+  assert.match(source,/if\(!confirmedOrderId\) return respond\(\{error:/);
   assert.match(source,/quoteId:confirmedQuoteId,lockedRevisionVerified:true/);
   assert.match(source,/orderId:confirmedOrderId,learningContextAttached:true,lockedRevisionVerified:true/);
-  assert.doesNotMatch(source,/return NextResponse\.json\(\{quoteId,lockedRevisionVerified:true\}\)/);
-  assert.doesNotMatch(source,/return NextResponse\.json\(\{orderId,learningContextAttached:true,lockedRevisionVerified:true\}\)/);
+  assert.doesNotMatch(source,/return respond\(\{quoteId,lockedRevisionVerified:true\}\)/);
+  assert.doesNotMatch(source,/return respond\(\{orderId,learningContextAttached:true,lockedRevisionVerified:true\}\)/);
 });

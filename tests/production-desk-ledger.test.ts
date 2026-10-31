@@ -189,7 +189,7 @@ test("J5 installed optional evidence must contain typed rows, not arbitrary succ
 test("J5 server rejects malformed installed optional rows before returning a successful operator ledger",()=>{
   const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
   const guard=route.indexOf("if(!validProductionDeskResponse(receipt))");
-  const response=route.indexOf('return NextResponse.json(receipt,{headers:');
+  const response=route.indexOf('return respond(receipt);');
   assert.ok(guard>0&&response>guard);
   assert.match(route,/Malformed optional production evidence receipts/);
 });

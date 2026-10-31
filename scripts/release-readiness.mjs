@@ -1045,6 +1045,14 @@ for(const kind of ["assess","search","brief"]) {
 requireTokens("src/app/api/designer/vault/route.ts", ["secureJsonRequestError(request,98304)","readSecureJsonObject(request,98304)"]);
 requireTokens("src/app/api/measurements/vault/route.ts", ["secureJsonRequestError(request,16384)","readSecureJsonObject(request,16384)"]);
 requireTokens("src/app/api/operator/production/route.ts", ["secureJsonRequestError(request,65536)","readSecureJsonObject(request,65536)"]);
+// J5: every operator production and QC receipt, including 401/409/503,
+// must bypass shared caches; both browser lanes exercise actual 401 headers.
+requireTokens("src/app/api/operator/production/route.ts", ["function respond(body:unknown,status=200)","private, no-store","pragma","return respond(receipt)"]);
+requireTokens("src/app/api/operator/garment-qc/route.ts", ["function respond(body:unknown,status=200)","private, no-store","pragma","return respond({configured:true,orders,inspections})"]);
+requireTokens("scripts/verify-operator-private-response-headers.cjs", ["/api/operator/production","/api/operator/garment-qc","no-store","Unauthorized."]);
+requireTokens(".github/workflows/ci.yml", ["node scripts/verify-operator-private-response-headers.cjs"]);
+requireTokens(".github/workflows/deep-engine-non3d.yml", ["node scripts/verify-operator-private-response-headers.cjs"]);
+
 requireTokens("src/app/api/operator/production-evidence/route.ts", ["secureJsonRequestError(request,16384)","readSecureJsonObject(request,16384)"]);
 requireTokens("src/lib/designer/production-delivery-evidence.ts", ["orderLineage.set(key,","evidence.recipe_hash!==lineage.hash","evidenceIds.has(evidenceId)"]);
 requireTokens("scripts/check-cloud-readiness.mjs", ["orderLineageById.set(key,","row.recipe_hash===lineage.recipeHash","seenEvidenceIds.has(evidenceId)"]);

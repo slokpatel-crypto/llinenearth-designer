@@ -40,8 +40,8 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 }
 
 export async function GET(){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,orders:[],inspections:[]});
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
+  if(!getSupabaseAdminConfig()) return respond({configured:false,orders:[],inspections:[]});
   try{
     const [orders,inspections]=await Promise.all([
       rpc<unknown[]>("production_order_list",{p_limit:150}),
@@ -49,10 +49,10 @@ export async function GET(){
     ]);
     if(!Array.isArray(orders)||!Array.isArray(inspections)) throw new Error("Malformed production QC list receipts.");
     if(!validGarmentQcDeskResponse({configured:true,orders,inspections})) throw new Error("Malformed production QC row receipts.");
-    return NextResponse.json({configured:true,orders,inspections},{headers:{"cache-control":"private, no-store"}});
+    return respond({configured:true,orders,inspections});
   }catch(error){
     console.error("[operator/garment-qc]",error);
-    return NextResponse.json({error:"Finished-garment QC records could not be read."},{status:503});
+    return respond({error:"Finished-garment QC records could not be read."},503);
   }
 }
 
