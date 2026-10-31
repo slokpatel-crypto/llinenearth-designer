@@ -1820,6 +1820,23 @@ requireTokens("tests/production-nonblocking-qc-hint.test.ts",[
   "readVersion===ledgerReadVersion", "production_order_deliver_idempotent",
 ]);
 
+// M121: code-level staging rollout documentation is mandatory for the
+// additive physical QC/delivery chain. No automated live schema migration.
+requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
+  "Do not run these migrations in production",
+  "20261110_delivery_qc_sql_gate.sql",
+  "20261111_delivery_idempotency.sql",
+  "20261112_finished_garment_qc_sequence.sql",
+  "20261113_delivery_qc_sequence_gate.sql",
+  "20261114_delivery_eligibility_read.sql",
+  "Never backfill old approvals", "tested restore procedure",
+  "stop operator delivery writes", "first-ten genuine deliveries",
+]);
+requireTokens("tests/titan-qc-migration-staging-plan.test.ts",[
+  "M121 required QC migrations", "M121 rollout review",
+  "M121 no CI job automatically applies",
+]);
+
 // M120: the UI order records must stay visible while the optional QC hint
 // stalls, ignore an old positive hint after a newer 503 and only expose a
 // delivery OPTION on a fresh matching synthetic read (write SQL still rules).
