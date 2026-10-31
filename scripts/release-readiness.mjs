@@ -1212,13 +1212,13 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "try{return window.localStorage;}",
   "productionWriteHoldPending(safeProductionHoldStorage())",
   'window.addEventListener("storage",onStorage)',
-  "if(event.key===PRODUCTION_WRITE_HOLD_KEY){",
+  "event.key===PRODUCTION_WRITE_HOLD_KEY||event.key===PRODUCTION_WRITE_EPOCH_KEY",
+  "verifiedWriteReviewSnapshot.current=null",
   "setRecoveredCreationReceipts(null)",
-  "if(event.newValue!==null)setRequiresWriteReview(true)",
   "const holdToken=crypto.randomUUID()",
   "if(!beginProductionWriteHold(safeProductionHoldStorage(),holdToken))",
   "if(releaseProductionWriteHold(safeProductionHoldStorage(),holdToken))",
-  "if(!acknowledgeProductionWriteHold(safeProductionHoldStorage()))",
+  "acknowledgeProductionWriteHold(storage,snapshot.holdToken)",
 ]);
 // M104: a post-write review is meaningless if the operator cannot compare
 // the frozen submitted note/prices with real durable quote and order fields.
@@ -2228,6 +2228,28 @@ requireTokens(".github/workflows/ci.yml",[
   "node scripts/verify-operator-verified-lock-export-race-browser.cjs",
 ]);
 
+
+// M136: a cross-tab marker/epoch change revokes previously rendered history
+// and manual acknowledgement must compare the exact marker from the newest
+// verified GET, including a completed remote write with no remaining marker.
+requireTokens("src/lib/designer/production-write-hold.ts",[
+  "captureProductionWriteReviewSnapshot",
+  "productionWriteReviewSnapshotUnchanged",
+  "expectedToken===undefined||token===expectedToken",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "const reviewSnapshot=captureProductionWriteReviewSnapshot(safeProductionHoldStorage())",
+  "productionWriteReviewSnapshotUnchanged(safeProductionHoldStorage(),reviewSnapshot)",
+  "verifiedWriteReviewSnapshot.current=data.configured?reviewSnapshot:null",
+  "event.key===PRODUCTION_WRITE_HOLD_KEY||event.key===PRODUCTION_WRITE_EPOCH_KEY",
+  "productionWriteReviewSnapshotUnchanged(storage,snapshot)",
+  "snapshot.holdToken!==null&&!acknowledgeProductionWriteHold(storage,snapshot.holdToken)",
+]);
+requireTokens("tests/production-write-hold.test.ts",[
+  "M136 a reviewed marker and epoch",
+  "M136 unreadable or corrupted review marker",
+  "M136 storage events synchronously revoke history review",
+]);
 
 // M135: a packet's fresh SQL GET is not sufficient if another browser tab
 // begins and confirms a write while packet construction is still in flight.
