@@ -4,7 +4,7 @@ import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { assertCurrentFabricId, readBoundedStockMutationJson, StockMutationPayloadTooLarge, stockMutationRequestError, validateOperatorStockSnapshot, verifiedOperatorStockReceiptId } from "@/lib/designer/operator-stock-safety";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
-import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
+import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation, normalizeStockMutationRequestKey } from "@/lib/designer/stock-ledger";
 
 export const runtime="nodejs";
 
@@ -68,14 +68,18 @@ export async function POST(request:Request){
     const action=typeof body.action==="string"?body.action:"";
     if(action==="record"){
       const draft=normalizeManualStockEvent(body);
+      const requestKey=normalizeStockMutationRequestKey(body.requestKey);
       assertCurrentFabricId(draft.fabricId);
-      const eventId=verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_record_v2",{
+      // Never fall back to non-idempotent v2 on a missing v3 RPC. Until its
+      // owner-approved migration is installed, recording fails closed.
+      const eventId=verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_record_v3",{
         p_fabric_id:draft.fabricId,
         p_event_type:draft.eventType,
         p_quantity_metres:draft.quantityMetres,
         p_note:draft.note,
         p_recorded_by:draft.recordedBy,
         p_source_reference:draft.sourceReference,
+        p_request_key:requestKey,
       }));
       if(!eventId) return respond({error:"Stock backend did not confirm a valid event ID."},{status:502});
       return respond({eventId});
