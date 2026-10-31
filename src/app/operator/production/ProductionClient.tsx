@@ -28,6 +28,9 @@ export default function ProductionClient(){
   const [configured,setConfigured]=useState(false);
   const [optionalEvidenceSources,setOptionalEvidenceSources]=useState<{qcInstalled:boolean;customerOutcomesInstalled:boolean;learningContextInstalled:boolean}|null>(null);
   const [busy,setBusy]=useState(false);
+  // A lost POST acknowledgement may follow a durable mutation. A capped
+  // ledger cannot prove absence, so require manual review before more writes.
+  const [requiresWriteReview,setRequiresWriteReview]=useState(false);
   // State updates are asynchronous: a second click in the same render must
   // not create a second quote/order or overlap a locked-design recovery.
   const actionInFlight=useRef(false);
@@ -89,7 +92,7 @@ export default function ProductionClient(){
 
   async function post(body:Record<string,unknown>,success:string){
     if(busy||actionInFlight.current) return;
-    if(!configured) return;
+    if(!configured||requiresWriteReview) return;
     actionInFlight.current=true;
     // Invalidate any in-flight GET before sending a potentially durable write.
     ledgerReadVersion.current+=1;
@@ -110,6 +113,8 @@ export default function ProductionClient(){
       const confirmed=await load({action:body.action,body,receipt:data});
       if(confirmed)setMessage(success);
     }catch(error){
+      // Set the hold before refresh; a healthy ledger cannot prove absence.
+      if(!certainPrewriteRejection)setRequiresWriteReview(true);
       // Reload first: load() may update its own message, but no generic fetch
       // failure may overwrite a warning that an order might already exist.
       const refreshed=await load();
@@ -122,6 +127,14 @@ export default function ProductionClient(){
       }
     }
     finally{actionInFlight.current=false;setBusy(false);}
+  }
+
+  function confirmReviewedProductionHistory(){
+    // A validated, configured ledger and explicit operator acknowledgement
+    // are required; this never certifies the previous write did not commit.
+    if(!requiresWriteReview||!configured||busy||actionInFlight.current)return;
+    setRequiresWriteReview(false);
+    setMessage("Reviewed current production history. Writes are enabled; the earlier ambiguous operation may still exist outside the visible ledger. Check before recreating a quote or order.");
   }
 
   async function loadLockedDesign(){
@@ -276,7 +289,7 @@ export default function ProductionClient(){
           <fieldset className="productionLine"><legend>Line 2</legend><input aria-label="Line 2 label" value={quote.line2Label} onChange={(e)=>setQuote({...quote,line2Label:e.target.value})} placeholder="Label"/><input aria-label="Line 2 amount" type="number" min="0" step=".01" value={quote.line2Amount} onChange={(e)=>setQuote({...quote,line2Amount:e.target.value})} placeholder="Amount"/></fieldset>
         </div>
         <label>Note<textarea rows={2} value={quote.note} onChange={(e)=>setQuote({...quote,note:e.target.value})}/></label>
-        <button disabled={busy||!configured||!canQuote} onClick={()=>void post({action:"create_quote",revisionId:quote.revisionId,recipeHash:quote.recipeHash,currency:quote.currency,lineItems:quoteItems,adjustment:Number(quote.adjustment||0),note:quote.note,recoveryToken:recoveryToken.trim()},"Quote created from verified locked revision.")}>Create quote</button>
+        <button disabled={busy||!configured||requiresWriteReview||!canQuote} onClick={()=>void post({action:"create_quote",revisionId:quote.revisionId,recipeHash:quote.recipeHash,currency:quote.currency,lineItems:quoteItems,adjustment:Number(quote.adjustment||0),note:quote.note,recoveryToken:recoveryToken.trim()},"Quote created from verified locked revision.")}>Create quote</button>
       </article>
 
       <article className="productionPanel">
@@ -285,14 +298,20 @@ export default function ProductionClient(){
         <label>Recipe hash<input value={order.recipeHash} onChange={(e)=>setOrder({...order,recipeHash:e.target.value})}/></label>
         <label>Accepted quote (optional)<select value={order.quoteId} onChange={(e)=>setOrder({...order,quoteId:e.target.value})}><option value="">No quote attached</option>{acceptedQuotes.map((item)=><option key={item.quote_id} value={item.quote_id}>{item.currency} {Number(item.total).toFixed(2)} · {item.quote_id.slice(0,8)}</option>)}</select></label>
         <label>Note<textarea rows={2} value={order.note} onChange={(e)=>setOrder({...order,note:e.target.value})}/></label>
-        <button disabled={busy||!configured||!loadedRevision||order.revisionId.length<12||!/^[a-f0-9]{64}$/i.test(order.recipeHash)} onClick={()=>void post({
+        <button disabled={busy||!configured||requiresWriteReview||!loadedRevision||order.revisionId.length<12||!/^[a-f0-9]{64}$/i.test(order.recipeHash)} onClick={()=>void post({
           action:"create_order",...order,recoveryToken:recoveryToken.trim(),
         },"Production order created from verified locked revision with durable design context.")}>Create order</button>
         <small style={{lineHeight:1.45,opacity:.62}}>{loadedRevision?"Locked recipe verified: privacy-safe style/fabric/construction context will be retained for future outcome learning.":"Load and verify the locked recipe before creating quotes or production orders."}</small>
       </article>
     </section>
 
-    {message&&<p className="productionMessage">{message}</p>}
+    {message&&<p className="productionMessage" role="status">{message}</p>}
+    {requiresWriteReview&&<section className="productionPanel" role="alert" aria-label="Production write review required">
+      <h2>Production writes paused for manual review</h2>
+      <p>A previous request may already have created or updated a record. Inspect quote and order history below, including its recipe, note and status. Missing records on this limited page do not prove a failed write.</p>
+      <button disabled={busy||actionInFlight.current} onClick={()=>void load()}>Refresh production history</button>
+      <button disabled={!configured||busy||actionInFlight.current} onClick={confirmReviewedProductionHistory}>I reviewed history — enable writes</button>
+    </section>}
     {optionalEvidenceSources&&(!optionalEvidenceSources.qcInstalled||!optionalEvidenceSources.customerOutcomesInstalled||!optionalEvidenceSources.learningContextInstalled)&&
       <p className="productionMessage" role="status">Some optional production evidence services are not installed. Missing history is unverified, not proof that no inspection, customer outcome or design lineage exists.</p>}
 
@@ -306,9 +325,9 @@ export default function ProductionClient(){
           <strong>{item.currency} {Number(item.total).toFixed(2)} · {item.status.toUpperCase()}</strong>
           <small>{item.quote_id}</small>
           <div className="productionRecordActions">
-            {item.status==="draft"&&<button disabled={busy||!configured} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"sent"},"Quote marked sent.")}>Mark sent</button>}
-            {item.status==="sent"&&<button disabled={busy||!configured} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"accepted"},"Quote accepted.")}>Accept</button>}
-            {item.status!=="void"&&<button disabled={busy||!configured} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"void"},"Quote voided.")}>Void</button>}
+            {item.status==="draft"&&<button disabled={busy||!configured||requiresWriteReview} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"sent"},"Quote marked sent.")}>Mark sent</button>}
+            {item.status==="sent"&&<button disabled={busy||!configured||requiresWriteReview} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"accepted"},"Quote accepted.")}>Accept</button>}
+            {item.status!=="void"&&<button disabled={busy||!configured||requiresWriteReview} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"void"},"Quote voided.")}>Void</button>}
           </div>
         </section>)}
       </article>
@@ -338,7 +357,7 @@ export default function ProductionClient(){
               {customerOutcome.note&&<p>{customerOutcome.note}</p>}
               <small>Evidence only — not automatically applied to Designer ranking.</small>
             </div>}
-            {nextStatuses.length>0&&<select disabled={busy||!configured} defaultValue="" onChange={(e)=>{if(e.target.value) void post({action:"order_status",orderId:item.order_id,status:e.target.value},"Order status updated.");}}>
+            {nextStatuses.length>0&&<select disabled={busy||!configured||requiresWriteReview} defaultValue="" onChange={(e)=>{if(e.target.value) void post({action:"order_status",orderId:item.order_id,status:e.target.value},"Order status updated.");}}>
               <option value="">Update status…</option>
               {nextStatuses.map((status)=><option key={status} value={status}>{status.replaceAll("_"," ")}</option>)}
             </select>}
