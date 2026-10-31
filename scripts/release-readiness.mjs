@@ -1305,6 +1305,42 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "disabled={busy||!configured}",
 ]);
 
+ 
+// M71: Physical receipt source-line uniqueness must be tested in REAL
+// disposable PostgreSQL; textual source references do not prove supplier stock.
+requireTokens("supabase/migrations/20261031_stock_receipt_source_line_dedupe.sql",[
+  "existing duplicate physical receipt source lines require owner reconciliation",
+  "create unique index if not exists fabric_stock_receipt_source_line_uidx",
+  "lower(btrim(source_reference))",
+  "physical receipt source line already recorded for fabric",
+  "stock-fabric:", "return v_existing.event_id",
+  "revoke all on function public.fabric_stock_record_v3",
+  "service_role",
+]);
+requireTokens("scripts/ci/stock-receipt-source-audit.sql",[
+  "BEGIN TRANSACTION READ ONLY", "duplicate_lines",
+  "missing_source", "missing_checker", "missing_request_key",
+  "padded_source", "placeholder_source", "SELECT concat_ws('|',",
+]);
+requireTokens("scripts/ci/stock-receipt-source-audit-fixture.sql",[
+  "ci-receipt-audit-fabric", "Supplier-001-Line-1",
+  "supplier-001-line-1", "TBD",
+]);
+requireTokens("scripts/ci/stock-receipt-source-line-assertions.sql",[
+  "different-key duplicate receipt unexpectedly succeeded",
+  "direct duplicate receipt bypassed natural-key index",
+  "distinct receipt line rejected", "distinct fabric receipt rejected",
+]);
+requireTokens("scripts/ci/verify-stock-record-db.sh",[
+  "20261031_stock_receipt_source_line_dedupe.sql",
+  "stock-receipt-source-audit-fixture.sql",
+  "stock-receipt-source-audit.sql",
+  "existing duplicate physical receipt source lines require owner reconciliation",
+  "stock-receipt-source-line-assertions.sql",
+  "Concurrent different-key same-line receipts must have one winner.",
+  "Refusing stock fixture writes outside disposable GitHub Actions.",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
