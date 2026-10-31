@@ -175,13 +175,13 @@ test("future-dated human feedback, reviews and policies cannot approve present-d
   for(const value of [future,"2026-11-01T00:00:00Z","2032-01-01T00:00:00Z"]){
     assert.throws(()=>safeOutcomeReviewEvidence(
       [{...caseRow,created_at:value}],[reviewRow],[policyRow],asOf,
-    ),/Invalid or future-dated customer learning timestamp/);
+    ),/Future-dated customer learning timestamp/);
     assert.throws(()=>safeOutcomeReviewEvidence(
       [caseRow],[{...reviewRow,created_at:value}],[policyRow],asOf,
-    ),/Invalid or future-dated customer learning timestamp/);
+    ),/Future-dated customer learning timestamp/);
     assert.throws(()=>safeOutcomeReviewEvidence(
       [caseRow],[reviewRow],[{...policyRow,created_at:value}],asOf,
-    ),/Invalid or future-dated customer learning timestamp/);
+    ),/Future-dated customer learning timestamp/);
   }
   for(const clock of [-1,Number.NaN,Number.POSITIVE_INFINITY,asOf+0.5]){
     assert.throws(()=>safeOutcomeReviewEvidence([caseRow],[reviewRow],[policyRow],clock),
