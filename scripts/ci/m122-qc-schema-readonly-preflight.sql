@@ -14,6 +14,10 @@ DECLARE
   v_trigger oid := to_regprocedure('private.assign_finished_garment_qc_sequence()');
   v_immutability oid := to_regprocedure('private.reject_finished_garment_qc_mutation()');
   v_receipt_immutability oid := to_regprocedure('private.reject_production_delivery_receipt_mutation()');
+  v_event_immutability oid := to_regprocedure('private.reject_production_event_mutation()');
+  v_quote_events oid := to_regclass('private.production_quote_events');
+  v_order_events oid := to_regclass('private.production_order_events');
+  v_event_table oid;
   v_functions oid[];
   v_function oid;
 BEGIN
@@ -136,6 +140,48 @@ BEGIN
     or has_function_privilege('authenticated',v_receipt_immutability,'EXECUTE') then
     raise exception 'M126 delivery receipt append-only function insecure';
   end if;
+
+  -- M127: immutable quote and order state histories. No privileged UPDATE,
+  -- DELETE or TRUNCATE may remove a delivered event while leaving a durable
+  -- same-request replay receipt; both journals must be independently sealed.
+  if v_event_immutability is null or v_quote_events is null
+     or v_order_events is null then
+    raise exception 'M127 production event journal or rejection function absent';
+  end if;
+  if not exists(select 1 from pg_proc p
+      where p.oid=v_event_immutability and not p.prosecdef
+        and exists(select 1 from unnest(coalesce(p.proconfig,ARRAY[]::text[])) c
+          where c like 'search_path=%' and c like '%pg_catalog%')
+        and pg_get_functiondef(p.oid) like '%errcode=''55000''%')
+    or has_function_privilege('anon',v_event_immutability,'EXECUTE')
+    or has_function_privilege('authenticated',v_event_immutability,'EXECUTE') then
+    raise exception 'M127 production event rejection function insecure';
+  end if;
+  FOREACH v_event_table IN ARRAY ARRAY[v_quote_events,v_order_events] LOOP
+    if not (select relrowsecurity from pg_class where oid=v_event_table)
+       or has_table_privilege('anon',v_event_table,'SELECT')
+       or has_table_privilege('authenticated',v_event_table,'SELECT') then
+      raise exception 'M127 private event journal RLS or grants insecure';
+    end if;
+    if (select count(*) from pg_trigger t
+        where t.tgrelid=v_event_table and t.tgfoid=v_event_immutability
+          and t.tgenabled='O' and not t.tgisinternal
+          and (t.tgtype::int & 1)=1 and (t.tgtype::int & 2)=2
+          and (t.tgtype::int & 8)=8 and (t.tgtype::int & 16)=16
+          and t.tgname in (
+            'production_quote_event_append_only',
+            'production_order_event_append_only'))<>1
+      or (select count(*) from pg_trigger t
+        where t.tgrelid=v_event_table and t.tgfoid=v_event_immutability
+          and t.tgenabled='O' and not t.tgisinternal
+          and (t.tgtype::int & 1)=0 and (t.tgtype::int & 2)=2
+          and (t.tgtype::int & 32)=32
+          and t.tgname in (
+            'production_quote_event_no_truncate',
+            'production_order_event_no_truncate'))<>1 then
+      raise exception 'M127 production event append-only or TRUNCATE trigger missing or disabled';
+    end if;
+  END LOOP;
 
   if v_gate is null or v_delivery is null or v_hint is null then
     raise exception 'M122 QC staging preflight: status/delivery/eligibility RPC missing';
