@@ -16,6 +16,10 @@ test("M135 signed Chromium tests a positive packet and a completed write from an
   assert.match(browser,/localStorage\.setItem\(epochKey,token\)/);
   assert.match(browser,/localStorage\.removeItem\(holdKey\)/);
   assert.match(browser,/completedCrossTabWriteBlocked:true/);
+  assert.match(browser,/staleReviewBlocked:true/);
+  assert.match(browser,/completedRemoteReviewRecovered:true/);
+  assert.match(browser,/An acknowledgement from stale history must not erase/);
+  assert.match(browser,/Production write review required/);
   assert.match(browser,/No stale packet may download/);
   assert.match(browser,/No production POST is allowed/);
   assert.match(browser,/for\(const width of \[390,1440\]\)/);

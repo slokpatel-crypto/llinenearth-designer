@@ -59,11 +59,13 @@ export function releaseProductionWriteHold(storage:ProductionHoldStorage|null|un
 
 /** Explicit operator acknowledgement after a verified ledger refresh.
  * This does not prove that any unacknowledged write was uncommitted. */
-export function acknowledgeProductionWriteHold(storage:ProductionHoldStorage|null|undefined):boolean{
+export function acknowledgeProductionWriteHold(storage:ProductionHoldStorage|null|undefined,expectedToken?:string|null):boolean{
   if(!storage)return false;
   try{
     const token=storage.getItem(PRODUCTION_WRITE_HOLD_KEY);
-    return typeof token==="string"&&token.length>0
+    return typeof token==="string"
+      &&/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(token)
+      &&(expectedToken===undefined||token===expectedToken)
       &&releaseProductionWriteHold(storage,token);
   }catch{return false;}
 }
@@ -88,4 +90,31 @@ export function productionWriteEpochUnchanged(
   storage:ProductionHoldStorage|null|undefined, captured:string|null,
 ):boolean{
   return captured!==null&&captureProductionWriteEpoch(storage)===captured;
+}
+
+/** A review must be based on one stable, readable marker + write generation,
+ * including an old crash-recovery marker. Never silently accept corrupt data. */
+export type ProductionWriteReviewSnapshot={holdToken:string|null;epoch:string};
+export function captureProductionWriteReviewSnapshot(
+  storage:ProductionHoldStorage|null|undefined,
+):ProductionWriteReviewSnapshot|null{
+  if(!storage)return null;
+  try{
+    const holdToken=storage.getItem(PRODUCTION_WRITE_HOLD_KEY);
+    const epoch=storage.getItem(PRODUCTION_WRITE_EPOCH_KEY);
+    const valid=(value:string)=>/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(value);
+    if(holdToken!==null&&!valid(holdToken))return null;
+    if(epoch!==null&&!valid(epoch))return null;
+    return {holdToken,epoch:epoch??""};
+  }catch{return null;}
+}
+
+export function productionWriteReviewSnapshotUnchanged(
+  storage:ProductionHoldStorage|null|undefined,
+  snapshot:ProductionWriteReviewSnapshot|null,
+):boolean{
+  if(snapshot===null)return false;
+  const current=captureProductionWriteReviewSnapshot(storage);
+  return current!==null&&current.holdToken===snapshot.holdToken
+    &&current.epoch===snapshot.epoch;
 }

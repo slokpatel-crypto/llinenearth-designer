@@ -25,7 +25,7 @@ test("operator review, mutations and packet export check the synchronous generat
   assert.match(src,/const verifiedLedgerReadVersion=useRef\(0\)/);
   assert.match(src,/isCurrentVerifiedProductionLedger\(ledgerReadVersion\.current,verifiedLedgerReadVersion\.current,renderedLedgerReadVersion\)/);
   assert.match(src,/const \[renderedLedgerReadVersion,setRenderedLedgerReadVersion\]=useState\(0\)/);
-  assert.match(load,/const readVersion=\+\+ledgerReadVersion\.current;\s*verifiedLedgerReadVersion\.current=0;/);
+  assert.match(load,/const readVersion=\+\+ledgerReadVersion\.current;\s*const reviewSnapshot=captureProductionWriteReviewSnapshot\(safeProductionHoldStorage\(\)\);\s*verifiedWriteReviewSnapshot\.current=null;\s*verifiedLedgerReadVersion\.current=0;/);
   assert.match(load,/if\(readVersion!==ledgerReadVersion\.current\) return false;/);
   assert.match(load,/verifiedLedgerReadVersion\.current=data\.configured\?readVersion:0;\s*setRenderedLedgerReadVersion\(data\.configured\?readVersion:0\);/);
   assert.match(load,/if\(response\.status===401\)\{if\(readVersion===ledgerReadVersion\.current\)/);
