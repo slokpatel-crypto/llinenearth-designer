@@ -2218,6 +2218,15 @@ requireTokens("tests/verified-operator-lock.test.ts",[
   "before React commits its new loadedRevision",
   "never exports stale handlers",
 ]);
+requireTokens("scripts/verify-operator-verified-lock-export-race-browser.cjs",[
+  "GITHUB_ACTIONS", "LINEN_BROWSER_QA_RUNTIME",
+  "synthetic-shirt-A", "synthetic-shirt-B",
+  "sameTurn", "staleExports:0", "for(const width of [390,1440])",
+  "No production mutation is allowed",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-operator-verified-lock-export-race-browser.cjs",
+]);
 
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
