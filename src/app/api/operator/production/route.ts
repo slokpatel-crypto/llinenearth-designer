@@ -179,8 +179,13 @@ export async function POST(request:Request){
     if(action==="quote_status"){
       const change=parseOperatorProductionStatus(body,"quote");
       if(!change) return respond({error:"Valid quote UUID, allowed status and literal note (max 1000 characters) are required."},400);
-      const updated=await rpc<unknown>("production_quote_set_status",{
-        p_quote_id:change.recordId,p_status:change.status,p_note:change.note,
+      // Every operator POST already carries its pre-network anonymous UUID.
+      // Quote transitions must use it atomically so a lost acknowledgement
+      // cannot emit a second status event for the same original request.
+      const requestKey=parseOperatorProductionRequestKey(body.requestKey);
+      if(!requestKey) return respond({error:"Original quote status request UUID is required."},400);
+      const updated=await rpc<unknown>("production_quote_set_status_idempotent",{
+        p_request_key:requestKey,p_quote_id:change.recordId,p_status:change.status,p_note:change.note,
       });
       if(updated!==true) return respond({error:"Quote status was not updated."},409);
       return respond({updated:true});
