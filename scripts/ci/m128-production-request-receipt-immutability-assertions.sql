@@ -8,9 +8,8 @@ declare
   v_create_key uuid:='123e4567-e89b-42d3-a456-426614174349'::uuid;
   v_quote_key uuid:='123e4567-e89b-42d3-a456-426614174350'::uuid;
   v_order_key uuid:='123e4567-e89b-42d3-a456-426614174351'::uuid;
-  v_saved bytea;
+  v_remaining bigint;
   v_table text;
-  v_sql text;
   v_original bigint;
   v_values jsonb:='[{"label":"CI linen and sewing","amount":150}]'::jsonb;
 begin
@@ -50,8 +49,8 @@ begin
       raise exception 'M128 receipt TRUNCATE incorrectly succeeded: %',v_table;
     exception when sqlstate '55000' then null;
     end;
-    execute format('select count(*) from private.%I',v_table) into v_saved;
-    if v_saved<>v_original then
+    execute format('select count(*) from private.%I',v_table) into v_remaining;
+    if v_remaining<>v_original then
       raise exception 'M128 durable receipt table count changed: %',v_table;
     end if;
   end loop;
