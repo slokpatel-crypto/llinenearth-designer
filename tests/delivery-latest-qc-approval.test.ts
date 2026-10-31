@@ -41,6 +41,21 @@ test("J5: uppercase PostgreSQL UUIDs cannot hide a newer same-order rework",()=>
   assert.equal(hasVerifiedLatestDeliveryQc([earlier,matching],orderId,500),false);
 });
 
+test("J5: uppercase SQL order UUID still resolves the exact current ready order",()=>{
+  const order={order_id:orderId.toUpperCase(),revision_id:"locked-revision-001",
+    recipe_hash:"a".repeat(64),status:"ready",created_at:"2026-10-29T09:00:00.000Z"};
+  const inspection={...approved,inspection_id:"123e4567-e89b-42d3-a456-426614174111",
+    revision_id:order.revision_id,recipe_hash:order.recipe_hash};
+  assert.equal(hasVerifiedLatestDeliveryQc([inspection],orderId,500),true);
+  assert.equal(hasVerifiedDeliveryQcOrderLineage([inspection],order),true);
+  const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
+  const delivered=source.split('if(status==="delivered")')[1]?.split('const updated=await rpc<unknown>("production_order_set_status"')[0]||"";
+  assert.match(delivered,/candidateOrders\\.find\\(row=>verifiedOperatorProductionCreateId\\(row\\.order_id\\)===orderId\\)/,
+    "the typed SQL row must be joined by canonical UUID, not raw hex casing");
+  assert.doesNotMatch(delivered,/candidateOrders\\.find\\(row=>row\\.order_id===orderId\\)/);
+  assert.match(delivered,/hasVerifiedDeliveryQcOrderLineage\\(inspections,currentOrder\\)/);
+});
+
 test("J5: malformed or coerced QC provenance cannot become a delivery approval",()=>{
   for(const value of [null,undefined,false,{}, {rows:[approved]}, "[]", [null], [false], [approved,{}]]){
     assert.equal(hasVerifiedLatestDeliveryQc(value,orderId),false,String(value));
