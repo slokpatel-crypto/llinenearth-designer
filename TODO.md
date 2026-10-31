@@ -887,3 +887,9 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] J5/T5: Validate original optional QC evidence and then copy only 11 operator-consumed fields, with literal known physical check/defect keys. Unknown nested keys fail closed, historical incomplete QC remains unapproved. Signed real built-Next CI fixture includes a fake private QC column and synthetic rework (not physical approval).
 - [ ] M77 exact-head quality, full Node tests, engine, preview, release check, build, PostgreSQL, signed HTTP, responsive browser and Non-3D must pass. Real owner/operator, supplier rolls, tailoring, native Blender, devices, five novice cases, ten deliveries, security/privacy and release approvals remain BLOCKED/PENDING.
 - [ ] Next independent 30–40-minute slice: privacy review/allowlist of optional customer outcomes and learning-context rows (including nested context), with genuine data/human evidence still separate.
+
+
+## 2026-10-31 — M91 mixed-case human review identity (stacked draft)
+- [x] Fix T5/J5 human learning summary and operator review screen to match PostgreSQL outcome UUIDs case-insensitively. Previously an uppercase review outcome ID and lowercase outcome ID could split the same history, hiding rejected evidence or a same-instant approval/rejection conflict.
+- [x] Regression exercises genuine UUID shape, both tied-review row orders, valid uppercase approval and later rejection; source checks require the same identity key in the operator display.
+- [ ] Verify M91 exact-head quality, full Node, engine, preview, release, build, PostgreSQL, signed HTTP and responsive/Non-3D browser CI. No real customer outcome, physical garment, verified supplier stock, native Blender, owner security/privacy/schema/merge/deploy signoff or genuine beta/first-ten evidence exists. No live SQL, paid AI or production deployment.
