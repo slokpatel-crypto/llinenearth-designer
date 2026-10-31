@@ -922,6 +922,32 @@ requireTokens("src/lib/designer/stock-ledger.ts", [
   "normalizeStockReservation", "Locked revision ID must match exactly.",
   "Reservation request key must match exactly.",
 ]);
+requireTokens("supabase/migrations/20261031_stock_source_audit_rpc.sql", [
+  "fabric_stock_source_audit_v1", "returns jsonb",
+  "from private.fabric_stock_ledger", "jsonb_build_object(",
+  "revoke all on function public.fabric_stock_source_audit_v1()",
+  "to service_role;",
+]);
+requireTokens("src/app/api/operator/stock/audit/route.ts", [
+  "verifyOperatorSession", "cache-control", "private, no-store",
+  "fabric_stock_source_audit_v1", "readBoundedJsonResponse(response,8_192)",
+  "verifyOperatorStockSourceAudit", "Unauthorized.",
+]);
+requireTokens("src/lib/designer/operator-stock-safety.ts", [
+  "STOCK_SOURCE_AUDIT_KEYS", "verifyOperatorStockSourceAudit",
+  "Number.isSafeInteger", "duplicateLineGroups",
+]);
+requireTokens("src/app/operator/stock/StockClient.tsx", [
+  "Run aggregate audit", "verifyOperatorStockSourceAudit(payload.audit)",
+  "auditGeneration.current++", "setSourceAudit(null)",
+]);
+requireTokens("scripts/ci/stock-source-audit-rpc-assertions.sql", [
+  "privacy-safe operator source RPC mismatches historical aggregate audit",
+  "source audit RPC grants permit non-service-role access",
+]);
+requireTokens("scripts/ci/verify-stock-record-db.sh", [
+  "20261031_stock_source_audit_rpc.sql", "stock-source-audit-rpc-assertions.sql",
+]);
 requireTokens("scripts/ci/stock-reservation-source-audit.sql", [
   "BEGIN TRANSACTION READ ONLY",
   "FROM private.fabric_stock_ledger", "GROUP BY fabric_id,revision_id,source_key",
