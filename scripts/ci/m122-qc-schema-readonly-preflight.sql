@@ -23,6 +23,8 @@ DECLARE
   v_req_name text;
   v_req_row_trigger text;
   v_req_trunc_trigger text;
+  v_locked_identity oid := to_regprocedure('private.reject_locked_production_identity_mutation()');
+  v_quote_table oid := to_regclass('private.production_quotes');
   v_functions oid[];
   v_function oid;
 BEGIN
@@ -232,6 +234,38 @@ BEGIN
       raise exception 'M128 request replay append-only trigger missing or disabled: %',v_req_name;
     end if;
   end loop;
+
+  -- M130: immutable locked quote/order recipe and financial identity,
+  -- despite privileged direct SQL. Ordinary status and QC counter updates
+  -- remain permitted through canonical state and inspection functions.
+  if v_quote_table is null or v_locked_identity is null then
+    raise exception 'M130 locked production identity table or guard absent';
+  end if;
+  if not exists(select 1 from pg_proc p
+      where p.oid=v_locked_identity and not p.prosecdef
+        and exists(select 1 from unnest(coalesce(p.proconfig,ARRAY[]::text[])) c
+          where c like 'search_path=%' and c like '%pg_catalog%')
+        and pg_get_functiondef(p.oid) like '%new.recipe_hash is distinct from old.recipe_hash%'
+        and pg_get_functiondef(p.oid) like '%new.line_items is distinct from old.line_items%'
+        and pg_get_functiondef(p.oid) like '%new.total is distinct from old.total%'
+        and pg_get_functiondef(p.oid) like '%new.quote_id is distinct from old.quote_id%'
+        and pg_get_functiondef(p.oid) like '%errcode=''55000''%')
+    or has_function_privilege('anon',v_locked_identity,'EXECUTE')
+    or has_function_privilege('authenticated',v_locked_identity,'EXECUTE') then
+    raise exception 'M130 locked production identity trigger function missing or unsafe';
+  end if;
+  if (select count(*) from pg_trigger t
+      where t.tgrelid=v_quote_table and t.tgname='production_quote_locked_identity'
+        and t.tgfoid=v_locked_identity and t.tgenabled='O'
+        and not t.tgisinternal and (t.tgtype::int & 1)=1
+        and (t.tgtype::int & 2)=2 and (t.tgtype::int & 16)=16)<>1
+    or (select count(*) from pg_trigger t
+      where t.tgrelid=v_order_table and t.tgname='production_order_locked_identity'
+        and t.tgfoid=v_locked_identity and t.tgenabled='O'
+        and not t.tgisinternal and (t.tgtype::int & 1)=1
+        and (t.tgtype::int & 2)=2 and (t.tgtype::int & 16)=16)<>1 then
+    raise exception 'M130 locked production quote/order identity trigger missing or disabled';
+  end if;
 
   if v_gate is null or v_delivery is null or v_hint is null then
     raise exception 'M122 QC staging preflight: status/delivery/eligibility RPC missing';
