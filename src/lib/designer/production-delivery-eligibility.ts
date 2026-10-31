@@ -54,9 +54,13 @@ export function hasVerifiedSqlDeliveryEligibility(
   if(!id||order.status!=="ready"
     ||typeof order.revision_id!=="string"
     ||typeof order.recipe_hash!=="string"
+    ||!/^[a-f0-9]{64}$/i.test(order.recipe_hash)
     ||typeof order.updated_at!=="string")return false;
+  // Capture the narrowed value before the callback: TypeScript cannot retain
+  // a mutable Record property refinement across a closure boundary.
+  const normalizedRecipeHash=order.recipe_hash.toLowerCase();
   return rows.some(row=>row.order_id===id&&row.eligible===true
     &&row.status===order.status&&row.revision_id===order.revision_id
-    &&row.recipe_hash===order.recipe_hash.toLowerCase()
+    &&row.recipe_hash===normalizedRecipeHash
     &&row.updated_at===order.updated_at);
 }
