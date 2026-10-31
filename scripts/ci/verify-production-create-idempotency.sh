@@ -53,6 +53,9 @@ run_file scripts/ci/m126-delivery-receipt-immutability-assertions.sql
 # M127: seal historical production quote/order event audit against edits/erasure.
 run_file supabase/migrations/20261117_production_event_immutable.sql
 run_file scripts/ci/m127-production-event-immutability-assertions.sql
+# M128: preserve lost-ack quote/order creation and status replay receipts.
+run_file supabase/migrations/20261118_production_request_receipts_immutable.sql
+run_file scripts/ci/m128-production-request-receipt-immutability-assertions.sql
 # M123: after all six schema migrations, verify actual installed gates (READ ONLY).
 run_file scripts/ci/m122-qc-schema-readonly-preflight.sql
 # M125: falsify installed schema/ACL safeguards inside rollback-only transactions.

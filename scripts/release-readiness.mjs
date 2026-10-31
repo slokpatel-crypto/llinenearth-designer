@@ -1936,14 +1936,53 @@ requireTokens("tests/production-event-immutability.test.ts",[
   "M127 real PostgreSQL assertions",
   "M127 read-only installed-schema preflight",
 ]);
+
+// M128: non-delivery quote/order creation/status request UUID receipts must
+// remain append-only even across a lost HTTP acknowledgement.
+requireTokens("supabase/migrations/20261118_production_request_receipts_immutable.sql",[
+  "private.reject_production_request_receipt_mutation()",
+  "before update or delete on private.production_creation_request_receipts",
+  "before truncate on private.production_creation_request_receipts",
+  "before update or delete on private.production_quote_status_request_receipts",
+  "before truncate on private.production_quote_status_request_receipts",
+  "before update or delete on private.production_order_status_request_receipts",
+  "before truncate on private.production_order_status_request_receipts",
+  "errcode='55000'",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "run_file supabase/migrations/20261118_production_request_receipts_immutable.sql",
+  "run_file scripts/ci/m128-production-request-receipt-immutability-assertions.sql",
+]);
+requireTokens("scripts/ci/m128-production-request-receipt-immutability-assertions.sql",[
+  "production_quote_create_idempotent(", "production_quote_set_status_idempotent(",
+  "production_order_set_status_idempotent(", "M128 replay created duplicate events",
+  "M128 durable receipt table count changed",
+]);
+requireTokens("scripts/ci/m122-qc-schema-readonly-preflight.sql",[
+  "v_request_receipt_immutability",
+  "M128 request replay append-only trigger missing or disabled",
+  "production_creation_receipt_no_truncate",
+  "production_quote_status_receipt_no_truncate",
+  "production_order_status_receipt_no_truncate",
+]);
+requireTokens("tests/production-request-receipt-immutability.test.ts",[
+  "M128 three durable request-replay ledgers",
+  "M128 live disposable SQL verifies",
+  "M128 installed-schema catalog audit",
+]);
+requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
+  "20261118_production_request_receipts_immutable.sql",
+  "Apply the nine migrations",
+]);
+
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
   "20261117_production_event_immutable.sql",
-  "Apply the eight migrations", "Production quote and order state event journals",
+  "Apply the nine migrations", "Production quote and order state event journals",
 ]);
 
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
   "20261116_delivery_receipts_immutable.sql",
-  "Apply the eight migrations", "Already-issued delivery request keys",
+  "Apply the nine migrations", "Already-issued delivery request keys",
 ]);
 
 
