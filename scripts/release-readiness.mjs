@@ -1138,6 +1138,37 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   'disabled={busy||!configured||requiresWriteReview||!loadedRevision',
   'disabled={busy||!configured||requiresWriteReview} defaultValue=""',
 ]);
+// M109: a lost acknowledgement or browser crash must be reconcilable by
+// original anonymous request UUID, without copying personal details. A missing
+// SQL receipt may still be in flight and must not unlock further writes.
+requireTokens("supabase/migrations/20261107_production_creation_receipt_lookup.sql",[
+  "production_creation_request_receipt_lookup", "returns table(action text,receipt_id uuid)",
+  "where r.request_key=p_request_key", "limit 2",
+  "from public,anon,authenticated", "to service_role",
+]);
+requireTokens("src/lib/designer/production-write-hold.ts",[
+  "readProductionWriteHoldKey", "storage.getItem(PRODUCTION_WRITE_HOLD_KEY)",
+]);
+requireTokens("src/lib/designer/production-creation-receipt-lookup.ts",[
+  "parseProductionCreationReceipts", 'row.action!=="create_quote"&&row.action!=="create_order"',
+  "receipt_id", "result.push({action:row.action,receiptId})",
+]);
+requireTokens("src/app/api/operator/production/route.ts",[
+  'if(action==="creation_receipt_lookup")',
+  'rpc<unknown>("production_creation_request_receipt_lookup",{p_request_key:key})',
+  "parseProductionCreationReceipts(rows)", "return respond({receipts})",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "async function lookupPendingCreationReceipt()",
+  'action:"creation_receipt_lookup",requestKey:pendingKey',
+  "readProductionWriteHoldKey(safeProductionHoldStorage())!==pendingKey",
+  "No committed creation receipt was visible at lookup time",
+  "Find original quote/order receipt by request ID",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "20261107_production_creation_receipt_lookup.sql",
+  "production-creation-receipt-lookup-assertions.sql",
+]);
 // M108: quote and order creation must use one client-provided UUID whose
 // exact intent is deduplicated atomically by private PostgreSQL, not a new
 // server-generated UUID on each retry. Only the service role may execute.
