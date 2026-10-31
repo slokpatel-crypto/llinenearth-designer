@@ -1403,6 +1403,28 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
 ]);
 
  
+// M78: operator customer outcomes must not leak new SQL fields or misrepresent
+// genuine adverse fit as a successful, physically verified delivery.
+requireTokens("src/lib/designer/production-outcome-transport.ts",[
+  "safeProductionCustomerOutcomes","Unverified customer outcome ledger.",
+  "Malformed customer outcome evidence.","overall_rating:row.overall_rating",
+  "fit_result:row.fit_result","worn_confirmed:row.worn_confirmed",
+]);
+requireTokens("src/app/api/operator/production/route.ts",[
+  "validProductionDeskResponse(originalReceipt)",
+  "customerOutcomes:safeProductionCustomerOutcomes(outcomes.rows)",
+  "validProductionDeskResponse(receipt)",
+]);
+requireTokens("scripts/ci-verified-stock-fixture.cjs",[
+  "CUSTOMER_OUTCOME_LIST_PATH","CUSTOMER_OUTCOME_LISTS",
+  "DO-NOT-LEAK-CI-OUTCOME","needs_work","major_alteration",
+]);
+requireTokens("scripts/verify-production-ledger-private-http.cjs",[
+  "CUSTOMER_OUTCOME_LISTS","outcome.overall_rating",
+  "outcome.fit_result","private_customer_contact",
+  "DO-NOT-LEAK-CI-",
+]);
+
 // M77: operator QC physical receipts must never forward future private SQL
 // columns; validate full upstream evidence before filtering for browser.
 requireTokens("src/app/api/operator/production/route.ts",[
