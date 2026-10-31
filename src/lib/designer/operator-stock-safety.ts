@@ -122,3 +122,36 @@ export function validateOperatorStockSnapshot(value:unknown):OperatorStockSnapsh
   }
   return value as OperatorStockSnapshotRow[];
 }
+
+/** Only bounded aggregate counters can cross the privileged stock-audit
+ * boundary. Raw supplier documents, user IDs and ledger UUIDs never belong
+ * in the operator browser's preflight summary. This is not a roll audit. */
+export const STOCK_SOURCE_AUDIT_KEYS=[
+  "reservationRows","duplicateLineGroups","duplicateLineRows",
+  "missingLockedRevision","missingSource","missingChecker",
+  "missingRequestKey","missingReservationUuid","paddedSource",
+  "placeholderSource",
+] as const;
+export type OperatorStockSourceAudit=Record<(typeof STOCK_SOURCE_AUDIT_KEYS)[number],number>;
+export function verifyOperatorStockSourceAudit(value:unknown):OperatorStockSourceAudit|null{
+  if(!value||typeof value!=="object"||Array.isArray(value))return null;
+  const source=value as Record<string,unknown>;
+  const keys=Object.keys(source);
+  if(keys.length!==STOCK_SOURCE_AUDIT_KEYS.length||
+     keys.some(key=>!STOCK_SOURCE_AUDIT_KEYS.some(expected=>expected===key)))
+    return null;
+  for(const key of STOCK_SOURCE_AUDIT_KEYS){
+    if(typeof source[key]!=="number"||!Number.isSafeInteger(source[key])||
+       (source[key] as number)<0)return null;
+  }
+  const result=source as OperatorStockSourceAudit;
+  const n=result.reservationRows;
+  const duplicates=result.duplicateLineRows;
+  if(result.duplicateLineGroups>Math.floor(duplicates/2)||
+     duplicates>n)return null;
+  for(const key of STOCK_SOURCE_AUDIT_KEYS){
+    if(key!=="reservationRows"&&key!=="duplicateLineGroups"&&
+       key!=="duplicateLineRows"&&result[key]>n)return null;
+  }
+  return result;
+}
