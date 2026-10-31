@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { LockedDesignRevision } from "@/lib/designer/design-lock";
+import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { buildVerifiedProductionHandoff } from "@/lib/designer/production-handoff";
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet";
@@ -81,14 +81,21 @@ export default function ProductionClient(){
     // A new recovery attempt invalidates any previously verified design.
     // Never allow exports from the old lock while a different token loads.
     setLoadedRevision(null);
+    setQuote((current)=>({...current,revisionId:"",recipeHash:""}));
+    setOrder((current)=>({...current,revisionId:"",recipeHash:"",quoteId:""}));
     try{
       const response=await fetch("/api/designer/vault",{
         method:"POST",headers:{"content-type":"application/json"},
         body:JSON.stringify({action:"load",recoveryToken:recoveryToken.trim()}),
       });
-      const data=await response.json() as {revision?:LockedDesignRevision;error?:string};
-      if(!response.ok||!data.revision) throw new Error(data.error||"Locked design could not be recovered.");
-      const revision=data.revision;
+      const data=await response.json() as {revision?:unknown;error?:unknown}|null;
+      // HTTP 200 and a truthy payload do not prove a recoverable immutable lock.
+      // Verify the exact recipe hash and revision identity before enabling
+      // quote/order creation or showing any production export controls.
+      if(!response.ok||!data?.revision||!await verifyLockedDesignRevision(data.revision)){
+        throw new Error(typeof data?.error==="string"?data.error:"Locked design could not be verified.");
+      }
+      const revision=data.revision as LockedDesignRevision;
       setLoadedRevision(revision);
       setQuote((current)=>({...current,revisionId:revision.revisionId,recipeHash:revision.recipeHash}));
       setOrder((current)=>({...current,revisionId:revision.revisionId,recipeHash:revision.recipeHash,quoteId:""}));
