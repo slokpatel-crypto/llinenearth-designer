@@ -1158,6 +1158,16 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "Saved note: {item.note",
   "Linked quote: {item.quote_id",
 ]);
+// M105: an unconfirmed production write or stale cached React ledger must
+// never be packaged as a current operator quote/order packet.
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "if(!loadedRevision||!configured||requiresWriteReview||busy||actionInFlight.current) return;",
+  'await fetch("/api/operator/production",{cache:"no-store"})',
+  "validProductionDeskResponse(fresh)",
+  "fresh.quotes as Quote[],fresh.orders as Order[]",
+  "finally{actionInFlight.current=false;setBusy(false);}",
+  'disabled={!configured||requiresWriteReview||busy} onClick={()=>void exportProductionPacket()}',
+]);
 // A successful recovery HTTP status must not unlock operator exports or mutations
 // without a locally verified immutable revision/hash, or retain an old selection.
 requireTokens("src/app/operator/production/ProductionClient.tsx", [
