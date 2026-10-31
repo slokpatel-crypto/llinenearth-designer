@@ -7,6 +7,7 @@ import {verifiedOperatorProductionCreateId} from "@/lib/designer/operator-produc
 import {verifiedCustomerReviewReadback,verifiedCustomerPolicyReadback} from "@/lib/designer/customer-review-receipt";
 import {
   summarizeCustomerOutcomeLearning,
+  resolveLatestCustomerReviews,
   type CustomerOutcomeEvidenceRow,
   type CustomerOutcomePolicyRow,
   type CustomerOutcomeReviewDecision,
@@ -92,25 +93,8 @@ export default function CustomerOutcomesClient(){
 
   const summary=useMemo(()=>summarizeCustomerOutcomeLearning(outcomes,reviews,policies),[outcomes,reviews,policies]);
   const ready=verified&&configured;
-  const latestReviewByOutcome=useMemo(()=>{
-    const map=new Map<string,CustomerOutcomeReviewRow>();
-    for(const row of [...reviews].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))){
-      if(!map.has(row.outcome_id)) map.set(row.outcome_id,row);
-    }
-    return map;
-  },[reviews]);
-
-  const reviewConflicts=useMemo(()=>{
-    const latest=new Map<string,CustomerOutcomeReviewRow>();
-    const conflicts=new Set<string>();
-    for(const row of [...reviews].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))){
-      const prior=latest.get(row.outcome_id);
-      if(!prior){latest.set(row.outcome_id,row);continue;}
-      if(Date.parse(prior.created_at)===Date.parse(row.created_at)&&prior.decision!==row.decision)
-        conflicts.add(row.outcome_id);
-    }
-    return conflicts;
-  },[reviews]);
+  const {latestByOutcome:latestReviewByOutcome,conflicts:reviewConflicts}=
+    useMemo(()=>resolveLatestCustomerReviews(reviews),[reviews]);
 
   async function post(body:Record<string,unknown>,success:string){
     if(busy) return false;
@@ -214,7 +198,7 @@ export default function CustomerOutcomesClient(){
         {ready&&!outcomes.length&&<p style={{opacity:.65}}>No authenticated post-delivery customer outcome has been recorded yet.</p>}
         <div style={{display:"grid",gap:12}}>
           {ready&&outcomes.map(outcome=>{
-            const reviewRow=latestReviewByOutcome.get(outcome.outcome_id);
+            const reviewRow=latestReviewByOutcome.get(outcome.outcome_id.toLowerCase());
             const context=outcome.learning_context as null|{
               context?:{occasion?:string};
               fabrics?:{shirtId?:string;trouserId?:string};
@@ -224,7 +208,7 @@ export default function CustomerOutcomesClient(){
             return <article key={outcome.outcome_id} style={{borderTop:"1px solid #ece6dc",paddingTop:12,display:"grid",gap:7}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
                 <strong>{outcome.revision_id}</strong>
-                <b>{reviewConflicts.has(outcome.outcome_id)?"CONFLICT — REVIEW REQUIRED":reviewRow?reviewRow.decision.toUpperCase():"UNREVIEWED"}</b>
+                <b>{reviewConflicts.has(outcome.outcome_id.toLowerCase())?"CONFLICT — REVIEW REQUIRED":reviewRow?reviewRow.decision.toUpperCase():"UNREVIEWED"}</b>
               </div>
               <div style={{fontSize:13}}>Overall: <strong>{label(outcome.overall_rating)}</strong> · Fit: <strong>{label(outcome.fit_result)}</strong> · {outcome.worn_confirmed?"worn + checked":"wear not confirmed"}</div>
               <small style={{opacity:.62}}>Order {outcome.order_id.slice(0,8)}… · recorded {new Date(outcome.created_at).toLocaleString("en-IN")}</small>
@@ -234,7 +218,7 @@ export default function CustomerOutcomesClient(){
                 <br/><span style={{opacity:.65}}>Fabric IDs {context.fabrics?.shirtId||"—"} / {context.fabrics?.trouserId||"—"}</span>
               </div>:<div style={{fontSize:12,lineHeight:1.5,padding:"8px 10px",background:"#fff4df",borderRadius:8}}>No durable design context is attached to this older/manual order. It can be reviewed, but it cannot be approved as learning evidence.</div>}
               {outcome.note&&<p style={{margin:"2px 0",fontSize:13,lineHeight:1.5}}>{outcome.note}</p>}
-              {reviewRow&&!reviewConflicts.has(outcome.outcome_id)&&<small style={{opacity:.62}}>Latest review by {reviewRow.reviewer} · {new Date(reviewRow.created_at).toLocaleString("en-IN")}{reviewRow.note?" · "+reviewRow.note:""}</small>}
+              {reviewRow&&!reviewConflicts.has(outcome.outcome_id.toLowerCase())&&<small style={{opacity:.62}}>Latest review by {reviewRow.reviewer} · {new Date(reviewRow.created_at).toLocaleString("en-IN")}{reviewRow.note?" · "+reviewRow.note:""}</small>}
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 <button style={{...button,background:"#6b7a63"}} disabled={busy||!ready||reviewer.trim().length<2||!context} onClick={()=>void review(outcome.outcome_id,"approved")}>Approve evidence</button>
                 <button style={{...button,background:"#7a2f2f"}} disabled={busy||!ready||reviewer.trim().length<2||reviewNote.trim().length<3} onClick={()=>void review(outcome.outcome_id,"rejected")}>Reject evidence</button>
