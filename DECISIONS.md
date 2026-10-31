@@ -1,3 +1,7 @@
+## 2026-10-31 — M105: quote status UI must not advertise an impossible database transition
+
+**Decision:** Use the shared, already SQL-aligned `canTransitionQuote` function for the production history's Void control rather than a naive `status!=="void"` check. The accepted quote status is terminal, not a candidate for voiding. Preserve the operator's M103 manual uncertain-write hold and M104 reconciliation evidence; do not invent post-acceptance cancellation semantics without an explicit approved workflow. No migration, paid editing requirement, main merge or production deployment.
+
 ## 2026-10-31 — M104: operator review needs the exact submitted and saved financial instructions
 
 **Decision:** Do not ask an operator to certify a quote/order retry using a ledger UI that omits the very line prices, notes and immutable recipe association required for comparison. The M103 uncertain-write hold will now show a bounded *in-memory* snapshot of submitted action, revision/hash, record ID, status, quoted lines, adjustment and note without recovery credentials. Quote and order cards will display the corresponding allowlisted persisted evidence already delivered by the validated private ledger. Neither a missing row from newest-100 lists nor explicit in-page acknowledgement proves that a prior mutation failed; server-side idempotency, physical delivery and owner release signoffs remain separate gates. Preserve original model, deterministic no-mandatory-paid-AI core; do not merge or deploy.
