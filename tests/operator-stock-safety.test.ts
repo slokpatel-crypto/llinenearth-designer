@@ -480,5 +480,8 @@ test("documented physical receipt lines cannot be counted twice across independe
   assert.ok(runner.includes("receipt_after"));
   assert.ok(runner.includes("stock-receipt-source-line-assertions.sql"));
   assert.ok(runner.includes("Concurrent different-key same-line receipts must have one winner."));
+  const client=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
+  assert.ok(client.includes("Actual roll tag + supplier receipt LINE ID"));
+  assert.ok(client.includes("Never invent a line ID."));
   assert.ok(runner.includes('if [[ "${GITHUB_ACTIONS:-}" != "true" ]]'));
 });
