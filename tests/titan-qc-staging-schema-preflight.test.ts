@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 
-test("M122 preflight audits installed QC schema, never simulates physical signoff",()=>{
+test("M123 preflight audits installed QC chronology and immutable evidence",()=>{
   const path="scripts/ci/m122-qc-schema-readonly-preflight.sql";
   const sql=readFileSync(path,"utf8");
   assert.match(sql,/BEGIN READ ONLY;/);
@@ -13,6 +13,11 @@ test("M122 preflight audits installed QC schema, never simulates physical signof
   assert.match(sql,/pg_trigger/);
   assert.match(sql,/t\.tgenabled='O'/);
   assert.match(sql,/t\.tgfoid=v_trigger/);
+  assert.match(sql,/t\.tgfoid=v_immutability/);
+  assert.match(sql,/finished_garment_qc_append_only/);
+  assert.match(sql,/finished_garment_qc_no_truncate/);
+  assert.match(sql,/tgtype::int & 32/);
+  assert.match(sql,/errcode=\x27\x2755000\x27\x27/);
   assert.match(sql,/pg_proc/);
   assert.match(sql,/p\.prosecdef/);
   assert.match(sql,/p\.proconfig/);
@@ -29,6 +34,7 @@ test("M122 preflight audits installed QC schema, never simulates physical signof
     "private.production_orders","private.finished_garment_qc_inspections",
     "private.production_delivery_request_receipts",
     "private.assign_finished_garment_qc_sequence",
+    "private.reject_finished_garment_qc_mutation",
     "public.production_order_set_status",
     "public.production_order_deliver_idempotent",
     "public.production_delivery_eligibility_list",
@@ -38,7 +44,7 @@ test("M122 preflight audits installed QC schema, never simulates physical signof
   assert.doesNotMatch(sql,/\b(?:supabase\s+db\s+push|psql\s+-h|curl)\b/i);
 });
 
-test("M122 read-only installed-schema preflight runs after all five QC migrations in real disposable PG",()=>{
+test("M123 read-only installed-schema preflight runs after all six QC migrations",()=>{
   const runner=readFileSync("scripts/ci/verify-production-create-idempotency.sh","utf8");
   const order=[
     "20261110_delivery_qc_sql_gate.sql",
@@ -46,6 +52,8 @@ test("M122 read-only installed-schema preflight runs after all five QC migration
     "20261112_finished_garment_qc_sequence.sql",
     "20261113_delivery_qc_sequence_gate.sql",
     "20261114_delivery_eligibility_read.sql",
+    "20261115_finished_garment_qc_immutable.sql",
+    "m122-qc-immutability-assertions.sql",
     "m122-qc-schema-readonly-preflight.sql",
   ];
   let previous=-1;
