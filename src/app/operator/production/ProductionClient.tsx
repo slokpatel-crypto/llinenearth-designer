@@ -9,6 +9,7 @@ import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet"
 import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
 import {verifiedProductionMutationReadback} from "@/lib/designer/production-desk-readback";
 import {isCertainProductionPrewriteRejection} from "@/lib/designer/production-post-retry";
+import {productionWriteReviewSummary, type ProductionWriteReviewSummary} from "@/lib/designer/production-review-summary";
 import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
 import { validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash, selectProductionPacketRecords } from "@/lib/designer/production-desk-ledger";
 
@@ -31,6 +32,7 @@ export default function ProductionClient(){
   // A lost POST acknowledgement may follow a durable mutation. A capped
   // ledger cannot prove absence, so require manual review before more writes.
   const [requiresWriteReview,setRequiresWriteReview]=useState(false);
+  const [pendingWriteReview,setPendingWriteReview]=useState<ProductionWriteReviewSummary|null>(null);
   // State updates are asynchronous: a second click in the same render must
   // not create a second quote/order or overlap a locked-design recovery.
   const actionInFlight=useRef(false);
@@ -98,6 +100,7 @@ export default function ProductionClient(){
     ledgerReadVersion.current+=1;
     setConfigured(false);
     setBusy(true);setMessage("");
+    const attempt=productionWriteReviewSummary(body);
     let certainPrewriteRejection=false;
     try{
       const response=await fetch("/api/operator/production",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
@@ -111,16 +114,22 @@ export default function ProductionClient(){
       }
       if(!validProductionDeskMutationReceipt(body.action,data)) throw new Error("Production operation receipt could not be verified.");
       const confirmed=await load({action:body.action,body,receipt:data});
-      if(confirmed)setMessage(success);
-      else{
-        // A valid HTTP receipt without a fresh matching row is still an
-        // unconfirmed durable mutation; do not silently allow another write.
+      if(confirmed){
+        setPendingWriteReview(null);
+        setMessage(success);
+      }else{
+        // Keep the submitted instruction frozen even if the editable form
+        // changes while the operator inspects the capped production ledger.
+        setPendingWriteReview(attempt);
         setRequiresWriteReview(true);
         setMessage("The production mutation may already have been saved, but its exact record could not be confirmed. Inspect and refresh quote/order history before enabling another write.");
       }
     }catch(error){
       // Set the hold before refresh; a healthy ledger cannot prove absence.
-      if(!certainPrewriteRejection)setRequiresWriteReview(true);
+      if(!certainPrewriteRejection){
+        setPendingWriteReview(attempt);
+        setRequiresWriteReview(true);
+      }
       // Reload first: load() may update its own message, but no generic fetch
       // failure may overwrite a warning that an order might already exist.
       const refreshed=await load();
@@ -140,6 +149,7 @@ export default function ProductionClient(){
     // are required; this never certifies the previous write did not commit.
     if(!requiresWriteReview||!configured||busy||actionInFlight.current)return;
     setRequiresWriteReview(false);
+    setPendingWriteReview(null);
     setMessage("Reviewed current production history. Writes are enabled; the earlier ambiguous operation may still exist outside the visible ledger. Check before recreating a quote or order.");
   }
 
@@ -314,7 +324,20 @@ export default function ProductionClient(){
     {message&&<p className="productionMessage" role="status">{message}</p>}
     {requiresWriteReview&&<section className="productionPanel" role="alert" aria-label="Production write review required">
       <h2>Production writes paused for manual review</h2>
-      <p>A previous request may already have created or updated a record. Inspect quote and order history below, including its recipe, note and status. Missing records on this limited page do not prove a failed write.</p>
+      <p>A previous request may already have created or updated a record. Compare the frozen submission below with persisted quote and order history. Missing records on this limited page do not prove a failed write.</p>
+      {pendingWriteReview&&<div className="productionRecord" aria-label="Unconfirmed submitted instruction">
+        <strong>UNCONFIRMED SUBMISSION · {pendingWriteReview.action.replaceAll("_"," ").toUpperCase()}</strong>
+        {pendingWriteReview.revisionId&&<p>Revision: {pendingWriteReview.revisionId}</p>}
+        {pendingWriteReview.recipeHash&&<p>Recipe SHA-256: {pendingWriteReview.recipeHash}</p>}
+        {pendingWriteReview.quoteId&&<p>Quote ID: {pendingWriteReview.quoteId}</p>}
+        {pendingWriteReview.orderId&&<p>Order ID: {pendingWriteReview.orderId}</p>}
+        {pendingWriteReview.status&&<p>Requested status: {pendingWriteReview.status}</p>}
+        {pendingWriteReview.currency&&<p>Currency: {pendingWriteReview.currency}</p>}
+        {pendingWriteReview.lineItems.length>0&&<ul>{pendingWriteReview.lineItems.map((line,index)=><li key={index}>{line.label}: {line.amount.toFixed(2)}</li>)}</ul>}
+        {pendingWriteReview.adjustment!==null&&<p>Adjustment: {pendingWriteReview.adjustment.toFixed(2)}</p>}
+        <p>Submitted note: {pendingWriteReview.note||"(empty / unchanged for status updates)"}</p>
+        <small>Recovery tokens and other private request fields are never displayed or saved in this summary.</small>
+      </div>}
       <button disabled={busy||actionInFlight.current} onClick={()=>void load()}>Refresh production history</button>
       <button disabled={!configured||busy||actionInFlight.current} onClick={confirmReviewedProductionHistory}>I reviewed history — enable writes</button>
     </section>}
@@ -330,6 +353,10 @@ export default function ProductionClient(){
           <div><b>{item.revision_id}</b><small>{new Date(item.created_at).toLocaleString("en-IN")}</small></div>
           <strong>{item.currency} {Number(item.total).toFixed(2)} · {item.status.toUpperCase()}</strong>
           <small>{item.quote_id}</small>
+          <small>Recipe SHA-256: {item.recipe_hash}</small>
+          <ul aria-label="Saved quote lines">{item.line_items.map((line,index)=><li key={index}>{line.label}: {item.currency} {Number(line.amount).toFixed(2)}</li>)}</ul>
+          <p>Subtotal {item.currency} {Number(item.subtotal).toFixed(2)} · Adjustment {Number(item.adjustment).toFixed(2)} · Total {Number(item.total).toFixed(2)}</p>
+          <p>Saved note: {item.note||"(empty)"}</p>
           <div className="productionRecordActions">
             {item.status==="draft"&&<button disabled={busy||!configured||requiresWriteReview} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"sent"},"Quote marked sent.")}>Mark sent</button>}
             {item.status==="sent"&&<button disabled={busy||!configured||requiresWriteReview} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"accepted"},"Quote accepted.")}>Accept</button>}
@@ -351,6 +378,9 @@ export default function ProductionClient(){
             <div><b>{item.revision_id}</b><small>{new Date(item.created_at).toLocaleString("en-IN")}</small></div>
             <strong>{item.status.replaceAll("_"," ").toUpperCase()}</strong>
             <small>{item.order_id}</small>
+            <small>Recipe SHA-256: {item.recipe_hash}</small>
+            <p>Linked quote: {item.quote_id||"(none)"}</p>
+            <p>Saved note: {item.note||"(empty)"}</p>
             <small className={learningContext?"productionLineageAttached":"productionLineageMissing"}>
               Outcome lineage · {learningContext?"durable context attached":"context missing"}
             </small>
