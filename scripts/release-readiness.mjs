@@ -922,6 +922,28 @@ requireTokens("src/lib/designer/stock-ledger.ts", [
   "normalizeStockReservation", "Locked revision ID must match exactly.",
   "Reservation request key must match exactly.",
 ]);
+requireTokens("supabase/migrations/20261031_stock_reservation_line_dedupe.sql", [
+  "existing duplicate meterage reservation lines require owner reconciliation",
+  "create unique index if not exists fabric_stock_reserve_source_line_uidx",
+  "fabric_id,revision_id,(lower(btrim(source_reference)))",
+  "l.revision_id=p_revision_id",
+  "lower(btrim(l.source_reference))=lower(btrim(p_source_reference))",
+  "meterage source line already reserved for locked design and fabric",
+]);
+requireTokens("scripts/ci/stock-reservation-line-dedupe-assertions.sql", [
+  "different locked design could not use same source sheet",
+  "distinct documented source line was blocked",
+  "SQL unique index allowed duplicate meterage line",
+]);
+requireTokens("scripts/ci/verify-stock-record-db.sh", [
+  "20261031_stock_reservation_line_dedupe.sql",
+  "stock-reservation-line-dedupe-assertions.sql",
+  "Concurrent different-key same-line reservations must have one winner.",
+]);
+requireTokens("src/app/operator/stock/StockClient.tsx", [
+  "Meterage sheet + documented line reference",
+  "Do not invent a new line reference to bypass a duplicate.",
+]);
 requireTokens("supabase/migrations/20261031_stock_reservation_exact_key_evidence.sql", [
   "fabric_stock_reserve_v2", "v_existing.event_type<>'reserve'",
   "v_existing.fabric_id<>p_fabric_id",
