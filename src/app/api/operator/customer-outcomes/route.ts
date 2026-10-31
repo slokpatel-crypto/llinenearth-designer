@@ -4,13 +4,12 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import {readBoundedJsonResponse} from "@/lib/designer/bounded-json-response";
+import {safeOutcomeReviewEvidence} from "@/lib/designer/customer-outcome-review-transport";
 import {
   normalizeCustomerOutcomePolicy,
   normalizeCustomerOutcomeReview,
   summarizeCustomerOutcomeLearning,
-  type CustomerOutcomeEvidenceRow,
-  type CustomerOutcomePolicyRow,
-  type CustomerOutcomeReviewRow,
 } from "@/lib/designer/customer-outcome-learning";
 
 export const runtime="nodejs";
@@ -30,11 +29,11 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     cache:"no-store",
     signal:AbortSignal.timeout(8_000),
   });
-  if(!response.ok){
-    const detail=(await response.text()).replace(/\s+/g," ").slice(0,300);
-    throw new Error(`Customer outcome request failed (${response.status}): ${detail}`);
-  }
-  return await response.json() as T;
+  if(!response.ok) throw new Error("Customer outcome backend request failed ("+response.status+").");
+  const maxBytes=name==="production_customer_outcome_review_list"?8_388_608:
+    name==="production_customer_outcome_learning_list"?4_194_304:
+    name.endsWith("_list")?262_144:4_096;
+  return await readBoundedJsonResponse(response,maxBytes) as T;
 }
 
 function respond(body:unknown,status=200){
@@ -42,26 +41,23 @@ function respond(body:unknown,status=200){
 }
 
 export async function GET(){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()){
-    return NextResponse.json({
-      configured:false,outcomes:[],reviews:[],policies:[],
-      summary:summarizeCustomerOutcomeLearning([],[],[]),
-    });
-  }
+  if(!await authorized())return respond({error:"Unauthorized."},401);
+  if(!getSupabaseAdminConfig())return respond({
+    configured:false,outcomes:[],reviews:[],policies:[],
+    summary:summarizeCustomerOutcomeLearning([],[],[]),
+  });
   try{
-    const [outcomes,reviews,policies]=await Promise.all([
-      rpc<CustomerOutcomeEvidenceRow[]>("production_customer_outcome_learning_list",{p_limit:1000}),
-      rpc<CustomerOutcomeReviewRow[]>("production_customer_outcome_review_list",{p_limit:5000}),
-      rpc<CustomerOutcomePolicyRow[]>("production_customer_outcome_policy_list",{p_limit:100}),
+    const [rawOutcomes,rawReviews,rawPolicies]=await Promise.all([
+      rpc<unknown>("production_customer_outcome_learning_list",{p_limit:1000}),
+      rpc<unknown>("production_customer_outcome_review_list",{p_limit:5000}),
+      rpc<unknown>("production_customer_outcome_policy_list",{p_limit:100}),
     ]);
-    return NextResponse.json({
-      configured:true,outcomes,reviews,policies,
-      summary:summarizeCustomerOutcomeLearning(outcomes,reviews,policies),
-    },{headers:{"cache-control":"private, no-store","pragma":"no-cache"}});
+    const {outcomes,reviews,policies}=safeOutcomeReviewEvidence(rawOutcomes,rawReviews,rawPolicies);
+    return respond({configured:true,outcomes,reviews,policies,
+      summary:summarizeCustomerOutcomeLearning(outcomes,reviews,policies)});
   }catch(error){
-    console.error("[operator/customer-outcomes]",error);
-    return NextResponse.json({error:"Customer outcome evidence could not be loaded."},{status:503});
+    console.error("[operator/customer-outcomes]",error instanceof Error?error.name:"UnknownError");
+    return respond({error:"Customer outcome evidence could not be loaded."},503);
   }
 }
 

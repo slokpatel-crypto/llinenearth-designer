@@ -1403,6 +1403,32 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
 ]);
 
  
+// M80: Human customer outcome/review/policy ledgers must never forward raw
+// service-role fields or make malformed latest evidence count as accepted.
+requireTokens("src/lib/designer/customer-outcome-review-transport.ts",[
+  "safeOutcomeReviewEvidence", "Invalid or oversized customer learning evidence.",
+  "minimum_approved_cases", "learning_context:exactContext",
+  "fit_result:str", "decision:r.decision",
+]);
+requireTokens("src/app/api/operator/customer-outcomes/route.ts",[
+  "readBoundedJsonResponse(response,maxBytes)",
+  "safeOutcomeReviewEvidence(rawOutcomes,rawReviews,rawPolicies)",
+  'return respond({error:"Unauthorized."},401)',
+  'return respond({error:"Customer outcome evidence could not be loaded."},503)',
+]);
+requireTokens("scripts/ci-verified-stock-fixture.cjs",[
+  "OUTCOME_LEARNING_PATH","OUTCOME_REVIEW_PATH","OUTCOME_POLICY_PATH",
+  "DO-NOT-LEAK-CI-OUTCOME-NESTED",
+]);
+requireTokens("scripts/verify-customer-outcome-review-private-http.cjs",[
+  "OUTCOME_REVIEW_FIXTURE","data.summary.gateComplete,false",
+  'data.reviews[0].decision,"rejected"',
+  "DO-NOT-LEAK-CI-",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-customer-outcome-review-private-http.cjs",
+]);
+
 // M79: nested immutable design learning context must not expose arbitrary
 // future SQL or nested metadata fields while preserving approved recipe truth.
 requireTokens("src/lib/designer/production-learning-transport.ts",[
