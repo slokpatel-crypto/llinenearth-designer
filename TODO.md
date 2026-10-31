@@ -1059,3 +1059,10 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] Start from latest #637 `acc26ee16...`; strengthen both existing tests to verify order create's exact recovered immutable revision ID, equivalent recipe SHA-256 and `!lockedOrderMatches` disable guard; update obsolete static release invariant. Runtime, photo/model, inventory and SQL remain unchanged.
 - [ ] Verify final integrated child exact-head quality, Node, engine, preview, release, build, signed HTTP, browser 390/768/1440, Non-3D and both disposable PostgreSQL; no parent CI transfers.
 - [ ] Real stock, signed-in customer/operator recovery, tailor/physical QC, native Blender, devices, novice beta, actual deliveries and owner security/privacy/schema/merge/deploy approvals remain BLOCKED/PENDING.
+
+## 2026-11-01 — M133 operator ledger refresh permission barrier (draft)
+- [x] Reproduced an event-turn race: React `setConfigured(false)` during history refresh is asynchronous, so a prior verified ledger could still authorize same-turn manual write-review acknowledgement, quote/order mutation, or packet export.
+- [x] Added a synchronous latest-verified-generation gate. Starting a GET or production POST invalidates the verified generation before React rerenders; only a matching newest configured and independently validated GET restores it. A stale 401 GET cannot redirect after a newer request wins. Packet export checks generation again before download.
+- [x] Added pure negative/positive generation regressions, source-path assertions and static release gate. No new schema/dependency, real stock assertion, paid AI, model/photo change or live SQL.
+- [ ] Verify exact M133 head quality, full Node, engine, preview, release, build, signed HTTP, browser 390/768/1440, Non-3D and both disposable PostgreSQL. Local full project commands unavailable in connector-only runtime; parent checks are not transferable.
+- [ ] Real supplier stock, signed-in customer/operator, physical tailor/QC, native Blender, devices, novice beta/first-ten, owner security/privacy/schema/staging/merge/deploy approvals remain BLOCKED/PENDING.
