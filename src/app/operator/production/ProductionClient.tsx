@@ -9,6 +9,10 @@ import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet"
 import { ORDER_TRANSITIONS, canTransitionQuote, type ProductionOrderStatus, type ProductionQuoteStatus } from "@/lib/designer/production-state";
 import {verifiedProductionMutationReadback} from "@/lib/designer/production-desk-readback";
 import {isCertainProductionPrewriteRejection} from "@/lib/designer/production-post-retry";
+import {
+  PRODUCTION_WRITE_HOLD_KEY,productionWriteHoldPending,beginProductionWriteHold,
+  releaseProductionWriteHold,acknowledgeProductionWriteHold,
+} from "@/lib/designer/production-write-hold";
 import {productionWriteReviewSummary, type ProductionWriteReviewSummary} from "@/lib/designer/production-review-summary";
 import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
 import { validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash, selectProductionPacketRecords } from "@/lib/designer/production-desk-ledger";
@@ -90,11 +94,34 @@ export default function ProductionClient(){
       return false;
     }
   }
+  useEffect(()=>{
+    // This marker contains only a random UUID; it survives reloads and
+    // broadcasts pending writes from other same-origin tabs. Never auto-clear
+    // it after a GET, and never persist private production request bodies.
+    if(productionWriteHoldPending(window.localStorage))setRequiresWriteReview(true);
+    const onStorage=(event:StorageEvent)=>{
+      if(event.key===PRODUCTION_WRITE_HOLD_KEY&&event.newValue!==null){
+        setRequiresWriteReview(true);
+      }
+    };
+    window.addEventListener("storage",onStorage);
+    return ()=>window.removeEventListener("storage",onStorage);
+  },[]);
   useEffect(()=>{void load();},[]);
 
   async function post(body:Record<string,unknown>,success:string){
     if(busy||actionInFlight.current) return;
     if(!configured||requiresWriteReview) return;
+    // Persist an anonymous uncertainty marker *before* the network request:
+    // a crash or navigation while the SQL transaction commits must still
+    // leave this desk blocked on the next page load.
+    const holdToken=crypto.randomUUID();
+    if(!beginProductionWriteHold(window.localStorage,holdToken)){
+      setRequiresWriteReview(true);
+      setMessage("Cannot safely start production write: another write may be pending or protected browser storage is unavailable. Inspect production history before retrying.");
+      return;
+    }
+    setRequiresWriteReview(true);
     actionInFlight.current=true;
     // Invalidate any in-flight GET before sending a potentially durable write.
     ledgerReadVersion.current+=1;
@@ -114,8 +141,17 @@ export default function ProductionClient(){
       }
       if(!validProductionDeskMutationReceipt(body.action,data)) throw new Error("Production operation receipt could not be verified.");
       const confirmed=await load({action:body.action,body,receipt:data});
-      if(confirmed)setMessage(success);
-      else{
+      if(confirmed){
+        if(releaseProductionWriteHold(window.localStorage,holdToken)){
+          setRequiresWriteReview(false);
+          setMessage(success);
+        }else{
+          // Another tab's marker or unavailable storage must not be erased
+          // simply because *this* write had an exact durable receipt.
+          setRequiresWriteReview(true);
+          setMessage("The operation was confirmed, but a separate pending production review remains. Inspect history before enabling further writes.");
+        }
+      }else{
         // Keep the submitted instruction frozen even if the editable form
         // changes while the operator inspects the capped production ledger.
         setPendingWriteReview(attempt);
@@ -132,6 +168,11 @@ export default function ProductionClient(){
       // failure may overwrite a warning that an order might already exist.
       const refreshed=await load();
       if(certainPrewriteRejection){
+        // An explicit route-level denial before SQL can safely release only
+        // this write's matching marker, never one owned by another tab.
+        if(releaseProductionWriteHold(window.localStorage,holdToken)){
+          setRequiresWriteReview(false);
+        }
         setMessage(error instanceof Error?error.message:"Production operation rejected before saving.");
       }else{
         setMessage(refreshed
@@ -146,6 +187,10 @@ export default function ProductionClient(){
     // A validated, configured ledger and explicit operator acknowledgement
     // are required; this never certifies the previous write did not commit.
     if(!requiresWriteReview||!configured||busy||actionInFlight.current)return;
+    if(!acknowledgeProductionWriteHold(window.localStorage)){
+      setMessage("Unable to clear the pending production review marker. Check protected browser storage and refresh the ledger before making another write.");
+      return;
+    }
     setRequiresWriteReview(false);
     setPendingWriteReview(null);
     setMessage("Reviewed current production history. Writes are enabled; the earlier ambiguous operation may still exist outside the visible ledger. Check before recreating a quote or order.");
