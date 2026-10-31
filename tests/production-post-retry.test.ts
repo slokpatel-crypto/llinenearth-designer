@@ -52,7 +52,7 @@ test("an uncertain write keeps every production mutation disabled until verified
   const unlock=post.indexOf("finally{actionInFlight.current=false;setBusy(false);}");
   assert.ok(claim>=0&&pause>claim&&snapshot>pause&&hold>snapshot&&refresh>hold&&unlock>refresh,
     "Ambiguous failure must capture the submitted instruction and acquire the hold before refreshing");
-  assert.match(post,/if\(confirmed\)\{\s*if\(releaseProductionWriteHold\(window\.localStorage,holdToken\)\)\{/,
+  assert.match(post,/if\(confirmed\)\{\s*if\(releaseProductionWriteHold\(safeProductionHoldStorage\(\),holdToken\)\)\{/,
     "Only an exact durable write receipt may release its matching pre-POST marker");
   assert.match(post,/if\(confirmed\)\{[^]*?\}else\{\s*\/\/[^]*?setRequiresWriteReview\(true\);/,
     "Even a valid success receipt with unconfirmed fresh history must leave the review hold active");
