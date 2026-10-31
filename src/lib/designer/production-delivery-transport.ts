@@ -5,13 +5,27 @@ import { validProductionFirstTenAuditBasis } from "./production-delivery-evidenc
  * fields. Validate the full original evidence and cross-snapshot lineage
  * before copying only fields documented for the operator's delivery UI.
  * Never spread raw PostgREST rows or their nested arrays into the browser. */
+function optionalText(value:unknown,max:number):string|null|undefined{
+  if(value===null||value===undefined)return value;
+  if(typeof value!=="string"||value.length>max)
+    throw new Error("Invalid private delivery evidence text.");
+  return value;
+}
+function copiedReentryFields(value:unknown):unknown{
+  if(value===null||value===undefined)return value;
+  if(!Array.isArray(value)||value.length>6
+    ||value.some(item=>typeof item!=="string")
+    ||new Set(value).size!==value.length)
+    throw new Error("Invalid delivery re-entry evidence.");
+  return [...value];
+}
 function orderRow(order:Record<string,unknown>){
   return {
     order_id:order.order_id,
     revision_id:order.revision_id,
     recipe_hash:order.recipe_hash,
     status:order.status,
-    note:order.note,
+    note:optionalText(order.note,1200),
     created_at:order.created_at,
     delivered_at:order.delivered_at,
   };
@@ -23,11 +37,10 @@ function evidenceRow(evidence:Record<string,unknown>){
     revision_id:evidence.revision_id,
     recipe_hash:evidence.recipe_hash,
     manual_design_reentry:evidence.manual_design_reentry,
-    reentry_fields:Array.isArray(evidence.reentry_fields)
-      ?[...evidence.reentry_fields]:evidence.reentry_fields,
-    note:evidence.note,
-    operator:evidence.operator,
-    evidence_reference:evidence.evidence_reference,
+    reentry_fields:copiedReentryFields(evidence.reentry_fields),
+    note:optionalText(evidence.note,1200),
+    operator:optionalText(evidence.operator,120),
+    evidence_reference:optionalText(evidence.evidence_reference,240),
     created_at:evidence.created_at,
     order_created_at:evidence.order_created_at,
   };
@@ -44,6 +57,8 @@ export function safeProductionDeliveryTransport(orders:unknown,evidence:unknown,
     if(typeof basis!=="object"||Array.isArray(basis))
       throw new Error("Invalid delivery history basis.");
     const raw=basis as Record<string,unknown>;
+    if(raw.version!=="linen-earth-production-first-ten-audit-v2")
+      throw new Error("Unknown first-ten delivery history version.");
     // Explicitly invalid historical evidence must stay invalid, but its
     // arbitrary SQL fields and nested row objects must never be disclosed.
     if(raw.historyValid===false){
