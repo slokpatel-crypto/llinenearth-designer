@@ -86,3 +86,30 @@ test("customer outcome review GET must bound upstream JSON and always return pri
   assert.ok(script.includes('assert.doesNotMatch(JSON.stringify(data),/DO-NOT-LEAK-CI-/)'));
   assert.ok(workflow.includes("node scripts/verify-customer-outcome-review-private-http.cjs"));
 });
+
+
+test("duplicate durable evidence IDs cannot inflate the human learning threshold",()=>{
+  const approved={...review,decision:"approved"};
+  const single=safeOutcomeReviewEvidence([outcome],[approved],[policy]);
+  assert.equal(summarizeCustomerOutcomeLearning(single.outcomes,single.reviews,single.policies).gateComplete,false);
+  // An upstream duplicate of an already-approved, context-bearing outcome
+  // must not turn the owner's two-case threshold into a false success.
+  assert.throws(()=>safeOutcomeReviewEvidence(
+    [outcome,{...outcome,note:"Repeated SQL join row"}],[approved],[policy],
+  ),/Duplicate or missing customer outcome evidence ID/);
+  // UUIDs are case-insensitive even when a backend returns mixed case.
+  assert.throws(()=>safeOutcomeReviewEvidence(
+    [outcome,{...outcome,outcome_id:outcome.outcome_id.toUpperCase()}],[approved],[policy],
+  ),/Duplicate or missing customer outcome evidence ID/);
+  // Conflicting repeated review rows must not let their ordering choose an
+  // approval over a rejection.
+  assert.throws(()=>safeOutcomeReviewEvidence(
+    [outcome],[approved,{...review}],[policy],
+  ),/Duplicate or missing customer review evidence ID/);
+  assert.throws(()=>safeOutcomeReviewEvidence(
+    [outcome],[approved],[policy,{...policy,minimum_approved_cases:1}],
+  ),/Duplicate or missing customer policy evidence ID/);
+  assert.throws(()=>safeOutcomeReviewEvidence(
+    [{...outcome,outcome_id:"  "}],[approved],[policy],
+  ),/Duplicate or missing customer outcome evidence ID/);
+});
