@@ -13,6 +13,19 @@ const CHECKLIST_LIST_PATH="/rest/v1/rpc/launch_checklist_event_list";
 const QUOTE_LIST_PATH="/rest/v1/rpc/production_quote_list";
 const ORDER_LIST_PATH="/rest/v1/rpc/production_order_list";
 const QC_LIST_PATH="/rest/v1/rpc/finished_garment_qc_list";
+const CUSTOMER_OUTCOME_LIST_PATH="/rest/v1/rpc/production_customer_outcome_list";
+const CUSTOMER_OUTCOME_LISTS=Object.freeze({
+  [CUSTOMER_OUTCOME_LIST_PATH]:[{
+    outcome_id:"123e4567-e89b-42d3-a456-426614174013",
+    order_id:"123e4567-e89b-42d3-a456-426614174011",
+    revision_id:"LE-LOCK-CI-QUOTE-20261031",
+    overall_rating:"needs_work",fit_result:"major_alteration",
+    worn_confirmed:true,note:"CI only: physical fit NOT approved",
+    created_at:"2026-10-31T03:00:00Z",
+    private_customer_contact:"DO-NOT-LEAK-CI-OUTCOME",
+    private_shop_account:"DO-NOT-LEAK-CI-ACCOUNT",
+  }],
+});
 const PRODUCTION_LISTS=Object.freeze({
   [QUOTE_LIST_PATH]:[{
     quote_id:"123e4567-e89b-42d3-a456-426614174010",
@@ -108,7 +121,7 @@ async function handle(req,res){
     res.writeHead(200,{"content-type":"application/json","cache-control":"private, no-store","content-range":"*/0"});
     return res.end(JSON.stringify(rows));
   }
-  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LIST_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
+  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
   if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
   let raw="";
   try{
@@ -122,6 +135,12 @@ async function handle(req,res){
          payload.p_limit!==100||Object.keys(payload).length!==1)
         return send(res,400,{error:"Invalid CI production page request"});
       return send(res,200,PRODUCTION_LISTS[req.url]);
+    }
+    if(req.url===CUSTOMER_OUTCOME_LIST_PATH){
+      if(!payload||typeof payload!=="object"||Array.isArray(payload)||
+         payload.p_limit!==250||Object.keys(payload).length!==1)
+        return send(res,400,{error:"Invalid synthetic outcome list request"});
+      return send(res,200,CUSTOMER_OUTCOME_LISTS[req.url]);
     }
     if(req.url===QC_LIST_PATH){
       if(!payload||typeof payload!=="object"||Array.isArray(payload)||
@@ -156,4 +175,4 @@ if(require.main===module){
     console.log("Synthetic CI-only stock fixture listening on loopback; NOT physical evidence");
   });
 }
-module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,QC_LIST_PATH,QC_LISTS,METADATA_PATH};
+module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,QC_LIST_PATH,QC_LISTS,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS,METADATA_PATH};

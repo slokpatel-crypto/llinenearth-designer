@@ -3,7 +3,7 @@
 // supplier/customer/operator records are never queried or altered.
 const assert=require("node:assert/strict");
 const {createHmac}=require("node:crypto");
-const {PRODUCTION_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LISTS,QC_LIST_PATH}=require("./ci-verified-stock-fixture.cjs");
+const {PRODUCTION_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LISTS,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS}=require("./ci-verified-stock-fixture.cjs");
 const base=new URL(process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000");
 if(process.env.GITHUB_ACTIONS!=="true"||process.env.CI!=="true")
   throw Error("Private production ledger HTTP tests run only in GitHub Actions CI.");
@@ -80,8 +80,8 @@ async function main(){
   assert.equal(Object.hasOwn(data.quotes[0].line_items[0],"secret_factory_cost"),false);
   assert.doesNotMatch(JSON.stringify(data),/DO-NOT-LEAK-CI-/);
   assert.deepEqual(data.optionalEvidenceSources,{
-    qcInstalled:true,customerOutcomesInstalled:false,learningContextInstalled:false,
-  },"Synthetic rework is not an approved physical inspection");
+    qcInstalled:true,customerOutcomesInstalled:true,learningContextInstalled:false,
+  },"Synthetic rework and poor outcome are not physical inspection or satisfied customer evidence");
   assert.equal(data.qcInspections.length,1);
   assert.equal(data.qcInspections[0].decision,"rework");
   assert.equal(data.qcInspections[0].inspection_id,QC_LISTS[QC_LIST_PATH][0].inspection_id);
@@ -91,7 +91,26 @@ async function main(){
     "inspection_id","order_id","revision_id","recipe_hash","decision",
     "checks","defects","note","inspector","inspection_reference","created_at",
   ].sort());
-  console.log("Signed operator real HTTP production ledger PASS; untrusted quote/order/QC extras filtered, private session required.");
+  assert.deepEqual(data.optionalEvidenceSources,{
+    qcInstalled:true,customerOutcomesInstalled:true,learningContextInstalled:false,
+  },"Synthetic adverse outcome is not evidence of customer satisfaction");
+  assert.equal(data.customerOutcomes.length,1);
+  const outcome=data.customerOutcomes[0];
+  const fixture=CUSTOMER_OUTCOME_LISTS[CUSTOMER_OUTCOME_LIST_PATH][0];
+  assert.equal(outcome.outcome_id,fixture.outcome_id);
+  assert.equal(outcome.order_id,fixture.order_id);
+  assert.equal(outcome.overall_rating,"needs_work");
+  assert.equal(outcome.fit_result,"major_alteration");
+  assert.equal(outcome.worn_confirmed,true);
+  assert.equal(outcome.note,fixture.note);
+  assert.deepEqual(Object.keys(outcome).sort(),[
+    "outcome_id","order_id","revision_id","overall_rating",
+    "fit_result","worn_confirmed","note","created_at",
+  ].sort());
+  assert.equal(Object.hasOwn(outcome,"private_customer_contact"),false);
+  assert.equal(Object.hasOwn(outcome,"private_shop_account"),false);
+  assert.doesNotMatch(JSON.stringify(data),/DO-NOT-LEAK-CI-/);
+  console.log("Signed operator real HTTP production ledger PASS; quote/order/QC/customer-outcome private fields filtered.");
   console.log("CI fixture only; no genuine supplier inventory, user data, operator approval or production deployment.");
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
