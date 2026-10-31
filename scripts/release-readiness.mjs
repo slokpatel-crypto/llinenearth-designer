@@ -1904,9 +1904,46 @@ requireTokens("tests/production-delivery-receipt-immutability.test.ts",[
   "M126 atomic delivery replay survives",
   "M126 private replay cannot be altered",
 ]);
+
+// M127: quote/order state event journals are append-only audit evidence too.
+// Preserve old accepted/delivered events and still allow INSERT-only RPCs.
+requireTokens("supabase/migrations/20261117_production_event_immutable.sql",[
+  "private.reject_production_event_mutation()",
+  "before update or delete on private.production_quote_events",
+  "before truncate on private.production_quote_events",
+  "before update or delete on private.production_order_events",
+  "before truncate on private.production_order_events",
+  "errcode='55000'",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "run_file supabase/migrations/20261117_production_event_immutable.sql",
+  "run_file scripts/ci/m127-production-event-immutability-assertions.sql",
+]);
+requireTokens("scripts/ci/m127-production-event-immutability-assertions.sql",[
+  "update private.production_order_events", "delete from private.production_order_events",
+  "truncate private.production_order_events",
+  "update private.production_quote_events", "delete from private.production_quote_events",
+  "truncate private.production_quote_events",
+  "M127 historical replay created duplicate delivered event",
+]);
+requireTokens("scripts/ci/m122-qc-schema-readonly-preflight.sql",[
+  "v_event_immutability", "v_quote_events", "v_order_events",
+  "production_quote_event_append_only", "production_order_event_no_truncate",
+  "M127 production event append-only or TRUNCATE trigger missing or disabled",
+]);
+requireTokens("tests/production-event-immutability.test.ts",[
+  "M127 immutable production event migration",
+  "M127 real PostgreSQL assertions",
+  "M127 read-only installed-schema preflight",
+]);
+requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
+  "20261117_production_event_immutable.sql",
+  "Apply the eight migrations", "Production quote and order state event journals",
+]);
+
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
   "20261116_delivery_receipts_immutable.sql",
-  "Apply the seven migrations", "Already-issued delivery request keys",
+  "Apply the eight migrations", "Already-issued delivery request keys",
 ]);
 
 
