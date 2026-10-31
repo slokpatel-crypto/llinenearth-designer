@@ -93,7 +93,8 @@ export function summarizeCustomerOutcomeLearning(
     approved+=1;
     if(validOutcomeLearningContext(outcome)){
       learningEligible+=1;
-      if(outcome.worn_confirmed&&outcome.fit_result!=="not_checked") approvedFitCases+=1;
+      // Fit success is strictly a confirmed clean first fit. Alteration cases remain eligible as human-reviewed learning evidence, but are not successful fit cases.
+      if(outcome.worn_confirmed&&outcome.fit_result==="clean_first_fit") approvedFitCases+=1;
     }
   }
 
