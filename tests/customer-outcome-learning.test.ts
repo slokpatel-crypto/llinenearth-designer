@@ -279,6 +279,8 @@ test("operator human-review UI exposes ambiguous latest human decisions and poli
   assert.match(source,/role="alert"/);
   assert.match(source,/summary\.reviewConflictCount>0\|\|summary\.policyConflict/);
   assert.match(source,/CONFLICT — REVIEW REQUIRED/);
-  assert.match(source,/reviewRow&&!reviewConflicts\.has\(outcome\.outcome_id\)/);
+  assert.match(source,/reviewRow&&!reviewConflicts\.has\(outcomeKey\)/);
+  assert.match(source,/customerOutcomeKey\(row\.outcome_id\)/);
+  assert.match(source,/customerOutcomeKey\(outcome\.outcome_id\)/);
   assert.match(source,/The learning gate remains OPEN until a new unambiguous human decision/);
 });

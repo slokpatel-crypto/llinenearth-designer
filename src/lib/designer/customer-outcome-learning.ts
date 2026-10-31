@@ -30,6 +30,9 @@ export type CustomerOutcomePolicyRow={
   created_at:string;
 };
 
+/** PostgreSQL UUID identities are case-insensitive even when historical RPCs differ in hex casing. */
+export function customerOutcomeKey(id:string):string{return id.toLowerCase();}
+
 const REVIEW_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function normalizeCustomerOutcomeReview(input:Record<string,unknown>){
@@ -80,11 +83,12 @@ export function summarizeCustomerOutcomeLearning(
   const latestReviewByOutcome=new Map<string,CustomerOutcomeReviewRow>();
   const conflictingReviewOutcomes=new Set<string>();
   for(const review of [...reviews].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))){
-    const current=latestReviewByOutcome.get(review.outcome_id);
-    if(!current){latestReviewByOutcome.set(review.outcome_id,review);continue;}
+    const key=customerOutcomeKey(review.outcome_id);
+    const current=latestReviewByOutcome.get(key);
+    if(!current){latestReviewByOutcome.set(key,review);continue;}
     if(Date.parse(current.created_at)===Date.parse(review.created_at)
       &&current.decision!==review.decision)
-      conflictingReviewOutcomes.add(review.outcome_id);
+      conflictingReviewOutcomes.add(key);
   }
   // Two differently signed human policies at the same latest instant cannot
   // be resolved by whichever database row happens to be returned first.
@@ -104,13 +108,14 @@ export function summarizeCustomerOutcomeLearning(
   let learningEligible=0;
   let approvedFitCases=0;
   for(const outcome of outcomes){
+    const key=customerOutcomeKey(outcome.outcome_id);
     // Preserve ambiguity as unresolved; never manufacture an approval or a
     // rejection when human decisions conflict at an identical timestamp.
-    if(conflictingReviewOutcomes.has(outcome.outcome_id)){
+    if(conflictingReviewOutcomes.has(key)){
       unreviewed+=1;
       continue;
     }
-    const review=latestReviewByOutcome.get(outcome.outcome_id);
+    const review=latestReviewByOutcome.get(key);
     if(!review){unreviewed+=1;continue;}
     if(review.decision==="rejected"){rejected+=1;continue;}
     approved+=1;
