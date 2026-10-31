@@ -1836,6 +1836,30 @@ requireTokens("tests/production-qc-immutability.test.ts",[
   "M122 staging requires explicit owner approval",
 ]);
 
+// M123: audit ACTUAL installed QC SQL and immutable trigger configuration,
+// not only source files. The catalog probe runs within BEGIN READ ONLY.
+requireTokens("scripts/ci/m122-qc-schema-readonly-preflight.sql",[
+  "BEGIN READ ONLY;", "COMMIT;",
+  "pg_attribute", "pg_constraint", "pg_index", "pg_trigger", "pg_proc",
+  "p.prosecdef", "p.proconfig", "pg_get_functiondef",
+  "t.tgenabled='O'", "t.tgfoid=v_trigger", "t.tgfoid=v_immutability",
+  "finished_garment_qc_no_truncate", "finished_garment_qc_append_only",
+  "has_function_privilege('anon'", "has_function_privilege('authenticated'",
+  "has_function_privilege('service_role'", "relrowsecurity",
+  "v_latest_sequence is distinct from v_order_sequence",
+  "q.inspection_sequence=o.qc_latest_sequence",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "run_file supabase/migrations/20261115_finished_garment_qc_immutable.sql",
+  "run_file scripts/ci/m122-qc-immutability-assertions.sql",
+  "run_file scripts/ci/m122-qc-schema-readonly-preflight.sql",
+]);
+requireTokens("tests/titan-qc-staging-schema-preflight.test.ts",[
+  "M123 preflight audits installed QC chronology",
+  "M123 read-only installed-schema preflight",
+]);
+
+
 // M121: code-level staging rollout documentation is mandatory for the
 // additive physical QC/delivery chain. No automated live schema migration.
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
