@@ -1287,7 +1287,7 @@ requireTokens("scripts/verify-production-ledger-private-http.cjs", [
 requireTokens(".github/workflows/ci.yml", [
   "node scripts/verify-production-ledger-private-http.cjs",
 ]);
-requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_list","hasVerifiedLatestDeliveryQc(inspections,orderId,500)","hasVerifiedDeliveryQcOrderLineage(inspections,currentOrder)","validProductionQcOrderRows(candidateOrders)","candidateOrders.find(row=>verifiedOperatorProductionCreateId(row.order_id)===orderId)","The latest provenance-backed finished-garment QC approval is required before delivery.","production_customer_outcome_list","customerOutcomes","production_order_learning_context_list","learningContexts","loadVerifiedLockedRevision","A valid locked-design recovery token is required","verified locked design does not match the quote revision/hash","verified locked design does not match the order revision/hash","parseDesignVaultRecoveryToken","verifyLockedDesignRevision","buildProductionLearningContext","production_order_create_with_context","learningContextAttached","lockedRevisionVerified"]);
+requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_list","production_order_deliver_idempotent","production_order_set_status_idempotent","production_customer_outcome_list","customerOutcomes","production_order_learning_context_list","learningContexts","loadVerifiedLockedRevision","A valid locked-design recovery token is required","verified locked design does not match the quote revision/hash","verified locked design does not match the order revision/hash","parseDesignVaultRecoveryToken","verifyLockedDesignRevision","buildProductionLearningContext","production_order_create_with_context","learningContextAttached","lockedRevisionVerified"]);
 requireTokens("supabase/migrations/20261003_production_delivery_evidence.sql", ["production_delivery_evidence_record","production_delivery_evidence_list","delivery evidence can only be recorded for a delivered order","service_role"]);
 requireTokens("src/lib/designer/production-delivery-evidence.ts", ["PRODUCTION_REENTRY_FIELDS","summarizeProductionDeliveryEvidence","gateComplete","reentryIncidentCount"]);
 requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx", ["Zero-Reentry Proof","FIRST 10 AUDITED","ZERO RE-ENTRY","Save immutable completion audit"]);
@@ -1734,7 +1734,7 @@ requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
 requireTokens("src/app/api/operator/production/route.ts",[
   'if(action==="order_status")', "production_order_set_status_idempotent",
   "parseOperatorProductionRequestKey(body.requestKey)", "p_request_key:requestKey",
-  'status==="delivered"', "hasVerifiedLatestDeliveryQc", "hasVerifiedDeliveryQcOrderLineage",
+  'status==="delivered"', "production_order_deliver_idempotent",
 ]);
 requireTokens("supabase/migrations/20261109_production_order_status_idempotency.sql",[
   "pg_advisory_xact_lock", "production_order_status_request_receipts",
@@ -1746,6 +1746,24 @@ requireTokens("supabase/migrations/20261109_production_order_status_idempotency.
 requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
   "20261109_production_order_status_idempotency.sql",
   "production-order-status-idempotency-assertions.sql",
+]);
+
+// M112: every delivered transition must pass through the canonical SQL QC
+// gate, including direct service-role calls; browser capped reads do not prove
+// physical provenance. Exact original-key replays use a private SQL receipt.
+requireTokens("supabase/migrations/20261110_delivery_qc_sql_gate.sql",[
+  "for update","ambiguous latest QC inspection","six exact passing physical QC checks",
+  "v_latest_recipe is distinct from v_order_recipe",
+  "v_latest_created<v_order_created","to service_role",
+]);
+requireTokens("supabase/migrations/20261111_delivery_idempotency.sql",[
+  "production_delivery_request_receipts","pg_advisory_xact_lock",
+  "production_order_set_status(p_order_id,'delivered',p_note)",
+  "delivery key belongs to different instructions","to service_role",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "20261110_delivery_qc_sql_gate.sql","m112-delivery-qc-gate-assertions.sql",
+  "20261111_delivery_idempotency.sql",
 ]);
 
 if (failed) {
