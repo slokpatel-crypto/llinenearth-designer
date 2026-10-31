@@ -1,5 +1,3 @@
-import {parseOperatorProductionRequestKey} from "./production-request-key.ts";
-
 /** Private, read-only committed creation receipts; no customer fields.
  * Empty array only says no COMMITTED matching key was visible at read time.
  * It MUST NOT be interpreted as proof that an in-flight write will not commit. */
@@ -26,7 +24,4 @@ export function parseProductionCreationReceipts(input:unknown):ProductionCreatio
     result.push({action:row.action,receiptId});
   }
   return result;
-}
-export function committedProductionRequestKey(value:unknown):string|null{
-  return parseOperatorProductionRequestKey(value);
 }
