@@ -6,6 +6,7 @@ import {
   beginProductionWriteHold,releaseProductionWriteHold,
   acknowledgeProductionWriteHold,productionWriteHoldPending,
   captureProductionWriteEpoch,productionWriteEpochUnchanged,
+  captureProductionWriteReviewSnapshot,productionWriteReviewSnapshotUnchanged,
 } from "../src/lib/designer/production-write-hold.ts";
 
 const id="123e4567-e89b-42d3-a456-426614174000";
@@ -87,11 +88,12 @@ test("browser production write barrier is saved BEFORE POST and reviewed after f
   assert.match(post,/releaseProductionWriteHold\(safeProductionHoldStorage\(\),holdToken\)/);
   assert.match(post,/if\(confirmed\)\{\s*if\(releaseProductionWriteHold/);
   assert.match(post,/if\(certainPrewriteRejection\)\{[^]*?releaseProductionWriteHold/);
-  assert.match(review,/if\(!acknowledgeProductionWriteHold\(safeProductionHoldStorage\(\)\)\)\{/);
+  assert.match(review,/productionWriteReviewSnapshotUnchanged\(storage,snapshot\)/);
+  assert.match(review,/acknowledgeProductionWriteHold\(storage,snapshot\.holdToken\)/);
   assert.match(source,/productionWriteHoldPending\(safeProductionHoldStorage\(\)\)/);
   assert.match(source,/window.addEventListener\("storage",onStorage\)/);
-  assert.match(source,/if\(event.key===PRODUCTION_WRITE_HOLD_KEY\)\{/);
-  assert.match(source,/setRecoveredCreationReceipts\(null\);\s*if\(event.newValue!==null\)setRequiresWriteReview\(true\);/);
+  assert.match(source,/event.key===PRODUCTION_WRITE_HOLD_KEY\|\|event.key===PRODUCTION_WRITE_EPOCH_KEY/);
+  assert.match(source,/verifiedWriteReviewSnapshot\.current=null;\s*setRenderedLedgerReadVersion\(0\);\s*setConfigured\(false\);/);
   assert.doesNotMatch(source,/localStorage\.setItem\([^\n]*recoveryToken/);
   assert.doesNotMatch(source,/localStorage\.setItem\([^\n]*pendingWriteReview/);
   const helper=readFileSync("src/lib/designer/production-write-hold.ts","utf8");
@@ -152,4 +154,54 @@ test("M135 packet export checks the anonymous epoch before GET and after async p
   assert.match(packet,/verifiedLedgerReadVersion\.current=0;\s*setRenderedLedgerReadVersion\(0\);\s*setConfigured\(false\);/);
   assert.match(packet,/if\(productionWriteHoldPending\(safeProductionHoldStorage\(\)\)\)setRequiresWriteReview\(true\)/);
   assert.doesNotMatch(src,/localStorage\.setItem\([^\n]*(?:recoveryToken|lineItems|customerPhone)/);
+});
+
+
+test("M136 a reviewed marker and epoch cannot authorize acknowledgement after another tab changes either",()=>{
+  const s=storage();
+  assert.equal(beginProductionWriteHold(s,id),true);
+  const original=captureProductionWriteReviewSnapshot(s);
+  assert.deepEqual(original,{holdToken:id,epoch:id});
+  assert.equal(productionWriteReviewSnapshotUnchanged(s,original),true);
+  assert.equal(acknowledgeProductionWriteHold(s,id2),false,
+    "a reviewed token mismatch must never clear another tab's marker");
+  assert.equal(productionWriteHoldPending(s),true);
+  assert.equal(releaseProductionWriteHold(s,id),true);
+  assert.equal(productionWriteReviewSnapshotUnchanged(s,original),false,
+    "a completed write invalidates a previously reviewed pending marker");
+  const completed=captureProductionWriteReviewSnapshot(s);
+  assert.deepEqual(completed,{holdToken:null,epoch:id});
+  assert.equal(productionWriteReviewSnapshotUnchanged(s,completed),true,
+    "a fresh clean ledger may support explicit UI review without deleting a marker");
+  assert.equal(beginProductionWriteHold(s,id2),true);
+  assert.equal(productionWriteReviewSnapshotUnchanged(s,completed),false);
+  assert.equal(acknowledgeProductionWriteHold(s,id),false);
+  assert.equal(s.items.get(PRODUCTION_WRITE_HOLD_KEY),id2);
+});
+
+test("M136 unreadable or corrupted review marker cannot be acknowledged",()=>{
+  const s=storage();
+  assert.equal(captureProductionWriteReviewSnapshot(null),null);
+  assert.equal(productionWriteReviewSnapshotUnchanged(null,null),false);
+  s.setItem(PRODUCTION_WRITE_HOLD_KEY,"not-a-uuid");
+  assert.equal(captureProductionWriteReviewSnapshot(s),null);
+  assert.equal(acknowledgeProductionWriteHold(s),false);
+  s.removeItem(PRODUCTION_WRITE_HOLD_KEY);
+  s.setItem(PRODUCTION_WRITE_EPOCH_KEY,"bad-epoch");
+  assert.equal(captureProductionWriteReviewSnapshot(s),null);
+  assert.equal(productionWriteReviewSnapshotUnchanged(s,{holdToken:null,epoch:""}),false);
+});
+
+test("M136 storage events synchronously revoke history review, and fresh GET binds the exact marker",()=>{
+  const src=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  const load=src.split("async function load(")[1]?.split("useEffect(()=>{")[0]||"";
+  const review=src.split("function confirmReviewedProductionHistory()")[1]?.split("async function loadLockedDesign(")[0]||"";
+  assert.match(load,/const reviewSnapshot=captureProductionWriteReviewSnapshot\(safeProductionHoldStorage\(\)\)/);
+  assert.match(load,/productionWriteReviewSnapshotUnchanged\(safeProductionHoldStorage\(\),reviewSnapshot\)/);
+  assert.match(load,/verifiedWriteReviewSnapshot\.current=data\.configured\?reviewSnapshot:null/);
+  assert.match(src,/event.key===PRODUCTION_WRITE_HOLD_KEY\|\|event.key===PRODUCTION_WRITE_EPOCH_KEY/);
+  assert.match(src,/ledgerReadVersion\.current\+=1;\s*verifiedLedgerReadVersion\.current=0;\s*verifiedWriteReviewSnapshot\.current=null/);
+  assert.match(review,/const snapshot=verifiedWriteReviewSnapshot\.current/);
+  assert.match(review,/productionWriteReviewSnapshotUnchanged\(storage,snapshot\)/);
+  assert.match(review,/snapshot\.holdToken!==null&&!acknowledgeProductionWriteHold\(storage,snapshot\.holdToken\)/);
 });
