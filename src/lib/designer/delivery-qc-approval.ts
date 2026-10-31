@@ -47,7 +47,9 @@ export function hasVerifiedLatestDeliveryQc(receipts:unknown,orderId:string,maxR
     if(!value||typeof value!=="object"||Array.isArray(value)) return false;
     const row=value as Record<string,unknown>;
     if(typeof row.order_id!=="string") return false;
-    if(row.order_id!==orderId) continue;
+    // PostgreSQL UUID equality is case-insensitive; a newer uppercase-hex
+    // rework receipt must veto a lowercase-hex approval for the same order.
+    if(row.order_id.toLowerCase()!==orderId.toLowerCase()) continue;
     const time=parseLiteralQcTimestamp(row.created_at);
     if(time===null||(row.decision!=="approved"&&row.decision!=="rework")) return false;
     if(!latest||time>latest.time){
