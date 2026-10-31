@@ -8,7 +8,7 @@ import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-p
 import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet";
 import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
 import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
-import { validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash } from "@/lib/designer/production-desk-ledger";
+import { validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash, selectProductionPacketRecords } from "@/lib/designer/production-desk-ledger";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
@@ -139,10 +139,9 @@ export default function ProductionClient(){
   async function exportProductionPacket(){
     if(!loadedRevision) return;
     try{
-    const quoteMatch=quotes.find((item)=>item.revision_id===loadedRevision.revisionId&&sameProductionRecipeHash(item.recipe_hash,loadedRevision.recipeHash)&&item.status==="accepted")
-      || quotes.find((item)=>item.revision_id===loadedRevision.revisionId&&sameProductionRecipeHash(item.recipe_hash,loadedRevision.recipeHash))
-      || null;
-    const orderMatch=orders.find((item)=>item.revision_id===loadedRevision.revisionId&&sameProductionRecipeHash(item.recipe_hash,loadedRevision.recipeHash))||null;
+    const {quote:quoteMatch,order:orderMatch}=selectProductionPacketRecords(
+      quotes,orders,loadedRevision.revisionId,loadedRevision.recipeHash,
+    );
     const packet=await buildVerifiedProductionPacket({
       revision:loadedRevision,
       quote:quoteMatch?{

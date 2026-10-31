@@ -1112,6 +1112,19 @@ requireTokens("src/app/api/operator/production/route.ts",[
   "verifyLockedDesignRevision(revision)","production_quote_create","production_order_create_with_context",
 ]);
 
+// An exported production packet may only attach the quote explicitly linked
+// by its order receipt; never guess from a shared locked-recipe hash.
+requireTokens("src/lib/designer/production-desk-ledger.ts",[
+  "export function selectProductionPacketRecords",
+  "sameProductionRecordId(row.quote_id,order.quote_id)",
+  "Multiple production orders share this locked recipe",
+  "Multiple quotes share this locked recipe",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "selectProductionPacketRecords(",
+  "quotes,orders,loadedRevision.revisionId,loadedRevision.recipeHash",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);

@@ -242,3 +242,34 @@ export function sameProductionRecordId(left:unknown,right:unknown):boolean{
 export function sameProductionRecipeHash(left:unknown,right:unknown):boolean{
   return hash(left)&&hash(right)&&left.toLowerCase()===right.toLowerCase();
 }
+
+/** A production packet must never combine a quote and an order merely
+ * because both use the same reusable locked recipe. An order's immutable
+ * quote_id is the only authority for linking those two records. If more than
+ * one order matches, the current desk has no order picker: refuse to guess.
+ * A missing quote in the independently capped page remains unattached. */
+export function selectProductionPacketRecords<
+  Q extends {quote_id:string;revision_id:string;recipe_hash:string;status:string},
+  O extends {order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null},
+>(
+  quotes:readonly Q[],orders:readonly O[],revisionId:string,recipeHash:string,
+):{quote:Q|null;order:O|null}{
+  if(typeof revisionId!=="string"||!revision(revisionId)||!hash(recipeHash))
+    throw new Error("A verified locked recipe is required for a production packet.");
+  const sameRecipe=(row:{revision_id:string;recipe_hash:string})=>
+    row.revision_id===revisionId&&sameProductionRecipeHash(row.recipe_hash,recipeHash);
+  const matchingOrders=orders.filter(sameRecipe);
+  if(matchingOrders.length>1)
+    throw new Error("Multiple production orders share this locked recipe; select a specific order before exporting a linked packet.");
+  const order=matchingOrders[0]??null;
+  if(order){
+    const quote=order.quote_id===null?null:
+      quotes.find((row)=>row.status==="accepted"&&sameRecipe(row)&&sameProductionRecordId(row.quote_id,order.quote_id))??null;
+    return {quote,order};
+  }
+  const matchingQuotes=quotes.filter(sameRecipe);
+  const accepted=matchingQuotes.filter((row)=>row.status==="accepted");
+  if(accepted.length>1||(accepted.length===0&&matchingQuotes.length>1))
+    throw new Error("Multiple quotes share this locked recipe; select a specific quote before exporting a linked packet.");
+  return {quote:accepted[0]??matchingQuotes[0]??null,order:null};
+}
