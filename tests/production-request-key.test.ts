@@ -21,7 +21,9 @@ test("every privileged quote/order creation uses exact atomic request-key RPC",(
   const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
   const migration=readFileSync("supabase/migrations/20261106_production_create_request_idempotency.sql","utf8");
   assert.match(client,/const holdToken=crypto\.randomUUID\(\)/);
-  assert.match(client,/beginProductionWriteHold\(safeProductionHoldStorage\(\),holdToken\)/);
+  assert.match(client,/const claimed=await beginProductionWriteHoldAtomically\(\s*storage,holdToken,safeProductionWriteLock\(\),beforeLock/);
+  assert.match(client,/if\(!claimed\|\|!hasCurrentVerifiedLedger\(\)/);
+  assert.match(client,/if\(claimed\)releaseProductionWriteHold\(storage,holdToken\)/);
   assert.match(client,/body:JSON\.stringify\(\{\.\.\.body,requestKey:holdToken\}\)/);
   assert.match(route,/import \{parseOperatorProductionRequestKey\}/);
   assert.equal((route.match(/parseOperatorProductionRequestKey\(body\.requestKey\)/g)||[]).length,5,

@@ -7,6 +7,7 @@ import {
   acknowledgeProductionWriteHold,productionWriteHoldPending,
   captureProductionWriteEpoch,productionWriteEpochUnchanged,
   captureProductionWriteReviewSnapshot,productionWriteReviewSnapshotUnchanged,
+  beginProductionWriteHoldAtomically,PRODUCTION_WRITE_LOCK_NAME,
 } from "../src/lib/designer/production-write-hold.ts";
 
 const id="123e4567-e89b-42d3-a456-426614174000";
@@ -80,11 +81,12 @@ test("browser production write barrier is saved BEFORE POST and reviewed after f
   const source=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
   const post=source.split("async function post(")[1]?.split("function confirmReviewedProductionHistory(")[0]||"";
   const review=source.split("function confirmReviewedProductionHistory(")[1]?.split("async function loadLockedDesign(")[0]||"";
-  const begin=post.indexOf("beginProductionWriteHold(safeProductionHoldStorage(),holdToken)");
+  const begin=post.indexOf("beginProductionWriteHoldAtomically(");
   const fetch=post.indexOf('await fetch("/api/operator/production",{method:"POST"');
   assert.ok(begin>=0&&fetch>begin,"No possibly durable SQL write before the private marker exists");
-  assert.match(post,/if\(!beginProductionWriteHold\(safeProductionHoldStorage\(\),holdToken\)\)\{/);
-  assert.match(post,/setRequiresWriteReview\(true\);\s*actionInFlight.current=true;/);
+  assert.match(post,/const claimed=await beginProductionWriteHoldAtomically\(/);
+  assert.match(post,/actionInFlight.current=true;\s*setBusy\(true\);\s*const claimed=await beginProductionWriteHoldAtomically/);
+  assert.match(post,/if\(claimed\)releaseProductionWriteHold\(storage,holdToken\)/);
   assert.match(post,/releaseProductionWriteHold\(safeProductionHoldStorage\(\),holdToken\)/);
   assert.match(post,/if\(confirmed\)\{\s*if\(releaseProductionWriteHold/);
   assert.match(post,/if\(certainPrewriteRejection\)\{[^]*?releaseProductionWriteHold/);
@@ -204,4 +206,60 @@ test("M136 storage events synchronously revoke history review, and fresh GET bin
   assert.match(review,/const snapshot=verifiedWriteReviewSnapshot\.current/);
   assert.match(review,/productionWriteReviewSnapshotUnchanged\(storage,snapshot\)/);
   assert.match(review,/snapshot\.holdToken!==null&&!acknowledgeProductionWriteHold\(storage,snapshot\.holdToken\)/);
+});
+
+
+test("M137 same-origin exclusive lock prevents two simultaneous production POST claims",async()=>{
+  const s=storage();
+  const expected=captureProductionWriteReviewSnapshot(s);
+  let previous:Promise<unknown>=Promise.resolve();
+  const exclusive=(claim:()=>boolean):Promise<boolean>=>{
+    const next=previous.then(()=>claim());
+    previous=next.then(()=>undefined,()=>undefined);
+    return next;
+  };
+  const [first,second]=await Promise.all([
+    beginProductionWriteHoldAtomically(s,id,exclusive,expected),
+    beginProductionWriteHoldAtomically(s,id2,exclusive,expected),
+  ]);
+  assert.deepEqual([first,second],[true,false],
+    "a second tab must not win a stale read-then-write after the first claim");
+  assert.equal(s.getItem(PRODUCTION_WRITE_HOLD_KEY),id);
+  assert.equal(s.getItem(PRODUCTION_WRITE_EPOCH_KEY),id);
+  assert.equal(releaseProductionWriteHold(s,id),true);
+  assert.equal(await beginProductionWriteHoldAtomically(s,id2,exclusive,expected),false,
+    "a completed write while waiting must invalidate the original epoch");
+  const refreshed=captureProductionWriteReviewSnapshot(s);
+  assert.equal(await beginProductionWriteHoldAtomically(s,id2,exclusive,refreshed),true);
+});
+
+test("M137 unavailable, rejected or interrupted Web Lock fails closed before POST",async()=>{
+  const s=storage();
+  const snapshot=captureProductionWriteReviewSnapshot(s);
+  assert.equal(await beginProductionWriteHoldAtomically(s,id,null,snapshot),false);
+  assert.equal(await beginProductionWriteHoldAtomically(s,id,undefined,snapshot),false);
+  assert.equal(await beginProductionWriteHoldAtomically(s,id,async()=>true,null),false);
+  assert.equal(await beginProductionWriteHoldAtomically(s,id,async()=>{throw Error("lock unavailable");},snapshot),false);
+  assert.equal(s.getItem(PRODUCTION_WRITE_HOLD_KEY),null);
+  assert.equal(await beginProductionWriteHoldAtomically(s,id,async claim=>{
+    assert.equal(claim(),true);
+    throw Error("lock callback interrupted after marker write");
+  },snapshot),false);
+  assert.equal(s.getItem(PRODUCTION_WRITE_HOLD_KEY),id,
+    "an uncertain claim remains pending for explicit review");
+});
+
+test("M137 browser uses origin-wide Web Locks and rechecks verified history after await",()=>{
+  const src=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  const post=src.split("async function post(")[1]?.split("async function lookupPendingCreationReceipt(")[0]||"";
+  assert.match(src,/locks\.request\(PRODUCTION_WRITE_LOCK_NAME,\{mode:"exclusive"\},claim\)/);
+  assert.match(src,/if\(!locks\|\|typeof locks\.request!=="function"\)return null/);
+  assert.equal(PRODUCTION_WRITE_LOCK_NAME,"linen-earth:production:write-hold-lock:v1");
+  assert.match(post,/const beforeLock=captureProductionWriteReviewSnapshot\(storage\)/);
+  assert.match(post,/const claimed=await beginProductionWriteHoldAtomically\(/);
+  assert.match(post,/if\(!claimed\|\|!hasCurrentVerifiedLedger\(\)/);
+  assert.match(post,/if\(claimed\)releaseProductionWriteHold\(storage,holdToken\)/);
+  const claim=post.indexOf("const claimed=await beginProductionWriteHoldAtomically(");
+  const postNetwork=post.indexOf('await fetch("/api/operator/production",{method:"POST"');
+  assert.ok(claim>=0&&postNetwork>claim,"no SQL mutation before exclusive claim succeeds");
 });

@@ -5,6 +5,9 @@ export const PRODUCTION_WRITE_HOLD_KEY="linen-earth:production:unverified-write:
 // Anonymous last-write generation survives a confirmed marker release, so an
 // in-flight export can detect another tab's completed write, not just its hold.
 export const PRODUCTION_WRITE_EPOCH_KEY="linen-earth:production:write-epoch:v1";
+// Web Locks serializes the check-and-set across same-origin tabs. A storage
+// read-then-write alone cannot prevent two concurrent POST starts.
+export const PRODUCTION_WRITE_LOCK_NAME="linen-earth:production:write-hold-lock:v1";
 
 export type ProductionHoldStorage={
   getItem(key:string):string|null;
@@ -117,4 +120,26 @@ export function productionWriteReviewSnapshotUnchanged(
   const current=captureProductionWriteReviewSnapshot(storage);
   return current!==null&&current.holdToken===snapshot.holdToken
     &&current.epoch===snapshot.epoch;
+}
+
+/** The lock callback must execute the marker check and claim together.
+ * Without a supported origin-wide exclusive lock, do not risk two POSTs.
+ * Recheck the exact pre-wait snapshot: another tab may have completed a write
+ * while this tab was waiting for its turn. Never persist private request data. */
+export async function beginProductionWriteHoldAtomically(
+  storage:ProductionHoldStorage|null|undefined,
+  token:string,
+  withExclusiveLock:((claim:()=>boolean)=>Promise<boolean>)|null|undefined,
+  expected:ProductionWriteReviewSnapshot|null,
+):Promise<boolean>{
+  if(!storage||!withExclusiveLock||!expected)return false;
+  try{
+    return (await withExclusiveLock(()=>{
+      if(!productionWriteReviewSnapshotUnchanged(storage,expected))return false;
+      return beginProductionWriteHold(storage,token);
+    }))===true;
+  }catch{
+    // A lock error after a marker write leaves that marker pending for review.
+    return false;
+  }
 }

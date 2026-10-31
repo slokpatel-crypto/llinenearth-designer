@@ -1216,7 +1216,7 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "verifiedWriteReviewSnapshot.current=null",
   "setRecoveredCreationReceipts(null)",
   "const holdToken=crypto.randomUUID()",
-  "if(!beginProductionWriteHold(safeProductionHoldStorage(),holdToken))",
+  "const claimed=await beginProductionWriteHoldAtomically(",
   "if(releaseProductionWriteHold(safeProductionHoldStorage(),holdToken))",
   "acknowledgeProductionWriteHold(storage,snapshot.holdToken)",
 ]);
@@ -2228,6 +2228,30 @@ requireTokens(".github/workflows/ci.yml",[
   "node scripts/verify-operator-verified-lock-export-race-browser.cjs",
 ]);
 
+
+// M137: localStorage read-then-write is not an atomic cross-tab claim.
+// No potentially durable production POST without a same-origin Web Lock,
+// unchanged pre-wait review snapshot and post-wait verified ledger.
+requireTokens("src/lib/designer/production-write-hold.ts",[
+  "PRODUCTION_WRITE_LOCK_NAME",
+  "beginProductionWriteHoldAtomically",
+  "productionWriteReviewSnapshotUnchanged(storage,expected)",
+  "return beginProductionWriteHold(storage,token)",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "function safeProductionWriteLock()",
+  'locks.request(PRODUCTION_WRITE_LOCK_NAME,{mode:"exclusive"},claim)',
+  "actionInFlight.current=true;",
+  "const beforeLock=captureProductionWriteReviewSnapshot(storage)",
+  "const claimed=await beginProductionWriteHoldAtomically(",
+  "if(!claimed||!hasCurrentVerifiedLedger()",
+  "if(claimed)releaseProductionWriteHold(storage,holdToken)",
+]);
+requireTokens("tests/production-write-hold.test.ts",[
+  "M137 same-origin exclusive lock prevents two simultaneous production POST claims",
+  "M137 unavailable, rejected or interrupted Web Lock fails closed before POST",
+  "M137 browser uses origin-wide Web Locks and rechecks verified history after await",
+]);
 
 // M136: a cross-tab marker/epoch change revokes previously rendered history
 // and manual acknowledgement must compare the exact marker from the newest

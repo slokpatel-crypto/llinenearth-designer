@@ -1096,3 +1096,11 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] Add pure marker/epoch/invalid-storage regressions, update prior source tests and release gate, extend signed 390/1440 two-tab Chromium to test new pending marker veto and completed-write review recovery. No real operator or physical evidence inferred.
 - [ ] Verify exact M136 head quality, full Node, engine, preview-performance, release, build, signed browser 390/1440, independent Non-3D and both disposable PostgreSQL workflows; repair failures. Parent #642 evidence does not transfer.
 - [ ] Genuine supplier stock, signed-in customer/operator, physical tailoring/QC, Blender source/UV, devices, five novice beta cases, first ten deliveries, security/privacy/schema and separate owner merge/deploy approvals remain BLOCKED/PENDING. No main merge, production deployment, live SQL or paid provider.
+
+
+## 2026-11-01 — M137 atomic cross-tab production POST start (stacked draft)
+- [x] Reproduce J5/T5 production-start race: localStorage getItem/setItem is not atomic across tabs, so two tabs can each pass a stale empty-marker read and issue different durable POSTs.
+- [x] Serialize the marker check-and-claim with an origin-wide exclusive Web Lock; capture and revalidate the exact pre-wait marker/epoch snapshot inside the lock. Fail closed when Web Locks/storage are unavailable; block same-tab actions while awaiting the lock and recheck verified ledger/locked revision before POST. Preserve SQL idempotency and token-only local storage.
+- [x] Add contention, completed-write-epoch, lock-error, marker persistence and source-order regressions; update static release gate. No schema, paid AI, model/photo, production write, main merge or deployment.
+- [ ] Verify this exact child SHA's full CI (quality, Node, engine, preview, release, build and browser), independent Non-3D, production/stock PostgreSQL; CI may still be pending after draft creation. Real two-tab Web Locks browser POST contention remains an independent follow-up; unit-level fake lock is not browser proof.
+- [ ] Genuine supplier inventory, signed-in owner/customer/operator, physical tailoring/QC, native Blender, physical devices, beta/first-ten, security/privacy/schema/staging and owner approvals remain BLOCKED/PENDING. No full T1–T6 or J1–J6 release gate certified.
