@@ -12,7 +12,7 @@ import {isCertainProductionPrewriteRejection} from "@/lib/designer/production-po
 import {isCurrentVerifiedProductionLedger} from "@/lib/designer/production-ledger-generation";
 import {isCurrentVerifiedOperatorLock} from "@/lib/designer/verified-operator-lock";
 import {
-  PRODUCTION_WRITE_HOLD_KEY,productionWriteHoldPending,beginProductionWriteHold,
+  PRODUCTION_WRITE_HOLD_KEY,productionWriteHoldPending,beginProductionWriteHoldAtomically,PRODUCTION_WRITE_LOCK_NAME,
   releaseProductionWriteHold,acknowledgeProductionWriteHold,readProductionWriteHoldKey,
   captureProductionWriteEpoch,productionWriteEpochUnchanged,
   PRODUCTION_WRITE_EPOCH_KEY,captureProductionWriteReviewSnapshot,
@@ -34,6 +34,15 @@ type LearningContext={order_id:string;revision_id:string;recipe_hash:string;cont
 function safeProductionHoldStorage():Storage|null{
   try{return window.localStorage;}
   catch{return null;}
+}
+// Web Locks is origin-wide. If unavailable, fail closed instead of relying on
+// the non-atomic localStorage check-and-set across competing browser tabs.
+function safeProductionWriteLock():((claim:()=>boolean)=>Promise<boolean>)|null{
+  try{
+    const locks=navigator.locks;
+    if(!locks||typeof locks.request!=="function")return null;
+    return (claim)=>locks.request(PRODUCTION_WRITE_LOCK_NAME,{mode:"exclusive"},claim);
+  }catch{return null;}
 }
 
 export default function ProductionClient(){
@@ -193,19 +202,33 @@ export default function ProductionClient(){
     // a crash or navigation while the SQL transaction commits must still
     // leave this desk blocked on the next page load.
     const holdToken=crypto.randomUUID();
-    if(!beginProductionWriteHold(safeProductionHoldStorage(),holdToken)){
+    const storage=safeProductionHoldStorage();
+    const beforeLock=captureProductionWriteReviewSnapshot(storage);
+    // Block same-tab actions BEFORE waiting for the cross-tab exclusive lock.
+    actionInFlight.current=true;
+    setBusy(true);
+    const claimed=await beginProductionWriteHoldAtomically(
+      storage,holdToken,safeProductionWriteLock(),beforeLock,
+    );
+    // A different tab may have completed a write while we waited for the lock,
+    // or changed the verified ledger/locked design. Do not send a stale POST.
+    if(!claimed||!hasCurrentVerifiedLedger()
+      ||((body.action==="create_quote"||body.action==="create_order")
+        &&!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current))){
+      if(claimed)releaseProductionWriteHold(storage,holdToken);
+      actionInFlight.current=false;
+      setBusy(false);
       setRequiresWriteReview(true);
-      setMessage("Cannot safely start production write: another write may be pending or protected browser storage is unavailable. Inspect production history before retrying.");
+      setMessage("Cannot safely start production write: another tab changed production history, the exclusive browser lock is unavailable, or protected storage could not be verified. Refresh and review history before retrying.");
       return;
     }
     setRequiresWriteReview(true);
-    actionInFlight.current=true;
     // Invalidate any in-flight GET before sending a potentially durable write.
     ledgerReadVersion.current+=1;
     verifiedLedgerReadVersion.current=0;
     setRenderedLedgerReadVersion(0);
     setConfigured(false);
-    setBusy(true);setMessage("");
+    setMessage("");
     setRecoveredCreationReceipts(null);
     const attempt=productionWriteReviewSummary(body);
     let certainPrewriteRejection=false;
