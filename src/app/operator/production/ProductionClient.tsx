@@ -10,6 +10,7 @@ import { ORDER_TRANSITIONS, canTransitionQuote, type ProductionOrderStatus, type
 import {verifiedProductionMutationReadback} from "@/lib/designer/production-desk-readback";
 import {isCertainProductionPrewriteRejection} from "@/lib/designer/production-post-retry";
 import {isCurrentVerifiedProductionLedger} from "@/lib/designer/production-ledger-generation";
+import {isCurrentVerifiedOperatorLock} from "@/lib/designer/verified-operator-lock";
 import {
   PRODUCTION_WRITE_HOLD_KEY,productionWriteHoldPending,beginProductionWriteHold,
   releaseProductionWriteHold,acknowledgeProductionWriteHold,readProductionWriteHoldKey,
@@ -65,6 +66,10 @@ export default function ProductionClient(){
   const [order,setOrder]=useState({revisionId:"",recipeHash:"",quoteId:"",note:""});
   const [recoveryToken,setRecoveryToken]=useState("");
   const [loadedRevision,setLoadedRevision]=useState<LockedDesignRevision|null>(null);
+  // React has not necessarily rendered an invalidated lock in the same event turn.
+  // Only the exact object committed by the latest verified recovery may authorize
+  // a quote, order or export. Identity is revoked synchronously on token changes.
+  const verifiedLockedRevision=useRef<LockedDesignRevision|null>(null);
 
   async function load(expected?:{action:unknown;body:Record<string,unknown>;receipt:unknown}):Promise<boolean>{
     const readVersion=++ledgerReadVersion.current;
@@ -163,6 +168,8 @@ export default function ProductionClient(){
     if(busy||actionInFlight.current) return;
     if(!configured||requiresWriteReview) return;
     if(!hasCurrentVerifiedLedger()) return;
+    if((body.action==="create_quote"||body.action==="create_order")
+      &&(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current)))return;
     // Persist an anonymous uncertainty marker *before* the network request:
     // a crash or navigation while the SQL transaction commits must still
     // leave this desk blocked on the next page load.
@@ -291,6 +298,7 @@ export default function ProductionClient(){
   async function loadLockedDesign(){
     if(!recoveryToken.trim()||busy||actionInFlight.current) return;
     actionInFlight.current=true;
+    verifiedLockedRevision.current=null;
     setBusy(true);setMessage("");
     // A new recovery attempt invalidates any previously verified design.
     // Never allow exports from the old lock while a different token loads.
@@ -310,11 +318,13 @@ export default function ProductionClient(){
         throw new Error(typeof data?.error==="string"?data.error:"Locked design could not be verified.");
       }
       const revision=data.revision as LockedDesignRevision;
+      verifiedLockedRevision.current=revision;
       setLoadedRevision(revision);
       setQuote((current)=>({...current,revisionId:revision.revisionId,recipeHash:revision.recipeHash}));
       setOrder((current)=>({...current,revisionId:revision.revisionId,recipeHash:revision.recipeHash,quoteId:""}));
       setMessage("Locked recipe loaded. Quote and order fields were filled from the same immutable revision.");
     }catch(error){
+      verifiedLockedRevision.current=null;
       setLoadedRevision(null);
       setMessage(error instanceof Error?error.message:"Locked design could not be recovered.");
     }finally{actionInFlight.current=false;setBusy(false);}
@@ -334,18 +344,20 @@ export default function ProductionClient(){
   }
 
   async function exportHandoff(){
-    if(!loadedRevision) return;
+    if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current)||busy||actionInFlight.current)return;
     try{
       const handoff=await buildVerifiedProductionHandoff(loadedRevision);
+      if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current))throw new Error("locked design changed during handoff export.");
       download(`linen-earth-production-handoff-${handoff.designRevisionId.toLowerCase()}.json`,
         "application/json",JSON.stringify(handoff,null,2));
     }catch(error){exportError(error);}
   }
 
   async function exportTechPack(){
-    if(!loadedRevision) return;
+    if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current)||busy||actionInFlight.current)return;
     try{
       const handoff=await buildVerifiedProductionHandoff(loadedRevision);
+      if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current))throw new Error("locked design changed during tech-pack export.");
       download(techPackFilename(handoff),"text/html;charset=utf-8",buildTailorTechPackHtml(handoff));
     }catch(error){exportError(error);}
   }
@@ -354,6 +366,7 @@ export default function ProductionClient(){
     // An uncertain mutation may be missing from a capped history page. Never
     // export a production-status packet while the operator review hold is on.
     if(!loadedRevision||!configured||requiresWriteReview||busy||actionInFlight.current) return;
+    if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current))return;
     if(!hasCurrentVerifiedLedger()) return;
     const packetLedgerVersion=ledgerReadVersion.current;
     actionInFlight.current=true;
@@ -385,6 +398,7 @@ export default function ProductionClient(){
         ||ledgerReadVersion.current!==packetLedgerVersion){
         throw new Error("production history changed during packet export; refresh and review before retrying.");
       }
+      if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current))throw new Error("locked design changed during packet export.");
       download(`linen-earth-production-packet-${packet.revisionId.toLowerCase()}.json`,
         "application/json",JSON.stringify(packet,null,2));
     }catch(error){exportError(error);}
@@ -428,6 +442,7 @@ export default function ProductionClient(){
       </div>
       <div className="productionLoadForm">
         <textarea rows={3} value={recoveryToken} disabled={busy} onChange={(e)=>{
+          verifiedLockedRevision.current=null;
           setRecoveryToken(e.target.value);
           setLoadedRevision(null);
           setQuote((current)=>({...current,revisionId:"",recipeHash:""}));
