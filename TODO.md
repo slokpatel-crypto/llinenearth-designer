@@ -1,3 +1,10 @@
+## 2026-10-31 — M101: production order and status notes must survive durable readback
+- [x] Identified a T5/J5 false-positive: exact order ID, revision, hash and design context could be present while the persisted tailor note differed from the submitted note. Status mutations similarly accepted a correct new state while ignoring a nonblank replacement note.
+- [x] Verify the normalized saved note in freshly validated durable order creation and status mutation readbacks. Empty status note legitimately preserves the prior database note, but a new order must have its exact (possibly empty) submitted note and initial created state.
+- [x] Add positive/negative tests for trim, missing/blank notes, wrong saved tailoring instruction, wrong initial status and malformed notes; require these invariants in the strict release static gate.
+- [ ] Verify the final M101 SHA in full quality/Node, engine/preview/release, optimized build, signed localhost HTTP, 390/768/1440 browser, independent Non-3D and disposable PostgreSQL; sibling/parent checks cannot certify this descendant.
+- [ ] Supplier stock/metres, real customer consent, tailor fitting/QC, original model native Blender, novice beta cases, real deliveries and owner privacy/security/schema/merge/deployment approval remain separate release blockers. No mandatory paid AI, live data, merge or deployment.
+
 ## 2026-10-31 — M100: integrated production quote financial integrity and private diagnostic logging
 - [x] Reconcile two sibling M99 draft patches on the same M98 ancestor, without rewriting the privacy branch or losing the quote readback tests. Keep production-log redaction from PR #600 and exact created-quote line/order/amount/total/note/status comparison from PR #599 in one descendant branch.
 - [x] Verify via source-level reconciliation that the readback imports shared normalizeProductionQuoteDraft, the privacy route uses safeOperatorProductionErrorCode for both catches, and release static assertions include both. Both sets of Node tests are present on the integrated branch.
