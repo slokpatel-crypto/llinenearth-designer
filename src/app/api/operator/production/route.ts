@@ -14,6 +14,7 @@ import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-prod
 import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
 import { verifiedOptionalProductionRows } from "@/lib/designer/optional-production-ledger";
 import { validProductionDeskLedgers, validProductionDeskResponse, validProductionQcOrderRows } from "@/lib/designer/production-desk-ledger";
+import {safeProductionQuoteOrderRows} from "@/lib/designer/production-quote-order-transport";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
@@ -92,13 +93,16 @@ export async function GET(){
     // shop quote/order ledger in the operator console.
     if(!Array.isArray(quotes)||!Array.isArray(orders)) throw new Error("Malformed production quote/order list receipts.");
     if(!validProductionDeskLedgers(quotes,orders)) throw new Error("Malformed production quote/order list receipts.");
+    // Never expose new/unexpected service-role SQL columns or nested line-item
+    // attributes to the operator browser. Keep invalid original rows blocked.
+    const safeLedger=safeProductionQuoteOrderRows(quotes,orders);
     const [qc,outcomes,contexts]=await Promise.all([
       readOptionalProductionLedger("finished_garment_qc_list",250),
       readOptionalProductionLedger("production_customer_outcome_list",250),
       readOptionalProductionLedger("production_order_learning_context_list",500),
     ]);
     const receipt={
-      configured:true,quotes,orders,
+      configured:true,quotes:safeLedger.quotes,orders:safeLedger.orders,
       qcInspections:qc.rows,customerOutcomes:outcomes.rows,learningContexts:contexts.rows,
       optionalEvidenceSources:{
         qcInstalled:qc.installed,

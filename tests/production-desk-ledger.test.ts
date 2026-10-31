@@ -67,8 +67,12 @@ test("J5 duplicate, contradictory and impossible linked receipts cannot populate
 test("operator route validates typed ledgers before returning them to UI",()=>{
   const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
   const validation=route.indexOf("validProductionDeskLedgers(quotes,orders)");
-  const response=route.indexOf("configured:true,quotes,orders");
-  assert.ok(validation>0&&response>validation);
+  const sanitization=route.indexOf("safeProductionQuoteOrderRows(quotes,orders)");
+  const response=route.indexOf("configured:true,quotes:safeLedger.quotes,orders:safeLedger.orders");
+  assert.ok(validation>0&&sanitization>validation&&response>sanitization,
+    "Complete original ledger verification must precede field filtering and browser disclosure");
+  assert.equal(route.includes("configured:true,quotes,orders"),false,
+    "Raw SQL rows must never be forwarded as production desk output");
   assert.match(route,/import \{ validProductionDeskLedgers, validProductionDeskResponse, validProductionQcOrderRows \} from "@\/lib\/designer\/production-desk-ledger"/);
   assert.match(route,/if\(!validProductionDeskLedgers\(quotes,orders\)\) throw/);
 });

@@ -10,6 +10,30 @@ const STOCK_PATH="/rest/v1/rpc/fabric_stock_snapshot_v2";
 const AUDIT_PATH="/rest/v1/rpc/fabric_stock_source_audit_v1";
 const BETA_LIST_PATH="/rest/v1/rpc/launch_beta_attempt_list";
 const CHECKLIST_LIST_PATH="/rest/v1/rpc/launch_checklist_event_list";
+const QUOTE_LIST_PATH="/rest/v1/rpc/production_quote_list";
+const ORDER_LIST_PATH="/rest/v1/rpc/production_order_list";
+const PRODUCTION_LISTS=Object.freeze({
+  [QUOTE_LIST_PATH]:[{
+    quote_id:"123e4567-e89b-42d3-a456-426614174010",
+    revision_id:"LE-LOCK-CI-QUOTE-20261031",
+    recipe_hash:"a".repeat(64),currency:"INR",
+    line_items:[{label:"CI-only stitched garment",amount:1000,
+      secret_factory_cost:"DO-NOT-LEAK-CI-LINE-ITEM"}],
+    subtotal:1000,adjustment:0,total:1000,note:"CI-only private quote",
+    status:"accepted",created_at:"2026-10-31T00:00:00Z",
+    updated_at:"2026-10-31T00:00:00Z",
+    private_customer_phone:"DO-NOT-LEAK-CI-QUOTE",
+  }],
+  [ORDER_LIST_PATH]:[{
+    order_id:"123e4567-e89b-42d3-a456-426614174011",
+    revision_id:"LE-LOCK-CI-QUOTE-20261031",
+    recipe_hash:"a".repeat(64),
+    quote_id:"123e4567-e89b-42d3-a456-426614174010",
+    status:"created",note:"CI-only production order",
+    created_at:"2026-10-31T01:00:00Z",updated_at:"2026-10-31T01:00:00Z",
+    private_supplier_rate:"DO-NOT-LEAK-CI-ORDER",
+  }],
+});
 const LAUNCH_LISTS=Object.freeze({
   [BETA_LIST_PATH]:[{
     attempt_id:"123e4567-e89b-42d3-a456-426614174001",
@@ -69,7 +93,7 @@ async function handle(req,res){
     res.writeHead(200,{"content-type":"application/json","cache-control":"private, no-store","content-range":"*/0"});
     return res.end(JSON.stringify(rows));
   }
-  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
+  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
   if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
   let raw="";
   try{
@@ -78,6 +102,12 @@ async function handle(req,res){
       if(Buffer.byteLength(raw)>8192) return send(res,413,{error:"CI fixture request too large"});
     }
     const payload=JSON.parse(raw);
+    if(req.url===QUOTE_LIST_PATH||req.url===ORDER_LIST_PATH){
+      if(!payload||typeof payload!=="object"||Array.isArray(payload)||
+         payload.p_limit!==100||Object.keys(payload).length!==1)
+        return send(res,400,{error:"Invalid CI production page request"});
+      return send(res,200,PRODUCTION_LISTS[req.url]);
+    }
     if(req.url===BETA_LIST_PATH||req.url===CHECKLIST_LIST_PATH){
       if(!payload||typeof payload!=="object"||Array.isArray(payload)||
          payload.p_limit!==500||Object.keys(payload).length!==1)
@@ -105,4 +135,4 @@ if(require.main===module){
     console.log("Synthetic CI-only stock fixture listening on loopback; NOT physical evidence");
   });
 }
-module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,METADATA_PATH};
+module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,METADATA_PATH};
