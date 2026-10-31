@@ -1820,6 +1820,22 @@ requireTokens("tests/production-nonblocking-qc-hint.test.ts",[
   "readVersion===ledgerReadVersion", "production_order_deliver_idempotent",
 ]);
 
+// M122: physical QC rows are immutable evidence, including historic receipts.
+// A new inspection is the only correction path; no backdated signoff edits.
+requireTokens("supabase/migrations/20261115_finished_garment_qc_immutable.sql",[
+  "before update or delete on private.finished_garment_qc_inspections",
+  "before truncate on private.finished_garment_qc_inspections",
+  "private.reject_finished_garment_qc_mutation()", "errcode='55000'",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "run_file supabase/migrations/20261115_finished_garment_qc_immutable.sql",
+  "run_file scripts/ci/m122-qc-immutability-assertions.sql",
+]);
+requireTokens("tests/production-qc-immutability.test.ts",[
+  "M122 physical QC evidence", "M122 disposable SQL tests",
+  "M122 staging requires explicit owner approval",
+]);
+
 // M121: code-level staging rollout documentation is mandatory for the
 // additive physical QC/delivery chain. No automated live schema migration.
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[

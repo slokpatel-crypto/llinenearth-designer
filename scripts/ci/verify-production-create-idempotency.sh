@@ -43,6 +43,10 @@ run_file supabase/migrations/20261114_delivery_eligibility_read.sql
 run_file scripts/ci/m114-delivery-eligibility-assertions.sql
 run_file scripts/ci/production-create-idempotency-assertions.sql
 run_file scripts/ci/production-creation-receipt-lookup-assertions.sql
+# M122: after legacy malformed-QC fixture tests, seal the physical QC ledger.
+# Existing historical UPDATE probes above run before the new immutability DDL.
+run_file supabase/migrations/20261115_finished_garment_qc_immutable.sql
+run_file scripts/ci/m122-qc-immutability-assertions.sql
 
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
