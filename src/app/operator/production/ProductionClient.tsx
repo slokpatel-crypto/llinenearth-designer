@@ -137,7 +137,7 @@ export default function ProductionClient(){
     const attempt=productionWriteReviewSummary(body);
     let certainPrewriteRejection=false;
     try{
-      const response=await fetch("/api/operator/production",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+      const response=await fetch("/api/operator/production",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...body,requestKey:holdToken})});
       const data=await response.json() as {error?:unknown};
       if(!response.ok){
         // These explicit input/auth/size/rate denials happen before the SQL
