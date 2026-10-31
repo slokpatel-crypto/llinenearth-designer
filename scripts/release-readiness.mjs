@@ -1124,7 +1124,9 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
 requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "const [requiresWriteReview,setRequiresWriteReview]=useState(false)",
   "if(!configured||requiresWriteReview) return;",
-  "if(!certainPrewriteRejection)setRequiresWriteReview(true)",
+  "if(!certainPrewriteRejection){",
+  "setPendingWriteReview(attempt)",
+  "setRequiresWriteReview(true)",
   "its exact record could not be confirmed",
   "function confirmReviewedProductionHistory()",
   "if(!requiresWriteReview||!configured||busy||actionInFlight.current)return;",
@@ -1134,6 +1136,27 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   'disabled={busy||!configured||requiresWriteReview||!canQuote}',
   'disabled={busy||!configured||requiresWriteReview||!loadedRevision',
   'disabled={busy||!configured||requiresWriteReview} defaultValue=""',
+]);
+// M104: a post-write review is meaningless if the operator cannot compare
+// the frozen submitted note/prices with real durable quote and order fields.
+// Never carry recovery tokens or arbitrary request payloads into that panel.
+requireTokens("src/lib/designer/production-review-summary.ts",[
+  "productionWriteReviewSummary", "lineItems", "adjustment",
+  "revisionId", "recipeHash", "quoteId", "orderId", "note",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "const [pendingWriteReview,setPendingWriteReview]",
+  "const attempt=productionWriteReviewSummary(body)",
+  "setPendingWriteReview(attempt)",
+  "setPendingWriteReview(null)",
+  "UNCONFIRMED SUBMISSION",
+  "pendingWriteReview.lineItems.map",
+  "pendingWriteReview.note",
+  "Saved quote lines",
+  "item.line_items.map",
+  "item.subtotal", "item.adjustment",
+  "Saved note: {item.note",
+  "Linked quote: {item.quote_id",
 ]);
 // A successful recovery HTTP status must not unlock operator exports or mutations
 // without a locally verified immutable revision/hash, or retain an old selection.
