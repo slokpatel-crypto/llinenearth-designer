@@ -1119,6 +1119,21 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "The production mutation may already have been saved",
   "Do not retry until the production ledger can be inspected",
 ]);
+// M103: a successful GET after an ambiguous write cannot prove a missing
+// record on the independently capped ledger. Require human review to resume.
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "const [requiresWriteReview,setRequiresWriteReview]=useState(false)",
+  "if(!configured||requiresWriteReview) return;",
+  "if(!certainPrewriteRejection)setRequiresWriteReview(true)",
+  "function confirmReviewedProductionHistory()",
+  "if(!requiresWriteReview||!configured||busy||actionInFlight.current)return;",
+  "setRequiresWriteReview(false)",
+  "Production writes paused for manual review",
+  "I reviewed history — enable writes",
+  'disabled={busy||!configured||requiresWriteReview||!canQuote}',
+  'disabled={busy||!configured||requiresWriteReview||!loadedRevision',
+  'disabled={busy||!configured||requiresWriteReview} defaultValue=""',
+]);
 // A successful recovery HTTP status must not unlock operator exports or mutations
 // without a locally verified immutable revision/hash, or retain an old selection.
 requireTokens("src/app/operator/production/ProductionClient.tsx", [
@@ -1435,9 +1450,9 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "const readVersion=++ledgerReadVersion.current",
   "if(readVersion!==ledgerReadVersion.current) return false;",
   "ledgerReadVersion.current+=1;",
-  "if(!configured) return;",
+  "if(!configured||requiresWriteReview) return;",
   "if(!loadedRevision||!configured||busy||actionInFlight.current) return;",
-  "disabled={busy||!configured}",
+  "disabled={busy||!configured||requiresWriteReview}",
 ]);
 
  
