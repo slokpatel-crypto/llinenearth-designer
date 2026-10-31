@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation, stockSnapshot } from "../src/lib/designer/stock-ledger.ts";
+import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation, stockSnapshot, stockReservationAttempt, stockReservationSignature } from "../src/lib/designer/stock-ledger.ts";
 
 test("reservation reduces available stock without changing physical stock",()=>{
   assert.deepEqual(stockSnapshot([
@@ -281,4 +281,39 @@ test("physical fabric IDs and reservation UUIDs cannot be silently trimmed into 
   }
   assert.equal(normalizeStockConsumption(base).reservationId,base.reservationId);
   assert.equal(normalizeStockRelease(base).reservationId,base.reservationId);
+});
+
+test("unchanged reservation retries reuse one key after timeouts, edits and restoration",()=>{
+  const keys=new Map<string,string>();
+  let generated=0;
+  const newKey=()=>`request-${++generated}-20261031`;
+  const intent={
+    fabricId:"shirt-1",revisionId:"LOCKED-20261031",
+    quantityMetres:2.125,requestedBy:"Operator One",
+    sourceReference:"Approved meterage sheet A",
+  };
+  const first=stockReservationAttempt(keys,intent,newKey);
+  keys.set(first.signature,first.requestKey);
+  assert.equal(first.signature,stockReservationSignature(intent));
+  assert.deepEqual(stockReservationAttempt(keys,{...intent},newKey),first);
+  assert.equal(generated,1,"the same physical request must not mint another idempotency key");
+
+  // Every changed physical or provenance field is a distinct intent.
+  for(const changed of [
+    {...intent,fabricId:"shirt-2"},
+    {...intent,revisionId:"LOCKED-20261032"},
+    {...intent,quantityMetres:2.126},
+    {...intent,requestedBy:"Operator Two"},
+    {...intent,sourceReference:"Approved meterage sheet B"},
+  ]){
+    assert.notEqual(stockReservationSignature(changed),first.signature);
+    const next=stockReservationAttempt(keys,changed,newKey);
+    keys.set(next.signature,next.requestKey);
+    assert.notEqual(next.requestKey,first.requestKey);
+    assert.deepEqual(stockReservationAttempt(keys,changed,newKey),next);
+  }
+  // Changing a form and then returning to its original details is STILL
+  // a retry of the original attempt, not permission to hold twice the cloth.
+  assert.deepEqual(stockReservationAttempt(keys,intent,newKey),first);
+  assert.equal(generated,6);
 });
