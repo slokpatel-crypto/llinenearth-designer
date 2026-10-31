@@ -60,6 +60,8 @@ run_file scripts/ci/m128-production-request-receipt-immutability-assertions.sql
 run_file scripts/ci/m122-qc-schema-readonly-preflight.sql
 # M125: falsify installed schema/ACL safeguards inside rollback-only transactions.
 bash scripts/ci/m125-qc-preflight-fault-injection.sh "$container" "$db"
+# M129: negative tests of delivery receipt, event, and all remaining request receipt safeguards.
+bash scripts/ci/m129-receipt-event-catalog-fault-injection.sh "$container" "$db"
 
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT

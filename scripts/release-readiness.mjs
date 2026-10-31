@@ -1970,6 +1970,27 @@ requireTokens("tests/production-request-receipt-immutability.test.ts",[
   "M128 live disposable SQL verifies",
   "M128 installed-schema catalog audit",
 ]);
+
+// M129: don't trust a green installed-catalog audit alone. The same SQL DO
+// must reject nine different trigger/ACL faults under rollback-only CI.
+requireTokens("scripts/ci/m129-receipt-event-catalog-fault-injection.sh",[
+  "GITHUB_ACTIONS", "titan_production_idempotency",
+  "delivery_receipt_update_off", "delivery_receipt_truncate_off",
+  "quote_event_update_off", "order_event_truncate_off",
+  "create_receipt_update_off", "quote_status_receipt_truncate_off",
+  "order_status_receipt_update_off", "client_receipt_read_grant",
+  "client_event_function_execute_grant",
+  "BEGIN;", "ROLLBACK;", "M129 FAIL: fault was not rolled back",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  'bash scripts/ci/m129-receipt-event-catalog-fault-injection.sh "$container" "$db"',
+]);
+requireTokens("tests/titan-replay-event-fault-injection.test.ts",[
+  "M129 nine real installed replay/event faults",
+  "M129 fault challenges run only after",
+  "M129 never calls a real Supabase database",
+]);
+
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
   "20261118_production_request_receipts_immutable.sql",
   "Apply the nine migrations",
