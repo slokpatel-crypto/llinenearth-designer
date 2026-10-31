@@ -36,9 +36,9 @@ export default function ProductionEvidenceClient(){
     const requestId=++latestLoad.current;
     // Clear any previously accepted snapshot before the new network read.
     // A failed refresh must never leave a stale green production release gate.
+    setMessage("");
     setLoading(true);
     setLoadError(false);
-    setMessage("");
     setFirstTenBasis(null);
     setDeliveryHistoryInvalid(false);
     setOrders([]);
