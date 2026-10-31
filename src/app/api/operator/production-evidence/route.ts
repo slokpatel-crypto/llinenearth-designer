@@ -44,8 +44,8 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 }
 
 export async function GET(){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,orders:[],evidence:[]});
+  if(!await authorized()) return respond({error:"Unauthorized."},401);
+  if(!getSupabaseAdminConfig()) return respond({configured:false,orders:[],evidence:[]});
   try{
     const [orders,evidence]=await Promise.all([
       rpc<unknown[]>("production_order_list",{p_limit:500}),
@@ -74,12 +74,12 @@ export async function GET(){
     }
     if(!validProductionBrowseFirstTenAgreement(orders,evidence,firstTenBasis))
       throw new Error("Contradictory first-ten and browsing receipts.");
-    return NextResponse.json({configured:true,orders,evidence,firstTenBasis,firstTenAuditInstalled},{headers:{"cache-control":"private, no-store"}});
+    return respond({configured:true,orders,evidence,firstTenBasis,firstTenAuditInstalled});
   }catch(error){
-    if(error instanceof SecureJsonBodyTooLarge) return NextResponse.json({error:error.message},{status:413});
-    if(error instanceof SecureJsonBodyInvalid) return NextResponse.json({error:error.message},{status:400});
-    console.error("[operator/production-evidence]",error);
-    return NextResponse.json({error:"Production completion evidence could not be read."},{status:503});
+    if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
+    if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
+    console.error("[operator/production-evidence]",error instanceof Error?error.name:"UnknownError");
+    return respond({error:"Production completion evidence could not be read."},503);
   }
 }
 
@@ -111,7 +111,7 @@ export async function POST(request:Request){
   }catch(error){
     if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
     if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
-    console.error("[operator/production-evidence]",error);
+    console.error("[operator/production-evidence]",error instanceof Error?error.name:"UnknownError");
     return respond({error:"Production completion evidence could not be recorded."},409);
   }
 }
