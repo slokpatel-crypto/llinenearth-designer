@@ -1801,7 +1801,7 @@ requireTokens("supabase/migrations/20261114_delivery_eligibility_read.sql",[
 requireTokens("tests/operator-async-auth-route-audit.test.ts",[
   'const ROOT="src/app/api/operator"',
   "async function", "unsafeOperatorAuthLines",
-  "readdirSync", "await\\s+verifyOperatorSession",
+  "readdirSync", "line.matchAll", "const directAwait",
   "unawaited direct and wrapped guards",
 ]);
 
