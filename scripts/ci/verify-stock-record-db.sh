@@ -43,7 +43,8 @@ else
     supabase/migrations/20261030_stock_consumption_provenance.sql \
     supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql \
     supabase/migrations/20261031_stock_record_exact_retry.sql \
-    supabase/migrations/20261031_stock_reservation_exact_key_evidence.sql
+    supabase/migrations/20261031_stock_reservation_exact_key_evidence.sql \
+    supabase/migrations/20261031_stock_reservation_line_dedupe.sql
   do
     run_sql_file "$migration"
   done
@@ -53,6 +54,7 @@ run_sql_file scripts/ci/stock-record-db-assertions.sql
 if [[ "$mode" == "historical" ]]; then
   run_sql_file scripts/ci/stock-record-historical-assertions.sql
   run_sql_file scripts/ci/stock-reservation-exact-key-assertions.sql
+  run_sql_file scripts/ci/stock-reservation-line-dedupe-assertions.sql
 fi
 
 # Two separate Postgres sessions attempt exactly the same physical receipt.
@@ -130,6 +132,35 @@ if [[ "$mode" == "historical" ]]; then
   fi
   if [[ $(query "select count(*) from private.fabric_stock_ledger where request_key='reserve-race-shared-0001' and event_type='reserve'") != "1" ]]; then
     echo "Two conflicting physical reservations committed against one key." >&2
+    exit 1
+  fi
+fi
+if [[ "$mode" == "historical" ]]; then
+  # One source line, two distinct random request keys, two SQL sessions.
+  # A common meterage worksheet for another order remains valid, but this
+  # SAME order line may be claimed only once under the natural unique key.
+  query "select public.fabric_stock_record_v3('fabric-line-race','receipt',5.000,'','Checker One','ROLL-LINE-RACE','line-race-receipt-0001');" >/dev/null
+  line_a="select public.fabric_stock_reserve_v2('fabric-line-race',2.000,'locked-line-race-20261031','different-key-line-a-0001','Checker One','SHEET-LINE-RACE-001');"
+  line_b="select public.fabric_stock_reserve_v2('fabric-line-race',2.000,'locked-line-race-20261031','different-key-line-b-0001','Checker One','sheet-line-race-001');"
+  docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" -Atc "$line_a" > "$tmpdir/line1.out" 2> "$tmpdir/line1.err" &
+  pid1=$!
+  docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" -Atc "$line_b" > "$tmpdir/line2.out" 2> "$tmpdir/line2.err" &
+  pid2=$!
+  set +e
+  wait "$pid1"; status1=$?
+  wait "$pid2"; status2=$?
+  set -e
+  if ! { [[ $status1 -eq 0 && $status2 -ne 0 ]] || [[ $status1 -ne 0 && $status2 -eq 0 ]]; }; then
+    echo "Concurrent different-key same-line reservations must have one winner." >&2
+    cat "$tmpdir/line1.err" "$tmpdir/line2.err" >&2
+    exit 1
+  fi
+  if ! grep -q "meterage source line already reserved for locked design and fabric" "$tmpdir/line1.err" "$tmpdir/line2.err"; then
+    echo "The losing same-line reservation did not fail with the documented source veto." >&2
+    exit 1
+  fi
+  if [[ $(query "select count(*) from private.fabric_stock_ledger where event_type='reserve' and fabric_id='fabric-line-race' and revision_id='locked-line-race-20261031'") != "1" ]]; then
+    echo "Concurrent different-key calls double-reserved one source line." >&2
     exit 1
   fi
 fi

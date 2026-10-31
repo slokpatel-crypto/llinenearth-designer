@@ -197,9 +197,10 @@ export default function StockClient(){
         <label>Locked revision ID<input value={reservation.revisionId} onChange={(e)=>setReservation({...reservation,revisionId:e.target.value})}/></label>
         <label>Metres to reserve<input type="number" min=".001" step=".001" value={reservation.quantityMetres} onChange={(e)=>setReservation({...reservation,quantityMetres:e.target.value})}/></label>
         <label>Requested / checked by<input value={reservation.requestedBy} onChange={(e)=>setReservation({...reservation,requestedBy:e.target.value})} maxLength={120} placeholder="Required"/></label>
-        <label>Reservation quantity source<input value={reservation.sourceReference} onChange={(e)=>setReservation({...reservation,sourceReference:e.target.value})} maxLength={240} placeholder="Approved meterage sheet, tailor request…"/></label>
+        <label>Meterage sheet + documented line reference<input value={reservation.sourceReference} onChange={(e)=>setReservation({...reservation,sourceReference:e.target.value})} maxLength={240} placeholder="Approved sheet ID / actual order line ID"/></label>
+        <p className="stockMessage">Use the real document and its exact line/item reference. A sheet may cover multiple locked orders, but one fabric + revision + source line cannot reserve twice. Do not invent a new line reference to bypass a duplicate.</p>
         <button disabled={busy||snapshotState!=="ready"||!configured||confirmedReservations.has(reservationSignature)||!reservation.fabricId||reservation.revisionId.length<12||Number(reservation.quantityMetres)<=0||reservation.requestedBy.trim().length<2||reservation.sourceReference.trim().length<3} onClick={submitReservation}>Create reservation</button>
-        {confirmedReservations.has(reservationSignature)&&<p className="stockMessage">This exact reservation request is already confirmed. Change the source reference or order details for a genuinely separate request.</p>}
+        {confirmedReservations.has(reservationSignature)&&<p className="stockMessage">This exact reservation request is already confirmed. Only create another reservation for a genuinely different documented meterage line or locked order.</p>}
       </article>
 
       <article className="stockPanel">
