@@ -1081,6 +1081,18 @@ requireTokens("src/lib/designer/production-desk-ledger.ts", [
 // not lose customer-facing receipts or be misreported as completed work.
 requireTokens("src/lib/designer/production-desk-ledger.ts", ["validProductionDeskMutationReceipt","sameProductionRecordId","sameProductionRecipeHash"]);
 requireTokens("src/app/operator/production/ProductionClient.tsx", ["if(!validProductionDeskMutationReceipt(body.action,data))","sameProductionRecordId(outcome.order_id,item.order_id)","sameProductionRecipeHash(item.recipe_hash,order.recipeHash)"]);
+requireTokens("src/lib/designer/production-desk-readback.ts",[
+  "verifiedProductionMutationReadback", "verifiedOperatorProductionCreateId",
+  'action==="create_quote"', 'action==="create_order"',
+  'action==="quote_status"', 'action==="order_status"',
+  "contexts.some(context=>sameId(context.order_id,id)",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "if(expected&&(!data.configured||!verifiedProductionMutationReadback(",
+  "expected.action,expected.body,expected.receipt,data.quotes,data.orders,data.learningContexts",
+  "const confirmed=await load({action:body.action,body,receipt:data});",
+  "if(confirmed)setMessage(success);",
+]);
 // A successful recovery HTTP status must not unlock operator exports or mutations
 // without a locally verified immutable revision/hash, or retain an old selection.
 requireTokens("src/app/operator/production/ProductionClient.tsx", [
