@@ -8,6 +8,7 @@ import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-p
 import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet";
 import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
 import {verifiedProductionMutationReadback} from "@/lib/designer/production-desk-readback";
+import {isCertainProductionPrewriteRejection} from "@/lib/designer/production-post-retry";
 import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
 import { validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash, selectProductionPacketRecords } from "@/lib/designer/production-desk-ledger";
 
@@ -94,18 +95,31 @@ export default function ProductionClient(){
     ledgerReadVersion.current+=1;
     setConfigured(false);
     setBusy(true);setMessage("");
+    let certainPrewriteRejection=false;
     try{
       const response=await fetch("/api/operator/production",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
       const data=await response.json() as {error?:unknown};
-      if(!response.ok) throw new Error(typeof data?.error==="string"?data.error:"Production operation failed.");
+      if(!response.ok){
+        // These explicit input/auth/size/rate denials happen before the SQL
+        // mutation. Unknown HTTP responses and invalid receipts are NOT safe
+        // to retry automatically: a write may already have committed.
+        certainPrewriteRejection=isCertainProductionPrewriteRejection(response.status);
+        throw new Error(typeof data?.error==="string"?data.error:"Production operation failed.");
+      }
       if(!validProductionDeskMutationReceipt(body.action,data)) throw new Error("Production operation receipt could not be verified.");
       const confirmed=await load({action:body.action,body,receipt:data});
       if(confirmed)setMessage(success);
     }catch(error){
-      setMessage(error instanceof Error?error.message:"Production operation failed.");
-      // A timed-out mutation may still have committed. Reload rather than
-      // enabling controls against a pre-mutation ledger snapshot.
-      await load();
+      // Reload first: load() may update its own message, but no generic fetch
+      // failure may overwrite a warning that an order might already exist.
+      const refreshed=await load();
+      if(certainPrewriteRejection){
+        setMessage(error instanceof Error?error.message:"Production operation rejected before saving.");
+      }else{
+        setMessage(refreshed
+          ?"The production mutation may already have been saved, but its exact result was not confirmed. Inspect the refreshed quote/order records before retrying to avoid duplicates."
+          :"The production mutation may already have been saved, and its history could not be verified. Do not retry until the production ledger can be inspected to avoid duplicate orders or status changes.");
+      }
     }
     finally{actionInFlight.current=false;setBusy(false);}
   }

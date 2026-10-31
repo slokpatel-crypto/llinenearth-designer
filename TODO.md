@@ -1,3 +1,10 @@
+## 2026-10-31 — M102: ambiguous production POST outcomes must not invite duplicate retries
+- [x] Source audit: `ProductionClient.post()` previously handled failed fetch, invalid JSON, invalid receipt and unexpected 409/5xx by displaying a generic error, then calling `load()`. A database write could already have committed, and reloaded controls could allow a duplicate quote/order or status update.
+- [x] Add pure allowlist for definite before-write HTTP rejections 400/401/403/413/429; all network, parse, unexpected response, 409/5xx and success-shaped-invalid-receipt failures remain uncertain even when a later GET succeeds.
+- [x] Reload the authoritative ledger before final message, preserve reloaded safety state, and explicitly warn that an uncertain operation may already exist and must be inspected before retrying. Existing exact-ID readback success path and actionInFlight synchronous lock remain unchanged.
+- [x] Add Node/source regressions for HTTP failure classification, warning precedence, no generic catch error and readback success ordering. Upgrade release check.
+- [ ] Matching-head M102 CI Node/quality, engine/preview/release, optimized build, authenticated localhost HTTP, browser 390/768/1440, independent Non-3D and disposable PostgreSQL required; M101 parent outcomes cannot certify M102. Genuine physical and human release signoffs remain pending. No mandatory paid AI, main merge or production deployment.
+
 ## 2026-10-31 — M101: production order and status notes must survive durable readback
 - [x] Identified a T5/J5 false-positive: exact order ID, revision, hash and design context could be present while the persisted tailor note differed from the submitted note. Status mutations similarly accepted a correct new state while ignoring a nonblank replacement note.
 - [x] Verify the normalized saved note in freshly validated durable order creation and status mutation readbacks. Empty status note legitimately preserves the prior database note, but a new order must have its exact (possibly empty) submitted note and initial created state.
