@@ -17,6 +17,8 @@ query(){
 }
 run_file scripts/ci/production-create-idempotency-setup.sql
 run_file supabase/migrations/20261001_production_quotes_orders.sql
+run_file supabase/migrations/20261002_finished_garment_qc.sql
+run_file supabase/migrations/20261027_finished_garment_qc_provenance.sql
 # This isolated test only needs the authenticated ownership column from the
 # full vault migration. Do not seed accounts or fabricate real customer orders.
 query 'alter table private.production_orders add column owner_user_id uuid references auth.users(id);' >/dev/null
@@ -29,6 +31,8 @@ run_file supabase/migrations/20261108_production_quote_status_idempotency.sql
 run_file scripts/ci/production-quote-status-idempotency-assertions.sql
 run_file supabase/migrations/20261109_production_order_status_idempotency.sql
 run_file scripts/ci/production-order-status-idempotency-assertions.sql
+run_file supabase/migrations/20261110_delivery_qc_sql_gate.sql
+run_file scripts/ci/m112-delivery-qc-gate-assertions.sql
 run_file scripts/ci/production-create-idempotency-assertions.sql
 run_file scripts/ci/production-creation-receipt-lookup-assertions.sql
 
