@@ -151,3 +151,40 @@ test("both customer-outcome API error paths redact backend Error objects",()=>{
   assert.equal(source.split(safe).length-1,2,"GET and POST catches must both use safe error names");
   assert.equal(source.split(safe).length-1,2);
 });
+
+
+test("clean first-fit metric excludes alterations even when reviewers approve adverse evidence for learning",()=>{
+  const version="linen-earth-production-learning-context-v1";
+  const cases=[
+    {id:"clean",fit:"clean_first_fit",worn:true},
+    {id:"minor",fit:"minor_alteration",worn:true},
+    {id:"major",fit:"major_alteration",worn:true},
+    {id:"unchecked",fit:"not_checked",worn:false},
+    {id:"unworn",fit:"clean_first_fit",worn:false},
+  ];
+  const evidences=cases.map(c=>({
+    outcome_id:c.id,order_id:"order-"+c.id,revision_id:"revision-"+c.id,
+    overall_rating:c.fit==="major_alteration"?"needs_work":"good",
+    fit_result:c.fit,worn_confirmed:c.worn,note:"human-reviewed example",
+    created_at:"2026-10-31T09:00:00Z",
+    learning_context:{
+      version,revisionId:"revision-"+c.id,recipeHash:"c".repeat(64),
+      fabrics:{shirtId:"shirt-1",trouserId:"trouser-1"},
+    },
+  }));
+  const humanReviews=cases.map((c,i)=>({
+    review_id:"review-"+c.id,outcome_id:c.id,decision:"approved" as const,
+    reviewer:"Owner",note:"Valid evidence of fit or alteration",
+    created_at:"2026-10-31T10:00:00Z",
+  }));
+  const policy=[{policy_id:"policy-1",minimum_approved_cases:5,approved_by:"Owner",
+    note:"Five valid learning records",created_at:"2026-10-31T11:00:00Z"}];
+  const summary=summarizeCustomerOutcomeLearning(evidences,humanReviews,policy);
+  assert.equal(summary.approved,5);
+  assert.equal(summary.learningEligible,5,"Alterations remain available as human-approved learning evidence");
+  assert.equal(summary.approvedFitCases,1,"Only worn clean-first-fit evidence is a clean fit success");
+  assert.equal(summary.gateComplete,true,"Learning gate and clean fit metric are intentionally separate");
+  const ui=readFileSync("src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx","utf8");
+  assert.match(ui,/CLEAN FIRST-FIT CASES/);
+  assert.doesNotMatch(ui,/APPROVED FIT CASES/);
+});
