@@ -1761,6 +1761,31 @@ requireTokens("supabase/migrations/20261111_delivery_idempotency.sql",[
   "production_order_set_status(p_order_id,'delivered',p_note)",
   "delivery key belongs to different instructions","to service_role",
 ]);
+
+// M113: PostgreSQL now() is transaction-start time, not QC insertion order.
+// An order-locked monotonically incremented sequence, including direct DB
+// inserts under the trigger, is the authoritative latest physical receipt.
+requireTokens("supabase/migrations/20261112_finished_garment_qc_sequence.sql",[
+  "qc_latest_sequence bigint not null default 0",
+  "inspection_sequence bigint",
+  "finished_garment_qc_order_sequence_unique",
+  "before insert on private.finished_garment_qc_inspections",
+  "set qc_latest_sequence=qc_latest_sequence+1",
+  "new.created_at:=clock_timestamp()",
+]);
+requireTokens("supabase/migrations/20261113_delivery_qc_sequence_gate.sql",[
+  "inspection_sequence desc nulls last,created_at desc",
+  "v_latest_sequence is null or v_latest_sequence is distinct from v_order_sequence",
+  "fresh sequenced QC inspection required for delivery",
+  "six exact passing physical QC checks required before delivery",
+  "ambiguous latest QC inspection",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "m113-legacy-qc-fixture.sql",
+  "20261112_finished_garment_qc_sequence.sql",
+  "20261113_delivery_qc_sequence_gate.sql",
+  "m113-qc-sequence-assertions.sql",
+]);
 requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
   "20261110_delivery_qc_sql_gate.sql","m112-delivery-qc-gate-assertions.sql",
   "20261111_delivery_idempotency.sql",
