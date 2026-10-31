@@ -9,6 +9,7 @@ import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet"
 import { ORDER_TRANSITIONS, canTransitionQuote, type ProductionOrderStatus, type ProductionQuoteStatus } from "@/lib/designer/production-state";
 import {verifiedProductionMutationReadback} from "@/lib/designer/production-desk-readback";
 import {isCertainProductionPrewriteRejection} from "@/lib/designer/production-post-retry";
+import {isCurrentVerifiedProductionLedger} from "@/lib/designer/production-ledger-generation";
 import {
   PRODUCTION_WRITE_HOLD_KEY,productionWriteHoldPending,beginProductionWriteHold,
   releaseProductionWriteHold,acknowledgeProductionWriteHold,readProductionWriteHoldKey,
@@ -52,6 +53,10 @@ export default function ProductionClient(){
   const actionInFlight=useRef(false);
   // A late initial GET must never overwrite a newer post-mutation refresh.
   const ledgerReadVersion=useRef(0);
+  const verifiedLedgerReadVersion=useRef(0);
+  function hasCurrentVerifiedLedger(){
+    return isCurrentVerifiedProductionLedger(ledgerReadVersion.current,verifiedLedgerReadVersion.current);
+  }
   const [message,setMessage]=useState("");
   const [quote,setQuote]=useState({revisionId:"",recipeHash:"",currency:"INR",adjustment:"0",note:"",line1Label:"Shirt fabric",line1Amount:"",line2Label:"Tailoring",line2Amount:""});
   const [order,setOrder]=useState({revisionId:"",recipeHash:"",quoteId:"",note:""});
@@ -60,6 +65,7 @@ export default function ProductionClient(){
 
   async function load(expected?:{action:unknown;body:Record<string,unknown>;receipt:unknown}):Promise<boolean>{
     const readVersion=++ledgerReadVersion.current;
+    verifiedLedgerReadVersion.current=0;
     // Clear old receipts immediately; stale rows must not authorize actions.
     setConfigured(false);
     setQuotes([]);setOrders([]);setQcInspections([]);setDeliveryEligibility([]);
@@ -70,7 +76,7 @@ export default function ProductionClient(){
       // hint: an older deployment may return 404/503 or wait for RPC timeout.
       // Delivery stays disabled until a separate validated hint arrives.
       const response=await fetch("/api/operator/production",{cache:"no-store"});
-      if(response.status===401){window.location.href="/operator/login?next=/operator/production";return false;}
+      if(response.status===401){if(readVersion===ledgerReadVersion.current)window.location.href="/operator/login?next=/operator/production";return false;}
       if(!response.ok) throw new Error("Production records are unavailable.");
       const data:unknown=await response.json();
       if(!validProductionDeskResponse(data)){
@@ -82,6 +88,8 @@ export default function ProductionClient(){
       if(expected&&(!data.configured||!verifiedProductionMutationReadback(
         expected.action,expected.body,expected.receipt,data.quotes,data.orders,data.learningContexts,
       )))throw new Error("The changed production record was not confirmed in refreshed history.");
+      // Commit the verified generation synchronously; React state is only UI.
+      verifiedLedgerReadVersion.current=data.configured?readVersion:0;
       setConfigured(data.configured);
       setQuotes(data.quotes as Quote[]);
       setOrders(data.orders as Order[]);
@@ -149,6 +157,7 @@ export default function ProductionClient(){
   async function post(body:Record<string,unknown>,success:string){
     if(busy||actionInFlight.current) return;
     if(!configured||requiresWriteReview) return;
+    if(!hasCurrentVerifiedLedger()) return;
     // Persist an anonymous uncertainty marker *before* the network request:
     // a crash or navigation while the SQL transaction commits must still
     // leave this desk blocked on the next page load.
@@ -162,6 +171,7 @@ export default function ProductionClient(){
     actionInFlight.current=true;
     // Invalidate any in-flight GET before sending a potentially durable write.
     ledgerReadVersion.current+=1;
+    verifiedLedgerReadVersion.current=0;
     setConfigured(false);
     setBusy(true);setMessage("");
     setRecoveredCreationReceipts(null);
@@ -261,6 +271,7 @@ export default function ProductionClient(){
     // A validated, configured ledger and explicit operator acknowledgement
     // are required; this never certifies the previous write did not commit.
     if(!requiresWriteReview||!configured||busy||actionInFlight.current)return;
+    if(!hasCurrentVerifiedLedger())return;
     if(!acknowledgeProductionWriteHold(safeProductionHoldStorage())){
       setMessage("Unable to clear the pending production review marker. Check protected browser storage and refresh the ledger before making another write.");
       return;
@@ -337,6 +348,8 @@ export default function ProductionClient(){
     // An uncertain mutation may be missing from a capped history page. Never
     // export a production-status packet while the operator review hold is on.
     if(!loadedRevision||!configured||requiresWriteReview||busy||actionInFlight.current) return;
+    if(!hasCurrentVerifiedLedger()) return;
+    const packetLedgerVersion=ledgerReadVersion.current;
     actionInFlight.current=true;
     setBusy(true);
     try{
@@ -362,6 +375,10 @@ export default function ProductionClient(){
           orderId:orderMatch.order_id,status:orderMatch.status,createdAt:orderMatch.created_at,
         }:null,
       });
+      if(!isCurrentVerifiedProductionLedger(ledgerReadVersion.current,verifiedLedgerReadVersion.current)
+        ||ledgerReadVersion.current!==packetLedgerVersion){
+        throw new Error("production history changed during packet export; refresh and review before retrying.");
+      }
       download(`linen-earth-production-packet-${packet.revisionId.toLowerCase()}.json`,
         "application/json",JSON.stringify(packet,null,2));
     }catch(error){exportError(error);}
