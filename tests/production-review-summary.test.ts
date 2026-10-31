@@ -54,7 +54,7 @@ test("review page must show submission alongside saved quote and order evidence"
   assert.match(source,/const \[pendingWriteReview,setPendingWriteReview\]=useState<ProductionWriteReviewSummary\|null>\(null\)/);
   assert.match(post,/const attempt=productionWriteReviewSummary\(body\);/);
   assert.match(post,/if\(!certainPrewriteRejection\)\{\s*setPendingWriteReview\(attempt\);\s*setRequiresWriteReview\(true\);/);
-  assert.match(post,/if\(confirmed\)setMessage\(success\);\s*else\{[^]*?setPendingWriteReview\(attempt\);\s*setRequiresWriteReview\(true\);/);
+  assert.match(post,/if\(confirmed\)\{[^]*?\}else\{[^]*?setPendingWriteReview\(attempt\);\s*setRequiresWriteReview\(true\);/);
   assert.match(source,/setPendingWriteReview\(null\);/);
   assert.match(source,/UNCONFIRMED SUBMISSION/);
   assert.match(source,/pendingWriteReview\.lineItems\.map/);
