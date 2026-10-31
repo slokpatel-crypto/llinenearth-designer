@@ -65,6 +65,6 @@ test("an uncertain write keeps every production mutation disabled until verified
   assert.match(client,/disabled=\{!configured\|\|busy\|\|actionInFlight.current\} onClick=\{confirmReviewedProductionHistory\}/);
   assert.equal((client.match(/disabled=\{busy\|\|!configured\|\|requiresWriteReview\} onClick=\{\(\)=>void post\(\{action:"quote_status"/g)||[]).length,3);
   assert.match(client,/disabled=\{busy\|\|!configured\|\|requiresWriteReview\|\|!canQuote\}/);
-  assert.match(client,/disabled=\{busy\|\|!configured\|\|requiresWriteReview\|\|!loadedRevision/);
+  assert.match(client,/disabled=\{busy\|\|!configured\|\|requiresWriteReview\|\|!lockedOrderMatches/);
   assert.match(client,/\{nextStatuses\.length>0&&<select disabled=\{busy\|\|!configured\|\|requiresWriteReview\}/);
 });
