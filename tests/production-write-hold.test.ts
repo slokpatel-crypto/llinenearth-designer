@@ -62,20 +62,31 @@ test("inaccessible or incoherent storage fails closed without a production POST"
   assert.equal(productionWriteHoldPending(noRemove),true);
 });
 
+test("denied storage getter fails closed before any mutation can be prepared",()=>{
+  assert.equal(productionWriteHoldPending(null),true);
+  assert.equal(productionWriteHoldPending(undefined),true);
+  assert.equal(beginProductionWriteHold(null,id),false);
+  assert.equal(releaseProductionWriteHold(null,id),false);
+  assert.equal(acknowledgeProductionWriteHold(null),false);
+  const ui=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  assert.match(ui,/function safeProductionHoldStorage\(\):Storage\|null\{/);
+  assert.match(ui,/try\{return window\.localStorage;\}\s*catch\{return null;\}/);
+});
+
 test("browser production write barrier is saved BEFORE POST and reviewed after fresh history",()=>{
   const source=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
   const post=source.split("async function post(")[1]?.split("function confirmReviewedProductionHistory(")[0]||"";
   const review=source.split("function confirmReviewedProductionHistory(")[1]?.split("async function loadLockedDesign(")[0]||"";
-  const begin=post.indexOf("beginProductionWriteHold(window.localStorage,holdToken)");
+  const begin=post.indexOf("beginProductionWriteHold(safeProductionHoldStorage(),holdToken)");
   const fetch=post.indexOf('await fetch("/api/operator/production",{method:"POST"');
   assert.ok(begin>=0&&fetch>begin,"No possibly durable SQL write before the private marker exists");
-  assert.match(post,/if\(!beginProductionWriteHold\(window.localStorage,holdToken\)\)\{/);
+  assert.match(post,/if\(!beginProductionWriteHold\(safeProductionHoldStorage(),holdToken\)\)\{/);
   assert.match(post,/setRequiresWriteReview\(true\);\s*actionInFlight.current=true;/);
-  assert.match(post,/releaseProductionWriteHold\(window.localStorage,holdToken\)/);
+  assert.match(post,/releaseProductionWriteHold\(safeProductionHoldStorage(),holdToken\)/);
   assert.match(post,/if\(confirmed\)\{\s*if\(releaseProductionWriteHold/);
   assert.match(post,/if\(certainPrewriteRejection\)\{[^]*?releaseProductionWriteHold/);
-  assert.match(review,/if\(!acknowledgeProductionWriteHold\(window.localStorage\)\)\{/);
-  assert.match(source,/productionWriteHoldPending\(window.localStorage\)/);
+  assert.match(review,/if\(!acknowledgeProductionWriteHold\(safeProductionHoldStorage()\)\)\{/);
+  assert.match(source,/productionWriteHoldPending\(safeProductionHoldStorage()\)/);
   assert.match(source,/window.addEventListener\("storage",onStorage\)/);
   assert.match(source,/event.key===PRODUCTION_WRITE_HOLD_KEY&&event.newValue!==null/);
   assert.doesNotMatch(source,/localStorage\.setItem\([^\n]*recoveryToken/);
