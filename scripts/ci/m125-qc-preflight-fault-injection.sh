@@ -3,11 +3,11 @@
 # Every fault is in an uncommitted SQL transaction; detected failure aborts
 # psql and PostgreSQL rolls back the changed trigger/index/role permission.
 set -euo pipefail
-if [[ "\${GITHUB_ACTIONS:-}" != "true" || "\${CI:-}" != "true" ]]; then
+if [[ "${GITHUB_ACTIONS:-}" != "true" || "${CI:-}" != "true" ]]; then
   echo "M125 refuses non-CI execution" >&2; exit 2
 fi
-container="\${1:-}"
-db="\${2:-}"
+container="${1:-}"
+db="${2:-}"
 if [[ -z "$container" || "$db" != "titan_production_idempotency" ]]; then
   echo "M125 refuses any database except disposable titan_production_idempotency" >&2; exit 2
 fi
