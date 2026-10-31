@@ -9,6 +9,7 @@ import { parseDesignVaultRecoveryToken } from "@/lib/designer/design-vault";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { buildProductionLearningContext } from "@/lib/designer/production-learning-context";
 import { parseOperatorLockedSelection } from "@/lib/designer/operator-locked-selection";
+import {parseOperatorProductionRequestKey} from "@/lib/designer/production-request-key";
 import { parseOperatorProductionStatus } from "@/lib/designer/operator-production-status";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 import {safeOperatorProductionErrorCode} from "@/lib/designer/operator-production-error";
@@ -143,7 +144,8 @@ export async function POST(request:Request){
     const action=typeof body.action==="string"?body.action:"";
     if(action==="create_quote"){
       const identity=parseOperatorLockedSelection(body);
-      if(!identity) return respond({error:"Literal locked revision, recipe hash and recovery token are required; notes must be text."},400);
+      const requestKey=parseOperatorProductionRequestKey(body.requestKey);
+      if(!identity||!requestKey) return respond({error:"Literal locked revision, recipe hash, recovery token and creation request UUID are required; notes must be text."},400);
       const {revisionId,recipeHash,recoveryToken,note}=identity;
       const revision=await loadVerifiedLockedRevision(recoveryToken);
       if(revision.revisionId!==revisionId||revision.recipeHash.toLowerCase()!==recipeHash){
@@ -154,8 +156,8 @@ export async function POST(request:Request){
         lineItems:body.lineItems,
         adjustment:body.adjustment,
       });
-      const quoteId=await rpc<string>("production_quote_create",{
-        p_revision_id:revisionId,p_recipe_hash:recipeHash,p_currency:draft.currency,
+      const quoteId=await rpc<string>("production_quote_create_idempotent",{
+        p_request_key:requestKey,p_revision_id:revisionId,p_recipe_hash:recipeHash,p_currency:draft.currency,
         p_line_items:draft.lineItems,p_adjustment:draft.adjustment,p_note:note,
       });
       const confirmedQuoteId=verifiedOperatorProductionCreateId(quoteId);
@@ -173,13 +175,15 @@ export async function POST(request:Request){
     }
     if(action==="create_order"){
       const identity=parseOperatorLockedSelection(body);
-      if(!identity) return respond({error:"Literal locked revision, recipe hash and recovery token are required; quote IDs/notes must be text."},400);
+      const requestKey=parseOperatorProductionRequestKey(body.requestKey);
+      if(!identity||!requestKey) return respond({error:"Literal locked revision, recipe hash, recovery token and creation request UUID are required; quote IDs/notes must be text."},400);
       const {revisionId,recipeHash,recoveryToken,note,quoteId}=identity;
       const revision=await loadVerifiedLockedRevision(recoveryToken);
       if(revision.revisionId!==revisionId||revision.recipeHash.toLowerCase()!==recipeHash){
         return respond({error:"The verified locked design does not match the order revision/hash."},409);
       }
-      const orderId=await rpc<string>("production_order_create_with_context",{
+      const orderId=await rpc<string>("production_order_create_with_context_idempotent",{
+        p_request_key:requestKey,
         p_revision_id:revisionId,
         p_recipe_hash:recipeHash,
         p_quote_id:quoteId,
