@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect,useMemo,useRef,useState } from "react";
 import {safeOutcomeReviewEvidence} from "@/lib/designer/customer-outcome-review-transport";
+import {verifiedOperatorProductionCreateId} from "@/lib/designer/operator-production-receipt";
+import {verifiedCustomerReviewReadback,verifiedCustomerPolicyReadback} from "@/lib/designer/customer-review-receipt";
 import {
   summarizeCustomerOutcomeLearning,
   type CustomerOutcomeEvidenceRow,
@@ -16,6 +18,9 @@ const input:React.CSSProperties={width:"100%",boxSizing:"border-box",padding:"11
 const button:React.CSSProperties={border:0,borderRadius:10,padding:"10px 14px",background:"#1a1a1a",color:"#fff",fontWeight:700,cursor:"pointer"};
 
 function label(value:string){return value.replaceAll("_"," ");}
+type ExpectedHumanReceipt=
+  |{kind:"review";receiptId:string;outcomeId:string;decision:CustomerOutcomeReviewDecision}
+  |{kind:"policy";receiptId:string;minimumApprovedCases:number;approvedBy:string;note:string};
 
 export default function CustomerOutcomesClient(){
   const [configured,setConfigured]=useState(true);
@@ -32,7 +37,7 @@ export default function CustomerOutcomesClient(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
 
-  async function load():Promise<boolean>{
+  async function load(expected?:ExpectedHumanReceipt):Promise<boolean>{
     // Old or failed reads cannot keep a previously green learning gate on screen.
     const generation=++refreshSequence.current;
     setVerified(false);
@@ -54,6 +59,17 @@ export default function CustomerOutcomesClient(){
       if(typeof record.configured!=="boolean")throw new Error("Invalid customer outcome configuration.");
       // Never coerce a malformed review/policy list into empty, approved history.
       const evidence=safeOutcomeReviewEvidence(record.outcomes,record.reviews,record.policies);
+      // A generic successful GET is not proof that the just-created review or
+      // policy has been persisted. Require its exact returned ID and contents
+      // to appear in this freshly validated snapshot.
+      if(expected){
+        const confirmed=record.configured&&(expected.kind==="review"
+          ?verifiedCustomerReviewReadback(expected.receiptId,expected.outcomeId,
+            expected.decision,evidence.reviews)
+          :verifiedCustomerPolicyReadback(expected.receiptId,expected.minimumApprovedCases,
+            expected.approvedBy,expected.note,evidence.policies));
+        if(!confirmed)throw new Error("New customer review evidence was not confirmed in refreshed history.");
+      }
       setConfigured(record.configured);
       setMessage("");
       setOutcomes(evidence.outcomes);
@@ -63,7 +79,9 @@ export default function CustomerOutcomesClient(){
       return record.configured;
     }catch{
       if(generation!==refreshSequence.current)return false;
-      setMessage("Current customer outcome evidence is unavailable. The previous learning gate has been cleared.");
+      setMessage(expected
+        ?"An evidence receipt may have been recorded, but matching review history could not be confirmed. Inspect existing records before retrying to avoid duplicate human decisions."
+        :"Current customer outcome evidence is unavailable. The previous learning gate has been cleared.");
       return false;
     }
   }
@@ -101,9 +119,25 @@ export default function CustomerOutcomesClient(){
       const response=await fetch("/api/operator/customer-outcomes",{
         method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body),
       });
-      const data=await response.json();
-      if(!response.ok) throw new Error(data.error||"Customer outcome evidence could not be saved.");
-      const refreshed=await load();
+      const data:unknown=await response.json();
+      if(!response.ok)throw new Error("Customer outcome operation failed. Check the history before retrying.");
+      if(!data||typeof data!=="object"||Array.isArray(data))
+        throw new Error("Customer outcome receipt was not confirmed. Inspect existing records before retrying.");
+      const record=data as Record<string,unknown>;
+      let expected:ExpectedHumanReceipt;
+      if(body.action==="review"){
+        const receiptId=verifiedOperatorProductionCreateId(record.reviewId);
+        if(!receiptId)throw new Error("Review receipt was not confirmed. Inspect history before retrying.");
+        expected={kind:"review",receiptId,outcomeId:String(body.outcomeId),
+          decision:body.decision as CustomerOutcomeReviewDecision};
+      }else if(body.action==="policy"){
+        const receiptId=verifiedOperatorProductionCreateId(record.policyId);
+        if(!receiptId)throw new Error("Policy receipt was not confirmed. Inspect history before retrying.");
+        expected={kind:"policy",receiptId,
+          minimumApprovedCases:body.minimumApprovedCases as number,
+          approvedBy:String(body.approvedBy).trim(),note:String(body.note).trim()};
+      }else throw new Error("Unknown customer outcome receipt action.");
+      const refreshed=await load(expected);
       if(!refreshed)return false;
       setMessage(success);return true;
     }catch(error){
