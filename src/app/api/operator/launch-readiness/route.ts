@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import {readBoundedJsonResponse} from "@/lib/designer/bounded-json-response";
+import {safeLaunchReadinessRows} from "@/lib/designer/launch-readiness-transport";
 import {
   normalizeBetaAttempt,
   normalizeVerifiedBetaAttempt,
@@ -29,25 +31,28 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     cache:"no-store",
     signal:AbortSignal.timeout(8_000),
   });
-  if(!response.ok){
-    const detail=(await response.text()).replace(/\s+/g," ").slice(0,280);
-    throw new Error("Launch-readiness request failed ("+response.status+"): "+detail);
-  }
-  return await response.json() as T;
+  if(!response.ok)
+    throw new Error("Launch-readiness request failed ("+response.status+").");
+  // The caller is service-role authenticated; never stream unbounded private
+  // database columns or reflect upstream errors into browser-visible output.
+  const maxBytes=name.endsWith("_list")?1_048_576:4_096;
+  return await readBoundedJsonResponse(response,maxBytes) as T;
 }
 
 export async function GET(){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,betaAttempts:[],checklistEvents:[]});
+  if(!await authorized())return respond({error:"Unauthorized."},401);
+  if(!getSupabaseAdminConfig())return respond({configured:false,betaAttempts:[],checklistEvents:[]});
   try{
-    const [betaAttempts,checklistEvents]=await Promise.all([
-      rpc<unknown[]>("launch_beta_attempt_list",{p_limit:500}),
-      rpc<unknown[]>("launch_checklist_event_list",{p_limit:500}),
+    const [rawBeta,rawChecklist]=await Promise.all([
+      rpc<unknown>("launch_beta_attempt_list",{p_limit:500}),
+      rpc<unknown>("launch_checklist_event_list",{p_limit:500}),
     ]);
-    return NextResponse.json({configured:true,betaAttempts,checklistEvents},{headers:{"cache-control":"private, no-store"}});
+    const betaAttempts=safeLaunchReadinessRows(rawBeta,"beta");
+    const checklistEvents=safeLaunchReadinessRows(rawChecklist,"checklist");
+    return respond({configured:true,betaAttempts,checklistEvents});
   }catch(error){
-    console.error("[operator/launch-readiness]",error);
-    return NextResponse.json({error:"Launch-readiness evidence could not be read."},{status:503});
+    console.error("[operator/launch-readiness]",error instanceof Error?error.name:"UnknownError");
+    return respond({error:"Launch-readiness evidence could not be read."},503);
   }
 }
 

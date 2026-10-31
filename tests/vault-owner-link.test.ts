@@ -130,11 +130,11 @@ test("measurement secure store verifies the actual owner-scoped profile and tail
   const selection=store.indexOf("selectVaultReadRow(ownedRows)",owned);
   const profile=store.indexOf("validStoredMeasurementProfile(ownedRow?.profile)",selection);
   const observations=store.indexOf("validStoredTailorObservationProfile(ownedRow?.observations)",profile);
-  const profileMatch=store.indexOf("JSON.stringify(ownedProfile)===JSON.stringify(profile)",observations);
-  const observationsMatch=store.indexOf("JSON.stringify(ownedObservations)===JSON.stringify(observations)",profileMatch);
-  const result=store.indexOf('accountOwned:linkStatus==="linked"',observationsMatch);
+  const agreement=store.indexOf("sameMeasurementVaultPayload(profile,observations,ownedProfile,ownedObservations)",observations);
+  const result=store.indexOf('accountOwned:linkStatus==="linked"',agreement);
   assert.ok(token>=0&&attach>token&&owned>attach&&selection>owned&&profile>selection
-    &&observations>profile&&profileMatch>observations&&observationsMatch>profileMatch&&result>observationsMatch);
+    &&observations>profile&&agreement>observations&&result>agreement);
+  assert.doesNotMatch(store,/JSON\.stringify\(owned(?:Profile|Observations)\)/);
   assert.match(store,/if\(!attached\)return false/);
   assert.match(store,/linkVaultOwnerBestEffort\(customer\?\.id,async ownerId=>/);
   assert.match(store,/ownershipWarning:optionalOwner\?\.lookupFailed\?vaultOwnershipWarning\("unavailable"\):vaultOwnershipWarning\(linkStatus\)/);

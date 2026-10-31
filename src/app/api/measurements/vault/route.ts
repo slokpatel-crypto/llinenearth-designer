@@ -11,6 +11,7 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { validStoredMeasurementProfile, type MeasurementProfile } from "@/lib/measurements";
 import { validStoredTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
+import { sameMeasurementVaultPayload } from "@/lib/measurement-vault-agreement";
 import {
   createMeasurementVaultAccessKey,
   createMeasurementVaultRecoveryToken,
@@ -113,8 +114,7 @@ export async function POST(request:Request){
         const ownedProfile=validStoredMeasurementProfile(ownedRow?.profile);
         const ownedObservations=validStoredTailorObservationProfile(ownedRow?.observations);
         return !!ownedRow&&!!ownedProfile&&!!ownedObservations&&
-          JSON.stringify(ownedProfile)===JSON.stringify(profile)&&
-          JSON.stringify(ownedObservations)===JSON.stringify(observations);
+          sameMeasurementVaultPayload(profile,observations,ownedProfile,ownedObservations);
       });
       return jsonNoStore({
         vaultId,recoveryToken,expiresInDays:180,
@@ -202,8 +202,7 @@ export async function POST(request:Request){
         const ownedProfile=validStoredMeasurementProfile(ownedRow?.profile);
         const ownedObservations=validStoredTailorObservationProfile(ownedRow?.observations);
         if(!ownedRow||!ownedProfile||!ownedObservations||
-          JSON.stringify(ownedProfile)!==JSON.stringify(profile)||
-          JSON.stringify(ownedObservations)!==JSON.stringify(observations)){
+          !sameMeasurementVaultPayload(profile,observations,ownedProfile,ownedObservations)){
           throw new Error("Owner-scoped measurement recovery could not be confirmed.");
         }
       }
