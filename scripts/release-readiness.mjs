@@ -2024,6 +2024,28 @@ requireTokens("tests/production-locked-identity-immutability.test.ts",[
  "M130 disposable SQL rejects original quote/order rewrites",
  "M130 installed-schema audit checks both enabled lock triggers",
 ]);
+
+// M131: operator forms do not permit manually retyping source-of-truth
+// design IDs. Quote/order create POSTs use the verified vault revision.
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+ "lockedQuoteMatches", "lockedOrderMatches",
+ "readOnly aria-readonly=\"true\"",
+ "action:\"create_quote\",revisionId:loadedRevision?.revisionId,recipeHash:loadedRevision?.recipeHash",
+ "action:\"create_order\",...order,revisionId:loadedRevision?.revisionId,recipeHash:loadedRevision?.recipeHash",
+ "disabled={busy||!configured||requiresWriteReview||!lockedOrderMatches}",
+]);
+requireTokens("tests/operator-verified-lock-form.test.ts",[
+ "M131 operator quote/order recipe identity",
+ "M131 quote and order POST identities",
+ "M131 verified identities retain independent editable quote prices",
+]);
+requireTokens("scripts/verify-production-qc-hint-browser.cjs",[
+ "const immutableFields=page.locator",
+ "lockedFieldsReadOnly:true",
+ "No quote without verified locked design",
+ "No order without verified locked design",
+]);
+
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
  "20261119_locked_production_identity_immutable.sql",
  "Apply the ten migrations",
