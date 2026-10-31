@@ -14,6 +14,7 @@ import {isCurrentVerifiedOperatorLock} from "@/lib/designer/verified-operator-lo
 import {
   PRODUCTION_WRITE_HOLD_KEY,productionWriteHoldPending,beginProductionWriteHold,
   releaseProductionWriteHold,acknowledgeProductionWriteHold,readProductionWriteHoldKey,
+  captureProductionWriteEpoch,productionWriteEpochUnchanged,
 } from "@/lib/designer/production-write-hold";
 import {productionWriteReviewSummary, type ProductionWriteReviewSummary} from "@/lib/designer/production-review-summary";
 import {parseProductionCreationReceipts, type ProductionCreationReceipt} from "@/lib/designer/production-creation-receipt-lookup";
@@ -368,6 +369,14 @@ export default function ProductionClient(){
     if(!loadedRevision||!configured||requiresWriteReview||busy||actionInFlight.current) return;
     if(!isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current))return;
     if(!hasCurrentVerifiedLedger()) return;
+    // A second tab may begin a write before its storage event reaches React.
+    // Capture an anonymous epoch before reading the fresh production ledger.
+    const packetWriteEpoch=captureProductionWriteEpoch(safeProductionHoldStorage());
+    if(packetWriteEpoch===null){
+      setRequiresWriteReview(true);
+      setMessage("Cannot export while another production write is pending or protected storage is unavailable. Refresh and review the ledger.");
+      return;
+    }
     const packetLedgerVersion=ledgerReadVersion.current;
     actionInFlight.current=true;
     setBusy(true);
@@ -394,6 +403,15 @@ export default function ProductionClient(){
           orderId:orderMatch.order_id,status:orderMatch.status,createdAt:orderMatch.created_at,
         }:null,
       });
+      // A write in another tab can begin AND finish while this async packet
+      // is being built. A pending-marker-only check would miss that race.
+      if(!productionWriteEpochUnchanged(safeProductionHoldStorage(),packetWriteEpoch)){
+        verifiedLedgerReadVersion.current=0;
+        setRenderedLedgerReadVersion(0);
+        setConfigured(false);
+        if(productionWriteHoldPending(safeProductionHoldStorage()))setRequiresWriteReview(true);
+        throw new Error("production writes changed in another tab during packet export; refresh and review current history.");
+      }
       if(!isCurrentVerifiedProductionLedger(ledgerReadVersion.current,verifiedLedgerReadVersion.current,renderedLedgerReadVersion)
         ||ledgerReadVersion.current!==packetLedgerVersion){
         throw new Error("production history changed during packet export; refresh and review before retrying.");
