@@ -2245,6 +2245,21 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "productionWriteEpochUnchanged(safeProductionHoldStorage(),packetWriteEpoch)",
   "production writes changed in another tab during packet export",
 ]);
+requireTokens("scripts/verify-production-packet-cross-tab-browser.cjs",[
+  "GITHUB_ACTIONS", "LINEN_BROWSER_QA_RUNTIME",
+  "syntheticRevision", "positivePacket:true",
+  "localStorage.setItem(epochKey,token)",
+  "localStorage.removeItem(holdKey)",
+  "completedCrossTabWriteBlocked:true",
+  "No production POST is allowed",
+  "for(const width of [390,1440])",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-packet-cross-tab-browser.cjs",
+]);
+requireTokens("tests/production-packet-cross-tab-browser-contract.test.ts",[
+  "M135 signed Chromium tests a positive packet",
+]);
 requireTokens("tests/production-write-hold.test.ts",[
   "M135 packet snapshot detects cross-tab writes",
   "M135 malformed/unavailable write epochs fail closed",
