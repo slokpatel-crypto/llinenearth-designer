@@ -1407,7 +1407,7 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "const [configured,setConfigured]=useState(false)",
   "const ledgerReadVersion=useRef(0)",
   "const readVersion=++ledgerReadVersion.current",
-  "if(readVersion!==ledgerReadVersion.current) return;",
+  "if(readVersion!==ledgerReadVersion.current) return false;",
   "ledgerReadVersion.current+=1;",
   "if(!configured) return;",
   "if(!loadedRevision||!configured||busy||actionInFlight.current) return;",
