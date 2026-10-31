@@ -25,6 +25,8 @@ run_file supabase/migrations/20261016_customer_outcome_learning_policy.sql
 run_file supabase/migrations/20261017_production_learning_context.sql
 run_file supabase/migrations/20261106_production_create_request_idempotency.sql
 run_file supabase/migrations/20261107_production_creation_receipt_lookup.sql
+run_file supabase/migrations/20261108_production_quote_status_idempotency.sql
+run_file scripts/ci/production-quote-status-idempotency-assertions.sql
 run_file scripts/ci/production-create-idempotency-assertions.sql
 run_file scripts/ci/production-creation-receipt-lookup-assertions.sql
 

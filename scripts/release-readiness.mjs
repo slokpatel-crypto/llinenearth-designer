@@ -1712,6 +1712,23 @@ requireTokens("scripts/ci/verify-stock-record-db.sh",[
   "Refusing stock fixture writes outside disposable GitHub Actions.",
 ]);
 
+
+// M110: lost quote-status acknowledgements must not duplicate transition
+// events when the original anonymous request UUID is replayed.
+requireTokens("src/app/api/operator/production/route.ts",[
+  'if(action==="quote_status")', "production_quote_set_status_idempotent",
+  "parseOperatorProductionRequestKey(body.requestKey)", "p_request_key:requestKey",
+]);
+requireTokens("supabase/migrations/20261108_production_quote_status_idempotency.sql",[
+  "pg_advisory_xact_lock", "production_quote_set_status_request_receipts",
+  "v_updated:=public.production_quote_set_status", "quote status request key belongs to different instructions",
+  "from public,anon,authenticated", "to service_role",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "20261108_production_quote_status_idempotency.sql",
+  "production-quote-status-idempotency-assertions.sql",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
