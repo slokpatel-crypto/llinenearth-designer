@@ -57,7 +57,7 @@ export default function ProductionClient(){
       // A mutation is not confirmed until this newly verified ledger contains
       // the exact created UUID or updated status on the intended quote/order.
       if(expected&&(!data.configured||!verifiedProductionMutationReadback(
-        expected.action,expected.body,expected.receipt,data.quotes,data.orders,
+        expected.action,expected.body,expected.receipt,data.quotes,data.orders,data.learningContexts,
       )))throw new Error("The changed production record was not confirmed in refreshed history.");
       setConfigured(data.configured);
       setQuotes(data.quotes as Quote[]);
