@@ -144,11 +144,55 @@ async function runViewport(browser,width){
     await page.waitForTimeout(200);
     assert.equal(downloads.length,1,
       "No stale packet may download after another tab's already-completed write");
+
+    // A completed remote write has already removed its hold. The operator
+    // must first refresh the latest history, then explicitly acknowledge the
+    // cross-tab warning without trying to delete a non-existent marker.
+    const review=page.getByRole("button",{name:"I reviewed history — enable writes"});
+    await review.waitFor({state:"visible",timeout:15_000});
+    assert.equal(await review.isDisabled(),true,
+      "Cross-tab storage changes must synchronously revoke stale review permission");
+    const refresh=page.getByRole("button",{name:"Refresh production history"});
+    await refresh.click();
+    await page.waitForFunction(()=>{
+      const b=[...document.querySelectorAll("button")]
+        .find(x=>x.textContent?.includes("I reviewed history"));
+      return b&&!b.disabled;
+    },{}, {timeout:15_000});
+
+    // A NEW marker after that read cannot be acknowledged using the stale
+    // verified snapshot, even when a previously rendered button is clicked.
+    const token2="6ab32c09-283e-4521-81e5-6b4c2d2f9002";
+    await second.evaluate(({holdKey,epochKey,token2})=>{
+      localStorage.setItem(holdKey,token2);
+      localStorage.setItem(epochKey,token2);
+    },{holdKey,epochKey,token2});
+    await page.evaluate(()=>{
+      const b=[...document.querySelectorAll("button")]
+        .find(x=>x.textContent?.includes("I reviewed history"));
+      if(!b)throw Error("Review button missing");
+      b.click();
+    });
+    assert.equal(await second.evaluate(key=>localStorage.getItem(key),holdKey),token2,
+      "An acknowledgement from stale history must not erase another tab's new hold");
+    await second.evaluate(key=>localStorage.removeItem(key),holdKey);
+    await refresh.click();
+    await page.waitForFunction(()=>{
+      const b=[...document.querySelectorAll("button")]
+        .find(x=>x.textContent?.includes("I reviewed history"));
+      return b&&!b.disabled;
+    },{}, {timeout:15_000});
+    await review.click();
+    await page.getByRole("alert",{name:"Production write review required"})
+      .waitFor({state:"hidden",timeout:15_000});
+    assert.equal(await second.evaluate(key=>localStorage.getItem(key),holdKey),null,
+      "Completed cross-tab review must not recreate a hold");
     assert.deepEqual(posts,[],"No production POST is allowed in synthetic browser verification");
     assert.deepEqual(errors,[],"No browser JavaScript exceptions");
     await mkdir(out,{recursive:true});
     await page.screenshot({path:path.join(out,"cross-tab-"+width+".png"),fullPage:true});
     return {width,positivePacket:true,completedCrossTabWriteBlocked:true,
+      staleReviewBlocked:true,completedRemoteReviewRecovered:true,
       stalePackets:0,productionPosts:0,syntheticOnly:true};
   }finally{await ctx.close();}
 }
