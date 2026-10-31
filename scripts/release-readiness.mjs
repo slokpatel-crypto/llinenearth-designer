@@ -922,6 +922,24 @@ requireTokens("src/lib/designer/stock-ledger.ts", [
   "normalizeStockReservation", "Locked revision ID must match exactly.",
   "Reservation request key must match exactly.",
 ]);
+requireTokens("scripts/ci/stock-reservation-source-audit.sql", [
+  "BEGIN TRANSACTION READ ONLY",
+  "FROM private.fabric_stock_ledger", "GROUP BY fabric_id,revision_id,source_key",
+  "duplicate_lines", "missing_locked_revision", "missing_source",
+  "missing_checker", "missing_request_key", "missing_reservation_uuid",
+  "padded_source", "placeholder_source", "SELECT concat_ws('|',",
+]);
+requireTokens("scripts/ci/stock-reservation-source-audit-fixture.sql", [
+  "ci-audit-fabric", "Sheet-Legacy-001-Line-1",
+  "sheet-legacy-001-line-1", "TBD",
+]);
+requireTokens("scripts/ci/verify-stock-record-db.sh", [
+  "stock-reservation-source-audit.sql", "stock-reservation-source-audit-fixture.sql",
+  "Migration incorrectly installed over historic duplicate physical lines.",
+  "existing duplicate meterage reservation lines require owner reconciliation",
+  "Refusing stock fixture writes outside disposable GitHub Actions.",
+  "Read-only legacy source audit detected synthetic conflicts",
+]);
 requireTokens("supabase/migrations/20261031_stock_reservation_line_dedupe.sql", [
   "existing duplicate meterage reservation lines require owner reconciliation",
   "create unique index if not exists fabric_stock_reserve_source_line_uidx",

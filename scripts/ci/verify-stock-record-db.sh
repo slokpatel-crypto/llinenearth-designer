@@ -2,6 +2,10 @@
 # Run ONLY against the ephemeral PostgreSQL container supplied by Actions.
 # No Supabase credentials, service-role keys or production endpoints accepted.
 set -euo pipefail
+if [[ "${GITHUB_ACTIONS:-}" != "true" ]]; then
+  echo "Refusing stock fixture writes outside disposable GitHub Actions." >&2
+  exit 2
+fi
 container="${1:-}"
 if [[ -z "$container" ]]; then
   echo "An ephemeral GitHub Actions PostgreSQL container ID is required." >&2
@@ -46,6 +50,39 @@ else
     supabase/migrations/20261031_stock_reservation_exact_key_evidence.sql \
     supabase/migrations/20261031_stock_reservation_line_dedupe.sql
   do
+    if [[ "$migration" == "supabase/migrations/20261031_stock_reservation_line_dedupe.sql" ]]; then
+      # The old schema MUST be audited BEFORE the new unique index installs.
+      # Seed only artificial data in this disposable CI database, prove that
+      # aggregates find it and the real migration refuses existing duplicates.
+      run_sql_file scripts/ci/stock-reservation-source-audit-fixture.sql
+      audit_before=$(docker exec -i "$container" psql -X -q -A -t -v ON_ERROR_STOP=1 -U postgres -d "$database" < scripts/ci/stock-reservation-source-audit.sql | tr -d '\r\n')
+      if [[ "$audit_before" != "5|1|2|1|1|1|1|1|1|1" ]]; then
+        echo "Read-only stock audit missed synthetic legacy source anomalies: $audit_before" >&2
+        exit 1
+      fi
+      if docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" < "$migration" > "$tmpdir/preflight.out" 2>&1; then
+        echo "Migration incorrectly installed over historic duplicate physical lines." >&2
+        exit 1
+      fi
+      if ! grep -q 'existing duplicate meterage reservation lines require owner reconciliation' "$tmpdir/preflight.out"; then
+        echo "Migration blocked without its explicit owner-reconciliation veto." >&2
+        cat "$tmpdir/preflight.out" >&2
+        exit 1
+      fi
+      if [[ $(query "select to_regclass('private.fabric_stock_reserve_source_line_uidx') is null") != "t" ]]; then
+        echo "Rejected migration partially installed the unique source-line index." >&2
+        exit 1
+      fi
+      # Fixture cleanup ONLY in this fresh disposable CI database. NEVER
+      # delete or rewrite actual supplier/operator ledger rows.
+      query "delete from private.fabric_stock_ledger where fabric_id='ci-audit-fabric'" >/dev/null
+      audit_after=$(docker exec -i "$container" psql -X -q -A -t -v ON_ERROR_STOP=1 -U postgres -d "$database" < scripts/ci/stock-reservation-source-audit.sql | tr -d '\r\n')
+      if [[ "$audit_after" != "0|0|0|0|0|0|0|0|0|0" ]]; then
+        echo "Source audit did not return to clean after removal of CI-only fixtures: $audit_after" >&2
+        exit 1
+      fi
+      echo "Read-only legacy source audit detected synthetic conflicts; preflight refused them; cleaned disposable fixtures only."
+    fi
     run_sql_file "$migration"
   done
 fi
