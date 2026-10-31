@@ -8,7 +8,7 @@ import {
   validProductionFirstTenAuditBasis,
 } from "@/lib/designer/production-delivery-evidence";
 import { validProductionDeliveryBrowseReceipt, validProductionBrowseFirstTenAgreement } from "@/lib/designer/production-browse-receipt";
-import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
+import { verifiedOperatorProductionCreateId,verifiedOperatorDeliveryAuditReadback } from "@/lib/designer/operator-production-receipt";
 
 type Order={order_id:string;revision_id:string;recipe_hash:string;status:string;note:string;created_at:string;delivered_at?:string|null};
 type Evidence={evidence_id:string;order_id:string;revision_id:string;recipe_hash:string;manual_design_reentry:boolean;reentry_fields:string[];note:string;operator:string;evidence_reference?:string;created_at:string;order_created_at:string};
@@ -32,10 +32,11 @@ export default function ProductionEvidenceClient(){
   const [message,setMessage]=useState("");
   const latestLoad=useRef(0);
 
-  async function load(){
+  async function load(expected?:{evidenceId:string;orderId:string}):Promise<boolean>{
     const requestId=++latestLoad.current;
     // Clear any previously accepted snapshot before the new network read.
     // A failed refresh must never leave a stale green production release gate.
+    setMessage("");
     setLoading(true);
     setLoadError(false);
     setFirstTenBasis(null);
@@ -51,10 +52,10 @@ export default function ProductionEvidenceClient(){
     setEvidenceReference("");
     try {
       const response=await fetch("/api/operator/production-evidence",{cache:"no-store"});
-      if(requestId!==latestLoad.current) return;
-      if(response.status===401){window.location.href="/operator/login?next=/operator/production-evidence";return;}
+      if(requestId!==latestLoad.current) return false;
+      if(response.status===401){window.location.href="/operator/login?next=/operator/production-evidence";return false;}
       const data=await response.json();
-      if(requestId!==latestLoad.current) return;
+      if(requestId!==latestLoad.current) return false;
       if(!response.ok) throw new Error(data.error||"Production evidence could not be loaded.");
       // A malformed successful list is not an empty production history. Reject
       // it before rendering rows or allowing a new physical evidence audit.
@@ -76,6 +77,11 @@ export default function ProductionEvidenceClient(){
         .map((item:Order)=>[item.order_id.toLowerCase(),item])).values()];
       const browseEvidence=[...new Map([...nextEvidence,...(basis?.evidence||[])]
         .map((item:Evidence)=>[item.evidence_id.toLowerCase(),item])).values()];
+      // A write receipt alone is not a confirmed browser readback. Check the
+      // exact audit UUID AND the delivered order UUID in refreshed history.
+      if(expected&&(data.configured===false||!verifiedOperatorDeliveryAuditReadback(
+        browseEvidence,expected.evidenceId,expected.orderId,
+      )))throw new Error("Delivery audit readback was not confirmed.");
       setConfigured(data.configured!==false);
       setFirstTenBasis(basis);
       setDeliveryHistoryInvalid(rawBasis?.version==="linen-earth-production-first-ten-audit-v2"&&rawBasis.historyValid!==true);
@@ -87,12 +93,16 @@ export default function ProductionEvidenceClient(){
       const firstMissing=[...(basis?.orders||[]),...delivered].find((item:Order)=>!browseEvidence.some((row:Evidence)=>row.order_id.toLowerCase()===item.order_id.toLowerCase()));
       setSelectedOrderId((current)=>delivered.find((item:Order)=>item.order_id.toLowerCase()===current.toLowerCase())?.order_id
         ||requestedDelivered?.order_id||firstMissing?.order_id||delivered[0]?.order_id||"");
+      return true;
     } catch {
-      if(requestId!==latestLoad.current) return;
+      if(requestId!==latestLoad.current) return false;
       setFirstTenBasis(null);
       setDeliveryHistoryInvalid(false);
       setLoadError(true);
-      setMessage("Live production records could not be refreshed. Historical delivery certification is locked until a successful new read.");
+      setMessage(expected
+        ?"An audit receipt was returned but the matching delivery history could not be confirmed. Check existing records before retrying; a write may already exist."
+        :"Live production records could not be refreshed. Historical delivery certification is locked until a successful new read.");
+      return false;
     } finally {
       if(requestId===latestLoad.current) setLoading(false);
     }
@@ -153,11 +163,12 @@ export default function ProductionEvidenceClient(){
       if(!response.ok) throw new Error(data?.error||"Production completion evidence could not be saved.");
       // HTTP 200 alone is not a durable audit receipt. Never claim a physical
       // delivery audit was saved without the exact confirmed database UUID.
-      if(!verifiedOperatorProductionCreateId(data?.evidenceId))
+      const evidenceId=verifiedOperatorProductionCreateId(data?.evidenceId);
+      if(!evidenceId)
         throw new Error("Production completion evidence receipt could not be verified.");
-      setMessage("Immutable completion audit saved for this delivered order.");
-      setManualChoice("unset");setReentryFields([]);setNote("");setOperator("");setEvidenceReference("");
-      await load();
+      const confirmed=await load({evidenceId,orderId:selected.order_id});
+      if(!confirmed)return;
+      setMessage("Immutable completion audit saved and verified in refreshed delivery history.");
     }catch(error){
       setMessage(error instanceof Error?error.message:"Production completion evidence could not be saved.");
     }finally{setBusy(false);}
