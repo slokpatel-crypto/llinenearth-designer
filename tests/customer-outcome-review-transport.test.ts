@@ -157,3 +157,37 @@ test("human review cannot claim customer feedback recorded later than the review
       created_at:"2026-10-01T01:00:00Z"}],[policy],
   ),"Older reviews may refer to outcomes outside the bounded latest-1000 page");
 });
+
+
+test("future-dated human feedback, reviews and policies cannot approve present-day learning",()=>{
+  const asOf=Date.parse("2026-10-31T12:00:00Z");
+  const valid="2026-10-31T12:04:59Z"; // bounded five-minute clock skew
+  const future="2026-10-31T12:05:01Z";
+  const older="2026-10-31T11:00:00Z";
+  const caseRow={...outcome,created_at:older};
+  const reviewRow={...review,created_at:older};
+  const policyRow={...policy,created_at:older};
+  const clean=safeOutcomeReviewEvidence([caseRow],[reviewRow],[policyRow],asOf);
+  assert.equal(clean.reviews.length,1);
+  assert.doesNotThrow(()=>safeOutcomeReviewEvidence(
+    [caseRow],[{...reviewRow,created_at:valid}],[policyRow],asOf,
+  ));
+  for(const value of [future,"2026-11-01T00:00:00Z","2032-01-01T00:00:00Z"]){
+    assert.throws(()=>safeOutcomeReviewEvidence(
+      [{...caseRow,created_at:value}],[reviewRow],[policyRow],asOf,
+    ),/Invalid or future-dated customer learning timestamp/);
+    assert.throws(()=>safeOutcomeReviewEvidence(
+      [caseRow],[{...reviewRow,created_at:value}],[policyRow],asOf,
+    ),/Invalid or future-dated customer learning timestamp/);
+    assert.throws(()=>safeOutcomeReviewEvidence(
+      [caseRow],[reviewRow],[{...policyRow,created_at:value}],asOf,
+    ),/Invalid or future-dated customer learning timestamp/);
+  }
+  for(const clock of [-1,Number.NaN,Number.POSITIVE_INFINITY,asOf+0.5]){
+    assert.throws(()=>safeOutcomeReviewEvidence([caseRow],[reviewRow],[policyRow],clock),
+      /Invalid customer evidence observation clock/);
+  }
+  assert.doesNotThrow(()=>safeOutcomeReviewEvidence(
+    [caseRow],[reviewRow],[policyRow],asOf),
+  "One consistent observation clock prevents a race between three evidence lists");
+});
