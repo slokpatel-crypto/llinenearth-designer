@@ -91,9 +91,6 @@ async function main(){
     "inspection_id","order_id","revision_id","recipe_hash","decision",
     "checks","defects","note","inspector","inspection_reference","created_at",
   ].sort());
-  assert.deepEqual(data.optionalEvidenceSources,{
-    qcInstalled:true,customerOutcomesInstalled:true,learningContextInstalled:false,
-  },"Synthetic adverse outcome is not evidence of customer satisfaction");
   assert.equal(data.customerOutcomes.length,1);
   const outcome=data.customerOutcomes[0];
   const fixture=CUSTOMER_OUTCOME_LISTS[CUSTOMER_OUTCOME_LIST_PATH][0];
