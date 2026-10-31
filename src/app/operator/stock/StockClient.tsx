@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { stockReservationAttempt, stockReservationSignature } from "@/lib/designer/stock-ledger";
 
 type StockRow={fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;provenance_ready:boolean;last_event_at:string|null};
 
@@ -11,25 +12,44 @@ export default function StockClient(){
   const [snapshotState,setSnapshotState]=useState<"loading"|"ready"|"error">("loading");
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState(false);
+  // React's busy state is asynchronous; a synchronous gate stops same-render
+  // double-clicks. Keep request keys for an unchanged intent even if the
+  // operator edits and later returns to it after an ambiguous network result.
+  const writeInFlight=useRef(false);
+  const readGeneration=useRef(0);
+  const reservationKeys=useRef(new Map<string,string>());
+  const [confirmedReservations,setConfirmedReservations]=useState<ReadonlySet<string>>(()=>new Set());
   const [form,setForm]=useState({fabricId:"",eventType:"receipt",quantityMetres:"",recordedBy:"",sourceReference:"",note:""});
   const [reservation,setReservation]=useState({fabricId:"",revisionId:"",quantityMetres:"",requestedBy:"",sourceReference:""});
   const [close,setClose]=useState({reservationId:"",actualMetres:"",checkedBy:"",sourceReference:"",note:""});
 
-  async function load(){
+  async function load():Promise<boolean>{
+    const generation=++readGeneration.current;
+    setSnapshotState("loading");
+    setConfigured(false);
+    setStock([]);
     try{
       const response=await fetch("/api/operator/stock",{cache:"no-store"});
-      if(response.status===401){window.location.href="/operator/login?next=/operator/stock";return;}
+      if(generation!==readGeneration.current) return false;
+      if(response.status===401){window.location.href="/operator/login?next=/operator/stock";return false;}
       if(!response.ok) throw new Error("Stock ledger request failed.");
       const data:unknown=await response.json();
-      if(!data||typeof data!=="object"||!("stock" in data)||!Array.isArray(data.stock))
+      if(generation!==readGeneration.current) return false;
+      if(!data||typeof data!=="object"||!("stock" in data)||!Array.isArray(data.stock)||
+         !("configured" in data)||data.configured!==true)
         throw new Error("Stock ledger response is invalid.");
-      setConfigured("configured" in data&&data.configured!==false);
+      setConfigured(true);
       setStock(data.stock as StockRow[]);
       setSnapshotState("ready");
+      return true;
     }catch{
-      // Never show an API failure as verified zero metres of cloth.
-      setStock([]);
-      setSnapshotState("error");
+      if(generation===readGeneration.current){
+        // Never show a failed, superseded or ambiguous GET as verified stock.
+        setConfigured(false);
+        setStock([]);
+        setSnapshotState("error");
+      }
+      return false;
     }
   }
   useEffect(()=>{
@@ -48,16 +68,60 @@ export default function StockClient(){
     }
   },[]);
 
-  async function post(body:Record<string,unknown>,success:string){
-    if(busy) return;
+  async function post(body:Record<string,unknown>,success:string,reservationSignature?:string){
+    if(writeInFlight.current||snapshotState!=="ready"||!configured||
+       (reservationSignature&&confirmedReservations.has(reservationSignature))) return;
+    writeInFlight.current=true;
+    // Invalidate outstanding stock reads BEFORE sending a mutation. A GET
+    // started earlier cannot restore pre-write availability after the POST.
+    readGeneration.current++;
+    setStock([]);setConfigured(false);setSnapshotState("loading");
     setBusy(true);setMessage("");
     try{
-      const response=await fetch("/api/operator/stock",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
-      const data=await response.json();
-      if(!response.ok) throw new Error(data.error||"Stock operation failed.");
-      setMessage(success);await load();
-    }catch(error){setMessage(error instanceof Error?error.message:"Stock operation failed.");}
-    finally{setBusy(false);}
+      const response=await fetch("/api/operator/stock",{
+        method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body),
+      });
+      const data:unknown=await response.json();
+      if(!response.ok){
+        const error=data&&typeof data==="object"&&"error" in data&&typeof data.error==="string"
+          ?data.error:"Stock operation failed.";
+        throw new Error(error);
+      }
+      if(reservationSignature){
+        // A 200 without a confirmed reservation ID cannot prove a hold exists.
+        if(!data||typeof data!=="object"||!("reservationId" in data)||
+           typeof data.reservationId!=="string")
+          throw new Error("Reservation receipt could not be verified.");
+        setConfirmedReservations(previous=>new Set([...previous,reservationSignature]));
+      }
+      setMessage(success);
+    }catch(error){
+      const detail=error instanceof Error?error.message:"Stock operation failed.";
+      const warning=reservationSignature
+        ?"Outcome may be uncertain. Check the live ledger; retrying identical details reuses the same request key."
+        :"Check the stock ledger before retrying; an earlier request might already have changed physical stock.";
+      setMessage(detail+" "+warning);
+    }finally{
+      // Even a timeout or invalid JSON may follow a committed SQL mutation.
+      // Reconcile from the server before enabling a new operator action.
+      await load();
+      writeInFlight.current=false;
+      setBusy(false);
+    }
+  }
+
+  const reservationIntent={
+    fabricId:reservation.fabricId,revisionId:reservation.revisionId,
+    quantityMetres:Number(reservation.quantityMetres),
+    requestedBy:reservation.requestedBy,sourceReference:reservation.sourceReference,
+  };
+  const reservationSignature=stockReservationSignature(reservationIntent);
+  function submitReservation(){
+    if(writeInFlight.current||confirmedReservations.has(reservationSignature)) return;
+    const attempt=stockReservationAttempt(reservationKeys.current,reservationIntent,()=>crypto.randomUUID());
+    reservationKeys.current.set(attempt.signature,attempt.requestKey);
+    void post({action:"reserve",...reservationIntent,requestKey:attempt.requestKey},
+      "Provenance-backed reservation created.",attempt.signature);
   }
 
   const totalAvailable=stock.reduce((sum,row)=>sum+Number(row.available_metres||0),0);
@@ -100,7 +164,8 @@ export default function StockClient(){
         <label>Metres to reserve<input type="number" min=".001" step=".001" value={reservation.quantityMetres} onChange={(e)=>setReservation({...reservation,quantityMetres:e.target.value})}/></label>
         <label>Requested / checked by<input value={reservation.requestedBy} onChange={(e)=>setReservation({...reservation,requestedBy:e.target.value})} maxLength={120} placeholder="Required"/></label>
         <label>Reservation quantity source<input value={reservation.sourceReference} onChange={(e)=>setReservation({...reservation,sourceReference:e.target.value})} maxLength={240} placeholder="Approved meterage sheet, tailor request…"/></label>
-        <button disabled={busy||snapshotState!=="ready"||!configured||!reservation.fabricId||reservation.revisionId.length<12||Number(reservation.quantityMetres)<=0||reservation.requestedBy.trim().length<2||reservation.sourceReference.trim().length<3} onClick={()=>void post({action:"reserve",...reservation,quantityMetres:Number(reservation.quantityMetres),requestKey:crypto.randomUUID()},"Provenance-backed reservation created.")}>Create reservation</button>
+        <button disabled={busy||snapshotState!=="ready"||!configured||confirmedReservations.has(reservationSignature)||!reservation.fabricId||reservation.revisionId.length<12||Number(reservation.quantityMetres)<=0||reservation.requestedBy.trim().length<2||reservation.sourceReference.trim().length<3} onClick={submitReservation}>Create reservation</button>
+        {confirmedReservations.has(reservationSignature)&&<p className="stockMessage">This exact reservation request is already confirmed. Change the source reference or order details for a genuinely separate request.</p>}
       </article>
 
       <article className="stockPanel">
