@@ -13,8 +13,9 @@ M112–M114 replace or extend the canonical physical-QC / delivery logic. The mi
 | 3 | `20261112_finished_garment_qc_sequence.sql` | Nullable inspection sequence and per-order counter, insert trigger under the production-order row lock | Previous QC has **NULL** sequence. **Never backfill old approvals as proven chronology**. A new physical inspection is necessary before future delivery |
 | 4 | `20261113_delivery_qc_sequence_gate.sql` | Replaces the canonical delivery-status function again, requiring newest ordinal = order counter | Old unsequenced approval cannot release; newer rework vetoes an older approval |
 | 5 | `20261114_delivery_eligibility_read.sql` | Service-role-only capped advisory read, without inspector/reference/notes | Exact locked order identity, six checks and QC sequence; read hint is **not delivery authorization** |
+| 6 | `20261115_finished_garment_qc_immutable.sql` | Reject direct UPDATE/DELETE of all historical and new physical QC rows | Existing evidence remains readable; corrections require a new sequenced inspection; privileged direct edits and deletes fail |
 
-These are tail migrations, not the full historical schema. A clean staging database must first contain every earlier prerequisite migration, including production order, finished-garment QC, provenance and order-status receipt structures. Restore a representative **redacted** staging snapshot before exercising this chain. Never substitute synthetic CI fixtures for real QC.
+The sixth migration must be installed **after** the prior QC/read functions; no direct SQL evidence edits or deletions are permitted after rollout. These are tail migrations, not the full historical schema. A clean staging database must first contain every earlier prerequisite migration, including production order, finished-garment QC, provenance and order-status receipt structures. Restore a representative **redacted** staging snapshot before exercising this chain. Never substitute synthetic CI fixtures for real QC.
 
 ## Preconditions and human stop/go
 
@@ -26,11 +27,11 @@ These are tail migrations, not the full historical schema. A clean staging datab
 
 ## Staging verification (no automatic live changes)
 
-Apply the five migrations **in ascending order**, only after the separate staging approval and restore check. Then verify the following, recording run IDs, time, redacted evidence and installed migration versions:
+Apply the six migrations **in ascending order**, only after the separate staging approval and restore check. Then verify the following, recording run IDs, time, redacted evidence and installed migration versions:
 
 - `private.production_orders.qc_latest_sequence` exists; `private.finished_garment_qc_inspections.inspection_sequence` exists; the unique partial index and BEFORE INSERT trigger exist.
 - `private.production_delivery_request_receipts` has RLS enabled; `anon` and `authenticated` cannot execute either `public.production_order_deliver_idempotent(uuid,uuid,text)` or `public.production_delivery_eligibility_list(integer)`; `service_role` may execute these functions through the authenticated backend only.
-- Historical approved QC rows still have **NULL** sequence and **do not** authorize a new delivery. New reinspection appends ordinal one (or later); latest rework blocks delivery.
+- Historical approved QC rows still have **NULL** sequence and **do not** authorize a new delivery. New reinspection appends ordinal one (or later); latest rework blocks delivery. Attempted privileged UPDATE/DELETE of either historic approval or newer rework must fail, with no event or request receipt; corrections append a new inspected row.
 - The QC trigger and delivery state machine serialize a two-session QC-vs-delivery race, without a duplicate event or an idempotency receipt on a failed delivery. An original request UUID replay returns the same durable result; mismatched instructions reject.
 - A signed real operator sees existing order history if the *optional read* is temporarily unavailable; delivery remains hidden until fresh SQL evidence is validated. Server-side delivered mutation rechecks the physical QC in the same locked transaction even if the UI shows an option.
 - No unexpected service-role fields, inspector names, customer contact or private notes leak through the delivery eligibility JSON or HTTP error response; all responses are `private, no-store`.
