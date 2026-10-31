@@ -1099,6 +1099,8 @@ requireTokens("src/lib/designer/production-desk-readback.ts",[
   "contexts.some(context=>sameId(context.order_id,id)",
   "normalizeProductionQuoteDraft", "sameCreatedQuoteFinancials(row,body)",
   'row.status!=="draft"', "paise(row.subtotal)", "paise(row.adjustment)", "paise(row.total)",
+  'row.status==="created"', "matchesOperatorNote(row,body,false)",
+  "matchesOperatorNote(row,body,true)",
 ]);
 requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "if(expected&&(!data.configured||!verifiedProductionMutationReadback(",

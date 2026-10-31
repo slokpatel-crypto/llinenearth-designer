@@ -12,7 +12,7 @@ const quote={quote_id:quoteId,revision_id:revisionId,recipe_hash:recipeHash,
   currency:"INR",status:"draft",line_items:[{label:"Shirt fabric",amount:1200.12},{label:"Tailoring",amount:350.35}],
   subtotal:1550.47,adjustment:-0.01,total:1550.46,note:"Customer approved"};
 const order={order_id:orderId,quote_id:quoteId,revision_id:revisionId,
-  recipe_hash:recipeHash,status:"created"};
+  recipe_hash:recipeHash,status:"created",note:"Hem 26 inches"};
 const context={order_id:orderId,revision_id:revisionId,recipe_hash:recipeHash,
   context:{version:"linen-earth-production-learning-context-v1"}};
 function verifiedProductionMutationReadback(
@@ -74,9 +74,23 @@ test("new quote success requires the exact operator-entered prices, lines, adjus
 });
 
 test("order creation readback binds exact order, revision, hash and quote association",()=>{
-  const body={action:"create_order",revisionId,recipeHash,quoteId};
+  const body={action:"create_order",revisionId,recipeHash,quoteId,note:" Hem 26 inches "};
   const receipt={orderId,lockedRevisionVerified:true,learningContextAttached:true};
   assert.equal(verifiedProductionMutationReadback("create_order",body,receipt,[],[order]),true);
+  assert.equal(verifiedProductionMutationReadback("create_order",body,receipt,[],
+    [{...order,note:"Different tailoring instructions"}]),false,
+    "An order UUID with incorrect tailor instructions is not a confirmed creation");
+  assert.equal(verifiedProductionMutationReadback("create_order",body,receipt,[],
+    [{...order,status:"cutting"}]),false,
+    "Newly created orders must appear in their initial created state");
+  assert.equal(verifiedProductionMutationReadback("create_order",
+    {...body,note:null},receipt,[],[{...order,note:""}]),true,
+    "Absent note uses the server's empty created-order note");
+  assert.equal(verifiedProductionMutationReadback("create_order",
+    {...body,note:[]},receipt,[],[order]),false,
+    "Reject malformed note rather than coerce a changed production instruction");
+  assert.equal(verifiedProductionMutationReadback("create_order",
+    {...body,note:"  "},receipt,[],[{...order,note:""}]),true);
   assert.equal(verifiedProductionMutationReadback("create_order",body,receipt,[],[]),false);
   assert.equal(verifiedProductionMutationReadback("create_order",body,receipt,[],
     [{...order,order_id:anotherId}]),false);
@@ -124,6 +138,28 @@ test("quote and order status responses require exact record and requested new st
   }
   assert.equal(verifiedProductionMutationReadback("other",
     {quoteId,status:"accepted"},{updated:true},[accepted],[]),false);
+});
+
+test("status success verifies any supplied nonblank operator note after fresh readback",()=>{
+  const receipt={updated:true};
+  const accepted={...quote,status:"accepted",note:"Shorten sleeves"};
+  const delivered={...order,status:"delivered",note:"Handed to customer"};
+  const verifyQuote=(body:unknown,saved:unknown)=>
+    verifiedProductionMutationReadback("quote_status",body,receipt,[saved],[]);
+  const verifyOrder=(body:unknown,saved:unknown)=>
+    verifiedProductionMutationReadback("order_status",body,receipt,[],[saved]);
+  assert.equal(verifyQuote({quoteId,status:"accepted",note:" Shorten sleeves "},accepted),true);
+  assert.equal(verifyQuote({quoteId,status:"accepted",note:" Shorten sleeves "},
+    {...accepted,note:"Different fit instruction"}),false);
+  assert.equal(verifyOrder({orderId,status:"delivered",note:" Handed to customer "},delivered),true);
+  assert.equal(verifyOrder({orderId,status:"delivered",note:" Handed to customer "},
+    {...delivered,note:"No delivery note retained"}),false);
+  assert.equal(verifyQuote({quoteId,status:"accepted",note:""},accepted),true,
+    "An empty status note legitimately keeps the existing DB note");
+  assert.equal(verifyOrder({orderId,status:"delivered"},delivered),true,
+    "Omitted note does not replace the order's existing instructions");
+  assert.equal(verifyOrder({orderId,status:"delivered",note:["fake"]},delivered),false);
+  assert.equal(verifyQuote({quoteId,status:"accepted",note:{value:"fake"}},accepted),false);
 });
 
 test("operator production UI requires exact readback before displaying saved mutation",()=>{
