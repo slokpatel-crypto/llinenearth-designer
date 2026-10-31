@@ -381,8 +381,11 @@ export default function ProductionClient(){
     .map((row)=>({label:row.label,amount:Number(row.amountText)}));
   const adjustmentValid=/^-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/.test(quote.adjustment.trim())
     && Number.isFinite(Number(quote.adjustment))&&Math.abs(Number(quote.adjustment))<=10_000_000;
-  const canQuote=Boolean(loadedRevision)&&quote.revisionId.trim().length>=12
-    &&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteItems.length>0
+  const lockedQuoteMatches=Boolean(loadedRevision)&&quote.revisionId===loadedRevision?.revisionId
+    &&sameProductionRecipeHash(quote.recipeHash,loadedRevision?.recipeHash);
+  const lockedOrderMatches=Boolean(loadedRevision)&&order.revisionId===loadedRevision?.revisionId
+    &&sameProductionRecipeHash(order.recipeHash,loadedRevision?.recipeHash);
+  const canQuote=lockedQuoteMatches&&quoteItems.length>0
     &&quoteRowsValid&&adjustmentValid;
   const acceptedQuotes=useMemo(()=>quotes.filter((item)=>item.status==="accepted"&&(
     !order.revisionId || (item.revision_id===order.revisionId&&sameProductionRecipeHash(item.recipe_hash,order.recipeHash))
@@ -427,8 +430,8 @@ export default function ProductionClient(){
     <section className="productionGrid">
       <article className="productionPanel">
         <span>01 / QUOTE</span><h2>Create from locked recipe.</h2>
-        <label>Revision ID<input value={quote.revisionId} onChange={(e)=>setQuote({...quote,revisionId:e.target.value})}/></label>
-        <label>Recipe hash<input value={quote.recipeHash} onChange={(e)=>setQuote({...quote,recipeHash:e.target.value})} placeholder="64-character SHA-256"/></label>
+        <label>Verified revision ID<input value={quote.revisionId} readOnly aria-readonly="true" title="Loaded from the verified locked design" /></label>
+        <label>Verified recipe hash<input value={quote.recipeHash} readOnly aria-readonly="true" title="Loaded from the verified locked design" placeholder="Load locked design first" /></label>
         <div className="productionPair">
           <label>Currency<input value={quote.currency} maxLength={3} onChange={(e)=>setQuote({...quote,currency:e.target.value.toUpperCase()})}/></label>
           <label>Adjustment<input type="number" step=".01" value={quote.adjustment} onChange={(e)=>setQuote({...quote,adjustment:e.target.value})}/></label>
@@ -438,17 +441,17 @@ export default function ProductionClient(){
           <fieldset className="productionLine"><legend>Line 2</legend><input aria-label="Line 2 label" value={quote.line2Label} onChange={(e)=>setQuote({...quote,line2Label:e.target.value})} placeholder="Label"/><input aria-label="Line 2 amount" type="number" min="0" step=".01" value={quote.line2Amount} onChange={(e)=>setQuote({...quote,line2Amount:e.target.value})} placeholder="Amount"/></fieldset>
         </div>
         <label>Note<textarea rows={2} value={quote.note} onChange={(e)=>setQuote({...quote,note:e.target.value})}/></label>
-        <button disabled={busy||!configured||requiresWriteReview||!canQuote} onClick={()=>void post({action:"create_quote",revisionId:quote.revisionId,recipeHash:quote.recipeHash,currency:quote.currency,lineItems:quoteItems,adjustment:Number(quote.adjustment||0),note:quote.note,recoveryToken:recoveryToken.trim()},"Quote created from verified locked revision.")}>Create quote</button>
+        <button disabled={busy||!configured||requiresWriteReview||!canQuote} onClick={()=>void post({action:"create_quote",revisionId:loadedRevision?.revisionId,recipeHash:loadedRevision?.recipeHash,currency:quote.currency,lineItems:quoteItems,adjustment:Number(quote.adjustment||0),note:quote.note,recoveryToken:recoveryToken.trim()},"Quote created from verified locked revision.")}>Create quote</button>
       </article>
 
       <article className="productionPanel">
         <span>02 / ORDER</span><h2>Create production order.</h2>
-        <label>Revision ID<input value={order.revisionId} onChange={(e)=>setOrder({...order,revisionId:e.target.value})}/></label>
-        <label>Recipe hash<input value={order.recipeHash} onChange={(e)=>setOrder({...order,recipeHash:e.target.value})}/></label>
+        <label>Verified revision ID<input value={order.revisionId} readOnly aria-readonly="true" title="Loaded from the verified locked design" /></label>
+        <label>Verified recipe hash<input value={order.recipeHash} readOnly aria-readonly="true" title="Loaded from the verified locked design" /></label>
         <label>Accepted quote (optional)<select value={order.quoteId} onChange={(e)=>setOrder({...order,quoteId:e.target.value})}><option value="">No quote attached</option>{acceptedQuotes.map((item)=><option key={item.quote_id} value={item.quote_id}>{item.currency} {Number(item.total).toFixed(2)} · {item.quote_id.slice(0,8)}</option>)}</select></label>
         <label>Note<textarea rows={2} value={order.note} onChange={(e)=>setOrder({...order,note:e.target.value})}/></label>
-        <button disabled={busy||!configured||requiresWriteReview||!loadedRevision||order.revisionId.length<12||!/^[a-f0-9]{64}$/i.test(order.recipeHash)} onClick={()=>void post({
-          action:"create_order",...order,recoveryToken:recoveryToken.trim(),
+        <button disabled={busy||!configured||requiresWriteReview||!lockedOrderMatches} onClick={()=>void post({
+          action:"create_order",...order,revisionId:loadedRevision?.revisionId,recipeHash:loadedRevision?.recipeHash,recoveryToken:recoveryToken.trim(),
         },"Production order created from verified locked revision with durable design context.")}>Create order</button>
         <small style={{lineHeight:1.45,opacity:.62}}>{loadedRevision?"Locked recipe verified: privacy-safe style/fabric/construction context will be retained for future outcome learning.":"Load and verify the locked recipe before creating quotes or production orders."}</small>
       </article>
