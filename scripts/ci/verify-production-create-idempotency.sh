@@ -150,4 +150,48 @@ if [[ $(tr -d '\r\n' < "$tmpdir/d1") != "t" ]] ||
    [[ $(query "select status from private.production_orders where order_id='$delivery_order'::uuid") != "delivered" ]]; then
   echo "Concurrent same-key delivery replay duplicated or lost a transition" >&2; exit 1
 fi
-echo "TITAN isolated PostgreSQL quote/order create, statuses and M112 delivery replay PASS"
+# A physical rework insert must never race through a delivery commit.
+# Both service-role functions acquire the SAME target order FOR UPDATE. In two
+# independent sessions precisely one can win: delivered OR rework to stitching.
+race_order=$(query "select public.production_order_create('LE-M112-REWORK-RACE',repeat('b',64),null,'');")
+query "select public.production_order_set_status('$race_order'::uuid,'cloth_reserved','');" >/dev/null
+query "select public.production_order_set_status('$race_order'::uuid,'cutting','');" >/dev/null
+query "select public.production_order_set_status('$race_order'::uuid,'stitching','');" >/dev/null
+query "select public.production_order_set_status('$race_order'::uuid,'ready','');" >/dev/null
+query "select public.finished_garment_qc_record_v2('$race_order'::uuid,'approved',
+  '{\"recipe_match\":true,\"fabric_match\":true,\"measurement_check\":true,\"pattern_alignment\":true,\"stitching_finish\":true,\"clean_damage_free\":true}'::jsonb,
+  '[]'::jsonb,'','CI inspector','CI-M112-INITIAL');" >/dev/null
+race_delivery="select public.production_order_deliver_idempotent(
+  '123e4567-e89b-42d3-a456-426614174344'::uuid,'$race_order'::uuid,'Race delivered'
+);"
+race_rework="select public.finished_garment_qc_record_v2(
+  '$race_order'::uuid,'rework','{}'::jsonb,'[\"measurement\"]'::jsonb,
+  'Recheck fit','CI inspector','CI-M112-REWORK'
+);"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$db" -Atc "$race_delivery" >"$tmpdir/rd" 2>"$tmpdir/rd.err" &
+pid1=$!
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$db" -Atc "$race_rework" >"$tmpdir/rq" 2>"$tmpdir/rq.err" &
+pid2=$!
+delivery_success=0
+rework_success=0
+if wait "$pid1"; then delivery_success=1; fi
+if wait "$pid2"; then rework_success=1; fi
+if (( delivery_success + rework_success != 1 )); then
+  echo "Concurrent delivery/rework must serialize to exactly one success" >&2
+  cat "$tmpdir/rd.err" "$tmpdir/rq.err" >&2
+  exit 1
+fi
+if [[ $delivery_success == 1 ]]; then
+  if [[ $(query "select status from private.production_orders where order_id='$race_order'::uuid") != "delivered" ]] ||
+     [[ $(query "select count(*) from private.finished_garment_qc_inspections where order_id='$race_order'::uuid and decision='rework'") != "0" ]] ||
+     [[ $(query "select count(*) from private.production_order_events where order_id='$race_order'::uuid and status='delivered'") != "1" ]]; then
+    echo "Delivery won race but rework/event truth diverged" >&2; exit 1
+  fi
+else
+  if [[ $(query "select status from private.production_orders where order_id='$race_order'::uuid") != "stitching" ]] ||
+     [[ $(query "select count(*) from private.finished_garment_qc_inspections where order_id='$race_order'::uuid and decision='rework'") != "1" ]] ||
+     [[ $(query "select count(*) from private.production_delivery_request_receipts where order_id='$race_order'::uuid") != "0" ]]; then
+    echo "Rework won race but delivery receipt/order status diverged" >&2; exit 1
+  fi
+fi
+echo "TITAN isolated PostgreSQL status, delivery replay and QC-vs-delivery race PASS"
