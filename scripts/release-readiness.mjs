@@ -1796,7 +1796,7 @@ requireTokens("supabase/migrations/20261114_delivery_eligibility_read.sql",[
   "from public,anon,authenticated", "to service_role",
 ]);
 requireTokens("src/app/api/operator/production/delivery-eligibility/route.ts",[
-  "verifyOperatorSession", "production_delivery_eligibility_list",
+  "if(!await verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value))", "production_delivery_eligibility_list",
   "parseProductionDeliveryEligibility(raw)", 'cache:"no-store"', "private, no-store",
 ]);
 requireTokens("src/app/operator/production/ProductionClient.tsx",[
