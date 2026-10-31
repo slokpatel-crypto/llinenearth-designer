@@ -8,6 +8,7 @@ import {
   validProductionFirstTenAuditBasis,
 } from "@/lib/designer/production-delivery-evidence";
 import { validProductionDeliveryBrowseReceipt, validProductionBrowseFirstTenAgreement } from "@/lib/designer/production-browse-receipt";
+import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 
 type Order={order_id:string;revision_id:string;recipe_hash:string;status:string;note:string;created_at:string;delivered_at?:string|null};
 type Evidence={evidence_id:string;order_id:string;revision_id:string;recipe_hash:string;manual_design_reentry:boolean;reentry_fields:string[];note:string;operator:string;evidence_reference?:string;created_at:string;order_created_at:string};
@@ -149,7 +150,11 @@ export default function ProductionEvidenceClient(){
         }),
       });
       const data=await response.json();
-      if(!response.ok) throw new Error(data.error||"Production completion evidence could not be saved.");
+      if(!response.ok) throw new Error(data?.error||"Production completion evidence could not be saved.");
+      // HTTP 200 alone is not a durable audit receipt. Never claim a physical
+      // delivery audit was saved without the exact confirmed database UUID.
+      if(!verifiedOperatorProductionCreateId(data?.evidenceId))
+        throw new Error("Production completion evidence receipt could not be verified.");
       setMessage("Immutable completion audit saved for this delivered order.");
       setManualChoice("unset");setReentryFields([]);setNote("");setOperator("");setEvidenceReference("");
       await load();
