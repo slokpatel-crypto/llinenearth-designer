@@ -1604,6 +1604,14 @@ requireTokens("tests/production-ledger-generation.test.ts",[
   "refresh started before React commits disabled controls",
   "operator review, mutations and packet export",
 ]);
+requireTokens("scripts/verify-production-ledger-refresh-barrier-browser.cjs",[
+  "GITHUB_ACTIONS", "CI", "127.0.0.1",
+  "refresh.click();", "acknowledge.click();",
+  "sameTurnAcknowledgementBlocked:true", "productionPosts:0",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-ledger-refresh-barrier-browser.cjs",
+]);
 
 // M80: Human customer outcome/review/policy ledgers must never forward raw
 // service-role fields or make malformed latest evidence count as accepted.
