@@ -188,7 +188,10 @@ export async function POST(request:Request){
         if(!validProductionQcOrderRows(candidateOrders)||candidateOrders.length>=150){
           return NextResponse.json({error:"A complete verified production order page is required before delivery."},{status:409});
         }
-        const currentOrder=candidateOrders.find(row=>row.order_id===orderId);
+        // PostgreSQL UUID identity is case-insensitive. The status parser
+        // canonicalizes the request ID, but a typed SQL order row may use
+        // uppercase hex; do not reject valid physical QC lineage on casing.
+        const currentOrder=candidateOrders.find(row=>verifiedOperatorProductionCreateId(row.order_id)===orderId);
         if(!hasVerifiedLatestDeliveryQc(inspections,orderId,500)){
           return NextResponse.json({error:"The latest provenance-backed finished-garment QC approval is required before delivery."},{status:409});
         }
