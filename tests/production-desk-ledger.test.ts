@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { validProductionDeskLedgers, validProductionDeskResponse } from "../src/lib/designer/production-desk-ledger.ts";
+import { validProductionDeskLedgers, validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash } from "../src/lib/designer/production-desk-ledger.ts";
 
 const qid="123e4567-e89b-42d3-a456-426614174000";
 const oid="123e4567-e89b-42d3-a456-426614174001";
@@ -185,4 +185,43 @@ test("J5 server rejects malformed installed optional rows before returning a suc
   const response=route.indexOf('return NextResponse.json(receipt,{headers:');
   assert.ok(guard>0&&response>guard);
   assert.match(route,/Malformed optional production evidence receipts/);
+});
+
+
+test("J5 operator browser rejects unconfirmed mutation receipts despite HTTP 200",()=>{
+  assert.equal(validProductionDeskMutationReceipt("create_quote",{quoteId:qid,lockedRevisionVerified:true}),true);
+  assert.equal(validProductionDeskMutationReceipt("create_order",{orderId:oid,learningContextAttached:true,lockedRevisionVerified:true}),true);
+  assert.equal(validProductionDeskMutationReceipt("quote_status",{updated:true}),true);
+  assert.equal(validProductionDeskMutationReceipt("order_status",{updated:true}),true);
+  for(const forged of [
+    {action:"create_quote",receipt:{quoteId:[qid],lockedRevisionVerified:true}},
+    {action:"create_quote",receipt:{quoteId:qid,lockedRevisionVerified:"true"}},
+    {action:"create_quote",receipt:{lockedRevisionVerified:true}},
+    {action:"create_order",receipt:{orderId:oid,learningContextAttached:false,lockedRevisionVerified:true}},
+    {action:"create_order",receipt:{orderId:oid,learningContextAttached:true,lockedRevisionVerified:false}},
+    {action:"create_order",receipt:{orderId:" "+oid,learningContextAttached:true,lockedRevisionVerified:true}},
+    {action:"order_status",receipt:{updated:"true"}},
+    {action:"quote_status",receipt:{updated:false}},
+    {action:"unknown",receipt:{updated:true}},
+    {action:"quote_status",receipt:null},
+    {action:"order_status",receipt:[]},
+  ]) assert.equal(validProductionDeskMutationReceipt(forged.action,forged.receipt),false,JSON.stringify(forged));
+  const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  assert.match(client,/if\(!validProductionDeskMutationReceipt\(body\.action,data\)\)/);
+  assert.match(client,/Production operation receipt could not be verified/);
+});
+
+test("J5 operator packet and evidence links use canonical UUID and hash identity",()=>{
+  assert.equal(sameProductionRecordId(oid,oid.toUpperCase()),true);
+  assert.equal(sameProductionRecordId(oid," "+oid),false);
+  assert.equal(sameProductionRecordId(oid,[oid]),false);
+  assert.equal(sameProductionRecordId(null,null),false);
+  assert.equal(sameProductionRecipeHash(recipeHash,recipeHash.toUpperCase()),true);
+  assert.equal(sameProductionRecipeHash(recipeHash,"b".repeat(64)),false);
+  assert.equal(sameProductionRecipeHash(recipeHash,[recipeHash]),false);
+  const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  assert.match(client,/sameProductionRecordId\(outcome\.order_id,item\.order_id\)/);
+  assert.match(client,/sameProductionRecordId\(context\.order_id,item\.order_id\)/);
+  assert.match(client,/sameProductionRecipeHash\(item\.recipe_hash,loadedRevision\.recipeHash\)/);
+  assert.match(client,/sameProductionRecipeHash\(item\.recipe_hash,order\.recipeHash\)/);
 });

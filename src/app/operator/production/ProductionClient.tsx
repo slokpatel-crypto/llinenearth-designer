@@ -8,7 +8,7 @@ import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-p
 import { buildVerifiedProductionPacket } from "@/lib/designer/production-packet";
 import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
 import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
-import { validProductionDeskResponse } from "@/lib/designer/production-desk-ledger";
+import { validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash } from "@/lib/designer/production-desk-ledger";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
@@ -67,8 +67,9 @@ export default function ProductionClient(){
     setBusy(true);setMessage("");
     try{
       const response=await fetch("/api/operator/production",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
-      const data=await response.json();
-      if(!response.ok) throw new Error(data.error||"Production operation failed.");
+      const data=await response.json() as {error?:unknown};
+      if(!response.ok) throw new Error(typeof data?.error==="string"?data.error:"Production operation failed.");
+      if(!validProductionDeskMutationReceipt(body.action,data)) throw new Error("Production operation receipt could not be verified.");
       setMessage(success);await load();
     }catch(error){setMessage(error instanceof Error?error.message:"Production operation failed.");}
     finally{setBusy(false);}
@@ -131,10 +132,10 @@ export default function ProductionClient(){
   async function exportProductionPacket(){
     if(!loadedRevision) return;
     try{
-    const quoteMatch=quotes.find((item)=>item.revision_id===loadedRevision.revisionId&&item.recipe_hash===loadedRevision.recipeHash&&item.status==="accepted")
-      || quotes.find((item)=>item.revision_id===loadedRevision.revisionId&&item.recipe_hash===loadedRevision.recipeHash)
+    const quoteMatch=quotes.find((item)=>item.revision_id===loadedRevision.revisionId&&sameProductionRecipeHash(item.recipe_hash,loadedRevision.recipeHash)&&item.status==="accepted")
+      || quotes.find((item)=>item.revision_id===loadedRevision.revisionId&&sameProductionRecipeHash(item.recipe_hash,loadedRevision.recipeHash))
       || null;
-    const orderMatch=orders.find((item)=>item.revision_id===loadedRevision.revisionId&&item.recipe_hash===loadedRevision.recipeHash)||null;
+    const orderMatch=orders.find((item)=>item.revision_id===loadedRevision.revisionId&&sameProductionRecipeHash(item.recipe_hash,loadedRevision.recipeHash))||null;
     const packet=await buildVerifiedProductionPacket({
       revision:loadedRevision,
       quote:quoteMatch?{
@@ -166,7 +167,7 @@ export default function ProductionClient(){
     &&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteItems.length>0
     &&quoteRowsValid&&adjustmentValid;
   const acceptedQuotes=useMemo(()=>quotes.filter((item)=>item.status==="accepted"&&(
-    !order.revisionId || (item.revision_id===order.revisionId&&item.recipe_hash===order.recipeHash)
+    !order.revisionId || (item.revision_id===order.revisionId&&sameProductionRecipeHash(item.recipe_hash,order.recipeHash))
   )),[quotes,order.revisionId,order.recipeHash]);
 
   return <main className="productionDesk">
@@ -263,8 +264,8 @@ export default function ProductionClient(){
           const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id,250)
             &&hasVerifiedDeliveryQcOrderLineage(qcInspections,item);
           const nextStatuses=(ORDER_TRANSITIONS[item.status as ProductionOrderStatus]||[]).filter((status)=>status!=="delivered"||deliveryQcVerified);
-          const customerOutcome=customerOutcomes.find((outcome)=>outcome.order_id===item.order_id);
-          const learningContext=learningContexts.find((context)=>context.order_id===item.order_id);
+          const customerOutcome=customerOutcomes.find((outcome)=>sameProductionRecordId(outcome.order_id,item.order_id));
+          const learningContext=learningContexts.find((context)=>sameProductionRecordId(context.order_id,item.order_id));
           return <section key={item.order_id} className="productionRecord">
             <div><b>{item.revision_id}</b><small>{new Date(item.created_at).toLocaleString("en-IN")}</small></div>
             <strong>{item.status.replaceAll("_"," ").toUpperCase()}</strong>

@@ -220,3 +220,25 @@ export function validProductionDeskResponse(value:unknown):value is VerifiedProd
     &&(sources.learningContextInstalled||value.learningContexts.length===0)
     &&validOptionalOrderLineage(value.orders,value.qcInspections,value.customerOutcomes,value.learningContexts);
 }
+
+/** A 200 HTTP response is not a confirmed operator mutation. The browser
+ * independently requires the exact server-side receipt for each action. */
+export function validProductionDeskMutationReceipt(action:unknown,value:unknown):boolean{
+  if(!record(value)) return false;
+  if(action==="create_quote") return Boolean(verifiedOperatorProductionCreateId(value.quoteId))
+    &&value.lockedRevisionVerified===true;
+  if(action==="create_order") return Boolean(verifiedOperatorProductionCreateId(value.orderId))
+    &&value.learningContextAttached===true&&value.lockedRevisionVerified===true;
+  if(action==="quote_status"||action==="order_status") return value.updated===true;
+  return false;
+}
+
+/** PostgreSQL UUID and SHA-256 hex casing is not part of immutable identity.
+ * Keep operator history, accepted quote selection and packet links canonical. */
+export function sameProductionRecordId(left:unknown,right:unknown):boolean{
+  const canonical=verifiedOperatorProductionCreateId(left);
+  return canonical!==null&&canonical===verifiedOperatorProductionCreateId(right);
+}
+export function sameProductionRecipeHash(left:unknown,right:unknown):boolean{
+  return hash(left)&&hash(right)&&left.toLowerCase()===right.toLowerCase();
+}

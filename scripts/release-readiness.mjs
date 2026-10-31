@@ -853,6 +853,10 @@ requireTokens("src/lib/designer/production-desk-ledger.ts", [
   "row.revision_id!==order.revision_id",
   "parseProductionEvidenceTimestamp(row.created_at)<parseProductionEvidenceTimestamp(order.created_at)",
 ]);
+// Operator success-shaped mutation replies and case-equivalent SQL IDs must
+// not lose customer-facing receipts or be misreported as completed work.
+requireTokens("src/lib/designer/production-desk-ledger.ts", ["validProductionDeskMutationReceipt","sameProductionRecordId","sameProductionRecipeHash"]);
+requireTokens("src/app/operator/production/ProductionClient.tsx", ["if(!validProductionDeskMutationReceipt(body.action,data))","sameProductionRecordId(outcome.order_id,item.order_id)","sameProductionRecipeHash(item.recipe_hash,order.recipeHash)"]);
 requireTokens("src/app/api/operator/garment-qc/route.ts", ["finished_garment_qc_record_v2","p_inspection_reference"]);
 requireTokens("src/app/operator/garment-qc/GarmentQcClient.tsx", ["Finished Garment QC","Physical inspection reference","provenanceReady","Legacy inspection · provenance not recorded","Approve for delivery","Record rework","PHYSICAL CHECKS"]);
 requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_list","hasVerifiedLatestDeliveryQc(inspections,orderId,500)","hasVerifiedDeliveryQcOrderLineage(inspections,currentOrder)","validProductionQcOrderRows(candidateOrders)","candidateOrders.find(row=>verifiedOperatorProductionCreateId(row.order_id)===orderId)","The latest provenance-backed finished-garment QC approval is required before delivery.","production_customer_outcome_list","customerOutcomes","production_order_learning_context_list","learningContexts","loadVerifiedLockedRevision","A valid locked-design recovery token is required","verified locked design does not match the quote revision/hash","verified locked design does not match the order revision/hash","parseDesignVaultRecoveryToken","verifyLockedDesignRevision","buildProductionLearningContext","production_order_create_with_context","learningContextAttached","lockedRevisionVerified"]);
