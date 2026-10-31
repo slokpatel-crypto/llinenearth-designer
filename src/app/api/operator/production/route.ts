@@ -16,6 +16,7 @@ import { verifiedOptionalProductionRows } from "@/lib/designer/optional-producti
 import { validProductionDeskLedgers, validProductionDeskResponse, validProductionQcOrderRows } from "@/lib/designer/production-desk-ledger";
 import {safeProductionQuoteOrderRows} from "@/lib/designer/production-quote-order-transport";
 import {safeProductionQcRows} from "@/lib/designer/production-qc-transport";
+import {safeProductionCustomerOutcomes} from "@/lib/designer/production-outcome-transport";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
@@ -114,8 +115,12 @@ export async function GET(){
     // Validate ALL original evidence before copying: never erase a conflicting
     // source field to make a malformed physical receipt appear trustworthy.
     if(!validProductionDeskResponse(originalReceipt)) throw new Error("Malformed optional production evidence receipts.");
-    const receipt={...originalReceipt,qcInspections:safeProductionQcRows(qc.rows)};
-    if(!validProductionDeskResponse(receipt)) throw new Error("QC evidence changed during safe serialization.");
+    const receipt={
+      ...originalReceipt,
+      qcInspections:safeProductionQcRows(qc.rows),
+      customerOutcomes:safeProductionCustomerOutcomes(outcomes.rows),
+    };
+    if(!validProductionDeskResponse(receipt)) throw new Error("Optional production evidence changed during safe serialization.");
     return respond(receipt);
   }catch(error){
     if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
