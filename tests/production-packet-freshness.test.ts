@@ -19,7 +19,7 @@ const order={
   quote_id:quoteId,status:"created",note:"",
   created_at:createdAt,updated_at:createdAt,
 };
-const envelope=(quotes:unknown[],orders:unknown[])=>({
+const envelope=(quotes:(typeof quote)[],orders:(typeof order)[])=>({
   configured:true,quotes,orders,
   qcInspections:[],customerOutcomes:[],learningContexts:[],
   optionalEvidenceSources:{
