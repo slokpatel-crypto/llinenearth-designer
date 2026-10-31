@@ -99,7 +99,7 @@ export async function POST(request:Request){
   }catch(error){
     if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
     if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
-    console.error("[operator/customer-outcomes]",error);
+    console.error("[operator/customer-outcomes]",error instanceof Error?error.name:"UnknownError");
     return respond({error:"Customer outcome operation failed."},409);
   }
 }
