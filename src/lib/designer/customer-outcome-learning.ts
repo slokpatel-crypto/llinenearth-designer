@@ -75,11 +75,28 @@ export function summarizeCustomerOutcomeLearning(
   reviews:CustomerOutcomeReviewRow[],
   policies:CustomerOutcomePolicyRow[],
 ){
+  // PostgreSQL may return different rows with identical timestamps in either
+  // order. Never let array ordering select an approval over a tied rejection.
   const latestReviewByOutcome=new Map<string,CustomerOutcomeReviewRow>();
+  const conflictingReviewOutcomes=new Set<string>();
   for(const review of [...reviews].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))){
-    if(!latestReviewByOutcome.has(review.outcome_id)) latestReviewByOutcome.set(review.outcome_id,review);
+    const current=latestReviewByOutcome.get(review.outcome_id);
+    if(!current){latestReviewByOutcome.set(review.outcome_id,review);continue;}
+    if(Date.parse(current.created_at)===Date.parse(review.created_at)
+      &&current.decision!==review.decision)
+      conflictingReviewOutcomes.add(review.outcome_id);
   }
-  const latestPolicy=[...policies].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))[0]||null;
+  // Two differently signed human policies at the same latest instant cannot
+  // be resolved by whichever database row happens to be returned first.
+  const orderedPolicies=[...policies].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at));
+  const newestPolicy=orderedPolicies[0]||null;
+  const policyConflict=Boolean(newestPolicy&&orderedPolicies.some(policy=>
+    policy!==newestPolicy
+    &&Date.parse(policy.created_at)===Date.parse(newestPolicy.created_at)
+    &&(policy.minimum_approved_cases!==newestPolicy.minimum_approved_cases
+      ||policy.approved_by!==newestPolicy.approved_by
+      ||policy.note!==newestPolicy.note)));
+  const latestPolicy=policyConflict?null:newestPolicy;
 
   let approved=0;
   let rejected=0;
@@ -87,6 +104,12 @@ export function summarizeCustomerOutcomeLearning(
   let learningEligible=0;
   let approvedFitCases=0;
   for(const outcome of outcomes){
+    // Preserve ambiguity as unresolved; never manufacture an approval or a
+    // rejection when human decisions conflict at an identical timestamp.
+    if(conflictingReviewOutcomes.has(outcome.outcome_id)){
+      unreviewed+=1;
+      continue;
+    }
     const review=latestReviewByOutcome.get(outcome.outcome_id);
     if(!review){unreviewed+=1;continue;}
     if(review.decision==="rejected"){rejected+=1;continue;}
@@ -108,6 +131,9 @@ export function summarizeCustomerOutcomeLearning(
     approvedFitCases,
     threshold,
     policy:latestPolicy,
-    gateComplete:Boolean(threshold&&learningEligible>=threshold),
+    reviewConflictCount:conflictingReviewOutcomes.size,
+    policyConflict,
+    gateComplete:Boolean(threshold&&learningEligible>=threshold
+      &&conflictingReviewOutcomes.size===0&&!policyConflict),
   };
 }
