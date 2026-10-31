@@ -40,7 +40,11 @@ test("M123 preflight audits installed QC chronology and immutable evidence",()=>
     "public.production_delivery_eligibility_list",
   ])assert.ok(sql.includes(obj),"Missing catalog check for "+obj);
   // Only catalogue reads and exceptions are permitted, never DML/DDL.
-  assert.doesNotMatch(sql,/\b(?:ALTER|CREATE|DROP|TRUNCATE|INSERT|UPDATE|DELETE)\s+(?:TABLE|FUNCTION|TRIGGER|INDEX|INTO|private\.|public\.)/i);
+  // Ignore SQL line comments: the rollout audit legitimately describes a
+  // "TRUNCATE trigger", which is not an executable TRUNCATE statement.
+  // BEGIN READ ONLY is enforced by PostgreSQL; actual DDL/DML remains banned.
+  const executable=sql.split("\n").map(line=>line.replace(/--.*$/,"")).join("\n");
+  assert.doesNotMatch(executable,/\b(?:ALTER|CREATE|DROP|TRUNCATE|INSERT|UPDATE|DELETE)\s+(?:TABLE|FUNCTION|TRIGGER|INDEX|INTO|private\.|public\.)/i);
   assert.doesNotMatch(sql,/\b(?:supabase\s+db\s+push|psql\s+-h|curl)\b/i);
 });
 
