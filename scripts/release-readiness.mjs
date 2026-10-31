@@ -867,6 +867,27 @@ requireTokens("supabase/migrations/20261031_stock_record_exact_retry.sql", [
 requireTokens("src/lib/designer/stock-ledger.ts", [
   "normalizeStockMutationRequestKey", "stockManualRecordAttempt", "stockManualRecordSignature",
 ]);
+
+requireTokens(".github/workflows/titan-stock-record-db.yml", [
+  "image: postgres:16", "job.services.postgres.id", "verify-stock-record-db.sh",
+]);
+requireTokens("scripts/ci/verify-stock-record-db.sh", [
+  "stock-record-db-setup.sql",
+  "supabase/migrations/20261031_stock_record_exact_retry.sql",
+  "stock-record-db-assertions.sql",
+  "Concurrent same-key physical receipts",
+  "Concurrent overdraw must allow exactly one adjustment.",
+]);
+requireTokens("scripts/ci/stock-record-db-setup.sql", [
+  "create unique index fabric_stock_ledger_request_key_uidx",
+  "create or replace function public.fabric_stock_snapshot_v2",
+]);
+requireTokens("scripts/ci/stock-record-db-assertions.sql", [
+  "stock request key already belongs to different evidence",
+  "adjustment exceeds available unreserved fabric",
+  "privileged stock RPC role grants are not restricted",
+]);
+
 requireTokens("src/app/operator/stock/StockClient.tsx", [
   "manualRecordKeys.current.set(attempt.signature,attempt.requestKey)",
   'void post({action:"record",...intent,requestKey:attempt.requestKey}',
