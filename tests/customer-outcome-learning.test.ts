@@ -274,11 +274,64 @@ test("different human learning policies with the same latest timestamp cannot ch
 
 test("operator human-review UI exposes ambiguous latest human decisions and policy approval",()=>{
   const source=readFileSync("src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx","utf8");
-  assert.match(source,/reviewConflicts=useMemo\(/);
-  assert.match(source,/prior\.decision!==row\.decision/);
+  assert.match(source,/useMemo\(\(\)=>resolveLatestCustomerReviews\(reviews\),\[reviews\]\)/);
+  assert.match(readFileSync("src/lib/designer/customer-outcome-learning.ts","utf8"),/current\.decision!==review\.decision/);
   assert.match(source,/role="alert"/);
   assert.match(source,/summary\.reviewConflictCount>0\|\|summary\.policyConflict/);
   assert.match(source,/CONFLICT — REVIEW REQUIRED/);
-  assert.match(source,/reviewRow&&!reviewConflicts\.has\(outcome\.outcome_id\)/);
+  assert.match(source,/reviewRow&&!reviewConflicts\.has\(outcome\.outcome_id\.toLowerCase\(\)\)/);
   assert.match(source,/The learning gate remains OPEN until a new unambiguous human decision/);
+});
+
+test("older reviews outside the current outcome window cannot veto current human eligibility",()=>{
+  const current={...outcomes[0],learning_context:{
+    version:"linen-earth-production-learning-context-v1",revisionId:"r1",
+    recipeHash:"e".repeat(64),fabrics:{shirtId:"shirt-1",trouserId:"trouser-1"},
+  }};
+  const currentApproval={review_id:"latest",outcome_id:"O1",decision:"approved" as const,
+    reviewer:"Owner",note:"Physical check",created_at:"2026-10-31T11:00:00Z"};
+  const irrelevant=[
+    {review_id:"old-approved",outcome_id:"OLD-HISTORY",decision:"approved" as const,
+      reviewer:"Owner",note:"Legacy",created_at:"2026-10-30T11:00:00Z"},
+    {review_id:"old-rejected",outcome_id:"old-history",decision:"rejected" as const,
+      reviewer:"Owner",note:"Legacy fault",created_at:"2026-10-30T11:00:00Z"},
+  ];
+  const policy={policy_id:"policy",minimum_approved_cases:1,
+    approved_by:"Owner",note:"Documented case",created_at:"2026-10-31T11:30:00Z"};
+  for(const reviews of [
+    [currentApproval,...irrelevant],
+    [...irrelevant].reverse().concat(currentApproval),
+  ]){
+    const result=summarizeCustomerOutcomeLearning([current],reviews,[policy]);
+    assert.equal(result.approved,1);
+    assert.equal(result.learningEligible,1);
+    assert.equal(result.reviewConflictCount,0);
+    assert.equal(result.gateComplete,true,
+      "An out-of-window historical dispute cannot revoke unrelated current approval");
+  }
+});
+
+test("same human outcome UUID in different letter cases resolves one current decision",()=>{
+  const outcome={...outcomes[0],outcome_id:"123e4567-e89b-42d3-a456-426614174aBC",
+    learning_context:{version:"linen-earth-production-learning-context-v1",revisionId:"r1",
+      recipeHash:"d".repeat(64),fabrics:{shirtId:"shirt-1",trouserId:"trouser-1"}}};
+  const review={review_id:"one",outcome_id:outcome.outcome_id.toLowerCase(),
+    decision:"approved" as const,reviewer:"Owner",note:"Fit confirmed",
+    created_at:"2026-10-31T11:00:00Z"};
+  const policy={policy_id:"one",minimum_approved_cases:1,approved_by:"Owner",
+    note:"One approved physical case",created_at:"2026-10-31T11:10:00Z"};
+  const approved=summarizeCustomerOutcomeLearning([outcome],[review],[policy]);
+  assert.equal(approved.approved,1);
+  assert.equal(approved.learningEligible,1);
+  assert.equal(approved.gateComplete,true);
+  const conflict=summarizeCustomerOutcomeLearning([outcome],
+    [review,{...review,review_id:"two",outcome_id:outcome.outcome_id,
+      decision:"rejected" as const}],[policy]);
+  assert.equal(conflict.reviewConflictCount,1);
+  assert.equal(conflict.unreviewed,1);
+  assert.equal(conflict.approved,0);
+  assert.equal(conflict.gateComplete,false);
+  const ui=readFileSync("src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx","utf8");
+  assert.match(ui,/latestReviewByOutcome\.get\(outcome\.outcome_id\.toLowerCase\(\)\)/);
+  assert.match(ui,/reviewConflicts\.has\(outcome\.outcome_id\.toLowerCase\(\)\)/);
 });
