@@ -1158,6 +1158,14 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "Saved note: {item.note",
   "Linked quote: {item.quote_id",
 ]);
+// M105: accepted quotes are terminal in both shared state and the SQL RPC;
+// do not offer the operator a Void action the database cannot perform.
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  'canTransitionQuote(item.status as ProductionQuoteStatus,"void")',
+]);
+requireTokens("src/lib/designer/production-state.ts",[
+  "accepted:[]", 'draft:["sent","void"]', 'sent:["accepted","void"]',
+]);
 // A successful recovery HTTP status must not unlock operator exports or mutations
 // without a locally verified immutable revision/hash, or retain an old selection.
 requireTokens("src/app/operator/production/ProductionClient.tsx", [
