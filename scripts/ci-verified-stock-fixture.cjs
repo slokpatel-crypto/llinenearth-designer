@@ -14,6 +14,45 @@ const QUOTE_LIST_PATH="/rest/v1/rpc/production_quote_list";
 const ORDER_LIST_PATH="/rest/v1/rpc/production_order_list";
 const QC_LIST_PATH="/rest/v1/rpc/finished_garment_qc_list";
 const CUSTOMER_OUTCOME_LIST_PATH="/rest/v1/rpc/production_customer_outcome_list";
+const OUTCOME_LEARNING_PATH="/rest/v1/rpc/production_customer_outcome_learning_list";
+const OUTCOME_REVIEW_PATH="/rest/v1/rpc/production_customer_outcome_review_list";
+const OUTCOME_POLICY_PATH="/rest/v1/rpc/production_customer_outcome_policy_list";
+// Deliberately negative, fictional customer feedback; never a real delivery.
+const OUTCOME_REVIEW_FIXTURE=Object.freeze({
+  [OUTCOME_LEARNING_PATH]:[{
+    outcome_id:"123e4567-e89b-42d3-a456-426614174013",
+    order_id:"123e4567-e89b-42d3-a456-426614174011",
+    revision_id:"LE-LOCK-CI-QUOTE-20261031",
+    overall_rating:"needs_work",fit_result:"major_alteration",
+    worn_confirmed:true,note:"CI only; fit is NOT satisfactory",
+    created_at:"2026-10-31T03:00:00Z",
+    secret_customer_phone:"DO-NOT-LEAK-CI-OUTCOME-REVIEW",
+    learning_context:{
+      version:"linen-earth-production-learning-context-v1",
+      revisionId:"LE-LOCK-CI-QUOTE-20261031",
+      recipeHash:"a".repeat(64),
+      fabrics:{shirtId:"ci-shirt",trouserId:"ci-trouser",
+        secret_supplier:"DO-NOT-LEAK-CI-OUTCOME-FABRIC"},
+      context:{occasion:"Semi-Formal",secret_customer:"DO-NOT-LEAK-CI-OUTCOME-NESTED"},
+      shirt:{fit:"Regular",wear:"Tucked",collar:"Point",cuff:"Barrel"},
+      trouser:{shape:"Pleated",rise:"Mid Rise",break:"Slight Break"},
+      hidden_cost:"DO-NOT-LEAK-CI-OUTCOME-CONTEXT",
+    },
+  }],
+  [OUTCOME_REVIEW_PATH]:[{
+    review_id:"123e4567-e89b-42d3-a456-426614174015",
+    outcome_id:"123e4567-e89b-42d3-a456-426614174013",
+    decision:"rejected",reviewer:"CI-only reviewer",
+    note:"Await physical inspection",created_at:"2026-10-31T04:00:00Z",
+    private_reviewer_contact:"DO-NOT-LEAK-CI-REVIEWER",
+  }],
+  [OUTCOME_POLICY_PATH]:[{
+    policy_id:"123e4567-e89b-42d3-a456-426614174016",
+    minimum_approved_cases:2,approved_by:"CI-only owner",
+    note:"Human owner approval still required",created_at:"2026-10-31T04:30:00Z",
+    private_signoff_token:"DO-NOT-LEAK-CI-POLICY",
+  }],
+});
 const LEARNING_CONTEXT_LIST_PATH="/rest/v1/rpc/production_order_learning_context_list";
 const LEARNING_CONTEXT_LISTS=Object.freeze({
   [LEARNING_CONTEXT_LIST_PATH]:[{
@@ -153,7 +192,7 @@ async function handle(req,res){
     res.writeHead(200,{"content-type":"application/json","cache-control":"private, no-store","content-range":"*/0"});
     return res.end(JSON.stringify(rows));
   }
-  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,LEARNING_CONTEXT_LIST_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
+  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,LEARNING_CONTEXT_LIST_PATH,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
   if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
   let raw="";
   try{
@@ -167,6 +206,13 @@ async function handle(req,res){
          payload.p_limit!==100||Object.keys(payload).length!==1)
         return send(res,400,{error:"Invalid CI production page request"});
       return send(res,200,PRODUCTION_LISTS[req.url]);
+    }
+    if([OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH].includes(req.url)){
+      const limit=req.url===OUTCOME_LEARNING_PATH?1000:req.url===OUTCOME_REVIEW_PATH?5000:100;
+      if(!payload||typeof payload!=="object"||Array.isArray(payload)||
+         payload.p_limit!==limit||Object.keys(payload).length!==1)
+        return send(res,400,{error:"Invalid synthetic outcome learning review request"});
+      return send(res,200,OUTCOME_REVIEW_FIXTURE[req.url]);
     }
     if(req.url===LEARNING_CONTEXT_LIST_PATH){
       if(!payload||typeof payload!=="object"||Array.isArray(payload)||
@@ -213,4 +259,4 @@ if(require.main===module){
     console.log("Synthetic CI-only stock fixture listening on loopback; NOT physical evidence");
   });
 }
-module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,QC_LIST_PATH,QC_LISTS,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS,LEARNING_CONTEXT_LIST_PATH,LEARNING_CONTEXT_LISTS,METADATA_PATH};
+module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,QC_LIST_PATH,QC_LISTS,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS,LEARNING_CONTEXT_LIST_PATH,LEARNING_CONTEXT_LISTS,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH,OUTCOME_REVIEW_FIXTURE,METADATA_PATH};
