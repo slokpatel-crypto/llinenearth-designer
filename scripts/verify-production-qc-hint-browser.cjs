@@ -95,6 +95,16 @@ async function testViewport(browser,width){
     const firstIntercepted=page.waitForFunction(
       ()=>window.__titanQcHints?.calls>=1,{},{timeout:15_000});
     await firstIntercepted;
+    // M131: the operator must not be able to type an invented revision or
+    // recipe hash. Only a verified recovery token may unlock either create.
+    const immutableFields=page.locator('input[readonly][aria-readonly="true"]');
+    await immutableFields.first().waitFor({state:"visible",timeout:15_000});
+    assert.equal(await immutableFields.count(),4,
+      "Quote and order each require read-only verified revision and recipe");
+    assert.equal(await page.getByRole("button",{name:"Create quote"}).isDisabled(),true,
+      "No quote without verified locked design");
+    assert.equal(await page.getByRole("button",{name:"Create order"}).isDisabled(),true,
+      "No order without verified locked design");
     const order=page.locator("section.productionRecord").filter({
       hasText:"CI-only production order",
     });
@@ -129,7 +139,7 @@ async function testViewport(browser,width){
     await mkdir(out,{recursive:true});
     await page.screenshot({path:path.join(out,"desk-"+width+".png"),fullPage:true});
     return {width,syntheticOnly:true,historyWhileHintPending:true,
-      stalePositiveIgnored:true,freshPositiveVisible:true,deliveryPosted:false};
+      stalePositiveIgnored:true,freshPositiveVisible:true,lockedFieldsReadOnly:true,deliveryPosted:false};
   }finally{
     await ctx.close();
   }
