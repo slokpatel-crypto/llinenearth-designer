@@ -1875,6 +1875,41 @@ requireTokens("tests/titan-qc-catalog-fault-injection.test.ts",[
   "M125 negative test never uses a real customer",
 ]);
 
+// M126: idempotent delivery request receipts are an append-only ledger, not
+// editable service-role cache. Reject privileged update/delete/truncate and
+// require original same-key replay without a second event.
+requireTokens("supabase/migrations/20261116_delivery_receipts_immutable.sql",[
+  "private.reject_production_delivery_receipt_mutation()",
+  "before update or delete on private.production_delivery_request_receipts",
+  "before truncate on private.production_delivery_request_receipts",
+  "errcode='55000'",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "run_file supabase/migrations/20261116_delivery_receipts_immutable.sql",
+  "run_file scripts/ci/m126-delivery-receipt-immutability-assertions.sql",
+]);
+requireTokens("scripts/ci/m126-delivery-receipt-immutability-assertions.sql",[
+  "update private.production_delivery_request_receipts",
+  "delete from private.production_delivery_request_receipts",
+  "truncate private.production_delivery_request_receipts",
+  "M126 same-request replay not stable",
+  "delivery key belongs to different instructions",
+]);
+requireTokens("scripts/ci/m122-qc-schema-readonly-preflight.sql",[
+  "v_receipt_immutability", "production_delivery_receipt_append_only",
+  "production_delivery_receipt_no_truncate", "BEGIN READ ONLY;",
+]);
+requireTokens("tests/production-delivery-receipt-immutability.test.ts",[
+  "M126 delivery replay receipts are protected",
+  "M126 atomic delivery replay survives",
+  "M126 private replay cannot be altered",
+]);
+requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
+  "20261116_delivery_receipts_immutable.sql",
+  "Apply the seven migrations", "Already-issued delivery request keys",
+]);
+
+
 
 
 // M121: code-level staging rollout documentation is mandatory for the

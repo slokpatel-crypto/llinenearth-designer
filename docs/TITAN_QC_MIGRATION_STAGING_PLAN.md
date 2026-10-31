@@ -14,8 +14,9 @@ M112–M114 replace or extend the canonical physical-QC / delivery logic. The mi
 | 4 | `20261113_delivery_qc_sequence_gate.sql` | Replaces the canonical delivery-status function again, requiring newest ordinal = order counter | Old unsequenced approval cannot release; newer rework vetoes an older approval |
 | 5 | `20261114_delivery_eligibility_read.sql` | Service-role-only capped advisory read, without inspector/reference/notes | Exact locked order identity, six checks and QC sequence; read hint is **not delivery authorization** |
 | 6 | `20261115_finished_garment_qc_immutable.sql` | Reject direct UPDATE/DELETE/TRUNCATE of all historical and new physical QC rows | Existing evidence remains readable; corrections require a new sequenced inspection; privileged direct edits and deletes fail |
+| 7 | `20261116_delivery_receipts_immutable.sql` | Reject direct UPDATE/DELETE/TRUNCATE of durable delivery idempotency receipts | Original same-request replay remains possible; changed-instruction replay remains rejected, even after a lost operator HTTP acknowledgement |
 
-The sixth migration must be installed **after** the prior QC/read functions; no direct SQL evidence edits, deletions or truncation are permitted after rollout. These are tail migrations, not the full historical schema. A clean staging database must first contain every earlier prerequisite migration, including production order, finished-garment QC, provenance and order-status receipt structures. Restore a representative **redacted** staging snapshot before exercising this chain. Never substitute synthetic CI fixtures for real QC.
+The sixth QC migration and seventh replay-receipt migration must be installed **after** the prior QC/read functions; no direct SQL evidence edits, deletions or truncation are permitted after rollout. These are tail migrations, not the full historical schema. A clean staging database must first contain every earlier prerequisite migration, including production order, finished-garment QC, provenance and order-status receipt structures. Restore a representative **redacted** staging snapshot before exercising this chain. Never substitute synthetic CI fixtures for real QC.
 
 ## Preconditions and human stop/go
 
@@ -38,7 +39,7 @@ EXECUTE restrictions. **It does not execute the migrations.** A PASS proves
 catalog configuration, not that a human checked any garment.
 
 This preflight also runs in the disposable PostgreSQL creation workflow
-**after** the six migration files, so absent/disabled triggers and missing
+**after** the seven migration files, so absent/disabled triggers and missing
 service-only grants fail CI. Keep the staging output redacted: no row-level
 inspector, customer, recovery token, supplier or QC evidence should be copied
 into GitHub. If it fails, do not use this document as permission to bypass the
@@ -47,11 +48,12 @@ separate repair.
 
 ## Staging verification (no automatic live changes)
 
-Apply the six migrations **in ascending order**, only after the separate staging approval and restore check. Then verify the following, recording run IDs, time, redacted evidence and installed migration versions:
+Apply the seven migrations **in ascending order**, only after the separate staging approval and restore check. Then verify the following, recording run IDs, time, redacted evidence and installed migration versions:
 
 - `private.production_orders.qc_latest_sequence` exists; `private.finished_garment_qc_inspections.inspection_sequence` exists; the unique partial index and BEFORE INSERT trigger exist.
 - `private.production_delivery_request_receipts` has RLS enabled; `anon` and `authenticated` cannot execute either `public.production_order_deliver_idempotent(uuid,uuid,text)` or `public.production_delivery_eligibility_list(integer)`; `service_role` may execute these functions through the authenticated backend only.
 - Historical approved QC rows still have **NULL** sequence and **do not** authorize a new delivery. New reinspection appends ordinal one (or later); latest rework blocks delivery. Attempted privileged UPDATE/DELETE/TRUNCATE of either historic approval or newer rework must fail, with no event or request receipt; corrections append a new inspected row.
+- Already-issued delivery request keys and SHA-256 instruction hashes remain append-only: privileged receipt UPDATE, DELETE and TRUNCATE attempts fail, the original same-key replay continues without emitting a second delivery event, and changing the replayed instructions fails. The new receipt trigger must be audited separately from the physical inspection trigger.
 - The QC trigger and delivery state machine serialize a two-session QC-vs-delivery race, without a duplicate event or an idempotency receipt on a failed delivery. An original request UUID replay returns the same durable result; mismatched instructions reject.
 - A signed real operator sees existing order history if the *optional read* is temporarily unavailable; delivery remains hidden until fresh SQL evidence is validated. Server-side delivered mutation rechecks the physical QC in the same locked transaction even if the UI shows an option.
 - No unexpected service-role fields, inspector names, customer contact or private notes leak through the delivery eligibility JSON or HTTP error response; all responses are `private, no-store`.

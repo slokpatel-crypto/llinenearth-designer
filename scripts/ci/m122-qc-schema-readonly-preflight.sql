@@ -1,6 +1,6 @@
 -- TITAN M122: installed QC schema/privilege audit. READ ONLY.
 -- Run only on owner-approved, isolated/staging database after migrations
--- 20261110..20261114, or in disposable CI PostgreSQL. Never applies DDL,
+-- 20261110..20261116, or in disposable CI PostgreSQL. Never applies DDL,
 -- mutates production records, approves physical QC or migrates real data.
 BEGIN READ ONLY;
 DO $titan$
@@ -13,6 +13,7 @@ DECLARE
   v_hint oid := to_regprocedure('public.production_delivery_eligibility_list(integer)');
   v_trigger oid := to_regprocedure('private.assign_finished_garment_qc_sequence()');
   v_immutability oid := to_regprocedure('private.reject_finished_garment_qc_mutation()');
+  v_receipt_immutability oid := to_regprocedure('private.reject_production_delivery_receipt_mutation()');
   v_functions oid[];
   v_function oid;
 BEGIN
@@ -101,6 +102,39 @@ BEGIN
     or has_function_privilege('anon',v_immutability,'EXECUTE')
     or has_function_privilege('authenticated',v_immutability,'EXECUTE') then
     raise exception 'M123 QC staging preflight: append-only function grants or rejection semantics invalid';
+  end if;
+
+  -- M126: durable same-key replay evidence may never be rewritten or
+  -- erased, including by a privileged service role. A second named BEFORE
+  -- TRUNCATE trigger is required because row DELETE triggers cannot fire then.
+  if v_receipt_immutability is null
+    or (select count(*) from pg_trigger t
+       where t.tgrelid=v_receipts
+         and t.tgname='production_delivery_receipt_append_only'
+         and t.tgfoid=v_receipt_immutability and t.tgenabled='O'
+         and not t.tgisinternal
+         and (t.tgtype::int & 1)=1
+         and (t.tgtype::int & 2)=2
+         and (t.tgtype::int & 8)=8
+         and (t.tgtype::int & 16)=16)<>1
+    or (select count(*) from pg_trigger t
+       where t.tgrelid=v_receipts
+         and t.tgname='production_delivery_receipt_no_truncate'
+         and t.tgfoid=v_receipt_immutability and t.tgenabled='O'
+         and not t.tgisinternal
+         and (t.tgtype::int & 1)=0
+         and (t.tgtype::int & 2)=2
+         and (t.tgtype::int & 32)=32)<>1 then
+    raise exception 'M126 delivery replay receipt append-only trigger missing or disabled';
+  end if;
+  if not exists(select 1 from pg_proc p
+      where p.oid=v_receipt_immutability and not p.prosecdef
+        and exists(select 1 from unnest(coalesce(p.proconfig,ARRAY[]::text[])) c
+          where c like 'search_path=%' and c like '%pg_catalog%')
+        and pg_get_functiondef(p.oid) like '%errcode=''55000''%')
+    or has_function_privilege('anon',v_receipt_immutability,'EXECUTE')
+    or has_function_privilege('authenticated',v_receipt_immutability,'EXECUTE') then
+    raise exception 'M126 delivery receipt append-only function insecure';
   end if;
 
   if v_gate is null or v_delivery is null or v_hint is null then
