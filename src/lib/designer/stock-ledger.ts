@@ -1,6 +1,25 @@
 export type StockEventType="receipt"|"adjustment_in"|"adjustment_out"|"reserve"|"release"|"consume";
 
 export type StockEvent={type:StockEventType;quantityMetres:number};
+/** A retry after a lost response must use the SAME request key for the SAME
+ * reservation intent. A different fabric, revision, quantity or provenance
+ * needs a different key. Browser state cannot replace the SQL idempotency gate. */
+export type StockReservationIntent={
+  fabricId:string; revisionId:string; quantityMetres:number;
+  requestedBy:string; sourceReference:string;
+};
+export function stockReservationAttempt(
+  existing:ReadonlyMap<string,string>,
+  intent:StockReservationIntent,
+  newKey:()=>string,
+):{signature:string;requestKey:string}{
+  const signature=JSON.stringify([
+    intent.fabricId,intent.revisionId,intent.quantityMetres,
+    intent.requestedBy,intent.sourceReference,
+  ]);
+  return {signature,requestKey:existing.get(signature)??newKey()};
+}
+
 /**
  * Operators must supply actual measured quantities at ledger precision.
  * Silently rounding incoming evidence (especially a receipt) can mint fabric,
