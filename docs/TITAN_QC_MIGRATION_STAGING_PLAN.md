@@ -48,6 +48,16 @@ into GitHub. If it fails, do not use this document as permission to bypass the
 gate or mutate the staging/production schema; investigate and peer-review a
 separate repair.
 
+The CI-only **M129 negative preflight** additionally tests nine controlled
+trigger-disable and SQL-role grant faults against a disposable database.
+Each fault is in an uncommitted transaction, must trigger a specific
+catalog rejection, and is followed by a clean `BEGIN READ ONLY`
+recheck proving automatic rollback. This is an automated test of the
+preflight itself — **do not run the fault-injection shell script in
+staging or production**. A human staging rehearsal uses only the
+separately authorized read-only preflight, without intentionally
+modifying protections or privileges.
+
 ## Staging verification (no automatic live changes)
 
 Apply the nine migrations **in ascending order**, only after the separate staging approval and restore check. Then verify the following, recording run IDs, time, redacted evidence and installed migration versions:
