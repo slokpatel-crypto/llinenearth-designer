@@ -1809,6 +1809,19 @@ requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
   "20261114_delivery_eligibility_read.sql",
   "m114-delivery-eligibility-assertions.sql",
 ]);
+// M116 signed HTTP fail-closed eligibility boundary on integrated M115.
+
+requireTokens("scripts/verify-production-delivery-eligibility-private-http.cjs",[
+  "GITHUB_ACTIONS","LINEN_OPERATOR_SESSION_SECRET","signedCookie",
+  "response.status,401","response.status,503","Delivery verification unavailable.",
+  "ledger.status,200",'Object.hasOwn(data,"deliveryEligibility"),false',
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-delivery-eligibility-private-http.cjs",
+]);
+requireTokens(".github/workflows/deep-engine-non3d.yml",[
+  "node scripts/verify-production-delivery-eligibility-private-http.cjs",
+]);
 requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
   "20261110_delivery_qc_sql_gate.sql","m112-delivery-qc-gate-assertions.sql",
   "20261111_delivery_idempotency.sql",
