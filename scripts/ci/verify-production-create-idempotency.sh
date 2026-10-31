@@ -198,4 +198,52 @@ else
     echo "Rework won race but delivery receipt/order status diverged" >&2; exit 1
   fi
 fi
-echo "TITAN isolated PostgreSQL status, delivery replay and QC-vs-delivery race PASS"
+# M113 two-session reproducible chronology inversion: transaction A starts
+# BEFORE transaction B records a valid approval, but A inserts rework AFTER B.
+# Without an under-lock monotonic ordinal, DEFAULT now() for A would predate
+# B's approval and incorrectly allow that old approval to remain "latest".
+chronology_order=$(query "select public.production_order_create('LE-M113-OLDER-TX',repeat('c',64),null,'');")
+query "select public.production_order_set_status('$chronology_order'::uuid,'cloth_reserved','');" >/dev/null
+query "select public.production_order_set_status('$chronology_order'::uuid,'cutting','');" >/dev/null
+query "select public.production_order_set_status('$chronology_order'::uuid,'stitching','');" >/dev/null
+query "select public.production_order_set_status('$chronology_order'::uuid,'ready','');" >/dev/null
+
+# Start A now, sleep *inside* its explicit SQL transaction before requesting
+# the order lock. B's approval commits before A's rework is attempted.
+long_tx="begin; select now(); select pg_sleep(3);
+select public.finished_garment_qc_record_v2(
+  '$chronology_order'::uuid,'rework','{}'::jsonb,'[\"measurement\"]'::jsonb,
+  'Rework after approval','CI inspector','CI-M113-LATE-REWORK'
+); commit;"
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$db" -Atc "$long_tx" >"$tmpdir/lt" 2>"$tmpdir/lt.err" &
+late_pid=$!
+sleep 1
+query "select public.finished_garment_qc_record_v2(
+  '$chronology_order'::uuid,'approved',
+  '{\"recipe_match\":true,\"fabric_match\":true,\"measurement_check\":true,\"pattern_alignment\":true,\"stitching_finish\":true,\"clean_damage_free\":true}'::jsonb,
+  '[]'::jsonb,'','CI inspector','CI-M113-EARLIER-APPROVAL'
+);" >/dev/null
+wait "$late_pid"
+if [[ $(query "select string_agg(inspection_sequence::text,',' order by inspection_sequence)
+  from private.finished_garment_qc_inspections
+  where order_id='$chronology_order'::uuid") != "1,2" ]] ||
+   [[ $(query "select (max(created_at) filter (where decision='rework')) >
+                         (max(created_at) filter (where decision='approved'))
+      from private.finished_garment_qc_inspections where order_id='$chronology_order'::uuid") != "t" ]] ||
+   [[ $(query "select qc_latest_sequence from private.production_orders where order_id='$chronology_order'::uuid") != "2" ]]; then
+  echo "M113 long-transaction QC chronology was not enforced" >&2
+  cat "$tmpdir/lt.err" >&2
+  exit 1
+fi
+query "select public.production_order_set_status('$chronology_order'::uuid,'ready','');" >/dev/null
+if query "select public.production_order_deliver_idempotent(
+ '123e4567-e89b-42d3-a456-426614174345'::uuid,
+ '$chronology_order'::uuid,'Should fail after rework'
+);" >"$tmpdir/late-delivery" 2>"$tmpdir/late-delivery.err"; then
+  echo "Stale approval wrongly authorized delivery after later rework" >&2; exit 1
+fi
+if [[ $(query "select count(*) from private.production_order_events where order_id='$chronology_order'::uuid and status='delivered'") != "0" ]] ||
+   [[ $(query "select count(*) from private.production_delivery_request_receipts where order_id='$chronology_order'::uuid") != "0" ]]; then
+  echo "Failed chronology delivery wrote an event or receipt" >&2; exit 1
+fi
+echo "TITAN isolated PostgreSQL M112 delivery and M113 long-transaction QC chronology PASS"
