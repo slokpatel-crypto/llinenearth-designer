@@ -80,13 +80,13 @@ test("browser production write barrier is saved BEFORE POST and reviewed after f
   const begin=post.indexOf("beginProductionWriteHold(safeProductionHoldStorage(),holdToken)");
   const fetch=post.indexOf('await fetch("/api/operator/production",{method:"POST"');
   assert.ok(begin>=0&&fetch>begin,"No possibly durable SQL write before the private marker exists");
-  assert.match(post,/if\(!beginProductionWriteHold\(safeProductionHoldStorage(),holdToken\)\)\{/);
+  assert.match(post,/if\(!beginProductionWriteHold\(safeProductionHoldStorage\(\),holdToken\)\)\{/);
   assert.match(post,/setRequiresWriteReview\(true\);\s*actionInFlight.current=true;/);
-  assert.match(post,/releaseProductionWriteHold\(safeProductionHoldStorage(),holdToken\)/);
+  assert.match(post,/releaseProductionWriteHold\(safeProductionHoldStorage\(\),holdToken\)/);
   assert.match(post,/if\(confirmed\)\{\s*if\(releaseProductionWriteHold/);
   assert.match(post,/if\(certainPrewriteRejection\)\{[^]*?releaseProductionWriteHold/);
-  assert.match(review,/if\(!acknowledgeProductionWriteHold\(safeProductionHoldStorage()\)\)\{/);
-  assert.match(source,/productionWriteHoldPending\(safeProductionHoldStorage()\)/);
+  assert.match(review,/if\(!acknowledgeProductionWriteHold\(safeProductionHoldStorage\(\)\)\)\{/);
+  assert.match(source,/productionWriteHoldPending\(safeProductionHoldStorage\(\)\)/);
   assert.match(source,/window.addEventListener\("storage",onStorage\)/);
   assert.match(source,/event.key===PRODUCTION_WRITE_HOLD_KEY&&event.newValue!==null/);
   assert.doesNotMatch(source,/localStorage\.setItem\([^\n]*recoveryToken/);
