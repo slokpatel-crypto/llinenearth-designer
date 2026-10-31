@@ -135,7 +135,7 @@ export default function CustomerOutcomesClient(){
         if(!receiptId)throw new Error("Policy receipt was not confirmed. Inspect history before retrying.");
         expected={kind:"policy",receiptId,
           minimumApprovedCases:body.minimumApprovedCases as number,
-          approvedBy:String(body.approvedBy),note:String(body.note)};
+          approvedBy:String(body.approvedBy).trim(),note:String(body.note).trim()};
       }else throw new Error("Unknown customer outcome receipt action.");
       const refreshed=await load(expected);
       if(!refreshed)return false;
