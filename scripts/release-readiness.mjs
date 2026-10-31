@@ -1816,6 +1816,20 @@ requireTokens("scripts/verify-production-delivery-eligibility-private-http.cjs",
   "response.status,401","response.status,503","Delivery verification unavailable.",
   "ledger.status,200",'Object.hasOwn(data,"deliveryEligibility"),false',
 ]);
+
+// M117: the same signed real HTTP route also accepts a strictly allowlisted
+// synthetic positive SQL receipt while rejecting unexpected private QC fields.
+// This is transport proof only; real physical inspection remains blocked.
+requireTokens("scripts/verify-production-delivery-eligibility-private-http.cjs",[
+  'await setMode("valid")',"approved.status,200","anonymousPositive.status,401",
+  'await setMode("poisoned")',"poisoned.status,503",
+  "Object.keys(hint).sort()","await setMode(\"absent\")",
+]);
+requireTokens("scripts/ci-verified-stock-fixture.cjs",[
+  'let ciEligibilityMode="absent"',
+  'req.url==="/__fixture/eligibility-mode"',
+  "ciEligibilityMode", "CI_ELIGIBILITY_EXAMPLE",
+]);
 requireTokens(".github/workflows/ci.yml",[
   "node scripts/verify-production-delivery-eligibility-private-http.cjs",
 ]);
