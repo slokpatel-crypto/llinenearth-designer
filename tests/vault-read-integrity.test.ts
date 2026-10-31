@@ -151,13 +151,13 @@ test("measurement claim verifies typed owner read and original profile after lin
   const ownedSelection=claim.indexOf("selectVaultReadRow(ownedRows)",ownedRead);
   const profileValidation=claim.indexOf("validStoredMeasurementProfile(ownedRow?.profile)",ownedSelection);
   const observationsValidation=claim.indexOf("validStoredTailorObservationProfile(ownedRow?.observations)",profileValidation);
-  const profileMatch=claim.indexOf("JSON.stringify(ownedProfile)!==JSON.stringify(profile)",observationsValidation);
-  const observationsMatch=claim.indexOf("JSON.stringify(ownedObservations)!==JSON.stringify(observations)",profileMatch);
-  const success=claim.indexOf("return jsonNoStore({claimed})",observationsMatch);
+  const agreement=claim.indexOf("sameMeasurementVaultPayload(profile,observations,ownedProfile,ownedObservations)",observationsValidation);
+  const success=claim.indexOf("return jsonNoStore({claimed})",agreement);
   assert.ok(ownerMutation>=0&&successfulClaim>ownerMutation&&ownedRead>successfulClaim
     &&ownedSelection>ownedRead&&profileValidation>ownedSelection
-    &&observationsValidation>profileValidation&&profileMatch>observationsValidation
-    &&observationsMatch>profileMatch&&success>observationsMatch);
+    &&observationsValidation>profileValidation&&agreement>observationsValidation
+    &&success>agreement);
+  assert.doesNotMatch(claim,/JSON\.stringify\(owned(?:Profile|Observations)\)/);
   assert.match(claim,/throw new Error\("Owner-scoped measurement recovery could not be confirmed\."\)/);
   for(const invalid of [null,[],[row,row],[{...row,expires_at:"2020-01-01T00:00:00Z"}]]){
     assert.equal(selectVaultReadRow(invalid,now),null);

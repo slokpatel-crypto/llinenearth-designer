@@ -1,3 +1,8 @@
+## 2026-10-31 — J3 measurement recovery must ignore jsonb key order, not evidence
+- [x] Replaced representation-sensitive `JSON.stringify` equality in measurement-vault store/claim owner confirmation with one pure exact-value agreement contract.
+- [x] Reordered but identical shirt/trouser JSON keys pass; changed, missing/added measurements, timestamps or manual observations fail closed. Focused vault tests 22/22 and full Node tests 1,257/1,257 pass locally.
+- [ ] Final child engine, preview, static release, build and exact-head PostgreSQL/full CI/Non-3D remain required. Real authenticated Supabase recovery and physical tailor approval remain BLOCKED/PENDING; no live data, schema, imagery, merge or deploy.
+
 ## 2026-10-31 — J5 launch evidence API must not leak unexpected DB fields
 - [x] Found actual operator launch-readiness GET sent live PostgREST rows directly to browsers; 401, unconfigured and 503 responses omitted the private/no-store headers. It also parsed upstream result bodies without a hard size limit, so SQL additions could expose supplier/customer columns to operator browsers or consume excess memory.
 - [x] New allowlisted `launch-readiness-transport.ts` serializes only the known 14 beta and 6 checklist fields, bounds every string, requires boolean fields to be booleans, rejects oversized / invalid arrays and never silently drops an invalid record into a false successful beta. Upstream `rpc()` now reads at most 1 MiB for 500-row lists and 4 KiB for audit receipts, without echoing PostgREST error body text.
