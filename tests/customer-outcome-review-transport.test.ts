@@ -157,3 +157,30 @@ test("human review cannot claim customer feedback recorded later than the review
       created_at:"2026-10-01T01:00:00Z"}],[policy],
   ),"Older reviews may refer to outcomes outside the bounded latest-1000 page");
 });
+
+
+test("mixed-case PostgreSQL outcome UUIDs cannot hide a rejected human review or same-time conflict",()=>{
+  const approved={...review,review_id:"123e4567-e89b-42d3-a456-426614174019",
+    outcome_id:outcome.outcome_id.toUpperCase(),decision:"approved" as const};
+  const rejected={...review,review_id:"123e4567-e89b-42d3-a456-426614174020",
+    outcome_id:outcome.outcome_id,decision:"rejected" as const};
+  const humanPolicy={...policy,minimum_approved_cases:1};
+  const valid=safeOutcomeReviewEvidence([outcome],[approved],[humanPolicy]);
+  const accepted=summarizeCustomerOutcomeLearning(valid.outcomes,valid.reviews,valid.policies);
+  assert.equal(accepted.approved,1,"Uppercase review UUID must match lowercase outcome UUID");
+  assert.equal(accepted.learningEligible,1);
+  assert.equal(accepted.gateComplete,true);
+  for(const pair of [[approved,rejected],[rejected,approved]]){
+    const evidence=safeOutcomeReviewEvidence([outcome],pair,[humanPolicy]);
+    const result=summarizeCustomerOutcomeLearning(evidence.outcomes,evidence.reviews,evidence.policies);
+    assert.equal(result.reviewConflictCount,1,"Case variants cannot split the same human decision history");
+    assert.equal(result.approved,0);
+    assert.equal(result.learningEligible,0);
+    assert.equal(result.gateComplete,false);
+  }
+  const later={...rejected,review_id:"123e4567-e89b-42d3-a456-426614174021",
+    created_at:"2026-10-31T04:00:01Z"};
+  const resolved=safeOutcomeReviewEvidence([outcome],[approved,later],[humanPolicy]);
+  assert.equal(summarizeCustomerOutcomeLearning(resolved.outcomes,resolved.reviews,resolved.policies).rejected,1);
+  assert.equal(summarizeCustomerOutcomeLearning(resolved.outcomes,resolved.reviews,resolved.policies).gateComplete,false);
+});
