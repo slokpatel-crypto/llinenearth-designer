@@ -39,8 +39,8 @@ test("privileged production route parses both status changes before QC or RPC an
   assert.match(source,/parseOperatorProductionStatus\(body,"order"\)/);
   assert.match(source,/if\(!change\) return respond\(/);
   assert.match(source,/if\(updated!==true\) return respond\(/);
-  assert.match(source,/if\(error instanceof SecureJsonBodyTooLarge\).*status:413/);
-  assert.match(source,/if\(error instanceof SecureJsonBodyInvalid\).*status:400/);
+  assert.match(source,/if\(error instanceof SecureJsonBodyTooLarge\) return respond\(\{error:error\.message\},413\)/);
+  assert.match(source,/if\(error instanceof SecureJsonBodyInvalid\) return respond\(\{error:error\.message\},400\)/);
   assert.doesNotMatch(source,/String\(body\.(?:quoteId|orderId|status|note)/);
   assert.doesNotMatch(source,/String\(body\.note\|\|""\)\.slice/);
   assert.ok(source.indexOf('parseOperatorProductionStatus(body,"order")')<source.indexOf('if(status==="delivered")'));
