@@ -1106,7 +1106,8 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "if(expected&&(!data.configured||!verifiedProductionMutationReadback(",
   "expected.action,expected.body,expected.receipt,data.quotes,data.orders,data.learningContexts",
   "const confirmed=await load({action:body.action,body,receipt:data});",
-  "if(confirmed)setMessage(success);",
+  "if(confirmed){", "if(releaseProductionWriteHold(safeProductionHoldStorage(),holdToken))",
+  "setMessage(success);",
 ]);
 // M102: a lost POST acknowledgement may follow a committed mutation; only
 // definite prewrite input/auth/size/rate denials may use a normal reject message.
@@ -1136,6 +1137,28 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   'disabled={busy||!configured||requiresWriteReview||!canQuote}',
   'disabled={busy||!configured||requiresWriteReview||!loadedRevision',
   'disabled={busy||!configured||requiresWriteReview} defaultValue=""',
+]);
+// M107: an uncertain SQL mutation may commit even if its browser tab crashes.
+// Require a token-only fail-closed local marker BEFORE POST; only a matching
+// confirmed request or definite prewrite reject may release it automatically.
+requireTokens("src/lib/designer/production-write-hold.ts",[
+  "PRODUCTION_WRITE_HOLD_KEY", "productionWriteHoldPending",
+  "beginProductionWriteHold", "releaseProductionWriteHold",
+  "acknowledgeProductionWriteHold",
+  "storage.getItem(PRODUCTION_WRITE_HOLD_KEY)",
+  "storage.setItem(PRODUCTION_WRITE_HOLD_KEY,token)",
+  "storage.removeItem(PRODUCTION_WRITE_HOLD_KEY)",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "function safeProductionHoldStorage():Storage|null",
+  "try{return window.localStorage;}",
+  "productionWriteHoldPending(safeProductionHoldStorage())",
+  'window.addEventListener("storage",onStorage)',
+  "event.key===PRODUCTION_WRITE_HOLD_KEY&&event.newValue!==null",
+  "const holdToken=crypto.randomUUID()",
+  "if(!beginProductionWriteHold(safeProductionHoldStorage(),holdToken))",
+  "if(releaseProductionWriteHold(safeProductionHoldStorage(),holdToken))",
+  "if(!acknowledgeProductionWriteHold(safeProductionHoldStorage()))",
 ]);
 // M104: a post-write review is meaningless if the operator cannot compare
 // the frozen submitted note/prices with real durable quote and order fields.

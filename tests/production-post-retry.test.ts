@@ -33,7 +33,7 @@ test("production POST never displays generic retryable failure after ambiguous n
   assert.match(failure,/Do not retry until the production ledger can be inspected/);
   assert.doesNotMatch(failure,/setMessage\(error instanceof Error\?error.message:"Production operation failed\."\)/,
     "A thrown network error or invalid receipt must not invite blind duplicate retries");
-  assert.ok(post.indexOf("if(confirmed)setMessage(success);")<post.indexOf("}catch(error){"),
+  assert.ok(post.indexOf("setMessage(success);")<post.indexOf("}catch(error){"),
     "Success remains gated on the exact independently verified readback");
   assert.match(post,/finally\{actionInFlight.current=false;setBusy\(false\);\}/);
 });
@@ -52,9 +52,9 @@ test("an uncertain write keeps every production mutation disabled until verified
   const unlock=post.indexOf("finally{actionInFlight.current=false;setBusy(false);}");
   assert.ok(claim>=0&&pause>claim&&snapshot>pause&&hold>snapshot&&refresh>hold&&unlock>refresh,
     "Ambiguous failure must capture the submitted instruction and acquire the hold before refreshing");
-  assert.doesNotMatch(post,/setRequiresWriteReview\(false\)/,
-    "A normal or apparently healthy GET cannot automatically clear the human review hold");
-  assert.match(post,/if\(confirmed\)setMessage\(success\);\s*else\{\s*\/\/[^]*?setRequiresWriteReview\(true\);/,
+  assert.match(post,/if\(confirmed\)\{\s*if\(releaseProductionWriteHold\(safeProductionHoldStorage\(\),holdToken\)\)\{/,
+    "Only an exact durable write receipt may release its matching pre-POST marker");
+  assert.match(post,/if\(confirmed\)\{[^]*?\}else\{\s*\/\/[^]*?setRequiresWriteReview\(true\);/,
     "Even a valid success receipt with unconfirmed fresh history must leave the review hold active");
   assert.match(post,/its exact record could not be confirmed/);
   assert.match(review,/if\(!requiresWriteReview\|\|!configured\|\|busy\|\|actionInFlight.current\)return;/);

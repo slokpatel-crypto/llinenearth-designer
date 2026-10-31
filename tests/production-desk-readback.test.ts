@@ -174,7 +174,8 @@ test("operator production UI requires exact readback before displaying saved mut
   assert.match(load,/if\(expected&&\(!data\.configured/);
   const receipt=post.indexOf("validProductionDeskMutationReceipt(body.action,data)");
   const readback=post.indexOf("const confirmed=await load({action:body.action,body,receipt:data});");
-  const success=post.indexOf("if(confirmed)setMessage(success);");
+  const success=post.indexOf("setMessage(success);");
+  assert.match(post,/if\(confirmed\)\{\s*if\(releaseProductionWriteHold\(safeProductionHoldStorage\(\),holdToken\)\)\{/);
   assert.ok(receipt>=0&&readback>receipt&&success>readback,
     "No saved quote/order/status success may be shown before exact fresh ledger proof");
   assert.match(ui,/The mutation may have been saved, but its exact quote\/order history could not be verified/);
