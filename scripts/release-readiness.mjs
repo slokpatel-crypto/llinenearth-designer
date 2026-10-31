@@ -1091,6 +1091,26 @@ requireTokens("src/app/operator/production/ProductionClient.tsx", [
 ]);
 requireTokens("src/app/api/operator/garment-qc/route.ts", ["finished_garment_qc_record_v2","p_inspection_reference"]);
 requireTokens("src/app/operator/garment-qc/GarmentQcClient.tsx", ["Finished Garment QC","Physical inspection reference","provenanceReady","Legacy inspection · provenance not recorded","Approve for delivery","Record rework","PHYSICAL CHECKS"]);
+requireTokens("src/lib/designer/production-quote-order-transport.ts", [
+  "safeProductionQuoteOrderRows", "validProductionDeskLedgers",
+  "secret", "line_items", "label:line.label", "amount:line.amount",
+]);
+requireTokens("src/app/api/operator/production/route.ts", [
+  "safeProductionQuoteOrderRows(quotes,orders)",
+  "quotes:safeLedger.quotes,orders:safeLedger.orders",
+]);
+requireTokens("scripts/ci-verified-stock-fixture.cjs", [
+  "PRODUCTION_LISTS", "QUOTE_LIST_PATH", "ORDER_LIST_PATH",
+  "DO-NOT-LEAK-CI-LINE-ITEM", "DO-NOT-LEAK-CI-QUOTE",
+]);
+requireTokens("scripts/verify-production-ledger-private-http.cjs", [
+  "signed operator", "assertPrivate(response)",
+  "DO-NOT-LEAK-CI-", "PRODUCTION_LISTS",
+  "private_supplier_rate", "secret_factory_cost", "Unauthorized.",
+]);
+requireTokens(".github/workflows/ci.yml", [
+  "node scripts/verify-production-ledger-private-http.cjs",
+]);
 requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_list","hasVerifiedLatestDeliveryQc(inspections,orderId,500)","hasVerifiedDeliveryQcOrderLineage(inspections,currentOrder)","validProductionQcOrderRows(candidateOrders)","candidateOrders.find(row=>verifiedOperatorProductionCreateId(row.order_id)===orderId)","The latest provenance-backed finished-garment QC approval is required before delivery.","production_customer_outcome_list","customerOutcomes","production_order_learning_context_list","learningContexts","loadVerifiedLockedRevision","A valid locked-design recovery token is required","verified locked design does not match the quote revision/hash","verified locked design does not match the order revision/hash","parseDesignVaultRecoveryToken","verifyLockedDesignRevision","buildProductionLearningContext","production_order_create_with_context","learningContextAttached","lockedRevisionVerified"]);
 requireTokens("supabase/migrations/20261003_production_delivery_evidence.sql", ["production_delivery_evidence_record","production_delivery_evidence_list","delivery evidence can only be recorded for a delivered order","service_role"]);
 requireTokens("src/lib/designer/production-delivery-evidence.ts", ["PRODUCTION_REENTRY_FIELDS","summarizeProductionDeliveryEvidence","gateComplete","reentryIncidentCount"]);
