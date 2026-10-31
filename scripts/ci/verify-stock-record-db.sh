@@ -48,6 +48,7 @@ else
     supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql \
     supabase/migrations/20261031_stock_record_exact_retry.sql \
     supabase/migrations/20261031_stock_reservation_exact_key_evidence.sql \
+    supabase/migrations/20261031_stock_source_audit_rpc.sql \
     supabase/migrations/20261031_stock_reservation_line_dedupe.sql \
     supabase/migrations/20261031_stock_receipt_source_line_dedupe.sql
   do
@@ -56,6 +57,7 @@ else
       # Seed only artificial data in this disposable CI database, prove that
       # aggregates find it and the real migration refuses existing duplicates.
       run_sql_file scripts/ci/stock-reservation-source-audit-fixture.sql
+      run_sql_file scripts/ci/stock-source-audit-rpc-assertions.sql
       audit_before=$(docker exec -i "$container" psql -X -q -A -t -v ON_ERROR_STOP=1 -U postgres -d "$database" < scripts/ci/stock-reservation-source-audit.sql | tr -d '\r\n')
       if [[ "$audit_before" != "5|1|2|1|1|1|1|1|1|1" ]]; then
         echo "Read-only stock audit missed synthetic legacy source anomalies: $audit_before" >&2
@@ -78,6 +80,10 @@ else
       # delete or rewrite actual supplier/operator ledger rows.
       query "delete from private.fabric_stock_ledger where fabric_id='ci-audit-fabric'" >/dev/null
       audit_after=$(docker exec -i "$container" psql -X -q -A -t -v ON_ERROR_STOP=1 -U postgres -d "$database" < scripts/ci/stock-reservation-source-audit.sql | tr -d '\r\n')
+      if [[ $(query "select public.fabric_stock_source_audit_v1()->>'reservationRows'") != "0" ]]; then
+        echo "Aggregate operator source RPC still reports removed CI rows." >&2
+        exit 1
+      fi
       if [[ "$audit_after" != "0|0|0|0|0|0|0|0|0|0" ]]; then
         echo "Source audit did not return to clean after removal of CI-only fixtures: $audit_after" >&2
         exit 1
