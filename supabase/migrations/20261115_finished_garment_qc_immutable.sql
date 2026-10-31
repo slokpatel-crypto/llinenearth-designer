@@ -23,5 +23,12 @@ create trigger finished_garment_qc_append_only
   before update or delete on private.finished_garment_qc_inspections
   for each row execute function private.reject_finished_garment_qc_mutation();
 
+-- TRUNCATE bypasses row-level DELETE triggers; block it explicitly too.
+drop trigger if exists finished_garment_qc_no_truncate
+  on private.finished_garment_qc_inspections;
+create trigger finished_garment_qc_no_truncate
+  before truncate on private.finished_garment_qc_inspections
+  for each statement execute function private.reject_finished_garment_qc_mutation();
+
 -- INSERT remains through the existing locked order + monotonic QC sequence
 -- trigger; legitimate corrections are NEW inspections, never history edits.
