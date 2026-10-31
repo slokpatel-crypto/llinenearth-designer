@@ -1461,7 +1461,7 @@ requireTokens("src/lib/designer/production-desk-ledger.ts",[
 ]);
 requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "selectProductionPacketRecords(",
-  "quotes,orders,loadedRevision.revisionId,loadedRevision.recipeHash",
+  "fresh.quotes as Quote[],fresh.orders as Order[]",
 ]);
 
 
@@ -1485,7 +1485,7 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "if(readVersion!==ledgerReadVersion.current) return false;",
   "ledgerReadVersion.current+=1;",
   "if(!configured||requiresWriteReview) return;",
-  "if(!loadedRevision||!configured||busy||actionInFlight.current) return;",
+  "if(!loadedRevision||!configured||requiresWriteReview||busy||actionInFlight.current) return;",
   "disabled={busy||!configured||requiresWriteReview}",
 ]);
 
