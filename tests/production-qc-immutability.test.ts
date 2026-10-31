@@ -8,6 +8,7 @@ test("M122 physical QC evidence is append-only for all privileged UPDATE/DELETE 
   const sql=read("supabase/migrations/20261115_finished_garment_qc_immutable.sql");
   assert.match(sql,/create or replace function private\.reject_finished_garment_qc_mutation\(\)/);
   assert.match(sql,/before update or delete on private\.finished_garment_qc_inspections/);
+  assert.match(sql,/before truncate on private\.finished_garment_qc_inspections/);
   assert.match(sql,/for each row execute function private\.reject_finished_garment_qc_mutation\(\)/);
   assert.match(sql,/errcode='55000'/);
   assert.match(sql,/set search_path='pg_catalog'/);
@@ -27,6 +28,7 @@ test("M122 disposable SQL tests run after legacy QC mutation probes and before c
   const proof=read("scripts/ci/m122-qc-immutability-assertions.sql");
   assert.match(proof,/QC approval UPDATE incorrectly succeeded/);
   assert.match(proof,/QC approval DELETE incorrectly succeeded/);
+  assert.match(proof,/QC TRUNCATE incorrectly succeeded/);
   assert.match(proof,/QC rework UPDATE incorrectly succeeded/);
   assert.match(proof,/historical approval overrode immutable newer rework/);
   assert.match(proof,/blocked delivery wrote a false event or idempotency receipt/);
