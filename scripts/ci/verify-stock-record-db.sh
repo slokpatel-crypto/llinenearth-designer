@@ -48,7 +48,8 @@ else
     supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql \
     supabase/migrations/20261031_stock_record_exact_retry.sql \
     supabase/migrations/20261031_stock_reservation_exact_key_evidence.sql \
-    supabase/migrations/20261031_stock_reservation_line_dedupe.sql
+    supabase/migrations/20261031_stock_reservation_line_dedupe.sql \
+    supabase/migrations/20261031_stock_receipt_source_line_dedupe.sql
   do
     if [[ "$migration" == "supabase/migrations/20261031_stock_reservation_line_dedupe.sql" ]]; then
       # The old schema MUST be audited BEFORE the new unique index installs.
@@ -82,6 +83,36 @@ else
         exit 1
       fi
       echo "Read-only legacy source audit detected synthetic conflicts; preflight refused them; cleaned disposable fixtures only."
+    elif [[ "$migration" == "supabase/migrations/20261031_stock_receipt_source_line_dedupe.sql" ]]; then
+      # Audit existing receipts before any draft source-line index. The only
+      # intentionally dirty rows are synthetic and live in this CI database.
+      run_sql_file scripts/ci/stock-receipt-source-audit-fixture.sql
+      receipt_audit=$(docker exec -i "$container" psql -X -q -A -t -v ON_ERROR_STOP=1 -U postgres -d "$database" < scripts/ci/stock-receipt-source-audit.sql | tr -d '\r\n')
+      if [[ "$receipt_audit" != "4|1|2|1|1|1|1|1" ]]; then
+        echo "Read-only physical receipt audit missed synthetic anomalies: $receipt_audit" >&2
+        exit 1
+      fi
+      if docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" < "$migration" > "$tmpdir/receipt-preflight.out" 2>&1; then
+        echo "Receipt migration incorrectly installed over duplicate physical sources." >&2
+        exit 1
+      fi
+      if ! grep -q 'existing duplicate physical receipt source lines require owner reconciliation' "$tmpdir/receipt-preflight.out"; then
+        echo "Receipt migration did not fail with its owner-reconciliation veto." >&2
+        cat "$tmpdir/receipt-preflight.out" >&2
+        exit 1
+      fi
+      if [[ $(query "select to_regclass('private.fabric_stock_receipt_source_line_uidx') is null") != "t" ]]; then
+        echo "Rejected receipt migration partially installed the unique index." >&2
+        exit 1
+      fi
+      # Synthetic rows are removed ONLY from disposable CI PostgreSQL.
+      query "delete from private.fabric_stock_ledger where fabric_id='ci-receipt-audit-fabric'" >/dev/null
+      receipt_after=$(docker exec -i "$container" psql -X -q -A -t -v ON_ERROR_STOP=1 -U postgres -d "$database" < scripts/ci/stock-receipt-source-audit.sql | tr -d '\r\n')
+      if [[ "$receipt_after" != "0|0|0|0|0|0|0|0" ]]; then
+        echo "Receipt audit not clean after disposable fixture removal: $receipt_after" >&2
+        exit 1
+      fi
+      echo "Receipt source audit and duplicate-migration refusal passed in disposable PostgreSQL."
     fi
     run_sql_file "$migration"
   done
@@ -92,6 +123,7 @@ if [[ "$mode" == "historical" ]]; then
   run_sql_file scripts/ci/stock-record-historical-assertions.sql
   run_sql_file scripts/ci/stock-reservation-exact-key-assertions.sql
   run_sql_file scripts/ci/stock-reservation-line-dedupe-assertions.sql
+  run_sql_file scripts/ci/stock-receipt-source-line-assertions.sql
 fi
 
 # Two separate Postgres sessions attempt exactly the same physical receipt.
@@ -198,6 +230,33 @@ if [[ "$mode" == "historical" ]]; then
   fi
   if [[ $(query "select count(*) from private.fabric_stock_ledger where event_type='reserve' and fabric_id='fabric-line-race' and revision_id='locked-line-race-20261031'") != "1" ]]; then
     echo "Concurrent different-key calls double-reserved one source line." >&2
+    exit 1
+  fi
+fi
+if [[ "$mode" == "historical" ]]; then
+  # Distinct browser/device request keys cannot both count one supplier
+  # receipt line as physical stock. Exactly one transaction must commit.
+  receipt_a="select public.fabric_stock_record_v3('fabric-receipt-race','receipt',2.000,'','Checker One','ROLL-RECEIPT-RACE-LINE-1','receipt-race-key-a-0001');"
+  receipt_b="select public.fabric_stock_record_v3('fabric-receipt-race','receipt',2.000,'','Checker Two',' roll-receipt-race-line-1 ','receipt-race-key-b-0001');"
+  docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" -Atc "$receipt_a" > "$tmpdir/receipt1.out" 2> "$tmpdir/receipt1.err" &
+  pid1=$!
+  docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" -Atc "$receipt_b" > "$tmpdir/receipt2.out" 2> "$tmpdir/receipt2.err" &
+  pid2=$!
+  set +e
+  wait "$pid1"; status1=$?
+  wait "$pid2"; status2=$?
+  set -e
+  if ! { [[ $status1 -eq 0 && $status2 -ne 0 ]] || [[ $status1 -ne 0 && $status2 -eq 0 ]]; }; then
+    echo "Concurrent different-key same-line receipts must have one winner." >&2
+    cat "$tmpdir/receipt1.err" "$tmpdir/receipt2.err" >&2
+    exit 1
+  fi
+  if ! grep -q "physical receipt source line already recorded for fabric" "$tmpdir/receipt1.err" "$tmpdir/receipt2.err"; then
+    echo "Losing duplicate receipt did not fail its source-line veto." >&2
+    exit 1
+  fi
+  if [[ $(query "select count(*) from private.fabric_stock_ledger where fabric_id='fabric-receipt-race' and event_type='receipt'") != "1" ]]; then
+    echo "Concurrent requests counted one physical receipt twice." >&2
     exit 1
   fi
 fi
