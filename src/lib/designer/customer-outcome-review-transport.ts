@@ -68,7 +68,7 @@ export function safeOutcomeReviewEvidence(
       throw new Error("Invalid outcome review status.");
     return {
       review_id:str(r.review_id,80),outcome_id:str(r.outcome_id,80),
-      decision:r.decision,reviewer:str(r.reviewer,120),
+      decision:r.decision as CustomerOutcomeReviewRow["decision"],reviewer:str(r.reviewer,120),
       note:str(r.note,1200),created_at:date(r.created_at),
     };
   });
