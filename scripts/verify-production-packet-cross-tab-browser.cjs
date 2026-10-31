@@ -176,6 +176,9 @@ async function runViewport(browser,width){
     assert.equal(await second.evaluate(key=>localStorage.getItem(key),holdKey),token2,
       "An acknowledgement from stale history must not erase another tab's new hold");
     await second.evaluate(key=>localStorage.removeItem(key),holdKey);
+    // Let the cross-tab storage event invalidate the old generation before
+    // starting the new authenticated read, avoiding timing-dependent retries.
+    await page.waitForTimeout(100);
     await refresh.click();
     await page.waitForFunction(()=>{
       const b=[...document.querySelectorAll("button")]
