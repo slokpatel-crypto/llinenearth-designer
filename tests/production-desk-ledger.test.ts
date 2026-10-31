@@ -305,7 +305,17 @@ test("J5 operator ledger refresh discards stale GETs and disables mutations unti
     "both stale successful and stale failed GETs must be discarded");
   assert.match(client,/ledgerReadVersion\.current\+=1;\s*setConfigured\(false\)/);
   assert.match(client,/if\(!configured\) return;\s*actionInFlight\.current=true/);
-  assert.match(client,/await load\(\);\s*}\s*finally\{actionInFlight\.current=false;setBusy\(false\);}/);
+  // A post-commit fetch failure must reload, then preserve an explicit
+  // uncertain-write warning; the previous regex assumed catch did nothing
+  // after await load(), and would reject this stronger safety handling.
+  const post=client.split("async function post(")[1]?.split("async function loadLockedDesign(")[0]||"";
+  const reload=post.indexOf("const refreshed=await load();");
+  const warn=post.indexOf("The production mutation may already have been saved",reload);
+  const release=post.indexOf("finally{actionInFlight.current=false;setBusy(false);}",reload);
+  assert.ok(reload>=0&&warn>reload&&release>warn,
+    "An ambiguous write must refresh before warning and release the single-flight lock in finally");
+  assert.match(post,/if\(certainPrewriteRejection\)\{/);
+  assert.match(post,/Do not retry until the production ledger can be inspected/);
   assert.match(client,/async function exportProductionPacket\(\)\{\s*if\(!loadedRevision\|\|!configured\|\|busy\|\|actionInFlight\.current\) return;/);
   assert.match(client,/disabled=\{!configured\|\|busy\} onClick=\{\(\)=>void exportProductionPacket\(\)\}/);
   assert.match(client,/\{nextStatuses\.length>0&&<select disabled=\{busy\|\|!configured\}/);
