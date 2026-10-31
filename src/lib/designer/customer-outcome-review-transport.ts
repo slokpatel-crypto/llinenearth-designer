@@ -53,7 +53,7 @@ export function safeOutcomeReviewEvidence(
       learning_context:exactContext(o.learning_context),
     };
   });
-  const reviews=rows(rawReviews,5000).map(r=>{
+  const reviews=rows(rawReviews,5000).map((r):CustomerOutcomeReviewRow=>{
     if(r.decision!=="approved"&&r.decision!=="rejected")
       throw new Error("Invalid outcome review status.");
     return {
