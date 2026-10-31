@@ -20,6 +20,16 @@ function rows(x:unknown,max:number):Record<string,unknown>[]{
     throw new Error("Invalid or oversized customer learning evidence.");
   return x.map(obj);
 }
+/** Every recorded outcome, review and policy is one durable human evidence row.
+ * Duplicate IDs would double-count an approval or make a rejected review ambiguous. */
+function requireDistinctIds(ids:string[],kind:string):void{
+  const seen=new Set<string>();
+  for(const value of ids){
+    const key=value.trim().toLowerCase();
+    if(!key||seen.has(key))throw new Error("Duplicate or missing customer "+kind+" evidence ID.");
+    seen.add(key);
+  }
+}
 function date(x:unknown):string{
   const s=str(x,64);
   if(!Number.isFinite(Date.parse(s)))throw new Error("Invalid customer learning timestamp.");
@@ -74,5 +84,8 @@ export function safeOutcomeReviewEvidence(
       note:str(p.note,1200),created_at:date(p.created_at),
     };
   });
+  requireDistinctIds(outcomes.map(row=>row.outcome_id),"outcome");
+  requireDistinctIds(reviews.map(row=>row.review_id),"review");
+  requireDistinctIds(policies.map(row=>row.policy_id),"policy");
   return {outcomes,reviews,policies};
 }
