@@ -1991,19 +1991,58 @@ requireTokens("tests/titan-replay-event-fault-injection.test.ts",[
   "M129 never calls a real Supabase database",
 ]);
 
+// M130: an operator-created locked design and quoted prices must never be
+// silently rewritten via privileged SQL, including after an audit receipt.
+requireTokens("supabase/migrations/20261119_locked_production_identity_immutable.sql",[
+ "private.reject_locked_production_identity_mutation()",
+ "new.recipe_hash is distinct from old.recipe_hash",
+ "new.line_items is distinct from old.line_items",
+ "new.total is distinct from old.total",
+ "new.quote_id is distinct from old.quote_id",
+ "before update on private.production_quotes",
+ "before update on private.production_orders",
+ "errcode='55000'",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+ "run_file supabase/migrations/20261119_locked_production_identity_immutable.sql",
+ "run_file scripts/ci/m130-locked-production-identity-assertions.sql",
+]);
+requireTokens("scripts/ci/m130-locked-production-identity-assertions.sql",[
+ "M130 quote recipe hash rewrite succeeded",
+ "M130 quote financial total rewrite succeeded",
+ "M130 order quote relinking succeeded",
+ "M130 valid production transitions were blocked",
+ "M130 canonical order identity or normal QC sequencing incorrect",
+]);
+requireTokens("scripts/ci/m122-qc-schema-readonly-preflight.sql",[
+ "v_locked_identity", "production_quote_locked_identity",
+ "production_order_locked_identity",
+ "M130 locked production quote/order identity trigger missing or disabled",
+]);
+requireTokens("tests/production-locked-identity-immutability.test.ts",[
+ "M130 only immutable locked quote financial/design",
+ "M130 disposable SQL rejects original quote/order rewrites",
+ "M130 installed-schema audit checks both enabled lock triggers",
+]);
+requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
+ "20261119_locked_production_identity_immutable.sql",
+ "Apply the ten migrations",
+]);
+
+
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
   "20261118_production_request_receipts_immutable.sql",
-  "Apply the nine migrations",
+  "Apply the ten migrations",
 ]);
 
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
   "20261117_production_event_immutable.sql",
-  "Apply the nine migrations", "Production quote and order state event journals",
+  "Apply the ten migrations", "Production quote and order state event journals",
 ]);
 
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
   "20261116_delivery_receipts_immutable.sql",
-  "Apply the nine migrations", "Already-issued delivery request keys",
+  "Apply the ten migrations", "Already-issued delivery request keys",
 ]);
 
 
