@@ -306,7 +306,7 @@ test("J5 operator ledger refresh discards stale GETs and disables mutations unti
   assert.match(client,/ledgerReadVersion\.current\+=1;\s*setConfigured\(false\)/);
   const postGuard=client.split("async function post(")[1]?.split("function confirmReviewedProductionHistory(")[0]||"";
   const enabled=postGuard.indexOf("if(!configured||requiresWriteReview) return;");
-  const persistent=postGuard.indexOf("beginProductionWriteHold(window.localStorage,holdToken)",enabled);
+  const persistent=postGuard.indexOf("beginProductionWriteHold(safeProductionHoldStorage(),holdToken)",enabled);
   const claim=postGuard.indexOf("actionInFlight.current=true;",persistent);
   const postNetwork=postGuard.indexOf('await fetch("/api/operator/production",{method:"POST"',claim);
   assert.ok(enabled>=0&&persistent>enabled&&claim>persistent&&postNetwork>claim,
