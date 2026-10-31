@@ -12,6 +12,7 @@ const BETA_LIST_PATH="/rest/v1/rpc/launch_beta_attempt_list";
 const CHECKLIST_LIST_PATH="/rest/v1/rpc/launch_checklist_event_list";
 const QUOTE_LIST_PATH="/rest/v1/rpc/production_quote_list";
 const ORDER_LIST_PATH="/rest/v1/rpc/production_order_list";
+const QC_LIST_PATH="/rest/v1/rpc/finished_garment_qc_list";
 const PRODUCTION_LISTS=Object.freeze({
   [QUOTE_LIST_PATH]:[{
     quote_id:"123e4567-e89b-42d3-a456-426614174010",
@@ -32,6 +33,20 @@ const PRODUCTION_LISTS=Object.freeze({
     status:"created",note:"CI-only production order",
     created_at:"2026-10-31T01:00:00Z",updated_at:"2026-10-31T01:00:00Z",
     private_supplier_rate:"DO-NOT-LEAK-CI-ORDER",
+  }],
+});
+const QC_LISTS=Object.freeze({
+  [QC_LIST_PATH]:[{
+    inspection_id:"123e4567-e89b-42d3-a456-426614174012",
+    order_id:"123e4567-e89b-42d3-a456-426614174011",
+    revision_id:"LE-LOCK-CI-QUOTE-20261031",
+    recipe_hash:"a".repeat(64),decision:"rework",
+    checks:{recipe_match:false,fabric_match:false,measurement_check:false,
+      pattern_alignment:false,stitching_finish:false,clean_damage_free:false},
+    defects:["stitching"],note:"Synthetic rework; never physical approval",
+    inspector:"CI-only checker",inspection_reference:"CI-UNVERIFIED-001",
+    created_at:"2026-10-31T02:00:00Z",
+    private_customer_phone:"DO-NOT-LEAK-CI-QC",
   }],
 });
 const LAUNCH_LISTS=Object.freeze({
@@ -93,7 +108,7 @@ async function handle(req,res){
     res.writeHead(200,{"content-type":"application/json","cache-control":"private, no-store","content-range":"*/0"});
     return res.end(JSON.stringify(rows));
   }
-  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
+  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LIST_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
   if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
   let raw="";
   try{
@@ -107,6 +122,12 @@ async function handle(req,res){
          payload.p_limit!==100||Object.keys(payload).length!==1)
         return send(res,400,{error:"Invalid CI production page request"});
       return send(res,200,PRODUCTION_LISTS[req.url]);
+    }
+    if(req.url===QC_LIST_PATH){
+      if(!payload||typeof payload!=="object"||Array.isArray(payload)||
+         payload.p_limit!==250||Object.keys(payload).length!==1)
+        return send(res,400,{error:"Invalid CI QC evidence page request"});
+      return send(res,200,QC_LISTS[req.url]);
     }
     if(req.url===BETA_LIST_PATH||req.url===CHECKLIST_LIST_PATH){
       if(!payload||typeof payload!=="object"||Array.isArray(payload)||
@@ -135,4 +156,4 @@ if(require.main===module){
     console.log("Synthetic CI-only stock fixture listening on loopback; NOT physical evidence");
   });
 }
-module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,METADATA_PATH};
+module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,QC_LIST_PATH,QC_LISTS,METADATA_PATH};
