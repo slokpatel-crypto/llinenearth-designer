@@ -205,3 +205,24 @@ test("operator stock privacy and generic backend errors cover every response",()
   assert.ok(smoke.includes('"/api/operator/stock"'));
   assert.ok(smoke.includes('for(const method of ["GET","POST"])'));
 });
+
+test("operator stock UI serializes writes and reconciles ambiguous receipts before re-enabling actions",()=>{
+  const source=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
+  const sql=readFileSync("supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql","utf8");
+  assert.ok(source.includes("const writeInFlight=useRef(false)"));
+  assert.ok(source.includes("if(writeInFlight.current||snapshotState!==\"ready\""));
+  assert.ok(source.includes("writeInFlight.current=true"));
+  assert.ok(source.includes("readGeneration.current++"));
+  assert.ok(source.includes("const generation=++readGeneration.current"));
+  assert.ok(source.includes("if(generation!==readGeneration.current) return false"));
+  assert.ok(source.includes("await load();"));
+  assert.ok(source.includes("writeInFlight.current=false"));
+  assert.ok(source.includes("stockReservationAttempt(reservationKeys.current,reservationIntent"));
+  assert.ok(source.includes("reservationKeys.current.set(attempt.signature,attempt.requestKey)"));
+  assert.ok(source.includes("confirmedReservations.has(reservationSignature)"));
+  assert.ok(!source.includes("requestKey:crypto.randomUUID()"));
+  assert.ok(source.includes("Outcome may be uncertain."));
+  assert.ok(sql.includes("pg_advisory_xact_lock(hashtext('stock-request:'||v_key))"));
+  assert.ok(sql.includes("where request_key=v_key limit 1"));
+  // Client retries alone do not prove the SQL migration is installed or live.
+});
