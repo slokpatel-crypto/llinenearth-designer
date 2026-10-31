@@ -15,6 +15,7 @@ import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "
 import { verifiedOptionalProductionRows } from "@/lib/designer/optional-production-ledger";
 import { validProductionDeskLedgers, validProductionDeskResponse, validProductionQcOrderRows } from "@/lib/designer/production-desk-ledger";
 import {safeProductionQuoteOrderRows} from "@/lib/designer/production-quote-order-transport";
+import {safeProductionQcRows} from "@/lib/designer/production-qc-transport";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
@@ -101,7 +102,7 @@ export async function GET(){
       readOptionalProductionLedger("production_customer_outcome_list",250),
       readOptionalProductionLedger("production_order_learning_context_list",500),
     ]);
-    const receipt={
+    const originalReceipt={
       configured:true,quotes:safeLedger.quotes,orders:safeLedger.orders,
       qcInspections:qc.rows,customerOutcomes:outcomes.rows,learningContexts:contexts.rows,
       optionalEvidenceSources:{
@@ -110,9 +111,11 @@ export async function GET(){
         learningContextInstalled:contexts.installed,
       },
     };
-    // Even a 200 array from an installed optional RPC can contain malformed
-    // rows. Never hand those rows to the operator as credible production proof.
-    if(!validProductionDeskResponse(receipt)) throw new Error("Malformed optional production evidence receipts.");
+    // Validate ALL original evidence before copying: never erase a conflicting
+    // source field to make a malformed physical receipt appear trustworthy.
+    if(!validProductionDeskResponse(originalReceipt)) throw new Error("Malformed optional production evidence receipts.");
+    const receipt={...originalReceipt,qcInspections:safeProductionQcRows(qc.rows)};
+    if(!validProductionDeskResponse(receipt)) throw new Error("QC evidence changed during safe serialization.");
     return respond(receipt);
   }catch(error){
     if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
