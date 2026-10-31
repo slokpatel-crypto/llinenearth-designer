@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {FABRIC_STOCK} from "../src/lib/fabric-stock.ts";
-import {assertCurrentFabricId,readBoundedStockMutationJson,StockMutationPayloadTooLarge,stockMutationRequestError,validateOperatorStockSnapshot,verifiedOperatorStockReceiptId,verifiedOperatorStockMutationReceipt}
+import {assertCurrentFabricId,readBoundedStockMutationJson,StockMutationPayloadTooLarge,stockMutationRequestError,validateOperatorStockSnapshot,verifiedOperatorStockReceiptId,verifiedOperatorStockMutationReceipt,verifyOperatorStockSourceAudit}
   from "../src/lib/designer/operator-stock-safety.ts";
 import {readFileSync} from "node:fs";
 
@@ -451,4 +451,62 @@ test("read-only operator meterage source audit identifies legacy anomalies befor
   const auditHook=runner.indexOf("stock-reservation-source-audit-fixture.sql");
   const migration=runner.indexOf('run_sql_file "$migration"',auditHook);
   assert.ok(auditHook>=0&&migration>auditHook,"Audit must precede actual migration installation");
+});
+
+test("operator-only legacy audit validates bounded aggregate-only counters",()=>{
+  const audit={
+    reservationRows:5,duplicateLineGroups:1,duplicateLineRows:2,
+    missingLockedRevision:1,missingSource:1,missingChecker:1,
+    missingRequestKey:1,missingReservationUuid:1,paddedSource:1,
+    placeholderSource:1,
+  };
+  assert.deepEqual(verifyOperatorStockSourceAudit(audit),audit);
+  assert.deepEqual(verifyOperatorStockSourceAudit(Object.fromEntries(
+    Object.keys(audit).map(key=>[key,0])
+  )),Object.fromEntries(Object.keys(audit).map(key=>[key,0])));
+  for(const bad of [
+    {...audit,requestKey:"private-source-id"},
+    {...audit,missingSource:-1},
+    {...audit,missingChecker:1.5},
+    {...audit,paddedSource:Infinity},
+    {...audit,duplicateLineRows:1},
+    {...audit,duplicateLineGroups:2},
+    {...audit,duplicateLineRows:6},
+    {...audit,missingSource:6},
+    {...audit,reservationRows:Number.MAX_SAFE_INTEGER+1},
+    {...audit,placeholderSource:"1"},
+    null,[],{reservationRows:5},
+  ])assert.equal(verifyOperatorStockSourceAudit(bad),null);
+});
+
+test("operator source audit route is private and cannot reveal live physical source IDs",()=>{
+  const route=readFileSync("src/app/api/operator/stock/audit/route.ts","utf8");
+  const client=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
+  const rpc=readFileSync("supabase/migrations/20261031_stock_source_audit_rpc.sql","utf8");
+  const runner=readFileSync("scripts/ci/verify-stock-record-db.sh","utf8");
+  const checks=readFileSync("scripts/ci/stock-source-audit-rpc-assertions.sql","utf8");
+  assert.ok(route.includes("verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value)"));
+  assert.ok(route.includes('return privateResponse({error:"Unauthorized."},401)'));
+  assert.ok(route.includes('"cache-control":"private, no-store"'));
+  assert.ok(route.includes('rpc/fabric_stock_source_audit_v1'));
+  assert.ok(route.includes("readBoundedJsonResponse(response,8_192)"));
+  assert.ok(route.includes("verifyOperatorStockSourceAudit"));
+  assert.ok(!route.includes("private.fabric_stock_ledger"));
+  assert.ok(!route.includes("source_reference"));
+  assert.ok(client.includes("Run aggregate audit"));
+  assert.ok(client.includes("verifyOperatorStockSourceAudit(payload.audit)"));
+  assert.ok(client.includes("auditGeneration.current++"));
+  assert.ok(client.includes("setSourceAudit(null)"));
+  assert.ok(client.includes("Do not install a migration solely because these counts are zero."));
+  assert.ok(rpc.includes("returns jsonb"));
+  assert.ok(rpc.includes("security definer"));
+  assert.ok(rpc.includes("from private.fabric_stock_ledger"));
+  assert.ok(rpc.includes("jsonb_build_object("));
+  assert.ok(rpc.includes("revoke all on function public.fabric_stock_source_audit_v1()"));
+  assert.ok(rpc.includes("to service_role;"));
+  assert.ok(runner.includes("20261031_stock_source_audit_rpc.sql"));
+  assert.ok(runner.includes("stock-source-audit-rpc-assertions.sql"));
+  assert.ok(checks.includes("privacy-safe operator source RPC mismatches historical aggregate audit"));
+  assert.ok(checks.includes("source audit RPC grants permit non-service-role access"));
+  assert.ok(checks.includes("source audit RPC leaked unapproved stock fields"));
 });

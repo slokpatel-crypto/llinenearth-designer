@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { normalizeManualStockEvent, stockManualRecordAttempt, stockManualRecordSignature, stockReservationAttempt, stockReservationSignature } from "@/lib/designer/stock-ledger";
-import { validateOperatorStockSnapshot, verifiedOperatorStockMutationReceipt } from "@/lib/designer/operator-stock-safety";
+import { validateOperatorStockSnapshot, verifiedOperatorStockMutationReceipt, verifyOperatorStockSourceAudit, type OperatorStockSourceAudit } from "@/lib/designer/operator-stock-safety";
 
 type StockRow={fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;provenance_ready:boolean;last_event_at:string|null};
 
@@ -18,6 +18,9 @@ export default function StockClient(){
   // operator edits and later returns to it after an ambiguous network result.
   const writeInFlight=useRef(false);
   const readGeneration=useRef(0);
+  const auditGeneration=useRef(0);
+  const [sourceAudit,setSourceAudit]=useState<OperatorStockSourceAudit|null>(null);
+  const [auditStatus,setAuditStatus]=useState<"idle"|"loading"|"ready"|"error">("idle");
   const reservationKeys=useRef(new Map<string,string>());
   const manualRecordKeys=useRef(new Map<string,string>());
   const [confirmedReservations,setConfirmedReservations]=useState<ReadonlySet<string>>(()=>new Set());
@@ -75,6 +78,35 @@ export default function StockClient(){
     }
   },[]);
 
+  async function loadSourceAudit(){
+    if(writeInFlight.current||auditStatus==="loading")return;
+    const generation=++auditGeneration.current;
+    setSourceAudit(null);
+    setAuditStatus("loading");
+    try{
+      const response=await fetch("/api/operator/stock/audit",{cache:"no-store"});
+      if(generation!==auditGeneration.current)return;
+      if(response.status===401){
+        window.location.href="/operator/login?next=/operator/stock";
+        return;
+      }
+      if(!response.ok)throw new Error("Audit is unavailable.");
+      const payload:unknown=await response.json();
+      if(generation!==auditGeneration.current)return;
+      if(!payload||typeof payload!=="object"||!("audit" in payload))
+        throw new Error("Missing audit counters.");
+      const safe=verifyOperatorStockSourceAudit(payload.audit);
+      if(!safe)throw new Error("Invalid audit counters.");
+      setSourceAudit(safe);
+      setAuditStatus("ready");
+    }catch{
+      if(generation===auditGeneration.current){
+        setSourceAudit(null);
+        setAuditStatus("error");
+      }
+    }
+  }
+
   async function post(body:Record<string,unknown>,success:string,reservationSignature?:string,manualSignature?:string){
     if(writeInFlight.current||snapshotState!=="ready"||!configured||
        (reservationSignature&&confirmedReservations.has(reservationSignature))||
@@ -83,6 +115,9 @@ export default function StockClient(){
     // Invalidate outstanding stock reads BEFORE sending a mutation. A GET
     // started earlier cannot restore pre-write availability after the POST.
     readGeneration.current++;
+    auditGeneration.current++; // Late audit responses cannot restore pre-mutation counts.
+    setSourceAudit(null);
+    setAuditStatus("idle");
     setStock([]);setConfigured(false);setSnapshotState("loading");
     setBusy(true);setMessage("");
     try{
@@ -218,6 +253,30 @@ export default function StockClient(){
     </section>
 
     {message&&<p className="stockMessage">{message}</p>}
+
+    <section className="stockTable">
+      <div>
+        <span>READ-ONLY SOURCE AUDIT</span><h2>Review legacy meterage evidence.</h2>
+        <p>This summary contains counts only; no supplier sheet, customer or checker identities. It cannot certify real paper documents or measured cloth. Do not install a migration solely because these counts are zero.</p>
+        <button disabled={busy||writeInFlight.current||auditStatus==="loading"} onClick={()=>void loadSourceAudit()}>
+          {auditStatus==="loading"?"Checking historical ledger…":"Run aggregate audit"}
+        </button>
+        {auditStatus==="error"&&<p className="stockMessage">Read-only audit unavailable or invalid. No production readiness is inferred; ask the owner to review the database function installation.</p>}
+        {sourceAudit&&auditStatus==="ready"&&<article>
+          <span>Reservation rows <strong>{sourceAudit.reservationRows}</strong></span>
+          <span>Duplicate source-line groups <strong>{sourceAudit.duplicateLineGroups}</strong></span>
+          <span>Rows in duplicate groups <strong>{sourceAudit.duplicateLineRows}</strong></span>
+          <span>Missing locked revision <strong>{sourceAudit.missingLockedRevision}</strong></span>
+          <span>Missing source reference <strong>{sourceAudit.missingSource}</strong></span>
+          <span>Missing named checker <strong>{sourceAudit.missingChecker}</strong></span>
+          <span>Missing request key <strong>{sourceAudit.missingRequestKey}</strong></span>
+          <span>Missing reservation UUID <strong>{sourceAudit.missingReservationUuid}</strong></span>
+          <span>Padded source reference <strong>{sourceAudit.paddedSource}</strong></span>
+          <span>Placeholder source reference <strong>{sourceAudit.placeholderSource}</strong></span>
+          <small>Aggregate legacy evidence only. Real paper line uniqueness, authenticated owner reconciliation and migration approval remain separate requirements.</small>
+        </article>}
+      </div>
+    </section>
 
     <section className="stockTable">
       <div><span>LIVE SNAPSHOT</span><h2>Available metres by fabric.</h2><p>Named ledger references alone do not certify physical roll counts or independently verify supplier measurements.</p></div>
