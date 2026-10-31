@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation, stockSnapshot, stockReservationAttempt, stockReservationSignature } from "../src/lib/designer/stock-ledger.ts";
+import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation, stockSnapshot, stockReservationAttempt, stockReservationSignature, stockManualRecordAttempt, stockManualRecordSignature, normalizeStockMutationRequestKey } from "../src/lib/designer/stock-ledger.ts";
 
 test("reservation reduces available stock without changing physical stock",()=>{
   assert.deepEqual(stockSnapshot([
@@ -316,4 +316,48 @@ test("unchanged reservation retries reuse one key after timeouts, edits and rest
   // a retry of the original attempt, not permission to hold twice the cloth.
   assert.deepEqual(stockReservationAttempt(keys,intent,newKey),first);
   assert.equal(generated,6);
+});
+
+test("manual stock retry key is stable for a measured event, including edit then return",()=>{
+  const keys=new Map<string,string>();
+  let count=0;
+  const create=()=>`manual-physical-${++count}-20261031`;
+  const base=normalizeManualStockEvent({
+    fabricId:"shirt-1",eventType:"receipt",quantityMetres:3.125,
+    recordedBy:" Named Checker ",sourceReference:" Roll sheet R-001 ",note:" Normal count ",
+  });
+  const first=stockManualRecordAttempt(keys,base,create);
+  keys.set(first.signature,first.requestKey);
+  assert.equal(first.signature,stockManualRecordSignature(base));
+  assert.deepEqual(stockManualRecordAttempt(keys,{...base},create),first);
+  assert.deepEqual(stockManualRecordAttempt(keys,normalizeManualStockEvent({
+    fabricId:"shirt-1",eventType:"receipt",quantityMetres:3.125,
+    recordedBy:"Named Checker",sourceReference:"Roll sheet R-001",note:"Normal count",
+  }),create),first);
+  assert.equal(count,1);
+  for(const altered of [
+    {...base,fabricId:"shirt-2"},
+    {...base,eventType:"adjustment_in" as const},
+    {...base,quantityMetres:3.126},
+    {...base,recordedBy:"Another Checker"},
+    {...base,sourceReference:"Roll sheet R-002"},
+    {...base,note:"Physical recount"},
+  ]){
+    const next=stockManualRecordAttempt(keys,altered,create);
+    assert.notEqual(next.signature,first.signature);
+    assert.notEqual(next.requestKey,first.requestKey);
+    keys.set(next.signature,next.requestKey);
+    assert.deepEqual(stockManualRecordAttempt(keys,altered,create),next);
+  }
+  assert.deepEqual(stockManualRecordAttempt(keys,base,create),first);
+  assert.equal(count,7);
+});
+
+test("stock manual event request keys must be literal and bounded, not coerced or trimmed",()=>{
+  assert.equal(normalizeStockMutationRequestKey("stock-request-key-20261031"),"stock-request-key-20261031");
+  for(const invalid of [
+    null,true,[],{},13,"short", " ".repeat(15),
+    " stock-request-key-20261031","stock-request-key-20261031 ",
+    "a".repeat(181),
+  ])assert.throws(()=>normalizeStockMutationRequestKey(invalid),/Stock record request key/);
 });

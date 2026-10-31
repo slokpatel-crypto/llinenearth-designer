@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { stockReservationAttempt, stockReservationSignature } from "@/lib/designer/stock-ledger";
+import { normalizeManualStockEvent, stockManualRecordAttempt, stockManualRecordSignature, stockReservationAttempt, stockReservationSignature } from "@/lib/designer/stock-ledger";
 import { validateOperatorStockSnapshot, verifiedOperatorStockMutationReceipt } from "@/lib/designer/operator-stock-safety";
 
 type StockRow={fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;provenance_ready:boolean;last_event_at:string|null};
@@ -19,7 +19,9 @@ export default function StockClient(){
   const writeInFlight=useRef(false);
   const readGeneration=useRef(0);
   const reservationKeys=useRef(new Map<string,string>());
+  const manualRecordKeys=useRef(new Map<string,string>());
   const [confirmedReservations,setConfirmedReservations]=useState<ReadonlySet<string>>(()=>new Set());
+  const [confirmedManualRecords,setConfirmedManualRecords]=useState<ReadonlySet<string>>(()=>new Set());
   const [form,setForm]=useState({fabricId:"",eventType:"receipt",quantityMetres:"",recordedBy:"",sourceReference:"",note:""});
   const [reservation,setReservation]=useState({fabricId:"",revisionId:"",quantityMetres:"",requestedBy:"",sourceReference:""});
   const [close,setClose]=useState({reservationId:"",actualMetres:"",checkedBy:"",sourceReference:"",note:""});
@@ -73,9 +75,10 @@ export default function StockClient(){
     }
   },[]);
 
-  async function post(body:Record<string,unknown>,success:string,reservationSignature?:string){
+  async function post(body:Record<string,unknown>,success:string,reservationSignature?:string,manualSignature?:string){
     if(writeInFlight.current||snapshotState!=="ready"||!configured||
-       (reservationSignature&&confirmedReservations.has(reservationSignature))) return;
+       (reservationSignature&&confirmedReservations.has(reservationSignature))||
+       (manualSignature&&confirmedManualRecords.has(manualSignature))) return;
     writeInFlight.current=true;
     // Invalidate outstanding stock reads BEFORE sending a mutation. A GET
     // started earlier cannot restore pre-write availability after the POST.
@@ -98,10 +101,12 @@ export default function StockClient(){
         throw new Error("Stock operation receipt could not be verified.");
       if(reservationSignature)
         setConfirmedReservations(previous=>new Set([...previous,reservationSignature]));
+      if(manualSignature)
+        setConfirmedManualRecords(previous=>new Set([...previous,manualSignature]));
       setMessage(success);
     }catch(error){
       const detail=error instanceof Error?error.message:"Stock operation failed.";
-      const warning=reservationSignature
+      const warning=reservationSignature||manualSignature
         ?"Outcome may be uncertain. Check the live ledger; retrying identical details reuses the same request key."
         :"Check the stock ledger before retrying; an earlier request might already have changed physical stock.";
       setMessage(detail+" "+warning);
@@ -111,6 +116,30 @@ export default function StockClient(){
       await load();
       writeInFlight.current=false;
       setBusy(false);
+    }
+  }
+
+  // A source worksheet must not be counted twice when a response is lost.
+  // Normalization runs before deriving the retry key, so cosmetic whitespace
+  // edits cannot invent a second physical event for the same evidence.
+  const manualRecordSignature=(()=>{
+    try{
+      return stockManualRecordSignature(normalizeManualStockEvent({
+        ...form,quantityMetres:Number(form.quantityMetres),
+      }));
+    }catch{return null;}
+  })();
+  function submitManualRecord(){
+    if(writeInFlight.current||!manualRecordSignature||
+       confirmedManualRecords.has(manualRecordSignature)) return;
+    try{
+      const intent=normalizeManualStockEvent({...form,quantityMetres:Number(form.quantityMetres)});
+      const attempt=stockManualRecordAttempt(manualRecordKeys.current,intent,()=>crypto.randomUUID());
+      manualRecordKeys.current.set(attempt.signature,attempt.requestKey);
+      void post({action:"record",...intent,requestKey:attempt.requestKey},
+        "Provenance-backed stock event recorded.",undefined,attempt.signature);
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Invalid physical stock evidence.");
     }
   }
 
@@ -158,7 +187,8 @@ export default function StockClient(){
         <label>Recorded by / checker<input value={form.recordedBy} onChange={(e)=>setForm({...form,recordedBy:e.target.value})} maxLength={120} placeholder="Required"/></label>
         <label>Physical source reference<input value={form.sourceReference} onChange={(e)=>setForm({...form,sourceReference:e.target.value})} maxLength={240} placeholder="Roll tag, receipt, stock-count sheet…"/></label>
         <label>Note<textarea rows={2} value={form.note} onChange={(e)=>setForm({...form,note:e.target.value})}/></label>
-        <button disabled={busy||snapshotState!=="ready"||!configured||!form.fabricId||Number(form.quantityMetres)<=0||form.recordedBy.trim().length<2||form.sourceReference.trim().length<3} onClick={()=>void post({action:"record",...form,quantityMetres:Number(form.quantityMetres)},"Provenance-backed stock event recorded.")}>Record stock event</button>
+        <button disabled={busy||snapshotState!=="ready"||!configured||!manualRecordSignature||confirmedManualRecords.has(manualRecordSignature)} onClick={submitManualRecord}>Record stock event</button>
+        {manualRecordSignature&&confirmedManualRecords.has(manualRecordSignature)&&<p className="stockMessage">This exact stock entry is already recorded in this session. Use a distinct physical source document for a new event.</p>}
       </article>
 
       <article className="stockPanel">

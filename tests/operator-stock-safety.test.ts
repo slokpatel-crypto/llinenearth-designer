@@ -48,7 +48,7 @@ test("actual operator route enforces verification before every recording or rese
   assert.ok(s.includes("stockMutationRequestError(request)"));
   assert.ok(s.includes("if(unsafe) return respond"));
   for(const [normalizer,rpc] of [
-    ["normalizeManualStockEvent(body)","fabric_stock_record_v2"],
+    ["normalizeManualStockEvent(body)","fabric_stock_record_v3"],
     ["normalizeStockReservation(body)","fabric_stock_reserve_v2"],
   ]){
     const start=s.indexOf(normalizer),end=s.indexOf(rpc,start);
@@ -74,7 +74,7 @@ test("streamed operator stock body is limited even without Content-Length header
 test("actual stock mutation handler applies byte limit before privileged RPC",()=>{
   const code=readFileSync("src/app/api/operator/stock/route.ts","utf8");
   const parse=code.indexOf("readBoundedStockMutationJson(request)");
-  const firstRpc=code.indexOf('rpc<unknown>("fabric_stock_record_v2"');
+  const firstRpc=code.indexOf('rpc<unknown>("fabric_stock_record_v3"');
   assert.ok(parse>0&&firstRpc>parse);
   assert.ok(code.includes("error instanceof StockMutationPayloadTooLarge"));
   assert.ok(code.includes("{status:413}"));
@@ -161,7 +161,7 @@ test("operator stock GET refuses invalid backend rows before showing available m
 
 test("operator stock mutations require UUID RPC acknowledgements before claiming success",()=>{
   const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
-  assert.ok(route.includes('verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_record_v2"'));
+  assert.ok(route.includes('verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_record_v3"'));
   assert.ok(route.includes('verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_reserve_v2"'));
   assert.ok(route.includes("if(!eventId) return respond"));
   assert.ok(route.includes("if(!reservationId) return respond"));
@@ -200,7 +200,7 @@ test("operator stock privacy and generic backend errors cover every response",()
   assert.equal(source.split("NextResponse.json(").length-1,1);
   assert.ok(source.includes('error:"Stock operation could not be completed."'));
   assert.ok(!source.includes("error instanceof Error?error.message"));
-  assert.ok(source.includes('verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_record_v2"'));
+  assert.ok(source.includes('verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_record_v3"'));
   assert.ok(source.includes('verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_reserve_v2"'));
   assert.ok(smoke.includes('"/api/operator/stock"'));
   assert.ok(smoke.includes('for(const method of ["GET","POST"])'));
@@ -263,4 +263,30 @@ test("stock browser independently checks GET rows and every POST receipt before 
   const success=code.indexOf("setMessage(success)");
   assert.ok(checked>0&&confirmed>checked&&success>confirmed);
   assert.ok(code.includes("await load();"));
+});
+
+test("manual physical stock retries require exact database keys and cannot silently use v2",()=>{
+  const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
+  const client=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
+  const sql=readFileSync("supabase/migrations/20261031_stock_record_exact_retry.sql","utf8");
+  assert.ok(route.includes("normalizeStockMutationRequestKey(body.requestKey)"));
+  assert.ok(route.includes('rpc<unknown>("fabric_stock_record_v3"'));
+  assert.ok(route.includes("p_request_key:requestKey"));
+  assert.ok(!route.includes('rpc<unknown>("fabric_stock_record_v2"'));
+  assert.ok(client.includes("manualRecordKeys=useRef(new Map<string,string>())"));
+  assert.ok(client.includes("stockManualRecordAttempt(manualRecordKeys.current,intent"));
+  assert.ok(client.includes("manualRecordKeys.current.set(attempt.signature,attempt.requestKey)"));
+  assert.ok(client.includes('void post({action:"record",...intent,requestKey:attempt.requestKey}'));
+  assert.ok(client.includes("confirmedManualRecords.has(manualRecordSignature)"));
+  assert.ok(sql.includes("create or replace function public.fabric_stock_record_v3("));
+  assert.ok(sql.includes("where l.request_key=p_request_key"));
+  assert.ok(sql.includes("perform pg_advisory_xact_lock(hashtext('stock-request:'||p_request_key))"));
+  assert.ok(sql.includes("perform pg_advisory_xact_lock(hashtext('stock-fabric:'||p_fabric_id))"));
+  assert.ok(sql.includes("v_existing.quantity_metres<>p_quantity_metres"));
+  assert.ok(sql.includes("v_existing.source_reference<>p_source_reference"));
+  assert.ok(sql.includes("v_existing.note<>p_note"));
+  assert.ok(sql.includes("return v_existing.event_id"));
+  assert.ok(sql.includes("grant execute on function public.fabric_stock_record_v3"));
+  assert.ok(sql.includes("to service_role;"));
+  assert.ok(sql.includes("from public,anon,authenticated;"));
 });

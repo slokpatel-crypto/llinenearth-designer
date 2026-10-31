@@ -23,6 +23,36 @@ export function stockReservationAttempt(
   return {signature,requestKey:existing.get(signature)??newKey()};
 }
 
+/** Manual physical records need an exact retry identity as well: on a lost
+ * HTTP response the same evidence must never create another stock event.
+ * A new physical receipt requires a genuinely distinct source document. */
+export type ManualStockRecordIntent={
+  fabricId:string;eventType:StockEventType;
+  quantityMetres:number;recordedBy:string;sourceReference:string;note:string;
+};
+export function stockManualRecordSignature(intent:ManualStockRecordIntent):string{
+  return JSON.stringify([
+    intent.fabricId,intent.eventType,intent.quantityMetres,
+    intent.recordedBy,intent.sourceReference,intent.note,
+  ]);
+}
+export function stockManualRecordAttempt(
+  existing:ReadonlyMap<string,string>,
+  intent:ManualStockRecordIntent,
+  newKey:()=>string,
+):{signature:string;requestKey:string}{
+  const signature=stockManualRecordSignature(intent);
+  return {signature,requestKey:existing.get(signature)??newKey()};
+}
+
+/** The server cannot let a trimmed or coerced key alias another ledger write. */
+export function normalizeStockMutationRequestKey(value:unknown):string{
+  const key=requiredStockIdentity(value,"Stock record request key",12,180);
+  if(value!==key)throw new Error("Stock record request key must match exactly.");
+  return key;
+}
+
+
 /**
  * Operators must supply actual measured quantities at ledger precision.
  * Silently rounding incoming evidence (especially a receipt) can mint fabric,
