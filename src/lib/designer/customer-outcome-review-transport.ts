@@ -1,6 +1,7 @@
 import type {CustomerOutcomeEvidenceRow,CustomerOutcomeReviewRow,CustomerOutcomePolicyRow} from "./customer-outcome-learning.ts";
 import {parseProductionEvidenceTimestamp} from "./production-delivery-evidence.ts";
 import {CUSTOMER_OUTCOME_RATINGS,CUSTOMER_FIT_RESULTS} from "./customer-production-outcomes.ts";
+import {verifiedOperatorProductionCreateId} from "./operator-production-receipt.ts";
 
 /** Operator-only evidence. Database columns (including nested learning
  * metadata) are NOT automatically authorized browser fields. Reject malformed
@@ -13,6 +14,13 @@ function obj(x:unknown):Record<string,unknown>{
 function str(x:unknown,max:number):string{
   if(typeof x!=="string"||x.length>max)throw new Error("Invalid customer learning text.");
   return x;
+}
+/** All durable customer, order, review and policy identities originate from
+ * PostgreSQL UUID columns. A truthy label is not human release evidence. */
+function recordId(value:unknown,kind:string):string{
+  const id=verifiedOperatorProductionCreateId(value);
+  if(!id)throw new Error("Invalid customer "+kind+" evidence UUID.");
+  return id;
 }
 function maybeStr(x:unknown,max:number):string|null{
   return x===null?null:str(x,max);
@@ -84,7 +92,7 @@ export function safeOutcomeReviewEvidence(
       &&note.trim().length<3)
       throw new Error("Adverse customer fit evidence requires a recorded reason.");
     return {
-      outcome_id:str(o.outcome_id,80),order_id:str(o.order_id,80),
+      outcome_id:recordId(o.outcome_id,"outcome"),order_id:recordId(o.order_id,"order"),
       revision_id:str(o.revision_id,220),
       overall_rating:rating,fit_result:fit,
       worn_confirmed:worn,note,created_at:date(o.created_at,observedAt),
@@ -94,10 +102,15 @@ export function safeOutcomeReviewEvidence(
   const reviews=rows(rawReviews,5000).map(r=>{
     if(r.decision!=="approved"&&r.decision!=="rejected")
       throw new Error("Invalid outcome review status.");
+    const reviewer=str(r.reviewer,120),note=str(r.note,1200);
+    if(reviewer.trim().length<2)
+      throw new Error("Customer human reviewer name is missing.");
+    if(r.decision==="rejected"&&note.trim().length<3)
+      throw new Error("Customer rejected review requires a reason.");
     return {
-      review_id:str(r.review_id,80),outcome_id:str(r.outcome_id,80),
-      decision:r.decision as CustomerOutcomeReviewRow["decision"],reviewer:str(r.reviewer,120),
-      note:str(r.note,1200),created_at:date(r.created_at,observedAt),
+      review_id:recordId(r.review_id,"review"),outcome_id:recordId(r.outcome_id,"review outcome"),
+      decision:r.decision as CustomerOutcomeReviewRow["decision"],reviewer,
+      note,created_at:date(r.created_at,observedAt),
     };
   });
   const policies=rows(rawPolicies,100).map(p=>{
@@ -105,11 +118,14 @@ export function safeOutcomeReviewEvidence(
        (p.minimum_approved_cases as number)<1||
        (p.minimum_approved_cases as number)>10000)
       throw new Error("Invalid human evidence policy threshold.");
+    const approvedBy=str(p.approved_by,120),note=str(p.note,1200);
+    if(approvedBy.trim().length<2||note.trim().length<3)
+      throw new Error("Customer policy needs a named approver and documented reason.");
     return {
-      policy_id:str(p.policy_id,80),
+      policy_id:recordId(p.policy_id,"policy"),
       minimum_approved_cases:p.minimum_approved_cases as number,
-      approved_by:str(p.approved_by,120),
-      note:str(p.note,1200),created_at:date(p.created_at,observedAt),
+      approved_by:approvedBy,
+      note,created_at:date(p.created_at,observedAt),
     };
   });
   requireDistinctIds(outcomes.map(row=>row.outcome_id),"outcome");
