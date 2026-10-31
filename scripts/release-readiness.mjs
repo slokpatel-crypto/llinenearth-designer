@@ -1106,7 +1106,8 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "if(expected&&(!data.configured||!verifiedProductionMutationReadback(",
   "expected.action,expected.body,expected.receipt,data.quotes,data.orders,data.learningContexts",
   "const confirmed=await load({action:body.action,body,receipt:data});",
-  "if(confirmed)setMessage(success);",
+  "if(confirmed){", "if(releaseProductionWriteHold(window.localStorage,holdToken))",
+  "setMessage(success);",
 ]);
 // M102: a lost POST acknowledgement may follow a committed mutation; only
 // definite prewrite input/auth/size/rate denials may use a normal reject message.
