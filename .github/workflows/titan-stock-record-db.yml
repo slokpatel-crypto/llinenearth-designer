@@ -1,0 +1,38 @@
+name: TITAN Stock Record — Disposable PostgreSQL
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stock-ledger-db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test real stock-record migration on disposable PostgreSQL only
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          bash scripts/ci/verify-stock-record-db.sh "$PG_CONTAINER"
+      - name: Preserve isolated DB diagnostics on failure
+        if: failure()
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          if [ -n "$PG_CONTAINER" ]; then docker logs "$PG_CONTAINER" | tail -n 120; fi
