@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {readBoundedJsonResponse} from "../src/lib/designer/bounded-json-response.ts";
-import {verifiedOperatorProductionCreateId} from "../src/lib/designer/operator-production-receipt.ts";
+import {verifiedOperatorProductionCreateId,verifiedOperatorDeliveryAuditReadback} from "../src/lib/designer/operator-production-receipt.ts";
 
 const id="123e4567-e89b-42d3-a456-426614174000";
 
@@ -66,15 +66,40 @@ test("delivery evidence GET never bypasses private no-store, and errors log no p
   assert.equal(source.split('console.error("[operator/production-evidence]",error instanceof Error?error.name:"UnknownError");').length-1,2);
 });
 
-test("delivery evidence browser rejects a success-shaped 200 without the literal durable evidence UUID",()=>{
+
+test("delivery browser requires durable evidence receipt and a new confirmed history read",()=>{
   const source=readFileSync("src/app/operator/production-evidence/ProductionEvidenceClient.tsx","utf8");
   const save=source.split("async function saveEvidence()")[1];
   const receipt=save.indexOf("verifiedOperatorProductionCreateId(data?.evidenceId)");
-  const success=save.indexOf('setMessage("Immutable completion audit saved for this delivered order.")');
-  assert.ok(receipt>0&&success>receipt,"receipt must be validated before the success message");
-  assert.match(save,/if\(!verifiedOperatorProductionCreateId\(data\?\.evidenceId\)\)/);
+  const readback=save.indexOf("const confirmed=await load({evidenceId,orderId:selected.order_id});");
+  const guard=save.indexOf("if(!confirmed)return;");
+  const success=save.indexOf('setMessage("Immutable completion audit saved and verified in refreshed delivery history.")');
+  assert.ok(receipt>0&&readback>receipt&&guard>readback&&success>guard,
+    "Saved audit success must follow both a literal UUID and matching history readback");
+  assert.match(save,/if\(!evidenceId\)/);
   assert.match(save,/Production completion evidence receipt could not be verified/);
+  const load=source.split("async function load(")[1].split("useEffect(()=>")[0];
+  assert.match(load,/verifiedOperatorDeliveryAuditReadback\(/);
+  assert.match(load,/browseEvidence,expected\.evidenceId,expected\.orderId/);
+  assert.match(load,/setLoadError\(true\)/);
+  assert.match(source,/An audit receipt was returned but the matching delivery history could not be confirmed/);
+});
+
+test("exact immutable audit and order UUID pair is mandatory on readback",()=>{
+  const order="123e4567-e89b-42d3-a456-426614174001";
+  const otherOrder="123e4567-e89b-42d3-a456-426614174002";
+  const otherReceipt="123e4567-e89b-42d3-a456-426614174003";
+  const rows=[{evidence_id:id,order_id:order},{evidence_id:otherReceipt,order_id:otherOrder}];
+  assert.equal(verifiedOperatorDeliveryAuditReadback(rows,id,order),true);
+  assert.equal(verifiedOperatorDeliveryAuditReadback(rows,id.toUpperCase(),order.toUpperCase()),true);
+  assert.equal(verifiedOperatorDeliveryAuditReadback(rows,id,otherOrder),false);
+  assert.equal(verifiedOperatorDeliveryAuditReadback(rows,otherReceipt,order),false);
+  for(const invalid of [[],null,{},[{evidence_id:id}], [{evidence_id:id,order_id:"invalid"}],
+    [{evidence_id:" "+id,order_id:order}], [{evidence_id:id,order_id:" "+order}]]){
+    assert.equal(verifiedOperatorDeliveryAuditReadback(invalid,id,order),false);
+  }
+  for(const invalid of [null,false,{evidenceId:id},[id]," "+id,id+" ",id+"\n"]){
+    assert.equal(verifiedOperatorDeliveryAuditReadback(rows,invalid,order),false);
+  }
   assert.equal(verifiedOperatorProductionCreateId(id),id);
-  for(const invalid of [null,false,{},[],[id],{evidenceId:id}," "+id,id+" ","not-an-id"])
-    assert.equal(verifiedOperatorProductionCreateId(invalid),null);
 });
