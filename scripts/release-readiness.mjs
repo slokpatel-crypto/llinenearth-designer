@@ -1587,9 +1587,12 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
 requireTokens("src/lib/designer/production-ledger-generation.ts",[
   "isCurrentVerifiedProductionLedger", "Number.isSafeInteger(latestReadVersion)",
   "verifiedReadVersion === latestReadVersion",
+  "renderedReadVersion === latestReadVersion",
 ]);
 requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "const verifiedLedgerReadVersion=useRef(0)",
+  "const [renderedLedgerReadVersion,setRenderedLedgerReadVersion]=useState(0)",
+  "setRenderedLedgerReadVersion(data.configured?readVersion:0)",
   "verifiedLedgerReadVersion.current=0",
   "verifiedLedgerReadVersion.current=data.configured?readVersion:0",
   "if(!hasCurrentVerifiedLedger()) return;",
