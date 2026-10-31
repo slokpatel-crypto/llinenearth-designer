@@ -1403,6 +1403,27 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
 ]);
 
  
+// M79: nested immutable design learning context must not expose arbitrary
+// future SQL or nested metadata fields while preserving approved recipe truth.
+requireTokens("src/lib/designer/production-learning-transport.ts",[
+  "safeProductionLearningContexts","PRODUCTION_LEARNING_CONTEXT_VERSION",
+  "source.styleSchemaVersion!==2","treatmentIds",
+  "Invalid production learning context object.",
+]);
+requireTokens("src/app/api/operator/production/route.ts",[
+  "validProductionDeskResponse(originalReceipt)",
+  "learningContexts:safeProductionLearningContexts(contexts.rows)",
+  "validProductionDeskResponse(receipt)",
+]);
+requireTokens("scripts/ci-verified-stock-fixture.cjs",[
+  "LEARNING_CONTEXT_LIST_PATH","LEARNING_CONTEXT_LISTS",
+  "DO-NOT-LEAK-CI-LEARNING-SOURCE",
+]);
+requireTokens("scripts/verify-production-ledger-private-http.cjs",[
+  "LEARNING_CONTEXT_LISTS","contextRow.context.creative.treatmentIds",
+  "private_roll_supplier","DO-NOT-LEAK-CI-",
+]);
+
 // M78: operator customer outcomes must not leak new SQL fields or misrepresent
 // genuine adverse fit as a successful, physically verified delivery.
 requireTokens("src/lib/designer/production-outcome-transport.ts",[

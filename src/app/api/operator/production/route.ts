@@ -17,6 +17,7 @@ import { validProductionDeskLedgers, validProductionDeskResponse, validProductio
 import {safeProductionQuoteOrderRows} from "@/lib/designer/production-quote-order-transport";
 import {safeProductionQcRows} from "@/lib/designer/production-qc-transport";
 import {safeProductionCustomerOutcomes} from "@/lib/designer/production-outcome-transport";
+import {safeProductionLearningContexts} from "@/lib/designer/production-learning-transport";
 import { selectVaultReadRow } from "@/lib/vault-read-integrity";
 
 export const runtime="nodejs";
@@ -119,6 +120,7 @@ export async function GET(){
       ...originalReceipt,
       qcInspections:safeProductionQcRows(qc.rows),
       customerOutcomes:safeProductionCustomerOutcomes(outcomes.rows),
+      learningContexts:safeProductionLearningContexts(contexts.rows),
     };
     if(!validProductionDeskResponse(receipt)) throw new Error("Optional production evidence changed during safe serialization.");
     return respond(receipt);

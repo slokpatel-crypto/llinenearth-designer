@@ -3,7 +3,7 @@
 // supplier/customer/operator records are never queried or altered.
 const assert=require("node:assert/strict");
 const {createHmac}=require("node:crypto");
-const {PRODUCTION_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LISTS,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS}=require("./ci-verified-stock-fixture.cjs");
+const {PRODUCTION_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LISTS,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS,LEARNING_CONTEXT_LIST_PATH,LEARNING_CONTEXT_LISTS}=require("./ci-verified-stock-fixture.cjs");
 const base=new URL(process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000");
 if(process.env.GITHUB_ACTIONS!=="true"||process.env.CI!=="true")
   throw Error("Private production ledger HTTP tests run only in GitHub Actions CI.");
@@ -80,7 +80,7 @@ async function main(){
   assert.equal(Object.hasOwn(data.quotes[0].line_items[0],"secret_factory_cost"),false);
   assert.doesNotMatch(JSON.stringify(data),/DO-NOT-LEAK-CI-/);
   assert.deepEqual(data.optionalEvidenceSources,{
-    qcInstalled:true,customerOutcomesInstalled:true,learningContextInstalled:false,
+    qcInstalled:true,customerOutcomesInstalled:true,learningContextInstalled:true,
   },"Synthetic rework and poor outcome are not physical inspection or satisfied customer evidence");
   assert.equal(data.qcInspections.length,1);
   assert.equal(data.qcInspections[0].decision,"rework");
@@ -91,9 +91,6 @@ async function main(){
     "inspection_id","order_id","revision_id","recipe_hash","decision",
     "checks","defects","note","inspector","inspection_reference","created_at",
   ].sort());
-  assert.deepEqual(data.optionalEvidenceSources,{
-    qcInstalled:true,customerOutcomesInstalled:true,learningContextInstalled:false,
-  },"Synthetic adverse outcome is not evidence of customer satisfaction");
   assert.equal(data.customerOutcomes.length,1);
   const outcome=data.customerOutcomes[0];
   const fixture=CUSTOMER_OUTCOME_LISTS[CUSTOMER_OUTCOME_LIST_PATH][0];
@@ -110,6 +107,28 @@ async function main(){
   assert.equal(Object.hasOwn(outcome,"private_customer_contact"),false);
   assert.equal(Object.hasOwn(outcome,"private_shop_account"),false);
   assert.doesNotMatch(JSON.stringify(data),/DO-NOT-LEAK-CI-/);
+  assert.equal(data.learningContexts.length,1);
+  const contextRow=data.learningContexts[0];
+  const fixtureContext=LEARNING_CONTEXT_LISTS[LEARNING_CONTEXT_LIST_PATH][0];
+  assert.equal(contextRow.order_id,fixtureContext.order_id);
+  assert.equal(contextRow.revision_id,fixtureContext.revision_id);
+  assert.equal(contextRow.recipe_hash,fixtureContext.recipe_hash);
+  assert.equal(contextRow.context.version,"linen-earth-production-learning-context-v1");
+  assert.equal(contextRow.context.fabrics.shirtId,"ci-shirt");
+  assert.equal(contextRow.context.shirt.fit,"Regular");
+  assert.deepEqual(contextRow.context.creative.treatmentIds,["ci-treatment-1"]);
+  assert.deepEqual(Object.keys(contextRow).sort(),["order_id","revision_id","recipe_hash","created_at","context"].sort());
+  assert.deepEqual(Object.keys(contextRow.context).sort(),[
+    "version","revisionId","recipeHash","source","context","fabrics","shirt","trouser","creative",
+  ].sort());
+  assert.deepEqual(Object.keys(contextRow.context.source).sort(),[
+    "designerRuleSetVersion","fitConstructionVersion","styleSchemaVersion",
+  ].sort());
+  assert.equal(Object.hasOwn(contextRow.context.fabrics,"private_roll_supplier"),false);
+  assert.equal(Object.hasOwn(contextRow.context.creative,"private_user_note"),false);
+  assert.equal(Object.hasOwn(contextRow.context.shirt,"internal_wholesale_cost"),false);
+  assert.doesNotMatch(JSON.stringify(data),/DO-NOT-LEAK-CI-/);
+  console.log("Signed operator real HTTP nested learning context fields are allowlisted, fit identity is preserved.");
   console.log("Signed operator real HTTP production ledger PASS; quote/order/QC/customer-outcome private fields filtered.");
   console.log("CI fixture only; no genuine supplier inventory, user data, operator approval or production deployment.");
 }

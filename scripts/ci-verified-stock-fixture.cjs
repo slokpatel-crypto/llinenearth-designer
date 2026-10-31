@@ -14,6 +14,38 @@ const QUOTE_LIST_PATH="/rest/v1/rpc/production_quote_list";
 const ORDER_LIST_PATH="/rest/v1/rpc/production_order_list";
 const QC_LIST_PATH="/rest/v1/rpc/finished_garment_qc_list";
 const CUSTOMER_OUTCOME_LIST_PATH="/rest/v1/rpc/production_customer_outcome_list";
+const LEARNING_CONTEXT_LIST_PATH="/rest/v1/rpc/production_order_learning_context_list";
+const LEARNING_CONTEXT_LISTS=Object.freeze({
+  [LEARNING_CONTEXT_LIST_PATH]:[{
+    order_id:"123e4567-e89b-42d3-a456-426614174011",
+    revision_id:"LE-LOCK-CI-QUOTE-20261031",
+    recipe_hash:"a".repeat(64),
+    created_at:"2026-10-31T02:30:00Z",
+    private_supplier_account:"DO-NOT-LEAK-CI-LEARNING-ROW",
+    context:{
+      version:"linen-earth-production-learning-context-v1",
+      revisionId:"LE-LOCK-CI-QUOTE-20261031",
+      recipeHash:"a".repeat(64),
+      source:{
+        designerRuleSetVersion:"ci-only-rules",fitConstructionVersion:null,
+        styleSchemaVersion:2,private_optimizer_key:"DO-NOT-LEAK-CI-LEARNING-SOURCE",
+      },
+      context:{occasion:"Semi-Formal",climate:"Cool",intention:"Balanced",
+        private_customer_phone:"DO-NOT-LEAK-CI-LEARNING-CONTEXT"},
+      fabrics:{shirtId:"ci-shirt",trouserId:"ci-trouser",
+        private_roll_supplier:"DO-NOT-LEAK-CI-LEARNING-FABRIC"},
+      shirt:{fit:"Regular",wear:"Tucked",collar:"Point",collarFinish:"Self-fabric",
+        cuff:"Barrel",placket:"Standard",button:"Corozo",
+        internal_wholesale_cost:"DO-NOT-LEAK-CI-LEARNING-SHIRT"},
+      trouser:{shape:"Pleated",rise:"Mid Rise",waistband:"Side Adjuster",
+        break:"Slight Break",private_factory_cost:"DO-NOT-LEAK-CI-LEARNING-TROUSER"},
+      creative:{conceptId:"ci-concept",explorationClass:"essential",
+        treatmentIds:["ci-treatment-1"],patternId:null,
+        private_user_note:"DO-NOT-LEAK-CI-LEARNING-CREATIVE"},
+      private_client_record:"DO-NOT-LEAK-CI-LEARNING-NESTED",
+    },
+  }],
+});
 const CUSTOMER_OUTCOME_LISTS=Object.freeze({
   [CUSTOMER_OUTCOME_LIST_PATH]:[{
     outcome_id:"123e4567-e89b-42d3-a456-426614174013",
@@ -121,7 +153,7 @@ async function handle(req,res){
     res.writeHead(200,{"content-type":"application/json","cache-control":"private, no-store","content-range":"*/0"});
     return res.end(JSON.stringify(rows));
   }
-  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
+  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,LEARNING_CONTEXT_LIST_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
   if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
   let raw="";
   try{
@@ -135,6 +167,12 @@ async function handle(req,res){
          payload.p_limit!==100||Object.keys(payload).length!==1)
         return send(res,400,{error:"Invalid CI production page request"});
       return send(res,200,PRODUCTION_LISTS[req.url]);
+    }
+    if(req.url===LEARNING_CONTEXT_LIST_PATH){
+      if(!payload||typeof payload!=="object"||Array.isArray(payload)||
+         payload.p_limit!==500||Object.keys(payload).length!==1)
+        return send(res,400,{error:"Invalid synthetic learning context list request"});
+      return send(res,200,LEARNING_CONTEXT_LISTS[req.url]);
     }
     if(req.url===CUSTOMER_OUTCOME_LIST_PATH){
       if(!payload||typeof payload!=="object"||Array.isArray(payload)||
@@ -175,4 +213,4 @@ if(require.main===module){
     console.log("Synthetic CI-only stock fixture listening on loopback; NOT physical evidence");
   });
 }
-module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,QC_LIST_PATH,QC_LISTS,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS,METADATA_PATH};
+module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,QC_LIST_PATH,QC_LISTS,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS,LEARNING_CONTEXT_LIST_PATH,LEARNING_CONTEXT_LISTS,METADATA_PATH};
