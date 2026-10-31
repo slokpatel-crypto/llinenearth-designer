@@ -21,11 +21,11 @@ function sameId(a:unknown,b:unknown):boolean{
  * Never infer quote/order completion from an unrelated newly visible row. */
 export function verifiedProductionMutationReadback(
   action:unknown,request:unknown,receipt:unknown,
-  quoteRows:unknown,orderRows:unknown,
+  quoteRows:unknown,orderRows:unknown,contextRows:unknown,
 ):boolean{
   const body=asRow(request),created=asRow(receipt);
   if(!body||!created)return false;
-  const quotes=rows(quoteRows),orders=rows(orderRows);
+  const quotes=rows(quoteRows),orders=rows(orderRows),contexts=rows(contextRows);
   if(action==="create_quote"){
     const id=verifiedOperatorProductionCreateId(created.quoteId);
     if(!id||created.lockedRevisionVerified!==true)return false;
@@ -45,7 +45,10 @@ export function verifiedProductionMutationReadback(
     return orders.some(row=>sameId(row.order_id,id)
       &&row.revision_id===body.revisionId
       &&sameProductionRecipeHash(row.recipe_hash,body.recipeHash)
-      &&(expectedQuote===null?row.quote_id===null:sameId(row.quote_id,expectedQuote)));
+      &&(expectedQuote===null?row.quote_id===null:sameId(row.quote_id,expectedQuote)))
+      &&contexts.some(context=>sameId(context.order_id,id)
+        &&context.revision_id===body.revisionId
+        &&sameProductionRecipeHash(context.recipe_hash,body.recipeHash));
   }
   if(action==="quote_status"){
     if(created.updated!==true||!verifiedOperatorProductionCreateId(body.quoteId)
