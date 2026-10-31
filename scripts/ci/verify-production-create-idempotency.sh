@@ -39,6 +39,8 @@ run_file scripts/ci/m113-legacy-qc-fixture.sql
 run_file supabase/migrations/20261112_finished_garment_qc_sequence.sql
 run_file supabase/migrations/20261113_delivery_qc_sequence_gate.sql
 run_file scripts/ci/m113-qc-sequence-assertions.sql
+run_file supabase/migrations/20261114_delivery_eligibility_read.sql
+run_file scripts/ci/m114-delivery-eligibility-assertions.sql
 run_file scripts/ci/production-create-idempotency-assertions.sql
 run_file scripts/ci/production-creation-receipt-lookup-assertions.sql
 
