@@ -387,3 +387,34 @@ test("reservation retry SQL rejects altered request evidence and is tested in re
   assert.ok(sql.includes("different-evidence retries created extra reservation rows"));
   assert.ok(sql.includes("reserve RPC execute privileges widened"));
 });
+
+test("different-key same-line reservation protection is enforced in SQL and PostgreSQL",()=>{
+  const migration=readFileSync("supabase/migrations/20261031_stock_reservation_line_dedupe.sql","utf8");
+  const sql=readFileSync("scripts/ci/stock-reservation-line-dedupe-assertions.sql","utf8");
+  const runner=readFileSync("scripts/ci/verify-stock-record-db.sh","utf8");
+  const ui=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
+  assert.ok(migration.includes("existing duplicate meterage reservation lines require owner reconciliation"));
+  assert.ok(migration.includes("create unique index if not exists fabric_stock_reserve_source_line_uidx"));
+  assert.ok(migration.includes("fabric_id,revision_id,(lower(btrim(source_reference)))"));
+  assert.ok(migration.includes("where l.event_type='reserve'"));
+  assert.ok(migration.includes("l.fabric_id=p_fabric_id"));
+  assert.ok(migration.includes("l.revision_id=p_revision_id"));
+  assert.ok(migration.includes("lower(btrim(l.source_reference))=lower(btrim(p_source_reference))"));
+  assert.ok(migration.includes("meterage source line already reserved for locked design and fabric"));
+  const start=runner.indexOf("for migration in ");
+  const end=runner.indexOf("\n  do",start);
+  const list=runner.slice(start,end);
+  const keyIndex=list.indexOf("20261031_stock_reservation_exact_key_evidence.sql");
+  const lineIndex=list.indexOf("20261031_stock_reservation_line_dedupe.sql");
+  assert.ok(start>=0&&end>start&&keyIndex>=0&&lineIndex>keyIndex);
+  assert.ok(runner.includes("run_sql_file scripts/ci/stock-reservation-line-dedupe-assertions.sql"));
+  assert.ok(runner.includes("Concurrent different-key same-line reservations must have one winner."));
+  assert.ok(runner.includes("Concurrent different-key calls double-reserved one source line."));
+  assert.ok(sql.includes("closed meterage line was reserved a second time"));
+  assert.ok(sql.includes("case/space alias of the same source line was reserved again"));
+  assert.ok(sql.includes("different locked design could not use same source sheet"));
+  assert.ok(sql.includes("distinct documented source line was blocked"));
+  assert.ok(sql.includes("SQL unique index allowed duplicate meterage line"));
+  assert.ok(ui.includes("Meterage sheet + documented line reference"));
+  assert.ok(ui.includes("Do not invent a new line reference to bypass a duplicate."));
+});
