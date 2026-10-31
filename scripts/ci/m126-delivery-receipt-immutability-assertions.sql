@@ -44,7 +44,7 @@ begin
   -- Privileged direct SQL must not rewrite the receipt hash, order or key.
   begin
     update private.production_delivery_request_receipts
-      set intent_sha256=digest('forged delivery','sha256') where request_key=v_key;
+      set intent_sha256=sha256(convert_to('forged delivery','UTF8')) where request_key=v_key;
     raise exception 'M126 forged delivery receipt UPDATE succeeded';
   exception when sqlstate '55000' then null;
   end;
