@@ -1,3 +1,7 @@
+## 2026-10-31 — M100: integrate parallel release safeguards before checking completion
+
+**Decision:** The production privacy patch (#600) and financial readback patch (#599) were independent M99 children of M98, not cumulative evidence. Carry both implementations into a single direct child of the privacy branch; keep shared monetary normalization, exact persisted line/total/instructions verification, sanitized logging and regression assertions together. All test/CI claims must use the final M100 SHA, not either sibling's successful PostgreSQL run. Preserve the original photographic model, deterministic no-mandatory-paid-AI core, existing operator authentication, customer data safety and owner approval gates. Do not merge/deploy.
+
 ## 2026-10-31 — M99: log allowlisted production error categories, not backend exceptions
 
 **Decision:** Production quote/order GET and POST service-role exceptions can contain locked-vault tokens, customer details, SQL queries, URLs or supplier prices. The backend must log only a fixed operation category and closed diagnostic string (or numeric upstream HTTP status), never raw Error instances, names, stack/cause or arbitrary unknown objects. Public-facing error statuses, private cache headers, authentication and existing fail-closed history/readback checks stay unchanged. Any more detailed diagnosis must use a separately approved secure workflow, not these shared application logs. No evidence of actual customers or physical completion is inferred, and owner approval is required before merge/deployment.
