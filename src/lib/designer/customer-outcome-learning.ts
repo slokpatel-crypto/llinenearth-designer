@@ -70,6 +70,22 @@ function validOutcomeLearningContext(outcome:CustomerOutcomeEvidenceRow){
   return String(pair.shirtId||"").trim().length>1&&String(pair.trouserId||"").trim().length>1;
 }
 
+/** Durable outcome UUIDs are case-insensitive. Resolve latest reviews once
+ * and keep conflicting decisions at the same latest instant unresolved,
+ * irrespective of SQL row ordering. The returned keys are lowercase IDs. */
+export function resolveLatestCustomerReviews(reviews:CustomerOutcomeReviewRow[]){
+  const latestByOutcome=new Map<string,CustomerOutcomeReviewRow>();
+  const conflicts=new Set<string>();
+  for(const review of [...reviews].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))){
+    const key=review.outcome_id.toLowerCase();
+    const current=latestByOutcome.get(key);
+    if(!current){latestByOutcome.set(key,review);continue;}
+    if(Date.parse(current.created_at)===Date.parse(review.created_at)
+      &&current.decision!==review.decision)conflicts.add(key);
+  }
+  return {latestByOutcome,conflicts};
+}
+
 export function summarizeCustomerOutcomeLearning(
   outcomes:CustomerOutcomeEvidenceRow[],
   reviews:CustomerOutcomeReviewRow[],
@@ -77,15 +93,15 @@ export function summarizeCustomerOutcomeLearning(
 ){
   // PostgreSQL may return different rows with identical timestamps in either
   // order. Never let array ordering select an approval over a tied rejection.
-  const latestReviewByOutcome=new Map<string,CustomerOutcomeReviewRow>();
-  const conflictingReviewOutcomes=new Set<string>();
-  for(const review of [...reviews].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))){
-    const current=latestReviewByOutcome.get(review.outcome_id);
-    if(!current){latestReviewByOutcome.set(review.outcome_id,review);continue;}
-    if(Date.parse(current.created_at)===Date.parse(review.created_at)
-      &&current.decision!==review.decision)
-      conflictingReviewOutcomes.add(review.outcome_id);
-  }
+  const {latestByOutcome:latestReviewByOutcome,conflicts:allReviewConflicts}=
+    resolveLatestCustomerReviews(reviews);
+  // Latest review RPC can contain history for outcomes no longer present in
+  // the bounded current-outcomes page. Such unrelated conflicts must not
+  // block approval of the currently displayed human evidence.
+  const currentOutcomeKeys=new Set(outcomes.map(o=>o.outcome_id.toLowerCase()));
+  const conflictingReviewOutcomes=new Set([...allReviewConflicts].filter(
+    outcomeId=>currentOutcomeKeys.has(outcomeId),
+  ));
   // Two differently signed human policies at the same latest instant cannot
   // be resolved by whichever database row happens to be returned first.
   const orderedPolicies=[...policies].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at));
@@ -106,11 +122,11 @@ export function summarizeCustomerOutcomeLearning(
   for(const outcome of outcomes){
     // Preserve ambiguity as unresolved; never manufacture an approval or a
     // rejection when human decisions conflict at an identical timestamp.
-    if(conflictingReviewOutcomes.has(outcome.outcome_id)){
+    if(conflictingReviewOutcomes.has(outcome.outcome_id.toLowerCase())){
       unreviewed+=1;
       continue;
     }
-    const review=latestReviewByOutcome.get(outcome.outcome_id);
+    const review=latestReviewByOutcome.get(outcome.outcome_id.toLowerCase());
     if(!review){unreviewed+=1;continue;}
     if(review.decision==="rejected"){rejected+=1;continue;}
     approved+=1;
