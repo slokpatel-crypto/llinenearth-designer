@@ -27,6 +27,9 @@ export default function CustomerOutcomesClient(){
   const [configured,setConfigured]=useState(true);
   const [verified,setVerified]=useState(false);
   const refreshSequence=useRef(0);
+  // A React state update does not synchronously stop a second click.
+  // Guard immutable human evidence POSTs before dispatch, not only on rerender.
+  const actionInFlight=useRef(false);
   const [outcomes,setOutcomes]=useState<CustomerOutcomeEvidenceRow[]>([]);
   const [reviews,setReviews]=useState<CustomerOutcomeReviewRow[]>([]);
   const [policies,setPolicies]=useState<CustomerOutcomePolicyRow[]>([]);
@@ -97,7 +100,8 @@ export default function CustomerOutcomesClient(){
     useMemo(()=>resolveLatestCustomerReviews(reviews),[reviews]);
 
   async function post(body:Record<string,unknown>,success:string){
-    if(busy) return false;
+    if(!ready||busy||actionInFlight.current)return false;
+    actionInFlight.current=true;
     setBusy(true);setMessage("");
     try{
       const response=await fetch("/api/operator/customer-outcomes",{
@@ -127,7 +131,7 @@ export default function CustomerOutcomesClient(){
     }catch(error){
       setMessage(error instanceof Error?error.message:"Customer outcome evidence could not be saved.");
       return false;
-    }finally{setBusy(false);}
+    }finally{actionInFlight.current=false;setBusy(false);}
   }
 
   async function review(outcomeId:string,decision:CustomerOutcomeReviewDecision){

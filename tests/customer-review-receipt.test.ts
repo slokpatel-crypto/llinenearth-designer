@@ -86,3 +86,26 @@ test("built Next CI invokes signed human receipt write/readback after the immuta
   assert.match(fixture,/if\(ciRecordedPolicies\.length\)return send\(res,409/);
   assert.match(fixture,/private_policy_secret:"DO-NOT-LEAK-CI-POST-POLICY"/);
 });
+
+
+test("human review and policy POSTs use a synchronous single-flight lock before network dispatch",()=>{
+  const ui=readFileSync("src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx","utf8");
+  const post=ui.split("async function post(")[1].split("async function review(")[0];
+  assert.match(ui,/const actionInFlight=useRef\(false\)/);
+  const guard=post.indexOf("if(!ready||busy||actionInFlight.current)return false;");
+  const claim=post.indexOf("actionInFlight.current=true;");
+  const setBusy=post.indexOf("setBusy(true);");
+  const network=post.indexOf('fetch("/api/operator/customer-outcomes"');
+  const readback=post.indexOf("const refreshed=await load(expected);");
+  const release=post.indexOf("finally{actionInFlight.current=false;setBusy(false);}");
+  assert.ok(guard>=0&&claim>guard&&setBusy>claim&&network>setBusy,
+    "Atomic lock must be claimed synchronously before any immutable write");
+  assert.ok(readback>network&&release>readback,
+    "Keep lock through exact history readback, releasing only after all error/success paths");
+  assert.equal(post.split("actionInFlight.current=true;").length-1,1);
+  assert.equal(post.split("actionInFlight.current=false;").length-1,1);
+  assert.doesNotMatch(post,/finally\{setBusy\(false\);\}/);
+  assert.match(post,/if\(!refreshed\)return false/);
+  assert.match(ui,/disabled=\{busy\|\|!ready\|\|!threshold/);
+  assert.match(ui,/disabled=\{busy\|\|!ready\|\|reviewer/);
+});
