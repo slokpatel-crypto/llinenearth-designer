@@ -24,6 +24,26 @@ These are tail migrations, not the full historical schema. A clean staging datab
 4. Preserve the original design revision, recipe hash, customer consent and recorded human inspector references. Staging data must be synthetic or anonymized; real customer private data never enters GitHub artifacts.
 5. Explicitly notify operators that historic inspections without a sequence remain visible **but cannot be used to approve a new delivery**. Plan actual post-migration physical reinspection for orders already in `ready` status rather than inventing backdated approvals.
 
+## Read-only installed-schema preflight
+
+After written owner staging authorization, approved schema migration and an
+isolated restore rehearsal, execute only
+`scripts/ci/m122-qc-schema-readonly-preflight.sql` through the authorized
+staging SQL client with read-only access. The script begins `BEGIN READ ONLY`
+and verifies the **actually installed** function definitions, QC sequence
+column constraints, partial unique index, enabled BEFORE INSERT trigger,
+RLS, SECURITY DEFINER fixed search paths and `anon`/`authenticated`
+EXECUTE restrictions. **It does not execute the migrations.** A PASS proves
+catalog configuration, not that a human checked any garment.
+
+This preflight also runs in the disposable PostgreSQL creation workflow
+**after** the five migration files, so absent/disabled triggers and missing
+service-only grants fail CI. Keep the staging output redacted: no row-level
+inspector, customer, recovery token, supplier or QC evidence should be copied
+into GitHub. If it fails, do not use this document as permission to bypass the
+gate or mutate the staging/production schema; investigate and peer-review a
+separate repair.
+
 ## Staging verification (no automatic live changes)
 
 Apply the five migrations **in ascending order**, only after the separate staging approval and restore check. Then verify the following, recording run IDs, time, redacted evidence and installed migration versions:
