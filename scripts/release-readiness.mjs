@@ -1124,7 +1124,9 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
 requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "const [requiresWriteReview,setRequiresWriteReview]=useState(false)",
   "if(!configured||requiresWriteReview) return;",
-  "if(!certainPrewriteRejection)setRequiresWriteReview(true)",
+  "if(!certainPrewriteRejection){",
+  "setPendingWriteReview(attempt)",
+  "setRequiresWriteReview(true)",
   "its exact record could not be confirmed",
   "function confirmReviewedProductionHistory()",
   "if(!requiresWriteReview||!configured||busy||actionInFlight.current)return;",
