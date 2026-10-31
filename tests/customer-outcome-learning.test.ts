@@ -143,3 +143,10 @@ test("operator outcome route bounds transport and confirms actual review/policy 
   assert.doesNotMatch(post,/await request\.json\(\)/);
   assert.doesNotMatch(post,/String\(body\.action/);
 });
+
+
+test("customer outcome POST never logs private backend Error objects",()=>{
+  const source=readFileSync(new URL("../src/app/api/operator/customer-outcomes/route.ts",import.meta.url),"utf8");
+  assert.match(source,/console\.error\("\[operator\/customer-outcomes\]",error instanceof Error\?error\.name:"UnknownError"\)/);
+  assert.doesNotMatch(source,/console\.error\("\[operator\/customer-outcomes\]",\s*error\s*\)/);
+});
