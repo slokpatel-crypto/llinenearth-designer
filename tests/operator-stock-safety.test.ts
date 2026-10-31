@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {FABRIC_STOCK} from "../src/lib/fabric-stock.ts";
-import {assertCurrentFabricId,readBoundedStockMutationJson,StockMutationPayloadTooLarge,stockMutationRequestError,validateOperatorStockSnapshot}
+import {assertCurrentFabricId,readBoundedStockMutationJson,StockMutationPayloadTooLarge,stockMutationRequestError,validateOperatorStockSnapshot,verifiedOperatorStockReceiptId}
   from "../src/lib/designer/operator-stock-safety.ts";
 import {readFileSync} from "node:fs";
 
@@ -46,7 +46,7 @@ test("actual operator route enforces verification before every recording or rese
   const s=readFileSync("src/app/api/operator/stock/route.ts","utf8");
   assert.ok(s.includes("if(!await authorized())"));
   assert.ok(s.includes("stockMutationRequestError(request)"));
-  assert.ok(s.includes("if(unsafe) return NextResponse.json"));
+  assert.ok(s.includes("if(unsafe) return respond"));
   for(const [normalizer,rpc] of [
     ["normalizeManualStockEvent(body)","fabric_stock_record_v2"],
     ["normalizeStockReservation(body)","fabric_stock_reserve_v2"],
@@ -103,12 +103,12 @@ test("operator stock display does not equate a typed source reference with physi
 
 test("a missing or already closed reservation is never falsely reported as consumed or released",()=>{
   const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
-  assert.ok(route.includes("if(released!==true) return NextResponse.json"));
+  assert.ok(route.includes("if(released!==true) return respond"));
   assert.ok(route.includes('error:"Reservation was not active; no cloth was released."},{status:409}'));
-  assert.ok(route.includes("if(consumed!==true) return NextResponse.json"));
+  assert.ok(route.includes("if(consumed!==true) return respond"));
   assert.ok(route.includes('error:"Reservation was not active; no cloth was consumed."},{status:409}'));
-  assert.ok(route.includes("return NextResponse.json({released:true})"));
-  assert.ok(route.includes("return NextResponse.json({consumed:true})"));
+  assert.ok(route.includes("return respond({released:true})"));
+  assert.ok(route.includes("return respond({consumed:true})"));
 });
 
 
@@ -161,22 +161,47 @@ test("operator stock GET refuses invalid backend rows before showing available m
 
 test("operator stock mutations require UUID RPC acknowledgements before claiming success",()=>{
   const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
-  assert.ok(route.includes('normalizeVaultId(await rpc<unknown>("fabric_stock_record_v2"'));
-  assert.ok(route.includes('normalizeVaultId(await rpc<unknown>("fabric_stock_reserve_v2"'));
-  assert.ok(route.includes("if(!eventId) return NextResponse.json"));
-  assert.ok(route.includes("if(!reservationId) return NextResponse.json"));
-  assert.ok(route.includes('if(released!==true) return NextResponse.json'));
-  assert.ok(route.includes('if(consumed!==true) return NextResponse.json'));
+  assert.ok(route.includes('verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_record_v2"'));
+  assert.ok(route.includes('verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_reserve_v2"'));
+  assert.ok(route.includes("if(!eventId) return respond"));
+  assert.ok(route.includes("if(!reservationId) return respond"));
+  assert.ok(route.includes('if(released!==true) return respond'));
+  assert.ok(route.includes('if(consumed!==true) return respond'));
 });
 
 test("unconfigured Supabase stock is unavailable, not a verified empty ledger",()=>{
   const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
   assert.ok(route.includes('Stock backend is not configured; availability is unavailable.'));
-  assert.ok(!route.includes('return NextResponse.json({configured:false,stock:[]})'));
+  assert.ok(!route.includes('return respond({configured:false,stock:[]})'));
 });
 
 test("privileged operator stock actions require literal strings",()=>{
   const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
   assert.ok(route.includes('const action=typeof body.action==="string"?body.action:"";'));
   assert.ok(!route.includes('const action=String(body.action||"");'));
+});
+
+test("stock event and reservation creation accept only exact UUID scalars",()=>{
+  const id="f90e2d9c-60cc-45ad-a9e2-72e6b521d1d5";
+  assert.equal(verifiedOperatorStockReceiptId(id),id);
+  assert.equal(verifiedOperatorStockReceiptId(id.toUpperCase()),id);
+  for(const forged of [
+    null,undefined,false,true,12,{},[id],id+" ", " "+id,
+    id+"\\n","", "not-a-uuid", "f90e2d9c-60cc-65ad-a9e2-72e6b521d1d5",
+  ])assert.equal(verifiedOperatorStockReceiptId(forged),null);
+});
+
+test("operator stock privacy and generic backend errors cover every response",()=>{
+  const source=readFileSync("src/app/api/operator/stock/route.ts","utf8");
+  const smoke=readFileSync("scripts/verify-operator-private-response-headers.cjs","utf8");
+  assert.ok(source.includes("function respond(body:unknown"));
+  assert.ok(source.includes('"cache-control":"private, no-store"'));
+  assert.ok(source.includes('pragma:"no-cache"'));
+  assert.equal((source.match(/NextResponse\\.json\\(/g)||[]).length,1);
+  assert.ok(source.includes('error:"Stock operation could not be completed."'));
+  assert.ok(!source.includes("error instanceof Error?error.message"));
+  assert.ok(source.includes('verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_record_v2"'));
+  assert.ok(source.includes('verifiedOperatorStockReceiptId(await rpc<unknown>("fabric_stock_reserve_v2"'));
+  assert.ok(smoke.includes('"/api/operator/stock"'));
+  assert.ok(smoke.includes('for(const method of ["GET","POST"])'));
 });
