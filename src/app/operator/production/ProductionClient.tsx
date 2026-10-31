@@ -112,6 +112,12 @@ export default function ProductionClient(){
       if(!validProductionDeskMutationReceipt(body.action,data)) throw new Error("Production operation receipt could not be verified.");
       const confirmed=await load({action:body.action,body,receipt:data});
       if(confirmed)setMessage(success);
+      else{
+        // A valid HTTP receipt without a fresh matching row is still an
+        // unconfirmed durable mutation; do not silently allow another write.
+        setRequiresWriteReview(true);
+        setMessage("The production mutation may already have been saved, but its exact record could not be confirmed. Inspect and refresh quote/order history before enabling another write.");
+      }
     }catch(error){
       // Set the hold before refresh; a healthy ledger cannot prove absence.
       if(!certainPrewriteRejection)setRequiresWriteReview(true);
