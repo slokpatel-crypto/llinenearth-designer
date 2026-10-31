@@ -1729,6 +1729,25 @@ requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
   "production-quote-status-idempotency-assertions.sql",
 ]);
 
+// M111: only non-delivery order transitions are replay-safe under the
+// original browser UUID. Physical delivery still needs transactional QC.
+requireTokens("src/app/api/operator/production/route.ts",[
+  'if(action==="order_status")', "production_order_set_status_idempotent",
+  "parseOperatorProductionRequestKey(body.requestKey)", "p_request_key:requestKey",
+  'status==="delivered"', "hasVerifiedLatestDeliveryQc", "hasVerifiedDeliveryQcOrderLineage",
+]);
+requireTokens("supabase/migrations/20261109_production_order_status_idempotency.sql",[
+  "pg_advisory_xact_lock", "production_order_status_request_receipts",
+  "v_updated:=public.production_order_set_status",
+  "order status request key belongs to different instructions",
+  "delivery requires separate transactional QC verification",
+  "from public,anon,authenticated", "to service_role",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "20261109_production_order_status_idempotency.sql",
+  "production-order-status-idempotency-assertions.sql",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
