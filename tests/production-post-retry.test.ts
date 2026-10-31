@@ -52,6 +52,9 @@ test("an uncertain write keeps every production mutation disabled until verified
     "Ambiguous failure must acquire the review hold before refreshing and releasing the network lock");
   assert.doesNotMatch(post,/setRequiresWriteReview\(false\)/,
     "A normal or apparently healthy GET cannot automatically clear the human review hold");
+  assert.match(post,/if\(confirmed\)setMessage\(success\);\s*else\{\s*\/\/[^]*?setRequiresWriteReview\(true\);/,
+    "Even a valid success receipt with unconfirmed fresh history must leave the review hold active");
+  assert.match(post,/its exact record could not be confirmed/);
   assert.match(review,/if\(!requiresWriteReview\|\|!configured\|\|busy\|\|actionInFlight.current\)return;/);
   assert.match(review,/setRequiresWriteReview\(false\)/);
   assert.match(review,/may still exist outside the visible ledger/);
