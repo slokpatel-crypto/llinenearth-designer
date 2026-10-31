@@ -50,10 +50,10 @@ test("J5: uppercase SQL order UUID still resolves the exact current ready order"
   assert.equal(hasVerifiedDeliveryQcOrderLineage([inspection],order),true);
   const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
   const delivered=source.split('if(status==="delivered")')[1]?.split('const updated=await rpc<unknown>("production_order_set_status"')[0]||"";
-  assert.match(delivered,/candidateOrders\\.find\\(row=>verifiedOperatorProductionCreateId\\(row\\.order_id\\)===orderId\\)/,
+  assert.match(delivered,/candidateOrders\.find\(row=>verifiedOperatorProductionCreateId\(row\.order_id\)===orderId\)/,
     "the typed SQL row must be joined by canonical UUID, not raw hex casing");
-  assert.doesNotMatch(delivered,/candidateOrders\\.find\\(row=>row\\.order_id===orderId\\)/);
-  assert.match(delivered,/hasVerifiedDeliveryQcOrderLineage\\(inspections,currentOrder\\)/);
+  assert.doesNotMatch(delivered,/candidateOrders\.find\(row=>row\.order_id===orderId\)/);
+  assert.match(delivered,/hasVerifiedDeliveryQcOrderLineage\(inspections,currentOrder\)/);
 });
 
 test("J5: malformed or coerced QC provenance cannot become a delivery approval",()=>{
