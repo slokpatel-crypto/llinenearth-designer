@@ -17,7 +17,7 @@ function respond(body:unknown,status=200){
  * Delivery POST revalidates physical QC atomically under the order lock. */
 export async function GET(){
   const jar=await cookies();
-  if(!verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value)){
+  if(!await verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value)){
     return respond({error:"Unauthorized."},401);
   }
   const config=getSupabaseAdminConfig();
