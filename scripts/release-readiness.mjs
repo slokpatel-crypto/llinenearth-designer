@@ -1786,6 +1786,29 @@ requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
   "20261113_delivery_qc_sequence_gate.sql",
   "m113-qc-sequence-assertions.sql",
 ]);
+
+// M114: advisory UI delivery option is sourced from a snapshot of the actual
+// M113 SQL QC proof, never from independently capped timestamp-only histories.
+// A missing/forged/old receipt hides the option; the write gate remains atomic.
+requireTokens("supabase/migrations/20261114_delivery_eligibility_read.sql",[
+  "production_delivery_eligibility_list", "q.inspection_sequence=o.qc_latest_sequence",
+  '"recipe_match":true', '"clean_damage_free":true',
+  "from public,anon,authenticated", "to service_role",
+]);
+requireTokens("src/app/api/operator/production/delivery-eligibility/route.ts",[
+  "verifyOperatorSession", "production_delivery_eligibility_list",
+  "parseProductionDeliveryEligibility(raw)", 'cache:"no-store"', "private, no-store",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "hasVerifiedSqlDeliveryEligibility(deliveryEligibility,item)",
+  "parseProductionDeliveryEligibility(eligibilityBody.eligibility)??[]",
+  "setDeliveryEligibility([])",
+  'status!=="delivered"||deliveryQcVerified',
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "20261114_delivery_eligibility_read.sql",
+  "m114-delivery-eligibility-assertions.sql",
+]);
 requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
   "20261110_delivery_qc_sql_gate.sql","m112-delivery-qc-gate-assertions.sql",
   "20261111_delivery_idempotency.sql",

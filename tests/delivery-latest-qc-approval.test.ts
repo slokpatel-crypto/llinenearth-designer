@@ -157,15 +157,17 @@ test("release gate checks transactional M112 QC and original-key delivery receip
   assert.doesNotMatch(release,/"Finished-garment QC approval is required before delivery\."\,/);
 });
 
-test("operator production desk never offers delivery based on first matching stale QC",()=>{
+test("operator production desk only offers delivery after SQL QC eligibility",()=>{
   const ui=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
-  assert.ok(ui.includes('import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval"'));
-  assert.ok(ui.includes("const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id,250)"));
-  assert.ok(ui.includes("hasVerifiedDeliveryQcOrderLineage(qcInspections,item)"));
+  assert.ok(ui.includes('hasVerifiedSqlDeliveryEligibility(deliveryEligibility,item)'));
   assert.ok(ui.includes('status!=="delivered"||deliveryQcVerified'));
-  assert.ok(ui.includes('deliveryQcVerified?"approved with provenance":"pending / rework / unverified"'));
+  assert.ok(ui.includes('deliveryQcVerified?"SQL QC verified · rechecked on delivery":"pending / rework / unverified"'));
+  assert.ok(ui.includes('setDeliveryEligibility([])'));
+  assert.ok(ui.includes('parseProductionDeliveryEligibility(eligibilityBody.eligibility)??[]'));
   assert.ok(!ui.includes("qcInspections.find("));
-  assert.ok(!ui.includes('latestQc?.decision==="approved"'));
+  assert.ok(!ui.includes('const deliveryQcVerified=hasVerifiedLatestDeliveryQc('));
+  // Historical timestamp-only helper remains covered as a defensive read,
+  // but the dashboard's delivery permission uses the new SQL read receipt.
   assert.equal(hasVerifiedLatestDeliveryQc([earlier,rework],orderId),false);
   assert.equal(hasVerifiedLatestDeliveryQc([rework,approved],orderId),true);
 });
