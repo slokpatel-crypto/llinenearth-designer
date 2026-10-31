@@ -22,12 +22,15 @@ export default function ProductionClient(){
   const [qcInspections,setQcInspections]=useState<QcInspection[]>([]);
   const [customerOutcomes,setCustomerOutcomes]=useState<CustomerOutcome[]>([]);
   const [learningContexts,setLearningContexts]=useState<LearningContext[]>([]);
-  const [configured,setConfigured]=useState(true);
+  // No mutation or linked packet export until the current backend ledger is verified.
+  const [configured,setConfigured]=useState(false);
   const [optionalEvidenceSources,setOptionalEvidenceSources]=useState<{qcInstalled:boolean;customerOutcomesInstalled:boolean;learningContextInstalled:boolean}|null>(null);
   const [busy,setBusy]=useState(false);
   // State updates are asynchronous: a second click in the same render must
   // not create a second quote/order or overlap a locked-design recovery.
   const actionInFlight=useRef(false);
+  // A late initial GET must never overwrite a newer post-mutation refresh.
+  const ledgerReadVersion=useRef(0);
   const [message,setMessage]=useState("");
   const [quote,setQuote]=useState({revisionId:"",recipeHash:"",currency:"INR",adjustment:"0",note:"",line1Label:"Shirt fabric",line1Amount:"",line2Label:"Tailoring",line2Amount:""});
   const [order,setOrder]=useState({revisionId:"",recipeHash:"",quoteId:"",note:""});
@@ -35,6 +38,12 @@ export default function ProductionClient(){
   const [loadedRevision,setLoadedRevision]=useState<LockedDesignRevision|null>(null);
 
   async function load(){
+    const readVersion=++ledgerReadVersion.current;
+    // Clear old receipts immediately; stale rows must not authorize actions.
+    setConfigured(false);
+    setQuotes([]);setOrders([]);setQcInspections([]);
+    setCustomerOutcomes([]);setLearningContexts([]);
+    setOptionalEvidenceSources(null);
     try{
       const response=await fetch("/api/operator/production",{cache:"no-store"});
       if(response.status===401){window.location.href="/operator/login?next=/operator/production";return;}
@@ -43,6 +52,7 @@ export default function ProductionClient(){
       if(!validProductionDeskResponse(data)){
         throw new Error("Production ledger response is malformed.");
       }
+      if(readVersion!==ledgerReadVersion.current) return;
       setConfigured(data.configured);
       setQuotes(data.quotes as Quote[]);
       setOrders(data.orders as Order[]);
@@ -51,6 +61,7 @@ export default function ProductionClient(){
       setLearningContexts(data.configured?data.learningContexts as LearningContext[]:[]);
       setOptionalEvidenceSources(data.configured?data.optionalEvidenceSources:null);
     }catch{
+      if(readVersion!==ledgerReadVersion.current) return;
       // Never keep stale quotes/orders or leave mutation controls enabled when
       // the operator's current production ledger cannot be verified.
       setConfigured(false);
@@ -67,7 +78,11 @@ export default function ProductionClient(){
 
   async function post(body:Record<string,unknown>,success:string){
     if(busy||actionInFlight.current) return;
+    if(!configured) return;
     actionInFlight.current=true;
+    // Invalidate any in-flight GET before sending a potentially durable write.
+    ledgerReadVersion.current+=1;
+    setConfigured(false);
     setBusy(true);setMessage("");
     try{
       const response=await fetch("/api/operator/production",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
@@ -75,7 +90,12 @@ export default function ProductionClient(){
       if(!response.ok) throw new Error(typeof data?.error==="string"?data.error:"Production operation failed.");
       if(!validProductionDeskMutationReceipt(body.action,data)) throw new Error("Production operation receipt could not be verified.");
       setMessage(success);await load();
-    }catch(error){setMessage(error instanceof Error?error.message:"Production operation failed.");}
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Production operation failed.");
+      // A timed-out mutation may still have committed. Reload rather than
+      // enabling controls against a pre-mutation ledger snapshot.
+      await load();
+    }
     finally{actionInFlight.current=false;setBusy(false);}
   }
 
@@ -142,7 +162,7 @@ export default function ProductionClient(){
   }
 
   async function exportProductionPacket(){
-    if(!loadedRevision) return;
+    if(!loadedRevision||!configured||busy||actionInFlight.current) return;
     try{
     const {quote:quoteMatch,order:orderMatch}=selectProductionPacketRecords(
       quotes,orders,loadedRevision.revisionId,loadedRevision.recipeHash,
@@ -210,7 +230,7 @@ export default function ProductionClient(){
         <div>
           <button onClick={()=>void exportHandoff()}>Export tailor handoff</button>
           <button onClick={()=>void exportTechPack()}>Export tech pack</button>
-          <button onClick={()=>void exportProductionPacket()}>Export production packet</button>
+          <button disabled={!configured||busy} onClick={()=>void exportProductionPacket()}>Export production packet</button>
           <Link href={`/operator/stock?fabric=${encodeURIComponent(loadedRevision.garmentSpec.fabrics.shirt.id)}&revision=${encodeURIComponent(loadedRevision.revisionId)}`}>Reserve shirt stock</Link>
           <Link href={`/operator/stock?fabric=${encodeURIComponent(loadedRevision.garmentSpec.fabrics.trouser.id)}&revision=${encodeURIComponent(loadedRevision.revisionId)}`}>Reserve trouser stock</Link>
         </div>
@@ -261,9 +281,9 @@ export default function ProductionClient(){
           <strong>{item.currency} {Number(item.total).toFixed(2)} · {item.status.toUpperCase()}</strong>
           <small>{item.quote_id}</small>
           <div className="productionRecordActions">
-            {item.status==="draft"&&<button disabled={busy} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"sent"},"Quote marked sent.")}>Mark sent</button>}
-            {item.status==="sent"&&<button disabled={busy} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"accepted"},"Quote accepted.")}>Accept</button>}
-            {item.status!=="void"&&<button disabled={busy} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"void"},"Quote voided.")}>Void</button>}
+            {item.status==="draft"&&<button disabled={busy||!configured} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"sent"},"Quote marked sent.")}>Mark sent</button>}
+            {item.status==="sent"&&<button disabled={busy||!configured} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"accepted"},"Quote accepted.")}>Accept</button>}
+            {item.status!=="void"&&<button disabled={busy||!configured} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"void"},"Quote voided.")}>Void</button>}
           </div>
         </section>)}
       </article>
@@ -293,7 +313,7 @@ export default function ProductionClient(){
               {customerOutcome.note&&<p>{customerOutcome.note}</p>}
               <small>Evidence only — not automatically applied to Designer ranking.</small>
             </div>}
-            {nextStatuses.length>0&&<select defaultValue="" onChange={(e)=>{if(e.target.value) void post({action:"order_status",orderId:item.order_id,status:e.target.value},"Order status updated.");}}>
+            {nextStatuses.length>0&&<select disabled={busy||!configured} defaultValue="" onChange={(e)=>{if(e.target.value) void post({action:"order_status",orderId:item.order_id,status:e.target.value},"Order status updated.");}}>
               <option value="">Update status…</option>
               {nextStatuses.map((status)=><option key={status} value={status}>{status.replaceAll("_"," ")}</option>)}
             </select>}
