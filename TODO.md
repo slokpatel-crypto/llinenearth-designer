@@ -827,3 +827,9 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] J5/T5: Validate original optional QC evidence and then copy only 11 operator-consumed fields, with literal known physical check/defect keys. Unknown nested keys fail closed, historical incomplete QC remains unapproved. Signed real built-Next CI fixture includes a fake private QC column and synthetic rework (not physical approval).
 - [ ] M77 exact-head quality, full Node tests, engine, preview, release check, build, PostgreSQL, signed HTTP, responsive browser and Non-3D must pass. Real owner/operator, supplier rolls, tailoring, native Blender, devices, five novice cases, ten deliveries, security/privacy and release approvals remain BLOCKED/PENDING.
 - [ ] Next independent 30–40-minute slice: privacy review/allowlist of optional customer outcomes and learning-context rows (including nested context), with genuine data/human evidence still separate.
+
+
+## 2026-10-31 — M82 J5 delivery evidence receipt and private response (stacked draft)
+- [x] A 200 response from delivery-evidence POST cannot claim immutable production completion unless the operator browser independently verifies a literal evidence UUID. Reject malformed/missing/array/coerced IDs and leave the form in a retryable error state.
+- [x] Route all GET/POST delivery-evidence responses through one private/no-store/pragma responder and redact full backend Error objects in both catches; retain existing first-ten and browsing fail-closed validation.
+- [ ] At the exact M82 draft head, verify quality, full Node tests, engine, preview-performance, release check, Next build, real HTTP and 390/768/1440 browser, Non-3D and PostgreSQL workflows. Real supplier stock, authenticated operator, physical tailoring/QC, native Blender, devices, first-ten deliveries, privacy/security and owner signoff remain PENDING/BLOCKED. No live migration, main merge or deployment.
