@@ -32,7 +32,7 @@ test("private delivery transport preserves adverse evidence and omits all extra 
   assert.equal(projected.evidence.length,1);
   assert.equal(projected.evidence[0].manual_design_reentry,true);
   assert.deepEqual(projected.evidence[0].reentry_fields,["fabric_identity"]);
-  assert.equal(projected.firstTenBasis?.historyValid,true);
+  assert.equal((projected.firstTenBasis as {historyValid:boolean}).historyValid,true);
   assert.equal((projected.firstTenBasis as {evidence:Array<{manual_design_reentry:boolean}>}).evidence[0].manual_design_reentry,true);
   assert.deepEqual(Object.keys(projected.orders[0]).sort(),
     ["order_id","revision_id","recipe_hash","status","note","created_at","delivered_at"].sort());
@@ -50,7 +50,7 @@ test("invalid historical basis remains explicitly invalid without any untrusted 
   const safe=safeProductionDeliveryTransport([order],[audit],bad);
   assert.deepEqual(safe.firstTenBasis,{version,historyValid:false,orders:[],evidence:[]});
   assert.doesNotMatch(JSON.stringify(safe),/DO-NOT-LEAK-CI-/);
-  assert.equal(safe.firstTenBasis?.historyValid,false);
+  assert.equal((safe.firstTenBasis as {historyValid:boolean}).historyValid,false);
   assert.equal(safeProductionDeliveryTransport([],[],null).firstTenBasis,null);
 });
 
