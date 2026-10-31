@@ -14,9 +14,8 @@ import {parseProductionCreationReceipts} from "@/lib/designer/production-creatio
 import { parseOperatorProductionStatus } from "@/lib/designer/operator-production-status";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 import {safeOperatorProductionErrorCode} from "@/lib/designer/operator-production-error";
-import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
 import { verifiedOptionalProductionRows } from "@/lib/designer/optional-production-ledger";
-import { validProductionDeskLedgers, validProductionDeskResponse, validProductionQcOrderRows } from "@/lib/designer/production-desk-ledger";
+import { validProductionDeskLedgers, validProductionDeskResponse } from "@/lib/designer/production-desk-ledger";
 import {safeProductionQuoteOrderRows} from "@/lib/designer/production-quote-order-transport";
 import {safeProductionQcRows} from "@/lib/designer/production-qc-transport";
 import {safeProductionCustomerOutcomes} from "@/lib/designer/production-outcome-transport";
