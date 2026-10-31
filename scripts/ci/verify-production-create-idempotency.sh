@@ -47,6 +47,8 @@ run_file scripts/ci/production-creation-receipt-lookup-assertions.sql
 # Existing historical UPDATE probes above run before the new immutability DDL.
 run_file supabase/migrations/20261115_finished_garment_qc_immutable.sql
 run_file scripts/ci/m122-qc-immutability-assertions.sql
+# M123: after all six schema migrations, verify actual installed gates (READ ONLY).
+run_file scripts/ci/m122-qc-schema-readonly-preflight.sql
 
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
