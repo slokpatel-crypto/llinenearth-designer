@@ -62,7 +62,7 @@ test("delivery evidence GET never bypasses private no-store, and errors log no p
   assert.equal((source.match(/NextResponse\.json\(/g)||[]).length,1,"all GET and POST paths must use the private responder");
   assert.doesNotMatch(get,/NextResponse\.json\(/);
   assert.match(get,/return respond\(\{error:"Unauthorized\."\},401\)/);
-  assert.match(get,/return respond\(\{configured:true,orders,evidence,firstTenBasis,firstTenAuditInstalled\}\)/);
+  assert.match(get,/return respond\(\{configured:true,orders:safe\.orders,evidence:safe\.evidence,/);
   assert.equal(source.split('console.error("[operator/production-evidence]",error instanceof Error?error.name:"UnknownError");').length-1,2);
 });
 

@@ -8,6 +8,7 @@ import { validProductionDeliveryBrowseReceipt, validProductionBrowseFirstTenAgre
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 import { verifiedFirstTenAuditReceipt } from "@/lib/designer/production-first-ten-receipt";
+import { safeProductionDeliveryTransport } from "@/lib/designer/production-delivery-transport";
 
 export const runtime="nodejs";
 
@@ -74,7 +75,9 @@ export async function GET(){
     }
     if(!validProductionBrowseFirstTenAgreement(orders,evidence,firstTenBasis))
       throw new Error("Contradictory first-ten and browsing receipts.");
-    return respond({configured:true,orders,evidence,firstTenBasis,firstTenAuditInstalled});
+    const safe=safeProductionDeliveryTransport(orders,evidence,firstTenBasis);
+    return respond({configured:true,orders:safe.orders,evidence:safe.evidence,
+      firstTenBasis:safe.firstTenBasis,firstTenAuditInstalled});
   }catch(error){
     if(error instanceof SecureJsonBodyTooLarge) return respond({error:error.message},413);
     if(error instanceof SecureJsonBodyInvalid) return respond({error:error.message},400);
