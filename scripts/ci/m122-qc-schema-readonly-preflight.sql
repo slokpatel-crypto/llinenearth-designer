@@ -18,6 +18,11 @@ DECLARE
   v_quote_events oid := to_regclass('private.production_quote_events');
   v_order_events oid := to_regclass('private.production_order_events');
   v_event_table oid;
+  v_request_receipt_immutability oid := to_regprocedure('private.reject_production_request_receipt_mutation()');
+  v_request_table oid;
+  v_req_name text;
+  v_req_row_trigger text;
+  v_req_trunc_trigger text;
   v_functions oid[];
   v_function oid;
 BEGIN
@@ -182,6 +187,51 @@ BEGIN
       raise exception 'M127 production event append-only or TRUNCATE trigger missing or disabled';
     end if;
   END LOOP;
+
+  -- M128: durable quote/order creation and non-delivery status replay
+  -- receipts must be immutable, even when edited directly as a privileged
+  -- SQL user; UPDATE/DELETE and TRUNCATE require distinct enabled triggers.
+  if v_request_receipt_immutability is null
+    or not exists(select 1 from pg_proc p
+      where p.oid=v_request_receipt_immutability and not p.prosecdef
+        and exists(select 1 from unnest(coalesce(p.proconfig,ARRAY[]::text[])) c
+          where c like 'search_path=%' and c like '%pg_catalog%')
+        and pg_get_functiondef(p.oid) like '%errcode=''55000''%')
+    or has_function_privilege('anon',v_request_receipt_immutability,'EXECUTE')
+    or has_function_privilege('authenticated',v_request_receipt_immutability,'EXECUTE') then
+    raise exception 'M128 request replay rejection function missing or insecure';
+  end if;
+  for v_req_name,v_req_row_trigger,v_req_trunc_trigger in
+    select * from (values
+      ('production_creation_request_receipts',
+       'production_creation_receipt_append_only','production_creation_receipt_no_truncate'),
+      ('production_quote_status_request_receipts',
+       'production_quote_status_receipt_append_only','production_quote_status_receipt_no_truncate'),
+      ('production_order_status_request_receipts',
+       'production_order_status_receipt_append_only','production_order_status_receipt_no_truncate')
+    ) as requested(name,row_trigger,truncate_trigger)
+  loop
+    v_request_table:=to_regclass('private.'||v_req_name);
+    if v_request_table is null
+      or not (select relrowsecurity from pg_class where oid=v_request_table)
+      or has_table_privilege('anon',v_request_table,'SELECT')
+      or has_table_privilege('authenticated',v_request_table,'SELECT') then
+      raise exception 'M128 request replay table missing or client grants unsafe: %',v_req_name;
+    end if;
+    if (select count(*) from pg_trigger t
+        where t.tgrelid=v_request_table and t.tgname=v_req_row_trigger
+          and t.tgfoid=v_request_receipt_immutability and t.tgenabled='O'
+          and not t.tgisinternal and (t.tgtype::int & 1)=1
+          and (t.tgtype::int & 2)=2 and (t.tgtype::int & 8)=8
+          and (t.tgtype::int & 16)=16)<>1
+      or (select count(*) from pg_trigger t
+        where t.tgrelid=v_request_table and t.tgname=v_req_trunc_trigger
+          and t.tgfoid=v_request_receipt_immutability and t.tgenabled='O'
+          and not t.tgisinternal and (t.tgtype::int & 1)=0
+          and (t.tgtype::int & 2)=2 and (t.tgtype::int & 32)=32)<>1 then
+      raise exception 'M128 request replay append-only trigger missing or disabled: %',v_req_name;
+    end if;
+  end loop;
 
   if v_gate is null or v_delivery is null or v_hint is null then
     raise exception 'M122 QC staging preflight: status/delivery/eligibility RPC missing';
