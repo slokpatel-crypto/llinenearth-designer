@@ -15,6 +15,17 @@ export function productionWriteHoldPending(storage:ProductionHoldStorage|null|un
   catch{return true;} // unavailable storage may conceal an unconfirmed write
 }
 
+/** Recover the original anonymous v4 UUID after a crash without copying
+ * request bodies or secrets. Invalid/inaccessible marker never permits a retry. */
+export function readProductionWriteHoldKey(storage:ProductionHoldStorage|null|undefined):string|null{
+  if(!storage)return null;
+  try{
+    const token=storage.getItem(PRODUCTION_WRITE_HOLD_KEY);
+    return typeof token==="string"&&/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(token)
+      ?token.toLowerCase():null;
+  }catch{return null;}
+}
+
 /** Claim the marker synchronously before issuing POST, failing closed if
  * storage is unavailable or another unreviewed write is already pending. */
 export function beginProductionWriteHold(storage:ProductionHoldStorage|null|undefined,token:string):boolean{
