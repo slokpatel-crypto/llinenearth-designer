@@ -41,6 +41,8 @@ run_file supabase/migrations/20261113_delivery_qc_sequence_gate.sql
 run_file scripts/ci/m113-qc-sequence-assertions.sql
 run_file supabase/migrations/20261114_delivery_eligibility_read.sql
 run_file scripts/ci/m114-delivery-eligibility-assertions.sql
+# M122: read-only audit of ACTUAL installed trigger/partial index/functions/RLS
+run_file scripts/ci/m122-qc-schema-readonly-preflight.sql
 run_file scripts/ci/production-create-idempotency-assertions.sql
 run_file scripts/ci/production-creation-receipt-lookup-assertions.sql
 
