@@ -23,8 +23,8 @@ test("all three operator dashboards invalidate old network generations",()=>{
 
 test("Phase 8 rejects late responses and errors before restoring delivery proof",()=>{
   const source=readFileSync(paths[0],"utf8");
-  assert.match(source,/if\(requestId!==latestLoad\.current\) return;\s*if\(!response\.ok\)/);
-  assert.match(source,/catch \{\s*if\(requestId!==latestLoad\.current\) return/);
+  assert.match(source,/if\(requestId!==latestLoad\.current\) return false;\s*if\(!response\.ok\)/);
+  assert.match(source,/catch \{\s*if\(requestId!==latestLoad\.current\) return false;/);
   assert.match(source,/if\(requestId===latestLoad\.current\) setLoading\(false\)/);
 });
 
