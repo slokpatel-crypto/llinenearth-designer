@@ -1720,7 +1720,7 @@ requireTokens("src/app/api/operator/production/route.ts",[
   "parseOperatorProductionRequestKey(body.requestKey)", "p_request_key:requestKey",
 ]);
 requireTokens("supabase/migrations/20261108_production_quote_status_idempotency.sql",[
-  "pg_advisory_xact_lock", "production_quote_set_status_request_receipts",
+  "pg_advisory_xact_lock", "production_quote_status_request_receipts",
   "v_updated:=public.production_quote_set_status", "quote status request key belongs to different instructions",
   "from public,anon,authenticated", "to service_role",
 ]);
