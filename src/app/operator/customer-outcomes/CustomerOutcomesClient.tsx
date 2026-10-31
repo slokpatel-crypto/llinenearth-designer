@@ -55,6 +55,7 @@ export default function CustomerOutcomesClient(){
       // Never coerce a malformed review/policy list into empty, approved history.
       const evidence=safeOutcomeReviewEvidence(record.outcomes,record.reviews,record.policies);
       setConfigured(record.configured);
+      setMessage("");
       setOutcomes(evidence.outcomes);
       setReviews(evidence.reviews);
       setPolicies(evidence.policies);
