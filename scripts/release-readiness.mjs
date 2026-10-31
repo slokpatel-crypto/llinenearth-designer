@@ -1158,6 +1158,14 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "Saved note: {item.note",
   "Linked quote: {item.quote_id",
 ]);
+// M106 integration: approved quotes cannot become void; use shared SQL-aligned
+// transition rules while retaining independent fresh packet-export checks.
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  'canTransitionQuote(item.status as ProductionQuoteStatus,"void")',
+]);
+requireTokens("src/lib/designer/production-state.ts",[
+  "accepted:[]", 'draft:["sent","void"]', 'sent:["accepted","void"]',
+]);
 // M105: an unconfirmed production write or stale cached React ledger must
 // never be packaged as a current operator quote/order packet.
 requireTokens("src/app/operator/production/ProductionClient.tsx",[
