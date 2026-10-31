@@ -1106,7 +1106,7 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "if(expected&&(!data.configured||!verifiedProductionMutationReadback(",
   "expected.action,expected.body,expected.receipt,data.quotes,data.orders,data.learningContexts",
   "const confirmed=await load({action:body.action,body,receipt:data});",
-  "if(confirmed){", "if(releaseProductionWriteHold(window.localStorage,holdToken))",
+  "if(confirmed){", "if(releaseProductionWriteHold(safeProductionHoldStorage(),holdToken))",
   "setMessage(success);",
 ]);
 // M102: a lost POST acknowledgement may follow a committed mutation; only
@@ -1150,13 +1150,15 @@ requireTokens("src/lib/designer/production-write-hold.ts",[
   "storage.removeItem(PRODUCTION_WRITE_HOLD_KEY)",
 ]);
 requireTokens("src/app/operator/production/ProductionClient.tsx",[
-  "productionWriteHoldPending(window.localStorage)",
+  "function safeProductionHoldStorage():Storage|null",
+  "try{return window.localStorage;}",
+  "productionWriteHoldPending(safeProductionHoldStorage())",
   'window.addEventListener("storage",onStorage)',
   "event.key===PRODUCTION_WRITE_HOLD_KEY&&event.newValue!==null",
   "const holdToken=crypto.randomUUID()",
-  "if(!beginProductionWriteHold(window.localStorage,holdToken))",
-  "if(releaseProductionWriteHold(window.localStorage,holdToken))",
-  "if(!acknowledgeProductionWriteHold(window.localStorage))",
+  "if(!beginProductionWriteHold(safeProductionHoldStorage(),holdToken))",
+  "if(releaseProductionWriteHold(safeProductionHoldStorage(),holdToken))",
+  "if(!acknowledgeProductionWriteHold(safeProductionHoldStorage()))",
 ]);
 // M104: a post-write review is meaningless if the operator cannot compare
 // the frozen submitted note/prices with real durable quote and order fields.
