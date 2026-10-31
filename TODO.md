@@ -1053,3 +1053,9 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] On that latest parent, reject malformed order SHA-256 hashes and add positive uppercase-equivalence plus negative coerced/nonhex/short hash regressions. Supersede stale child #617 without merging.
 - [ ] Verify new exact-head quality, full Node, engine, preview, release, build, browser 390/768/1440, independent Non-3D, stock and production PostgreSQL. No local project test run in connector-only environment.
 - [ ] Real supplier inventory, authenticated owner/operator, physical tailor/QC, Blender four-view, devices, beta/first-ten, security/privacy/schema and separate owner merge/deploy approvals remain BLOCKED/PENDING.
+
+## 2026-11-01 — M132 verified-lock CI contract reconciliation (draft)
+- [x] Reproduce exact M131 #637 head `a6f6e2101aceafc49b46dddc5f9bb3dca2a8f4cf` full CI #41240990570 and Non-3D #41240990520 failing at two obsolete `!loadedRevision` source assertions, despite new stronger `!lockedOrderMatches` quote/order gate; stock and production disposable PostgreSQL passed on that parent.
+- [x] Preserve M131 immutable recovered identity and strengthen both existing tests to require the exact locked revision ID and equivalent verified recipe hash in the order-creation guard. Update release source invariant to require the same stronger guard; no UI/backend/schema/physical stock change.
+- [ ] Verify this M132 final exact SHA with full quality/Node/engine/preview/release/build, signed HTTP, responsive browser 390/768/1440, independent Non-3D and both disposable PostgreSQL. Parent or intermediate CI does not certify this child.
+- [ ] Genuine supplier rolls/metres, authenticated customer/operator acceptance, tailor/physical QC, native Blender, target devices, five novice beta cases, ten real deliveries, security/privacy/schema and separate owner merge/deploy approvals remain BLOCKED. No live SQL, paid AI, merge or deployment.
