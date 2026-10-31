@@ -304,7 +304,13 @@ test("J5 operator ledger refresh discards stale GETs and disables mutations unti
   assert.equal((client.match(/if\(readVersion!==ledgerReadVersion\.current\) return false;/g)||[]).length,2,
     "both stale successful and stale failed GETs must be discarded");
   assert.match(client,/ledgerReadVersion\.current\+=1;\s*setConfigured\(false\)/);
-  assert.match(client,/if\(!configured\|\|requiresWriteReview\) return;\s*actionInFlight\.current=true/);
+  const postGuard=client.split("async function post(")[1]?.split("function confirmReviewedProductionHistory(")[0]||"";
+  const enabled=postGuard.indexOf("if(!configured||requiresWriteReview) return;");
+  const persistent=postGuard.indexOf("beginProductionWriteHold(window.localStorage,holdToken)",enabled);
+  const claim=postGuard.indexOf("actionInFlight.current=true;",persistent);
+  const postNetwork=postGuard.indexOf('await fetch("/api/operator/production",{method:"POST"',claim);
+  assert.ok(enabled>=0&&persistent>enabled&&claim>persistent&&postNetwork>claim,
+    "An operator write must pass review guard and claim a persistent marker before its synchronous lock and network request");
   // A post-commit fetch failure must reload, then preserve an explicit
   // uncertain-write warning; the previous regex assumed catch did nothing
   // after await load(), and would reject this stronger safety handling.
