@@ -210,3 +210,75 @@ test("operator customer learning gate invalidates stale or malformed reads",()=>
   assert.match(source,/if\(!refreshed\)return false/);
   assert.doesNotMatch(source,/Array\.isArray\(data\.reviews\)\?data\.reviews:\[\]/);
 });
+
+
+test("same-timestamp conflicting latest human reviews never become an approval by row order",()=>{
+  const eligible={...outcomes[0],learning_context:{
+    version:"linen-earth-production-learning-context-v1",revisionId:"r1",
+    recipeHash:"f".repeat(64),fabrics:{shirtId:"shirt-1",trouserId:"trouser-1"},
+  }};
+  const approved={review_id:"approved-1",outcome_id:"o1",decision:"approved" as const,
+    reviewer:"Owner A",note:"Passed",created_at:"2026-10-31T10:00:00.123Z"};
+  const rejected={...approved,review_id:"rejected-1",decision:"rejected" as const,
+    reviewer:"Owner B",note:"Real fit issue"};
+  const policy={policy_id:"policy-a",minimum_approved_cases:1,approved_by:"Owner",
+    note:"One verified customer case",created_at:"2026-10-31T10:01:00.000Z"};
+  const clean=summarizeCustomerOutcomeLearning([eligible],[approved],[policy]);
+  assert.equal(clean.gateComplete,true,"Valid non-contradictory human evidence remains usable");
+  for(const latest of [[approved,rejected],[rejected,approved]]){
+    const result=summarizeCustomerOutcomeLearning([eligible],latest,[policy]);
+    assert.equal(result.approved,0);
+    assert.equal(result.rejected,0,"Do not invent a rejection either");
+    assert.equal(result.unreviewed,1);
+    assert.equal(result.learningEligible,0);
+    assert.equal(result.reviewConflictCount,1);
+    assert.equal(result.gateComplete,false);
+  }
+  const older={...rejected,review_id:"older",created_at:"2026-10-31T09:59:59.999Z"};
+  const resolved=summarizeCustomerOutcomeLearning([eligible],[older,approved],[policy]);
+  assert.equal(resolved.reviewConflictCount,0);
+  assert.equal(resolved.gateComplete,true,"Genuinely later non-conflicting review restores human evidence");
+  const repeatedSameDecision=summarizeCustomerOutcomeLearning([eligible],[
+    approved,{...approved,review_id:"another-approval",reviewer:"Owner B"},
+  ],[policy]);
+  assert.equal(repeatedSameDecision.reviewConflictCount,0);
+  assert.equal(repeatedSameDecision.gateComplete,true,"An identical decision is not a conflict");
+});
+
+test("different human learning policies with the same latest timestamp cannot choose a favorable threshold",()=>{
+  const eligible={...outcomes[0],learning_context:{
+    version:"linen-earth-production-learning-context-v1",revisionId:"r1",
+    recipeHash:"f".repeat(64),fabrics:{shirtId:"shirt-1",trouserId:"trouser-1"},
+  }};
+  const review={review_id:"review-1",outcome_id:"o1",decision:"approved" as const,
+    reviewer:"Owner",note:"Fit inspected",created_at:"2026-10-31T10:00:00Z"};
+  const permissive={policy_id:"policy-1",minimum_approved_cases:1,
+    approved_by:"Owner A",note:"One real reviewed case",created_at:"2026-10-31T11:00:00.000Z"};
+  const strict={...permissive,policy_id:"policy-2",minimum_approved_cases:25,
+    approved_by:"Owner B",note:"Require 25 real cases"};
+  for(const policies of [[permissive,strict],[strict,permissive]]){
+    const result=summarizeCustomerOutcomeLearning([eligible],[review],policies);
+    assert.equal(result.policyConflict,true);
+    assert.equal(result.policy,null);
+    assert.equal(result.threshold,null);
+    assert.equal(result.gateComplete,false);
+    assert.equal(result.learningEligible,1,"Valid positive case stays counted but cannot certify conflicting policy");
+  }
+  const later={...permissive,policy_id:"policy-later",created_at:"2026-10-31T11:00:01Z"};
+  const resolved=summarizeCustomerOutcomeLearning([eligible],[review],[strict,permissive,later]);
+  assert.equal(resolved.policyConflict,false);
+  assert.equal(resolved.threshold,1);
+  assert.equal(resolved.gateComplete,true);
+});
+
+
+test("operator human-review UI exposes ambiguous latest human decisions and policy approval",()=>{
+  const source=readFileSync("src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx","utf8");
+  assert.match(source,/reviewConflicts=useMemo\(/);
+  assert.match(source,/prior\.decision!==row\.decision/);
+  assert.match(source,/role="alert"/);
+  assert.match(source,/summary\.reviewConflictCount>0\|\|summary\.policyConflict/);
+  assert.match(source,/CONFLICT — REVIEW REQUIRED/);
+  assert.match(source,/reviewRow&&!reviewConflicts\.has\(outcome\.outcome_id\)/);
+  assert.match(source,/The learning gate remains OPEN until a new unambiguous human decision/);
+});
