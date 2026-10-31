@@ -271,3 +271,14 @@ test("different human learning policies with the same latest timestamp cannot ch
   assert.equal(resolved.gateComplete,true);
 });
 
+
+test("operator human-review UI exposes ambiguous latest human decisions and policy approval",()=>{
+  const source=readFileSync("src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx","utf8");
+  assert.match(source,/reviewConflicts=useMemo\(/);
+  assert.match(source,/prior\.decision!==row\.decision/);
+  assert.match(source,/role="alert"/);
+  assert.match(source,/summary\.reviewConflictCount>0\|\|summary\.policyConflict/);
+  assert.match(source,/CONFLICT — REVIEW REQUIRED/);
+  assert.match(source,/reviewRow&&!reviewConflicts\.has\(outcome\.outcome_id\)/);
+  assert.match(source,/The learning gate remains OPEN until a new unambiguous human decision/);
+});
