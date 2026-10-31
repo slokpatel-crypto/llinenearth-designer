@@ -185,7 +185,13 @@ test("stock evidence identity fields reject aliases rather than truncating live 
   for(const requestKey of ["k".repeat(180)+"second-transaction",false,{}]){
     assert.throws(()=>normalizeStockReservation({...base,requestKey}),/Reservation request key/i);
   }
-  assert.equal(normalizeStockReservation({...base,requestKey:" REQUEST-123456 "}).requestKey,"REQUEST-123456");
+  // Immutable ledger IDs must never alias through silent whitespace trimming.
+  for(const requestKey of [" REQUEST-123456 ","REQUEST-123456 ","\tREQUEST-123456"]){
+    assert.throws(()=>normalizeStockReservation({...base,requestKey}),/Reservation request key must match exactly/);
+  }
+  for(const revisionId of [" LE-LOCK-123456","LE-LOCK-123456 ","\nLE-LOCK-123456"]){
+    assert.throws(()=>normalizeStockReservation({...base,revisionId}),/Locked revision ID must match exactly/);
+  }
 });
 
 test("physical stock provenance cannot silently lose an overlong source reference",()=>{

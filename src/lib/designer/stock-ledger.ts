@@ -183,6 +183,10 @@ export function normalizeStockReservation(input:unknown){
   const fabricId=requiredStockFabricId(source.fabricId);
   const revisionId=requiredStockIdentity(source.revisionId,"Locked revision ID",12,220);
   const requestKey=requiredStockIdentity(source.requestKey,"Reservation request key",12,180);
+  // Both fields are immutable ledger identities. The SQL layer cannot reject
+  // a padded/tampered revision or key if the API has already silently trimmed it.
+  if(source.revisionId!==revisionId)throw new Error("Locked revision ID must match exactly.");
+  if(source.requestKey!==requestKey)throw new Error("Reservation request key must match exactly.");
   const quantityMetres=exactStockMetres(source.quantityMetres,"Stock quantity",100000);
   const requestedBy=requiredStockAuditText(source.requestedBy,"Named reservation checker / requester",2,120);
   const sourceReference=requiredStockAuditText(source.sourceReference,"Reservation quantity evidence reference",3,240);

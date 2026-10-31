@@ -917,6 +917,35 @@ requireTokens("src/app/operator/stock/StockClient.tsx", [
 requireTokens("supabase/migrations/20261029_stock_reservation_provenance.sql", ["fabric_stock_reserve_v2","p_requested_by","p_source_reference","reservation quantity evidence reference is required","service_role"]);
 requireTokens("supabase/migrations/20261030_stock_consumption_provenance.sql", ["fabric_stock_consume_reservation_v2","p_checked_by","p_source_reference","actual cloth-usage evidence reference is required","service_role"]);
 requireTokens("supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql", ["stock-request:","stock-reservation:","fabric_stock_release_v2","fabric_stock_reserve_v2","fabric_stock_consume_reservation_v2","reservation release reference is required","service_role"]);
+
+requireTokens("src/lib/designer/stock-ledger.ts", [
+  "normalizeStockReservation", "Locked revision ID must match exactly.",
+  "Reservation request key must match exactly.",
+]);
+requireTokens("supabase/migrations/20261031_stock_reservation_exact_key_evidence.sql", [
+  "fabric_stock_reserve_v2", "v_existing.event_type<>'reserve'",
+  "v_existing.fabric_id<>p_fabric_id",
+  "v_existing.quantity_metres<>p_quantity_metres",
+  "v_existing.revision_id is distinct from p_revision_id",
+  "v_existing.recorded_by is distinct from p_requested_by",
+  "v_existing.source_reference is distinct from p_source_reference",
+  "stock reservation request key belongs to different evidence",
+  "pg_advisory_xact_lock", "stock-request:", "stock-fabric:",
+  "revoke all on function public.fabric_stock_reserve_v2", "service_role",
+]);
+requireTokens("scripts/ci/verify-stock-record-db.sh", [
+  "20261031_stock_reservation_exact_key_evidence.sql",
+  "stock-reservation-exact-key-assertions.sql",
+  "Conflicting same-key reservations did not serialize to one winner.",
+]);
+requireTokens("scripts/ci/stock-reservation-exact-key-assertions.sql", [
+  "identical reserve retry did not reuse its original UUID",
+  "different quantity improperly reused reservation key",
+  "different checker improperly reused reservation key",
+  "existing physical receipt key was adopted by a reservation",
+  "reserve RPC execute privileges widened",
+]);
+
 requireTokens("supabase/migrations/20261001_production_quotes_orders.sql", ["production_quote_create","production_order_create","invalid order transition","service_role"]);
 requireTokens("supabase/migrations/20261002_finished_garment_qc.sql", ["finished_garment_qc_record","finished_garment_qc_list","finished-garment QC approval is required before delivery","service_role"]);
 requireTokens("supabase/migrations/20261027_finished_garment_qc_provenance.sql", ["inspection_reference","finished_garment_qc_record_v2","provenance-backed finished-garment QC approval is required before delivery","service_role"]);

@@ -350,3 +350,40 @@ test("stock SQL integration runs historical stock-only migration chain, not just
   assert.ok(checks.includes("historic physical ledger RLS was not enabled"));
   assert.ok(checks.includes("historic manual source was counted more than once"));
 });
+
+test("reservation retry SQL rejects altered request evidence and is tested in real PostgreSQL",()=>{
+  const migration=readFileSync("supabase/migrations/20261031_stock_reservation_exact_key_evidence.sql","utf8");
+  const history=readFileSync("scripts/ci/verify-stock-record-db.sh","utf8");
+  const sql=readFileSync("scripts/ci/stock-reservation-exact-key-assertions.sql","utf8");
+  assert.ok(migration.includes("create or replace function public.fabric_stock_reserve_v2("));
+  assert.ok(migration.includes("v_existing.event_type<>'reserve'"));
+  assert.ok(migration.includes("v_existing.reservation_id is null"));
+  for(const exact of ["v_existing.fabric_id<>p_fabric_id",
+    "v_existing.quantity_metres<>p_quantity_metres",
+    "v_existing.revision_id is distinct from p_revision_id",
+    "v_existing.recorded_by is distinct from p_requested_by",
+    "v_existing.source_reference is distinct from p_source_reference"]){
+    assert.ok(migration.includes(exact),`Reservation key aliases another intent: ${exact}`);
+  }
+  assert.ok(migration.includes("stock reservation request key belongs to different evidence"));
+  assert.ok(migration.includes("p_quantity_metres<>round(p_quantity_metres,3)"));
+  assert.ok(migration.includes("p_request_key<>btrim(p_request_key)"));
+  assert.ok(migration.includes("length(p_request_key)>180"));
+  assert.ok(migration.includes("pg_advisory_xact_lock(hashtext('stock-request:'||p_request_key))"));
+  assert.ok(migration.includes("pg_advisory_xact_lock(hashtext('stock-fabric:'||p_fabric_id))"));
+  assert.ok(migration.includes("grant execute on function public.fabric_stock_reserve_v2("));
+  assert.ok(migration.includes("to service_role;"));
+  const loop=history.slice(history.indexOf("for migration in "),history.indexOf("\n  do",history.indexOf("for migration in ")));
+  const record=loop.indexOf("20261031_stock_record_exact_retry.sql");
+  const reserve=loop.indexOf("20261031_stock_reservation_exact_key_evidence.sql");
+  assert.ok(record>=0&&reserve>record,"New reserve replacement must apply after record_v3");
+  assert.ok(history.includes("run_sql_file scripts/ci/stock-reservation-exact-key-assertions.sql"));
+  assert.ok(history.includes("Conflicting same-key reservations did not serialize to one winner."));
+  assert.ok(history.includes("Losing reservation did not fail its exact-evidence veto."));
+  assert.ok(sql.includes("different quantity improperly reused reservation key"));
+  assert.ok(sql.includes("different locked revision improperly reused reservation key"));
+  assert.ok(sql.includes("different source document improperly reused reservation key"));
+  assert.ok(sql.includes("existing physical receipt key was adopted by a reservation"));
+  assert.ok(sql.includes("different-evidence retries created extra reservation rows"));
+  assert.ok(sql.includes("reserve RPC execute privileges widened"));
+});
