@@ -1859,6 +1859,23 @@ requireTokens("tests/titan-qc-staging-schema-preflight.test.ts",[
   "M123 read-only installed-schema preflight",
 ]);
 
+// M125: installed security checks are *challenged* under reversible,
+// CI-only schema/role faults, not just observed on a known-good fixture.
+requireTokens("scripts/ci/m125-qc-preflight-fault-injection.sh",[
+  "GITHUB_ACTIONS", "titan_production_idempotency",
+  "insert_trigger_off", "update_delete_off", "truncate_off",
+  "missing_unique_index", "leaked_client_rpc", "missing_service_rpc",
+  "BEGIN;", "ROLLBACK;", "not rolled back",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  'bash scripts/ci/m125-qc-preflight-fault-injection.sh "$container" "$db"',
+]);
+requireTokens("tests/titan-qc-catalog-fault-injection.test.ts",[
+  "M125 tries six real SQL/ACL faults",
+  "M125 negative test never uses a real customer",
+]);
+
+
 
 // M121: code-level staging rollout documentation is mandatory for the
 // additive physical QC/delivery chain. No automated live schema migration.
