@@ -27,7 +27,7 @@ export function stockReservationAttempt(
  * HTTP response the same evidence must never create another stock event.
  * A new physical receipt requires a genuinely distinct source document. */
 export type ManualStockRecordIntent={
-  fabricId:string;eventType:"receipt"|"adjustment_in"|"adjustment_out";
+  fabricId:string;eventType:StockEventType;
   quantityMetres:number;recordedBy:string;sourceReference:string;note:string;
 };
 export function stockManualRecordSignature(intent:ManualStockRecordIntent):string{
