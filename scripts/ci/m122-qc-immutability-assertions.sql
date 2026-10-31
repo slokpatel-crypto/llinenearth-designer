@@ -11,6 +11,11 @@ begin
         and tgname='finished_garment_qc_append_only' and tgenabled='O')<>1 then
     raise exception 'physical QC append-only trigger missing or disabled';
   end if;
+  if (select count(*) from pg_trigger
+      where tgrelid='private.finished_garment_qc_inspections'::regclass
+        and tgname='finished_garment_qc_no_truncate' and tgenabled='O')<>1 then
+    raise exception 'physical QC TRUNCATE rejection trigger missing or disabled';
+  end if;
   if has_function_privilege('anon','private.reject_finished_garment_qc_mutation()','EXECUTE')
      or has_function_privilege('authenticated','private.reject_finished_garment_qc_mutation()','EXECUTE') then
     raise exception 'physical QC mutation rejection trigger is publicly executable';
@@ -35,6 +40,11 @@ begin
   begin
     delete from private.finished_garment_qc_inspections where inspection_id=v_approval;
     raise exception 'QC approval DELETE incorrectly succeeded';
+  exception when sqlstate '55000' then null;
+  end;
+  begin
+    truncate private.finished_garment_qc_inspections;
+    raise exception 'QC TRUNCATE incorrectly succeeded';
   exception when sqlstate '55000' then null;
   end;
   if (select decision from private.finished_garment_qc_inspections where inspection_id=v_approval)<>'approved'
