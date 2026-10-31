@@ -1053,3 +1053,9 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] On that latest parent, reject malformed order SHA-256 hashes and add positive uppercase-equivalence plus negative coerced/nonhex/short hash regressions. Supersede stale child #617 without merging.
 - [ ] Verify new exact-head quality, full Node, engine, preview, release, build, browser 390/768/1440, independent Non-3D, stock and production PostgreSQL. No local project test run in connector-only environment.
 - [ ] Real supplier inventory, authenticated owner/operator, physical tailor/QC, Blender four-view, devices, beta/first-ten, security/privacy/schema and separate owner merge/deploy approvals remain BLOCKED/PENDING.
+
+## 2026-11-01 — M132 integrated verified-lock CI contract (draft)
+- [x] M131 #637 `a6f6e2101aceafc49b46dddc5f9bb3dca2a8f4cf` failed two obsolete Node assertions (CI #41240990570 and Non-3D #41240990520). While working, #637 independently advanced to `acc26ee16d80de8caaec1a92dacdc93d9708933c` with compatible repairs to those two tests. Preserve that newer head; supersede the older #638 child without merging.
+- [x] Start from latest #637 `acc26ee16...`; strengthen both existing tests to verify order create's exact recovered immutable revision ID, equivalent recipe SHA-256 and `!lockedOrderMatches` disable guard; update obsolete static release invariant. Runtime, photo/model, inventory and SQL remain unchanged.
+- [ ] Verify final integrated child exact-head quality, Node, engine, preview, release, build, signed HTTP, browser 390/768/1440, Non-3D and both disposable PostgreSQL; no parent CI transfers.
+- [ ] Real stock, signed-in customer/operator recovery, tailor/physical QC, native Blender, devices, novice beta, actual deliveries and owner security/privacy/schema/merge/deploy approvals remain BLOCKED/PENDING.
