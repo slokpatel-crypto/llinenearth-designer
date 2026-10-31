@@ -289,3 +289,22 @@ test("J5 operator mutations and lock recovery use synchronous single-flight guar
   assert.doesNotMatch(mutation,/if\(busy\) return;/);
   assert.doesNotMatch(recovery,/if\(!recoveryToken\.trim\(\)\|\|busy\) return;/);
 });
+
+
+test("J5 operator ledger refresh discards stale GETs and disables mutations until fresh receipts",()=>{
+  const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  assert.match(client,/const \[configured,setConfigured\]=useState\(false\)/);
+  assert.match(client,/const ledgerReadVersion=useRef\(0\)/);
+  assert.match(client,/const readVersion=\+\+ledgerReadVersion\.current/);
+  assert.match(client,/if\(readVersion!==ledgerReadVersion\.current\) return;/);
+  assert.equal((client.match(/if\(readVersion!==ledgerReadVersion\.current\) return;/g)||[]).length,2,
+    "both stale successful and stale failed GETs must be discarded");
+  assert.match(client,/ledgerReadVersion\.current\+=1;\s*setConfigured\(false\)/);
+  assert.match(client,/if\(!configured\) return;\s*actionInFlight\.current=true/);
+  assert.match(client,/await load\(\);\s*}\s*finally\{actionInFlight\.current=false;setBusy\(false\);}/);
+  assert.match(client,/async function exportProductionPacket\(\)\{\s*if\(!loadedRevision\|\|!configured\|\|busy\|\|actionInFlight\.current\) return;/);
+  assert.match(client,/disabled=\{!configured\|\|busy\} onClick=\{\(\)=>void exportProductionPacket\(\)\}/);
+  assert.match(client,/\{nextStatuses\.length>0&&<select disabled=\{busy\|\|!configured\}/);
+  assert.equal((client.match(/<button disabled=\{busy\|\|!configured\}/g)||[]).length,3,
+    "quote status actions must also be disabled when the ledger is unverified");
+});
