@@ -214,23 +214,38 @@ export default function ProductionClient(){
   }
 
   async function exportProductionPacket(){
-    if(!loadedRevision||!configured||busy||actionInFlight.current) return;
+    // An uncertain mutation may be missing from a capped history page. Never
+    // export a production-status packet while the operator review hold is on.
+    if(!loadedRevision||!configured||requiresWriteReview||busy||actionInFlight.current) return;
+    actionInFlight.current=true;
+    setBusy(true);
     try{
-    const {quote:quoteMatch,order:orderMatch}=selectProductionPacketRecords(
-      quotes,orders,loadedRevision.revisionId,loadedRevision.recipeHash,
-    );
-    const packet=await buildVerifiedProductionPacket({
-      revision:loadedRevision,
-      quote:quoteMatch?{
-        quoteId:quoteMatch.quote_id,currency:quoteMatch.currency,total:Number(quoteMatch.total),status:quoteMatch.status,createdAt:quoteMatch.created_at,
-      }:null,
-      order:orderMatch?{
-        orderId:orderMatch.order_id,status:orderMatch.status,createdAt:orderMatch.created_at,
-      }:null,
-    });
-    download(`linen-earth-production-packet-${packet.revisionId.toLowerCase()}.json`,
-      "application/json",JSON.stringify(packet,null,2));
+      // The displayed React ledger may predate another operator's mutation.
+      // Require a new authenticated, independently validated no-store read
+      // immediately before building the packet; never reuse cached rows.
+      const response=await fetch("/api/operator/production",{cache:"no-store"});
+      if(!response.ok) throw new Error("fresh production history is unavailable.");
+      const fresh:unknown=await response.json();
+      if(!validProductionDeskResponse(fresh)||!fresh.configured){
+        throw new Error("fresh production history could not be verified.");
+      }
+      const {quote:quoteMatch,order:orderMatch}=selectProductionPacketRecords(
+        fresh.quotes as Quote[],fresh.orders as Order[],
+        loadedRevision.revisionId,loadedRevision.recipeHash,
+      );
+      const packet=await buildVerifiedProductionPacket({
+        revision:loadedRevision,
+        quote:quoteMatch?{
+          quoteId:quoteMatch.quote_id,currency:quoteMatch.currency,total:Number(quoteMatch.total),status:quoteMatch.status,createdAt:quoteMatch.created_at,
+        }:null,
+        order:orderMatch?{
+          orderId:orderMatch.order_id,status:orderMatch.status,createdAt:orderMatch.created_at,
+        }:null,
+      });
+      download(`linen-earth-production-packet-${packet.revisionId.toLowerCase()}.json`,
+        "application/json",JSON.stringify(packet,null,2));
     }catch(error){exportError(error);}
+    finally{actionInFlight.current=false;setBusy(false);}
   }
 
 
@@ -282,7 +297,7 @@ export default function ProductionClient(){
         <div>
           <button onClick={()=>void exportHandoff()}>Export tailor handoff</button>
           <button onClick={()=>void exportTechPack()}>Export tech pack</button>
-          <button disabled={!configured||busy} onClick={()=>void exportProductionPacket()}>Export production packet</button>
+          <button disabled={!configured||requiresWriteReview||busy} onClick={()=>void exportProductionPacket()}>Export production packet</button>
           <Link href={`/operator/stock?fabric=${encodeURIComponent(loadedRevision.garmentSpec.fabrics.shirt.id)}&revision=${encodeURIComponent(loadedRevision.revisionId)}`}>Reserve shirt stock</Link>
           <Link href={`/operator/stock?fabric=${encodeURIComponent(loadedRevision.garmentSpec.fabrics.trouser.id)}&revision=${encodeURIComponent(loadedRevision.revisionId)}`}>Reserve trouser stock</Link>
         </div>
