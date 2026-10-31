@@ -63,7 +63,9 @@ async function main(){
   assert.equal(before.summary.gateComplete,false);
   assert.equal(before.outcomes[0].fit_result,"major_alteration");
   // An invalid synthetic POST must not increment review history.
-  await expectedBody(await request(signed,{...reviewBody,decision:"approved"}),400);
+  // The fake RPC returns 400; the operator API intentionally maps backend
+  // failures to a private 409 rather than exposing upstream details.
+  await expectedBody(await request(signed,{...reviewBody,decision:"approved"}),409);
   const unchanged=await expectedBody(await request(signed),200);
   assert.equal(unchanged.reviews.length,1);
   // Valid negative review POST produces the literal durable receipt.
@@ -86,7 +88,7 @@ async function main(){
 
   const policyBody={action:"policy",minimumApprovedCases:3,
     approvedBy:approver,note:policyNote};
-  await expectedBody(await request(signed,{...policyBody,minimumApprovedCases:1}),400);
+  await expectedBody(await request(signed,{...policyBody,minimumApprovedCases:1}),409);
   assert.equal((await expectedBody(await request(signed),200)).policies.length,1);
   const createdPolicy=await expectedBody(await request(signed,policyBody),200);
   assert.deepEqual(createdPolicy,{policyId:CI_POLICY_RECEIPT});
