@@ -1837,6 +1837,28 @@ requireTokens("tests/titan-qc-migration-staging-plan.test.ts",[
   "M121 no CI job automatically applies",
 ]);
 
+// M122: check installed (not just source-declared) schema, trigger, partial
+// unique QC index, SECURITY DEFINER search paths and private service grants.
+// Must run READ ONLY in disposable PostgreSQL, never apply a migration.
+requireTokens("scripts/ci/m122-qc-schema-readonly-preflight.sql",[
+  "BEGIN READ ONLY;", "COMMIT;",
+  "pg_attribute", "pg_constraint", "pg_index", "pg_trigger", "pg_proc",
+  "p.prosecdef", "p.proconfig", "pg_get_functiondef",
+  "t.tgenabled='O'", "t.tgfoid=v_trigger",
+  "has_function_privilege('anon'", "has_function_privilege('authenticated'",
+  "has_function_privilege('service_role'", "relrowsecurity",
+  "v_latest_sequence is distinct from v_order_sequence",
+  "q.inspection_sequence=o.qc_latest_sequence",
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "run_file scripts/ci/m122-qc-schema-readonly-preflight.sql",
+]);
+requireTokens("tests/titan-qc-staging-schema-preflight.test.ts",[
+  "M122 preflight audits installed QC schema",
+  "M122 read-only installed-schema preflight",
+]);
+
+
 // M120: the UI order records must stay visible while the optional QC hint
 // stalls, ignore an old positive hint after a newer 503 and only expose a
 // delivery OPTION on a fresh matching synthetic read (write SQL still rules).
