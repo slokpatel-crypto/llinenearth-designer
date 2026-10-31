@@ -66,30 +66,15 @@ export default function ProductionClient(){
     setCustomerOutcomes([]);setLearningContexts([]);
     setOptionalEvidenceSources(null);
     try{
-      // The eligibility read is advisory and independently verified. A 404,
-      // timeout or malformed response must hide delivery but must not make
-      // existing quote/order history disappear on an older SQL deployment.
-      const [response,eligibilityResponse]=await Promise.all([
-        fetch("/api/operator/production",{cache:"no-store"}),
-        fetch("/api/operator/production/delivery-eligibility",{cache:"no-store"}).catch(()=>null),
-      ]);
+      // Do not block ordinary production history on the optional physical-QC
+      // hint: an older deployment may return 404/503 or wait for RPC timeout.
+      // Delivery stays disabled until a separate validated hint arrives.
+      const response=await fetch("/api/operator/production",{cache:"no-store"});
       if(response.status===401){window.location.href="/operator/login?next=/operator/production";return false;}
       if(!response.ok) throw new Error("Production records are unavailable.");
       const data:unknown=await response.json();
       if(!validProductionDeskResponse(data)){
         throw new Error("Production ledger response is malformed.");
-      }
-      let eligibleRows:ProductionDeliveryEligibility[]=[];
-      if(eligibilityResponse?.ok){
-        try{
-          const eligibilityBody:unknown=await eligibilityResponse.json();
-          if(eligibilityBody&&typeof eligibilityBody==="object"&&!Array.isArray(eligibilityBody)
-            &&"eligibility" in eligibilityBody){
-            eligibleRows=parseProductionDeliveryEligibility(eligibilityBody.eligibility)??[];
-          }
-        }catch{
-          // A broken or missing advisory receipt never unlocks delivery.
-        }
       }
       if(readVersion!==ledgerReadVersion.current) return false;
       // A mutation is not confirmed until this newly verified ledger contains
@@ -100,7 +85,28 @@ export default function ProductionClient(){
       setConfigured(data.configured);
       setQuotes(data.quotes as Quote[]);
       setOrders(data.orders as Order[]);
-      setDeliveryEligibility(data.configured?eligibleRows:[]);
+      setDeliveryEligibility([]);
+      // Separate advisory read must never delay history or mutation readback.
+      // Only the newest verified ledger generation may accept its answer.
+      // A missing, malformed or delayed SQL hint leaves delivery hidden.
+      if(data.configured){
+        void (async()=>{
+          let rows:ProductionDeliveryEligibility[]=[];
+          try{
+            const hint=await fetch("/api/operator/production/delivery-eligibility",{cache:"no-store"});
+            if(hint.ok){
+              const payload:unknown=await hint.json();
+              if(payload&&typeof payload==="object"&&!Array.isArray(payload)
+                &&"eligibility" in payload){
+                rows=parseProductionDeliveryEligibility(payload.eligibility)??[];
+              }
+            }
+          }catch{
+            // Advisory evidence is unavailable: fail closed without hiding orders.
+          }
+          if(readVersion===ledgerReadVersion.current)setDeliveryEligibility(rows);
+        })();
+      }
       setQcInspections(data.configured?data.qcInspections as QcInspection[]:[]);
       setCustomerOutcomes(data.configured?data.customerOutcomes as CustomerOutcome[]:[]);
       setLearningContexts(data.configured?data.learningContexts as LearningContext[]:[]);
