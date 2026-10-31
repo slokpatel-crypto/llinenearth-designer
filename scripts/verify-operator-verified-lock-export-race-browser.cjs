@@ -101,6 +101,11 @@ async function runViewport(browser,width){
     const first=await firstDownload;
     assert.equal(JSON.parse(await readFile(await first.path(),"utf8")).designRevisionId,A.revisionId);
     assert.equal(downloads.length,1);
+    await page.waitForFunction(()=>{
+      const button=[...document.querySelectorAll("button")]
+        .find(b=>b.textContent?.includes("Export production packet"));
+      return button&&!button.disabled;
+    },{}, {timeout:15_000});
 
     // Same JS turn: begin a second asynchronous vault recovery, then click
     // all three stale export buttons before React has committed its clear.
@@ -111,7 +116,9 @@ async function runViewport(browser,width){
       const handoff=get("Export tailor handoff");
       const tech=get("Export tech pack");
       const packet=get("Export production packet");
-      if(!reload||!handoff||!tech||!packet)throw Error("Expected original locked design export controls");
+      if(!reload||!handoff||!tech||!packet||[reload,handoff,tech,packet].some(b=>b.disabled)){
+        throw Error("Expected enabled original locked design export controls");
+      }
       reload.click();handoff.click();tech.click();packet.click();
       return window.__titanVaultRace.calls;
     });
