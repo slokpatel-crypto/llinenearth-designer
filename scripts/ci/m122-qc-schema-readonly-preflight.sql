@@ -12,6 +12,7 @@ DECLARE
   v_delivery oid := to_regprocedure('public.production_order_deliver_idempotent(uuid,uuid,text)');
   v_hint oid := to_regprocedure('public.production_delivery_eligibility_list(integer)');
   v_trigger oid := to_regprocedure('private.assign_finished_garment_qc_sequence()');
+  v_immutability oid := to_regprocedure('private.reject_finished_garment_qc_mutation()');
   v_functions oid[];
   v_function oid;
 BEGIN
@@ -63,6 +64,43 @@ BEGIN
         and (t.tgtype::int & 4)=4  -- INSERT
      )<>1 then
     raise exception 'M122 QC staging preflight: required insert trigger missing or disabled';
+  end if;
+
+  -- M122 append-only hardening must seal UPDATE, DELETE and TRUNCATE,
+  -- including historical unsequenced inspection rows. A missing/disabled
+  -- TRUNCATE trigger could otherwise erase the entire physical QC ledger.
+  if v_immutability is null then
+    raise exception 'M123 QC staging preflight: append-only function absent';
+  end if;
+  if (select count(*) from pg_trigger t
+      where t.tgrelid=v_qc_table
+        and t.tgname='finished_garment_qc_append_only'
+        and t.tgfoid=v_immutability
+        and t.tgenabled='O' and not t.tgisinternal
+        and (t.tgtype::int & 1)=1  -- ROW
+        and (t.tgtype::int & 2)=2  -- BEFORE
+        and (t.tgtype::int & 8)=8  -- DELETE
+        and (t.tgtype::int & 16)=16 -- UPDATE
+      )<>1
+    or (select count(*) from pg_trigger t
+      where t.tgrelid=v_qc_table
+        and t.tgname='finished_garment_qc_no_truncate'
+        and t.tgfoid=v_immutability
+        and t.tgenabled='O' and not t.tgisinternal
+        and (t.tgtype::int & 1)=0  -- STATEMENT
+        and (t.tgtype::int & 2)=2  -- BEFORE
+        and (t.tgtype::int & 32)=32 -- TRUNCATE
+      )<>1 then
+    raise exception 'M123 QC staging preflight: append-only or TRUNCATE trigger missing or disabled';
+  end if;
+  if not exists(select 1 from pg_proc p
+      where p.oid=v_immutability and not p.prosecdef
+        and exists(select 1 from unnest(coalesce(p.proconfig,ARRAY[]::text[])) c
+          where c like 'search_path=%' and c like '%pg_catalog%')
+        and pg_get_functiondef(p.oid) like '%errcode=''55000''%')
+    or has_function_privilege('anon',v_immutability,'EXECUTE')
+    or has_function_privilege('authenticated',v_immutability,'EXECUTE') then
+    raise exception 'M123 QC staging preflight: append-only function grants or rejection semantics invalid';
   end if;
 
   if v_gate is null or v_delivery is null or v_hint is null then
