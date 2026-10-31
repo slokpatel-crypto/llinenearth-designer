@@ -1403,6 +1403,25 @@ requireTokens("src/app/operator/production/ProductionClient.tsx",[
 ]);
 
  
+// M77: operator QC physical receipts must never forward future private SQL
+// columns; validate full upstream evidence before filtering for browser.
+requireTokens("src/app/api/operator/production/route.ts",[
+  "validProductionDeskResponse(originalReceipt)",
+  "safeProductionQcRows(qc.rows)",
+  "validProductionDeskResponse(receipt)",
+]);
+requireTokens("src/lib/designer/production-qc-transport.ts",[
+  "FINISHED_GARMENT_QC_CHECKS","FINISHED_GARMENT_QC_DEFECTS",
+  "Unexpected optional QC check.","Unexpected optional QC defect.",
+]);
+requireTokens("scripts/ci-verified-stock-fixture.cjs",[
+  "QC_LIST_PATH","DO-NOT-LEAK-CI-QC",
+]);
+requireTokens("scripts/verify-production-ledger-private-http.cjs",[
+  "data.qcInspections.length,1","private_customer_phone",
+  "DO-NOT-LEAK-CI-",
+]);
+
 // M71: Physical receipt source-line uniqueness must be tested in REAL
 // disposable PostgreSQL; textual source references do not prove supplier stock.
 requireTokens("supabase/migrations/20261031_stock_receipt_source_line_dedupe.sql",[
