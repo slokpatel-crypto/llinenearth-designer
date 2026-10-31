@@ -15,11 +15,11 @@ import {
 } from "@/lib/designer/production-write-hold";
 import {productionWriteReviewSummary, type ProductionWriteReviewSummary} from "@/lib/designer/production-review-summary";
 import {parseProductionCreationReceipts, type ProductionCreationReceipt} from "@/lib/designer/production-creation-receipt-lookup";
-import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
+import {parseProductionDeliveryEligibility,hasVerifiedSqlDeliveryEligibility,type ProductionDeliveryEligibility} from "@/lib/designer/production-delivery-eligibility";
 import { validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash, selectProductionPacketRecords } from "@/lib/designer/production-desk-ledger";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
-type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
+type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string;updated_at:string};
 type QcInspection={inspection_id:string;order_id:string;decision:"approved"|"rework";created_at:string};
 type CustomerOutcome={outcome_id:string;order_id:string;revision_id:string;overall_rating:string;fit_result:string;worn_confirmed:boolean;note:string;created_at:string};
 type LearningContext={order_id:string;revision_id:string;recipe_hash:string;context:Record<string,unknown>;created_at:string};
@@ -35,6 +35,7 @@ export default function ProductionClient(){
   const [quotes,setQuotes]=useState<Quote[]>([]);
   const [orders,setOrders]=useState<Order[]>([]);
   const [qcInspections,setQcInspections]=useState<QcInspection[]>([]);
+  const [deliveryEligibility,setDeliveryEligibility]=useState<ProductionDeliveryEligibility[]>([]);
   const [customerOutcomes,setCustomerOutcomes]=useState<CustomerOutcome[]>([]);
   const [learningContexts,setLearningContexts]=useState<LearningContext[]>([]);
   // No mutation or linked packet export until the current backend ledger is verified.
@@ -61,16 +62,34 @@ export default function ProductionClient(){
     const readVersion=++ledgerReadVersion.current;
     // Clear old receipts immediately; stale rows must not authorize actions.
     setConfigured(false);
-    setQuotes([]);setOrders([]);setQcInspections([]);
+    setQuotes([]);setOrders([]);setQcInspections([]);setDeliveryEligibility([]);
     setCustomerOutcomes([]);setLearningContexts([]);
     setOptionalEvidenceSources(null);
     try{
-      const response=await fetch("/api/operator/production",{cache:"no-store"});
+      // The eligibility read is advisory and independently verified. A 404,
+      // timeout or malformed response must hide delivery but must not make
+      // existing quote/order history disappear on an older SQL deployment.
+      const [response,eligibilityResponse]=await Promise.all([
+        fetch("/api/operator/production",{cache:"no-store"}),
+        fetch("/api/operator/production/delivery-eligibility",{cache:"no-store"}).catch(()=>null),
+      ]);
       if(response.status===401){window.location.href="/operator/login?next=/operator/production";return false;}
       if(!response.ok) throw new Error("Production records are unavailable.");
       const data:unknown=await response.json();
       if(!validProductionDeskResponse(data)){
         throw new Error("Production ledger response is malformed.");
+      }
+      let eligibleRows:ProductionDeliveryEligibility[]=[];
+      if(eligibilityResponse?.ok){
+        try{
+          const eligibilityBody:unknown=await eligibilityResponse.json();
+          if(eligibilityBody&&typeof eligibilityBody==="object"&&!Array.isArray(eligibilityBody)
+            &&"eligibility" in eligibilityBody){
+            eligibleRows=parseProductionDeliveryEligibility(eligibilityBody.eligibility)??[];
+          }
+        }catch{
+          // A broken or missing advisory receipt never unlocks delivery.
+        }
       }
       if(readVersion!==ledgerReadVersion.current) return false;
       // A mutation is not confirmed until this newly verified ledger contains
@@ -81,6 +100,7 @@ export default function ProductionClient(){
       setConfigured(data.configured);
       setQuotes(data.quotes as Quote[]);
       setOrders(data.orders as Order[]);
+      setDeliveryEligibility(data.configured?eligibleRows:[]);
       setQcInspections(data.configured?data.qcInspections as QcInspection[]:[]);
       setCustomerOutcomes(data.configured?data.customerOutcomes as CustomerOutcome[]:[]);
       setLearningContexts(data.configured?data.learningContexts as LearningContext[]:[]);
@@ -94,6 +114,7 @@ export default function ProductionClient(){
       setQuotes([]);
       setOrders([]);
       setQcInspections([]);
+      setDeliveryEligibility([]);
       setCustomerOutcomes([]);
       setLearningContexts([]);
       setOptionalEvidenceSources(null);
@@ -483,8 +504,7 @@ export default function ProductionClient(){
         <div><span>ORDERS</span><h2>Production status.</h2></div>
         {!orders.length&&<p>No production orders recorded yet.</p>}
         {orders.map((item)=>{
-          const deliveryQcVerified=hasVerifiedLatestDeliveryQc(qcInspections,item.order_id,250)
-            &&hasVerifiedDeliveryQcOrderLineage(qcInspections,item);
+          const deliveryQcVerified=hasVerifiedSqlDeliveryEligibility(deliveryEligibility,item);
           const nextStatuses=(ORDER_TRANSITIONS[item.status as ProductionOrderStatus]||[]).filter((status)=>status!=="delivered"||deliveryQcVerified);
           const customerOutcome=customerOutcomes.find((outcome)=>sameProductionRecordId(outcome.order_id,item.order_id));
           const learningContext=learningContexts.find((context)=>sameProductionRecordId(context.order_id,item.order_id));
@@ -498,7 +518,7 @@ export default function ProductionClient(){
             <small className={learningContext?"productionLineageAttached":"productionLineageMissing"}>
               Outcome lineage · {learningContext?"durable context attached":"context missing"}
             </small>
-            {item.status==="ready"&&<Link className="productionQcLink" href={"/operator/garment-qc?order="+encodeURIComponent(item.order_id)}>Finished garment QC · {deliveryQcVerified?"approved with provenance":"pending / rework / unverified"}</Link>}
+            {item.status==="ready"&&<Link className="productionQcLink" href={"/operator/garment-qc?order="+encodeURIComponent(item.order_id)}>Finished garment QC · {deliveryQcVerified?"SQL QC verified · rechecked on delivery":"pending / rework / unverified"}</Link>}
             {item.status==="delivered"&&<Link className="productionEvidenceLink" href={"/operator/production-evidence?order="+encodeURIComponent(item.order_id)}>Record zero-reentry evidence</Link>}
             {customerOutcome&&<div className="productionCustomerOutcome">
               <small>CUSTOMER OUTCOME · {new Date(customerOutcome.created_at).toLocaleDateString("en-IN")}</small>
