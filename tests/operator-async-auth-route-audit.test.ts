@@ -26,15 +26,21 @@ function unsafeOperatorAuthLines(source:string):string[]{
     .map(m=>m[1]);
   const violations:string[]=[];
   for(const [i,line] of source.split("\n").entries()){
-    if(/\bverifyOperatorSession\s*\(/.test(line)){
-      const directAwait=/\bawait\s+verifyOperatorSession\s*\(/.test(line);
-      const asyncReturn=/\breturn\s+verifyOperatorSession\s*\(/.test(line)&&asyncWrapper;
-      if(!directAwait&&!asyncReturn)violations.push("line "+(i+1)+": "+line.trim());
+    // Inspect EACH call, not only the entire line. An awaited call followed
+    // by an unsafe call on the same compressed line must still fail.
+    for(const match of line.matchAll(/\bverifyOperatorSession\s*\(/g)){
+      const prefix=line.slice(0,match.index);
+      const directAwait=/\bawait\s*$/.test(prefix);
+      const asyncReturn=/\breturn\s*$/.test(prefix)&&asyncWrapper;
+      if(!directAwait&&!asyncReturn){
+        violations.push("line "+(i+1)+": "+line.trim());
+      }
     }
     for(const name of wrappers){
-      if(new RegExp("\\b"+name+"\\s*\\(").test(line)
-        &&!new RegExp("\\basync\\s+function\\s+"+name+"\\s*\\(").test(line)
-        &&!new RegExp("\\bawait\\s+"+name+"\\s*\\(").test(line)){
+      for(const match of line.matchAll(new RegExp("\\b"+name+"\\s*\\(","g"))){
+        const prefix=line.slice(0,match.index);
+        if(/\basync\s+function\s*$/.test(prefix))continue;
+        if(/\bawait\s*$/.test(prefix))continue;
         violations.push("line "+(i+1)+": unawaited "+name+"(): "+line.trim());
       }
     }
