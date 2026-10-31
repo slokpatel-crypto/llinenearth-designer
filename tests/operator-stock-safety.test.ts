@@ -418,3 +418,37 @@ test("different-key same-line reservation protection is enforced in SQL and Post
   assert.ok(ui.includes("Meterage sheet + documented line reference"));
   assert.ok(ui.includes("Do not invent a new line reference to bypass a duplicate."));
 });
+
+test("read-only operator meterage source audit identifies legacy anomalies before rollout",()=>{
+  const sql=readFileSync("scripts/ci/stock-reservation-source-audit.sql","utf8");
+  const fixture=readFileSync("scripts/ci/stock-reservation-source-audit-fixture.sql","utf8");
+  const runner=readFileSync("scripts/ci/verify-stock-record-db.sh","utf8");
+  assert.ok(sql.includes("BEGIN TRANSACTION READ ONLY;"));
+  assert.ok(sql.includes("COMMIT;"));
+  assert.ok(sql.includes("FROM private.fabric_stock_ledger"));
+  assert.ok(sql.includes("WHERE event_type='reserve'"));
+  assert.ok(sql.includes("GROUP BY fabric_id,revision_id,source_key"));
+  assert.ok(sql.includes("HAVING count(*)>1"));
+  for(const token of [
+    "missing_locked_revision","missing_source","missing_checker","missing_request_key",
+    "missing_reservation_uuid","padded_source","placeholder_source",
+  ]) assert.ok(sql.includes(token),`Missing owner audit category: ${token}`);
+  // This SQL must only aggregate. No raw source references, checker identities
+  // or stock UUIDs may be selected into the operator-facing report.
+  assert.ok(sql.includes("SELECT concat_ws('|',"));
+  assert.ok(!sql.includes("SELECT * FROM private.fabric_stock_ledger"));
+  assert.ok(!sql.includes("RETURNING event_id"));
+  assert.ok(fixture.includes("ci-audit-fabric"));
+  assert.ok(fixture.includes("sheet-legacy-001-line-1"));
+  assert.ok(runner.includes('if [[ "${GITHUB_ACTIONS:-}" != "true" ]]'));
+  assert.ok(runner.includes("stock-reservation-source-audit-fixture.sql"));
+  assert.ok(runner.includes("stock-reservation-source-audit.sql"));
+  assert.ok(runner.includes('"5|1|2|1|1|1|1|1|1|1"'));
+  assert.ok(runner.includes("Migration incorrectly installed over historic duplicate physical lines."));
+  assert.ok(runner.includes("existing duplicate meterage reservation lines require owner reconciliation"));
+  assert.ok(runner.includes("where fabric_id='ci-audit-fabric'"));
+  assert.ok(runner.includes('"0|0|0|0|0|0|0|0|0|0"'));
+  const auditHook=runner.indexOf("stock-reservation-source-audit-fixture.sql");
+  const migration=runner.indexOf('run_sql_file "$migration"',auditHook);
+  assert.ok(auditHook>=0&&migration>auditHook,"Audit must precede actual migration installation");
+});
