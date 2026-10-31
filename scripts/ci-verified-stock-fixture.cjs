@@ -12,6 +12,8 @@ const BETA_LIST_PATH="/rest/v1/rpc/launch_beta_attempt_list";
 const CHECKLIST_LIST_PATH="/rest/v1/rpc/launch_checklist_event_list";
 const QUOTE_LIST_PATH="/rest/v1/rpc/production_quote_list";
 const ORDER_LIST_PATH="/rest/v1/rpc/production_order_list";
+const DELIVERY_EVIDENCE_LIST_PATH="/rest/v1/rpc/production_delivery_evidence_list";
+const DELIVERY_FIRST_TEN_PATH="/rest/v1/rpc/production_first_ten_delivery_audit";
 const QC_LIST_PATH="/rest/v1/rpc/finished_garment_qc_list";
 const CUSTOMER_OUTCOME_LIST_PATH="/rest/v1/rpc/production_customer_outcome_list";
 const OUTCOME_LEARNING_PATH="/rest/v1/rpc/production_customer_outcome_learning_list";
@@ -119,6 +121,35 @@ const PRODUCTION_LISTS=Object.freeze({
     private_supplier_rate:"DO-NOT-LEAK-CI-ORDER",
   }],
 });
+// CI-only adverse delivery history: manual re-entry happened; release gate OPEN.
+// Poisoned fields must never reach an authenticated operator browser.
+const DELIVERY_FIXTURE_ORDER=Object.freeze({
+  order_id:"123e4567-e89b-42d3-a456-426614174031",
+  revision_id:"CI-DELIVERY-LOCKED-20261031",recipe_hash:"b".repeat(64),
+  status:"delivered",note:"CI fake delivery, not a real garment",
+  created_at:"2026-10-31T01:00:00Z",delivered_at:"2026-10-31T03:00:00Z",
+  private_customer_contact:"DO-NOT-LEAK-CI-DELIVERY-ORDER",
+  private_supplier_cost:"DO-NOT-LEAK-CI-DELIVERY-COST",
+});
+const DELIVERY_FIXTURE_EVIDENCE=Object.freeze({
+  evidence_id:"123e4567-e89b-42d3-a456-426614174032",
+  order_id:DELIVERY_FIXTURE_ORDER.order_id,
+  revision_id:DELIVERY_FIXTURE_ORDER.revision_id,
+  recipe_hash:DELIVERY_FIXTURE_ORDER.recipe_hash,
+  manual_design_reentry:true,reentry_fields:["fabric_identity"],
+  note:"CI-only manual re-entry was recorded",operator:"CI checker",
+  evidence_reference:"CI-JOB-CARD-DELIVERY-001",
+  created_at:"2026-10-31T04:00:00Z",order_created_at:DELIVERY_FIXTURE_ORDER.created_at,
+  private_supplier_phone:"DO-NOT-LEAK-CI-DELIVERY-EVIDENCE",
+});
+const DELIVERY_FIXTURE_BASIS=Object.freeze({
+  version:"linen-earth-production-first-ten-audit-v2",historyValid:true,
+  orders:[{...DELIVERY_FIXTURE_ORDER,
+    private_factory_cost:"DO-NOT-LEAK-CI-FIRSTTEN-ORDER"}],
+  evidence:[{...DELIVERY_FIXTURE_EVIDENCE,
+    private_customer_token:"DO-NOT-LEAK-CI-FIRSTTEN-EVIDENCE"}],
+  private_owner_passphrase:"DO-NOT-LEAK-CI-FIRSTTEN-BASIS",
+});
 const QC_LISTS=Object.freeze({
   [QC_LIST_PATH]:[{
     inspection_id:"123e4567-e89b-42d3-a456-426614174012",
@@ -192,7 +223,7 @@ async function handle(req,res){
     res.writeHead(200,{"content-type":"application/json","cache-control":"private, no-store","content-range":"*/0"});
     return res.end(JSON.stringify(rows));
   }
-  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,LEARNING_CONTEXT_LIST_PATH,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
+  if(req.method!=="POST"||![STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,DELIVERY_EVIDENCE_LIST_PATH,DELIVERY_FIRST_TEN_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,LEARNING_CONTEXT_LIST_PATH,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
   if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
   let raw="";
   try{
@@ -202,10 +233,27 @@ async function handle(req,res){
     }
     const payload=JSON.parse(raw);
     if(req.url===QUOTE_LIST_PATH||req.url===ORDER_LIST_PATH){
+      // The production desk uses 100-row pages. Delivery evidence uses its
+      // own 500-row browse contract; keep the synthetic shapes independent.
+      if(req.url===ORDER_LIST_PATH&&payload?.p_limit===500
+        &&Object.keys(payload).length===1)
+        return send(res,200,[DELIVERY_FIXTURE_ORDER]);
       if(!payload||typeof payload!=="object"||Array.isArray(payload)||
          payload.p_limit!==100||Object.keys(payload).length!==1)
         return send(res,400,{error:"Invalid CI production page request"});
       return send(res,200,PRODUCTION_LISTS[req.url]);
+    }
+    if(req.url===DELIVERY_EVIDENCE_LIST_PATH){
+      if(!payload||typeof payload!=="object"||Array.isArray(payload)
+        ||payload.p_limit!==500||Object.keys(payload).length!==1)
+        return send(res,400,{error:"Invalid CI delivery browse request"});
+      return send(res,200,[DELIVERY_FIXTURE_EVIDENCE]);
+    }
+    if(req.url===DELIVERY_FIRST_TEN_PATH){
+      if(!payload||typeof payload!=="object"||Array.isArray(payload)
+        ||Object.keys(payload).length!==0)
+        return send(res,400,{error:"Invalid CI first-ten audit request"});
+      return send(res,200,DELIVERY_FIXTURE_BASIS);
     }
     if([OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH].includes(req.url)){
       const limit=req.url===OUTCOME_LEARNING_PATH?1000:req.url===OUTCOME_REVIEW_PATH?5000:100;
@@ -259,4 +307,4 @@ if(require.main===module){
     console.log("Synthetic CI-only stock fixture listening on loopback; NOT physical evidence");
   });
 }
-module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,QC_LIST_PATH,QC_LISTS,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS,LEARNING_CONTEXT_LIST_PATH,LEARNING_CONTEXT_LISTS,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH,OUTCOME_REVIEW_FIXTURE,METADATA_PATH};
+module.exports={rowsFor,metadataRowsFor,handle,FIXTURE_KEY,STOCK_PATH,AUDIT_PATH,AUDIT_FIXTURE,BETA_LIST_PATH,CHECKLIST_LIST_PATH,LAUNCH_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,PRODUCTION_LISTS,QC_LIST_PATH,QC_LISTS,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS,LEARNING_CONTEXT_LIST_PATH,LEARNING_CONTEXT_LISTS,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH,OUTCOME_REVIEW_FIXTURE,METADATA_PATH,DELIVERY_EVIDENCE_LIST_PATH,DELIVERY_FIRST_TEN_PATH,DELIVERY_FIXTURE_ORDER,DELIVERY_FIXTURE_EVIDENCE,DELIVERY_FIXTURE_BASIS};
