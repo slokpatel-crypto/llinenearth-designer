@@ -11,9 +11,10 @@ import {verifiedProductionMutationReadback} from "@/lib/designer/production-desk
 import {isCertainProductionPrewriteRejection} from "@/lib/designer/production-post-retry";
 import {
   PRODUCTION_WRITE_HOLD_KEY,productionWriteHoldPending,beginProductionWriteHold,
-  releaseProductionWriteHold,acknowledgeProductionWriteHold,
+  releaseProductionWriteHold,acknowledgeProductionWriteHold,readProductionWriteHoldKey,
 } from "@/lib/designer/production-write-hold";
 import {productionWriteReviewSummary, type ProductionWriteReviewSummary} from "@/lib/designer/production-review-summary";
+import {parseProductionCreationReceipts, type ProductionCreationReceipt} from "@/lib/designer/production-creation-receipt-lookup";
 import { hasVerifiedLatestDeliveryQc, hasVerifiedDeliveryQcOrderLineage } from "@/lib/designer/delivery-qc-approval";
 import { validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash, selectProductionPacketRecords } from "@/lib/designer/production-desk-ledger";
 
@@ -44,6 +45,7 @@ export default function ProductionClient(){
   // ledger cannot prove absence, so require manual review before more writes.
   const [requiresWriteReview,setRequiresWriteReview]=useState(false);
   const [pendingWriteReview,setPendingWriteReview]=useState<ProductionWriteReviewSummary|null>(null);
+  const [recoveredCreationReceipts,setRecoveredCreationReceipts]=useState<ProductionCreationReceipt[]|null>(null);
   // State updates are asynchronous: a second click in the same render must
   // not create a second quote/order or overlap a locked-design recovery.
   const actionInFlight=useRef(false);
@@ -107,8 +109,9 @@ export default function ProductionClient(){
     // it after a GET, and never persist private production request bodies.
     if(productionWriteHoldPending(safeProductionHoldStorage()))setRequiresWriteReview(true);
     const onStorage=(event:StorageEvent)=>{
-      if(event.key===PRODUCTION_WRITE_HOLD_KEY&&event.newValue!==null){
-        setRequiresWriteReview(true);
+      if(event.key===PRODUCTION_WRITE_HOLD_KEY){
+        setRecoveredCreationReceipts(null);
+        if(event.newValue!==null)setRequiresWriteReview(true);
       }
     };
     window.addEventListener("storage",onStorage);
@@ -134,6 +137,7 @@ export default function ProductionClient(){
     ledgerReadVersion.current+=1;
     setConfigured(false);
     setBusy(true);setMessage("");
+    setRecoveredCreationReceipts(null);
     const attempt=productionWriteReviewSummary(body);
     let certainPrewriteRejection=false;
     try{
@@ -190,6 +194,42 @@ export default function ProductionClient(){
     finally{actionInFlight.current=false;setBusy(false);}
   }
 
+  async function lookupPendingCreationReceipt(){
+    if(!requiresWriteReview||busy||actionInFlight.current)return;
+    const pendingKey=readProductionWriteHoldKey(safeProductionHoldStorage());
+    if(!pendingKey){
+      setRecoveredCreationReceipts(null);
+      setMessage("The original request ID is missing or inaccessible. Writes remain paused; inspect authoritative records before any retry.");
+      return;
+    }
+    actionInFlight.current=true;
+    setBusy(true);setRecoveredCreationReceipts(null);
+    try{
+      const response=await fetch("/api/operator/production",{
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"creation_receipt_lookup",requestKey:pendingKey}),
+      });
+      if(!response.ok)throw new Error("Receipt lookup unavailable.");
+      const data:unknown=await response.json();
+      if(!data||typeof data!=="object"||Array.isArray(data)
+        ||!("receipts" in data))throw new Error("Invalid receipt lookup response.");
+      const receipts=parseProductionCreationReceipts(data.receipts);
+      if(!receipts)throw new Error("Unverified receipt lookup response.");
+      // A concurrent tab may have changed the marker while the read was in
+      // flight. Never present the former key's results as current evidence.
+      if(readProductionWriteHoldKey(safeProductionHoldStorage())!==pendingKey){
+        throw new Error("Pending request key changed while checking its receipt.");
+      }
+      setRecoveredCreationReceipts(receipts);
+      setMessage(receipts.length
+        ?"Committed quote/order creation receipt located. Check the exact UUID against history before acknowledging this review; do not recreate that record."
+        :"No committed creation receipt was visible at lookup time. A delayed transaction or status update may still commit; never treat this as safe to recreate.");
+    }catch{
+      setRecoveredCreationReceipts(null);
+      setMessage("Original production receipt could not be verified. Keep the review hold and inspect the authoritative records before retrying.");
+    }finally{actionInFlight.current=false;setBusy(false);}
+  }
+
   function confirmReviewedProductionHistory(){
     // A validated, configured ledger and explicit operator acknowledgement
     // are required; this never certifies the previous write did not commit.
@@ -200,6 +240,7 @@ export default function ProductionClient(){
     }
     setRequiresWriteReview(false);
     setPendingWriteReview(null);
+    setRecoveredCreationReceipts(null);
     setMessage("Reviewed current production history. Writes are enabled; the earlier ambiguous operation may still exist outside the visible ledger. Check before recreating a quote or order.");
   }
 
@@ -404,6 +445,14 @@ export default function ProductionClient(){
         <small>Recovery tokens and other private request fields are never displayed or saved in this summary.</small>
       </div>}
       <button disabled={busy||actionInFlight.current} onClick={()=>void load()}>Refresh production history</button>
+      <button disabled={busy||actionInFlight.current} onClick={()=>void lookupPendingCreationReceipt()}>Find original quote/order receipt by request ID</button>
+      {recoveredCreationReceipts!==null&&<div className="productionRecord" aria-label="Original committed creation receipts">
+        {recoveredCreationReceipts.length>0
+          ?<><strong>COMMITTED CREATION RECEIPTS</strong><ul>{recoveredCreationReceipts.map(item=>
+            <li key={item.action}>{item.action==="create_quote"?"Quote":"Order"} ID: {item.receiptId}</li>)}</ul>
+            <p>These IDs were retrieved from the committed request ledger. Compare with quote/order history before enabling further writes; do not recreate them.</p></>
+          :<p>No committed creation receipt found for this request ID yet. A delayed commit or status update is still possible. Writes remain paused.</p>}
+      </div>}
       <button disabled={!configured||busy||actionInFlight.current} onClick={confirmReviewedProductionHistory}>I reviewed history — enable writes</button>
     </section>}
     {optionalEvidenceSources&&(!optionalEvidenceSources.qcInstalled||!optionalEvidenceSources.customerOutcomesInstalled||!optionalEvidenceSources.learningContextInstalled)&&

@@ -24,7 +24,8 @@ test("every privileged quote/order creation uses exact atomic request-key RPC",(
   assert.match(client,/beginProductionWriteHold\(safeProductionHoldStorage\(\),holdToken\)/);
   assert.match(client,/body:JSON\.stringify\(\{\.\.\.body,requestKey:holdToken\}\)/);
   assert.match(route,/import \{parseOperatorProductionRequestKey\}/);
-  assert.equal((route.match(/parseOperatorProductionRequestKey\(body\.requestKey\)/g)||[]).length,2);
+  assert.equal((route.match(/parseOperatorProductionRequestKey\(body\.requestKey\)/g)||[]).length,3,
+    "Both create actions and the read-only committed receipt lookup validate the same literal UUID");
   assert.match(route,/rpc<string>\("production_quote_create_idempotent",\{/);
   assert.match(route,/rpc<string>\("production_order_create_with_context_idempotent",\{/);
   assert.equal((route.match(/p_request_key:requestKey/g)||[]).length,2);

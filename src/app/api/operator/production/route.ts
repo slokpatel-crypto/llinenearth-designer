@@ -10,6 +10,7 @@ import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/des
 import { buildProductionLearningContext } from "@/lib/designer/production-learning-context";
 import { parseOperatorLockedSelection } from "@/lib/designer/operator-locked-selection";
 import {parseOperatorProductionRequestKey} from "@/lib/designer/production-request-key";
+import {parseProductionCreationReceipts} from "@/lib/designer/production-creation-receipt-lookup";
 import { parseOperatorProductionStatus } from "@/lib/designer/operator-production-status";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 import {safeOperatorProductionErrorCode} from "@/lib/designer/operator-production-error";
@@ -142,6 +143,17 @@ export async function POST(request:Request){
   try{
     const body=await readSecureJsonObject(request,65536);
     const action=typeof body.action==="string"?body.action:"";
+    if(action==="creation_receipt_lookup"){
+      // Read-only: the operator can recover a durable UUID from the anonymous
+      // marker even if the original browser tab crashed or timed out. Missing
+      // receipts never mean the original in-flight transaction will not commit.
+      const key=parseOperatorProductionRequestKey(body.requestKey);
+      if(!key) return respond({error:"Valid original creation request UUID is required."},400);
+      const rows=await rpc<unknown>("production_creation_request_receipt_lookup",{p_request_key:key});
+      const receipts=parseProductionCreationReceipts(rows);
+      if(!receipts) return respond({error:"Creation receipt lookup could not be verified."},409);
+      return respond({receipts});
+    }
     if(action==="create_quote"){
       const identity=parseOperatorLockedSelection(body);
       const requestKey=parseOperatorProductionRequestKey(body.requestKey);

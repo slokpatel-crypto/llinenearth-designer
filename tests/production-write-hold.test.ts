@@ -88,7 +88,8 @@ test("browser production write barrier is saved BEFORE POST and reviewed after f
   assert.match(review,/if\(!acknowledgeProductionWriteHold\(safeProductionHoldStorage\(\)\)\)\{/);
   assert.match(source,/productionWriteHoldPending\(safeProductionHoldStorage\(\)\)/);
   assert.match(source,/window.addEventListener\("storage",onStorage\)/);
-  assert.match(source,/event.key===PRODUCTION_WRITE_HOLD_KEY&&event.newValue!==null/);
+  assert.match(source,/if\(event.key===PRODUCTION_WRITE_HOLD_KEY\)\{/);
+  assert.match(source,/setRecoveredCreationReceipts\(null\);\s*if\(event.newValue!==null\)setRequiresWriteReview\(true\);/);
   assert.doesNotMatch(source,/localStorage\.setItem\([^\n]*recoveryToken/);
   assert.doesNotMatch(source,/localStorage\.setItem\([^\n]*pendingWriteReview/);
   const helper=readFileSync("src/lib/designer/production-write-hold.ts","utf8");
