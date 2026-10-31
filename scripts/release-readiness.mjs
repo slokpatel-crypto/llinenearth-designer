@@ -2197,6 +2197,28 @@ requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
   "20261111_delivery_idempotency.sql",
 ]);
 
+
+// M134: a recovery-token edit or new vault load must synchronously revoke the
+// old displayed lock before React commits. No stale quote/order or production,
+// tailor or tech-pack export may use a previous recovered revision.
+requireTokens("src/lib/designer/verified-operator-lock.ts",[
+  "displayed !== null && displayed === verified",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "const verifiedLockedRevision=useRef<LockedDesignRevision|null>(null)",
+  "verifiedLockedRevision.current=null;",
+  "verifiedLockedRevision.current=revision;",
+  "isCurrentVerifiedOperatorLock(loadedRevision,verifiedLockedRevision.current)",
+  "locked design changed during handoff export",
+  "locked design changed during tech-pack export",
+  "locked design changed during packet export",
+]);
+requireTokens("tests/verified-operator-lock.test.ts",[
+  "same event turn", "before React rerender",
+  "before React commits its new loadedRevision",
+  "never exports stale handlers",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
