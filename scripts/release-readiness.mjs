@@ -1093,7 +1093,7 @@ requireTokens("src/app/api/operator/garment-qc/route.ts", ["finished_garment_qc_
 requireTokens("src/app/operator/garment-qc/GarmentQcClient.tsx", ["Finished Garment QC","Physical inspection reference","provenanceReady","Legacy inspection · provenance not recorded","Approve for delivery","Record rework","PHYSICAL CHECKS"]);
 requireTokens("src/lib/designer/production-quote-order-transport.ts", [
   "safeProductionQuoteOrderRows", "validProductionDeskLedgers",
-  "secret", "line_items", "label:line.label", "amount:line.amount",
+  "safeQuotes", "line_items", "label:line.label", "amount:line.amount",
 ]);
 requireTokens("src/app/api/operator/production/route.ts", [
   "safeProductionQuoteOrderRows(quotes,orders)",
@@ -1106,7 +1106,7 @@ requireTokens("scripts/ci-verified-stock-fixture.cjs", [
 requireTokens("scripts/verify-production-ledger-private-http.cjs", [
   "signed operator", "assertPrivate(response)",
   "DO-NOT-LEAK-CI-", "PRODUCTION_LISTS",
-  "private_supplier_rate", "secret_factory_cost", "Unauthorized.",
+  "private_supplier_rate", "secret_factory_cost", "expired",
 ]);
 requireTokens(".github/workflows/ci.yml", [
   "node scripts/verify-production-ledger-private-http.cjs",
