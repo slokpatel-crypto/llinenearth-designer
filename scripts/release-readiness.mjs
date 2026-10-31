@@ -846,6 +846,16 @@ requireTokens("src/app/api/operator/stock/route.ts", [
 requireTokens("scripts/verify-operator-private-response-headers.cjs", ['"/api/operator/stock"']);
 
 requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Physical source reference","Reservation quantity source","Close action source","PHYSICAL PROVENANCE","provenance_ready","Create reservation","Consume","Release"]);
+
+requireTokens("src/lib/designer/stock-ledger.ts", [
+  "stockReservationAttempt(", "stockReservationSignature(", "existing.get(signature)??newKey()",
+]);
+requireTokens("src/app/operator/stock/StockClient.tsx", [
+  "writeInFlight.current=true", "const generation=++readGeneration.current",
+  "readGeneration.current++", "reservationKeys.current.set(attempt.signature,attempt.requestKey)",
+  "confirmedReservations.has(reservationSignature)", "Outcome may be uncertain.", "await load();",
+]);
+
 requireTokens("supabase/migrations/20261001_fabric_stock_ledger.sql", ["fabric_stock_snapshot","fabric_stock_reserve","request_key","service_role"]);
 requireTokens("supabase/migrations/20261028_fabric_stock_provenance.sql", ["fabric_stock_record_v2","fabric_stock_snapshot_v2","recorded_by","source_reference","legacy_unverified_event_count","provenance_ready","service_role"]);
 requireTokens("supabase/migrations/20261029_stock_reservation_provenance.sql", ["fabric_stock_reserve_v2","p_requested_by","p_source_reference","reservation quantity evidence reference is required","service_role"]);
