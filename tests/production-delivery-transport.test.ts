@@ -79,3 +79,21 @@ test("operator delivery route serializes only bounded, revalidated projected fie
   assert.match(route,/firstTenBasis:safe\.firstTenBasis,firstTenAuditInstalled/);
   assert.doesNotMatch(route,/return respond\(\{configured:true,orders,evidence,firstTenBasis,firstTenAuditInstalled\}\)/);
 });
+
+
+test("CI signed built-Next delivery HTTP test includes poisoned adverse first-ten data",()=>{
+  const script=readFileSync("scripts/verify-delivery-evidence-private-http.cjs","utf8");
+  const fixture=readFileSync("scripts/ci-verified-stock-fixture.cjs","utf8");
+  const workflow=readFileSync(".github/workflows/ci.yml","utf8");
+  assert.match(workflow,/node scripts\/verify-delivery-evidence-private-http\.cjs/);
+  assert.match(script,/LINEN_OPERATOR_SESSION_SECRET/);
+  assert.match(script,/GITHUB_ACTIONS/);
+  assert.match(script,/DO-NOT-LEAK-CI-/);
+  assert.match(script,/data\.firstTenBasis\.evidence\[0\]\.manual_design_reentry,true/);
+  assert.match(script,/data\.firstTenBasis\.orders\.length<10,true/);
+  assert.match(script,/for\(const method of \["GET","POST"\]\)/);
+  assert.match(fixture,/const DELIVERY_FIRST_TEN_PATH=/);
+  assert.match(fixture,/const DELIVERY_EVIDENCE_LIST_PATH=/);
+  assert.match(fixture,/private_owner_passphrase:"DO-NOT-LEAK-CI-FIRSTTEN-BASIS"/);
+  assert.match(fixture,/manual_design_reentry:true,reentry_fields:\["fabric_identity"\]/);
+});
