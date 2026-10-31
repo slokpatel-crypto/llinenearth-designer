@@ -52,6 +52,7 @@ fi
 run_sql_file scripts/ci/stock-record-db-assertions.sql
 if [[ "$mode" == "historical" ]]; then
   run_sql_file scripts/ci/stock-record-historical-assertions.sql
+  run_sql_file scripts/ci/stock-reservation-exact-key-assertions.sql
 fi
 
 # Two separate Postgres sessions attempt exactly the same physical receipt.
