@@ -35,6 +35,10 @@ run_file supabase/migrations/20261110_delivery_qc_sql_gate.sql
 run_file scripts/ci/m112-delivery-qc-gate-assertions.sql
 run_file supabase/migrations/20261111_delivery_idempotency.sql
 run_file scripts/ci/m112-delivery-idempotency-assertions.sql
+run_file scripts/ci/m113-legacy-qc-fixture.sql
+run_file supabase/migrations/20261112_finished_garment_qc_sequence.sql
+run_file supabase/migrations/20261113_delivery_qc_sequence_gate.sql
+run_file scripts/ci/m113-qc-sequence-assertions.sql
 run_file scripts/ci/production-create-idempotency-assertions.sql
 run_file scripts/ci/production-creation-receipt-lookup-assertions.sql
 
