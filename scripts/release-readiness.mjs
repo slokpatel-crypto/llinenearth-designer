@@ -833,6 +833,18 @@ requireTokens("src/app/api/style-director/route.ts", ["applyLiveVerifiedStockAva
 requireTokens("src/app/style-director/page.tsx", ["verified ledger availability enforced where recorded"]);
 requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","New quotes and production orders are blocked","Quote created from verified locked revision","Production order created from verified locked revision","durable design context","learningContexts","Outcome lineage","context missing","CUSTOMER OUTCOME","not automatically applied to Designer ranking","/operator/customer-outcomes","Outcome Review"]);
 requireTokens("src/app/api/operator/stock/route.ts", ["fabric_stock_snapshot_v2","fabric_stock_record_v2","fabric_stock_reserve_v2","fabric_stock_release_v2","fabric_stock_consume_reservation_v2","p_recorded_by","p_requested_by","p_released_by","p_checked_by","p_source_reference"]);
+
+// T3/J1/T5: No stock mutation receipt, private response or raw backend error
+// can silently regress while the physical inventory remains unverified.
+requireTokens("src/lib/designer/operator-stock-safety.ts", [
+  "verifiedOperatorStockReceiptId", "normalizeVaultId(value)", "value.toLowerCase()===normalized",
+]);
+requireTokens("src/app/api/operator/stock/route.ts", [
+  "function respond(body:unknown", "private, no-store", 'pragma:"no-cache"',
+  "verifiedOperatorStockReceiptId(await rpc<unknown>", "Stock operation could not be completed.",
+]);
+requireTokens("scripts/verify-operator-private-response-headers.cjs", ['"/api/operator/stock"']);
+
 requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Physical source reference","Reservation quantity source","Close action source","PHYSICAL PROVENANCE","provenance_ready","Create reservation","Consume","Release"]);
 requireTokens("supabase/migrations/20261001_fabric_stock_ledger.sql", ["fabric_stock_snapshot","fabric_stock_reserve","request_key","service_role"]);
 requireTokens("supabase/migrations/20261028_fabric_stock_provenance.sql", ["fabric_stock_record_v2","fabric_stock_snapshot_v2","recorded_by","source_reference","legacy_unverified_event_count","provenance_ready","service_role"]);
