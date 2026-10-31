@@ -2,33 +2,63 @@
 # Run ONLY against the ephemeral PostgreSQL container supplied by Actions.
 # No Supabase credentials, service-role keys or production endpoints accepted.
 set -euo pipefail
-container="$1"
+container="${1:-}"
 if [[ -z "$container" ]]; then
   echo "An ephemeral GitHub Actions PostgreSQL container ID is required." >&2
   exit 2
 fi
+# Both variants run exclusively inside the same ephemeral Actions container:
+# fixture tests standalone SQL; historical loads the REAL stock migration chain
+# into a separate disposable database, including the legacy production schema.
+mode="${2:-fixture}"
+case "$mode" in
+  fixture) database=postgres ;;
+  historical)
+    database=titan_stock_historical
+    docker exec "$container" createdb -U postgres "$database"
+    ;;
+  *) echo "Unknown stock DB verification mode." >&2; exit 2 ;;
+esac
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
 run_sql_file() {
-  docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres < "$1"
+  docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" < "$1"
 }
 query() {
-  docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -Atc "$1"
+  docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" -Atc "$1"
 }
 
-run_sql_file scripts/ci/stock-record-db-setup.sql
-# Execute the SAME actual migration committed for a future owner-reviewed
-# rollout, not a separately reimplemented fake idempotency function.
-run_sql_file supabase/migrations/20261031_stock_record_exact_retry.sql
+if [[ "$mode" == "fixture" ]]; then
+  run_sql_file scripts/ci/stock-record-db-setup.sql
+  run_sql_file supabase/migrations/20261031_stock_record_exact_retry.sql
+else
+  # Exact chronological stock-only migration dependency chain. The original
+  # ledger, legacy RPCs, provenance and reservation/consumption close functions
+  # all exist before the v3 event RPC is installed. No fabricated ledger schema.
+  for migration in \
+    supabase/migrations/20261001_fabric_stock_ledger.sql \
+    supabase/migrations/20261028_fabric_stock_provenance.sql \
+    supabase/migrations/20261029_stock_reservation_provenance.sql \
+    supabase/migrations/20261030_stock_consumption_provenance.sql \
+    supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql \
+    supabase/migrations/20261031_stock_record_exact_retry.sql
+  do
+    run_sql_file "$migration"
+  done
+fi
+# Both paths share exactly the same real transaction and concurrency tests.
 run_sql_file scripts/ci/stock-record-db-assertions.sql
+if [[ "$mode" == "historical" ]]; then
+  run_sql_file scripts/ci/stock-record-historical-assertions.sql
+fi
 
 # Two separate Postgres sessions attempt exactly the same physical receipt.
 # Both must receive the same committed event ID and the ledger must have one row.
 same_call="select public.fabric_stock_record_v3('fabric-par','receipt',3.000,'','Checker One','ROLL-PAR','concurrency-key-0001');"
-docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -Atc "$same_call" > "$tmpdir/same1.out" 2> "$tmpdir/same1.err" &
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" -Atc "$same_call" > "$tmpdir/same1.out" 2> "$tmpdir/same1.err" &
 pid1=$!
-docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -Atc "$same_call" > "$tmpdir/same2.out" 2> "$tmpdir/same2.err" &
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" -Atc "$same_call" > "$tmpdir/same2.out" 2> "$tmpdir/same2.err" &
 pid2=$!
 wait "$pid1"
 wait "$pid2"
@@ -47,9 +77,9 @@ fi
 # The shared fabric lock must prevent the pair from overdrawing to -1m.
 call_a="select public.fabric_stock_record_v3('fabric-par','adjustment_out',2.000,'','Checker One','ADJUST-A','concurrency-key-0002');"
 call_b="select public.fabric_stock_record_v3('fabric-par','adjustment_out',2.000,'','Checker One','ADJUST-B','concurrency-key-0003');"
-docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -Atc "$call_a" > "$tmpdir/adj1.out" 2> "$tmpdir/adj1.err" &
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" -Atc "$call_a" > "$tmpdir/adj1.out" 2> "$tmpdir/adj1.err" &
 pid1=$!
-docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres -Atc "$call_b" > "$tmpdir/adj2.out" 2> "$tmpdir/adj2.err" &
+docker exec "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$database" -Atc "$call_b" > "$tmpdir/adj2.out" 2> "$tmpdir/adj2.err" &
 pid2=$!
 set +e
 wait "$pid1"; status1=$?
@@ -72,4 +102,4 @@ if [[ $(query "select available_metres from public.fabric_stock_snapshot_v2(arra
   echo "Concurrent adjustment left incorrect available metres." >&2
   exit 1
 fi
-echo "Disposable PostgreSQL physical-stock idempotency, conflict and concurrency PASS."
+echo "Disposable PostgreSQL ($mode) stock idempotency, conflict and concurrency PASS."

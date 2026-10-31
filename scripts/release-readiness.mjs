@@ -888,6 +888,26 @@ requireTokens("scripts/ci/stock-record-db-assertions.sql", [
   "privileged stock RPC role grants are not restricted",
 ]);
 
+requireTokens(".github/workflows/titan-stock-record-db.yml", [
+  'verify-stock-record-db.sh "$PG_CONTAINER" historical',
+]);
+requireTokens("scripts/ci/verify-stock-record-db.sh", [
+  "database=titan_stock_historical",
+  "20261001_fabric_stock_ledger.sql", "20261028_fabric_stock_provenance.sql",
+  "20261029_stock_reservation_provenance.sql", "20261030_stock_consumption_provenance.sql",
+  "20261031_stock_reservation_concurrency_provenance.sql",
+  "20261031_stock_record_exact_retry.sql",
+  "stock-record-historical-assertions.sql",
+]);
+requireTokens("scripts/ci/stock-record-historical-assertions.sql", [
+  "public.fabric_stock_reserve_v2(",
+  "public.fabric_stock_consume_reservation_v2(",
+  "public.fabric_stock_release_v2(",
+  "historic real consumption/release changed physical or reserved metres incorrectly",
+  "historic manual source was counted more than once",
+]);
+
+
 requireTokens("src/app/operator/stock/StockClient.tsx", [
   "manualRecordKeys.current.set(attempt.signature,attempt.requestKey)",
   'void post({action:"record",...intent,requestKey:attempt.requestKey}',
