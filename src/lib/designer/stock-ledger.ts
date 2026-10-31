@@ -8,15 +8,18 @@ export type StockReservationIntent={
   fabricId:string; revisionId:string; quantityMetres:number;
   requestedBy:string; sourceReference:string;
 };
+export function stockReservationSignature(intent:StockReservationIntent):string{
+  return JSON.stringify([
+    intent.fabricId,intent.revisionId,intent.quantityMetres,
+    intent.requestedBy,intent.sourceReference,
+  ]);
+}
 export function stockReservationAttempt(
   existing:ReadonlyMap<string,string>,
   intent:StockReservationIntent,
   newKey:()=>string,
 ):{signature:string;requestKey:string}{
-  const signature=JSON.stringify([
-    intent.fabricId,intent.revisionId,intent.quantityMetres,
-    intent.requestedBy,intent.sourceReference,
-  ]);
+  const signature=stockReservationSignature(intent);
   return {signature,requestKey:existing.get(signature)??newKey()};
 }
 
