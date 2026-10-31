@@ -74,6 +74,7 @@ jobs:
           node scripts/verify-operator-stock-audit-http.cjs
           node scripts/verify-launch-readiness-private-http.cjs
           node scripts/verify-production-ledger-private-http.cjs
+          node scripts/verify-production-delivery-eligibility-private-http.cjs
           node scripts/verify-customer-outcome-review-private-http.cjs
           node scripts/verify-customer-review-write-readback-http.cjs
           node scripts/verify-delivery-evidence-private-http.cjs
