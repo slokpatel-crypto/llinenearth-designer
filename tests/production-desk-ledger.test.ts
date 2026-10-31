@@ -229,10 +229,10 @@ test("J5 operator packet and evidence links use canonical UUID and hash identity
   const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
   assert.match(client,/sameProductionRecordId\(outcome\.order_id,item\.order_id\)/);
   assert.match(client,/sameProductionRecordId\(context\.order_id,item\.order_id\)/);
-  assert.match(client,/selectProductionPacketRecords\\(/);
+  assert.match(client,/selectProductionPacketRecords\(/);
   const ledger=readFileSync("src/lib/designer/production-desk-ledger.ts","utf8");
-  assert.match(ledger,/sameProductionRecipeHash\\(row\\.recipe_hash,recipeHash\\)/);
-  assert.match(ledger,/sameProductionRecordId\\(row\\.quote_id,order\\.quote_id\\)/);
+  assert.match(ledger,/sameProductionRecipeHash\(row\.recipe_hash,recipeHash\)/);
+  assert.match(ledger,/sameProductionRecordId\(row\.quote_id,order\.quote_id\)/);
   assert.match(client,/sameProductionRecipeHash\(item\.recipe_hash,order\.recipeHash\)/);
 });
 
