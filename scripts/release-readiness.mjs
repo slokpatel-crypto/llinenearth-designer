@@ -1834,6 +1834,13 @@ requireTokens("tests/production-qc-hint-browser-contract.test.ts",[
   "M120 real browser regression", "chromium",
   "M120 production UI browser check",
 ]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  'className="productionRecordsToolbar"',
+  "onClick={()=>void load()}>Refresh production history",
+]);
+requireTokens("src/app/operator/production/production.css",[
+  ".productionRecordsToolbar button", "min-height:44px",
+]);
 requireTokens(".github/workflows/ci.yml",[
   "node scripts/verify-production-qc-hint-browser.cjs",
 ]);
