@@ -264,7 +264,7 @@ export function selectProductionPacketRecords<
   const order=matchingOrders[0]??null;
   if(order){
     const quote=order.quote_id===null?null:
-      quotes.find((row)=>sameRecipe(row)&&sameProductionRecordId(row.quote_id,order.quote_id))??null;
+      quotes.find((row)=>row.status==="accepted"&&sameRecipe(row)&&sameProductionRecordId(row.quote_id,order.quote_id))??null;
     return {quote,order};
   }
   const matchingQuotes=quotes.filter(sameRecipe);
