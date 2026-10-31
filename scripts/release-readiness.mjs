@@ -1412,6 +1412,13 @@ requireTokens("src/lib/designer/customer-outcome-review-transport.ts",[
   'if(!worn&&fit!=="not_checked")',
   "Adverse customer fit evidence requires a recorded reason.",
   "decision:r.decision",
+  'outcome_id:recordId(o.outcome_id,"outcome")',
+  'order_id:recordId(o.order_id,"order")',
+  'review_id:recordId(r.review_id,"review")',
+  'outcome_id:recordId(r.outcome_id,"review outcome")',
+  'policy_id:recordId(p.policy_id,"policy")',
+  "Customer rejected review requires a reason.",
+  "Customer policy needs a named approver and documented reason.",
 ]);
 requireTokens("src/app/api/operator/customer-outcomes/route.ts",[
   "readBoundedJsonResponse(response,maxBytes)",
