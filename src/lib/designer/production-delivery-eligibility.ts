@@ -54,6 +54,7 @@ export function hasVerifiedSqlDeliveryEligibility(
   if(!id||order.status!=="ready"
     ||typeof order.revision_id!=="string"
     ||typeof order.recipe_hash!=="string"
+    ||!/^[a-f0-9]{64}$/i.test(order.recipe_hash)
     ||typeof order.updated_at!=="string")return false;
   // The callback executes outside TypeScript's narrowing scope for unknown
   // record properties. Capture only strictly validated primitive values.
