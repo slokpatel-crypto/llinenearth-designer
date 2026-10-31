@@ -3,6 +3,11 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {isCurrentVerifiedOperatorLock} from "../src/lib/designer/verified-operator-lock.ts";
 
+test("verified lock guard narrows a nullable revision for strict production builds",()=>{
+  const helper=readFileSync("src/lib/designer/verified-operator-lock.ts","utf8");
+  assert.match(helper,/displayed is T/);
+});
+
 test("a recovery token edit revokes the previous rendered lock in the same event turn",()=>{
   const original=Object.freeze({revisionId:"old",recipeHash:"a".repeat(64)});
   const next=Object.freeze({revisionId:"new",recipeHash:"b".repeat(64)});
