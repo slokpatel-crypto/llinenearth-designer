@@ -52,5 +52,5 @@ test("M130 installed-schema audit checks both enabled lock triggers and original
  const staging=readFileSync("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md","utf8");
  assert.match(staging,/20261119_locked_production_identity_immutable\.sql/);
  assert.match(staging,/Apply the ten migrations/);
- assert.match(staging,/normal status, note, and physical QC counter updates/);
+ assert.match(staging,/physical QC counter updates continue to succeed/);
 });
