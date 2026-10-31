@@ -268,3 +268,24 @@ test("J5 packet export refuses ambiguous order or quote identities",()=>{
   assert.match(client,/selectProductionPacketRecords\(\s*quotes,orders,loadedRevision\.revisionId,loadedRevision\.recipeHash/);
   assert.doesNotMatch(client,/const quoteMatch=quotes\.find/);
 });
+
+test("J5 operator mutations and lock recovery use synchronous single-flight guard",()=>{
+  const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  assert.match(client,/import \{ useEffect, useMemo, useRef, useState \} from "react"/);
+  assert.match(client,/const actionInFlight=useRef\(false\)/);
+  const mutation=client.slice(client.indexOf("  async function post("),client.indexOf("  async function loadLockedDesign("));
+  const recovery=client.slice(client.indexOf("  async function loadLockedDesign("),client.indexOf("  function download("));
+  for(const [name,body] of [["mutation",mutation],["recovery",recovery]] as const){
+    const guard=body.indexOf("actionInFlight.current) return;");
+    const claim=body.indexOf("actionInFlight.current=true;");
+    const busy=body.indexOf("setBusy(true)");
+    const network=body.indexOf("await fetch(");
+    const release=body.indexOf("actionInFlight.current=false;setBusy(false);");
+    assert.ok(guard>=0&&claim>guard&&busy>claim&&network>busy&&release>network,
+      name+" must claim the synchronous guard before any network request and release in finally");
+    assert.match(body,/finally\{actionInFlight\.current=false;setBusy\(false\);\}/);
+  }
+  // A React state setter alone does not block a second handler before rerender.
+  assert.doesNotMatch(mutation,/if\(busy\) return;/);
+  assert.doesNotMatch(recovery,/if\(!recoveryToken\.trim\(\)\|\|busy\) return;/);
+});
