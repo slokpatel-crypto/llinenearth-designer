@@ -103,7 +103,7 @@ export default function CustomerOutcomesClient(){
         <article><small>REJECTED</small><div style={{fontSize:34,fontWeight:800}}>{summary.rejected}</div></article>
         <article><small>UNREVIEWED</small><div style={{fontSize:34,fontWeight:800}}>{summary.unreviewed}</div></article>
         <article><small>LEARNING ELIGIBLE</small><div style={{fontSize:34,fontWeight:800}}>{summary.learningEligible}</div></article>
-        <article><small>APPROVED FIT CASES</small><div style={{fontSize:34,fontWeight:800}}>{summary.approvedFitCases}</div></article>
+        <article><small>CLEAN FIRST-FIT CASES</small><div style={{fontSize:34,fontWeight:800}}>{summary.approvedFitCases}</div></article>
         <article><small>HUMAN THRESHOLD</small><div style={{fontSize:34,fontWeight:800}}>{summary.threshold??"—"}</div></article>
         <article><small>EVIDENCE GATE</small><div style={{fontSize:24,fontWeight:800}}>{summary.gateComplete?"MET":"OPEN"}</div></article>
       </section>
@@ -164,7 +164,7 @@ export default function CustomerOutcomesClient(){
 
       <section style={{...panel,background:"#f2efe8"}}>
         <strong>Learning boundary</strong>
-        <p style={{marginBottom:0,lineHeight:1.55,fontSize:13}}>“Evidence gate met” means the human-defined quantity of approved outcomes with durable garment context exists. Customer outcomes without retained design lineage never count toward this gate. Designer ranking remains unchanged until a separate approved learning rule explicitly maps reviewed evidence into bounded recommendation signals.</p>
+        <p style={{marginBottom:0,lineHeight:1.55,fontSize:13}}>“Evidence gate met” means the human-defined quantity of approved outcomes with durable garment context exists. Customer outcomes without retained design lineage never count toward this gate. Clean first-fit cases count only human-approved outcomes with durable lineage, confirmed wear and a clean first fit; minor or major alterations remain visible as learning evidence, never as clean fit successes. Designer ranking remains unchanged until a separate approved learning rule explicitly maps reviewed evidence into bounded recommendation signals.</p>
       </section>
     </div>
   </main>;
