@@ -16,6 +16,16 @@ function sameId(a:unknown,b:unknown):boolean{
   return id!==null&&id===verifiedOperatorProductionCreateId(b);
 }
 
+/** Persisted operator instructions must agree with the submitted note.
+ * Status RPCs preserve the previous note for an empty submission, whereas
+ * newly created orders always persist the (possibly empty) trimmed note. */
+function matchesOperatorNote(row:Row,body:Row,allowUnchanged:boolean):boolean{
+  const raw=body.note===undefined||body.note===null?"":body.note;
+  if(typeof raw!=="string")return false;
+  const note=raw.trim();
+  return (allowUnchanged&&note==="")||row.note===note;
+}
+
 /** A newly created quote is a financial instruction, not merely a UUID.
  * Re-read the exact normalized operator-entered lines, paise totals and note;
  * a wrong-price quote with the correct recipe/currency must never say saved. */
@@ -72,6 +82,8 @@ export function verifiedProductionMutationReadback(
     return orders.some(row=>sameId(row.order_id,id)
       &&row.revision_id===body.revisionId
       &&sameProductionRecipeHash(row.recipe_hash,body.recipeHash)
+      &&row.status==="created"
+      &&matchesOperatorNote(row,body,false)
       &&(expectedQuote===null?row.quote_id===null:sameId(row.quote_id,expectedQuote)))
       &&contexts.some(context=>sameId(context.order_id,id)
         &&context.revision_id===body.revisionId
@@ -81,13 +93,15 @@ export function verifiedProductionMutationReadback(
     if(created.updated!==true||!verifiedOperatorProductionCreateId(body.quoteId)
       ||typeof body.status!=="string")return false;
     return quotes.some(row=>sameId(row.quote_id,body.quoteId)
-      &&row.status===body.status);
+      &&row.status===body.status
+      &&matchesOperatorNote(row,body,true));
   }
   if(action==="order_status"){
     if(created.updated!==true||!verifiedOperatorProductionCreateId(body.orderId)
       ||typeof body.status!=="string")return false;
     return orders.some(row=>sameId(row.order_id,body.orderId)
-      &&row.status===body.status);
+      &&row.status===body.status
+      &&matchesOperatorNote(row,body,true));
   }
   return false;
 }
