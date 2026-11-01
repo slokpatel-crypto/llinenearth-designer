@@ -6,6 +6,14 @@ export const DESIGN_VAULT_ACCESS_BYTES=32;
 const VAULT_ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACCESS_KEY=/^[A-Za-z0-9_-]{40,80}$/;
 
+// PostgreSQL UUID results must be a real JSON string with a valid UUID
+// *before* owner/claim RPCs are called or a recovery token is acknowledged.
+export function requireDesignVaultCreatedId(value:unknown):string {
+  if(typeof value!=="string"||!VAULT_ID.test(value))
+    throw new Error("Invalid design vault creation acknowledgment.");
+  return value.toLowerCase();
+}
+
 export function createDesignVaultAccessKey(){
   return randomBytes(DESIGN_VAULT_ACCESS_BYTES).toString("base64url");
 }
