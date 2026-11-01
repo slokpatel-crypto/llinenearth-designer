@@ -4,6 +4,7 @@ import { getCustomerIdentity } from "@/lib/customer-auth";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { requireDesignVaultBooleanAck } from "@/lib/designer/design-vault-ack";
 import { checkDesignVaultRateLimit, type VaultRateEntry } from "@/lib/designer/design-vault-rate-limit";
+import { requireSingleDesignVaultRow } from "@/lib/designer/design-vault-row";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import {
   createDesignVaultAccessKey,
@@ -139,16 +140,17 @@ export async function POST(request:Request){
     if(action==="loadOwned"){
       if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
       const vaultId=String(body.vaultId||"");
-      const rows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>(
+      const rows=await rpc<unknown>(
         "designer_locked_revision_vault_get_owned",
         {p_vault_id:vaultId,p_owner_user_id:customer.id},
       );
-      const row=rows[0];
-      if(!row?.payload) return jsonNoStore({error:"Design not found."},{status:404});
-      if(!await verifyLockedDesignRevision(row.payload)) {
+      const row=requireSingleDesignVaultRow(rows);
+      if(!row) return jsonNoStore({error:"Design not found."},{status:404});
+      const revision=row.payload as LockedDesignRevision;
+      if(!await verifyLockedDesignRevision(revision)) {
         return jsonNoStore({error:"Stored design failed integrity verification."},{status:409});
       }
-      return jsonNoStore({revision:row.payload,expiresAt:row.expires_at});
+      return jsonNoStore({revision,expiresAt:row.expires_at});
     }
 
     if(action==="deleteOwned"){
@@ -168,10 +170,11 @@ export async function POST(request:Request){
         p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,p_owner_user_id:customer.id,
       }));
       if(claimed){
-        const rows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>("designer_locked_revision_vault_get",{
+        const rows=await rpc<unknown>("designer_locked_revision_vault_get",{
           p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
         });
-        const revision=rows[0]?.payload;
+        const row=requireSingleDesignVaultRow(rows);
+        const revision=row?.payload as LockedDesignRevision|undefined;
         if(revision&&await verifyLockedDesignRevision(revision)){
           try{
             await rpc("production_claim_revision_ownership",{
@@ -188,16 +191,17 @@ export async function POST(request:Request){
     }
 
     if(action==="load"){
-      const rows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>("designer_locked_revision_vault_get",{
+      const rows=await rpc<unknown>("designer_locked_revision_vault_get",{
         p_vault_id:parsed.vaultId,
         p_access_hash:parsed.accessHash,
       });
-      const row=rows[0];
-      if(!row?.payload) return jsonNoStore({error:"Design not found or recovery token expired."},{status:404});
-      if(!await verifyLockedDesignRevision(row.payload)) {
+      const row=requireSingleDesignVaultRow(rows);
+      if(!row) return jsonNoStore({error:"Design not found or recovery token expired."},{status:404});
+      const revision=row.payload as LockedDesignRevision;
+      if(!await verifyLockedDesignRevision(revision)) {
         return jsonNoStore({error:"Stored design failed integrity verification."},{status:409});
       }
-      return jsonNoStore({revision:row.payload,expiresAt:row.expires_at});
+      return jsonNoStore({revision,expiresAt:row.expires_at});
     }
 
     if(action==="delete"){
