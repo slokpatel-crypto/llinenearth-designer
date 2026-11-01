@@ -18,6 +18,8 @@ test("M135 signed Chromium tests a positive packet and a completed write from an
   assert.match(browser,/completedCrossTabWriteBlocked:true/);
   assert.match(browser,/staleReviewBlocked:true/);
   assert.match(browser,/completedRemoteReviewRecovered:true/);
+  assert.match(browser,/postSessionTwoStepReview:true/);
+  assert.match(browser,/Production history rechecked with no active browser write/);
   assert.match(browser,/An acknowledgement from stale history must not erase/);
   assert.match(browser,/Production write review required/);
   assert.match(browser,/No stale packet may download/);
