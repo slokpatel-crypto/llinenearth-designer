@@ -3,6 +3,7 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { requireDesignVaultBooleanAck } from "@/lib/designer/design-vault-ack";
+import { checkDesignVaultRateLimit, type VaultRateEntry } from "@/lib/designer/design-vault-rate-limit";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import {
   createDesignVaultAccessKey,
@@ -24,16 +25,14 @@ function jsonNoStore(body:unknown,init?:{status?:number}){
 }
 
 const rate=(globalThis as typeof globalThis & {
-  __linenDesignVaultRate?:Map<string,{at:number;count:number}>
-}).__linenDesignVaultRate ||= new Map<string,{at:number;count:number}>();
+  __linenDesignVaultRate?:Map<string,VaultRateEntry>
+}).__linenDesignVaultRate ||= new Map<string,VaultRateEntry>();
 
 function blocked(request:Request){
+  // In-process best effort; the deployment's trusted edge should enforce a
+  // separate distributed limit. Forwarded headers are not proof of identity.
   const ip=request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()||"unknown";
-  const now=Date.now();
-  const current=rate.get(ip);
-  if(!current||now-current.at>60_000){rate.set(ip,{at:now,count:1});return false;}
-  current.count+=1;
-  return current.count>30;
+  return checkDesignVaultRateLimit(rate,ip,Date.now());
 }
 
 async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
