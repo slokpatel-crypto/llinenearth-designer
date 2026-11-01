@@ -17,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from uv_candidate_audit import audit_shared_uv_edges, audit_uv_triangles, classify_unapproved_uv_seams, validate_recomputed_source_cut_evidence, verify_evaluated_tube_radius_m, validate_independent_uv_hotspots
 from sleeve_stance_math import source_arm_band_geometry, optimistic_sleeve_spacing_budget
+from garment_panel_contacts import PANELS as CONTACT_PANELS, review_panel_contacts
 
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
@@ -782,6 +783,16 @@ def main():
                 "clean the waist overlap before production export."
             )
 
+    # Independent mesh-vs-mesh coverage of ALL other garment panel pairs.
+    # The original eight named checks omitted six real source collisions.
+    # Proposed armhole/waist joins must be sewn and independently reviewed:
+    # their triangle crossings are NOT automatically acceptable seams.
+    panel_contact_review, panel_contact_reasons = review_panel_contacts(
+        {name: bpy.data.objects.get(name) for name in CONTACT_PANELS},
+        intersection_pair_count,
+    )
+    reasons.extend(panel_contact_reasons)
+
     # The source body's hands descend to the same height as the upper legs.
     # A z-only, left/right split of the scan deceptively exports hand surfaces
     # as trouser cloth. Audit lateral hand-space intrusion independently from
@@ -930,6 +941,7 @@ def main():
         "identityGuideMeasurementsMm": guide_measurements,
         "identityFitMeasurementsMm": identity_measurements,
         "boundaryIntersections": boundary_intersections,
+        "allOtherGarmentPanelContacts": panel_contact_review,
         "anatomicalRegionIntrusions": anatomy_region_hits,
         "lowerLegCoverage": lower_leg_coverage,
         "forearmSleeveCoverage": forearm_sleeve_coverage,
