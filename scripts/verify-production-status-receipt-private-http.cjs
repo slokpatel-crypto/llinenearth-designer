@@ -50,7 +50,7 @@ async function main(){
     assert.deepEqual(await r.json(),{error:"Unauthorized."});
   }
   const signed=()=>signedCookie(Date.now()+180_000);
-  for(const bad of ["not-a-uuid","123e4567-e89b-42d3-a456-426614174070 "]) {
+  for(const bad of ["not-a-uuid","123e4567-e89b-12d3-a456-426614174070"]) {
     const r=await lookup(signed(),bad);
     assertPrivate(r);
     assert.equal(r.status,400,"invalid original UUID must fail before SQL");
