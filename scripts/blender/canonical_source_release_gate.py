@@ -7,6 +7,12 @@ supplier fabric proof, or physical tailor fit. Store review evidence privately.
 """
 from __future__ import annotations
 import re
+import hashlib
+import json
+from datetime import date
+from pathlib import Path
+
+from canonical_model_source_intake import ANGLES, intake_source
 
 SOURCE_ID="linen-earth-studio-model-v1"
 REFERENCE_IMAGE="/designer/studio-tucked.webp"
@@ -36,3 +42,76 @@ def require_independent_source_photo_review(scene):
     return {"sourcePhotoHumanReviewAttested":True,
             "reviewPacketSha256":evidence,
             "productionApproved":False}
+
+\ndef verify_external_owner_review_packet(
+    scene, *, scene_blend_path, reference_path, identity_spec_path, review_path
+):
+    """Check actual, private four-angle evidence, not scene labels alone.
+
+    The receipt is a HUMAN attestation. It cannot perform visual recognition
+    and never approves cloth fit, metric UV, supplier truth or production.
+    """
+    attested=require_independent_source_photo_review(scene)
+    if not review_path:
+        raise ValueError("LINEN_OWNER_MODEL_REVIEW_RECEIPT is required for measured production export")
+    doc=Path(review_path)
+    if not doc.is_file() or doc.is_symlink():
+        raise ValueError("Owner review file missing or symlinked")
+    bytes_written=doc.read_bytes()
+    sha=hashlib.sha256(bytes_written).hexdigest()
+    if sha!=attested["reviewPacketSha256"]:
+        raise ValueError("Owner review receipt SHA256 differs from scene attestation")
+    try:
+        packet=json.loads(bytes_written)
+        identity=json.loads(Path(identity_spec_path).read_text(encoding="utf-8"))
+    except (ValueError,UnicodeDecodeError,OSError) as error:
+        raise ValueError("Owner review document or locked model spec is invalid") from error
+    if not isinstance(packet,dict):
+        raise ValueError("Owner review object is not a JSON mapping")
+    if (packet.get("schemaVersion")!="linen-earth-owner-four-angle-review-v1" or
+        packet.get("canonicalModelId")!=SOURCE_ID or
+        packet.get("ownerConfirmsSameFacelessStudioModel") is not True):
+        raise ValueError("No explicit owner photo-matched ORIGINAL mannequin approval")
+    reviewer=packet.get("reviewerName")
+    stamp=packet.get("reviewedAt")
+    if not isinstance(reviewer,str) or len(reviewer.strip())<3:
+        raise ValueError("Named independent reviewer missing")
+    if not isinstance(stamp,str):
+        raise ValueError("Owner review date missing")
+    try:
+        date.fromisoformat(stamp)
+    except ValueError as error:
+        raise ValueError("Owner review date must be genuine YYYY-MM-DD") from error
+    must_check=("facelessHead","shouldersAndArms","backTuckAndWaist","legsAndShoes")
+    checks=packet.get("manualVisualChecks")
+    if not isinstance(checks,dict) or any(checks.get(key) is not True for key in must_check):
+        raise ValueError("Independent owner has not approved all four visual checkpoints")
+    view_paths=packet.get("viewPaths")
+    if not isinstance(view_paths,dict) or set(view_paths)!=set(ANGLES):
+        raise ValueError("Exact 4-angle photo-source render path list is missing")
+    root=doc.parent.resolve()
+    views={}
+    for label in ANGLES:
+        candidate=Path(view_paths[label])
+        if candidate.is_absolute() or ".." in candidate.parts or not candidate.parts:
+            raise ValueError("Four-angle render paths must stay inside private review directory")
+        views[label]=root/candidate
+    source=Path(scene_blend_path)
+    reference=Path(reference_path)
+    intake=intake_source(identity,reference,source,views)
+    if not intake["readyForIndependentOwnerAndTailorVisualReview"]:
+        raise ValueError("Missing/duplicate/bad source file or physical views in owner review packet")
+    if (packet.get("sceneBlendSha256")!=intake["sourceBlendFingerprint"]["sha256"] or
+        packet.get("canonicalReferenceSha256")!=intake["canonicalReferenceFingerprint"]["sha256"]):
+        raise ValueError("Owner review is stale for this actual Blender scene or canonical photograph")
+    rendered=packet.get("renderSha256")
+    if not isinstance(rendered,dict) or set(rendered)!=set(ANGLES) or any(
+        rendered[name]!=intake["sourceRenderFingerprints"][name]["sha256"]
+        for name in ANGLES
+    ):
+        raise ValueError("Owner review render content changed since visual signoff")
+    return {
+        "independentOwnerSourcePhotoReviewPacketSha256":sha,
+        "sameOriginalFacelessModelHumanAttestation":True,
+        "actualProductionApproved":False,
+    }
