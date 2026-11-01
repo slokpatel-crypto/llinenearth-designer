@@ -63,3 +63,35 @@ assert preflight.intersection_pair_count(body, empty_object) is None, (
 )
 assert preflight.intersection_pair_count(body, None) is None
 print('LINEN_EARTH_UNMEASURED_CONTACT_REMAINS_UNKNOWN_PASSED')
+
+# Independent real evaluated Blender geometry: the thirteen extra panel-pair
+# checks must expose an actual crossing at a proposed armhole join, rather
+# than silently treating a named sewn attachment as approved.
+panels = {}
+for index, name in enumerate(preflight.CONTACT_PANELS):
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(8.0 + 10.0 * index, 0.0, 0.0))
+    panels[name] = bpy.context.object
+panels["ShirtSleeveLFabric"].location = (8.35, 0.10, 0.15)
+bpy.context.view_layer.update()
+
+panel_evidence, panel_reasons = preflight.review_panel_contacts(
+    panels, preflight.intersection_pair_count,
+)
+armhole = panel_evidence["ShirtTorsoFabric__ShirtSleeveLFabric"]
+assert armhole["intersectionTrianglePairs"] is not None
+assert armhole["intersectionTrianglePairs"] > 0
+assert armhole["relationship"] == "proposed_sewn_join_unverified"
+assert armhole["sewnConstructionApproved"] is False
+assert any("ShirtTorsoFabric/ShirtSleeveLFabric" in reason for reason in panel_reasons)
+assert len(panel_evidence) == 13
+
+# Do not turn a missing counterpart into an all-clear when source geometry
+# was absent, e.g. if a Blender collection filter silently skipped a panel.
+panels["ShirtSleeveLFabric"] = None
+missing_evidence, missing_reasons = preflight.review_panel_contacts(
+    panels, preflight.intersection_pair_count,
+)
+assert missing_evidence["ShirtTorsoFabric__ShirtSleeveLFabric"]["status"] == "unmeasured"
+assert any("Unmeasured garment panel" in reason for reason in missing_reasons)
+print("LINEN_EARTH_NATIVE_ALL_PANEL_CONTACT_GATE_PASSED")
+
