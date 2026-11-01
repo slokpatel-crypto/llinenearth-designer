@@ -27,6 +27,13 @@ test("stock snapshot accepts verified real balances and numeric decimal strings 
   assert.deepEqual(requireStockSnapshotRows([decimal]),[sample]);
   assert.equal(requireStockSnapshotRows([{...sample,last_event_at:null}])[0].last_event_at,null);
   assert.equal(requireStockSnapshotRows([sample]).length,1);
+  const legacy={...sample,provenance_event_count:1,
+    legacy_unverified_event_count:1,provenance_ready:false};
+  assert.deepEqual(requireStockSnapshotRows([legacy]),[legacy]);
+  const noManual={...sample,physical_metres:0,reserved_metres:0,
+    available_metres:0,manual_event_count:0,provenance_event_count:0,
+    legacy_unverified_event_count:0,provenance_ready:false};
+  assert.deepEqual(requireStockSnapshotRows([noManual]),[noManual]);
 });
 
 test("snapshot fails closed on invented, inconsistent or malformed stock",()=>{
@@ -45,6 +52,11 @@ test("snapshot fails closed on invented, inconsistent or malformed stock",()=>{
     [{...sample,manual_event_count:null}],
     [{...sample,manual_event_count:"2"}],
     [{...sample,provenance_event_count:3}],
+    [{...sample,provenance_event_count:1,legacy_unverified_event_count:0}],
+    [{...sample,provenance_event_count:1,legacy_unverified_event_count:1,provenance_ready:true}],
+    [{...sample,provenance_event_count:2,legacy_unverified_event_count:1}],
+    [{...sample,manual_event_count:0,provenance_event_count:0,legacy_unverified_event_count:0,provenance_ready:true}],
+    [{...sample,provenance_ready:false}],
     [{...sample,provenance_ready:"true"}],
     [{...sample,last_event_at:"not-date"}],
   ];
@@ -86,4 +98,14 @@ test("stock route validates both close RPCs before interpreting inactive reserva
   assert.doesNotMatch(route,/rpc<boolean>\("fabric_stock_(?:release|consume_reservation)_v2"/);
   assert.match(route,/if\(released!==true\) return stockPrivateJson\(\{error:"Reservation was not active; no cloth was released\."\},\{status:409\}\)/);
   assert.match(route,/if\(consumed!==true\) return stockPrivateJson\(\{error:"Reservation was not active; no cloth was consumed\."\},\{status:409\}\)/);
+});
+
+test("stock-provenance readiness is derived exactly from manual evidence SQL",()=>{
+  const sql=readFileSync("supabase/migrations/20261028_fabric_stock_provenance.sql","utf8");
+  const parser=readFileSync("src/lib/designer/operator-stock-response.ts","utf8");
+  assert.match(sql,/count\(\*\) filter \(where l\.event_type in \('receipt','adjustment_in','adjustment_out'\)\)>0/);
+  assert.match(sql,/legacy_unverified_event_count/);
+  assert.match(parser,/provenance_event_count!==manual_event_count-legacy_unverified_event_count/);
+  assert.match(parser,/r\.provenance_ready!==expectedReady/);
+  assert.match(parser,/expectedReady=manual_event_count>0&&legacy_unverified_event_count===0/);
 });
