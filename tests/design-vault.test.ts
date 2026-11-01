@@ -5,6 +5,7 @@ import {
   createDesignVaultRecoveryToken,
   hashDesignVaultAccessKey,
   parseDesignVaultRecoveryToken,
+  requireDesignVaultCreatedId,
 } from "../src/lib/designer/design-vault.ts";
 
 test("vault access keys are high-entropy URL-safe values",()=>{
@@ -34,4 +35,15 @@ test("tampered or malformed recovery token is rejected",()=>{
   assert.equal(parseDesignVaultRecoveryToken(token.replace("lev1.","lev2.")),null);
   assert.equal(parseDesignVaultRecoveryToken("lev1.not-a-uuid.bad"),null);
   assert.equal(parseDesignVaultRecoveryToken(token+" extra"),null);
+});
+
+test("vault store acknowledgments require a canonicalizable UUID string before owner writes",()=>{
+  const uuid="B287E470-0E90-4FD4-B5FB-976EECEBD244";
+  assert.equal(requireDesignVaultCreatedId(uuid),uuid.toLowerCase());
+  for(const value of [
+    undefined,null,false,true,0,1,{},[],[uuid],{vaultId:uuid},"",
+    "  "+uuid,uuid+" ","not-a-uuid",
+    "b287e470-0e90-0fd4-b5fb-976eecebd244",
+    "b287e470-0e90-4fd4-75fb-976eecebd244",
+  ]) assert.throws(()=>requireDesignVaultCreatedId(value),/Invalid design vault creation acknowledgment/);
 });
