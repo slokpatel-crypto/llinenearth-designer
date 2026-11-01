@@ -8,13 +8,13 @@ test("every operator production GET and POST exit uses the private response boun
   assert.ok(post,"production POST handler must exist");
   const get=beforePost.split("export async function GET(){")[1];
   assert.ok(get,"production GET handler must exist");
-  assert.doesNotMatch(get,/return NextResponse\\.json\\(/);
-  assert.doesNotMatch(post,/return NextResponse\\.json\\(/);
-  assert.equal((get.match(/return privateProductionResponse\\(/g)||[]).length,4);
-  assert.ok((post.match(/return privateProductionResponse\\(/g)||[]).length>=15);
-  assert.match(source,/function privateProductionResponse\\(body:unknown,init\\?:ResponseInit\\)/);
-  assert.match(source,/response\\.headers\\.set\\("cache-control","private, no-store"\\)/);
-  assert.equal((source.match(/NextResponse\\.json\\(/g)||[]).length,1,
+  assert.doesNotMatch(get,/return NextResponse\.json\(/);
+  assert.doesNotMatch(post,/return NextResponse\.json\(/);
+  assert.equal((get.match(/return privateProductionResponse\(/g)||[]).length,4);
+  assert.ok((post.match(/return privateProductionResponse\(/g)||[]).length>=15);
+  assert.match(source,/function privateProductionResponse\(body:unknown,init\?:ResponseInit\)/);
+  assert.match(source,/response\.headers\.set\("cache-control","private, no-store"\)/);
+  assert.equal((source.match(/NextResponse\.json\(/g)||[]).length,1,
     "only the centralized helper may construct a production response");
 });
 test("private transport acceptance is executed after production build in CI",()=>{
