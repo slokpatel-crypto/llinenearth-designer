@@ -45,6 +45,8 @@ jobs:
         run: node scripts/verify-operator-private-transport-http.cjs
       - name: Verify signed optional production ledger failures (synthetic)
         run: node scripts/verify-operator-optional-evidence-http.cjs
+      - name: Verify designer vault JSON bounds and private error logs (synthetic)
+        run: node scripts/verify-designer-vault-boundary-http.cjs
       - name: Load immutable photographic regression baseline
         run: git fetch --depth=1 origin 5126ebb6f82179b7fe25106e71f234248af3a677
       - name: Install pinned browser verification runtime
