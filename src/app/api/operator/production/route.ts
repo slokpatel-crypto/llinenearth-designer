@@ -54,8 +54,8 @@ async function loadVerifiedLockedRevision(recoveryToken:string){
 }
 
 export async function GET(){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,quotes:[],orders:[]});
+  if(!await authorized()) return privateProductionResponse({error:"Unauthorized."},{status:401});
+  if(!getSupabaseAdminConfig()) return privateProductionResponse({configured:false,quotes:[],orders:[]});
   try{
     // Only a verified PostgREST PGRST202 404 permits an empty optional list.
     // Other backend failures must invalidate the entire operator ledger.
@@ -66,10 +66,10 @@ export async function GET(){
       rpc<unknown[]>("production_customer_outcome_list",{p_limit:250},true),
       rpc<unknown[]>("production_order_learning_context_list",{p_limit:500},true),
     ]);
-    return NextResponse.json({configured:true,quotes,orders,qcInspections,customerOutcomes,learningContexts},{headers:{"cache-control":"private, no-store"}});
+    return privateProductionResponse({configured:true,quotes,orders,qcInspections,customerOutcomes,learningContexts},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/production]",safeOperatorProductionErrorCode(error));
-    return NextResponse.json({error:"Production records could not be read."},{status:503,headers:{"cache-control":"private, no-store"}});
+    return privateProductionResponse({error:"Production records could not be read."},{status:503,headers:{"cache-control":"private, no-store"}});
   }
 }
 
