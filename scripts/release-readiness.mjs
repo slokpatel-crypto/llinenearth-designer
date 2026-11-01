@@ -2422,6 +2422,13 @@ requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
   "Status receipt lookup claimed noncommit while another SQL transaction was open",
 ]);
 
+requireTokens("tests/secure-json-origin.test.ts",[
+  "M146 strict same-origin accepts one matching local host only",
+  "M146 mismatched local host is not a CSRF exception",
+  "M146 hostile Fetch Metadata rejects despite a matching Origin",
+  "M146 JSON endpoint checks cross-site metadata before request bytes",
+]);
+
 // M146: SQL idempotency and Node parsers alone are insufficient. An actual
 // authenticated built-Next HTTP boundary must prove the original UUID lookup
 // returns ONLY safe receipt fields and fails closed on missing/malformed SQL.
