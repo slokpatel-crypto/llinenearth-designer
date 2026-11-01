@@ -2,6 +2,19 @@
 
 Updated: 2026-11-01. Status: **REJECTED 3D candidate; NOT production-ready**.
 
+## LATEST VERIFIED: collar/cuff construction succeeded topologically but FAILED real body fit
+
+Draft PR #681, branch work/titan-3d-collar-cuffs-20261101; the measured native Blender source workflow is 41297718587. Source scene SHA256 895a3afd3a6ef023c6ff1f8c4a0b455fb0499ac6028df99fd8d0ec7882a684b0. Original body+6 garment source hashes unchanged.
+
+Actual authored geometry after adding standing collar and both cuff panels: 1372 vertices, 1188 polygons; one connected shirt, four boundary openings (collar top, hem, two cuff ends); 68 original armhole seam edges plus collar root 64 and cuff roots 34 each = 200 marked authentic source-joining edges. No nonmanifold or winding defects. Pure-Python and native Blender construction steps PASS.
+
+Independent REAL body BVH from this source: 2433 body/shirt crossing triangle pairs, 72 waistband pairs, 0 left-leg/0 right-leg pairs. Previous same-shirt baseline without collar/cuffs had 2177 body, 72 waistband, 0 legs. Therefore adding the collar/cuffs worsened body intersections by 256; fit gate FAILS and the current geometry is REJECTED for production. The successful topological connection is not a sewn fit/tailor approval. Source generic body differs from photograph; owner photo parity still unverified.
+
+Permanent evidence: docs/TITAN_3D_COLLAR_CUFF_NATIVE_REJECTION_20261101.json, commit 5b9a8f375fd756761ef8e8538d426ce325e4a808. The native source run intentionally ends FAILURE for the unapproved overall model. No production GLB, main merge or Vercel deployment. Preserve archived .blend and four-angle diagnostic images before temporary GitHub Actions artifact retention expires.
+
+NEXT: do not repeat arbitrary radial-ease, shrinkwrap or body-normal clearance guesses. Continue independent TRUE pattern creation only with source-matched body/pose, original 3D reference scene or multiple views/measurements. Priorities are fixing source neck/armhole clearances and waist intersection without changing the photographed identity, then fully authored front placket, trouser seat/fly/leg joins and true seam/UV grain with measured fabric. If evidence remains unavailable, make only independently valid geometry/option work in draft branches and keep release gate blocked. Check exact new branch/PR head and CI before edits.
+
+
 ## CURRENT continuation: explicit collar/cuff seam geometry (draft, unapproved)
 
 Current branch: work/titan-3d-collar-cuffs-20261101, following drafts #680, #679 and #678. Check latest branch head and exact-head CI before continuing.
