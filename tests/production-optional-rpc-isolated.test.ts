@@ -34,7 +34,7 @@ test("actual authenticated operator GET never swallows optional ledger failures"
   assert.doesNotMatch(rpc,/response\.text\(\)/);
   for(const name of ["finished_garment_qc_list","production_customer_outcome_list","production_order_learning_context_list"])
     assert.ok(get.includes('rpc<unknown[]>("'+name+'",'),name+" must be read explicitly");
-  assert.equal((get.match(/,true\)/g)||[]).length,3);
+  assert.equal((get.match(/,true,MAX_OPERATOR_LEDGER_BYTES\)/g)||[]).length,3);
   assert.doesNotMatch(get,/catch\s*\{\s*\/\/ Keep/);
   assert.match(get,/status:503/);
   assert.match(route,/response\.headers\.set\("cache-control","private, no-store"\)/);
@@ -51,4 +51,19 @@ test("all five successful production ledgers require bounded arrays of row objec
   const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
   for(const [name,limit] of [["quotes",100],["orders",100],["qcInspections",250],["customerOutcomes",250],["learningContexts",500]])
     assert.ok(route.includes("validateOperatorLedgerRows("+name+","+limit+")"),name+" must be checked before configured:true");
+});
+
+
+test("every authenticated production GET list is MIME-checked and decoded-byte bounded",()=>{
+  const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
+  const rpc=route.split("async function rpc<T>(")[1]?.split("async function loadVerifiedLockedRevision(")[0]??"";
+  const get=route.split("export async function GET(){")[1]?.split("export async function POST(request:Request){")[0]??"";
+  assert.match(rpc,/mime!==\"application\/json\"/);
+  assert.match(rpc,/readBoundedJsonResponse\(response,maxResponseBytes\)/);
+  assert.match(route,/const MAX_OPERATOR_LEDGER_BYTES=8_388_608/);
+  for(const name of ["production_quote_list","production_order_list","finished_garment_qc_list","production_customer_outcome_list","production_order_learning_context_list"]){
+    const call=get.split(`\"${name}\"`)[1]?.split("\n")[0]??"";
+    assert.match(call,/MAX_OPERATOR_LEDGER_BYTES/,name+" must bound decoded JSON");
+  }
+  assert.match(route,/return await response\.json\(\) as T/,"non-list legacy writes keep their response contract");
 });
