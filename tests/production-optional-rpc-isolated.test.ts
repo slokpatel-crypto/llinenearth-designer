@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {isMissingOptionalProductionRpc,validateOperatorLedgerRows} from "../src/lib/designer/operator-optional-rpc.ts";
 import {publicOperatorPostError} from "../src/lib/designer/operator-production-errors.ts";
+import {requireOperatorStatusAcknowledgment} from "../src/lib/designer/operator-status-ack.ts";
 
 const json=(body:unknown,status=404)=>new Response(JSON.stringify(body),{
   status,headers:{"content-type":"application/json; charset=utf-8"},
@@ -74,7 +75,7 @@ test("every authenticated production GET list is MIME-checked and decoded-byte b
 
 test("delivery status QC read is bounded and validated before any status mutation",()=>{
   const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
-  const delivery=route.split('if(action==="order_status"){')[1]?.split('return privateProductionResponse({updated:Boolean(updated)});')[0]??"";
+  const delivery=route.split('if(action==="order_status"){')[1]?.split('return privateProductionResponse({updated:requireOperatorStatusAcknowledgment(updated)});')[0]??"";
   assert.match(delivery,/rpc<unknown>\("finished_garment_qc_latest_for_order",\{p_order_id:orderId\},false,MAX_OPERATOR_LEDGER_BYTES\)/);
   assert.match(delivery,/validateOperatorLedgerRows\(rawInspections,2\)/);
   assert.ok(delivery.indexOf("validateOperatorLedgerRows")<delivery.indexOf("latestQcForOrder"),
@@ -131,4 +132,23 @@ test("operator POST error boundary exposes only authored validation messages",()
   assert.match(post,/return privateProductionResponse\(\{error:publicOperatorPostError\(error\)\},\{status:409\}\)/);
   assert.doesNotMatch(post,/error:error instanceof Error\?error\.message/);
   assert.doesNotMatch(post,/console\.error\("\[operator\/production\]",error\)/);
+});
+
+test("production quote/order status acknowledgments require literal JSON booleans",()=>{
+  assert.equal(requireOperatorStatusAcknowledgment(true),true);
+  assert.equal(requireOperatorStatusAcknowledgment(false),false);
+  for(const value of ["true","false","updated",null,undefined,0,1,[],{}, {updated:false}, {updated:true}])
+    assert.throws(()=>requireOperatorStatusAcknowledgment(value),/Invalid operator status acknowledgement/);
+
+  const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
+  for(const action of ['if(action==="quote_status"){','if(action==="order_status"){']){
+    const block=route.split(action)[1]??"";
+    const status=block.split('return privateProductionResponse({updated:requireOperatorStatusAcknowledgment(updated)});')[0]??"";
+    assert.ok(status.includes('rpc<boolean>('),action+" must use boolean PostgREST RPC");
+  }
+  assert.match(route,/const MAX_OPERATOR_STATUS_ACK_BYTES=64/);
+  assert.equal((route.match(/,false,MAX_OPERATOR_STATUS_ACK_BYTES\)/g)||[]).length,2);
+  assert.match(route,/readBoundedJsonResponse\(response,maxResponseBytes\)/);
+  assert.equal((route.match(/updated:requireOperatorStatusAcknowledgment\(updated\)/g)||[]).length,2);
+  assert.doesNotMatch(route,/updated:Boolean\(updated\)/);
 });

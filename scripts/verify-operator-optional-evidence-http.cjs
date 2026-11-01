@@ -34,9 +34,17 @@ async function main(){
     let bytes=0;const chunks=[];
     for await(const chunk of req){bytes+=chunk.length;if(bytes>2048)break;chunks.push(chunk);}
     try{seen[seen.length-1].payload=JSON.parse(Buffer.concat(chunks).toString("utf8"));}catch{}
-    // A delivery status write is simulated only in this loopback fixture.
-    if(name==="production_order_set_status"&&req.method==="POST"){
-      res.writeHead(200,{"content-type":"application/json"});res.end("true");return;
+    // Status RPCs return scalar JSON booleans. Simulated malformed 200 bodies
+    // must not be coerced into "updated:true" by the operator route.
+    if((name==="production_order_set_status"||name==="production_quote_set_status")
+      && req.method==="POST"){
+      const body=mode.target===name ? ({
+        ackFalse:"false",ackNull:"null",ackString:'"false"',
+        ackObject:'{"updated":false}',ackArray:"[]",ackNumber:"1",
+        ackMalformed:"{bad",ackOversized:'"'+ "x".repeat(256)+'"',
+      }[mode.kind]??"true") : "true";
+      const mime=mode.target===name&&mode.kind==="ackWrongMime"?"text/plain":"application/json";
+      res.writeHead(200,{"content-type":mime});res.end(body);return;
     }
     if((!allowed.has(name)&&name!==deliveryQc)||req.method!=="POST"){
       res.writeHead(500,{"content-type":"application/json"});
@@ -218,6 +226,30 @@ async function main(){
       assert.equal(seen.find(x=>x.name===deliveryQc)?.payload?.p_order_id,"synthetic-order",kind+" order-scoped");
       assert.equal(seen.filter(x=>x.name==="production_order_set_status").length,0,kind+" must not write");
     }
+    // Non-delivery status writes must accept only genuine PostgREST JSON
+    // booleans, not truthy objects, strings, malformed payloads or null.
+    for(const [action,rpcName,entityKey] of [
+      ["quote_status","production_quote_set_status","quoteId"],
+      ["order_status","production_order_set_status","orderId"],
+    ]){
+      for(const kind of ["ackFalse","ackNull","ackString","ackObject","ackArray","ackNumber","ackMalformed","ackWrongMime","ackOversized","ok"]){
+        mode={target:rpcName,kind};
+        seen.length=0;
+        const response=await fetch(url,{
+          method:"POST",headers:{cookie,"content-type":"application/json"},
+          body:JSON.stringify({action,[entityKey]:"synthetic-order",status:action==="quote_status"?"sent":"ready"}),
+          signal:AbortSignal.timeout(15000),
+        });
+        const expectedStatus=kind==="ok"||kind==="ackFalse"?200:409;
+        assert.equal(response.status,expectedStatus,action+" "+kind);
+        assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
+        assert.deepEqual(await response.json(),expectedStatus===200?
+          {updated:kind!=="ackFalse"}:{error:"Production operation failed."},
+          action+" "+kind);
+        assert.equal(seen.filter(x=>x.name===rpcName).length,1,action+" "+kind+" RPC");
+        assert.equal(seen.length,1,action+" "+kind+" must not request another RPC");
+      }
+    }
     // Control: valid synthetic, provenance-backed QC still permits the existing
     // delivery contract. No real Supabase or customer data is touched.
     mode={target:deliveryQc,kind:"qcApproved"};
@@ -256,6 +288,7 @@ async function main(){
     });
     assert.equal(unordered.status,200,"newest approval wins even when upstream rows are unordered");
     assert.equal(seen.filter(x=>x.name==="production_order_set_status").length,1);
+    console.log("TITAN operator status ACK PASS: 20 synthetic signed quote/order POST cases.");
     console.log("TITAN operator ledger + delivery QC PASS: "+cases.length+
       " GET and "+(deliveryKinds.length+5)+" POST signed synthetic HTTP cases; zero real writes.");
   }finally{

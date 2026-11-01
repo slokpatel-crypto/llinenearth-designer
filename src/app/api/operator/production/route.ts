@@ -10,10 +10,13 @@ import { isMissingOptionalProductionRpc, validateOperatorLedgerRows } from "@/li
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { latestQcForOrder } from "@/lib/designer/finished-garment-qc";
 import { publicOperatorPostError } from "@/lib/designer/operator-production-errors";
+import { requireOperatorStatusAcknowledgment } from "@/lib/designer/operator-status-ack";
 
 export const runtime="nodejs";
 // 8 MiB per list caps decoded upstream bytes, independent of Content-Length.
 const MAX_OPERATOR_LEDGER_BYTES=8_388_608;
+// Literal JSON booleans need at most five bytes; permit a small bounded envelope.
+const MAX_OPERATOR_STATUS_ACK_BYTES=64;
 
 async function authorized(){
   const jar=await cookies();
@@ -126,8 +129,8 @@ export async function POST(request:Request){
       const quoteId=String(body.quoteId||"");
       const status=String(body.status||"");
       const note=String(body.note||"").slice(0,1000);
-      const updated=await rpc<boolean>("production_quote_set_status",{p_quote_id:quoteId,p_status:status,p_note:note});
-      return privateProductionResponse({updated:Boolean(updated)});
+      const updated=await rpc<boolean>("production_quote_set_status",{p_quote_id:quoteId,p_status:status,p_note:note},false,MAX_OPERATOR_STATUS_ACK_BYTES);
+      return privateProductionResponse({updated:requireOperatorStatusAcknowledgment(updated)});
     }
     if(action==="create_order"){
       const revisionId=String(body.revisionId||"").trim();
@@ -173,8 +176,8 @@ export async function POST(request:Request){
           return privateProductionResponse({error:"Provenance-backed finished-garment QC approval is required before delivery."},{status:409});
         }
       }
-      const updated=await rpc<boolean>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note});
-      return privateProductionResponse({updated:Boolean(updated)});
+      const updated=await rpc<boolean>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note},false,MAX_OPERATOR_STATUS_ACK_BYTES);
+      return privateProductionResponse({updated:requireOperatorStatusAcknowledgment(updated)});
     }
     return privateProductionResponse({error:"Unsupported production action."},{status:400});
   }catch(error){
