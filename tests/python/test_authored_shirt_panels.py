@@ -83,6 +83,38 @@ class AuthoredShirtPatternTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     make_shirt_mesh(**kwargs)
 
+    def test_measured_source_scan_path_moves_sleeves_not_shirt_torso(self):
+        base=make_shirt_mesh()
+        paths={}
+        for side in ("left_sleeve","right_sleeve"):
+            verts=sorted({i for e in base["armholeSeamEdges"][side] for i in e})
+            root=[sum(base["vertices"][i][axis] for i in verts)/len(verts)
+                  for axis in range(3)]
+            sign=-1 if side=="left_sleeve" else 1
+            paths[side]=[
+                (sign*(.300+.010*step),.01,
+                 root[2]+(.985-root[2])*step/5)
+                for step in range(1,6)
+            ]
+        fitted=make_shirt_mesh(source_arm_centerlines=paths)
+        self.assertEqual(fitted["topology"]["connectedComponents"],1)
+        self.assertEqual(fitted["topology"]["nonmanifoldEdges"],0)
+        self.assertEqual(fitted["topology"]["windingErrors"],0)
+        self.assertEqual(fitted["topology"]["boundaryLoopsAfterSleeves"],4)
+        self.assertTrue(fitted["topology"]["genericSourceScanArmPathUsed"])
+        self.assertFalse(fitted["topology"]["canonicalPhotoModelArmPoseVerified"])
+        self.assertEqual(fitted["vertices"][:64*12],base["vertices"][:64*12])
+        self.assertNotEqual(fitted["vertices"][-1],base["vertices"][-1])
+
+    def test_invalid_body_arm_path_fails_not_fallback_to_guess(self):
+        source=make_shirt_mesh()
+        for paths in ({}, {"left_sleeve":[(0,0,1)]*5},
+                      {"left_sleeve":[(0,0,1)]*5,
+                       "right_sleeve":[(0,0,float("nan"))]*5}):
+            with self.subTest(paths=paths):
+                with self.assertRaises(ValueError):
+                    make_shirt_mesh(source_arm_centerlines=paths)
+
     def test_invalid_sleeve_request_is_rejected(self):
         with self.assertRaises(ValueError):
             make_shirt_mesh(omit_sleeve="tailored_already")

@@ -117,7 +117,8 @@ def _distance(a,b):
     return math.sqrt(sum((x-y)**2 for x,y in zip(a,b)))
 
 
-def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0):
+def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0,
+                    source_arm_centerlines=None):
     """Return explicit vertices/faces/piece regions, including ring-welded sleeves.
 
     omit_sleeve for regression ONLY: must leave corresponding armhole boundary.
@@ -127,6 +128,16 @@ def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0)
     if (not math.isfinite(upper_ease_mm) or not 0 <= upper_ease_mm <= 30 or
         not math.isfinite(cuff_radius_mm) or not 60 <= cuff_radius_mm <= 90):
         raise ValueError("Unmeasured shirt pattern variation out of bounded limits")
+    if source_arm_centerlines is not None:
+        if (not isinstance(source_arm_centerlines,dict) or
+            set(source_arm_centerlines)!={"left_sleeve","right_sleeve"}):
+            raise ValueError("Both actual source arm paths are required")
+        for name,points in source_arm_centerlines.items():
+            if (not isinstance(points,(list,tuple)) or len(points)!=5 or
+                any(not isinstance(p,(list,tuple)) or len(p)!=3 or
+                    any(type(x) not in (int,float) or not math.isfinite(x) for x in p)
+                    for p in points)):
+                raise ValueError("Actual source arm path has missing or invalid observations")
     verts=[]
     for z,rx,ry in PROFILE:
         # The actual garment construction changes, not the scanned body.
@@ -196,7 +207,15 @@ def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0)
         previous=list(loop)
         for step in range(1,6):
             t=step/5
-            center=tuple((1-t)*p0[k]+t*p1[k] for k in range(3))
+            if source_arm_centerlines is not None:
+                source_point=source_arm_centerlines[side][step-1]
+                expected_z=p0[2]+(.985-p0[2])*t
+                if (abs(source_point[2]-expected_z)>.025 or
+                    sign*source_point[0]<.205 or abs(source_point[1])>.28):
+                    raise ValueError("Source arm section cannot be registered with actual sleeve root")
+                center=tuple(source_point)
+            else:
+                center=tuple((1-t)*p0[k]+t*p1[k] for k in range(3))
             ring=[]
             for j,idx in enumerate(loop):
                 phi=2*math.pi*j/n
@@ -229,6 +248,8 @@ def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0)
         "panelSeamsAuthored":True,
         "supplierMeasurementsApproved":False,
         "realModelPoseParityApproved":False,
+        "genericSourceScanArmPathUsed":source_arm_centerlines is not None,
+        "canonicalPhotoModelArmPoseVerified":False,
         "upperBodyEaseMmExperimentalOnly":upper_ease_mm,
         "sleeveCuffRadiusMmExperimentalOnly":cuff_radius_mm,
     })
