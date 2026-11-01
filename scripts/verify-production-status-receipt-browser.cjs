@@ -143,6 +143,11 @@ async function runViewport(browser,width){
     await page.evaluate(({holdKey,changedKey})=>{
       localStorage.setItem(holdKey,changedKey);
     },{holdKey,changedKey});
+    await page.waitForFunction(()=>{
+      const button=[...document.querySelectorAll("button")]
+        .find(item=>item.textContent?.includes("Find original status receipt by request ID"));
+      return button&&button.disabled;
+    },{},{timeout:15_000});
     assert.equal(await lookup.isDisabled(),true,"Deferred lookup must still hold the UI action lock");
     await page.evaluate(()=>window.__titanStatusReceiptRace.release());
     await page.waitForFunction(()=>{
