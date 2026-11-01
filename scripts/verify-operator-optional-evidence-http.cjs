@@ -32,11 +32,19 @@ async function main(){
     seen.push({name,method:req.method,apikey:req.headers.apikey,authorization:req.headers.authorization});
     let bytes=0;
     for await(const chunk of req){bytes+=chunk.length;if(bytes>2048)break;}
+    // A delivery status write is simulated only in this loopback fixture.
+    if(name==="production_order_set_status"&&req.method==="POST"){
+      res.writeHead(200,{"content-type":"application/json"});res.end("true");return;
+    }
     if(!allowed.has(name)||req.method!=="POST"){
       res.writeHead(500,{"content-type":"application/json"});
       res.end(JSON.stringify({code:"UNEXPECTED_RPC"}));return;
     }
     if(name===mode.target && mode.kind!=="ok"){
+      if(mode.kind==="qcApproved"){
+        res.writeHead(200,{"content-type":"application/json"});
+        res.end(JSON.stringify([{order_id:"synthetic-order",decision:"approved",inspector:"Synthetic Inspector",inspection_reference:"SYNTH-QC-001"}]));return;
+      }
       if(mode.kind==="successWrongMime"){
         res.writeHead(200,{"content-type":"text/plain"});res.end("[]");return;
       }
@@ -145,8 +153,40 @@ async function main(){
         assert.equal(req.authorization,undefined,c.name+" must not send bearer secret");
       }
     }
-    console.log("TITAN operator ledger envelopes and optional failures PASS: "+cases.length+
-      " signed built-Next HTTP cases against synthetic loopback PostgREST; zero real writes.");
+    // The delivery POST uses a separate QC read path; invalid responses must
+    // block a status mutation even if the main GET ledger is protected.
+    const deliveryKinds=["successObject","successNull","successScalarRow","successTooMany",
+      "successWrongMime","successMalformedJson","successOversizedBytes"];
+    for(const kind of deliveryKinds){
+      mode={target:"finished_garment_qc_list",kind};
+      seen.length=0;
+      const response=await fetch(url,{
+        method:"POST",headers:{cookie,"content-type":"application/json"},
+        body:JSON.stringify({action:"order_status",orderId:"synthetic-order",status:"delivered"}),
+        signal:AbortSignal.timeout(15000),
+      });
+      assert.equal(response.status,409,"delivery "+kind);
+      assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
+      assert.deepEqual(await response.json(),
+        {error:"Finished-garment QC backend must be installed before delivery can be recorded."},kind);
+      assert.equal(seen.filter(x=>x.name==="finished_garment_qc_list").length,1,kind);
+      assert.equal(seen.filter(x=>x.name==="production_order_set_status").length,0,kind+" must not write");
+    }
+    // Control: valid synthetic, provenance-backed QC still permits the existing
+    // delivery contract. No real Supabase or customer data is touched.
+    mode={target:"finished_garment_qc_list",kind:"qcApproved"};
+    seen.length=0;
+    const approved=await fetch(url,{
+      method:"POST",headers:{cookie,"content-type":"application/json"},
+      body:JSON.stringify({action:"order_status",orderId:"synthetic-order",status:"delivered"}),
+      signal:AbortSignal.timeout(15000),
+    });
+    assert.equal(approved.status,200,"approved synthetic delivery");
+    assert.match(approved.headers.get("cache-control")||"",/private.*no-store/);
+    assert.deepEqual(await approved.json(),{updated:true});
+    assert.equal(seen.filter(x=>x.name==="production_order_set_status").length,1);
+    console.log("TITAN operator ledger + delivery QC PASS: "+cases.length+
+      " GET and "+(deliveryKinds.length+1)+" POST signed synthetic HTTP cases; zero real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>backend.close(resolve));
