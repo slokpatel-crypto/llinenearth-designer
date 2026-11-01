@@ -6,6 +6,7 @@ import { normalizeProductionQuoteDraft } from "@/lib/designer/production-quote";
 import { parseDesignVaultRecoveryToken } from "@/lib/designer/design-vault";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { buildProductionLearningContext } from "@/lib/designer/production-learning-context";
+import { isMissingOptionalProductionRpc } from "@/lib/designer/operator-optional-rpc";
 
 export const runtime="nodejs";
 
@@ -13,7 +14,7 @@ async function authorized(){
   const jar=await cookies();
   return verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value);
 }
-async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
+async function rpc<T>(name:string,payload:Record<string,unknown>,optional=false):Promise<T>{
   const config=getSupabaseAdminConfig();
   if(!config) throw new Error("Production backend is not configured.");
   const response=await fetch(`${config.url}/rest/v1/rpc/${name}`,{
@@ -24,8 +25,9 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     signal:AbortSignal.timeout(8_000),
   });
   if(!response.ok){
-    const detail=(await response.text()).slice(0,300);
-    throw new Error(`Production request failed (${response.status}): ${detail}`);
+    if(optional && await isMissingOptionalProductionRpc(response)) return [] as unknown as T;
+    // Do not reflect SQL/backend errors into operator POST responses or logs.
+    throw new Error("Production upstream request failed.");
   }
   return await response.json() as T;
 }
@@ -56,28 +58,15 @@ export async function GET(){
   if(!await authorized()) return privateProductionResponse({error:"Unauthorized."},{status:401});
   if(!getSupabaseAdminConfig()) return privateProductionResponse({configured:false,quotes:[],orders:[]});
   try{
-    const [quotes,orders]=await Promise.all([
+    // A failed optional evidence read is NOT an empty ledger. Preserve legacy
+    // missing-function compatibility only for a verified PostgREST PGRST202 404.
+    const [quotes,orders,qcInspections,customerOutcomes,learningContexts]=await Promise.all([
       rpc("production_quote_list",{p_limit:100}),
       rpc("production_order_list",{p_limit:100}),
+      rpc<unknown[]>("finished_garment_qc_list",{p_limit:250},true),
+      rpc<unknown[]>("production_customer_outcome_list",{p_limit:250},true),
+      rpc<unknown[]>("production_order_learning_context_list",{p_limit:500},true),
     ]);
-    let qcInspections:unknown[]=[];
-    let customerOutcomes:unknown[]=[];
-    let learningContexts:unknown[]=[];
-    try{
-      qcInspections=await rpc<unknown[]>("finished_garment_qc_list",{p_limit:250});
-    }catch{
-      // Keep quote/order operations readable while a new QC migration is being installed.
-    }
-    try{
-      customerOutcomes=await rpc<unknown[]>("production_customer_outcome_list",{p_limit:250});
-    }catch{
-      // Keep the production desk usable while the Phase 11 outcome migration is being installed.
-    }
-    try{
-      learningContexts=await rpc<unknown[]>("production_order_learning_context_list",{p_limit:500});
-    }catch{
-      // Older/manual orders remain readable while durable lineage support is being installed.
-    }
     return privateProductionResponse({configured:true,quotes,orders,qcInspections,customerOutcomes,learningContexts},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/production]",error);
