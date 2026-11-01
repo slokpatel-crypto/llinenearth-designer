@@ -8,6 +8,7 @@ import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/des
 import { buildProductionLearningContext } from "@/lib/designer/production-learning-context";
 import { isMissingOptionalProductionRpc, validateOperatorLedgerRows } from "@/lib/designer/operator-optional-rpc";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
+import { latestQcForOrder } from "@/lib/designer/finished-garment-qc";
 
 export const runtime="nodejs";
 // 8 MiB per list caps decoded upstream bytes, independent of Content-Length.
@@ -161,7 +162,7 @@ export async function POST(request:Request){
         }catch{
           return privateProductionResponse({error:"Finished-garment QC backend must be installed before delivery can be recorded."},{status:409});
         }
-        const latest=inspections.find((item)=>item.order_id===orderId);
+        const latest=latestQcForOrder(inspections,orderId);
         if(latest?.decision!=="approved"){
           return privateProductionResponse({error:"Finished-garment QC approval is required before delivery."},{status:409});
         }
