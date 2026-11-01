@@ -105,6 +105,8 @@ async function main(){
       assert.equal(response.status,c.status,c.name);
       assert.match(response.headers.get("cache-control")||"",/private.*no-store/,c.name);
       const body=await response.json();
+      // Drain other Promise.all reads before switching the synthetic scenario.
+      await new Promise(resolve=>setTimeout(resolve,60));
       if(c.status===200)
         assert.deepEqual(body,{configured:true,quotes:[],orders:[],qcInspections:[],customerOutcomes:[],learningContexts:[]},c.name);
       else
