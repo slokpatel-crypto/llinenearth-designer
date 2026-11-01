@@ -23,9 +23,12 @@ export function normalizeProductionQuoteDraft(input:{
   const lineItems:ProductionQuoteLine[]=input.lineItems.map((raw)=>{
     const item=raw&&typeof raw==="object"&&!Array.isArray(raw)?raw as Record<string,unknown>:{};
     const label=String(item.label||"").trim().slice(0,160);
-    const amount=Number(item.amount);
+    // Zero is legitimate only when the operator explicitly entered numeric 0.
+    // Number(undefined), Number(null) and Number("") would fabricate a zero price.
+    const amount=item.amount;
     if(!label) throw new Error("Quote line item label is required.");
-    if(!Number.isFinite(amount)||amount<0||amount>10_000_000) throw new Error("Invalid quote line item amount.");
+    if(typeof amount!=="number"||!Number.isFinite(amount)||amount<0||amount>10_000_000)
+      throw new Error("Invalid quote line item amount.");
     return {label,amount:Math.round(amount*100)/100};
   });
 
