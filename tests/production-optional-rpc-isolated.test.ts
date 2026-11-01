@@ -72,8 +72,8 @@ test("every authenticated production GET list is MIME-checked and decoded-byte b
 test("delivery status QC read is bounded and validated before any status mutation",()=>{
   const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
   const delivery=route.split('if(action==="order_status"){')[1]?.split('return privateProductionResponse({updated:Boolean(updated)});')[0]??"";
-  assert.match(delivery,/rpc<unknown>\("finished_garment_qc_list",\{p_limit:500\},false,MAX_OPERATOR_LEDGER_BYTES\)/);
-  assert.match(delivery,/validateOperatorLedgerRows\(rawInspections,500\)/);
+  assert.match(delivery,/rpc<unknown>\("finished_garment_qc_latest_for_order",\{p_order_id:orderId\},false,MAX_OPERATOR_LEDGER_BYTES\)/);
+  assert.match(delivery,/validateOperatorLedgerRows\(rawInspections,2\)/);
   assert.ok(delivery.indexOf("validateOperatorLedgerRows")<delivery.indexOf("latestQcForOrder"),
     "validate QC envelope before selecting approval");
   assert.ok(delivery.indexOf("validateOperatorLedgerRows")<delivery.indexOf('"production_order_set_status"'),
@@ -81,4 +81,18 @@ test("delivery status QC read is bounded and validated before any status mutatio
   assert.match(delivery,/latest\?\.decision!=="approved"/);
   assert.match(delivery,/latestQcForOrder\(inspections,orderId\)/);
   assert.match(delivery,/inspection_reference/);
+});
+
+
+test("order-specific QC SQL is bounded, tie-fail-closed and service-role-only",()=>{
+  const sql=readFileSync("supabase/migrations/20261101_finished_garment_qc_order_scoped.sql","utf8");
+  const latest=sql.split("create or replace function public.finished_garment_qc_latest_for_order(")[1]?.split("create or replace function public.production_order_set_status(")[0]??"";
+  const status=sql.split("create or replace function public.production_order_set_status(")[1]??"";
+  assert.match(latest,/where q\.order_id=p_order_id/);
+  assert.match(latest,/order by q\.created_at desc,q\.inspection_id desc\s+limit 2/);
+  assert.match(latest,/revoke all on function public\.finished_garment_qc_latest_for_order\(uuid\) from public,anon,authenticated/);
+  assert.match(status,/where order_id=p_order_id\s+order by created_at desc,inspection_id desc limit 1/);
+  assert.match(status,/where order_id=p_order_id and created_at=v_latest_at\s+limit 1 offset 1/);
+  assert.match(status,/raise exception 'ambiguous latest finished-garment QC timestamp'/);
+  assert.match(status,/revoke all on function public\.production_order_set_status\(uuid,text,text\) from public,anon,authenticated/);
 });
