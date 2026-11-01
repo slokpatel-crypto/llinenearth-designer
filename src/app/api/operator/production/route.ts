@@ -155,7 +155,9 @@ export async function POST(request:Request){
       if(status==="delivered"){
         let inspections:Array<{order_id:string;decision:string;inspector?:string;inspection_reference?:string}>=[];
         try{
-          inspections=await rpc<Array<{order_id:string;decision:string;inspector?:string;inspection_reference?:string}>>("finished_garment_qc_list",{p_limit:500});
+          // Delivery must not trust a larger or malformed QC response than the read-only desk.
+          const rawInspections=await rpc<unknown>("finished_garment_qc_list",{p_limit:500},false,MAX_OPERATOR_LEDGER_BYTES);
+          inspections=validateOperatorLedgerRows(rawInspections,500) as Array<{order_id:string;decision:string;inspector?:string;inspection_reference?:string}>;
         }catch{
           return privateProductionResponse({error:"Finished-garment QC backend must be installed before delivery can be recorded."},{status:409});
         }
