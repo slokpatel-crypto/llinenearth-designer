@@ -2,6 +2,19 @@
 
 Updated: 2026-11-01. Status: **REJECTED 3D candidate; NOT production-ready**.
 
+## CURRENT ACTIVE — actual raised front placket face construction (unapproved)
+
+Active isolated draft branch: work/titan-3d-authored-placket-20261101, parent draft #681 (collar and cuffs), with actual source body and original six garment meshes unchanged. Check exact head/CI before edits; source native, full CI and browser QA pending new head.
+
+New actual 3D modification, not just diagnostics: scripts/blender/authored_shirt_placket.py modifies EXISTING central front body ring vertices to form a raised placket ridge and reclassifies 14 real adjacent garment quad faces into the placket region. It uses 7 genuine left and 7 right shared panel border edges and 7 central joined fold/ridge edges. It does not duplicate cloth, overlay a fake disconnected panel, cut open a buttonhole or claim a measured tailoring pattern. Only the 8 necessary center-front source vertices change; original face indices and 4 opening cycles remain. Existing front/back/yoke, armholes, collar and cuffs are preserved and independently audited. Experimental relief is 4 mm; NOT a measured fabric allowance or buttonhole closure.
+
+Files: scripts/blender/authored_shirt_placket.py, tests/python/test_authored_shirt_placket.py, scripts/blender/experiments/construct-authored-shirt-pattern.py (--with-placket combined with --with-finishing) and .github/workflows/model-source-candidate.yml (native source scene + four-angle QA + mandatory original preflight rejection). New candidate source written separately to .cache/linen-earth/linen-earth-shirt-integrated-placket.blend; measured contact report artifacts/authored-placket-qa/placket-native-contacts.json, four-angle renders alongside; no customer-facing assets modified. Implementation commits f002c629ec539c745775e218dc70b04986544717, cf4027a5d20b9480117dca811bcb89edca5416a4, de3ff708a8b793d799eb3c2512c5db3f11a7a2d6, d85b4fce8177bd7d82e5ffde6efbf9d5694b7606.
+
+Last independently measured #681 collar/cuff candidate REJECTED: 2433 actual body/shirt BVH crossing pairs, 72 shirt/waist pairs, 0 shirt/trouser leg pairs; 1 connected manifold, 200 seams, zero winding/nonmanifold. Original body and six garments unchanged, original photo identity NOT verified. New placket must be rejected as fit if these remain or worsen; topology success alone is not production approval.
+
+NEXT: verify new exact-head pure tests then source-native Blender actual topology/contact counts and four-angle render. Reject any broken seams, body/trouser regressions, UI-model substitution or source changes; preserve candidate and evidence. Continue independent source-calibrated sewing geometry (buttons/placket options, trouser waist/fly) only with explicit unmeasured status. Original scanned body is not the canonical photo-matched model; need owned authentic .blend or owner-supplied multiple photos, body/garment measurements, tailor fit, supplier fabric scale. No merge to main / no Vercel deploy.
+
+
 ## LATEST VERIFIED: collar/cuff construction succeeded topologically but FAILED real body fit
 
 Draft PR #681, branch work/titan-3d-collar-cuffs-20261101; the measured native Blender source workflow is 41297718587. Source scene SHA256 895a3afd3a6ef023c6ff1f8c4a0b455fb0499ac6028df99fd8d0ec7882a684b0. Original body+6 garment source hashes unchanged.
