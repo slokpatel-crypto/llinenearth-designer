@@ -69,8 +69,10 @@ test("signed built-Next HTTP tests exercise both missing-function compatibility 
   assert.ok(fixture.includes('/__fixture/optional-ledger-mode'));
   for(const mode of ["missing","gateway404","other404","oversized404"]){
     assert.ok(fixture.includes('ciOptionalLedgerMode==="'+mode+'"'),"missing fixture response "+mode);
-    assert.ok(http.includes('setOptionalLedgerMode("'+mode+'")'),"missing signed HTTP case "+mode);
+    assert.ok(http.includes('"gateway404","other404","oversized404"'),"signed HTTP must enumerate all negative 404 modes");
   }
+  assert.ok(http.includes('setOptionalLedgerMode("missing")'));
+  assert.ok(http.includes("await setOptionalLedgerMode(mode)"));
   assert.ok(http.includes('assert.equal(failed.status,503'));
   assert.ok(http.includes('await setOptionalLedgerMode("normal")'));
   assert.ok(workflow.includes("node scripts/verify-production-ledger-private-http.cjs"));
