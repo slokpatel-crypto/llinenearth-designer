@@ -49,6 +49,8 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--output",required=True)
     ap.add_argument("--report",required=True)
+    ap.add_argument("--upper-ease-mm",type=float,default=0.0)
+    ap.add_argument("--cuff-radius-mm",type=float,default=68.0)
     args=ap.parse_args(sys.argv[sys.argv.index("--")+1:])
     source=Path(bpy.data.filepath).resolve()
     out=Path(args.output).resolve()
@@ -68,7 +70,10 @@ def main():
 
     original_hashes={"Body":mesh_sha(body)}
     original_hashes.update({g:mesh_sha(bpy.data.objects[g]) for g in GARMENTS})
-    source_data=make_shirt_mesh()
+    source_data=make_shirt_mesh(
+        upper_ease_mm=args.upper_ease_mm,
+        cuff_radius_mm=args.cuff_radius_mm,
+    )
     t=source_data["topology"]
     if (t["connectedComponents"]!=1 or t["nonmanifoldEdges"] or
         t["windingErrors"] or t["boundaryLoopsAfterSleeves"]!=4 or
@@ -150,6 +155,8 @@ def main():
         "status":"CANDIDATE_NOT_APPROVED",
         "sourceBlendSha256":hashlib.sha256(source.read_bytes()).hexdigest(),
         "sourceModelIdentity":MODEL_ID,
+        "experimentalUpperChestEaseMm":args.upper_ease_mm,
+        "experimentalSleeveCuffRadiusMm":args.cuff_radius_mm,
         "sourceBodyAndSixBaselineHashes":original_hashes,
         "bodyAndBaselineGarmentsUnchanged":True,
         "topology":t,
