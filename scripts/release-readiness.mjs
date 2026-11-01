@@ -2082,23 +2082,23 @@ requireTokens("scripts/verify-production-qc-hint-browser.cjs",[
 
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
  "20261119_locked_production_identity_immutable.sql",
- "Apply the ten migrations",
+ "Apply the eleven migrations",
 ]);
 
 
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
   "20261118_production_request_receipts_immutable.sql",
-  "Apply the ten migrations",
+  "Apply the eleven migrations",
 ]);
 
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
   "20261117_production_event_immutable.sql",
-  "Apply the ten migrations", "Production quote and order state event journals",
+  "Apply the eleven migrations", "Production quote and order state event journals",
 ]);
 
 requireTokens("docs/TITAN_QC_MIGRATION_STAGING_PLAN.md",[
   "20261116_delivery_receipts_immutable.sql",
-  "Apply the ten migrations", "Already-issued delivery request keys",
+  "Apply the eleven migrations", "Already-issued delivery request keys",
 ]);
 
 
