@@ -130,3 +130,25 @@ test("operator browser strictly accepts sanitized camelCase status receipts, not
   assert.equal(parseProductionStatusReceipts(good),null,
     "Server SQL parser must NOT accept API-shaped objects");
 });
+
+
+test("M149 same-key status epoch browser safety is a required release gate",()=>{
+  const testScript=readFileSync("scripts/verify-production-status-receipt-same-key-epoch-browser.cjs","utf8");
+  const workflow=readFileSync(".github/workflows/ci.yml","utf8");
+  const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  const statusLookup=client.split("async function lookupPendingStatusReceipt(){")[1]?.split("function confirmReviewedProductionHistory()")[0]??"";
+  assert.ok(statusLookup.includes("productionWriteReviewSnapshotUnchanged(safeProductionHoldStorage(),snapshot)"));
+  for(const marker of [
+    "M149 same-key status receipt browser gate is GitHub Actions CI only",
+    'const base=new URL(process.env.LINEN_BROWSER_QA_URL||"http://localhost:3000")',
+    "for(const width of [390,768,1440])",
+    "const key=\"123e4567-e89b-42d3-a456-426614174070\"",
+    "const oldEpoch=",
+    "const newEpoch=",
+    "A real signed successful Next response must be vetoed as stale by React",
+    'assert.deepEqual(actions,["status_receipt_lookup"]',
+    "An earlier committed status may not appear after same-key epoch changed",
+    "productionMutations:0,syntheticOnly:true",
+  ])assert.ok(testScript.includes(marker),"Missing signed real-browser status epoch protection: "+marker);
+  assert.ok(workflow.includes("node scripts/verify-production-status-receipt-same-key-epoch-browser.cjs"));
+});

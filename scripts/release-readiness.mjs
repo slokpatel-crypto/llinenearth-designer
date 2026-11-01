@@ -2523,12 +2523,6 @@ requireTokens(".github/workflows/ci.yml",[
   "node scripts/verify-production-status-receipt-browser.cjs",
 ]);
 
-if (failed) {
-  console.error("\nLinen Earth release is NOT ready.");
-  process.exit(1);
-}
-
-console.log("\nLinen Earth release foundation is ready.");
 
 
 // M140: the native helper alone is insufficient. The signed two-tab browser
@@ -2545,3 +2539,30 @@ requireTokens("scripts/verify-production-native-web-locks-browser.cjs",[
 requireTokens("tests/production-native-web-locks-browser-contract.test.ts",[
   "M140 signed browser drives real operator POST while second tab attempts review",
 ]);
+
+
+// M149: same original UUID with changed write epoch must NOT display stale
+// committed status evidence after the real signed operator's native HTTP read.
+// All receipt lookup posts are read-only, synthetic CI-only loopback data.
+requireTokens("scripts/verify-production-status-receipt-same-key-epoch-browser.cjs",[
+  "M149 signed Chromium status receipt same-key epoch veto PASS.",
+  "for(const width of [390,768,1440])",
+  "An earlier committed status may not appear after same-key epoch changed",
+  'assert.deepEqual(actions,["status_receipt_lookup"]',
+  "A real signed successful Next response must be vetoed as stale by React",
+]);
+requireTokens("tests/production-status-receipt-lookup.test.ts",[
+  "M149 same-key status epoch browser safety is a required release gate",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-status-receipt-same-key-epoch-browser.cjs",
+]);
+
+// FINAL fail/pass decision belongs AFTER EVERY contract assertion, including
+// last-appended M140/M149 checks. Adding a guard after this must fail tests.
+if (failed) {
+  console.error("\nLinen Earth release is NOT ready.");
+  process.exit(1);
+}
+
+console.log("\nLinen Earth release foundation is ready.");

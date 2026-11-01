@@ -1186,3 +1186,11 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] Add workflow, Node source regression and explicit release gating.
 - [ ] Matching-head CI, independent Non-3D, both disposable PostgreSQL must PASS. Inherited M144 browser-origin issue may still block acceptance; do not classify M147 ready based only on M145/M146 passing.
 - [ ] Human and physical production evidence remains missing: original model native Blender four-view/UV likeness, true supplier rolls and measured scale, tailor/QC, actual operator/customer, genuine device tests, five beta, ten real deliveries, migration/privacy/security/restore and explicit owner approvals. No production merge/deploy.
+
+
+## M149 status receipt same-key epoch and release finalization — 2026-11-01
+- [x] Add signed actual Chromium 390/768/1440 operator UI + built Next HTTP regression: same uncertain status UUID, changed anonymous write epoch while lookup is pending, stale committed response veto, review hold retained, creation disabled and zero mutation POSTs.
+- [x] Fix release verifier's M140 checks previously appended after its sole final pass/fail decision. Move final decision to the actual end and test ordering.
+- [x] Wire M149 into CI, Node source regression and static release gate; keep the original model and no-paid-AI core.
+- [ ] Exact M149 SHA must pass full CI, Non-3D and both disposable PG checks. M144–M148 green checks do not certify M149.
+- [ ] Human and physical release gates still open: model Blender four-view/UV, genuine supplier fabric stock and measured repeat, tailor/fit/QC, devices, five beta, ten real deliveries, privacy/security/staging/restore and owner signoff. No merge, live SQL or deployment.
