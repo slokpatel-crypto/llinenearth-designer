@@ -40,7 +40,7 @@ class SourceShirtTest(unittest.TestCase):
         self.assertEqual(result["sharedEdgeWindingErrors"],1)
 
     def test_invalid_faces_fail_closed(self):
-        for faces in [[(0,1,1)],[(0,1,2),(2,3,4)],[(0,1,-1)]]:
+        for faces in [[(0,1,1)],[(0,1,2),(2,1,0)],[(0,1,-1)]]:
             with self.subTest(faces=faces):
                 with self.assertRaises(ValueError):
                     analyze_labelled_faces(faces,["torso"]*len(faces))
