@@ -2,6 +2,19 @@
 
 Updated: 2026-11-01. Status: **REJECTED 3D candidate; NOT production-ready**.
 
+## NEW ACTIVE: independent real body / trouser-waist collisions by sewn shirt region
+
+Branch: work/titan-3d-source-region-contact-20261101, descendant of draft #682 (integrated front placket), itself based on rejected finished-shirt #681. Read exact HEAD and workflows before changing code. Original customer model, all six baseline garments and source body MUST stay unchanged.
+
+Why: aggregate native body/shirt BVH collisions are 2433 for the previous collar/cuff version and the next integrated placket source must still be measured. Earlier pattern size guesses did not cure collisions, and there is no verified posed source photo-matching body or tailored pattern. Blind radial expansion or shrinkwrap trials must not be repeated.
+
+Implemented real diagnostic work: scripts/blender/shirt_region_contact.py validates the exact partition of native garment/body contacts by actual material-face region, rejects missing region counts, invalid values and incomplete labels, and distinguishes geometric clearance from photo, fabric and tailor approval. tests/python/test_shirt_region_contact.py covers numeric conservation and negative cases. The Blender experiment now makes temporary, independently evaluated per-region meshes from EXACT actual source faces; it counts full original Body and TrouserWaistFabric overlaps using the real world-space BVH, destroys all temporary inspection objects before writing candidate scene, and records per-region rankings and partition-integrity flags in independentNativeBodyWaistContactPartitions. It cannot falsify zero contact or change original garment geometry.
+
+Implementation commits 6a2cd62c31184af250cf77f0d3cedc3f7cd9ecf1, 5d772a871b43b07af46b47a14afccc7ab1a1a134, d065300c9c6e2ced463f4cbf08363da9308dfef5. New exact-head CI and Blender native verification PENDING. Parent PR #682 passed Python source topology checks; its real native geometry is NOT yet approved. A discrepancy between whole-body BVH count and region-sum is a verification failure, never a tolerance waiver.
+
+NEXT: inspect the exact-head native source run for honest per-panel body and waist overlap counts, source part/face coverage and four diagnostic renders. Fix any script/index incompatibility; never weaken the source-native preflight production rejection. Identify highest-contact panel (e.g. collar vs sleeve vs torso) and only then construct source-measured clearance/pose repair with actual model/garment dimensions. If photo-matched posed original Blender source is unavailable, obtain multi-angle owner reference and tailoring inputs while continuing independent pattern and option geometry. No main merge or Vercel deploy.
+
+
 ## CURRENT ACTIVE — actual raised front placket face construction (unapproved)
 
 Active isolated draft branch: work/titan-3d-authored-placket-20261101, parent draft #681 (collar and cuffs), with actual source body and original six garment meshes unchanged. Check exact head/CI before edits; source native, full CI and browser QA pending new head.
