@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {isMissingOptionalProductionRpc,validateOperatorLedgerRows} from "../src/lib/designer/operator-optional-rpc.ts";
 import {publicOperatorPostError} from "../src/lib/designer/operator-production-errors.ts";
+import {readBoundedJsonResponse} from "../src/lib/designer/bounded-json-response.ts";
 import {requireOperatorStatusAcknowledgment} from "../src/lib/designer/operator-status-ack.ts";
 import {requireOperatorCreatedId} from "../src/lib/designer/operator-created-id.ts";
 
@@ -194,4 +195,32 @@ test("locked-design vault reads must be JSON-byte bounded and exactly one payloa
   assert.match(vault,/verifyLockedDesignRevision\(revision\)/);
   assert.ok(vault.indexOf("validateOperatorLedgerRows")<vault.indexOf("verifyLockedDesignRevision"));
   assert.doesNotMatch(vault,/const revision=rows\[0\]\?\.payload/);
+});
+
+test("operator production POST bounds decoded JSON before any status or creation RPC",async()=>{
+  const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
+  const post=route.split("export async function POST(request:Request){")[1]??"";
+  const parseAt=post.indexOf("readBoundedJsonResponse(request,MAX_OPERATOR_POST_BYTES)");
+  const actionAt=post.indexOf('const action=String(body.action||"")');
+  const statusAt=post.indexOf('if(action==="quote_status"){');
+  assert.match(route,/const MAX_OPERATOR_POST_BYTES=262_144/);
+  assert.ok(parseAt>=0&&parseAt<actionAt&&actionAt<statusAt,
+    "streaming body bound must precede routing and all production RPC mutations");
+  assert.match(post,/typeof rawBody!=="object"\|\|Array\.isArray\(rawBody\)/);
+  assert.doesNotMatch(post,/await request\.json\(\)/);
+
+  const ok=new Request("http://localhost/operator",{method:"POST",
+    body:JSON.stringify({action:"quote_status",quoteId:"synthetic"})});
+  assert.deepEqual(await readBoundedJsonResponse(ok,256),{
+    action:"quote_status",quoteId:"synthetic",
+  });
+  const big=new Request("http://localhost/operator",{method:"POST",
+    body:JSON.stringify({action:"quote_status",padding:"x".repeat(260)})});
+  await assert.rejects(readBoundedJsonResponse(big,128),/exceeds allowed size/);
+  await assert.rejects(readBoundedJsonResponse(new Request("http://localhost/operator",{
+    method:"POST",body:"{bad",
+  }),128),SyntaxError);
+  await assert.rejects(readBoundedJsonResponse(new Request("http://localhost/operator",{
+    method:"POST",
+  }),128),/Invalid bounded JSON response/);
 });
