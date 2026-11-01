@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import {
   createDesignVaultAccessKey,
@@ -10,6 +11,9 @@ import {
 } from "@/lib/designer/design-vault";
 
 export const runtime="nodejs";
+// Limit decoded JSON before parsing; preserve room for a complete garment spec.
+const MAX_VAULT_REQUEST_BYTES=1_048_576;
+const MAX_VAULT_RESPONSE_BYTES=8_388_608;
 
 function jsonNoStore(body:unknown,init?:{status?:number}){
   return NextResponse.json(body,{
@@ -41,17 +45,22 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     cache:"no-store",
     signal:AbortSignal.timeout(8_000),
   });
-  if(!response.ok){
-    const detail=(await response.text()).slice(0,300);
-    throw new Error(`Design vault request failed (${response.status}): ${detail}`);
+  if(!response.ok) {
+    // Upstream errors may contain tokens, customer data, or SQL details.
+    throw new Error("Design vault upstream request failed.");
   }
-  return await response.json() as T;
+  const mime=response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+  if(mime!=="application/json") throw new Error("Invalid design vault response type.");
+  return await readBoundedJsonResponse(response,MAX_VAULT_RESPONSE_BYTES) as T;
 }
 
 export async function POST(request:Request){
   if(blocked(request)) return jsonNoStore({error:"Too many design-vault requests."},{status:429});
   try{
-    const body=await request.json() as {
+    const rawBody=await readBoundedJsonResponse(request,MAX_VAULT_REQUEST_BYTES);
+    if(!rawBody||typeof rawBody!=="object"||Array.isArray(rawBody))
+      throw new Error("Invalid design vault request.");
+    const body=rawBody as {
       action?:string;
       revision?:LockedDesignRevision;
       recoveryToken?:string;
@@ -200,8 +209,10 @@ export async function POST(request:Request){
     }
 
     return jsonNoStore({error:"Unsupported design-vault action."},{status:400});
-  }catch(error){
-    console.error("[designer/vault]",error);
+  }catch{
+    // Never log exception messages: malformed JSON or a database failure may
+    // embed the recovery token or private design data in the exception text.
+    console.error("[designer/vault] request failed (details redacted).");
     return jsonNoStore({error:"Secure design storage is temporarily unavailable."},{status:503});
   }
 }
