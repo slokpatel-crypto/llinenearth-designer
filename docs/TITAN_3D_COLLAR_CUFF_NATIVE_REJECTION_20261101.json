@@ -1,0 +1,47 @@
+{
+  "date": "2026-11-01",
+  "result": "REJECTED_FOR_FIT",
+  "branch": "work/titan-3d-collar-cuffs-20261101",
+  "pr": 681,
+  "nativeWorkflowRunId": 41297718587,
+  "nativeWorkflowUrl": "https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/41297718587",
+  "sourceSceneSha256": "895a3afd3a6ef023c6ff1f8c4a0b455fb0499ac6028df99fd8d0ec7882a684b0",
+  "sourceBodyHash": "cb1cfda8a85d088dfed6cc6b923e6284a1c2018db0a8eea6f059c6f94b4ab8ab",
+  "comparison": {
+    "authoredShirtWithoutCollarCuffs": {
+      "bodyContactPairs": 2177,
+      "waistContactPairs": 72,
+      "leftLegPairs": 0,
+      "rightLegPairs": 0
+    },
+    "authoredShirtWithCollarCuffs": {
+      "bodyContactPairs": 2433,
+      "waistContactPairs": 72,
+      "leftLegPairs": 0,
+      "rightLegPairs": 0
+    },
+    "bodyContactChange": 256
+  },
+  "topology": {
+    "connectedComponents": 1,
+    "vertices": 1372,
+    "polygons": 1188,
+    "armholeSharedEdges": 68,
+    "collarRootSharedEdges": 64,
+    "cuffsRootSharedEdges": {
+      "left": 34,
+      "right": 34
+    },
+    "sourceSeamEdgesMarkedTotal": 200,
+    "openBoundaryLoops": 4,
+    "windingErrors": 0,
+    "nonmanifoldEdges": 0,
+    "originalBodyAndSixGarmentMeshesUnchanged": true
+  },
+  "productionApproved": false,
+  "sourcePhotoParityApproved": false,
+  "fabricMeasured": false,
+  "tailorApproved": false,
+  "decision": "Preserve as a valid topological collar and cuff construction candidate only, reject as fit/production geometry. Native body crossings worsen. Do not increase guessed body/garment offsets; source-matched posed body and measured garment patterns required for accurate fit.",
+  "nextAction": "With source/pose and tailoring reference if supplied, rebuild source-calibrated shoulder/neck/waist panels; independently solve body contact, front placket and trouser construction. Do not rerun rejected freeform contour experiments unchanged."
+}
