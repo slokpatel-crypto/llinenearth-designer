@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createOperatorMutationGate } from "@/lib/designer/operator-mutation-gate";
 import { requireStockClientAcknowledgment } from "@/lib/designer/operator-stock-client-ack";
+import { createStockReservationAttemptTracker, type StockReservationAttempt } from "@/lib/designer/stock-reservation-attempt";
 
 type StockRow={fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;provenance_ready:boolean;last_event_at:string|null};
 
@@ -14,6 +15,7 @@ export default function StockClient(){
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState(false);
   const mutationGate=useRef(createOperatorMutationGate());
+  const reservationAttempt=useRef(createStockReservationAttemptTracker(()=>crypto.randomUUID()));
   const [form,setForm]=useState({fabricId:"",eventType:"receipt",quantityMetres:"",recordedBy:"",sourceReference:"",note:""});
   const [reservation,setReservation]=useState({fabricId:"",revisionId:"",quantityMetres:"",requestedBy:"",sourceReference:""});
   const [close,setClose]=useState({reservationId:"",actualMetres:"",checkedBy:"",sourceReference:"",note:""});
@@ -51,7 +53,7 @@ export default function StockClient(){
     }
   },[]);
 
-  async function post(body:Record<string,unknown>,success:string){
+  async function post(body:Record<string,unknown>,success:string,reservationDraft?:StockReservationAttempt){
     if(busy||snapshotState!=="ready"||!configured||!mutationGate.current.enter()) return;
     setBusy(true);setMessage("");
     try{
@@ -63,6 +65,7 @@ export default function StockClient(){
         throw new Error(error);
       }
       requireStockClientAcknowledgment(body.action,data);
+      if(body.action==="reserve"&&reservationDraft) reservationAttempt.current.confirmed(reservationDraft);
       setMessage(success);await load();
     }catch(error){setMessage(error instanceof Error?error.message:"Stock operation failed.");}
     finally{mutationGate.current.exit();setBusy(false);}
@@ -108,7 +111,7 @@ export default function StockClient(){
         <label>Metres to reserve<input type="number" min=".001" step=".001" value={reservation.quantityMetres} onChange={(e)=>setReservation({...reservation,quantityMetres:e.target.value})}/></label>
         <label>Requested / checked by<input value={reservation.requestedBy} onChange={(e)=>setReservation({...reservation,requestedBy:e.target.value})} maxLength={120} placeholder="Required"/></label>
         <label>Reservation quantity source<input value={reservation.sourceReference} onChange={(e)=>setReservation({...reservation,sourceReference:e.target.value})} maxLength={240} placeholder="Approved meterage sheet, tailor request…"/></label>
-        <button disabled={busy||snapshotState!=="ready"||!configured||!reservation.fabricId||reservation.revisionId.length<12||Number(reservation.quantityMetres)<=0||reservation.requestedBy.trim().length<2||reservation.sourceReference.trim().length<3} onClick={()=>void post({action:"reserve",...reservation,quantityMetres:Number(reservation.quantityMetres),requestKey:crypto.randomUUID()},"Provenance-backed reservation created.")}>Create reservation</button>
+        <button disabled={busy||snapshotState!=="ready"||!configured||!reservation.fabricId||reservation.revisionId.length<12||Number(reservation.quantityMetres)<=0||reservation.requestedBy.trim().length<2||reservation.sourceReference.trim().length<3} onClick={()=>{const draft={...reservation,quantityMetres:Number(reservation.quantityMetres)};void post({action:"reserve",...draft,requestKey:reservationAttempt.current.keyFor(draft)},"Provenance-backed reservation created.",draft);}}>Create reservation</button>
       </article>
 
       <article className="stockPanel">
