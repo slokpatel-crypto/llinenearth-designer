@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {isMissingOptionalProductionRpc,validateOperatorLedgerRows} from "../src/lib/designer/operator-optional-rpc.ts";
+import {publicOperatorPostError} from "../src/lib/designer/operator-production-errors.ts";
 
 const json=(body:unknown,status=404)=>new Response(JSON.stringify(body),{
   status,headers:{"content-type":"application/json; charset=utf-8"},
@@ -37,6 +38,8 @@ test("actual authenticated operator GET never swallows optional ledger failures"
   assert.equal((get.match(/,true,MAX_OPERATOR_LEDGER_BYTES\)/g)||[]).length,3);
   assert.doesNotMatch(get,/catch\s*\{\s*\/\/ Keep/);
   assert.match(get,/status:503/);
+  assert.match(get,/GET failed \(details redacted\)/);
+  assert.doesNotMatch(get,/console\.error\("\[operator\/production\]",error\)/);
   assert.match(route,/response\.headers\.set\("cache-control","private, no-store"\)/);
 });
 
@@ -95,4 +98,37 @@ test("order-specific QC SQL is bounded, tie-fail-closed and service-role-only",(
   assert.match(status,/where order_id=p_order_id and created_at=v_latest_at\s+limit 1 offset 1/);
   assert.match(status,/raise exception 'ambiguous latest finished-garment QC timestamp'/);
   assert.match(status,/revoke all on function public\.production_order_set_status\(uuid,text,text\) from public,anon,authenticated/);
+});
+
+test("operator POST error boundary exposes only authored validation messages",()=>{
+  for(const message of [
+    "Production backend is not configured.",
+    "A valid locked-design recovery token is required.",
+    "The locked design could not be verified for production.",
+    "Invalid quote currency.",
+    "Quote must contain 1 to 30 line items.",
+    "Quote line item label is required.",
+    "Invalid quote line item amount.",
+    "Invalid quote adjustment.",
+    "Quote total cannot be negative.",
+  ]) assert.equal(publicOperatorPostError(new Error(message)),message);
+
+  for(const failure of [
+    new SyntaxError('Unexpected token in private customer recovery token: SECRET'),
+    new Error('PostgreSQL private.production_orders row 123 leaked'),
+    new Error('Failed to fetch https://private-db.example'),
+    new Error('Internal PostgREST 42501 credentials'),
+    new Error('SyntaxError: Invalid JSON'),
+    new Error('invalid quote currency.'), // Exact allowlist only.
+    'raw sensitive exception',
+    {message:'Invalid quote currency.'},
+    null,
+    undefined,
+  ]) assert.equal(publicOperatorPostError(failure),"Production operation failed.");
+
+  const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
+  const post=route.split("export async function POST(request:Request){")[1]??"";
+  assert.match(post,/return privateProductionResponse\(\{error:publicOperatorPostError\(error\)\},\{status:409\}\)/);
+  assert.doesNotMatch(post,/error:error instanceof Error\?error\.message/);
+  assert.doesNotMatch(post,/console\.error\("\[operator\/production\]",error\)/);
 });

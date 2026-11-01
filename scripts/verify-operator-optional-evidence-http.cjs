@@ -59,7 +59,7 @@ async function main(){
         res.writeHead(200,{"content-type":"text/plain"});res.end("[]");return;
       }
       if(mode.kind==="successMalformedJson"){
-        res.writeHead(200,{"content-type":"application/json"});res.end("{bad");return;
+        res.writeHead(200,{"content-type":"application/json"});res.end('{"customer":"SYNTHETIC_PRIVATE_RECOVERY_TOKEN_DO_NOT_ECHO",');return;
       }
       if(mode.kind==="successOversizedBytes"){
         res.writeHead(200,{"content-type":"application/json"});
@@ -128,6 +128,39 @@ async function main(){
     const payload=Buffer.from(JSON.stringify({v:1,exp:Date.now()+120000})).toString("base64url");
     const sig=createHmac("sha256",secret).update(payload).digest("base64url");
     const cookie="linen_operator_session="+payload+"."+sig;
+    // Signed operator POST parsing failures must not echo private request bytes
+    // (or framework/JSON parser exception details). No backend writes allowed.
+    const sensitiveMarker="SYNTHETIC_PRIVATE_RECOVERY_TOKEN_DO_NOT_ECHO";
+    for(const badBody of [
+      '{"action":"order_status","token":"'+sensitiveMarker+'",',
+      "null",
+    ]){
+      mode={target:null,kind:"ok"};
+      seen.length=0;
+      const response=await fetch(url,{
+        method:"POST",headers:{cookie,"content-type":"application/json"},
+        body:badBody,signal:AbortSignal.timeout(15000),
+      });
+      assert.equal(response.status,409,"malformed operator POST");
+      assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
+      const responseText=await response.text();
+      assert.deepEqual(JSON.parse(responseText),{error:"Production operation failed."});
+      assert.ok(!responseText.includes(sensitiveMarker),"no customer content in operator error");
+      assert.equal(seen.length,0,"invalid JSON must not reach upstream RPC");
+    }
+    // Known validation errors retain useful public wording.
+    const safeResponse=await fetch(url,{
+      method:"POST",headers:{cookie,"content-type":"application/json"},
+      body:JSON.stringify({action:"create_quote",revisionId:"synthetic-revision-123",
+        recipeHash:"a".repeat(64),recoveryToken:"malformed-token"}),
+      signal:AbortSignal.timeout(15000),
+    });
+    assert.equal(safeResponse.status,409);
+    assert.match(safeResponse.headers.get("cache-control")||"",/private.*no-store/);
+    assert.deepEqual(await safeResponse.json(),
+      {error:"A valid locked-design recovery token is required."});
+    assert.equal(seen.length,0,"invalid recovery token must not reach upstream RPC");
+    assert.ok(!output.includes(sensitiveMarker),"no private request marker in server logs");
     const cases=[{name:"valid empty ledger",target:null,kind:"ok",status:200}];
     for(const target of allowed){
       for(const kind of ["successObject","successNull","successScalarRow","successTooMany","successWrongMime","successMalformedJson","successOversizedBytes"])
@@ -163,6 +196,8 @@ async function main(){
         assert.equal(req.authorization,undefined,c.name+" must not send bearer secret");
       }
     }
+    assert.ok(!output.includes("SYNTHETIC_PRIVATE_RECOVERY_TOKEN_DO_NOT_ECHO"),
+      "GET parser failures must not log raw customer JSON");
     // The delivery POST uses a separate QC read path; invalid responses must
     // block a status mutation even if the main GET ledger is protected.
     const deliveryKinds=["successObject","successNull","successScalarRow","successTooMany",

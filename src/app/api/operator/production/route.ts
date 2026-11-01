@@ -9,6 +9,7 @@ import { buildProductionLearningContext } from "@/lib/designer/production-learni
 import { isMissingOptionalProductionRpc, validateOperatorLedgerRows } from "@/lib/designer/operator-optional-rpc";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { latestQcForOrder } from "@/lib/designer/finished-garment-qc";
+import { publicOperatorPostError } from "@/lib/designer/operator-production-errors";
 
 export const runtime="nodejs";
 // 8 MiB per list caps decoded upstream bytes, independent of Content-Length.
@@ -86,8 +87,9 @@ export async function GET(){
       customerOutcomes:validateOperatorLedgerRows(customerOutcomes,250),
       learningContexts:validateOperatorLedgerRows(learningContexts,500),
     },{headers:{"cache-control":"private, no-store"}});
-  }catch(error){
-    console.error("[operator/production]",error);
+  }catch{
+    // Invalid JSON may embed customer records in parser errors; never log raw responses.
+    console.error("[operator/production] GET failed (details redacted).");
     return privateProductionResponse({error:"Production records could not be read."},{status:503});
   }
 }
@@ -176,7 +178,9 @@ export async function POST(request:Request){
     }
     return privateProductionResponse({error:"Unsupported production action."},{status:400});
   }catch(error){
-    console.error("[operator/production]",error);
-    return privateProductionResponse({error:error instanceof Error?error.message:"Production operation failed."},{status:409});
+    // Error text from JSON parsers, upstream RPCs, or frameworks is untrusted.
+    // Never reflect it in the response or persist sensitive request content in logs.
+    console.error("[operator/production] POST failed (details redacted).");
+    return privateProductionResponse({error:publicOperatorPostError(error)},{status:409});
   }
 }
