@@ -19,6 +19,7 @@ import bpy
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from authored_shirt_panels import make_shirt_mesh, ROLE_NAMES
 from authored_shirt_finishing import add_collar_and_cuffs
+from authored_shirt_placket import add_raised_front_placket
 
 MODEL_ID="linen-earth-studio-model-v1"
 NAME="LE_AUTHORED_SHIRT_PATTERN_UNMEASURED"
@@ -53,6 +54,8 @@ def main():
     ap.add_argument("--upper-ease-mm",type=float,default=0.0)
     ap.add_argument("--cuff-radius-mm",type=float,default=68.0)
     ap.add_argument("--with-finishing",action="store_true")
+    ap.add_argument("--with-placket",action="store_true")
+    ap.add_argument("--placket-relief-mm",type=float,default=4.0)
     args=ap.parse_args(sys.argv[sys.argv.index("--")+1:])
     source=Path(bpy.data.filepath).resolve()
     out=Path(args.output).resolve()
@@ -76,6 +79,8 @@ def main():
         upper_ease_mm=args.upper_ease_mm,
         cuff_radius_mm=args.cuff_radius_mm,
     )
+    if args.with_placket:
+        source_data=add_raised_front_placket(source_data,projection_mm=args.placket_relief_mm)
     if args.with_finishing:
         source_data=add_collar_and_cuffs(source_data)
     t=source_data["topology"]
@@ -94,7 +99,7 @@ def main():
         scene.collection.children.link(collection)
     collection.objects.link(obj)
 
-    all_roles=tuple(ROLE_NAMES)+(("collar","left_cuff","right_cuff") if args.with_finishing else ())
+    all_roles=tuple(ROLE_NAMES)+(("placket",) if args.with_placket else ())+(("collar","left_cuff","right_cuff") if args.with_finishing else ())
     colors={
         "front":(0.28,0.063,0.082),
         "back":(0.24,0.05,0.072),
@@ -104,6 +109,7 @@ def main():
         "collar":(0.40,0.10,0.12),
         "left_cuff":(0.40,0.10,0.12),
         "right_cuff":(0.40,0.10,0.12),
+        "placket":(0.45,0.075,0.11),
     }
     for role in all_roles:
         mat=bpy.data.materials.new("LE_PATTERN_UNVERIFIED_"+role.upper())
@@ -121,6 +127,8 @@ def main():
     seam_set=set(edge for edges in source_data["armholeSeamEdges"].values() for edge in edges)
     if args.with_finishing:
         seam_set.update(edge for edges in source_data["trimRootSeams"].values() for edge in edges)
+    if args.with_placket:
+        seam_set.update(edge for edges in source_data["placketSeamEdges"].values() for edge in edges)
     marked=0
     for edge in mesh.edges:
         if tuple(sorted(edge.vertices)) in seam_set:
@@ -131,7 +139,8 @@ def main():
     # Deliberately no metric UV authoring or supplier grain claims.
     # A nominal coordinate guess cannot certify stripe spacing.
     obj["linen_earth_real_shirt_panels"]=json.dumps(list(all_roles))
-    obj["linen_earth_authored_armhole_seams_unapproved"]=marked
+    obj["linen_earth_authored_unverified_seam_edges"]=marked
+    obj["linen_earth_placket_not_actual_button_closure"]=bool(args.with_placket)
     obj["linen_earth_photo_parity_approved"]=False
     obj["linen_earth_supplier_grain_measured"]=False
     obj["linen_earth_pattern_measurements_measured"]=False
@@ -167,6 +176,9 @@ def main():
         "sourceModelIdentity":MODEL_ID,
         "experimentalUpperChestEaseMm":args.upper_ease_mm,
         "collarAndCuffTopologyAdded":args.with_finishing,
+        "integratedRaisedPlacketAdded":args.with_placket,
+        "experimentalPlacketReliefMm":args.placket_relief_mm,
+        "fullButtonOpeningAndButtonholesVerified":False,
         "experimentalSleeveCuffRadiusMm":args.cuff_radius_mm,
         "sourceBodyAndSixBaselineHashes":original_hashes,
         "bodyAndBaselineGarmentsUnchanged":True,
