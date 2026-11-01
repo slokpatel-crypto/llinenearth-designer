@@ -86,23 +86,6 @@ jobs:
       - name: Author body-attached candidate shirt / trouser relief
         run: npm run garment:model-garments:author
 
-      - name: Construct actual front/back/yoke and set-in armhole topology candidate
-        id: patterned_armholes
-        continue-on-error: true
-        run: |
-          mkdir -p artifacts/authored-shirt-qa
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
-            --python scripts/blender/experiments/construct-authored-shirt-pattern.py -- \
-            --output .cache/linen-earth/linen-earth-authored-shirt-pattern.blend \
-            --report artifacts/authored-shirt-qa/pattern-body-contact.json
-
-      - name: Render independent four-angle authored pattern shirt candidate
-        if: steps.patterned_armholes.outcome == 'success'
-        run: |
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-authored-shirt-pattern.blend \
-            --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/authored-shirt-qa --width 480 --height 640 --samples 8
-
       - name: Compare two bounded actual upper-shirt shape variants with native BVH
         id: torso_and_sleeve_ease
         continue-on-error: true
@@ -119,48 +102,16 @@ jobs:
             --output .cache/linen-earth/linen-earth-shirt-ease-26.blend \
             --report artifacts/authored-clearance-qa/ease-26-mm-contact.json
 
-      - name: Render separate four-angle constructed shirt size hypothesis
+      - name: Render four angles for BOTH current shirt geometry variants
         if: steps.torso_and_sleeve_ease.outcome == 'success'
         run: |
+          mkdir -p artifacts/authored-clearance-qa/ease-14 artifacts/authored-clearance-qa/ease-26
           blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-shirt-ease-14.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/authored-clearance-qa --width 480 --height 640 --samples 8
-
-      - name: Author isolated source-index-welded shoulder geometry candidate
-        id: joined_shoulder_trial
-        continue-on-error: true
-        run: |
-          mkdir -p artifacts/connected-shoulder-qa
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
-            --python scripts/blender/experiments/construct-connected-shirt-shoulder.py -- \
-            --output .cache/linen-earth/linen-earth-connected-shirt-shoulder.blend \
-            --report artifacts/connected-shoulder-qa/source-connected-shoulder-measurements.json
-
-      - name: Render actual connected-shoulder diagnostic four-angle candidate
-        if: steps.joined_shoulder_trial.outcome == 'success'
-        run: |
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-connected-shirt-shoulder.blend \
+            --output-dir artifacts/authored-clearance-qa/ease-14 --width 480 --height 640 --samples 8
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-shirt-ease-26.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/connected-shoulder-qa --width 480 --height 640 --samples 8
-
-      - name: Repair source-connected shirt face-level body clearance on separate candidate
-        id: connected_shoulder_adaptive
-        if: steps.joined_shoulder_trial.outcome == 'success'
-        continue-on-error: true
-        run: |
-          mkdir -p artifacts/connected-shoulder-adaptive-qa
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
-            --python scripts/blender/experiments/construct-connected-shirt-shoulder.py -- \
-            --face-refinement 1 --contact-repair-passes 6 \
-            --output .cache/linen-earth/linen-earth-connected-shirt-adaptive.blend \
-            --report artifacts/connected-shoulder-adaptive-qa/face-level-repair-measurements.json
-
-      - name: Render four-angle separate adaptive shoulder model
-        if: steps.connected_shoulder_adaptive.outcome == 'success'
-        run: |
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-connected-shirt-adaptive.blend \
-            --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/connected-shoulder-adaptive-qa --width 480 --height 640 --samples 8
+            --output-dir artifacts/authored-clearance-qa/ease-26 --width 480 --height 640 --samples 8
 
       - name: Check exact-source candidate geometry before expensive rendering
         id: scene_preflight
@@ -213,14 +164,8 @@ jobs:
           name: linen-earth-3d-source-candidate-${{ github.run_id }}
           path: |
             artifacts/model-qa/**
-            artifacts/connected-shoulder-qa/**
-            artifacts/connected-shoulder-adaptive-qa/**
-            artifacts/authored-shirt-qa/**
             artifacts/authored-clearance-qa/**
             .cache/linen-earth/linen-earth-officewear-authored.blend
-            .cache/linen-earth/linen-earth-connected-shirt-shoulder.blend
-            .cache/linen-earth/linen-earth-connected-shirt-adaptive.blend
-            .cache/linen-earth/linen-earth-authored-shirt-pattern.blend
             .cache/linen-earth/linen-earth-shirt-ease-14.blend
             .cache/linen-earth/linen-earth-shirt-ease-26.blend
           if-no-files-found: warn
