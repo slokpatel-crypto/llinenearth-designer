@@ -26,10 +26,10 @@ function assertPrivate(response){
   assert.match(response.headers.get("cache-control")||"",/\bno-store\b/i);
   assert.equal(response.headers.get("pragma"),"no-cache");
 }
-async function lookup(cookie,key=requestKey){
+async function lookup(cookie,key=requestKey,extraHeaders={}){
   return fetch(new URL("/api/operator/production",base),{
     method:"POST",redirect:"manual",cache:"no-store",signal:AbortSignal.timeout(20_000),
-    headers:{"content-type":"application/json",...(cookie?{cookie}:{})},
+    headers:{"content-type":"application/json",...(cookie?{cookie}:{}),...extraHeaders},
     body:JSON.stringify({action:"creation_receipt_lookup",requestKey:key}),
   });
 }
@@ -59,6 +59,18 @@ async function main(){
     assertPrivate(response);
     assert.equal(response.status,400,"Invalid original UUID must reject before SQL");
     assert.deepEqual(await response.json(),{error:"Valid original creation request UUID is required."});
+  }
+  // Signed session alone never bypasses actual same-origin CSRF checks.
+  // No route may trust hostile Origin or Sec-Fetch-Site headers, even for a
+  // read-only POST: the same endpoint also creates real production records.
+  for(const [description,headers] of [
+    ["foreign Origin",{"origin":"https://cross-site-attacker.invalid"}],
+    ["cross-site Fetch Metadata",{"sec-fetch-site":"cross-site"}],
+  ]){
+    const response=await lookup(signed(),requestKey,headers);
+    assertPrivate(response);
+    assert.equal(response.status,403,description+" must fail despite a signed session");
+    assert.deepEqual(await response.json(),{error:"Cross-site changes are not allowed."});
   }
   try{
     await setMode("valid");
