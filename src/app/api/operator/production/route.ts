@@ -11,12 +11,15 @@ import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { latestQcForOrder } from "@/lib/designer/finished-garment-qc";
 import { publicOperatorPostError } from "@/lib/designer/operator-production-errors";
 import { requireOperatorStatusAcknowledgment } from "@/lib/designer/operator-status-ack";
+import { requireOperatorCreatedId } from "@/lib/designer/operator-created-id";
 
 export const runtime="nodejs";
 // 8 MiB per list caps decoded upstream bytes, independent of Content-Length.
 const MAX_OPERATOR_LEDGER_BYTES=8_388_608;
 // Literal JSON booleans need at most five bytes; permit a small bounded envelope.
 const MAX_OPERATOR_STATUS_ACK_BYTES=64;
+// PostgreSQL UUID success acknowledgments have a small fixed JSON envelope.
+const MAX_OPERATOR_CREATE_ID_BYTES=128;
 
 async function authorized(){
   const jar=await cookies();
@@ -119,10 +122,11 @@ export async function POST(request:Request){
         lineItems:body.lineItems,
         adjustment:body.adjustment,
       });
-      const quoteId=await rpc<string>("production_quote_create",{
+      const rawQuoteId=await rpc<unknown>("production_quote_create",{
         p_revision_id:revisionId,p_recipe_hash:recipeHash,p_currency:draft.currency,
         p_line_items:draft.lineItems,p_adjustment:draft.adjustment,p_note:note,
-      });
+      },false,MAX_OPERATOR_CREATE_ID_BYTES);
+      const quoteId=requireOperatorCreatedId(rawQuoteId);
       return privateProductionResponse({quoteId,lockedRevisionVerified:true});
     }
     if(action==="quote_status"){
@@ -145,13 +149,14 @@ export async function POST(request:Request){
       if(revision.revisionId!==revisionId||revision.recipeHash.toLowerCase()!==recipeHash){
         return privateProductionResponse({error:"The verified locked design does not match the order revision/hash."},{status:409});
       }
-      const orderId=await rpc<string>("production_order_create_with_context",{
+      const rawOrderId=await rpc<unknown>("production_order_create_with_context",{
         p_revision_id:revisionId,
         p_recipe_hash:recipeHash,
         p_quote_id:quoteId,
         p_note:note,
         p_context:buildProductionLearningContext(revision),
-      });
+      },false,MAX_OPERATOR_CREATE_ID_BYTES);
+      const orderId=requireOperatorCreatedId(rawOrderId);
       return privateProductionResponse({orderId,learningContextAttached:true,lockedRevisionVerified:true});
     }
     if(action==="order_status"){

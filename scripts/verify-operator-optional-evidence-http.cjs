@@ -5,7 +5,7 @@ const assert=require("node:assert/strict");
 const http=require("node:http");
 const {once}=require("node:events");
 const {spawn}=require("node:child_process");
-const {createHmac,randomBytes}=require("node:crypto");
+const {createHmac,createHash,randomBytes}=require("node:crypto");
 
 async function listen(server){
   server.listen(0,"127.0.0.1");
@@ -25,7 +25,35 @@ const optional=[
 ];
 const allowed=new Set(["production_quote_list","production_order_list",...optional]);
 const deliveryQc="finished_garment_qc_latest_for_order";
+function canonicalizeSynthetic(value){
+  if(Array.isArray(value))return value.map(canonicalizeSynthetic);
+  if(value&&typeof value==="object")return Object.fromEntries(
+    Object.entries(value).sort(([a],[b])=>a.localeCompare(b))
+      .map(([key,item])=>[key,canonicalizeSynthetic(item)]));
+  return value;
+}
 async function main(){
+  // Use one synthetic lock with a real SHA-256 recipe hash and valid vault token,
+  // never a real customer/fabric record.
+  const garmentSpec={
+    version:"linen-earth-garment-spec-v1",
+    source:{designerRuleSetVersion:"synthetic-test"},
+    context:{occasion:"Semi-Formal",climate:"Not specified",intention:"Balanced"},
+    fabrics:{shirt:{id:"synthetic-shirt"},trouser:{id:"synthetic-trouser"}},
+    shirt:{fit:"Regular",wear:"Tucked",collar:"Point",collarFinish:"Self-fabric",
+      cuff:"Barrel",placket:"Standard",button:"Corozo"},
+    trouser:{shape:"Pleated",rise:"Mid Rise",waistband:"Side Adjuster",break:"Slight Break"},
+    creative:null,
+  };
+  const recipeHash=createHash("sha256").update(JSON.stringify(canonicalizeSynthetic(garmentSpec))).digest("hex");
+  const revisionId="LE-LOCK-20261101180000-"+recipeHash.slice(0,12).toUpperCase();
+  const lockedRevision={version:"linen-earth-design-lock-v1",revisionId,recipeHash,
+    parentRevisionId:null,lockedAt:"2026-11-01T18:00:00.000Z",garmentSpec};
+  const vaultId="da2879a5-b433-4bf3-b521-e2d9323a186b";
+  const accessKey=randomBytes(32).toString("base64url");
+  const recoveryToken="lev1."+vaultId+"."+accessKey;
+  const expectedAccessHash=createHash("sha256").update(accessKey).digest("hex");
+  const syntheticCreatedId="0d71722a-1e67-4b4d-9ce4-e7e8c47f82a3";
   let mode={target:null,kind:"ok"};
   const seen=[];
   const backend=http.createServer(async(req,res)=>{
@@ -45,6 +73,42 @@ async function main(){
       }[mode.kind]??"true") : "true";
       const mime=mode.target===name&&mode.kind==="ackWrongMime"?"text/plain":"application/json";
       res.writeHead(200,{"content-type":mime});res.end(body);return;
+    }
+    // Vault and quote/order creation are synthetic only; exercise the real
+    // built-Next recovery-token verification and create-acknowledgement paths.
+    if(name==="designer_locked_revision_vault_get"&&req.method==="POST"){
+      const reqPayload=seen[seen.length-1].payload;
+      assert.equal(reqPayload?.p_vault_id,vaultId);
+      assert.equal(reqPayload?.p_access_hash,expectedAccessHash);
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end(JSON.stringify([{payload:lockedRevision}]));return;
+    }
+    if(["production_quote_create","production_order_create_with_context"].includes(name)
+      && req.method==="POST"){
+      const payload=seen[seen.length-1].payload;
+      assert.equal(payload?.p_revision_id,revisionId);
+      assert.equal(payload?.p_recipe_hash,recipeHash);
+      if(name==="production_order_create_with_context"){
+        assert.equal(payload?.p_context?.version,"linen-earth-production-learning-context-v1");
+        assert.equal(payload?.p_context?.revisionId,revisionId);
+        assert.equal(payload?.p_context?.recipeHash,recipeHash);
+        assert.equal(payload?.p_context?.fabrics?.shirtId,"synthetic-shirt");
+        assert.equal(payload?.p_context?.fabrics?.trouserId,"synthetic-trouser");
+        assert.ok(!("bodyProfile" in payload.p_context));
+      }else{
+        assert.deepEqual(payload?.p_line_items,[{label:"Synthetic linen",amount:1000}]);
+        assert.equal(payload?.p_currency,"INR");
+      }
+      const bodies={
+        createNull:"null",createObject:'{"id":"'+syntheticCreatedId+'"}',
+        createArray:'["'+syntheticCreatedId+'"]',createString:'"synthetic-success"',
+        createWrongVariant:'"da2879a5-b433-4bf3-7521-e2d9323a186b"',
+        createMalformed:"{invalid",createOversized:'"'+ "x".repeat(256)+'"',
+      };
+      const kind=mode.target===name?mode.kind:"ok";
+      const mime=kind==="createWrongMime"?"text/plain":"application/json";
+      res.writeHead(200,{"content-type":mime});
+      res.end(bodies[kind]??JSON.stringify(syntheticCreatedId));return;
     }
     if((!allowed.has(name)&&name!==deliveryQc)||req.method!=="POST"){
       res.writeHead(500,{"content-type":"application/json"});
@@ -288,6 +352,45 @@ async function main(){
     });
     assert.equal(unordered.status,200,"newest approval wins even when upstream rows are unordered");
     assert.equal(seen.filter(x=>x.name==="production_order_set_status").length,1);
+    // Authenticated built-Next creation with a properly hashed synthetic
+    // locked recipe. HTTP 200 from a broken backend must never claim an ID.
+    for(const [action,rpcName,idKey] of [
+      ["create_quote","production_quote_create","quoteId"],
+      ["create_order","production_order_create_with_context","orderId"],
+    ]){
+      for(const kind of ["ok","createNull","createObject","createArray",
+        "createString","createWrongVariant","createMalformed","createOversized","createWrongMime"]){
+        mode={target:rpcName,kind};
+        seen.length=0;
+        const body={action,revisionId,recipeHash,recoveryToken};
+        if(action==="create_quote"){
+          body.currency="INR";
+          body.lineItems=[{label:"Synthetic linen",amount:1000}];
+          body.adjustment=0;
+        }
+        const response=await fetch(url,{method:"POST",
+          headers:{cookie,"content-type":"application/json"},
+          body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
+        const isGood=kind==="ok";
+        assert.equal(response.status,isGood?200:409,action+" "+kind);
+        assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
+        const actual=await response.json();
+        assert.deepEqual(actual,isGood?
+          (action==="create_quote"?
+            {quoteId:syntheticCreatedId,lockedRevisionVerified:true}:
+            {orderId:syntheticCreatedId,learningContextAttached:true,lockedRevisionVerified:true}):
+          {error:"Production operation failed."},action+" "+kind);
+        assert.equal(seen.filter(x=>x.name==="designer_locked_revision_vault_get").length,1);
+        assert.equal(seen.filter(x=>x.name===rpcName).length,1);
+        assert.equal(seen.length,2,"creation must use only vault read then create RPC");
+        for(const req of seen){
+          assert.equal(req.apikey,key);
+          assert.equal(req.authorization,undefined);
+          assert.equal(req.method,"POST");
+        }
+      }
+    }
+    console.log("TITAN create UUID PASS: 18 synthetic signed quote/order HTTP cases.");
     console.log("TITAN operator status ACK PASS: 20 synthetic signed quote/order POST cases.");
     console.log("TITAN operator ledger + delivery QC PASS: "+cases.length+
       " GET and "+(deliveryKinds.length+5)+" POST signed synthetic HTTP cases; zero real writes.");
