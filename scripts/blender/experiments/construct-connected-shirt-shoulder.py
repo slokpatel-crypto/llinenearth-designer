@@ -129,7 +129,11 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--output",required=True)
     parser.add_argument("--report",required=True)
+    parser.add_argument("--face-refinement",type=int,choices=(0,1),default=0)
+    parser.add_argument("--contact-repair-passes",type=int,default=0)
     args=parser.parse_args(sys.argv[sys.argv.index("--")+1:])
+    if not 0 <= args.contact_repair_passes <= 6:
+        raise RuntimeError("Bound candidate body repair to six 2-mm passes / vertex")
     source=Path(bpy.data.filepath).resolve()
     output=Path(args.output).resolve()
     report_file=Path(args.report).resolve()
@@ -150,6 +154,12 @@ def main():
     source_xyz,faces,labels,original_face_ids=source_panel_faces(body)
     topo=analyze_labelled_faces(faces,labels)
     candidate=make_candidate(source_xyz,faces,labels,topo)
+    if args.face_refinement:
+        refine=candidate.modifiers.new("LE_DRAFT_FACE_CLEARANCE_REFINEMENT","SUBSURF")
+        refine.subdivision_type="SIMPLE"
+        refine.levels=1
+        refine.render_levels=1
+        modifier_apply(candidate,refine)
     # One connected, source-index-welded garment is deformed as ONE mesh,
     # unlike old unconnected independently solidified shoulder shells.
     shrink=candidate.modifiers.new("LE_DRAFT_SINGLE_SOURCE_CLEARANCE","SHRINKWRAP")
@@ -164,6 +174,15 @@ def main():
     solid.offset=1
     solid.use_rim=True
     modifier_apply(candidate,solid)
+    bpy.context.view_layer.update()
+    body_contact_unrepaired=native_intersection(body,candidate)
+    body_repair_report=None
+    if args.contact_repair_passes:
+        author_path=Path(__file__).resolve().parents[1]/"author-linen-earth-officewear.py"
+        spec=importlib.util.spec_from_file_location("le_source_scanned_body_bounded_repair",author_path)
+        author=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(author)
+        body_repair_report=author.repair_body_intersections(body,candidate,args.contact_repair_passes)
     bpy.context.view_layer.update()
     body_contact=native_intersection(body,candidate)
     trouser_contacts={n:native_intersection(candidate,bpy.data.objects[n]) for n in TROUSERS}
@@ -203,7 +222,11 @@ def main():
         "sourceTopology":{k:v for k,v in topo.items() if k!="sourceSeamEdges"},
         "sourceSeamsMarked":candidate.get("linen_earth_source_shoulder_edges",0),
         "bodyCandidateContactPairsBeforeThickness":body_contact_pre_thickness,
-        "bodyCandidateContactPairsAfterThickness":body_contact,
+        "bodyCandidateContactPairsAfterThicknessBeforeRepair":body_contact_unrepaired,
+        "bodyCandidateContactPairsAfterBoundedRepair":body_contact,
+        "candidateBodyRepairAudit":body_repair_report,
+        "candidateAdaptiveFaceRefinementLevel":args.face_refinement,
+        "candidateBoundedContactRepairPasses":args.contact_repair_passes,
         "trouserCandidateContactPairs":trouser_contacts,
         "clearanceMmExperimentOnly":7.0,
         "thicknessMmExperimentOnly":1.6,
