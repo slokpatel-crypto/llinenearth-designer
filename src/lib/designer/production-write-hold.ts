@@ -1,0 +1,148 @@
+/** No customer details, tokens, notes or quote/order identifiers are persisted.
+ * A pending marker is written BEFORE a potentially durable production POST.
+ * Local storage is an operator UI crash/reload safeguard, not SQL idempotency. */
+export const PRODUCTION_WRITE_HOLD_KEY="linen-earth:production:unverified-write:v1";
+// Anonymous last-write generation survives a confirmed marker release, so an
+// in-flight export can detect another tab's completed write, not just its hold.
+export const PRODUCTION_WRITE_EPOCH_KEY="linen-earth:production:write-epoch:v1";
+// Web Locks serializes the check-and-set across same-origin tabs. A storage
+// read-then-write alone cannot prevent two concurrent POST starts.
+export const PRODUCTION_WRITE_LOCK_NAME="linen-earth:production:write-hold-lock:v1";
+// Held throughout a live production POST, not just the initial marker claim.
+// A second tab must never acknowledge that marker while SQL may be committing.
+export const PRODUCTION_WRITE_SESSION_LOCK_NAME="linen-earth:production:active-write-session:v1";
+
+export type ProductionHoldStorage={
+  getItem(key:string):string|null;
+  setItem(key:string,value:string):void;
+  removeItem(key:string):void;
+};
+
+export function productionWriteHoldPending(storage:ProductionHoldStorage|null|undefined):boolean{
+  if(!storage)return true;
+  try{return storage.getItem(PRODUCTION_WRITE_HOLD_KEY)!==null;}
+  catch{return true;} // unavailable storage may conceal an unconfirmed write
+}
+
+/** Recover the original anonymous v4 UUID after a crash without copying
+ * request bodies or secrets. Invalid/inaccessible marker never permits a retry. */
+export function readProductionWriteHoldKey(storage:ProductionHoldStorage|null|undefined):string|null{
+  if(!storage)return null;
+  try{
+    const token=storage.getItem(PRODUCTION_WRITE_HOLD_KEY);
+    return typeof token==="string"&&/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(token)
+      ?token.toLowerCase():null;
+  }catch{return null;}
+}
+
+/** Claim the marker synchronously before issuing POST, failing closed if
+ * storage is unavailable or another unreviewed write is already pending. */
+export function beginProductionWriteHold(storage:ProductionHoldStorage|null|undefined,token:string):boolean{
+  if(!storage)return false;
+  if(typeof token!=="string"||!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(token))return false;
+  try{
+    if(storage.getItem(PRODUCTION_WRITE_HOLD_KEY)!==null)return false;
+    storage.setItem(PRODUCTION_WRITE_HOLD_KEY,token);
+    if(storage.getItem(PRODUCTION_WRITE_HOLD_KEY)!==token)return false;
+    // Keep this anonymous generation after successful release. A failed epoch
+    // write leaves the hold in place and MUST NOT authorize a production POST.
+    storage.setItem(PRODUCTION_WRITE_EPOCH_KEY,token);
+    return storage.getItem(PRODUCTION_WRITE_HOLD_KEY)===token
+      && storage.getItem(PRODUCTION_WRITE_EPOCH_KEY)===token;
+  }catch{return false;}
+}
+
+/** Never remove a marker created by another tab; only a matching token can
+ * clear a confirmed write or an explicitly rejected pre-RPC request. */
+export function releaseProductionWriteHold(storage:ProductionHoldStorage|null|undefined,token:string):boolean{
+  if(!storage)return false;
+  try{
+    if(storage.getItem(PRODUCTION_WRITE_HOLD_KEY)!==token)return false;
+    storage.removeItem(PRODUCTION_WRITE_HOLD_KEY);
+    return storage.getItem(PRODUCTION_WRITE_HOLD_KEY)===null;
+  }catch{return false;}
+}
+
+/** Explicit operator acknowledgement after a verified ledger refresh.
+ * This does not prove that any unacknowledged write was uncommitted. */
+export function acknowledgeProductionWriteHold(storage:ProductionHoldStorage|null|undefined,expectedToken?:string|null):boolean{
+  if(!storage)return false;
+  try{
+    const token=storage.getItem(PRODUCTION_WRITE_HOLD_KEY);
+    return typeof token==="string"
+      &&/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(token)
+      &&(expectedToken===undefined||token===expectedToken)
+      &&releaseProductionWriteHold(storage,token);
+  }catch{return false;}
+}
+
+/** Capture a stable, privacy-safe generation only when there is no pending
+ * cross-tab write. The empty string represents a pre-upgrade clean browser.
+ * Invalid or inaccessible storage fails closed. */
+export function captureProductionWriteEpoch(storage:ProductionHoldStorage|null|undefined):string|null{
+  if(!storage)return null;
+  try{
+    if(storage.getItem(PRODUCTION_WRITE_HOLD_KEY)!==null)return null;
+    const epoch=storage.getItem(PRODUCTION_WRITE_EPOCH_KEY);
+    if(epoch===null)return "";
+    return /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(epoch)
+      ?epoch.toLowerCase():null;
+  }catch{return null;}
+}
+
+/** A packet may be downloaded only if no other tab began a production write
+ * (even one already confirmed) since its fresh ledger read started. */
+export function productionWriteEpochUnchanged(
+  storage:ProductionHoldStorage|null|undefined, captured:string|null,
+):boolean{
+  return captured!==null&&captureProductionWriteEpoch(storage)===captured;
+}
+
+/** A review must be based on one stable, readable marker + write generation,
+ * including an old crash-recovery marker. Never silently accept corrupt data. */
+export type ProductionWriteReviewSnapshot={holdToken:string|null;epoch:string};
+export function captureProductionWriteReviewSnapshot(
+  storage:ProductionHoldStorage|null|undefined,
+):ProductionWriteReviewSnapshot|null{
+  if(!storage)return null;
+  try{
+    const holdToken=storage.getItem(PRODUCTION_WRITE_HOLD_KEY);
+    const epoch=storage.getItem(PRODUCTION_WRITE_EPOCH_KEY);
+    const valid=(value:string)=>/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(value);
+    if(holdToken!==null&&!valid(holdToken))return null;
+    if(epoch!==null&&!valid(epoch))return null;
+    return {holdToken,epoch:epoch??""};
+  }catch{return null;}
+}
+
+export function productionWriteReviewSnapshotUnchanged(
+  storage:ProductionHoldStorage|null|undefined,
+  snapshot:ProductionWriteReviewSnapshot|null,
+):boolean{
+  if(snapshot===null)return false;
+  const current=captureProductionWriteReviewSnapshot(storage);
+  return current!==null&&current.holdToken===snapshot.holdToken
+    &&current.epoch===snapshot.epoch;
+}
+
+/** The lock callback must execute the marker check and claim together.
+ * Without a supported origin-wide exclusive lock, do not risk two POSTs.
+ * Recheck the exact pre-wait snapshot: another tab may have completed a write
+ * while this tab was waiting for its turn. Never persist private request data. */
+export async function beginProductionWriteHoldAtomically(
+  storage:ProductionHoldStorage|null|undefined,
+  token:string,
+  withExclusiveLock:((claim:()=>boolean)=>Promise<boolean>)|null|undefined,
+  expected:ProductionWriteReviewSnapshot|null,
+):Promise<boolean>{
+  if(!storage||!withExclusiveLock||!expected)return false;
+  try{
+    return (await withExclusiveLock(()=>{
+      if(!productionWriteReviewSnapshotUnchanged(storage,expected))return false;
+      return beginProductionWriteHold(storage,token);
+    }))===true;
+  }catch{
+    // A lock error after a marker write leaves that marker pending for review.
+    return false;
+  }
+}
