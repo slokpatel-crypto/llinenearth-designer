@@ -1,0 +1,86 @@
+{
+  "gate": "linen-earth-officewear-scene-preflight-v1",
+  "ready": false,
+  "identityFitMeasurementsMm": {
+    "shirtShoulderWidthMm": 388.5,
+    "shirtWaistWidthMm": 324.49,
+    "trouserWaistWidthMm": 339.02,
+    "leftHemWidthMm": 84.52,
+    "rightHemWidthMm": 88.97,
+    "shirtCenterOffsetMm": 0.54,
+    "trouserCenterOffsetMm": -0.03,
+    "sourceBodyArmBandsGeometryOnly": {
+      "left": {
+        "sourceSideBandCentreXMm": -284.5794,
+        "sourceSideBandWidthMm": 259.1525,
+        "sampledSourceVertexCount": 14074,
+        "anatomicalJointCentreMeasured": false,
+        "photoPoseApproved": false,
+        "productionApproved": false
+      },
+      "right": {
+        "sourceSideBandCentreXMm": 284.6534,
+        "sourceSideBandWidthMm": 259.2573,
+        "sampledSourceVertexCount": 14079,
+        "anatomicalJointCentreMeasured": false,
+        "photoPoseApproved": false,
+        "productionApproved": false
+      },
+      "anatomicalPoseApproved": false
+    },
+    "sleeveVsSourceBandCentreOffsetMm": {
+      "left": 3.04,
+      "right": -2.65
+    },
+    "sourceBodyArmBandSpacingMm": 569.23,
+    "sleeveContourOptimisticBudgetNotFitApproval": {
+      "measuredCurrentSpacingMm": 563.542,
+      "guideBandMm": [
+        464.0,
+        536.0
+      ],
+      "remainingContourBudgetMmPerSleeve": 10.75,
+      "requiredExtraMmPerSleeveAtFullEffect": 13.771,
+      "optimisticMinimumSpacingMm": 542.042,
+      "guideNumericallyReachableWithinExistingContourCap": false,
+      "fullDisplacementEffectAssumedOnlyAsOptimisticBound": true,
+      "bodyPoseNotEvaluatedByNumericBudget": true,
+      "bodyContactOrFitApproved": false,
+      "productionApproved": false
+    },
+    "sleeveCenterSpacingMm": 563.54,
+    "cuffWidthAsymmetryMm": 0.13,
+    "hemWidthAsymmetryMm": 4.45,
+    "legCenterSpacingMm": 217.5
+  },
+  "boundaryIntersections": {
+    "bodyShirtTorso": 0,
+    "bodySleeveL": 0,
+    "bodySleeveR": 0,
+    "bodyTrouserWaist": 0,
+    "bodyTrouserLegL": 0,
+    "bodyTrouserLegR": 0,
+    "garmentLegToLeg": 0,
+    "shirtTrouserTuck": 0
+  },
+  "reasons": [
+    "Sleeve-center spacing near the cuffs is 563.5 mm; locked hand-center target is 500.0 mm \u00b1 36.0 mm.",
+    "ShirtTorsoFabric needs true texture metric review: 1754 triangles exceed 2x anisotropy; 1754 exceed 50% local mesh-metre stretch deviation; UV distortion coverage: 20.87%; largest damaged-area local height zone 80\u2013100%. Textile scale is unapproved.",
+    "ShirtSleeveLFabric needs true texture metric review: 1301 triangles exceed 2x anisotropy; 1420 exceed 50% local mesh-metre stretch deviation; UV distortion coverage: 45.51%; largest damaged-area local height zone 80\u2013100%. Textile scale is unapproved.",
+    "ShirtSleeveLFabric has 112 unreviewed shared-edge UV discontinuities on real garment topology; authored fabric seam placement, repeat and grain need review.",
+    "ShirtSleeveLFabric uses 4 unapproved local metric tangent UV charts on a cylindrical garment; stitch and verify true pattern seams before production.",
+    "ShirtSleeveRFabric needs true texture metric review: 1295 triangles exceed 2x anisotropy; 1403 exceed 50% local mesh-metre stretch deviation; UV distortion coverage: 45.17%; largest damaged-area local height zone 80\u2013100%. Textile scale is unapproved.",
+    "ShirtSleeveRFabric has 110 unreviewed shared-edge UV discontinuities on real garment topology; authored fabric seam placement, repeat and grain need review.",
+    "ShirtSleeveRFabric uses 4 unapproved local metric tangent UV charts on a cylindrical garment; stitch and verify true pattern seams before production.",
+    "TrouserWaistFabric needs true texture metric review: 614 triangles exceed 2x anisotropy; 614 exceed 50% local mesh-metre stretch deviation; UV distortion coverage: 28.40%; largest damaged-area local height zone 0\u201320%. Textile scale is unapproved.",
+    "TrouserLegLFabric needs true texture metric review: 579 triangles exceed 2x anisotropy; 688 exceed 50% local mesh-metre stretch deviation; UV distortion coverage: 17.24%; largest damaged-area local height zone 20\u201340%. Textile scale is unapproved.",
+    "TrouserLegLFabric has 86 unreviewed shared-edge UV discontinuities on real garment topology; authored fabric seam placement, repeat and grain need review.",
+    "TrouserLegLFabric uses 2 unapproved local metric tangent UV charts on a cylindrical garment; stitch and verify true pattern seams before production.",
+    "TrouserLegRFabric needs true texture metric review: 589 triangles exceed 2x anisotropy; 694 exceed 50% local mesh-metre stretch deviation; UV distortion coverage: 17.39%; largest damaged-area local height zone 20\u201340%. Textile scale is unapproved.",
+    "TrouserLegRFabric has 42 unreviewed shared-edge UV discontinuities on real garment topology; authored fabric seam placement, repeat and grain need review.",
+    "TrouserLegRFabric uses 2 unapproved local metric tangent UV charts on a cylindrical garment; stitch and verify true pattern seams before production."
+  ],
+  "sourceCommit": "714345a6fef4f978f111de9898e0ea9b089e4330",
+  "sourceSceneSha256": "302a8dc9e17ce7e9944f237525e12573b204705a357315bcda3bd9ee72edaf13",
+  "blenderVersion": "4.5.14 LTS"
+}
