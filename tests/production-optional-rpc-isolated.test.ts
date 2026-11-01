@@ -181,3 +181,17 @@ test("operator quote/order creation requires a canonical Postgres UUID acknowled
   assert.match(route,/const MAX_OPERATOR_CREATE_ID_BYTES=128/);
   assert.match(route,/readBoundedJsonResponse\(response,maxResponseBytes\)/);
 });
+
+test("locked-design vault reads must be JSON-byte bounded and exactly one payload row",()=>{
+  const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
+  const vault=route.split("async function loadVerifiedLockedRevision(")[1]?.split("// Operator data and write acknowledgements")[0]??"";
+  assert.match(route,/const MAX_OPERATOR_LOCKED_REVISION_BYTES=262_144/);
+  assert.match(vault,/rpc<unknown>\("designer_locked_revision_vault_get"/);
+  assert.match(vault,/,false,MAX_OPERATOR_LOCKED_REVISION_BYTES\)/);
+  assert.match(vault,/validateOperatorLedgerRows\(rawRows,1\)/);
+  assert.match(vault,/rows\.length!==1/);
+  assert.match(vault,/Array\.isArray\(rows\[0\]\.payload\)/);
+  assert.match(vault,/verifyLockedDesignRevision\(revision\)/);
+  assert.ok(vault.indexOf("validateOperatorLedgerRows")<vault.indexOf("verifyLockedDesignRevision"));
+  assert.doesNotMatch(vault,/const revision=rows\[0\]\?\.payload/);
+});
