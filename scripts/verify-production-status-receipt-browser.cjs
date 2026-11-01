@@ -57,9 +57,15 @@ async function runViewport(browser,width){
   const errors=[];
   const productionPostActions=[];
   const productionPostResponses=[];
+  const productionResponseHeaders=[];
+  const failedProductionRequests=[];
+  const pageNavigations=[];
+  page.on("framenavigated",frame=>{if(frame===page.mainFrame())pageNavigations.push(new URL(frame.url()).pathname);});
+  page.on("requestfailed",request=>{if(new URL(request.url()).pathname==="/api/operator/production")failedProductionRequests.push({method:request.method(),failure:request.failure()?.slice(0,140)});});
   page.on("response",async response=>{
     if(response.request().method()!=="POST"||
        new URL(response.url()).pathname!=="/api/operator/production")return;
+    productionResponseHeaders.push(response.status());
     try{
       const data=await response.json();
       productionPostResponses.push({
@@ -121,7 +127,7 @@ async function runViewport(browser,width){
       });
       throw new Error("M144 signed browser receipt display mismatch: "+
         JSON.stringify({width,state,postActions:productionPostActions,
-          postResponses:productionPostResponses,pageErrors:errors})+
+          postResponses:productionPostResponses,responseHeaders:productionResponseHeaders,failedProductionRequests,pageNavigations,pageErrors:errors})+
         "; original: "+String(error));
     }
     const committedText=await receipts.innerText();
