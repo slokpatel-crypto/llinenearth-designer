@@ -34,7 +34,7 @@ test("actual authenticated operator GET never swallows optional ledger failures"
   assert.doesNotMatch(rpc,/response\.text\(\)/);
   for(const name of ["finished_garment_qc_list","production_customer_outcome_list","production_order_learning_context_list"])
     assert.ok(get.includes('rpc<unknown[]>("'+name+'",'),name+" must be read explicitly");
-  assert.equal((get.match(/,true\)/g)||[]).length,3);
+  assert.equal((get.match(/,true,MAX_OPERATOR_LEDGER_BYTES\)/g)||[]).length,3);
   assert.doesNotMatch(get,/catch\s*\{\s*\/\/ Keep/);
   assert.match(get,/status:503/);
   assert.match(route,/response\.headers\.set\("cache-control","private, no-store"\)/);
