@@ -1163,13 +1163,19 @@ requireTokens("src/app/api/operator/production/route.ts",[
 requireTokens("src/app/operator/production/ProductionClient.tsx",[
   "async function lookupPendingCreationReceipt()",
   'action:"creation_receipt_lookup",requestKey:pendingKey',
-  "readProductionWriteHoldKey(safeProductionHoldStorage())!==pendingKey",
+  "const snapshot=captureProductionWriteReviewSnapshot(safeProductionHoldStorage())",
+  "productionWriteReviewSnapshotUnchanged(safeProductionHoldStorage(),snapshot)",
   "No committed creation receipt was visible at lookup time",
   "Find original quote/order receipt by request ID",
 ]);
 requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
   "20261107_production_creation_receipt_lookup.sql",
   "production-creation-receipt-lookup-assertions.sql",
+]);
+requireTokens("tests/production-creation-receipt-lookup.test.ts",[
+  "creation receipt lookup rejects a stale generation even with the SAME original UUID",
+  "PRODUCTION_WRITE_EPOCH_KEY",
+  "productionWriteReviewSnapshotUnchanged(store,old)",
 ]);
 // M108: quote and order creation must use one client-provided UUID whose
 // exact intent is deduplicated atomically by private PostgreSQL, not a new
