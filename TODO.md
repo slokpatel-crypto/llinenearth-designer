@@ -1186,3 +1186,10 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] Add workflow, Node source regression and explicit release gating.
 - [ ] Matching-head CI, independent Non-3D, both disposable PostgreSQL must PASS. Inherited M144 browser-origin issue may still block acceptance; do not classify M147 ready based only on M145/M146 passing.
 - [ ] Human and physical production evidence remains missing: original model native Blender four-view/UV likeness, true supplier rolls and measured scale, tailor/QC, actual operator/customer, genuine device tests, five beta, ten real deliveries, migration/privacy/security/restore and explicit owner approvals. No production merge/deploy.
+
+
+## 2026-11-01 — M149 status receipt same-key write-epoch browser regression (draft)
+- [x] Extend the existing signed Chromium operator status receipt scenario at 390/768/1440 to defer a real read-only lookup, retain the original pending request UUID, change only the anonymous cross-tab write epoch and prove stale committed receipt evidence is refused. The original hold and disabled mutation controls remain intact.
+- [x] Add a Node source contract requiring the same-key epoch race and production UI's full snapshot validation. The test makes only CI synthetic read-only status receipt POSTs, no real orders or SQL mutations.
+- [ ] Exact M149 SHA full CI, signed browser, Non-3D, disposable stock and production PostgreSQL, quality, Node, engine, preview, release and build: PENDING until matching-head runs complete. No parent pass transfers to this child.
+- [ ] Genuine stock/rolls/metres, customer/operator owner-scoped journey, physical tailor/QC, native Blender four-view/UV, real devices, five beta, ten deliveries, staging migration/security/privacy/restore and separate owner merge/deploy approvals remain BLOCKED/PENDING.
