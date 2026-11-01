@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-01",
+  "status": "PROVISIONAL_GEOMETRIC_IMPROVEMENT_BUT_PRODUCTION_REJECTED",
+  "pr": 686,
+  "sourceNativeRunId": 41301331432,
+  "sourceArtifactId": 13082115531,
+  "sourceSceneSha256": "a14236f0fca15a1e60224c25341afaf44223753c5fd1fa8b09c739b67dc9818f",
+  "identity": "linen-earth-studio-model-v1",
+  "canonicalPhotoPoseIdentityApproved": false,
+  "blenderSourceBodyAndAllSixGarmentsUnchanged": true,
+  "baselineSourceCentreOnly": {
+    "bodyTriangleCrossingPairs": 2844,
+    "leftSleeve": 881,
+    "rightSleeve": 959,
+    "back": 515,
+    "waistBack": 72,
+    "leftLeg": 0,
+    "rightLeg": 0
+  },
+  "newSourceSectionTangentRadius": {
+    "bodyTriangleCrossingPairs": 1954,
+    "leftSleeve": 479,
+    "rightSleeve": 471,
+    "back": 515,
+    "waistBack": 72,
+    "leftLeg": 0,
+    "rightLeg": 0,
+    "collar": 118,
+    "yoke": 254,
+    "front": 63,
+    "placket": 54,
+    "leftCuff": 0,
+    "rightCuff": 0,
+    "connectedComponents": 1,
+    "openCycles": 4,
+    "nonmanifoldEdges": 0,
+    "windingErrors": 0,
+    "sectionClothRadiusRangeM": {
+      "left": [
+        0.07316269129125831,
+        0.09344637823592773
+      ],
+      "right": [
+        0.07256198302023847,
+        0.09397932700142557
+      ]
+    },
+    "sourceCrossSectionsEachArm": 5,
+    "sourceExperimentalClothGapMm": 4
+  },
+  "visualReview": "Sleeves cover the forearms and much of the upper arms better than source-centre-only trial, but large bare shoulder regions remain exposed from back/side views; torso and trouser waist remain visually incorrect. Full source likeness to original faceless mannequin is not proven.",
+  "hardGates": {
+    "bodyCrossingsZero": false,
+    "waistCrossingsZero": false,
+    "sourcePhotoParity": false,
+    "garmentPatternMeasurablyTailored": false,
+    "uvMeasured": false,
+    "productionReady": false
+  },
+  "decision": "Keep draft topology experiments. No main merge, production model replacement, or Vercel deployment.",
+  "next": "Reconstruct source-backed shoulder/yoke/armhole root and back waist, preserving 479/471 sleeve geometry and independent original-photo identity gate; obtain exact photographed-model source if available."
+}

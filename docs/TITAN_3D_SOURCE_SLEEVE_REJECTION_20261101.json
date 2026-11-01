@@ -1,0 +1,101 @@
+{
+  "sourceRunId": 41300177475,
+  "sourceArtifactId": 13081101521,
+  "candidate": "source_scanned_arm_path_plus_authored_front_placket_collar_cuffs",
+  "status": "REJECTED",
+  "sourceSceneSha256": "9e0642a67a95a15b02108c7660b5c9aa3ab560fbc3e512167c11296315b77196",
+  "referenceModelId": "linen-earth-studio-model-v1",
+  "actualPhotographicModelPoseVerified": false,
+  "originalBodyAndSixGarmentsUnchanged": true,
+  "baselineNativeMeasured": {
+    "totalBodyPairs": 2447,
+    "sleeveLeft": 651,
+    "sleeveRight": 654,
+    "back": 515,
+    "waistBack": 72
+  },
+  "candidateNativeMeasured": {
+    "totalBodyPairs": 2844,
+    "sleeveLeft": 881,
+    "sleeveRight": 959,
+    "back": 515,
+    "waistBack": 72,
+    "cuffLeft": 0,
+    "cuffRight": 0
+  },
+  "sourceArmSampleCountAtFiveSections": {
+    "left": [
+      27,
+      45,
+      61,
+      52,
+      63
+    ],
+    "right": [
+      27,
+      45,
+      61,
+      51,
+      63
+    ]
+  },
+  "sourceArmCentresM": {
+    "left": [
+      [
+        -0.262472,
+        0.049147,
+        1.281
+      ],
+      [
+        -0.288278,
+        0.029434,
+        1.207
+      ],
+      [
+        -0.314699,
+        0.016708,
+        1.133
+      ],
+      [
+        -0.352061,
+        0.000723,
+        1.059
+      ],
+      [
+        -0.375049,
+        -0.012489,
+        0.985
+      ]
+    ],
+    "right": [
+      [
+        0.262994,
+        0.049138,
+        1.281
+      ],
+      [
+        0.288438,
+        0.029273,
+        1.207
+      ],
+      [
+        0.314763,
+        0.016757,
+        1.133
+      ],
+      [
+        0.349677,
+        -0.003269,
+        1.059
+      ],
+      [
+        0.375234,
+        -0.012398,
+        0.985
+      ]
+    ]
+  },
+  "visualReview": "The sleeves align closer to the arm path in four angles than fixed-centre prototype but expose bare upper/back arm strips and intersect the scan. No fit approval.",
+  "productionApproved": false,
+  "next": "Reconstruct source-aligned sleeves with actual local cross-section tangent, scanned radius and bounded experimental clearance; compare full independent BVH and four angles. No guessed whole torso width changes."
+}

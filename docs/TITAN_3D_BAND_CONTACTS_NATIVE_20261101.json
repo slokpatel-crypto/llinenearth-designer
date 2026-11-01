@@ -1,0 +1,51 @@
+{
+  "status": "NATIVE_VERIFIED_DIAGNOSTIC_RELEASE_REJECTED",
+  "run": 41302158643,
+  "sourceSceneSha256": "7e2507d116c7c429488445a7c1dcd1e4b8171de85fb4db9200a3ec64dddd86dd",
+  "sourceBodyAndSixGarmentsUnchanged": true,
+  "nativeWholeBodyPairCount": 1954,
+  "nativeWholeTrouserWaistPairCount": 72,
+  "sourceHeightBandLabelsUnmeasured": [
+    "hem",
+    "waist",
+    "underarm",
+    "shoulder"
+  ],
+  "bodyContactByBand": {
+    "back@hem": 0,
+    "back@shoulder": 126,
+    "back@underarm": 83,
+    "back@waist": 306,
+    "collar": 118,
+    "front": 63,
+    "left_cuff": 0,
+    "left_sleeve@hem": 194,
+    "left_sleeve@shoulder": 34,
+    "left_sleeve@underarm": 51,
+    "left_sleeve@waist": 200,
+    "placket": 54,
+    "right_cuff": 0,
+    "right_sleeve@hem": 184,
+    "right_sleeve@shoulder": 34,
+    "right_sleeve@underarm": 51,
+    "right_sleeve@waist": 202,
+    "yoke": 254
+  },
+  "trouserWaistContactByBand": {
+    "back@hem": 8,
+    "back@waist": 64,
+    "back@underarm": 0,
+    "back@shoulder": 0,
+    "otherSourceBandsCombined": 0
+  },
+  "bodyPartitionSumConsistent": true,
+  "waistPartitionSumConsistent": true,
+  "notices": [
+    "Height bands from source mesh face centroids are diagnostic labels, not measured tailoring seam lines.",
+    "All source scan body and original garment geometry preserved.",
+    "Bodily and waistband triangle crossing pairs are not penetration depth.",
+    "Reference studio faceless mannequin identity vs generic CC0 scan remains unverified.",
+    "Body contact and garment identity release gates remain blocked."
+  ],
+  "nextAction": "Construct isolated source-and-waist-measured back panel seam/tuck candidate, targeting the 64 waist-band and 8 hem-band trouser-waist intersections, without changing the 479/471 source-based sleeve rings; verify real BVH, panel manifold, and four-angle source photo parity before promotion."
+}
