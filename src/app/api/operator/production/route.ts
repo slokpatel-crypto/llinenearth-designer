@@ -87,8 +87,9 @@ export async function GET(){
       customerOutcomes:validateOperatorLedgerRows(customerOutcomes,250),
       learningContexts:validateOperatorLedgerRows(learningContexts,500),
     },{headers:{"cache-control":"private, no-store"}});
-  }catch(error){
-    console.error("[operator/production]",error);
+  }catch{
+    // Invalid JSON may embed customer records in parser errors; never log raw responses.
+    console.error("[operator/production] GET failed (details redacted).");
     return privateProductionResponse({error:"Production records could not be read."},{status:503});
   }
 }
