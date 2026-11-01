@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {parseProductionCreationReceipts} from "../src/lib/designer/production-creation-receipt-lookup.ts";
+import {parseProductionCreationReceipts,parseProductionCreationReceiptResponse} from "../src/lib/designer/production-creation-receipt-lookup.ts";
 import {PRODUCTION_WRITE_HOLD_KEY,readProductionWriteHoldKey} from "../src/lib/designer/production-write-hold.ts";
 
 const key="123e4567-e89b-42d3-a456-426614174100";
@@ -57,7 +57,7 @@ test("receipt lookup is read-only, authenticated and cannot unlock the review ho
   assert.match(lookup,/readProductionWriteHoldKey\(safeProductionHoldStorage\(\)\)/);
   assert.match(lookup,/action:"creation_receipt_lookup",requestKey:pendingKey/);
   assert.match(lookup,/if\(!response\.ok\)throw new Error/);
-  assert.match(lookup,/parseProductionCreationReceipts\(data\.receipts\)/);
+  assert.match(lookup,/parseProductionCreationReceiptResponse\(data\.receipts\)/);
   assert.match(lookup,/readProductionWriteHoldKey\(safeProductionHoldStorage\(\)\)!==pendingKey/);
   assert.match(lookup,/setRecoveredCreationReceipts\(receipts\)/);
   assert.match(lookup,/No committed creation receipt was visible at lookup time/);
@@ -66,4 +66,29 @@ test("receipt lookup is read-only, authenticated and cannot unlock the review ho
   assert.match(ui,/Find original quote\/order receipt by request ID/);
   assert.match(ui,/COMMITTED CREATION RECEIPTS/);
   assert.match(ui,/A delayed commit or status update is still possible/);
+});
+
+
+test("operator creation receipt API response accepts only normalized private-safe wire fields",()=>{
+  const safe=[
+    {action:"create_quote",receiptId:quote.toUpperCase()},
+    {action:"create_order",receiptId:order},
+  ];
+  assert.deepEqual(parseProductionCreationReceiptResponse(safe),[
+    {action:"create_quote",receiptId:quote},
+    {action:"create_order",receiptId:order},
+  ]);
+  assert.deepEqual(parseProductionCreationReceiptResponse([]),[]);
+  assert.equal(parseProductionCreationReceipts(safe),null,
+    "The SQL parser must remain strict about raw receipt_id fields");
+  for(const bad of [
+    null,{receipts:safe},[null],[{}],
+    [{action:"create_order",receipt_id:order}],
+    [{action:"create_order",receiptId:order,privatePhone:"sensitive"}],
+    [{action:"create_order",receiptId:order,note:"sensitive"}],
+    [{action:"create_order",receiptId:"not-a-uuid"}],
+    [{action:"order_status",receiptId:order}],
+    [safe[0],safe[0]],Array(3).fill(safe[0]),
+  ])assert.equal(parseProductionCreationReceiptResponse(bad),null,
+    "Never display malformed, duplicated or unauthorized creation receipt fields");
 });
