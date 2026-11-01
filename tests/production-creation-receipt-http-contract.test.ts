@@ -38,3 +38,23 @@ test("M146 signed built-Next creation lookup covers auth, privacy and uncertain 
   assert.ok(route.includes('rpc<unknown>("production_creation_request_receipt_lookup",{p_request_key:key})'));
   assert.ok(route.includes('parseProductionCreationReceipts(rows)'));
 });
+
+
+test("M147 real signed browser creation recovery cannot unlock an uncertain write",()=>{
+  const browser=readFileSync("scripts/verify-production-creation-receipt-browser-http.cjs","utf8");
+  const workflow=readFileSync(".github/workflows/ci.yml","utf8");
+  for(const marker of [
+    "M147 signed creation receipt React/HTTP browser acceptance is CI-only.",
+    'const base=new URL(process.env.LINEN_BROWSER_QA_URL||"http://localhost:3000")',
+    'for(const width of [390,768,1440])',
+    'Find original quote/order receipt by request ID',
+    'COMMITTED CREATION RECEIPTS',
+    'No committed creation receipt found for this request ID yet',
+    'Old same-key receipt must not be presented after an epoch change',
+    'productionMutations:0',
+    'actualPosts.every(action=>action==="creation_receipt_lookup")',
+    'postStatuses.includes(200)&&postStatuses.includes(409)',
+    'M147 signed Chromium real creation receipt HTTP and unchanged hold PASS.',
+  ])assert.ok(browser.includes(marker),"Signed browser regression missing "+marker);
+  assert.ok(workflow.includes("node scripts/verify-production-creation-receipt-browser-http.cjs"));
+});

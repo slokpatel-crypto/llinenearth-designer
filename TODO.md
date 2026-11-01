@@ -1178,3 +1178,11 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] Add workflow, Node source contract and release static guard. No live customer, supplier, tailor, model or paid-AI changes.
 - [ ] Exact final M146 SHA quality, Node, engine, preview, release, Next production build, signed HTTP/browser at 390/768/1440, independent Non-3D, both disposable PostgreSQL workflows must PASS before code acceptance. Source syntax/fixture checks are insufficient.
 - [ ] Parent M145 and M144 are draft and may advance independently; check matching-head compatibility and do not claim their CI passes for child. Original-model native Blender four-view/UV, real stock/metres, authenticated owner/customer/operator, physical tailor/QC, devices, five beta and ten real deliveries, staging/security/privacy/restore, schema and owner approvals remain BLOCKED/PENDING. No main merge, live SQL or deployment.
+
+
+## M147 real signed browser creation receipt recovery — 2026-11-01
+- [x] Add real signed Chromium CI-only operator React test for recovered original quote/order UUIDs through actual private built-Next HTTP and M146 isolated SQL fixture, at 390/768/1440 widths.
+- [x] Exercise valid committed receipts, empty lookup that never authorizes retry, upstream 503 with private 409, deferred same-request-key changed-write-epoch veto, retained anonymous hold and disabled quote/order creation. Reject all mutation HTTP actions. Save screenshots and JSON marked synthetic-only.
+- [x] Add workflow, Node source regression and explicit release gating.
+- [ ] Matching-head CI, independent Non-3D, both disposable PostgreSQL must PASS. Inherited M144 browser-origin issue may still block acceptance; do not classify M147 ready based only on M145/M146 passing.
+- [ ] Human and physical production evidence remains missing: original model native Blender four-view/UV likeness, true supplier rolls and measured scale, tailor/QC, actual operator/customer, genuine device tests, five beta, ten real deliveries, migration/privacy/security/restore and explicit owner approvals. No production merge/deploy.
