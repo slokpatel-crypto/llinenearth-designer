@@ -53,6 +53,7 @@ def analyze_labelled_faces(faces, labels):
         raise ValueError("No complete source garment face classifications")
     edges = defaultdict(list)
     all_vertices = set()
+    seen_faces = set()
     parents = {}
     def root(i):
         while parents[i] != i:
@@ -62,6 +63,10 @@ def analyze_labelled_faces(faces, labels):
     for i, face in enumerate(faces):
         if len(face) < 3 or len(set(face)) != len(face) or any(type(v) is not int or v < 0 for v in face):
             raise ValueError("Invalid source polygon topology")
+        face_key = tuple(sorted(face))
+        if face_key in seen_faces:
+            raise ValueError("Duplicate source face would stack cloth at the shoulder")
+        seen_faces.add(face_key)
         parents[i] = i
         all_vertices.update(face)
         for j, a in enumerate(face):
