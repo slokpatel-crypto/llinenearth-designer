@@ -118,7 +118,7 @@ def _distance(a,b):
 
 
 def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0,
-                    source_arm_centerlines=None):
+                    source_arm_centerlines=None, source_arm_sections=None):
     """Return explicit vertices/faces/piece regions, including ring-welded sleeves.
 
     omit_sleeve for regression ONLY: must leave corresponding armhole boundary.
@@ -138,6 +138,28 @@ def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0,
                     any(type(x) not in (int,float) or not math.isfinite(x) for x in p)
                     for p in points)):
                 raise ValueError("Actual source arm path has missing or invalid observations")
+    if source_arm_sections is not None:
+        if source_arm_centerlines is not None:
+            raise ValueError("Choose either source arm paths or complete source sections")
+        if (not isinstance(source_arm_sections,dict) or
+            set(source_arm_sections)!= {"left_sleeve","right_sleeve"}):
+            raise ValueError("Both real scanned source arm sections required")
+        for side,sections in source_arm_sections.items():
+            if not isinstance(sections,(list,tuple)) or len(sections)!=5:
+                raise ValueError("Five actual source arm sections required per side")
+            for section in sections:
+                if not isinstance(section,dict) or not section.get("sourceMeasured"):
+                    raise ValueError("Unknown or unmeasured arm section")
+                fields=("centerM","basisFront","basisSide")
+                for field in fields:
+                    vec=section.get(field)
+                    if not isinstance(vec,(tuple,list)) or len(vec)!=3 or any(
+                        type(x) not in (int,float) or not math.isfinite(x) for x in vec
+                    ):
+                        raise ValueError("Invalid source section geometry vector")
+                radius=section.get("radiusM")
+                if type(radius) not in (float,int) or not math.isfinite(radius) or not .02<=radius<=.16:
+                    raise ValueError("Unbounded source section cloth radius")
     verts=[]
     for z,rx,ry in PROFILE:
         # The actual garment construction changes, not the scanned body.
@@ -204,6 +226,20 @@ def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0,
         if norm<.1:
             raise ValueError("Sleeve axis incompatible with orientation")
         e2=tuple(v/norm for v in e2)
+        # Root seam angle is inferred from ACTUAL source boundary vertices,
+        # not arbitrary j/n indexing that twists the sleeve surface.
+        if source_arm_sections is not None:
+            first=source_arm_sections[side][0]
+            front0=first["basisFront"]
+            lateral0=first["basisSide"]
+            angles=[]
+            for idx in loop:
+                difference=tuple(verts[idx][axis]-p0[axis] for axis in range(3))
+                u=sum(difference[axis]*front0[axis] for axis in range(3))
+                v=sum(difference[axis]*lateral0[axis] for axis in range(3))
+                if math.hypot(u,v)<1e-5:
+                    raise ValueError("Armhole seam cannot be projected into real arm section frame")
+                angles.append(math.atan2(v,u))
         previous=list(loop)
         for step in range(1,6):
             t=step/5
@@ -214,17 +250,30 @@ def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0,
                     sign*source_point[0]<.205 or abs(source_point[1])>.28):
                     raise ValueError("Source arm section cannot be registered with actual sleeve root")
                 center=tuple(source_point)
+            elif source_arm_sections is not None:
+                section=source_arm_sections[side][step-1]
+                center=tuple(section["centerM"])
+                expected_z=p0[2]+(.985-p0[2])*t
+                if abs(center[2]-expected_z)>.025 or sign*center[0]<.205:
+                    raise ValueError("Measured source section does not match sleeve root")
             else:
                 center=tuple((1-t)*p0[k]+t*p1[k] for k in range(3))
+            e1_step=e1
+            e2_step=e2
+            ring_radius=cuff_radius_mm/1000.0
+            if source_arm_sections is not None:
+                e1_step=section["basisFront"]
+                e2_step=section["basisSide"]
+                ring_radius=section["radiusM"]
             ring=[]
             for j,idx in enumerate(loop):
-                phi=2*math.pi*j/n
+                phi=angles[j] if source_arm_sections is not None else 2*math.pi*j/n
                 # Smoothly transfer existing true armhole perimeter to cuff
                 # circular pattern, without duplicating or tearing root edges.
                 orig=verts[idx]
-                px=(1-t)*(orig[0]-p0[0]) + t*(cuff_radius_mm/1000.0)*(math.cos(phi)*e1[0]+math.sin(phi)*e2[0])
-                py=(1-t)*(orig[1]-p0[1]) + t*(cuff_radius_mm/1000.0)*(math.cos(phi)*e1[1]+math.sin(phi)*e2[1])
-                pz=(1-t)*(orig[2]-p0[2]) + t*(cuff_radius_mm/1000.0)*(math.cos(phi)*e1[2]+math.sin(phi)*e2[2])
+                px=(1-t)*(orig[0]-p0[0]) + t*ring_radius*(math.cos(phi)*e1_step[0]+math.sin(phi)*e2_step[0])
+                py=(1-t)*(orig[1]-p0[1]) + t*ring_radius*(math.cos(phi)*e1_step[1]+math.sin(phi)*e2_step[1])
+                pz=(1-t)*(orig[2]-p0[2]) + t*ring_radius*(math.cos(phi)*e1_step[2]+math.sin(phi)*e2_step[2])
                 ring.append(len(verts))
                 verts.append((center[0]+px,center[1]+py,center[2]+pz))
             for j in range(n):
@@ -248,7 +297,8 @@ def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0,
         "panelSeamsAuthored":True,
         "supplierMeasurementsApproved":False,
         "realModelPoseParityApproved":False,
-        "genericSourceScanArmPathUsed":source_arm_centerlines is not None,
+        "genericSourceScanArmPathUsed":source_arm_centerlines is not None or source_arm_sections is not None,
+        "bodySectionTangentRadiusCalibrated":source_arm_sections is not None,
         "canonicalPhotoModelArmPoseVerified":False,
         "upperBodyEaseMmExperimentalOnly":upper_ease_mm,
         "sleeveCuffRadiusMmExperimentalOnly":cuff_radius_mm,
