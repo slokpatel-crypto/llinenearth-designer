@@ -2,6 +2,22 @@
 
 Updated: 2026-11-01. Status: **REJECTED 3D candidate; NOT production-ready**. This checkpoint describes the current continuation, not an approved model.
 
+## 2026-11-01 next modeling experiment — PR #675 (current)
+
+**Branch:** `work/titan-3d-connected-shoulder-20261101`, **draft PR #675** stacked on #674, which remains rejected. Latest modeling implementation commit `7c6517deb1cf0584c4baa830dc000df02c7446b1`; native workflow introduction `48282c69b5134794e755ec897e30bf36a638c513`; source duplicate-face safety fix `1f0d2166256085ce7ecc6142b52315d9e48d40c0`; corrected test `57c7e1d7d4728567fa3aa5e9b56f93cd2427caf0`. Verify **new** head when resuming; this checkpoint commit will advance it.
+
+**Actual geometry change under test:** an isolated experiment `scripts/blender/experiments/construct-connected-shirt-shoulder.py` builds one physically contiguous **source-index-welded shirt surface** from the Body source polygons, assigning formerly overlapping torso/sleeve face regions exactly once. It marks genuine shared source-edge armhole transitions, then applies clearance and thickness **once to the connected mesh** rather than to intersecting disconnected shells. It writes a separate `.cache/linen-earth/linen-earth-connected-shirt-shoulder.blend`, independent body SHA, native body-vs-candidate and trouser-vs-candidate BVH counts, exact source seam topology/connectivity and an unapproved four-angle candidate render. Six original baseline garments and source body stay intact; no production exporter or real customer image is changed.
+
+**Defect / repair / acceptance:** six earlier unintended panel crossings originated partly from overlapping selected body faces and independently thickened shell boundaries. The change removes duplicate selected source polygons **before** fitting; success requires nonzero left/right source armhole seam edges, one connected source shirt surface, no nonmanifold/winding defects, unchanged source Body SHA, zero native body/candidate collisions, and no additional unintended trouser crossings. Even success only demonstrates a better topology candidate, not real sewn shirt pattern, collar, placket, cuffs, original photo identity or UV metric truth. Do not promote without individual native and four-angle review.
+
+**Current runs:** source/CI #675 first native run `41293836128` stopped in pure Python: the new test incorrectly treated two distinct triangles touching only at a vertex as *invalid*, whereas this is legal but disconnected and must be **reported**. Corrected by making the rejected fixture a real duplicated source face and adding duplicate-face input rejection (no production gate weakened). New exact-head native run `41293893089` started; other CI/browser checks pending. Wait for exact new head, inspect candidate JSON and renders. A failed experiment must remain separate and archived, not merged.
+
+**PR #674 independently checked:** native workflow `41292926055` confirmed all 13 extra panel-pair receipts and detected real intersections **231/186/26/28/49/44** for torso/sleeve, sleeve/leg and waist/leg pairs respectively. New world-space BVH native fixture and pure tests passed; candidate native gate stayed deliberately red. This closes the previous reporting blind spot only, not the garment collisions. The four-angle diagnostic images and authored `.blend` were archived in that run (temporary artifact retention **14 days**).
+
+**Known missing inputs:** actual photographed-model Blender source/pose and side/back references, measured garment construction and fabric repeat/grain details; do not invent them. Current torso/sleeve source scan is not a genuine tailored sewn pattern.
+
+**NEXT ACTION:** retrieve #675 latest exact-head native source workflow, inspect the connected candidate's source topology report and four-angle render. Reject if missing seam edges/components, native body or leg collisions or worse silhouette. If candidate passes this provisional proof, proceed to sleeve/armhole panel loops and independent collar/placket/cuff geometry on a *separate* geometry candidate and repeat native visual/contact tests. Update branch SHA/evidence and next action. Do not merge or deploy.
+
 ## Git lineage / concurrency
 
 - Repository: `slokpatel-crypto/llinenearth-designer`.
