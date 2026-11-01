@@ -45,6 +45,20 @@ async function main(){
     for await(const chunk of req)parts.push(chunk);
     const payload=JSON.parse(Buffer.concat(parts).toString("utf8"));
     seen.push({path,headers:req.headers,payload});
+    if(path==="/rest/v1/rpc/designer_locked_revision_vault_delete"){
+      assert.equal(req.method,"POST");
+      assert.equal(payload.p_vault_id,vaultId);
+      assert.equal(payload.p_access_hash,expectedHash);
+      const ack={
+        deleteTrue:"true",deleteFalse:"false",deleteNull:"null",
+        deleteString:'"false"',deleteObject:'{"deleted":false}',
+        deleteArray:"[false]",deleteMalformed:"{not-json",
+      };
+      const mime=mode==="deleteWrongMime"?"text/plain":"application/json";
+      res.writeHead(mode==="delete500"?500:200,{"content-type":mime});
+      res.end(mode==="delete500"?JSON.stringify({error:privateMarker}):
+        ack[mode]??"true");return;
+    }
     assert.equal(path,"/rest/v1/rpc/designer_locked_revision_vault_get");
     assert.equal(req.method,"POST");
     assert.equal(payload.p_vault_id,vaultId);
@@ -125,8 +139,27 @@ async function main(){
       if(kind==="missing")assert.deepEqual(data,{error:"Design not found or recovery token expired."});
       if(expected===503)assert.deepEqual(data,{error:"Secure design storage is temporarily unavailable."});
     }
+    for(const kind of [
+      "deleteTrue","deleteFalse","deleteNull","deleteString",
+      "deleteObject","deleteArray","deleteMalformed","deleteWrongMime","delete500",
+    ]){
+      mode=kind;seen.length=0;
+      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"delete",recoveryToken:token}),
+        signal:AbortSignal.timeout(15000)});
+      const data=await response.json();
+      const isBoolean=kind==="deleteTrue"||kind==="deleteFalse";
+      assert.equal(response.status,isBoolean?200:503,kind);
+      assert.match(response.headers.get("cache-control")||"",/private.*no-store/,kind);
+      assert.equal(seen.length,1,kind+" one delete RPC");
+      assert.equal(seen[0].path,"/rest/v1/rpc/designer_locked_revision_vault_delete");
+      assert.deepEqual(data,isBoolean?
+        {deleted:kind==="deleteTrue"}:
+        {error:"Secure design storage is temporarily unavailable."},kind);
+      assert.ok(!JSON.stringify(data).includes(privateMarker),kind+" must redact upstream data");
+    }
     assert.ok(!output.includes(privateMarker),"sensitive upstream error/JSON must not enter server logs");
-    console.log("TITAN designer vault boundary PASS: 13 synthetic HTTP cases; zero real writes.");
+    console.log("TITAN designer vault boundary PASS: 22 synthetic HTTP cases; zero real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>upstream.close(resolve));
