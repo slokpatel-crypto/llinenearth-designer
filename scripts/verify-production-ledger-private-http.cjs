@@ -3,7 +3,7 @@
 // supplier/customer/operator records are never queried or altered.
 const assert=require("node:assert/strict");
 const {createHmac}=require("node:crypto");
-const {PRODUCTION_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LISTS,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS,LEARNING_CONTEXT_LIST_PATH,LEARNING_CONTEXT_LISTS}=require("./ci-verified-stock-fixture.cjs");
+const {FIXTURE_KEY,PRODUCTION_LISTS,QUOTE_LIST_PATH,ORDER_LIST_PATH,QC_LISTS,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,CUSTOMER_OUTCOME_LISTS,LEARNING_CONTEXT_LIST_PATH,LEARNING_CONTEXT_LISTS}=require("./ci-verified-stock-fixture.cjs");
 const base=new URL(process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000");
 if(process.env.GITHUB_ACTIONS!=="true"||process.env.CI!=="true")
   throw Error("Private production ledger HTTP tests run only in GitHub Actions CI.");
@@ -22,6 +22,15 @@ function request(cookie){
     redirect:"manual",cache:"no-store",signal:AbortSignal.timeout(20_000),
     ...(cookie?{headers:{cookie}}:{}),
   });
+}
+async function setOptionalLedgerMode(mode){
+  const response=await fetch("http://127.0.0.1:54324/__fixture/optional-ledger-mode",{
+    method:"POST",cache:"no-store",signal:AbortSignal.timeout(10_000),
+    headers:{apikey:FIXTURE_KEY,"content-type":"application/json"},
+    body:JSON.stringify({mode}),
+  });
+  assert.equal(response.status,200,"CI-only optional evidence mode switch");
+  assert.deepEqual(await response.json(),{ciFixture:true,mode});
 }
 function assertPrivate(response){
   assert.match(response.headers.get("cache-control")||"",/\bprivate\b/i);
@@ -128,6 +137,31 @@ async function main(){
   assert.equal(Object.hasOwn(contextRow.context.creative,"private_user_note"),false);
   assert.equal(Object.hasOwn(contextRow.context.shirt,"internal_wholesale_cost"),false);
   assert.doesNotMatch(JSON.stringify(data),/DO-NOT-LEAK-CI-/);
+  // Exercise the built authenticated Next route, not only the pure decoder.
+  // The fixture is loopback-only and never reads live supplier/customer SQL.
+  try{
+    await setOptionalLedgerMode("missing");
+    const missing=await request(signedCookie(Date.now()+180_000));
+    assertPrivate(missing);
+    assert.equal(missing.status,200,"literal PGRST202 retains missing-migration compatibility");
+    const absent=await missing.json();
+    assert.deepEqual(absent.optionalEvidenceSources,{
+      qcInstalled:false,customerOutcomesInstalled:false,learningContextInstalled:false,
+    });
+    for(const field of ["qcInspections","customerOutcomes","learningContexts"])
+      assert.deepEqual(absent[field],[],field+" missing-function response must be empty");
+    for(const mode of ["gateway404","other404","oversized404"]){
+      await setOptionalLedgerMode(mode);
+      const failed=await request(signedCookie(Date.now()+180_000));
+      assertPrivate(failed);
+      assert.equal(failed.status,503,mode+" must not masquerade as an absent optional ledger");
+      assert.deepEqual(await failed.json(),{error:"Production records could not be read."},
+        mode+" must not leak the upstream error body");
+    }
+  }finally{
+    await setOptionalLedgerMode("normal");
+  }
+  console.log("Signed operator HTTP optional evidence 404 classification PASS (CI-only fixture).");
   console.log("Signed operator real HTTP nested learning context fields are allowlisted, fit identity is preserved.");
   console.log("Signed operator real HTTP production ledger PASS; quote/order/QC/customer-outcome private fields filtered.");
   console.log("CI fixture only; no genuine supplier inventory, user data, operator approval or production deployment.");

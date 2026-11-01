@@ -15,6 +15,7 @@ import { parseOperatorProductionStatus } from "@/lib/designer/operator-productio
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 import {safeOperatorProductionErrorCode} from "@/lib/designer/operator-production-error";
 import { verifiedOptionalProductionRows } from "@/lib/designer/optional-production-ledger";
+import { isMissingOptionalProductionRpcResponse } from "@/lib/designer/optional-production-rpc-error";
 import { validProductionDeskLedgers, validProductionDeskResponse } from "@/lib/designer/production-desk-ledger";
 import {safeProductionQuoteOrderRows} from "@/lib/designer/production-quote-order-transport";
 import {safeProductionQcRows} from "@/lib/designer/production-qc-transport";
@@ -35,7 +36,7 @@ async function authorized(){
   return verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value);
 }
 class ProductionRpcHttpError extends Error {
-  constructor(readonly status:number){
+  constructor(readonly status:number,readonly missingOptionalRpc=false){
     super("Production request failed ("+status+").");
   }
 }
@@ -50,7 +51,8 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     signal:AbortSignal.timeout(8_000),
   });
   if(!response.ok){
-    throw new ProductionRpcHttpError(response.status);
+    throw new ProductionRpcHttpError(response.status,
+      name.endsWith("_list") && await isMissingOptionalProductionRpcResponse(response));
   }
   // Lists and snapshots are capped separately from single mutation receipts.
   const maxBytes=name.endsWith("_list")?4 * 1024 * 1024:256 * 1024;
@@ -64,7 +66,7 @@ async function readOptionalProductionLedger(name:string,limit:number){
   }catch(error){
     // Only a missing optional RPC preserves compatibility with an older
     // deployment. A 200 malformed body, timeout or 5xx is not an empty ledger.
-    if(error instanceof ProductionRpcHttpError && error.status===404){
+    if(error instanceof ProductionRpcHttpError && error.status===404 && error.missingOptionalRpc){
       return {rows:[] as unknown[],installed:false};
     }
     throw error;

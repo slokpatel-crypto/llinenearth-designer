@@ -16,6 +16,8 @@ const ELIGIBILITY_LIST_PATH="/rest/v1/rpc/production_delivery_eligibility_list";
 // Only the local GitHub Actions fake server can switch this. NEVER imported or
 // used to synthesize actual physical QC, order delivery or supplier receipts.
 let ciEligibilityMode="absent";
+// CI-only optional evidence failures, never used by runtime production routes.
+let ciOptionalLedgerMode="normal";
 const CI_ELIGIBILITY_EXAMPLE=Object.freeze({
   order_id:"123e4567-e89b-42d3-a456-426614174051",
   revision_id:"CI-LOCKED-DESIGN-M117",recipe_hash:"f".repeat(64),
@@ -251,6 +253,20 @@ async function handle(req,res){
     ciEligibilityMode=mode;
     return send(res,200,{ciFixture:true,mode});
   }
+  if(req.method==="POST"&&req.url==="/__fixture/optional-ledger-mode"){
+    if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
+    let raw="";
+    for await(const chunk of req){
+      raw+=chunk.toString("utf8");
+      if(Buffer.byteLength(raw)>128)return send(res,413,{error:"CI mode too large"});
+    }
+    let mode;
+    try{mode=JSON.parse(raw).mode;}catch{return send(res,400,{error:"Invalid CI mode"});}
+    if(!["normal","missing","gateway404","other404","oversized404"].includes(mode))
+      return send(res,400,{error:"Invalid CI optional evidence mode"});
+    ciOptionalLedgerMode=mode;
+    return send(res,200,{ciFixture:true,mode});
+  }
   if(req.method==="GET"&&req.url?.startsWith(METADATA_PATH+"?")){
     const rows=metadataRowsFor(req.method,req.url,req.headers.apikey);
     if(rows===null||req.headers.prefer!=="count=exact") return send(res,403,{error:"Not a CI metadata fixture request"});
@@ -266,6 +282,13 @@ async function handle(req,res){
       if(Buffer.byteLength(raw)>8192) return send(res,413,{error:"CI fixture request too large"});
     }
     const payload=JSON.parse(raw);
+    if([QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,LEARNING_CONTEXT_LIST_PATH].includes(req.url)
+       &&ciOptionalLedgerMode!=="normal"){
+      if(ciOptionalLedgerMode==="missing") return send(res,404,{code:"PGRST202",message:"CI-only missing function"});
+      if(ciOptionalLedgerMode==="gateway404") return send(res,404,{error:"CI-only gateway route not found"});
+      if(ciOptionalLedgerMode==="other404") return send(res,404,{code:"PGRST116",message:"CI-only unrelated PostgREST 404"});
+      if(ciOptionalLedgerMode==="oversized404") return send(res,404,{code:"PGRST202",padding:"x".repeat(5000)});
+    }
     if(req.url===ELIGIBILITY_LIST_PATH){
       if(!payload||typeof payload!=="object"||Array.isArray(payload)||
          payload.p_limit!==100||Object.keys(payload).length!==1)
