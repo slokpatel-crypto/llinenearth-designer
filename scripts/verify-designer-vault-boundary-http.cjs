@@ -37,6 +37,15 @@ async function main(){
     revisionId:"LE-LOCK-20261101180000-"+recipeHash.slice(0,12).toUpperCase(),
     parentRevisionId:null,recipeHash,lockedAt:"2026-11-01T18:00:00.000Z",garmentSpec:spec};
   const privateMarker="SYNTHETIC_PRIVATE_RECOVERY_TOKEN_NOT_FOR_LOGGING";
+  // Every independent fixture scenario uses an RFC 5737 documentation IP.
+  // Otherwise 30+ synthetic tests correctly trip the real 30/min rate guard.
+  let syntheticClientSequence=0;
+  function fixtureHeaders(){
+    const client=++syntheticClientSequence;
+    assert.ok(client<=200,"documentation IP suffix must remain valid");
+    return {"content-type":"application/json","connection":"close",
+      "x-forwarded-for":"198.51.100."+client};
+  }
   let mode="ok";
   const seen=[];
   const upstream=http.createServer(async(req,res)=>{
@@ -78,6 +87,21 @@ async function main(){
       res.writeHead(200,{"content-type":"application/json"});
       res.end('["'+ "x".repeat(8_388_608)+'"]');return;
     }
+    const badRows={
+      rowsNull:"null",rowsObject:"{}",rowsTwo:JSON.stringify([
+        {payload:revision,expires_at:"2027-01-01T00:00:00Z"},
+        {payload:revision,expires_at:"2027-01-01T00:00:00Z"}]),
+      rowsNoPayload:JSON.stringify([{expires_at:"2027-01-01T00:00:00Z"}]),
+      rowsScalarPayload:JSON.stringify([{payload:"wrong",expires_at:"2027-01-01T00:00:00Z"}]),
+      rowsBadExpiry:JSON.stringify([{payload:revision,expires_at:"not-a-timestamp"}]),
+      rowsBadHash:JSON.stringify([{payload:{...revision,recipeHash:"0".repeat(64)},
+        expires_at:"2027-01-01T00:00:00Z"}]),
+      rowsEmptyObject:JSON.stringify([{}]),
+    };
+    if(Object.hasOwn(badRows,mode)){
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end(badRows[mode]);return;
+    }
     res.writeHead(200,{"content-type":"application/json"});
     res.end(mode==="missing"?"[]":JSON.stringify([{payload:revision,expires_at:"2027-01-01T00:00:00Z"}]));
   });
@@ -99,7 +123,7 @@ async function main(){
       if(child.exitCode!==null)throw Error("Next exited: "+output);
       try{
         // Invalid empty request proves the route is alive without touching RPC.
-        const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","connection":"close"},
+        const response=await fetch(url,{method:"POST",headers:fixtureHeaders(),
           body:"null",signal:AbortSignal.timeout(1200)});
         ready=response.status===503;
       }catch{}
@@ -113,7 +137,7 @@ async function main(){
       "{bad",
     ]){
       seen.length=0;
-      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","connection":"close"},
+      const response=await fetch(url,{method:"POST",headers:fixtureHeaders(),
         body,signal:AbortSignal.timeout(15000)});
       const result=await response.json();
       assert.ok([400,503].includes(response.status),"invalid request "+response.status);
@@ -121,9 +145,11 @@ async function main(){
       assert.equal(seen.length,0,"malformed requests must never read backend");
       assert.ok(!JSON.stringify(result).includes(privateMarker),"private marker must not appear");
     }
-    for(const kind of ["backend500","wrongMime","badJson","oversize","missing","ok"]){
+    for(const kind of ["backend500","wrongMime","badJson","oversize","missing","ok",
+      "rowsNull","rowsObject","rowsTwo","rowsNoPayload","rowsScalarPayload",
+      "rowsBadExpiry","rowsBadHash","rowsEmptyObject"]){
       mode=kind;seen.length=0;
-      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","connection":"close"},
+      const response=await fetch(url,{method:"POST",headers:fixtureHeaders(),
         body:JSON.stringify({action:"load",recoveryToken:token}),
         signal:AbortSignal.timeout(15000)}).catch(error=>{
           // Surface the exact case and exit state, but never the recovery token
@@ -134,7 +160,7 @@ async function main(){
             "; private log marker seen="+String(output.includes(privateMarker)));
         });
       const data=await response.json();
-      const expected=kind==="ok"?200:kind==="missing"?404:503;
+      const expected=kind==="ok"?200:kind==="missing"?404:kind==="rowsBadHash"?409:503;
       assert.equal(response.status,expected,kind);
       assert.match(response.headers.get("cache-control")||"",/private.*no-store/,kind);
       assert.equal(seen.length,1,kind+" one vault lookup only");
@@ -145,13 +171,14 @@ async function main(){
       }
       if(kind==="missing")assert.deepEqual(data,{error:"Design not found or recovery token expired."});
       if(expected===503)assert.deepEqual(data,{error:"Secure design storage is temporarily unavailable."});
+      if(expected===409)assert.deepEqual(data,{error:"Stored design failed integrity verification."});
     }
     for(const kind of [
       "deleteTrue","deleteFalse","deleteNull","deleteString",
       "deleteObject","deleteArray","deleteMalformed","deleteWrongMime","delete500",
     ]){
       mode=kind;seen.length=0;
-      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","connection":"close"},
+      const response=await fetch(url,{method:"POST",headers:fixtureHeaders(),
         body:JSON.stringify({action:"delete",recoveryToken:token}),
         signal:AbortSignal.timeout(15000)});
       const data=await response.json();
@@ -166,7 +193,7 @@ async function main(){
       assert.ok(!JSON.stringify(data).includes(privateMarker),kind+" must redact upstream data");
     }
     assert.ok(!output.includes(privateMarker),"sensitive upstream error/JSON must not enter server logs");
-    console.log("TITAN designer vault boundary PASS: 22 synthetic HTTP cases; zero real writes.");
+    console.log("TITAN designer vault boundary PASS: 30 synthetic HTTP cases; zero real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>upstream.close(resolve));
