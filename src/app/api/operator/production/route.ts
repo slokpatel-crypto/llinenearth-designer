@@ -20,6 +20,8 @@ const MAX_OPERATOR_LEDGER_BYTES=8_388_608;
 const MAX_OPERATOR_STATUS_ACK_BYTES=64;
 // PostgreSQL UUID success acknowledgments have a small fixed JSON envelope.
 const MAX_OPERATOR_CREATE_ID_BYTES=128;
+// One locked-design vault row is expected; prevent unbounded design JSON reads.
+const MAX_OPERATOR_LOCKED_REVISION_BYTES=262_144;
 
 async function authorized(){
   const jar=await cookies();
@@ -51,12 +53,17 @@ async function rpc<T>(name:string,payload:Record<string,unknown>,optional=false,
 async function loadVerifiedLockedRevision(recoveryToken:string){
   const parsed=parseDesignVaultRecoveryToken(recoveryToken);
   if(!parsed) throw new Error("A valid locked-design recovery token is required.");
-  const rows=await rpc<Array<{payload:LockedDesignRevision}>>("designer_locked_revision_vault_get",{
+  const rawRows=await rpc<unknown>("designer_locked_revision_vault_get",{
     p_vault_id:parsed.vaultId,
     p_access_hash:parsed.accessHash,
-  });
-  const revision=rows[0]?.payload;
-  if(!revision||!await verifyLockedDesignRevision(revision)){
+  },false,MAX_OPERATOR_LOCKED_REVISION_BYTES);
+  const rows=validateOperatorLedgerRows(rawRows,1) as Array<{payload?:unknown}>;
+  // The vault SQL returns exactly one payload row per accessible token.
+  // No object, duplicate row, or scalar may bypass revision hash verification.
+  if(rows.length!==1||!rows[0]?.payload||typeof rows[0].payload!=="object"||Array.isArray(rows[0].payload))
+    throw new Error("The locked design could not be verified for production.");
+  const revision=rows[0].payload as LockedDesignRevision;
+  if(!await verifyLockedDesignRevision(revision)){
     throw new Error("The locked design could not be verified for production.");
   }
   return revision;
