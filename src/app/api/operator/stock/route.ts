@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { assertCurrentFabricId, readBoundedStockMutationJson, StockMutationPayloadTooLarge, stockMutationRequestError } from "@/lib/designer/operator-stock-safety";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
+import { normalizeManualStockRequest, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { requireStockCloseAck, requireStockCreatedId, requireStockSnapshotRows } from "@/lib/designer/operator-stock-response";
 
@@ -67,15 +67,16 @@ export async function POST(request:Request){
     const body=await readBoundedStockMutationJson(request);
     const action=String(body.action||"");
     if(action==="record"){
-      const draft=stockInput(()=>normalizeManualStockEvent(body));
+      const draft=stockInput(()=>normalizeManualStockRequest(body));
       stockInput(()=>assertCurrentFabricId(draft.fabricId));
-      const eventId=requireStockCreatedId(await rpc<string>("fabric_stock_record_v2",{
+      const eventId=requireStockCreatedId(await rpc<string>("fabric_stock_record_v3",{
         p_fabric_id:draft.fabricId,
         p_event_type:draft.eventType,
         p_quantity_metres:draft.quantityMetres,
         p_note:draft.note,
         p_recorded_by:draft.recordedBy,
         p_source_reference:draft.sourceReference,
+        p_request_key:draft.requestKey,
       }));
       return stockPrivateJson({eventId});
     }
