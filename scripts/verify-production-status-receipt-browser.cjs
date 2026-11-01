@@ -74,6 +74,16 @@ async function runViewport(browser,width){
     });
     const lookup=page.getByRole("button",{name:"Find original status receipt by request ID"});
     await lookup.waitFor({state:"visible",timeout:20_000});
+    // The initial authorized ledger GET must have independently validated and
+    // rendered before receipt recovery begins. Otherwise a test can click while
+    // React is still mounting its operator review state.
+    const review=page.getByRole("button",{name:"I reviewed history — enable writes"});
+    await review.waitFor({state:"visible",timeout:20_000});
+    await page.waitForFunction(()=>{
+      const button=[...document.querySelectorAll("button")]
+        .find(item=>item.textContent?.includes("I reviewed history"));
+      return button&&!button.disabled;
+    },{},{timeout:20_000});
     await assertHold(page);
 
     // A committed receipt is information for manual comparison, NOT permission
