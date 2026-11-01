@@ -156,9 +156,10 @@ export async function POST(request:Request){
       if(status==="delivered"){
         let inspections:Array<{order_id:string;decision:string;inspector?:string;inspection_reference?:string}>=[];
         try{
-          // Delivery must not trust a larger or malformed QC response than the read-only desk.
-          const rawInspections=await rpc<unknown>("finished_garment_qc_list",{p_limit:500},false,MAX_OPERATOR_LEDGER_BYTES);
-          inspections=validateOperatorLedgerRows(rawInspections,500) as Array<{order_id:string;decision:string;inspector?:string;inspection_reference?:string}>;
+          // Query only the target order's two newest inspections; the global 500-row ledger
+          // can omit older orders and must never be an authorization source.
+          const rawInspections=await rpc<unknown>("finished_garment_qc_latest_for_order",{p_order_id:orderId},false,MAX_OPERATOR_LEDGER_BYTES);
+          inspections=validateOperatorLedgerRows(rawInspections,2) as Array<{order_id:string;decision:string;inspector?:string;inspection_reference?:string}>;
         }catch{
           return privateProductionResponse({error:"Finished-garment QC backend must be installed before delivery can be recorded."},{status:409});
         }

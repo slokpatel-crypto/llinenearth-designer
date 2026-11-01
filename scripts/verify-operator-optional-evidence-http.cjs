@@ -24,19 +24,21 @@ const optional=[
   "production_order_learning_context_list",
 ];
 const allowed=new Set(["production_quote_list","production_order_list",...optional]);
+const deliveryQc="finished_garment_qc_latest_for_order";
 async function main(){
   let mode={target:null,kind:"ok"};
   const seen=[];
   const backend=http.createServer(async(req,res)=>{
     const name=(req.url||"").split("/").pop();
     seen.push({name,method:req.method,apikey:req.headers.apikey,authorization:req.headers.authorization});
-    let bytes=0;
-    for await(const chunk of req){bytes+=chunk.length;if(bytes>2048)break;}
+    let bytes=0;const chunks=[];
+    for await(const chunk of req){bytes+=chunk.length;if(bytes>2048)break;chunks.push(chunk);}
+    try{seen[seen.length-1].payload=JSON.parse(Buffer.concat(chunks).toString("utf8"));}catch{}
     // A delivery status write is simulated only in this loopback fixture.
     if(name==="production_order_set_status"&&req.method==="POST"){
       res.writeHead(200,{"content-type":"application/json"});res.end("true");return;
     }
-    if(!allowed.has(name)||req.method!=="POST"){
+    if((!allowed.has(name)&&name!==deliveryQc)||req.method!=="POST"){
       res.writeHead(500,{"content-type":"application/json"});
       res.end(JSON.stringify({code:"UNEXPECTED_RPC"}));return;
     }
@@ -166,7 +168,7 @@ async function main(){
     const deliveryKinds=["successObject","successNull","successScalarRow","successTooMany",
       "successWrongMime","successMalformedJson","successOversizedBytes"];
     for(const kind of deliveryKinds){
-      mode={target:"finished_garment_qc_list",kind};
+      mode={target:deliveryQc,kind};
       seen.length=0;
       const response=await fetch(url,{
         method:"POST",headers:{cookie,"content-type":"application/json"},
@@ -177,12 +179,13 @@ async function main(){
       assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
       assert.deepEqual(await response.json(),
         {error:"Finished-garment QC backend must be installed before delivery can be recorded."},kind);
-      assert.equal(seen.filter(x=>x.name==="finished_garment_qc_list").length,1,kind);
+      assert.equal(seen.filter(x=>x.name===deliveryQc).length,1,kind);
+      assert.equal(seen.find(x=>x.name===deliveryQc)?.payload?.p_order_id,"synthetic-order",kind+" order-scoped");
       assert.equal(seen.filter(x=>x.name==="production_order_set_status").length,0,kind+" must not write");
     }
     // Control: valid synthetic, provenance-backed QC still permits the existing
     // delivery contract. No real Supabase or customer data is touched.
-    mode={target:"finished_garment_qc_list",kind:"qcApproved"};
+    mode={target:deliveryQc,kind:"qcApproved"};
     seen.length=0;
     const approved=await fetch(url,{
       method:"POST",headers:{cookie,"content-type":"application/json"},
@@ -193,9 +196,10 @@ async function main(){
     assert.match(approved.headers.get("cache-control")||"",/private.*no-store/);
     assert.deepEqual(await approved.json(),{updated:true});
     assert.equal(seen.filter(x=>x.name==="production_order_set_status").length,1);
+    assert.equal(seen.find(x=>x.name===deliveryQc)?.payload?.p_order_id,"synthetic-order");
     // A stale approval must not win merely because it was listed first.
     for(const kind of ["qcStaleApproval","qcTied","qcMissingTime"]){
-      mode={target:"finished_garment_qc_list",kind};
+      mode={target:deliveryQc,kind};
       seen.length=0;
       const response=await fetch(url,{
         method:"POST",headers:{cookie,"content-type":"application/json"},
@@ -208,7 +212,7 @@ async function main(){
       assert.match(response.headers.get("cache-control")||"",/private.*no-store/,kind);
       assert.equal(seen.filter(x=>x.name==="production_order_set_status").length,0,kind+" must not write");
     }
-    mode={target:"finished_garment_qc_list",kind:"qcUnsortedApproved"};
+    mode={target:deliveryQc,kind:"qcUnsortedApproved"};
     seen.length=0;
     const unordered=await fetch(url,{
       method:"POST",headers:{cookie,"content-type":"application/json"},
