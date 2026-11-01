@@ -5,7 +5,7 @@ import {readBoundedJsonResponse} from "../src/lib/designer/bounded-json-response
 
 const src=()=>readFileSync("src/app/api/designer/vault/route.ts","utf8");
 
-test("vault ingress bounds decoded JSON and rejects scalar/null request roots",()=>{
+test("vault ingress bounds decoded JSON and rejects scalar/null request roots",async()=>{
   const source=src();
   assert.match(source,/const MAX_VAULT_REQUEST_BYTES=1_048_576/);
   assert.match(source,/readBoundedJsonResponse\(new Response\(request\.body\),MAX_VAULT_REQUEST_BYTES\)/);
