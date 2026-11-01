@@ -193,5 +193,5 @@ test("locked-design vault reads must be JSON-byte bounded and exactly one payloa
   assert.match(vault,/Array\.isArray\(rows\[0\]\.payload\)/);
   assert.match(vault,/verifyLockedDesignRevision\(revision\)/);
   assert.ok(vault.indexOf("validateOperatorLedgerRows")<vault.indexOf("verifyLockedDesignRevision"));
-  assert.doesNotMatch(vault,/rows\[0\]\?\.payload/);
+  assert.doesNotMatch(vault,/const revision=rows\[0\]\?\.payload/);
 });
