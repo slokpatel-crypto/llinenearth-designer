@@ -49,7 +49,9 @@ test("Stock Desk uses deterministic logical retry key and clears it only after v
   assert.ok(post.indexOf("requireStockClientAcknowledgment(body.action,data)")<
     post.indexOf('reservationAttempt.current.confirmed(reservationDraft)'));
   assert.ok(post.indexOf('reservationAttempt.current.confirmed(reservationDraft)')<
-    post.indexOf("setMessage(success)"));
+    post.indexOf("const refreshed=await load()"));
+  assert.ok(post.indexOf("const refreshed=await load()")<
+    post.indexOf("setMessage(refreshed?success:"));
   assert.match(action,/requestKey:reservationAttempt\.current\.keyFor\(draft\)/);
   assert.match(action,/draft\);\}\}/);
   assert.doesNotMatch(src,/requestKey:crypto\.randomUUID\(\)/);

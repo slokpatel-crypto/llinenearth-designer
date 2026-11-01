@@ -20,21 +20,32 @@ export default function StockClient(){
   const [reservation,setReservation]=useState({fabricId:"",revisionId:"",quantityMetres:"",requestedBy:"",sourceReference:""});
   const [close,setClose]=useState({reservationId:"",actualMetres:"",checkedBy:"",sourceReference:"",note:""});
 
-  async function load(){
+  async function load():Promise<boolean>{
+    // A stale previous snapshot must not remain actionable while a new ledger
+    // read is in flight, especially after a confirmed write.
+    setSnapshotState("loading");
     try{
       const response=await fetch("/api/operator/stock",{cache:"no-store"});
-      if(response.status===401){window.location.href="/operator/login?next=/operator/stock";return;}
+      if(response.status===401){
+        setConfigured(false);setStock([]);setSnapshotState("error");
+        window.location.href="/operator/login?next=/operator/stock";
+        return false;
+      }
       if(!response.ok) throw new Error("Stock ledger request failed.");
       const data:unknown=await response.json();
-      if(!data||typeof data!=="object"||!("stock" in data)||!Array.isArray(data.stock))
+      if(!data||typeof data!=="object"||!("stock" in data)||!Array.isArray(data.stock)||
+        !("configured" in data)||data.configured!==true)
         throw new Error("Stock ledger response is invalid.");
-      setConfigured("configured" in data&&data.configured!==false);
+      setConfigured(true);
       setStock(data.stock as StockRow[]);
       setSnapshotState("ready");
+      return true;
     }catch{
       // Never show an API failure as verified zero metres of cloth.
+      setConfigured(false);
       setStock([]);
       setSnapshotState("error");
+      return false;
     }
   }
   useEffect(()=>{
@@ -66,7 +77,9 @@ export default function StockClient(){
       }
       requireStockClientAcknowledgment(body.action,data);
       if(body.action==="reserve"&&reservationDraft) reservationAttempt.current.confirmed(reservationDraft);
-      setMessage(success);await load();
+      const refreshed=await load();
+      setMessage(refreshed?success:
+        "Stock operation acknowledged, but ledger refresh is unavailable. Check the ledger before retrying.");
     }catch(error){setMessage(error instanceof Error?error.message:"Stock operation failed.");}
     finally{mutationGate.current.exit();setBusy(false);}
   }
