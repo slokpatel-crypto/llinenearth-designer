@@ -59,7 +59,7 @@ async function main(){
         res.writeHead(200,{"content-type":"text/plain"});res.end("[]");return;
       }
       if(mode.kind==="successMalformedJson"){
-        res.writeHead(200,{"content-type":"application/json"});res.end("{bad");return;
+        res.writeHead(200,{"content-type":"application/json"});res.end('{"customer":"SYNTHETIC_PRIVATE_RECOVERY_TOKEN_DO_NOT_ECHO",');return;
       }
       if(mode.kind==="successOversizedBytes"){
         res.writeHead(200,{"content-type":"application/json"});
@@ -196,6 +196,8 @@ async function main(){
         assert.equal(req.authorization,undefined,c.name+" must not send bearer secret");
       }
     }
+    assert.ok(!output.includes("SYNTHETIC_PRIVATE_RECOVERY_TOKEN_DO_NOT_ECHO"),
+      "GET parser failures must not log raw customer JSON");
     // The delivery POST uses a separate QC read path; invalid responses must
     // block a status mutation even if the main GET ledger is protected.
     const deliveryKinds=["successObject","successNull","successScalarRow","successTooMany",
