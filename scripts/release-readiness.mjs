@@ -2434,6 +2434,8 @@ requireTokens("scripts/ci-verified-stock-fixture.cjs",[
 requireTokens("scripts/verify-production-creation-receipt-private-http.cjs",[
   "Signed built-Next creation receipt recovery HTTP PASS",
   "Empty is a time-bound observation, NEVER proof of noncommit",
+  "cross-site Fetch Metadata",
+  "Cross-site changes are not allowed.",
   "assertPrivate(failed)",
   "No real order, write, customer contact, supplier stock or live schema",
 ]);
