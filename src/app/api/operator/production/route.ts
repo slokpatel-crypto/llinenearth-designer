@@ -7,14 +7,17 @@ import { parseDesignVaultRecoveryToken } from "@/lib/designer/design-vault";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { buildProductionLearningContext } from "@/lib/designer/production-learning-context";
 import { isMissingOptionalProductionRpc, validateOperatorLedgerRows } from "@/lib/designer/operator-optional-rpc";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 
 export const runtime="nodejs";
+// 8 MiB per list caps decoded upstream bytes, independent of Content-Length.
+const MAX_OPERATOR_LEDGER_BYTES=8_388_608;
 
 async function authorized(){
   const jar=await cookies();
   return verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value);
 }
-async function rpc<T>(name:string,payload:Record<string,unknown>,optional=false):Promise<T>{
+async function rpc<T>(name:string,payload:Record<string,unknown>,optional=false,maxResponseBytes?:number):Promise<T>{
   const config=getSupabaseAdminConfig();
   if(!config) throw new Error("Production backend is not configured.");
   const response=await fetch(`${config.url}/rest/v1/rpc/${name}`,{
@@ -28,6 +31,11 @@ async function rpc<T>(name:string,payload:Record<string,unknown>,optional=false)
     if(optional && await isMissingOptionalProductionRpc(response)) return [] as unknown as T;
     // Do not reflect SQL/backend errors into operator POST responses or logs.
     throw new Error("Production upstream request failed.");
+  }
+  if(maxResponseBytes!==undefined){
+    const mime=response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+    if(mime!=="application/json") throw new Error("Invalid operator ledger response content type.");
+    return await readBoundedJsonResponse(response,maxResponseBytes) as T;
   }
   return await response.json() as T;
 }
@@ -61,11 +69,11 @@ export async function GET(){
     // A failed optional evidence read is NOT an empty ledger. Preserve legacy
     // missing-function compatibility only for a verified PostgREST PGRST202 404.
     const [quotes,orders,qcInspections,customerOutcomes,learningContexts]=await Promise.all([
-      rpc("production_quote_list",{p_limit:100}),
-      rpc("production_order_list",{p_limit:100}),
-      rpc<unknown[]>("finished_garment_qc_list",{p_limit:250},true),
-      rpc<unknown[]>("production_customer_outcome_list",{p_limit:250},true),
-      rpc<unknown[]>("production_order_learning_context_list",{p_limit:500},true),
+      rpc("production_quote_list",{p_limit:100},false,MAX_OPERATOR_LEDGER_BYTES),
+      rpc("production_order_list",{p_limit:100},false,MAX_OPERATOR_LEDGER_BYTES),
+      rpc<unknown[]>("finished_garment_qc_list",{p_limit:250},true,MAX_OPERATOR_LEDGER_BYTES),
+      rpc<unknown[]>("production_customer_outcome_list",{p_limit:250},true,MAX_OPERATOR_LEDGER_BYTES),
+      rpc<unknown[]>("production_order_learning_context_list",{p_limit:500},true,MAX_OPERATOR_LEDGER_BYTES),
     ]);
     // HTTP 200 is not proof of a valid SQL ledger. Reject malformed/oversized
     // list envelopes before any record can appear verified in Production Desk.

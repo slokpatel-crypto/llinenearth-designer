@@ -37,6 +37,16 @@ async function main(){
       res.end(JSON.stringify({code:"UNEXPECTED_RPC"}));return;
     }
     if(name===mode.target && mode.kind!=="ok"){
+      if(mode.kind==="successWrongMime"){
+        res.writeHead(200,{"content-type":"text/plain"});res.end("[]");return;
+      }
+      if(mode.kind==="successMalformedJson"){
+        res.writeHead(200,{"content-type":"application/json"});res.end("{bad");return;
+      }
+      if(mode.kind==="successOversizedBytes"){
+        res.writeHead(200,{"content-type":"application/json"});
+        res.end(JSON.stringify([{id:"synthetic",padding:"x".repeat(8_388_608)}]));return;
+      }
       if(mode.kind==="successObject"||mode.kind==="successNull"||
         mode.kind==="successScalarRow"||mode.kind==="successTooMany"){
         const body=mode.kind==="successObject"?{rows:[]}:
@@ -102,7 +112,7 @@ async function main(){
     const cookie="linen_operator_session="+payload+"."+sig;
     const cases=[{name:"valid empty ledger",target:null,kind:"ok",status:200}];
     for(const target of allowed){
-      for(const kind of ["successObject","successNull","successScalarRow","successTooMany"])
+      for(const kind of ["successObject","successNull","successScalarRow","successTooMany","successWrongMime","successMalformedJson","successOversizedBytes"])
         cases.push({name:target+" "+kind,target,kind,status:503});
     }
     for(const target of optional){
