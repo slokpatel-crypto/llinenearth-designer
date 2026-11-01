@@ -69,6 +69,9 @@ export default function ProductionClient(){
   const ledgerReadVersion=useRef(0);
   const verifiedLedgerReadVersion=useRef(0);
   const verifiedWriteReviewSnapshot=useRef<ProductionWriteReviewSnapshot|null>(null);
+  // A review must be refreshed AFTER acquiring the full-request session lock.
+  // A GET made while a remote SQL write was active cannot authorize its clearance.
+  const verifiedReviewSessionReadVersion=useRef(0);
   // A verified HTTP response is not yet visible to an operator until React
   // commits its corresponding history. Do not acknowledge an unseen ledger.
   const [renderedLedgerReadVersion,setRenderedLedgerReadVersion]=useState(0);
@@ -87,6 +90,7 @@ export default function ProductionClient(){
 
   async function load(expected?:{action:unknown;body:Record<string,unknown>;receipt:unknown}):Promise<boolean>{
     const readVersion=++ledgerReadVersion.current;
+    verifiedReviewSessionReadVersion.current=0;
     const reviewSnapshot=captureProductionWriteReviewSnapshot(safeProductionHoldStorage());
     verifiedWriteReviewSnapshot.current=null;
     verifiedLedgerReadVersion.current=0;
@@ -181,6 +185,7 @@ export default function ProductionClient(){
         ledgerReadVersion.current+=1;
         verifiedLedgerReadVersion.current=0;
         verifiedWriteReviewSnapshot.current=null;
+        verifiedReviewSessionReadVersion.current=0;
         setRenderedLedgerReadVersion(0);
         setConfigured(false);
         setRecoveredCreationReceipts(null);
@@ -356,7 +361,7 @@ export default function ProductionClient(){
     try{
       const locks=navigator.locks;
       if(!locks||typeof locks.request!=="function")throw new Error("Web Locks unavailable");
-      void locks.request(PRODUCTION_WRITE_SESSION_LOCK_NAME,{mode:"exclusive",ifAvailable:true},lock=>{
+      void locks.request(PRODUCTION_WRITE_SESSION_LOCK_NAME,{mode:"exclusive",ifAvailable:true},async lock=>{
         if(!lock){
           setMessage("Another tab has an active production write. Do not acknowledge until it completes and current history is refreshed.");
           return;
@@ -369,12 +374,24 @@ export default function ProductionClient(){
           setMessage("Production write history changed after the last verified refresh. Refresh again before acknowledging.");
           return;
         }
+        if(verifiedReviewSessionReadVersion.current!==ledgerReadVersion.current){
+          // The old GET may have overlapped an active SQL POST. Re-read under
+          // the acquired session lock and require a SECOND deliberate click
+          // after React renders that independently verified history.
+          const refreshed=await load();
+          if(refreshed&&verifiedLedgerReadVersion.current===ledgerReadVersion.current){
+            verifiedReviewSessionReadVersion.current=ledgerReadVersion.current;
+            setMessage("Production history rechecked with no active browser write. Review the updated records, then click acknowledgement again.");
+          }
+          return;
+        }
         // A completed remote write may have removed its marker. Clear stale UI
         // only after checking the exact reviewed epoch under the session lock.
         if(snapshot.holdToken!==null&&!acknowledgeProductionWriteHold(storage,snapshot.holdToken)){
           setMessage("Pending production request changed. Do not clear another write; refresh history and review again.");
           return;
         }
+        verifiedReviewSessionReadVersion.current=0;
         setRequiresWriteReview(false);
         setPendingWriteReview(null);
         setRecoveredCreationReceipts(null);
