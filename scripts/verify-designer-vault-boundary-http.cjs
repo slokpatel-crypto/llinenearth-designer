@@ -37,6 +37,15 @@ async function main(){
     revisionId:"LE-LOCK-20261101180000-"+recipeHash.slice(0,12).toUpperCase(),
     parentRevisionId:null,recipeHash,lockedAt:"2026-11-01T18:00:00.000Z",garmentSpec:spec};
   const privateMarker="SYNTHETIC_PRIVATE_RECOVERY_TOKEN_NOT_FOR_LOGGING";
+  // Every independent fixture scenario uses an RFC 5737 documentation IP.
+  // Otherwise 30+ synthetic tests correctly trip the real 30/min rate guard.
+  let syntheticClientSequence=0;
+  function fixtureHeaders(){
+    const client=++syntheticClientSequence;
+    assert.ok(client<=200,"documentation IP suffix must remain valid");
+    return {"content-type":"application/json","connection":"close",
+      "x-forwarded-for":"198.51.100."+client};
+  }
   let mode="ok";
   const seen=[];
   const upstream=http.createServer(async(req,res)=>{
@@ -114,7 +123,7 @@ async function main(){
       if(child.exitCode!==null)throw Error("Next exited: "+output);
       try{
         // Invalid empty request proves the route is alive without touching RPC.
-        const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","connection":"close"},
+        const response=await fetch(url,{method:"POST",headers:fixtureHeaders(),
           body:"null",signal:AbortSignal.timeout(1200)});
         ready=response.status===503;
       }catch{}
@@ -128,7 +137,7 @@ async function main(){
       "{bad",
     ]){
       seen.length=0;
-      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","connection":"close"},
+      const response=await fetch(url,{method:"POST",headers:fixtureHeaders(),
         body,signal:AbortSignal.timeout(15000)});
       const result=await response.json();
       assert.ok([400,503].includes(response.status),"invalid request "+response.status);
@@ -140,7 +149,7 @@ async function main(){
       "rowsNull","rowsObject","rowsTwo","rowsNoPayload","rowsScalarPayload",
       "rowsBadExpiry","rowsBadHash","rowsEmptyObject"]){
       mode=kind;seen.length=0;
-      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","connection":"close"},
+      const response=await fetch(url,{method:"POST",headers:fixtureHeaders(),
         body:JSON.stringify({action:"load",recoveryToken:token}),
         signal:AbortSignal.timeout(15000)}).catch(error=>{
           // Surface the exact case and exit state, but never the recovery token
@@ -169,7 +178,7 @@ async function main(){
       "deleteObject","deleteArray","deleteMalformed","deleteWrongMime","delete500",
     ]){
       mode=kind;seen.length=0;
-      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","connection":"close"},
+      const response=await fetch(url,{method:"POST",headers:fixtureHeaders(),
         body:JSON.stringify({action:"delete",recoveryToken:token}),
         signal:AbortSignal.timeout(15000)});
       const data=await response.json();
