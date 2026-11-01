@@ -8,6 +8,7 @@ import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/des
 import { buildProductionLearningContext } from "@/lib/designer/production-learning-context";
 import {secureJsonRequestError,readSecureJsonObject,SecureJsonBodyTooLarge,SecureJsonBodyInvalid} from "@/lib/secure-json-request";
 import {safeOperatorProductionErrorCode} from "@/lib/designer/operator-production-error";
+import {readBoundedJsonResponse} from "@/lib/designer/bounded-json-response";
 
 export const runtime="nodejs";
 
@@ -30,7 +31,10 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     // recovery tokens, customer details or supplier-pricing information.
     throw new Error("Production upstream request failed.");
   }
-  return await response.json() as T;
+  // Enforce an actual stream bound independently of Content-Length.
+  // SQL lists can be larger than single mutation receipts, but not unlimited.
+  const maxBytes=name.endsWith("_list")?4 * 1024 * 1024:256 * 1024;
+  return await readBoundedJsonResponse(response,maxBytes) as T;
 }
 
 async function loadVerifiedLockedRevision(recoveryToken:string){
