@@ -65,8 +65,13 @@ export function requireStockSnapshotRows(value:unknown):OperatorStockSnapshotRow
     const manual_event_count=count(r.manual_event_count);
     const provenance_event_count=count(r.provenance_event_count);
     const legacy_unverified_event_count=count(r.legacy_unverified_event_count);
-    if(provenance_event_count+legacy_unverified_event_count>manual_event_count||
-      typeof r.provenance_ready!=="boolean"||
+    // The SQL snapshot partitions all manual receipt/adjustment events
+    // into documented and legacy-unverified entries. Any contradictory
+    // "ready" flag is a malformed upstream result, not certified cloth.
+    const expectedReady=manual_event_count>0&&legacy_unverified_event_count===0;
+    if(legacy_unverified_event_count>manual_event_count||
+      provenance_event_count!==manual_event_count-legacy_unverified_event_count||
+      r.provenance_ready!==expectedReady||
       (r.last_event_at!==null&&
         (typeof r.last_event_at!=="string"||!Number.isFinite(Date.parse(r.last_event_at)))))
       throw new Error("Invalid stock provenance metadata.");
