@@ -101,8 +101,8 @@ async function runViewport(browser,width){
     // retain the original request key for independent investigation.
     await setMode("upstream");
     await lookup.click();
-    await page.getByRole("status").getByText("Original status receipt could not be verified",{
-      exact:false,
+    await page.getByRole("status").filter({
+      hasText:"Original status receipt could not be verified",
     }).waitFor({state:"visible",timeout:15_000});
     assert.equal(await receipts.count(),0,"A failed lookup must revoke the previous receipt display");
     await assertHold(page);
@@ -143,9 +143,15 @@ async function runViewport(browser,width){
     await page.evaluate(({holdKey,changedKey})=>{
       localStorage.setItem(holdKey,changedKey);
     },{holdKey,changedKey});
+    assert.equal(await lookup.isDisabled(),true,"Deferred lookup must still hold the UI action lock");
     await page.evaluate(()=>window.__titanStatusReceiptRace.release());
-    await page.getByRole("status").getByText("Original status receipt could not be verified",{
-      exact:false,
+    await page.waitForFunction(()=>{
+      const button=[...document.querySelectorAll("button")]
+        .find(item=>item.textContent?.includes("Find original status receipt by request ID"));
+      return button&&!button.disabled;
+    },{},{timeout:15_000});
+    await page.getByRole("status").filter({
+      hasText:"Original status receipt could not be verified",
     }).waitFor({state:"visible",timeout:15_000});
     assert.equal(await receipts.count(),0,
       "A receipt for the superseded marker must never be shown as a committed fact");
