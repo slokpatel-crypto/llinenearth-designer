@@ -10,8 +10,8 @@ from source_arm_centerline import sample_scanned_arm_path
 class SourceArmSamplingTests(unittest.TestCase):
     def setUp(self):
         self.points=[]
-        for i in range(6):
-            z=1.245-(.26*i/5)
+        for i in range(5):
+            z=1.245-(.065*i)
             for side in (-1,1):
                 for j in range(30):
                     self.points.append((side*(.310 + ((j%7)-3)*.008),
