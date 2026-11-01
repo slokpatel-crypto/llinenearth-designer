@@ -185,6 +185,18 @@ async function runViewport(browser,width){
         .find(x=>x.textContent?.includes("I reviewed history"));
       return b&&!b.disabled;
     },{}, {timeout:15_000});
+    // M139: the first review click must independently refresh history while
+    // holding the full production-session lock. It may NOT clear the warning
+    // based on a GET that could have overlapped an in-flight remote SQL write.
+    await review.click();
+    await page.getByRole("alert",{name:"Production write review required"})
+      .waitFor({state:"visible",timeout:15_000});
+    await page.waitForFunction(()=>{
+      const b=[...document.querySelectorAll("button")]
+        .find(x=>x.textContent?.includes("I reviewed history"));
+      return document.body.textContent?.includes("Production history rechecked with no active browser write")
+        &&b&&!b.disabled;
+    },{}, {timeout:15_000});
     await review.click();
     await page.getByRole("alert",{name:"Production write review required"})
       .waitFor({state:"hidden",timeout:15_000});
@@ -196,6 +208,7 @@ async function runViewport(browser,width){
     await page.screenshot({path:path.join(out,"cross-tab-"+width+".png"),fullPage:true});
     return {width,positivePacket:true,completedCrossTabWriteBlocked:true,
       staleReviewBlocked:true,completedRemoteReviewRecovered:true,
+      postSessionTwoStepReview:true,
       stalePackets:0,productionPosts:0,syntheticOnly:true};
   }finally{await ctx.close();}
 }
