@@ -60,3 +60,18 @@ test("only bounded PostgREST PGRST202 404 proves a missing optional evidence RPC
       "only a small literal missing-function 404 may disable an optional ledger");
   }
 });
+
+
+test("signed built-Next HTTP tests exercise both missing-function compatibility and generic 404 veto",()=>{
+  const fixture=readFileSync("scripts/ci-verified-stock-fixture.cjs","utf8");
+  const http=readFileSync("scripts/verify-production-ledger-private-http.cjs","utf8");
+  const workflow=readFileSync(".github/workflows/ci.yml","utf8");
+  assert.ok(fixture.includes('/__fixture/optional-ledger-mode'));
+  for(const mode of ["missing","gateway404","other404","oversized404"]){
+    assert.ok(fixture.includes('ciOptionalLedgerMode==="'+mode+'"'),"missing fixture response "+mode);
+    assert.ok(http.includes('setOptionalLedgerMode("'+mode+'")'),"missing signed HTTP case "+mode);
+  }
+  assert.ok(http.includes('assert.equal(failed.status,503'));
+  assert.ok(http.includes('await setOptionalLedgerMode("normal")'));
+  assert.ok(workflow.includes("node scripts/verify-production-ledger-private-http.cjs"));
+});
