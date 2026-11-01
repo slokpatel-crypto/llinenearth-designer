@@ -2387,3 +2387,19 @@ if (failed) {
 }
 
 console.log("\nLinen Earth release foundation is ready.");
+
+
+// M140: the native helper alone is insufficient. The signed two-tab browser
+// must drive the actual React order-status handler with a deferred, intercepted
+// POST and prove another tab cannot acknowledge it while the session is active.
+requireTokens("scripts/verify-production-native-web-locks-browser.cjs",[
+  "statusSelect.selectOption(\"cloth_reserved\")",
+  "window.__titanUiDeferredPost=state",
+  "Actual React production handler must hold the native session lock",
+  "Real React review must not clear a different tab",
+  "Exactly one synthetic UI POST was intercepted",
+  "Real UI contention test must never send a production POST over HTTP",
+]);
+requireTokens("tests/production-native-web-locks-browser-contract.test.ts",[
+  "M140 signed browser drives real operator POST while second tab attempts review",
+]);
