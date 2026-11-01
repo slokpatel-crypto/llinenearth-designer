@@ -2560,6 +2560,25 @@ requireTokens(".github/workflows/ci.yml",[
 
 // FINAL fail/pass decision belongs AFTER EVERY contract assertion, including
 // last-appended M140/M149 checks. Adding a guard after this must fail tests.
+// M150: localStorage.clear() broadcasts StorageEvent.key=null across tabs.
+// A previously verified Production Desk must fail closed on that event.
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "event.key===null||event.key===PRODUCTION_WRITE_HOLD_KEY",
+  "protected browser storage was cleared",
+]);
+requireTokens("scripts/verify-production-storage-clear-browser.cjs",[
+  "M150 signed Chromium cross-tab storage-clear write veto PASS.",
+  "for(const width of [390,768,1440])",
+  "await b.evaluate(()=>localStorage.clear())",
+  "A fresh GET alone must not clear a storage-loss uncertainty hold",
+]);
+requireTokens("tests/production-storage-clear-browser-contract.test.ts",[
+  "M150 cross-tab localStorage.clear must revoke verified operator history",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-storage-clear-browser.cjs",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
