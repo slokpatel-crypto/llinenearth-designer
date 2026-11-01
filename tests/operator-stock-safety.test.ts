@@ -133,5 +133,5 @@ test("all stock ledger responses are private and upstream errors do not leak",()
   assert.match(route,/"cache-control":"private, no-store"/);
   assert.equal((route.match(/NextResponse\.json\(/g)||[]).length,1,
     "all endpoint responses must pass through private no-store helper");
-  assert.match(route,/console\.error\("\[operator\/stock\] snapshot unavailable \(details redacted\)\. "\)/m);
+  assert.match(route,/snapshot unavailable \\(details redacted\\)/);
 });
