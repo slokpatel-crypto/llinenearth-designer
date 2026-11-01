@@ -2,6 +2,13 @@
 
 Updated: 2026-11-01. Status: **REJECTED 3D candidate; NOT production-ready**.
 
+## Current next evidence — real shoulder, sleeve and back-waist contact height bands
+
+Same draft PR #686, branch `work/titan-3d-sleeve-section-fit-20261101`. After exact native source-section fit measured 1954 total source Body crossings and back/waist 72 unresolved, added `scripts/blender/shirt_spatial_contact.py` (commit `6fd12ffe24860d5a49c300a3e678352e27a29eb5`) and `tests/python/test_shirt_spatial_contact.py` (`66d33a4d5ec5dcc4b58fd6b4b45d5223b0c990ad`). These pure functions partition EVERY actual source polygon exactly once by real z from source vertex coordinates (experimental spatial labels: hem/waist/underarm/shoulder, NOT measured apparel fit), preserving its role (back, left sleeve, right sleeve); other garment roles remain unchanged. Blender source native `construct-authored-shirt-pattern.py` now measures independent world-space BVH Body and TrouserWaist contacts for each spatial group, destroys all temporary objects and requires count sum + face coverage to reconcile exactly with full source contacts (commit `d8bb0c88c3d20cb2c9cc64647af76cd2e55c5188`). It writes `nativeSourceHeightBodyWaistContactPartitions` in the existing independent native JSON and logs. No geometry changed compared with prior 1954 source-section candidate. Await exact latest-head Python and native Blender receipt; do not infer collision band positions before they are measured.
+
+**NEXT:** use actual sleeve shoulder/underarm and back hem/waist contact bands and four-angle visual proof to plan legitimate source-yoke/armhole/back waist construction. No arbitrary garment inflation or bypass of the original production gate. Photo identity, tailors and fabric truth remain unverified; no merge/deploy.
+
+
 ## Latest verified native sleeve-section fit — PROVISIONAL geometry improvement, REJECT for production
 
 **Current branch** `work/titan-3d-sleeve-section-fit-20261101`, draft PR **#686**. Source Blender 4.5.14 exact-head run **41301331432**, candidate .blend and four-angle diagnostic artifact **13082115531** (14-day Actions retention), source authored scene SHA256 `a14236f0fca15a1e60224c25341afaf44223753c5fd1fa8b09c739b67dc9818f`. Recorded machine-readable counts `docs/TITAN_3D_SECTION_FIT_NATIVE_20261101.json` commit `0489f94aeeaed3fec0e1e13e23923488e9c65dee`. Re-read latest HEAD/CI; docs-only commits advance head after the measured run.
