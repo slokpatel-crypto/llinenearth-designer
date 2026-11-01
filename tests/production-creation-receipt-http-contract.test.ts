@@ -30,6 +30,10 @@ test("M146 signed built-Next creation lookup covers auth, privacy and uncertain 
   assert.ok(script.includes("DO-NOT-LEAK-CI-"));
   assert.ok(script.includes('action:"creation_receipt_lookup"'));
   assert.ok(script.includes("No real order, write, customer contact, supplier stock or live schema."));
+  assert.ok(script.includes('["foreign Origin",{"origin":"https://cross-site-attacker.invalid"}]'));
+  assert.ok(script.includes('["cross-site Fetch Metadata",{"sec-fetch-site":"cross-site"}]'));
+  assert.ok(script.includes('response.status,403,description+" must fail despite a signed session"'));
+  assert.ok(script.includes('Cross-site changes are not allowed.'));
   assert.ok(workflow.includes("node scripts/verify-production-creation-receipt-private-http.cjs"));
   assert.ok(route.includes('rpc<unknown>("production_creation_request_receipt_lookup",{p_request_key:key})'));
   assert.ok(route.includes('parseProductionCreationReceipts(rows)'));
