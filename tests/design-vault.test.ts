@@ -1,4 +1,5 @@
 import test from "node:test";
+import {readFileSync} from "node:fs";
 import assert from "node:assert/strict";
 import {
   createDesignVaultAccessKey,
@@ -46,4 +47,15 @@ test("vault store acknowledgments require a canonicalizable UUID string before o
     "b287e470-0e90-0fd4-b5fb-976eecebd244",
     "b287e470-0e90-4fd4-75fb-976eecebd244",
   ]) assert.throws(()=>requireDesignVaultCreatedId(value),/Invalid design vault creation acknowledgment/);
+});
+
+test("vault store checks UUID shape before attempting account ownership or issuing recovery tokens",()=>{
+  const route=readFileSync("src/app/api/designer/vault/route.ts","utf8");
+  const store=route.split('if(action==="store"){')[1]?.split('if(action==="listOwned"){')[0]??"";
+  assert.match(store,/requireDesignVaultCreatedId\(await rpc<unknown>\("designer_locked_revision_vault_store"/);
+  assert.ok(store.indexOf("requireDesignVaultCreatedId")<
+    store.indexOf("designer_locked_revision_vault_set_owner"));
+  assert.ok(store.indexOf("requireDesignVaultCreatedId")<
+    store.indexOf("createDesignVaultRecoveryToken"));
+  assert.doesNotMatch(store,/if\(!vaultId\)/);
 });
