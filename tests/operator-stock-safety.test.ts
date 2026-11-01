@@ -77,7 +77,7 @@ test("actual stock mutation handler applies byte limit before privileged RPC",()
   const firstRpc=code.indexOf('rpc<string>("fabric_stock_record_v2"');
   assert.ok(parse>0&&firstRpc>parse);
   assert.ok(code.includes("error instanceof StockMutationPayloadTooLarge"));
-  assert.ok(code.includes("{status:413}"));
+  assert.match(code,/status:413[,}]/);
 });
 
 test("operator release UI supplies the real named checker and physical cancellation reference",()=>{
@@ -133,5 +133,5 @@ test("all stock ledger responses are private and upstream errors do not leak",()
   assert.match(route,/"cache-control":"private, no-store"/);
   assert.equal((route.match(/NextResponse\.json\(/g)||[]).length,1,
     "all endpoint responses must pass through private no-store helper");
-  assert.match(route,/snapshot unavailable \\(details redacted\\)/);
+  assert.ok(route.includes("snapshot unavailable (details redacted)."));
 });
