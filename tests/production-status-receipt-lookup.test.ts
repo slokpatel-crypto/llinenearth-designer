@@ -84,3 +84,21 @@ test("signed built-Next HTTP exercises exact status receipt recovery failures",(
   assert.match(http,/expired/);
   assert.ok(workflow.includes("node scripts/verify-production-status-receipt-private-http.cjs"));
 });
+
+
+test("M144 signed browser UI never treats a status receipt as permission to retry",()=>{
+  const browser=readFileSync("scripts/verify-production-status-receipt-browser.cjs","utf8");
+  const workflow=readFileSync(".github/workflows/ci.yml","utf8");
+  assert.ok(browser.includes("M144 signed status-receipt browser test is GitHub Actions CI-only."));
+  assert.ok(browser.includes("for(const width of [390,768,1440])"));
+  for(const text of [
+    "committed status: accepted",
+    "committed status: delivered",
+    "This is NOT proof that retrying is safe",
+    "A receipt for the superseded marker must never be shown",
+    "changedMarkerVeto:true",
+    'productionPostActions.every(action=>action==="status_receipt_lookup")',
+    "No production write, live SQL, customer data or human signoff.",
+  ])assert.ok(browser.includes(text),"Missing signed browser safety case "+text);
+  assert.ok(workflow.includes("node scripts/verify-production-status-receipt-browser.cjs"));
+});
