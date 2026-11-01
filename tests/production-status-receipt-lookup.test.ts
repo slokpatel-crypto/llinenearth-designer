@@ -130,3 +130,20 @@ test("operator browser strictly accepts sanitized camelCase status receipts, not
   assert.equal(parseProductionStatusReceipts(good),null,
     "Server SQL parser must NOT accept API-shaped objects");
 });
+
+
+test("M149 signed status receipt browser rejects unchanged key with changed write epoch",()=>{
+  const browser=readFileSync("scripts/verify-production-status-receipt-browser.cjs","utf8");
+  const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  for(const marker of [
+    'const epochKey="linen-earth:production:write-epoch:v1"',
+    "window.__titanStatusReceiptRace?.intercepted===2",
+    "localStorage.setItem(epochKey,changedEpoch)",
+    "unchanged request UUID but changed write epoch must veto stale status evidence",
+    "changedEpochVeto:true",
+    "productionPostActions.length>=5",
+    "M149 signed Chromium status-receipt same-key changed-epoch veto PASS",
+  ])assert.ok(browser.includes(marker),"M149 browser acceptance missing "+marker);
+  assert.ok(client.includes("productionWriteReviewSnapshotUnchanged(safeProductionHoldStorage(),snapshot)"),
+    "Status lookup must verify the original marker AND write epoch before rendering receipts");
+});
