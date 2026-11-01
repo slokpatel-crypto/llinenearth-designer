@@ -14,13 +14,13 @@ function runIgnore(env:Record<string,string|undefined>){
   return {status:result.status,stdout:result.stdout,stderr:result.stderr};
 }
 
-test("Vercel Git config disables every branch except main",()=>{
+test("Vercel Git config disables every automatic deployment including main",()=>{
   const config=JSON.parse(fs.readFileSync("vercel.json","utf8")) as {
-    git?:{deploymentEnabled?:Record<string,boolean>};
+    git?:{deploymentEnabled?:boolean};
     ignoreCommand?:string;
   };
-  assert.equal(config.git?.deploymentEnabled?.["**"],false);
-  assert.equal(config.git?.deploymentEnabled?.main,true);
+  assert.equal(config.git?.deploymentEnabled,false,
+    "No branch, including main, may trigger automatic Vercel deployment");
   assert.equal(config.ignoreCommand,"node scripts/vercel-ignore.mjs");
 });
 

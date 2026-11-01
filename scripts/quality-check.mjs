@@ -72,18 +72,18 @@ console.log("Linen Earth brand spelling gate passed: no double-L typo remains in
 
 const vercelConfig = JSON.parse(fs.readFileSync("vercel.json","utf8"));
 if (vercelConfig.ignoreCommand !== "node scripts/vercel-ignore.mjs") throw new Error("Vercel duplicate-build guard regression: ignoreCommand changed.");
-if (vercelConfig.git?.deploymentEnabled?.["**"] !== false || vercelConfig.git?.deploymentEnabled?.main !== true) {
-  throw new Error("Vercel Git deployment policy regression: only main may auto-deploy.");
+if (vercelConfig.git?.deploymentEnabled !== false) {
+  throw new Error("Vercel Git deployment policy regression: no branch may auto-deploy.");
 }
 const vercelIgnore = fs.readFileSync("scripts/vercel-ignore.mjs","utf8");
 for (const token of ["VERCEL_PROJECT_ID","VERCEL_GIT_COMMIT_REF","VERCEL_GIT_COMMIT_MESSAGE","prj_b3rwwOl5OI0VV3qYyKXPFOloCllT","PRODUCTION_BRANCH = \"main\"","DEPLOY_MARKER = \"[deploy]\"","no [deploy] milestone marker","process.exit(0)","process.exit(1)"]) {
   if (!vercelIgnore.includes(token)) throw new Error(`Vercel deployment guard regression: missing ${token}`);
 }
 const vercelPolicyTest=fs.readFileSync("tests/vercel-deployment-policy.test.ts","utf8");
-for (const token of ["disables every branch except main","ignores preview branches","ordinary primary main commits are ignored","explicitly marked primary main commit continues the production build"]) {
+for (const token of ["disables every automatic deployment including main","ignores preview branches","ordinary primary main commits are ignored","explicitly marked primary main commit continues the production build"]) {
   if(!vercelPolicyTest.includes(token)) throw new Error(`Vercel deployment-policy test regression: missing ${token}`);
 }
-console.log("Vercel deployment guard passed: only explicitly marked primary-main milestones may consume production build quota.");
+console.log("Vercel deployment guard passed: all Git deployments disabled; fallback primary-project build marker remains inactive.");
 const ciWorkflow=fs.readFileSync(".github/workflows/ci.yml","utf8");
 for(const token of ["concurrency:","github.event.pull_request.number || github.ref","cancel-in-progress: true"]) {
   if(!ciWorkflow.includes(token)) throw new Error(`CI concurrency regression: missing ${token}`);
