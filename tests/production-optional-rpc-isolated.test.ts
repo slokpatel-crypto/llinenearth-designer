@@ -38,6 +38,8 @@ test("actual authenticated operator GET never swallows optional ledger failures"
   assert.equal((get.match(/,true,MAX_OPERATOR_LEDGER_BYTES\)/g)||[]).length,3);
   assert.doesNotMatch(get,/catch\s*\{\s*\/\/ Keep/);
   assert.match(get,/status:503/);
+  assert.match(get,/GET failed \(details redacted\)/);
+  assert.doesNotMatch(get,/console\.error\("\[operator\/production\]",error\)/);
   assert.match(route,/response\.headers\.set\("cache-control","private, no-store"\)/);
 });
 
