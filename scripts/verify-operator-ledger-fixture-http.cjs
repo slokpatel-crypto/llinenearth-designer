@@ -23,6 +23,7 @@ const fixture = http.createServer(async (req, res) => {
     assert.ok(Object.hasOwn(lists, name), "Only allowlisted read RPCs permitted");
     assert.equal(req.method, "POST");
     assert.equal(req.headers.apikey, key);
+    assert.equal(req.headers.authorization, undefined, "Synthetic Supabase secret key must not be sent as a bearer token");
     let body = "";
     for await (const part of req) body += part;
     assert.deepEqual(JSON.parse(body), { p_limit: lists[name] });
@@ -69,9 +70,32 @@ async function main() {
     }
     assert.ok(ready, `Fixture Next did not start: ${output}`);
     assert.equal(calls.length, 0, "Anonymous readiness must not read a ledger");
-    const payload = Buffer.from(JSON.stringify({ v: 1, exp: Date.now() + 120000 })).toString("base64url");
-    const cookie = "linen_operator_session=" + payload + "." + createHmac("sha256", secret).update(payload).digest("base64url");
+    function signedCookie(data) {
+      const payload = Buffer.from(JSON.stringify(data)).toString("base64url");
+      return "linen_operator_session=" + payload + "." + createHmac("sha256", secret).update(payload).digest("base64url");
+    }
+    const cookie = signedCookie({ v: 1, exp: Date.now() + 120000 });
     let cases = 0;
+    async function rejectSession(name, suppliedCookie) {
+      scenario = {};
+      calls = [];
+      fixtureFault = undefined;
+      const headers = suppliedCookie ? { cookie: suppliedCookie } : {};
+      const response = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
+      assert.equal(response.status, 401, name);
+      assert.match(response.headers.get("cache-control") || "", /private.*no-store/, name);
+      assert.deepEqual(await response.json(), { error: "Unauthorized." }, name);
+      assert.ifError(fixtureFault);
+      assert.equal(calls.length, 0, `${name}: rejected sessions must not contact PostgREST`);
+      cases++;
+    }
+    await rejectSession("anonymous GET", null);
+    await rejectSession("malformed session", "linen_operator_session=garbage");
+    await rejectSession("forged HMAC", cookie.split(".")[0] + "." + Buffer.alloc(32).toString("base64url"));
+    await rejectSession("expired signed session", signedCookie({ v: 1, exp: Date.now() - 60000 }));
+    await rejectSession("wrong signed session version", signedCookie({ v: 2, exp: Date.now() + 120000 }));
+    await rejectSession("invalid signed expiry type", signedCookie({ v: 1, exp: "tomorrow" }));
+    await rejectSession("extra signed session segment", cookie + ".extra");
     const empty = { configured: true, quotes: [], orders: [], qcInspections: [], customerOutcomes: [], learningContexts: [] };
     async function check(name, replies, expected, expectedBody = empty) {
       scenario = replies;
