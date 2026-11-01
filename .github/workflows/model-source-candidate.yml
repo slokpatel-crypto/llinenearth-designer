@@ -86,42 +86,14 @@ jobs:
       - name: Author body-attached candidate shirt / trouser relief
         run: npm run garment:model-garments:author
 
-      - name: Build two authentic back shoulder inset and welded armhole patterns
-        id: shoulder_inset_candidates
-        continue-on-error: true
+      - name: Record missing original faceless mannequin source review, no replacement
         run: |
-          mkdir -p artifacts/back-shoulder-qa
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
-            --python scripts/blender/experiments/construct-authored-shirt-pattern.py -- \
-            --with-finishing --with-placket --source-scan-sleeves \
-            --source-scan-sleeve-sections --back-shoulder-inset-rows 2 \
-            --output .cache/linen-earth/linen-earth-back-shoulder-2.blend \
-            --report artifacts/back-shoulder-qa/shoulder-inset-2.json
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
-            --python scripts/blender/experiments/construct-authored-shirt-pattern.py -- \
-            --with-finishing --with-placket --source-scan-sleeves \
-            --source-scan-sleeve-sections --back-shoulder-inset-rows 3 \
-            --output .cache/linen-earth/linen-earth-back-shoulder-3.blend \
-            --report artifacts/back-shoulder-qa/shoulder-inset-3.json
-
-      - name: Evaluate genuine body and waist contact changes for both shoulder insets
-        if: steps.shoulder_inset_candidates.outcome == 'success'
-        run: |
-          python3 scripts/blender/compare_native_shoulder_insets.py \
-            --candidate artifacts/back-shoulder-qa/shoulder-inset-2.json \
-            --candidate artifacts/back-shoulder-qa/shoulder-inset-3.json \
-            --output artifacts/back-shoulder-qa/contact-comparison.json
-
-      - name: Render both shoulder insets from four angles each
-        if: steps.shoulder_inset_candidates.outcome == 'success'
-        run: |
-          mkdir -p artifacts/back-shoulder-qa/inset-2 artifacts/back-shoulder-qa/inset-3
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-back-shoulder-2.blend \
-            --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/back-shoulder-qa/inset-2 --width 480 --height 640 --samples 8
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-back-shoulder-3.blend \
-            --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/back-shoulder-qa/inset-3 --width 480 --height 640 --samples 8
+          mkdir -p artifacts/model-qa
+          python3 scripts/blender/canonical_model_source_intake.py \
+            --identity-spec public/model-identity/linen-earth-studio-model-v1.json \
+            --reference public/designer/studio-tucked.webp \
+            --output artifacts/model-qa/original-mannequin-source-BLOCKED.json \
+            --assert-blocked
 
       - name: Check exact-source candidate geometry before expensive rendering
         id: scene_preflight
@@ -174,9 +146,6 @@ jobs:
           name: linen-earth-3d-source-candidate-${{ github.run_id }}
           path: |
             artifacts/model-qa/**
-            artifacts/back-shoulder-qa/**
             .cache/linen-earth/linen-earth-officewear-authored.blend
-            .cache/linen-earth/linen-earth-back-shoulder-2.blend
-            .cache/linen-earth/linen-earth-back-shoulder-3.blend
           if-no-files-found: warn
           retention-days: 14
