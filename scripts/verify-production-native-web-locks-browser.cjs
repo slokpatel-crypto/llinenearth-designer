@@ -140,7 +140,10 @@ async function runViewport(browser,width){
     // marker even after a stale (capped) history GET appeared successful.
     await a.evaluate(token=>{
       const h=window.__titanHold;
-      if(!h.beginProductionWriteHold(localStorage,token))throw Error("Synthetic active marker missing");
+      const prior={pending:localStorage.getItem(h.PRODUCTION_WRITE_HOLD_KEY),
+        epoch:localStorage.getItem(h.PRODUCTION_WRITE_EPOCH_KEY),token};
+      if(!h.beginProductionWriteHold(localStorage,token))
+        throw Error("Synthetic active marker missing: "+JSON.stringify(prior));
       const state={held:false,finished:false};
       state.gate=new Promise(resolve=>{state.release=resolve;});
       window.__titanSession=state;
