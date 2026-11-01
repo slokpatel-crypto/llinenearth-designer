@@ -71,7 +71,9 @@ class SourceReviewBindingTest(unittest.TestCase):
 
     def save(self):
         self.review.write_text(json.dumps(self.packet,sort_keys=True),encoding="utf-8")
-        self.scene["linen_earth_source_photo_owner_review_sha256"]=sha(self.review)
+        # The source .blend must NOT contain its review receipt digest: doing
+        # so would make the receipt's sourceBlendSha256 circular.
+        self.scene.pop("linen_earth_source_photo_owner_review_sha256",None)
 
     def evaluate(self):
         return verify_external_owner_review_packet(
@@ -111,10 +113,12 @@ class SourceReviewBindingTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"checkpoints"):
             self.evaluate()
 
-    def test_receipt_sha_cannot_be_relabelled_without_attestation_change(self):
-        self.packet["reviewerName"]="Changed Reviewer"
-        self.review.write_text(json.dumps(self.packet,sort_keys=True),encoding="utf-8")
-        with self.assertRaisesRegex(ValueError,"SHA256"):
+    def test_unsigned_or_empty_reviewer_attestation_fails(self):
+        # A digest establishes file integrity, NOT the reviewer's identity.
+        # Independent human confirmation is still required out of band.
+        self.packet["reviewerName"]=""
+        self.save()
+        with self.assertRaisesRegex(ValueError,"Named independent reviewer"):
             self.evaluate()
 
     def test_replayed_front_photo_or_duplicate_render_rejected(self):
@@ -129,7 +133,6 @@ class SourceReviewBindingTest(unittest.TestCase):
         self.save()
         with self.assertRaisesRegex(ValueError,"private review directory"):
             self.evaluate()
-        self.assertIsNone(None)
 
 
 if __name__=="__main__":
