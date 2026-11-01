@@ -8,7 +8,7 @@ const src=()=>readFileSync("src/app/api/designer/vault/route.ts","utf8");
 test("vault ingress bounds decoded JSON and rejects scalar/null request roots",async()=>{
   const source=src();
   assert.match(source,/const MAX_VAULT_REQUEST_BYTES=1_048_576/);
-  assert.match(source,/readBoundedJsonResponse\(new Response\(request\.body\),MAX_VAULT_REQUEST_BYTES\)/);
+  assert.match(source,/readBoundedJsonResponse\(request,MAX_VAULT_REQUEST_BYTES\)/);
   assert.match(source,/typeof rawBody!=="object"\|\|Array\.isArray\(rawBody\)/);
   assert.doesNotMatch(source,/await request\.json\(\)/);
 
