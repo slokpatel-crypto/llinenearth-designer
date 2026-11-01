@@ -181,8 +181,8 @@ export default function ProductionClient(){
     // it after a GET, and never persist private production request bodies.
     if(productionWriteHoldPending(safeProductionHoldStorage()))setRequiresWriteReview(true);
     const onStorage=(event:StorageEvent)=>{
-      if(event.key===PRODUCTION_WRITE_HOLD_KEY||event.key===PRODUCTION_WRITE_EPOCH_KEY){
-        // Another tab may have begun AND confirmed a write. React state from
+      if(event.key===null||event.key===PRODUCTION_WRITE_HOLD_KEY||event.key===PRODUCTION_WRITE_EPOCH_KEY){
+        // A different tab can also call localStorage.clear(), which emits a\n        // StorageEvent with key=null. That erases the anonymous hold/epoch;\n        // fail closed instead of trusting stale verified production history.\n        // Another tab may have begun AND confirmed a write. React state from
         // an earlier GET must not permit same-turn acknowledgement or mutation.
         ledgerReadVersion.current+=1;
         verifiedLedgerReadVersion.current=0;
@@ -192,7 +192,9 @@ export default function ProductionClient(){
         setConfigured(false);
         setRecoveredCreationReceipts(null);setRecoveredStatusReceipts(null);
         setRequiresWriteReview(true);
-        setMessage("Production writes changed in another tab. Refresh current history before acknowledging or exporting.");
+        setMessage(event.key===null
+          ?"Production writes changed in another tab: protected browser storage was cleared. Keep writes paused and seek authorized recovery; an empty marker is not proof that a SQL write did not commit."
+          :"Production writes changed in another tab. Refresh current history before acknowledging or exporting.");
       }
     };
     window.addEventListener("storage",onStorage);
