@@ -70,16 +70,18 @@ export function normalizeManualStockEvent(input:unknown){
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
   const recordedBy=String(source.recordedBy||"").replace(/\s+/g," ").trim().slice(0,120);
   const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
+  const requestKey=typeof source.requestKey==="string"?source.requestKey.trim():"";
 
   if(!fabricId) throw new Error("Fabric ID is required.");
   if(!["receipt","adjustment_in","adjustment_out"].includes(eventType)) throw new Error("Unsupported manual stock event.");
   
   if(recordedBy.length<2) throw new Error("Named stock checker / recorder is required.");
   if(sourceReference.length<3) throw new Error("Physical stock source reference is required.");
+  if(requestKey.length<12||requestKey.length>180) throw new Error("Stock event request key must be 12–180 characters.");
 
   return {
     fabricId,eventType,quantityMetres,
-    note,recordedBy,sourceReference,
+    note,recordedBy,sourceReference,requestKey,
   };
 }
 
