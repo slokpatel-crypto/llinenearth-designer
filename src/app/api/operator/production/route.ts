@@ -14,6 +14,8 @@ import { publicOperatorPostError } from "@/lib/designer/operator-production-erro
 export const runtime="nodejs";
 // 8 MiB per list caps decoded upstream bytes, independent of Content-Length.
 const MAX_OPERATOR_LEDGER_BYTES=8_388_608;
+// Operator write payloads are small; cap decoded bytes before JSON.parse/RPC writes.
+const MAX_OPERATOR_POST_BYTES=262_144;
 
 async function authorized(){
   const jar=await cookies();
@@ -97,7 +99,10 @@ export async function GET(){
 export async function POST(request:Request){
   if(!await authorized()) return privateProductionResponse({error:"Unauthorized."},{status:401});
   try{
-    const body=await request.json() as Record<string,unknown>;
+    const rawBody=await readBoundedJsonResponse(request,MAX_OPERATOR_POST_BYTES);
+    if(!rawBody||typeof rawBody!=="object"||Array.isArray(rawBody))
+      throw new Error("Invalid operator production request.");
+    const body=rawBody as Record<string,unknown>;
     const action=String(body.action||"");
     if(action==="create_quote"){
       const revisionId=String(body.revisionId||"").trim();

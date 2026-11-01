@@ -1,6 +1,6 @@
-/** Fail closed on oversized upstream JSON, including decoded transfer streams.
+/** Fail closed on oversized JSON from upstream responses or incoming requests.
  * Limits peak memory before JSON.parse and is independent of Content-Length. */
-export async function readBoundedJsonResponse(response:Response,maxBytes:number):Promise<unknown> {
+export async function readBoundedJsonResponse(response:Pick<Response,"body">,maxBytes:number):Promise<unknown> {
   if(!Number.isSafeInteger(maxBytes)||maxBytes<2||!response.body)
     throw new Error("Invalid bounded JSON response");
   const reader=response.body.getReader();
