@@ -75,6 +75,7 @@ jobs:
           node scripts/verify-launch-readiness-private-http.cjs
           node scripts/verify-production-ledger-private-http.cjs
           node scripts/verify-production-status-receipt-private-http.cjs
+          node scripts/verify-production-creation-receipt-epoch-browser.cjs
           node scripts/verify-production-status-receipt-browser.cjs
           node scripts/verify-production-delivery-eligibility-private-http.cjs
           node scripts/verify-production-qc-hint-browser.cjs

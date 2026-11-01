@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {parseProductionCreationReceipts,parseProductionCreationReceiptResponse} from "../src/lib/designer/production-creation-receipt-lookup.ts";
-import {PRODUCTION_WRITE_HOLD_KEY,readProductionWriteHoldKey} from "../src/lib/designer/production-write-hold.ts";
+import {PRODUCTION_WRITE_HOLD_KEY,PRODUCTION_WRITE_EPOCH_KEY,readProductionWriteHoldKey,captureProductionWriteReviewSnapshot,productionWriteReviewSnapshotUnchanged} from "../src/lib/designer/production-write-hold.ts";
 
 const key="123e4567-e89b-42d3-a456-426614174100";
 const quote="123e4567-e89b-42d3-a456-426614174010";
@@ -18,6 +18,33 @@ test("anonymous request marker survives a reload but never exposes a request pay
   assert.equal(readProductionWriteHoldKey(store),null);
   rows.set(PRODUCTION_WRITE_HOLD_KEY,key.toUpperCase());
   assert.equal(readProductionWriteHoldKey(store),key);
+});
+
+
+test("creation receipt lookup rejects a stale generation even with the SAME original UUID",()=>{
+  const firstEpoch="123e4567-e89b-42d3-a456-426614174120";
+  const secondEpoch="9b4216ea-8df6-45a4-8a5c-2f1f91ad283e";
+  const rows=new Map([[PRODUCTION_WRITE_HOLD_KEY,key],[PRODUCTION_WRITE_EPOCH_KEY,firstEpoch]]);
+  const store={
+    getItem:(name:string)=>rows.get(name)??null,
+    setItem:(name:string,value:string)=>{rows.set(name,value);},
+    removeItem:(name:string)=>{rows.delete(name);},
+  };
+  const old=captureProductionWriteReviewSnapshot(store);
+  assert.ok(old);
+  assert.equal(old.holdToken,key);
+  assert.equal(productionWriteReviewSnapshotUnchanged(store,old),true);
+  // Another tab can start/complete a write and alter the epoch while an
+  // earlier original-key lookup is still in flight. The ID may remain equal.
+  rows.set(PRODUCTION_WRITE_EPOCH_KEY,secondEpoch);
+  assert.equal(readProductionWriteHoldKey(store),key);
+  assert.equal(productionWriteReviewSnapshotUnchanged(store,old),false);
+  const current=captureProductionWriteReviewSnapshot(store);
+  assert.ok(current);
+  assert.equal(productionWriteReviewSnapshotUnchanged(store,current),true);
+  rows.set(PRODUCTION_WRITE_EPOCH_KEY,"corrupt");
+  assert.equal(productionWriteReviewSnapshotUnchanged(store,current),false,
+    "Inaccessible or corrupt epoch must never authorize stale evidence");
 });
 
 test("strict receipt parser accepts only committed UUIDs and two declared actions",()=>{
@@ -54,11 +81,14 @@ test("receipt lookup is read-only, authenticated and cannot unlock the review ho
   assert.match(migration,/grant execute on function public\.production_creation_request_receipt_lookup/);
   assert.doesNotMatch(migration,/insert into|update private|delete from|recoveryToken|customerPhone/i);
   const lookup=ui.split("async function lookupPendingCreationReceipt(){")[1]?.split("function confirmReviewedProductionHistory()")[0]||"";
-  assert.match(lookup,/readProductionWriteHoldKey\(safeProductionHoldStorage\(\)\)/);
+  assert.match(lookup,/const snapshot=captureProductionWriteReviewSnapshot\(safeProductionHoldStorage\(\)\)/);
+  assert.match(lookup,/const pendingKey=snapshot\?\.holdToken/);
   assert.match(lookup,/action:"creation_receipt_lookup",requestKey:pendingKey/);
   assert.match(lookup,/if\(!response\.ok\)throw new Error/);
   assert.match(lookup,/parseProductionCreationReceiptResponse\(data\.receipts\)/);
-  assert.match(lookup,/readProductionWriteHoldKey\(safeProductionHoldStorage\(\)\)!==pendingKey/);
+  assert.match(lookup,/productionWriteReviewSnapshotUnchanged\(safeProductionHoldStorage\(\),snapshot\)/);
+  assert.doesNotMatch(lookup,/readProductionWriteHoldKey\(safeProductionHoldStorage\(\)\)!==pendingKey/,
+    "Original key equality is insufficient after an epoch change");
   assert.match(lookup,/setRecoveredCreationReceipts\(receipts\)/);
   assert.match(lookup,/No committed creation receipt was visible at lookup time/);
   assert.doesNotMatch(lookup,/acknowledgeProductionWriteHold|setRequiresWriteReview\(false\)|releaseProductionWriteHold|setPendingWriteReview\(null\)/,
@@ -91,4 +121,20 @@ test("operator creation receipt API response accepts only normalized private-saf
     [safe[0],safe[0]],Array(3).fill(safe[0]),
   ])assert.equal(parseProductionCreationReceiptResponse(bad),null,
     "Never display malformed, duplicated or unauthorized creation receipt fields");
+});
+
+test("M145 signed Chromium rejects stale creation evidence after same-key epoch change",()=>{
+  const browser=readFileSync("scripts/verify-production-creation-receipt-epoch-browser.cjs","utf8");
+  const ci=readFileSync(".github/workflows/ci.yml","utf8");
+  for(const token of [
+    "M145 signed creation-receipt epoch browser QA is CI-only.",
+    "for(const width of [390,768,1440])",
+    "COMMITTED CREATION RECEIPTS",
+    "window.__m145Race.release()",
+    "originalHoldRetained:true",
+    "An older receipt must not be displayed for a superseded write generation",
+    "No live SQL, real production write, private customer data or owner signoff.",
+  ])assert.ok(browser.includes(token),"Missing M145 browser assertion: "+token);
+  assert.match(browser,/actualWrites,\[\]/);
+  assert.ok(ci.includes("node scripts/verify-production-creation-receipt-epoch-browser.cjs"));
 });
