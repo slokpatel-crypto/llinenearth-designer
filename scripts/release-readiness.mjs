@@ -2343,6 +2343,36 @@ requireTokens("tests/production-native-web-locks-browser-contract.test.ts",[
   "completedEpochBlocksStaleClaim:true",
 ]);
 
+
+// M139: a verified GET made during an active SQL write must never authorize
+// cross-tab manual acknowledgement. Hold a second Web Lock for the full POST,
+// then require an independently verified history GET under that lock and a
+// separate deliberate click after the new history renders.
+requireTokens("src/lib/designer/production-write-hold.ts",[
+  "PRODUCTION_WRITE_SESSION_LOCK_NAME",
+  "linen-earth:production:active-write-session:v1",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  'locks.request(PRODUCTION_WRITE_SESSION_LOCK_NAME,{mode:"exclusive",ifAvailable:true},async lock=>',
+  "await post(body,success,true)",
+  "if(verifiedReviewSessionReadVersion.current!==ledgerReadVersion.current)",
+  "const refreshed=await load();",
+  "verifiedReviewSessionReadVersion.current=ledgerReadVersion.current",
+  "Production history rechecked with no active browser write",
+  "if(snapshot.holdToken!==null&&!acknowledgeProductionWriteHold(storage,snapshot.holdToken))",
+]);
+requireTokens("tests/production-write-hold.test.ts",[
+  "M139 a full-request Web Lock prevents acknowledgement",
+]);
+requireTokens("scripts/verify-production-native-web-locks-browser.cjs",[
+  "activeSessionAcknowledgementBlocked:true",
+  "postSessionAcknowledgementRecovered:true",
+  "Second tab must not acknowledge an actively in-flight production write",
+]);
+requireTokens("tests/production-native-web-locks-browser-contract.test.ts",[
+  "M139 signed native Chromium rejects active-session review",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
