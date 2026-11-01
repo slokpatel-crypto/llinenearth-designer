@@ -1636,3 +1636,8 @@ The M145 synthetic browser race and M146 signed server-side HTTP test do not the
 
 ## 2026-11-01 — M149 release checks must not execute after final success
 Two signed production Web Locks (M140) assertions in scripts/release-readiness.mjs appeared after the sole final failed-check and success log. Their failures could set failed=true yet allow process exit 0. Move the decision below all assertions, add a regression guaranteeing finalization ordering, and prove the production operator rejects a stale status receipt when the same original request UUID has a changed write epoch. Synthetic CI-only browser/SQL evidence; no live records, model changes, paid AI, merge or deployment.
+
+
+## 2026-11-01 — M150: a cross-tab storage clear is a production-write uncertainty event
+
+**Decision:** The existing Production Desk listened only for named localStorage hold/epoch changes. Calling `localStorage.clear()` from another same-origin tab emits a `StorageEvent` with `key=null`, which previously left a verified operator ledger and mutation controls active despite deletion of the anonymous write marker and generation. Treat the clear as a fail-closed cross-tab invalidation, revoke the synchronous verified ledger and cached receipt evidence, require explicit review and tell the operator to seek authorized recovery if storage is lost. A fresh GET or empty marker does not prove that a SQL transaction did not commit; never automatically retry. Add real signed two-tab browser coverage using synthetic fixture records at 390/768/1440. This is same-origin browser hardening, not cross-device server idempotency, physical production evidence or owner release approval. No canonical model, paid-AI, production SQL, main merge or deployment changes.
