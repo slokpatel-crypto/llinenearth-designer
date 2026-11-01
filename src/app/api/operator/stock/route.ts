@@ -5,7 +5,7 @@ import { assertCurrentFabricId, readBoundedStockMutationJson, StockMutationPaylo
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
-import { requireStockCreatedId, requireStockSnapshotRows } from "@/lib/designer/operator-stock-response";
+import { requireStockCloseAck, requireStockCreatedId, requireStockSnapshotRows } from "@/lib/designer/operator-stock-response";
 
 export const runtime="nodejs";
 function stockPrivateJson(body:unknown,init:{status?:number;headers?:Record<string,string>}={}){
@@ -94,24 +94,24 @@ export async function POST(request:Request){
     }
     if(action==="release"){
       const draft=stockInput(()=>normalizeStockRelease(body));
-      const released=await rpc<boolean>("fabric_stock_release_v2",{
+      const released=requireStockCloseAck(await rpc<unknown>("fabric_stock_release_v2",{
         p_reservation_id:draft.reservationId,
         p_note:draft.note,
         p_released_by:draft.releasedBy,
         p_source_reference:draft.sourceReference,
-      });
+      }));
       if(released!==true) return stockPrivateJson({error:"Reservation was not active; no cloth was released."},{status:409});
       return stockPrivateJson({released:true});
     }
     if(action==="consume"){
       const draft=stockInput(()=>normalizeStockConsumption(body));
-      const consumed=await rpc<boolean>("fabric_stock_consume_reservation_v2",{
+      const consumed=requireStockCloseAck(await rpc<unknown>("fabric_stock_consume_reservation_v2",{
         p_reservation_id:draft.reservationId,
         p_actual_metres:draft.actualMetres,
         p_note:draft.note,
         p_checked_by:draft.checkedBy,
         p_source_reference:draft.sourceReference,
-      });
+      }));
       if(consumed!==true) return stockPrivateJson({error:"Reservation was not active; no cloth was consumed."},{status:409});
       return stockPrivateJson({consumed:true});
     }
