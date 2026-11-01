@@ -169,7 +169,7 @@ test("manual stock request keys are required and never silently truncated or coe
   const requestKey="a4d00b5a-4455-4c12-83ae-77e124121b77";
   assert.equal(normalizeManualStockRequest({...draft,requestKey}).requestKey,requestKey);
   for(const bad of [undefined,null,42,{},true,"short"," leading-key-123456",
-    "trailing-key-123456 ","x".repeat(181),"line\\nbreak-key-123456"]){
+    "trailing-key-123456 ","x".repeat(181),"line"+String.fromCharCode(10)+"break-key-123456"]){
     assert.throws(()=>normalizeManualStockRequest({...draft,requestKey:bad}),/request key/i);
   }
 });
