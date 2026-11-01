@@ -125,7 +125,7 @@ export async function POST(request:Request){
       const rows=requireOwnedDesignVaultRows(responseRows);
       const designs=[];
       for(const row of rows){
-        if(await verifyLockedDesignRevision(row.payload as LockedDesignRevision)){
+        if(await verifyLockedDesignRevision(row.payload as unknown as LockedDesignRevision)){
           designs.push({
             vaultId:row.vault_id,
             revisionId:row.revision_id,
