@@ -106,6 +106,43 @@ class AuthoredShirtPatternTest(unittest.TestCase):
         self.assertEqual(fitted["vertices"][:64*12],base["vertices"][:64*12])
         self.assertNotEqual(fitted["vertices"][-1],base["vertices"][-1])
 
+    def test_orthogonal_source_section_rings_keep_authored_shirt_sewn(self):
+        old=make_shirt_mesh()
+        sections={}
+        for side in ("left_sleeve","right_sleeve"):
+            sign=-1 if side=="left_sleeve" else 1
+            root_indices=sorted({v for edge in old["armholeSeamEdges"][side] for v in edge})
+            root_z=sum(old["vertices"][i][2] for i in root_indices)/len(root_indices)
+            sections[side]=[
+                {"centerM":(sign*(.260+.024*i),0.01,
+                            root_z+(.985-root_z)*(i+1)/5),
+                 "basisFront":(0.,1.,0.),
+                 "basisSide":(1.,0.,0.),
+                 "radiusM":.069,
+                 "sourceMeasured":True}
+                for i in range(5)
+            ]
+        candidate=make_shirt_mesh(source_arm_sections=sections)
+        self.assertEqual(old["vertices"][:64*12],candidate["vertices"][:64*12])
+        self.assertNotEqual(old["vertices"][-1],candidate["vertices"][-1])
+        self.assertTrue(candidate["topology"]["bodySectionTangentRadiusCalibrated"])
+        self.assertFalse(candidate["topology"]["canonicalPhotoModelArmPoseVerified"])
+        self.assertEqual(candidate["topology"]["connectedComponents"],1)
+        self.assertEqual(candidate["topology"]["nonmanifoldEdges"],0)
+        self.assertEqual(candidate["topology"]["windingErrors"],0)
+        self.assertEqual(candidate["topology"]["boundaryLoopsAfterSleeves"],4)
+
+    def test_missing_source_section_does_not_silently_use_guessed_pose(self):
+        with self.assertRaises(ValueError):
+            make_shirt_mesh(source_arm_sections={})
+        with self.assertRaises(ValueError):
+            make_shirt_mesh(source_arm_sections={
+                "left_sleeve":[{}]*5,"right_sleeve":[{}]*5})
+        with self.assertRaises(ValueError):
+            make_shirt_mesh(source_arm_sections={
+                "left_sleeve":[{}]*5,"right_sleeve":[{}]*5},
+                source_arm_centerlines={})
+
     def test_invalid_body_arm_path_fails_not_fallback_to_guess(self):
         source=make_shirt_mesh()
         for paths in ({}, {"left_sleeve":[(0,0,1)]*5},
