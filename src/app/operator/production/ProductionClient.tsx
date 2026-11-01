@@ -34,7 +34,7 @@ export default function ProductionClient(){
       setConfigured(false);
       throw new Error("Production records could not be loaded. Refresh before proceeding.");
     });
-    if(response.status===401){setConfigured(false);window.location.href="/operator/login?next=/operator/production";return;}
+    if(response.status===401){setConfigured(false);window.location.href="/operator/login?next=/operator/production";throw new Error("Operator session expired. Sign in again.");}
     const data=await response.json().catch(()=>{
       setConfigured(false);
       throw new Error("Production records could not be loaded. Refresh before proceeding.");
