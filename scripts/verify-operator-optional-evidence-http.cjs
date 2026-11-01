@@ -109,7 +109,11 @@ async function main(){
         assert.deepEqual(body,{configured:true,quotes:[],orders:[],qcInspections:[],customerOutcomes:[],learningContexts:[]},c.name);
       else
         assert.deepEqual(body,{error:"Production records could not be read."},c.name);
-      assert.equal(seen.length,5,c.name+" must attempt exactly five allowlisted reads");
+      // Promise.all rejects on the first failed read; other in-flight reads
+      // are not guaranteed to finish before the HTTP 503 reaches the client.
+      assert.ok(seen.length>=1 && seen.length<=5,c.name+" bounded read count");
+      if(c.status===200)assert.equal(seen.length,5,c.name+" must read all five lists");
+      if(c.target)assert.ok(seen.some(req=>req.name===c.target),c.name+" target read required");
       for(const req of seen){
         assert.ok(allowed.has(req.name),c.name+" unexpected RPC "+req.name);
         assert.equal(req.method,"POST",c.name);
