@@ -236,7 +236,7 @@ async function main(){
         seen.length=0;
         const response=await fetch(url,{
           method:"POST",headers:{cookie,"content-type":"application/json"},
-          body:JSON.stringify({action,[entityKey]:"synthetic-order",status:"ready"}),
+          body:JSON.stringify({action,[entityKey]:"synthetic-order",status:action==="quote_status"?"sent":"ready"}),
           signal:AbortSignal.timeout(15000),
         });
         const expectedStatus=kind==="ok"||kind==="ackFalse"?200:409;
