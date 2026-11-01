@@ -72,6 +72,17 @@ async function main(){
   await checkCase("unsigned test client refused before action",{
     body:safe,auth:false,expected:401,
   });
+  // An anonymous GET must be refused with an explicit private no-store header.
+  // No signed GET is sent, so no production SQL ledger read can occur.
+  const get=await fetch(url,{
+    method:"GET",cache:"no-store",signal:AbortSignal.timeout(15000),
+    headers:{origin:base.origin},
+  });
+  assert.equal(get.status,401);
+  assert.match(get.headers.get("cache-control")||"",/no-store/,
+    "unauthenticated operator GET is private no-store");
+  const denied=await get.json();
+  assert.deepEqual(denied,{error:"Unauthorized."});
   console.log("TITAN signed built-Next operator private POST CSRF/size/JSON HTTP PASS.");
   console.log("Synthetic CI-only, unsupported actions only; production RPC writes: 0; requests: "+requests);
 }
