@@ -10,6 +10,7 @@ import { isMissingOptionalProductionRpc, validateOperatorLedgerRows } from "@/li
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { latestQcForOrder } from "@/lib/designer/finished-garment-qc";
 import { publicOperatorPostError } from "@/lib/designer/operator-production-errors";
+import { requireOperatorStatusAcknowledgment } from "@/lib/designer/operator-status-ack";
 
 export const runtime="nodejs";
 // 8 MiB per list caps decoded upstream bytes, independent of Content-Length.
@@ -127,7 +128,7 @@ export async function POST(request:Request){
       const status=String(body.status||"");
       const note=String(body.note||"").slice(0,1000);
       const updated=await rpc<boolean>("production_quote_set_status",{p_quote_id:quoteId,p_status:status,p_note:note});
-      return privateProductionResponse({updated:Boolean(updated)});
+      return privateProductionResponse({updated:requireOperatorStatusAcknowledgment(updated)});
     }
     if(action==="create_order"){
       const revisionId=String(body.revisionId||"").trim();
@@ -174,7 +175,7 @@ export async function POST(request:Request){
         }
       }
       const updated=await rpc<boolean>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note});
-      return privateProductionResponse({updated:Boolean(updated)});
+      return privateProductionResponse({updated:requireOperatorStatusAcknowledgment(updated)});
     }
     return privateProductionResponse({error:"Unsupported production action."},{status:400});
   }catch(error){
