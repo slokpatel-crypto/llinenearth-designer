@@ -1,0 +1,24 @@
+{
+  "nativeWorkflowRun": 41295697621,
+  "sourceCandidateHead": "b790ebf485922e355097f8c42492569bd8f9abd6",
+  "status": "REJECTED",
+  "bodyClothIntersectingTrianglePairs": 2177,
+  "clothTrouserIntersectingTrianglePairs": {
+    "TrouserLegLFabric": 0,
+    "TrouserLegRFabric": 0,
+    "TrouserWaistFabric": 72
+  },
+  "topology": {
+    "connectedComponents": 1,
+    "armholeSeamEdgeCount": 68,
+    "nonmanifoldEdges": 0,
+    "windingErrors": 0,
+    "intentionalBoundaryLoops": 4,
+    "polygonCount": 924,
+    "vertexCount": 1108
+  },
+  "sourceBodyAndSixGarmentsUnchanged": true,
+  "fabricAndOriginalPhotoParityVerified": false,
+  "productionApproved": false,
+  "next": "Test constrained upper torso and sleeve radius variants; do not relax measured collision gates"
+}
