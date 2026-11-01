@@ -304,8 +304,19 @@ def export_glb(collection, output_path):
 
 def main():
     args = cli_args()
-    run_scene_preflight()
     panel_spec = load_panel_spec(args.panel_spec) if args.panel_spec else None
+    if panel_spec:
+        # A correct identity ID copied onto a CC0 human scan is not the
+        # original faceless Studio mannequin. For measured/production output,
+        # require independent FOUR-view human signoff before any GLB export.
+        # Geometry/UV/tailoring checks remain separately mandatory.
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from canonical_source_release_gate import require_independent_source_photo_review
+        try:
+            require_independent_source_photo_review(bpy.context.scene)
+        except ValueError as error:
+            raise RuntimeError("Production source/photo identity review gate blocked export: "+str(error)) from error
+    run_scene_preflight()
     source = scene_source_provenance(bpy.context.scene) if panel_spec else None
     model_identity = scene_model_identity(bpy.context.scene) if panel_spec else None
     collection, height = validate_scene(args.collection, args.reference_body)
