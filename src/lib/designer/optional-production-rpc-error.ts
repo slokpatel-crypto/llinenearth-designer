@@ -1,4 +1,4 @@
-import { readBoundedJsonResponse } from "./bounded-json-response";
+import { readBoundedJsonResponse } from "./bounded-json-response.ts";
 
 // A generic upstream 404 is NOT evidence that an optional production RPC is
 // absent. Only PostgREST's specific missing-function code may retain legacy
