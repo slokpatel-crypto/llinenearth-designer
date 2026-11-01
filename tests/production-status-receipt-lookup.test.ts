@@ -49,3 +49,19 @@ test("status receipt lookup is operator-only, read-only, exact-key and never pro
   assert.match(sql,/committed physical delivery receipt was not recovered/);
   assert.match(ci,/Status receipt lookup claimed noncommit while another SQL transaction was open/);
 });
+
+test("operator status receipt recovery cannot clear the hold or trust a changed browser marker",()=>{
+  const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  const lookup=client.split("async function lookupPendingStatusReceipt(){")[1]?.split("function confirmReviewedProductionHistory()")[0]??"";
+  assert.ok(lookup.length>0);
+  assert.match(lookup,/captureProductionWriteReviewSnapshot\(safeProductionHoldStorage\(\)\)/);
+  assert.match(lookup,/action:"status_receipt_lookup",requestKey:pendingKey/);
+  assert.match(lookup,/parseProductionStatusReceipts\(data\.receipts\)/);
+  assert.match(lookup,/productionWriteReviewSnapshotUnchanged\(safeProductionHoldStorage\(\),snapshot\)/);
+  assert.match(lookup,/setRecoveredStatusReceipts\(receipts\)/);
+  assert.match(lookup,/An in-flight SQL transaction may still commit/);
+  assert.doesNotMatch(lookup,/acknowledgeProductionWriteHold|releaseProductionWriteHold|setRequiresWriteReview\(false\)/);
+  assert.match(client,/Find original status receipt by request ID/);
+  assert.match(client,/COMMITTED STATUS RECEIPTS/);
+  assert.match(client,/This is NOT proof that retrying is safe/);
+});
