@@ -68,7 +68,10 @@ async function runViewport(browser,width){
       hasText:"Production writes changed in another tab",
     }).waitFor({state:"visible",timeout:15000});
     assert.equal(await a.evaluate(key=>localStorage.getItem(key),epochKey),null);
-    await Promise.all([a.waitForResponse(r=>r.request().method()==="GET"\n      &&new URL(r.url()).pathname==="/api/operator/production",{timeout:15000}),\n      a.getByRole("button",{name:"Refresh production history"}).click()]);\n    await select.waitFor({state:"visible",timeout:15000});
+    await Promise.all([a.waitForResponse(r=>r.request().method()==="GET"
+      &&new URL(r.url()).pathname==="/api/operator/production",{timeout:15000}),
+      a.getByRole("button",{name:"Refresh production history"}).click()]);
+    await select.waitFor({state:"visible",timeout:15000});
     await a.getByRole("alert",{name:"Production write review required"})
       .waitFor({state:"visible",timeout:15000});
     assert.equal(await select.isDisabled(),true,
