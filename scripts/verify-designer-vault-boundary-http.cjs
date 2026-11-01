@@ -125,7 +125,14 @@ async function main(){
       mode=kind;seen.length=0;
       const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},
         body:JSON.stringify({action:"load",recoveryToken:token}),
-        signal:AbortSignal.timeout(15000)});
+        signal:AbortSignal.timeout(15000)}).catch(error=>{
+          // Surface the exact case and exit state, but never the recovery token
+          // or any private upstream text in CI diagnostics.
+          throw new Error("Vault response fixture failed at "+kind+
+            "; Next exit="+String(child.exitCode)+
+            "; error="+String(error?.cause?.code||error?.name||"unknown")+
+            "; private log marker seen="+String(output.includes(privateMarker)));
+        });
       const data=await response.json();
       const expected=kind==="ok"?200:kind==="missing"?404:503;
       assert.equal(response.status,expected,kind);
