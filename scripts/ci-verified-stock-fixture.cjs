@@ -14,9 +14,12 @@ const QUOTE_LIST_PATH="/rest/v1/rpc/production_quote_list";
 const ORDER_LIST_PATH="/rest/v1/rpc/production_order_list";
 const ELIGIBILITY_LIST_PATH="/rest/v1/rpc/production_delivery_eligibility_list";
 const STATUS_RECEIPT_LOOKUP_PATH="/rest/v1/rpc/production_status_request_receipt_lookup";
+const CREATION_RECEIPT_LOOKUP_PATH="/rest/v1/rpc/production_creation_request_receipt_lookup";
+const CI_CREATION_REQUEST_KEY="123e4567-e89b-42d3-a456-426614174071";
 const CI_STATUS_REQUEST_KEY="123e4567-e89b-42d3-a456-426614174070";
 // Read-only receipt response modes are synthetic and isolated to CI.
 let ciStatusReceiptMode="valid";
+let ciCreationReceiptMode="valid";
 // Only the local GitHub Actions fake server can switch this. NEVER imported or
 // used to synthesize actual physical QC, order delivery or supplier receipts.
 let ciEligibilityMode="absent";
@@ -285,13 +288,27 @@ async function handle(req,res){
     ciStatusReceiptMode=mode;
     return send(res,200,{ciFixture:true,mode});
   }
+  if(req.method==="POST"&&req.url==="/__fixture/creation-receipt-mode"){
+    if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
+    let raw="";
+    for await(const chunk of req){
+      raw+=chunk.toString("utf8");
+      if(Buffer.byteLength(raw)>128)return send(res,413,{error:"CI mode too large"});
+    }
+    let mode;
+    try{mode=JSON.parse(raw).mode;}catch{return send(res,400,{error:"Invalid CI mode"});}
+    if(!["valid","empty","malformed","duplicate","missing","upstream","oversized"].includes(mode))
+      return send(res,400,{error:"Invalid CI creation receipt mode"});
+    ciCreationReceiptMode=mode;
+    return send(res,200,{ciFixture:true,mode});
+  }
   if(req.method==="GET"&&req.url?.startsWith(METADATA_PATH+"?")){
     const rows=metadataRowsFor(req.method,req.url,req.headers.apikey);
     if(rows===null||req.headers.prefer!=="count=exact") return send(res,403,{error:"Not a CI metadata fixture request"});
     res.writeHead(200,{"content-type":"application/json","cache-control":"private, no-store","content-range":"*/0"});
     return res.end(JSON.stringify(rows));
   }
-  if(req.method!=="POST"||![ELIGIBILITY_LIST_PATH,STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,DELIVERY_EVIDENCE_LIST_PATH,DELIVERY_FIRST_TEN_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,LEARNING_CONTEXT_LIST_PATH,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH,OUTCOME_REVIEW_RECORD_PATH,OUTCOME_POLICY_RECORD_PATH,STATUS_RECEIPT_LOOKUP_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
+  if(req.method!=="POST"||![ELIGIBILITY_LIST_PATH,STOCK_PATH,AUDIT_PATH,BETA_LIST_PATH,CHECKLIST_LIST_PATH,QUOTE_LIST_PATH,ORDER_LIST_PATH,DELIVERY_EVIDENCE_LIST_PATH,DELIVERY_FIRST_TEN_PATH,QC_LIST_PATH,CUSTOMER_OUTCOME_LIST_PATH,LEARNING_CONTEXT_LIST_PATH,OUTCOME_LEARNING_PATH,OUTCOME_REVIEW_PATH,OUTCOME_POLICY_PATH,OUTCOME_REVIEW_RECORD_PATH,OUTCOME_POLICY_RECORD_PATH,STATUS_RECEIPT_LOOKUP_PATH,CREATION_RECEIPT_LOOKUP_PATH].includes(req.url)) return send(res,404,{error:"Unknown CI mock route"});
   if(req.headers.apikey!==FIXTURE_KEY) return send(res,403,{error:"Not a CI fixture request"});
   let raw="";
   try{
@@ -300,6 +317,21 @@ async function handle(req,res){
       if(Buffer.byteLength(raw)>8192) return send(res,413,{error:"CI fixture request too large"});
     }
     const payload=JSON.parse(raw);
+    if(req.url===CREATION_RECEIPT_LOOKUP_PATH){
+      if(!payload||typeof payload!=="object"||Array.isArray(payload)||
+         Object.keys(payload).join(",")!=="p_request_key"||
+         payload.p_request_key!==CI_CREATION_REQUEST_KEY)
+        return send(res,400,{error:"CI-only original creation request UUID required"});
+      if(ciCreationReceiptMode==="empty")return send(res,200,[]);
+      if(ciCreationReceiptMode==="missing")return send(res,404,{code:"PGRST202",message:"CI-only creation migration absent"});
+      if(ciCreationReceiptMode==="upstream")return send(res,503,{error:"DO-NOT-LEAK-CI-CREATION-UPSTREAM"});
+      if(ciCreationReceiptMode==="oversized")return send(res,200,[{padding:"DO-NOT-LEAK-CI-CREATION-"+"x".repeat(270000)}]);
+      const quote={action:"create_quote",receipt_id:"123e4567-e89b-42d3-a456-426614174010"};
+      const order={action:"create_order",receipt_id:"123e4567-e89b-42d3-a456-426614174011"};
+      if(ciCreationReceiptMode==="malformed")return send(res,200,[{...quote,private_customer_phone:"DO-NOT-LEAK-CI-CREATION-PRIVATE"}]);
+      if(ciCreationReceiptMode==="duplicate")return send(res,200,[quote,quote]);
+      return send(res,200,[quote,order]);
+    }
     if(req.url===STATUS_RECEIPT_LOOKUP_PATH){
       if(!payload||typeof payload!=="object"||Array.isArray(payload)||
          Object.keys(payload).join(",")!=="p_request_key"||
