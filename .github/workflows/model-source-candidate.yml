@@ -86,24 +86,44 @@ jobs:
       - name: Author body-attached candidate shirt / trouser relief
         run: npm run garment:model-garments:author
 
-      - name: Build source-calibrated sleeve sections, placket, collar and cuffs
-        id: collar_cuff_candidate
+      - name: Build two source-waist back panel alternatives with identical fitted sleeves
+        id: waist_trials
         continue-on-error: true
         run: |
-          mkdir -p artifacts/scan-sleeve-section-qa
+          mkdir -p artifacts/back-waist-qa
           blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/experiments/construct-authored-shirt-pattern.py -- \
             --with-finishing --with-placket --source-scan-sleeves \
-            --source-scan-sleeve-sections --placket-relief-mm 4 \
-            --output .cache/linen-earth/linen-earth-shirt-section-fit.blend \
-            --report artifacts/scan-sleeve-section-qa/source-section-contact-report.json
+            --source-scan-sleeve-sections --back-waist-contour inside \
+            --placket-relief-mm 4 \
+            --output .cache/linen-earth/linen-earth-back-waist-inside.blend \
+            --report artifacts/back-waist-qa/source-waist-inside.json
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
+            --python scripts/blender/experiments/construct-authored-shirt-pattern.py -- \
+            --with-finishing --with-placket --source-scan-sleeves \
+            --source-scan-sleeve-sections --back-waist-contour outside \
+            --placket-relief-mm 4 \
+            --output .cache/linen-earth/linen-earth-back-waist-outside.blend \
+            --report artifacts/back-waist-qa/source-waist-outside.json
 
-      - name: Render true source-section fitted sleeve from four angles
-        if: steps.collar_cuff_candidate.outcome == 'success'
+      - name: Compare real native waistband hypotheses to unchanged sleeve baseline
+        if: steps.waist_trials.outcome == 'success'
         run: |
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-shirt-section-fit.blend \
+          python3 scripts/blender/compare_native_back_waist.py \
+            --inside artifacts/back-waist-qa/source-waist-inside.json \
+            --outside artifacts/back-waist-qa/source-waist-outside.json \
+            --output artifacts/back-waist-qa/comparison.json
+
+      - name: Render back waist variants in independent four-angle frames
+        if: steps.waist_trials.outcome == 'success'
+        run: |
+          mkdir -p artifacts/back-waist-qa/inside artifacts/back-waist-qa/outside
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-back-waist-inside.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/scan-sleeve-section-qa --width 480 --height 640 --samples 8
+            --output-dir artifacts/back-waist-qa/inside --width 480 --height 640 --samples 8
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-back-waist-outside.blend \
+            --python scripts/blender/render-linen-earth-model-qa.py -- \
+            --output-dir artifacts/back-waist-qa/outside --width 480 --height 640 --samples 8
 
       - name: Check exact-source candidate geometry before expensive rendering
         id: scene_preflight
@@ -156,8 +176,9 @@ jobs:
           name: linen-earth-3d-source-candidate-${{ github.run_id }}
           path: |
             artifacts/model-qa/**
-            artifacts/scan-sleeve-section-qa/**
+            artifacts/back-waist-qa/**
             .cache/linen-earth/linen-earth-officewear-authored.blend
-            .cache/linen-earth/linen-earth-shirt-section-fit.blend
+            .cache/linen-earth/linen-earth-back-waist-inside.blend
+            .cache/linen-earth/linen-earth-back-waist-outside.blend
           if-no-files-found: warn
           retention-days: 14

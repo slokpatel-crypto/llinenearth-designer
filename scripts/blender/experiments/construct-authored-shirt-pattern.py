@@ -24,6 +24,7 @@ from shirt_region_contact import summarize_native_region_contacts
 from source_arm_centerline import sample_scanned_arm_path
 from source_sleeve_sections import build_source_sleeve_sections
 from shirt_spatial_contact import group_actual_source_faces_by_height
+from back_waist_source_trial import construct_back_waist_trial
 
 MODEL_ID="linen-earth-studio-model-v1"
 NAME="LE_AUTHORED_SHIRT_PATTERN_UNMEASURED"
@@ -148,6 +149,7 @@ def main():
     ap.add_argument("--source-scan-sleeves",action="store_true")
     ap.add_argument("--source-scan-sleeve-sections",action="store_true")
     ap.add_argument("--placket-relief-mm",type=float,default=4.0)
+    ap.add_argument("--back-waist-contour",choices=("inside","outside"))
     args=ap.parse_args(sys.argv[sys.argv.index("--")+1:])
     source=Path(bpy.data.filepath).resolve()
     out=Path(args.output).resolve()
@@ -210,6 +212,13 @@ def main():
         source_data=add_raised_front_placket(source_data,projection_mm=args.placket_relief_mm)
     if args.with_finishing:
         source_data=add_collar_and_cuffs(source_data)
+    if args.back_waist_contour:
+        waist=bpy.data.objects["TrouserWaistFabric"]
+        world_waist_vertices=[tuple(waist.matrix_world @ v.co) for v in waist.data.vertices]
+        source_data=construct_back_waist_trial(
+            source_data,world_waist_vertices,side=args.back_waist_contour,
+            clearance_mm=3,max_panel_shift_mm=24,
+        )
     t=source_data["topology"]
     if (t["connectedComponents"]!=1 or t["nonmanifoldEdges"] or
         t["windingErrors"] or t["boundaryLoopsAfterSleeves"]!=4 or
@@ -318,6 +327,9 @@ def main():
         "experimentalUpperChestEaseMm":args.upper_ease_mm,
         "collarAndCuffTopologyAdded":args.with_finishing,
         "integratedRaisedPlacketAdded":args.with_placket,
+        "backWaistSourceContourTrial":args.back_waist_contour,
+        "backWaistSourceObservations":source_data.get("backWaistMeasuredSourceObservations"),
+        "backWaistSourceMedianHeightM":source_data.get("backWaistSourceHeightMedianM"),
         "genericBodyScanArmCenterlinesUsed":args.source_scan_sleeves,
         "sourceScannedArmPathEvidence":scanned_arm_pose,
         "sourceArmTrueSectionFrameAndRadiusEvidence":measured_sections,
