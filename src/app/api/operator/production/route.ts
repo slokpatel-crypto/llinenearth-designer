@@ -28,7 +28,7 @@ async function rpc<T>(name:string,payload:Record<string,unknown>,optional=false)
     signal:AbortSignal.timeout(8_000),
   });
   if(!response.ok){
-    if(optional && await isMissingOptionalProductionRpc(response)) return [] as T;
+    if(optional && await isMissingOptionalProductionRpc(response)) return [] as unknown as T;
     // Never collect or include PostgREST error bodies: they can contain SQL,
     // recovery tokens, customer details or supplier-pricing information.
     throw new Error("Production upstream request failed.");
