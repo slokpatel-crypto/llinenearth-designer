@@ -8,6 +8,7 @@ import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-p
 import { buildProductionPacket } from "@/lib/designer/production-packet";
 import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
 import { requireOperatorClientMutationAck } from "@/lib/designer/operator-client-mutation-ack";
+import { parseOperatorQuoteLines } from "@/lib/designer/operator-quote-lines";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
@@ -130,11 +131,12 @@ export default function ProductionClient(){
   }
 
 
-  const quoteItems=useMemo(()=>[
-    {label:quote.line1Label.trim(),amount:Number(quote.line1Amount)},
-    {label:quote.line2Label.trim(),amount:Number(quote.line2Amount)},
-  ].filter((item)=>item.label&&Number.isFinite(item.amount)&&item.amount>=0),[quote]);
-  const canQuote=Boolean(loadedRevision)&&quote.revisionId.trim().length>=12&&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteItems.length>0;
+  const quoteEntry=useMemo(()=>parseOperatorQuoteLines([
+    {label:quote.line1Label,amount:quote.line1Amount},
+    {label:quote.line2Label,amount:quote.line2Amount},
+  ]),[quote.line1Label,quote.line1Amount,quote.line2Label,quote.line2Amount]);
+  const quoteItems=quoteEntry.lineItems;
+  const canQuote=Boolean(loadedRevision)&&quote.revisionId.trim().length>=12&&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteEntry.valid;
   const acceptedQuotes=useMemo(()=>quotes.filter((item)=>item.status==="accepted"&&(
     !order.revisionId || (item.revision_id===order.revisionId&&item.recipe_hash===order.recipeHash)
   )),[quotes,order.revisionId,order.recipeHash]);
@@ -184,6 +186,7 @@ export default function ProductionClient(){
           <fieldset className="productionLine"><legend>Line 2</legend><input aria-label="Line 2 label" value={quote.line2Label} onChange={(e)=>setQuote({...quote,line2Label:e.target.value})} placeholder="Label"/><input aria-label="Line 2 amount" type="number" min="0" step=".01" value={quote.line2Amount} onChange={(e)=>setQuote({...quote,line2Amount:e.target.value})} placeholder="Amount"/></fieldset>
         </div>
         <label>Note<textarea rows={2} value={quote.note} onChange={(e)=>setQuote({...quote,note:e.target.value})}/></label>
+        {!quoteEntry.valid&&<small role="status" style={{display:"block",marginBottom:8}}>Enter an explicit amount for every labeled line; blank amounts are not ₹0.</small>}
         <button disabled={busy||!configured||!canQuote} onClick={()=>void post({action:"create_quote",revisionId:quote.revisionId,recipeHash:quote.recipeHash,currency:quote.currency,lineItems:quoteItems,adjustment:Number(quote.adjustment||0),note:quote.note,recoveryToken:recoveryToken.trim()},"Quote created from verified locked revision.")}>Create quote</button>
       </article>
 
