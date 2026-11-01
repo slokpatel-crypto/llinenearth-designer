@@ -6,7 +6,7 @@ import { normalizeProductionQuoteDraft } from "@/lib/designer/production-quote";
 import { parseDesignVaultRecoveryToken } from "@/lib/designer/design-vault";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { buildProductionLearningContext } from "@/lib/designer/production-learning-context";
-import { isMissingOptionalProductionRpc } from "@/lib/designer/operator-optional-rpc";
+import { isMissingOptionalProductionRpc, validateOperatorLedgerRows } from "@/lib/designer/operator-optional-rpc";
 
 export const runtime="nodejs";
 
@@ -67,7 +67,16 @@ export async function GET(){
       rpc<unknown[]>("production_customer_outcome_list",{p_limit:250},true),
       rpc<unknown[]>("production_order_learning_context_list",{p_limit:500},true),
     ]);
-    return privateProductionResponse({configured:true,quotes,orders,qcInspections,customerOutcomes,learningContexts},{headers:{"cache-control":"private, no-store"}});
+    // HTTP 200 is not proof of a valid SQL ledger. Reject malformed/oversized
+    // list envelopes before any record can appear verified in Production Desk.
+    return privateProductionResponse({
+      configured:true,
+      quotes:validateOperatorLedgerRows(quotes,100),
+      orders:validateOperatorLedgerRows(orders,100),
+      qcInspections:validateOperatorLedgerRows(qcInspections,250),
+      customerOutcomes:validateOperatorLedgerRows(customerOutcomes,250),
+      learningContexts:validateOperatorLedgerRows(learningContexts,500),
+    },{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/production]",error);
     return privateProductionResponse({error:"Production records could not be read."},{status:503});

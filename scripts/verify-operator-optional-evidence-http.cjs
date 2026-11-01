@@ -37,6 +37,14 @@ async function main(){
       res.end(JSON.stringify({code:"UNEXPECTED_RPC"}));return;
     }
     if(name===mode.target && mode.kind!=="ok"){
+      if(mode.kind==="successObject"||mode.kind==="successNull"||
+        mode.kind==="successScalarRow"||mode.kind==="successTooMany"){
+        const body=mode.kind==="successObject"?{rows:[]}:
+          mode.kind==="successNull"?null:
+          mode.kind==="successScalarRow"?[null]:Array.from({length:501},()=>({id:"synthetic"}));
+        res.writeHead(200,{"content-type":"application/json"});
+        res.end(JSON.stringify(body));return;
+      }
       if(mode.kind==="missing"){
         res.writeHead(404,{"content-type":"application/json"});
         res.end(JSON.stringify({code:"PGRST202",message:"Function not found"}));return;
@@ -93,6 +101,10 @@ async function main(){
     const sig=createHmac("sha256",secret).update(payload).digest("base64url");
     const cookie="linen_operator_session="+payload+"."+sig;
     const cases=[{name:"valid empty ledger",target:null,kind:"ok",status:200}];
+    for(const target of allowed){
+      for(const kind of ["successObject","successNull","successScalarRow","successTooMany"])
+        cases.push({name:target+" "+kind,target,kind,status:503});
+    }
     for(const target of optional){
       cases.push({name:target+" missing",target,kind:"missing",status:200});
       for(const kind of ["generic404","gateway","unavailable","malformed","oversized"])
@@ -123,7 +135,7 @@ async function main(){
         assert.equal(req.authorization,undefined,c.name+" must not send bearer secret");
       }
     }
-    console.log("TITAN optional operator evidence PASS: "+cases.length+
+    console.log("TITAN operator ledger envelopes and optional failures PASS: "+cases.length+
       " signed built-Next HTTP cases against synthetic loopback PostgREST; zero real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}

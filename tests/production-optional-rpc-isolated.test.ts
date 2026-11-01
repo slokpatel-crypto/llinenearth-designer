@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {isMissingOptionalProductionRpc} from "../src/lib/designer/operator-optional-rpc.ts";
+import {isMissingOptionalProductionRpc,validateOperatorLedgerRows} from "../src/lib/designer/operator-optional-rpc.ts";
 
 const json=(body:unknown,status=404)=>new Response(JSON.stringify(body),{
   status,headers:{"content-type":"application/json; charset=utf-8"},
@@ -38,4 +38,17 @@ test("actual authenticated operator GET never swallows optional ledger failures"
   assert.doesNotMatch(get,/catch\s*\{\s*\/\/ Keep/);
   assert.match(get,/status:503/);
   assert.match(route,/response\.headers\.set\("cache-control","private, no-store"\)/);
+});
+
+test("all five successful production ledgers require bounded arrays of row objects",()=>{
+  assert.deepEqual(validateOperatorLedgerRows([],100),[]);
+  assert.deepEqual(validateOperatorLedgerRows([{id:"real-db-id"},{id:"second"}],2),[{id:"real-db-id"},{id:"second"}]);
+  for(const value of [null,undefined,{},true,"[]",1,[null],[false],[3],["x"],[[]],[{} ,null]])
+    assert.throws(()=>validateOperatorLedgerRows(value,100),/Invalid operator production ledger response/);
+  assert.throws(()=>validateOperatorLedgerRows([{},{}],1),/Invalid operator production ledger response/);
+  for(const limit of [0,-1,1.5,NaN,Infinity])
+    assert.throws(()=>validateOperatorLedgerRows([],limit),/Invalid operator production ledger response/);
+  const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
+  for(const [name,limit] of [["quotes",100],["orders",100],["qcInspections",250],["customerOutcomes",250],["learningContexts",500]])
+    assert.ok(route.includes("validateOperatorLedgerRows("+name+","+limit+")"),name+" must be checked before configured:true");
 });

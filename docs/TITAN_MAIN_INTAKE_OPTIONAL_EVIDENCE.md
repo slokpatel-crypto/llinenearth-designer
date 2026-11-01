@@ -19,3 +19,22 @@
 - **Acceptance:** 19 synthetic signed built-Next HTTP cases: genuine empty ledger, literal missing-function compatibility and five fail-closed 404/503/malformed/oversized cases for each of three optional RPCs. Strict private/no-store, allowlisted read-only RPC names, synthetic secret-key-only auth and no production mutation are asserted. Actual test execution and final matching-head CI/Non-3D **PENDING**, not claimed PASS.
 - **Blocked:** no genuine supplier stock, human operator/customer acceptance, tailor/QC, source Blender/UV/four-view, physical devices, five novice users, ten deliveries, live security/staging/restore or owner deploy approval. Main remains unchanged by this draft. Do not merge until exact-head Full CI, Non-3D, applicable database/security checks and deployment guard/ancestry are independently verified.
 - **Next bounded slice:** inspect CI and repair any failure; independently validate successful SQL ledger row envelopes before `configured:true` is returned. Consider isolated main integration only after all relevant evidence is green.
+
+## 2026-11-01 UTC — M3: successful PostgREST 200 list-envelope validation (draft)
+
+- **Exact source parent:** `a04cc6258606c8efdf29b81b45d14d06240abbc9`, PR #688, after matching-head Full CI #41304312342 and Non-3D #41304312350 both completed successfully.
+- **Exact implementation/result commit:** `528dd79d35a9f1e3461e4bcbd492506624cfaf12` (five-file atomic commit); this append is a separate documentation commit, so final PR SHA and its checks must be re-resolved.
+- **Defect:** HTTP 200 with a JSON object, null, scalar row, or more rows than the requested SQL limit was passed through as `configured:true` in the authenticated Production Desk; successful transport is not evidence of a valid ledger.
+- **Fix:** validate all five list envelopes as arrays of object rows with per-RPC row-count caps (100/100/250/250/500), rejecting invalid responses with the existing private/no-store 503. No live SQL, schema, supplier or customer changes.
+- **Regression:** pure Node malformed/oversized list cases and 20 additional authenticated built-Next synthetic HTTP cases (four per RPC). These complement 19 previous optional-function cases. **Final matching-head CI, Non-3D, database and browser checks PENDING** until the new PR head is independently inspected. No physical evidence or full T/J release criterion certified.
+- **Next bounded slice:** inspect matching-head checks and repair failures; investigate bounded successful-response bytes and field-level row contract against real schema before any isolated main integration. Preserve original model and the deployment-disabled main guard.
+
+## 2026-11-01 UTC — M3 isolated main intake (five files only)
+
+- **Live main exact parent:** `cefaaf07865b9e3a33785e027d4de013cd1e8217`; main deployment guard `vercel.json git.deploymentEnabled=false` confirmed.
+- **Source:** PR #692 at `cb0f6c98f1ea0a14fd9f3a5fe42f6ed5baf3a7ea`, Full CI #41308871887 and Non-3D #41308871862 GREEN. Its parent #688 tree and live main tree both equal `119aa93949a8c6fa6ebbe46762750027a80b7f64`.
+- **Isolated intake code commit:** `1cb189d353b514f4ba809a6090c66b91cf484e97`, one parent `cefaaf07865b9e3a33785e027d4de013cd1e8217`, complete source tree `b346d470153afa5d27527f0e4531c995dee488a1`; `main..intake` is exactly five files: route, optional RPC helper, signed HTTP fixture, Node regression and this checkpoint. This documentation append changes the final intake SHA; verify its matching-head CI again.
+- **Affected gate:** T5/J5 operator evidence integrity and T6/J6 automated regression. Invalid successful SQL list envelopes, null/scalar rows and rows exceeding requested caps now return private/no-store 503 rather than `configured:true`.
+- **Pending:** final intake Full CI, Non-3D/browser, audit/release and applicable database checks. No main integration until those are green and live main/guard/diff/ancestry are reverified.
+- **Physical BLOCKED:** supplier stock and measured cloth, real operator/customer acceptance, tailor/QC, Blender source and four-view, devices, beta orders, deliveries, security/staging/restore and owner launch approval.
+- **Next bounded action:** confirm final intake SHA workflows, repair any failures, then merge only this reviewed five-file slice into main with expected-head guard if all technical gates pass. Do not deploy or mutate production.
