@@ -15,7 +15,9 @@ if(process.env.GITHUB_ACTIONS!=="true"||process.env.CI!=="true"){
 const runtime=process.env.LINEN_BROWSER_QA_RUNTIME;
 assert.ok(runtime,"Pinned Playwright runtime is required");
 const {chromium}=createRequire(path.join(runtime,"package.json"))("playwright");
-const base=new URL(process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000");
+// Next start canonicalizes its local hostname to localhost for origin checks.
+// Use the canonical same-origin hostname; do not bypass secure JSON CSRF validation.
+const base=new URL(process.env.LINEN_BROWSER_QA_URL||"http://localhost:3000");
 assert.equal(base.protocol,"http:");
 assert.ok(["127.0.0.1","localhost","[::1]"].includes(base.hostname));
 const secret=process.env.LINEN_OPERATOR_SESSION_SECRET;
@@ -56,6 +58,28 @@ async function runViewport(browser,width){
   const page=await ctx.newPage();
   const errors=[];
   const productionPostActions=[];
+  const productionPostResponses=[];
+  const productionResponseHeaders=[];
+  const failedProductionRequests=[];
+  const pageNavigations=[];
+  page.on("framenavigated",frame=>{if(frame===page.mainFrame())pageNavigations.push(new URL(frame.url()).pathname);});
+  page.on("requestfailed",request=>{if(new URL(request.url()).pathname==="/api/operator/production")failedProductionRequests.push({method:request.method(),failure:request.failure()?.slice(0,140)});});
+  page.on("response",async response=>{
+    if(response.request().method()!=="POST"||
+       new URL(response.url()).pathname!=="/api/operator/production")return;
+    productionResponseHeaders.push(response.status());
+    try{
+      const data=await response.json();
+      productionPostResponses.push({
+        status:response.status(),
+        receiptCount:Array.isArray(data?.receipts)?data.receipts.length:null,
+        responseKeys:data&&typeof data==="object"?Object.keys(data).sort():[],
+        hasPrivateError:typeof data?.error==="string",
+      });
+    }catch{
+      productionPostResponses.push({status:response.status(),invalidJson:true});
+    }
+  });
   page.on("pageerror",e=>errors.push(e.message));
   page.on("request",request=>{
     if(request.method()==="POST"&&new URL(request.url()).pathname==="/api/operator/production"){
@@ -74,13 +98,40 @@ async function runViewport(browser,width){
     });
     const lookup=page.getByRole("button",{name:"Find original status receipt by request ID"});
     await lookup.waitFor({state:"visible",timeout:20_000});
+    // The initial authorized ledger GET must have independently validated and
+    // rendered before receipt recovery begins. Otherwise a test can click while
+    // React is still mounting its operator review state.
+    const review=page.getByRole("button",{name:"I reviewed history — enable writes"});
+    await review.waitFor({state:"visible",timeout:20_000});
+    await page.waitForFunction(()=>{
+      const button=[...document.querySelectorAll("button")]
+        .find(item=>item.textContent?.includes("I reviewed history"));
+      return button&&!button.disabled;
+    },{},{timeout:20_000});
     await assertHold(page);
 
     // A committed receipt is information for manual comparison, NOT permission
     // to retry the write or remove its crash-recovery marker.
     await lookup.click();
     const receipts=page.locator('[aria-label="Original committed status receipts"]');
-    await receipts.getByText("COMMITTED STATUS RECEIPTS").waitFor({state:"visible",timeout:15_000});
+    try{
+      await receipts.getByText("COMMITTED STATUS RECEIPTS").waitFor({state:"visible",timeout:10_000});
+    }catch(error){
+      const state=await page.evaluate(()=>{
+        const status=document.querySelector('[role="status"]')?.textContent||"";
+        return {
+          noReceiptPanel:!document.querySelector('[aria-label="Original committed status receipts"]'),
+          hasLookupError:status.includes("Original status receipt could not be verified"),
+          hasMissingKey:status.includes("original request ID is missing"),
+          hasUncertainTransaction:status.includes("in-flight SQL transaction"),
+          reviewPresent:!!document.querySelector('[aria-label="Production write review required"]'),
+        };
+      });
+      throw new Error("M144 signed browser receipt display mismatch: "+
+        JSON.stringify({width,state,postActions:productionPostActions,
+          postResponses:productionPostResponses,responseHeaders:productionResponseHeaders,failedProductionRequests,pageNavigations,pageErrors:errors})+
+        "; original: "+String(error));
+    }
     const committedText=await receipts.innerText();
     assert.match(committedText,/123e4567-e89b-42d3-a456-426614174010/);
     assert.match(committedText,/committed status: accepted/);
