@@ -99,7 +99,7 @@ async function main(){
       if(child.exitCode!==null)throw Error("Next exited: "+output);
       try{
         // Invalid empty request proves the route is alive without touching RPC.
-        const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},
+        const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","connection":"close"},
           body:"null",signal:AbortSignal.timeout(1200)});
         ready=response.status===503;
       }catch{}
@@ -113,7 +113,7 @@ async function main(){
       "{bad",
     ]){
       seen.length=0;
-      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},
+      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","connection":"close"},
         body,signal:AbortSignal.timeout(15000)});
       const result=await response.json();
       assert.ok([400,503].includes(response.status),"invalid request "+response.status);
@@ -123,7 +123,7 @@ async function main(){
     }
     for(const kind of ["backend500","wrongMime","badJson","oversize","missing","ok"]){
       mode=kind;seen.length=0;
-      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},
+      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","connection":"close"},
         body:JSON.stringify({action:"load",recoveryToken:token}),
         signal:AbortSignal.timeout(15000)}).catch(error=>{
           // Surface the exact case and exit state, but never the recovery token
@@ -151,7 +151,7 @@ async function main(){
       "deleteObject","deleteArray","deleteMalformed","deleteWrongMime","delete500",
     ]){
       mode=kind;seen.length=0;
-      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},
+      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","connection":"close"},
         body:JSON.stringify({action:"delete",recoveryToken:token}),
         signal:AbortSignal.timeout(15000)});
       const data=await response.json();
