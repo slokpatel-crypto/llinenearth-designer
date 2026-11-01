@@ -1,0 +1,264 @@
+{
+  "runId": 41294458372,
+  "exactGeometrySourceSha256": "007f4bf719bb43d263a0713c43a65d2b69eb2a051ec1ee8c50d5d8d431ba4c1c",
+  "blenderVersion": "4.5.14 LTS",
+  "sourceBodySha256": "f469c8592fa24dabb5e8296d13abaeccb9181e28098785d1a19c8d9535048ef9",
+  "originalBodyUnchanged": true,
+  "status": "REJECTED",
+  "productionApproved": false,
+  "rejectionReasons": [
+    "Adaptive candidate still has 69 actual body/cloth triangle crossing pairs after bounded repair; zero required",
+    "Adaptive candidate has 149/166 shirt/trouser-leg pairs, worse than original 30/33",
+    "Source shirt is 3 disconnected islands (2 small unsewn 10-face sleeve islands), not one connected garment",
+    "Canonical photo identity, sewn panel topology, UV metric scale, measured drape and tailor signoff remain unverified"
+  ],
+  "originalSourceWelded": {
+    "bodyAfterVertexSha256": "f469c8592fa24dabb5e8296d13abaeccb9181e28098785d1a19c8d9535048ef9",
+    "bodyCandidateContactPairsAfterBoundedRepair": 832,
+    "bodyCandidateContactPairsAfterThicknessBeforeRepair": 832,
+    "bodyCandidateContactPairsBeforeThickness": 389,
+    "bodyOriginalVertexSha256": "f469c8592fa24dabb5e8296d13abaeccb9181e28098785d1a19c8d9535048ef9",
+    "bodyUnchanged": true,
+    "candidateAdaptiveFaceRefinementLevel": 0,
+    "candidateBodyRepairAudit": null,
+    "candidateBoundedContactRepairPasses": 0,
+    "candidateGeometryTopologicalGate": false,
+    "clearanceMmExperimentOnly": 7,
+    "collarPlacketCuffsAuthored": false,
+    "completeGarmentSewnPattern": false,
+    "experiment": "source-index-welded-shirt-shoulder-v1",
+    "photoParityApproved": false,
+    "productionReady": false,
+    "referenceModelId": "linen-earth-studio-model-v1",
+    "selectedOriginalSourcePolygonCount": 2580,
+    "selectedOriginalSourcePolygonIndicesSha256": "4ede874c2be106fc5f5c6467bce9bdb1243b6d6eba8e1eefc8ebc1ab47558f84",
+    "sourceSceneSha256": "007f4bf719bb43d263a0713c43a65d2b69eb2a051ec1ee8c50d5d8d431ba4c1c",
+    "sourceSeamsMarked": 76,
+    "sourceTopology": {
+      "connectedComponents": 3,
+      "polygonCount": 2580,
+      "regionFaceCounts": {
+        "left_sleeve": 671,
+        "right_sleeve": 672,
+        "torso": 1237
+      },
+      "sharedEdgeWindingErrors": 0,
+      "sourceConnectedIslandFaceCounts": [
+        2560,
+        10,
+        10
+      ],
+      "sourceConnectedIslandRegionCounts": [
+        {
+          "faceCount": 2560,
+          "regionFaceCounts": {
+            "left_sleeve": 661,
+            "right_sleeve": 662,
+            "torso": 1237
+          }
+        },
+        {
+          "faceCount": 10,
+          "regionFaceCounts": {
+            "left_sleeve": 10,
+            "right_sleeve": 0,
+            "torso": 0
+          }
+        },
+        {
+          "faceCount": 10,
+          "regionFaceCounts": {
+            "left_sleeve": 0,
+            "right_sleeve": 10,
+            "torso": 0
+          }
+        }
+      ],
+      "sourceEdgeSeamCount": 76,
+      "sourceNonmanifoldEdges": 0,
+      "sourceOpenBoundaryEdges": 234,
+      "sourceSeamRegionPairs": {
+        "left_sleeve/torso": 38,
+        "right_sleeve/torso": 38
+      },
+      "vertexCount": 2697
+    },
+    "supplierFabricAndUVMetricApproved": false,
+    "thicknessMmExperimentOnly": 1.6,
+    "trouserCandidateContactPairs": {
+      "TrouserLegLFabric": 30,
+      "TrouserLegRFabric": 33,
+      "TrouserWaistFabric": 0
+    }
+  },
+  "adaptiveFaceSubdivisionAndBoundedRepair": {
+    "bodyAfterVertexSha256": "f469c8592fa24dabb5e8296d13abaeccb9181e28098785d1a19c8d9535048ef9",
+    "bodyCandidateContactPairsAfterBoundedRepair": 69,
+    "bodyCandidateContactPairsAfterThicknessBeforeRepair": 986,
+    "bodyCandidateContactPairsBeforeThickness": 455,
+    "bodyOriginalVertexSha256": "f469c8592fa24dabb5e8296d13abaeccb9181e28098785d1a19c8d9535048ef9",
+    "bodyUnchanged": true,
+    "candidateAdaptiveFaceRefinementLevel": 1,
+    "candidateBodyRepairAudit": {
+      "affectedVertexCount": 281,
+      "candidateOnly": true,
+      "contactPairsByPass": [
+        986,
+        743,
+        381,
+        110,
+        80,
+        83,
+        69
+      ],
+      "maxVertexCorrectionMm": 12,
+      "measuredEaseApproved": false,
+      "remainingContactFaceCount": 8,
+      "remainingContactHeightDeciles": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "6": 0,
+        "7": 8,
+        "8": 0,
+        "9": 0
+      },
+      "remainingContactLateralZones": {
+        "centre": 0,
+        "left": 0,
+        "right": 8
+      },
+      "remainingContactPairs": 69,
+      "remainingContactSampleWorldMetres": [
+        [
+          0.1784,
+          0.0493,
+          1.2503
+        ],
+        [
+          0.1768,
+          0.0405,
+          1.2557
+        ],
+        [
+          0.1797,
+          0.0498,
+          1.2498
+        ],
+        [
+          0.1775,
+          0.0415,
+          1.2539
+        ],
+        [
+          0.1799,
+          0.0478,
+          1.248
+        ],
+        [
+          0.1787,
+          0.0395,
+          1.2535
+        ],
+        [
+          0.1789,
+          0.0485,
+          1.2469
+        ],
+        [
+          0.1782,
+          0.0403,
+          1.2517
+        ]
+      ]
+    },
+    "candidateBoundedContactRepairPasses": 6,
+    "candidateGeometryTopologicalGate": false,
+    "clearanceMmExperimentOnly": 7,
+    "collarPlacketCuffsAuthored": false,
+    "completeGarmentSewnPattern": false,
+    "experiment": "source-index-welded-shirt-shoulder-v1",
+    "photoParityApproved": false,
+    "productionReady": false,
+    "referenceModelId": "linen-earth-studio-model-v1",
+    "selectedOriginalSourcePolygonCount": 2580,
+    "selectedOriginalSourcePolygonIndicesSha256": "4ede874c2be106fc5f5c6467bce9bdb1243b6d6eba8e1eefc8ebc1ab47558f84",
+    "sourceSceneSha256": "007f4bf719bb43d263a0713c43a65d2b69eb2a051ec1ee8c50d5d8d431ba4c1c",
+    "sourceSeamsMarked": 76,
+    "sourceTopology": {
+      "connectedComponents": 3,
+      "polygonCount": 2580,
+      "regionFaceCounts": {
+        "left_sleeve": 671,
+        "right_sleeve": 672,
+        "torso": 1237
+      },
+      "sharedEdgeWindingErrors": 0,
+      "sourceConnectedIslandFaceCounts": [
+        2560,
+        10,
+        10
+      ],
+      "sourceConnectedIslandRegionCounts": [
+        {
+          "faceCount": 2560,
+          "regionFaceCounts": {
+            "left_sleeve": 661,
+            "right_sleeve": 662,
+            "torso": 1237
+          }
+        },
+        {
+          "faceCount": 10,
+          "regionFaceCounts": {
+            "left_sleeve": 10,
+            "right_sleeve": 0,
+            "torso": 0
+          }
+        },
+        {
+          "faceCount": 10,
+          "regionFaceCounts": {
+            "left_sleeve": 0,
+            "right_sleeve": 10,
+            "torso": 0
+          }
+        }
+      ],
+      "sourceEdgeSeamCount": 76,
+      "sourceNonmanifoldEdges": 0,
+      "sourceOpenBoundaryEdges": 234,
+      "sourceSeamRegionPairs": {
+        "left_sleeve/torso": 38,
+        "right_sleeve/torso": 38
+      },
+      "vertexCount": 2697
+    },
+    "supplierFabricAndUVMetricApproved": false,
+    "thicknessMmExperimentOnly": 1.6,
+    "trouserCandidateContactPairs": {
+      "TrouserLegLFabric": 149,
+      "TrouserLegRFabric": 166,
+      "TrouserWaistFabric": 0
+    }
+  },
+  "comparison": {
+    "bodyBefore": 832,
+    "bodyAfter": 69,
+    "leftLegBefore": 30,
+    "leftLegAfter": 149,
+    "rightLegBefore": 33,
+    "rightLegAfter": 166,
+    "maximumCorrectionMm": 12,
+    "remainingContactFaceCount": 8,
+    "allRequiredGatesPass": false
+  },
+  "archive": {
+    "artifactId": 13078539181,
+    "workflowRunId": 41294458372,
+    "retentionDays": 14
+  }
+}
