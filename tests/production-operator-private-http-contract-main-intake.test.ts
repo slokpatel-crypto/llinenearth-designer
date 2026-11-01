@@ -30,3 +30,16 @@ test("signed built Next operator HTTP gate is required before slow GLB browser t
   assert.doesNotMatch(script,/"create_quote"|"create_order"|"quote_status"|"order_status"/,
     "CI test must not issue a legitimate mutating production instruction");
 });
+
+
+test("all operator production POST return paths set private no-store consistently",()=>{
+  const source=readFileSync("src/app/api/operator/production/route.ts","utf8");
+  assert.ok(source.includes("function privateProductionResponse(body:unknown,init?:ResponseInit)"));
+  assert.ok(source.includes('response.headers.set("cache-control","private, no-store")'));
+  const post=source.split("export async function POST(request:Request){")[1]??"";
+  assert.ok(post.includes('return privateProductionResponse({error:"Unsupported production action."},{status:400})'));
+  assert.ok(post.includes('return privateProductionResponse({quoteId,lockedRevisionVerified:true})'));
+  assert.ok(post.includes('return privateProductionResponse({orderId,learningContextAttached:true,lockedRevisionVerified:true})'));
+  assert.doesNotMatch(post,/return NextResponse\.json\(/,
+    "All POST errors and successes must get uniform privacy response headers");
+});
