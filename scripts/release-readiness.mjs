@@ -2376,6 +2376,10 @@ requireTokens("scripts/verify-production-ledger-refresh-barrier-browser.cjs",[
   "postSessionRefreshAndSecondClickRequired:true",
   "First acknowledgement must not clear a marker before post-session history verification",
 ]);
+requireTokens("scripts/verify-production-packet-cross-tab-browser.cjs",[
+  "postSessionTwoStepReview:true",
+  "Production history rechecked with no active browser write",
+]);
 
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
