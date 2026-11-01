@@ -22,6 +22,7 @@ from authored_shirt_finishing import add_collar_and_cuffs
 from authored_shirt_placket import add_raised_front_placket
 from shirt_region_contact import summarize_native_region_contacts
 from source_arm_centerline import sample_scanned_arm_path
+from source_sleeve_sections import build_source_sleeve_sections
 
 MODEL_ID="linen-earth-studio-model-v1"
 NAME="LE_AUTHORED_SHIRT_PATTERN_UNMEASURED"
@@ -99,6 +100,7 @@ def main():
     ap.add_argument("--with-finishing",action="store_true")
     ap.add_argument("--with-placket",action="store_true")
     ap.add_argument("--source-scan-sleeves",action="store_true")
+    ap.add_argument("--source-scan-sleeve-sections",action="store_true")
     ap.add_argument("--placket-relief-mm",type=float,default=4.0)
     args=ap.parse_args(sys.argv[sys.argv.index("--")+1:])
     source=Path(bpy.data.filepath).resolve()
@@ -119,8 +121,11 @@ def main():
 
     original_hashes={"Body":mesh_sha(body)}
     original_hashes.update({g:mesh_sha(bpy.data.objects[g]) for g in GARMENTS})
+    if args.source_scan_sleeve_sections and not args.source_scan_sleeves:
+        raise RuntimeError("Source-section fit requires real scanned arm observations")
     scanned_arm_pose=None
     arm_centerlines=None
+    measured_sections=None
     if args.source_scan_sleeves:
         baseline_pattern=make_shirt_mesh(
             upper_ease_mm=args.upper_ease_mm,
@@ -131,6 +136,8 @@ def main():
         centre_x=(min(xs)+max(xs))/2
         scanned_arm_pose={}
         arm_centerlines={}
+        if args.source_scan_sleeve_sections:
+            measured_sections={}
         for sleeve in ("left_sleeve","right_sleeve"):
             # The unsewn source armhole's *actual welded ring* determines
             # the root. The downstream path is measured on immutable scan.
@@ -143,10 +150,15 @@ def main():
             )
             scanned_arm_pose[sleeve]=arm_observation
             arm_centerlines[sleeve]=arm_observation["centerline"]
+            if measured_sections is not None:
+                measured_sections[sleeve]=build_source_sleeve_sections(
+                    body_xyz,arm_observation,clearance_mm=4.0
+                )
     source_data=make_shirt_mesh(
         upper_ease_mm=args.upper_ease_mm,
         cuff_radius_mm=args.cuff_radius_mm,
-        source_arm_centerlines=arm_centerlines,
+        source_arm_centerlines=(None if measured_sections is not None else arm_centerlines),
+        source_arm_sections=measured_sections,
     )
     if args.with_placket:
         source_data=add_raised_front_placket(source_data,projection_mm=args.placket_relief_mm)
@@ -256,6 +268,8 @@ def main():
         "integratedRaisedPlacketAdded":args.with_placket,
         "genericBodyScanArmCenterlinesUsed":args.source_scan_sleeves,
         "sourceScannedArmPathEvidence":scanned_arm_pose,
+        "sourceArmTrueSectionFrameAndRadiusEvidence":measured_sections,
+        "sourceScanSleeveCrossSectionsApplied":args.source_scan_sleeve_sections,
         "canonicalPhotoBodyPoseVerified":False,
         "experimentalPlacketReliefMm":args.placket_relief_mm,
         "fullButtonOpeningAndButtonholesVerified":False,
