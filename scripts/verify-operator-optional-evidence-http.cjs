@@ -41,9 +41,10 @@ async function main(){
       const body=mode.target===name ? ({
         ackFalse:"false",ackNull:"null",ackString:'"false"',
         ackObject:'{"updated":false}',ackArray:"[]",ackNumber:"1",
-        ackMalformed:"{bad",
+        ackMalformed:"{bad",ackOversized:'"'+ "x".repeat(256)+'"',
       }[mode.kind]??"true") : "true";
-      res.writeHead(200,{"content-type":"application/json"});res.end(body);return;
+      const mime=mode.target===name&&mode.kind==="ackWrongMime"?"text/plain":"application/json";
+      res.writeHead(200,{"content-type":mime});res.end(body);return;
     }
     if((!allowed.has(name)&&name!==deliveryQc)||req.method!=="POST"){
       res.writeHead(500,{"content-type":"application/json"});
@@ -231,7 +232,7 @@ async function main(){
       ["quote_status","production_quote_set_status","quoteId"],
       ["order_status","production_order_set_status","orderId"],
     ]){
-      for(const kind of ["ackFalse","ackNull","ackString","ackObject","ackArray","ackNumber","ackMalformed","ok"]){
+      for(const kind of ["ackFalse","ackNull","ackString","ackObject","ackArray","ackNumber","ackMalformed","ackWrongMime","ackOversized","ok"]){
         mode={target:rpcName,kind};
         seen.length=0;
         const response=await fetch(url,{
@@ -287,7 +288,7 @@ async function main(){
     });
     assert.equal(unordered.status,200,"newest approval wins even when upstream rows are unordered");
     assert.equal(seen.filter(x=>x.name==="production_order_set_status").length,1);
-    console.log("TITAN operator status ACK PASS: 16 synthetic signed quote/order POST cases.");
+    console.log("TITAN operator status ACK PASS: 20 synthetic signed quote/order POST cases.");
     console.log("TITAN operator ledger + delivery QC PASS: "+cases.length+
       " GET and "+(deliveryKinds.length+5)+" POST signed synthetic HTTP cases; zero real writes.");
   }finally{
