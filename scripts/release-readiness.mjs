@@ -2415,6 +2415,24 @@ requireTokens(".github/workflows/ci.yml",[
   "node scripts/verify-production-status-receipt-private-http.cjs",
 ]);
 
+// M144: SQL and private HTTP alone do not verify the actual operator React UI.
+// A signed Chromium session must demonstrate that status receipts, absent rows,
+// upstream failures and a changed browser marker NEVER unlock production writes.
+requireTokens("scripts/verify-production-status-receipt-browser.cjs",[
+  "M144 signed Chromium status-receipt UI hold and changed-marker veto PASS",
+  "for(const width of [390,768,1440])",
+  "committed status: accepted",
+  "This is NOT proof that retrying is safe",
+  "changedMarkerVeto:true",
+  'productionPostActions.every(action=>action==="status_receipt_lookup")',
+]);
+requireTokens("tests/production-status-receipt-lookup.test.ts",[
+  "M144 signed browser UI never treats a status receipt as permission to retry",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-status-receipt-browser.cjs",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
