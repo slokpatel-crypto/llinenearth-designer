@@ -29,3 +29,14 @@ test("quote helper never allows an adjustment to make the total negative",()=>{
     adjustment:-501,
   }),/cannot be negative/);
 });
+
+test("missing, null, empty and non-numeric line amounts cannot become invented zero prices",()=>{
+  for(const amount of [undefined,null,"", "  ", false, true, "0", "250", NaN, Infinity, [], {}]){
+    assert.throws(()=>normalizeProductionQuoteDraft({
+      lineItems:[{label:"Fabric",amount}],
+    }),/Invalid quote line item amount/);
+  }
+  const free=normalizeProductionQuoteDraft({lineItems:[{label:"Explicit free sample",amount:0}]});
+  assert.equal(free.lineItems[0].amount,0);
+  assert.equal(free.total,0);
+});

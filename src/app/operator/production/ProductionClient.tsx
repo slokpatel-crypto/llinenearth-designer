@@ -7,6 +7,8 @@ import { buildProductionHandoff } from "@/lib/designer/production-handoff";
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import { buildProductionPacket } from "@/lib/designer/production-packet";
 import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
+import { requireOperatorClientMutationAck } from "@/lib/designer/operator-client-mutation-ack";
+import { parseOperatorQuoteLines } from "@/lib/designer/operator-quote-lines";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
@@ -29,12 +31,29 @@ export default function ProductionClient(){
   const [loadedRevision,setLoadedRevision]=useState<LockedDesignRevision|null>(null);
 
   async function load(){
-    const response=await fetch("/api/operator/production",{cache:"no-store"});
-    if(response.status===401){window.location.href="/operator/login?next=/operator/production";return;}
-    const data=await response.json();
-    if(response.ok){setConfigured(data.configured!==false);setQuotes(Array.isArray(data.quotes)?data.quotes:[]);setOrders(Array.isArray(data.orders)?data.orders:[]);setQcInspections(Array.isArray(data.qcInspections)?data.qcInspections:[]);setCustomerOutcomes(Array.isArray(data.customerOutcomes)?data.customerOutcomes:[]);setLearningContexts(Array.isArray(data.learningContexts)?data.learningContexts:[]);}
+    const response=await fetch("/api/operator/production",{cache:"no-store"}).catch(()=>{
+      setConfigured(false);
+      throw new Error("Production records could not be loaded. Refresh before proceeding.");
+    });
+    if(response.status===401){setConfigured(false);window.location.href="/operator/login?next=/operator/production";throw new Error("Operator session expired. Sign in again.");}
+    const data=await response.json().catch(()=>{
+      setConfigured(false);
+      throw new Error("Production records could not be loaded. Refresh before proceeding.");
+    });
+    if(!response.ok||!data||typeof data!=="object"||
+      (data.configured!==false&&(!Array.isArray(data.quotes)||!Array.isArray(data.orders)||
+        !Array.isArray(data.qcInspections)||!Array.isArray(data.customerOutcomes)||!Array.isArray(data.learningContexts)))){
+      setConfigured(false);
+      throw new Error("Production records could not be loaded. Refresh before proceeding.");
+    }
+    setConfigured(data.configured!==false);
+    setQuotes(Array.isArray(data.quotes)?data.quotes:[]);
+    setOrders(Array.isArray(data.orders)?data.orders:[]);
+    setQcInspections(Array.isArray(data.qcInspections)?data.qcInspections:[]);
+    setCustomerOutcomes(Array.isArray(data.customerOutcomes)?data.customerOutcomes:[]);
+    setLearningContexts(Array.isArray(data.learningContexts)?data.learningContexts:[]);
   }
-  useEffect(()=>{void load();},[]);
+  useEffect(()=>{void load().catch(()=>setMessage("Production records could not be loaded. Refresh before proceeding."));},[]);
 
   async function post(body:Record<string,unknown>,success:string){
     if(busy) return;
@@ -42,8 +61,14 @@ export default function ProductionClient(){
     try{
       const response=await fetch("/api/operator/production",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
       const data=await response.json();
-      if(!response.ok) throw new Error(data.error||"Production operation failed.");
-      setMessage(success);await load();
+      if(!response.ok) throw new Error(data?.error||"Production operation failed.");
+      requireOperatorClientMutationAck(body.action,data);
+      try{
+        await load();
+        setMessage(success);
+      }catch{
+        setMessage("The request was acknowledged, but records could not be refreshed. Refresh before another change.");
+      }
     }catch(error){setMessage(error instanceof Error?error.message:"Production operation failed.");}
     finally{setBusy(false);}
   }
@@ -106,11 +131,12 @@ export default function ProductionClient(){
   }
 
 
-  const quoteItems=useMemo(()=>[
-    {label:quote.line1Label.trim(),amount:Number(quote.line1Amount)},
-    {label:quote.line2Label.trim(),amount:Number(quote.line2Amount)},
-  ].filter((item)=>item.label&&Number.isFinite(item.amount)&&item.amount>=0),[quote]);
-  const canQuote=Boolean(loadedRevision)&&quote.revisionId.trim().length>=12&&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteItems.length>0;
+  const quoteEntry=useMemo(()=>parseOperatorQuoteLines([
+    {label:quote.line1Label,amount:quote.line1Amount},
+    {label:quote.line2Label,amount:quote.line2Amount},
+  ]),[quote.line1Label,quote.line1Amount,quote.line2Label,quote.line2Amount]);
+  const quoteItems=quoteEntry.lineItems;
+  const canQuote=Boolean(loadedRevision)&&quote.revisionId.trim().length>=12&&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteEntry.valid;
   const acceptedQuotes=useMemo(()=>quotes.filter((item)=>item.status==="accepted"&&(
     !order.revisionId || (item.revision_id===order.revisionId&&item.recipe_hash===order.recipeHash)
   )),[quotes,order.revisionId,order.recipeHash]);
@@ -118,7 +144,7 @@ export default function ProductionClient(){
   return <main className="productionDesk">
     <header className="productionHeader">
       <div><span>LINEN EARTH / PRIVATE OPERATOR</span><h1>Production Desk</h1><p>Create traceable quotes and production orders from locked design revisions. Amounts are entered by the operator; this desk never invents prices.</p></div>
-      <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/stock">Stock Ledger</Link><Link href="/operator/production-calibration">Usage Calibration</Link><Link href="/operator/garment-qc">Garment QC</Link><Link href="/operator/production-evidence">Zero-Reentry Proof</Link><Link href="/operator/customer-outcomes">Outcome Review</Link></nav>
+      <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/stock">Stock Ledger</Link><Link href="/operator/production-calibration">Usage Calibration</Link><Link href="/operator/garment-qc">Garment QC</Link><Link href="/operator/production-evidence">Zero-Reentry Proof</Link><Link href="/operator/customer-outcomes">Outcome Review</Link><button type="button" disabled={busy} onClick={()=>void load().then(()=>setMessage("Production records refreshed.")).catch(()=>setMessage("Production records could not be loaded. Refresh before proceeding."))}>Refresh records</button></nav>
     </header>
 
     <section className="productionLoad">
@@ -160,6 +186,7 @@ export default function ProductionClient(){
           <fieldset className="productionLine"><legend>Line 2</legend><input aria-label="Line 2 label" value={quote.line2Label} onChange={(e)=>setQuote({...quote,line2Label:e.target.value})} placeholder="Label"/><input aria-label="Line 2 amount" type="number" min="0" step=".01" value={quote.line2Amount} onChange={(e)=>setQuote({...quote,line2Amount:e.target.value})} placeholder="Amount"/></fieldset>
         </div>
         <label>Note<textarea rows={2} value={quote.note} onChange={(e)=>setQuote({...quote,note:e.target.value})}/></label>
+        {!quoteEntry.valid&&<small role="status" style={{display:"block",marginBottom:8}}>Enter an explicit amount for every labeled line; blank amounts are not ₹0.</small>}
         <button disabled={busy||!configured||!canQuote} onClick={()=>void post({action:"create_quote",revisionId:quote.revisionId,recipeHash:quote.recipeHash,currency:quote.currency,lineItems:quoteItems,adjustment:Number(quote.adjustment||0),note:quote.note,recoveryToken:recoveryToken.trim()},"Quote created from verified locked revision.")}>Create quote</button>
       </article>
 
@@ -187,9 +214,9 @@ export default function ProductionClient(){
           <strong>{item.currency} {Number(item.total).toFixed(2)} · {item.status.toUpperCase()}</strong>
           <small>{item.quote_id}</small>
           <div className="productionRecordActions">
-            {item.status==="draft"&&<button disabled={busy} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"sent"},"Quote marked sent.")}>Mark sent</button>}
-            {item.status==="sent"&&<button disabled={busy} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"accepted"},"Quote accepted.")}>Accept</button>}
-            {item.status!=="void"&&<button disabled={busy} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"void"},"Quote voided.")}>Void</button>}
+            {item.status==="draft"&&<button disabled={busy||!configured} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"sent"},"Quote marked sent.")}>Mark sent</button>}
+            {item.status==="sent"&&<button disabled={busy||!configured} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"accepted"},"Quote accepted.")}>Accept</button>}
+            {item.status!=="void"&&<button disabled={busy||!configured} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"void"},"Quote voided.")}>Void</button>}
           </div>
         </section>)}
       </article>
@@ -218,7 +245,7 @@ export default function ProductionClient(){
               {customerOutcome.note&&<p>{customerOutcome.note}</p>}
               <small>Evidence only — not automatically applied to Designer ranking.</small>
             </div>}
-            {nextStatuses.length>0&&<select defaultValue="" onChange={(e)=>{if(e.target.value) void post({action:"order_status",orderId:item.order_id,status:e.target.value},"Order status updated.");}}>
+            {nextStatuses.length>0&&<select defaultValue="" disabled={busy||!configured} onChange={(e)=>{const status=e.target.value;e.target.value="";if(status) void post({action:"order_status",orderId:item.order_id,status},"Order status updated.");}}>
               <option value="">Update status…</option>
               {nextStatuses.map((status)=><option key={status} value={status}>{status.replaceAll("_"," ")}</option>)}
             </select>}
