@@ -23,6 +23,8 @@ assert.ok(["127.0.0.1","localhost","[::1]"].includes(base.hostname));
 const secret=process.env.LINEN_OPERATOR_SESSION_SECRET;
 assert.ok(typeof secret==="string"&&secret.length>=32);
 const holdKey="linen-earth:production:unverified-write:v1";
+const epochKey="linen-earth:production:write-epoch:v1";
+const changedEpoch="c6324fb8-6148-4ac7-9304-452719c7e029";
 const originalKey="123e4567-e89b-42d3-a456-426614174070";
 const changedKey="9b4216ea-8df6-45a4-8a5c-2f1f91ad283e";
 const out=path.resolve("artifacts/preview-lifecycle/status-receipt-browser");
@@ -213,14 +215,40 @@ async function runViewport(browser,width){
       "A receipt for the superseded marker must never be shown as a committed fact");
     await assertHold(page,changedKey);
 
-    assert.ok(productionPostActions.length>=4);
+    // M149: a second tab can complete a different write while preserving the
+    // exact same pending request UUID. A receipt lookup that checked only the
+    // marker would show stale SQL evidence. Change ONLY the anonymous epoch
+    // during a real deferred React fetch and require a fail-closed result.
+    await setMode("valid");
+    await lookup.click();
+    await page.waitForFunction(()=>window.__titanStatusReceiptRace?.intercepted===2,
+      {},{timeout:15_000});
+    assert.equal(await lookup.isDisabled(),true,"Same-key epoch lookup must remain busy");
+    await page.evaluate(({epochKey,changedEpoch})=>{
+      localStorage.setItem(epochKey,changedEpoch);
+    },{epochKey,changedEpoch});
+    await page.evaluate(()=>window.__titanStatusReceiptRace.release());
+    await page.waitForFunction(()=>{
+      const button=[...document.querySelectorAll("button")]
+        .find(item=>item.textContent?.includes("Find original status receipt by request ID"));
+      return button&&!button.disabled;
+    },{},{timeout:15_000});
+    await page.getByRole("status").filter({
+      hasText:"Original status receipt could not be verified",
+    }).waitFor({state:"visible",timeout:15_000});
+    assert.equal(await receipts.count(),0,
+      "M149: unchanged request UUID but changed write epoch must veto stale status evidence");
+    assert.equal(await page.evaluate(key=>localStorage.getItem(key),epochKey),changedEpoch);
+    await assertHold(page,changedKey);
+
+    assert.ok(productionPostActions.length>=5);
     assert.ok(productionPostActions.every(action=>action==="status_receipt_lookup"),
       "No create/status mutation POST may leave this signed synthetic browser");
     assert.deepEqual(errors,[],"No browser JavaScript exceptions");
     await mkdir(out,{recursive:true});
     await page.screenshot({path:path.join(out,"review-"+width+".png"),fullPage:true});
     return {width,committedShown:true,emptyStillHeld:true,upstreamFailClosed:true,
-      changedMarkerVeto:true,writeMutations:0,syntheticOnly:true};
+      changedMarkerVeto:true,changedEpochVeto:true,writeMutations:0,syntheticOnly:true};
   }finally{await ctx.close();}
 }
 async function main(){
@@ -234,7 +262,7 @@ async function main(){
       realOperatorEvidence:false,physicalEvidence:false,stockEvidence:false,
       realSqlReceiptEvidence:false,viewports,
     },null,2));
-    console.log("M144 signed Chromium status-receipt UI hold and changed-marker veto PASS");
+    console.log("M149 signed Chromium status-receipt same-key changed-epoch veto PASS");
     console.log("No production write, live SQL, customer data or human signoff.");
   }finally{
     await setMode("valid");
