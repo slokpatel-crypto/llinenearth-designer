@@ -2405,6 +2405,15 @@ requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
   "m142-status-receipt-lookup-assertions.sql",
   "Status receipt lookup claimed noncommit while another SQL transaction was open",
 ]);
+requireTokens("scripts/verify-production-status-receipt-private-http.cjs",[
+  "Signed built-Next status receipt recovery HTTP PASS",
+  "empty lookup is only an observation",
+  "malformed","duplicate","missing","upstream","oversized",
+  "assertPrivate(failed)",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-status-receipt-private-http.cjs",
+]);
 
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
