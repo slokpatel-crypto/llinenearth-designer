@@ -1194,3 +1194,11 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] Wire M149 into CI, Node source regression and static release gate; keep the original model and no-paid-AI core.
 - [ ] Exact M149 SHA must pass full CI, Non-3D and both disposable PG checks. M144–M148 green checks do not certify M149.
 - [ ] Human and physical release gates still open: model Blender four-view/UV, genuine supplier fabric stock and measured repeat, tailor/fit/QC, devices, five beta, ten real deliveries, privacy/security/staging/restore and owner signoff. No merge, live SQL or deployment.
+
+
+## 2026-11-01 — M150 cross-tab browser storage-clear fail-closed release slice (draft)
+- [x] Fix a production safety gap: `localStorage.clear()` in another tab broadcasts a storage event with `key=null`, previously ignored by Production Desk. Invalidate verified ledger generation, cached receipt evidence and all mutation/export controls; retain a human review hold and explain that lost storage is NOT proof of an uncommitted SQL write.
+- [x] Add CI-only signed Chromium 390/768/1440 two-tab scenario starting from a usable synthetic operator ledger, clearing storage in the other tab, requiring review hold and disabled status controls even after a fresh GET. No real production POST, supplier stock or paid AI.
+- [x] Add Node source contract, CI hook, release gate, V8 syntax and source/CI ordering static checks. **Actual npm, signed Chromium, production build and PostgreSQL workflows not yet run on M150**.
+- [ ] Require exact final M150 SHA quality, full Node, engine, preview, release, build, signed browser, independent Non-3D and both disposable PostgreSQL to PASS before technical acceptance.
+- [ ] Real supplier rolls/metres, human owner/customer/operator walkthrough, physical tailor/QC, original Blender four-view/UV, genuine devices, five beta, ten deliveries, staging migration/security/privacy/restore and owner merge/deploy approvals remain BLOCKED/PENDING. Browser storage clearing may require authorized external recovery; never automatically recreate an uncertain production write.
