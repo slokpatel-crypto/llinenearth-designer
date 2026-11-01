@@ -102,6 +102,14 @@ jobs:
             --output .cache/linen-earth/linen-earth-shirt-ease-26.blend \
             --report artifacts/authored-clearance-qa/ease-26-mm-contact.json
 
+      - name: Compare native contact measurements against original authored shirt
+        if: steps.torso_and_sleeve_ease.outcome == 'success'
+        run: |
+          python3 scripts/blender/compare_native_shirt_candidates.py \
+            --candidate artifacts/authored-clearance-qa/ease-14-mm-contact.json \
+            --candidate artifacts/authored-clearance-qa/ease-26-mm-contact.json \
+            --output artifacts/authored-clearance-qa/native-variant-comparison.json
+
       - name: Render four angles for BOTH current shirt geometry variants
         if: steps.torso_and_sleeve_ease.outcome == 'success'
         run: |
