@@ -35,9 +35,9 @@ test("manual physical stock evidence requires named provenance",()=>{
     fabricId:"shirt-1",eventType:"receipt",quantityMetres:12,recordedBy:"SP",sourceReference:"",
   }),/source reference/i);
   assert.deepEqual(normalizeManualStockEvent({
-    fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.345,recordedBy:" SP ",sourceReference:" Roll tag LE-42 ",
+    fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.345,recordedBy:" SP ",sourceReference:" Roll tag LE-42 ",requestKey:"STOCK-RECEIPT-LE42",
   }),{
-    fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.345,note:"",recordedBy:"SP",sourceReference:"Roll tag LE-42",
+    fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.345,note:"",recordedBy:"SP",sourceReference:"Roll tag LE-42",requestKey:"STOCK-RECEIPT-LE42",
   });
 });
 
