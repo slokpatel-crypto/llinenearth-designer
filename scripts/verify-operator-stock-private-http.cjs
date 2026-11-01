@@ -41,6 +41,12 @@ async function main(){
         snapshotWrongFabric:[{...valid,fabric_id:"invented-fabric"}],
         snapshotMissingMetres:[{...valid,available_metres:null}],
         snapshotInconsistent:[{...valid,available_metres:10}],
+        snapshotShortProvenance:[{...valid,provenance_event_count:1}],
+        snapshotFalseReadyLegacy:[{...valid,provenance_event_count:1,
+          legacy_unverified_event_count:1,provenance_ready:true}],
+        snapshotFalseNotReady:[{...valid,provenance_ready:false}],
+        snapshotFalseReadyEmpty:[{...valid,manual_event_count:0,
+          provenance_event_count:0,provenance_ready:true}],
       };
       response=Object.hasOwn(outcomes,mode)?outcomes[mode]:[valid];
     }else if(path.endsWith("/fabric_stock_record_v2")||
@@ -111,8 +117,9 @@ async function main(){
     assert.ok(ready,"Next stock fixture did not start");
     for(const kind of [
       "valid","snapshotNull","snapshotObject","snapshotWrongFabric",
-      "snapshotMissingMetres","snapshotInconsistent","backend500",
-      "wrongMime","oversize",
+      "snapshotMissingMetres","snapshotInconsistent","snapshotShortProvenance",
+      "snapshotFalseReadyLegacy","snapshotFalseNotReady","snapshotFalseReadyEmpty",
+      "backend500","wrongMime","oversize",
     ]){
       mode=kind;seen.length=0;
       const {response,result}=await call("GET");
@@ -173,7 +180,7 @@ async function main(){
       }
     }
     assert.ok(!output.includes(marker),"private fake stock RPC error leaked in server logs");
-    console.log("TITAN stock API private boundary PASS: 49 synthetic authenticated cases, no real writes.");
+    console.log("TITAN stock API private boundary PASS: 53 synthetic authenticated cases, no real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>upstream.close(resolve));
