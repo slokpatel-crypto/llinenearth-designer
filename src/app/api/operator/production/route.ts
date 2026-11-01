@@ -11,6 +11,7 @@ import { buildProductionLearningContext } from "@/lib/designer/production-learni
 import { parseOperatorLockedSelection } from "@/lib/designer/operator-locked-selection";
 import {parseOperatorProductionRequestKey} from "@/lib/designer/production-request-key";
 import {parseProductionCreationReceipts} from "@/lib/designer/production-creation-receipt-lookup";
+import {parseProductionStatusReceipts} from "@/lib/designer/production-status-receipt-lookup";
 import { parseOperatorProductionStatus } from "@/lib/designer/operator-production-status";
 import { verifiedOperatorProductionCreateId } from "@/lib/designer/operator-production-receipt";
 import {safeOperatorProductionErrorCode} from "@/lib/designer/operator-production-error";
@@ -144,6 +145,16 @@ export async function POST(request:Request){
   try{
     const body=await readSecureJsonObject(request,65536);
     const action=typeof body.action==="string"?body.action:"";
+    if(action==="status_receipt_lookup"){
+      // An exact committed status receipt survives capped history and a lost
+      // HTTP acknowledgement. Empty results NEVER establish noncommit.
+      const key=parseOperatorProductionRequestKey(body.requestKey);
+      if(!key) return respond({error:"Valid original status request UUID is required."},400);
+      const rows=await rpc<unknown>("production_status_request_receipt_lookup",{p_request_key:key});
+      const receipts=parseProductionStatusReceipts(rows);
+      if(!receipts) return respond({error:"Status receipt lookup could not be verified."},409);
+      return respond({receipts});
+    }
     if(action==="creation_receipt_lookup"){
       // Read-only: the operator can recover a durable UUID from the anonymous
       // marker even if the original browser tab crashed or timed out. Missing

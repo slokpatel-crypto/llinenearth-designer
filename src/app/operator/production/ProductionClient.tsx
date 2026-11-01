@@ -21,6 +21,7 @@ import {
 } from "@/lib/designer/production-write-hold";
 import {productionWriteReviewSummary, type ProductionWriteReviewSummary} from "@/lib/designer/production-review-summary";
 import {parseProductionCreationReceipts, type ProductionCreationReceipt} from "@/lib/designer/production-creation-receipt-lookup";
+import {parseProductionStatusReceipts, type ProductionStatusReceipt} from "@/lib/designer/production-status-receipt-lookup";
 import {parseProductionDeliveryEligibility,hasVerifiedSqlDeliveryEligibility,type ProductionDeliveryEligibility} from "@/lib/designer/production-delivery-eligibility";
 import { validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash, selectProductionPacketRecords } from "@/lib/designer/production-desk-ledger";
 
@@ -62,6 +63,7 @@ export default function ProductionClient(){
   const [requiresWriteReview,setRequiresWriteReview]=useState(false);
   const [pendingWriteReview,setPendingWriteReview]=useState<ProductionWriteReviewSummary|null>(null);
   const [recoveredCreationReceipts,setRecoveredCreationReceipts]=useState<ProductionCreationReceipt[]|null>(null);
+  const [recoveredStatusReceipts,setRecoveredStatusReceipts]=useState<ProductionStatusReceipt[]|null>(null);
   // State updates are asynchronous: a second click in the same render must
   // not create a second quote/order or overlap a locked-design recovery.
   const actionInFlight=useRef(false);
@@ -188,7 +190,7 @@ export default function ProductionClient(){
         verifiedReviewSessionReadVersion.current=0;
         setRenderedLedgerReadVersion(0);
         setConfigured(false);
-        setRecoveredCreationReceipts(null);
+        setRecoveredCreationReceipts(null);setRecoveredStatusReceipts(null);
         setRequiresWriteReview(true);
         setMessage("Production writes changed in another tab. Refresh current history before acknowledging or exporting.");
       }
@@ -258,7 +260,7 @@ export default function ProductionClient(){
     setRenderedLedgerReadVersion(0);
     setConfigured(false);
     setMessage("");
-    setRecoveredCreationReceipts(null);
+    setRecoveredCreationReceipts(null);setRecoveredStatusReceipts(null);
     const attempt=productionWriteReviewSummary(body);
     let certainPrewriteRejection=false;
     try{
@@ -319,12 +321,12 @@ export default function ProductionClient(){
     if(!requiresWriteReview||busy||actionInFlight.current)return;
     const pendingKey=readProductionWriteHoldKey(safeProductionHoldStorage());
     if(!pendingKey){
-      setRecoveredCreationReceipts(null);
+      setRecoveredCreationReceipts(null);setRecoveredStatusReceipts(null);
       setMessage("The original request ID is missing or inaccessible. Writes remain paused; inspect authoritative records before any retry.");
       return;
     }
     actionInFlight.current=true;
-    setBusy(true);setRecoveredCreationReceipts(null);
+    setBusy(true);setRecoveredCreationReceipts(null);setRecoveredStatusReceipts(null);
     try{
       const response=await fetch("/api/operator/production",{
         method:"POST",headers:{"content-type":"application/json"},
@@ -346,8 +348,46 @@ export default function ProductionClient(){
         ?"Committed quote/order creation receipt located. Check the exact UUID against history before acknowledging this review; do not recreate that record."
         :"No committed creation receipt was visible at lookup time. A delayed transaction or status update may still commit; never treat this as safe to recreate.");
     }catch{
-      setRecoveredCreationReceipts(null);
+      setRecoveredCreationReceipts(null);setRecoveredStatusReceipts(null);
       setMessage("Original production receipt could not be verified. Keep the review hold and inspect the authoritative records before retrying.");
+    }finally{actionInFlight.current=false;setBusy(false);}
+  }
+
+  async function lookupPendingStatusReceipt(){
+    if(!requiresWriteReview||busy||actionInFlight.current)return;
+    const snapshot=captureProductionWriteReviewSnapshot(safeProductionHoldStorage());
+    const pendingKey=snapshot?.holdToken;
+    if(!pendingKey){
+      setRecoveredStatusReceipts(null);
+      setMessage("The original request ID is missing or inaccessible. A status change may still commit; keep writes paused.");
+      return;
+    }
+    actionInFlight.current=true;
+    setBusy(true);
+    setRecoveredStatusReceipts(null);
+    try{
+      const response=await fetch("/api/operator/production",{
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"status_receipt_lookup",requestKey:pendingKey}),
+      });
+      if(!response.ok)throw new Error("Status receipt lookup unavailable.");
+      const data:unknown=await response.json();
+      if(!data||typeof data!=="object"||Array.isArray(data)
+        ||!("receipts" in data))throw new Error("Invalid status receipt response.");
+      const receipts=parseProductionStatusReceipts(data.receipts);
+      if(!receipts)throw new Error("Unverified status receipt response.");
+      // Another tab may complete a write while the lookup is in flight.
+      // Never display stale results or clear the pending marker.
+      if(!productionWriteReviewSnapshotUnchanged(safeProductionHoldStorage(),snapshot)){
+        throw new Error("Pending request changed during status receipt lookup.");
+      }
+      setRecoveredStatusReceipts(receipts);
+      setMessage(receipts.length
+        ?"Committed status receipt located for the exact original request UUID. Compare its record and status with authoritative history; do not submit the transition again."
+        :"No committed status receipt was visible at lookup time. An in-flight SQL transaction may still commit. Keep writes paused.");
+    }catch{
+      setRecoveredStatusReceipts(null);
+      setMessage("Original status receipt could not be verified. Keep the review hold and inspect authoritative records before retrying.");
     }finally{actionInFlight.current=false;setBusy(false);}
   }
 
@@ -394,7 +434,7 @@ export default function ProductionClient(){
         verifiedReviewSessionReadVersion.current=0;
         setRequiresWriteReview(false);
         setPendingWriteReview(null);
-        setRecoveredCreationReceipts(null);
+        setRecoveredCreationReceipts(null);setRecoveredStatusReceipts(null);
         setMessage("Reviewed current production history. Writes are enabled; the earlier ambiguous operation may still exist outside the visible ledger. Check before recreating a quote or order.");
       }).catch(()=>{
         setMessage("Cannot verify the exclusive production session. Refresh history and keep the review hold.");
@@ -646,6 +686,14 @@ export default function ProductionClient(){
             <li key={item.action}>{item.action==="create_quote"?"Quote":"Order"} ID: {item.receiptId}</li>)}</ul>
             <p>These IDs were retrieved from the committed request ledger. Compare with quote/order history before enabling further writes; do not recreate them.</p></>
           :<p>No committed creation receipt found for this request ID yet. A delayed commit or status update is still possible. Writes remain paused.</p>}
+      </div>}
+      <button disabled={busy||actionInFlight.current} onClick={()=>void lookupPendingStatusReceipt()}>Find original status receipt by request ID</button>
+      {recoveredStatusReceipts!==null&&<div className="productionRecord" aria-label="Original committed status receipts">
+        {recoveredStatusReceipts.length>0
+          ?<><strong>COMMITTED STATUS RECEIPTS</strong><ul>{recoveredStatusReceipts.map(item=>
+            <li key={item.action+item.recordId+item.status}>{item.action==="quote_status"?"Quote":"Order"} ID: {item.recordId}; committed status: {item.status}</li>)}</ul>
+            <p>Exact committed SQL receipts, not capped history. Compare with current history before acknowledging; never repeat a confirmed transition.</p></>
+          :<p>No committed status receipt visible yet. An in-flight transaction can still commit. This is NOT proof that retrying is safe.</p>}
       </div>}
       <button disabled={!configured||busy||actionInFlight.current} onClick={confirmReviewedProductionHistory}>I reviewed history — enable writes</button>
     </section>}
