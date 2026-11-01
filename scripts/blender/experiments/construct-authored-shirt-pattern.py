@@ -23,6 +23,7 @@ from authored_shirt_placket import add_raised_front_placket
 from shirt_region_contact import summarize_native_region_contacts
 from source_arm_centerline import sample_scanned_arm_path
 from source_sleeve_sections import build_source_sleeve_sections
+from shirt_spatial_contact import group_actual_source_faces_by_height
 
 MODEL_ID="linen-earth-studio-model-v1"
 NAME="LE_AUTHORED_SHIRT_PATTERN_UNMEASURED"
@@ -88,6 +89,51 @@ def independent_body_contacts_by_region(body, waist, source, full_body, full_wai
     waist_summary=summarize_native_region_contacts(waist_counts,full_waist,face_counts)
     if body_summary["regionFaceCoverageCount"] != len(source["faces"]):
         raise RuntimeError("Native garment region evidence is missing faces")
+    return {"body":body_summary,"trouserWaist":waist_summary}
+
+
+def independent_body_waist_height_bands(body,waist,source,full_body,full_waist):
+    """Measure every real source face exactly once in physical-height groups."""
+    groups=group_actual_source_faces_by_height(
+        source["vertices"],source["faces"],source["roles"]
+    )
+    face_counts={}
+    body_counts={}
+    waist_counts={}
+    for name,face_ids in groups.items():
+        face_counts[name]=len(face_ids)
+        mesh=bpy.data.meshes.new("LE_TEMP_SOURCE_HEIGHT_"+name)
+        obj=None
+        try:
+            mesh.from_pydata(
+                source["vertices"],[],
+                [tuple(source["faces"][i]) for i in face_ids]
+            )
+            mesh.update(calc_edges=True)
+            obj=bpy.data.objects.new("LE_TEMP_CONTACT_"+name,mesh)
+            bpy.context.scene.collection.objects.link(obj)
+            bpy.context.view_layer.update()
+            body_pairs=native_intersection(body,obj)
+            waist_pairs=native_intersection(waist,obj)
+            if body_pairs is None or waist_pairs is None:
+                raise RuntimeError("Missing native spatial BVH for "+name)
+            body_counts[name]=body_pairs
+            waist_counts[name]=waist_pairs
+        finally:
+            if obj is not None:
+                bpy.data.objects.remove(obj,do_unlink=True)
+            if mesh.name in bpy.data.meshes:
+                bpy.data.meshes.remove(mesh,do_unlink=True)
+    body_summary=summarize_native_region_contacts(
+        body_counts,full_body,face_counts
+    )
+    waist_summary=summarize_native_region_contacts(
+        waist_counts,full_waist,face_counts
+    )
+    if (not body_summary["regionMeasureAgreement"] or
+        not waist_summary["regionMeasureAgreement"] or
+        body_summary["regionFaceCoverageCount"]!=len(source["faces"])):
+        raise RuntimeError("Source spatial body/waist face partition is incomplete")
     return {"body":body_summary,"trouserWaist":waist_summary}
 
 
@@ -240,6 +286,10 @@ def main():
         body,bpy.data.objects["TrouserWaistFabric"],source_data,
         body_pairs,trouser_pairs["TrouserWaistFabric"]
     )
+    height_contacts=independent_body_waist_height_bands(
+        body,bpy.data.objects["TrouserWaistFabric"],source_data,
+        body_pairs,trouser_pairs["TrouserWaistFabric"]
+    )
     baseline_after={"Body":mesh_sha(body)}
     baseline_after.update({g:mesh_sha(bpy.data.objects[g]) for g in GARMENTS})
     if baseline_after!=original_hashes:
@@ -256,6 +306,8 @@ def main():
         body_pairs==0 and
         region_contacts["body"]["regionMeasureAgreement"] and
         region_contacts["trouserWaist"]["regionMeasureAgreement"] and
+        height_contacts["body"]["regionMeasureAgreement"] and
+        height_contacts["trouserWaist"]["regionMeasureAgreement"] and
         all(value==0 for value in trouser_pairs.values())
     )
     report={
@@ -280,6 +332,7 @@ def main():
         "actualArmholeSeamEdgesMarked":marked,
         "bodyClothIntersectingTrianglePairs":body_pairs,
         "independentNativeBodyWaistContactPartitions":region_contacts,
+        "nativeSourceHeightBodyWaistContactPartitions":height_contacts,
         "clothTrouserIntersectingTrianglePairs":trouser_pairs,
         "candidateGeometricGate":plausible_trial,
         "garmentDesignDimensionsMeasured":False,
