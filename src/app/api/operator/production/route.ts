@@ -16,6 +16,8 @@ import { requireOperatorCreatedId } from "@/lib/designer/operator-created-id";
 export const runtime="nodejs";
 // 8 MiB per list caps decoded upstream bytes, independent of Content-Length.
 const MAX_OPERATOR_LEDGER_BYTES=8_388_608;
+// Bound decoded incoming operator POSTs before parsing or reaching an RPC.
+const MAX_OPERATOR_POST_BYTES=262_144;
 // Literal JSON booleans need at most five bytes; permit a small bounded envelope.
 const MAX_OPERATOR_STATUS_ACK_BYTES=64;
 // PostgreSQL UUID success acknowledgments have a small fixed JSON envelope.
@@ -110,7 +112,10 @@ export async function GET(){
 export async function POST(request:Request){
   if(!await authorized()) return privateProductionResponse({error:"Unauthorized."},{status:401});
   try{
-    const body=await request.json() as Record<string,unknown>;
+    const rawBody=await readBoundedJsonResponse(request,MAX_OPERATOR_POST_BYTES);
+    if(!rawBody||typeof rawBody!=="object"||Array.isArray(rawBody))
+      throw new Error("Invalid operator production request.");
+    const body=rawBody as Record<string,unknown>;
     const action=String(body.action||"");
     if(action==="create_quote"){
       const revisionId=String(body.revisionId||"").trim();
