@@ -8,6 +8,7 @@ on:
       - 'scripts/blender/export-linen-earth-officewear.py'
       - 'tests/python/test_canonical_source_release_gate.py'
       - 'tests/python/test_export_owner_source_gate_contract.py'
+      - 'tests/python/test_owner_review_packet_binding.py'
       - 'tests/python/test_canonical_model_source_intake.py'
       - 'public/model-identity/linen-earth-studio-model-v1.json'
       - '.github/workflows/canonical-model-source-intake.yml'
@@ -29,6 +30,7 @@ jobs:
           python3 -m unittest discover -s tests/python -p 'test_canonical_model_source_intake.py' -v
           python3 -m unittest discover -s tests/python -p 'test_canonical_source_release_gate.py' -v
           python3 -m unittest discover -s tests/python -p 'test_export_owner_source_gate_contract.py' -v
+          python3 -m unittest discover -s tests/python -p 'test_owner_review_packet_binding.py' -v
 
       - name: Record source completeness honestly — no supplied master or hidden views
         run: |
