@@ -157,7 +157,13 @@ fi
 # does NOT establish noncommit. After the other session commits, the same key
 # must resolve to the one durable status event and receipt.
 lookup_order=$(query "select public.production_order_create('LE-M142-STATUS-LOOKUP-RACE',repeat('d',64),null,'');")
-lookup_key="123e4567-e89b-42d3-a456-426614174351"
+lookup_key="7de94a12-12f3-4c72-9a81-5837ad40e29f"
+# Fail loudly if another synthetic test ever reuses this supposedly unique
+# original request UUID; a collision would test replay conflict, not visibility.
+if [[ $(query "select count(*) from private.production_order_status_request_receipts where request_key='$lookup_key'::uuid") != "0" ]]; then
+  echo "M142 isolated status request UUID unexpectedly reused" >&2
+  exit 1
+fi
 lookup_tx="begin;
 select public.production_order_set_status_idempotent(
  '$lookup_key'::uuid,'$lookup_order'::uuid,'cloth_reserved','M142 delayed commit');
