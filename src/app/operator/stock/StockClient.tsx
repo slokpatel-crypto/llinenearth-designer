@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createOperatorMutationGate } from "@/lib/designer/operator-mutation-gate";
+import { requireStockClientAcknowledgment } from "@/lib/designer/operator-stock-client-ack";
 
 type StockRow={fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;provenance_ready:boolean;last_event_at:string|null};
 
@@ -11,6 +13,7 @@ export default function StockClient(){
   const [snapshotState,setSnapshotState]=useState<"loading"|"ready"|"error">("loading");
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState(false);
+  const mutationGate=useRef(createOperatorMutationGate());
   const [form,setForm]=useState({fabricId:"",eventType:"receipt",quantityMetres:"",recordedBy:"",sourceReference:"",note:""});
   const [reservation,setReservation]=useState({fabricId:"",revisionId:"",quantityMetres:"",requestedBy:"",sourceReference:""});
   const [close,setClose]=useState({reservationId:"",actualMetres:"",checkedBy:"",sourceReference:"",note:""});
@@ -49,15 +52,20 @@ export default function StockClient(){
   },[]);
 
   async function post(body:Record<string,unknown>,success:string){
-    if(busy) return;
+    if(busy||snapshotState!=="ready"||!configured||!mutationGate.current.enter()) return;
     setBusy(true);setMessage("");
     try{
       const response=await fetch("/api/operator/stock",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
-      const data=await response.json();
-      if(!response.ok) throw new Error(data.error||"Stock operation failed.");
+      const data:unknown=await response.json();
+      if(!response.ok){
+        const error=data&&typeof data==="object"&&!Array.isArray(data)&&"error" in data&&
+          typeof data.error==="string"?data.error:"Stock operation failed.";
+        throw new Error(error);
+      }
+      requireStockClientAcknowledgment(body.action,data);
       setMessage(success);await load();
     }catch(error){setMessage(error instanceof Error?error.message:"Stock operation failed.");}
-    finally{setBusy(false);}
+    finally{mutationGate.current.exit();setBusy(false);}
   }
 
   const totalAvailable=stock.reduce((sum,row)=>sum+Number(row.available_metres||0),0);
