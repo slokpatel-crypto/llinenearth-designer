@@ -144,9 +144,17 @@ export default function StockClient(){
     {message&&<p className="stockMessage">{message}</p>}
 
     <section className="stockTable">
-      <div><span>LIVE SNAPSHOT</span><h2>Available metres by fabric.</h2><p>Named ledger references alone do not certify physical roll counts or independently verify supplier measurements.</p></div>
+      <div>
+        <span>{snapshotState==="ready"?"LIVE SNAPSHOT":"SNAPSHOT NOT VERIFIED"}</span>
+        <h2>Available metres by fabric.</h2>
+        <p>Named ledger references alone do not certify physical roll counts or independently verify supplier measurements.</p>
+        <button type="button" disabled={busy||snapshotState==="loading"}
+          onClick={()=>void load()}>{snapshotState==="loading"?"Checking ledger…":"Refresh ledger"}</button>
+      </div>
+      {snapshotState==="loading"&&<p role="status">Checking the live stock ledger. Previous physical balances are hidden until verification completes.</p>}
+      {snapshotState==="error"&&<p role="alert">Stock balances are unavailable. Refresh the ledger before recording, reserving or cutting cloth.</p>}
       {snapshotState==="ready"&&!stock.length&&<p>No physical stock has been recorded yet.</p>}
-      {stock.map((row)=><article key={row.fabric_id}>
+      {snapshotState==="ready"&&stock.map((row)=><article key={row.fabric_id}>
         <b>{row.fabric_id}</b>
         <span>Physical <strong>{Number(row.physical_metres).toFixed(3)} m</strong></span>
         <span>Reserved <strong>{Number(row.reserved_metres).toFixed(3)} m</strong></span>
