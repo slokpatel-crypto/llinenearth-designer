@@ -26,8 +26,8 @@ test("M138 signed Chromium executes the production helper under real two-tab Web
 
 test("M139 signed native Chromium rejects active-session review and permits later recovery",()=>{
   const browser=readFileSync("scripts/verify-production-native-web-locks-browser.cjs","utf8");
-  assert.match(browser,/navigator\\.locks\\.request\\(h\\.PRODUCTION_WRITE_SESSION_LOCK_NAME/);
-  assert.match(browser,/\\{mode:"exclusive",ifAvailable:true\\}/);
+  assert.match(browser,/navigator\.locks\.request\(h\.PRODUCTION_WRITE_SESSION_LOCK_NAME/);
+  assert.match(browser,/\{mode:"exclusive",ifAvailable:true\}/);
   assert.match(browser,/Second tab must not acknowledge an actively in-flight production write/);
   assert.match(browser,/A completed session must allow deliberate recovery of its exact marker/);
   assert.match(browser,/activeSessionAcknowledgementBlocked:true/);
