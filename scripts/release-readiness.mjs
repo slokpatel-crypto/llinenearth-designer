@@ -2415,6 +2415,17 @@ requireTokens(".github/workflows/ci.yml",[
   "node scripts/verify-production-status-receipt-private-http.cjs",
 ]);
 
+requireTokens("src/lib/designer/production-status-receipt-lookup.ts",[
+  "parseProductionStatusReceiptResponse",
+  "return parseProductionStatusReceipts(sqlRows)",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "parseProductionStatusReceiptResponse(data.receipts)",
+]);
+requireTokens("tests/production-status-receipt-lookup.test.ts",[
+  "operator browser strictly accepts sanitized camelCase status receipts, not raw SQL",
+]);
+
 // M144: SQL and private HTTP alone do not verify the actual operator React UI.
 // A signed Chromium session must demonstrate that status receipts, absent rows,
 // upstream failures and a changed browser marker NEVER unlock production writes.
