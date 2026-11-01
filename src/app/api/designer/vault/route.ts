@@ -11,6 +11,7 @@ import {
   createDesignVaultRecoveryToken,
   hashDesignVaultAccessKey,
   parseDesignVaultRecoveryToken,
+  requireDesignVaultCreatedId,
 } from "@/lib/designer/design-vault";
 
 export const runtime="nodejs";
@@ -80,14 +81,13 @@ export async function POST(request:Request){
       }
       const accessKey=createDesignVaultAccessKey();
       const accessHash=hashDesignVaultAccessKey(accessKey);
-      const vaultId=await rpc<string>("designer_locked_revision_vault_store",{
+      const vaultId=requireDesignVaultCreatedId(await rpc<unknown>("designer_locked_revision_vault_store",{
         p_revision_id:revision.revisionId,
         p_recipe_hash:revision.recipeHash.toLowerCase(),
         p_access_hash:accessHash,
         p_payload:revision,
         p_ttl_days:180,
-      });
-      if(!vaultId) throw new Error("The design vault did not return an id.");
+      }));
 
       let accountOwned=false;
       if(customer){
