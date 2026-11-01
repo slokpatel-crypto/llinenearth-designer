@@ -54,6 +54,25 @@ async function main(){
     for await(const chunk of req)parts.push(chunk);
     const payload=JSON.parse(Buffer.concat(parts).toString("utf8"));
     seen.push({path,headers:req.headers,payload});
+    if(path==="/rest/v1/rpc/designer_locked_revision_vault_store"){
+      assert.equal(req.method,"POST");
+      assert.equal(payload.p_revision_id,revision.revisionId);
+      assert.equal(payload.p_recipe_hash,recipeHash);
+      assert.deepEqual(payload.p_payload,revision);
+      assert.match(payload.p_access_hash,/^[0-9a-f]{64}$/);
+      const outcomes={
+        storeNull:"null",storeObject:JSON.stringify({vaultId}),
+        storeArray:JSON.stringify([vaultId]),storeBoolean:"true",
+        storeString:'"false"',storeEmpty:'""',
+        storeWrongVariant:'"b287e470-0e90-4fd4-75fb-976eecebd244"',
+        storeWrongVersion:'"b287e470-0e90-0fd4-b5fb-976eecebd244"',
+        storeMalformed:"{invalid-json",
+      };
+      res.writeHead(mode==="storeBackend500"?500:200,
+        {"content-type":mode==="storeWrongMime"?"text/plain":"application/json"});
+      res.end(mode==="storeBackend500"?JSON.stringify({error:privateMarker}):
+        outcomes[mode]??JSON.stringify(vaultId));return;
+    }
     if(path==="/rest/v1/rpc/designer_locked_revision_vault_delete"){
       assert.equal(req.method,"POST");
       assert.equal(payload.p_vault_id,vaultId);
@@ -192,8 +211,34 @@ async function main(){
         {error:"Secure design storage is temporarily unavailable."},kind);
       assert.ok(!JSON.stringify(data).includes(privateMarker),kind+" must redact upstream data");
     }
+    for(const kind of [
+      "storeGood","storeNull","storeObject","storeArray","storeBoolean",
+      "storeString","storeEmpty","storeWrongVariant","storeWrongVersion",
+      "storeMalformed","storeWrongMime","storeBackend500",
+    ]){
+      mode=kind;seen.length=0;
+      const response=await fetch(url,{method:"POST",headers:fixtureHeaders(),
+        body:JSON.stringify({action:"store",revision}),
+        signal:AbortSignal.timeout(15000)});
+      const data=await response.json();
+      assert.equal(response.status,kind==="storeGood"?200:503,kind);
+      assert.match(response.headers.get("cache-control")||"",/private.*no-store/,kind);
+      assert.equal(seen.length,1,"store must not call owner without customer");
+      assert.equal(seen[0].path,"/rest/v1/rpc/designer_locked_revision_vault_store");
+      if(kind==="storeGood"){
+        assert.equal(data.vaultId,vaultId);
+        assert.equal(data.accountOwned,false);
+        const parts=data.recoveryToken?.split(".");
+        assert.equal(parts?.length,3);
+        assert.equal(parts?.[0],"lev1");
+        assert.equal(parts?.[1],vaultId);
+        assert.equal(createHash("sha256").update(parts[2]).digest("hex"),
+          seen[0].payload.p_access_hash);
+      }else assert.deepEqual(data,{error:"Secure design storage is temporarily unavailable."});
+      assert.ok(!JSON.stringify(data).includes(privateMarker),kind);
+    }
     assert.ok(!output.includes(privateMarker),"sensitive upstream error/JSON must not enter server logs");
-    console.log("TITAN designer vault boundary PASS: 30 synthetic HTTP cases; zero real writes.");
+    console.log("TITAN designer vault boundary PASS: 42 synthetic HTTP cases; zero real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>upstream.close(resolve));
