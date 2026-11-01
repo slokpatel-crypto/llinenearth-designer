@@ -80,8 +80,17 @@ async function main(){
       const reqPayload=seen[seen.length-1].payload;
       assert.equal(reqPayload?.p_vault_id,vaultId);
       assert.equal(reqPayload?.p_access_hash,expectedAccessHash);
-      res.writeHead(200,{"content-type":"application/json"});
-      res.end(JSON.stringify([{payload:lockedRevision}]));return;
+      const kind=mode.target===name?mode.kind:"ok";
+      const bodies={
+        vaultEmpty:"[]",vaultNull:"null",vaultObject:"{}",
+        vaultTwoRows:JSON.stringify([{payload:lockedRevision},{payload:lockedRevision}]),
+        vaultMissingPayload:"[{}]",vaultScalarPayload:'[{"payload":"wrong"}]',
+        vaultHashMismatch:JSON.stringify([{payload:{...lockedRevision,recipeHash:"0".repeat(64)}}]),
+        vaultMalformed:"{broken",vaultOversized:JSON.stringify([{padding:"x".repeat(262_144)}]),
+      };
+      const mime=kind==="vaultWrongMime"?"text/html":"application/json";
+      res.writeHead(200,{"content-type":mime});
+      res.end(bodies[kind]??JSON.stringify([{payload:lockedRevision}]));return;
     }
     if(["production_quote_create","production_order_create_with_context"].includes(name)
       && req.method==="POST"){
@@ -390,6 +399,39 @@ async function main(){
         }
       }
     }
+    // A bounded, single-row vault read is required BEFORE any creation RPC.
+    // Invalid/synthetic vault responses never authorize a quote or order.
+    for(const [action,createRpc] of [
+      ["create_quote","production_quote_create"],
+      ["create_order","production_order_create_with_context"],
+    ]){
+      for(const kind of [
+        "vaultEmpty","vaultNull","vaultObject","vaultTwoRows",
+        "vaultMissingPayload","vaultScalarPayload","vaultHashMismatch",
+        "vaultMalformed","vaultOversized","vaultWrongMime",
+      ]){
+        mode={target:"designer_locked_revision_vault_get",kind};
+        seen.length=0;
+        const body={action,revisionId,recipeHash,recoveryToken};
+        if(action==="create_quote"){
+          body.currency="INR";
+          body.lineItems=[{label:"Synthetic linen",amount:1000}];
+          body.adjustment=0;
+        }
+        const response=await fetch(url,{method:"POST",
+          headers:{cookie,"content-type":"application/json"},
+          body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
+        assert.equal(response.status,409,action+" "+kind);
+        assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
+        const reason=["vaultEmpty","vaultMissingPayload","vaultScalarPayload","vaultHashMismatch"].includes(kind)?
+          "The locked design could not be verified for production.":"Production operation failed.";
+        assert.deepEqual(await response.json(),{error:reason},action+" "+kind);
+        assert.equal(seen.filter(x=>x.name==="designer_locked_revision_vault_get").length,1);
+        assert.equal(seen.filter(x=>x.name===createRpc).length,0,"invalid vault must never write");
+        assert.equal(seen.length,1);
+      }
+    }
+    console.log("TITAN vault read PASS: 20 synthetic signed malformed vault responses with zero create writes.");
     console.log("TITAN create UUID PASS: 18 synthetic signed quote/order HTTP cases.");
     console.log("TITAN operator status ACK PASS: 20 synthetic signed quote/order POST cases.");
     console.log("TITAN operator ledger + delivery QC PASS: "+cases.length+
