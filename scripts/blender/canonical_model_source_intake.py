@@ -44,8 +44,8 @@ def fingerprint(path, kind, *, minimum_bytes=16):
         if path.suffix.lower()!=".blend" or head[:7]!=b"BLENDER" or size<1024:
             return None,"not_a_blender_file"
     elif kind=="image":
-        png=head.startswith(b"\\x89PNG\\r\\n\\x1a\\n")
-        jpeg=head.startswith(b"\\xff\\xd8\\xff")
+        png=head.startswith(b"\x89PNG\r\n\x1a\n")
+        jpeg=head.startswith(b"\xff\xd8\xff")
         webp=head[:4]==b"RIFF" and head[8:12]==b"WEBP"
         if not (png or jpeg or webp) or size<1024:
             return None,"invalid_image_signature"
@@ -142,7 +142,7 @@ def main():
            if getattr(opts,name.replace("-","_")) is not None}
     report=intake_source(spec,opts.reference,opts.source_blend,views)
     opts.output.parent.mkdir(parents=True,exist_ok=True)
-    opts.output.write_text(json.dumps(report,sort_keys=True,indent=2)+"\\n",encoding="utf-8")
+    opts.output.write_text(json.dumps(report,sort_keys=True,indent=2)+"\n",encoding="utf-8")
     print("TITAN_CANONICAL_MANNEQUIN_SOURCE_INTAKE="+json.dumps(report,sort_keys=True))
     if opts.require_review_packet and not report["readyForIndependentOwnerAndTailorVisualReview"]:
         raise SystemExit("BLOCKED: genuine source/4-view model intake incomplete")
