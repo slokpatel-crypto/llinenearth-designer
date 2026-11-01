@@ -6,6 +6,8 @@ import { normalizeProductionQuoteDraft } from "@/lib/designer/production-quote";
 import { parseDesignVaultRecoveryToken } from "@/lib/designer/design-vault";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { buildProductionLearningContext } from "@/lib/designer/production-learning-context";
+import {secureJsonRequestError,readSecureJsonObject,SecureJsonBodyTooLarge,SecureJsonBodyInvalid} from "@/lib/secure-json-request";
+import {safeOperatorProductionErrorCode} from "@/lib/designer/operator-production-error";
 
 export const runtime="nodejs";
 
@@ -24,8 +26,9 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     signal:AbortSignal.timeout(8_000),
   });
   if(!response.ok){
-    const detail=(await response.text()).slice(0,300);
-    throw new Error(`Production request failed (${response.status}): ${detail}`);
+    // Never collect or include PostgREST error bodies: they can contain SQL,
+    // recovery tokens, customer details or supplier-pricing information.
+    throw new Error("Production upstream request failed.");
   }
   return await response.json() as T;
 }
@@ -72,15 +75,21 @@ export async function GET(){
     }
     return NextResponse.json({configured:true,quotes,orders,qcInspections,customerOutcomes,learningContexts},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
-    console.error("[operator/production]",error);
-    return NextResponse.json({error:"Production records could not be read."},{status:503});
+    console.error("[operator/production]",safeOperatorProductionErrorCode(error));
+    return NextResponse.json({error:"Production records could not be read."},{status:503,headers:{"cache-control":"private, no-store"}});
   }
 }
 
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401,headers:{"cache-control":"private, no-store"}});
+  // Reject cross-origin browser writes, invalid media types and oversized
+  // request declarations before the first backend RPC or any body read.
+  const early=secureJsonRequestError(request,65_536);
+  if(early)return NextResponse.json({error:early.error},{status:early.status,headers:{"cache-control":"private, no-store"}});
   try{
-    const body=await request.json() as Record<string,unknown>;
+    // Enforce the real decoded stream length even if Content-Length is absent
+    // or inaccurate. Never parse attacker-controlled JSON with request.json().
+    const body=await readSecureJsonObject(request,65_536);
     const action=String(body.action||"");
     if(action==="create_quote"){
       const revisionId=String(body.revisionId||"").trim();
@@ -158,7 +167,13 @@ export async function POST(request:Request){
     }
     return NextResponse.json({error:"Unsupported production action."},{status:400});
   }catch(error){
-    console.error("[operator/production]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Production operation failed."},{status:409});
+    if(error instanceof SecureJsonBodyTooLarge)
+      return NextResponse.json({error:"Request payload is too large."},{status:413,headers:{"cache-control":"private, no-store"}});
+    if(error instanceof SecureJsonBodyInvalid)
+      return NextResponse.json({error:"Request body must be valid UTF-8 JSON object."},{status:400,headers:{"cache-control":"private, no-store"}});
+    // Never return or log upstream exceptions. A failed reply may still hide
+    // a committed SQL write; a generic 409 does NOT authorize a retry.
+    console.error("[operator/production]",safeOperatorProductionErrorCode(error));
+    return NextResponse.json({error:"Production operation could not be verified; inspect history before retrying."},{status:409,headers:{"cache-control":"private, no-store"}});
   }
 }
