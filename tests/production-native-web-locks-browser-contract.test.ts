@@ -49,6 +49,7 @@ test("M140 signed browser drives real operator POST while second tab attempts re
   assert.match(browser,/Actual React production handler must hold the native session lock/);
   assert.match(browser,/Real React review must not clear a different tab/);
   assert.match(browser,/Exactly one synthetic UI POST was intercepted/);
+  assert.match(browser,/realReactDeferredPostReviewBlocked:true,interceptedUiPosts:1/);
   assert.match(browser,/Real UI contention test must never send a production POST over HTTP/);
   assert.match(client,/await post\\(body,success,true\\)/);
   assert.match(client,/PRODUCTION_WRITE_SESSION_LOCK_NAME,\\{mode:"exclusive",ifAvailable:true\\}/);
