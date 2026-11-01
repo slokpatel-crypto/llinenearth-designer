@@ -80,3 +80,10 @@
 - **Regressions:** source-contract Node assertions for SQL scope, two-row cap, role grants, tie denial and delivery RPC; synthetic authenticated built-Next HTTP fixture asserts the target order ID is sent, malformed QC fails closed and stale/tied approval never reaches the status write.
 - **Evidence:** previous parent CI GREEN; new exact-head CI, Non-3D/browser, signed HTTP and **disposable PostgreSQL execution are PENDING**, not claimed passed. The current runtime has no PostgreSQL/psql/Docker executable, so SQL correctness is not yet proven against a real disposable database. Migration is committed as draft only, not applied to production. Do not integrate this section into main until disposable database and matching-head checks are green and the deployment-disabled guard is reverified.
 - **Next bounded slice:** add a disposable PostgreSQL fixture in CI exercising 501 unrelated inspections, stale/rework, same-timestamp conflicting decisions, service-role RPC grants and successful newest approval; repair any failures. Verify migration/schema-cache compatibility before isolated main intake. Supplier stock, human QC/tailor, customer/operator, Blender, devices, five testers, ten deliveries and owner launch approval remain PENDING/BLOCKED.
+
+
+### M7 disposable-database acceptance fixture (additional draft commit)
+
+- **Parent code/checkpoint SHA:** `23bb4b47c3012e0983462d6ab608c0b153758e5f`. Added isolated PostgreSQL 16 CI service, fixture and exact SQL assertions. It creates only synthetic local tables/roles; no live database, stock, deployment or paid-provider action.
+- **Cases:** 501 unrelated newer inspections, order-scoped two-row cap, stale rework, tied timestamps, missing QC, newest approval, zero denied writes and anon/authenticated execution denial versus service-role access.
+- **Verification:** new commit SHA and matching-head Full CI, Non-3D and disposable PostgreSQL workflow are **PENDING** until observed; this note is not a claim of execution. Keep main untouched until all three workflows and dependency ancestry are verified.

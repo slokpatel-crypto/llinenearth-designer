@@ -1,0 +1,42 @@
+name: TITAN QC disposable PostgreSQL
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20261101_finished_garment_qc_order_scoped.sql"
+      - "tests/sql/titan-qc-order-scoped.sql"
+      - ".github/workflows/titan-qc-disposable-db.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-qc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: titan_disposable_fixture_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute isolated QC schema and authorization fixture
+        env:
+          PGPASSWORD: titan_disposable_fixture_only
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+          psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U postgres -d postgres \
+            -f tests/sql/titan-qc-order-scoped.sql
