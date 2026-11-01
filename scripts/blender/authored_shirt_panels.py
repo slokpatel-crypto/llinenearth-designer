@@ -118,13 +118,16 @@ def _distance(a,b):
 
 
 def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0,
-                    source_arm_centerlines=None, source_arm_sections=None):
+                    source_arm_centerlines=None, source_arm_sections=None,
+                    back_shoulder_inset_rows=0):
     """Return explicit vertices/faces/piece regions, including ring-welded sleeves.
 
     omit_sleeve for regression ONLY: must leave corresponding armhole boundary.
     """
     if omit_sleeve not in (None,"left_sleeve","right_sleeve"):
         raise ValueError("Invalid armhole regression control")
+    if type(back_shoulder_inset_rows) is not int or back_shoulder_inset_rows not in (0,2,3):
+        raise ValueError("Source back shoulder inset requires explicit 0/2/3-row topology choice")
     if (not math.isfinite(upper_ease_mm) or not 0 <= upper_ease_mm <= 30 or
         not math.isfinite(cuff_radius_mm) or not 60 <= cuff_radius_mm <= 90):
         raise ValueError("Unmeasured shirt pattern variation out of bounded limits")
@@ -180,12 +183,21 @@ def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0,
     roles=[]
     for row in range(len(PROFILE)-1):
         for j in range(N):
-            if 3<=row<8 and (_arm_sector(j,0) or _arm_sector(j,N//2)):
+            cut_armhole=3<=row<8 and (_arm_sector(j,0) or _arm_sector(j,N//2))
+            theta=2*math.pi*(j+.5)/N
+            # Fill upper BACK portion of each genuine cut armhole with
+            # continuous yoke-to-torso panels. The FRONT and lower sleeve
+            # portions remain open and receive the same true edge-welded
+            # sleeve tube; the open boundary is redesigned, not overlaid.
+            back_inset=(cut_armhole and math.sin(theta)>0 and
+                        back_shoulder_inset_rows>0 and
+                        row>=8-back_shoulder_inset_rows)
+            if cut_armhole and not back_inset:
                 continue
             j2=(j+1)%N
             faces.append((row*N+j,row*N+j2,(row+1)*N+j2,(row+1)*N+j))
-            theta=2*math.pi*(j+.5)/N
-            roles.append("yoke" if row>=8 else ("front" if math.sin(theta)<0 else "back"))
+            roles.append("back_shoulder_inset" if back_inset else
+                         ("yoke" if row>=8 else ("front" if math.sin(theta)<0 else "back")))
 
     before=boundary_loops(faces)
     if len(before)!=4:
@@ -295,6 +307,9 @@ def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0,
         "armholeSeamEdgeCounts":{name:len(e) for name,e in seam_edges.items()},
         "panelFaceCounts":dict(Counter(roles)),
         "panelSeamsAuthored":True,
+        "actualBackShoulderInsetRows":back_shoulder_inset_rows,
+        "backShoulderInsetFaceCount":sum(role=="back_shoulder_inset" for role in roles),
+        "backShoulderInsetMeasuredTailoringApproved":False,
         "supplierMeasurementsApproved":False,
         "realModelPoseParityApproved":False,
         "genericSourceScanArmPathUsed":source_arm_centerlines is not None or source_arm_sections is not None,

@@ -150,6 +150,7 @@ def main():
     ap.add_argument("--source-scan-sleeve-sections",action="store_true")
     ap.add_argument("--placket-relief-mm",type=float,default=4.0)
     ap.add_argument("--back-waist-contour",choices=("inside","outside"))
+    ap.add_argument("--back-shoulder-inset-rows",type=int,choices=(0,2,3),default=0)
     args=ap.parse_args(sys.argv[sys.argv.index("--")+1:])
     source=Path(bpy.data.filepath).resolve()
     out=Path(args.output).resolve()
@@ -178,6 +179,7 @@ def main():
         baseline_pattern=make_shirt_mesh(
             upper_ease_mm=args.upper_ease_mm,
             cuff_radius_mm=args.cuff_radius_mm,
+            back_shoulder_inset_rows=args.back_shoulder_inset_rows,
         )
         body_xyz=[tuple(body.matrix_world @ vert.co) for vert in body.data.vertices]
         xs=[p[0] for p in body_xyz]
@@ -207,6 +209,7 @@ def main():
         cuff_radius_mm=args.cuff_radius_mm,
         source_arm_centerlines=(None if measured_sections is not None else arm_centerlines),
         source_arm_sections=measured_sections,
+        back_shoulder_inset_rows=args.back_shoulder_inset_rows,
     )
     if args.with_placket:
         source_data=add_raised_front_placket(source_data,projection_mm=args.placket_relief_mm)
@@ -235,7 +238,7 @@ def main():
         scene.collection.children.link(collection)
     collection.objects.link(obj)
 
-    all_roles=tuple(ROLE_NAMES)+(("placket",) if args.with_placket else ())+(("collar","left_cuff","right_cuff") if args.with_finishing else ())
+    all_roles=tuple(ROLE_NAMES)+(("back_shoulder_inset",) if args.back_shoulder_inset_rows else ())+ (("placket",) if args.with_placket else ())+(("collar","left_cuff","right_cuff") if args.with_finishing else ())
     colors={
         "front":(0.28,0.063,0.082),
         "back":(0.24,0.05,0.072),
@@ -246,6 +249,7 @@ def main():
         "left_cuff":(0.40,0.10,0.12),
         "right_cuff":(0.40,0.10,0.12),
         "placket":(0.45,0.075,0.11),
+        "back_shoulder_inset":(0.345,0.075,0.10),
     }
     for role in all_roles:
         mat=bpy.data.materials.new("LE_PATTERN_UNVERIFIED_"+role.upper())
@@ -328,6 +332,8 @@ def main():
         "collarAndCuffTopologyAdded":args.with_finishing,
         "integratedRaisedPlacketAdded":args.with_placket,
         "backWaistSourceContourTrial":args.back_waist_contour,
+        "backShoulderInsetExperimentalRows":args.back_shoulder_inset_rows,
+        "backShoulderInsetNotTailorApproved":True,
         "backWaistSourceObservations":source_data.get("backWaistMeasuredSourceObservations"),
         "backWaistSourceMedianHeightM":source_data.get("backWaistSourceHeightMedianM"),
         "genericBodyScanArmCenterlinesUsed":args.source_scan_sleeves,
