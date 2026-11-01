@@ -146,6 +146,9 @@ test("production quote/order status acknowledgments require literal JSON boolean
     const status=block.split('return privateProductionResponse({updated:requireOperatorStatusAcknowledgment(updated)});')[0]??"";
     assert.ok(status.includes('rpc<boolean>('),action+" must use boolean PostgREST RPC");
   }
+  assert.match(route,/const MAX_OPERATOR_STATUS_ACK_BYTES=64/);
+  assert.equal((route.match(/,false,MAX_OPERATOR_STATUS_ACK_BYTES\)/g)||[]).length,2);
+  assert.match(route,/readBoundedJsonResponse\(response,maxResponseBytes\)/);
   assert.equal((route.match(/updated:requireOperatorStatusAcknowledgment\(updated\)/g)||[]).length,2);
   assert.doesNotMatch(route,/updated:Boolean\(updated\)/);
 });
