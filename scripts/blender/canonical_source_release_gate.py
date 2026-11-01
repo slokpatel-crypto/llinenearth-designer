@@ -43,7 +43,7 @@ def require_independent_source_photo_review(scene):
             "reviewPacketSha256":evidence,
             "productionApproved":False}
 
-\ndef verify_external_owner_review_packet(
+def verify_external_owner_review_packet(
     scene, *, scene_blend_path, reference_path, identity_spec_path, review_path
 ):
     """Check actual, private four-angle evidence, not scene labels alone.
