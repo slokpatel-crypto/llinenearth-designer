@@ -6,7 +6,6 @@ checks eventually pass. An attestation is not automated likeness detection,
 supplier fabric proof, or physical tailor fit. Store review evidence privately.
 """
 from __future__ import annotations
-import re
 import hashlib
 import json
 from datetime import date
@@ -33,14 +32,12 @@ def require_independent_source_photo_review(scene):
         raise ValueError("Independent front/three-quarter/side/back identity review is missing")
     if scene.get("linen_earth_source_photo_visual_parity_status")!=OWNER_REVIEW_STATUS:
         raise ValueError("Four-angle exact-faceless-source owner review status absent")
-    evidence=scene.get("linen_earth_source_photo_owner_review_sha256")
-    if not isinstance(evidence,str) or not re.fullmatch(r"[0-9a-f]{64}",evidence):
-        raise ValueError("SHA256 owner review packet provenance absent")
-    # Attestation is required but NOT alone a production release: Blender
-    # collision/UV, supplier fibre truth, tailor fit and owner approval gates
-    # remain independently mandatory.
-    return {"sourcePhotoHumanReviewAttested":True,
-            "reviewPacketSha256":evidence,
+    # Do NOT store the receipt hash in this .blend and then require that
+    # receipt to hash the same .blend. That creates an impossible SHA256 cycle.
+    # The independently stored owner receipt binds the fully SAVED scene
+    # bytes and four renders; see verify_external_owner_review_packet.
+    return {"sourceSceneReviewFlagsPresent":True,
+            "ownerEvidenceMustBeExternallyVerified":True,
             "productionApproved":False}
 
 def verify_external_owner_review_packet(
@@ -51,7 +48,7 @@ def verify_external_owner_review_packet(
     The receipt is a HUMAN attestation. It cannot perform visual recognition
     and never approves cloth fit, metric UV, supplier truth or production.
     """
-    attested=require_independent_source_photo_review(scene)
+    require_independent_source_photo_review(scene)
     if not review_path:
         raise ValueError("LINEN_OWNER_MODEL_REVIEW_RECEIPT is required for measured production export")
     doc=Path(review_path)
@@ -59,8 +56,8 @@ def verify_external_owner_review_packet(
         raise ValueError("Owner review file missing or symlinked")
     bytes_written=doc.read_bytes()
     sha=hashlib.sha256(bytes_written).hexdigest()
-    if sha!=attested["reviewPacketSha256"]:
-        raise ValueError("Owner review receipt SHA256 differs from scene attestation")
+    # This digest is evidence of the external packet, not embedded in the
+    # model that the packet fingerprints; avoid cyclic hash dependencies.
     try:
         packet=json.loads(bytes_written)
         identity=json.loads(Path(identity_spec_path).read_text(encoding="utf-8"))
