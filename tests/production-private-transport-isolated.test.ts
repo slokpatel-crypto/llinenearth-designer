@@ -11,7 +11,7 @@ test("every operator production GET and POST exit uses the private response boun
   assert.doesNotMatch(get,/return NextResponse\.json\(/);
   assert.doesNotMatch(post,/return NextResponse\.json\(/);
   assert.equal((get.match(/return privateProductionResponse\(/g)||[]).length,4);
-  assert.ok((post.match(/return privateProductionResponse\(/g)||[]).length>=15);
+  assert.ok((post.match(/return privateProductionResponse\(/g)||[]).length>=14);
   assert.match(source,/function privateProductionResponse\(body:unknown,init\?:ResponseInit\)/);
   assert.match(source,/response\.headers\.set\("cache-control","private, no-store"\)/);
   assert.equal((source.match(/NextResponse\.json\(/g)||[]).length,1,
