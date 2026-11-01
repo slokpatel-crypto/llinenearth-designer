@@ -88,6 +88,16 @@ def analyze_labelled_faces(faces, labels):
             if a[1] != b[1]:
                 seams.append((edge,a[1],b[1]))
     groups = Counter(labels)
+    components = defaultdict(Counter)
+    for i, label in enumerate(labels):
+        components[root(i)][label] += 1
+    ordered_components = sorted(
+        ({"faceCount": sum(group.values()),
+          "regionFaceCounts": {r: group[r] for r in REGIONS}}
+         for group in components.values()),
+        key=lambda item: (-item["faceCount"],
+                          -item["regionFaceCounts"]["torso"]),
+    )
     adjacency = Counter(tuple(sorted((a,b))) for _,a,b in seams)
     return {
         "polygonCount":len(faces),
@@ -95,7 +105,9 @@ def analyze_labelled_faces(faces, labels):
         "sourceOpenBoundaryEdges":sum(len(owners)==1 for owners in edges.values()),
         "sourceNonmanifoldEdges":nonmanifold,
         "sharedEdgeWindingErrors":winding_errors,
-        "connectedComponents":len({root(i) for i in parents}),
+        "connectedComponents":len(ordered_components),
+        "sourceConnectedIslandFaceCounts": [c["faceCount"] for c in ordered_components],
+        "sourceConnectedIslandRegionCounts":ordered_components,
         "regionFaceCounts":{k:groups[k] for k in REGIONS},
         "sourceEdgeSeamCount":len(seams),
         "sourceSeamRegionPairs":{"/".join(pair):v for pair,v in sorted(adjacency.items())},

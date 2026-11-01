@@ -103,6 +103,25 @@ jobs:
             --python scripts/blender/render-linen-earth-model-qa.py -- \
             --output-dir artifacts/connected-shoulder-qa --width 480 --height 640 --samples 8
 
+      - name: Repair source-connected shirt face-level body clearance on separate candidate
+        id: connected_shoulder_adaptive
+        if: steps.joined_shoulder_trial.outcome == 'success'
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/connected-shoulder-adaptive-qa
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
+            --python scripts/blender/experiments/construct-connected-shirt-shoulder.py -- \
+            --face-refinement 1 --contact-repair-passes 6 \
+            --output .cache/linen-earth/linen-earth-connected-shirt-adaptive.blend \
+            --report artifacts/connected-shoulder-adaptive-qa/face-level-repair-measurements.json
+
+      - name: Render four-angle separate adaptive shoulder model
+        if: steps.connected_shoulder_adaptive.outcome == 'success'
+        run: |
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-connected-shirt-adaptive.blend \
+            --python scripts/blender/render-linen-earth-model-qa.py -- \
+            --output-dir artifacts/connected-shoulder-adaptive-qa --width 480 --height 640 --samples 8
+
       - name: Check exact-source candidate geometry before expensive rendering
         id: scene_preflight
         continue-on-error: true
@@ -155,7 +174,9 @@ jobs:
           path: |
             artifacts/model-qa/**
             artifacts/connected-shoulder-qa/**
+            artifacts/connected-shoulder-adaptive-qa/**
             .cache/linen-earth/linen-earth-officewear-authored.blend
             .cache/linen-earth/linen-earth-connected-shirt-shoulder.blend
+            .cache/linen-earth/linen-earth-connected-shirt-adaptive.blend
           if-no-files-found: warn
           retention-days: 14
