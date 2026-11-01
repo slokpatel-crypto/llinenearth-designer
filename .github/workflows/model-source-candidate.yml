@@ -86,44 +86,42 @@ jobs:
       - name: Author body-attached candidate shirt / trouser relief
         run: npm run garment:model-garments:author
 
-      - name: Build two source-waist back panel alternatives with identical fitted sleeves
-        id: waist_trials
+      - name: Build two authentic back shoulder inset and welded armhole patterns
+        id: shoulder_inset_candidates
         continue-on-error: true
         run: |
-          mkdir -p artifacts/back-waist-qa
+          mkdir -p artifacts/back-shoulder-qa
           blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/experiments/construct-authored-shirt-pattern.py -- \
             --with-finishing --with-placket --source-scan-sleeves \
-            --source-scan-sleeve-sections --back-waist-contour inside \
-            --placket-relief-mm 4 \
-            --output .cache/linen-earth/linen-earth-back-waist-inside.blend \
-            --report artifacts/back-waist-qa/source-waist-inside.json
+            --source-scan-sleeve-sections --back-shoulder-inset-rows 2 \
+            --output .cache/linen-earth/linen-earth-back-shoulder-2.blend \
+            --report artifacts/back-shoulder-qa/shoulder-inset-2.json
           blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/experiments/construct-authored-shirt-pattern.py -- \
             --with-finishing --with-placket --source-scan-sleeves \
-            --source-scan-sleeve-sections --back-waist-contour outside \
-            --placket-relief-mm 4 \
-            --output .cache/linen-earth/linen-earth-back-waist-outside.blend \
-            --report artifacts/back-waist-qa/source-waist-outside.json
+            --source-scan-sleeve-sections --back-shoulder-inset-rows 3 \
+            --output .cache/linen-earth/linen-earth-back-shoulder-3.blend \
+            --report artifacts/back-shoulder-qa/shoulder-inset-3.json
 
-      - name: Compare real native waistband hypotheses to unchanged sleeve baseline
-        if: steps.waist_trials.outcome == 'success'
+      - name: Evaluate genuine body and waist contact changes for both shoulder insets
+        if: steps.shoulder_inset_candidates.outcome == 'success'
         run: |
-          python3 scripts/blender/compare_native_back_waist.py \
-            --inside artifacts/back-waist-qa/source-waist-inside.json \
-            --outside artifacts/back-waist-qa/source-waist-outside.json \
-            --output artifacts/back-waist-qa/comparison.json
+          python3 scripts/blender/compare_native_shoulder_insets.py \
+            --candidate artifacts/back-shoulder-qa/shoulder-inset-2.json \
+            --candidate artifacts/back-shoulder-qa/shoulder-inset-3.json \
+            --output artifacts/back-shoulder-qa/contact-comparison.json
 
-      - name: Render back waist variants in independent four-angle frames
-        if: steps.waist_trials.outcome == 'success'
+      - name: Render both shoulder insets from four angles each
+        if: steps.shoulder_inset_candidates.outcome == 'success'
         run: |
-          mkdir -p artifacts/back-waist-qa/inside artifacts/back-waist-qa/outside
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-back-waist-inside.blend \
+          mkdir -p artifacts/back-shoulder-qa/inset-2 artifacts/back-shoulder-qa/inset-3
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-back-shoulder-2.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/back-waist-qa/inside --width 480 --height 640 --samples 8
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-back-waist-outside.blend \
+            --output-dir artifacts/back-shoulder-qa/inset-2 --width 480 --height 640 --samples 8
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-back-shoulder-3.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/back-waist-qa/outside --width 480 --height 640 --samples 8
+            --output-dir artifacts/back-shoulder-qa/inset-3 --width 480 --height 640 --samples 8
 
       - name: Check exact-source candidate geometry before expensive rendering
         id: scene_preflight
@@ -176,9 +174,9 @@ jobs:
           name: linen-earth-3d-source-candidate-${{ github.run_id }}
           path: |
             artifacts/model-qa/**
-            artifacts/back-waist-qa/**
+            artifacts/back-shoulder-qa/**
             .cache/linen-earth/linen-earth-officewear-authored.blend
-            .cache/linen-earth/linen-earth-back-waist-inside.blend
-            .cache/linen-earth/linen-earth-back-waist-outside.blend
+            .cache/linen-earth/linen-earth-back-shoulder-2.blend
+            .cache/linen-earth/linen-earth-back-shoulder-3.blend
           if-no-files-found: warn
           retention-days: 14
