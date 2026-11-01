@@ -7,3 +7,9 @@
 .productionCustomerOutcome{display:grid;gap:4px;border:1px solid #d8d1c6;background:#faf8f3;padding:10px;margin-top:3px}.productionCustomerOutcome strong{font-size:11px;letter-spacing:.04em}.productionCustomerOutcome span,.productionCustomerOutcome p{font-size:11px;line-height:1.45;margin:0;color:#58646b}.productionCustomerOutcome>small:last-child{font-size:9px}
 
 .productionLineageAttached,.productionLineageMissing{display:inline-flex;justify-self:start;padding:5px 8px;border-radius:999px;font-size:9px;letter-spacing:.04em}.productionLineageAttached{background:#edf3ec;color:#3f5c42;border:1px solid #b9cbb8}.productionLineageMissing{background:#fff4df;color:#765529;border:1px solid #e2c89e}
+
+/* Keep the private refresh action visible without widening the mobile desk. */
+.productionHeader nav{flex-wrap:wrap;max-width:470px}
+.productionHeader nav button{border:1px solid #26323a;background:#26323a;color:#fff;padding:9px 11px;font-size:11px;cursor:pointer}
+.productionHeader nav button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:850px){.productionHeader nav{max-width:none;display:flex;flex-wrap:wrap}}
