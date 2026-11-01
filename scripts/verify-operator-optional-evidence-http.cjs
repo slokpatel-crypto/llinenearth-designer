@@ -215,6 +215,11 @@ async function main(){
     for(const badBody of [
       '{"action":"order_status","token":"'+sensitiveMarker+'",',
       "null",
+      "[]",
+      '"create_quote"',
+      "true",
+      JSON.stringify({action:"order_status",orderId:"synthetic-order",
+        status:"ready",note:"x".repeat(262_144)}),
     ]){
       mode={target:null,kind:"ok"};
       seen.length=0;

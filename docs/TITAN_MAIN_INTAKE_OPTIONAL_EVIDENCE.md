@@ -100,6 +100,18 @@
 - **Still blocked:** real inventory/provenance, tailor QC and physical size, native Blender model/UV/four-view source, customer/operator acceptance, five beta testers, ten authentic deliveries, owner security/restore/staging and launch approval. No production deploy, live writes, paid AI or main merge from this draft.
 
 
+## 2026-11-01 UTC — M12: bound incoming operator POST JSON before production writes
+
+- **Independent parent:** live main `51be91ef8986289aeeba496a2905f62402bb7279` (#700 exact-head Full CI and Non-3D passed). This slice is deliberately **not** stacked on unverified #701–#703. Confirm current main has not changed before any guarded intake.
+- **Observed defect:** authenticated `/api/operator/production` POST used `request.json()` with no streaming byte cap. A large valid JSON body was fully buffered and decoded before any action validation, allowing unnecessary allocation and possible denial of service.
+- **Implementation:** reuse existing streaming `readBoundedJsonResponse` reader with an interface accepting either Fetch Request or Response body, cap POST decoded bytes to 262,144 before JSON parse, and require object rather than array/scalar/null before choosing any production action. Existing safe error messages, private/no-store 409, and quote/order/CQ RPC logic remain unchanged. No new dependencies, SQL, model, fabricated stock or paid AI.
+- **Source/test sequence:** helper `4f3a6fc7c1faa2cbba6c16563a0a54258aaf6807`; route `d0b17506d943655633a4bf3b55a2f8c6f04b6663`; Node `6535e002b5fa8e768538c8086e911236793ff86a`; signed HTTP `3491aff76d762538613353cd6d075ad057b057c3`. This note changes final commit SHA.
+- **Regressions:** Node Request stream read with valid object and bounded rejection for oversized/malformed/missing body; source contract asserts cap and root validation before action selection. Synthetic authenticated built-Next fixture adds oversized 256KiB body, arrays, booleans and scalar JSON; each must deny before *any* RPC with generic redacted error and private/no-store response.
+- **Verification:** matching-head quality, unit, engine, preview, release, build, signed built-Next HTTP, Non-3D and browser QA are **PENDING** until observed. No local/CI success implied by source commits.
+- **Release isolation:** preserve `vercel.json` `git.deploymentEnabled=false`, verify exact HEAD/ancestry/current main/CI before optional fast-forward; never trigger Vercel. #701–#703 remain separate drafts with their own checks.
+- **Still blocked:** latest order-scoped SQL is **source only** until separately approved live Supabase migration and PostgREST schema-cache verification. Supplier stock and pattern repeat, tailor/QC real garment, original Blender model/UV, real customer/operator acceptance, five testers, ten genuine deliveries, security/restore/staging and owner signoff remain unverified.
+
+
 ## 2026-11-01 UTC — M9: exact JSON-boolean operator status acknowledgments (draft PR #701)
 
 - **Exact base:** PR #700 `51be91ef8986289aeeba496a2905f62402bb7279`, preserved without main/deploy changes. PR #701 is a stacked draft; dependencies #696–#700 must not be blindly merged as one unreviewed stack.
@@ -128,3 +140,13 @@
 - **Signed built-Next acceptance:** 20 synthetic authenticated quote/order negative cases across empty/null/object/duplicate rows, missing or scalar payload, wrong recipe hash, malformed/oversized JSON and wrong MIME. All must return private/no-store HTTP 409 and never reach production quote/order create RPC. The parent #702 also added 18 valid/invalid create-UUID cases with a synthetic hashed design and recovery token. These are simulated, NOT real customer actions or physically produced garments.
 - **Verification:** source commits accepted by GitHub; exact final-head CI, Non-3D, signed HTTP and browser all PENDING when written. Do not treat prior ancestry checks as this branch's acceptance. Next inspect matching-head checks and repair failures, then integrate reviewed isolated sections only with full tested ancestry and main no-deploy guard.
 - **Remaining blocked:** new QC migration not installed on live Supabase; PostgREST schema cache and authorized rollout pending. Supplier stock, tailor QC/fit, original Blender model/UV/four-view, real operator/customer tests, five beta testers, ten genuine deliveries, staging/security/restore, owner launch approval remain unverified. Never deploy or mutate live data from synthetic tests.
+
+
+## 2026-11-02 UTC — M14 isolated intake: operator POST decoded JSON bound
+
+- **Exact parent main:** `7fb4186cb6adaecb1eaeac4722ff6e9d3d002b92` (source PR #703 integrated); `vercel.json` `git.deploymentEnabled=false` reverified at parent. This intake replays only PR #704's bounded-request source/test slice onto current main; it does not merge #704's diverged history, other drafts, SQL or unrelated geometry.
+- **Affected acceptance:** T5/J5 authenticated operator production-write availability/security; T6/J6 bounded JSON and signed HTTP regression. Streaming POST request decoded JSON is capped at 262,144 bytes before any production RPC; non-object JSON is denied. Existing quote/order and model contracts remain unchanged.
+- **Source reference:** draft PR #704 `9484091d6b9982f5120006ffe11798d794229885` (Full CI #41337722913 still in progress when intake prepared; Non-3D #41337722914 success). All five modified files are reconciled against the newer parent rather than overwritten from an older tree.
+- **Verification:** source CI is not intake CI. This new intake's exact SHA and matching-head full quality/tests/engine/preview/release/build, signed HTTP and Non-3D/browser results are PENDING. No complete T/J release criterion is claimed. Do not merge until every applicable check is GREEN and current main guard/ancestry/diff are reverified.
+- **Physical/operational BLOCKED:** real supplier stock and measured repeat, authenticated owner/customer acceptance, tailor/QC physical evidence, Blender source/UV, real devices, five beta testers, ten delivered orders, staging/security/restore and owner launch approval. No production deploy, live migrations, stock changes or paid AI.
+- **Next 30–40-minute slice:** inspect matching-head CI, repair failures, then consider isolated guarded squash into main if verified. If blocked, proceed to independently verifiable customer/operator handoff regression without claiming physical readiness.
