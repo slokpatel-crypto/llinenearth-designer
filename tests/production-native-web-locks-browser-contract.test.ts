@@ -38,3 +38,18 @@ test("M139 signed native Chromium rejects active-session review and permits late
   assert.match(reviewBrowser,/First acknowledgement must not clear a marker before post-session history verification/);
   assert.match(reviewBrowser,/Only the second explicit acknowledgement after a post-session GET may clear the marker/);
 });
+
+test("M140 signed browser drives real operator POST while second tab attempts review",()=>{
+  const browser=readFileSync("scripts/verify-production-native-web-locks-browser.cjs","utf8");
+  const client=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  assert.match(browser,/section\\.productionRecord select/);
+  assert.match(browser,/statusSelect\\.selectOption\\("cloth_reserved"\\)/);
+  assert.match(browser,/window\\.__titanUiDeferredPost=state/);
+  assert.match(browser,/Another tab has an active production write/);
+  assert.match(browser,/Actual React production handler must hold the native session lock/);
+  assert.match(browser,/Real React review must not clear a different tab/);
+  assert.match(browser,/Exactly one synthetic UI POST was intercepted/);
+  assert.match(browser,/Real UI contention test must never send a production POST over HTTP/);
+  assert.match(client,/await post\\(body,success,true\\)/);
+  assert.match(client,/PRODUCTION_WRITE_SESSION_LOCK_NAME,\\{mode:"exclusive",ifAvailable:true\\}/);
+});
