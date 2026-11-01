@@ -4,7 +4,7 @@ import { getCustomerIdentity } from "@/lib/customer-auth";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { requireDesignVaultBooleanAck } from "@/lib/designer/design-vault-ack";
 import { checkDesignVaultRateLimit, type VaultRateEntry } from "@/lib/designer/design-vault-rate-limit";
-import { requireSingleDesignVaultRow } from "@/lib/designer/design-vault-row";
+import { requireOwnedDesignVaultRows, requireSingleDesignVaultRow } from "@/lib/designer/design-vault-row";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import {
   createDesignVaultAccessKey,
@@ -118,21 +118,21 @@ export async function POST(request:Request){
 
     if(action==="listOwned"){
       if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
-      const rows=await rpc<Array<{
-        vault_id:string;revision_id:string;recipe_hash:string;
-        payload:LockedDesignRevision;created_at:string;expires_at:string;
-      }>>("designer_locked_revision_vault_list_owned",{p_owner_user_id:customer.id});
+      const rows=requireOwnedDesignVaultRows(await rpc<unknown>(
+        "designer_locked_revision_vault_list_owned",{p_owner_user_id:customer.id},
+      ));
       const designs=[];
       for(const row of rows){
-        if(row.payload&&await verifyLockedDesignRevision(row.payload)){
-          designs.push({
-            vaultId:row.vault_id,
-            revisionId:row.revision_id,
-            recipeHash:row.recipe_hash,
-            createdAt:row.created_at,
-            expiresAt:row.expires_at,
-          });
-        }
+        const revision=row.payload as LockedDesignRevision;
+        if(!await verifyLockedDesignRevision(revision))
+          throw new Error("Invalid owned design vault revision integrity.");
+        designs.push({
+          vaultId:row.vault_id,
+          revisionId:row.revision_id,
+          recipeHash:row.recipe_hash,
+          createdAt:row.created_at,
+          expiresAt:row.expires_at,
+        });
       }
       return jsonNoStore({designs,customer:{email:customer.email}});
     }
