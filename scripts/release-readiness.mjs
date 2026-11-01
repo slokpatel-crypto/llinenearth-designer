@@ -2372,6 +2372,10 @@ requireTokens("scripts/verify-production-native-web-locks-browser.cjs",[
 requireTokens("tests/production-native-web-locks-browser-contract.test.ts",[
   "M139 signed native Chromium rejects active-session review",
 ]);
+requireTokens("scripts/verify-production-ledger-refresh-barrier-browser.cjs",[
+  "postSessionRefreshAndSecondClickRequired:true",
+  "First acknowledgement must not clear a marker before post-session history verification",
+]);
 
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
