@@ -10,6 +10,7 @@ import {secureJsonRequestError,readSecureJsonObject,SecureJsonBodyTooLarge,Secur
 import {safeOperatorProductionErrorCode} from "@/lib/designer/operator-production-error";
 import {readBoundedJsonResponse} from "@/lib/designer/bounded-json-response";
 import {isMissingOptionalProductionRpc} from "@/lib/designer/operator-optional-rpc";
+import {assertProductionLedgerLists} from "@/lib/designer/production-ledger-envelope";
 
 export const runtime="nodejs";
 
@@ -66,6 +67,8 @@ export async function GET(){
       rpc<unknown[]>("production_customer_outcome_list",{p_limit:250},true),
       rpc<unknown[]>("production_order_learning_context_list",{p_limit:500},true),
     ]);
+    // An upstream malformed list is NOT evidence of an empty production ledger.
+    assertProductionLedgerLists({quotes,orders,qcInspections,customerOutcomes,learningContexts});
     return privateProductionResponse({configured:true,quotes,orders,qcInspections,customerOutcomes,learningContexts},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/production]",safeOperatorProductionErrorCode(error));
