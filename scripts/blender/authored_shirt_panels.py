@@ -117,18 +117,32 @@ def _distance(a,b):
     return math.sqrt(sum((x-y)**2 for x,y in zip(a,b)))
 
 
-def make_shirt_mesh(*, omit_sleeve=None):
+def make_shirt_mesh(*, omit_sleeve=None, upper_ease_mm=0.0, cuff_radius_mm=68.0):
     """Return explicit vertices/faces/piece regions, including ring-welded sleeves.
 
     omit_sleeve for regression ONLY: must leave corresponding armhole boundary.
     """
     if omit_sleeve not in (None,"left_sleeve","right_sleeve"):
         raise ValueError("Invalid armhole regression control")
+    if (not math.isfinite(upper_ease_mm) or not 0 <= upper_ease_mm <= 30 or
+        not math.isfinite(cuff_radius_mm) or not 60 <= cuff_radius_mm <= 90):
+        raise ValueError("Unmeasured shirt pattern variation out of bounded limits")
     verts=[]
     for z,rx,ry in PROFILE:
+        # The actual garment construction changes, not the scanned body.
+        # A shoulder/chest-specific outward shape trial leaves the tucked
+        # waist and neck endpoints fixed; unknown ease stays UNMEASURED.
+        if z<=1.20:
+            influence=0.0
+        elif z<=1.42:
+            influence=(z-1.20)/.22
+        else:
+            influence=max(0.0,(1.52-z)/.10)
+        extra=(upper_ease_mm/1000.0)*influence
         for j in range(N):
             theta=2*math.pi*j/N
-            verts.append((rx*math.cos(theta),ry*math.sin(theta),z))
+            verts.append(((rx+extra)*math.cos(theta),
+                          (ry+extra)*math.sin(theta),z))
     faces=[]
     roles=[]
     for row in range(len(PROFILE)-1):
@@ -189,9 +203,9 @@ def make_shirt_mesh(*, omit_sleeve=None):
                 # Smoothly transfer existing true armhole perimeter to cuff
                 # circular pattern, without duplicating or tearing root edges.
                 orig=verts[idx]
-                px=(1-t)*(orig[0]-p0[0]) + t*.068*(math.cos(phi)*e1[0]+math.sin(phi)*e2[0])
-                py=(1-t)*(orig[1]-p0[1]) + t*.068*(math.cos(phi)*e1[1]+math.sin(phi)*e2[1])
-                pz=(1-t)*(orig[2]-p0[2]) + t*.068*(math.cos(phi)*e1[2]+math.sin(phi)*e2[2])
+                px=(1-t)*(orig[0]-p0[0]) + t*(cuff_radius_mm/1000.0)*(math.cos(phi)*e1[0]+math.sin(phi)*e2[0])
+                py=(1-t)*(orig[1]-p0[1]) + t*(cuff_radius_mm/1000.0)*(math.cos(phi)*e1[1]+math.sin(phi)*e2[1])
+                pz=(1-t)*(orig[2]-p0[2]) + t*(cuff_radius_mm/1000.0)*(math.cos(phi)*e1[2]+math.sin(phi)*e2[2])
                 ring.append(len(verts))
                 verts.append((center[0]+px,center[1]+py,center[2]+pz))
             for j in range(n):
@@ -215,6 +229,8 @@ def make_shirt_mesh(*, omit_sleeve=None):
         "panelSeamsAuthored":True,
         "supplierMeasurementsApproved":False,
         "realModelPoseParityApproved":False,
+        "upperBodyEaseMmExperimentalOnly":upper_ease_mm,
+        "sleeveCuffRadiusMmExperimentalOnly":cuff_radius_mm,
     })
     return {
         "vertices":verts,"faces":faces,"roles":roles,"armholeSeamEdges":seam_edges,
