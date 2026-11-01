@@ -2381,6 +2381,31 @@ requireTokens("scripts/verify-production-packet-cross-tab-browser.cjs",[
   "Production history rechecked with no active browser write",
 ]);
 
+// M142: exact committed status receipts survive capped production history.
+// A missing row is not proof of noncommit; the lookup must never release a
+// pending browser write without independently verified human review.
+requireTokens("supabase/migrations/20261120_production_status_receipt_lookup.sql",[
+  "production_quote_status_request_receipts",
+  "production_order_status_request_receipts",
+  "production_delivery_request_receipts",
+  "revoke all on function public.production_status_request_receipt_lookup",
+  "grant execute on function public.production_status_request_receipt_lookup",
+]);
+requireTokens("src/app/api/operator/production/route.ts",[
+  'if(action==="status_receipt_lookup"){',
+  'parseProductionStatusReceipts(rows)',
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  'async function lookupPendingStatusReceipt(){',
+  'productionWriteReviewSnapshotUnchanged(safeProductionHoldStorage(),snapshot)',
+  'Find original status receipt by request ID',
+  'This is NOT proof that retrying is safe',
+]);
+requireTokens("scripts/ci/verify-production-create-idempotency.sh",[
+  "m142-status-receipt-lookup-assertions.sql",
+  "Status receipt lookup claimed noncommit while another SQL transaction was open",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
