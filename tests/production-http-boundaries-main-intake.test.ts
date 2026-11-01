@@ -50,7 +50,7 @@ test("main intake: streaming body checks actual decoded bytes, not a misleading 
   }
   await assert.rejects(readSecureJsonObject(request(""),128),SecureJsonBodyInvalid);
   assert.deepEqual(await readSecureJsonObject(request('{"key":"é"}'),128),{key:"é"});
-  assert.throws(()=>readSecureJsonObject(request("{}"),0),/Invalid JSON request byte limit/);
+  await assert.rejects(readSecureJsonObject(request("{}"),0),/Invalid JSON request byte limit/);
 });
 test("main intake: bounded upstream response handles chunked JSON and rejects overflow",async()=>{
   const okay=new Response(new ReadableStream({
