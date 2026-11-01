@@ -1,0 +1,65 @@
+{
+  "date": "2026-11-01",
+  "sourceWorkflowRun": 41303366000,
+  "nativeSourceArtifactId": 13082099785,
+  "sourceSceneSha256": "bf4e64084fcd5301f748e06e8cd20971469ee4a19da9d6f3bea8c9438c7b23d1",
+  "status": "BOTH_BACK_WAIST_CONTOUR_TRIALS_REJECTED",
+  "baseline": {
+    "bodyShirtTrianglePairs": 1954,
+    "waistShirtTrianglePairs": 72,
+    "backWaistHeightBand": 64,
+    "backHemBand": 8,
+    "leftSleeveBodyPairs": 479,
+    "rightSleeveBodyPairs": 471,
+    "trouserLegPairs": [
+      0,
+      0
+    ]
+  },
+  "inside": {
+    "bodyShirtTrianglePairs": 1958,
+    "waistShirtTrianglePairs": 128,
+    "backWaistHeightBand": 54,
+    "backHemBand": 74,
+    "backBodyPairs": 519,
+    "leftSleeveBodyPairs": 479,
+    "rightSleeveBodyPairs": 471,
+    "trouserLegPairs": [
+      0,
+      0
+    ],
+    "waistSurfaceMedianHeightM": 1.0254327058792114
+  },
+  "outside": {
+    "bodyShirtTrianglePairs": 1944,
+    "waistShirtTrianglePairs": 88,
+    "backWaistHeightBand": 74,
+    "backHemBand": 14,
+    "backBodyPairs": 505,
+    "leftSleeveBodyPairs": 479,
+    "rightSleeveBodyPairs": 471,
+    "trouserLegPairs": [
+      0,
+      0
+    ],
+    "waistSurfaceMedianHeightM": 1.0254327058792114
+  },
+  "actualSourceWaistSamplesPerTrial": 25,
+  "nativeSourceBodyAndSixGarmentsUnmodified": true,
+  "topology": {
+    "connectedComponents": 1,
+    "sourceWeldedArmholesPreserved": true,
+    "sourceFrontPlacketAndCollarCuffsPreserved": true
+  },
+  "visualReview": {
+    "fourAngleInsideAndOutsideRendered": true,
+    "conclusion": "Both variants retain a short cropped front shirt, exposed back/shoulder skin holes, wrong trouser source silhouette and visibly different generic scanned person compared with the canonical faceless studio mannequin. Do not accept as production or assume correct drape."
+  },
+  "candidateAcceptance": {
+    "inside": false,
+    "outside": false
+  },
+  "canPromoteToMain": false,
+  "productionReady": false,
+  "nextAction": "Do not repeat radial contour guesses. Refactor source-accurate shoulder/yoke/back panel and mannequin source selection using verified pattern and original identity; local waistband x/y registration alone increases crossings. Preserve tested sleeve section geometry but keep entire candidate blocked."
+}
