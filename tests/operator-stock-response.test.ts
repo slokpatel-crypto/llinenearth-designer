@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {FABRIC_STOCK} from "../src/lib/fabric-stock.ts";
-import {requireStockCreatedId,requireStockSnapshotRows} from "../src/lib/designer/operator-stock-response.ts";
+import {requireStockCloseAck,requireStockCreatedId,requireStockSnapshotRows} from "../src/lib/designer/operator-stock-response.ts";
 
 const fabric_id=FABRIC_STOCK[0].id;
 const sample={fabric_id,physical_metres:10.25,reserved_metres:2.125,
@@ -69,4 +69,21 @@ test("operator stock endpoint validates response and never exposes privileged up
   assert.doesNotMatch(route,/error instanceof Error\?error\.message:"Stock operation failed\."/);
   assert.match(route,/error:"Stock operation could not be verified\."/);
   assert.match(route,/headers:\{"cache-control":"private, no-store"\}/);
+});
+
+test("release and consume SQL RPCs accept only literal JSON booleans",()=>{
+  assert.equal(requireStockCloseAck(true),true);
+  assert.equal(requireStockCloseAck(false),false);
+  for(const value of [null,undefined,"true","false",0,1,[],[false],{}, {consumed:true},{released:false}])
+    assert.throws(()=>requireStockCloseAck(value),/Invalid stock closure acknowledgment/);
+});
+
+test("stock route validates both close RPCs before interpreting inactive reservation",()=>{
+  const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
+  for(const name of ["fabric_stock_release_v2","fabric_stock_consume_reservation_v2"])
+    assert.ok(route.includes('requireStockCloseAck(await rpc<unknown>("'+name+'"'));
+  assert.equal((route.match(/requireStockCloseAck\(await rpc<unknown>/g)||[]).length,2);
+  assert.doesNotMatch(route,/rpc<boolean>\("fabric_stock_(?:release|consume_reservation)_v2"/);
+  assert.match(route,/if\(released!==true\) return stockPrivateJson\(\{error:"Reservation was not active; no cloth was released\."\},\{status:409\}\)/);
+  assert.match(route,/if\(consumed!==true\) return stockPrivateJson\(\{error:"Reservation was not active; no cloth was consumed\."\},\{status:409\}\)/);
 });
