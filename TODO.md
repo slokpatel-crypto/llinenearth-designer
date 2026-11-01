@@ -1122,3 +1122,10 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [ ] Verify M139 exact-head full CI quality, Node, engine, preview-performance, release check, production build, browser 390/768/1440, Non-3D and both disposable PostgreSQL; repair failures without weakening safety.
 - [ ] Genuine supplier stock, authenticated customer/operator, physical tailor/QC, Blender source/UV, physical devices, beta and ten deliveries, security/privacy/schema and separate owner merge/deploy approvals remain BLOCKED/PENDING. No production writes, live migration, paid AI or main merge/deploy.
 - [ ] Next independent slice: test cross-device/server-side concurrent order/receipt acknowledgement against disposable PostgreSQL and ensure the user cannot misinterpret a missing capped ledger row as proof of noncommit.
+
+
+## 2026-11-01 — M140 real React two-tab deferred production POST acceptance (stacked draft)
+- [x] Extend signed native Chromium test to drive the **actual** operator order-status select at 390/1440, intercept its fetch in tab A, hold the in-flight synthetic POST, refresh tab B's history and prove its acknowledgement cannot remove A's marker while the full-request native session lock is held.
+- [x] Require exactly one synthetic intercepted UI POST, zero real HTTP production POSTs, eventual marker/session release on a deliberate pre-SQL 400, Node source regression and static release assertion. Preserve no-paid-AI/photo, SQL idempotency and stock fail-closed behavior.
+- [ ] Inspect exact M140 SHA full CI (quality, Node, engine, preview, release, build, signed browser), independent Non-3D and both disposable PostgreSQL; repair any actual failure. Browser fixture is not a real authenticated operator, supplier or SQL transaction.
+- [ ] Independently test cross-device/server-side concurrent SQL order/receipt behavior in disposable PostgreSQL, including capped ledger absence not implying noncommit. Real stock, authenticated customer/operator, physical tailor/QC, native Blender, devices, beta/ten deliveries, security/privacy/schema and owner approvals remain BLOCKED/PENDING. No main merge, deployment, live SQL or paid provider.
