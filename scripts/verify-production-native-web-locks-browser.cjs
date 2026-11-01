@@ -273,6 +273,7 @@ async function runViewport(browser,width){
       completedEpochBlocksStaleClaim:true,syntheticPostsFirst:1,
       syntheticPostsSecond:0,freshRecovery:true,unsupportedLockFailsClosed:true,
       activeSessionAcknowledgementBlocked:true,postSessionAcknowledgementRecovered:true,
+      realReactDeferredPostReviewBlocked:true,interceptedUiPosts:1,
       realProductionPosts:0,syntheticOnly:true};
   }finally{await ctx.close();}
 }
