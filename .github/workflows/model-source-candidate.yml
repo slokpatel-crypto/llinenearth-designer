@@ -86,6 +86,23 @@ jobs:
       - name: Author body-attached candidate shirt / trouser relief
         run: npm run garment:model-garments:author
 
+      - name: Construct actual front/back/yoke and set-in armhole topology candidate
+        id: patterned_armholes
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/authored-shirt-qa
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
+            --python scripts/blender/experiments/construct-authored-shirt-pattern.py -- \
+            --output .cache/linen-earth/linen-earth-authored-shirt-pattern.blend \
+            --report artifacts/authored-shirt-qa/pattern-body-contact.json
+
+      - name: Render independent four-angle authored pattern shirt candidate
+        if: steps.patterned_armholes.outcome == 'success'
+        run: |
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-authored-shirt-pattern.blend \
+            --python scripts/blender/render-linen-earth-model-qa.py -- \
+            --output-dir artifacts/authored-shirt-qa --width 480 --height 640 --samples 8
+
       - name: Author isolated source-index-welded shoulder geometry candidate
         id: joined_shoulder_trial
         continue-on-error: true
@@ -175,8 +192,10 @@ jobs:
             artifacts/model-qa/**
             artifacts/connected-shoulder-qa/**
             artifacts/connected-shoulder-adaptive-qa/**
+            artifacts/authored-shirt-qa/**
             .cache/linen-earth/linen-earth-officewear-authored.blend
             .cache/linen-earth/linen-earth-connected-shirt-shoulder.blend
             .cache/linen-earth/linen-earth-connected-shirt-adaptive.blend
+            .cache/linen-earth/linen-earth-authored-shirt-pattern.blend
           if-no-files-found: warn
           retention-days: 14
