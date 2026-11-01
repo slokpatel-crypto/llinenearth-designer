@@ -20,8 +20,8 @@ import {
   productionWriteReviewSnapshotUnchanged,type ProductionWriteReviewSnapshot,
 } from "@/lib/designer/production-write-hold";
 import {productionWriteReviewSummary, type ProductionWriteReviewSummary} from "@/lib/designer/production-review-summary";
-import {parseProductionCreationReceipts, type ProductionCreationReceipt} from "@/lib/designer/production-creation-receipt-lookup";
-import {parseProductionStatusReceipts, type ProductionStatusReceipt} from "@/lib/designer/production-status-receipt-lookup";
+import {parseProductionCreationReceiptResponse, type ProductionCreationReceipt} from "@/lib/designer/production-creation-receipt-lookup";
+import {parseProductionStatusReceiptResponse, type ProductionStatusReceipt} from "@/lib/designer/production-status-receipt-lookup";
 import {parseProductionDeliveryEligibility,hasVerifiedSqlDeliveryEligibility,type ProductionDeliveryEligibility} from "@/lib/designer/production-delivery-eligibility";
 import { validProductionDeskResponse, validProductionDeskMutationReceipt, sameProductionRecordId, sameProductionRecipeHash, selectProductionPacketRecords } from "@/lib/designer/production-desk-ledger";
 
@@ -336,7 +336,7 @@ export default function ProductionClient(){
       const data:unknown=await response.json();
       if(!data||typeof data!=="object"||Array.isArray(data)
         ||!("receipts" in data))throw new Error("Invalid receipt lookup response.");
-      const receipts=parseProductionCreationReceipts(data.receipts);
+      const receipts=parseProductionCreationReceiptResponse(data.receipts);
       if(!receipts)throw new Error("Unverified receipt lookup response.");
       // A concurrent tab may have changed the marker while the read was in
       // flight. Never present the former key's results as current evidence.
@@ -374,7 +374,7 @@ export default function ProductionClient(){
       const data:unknown=await response.json();
       if(!data||typeof data!=="object"||Array.isArray(data)
         ||!("receipts" in data))throw new Error("Invalid status receipt response.");
-      const receipts=parseProductionStatusReceipts(data.receipts);
+      const receipts=parseProductionStatusReceiptResponse(data.receipts);
       if(!receipts)throw new Error("Unverified status receipt response.");
       // Another tab may complete a write while the lookup is in flight.
       // Never display stale results or clear the pending marker.

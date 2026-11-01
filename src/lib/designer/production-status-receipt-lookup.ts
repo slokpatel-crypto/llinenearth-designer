@@ -28,3 +28,22 @@ export function parseProductionStatusReceipts(input:unknown):ProductionStatusRec
   }
   return result;
 }
+
+/** The authenticated operator API serializes the validated SQL receipt using
+ * safe camelCase fields. The browser MUST revalidate that exact wire schema;
+ * feeding it back to the SQL parser would reject every genuine receipt.
+ * Do not broaden the SQL parser to accept untrusted extra backend columns. */
+export function parseProductionStatusReceiptResponse(input:unknown):ProductionStatusReceipt[]|null{
+  if(!Array.isArray(input)||input.length>3)return null;
+  const sqlRows:Array<Record<string,unknown>>=[];
+  for(const item of input){
+    if(!item||typeof item!=="object"||Array.isArray(item))return null;
+    const row=item as Record<string,unknown>;
+    const keys=Object.keys(row);
+    if(keys.length!==3||!["action","recordId","status"].every(key=>Object.prototype.hasOwnProperty.call(row,key)))return null;
+    sqlRows.push({action:row.action,record_id:row.recordId,target_status:row.status});
+  }
+  // Enforce exactly the same UUID, allowed-status, duplicate and count rules
+  // as the upstream SQL receipt, without accepting SQL-shaped API responses.
+  return parseProductionStatusReceipts(sqlRows);
+}

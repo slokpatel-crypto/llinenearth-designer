@@ -1154,3 +1154,19 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] Wire the signed HTTP test into CI; add source regression and static release gate. Preserve existing M142 SQL concurrency test, canonical model, deterministic no-paid-AI preview and draft-only staging.
 - [ ] Verify exact M143 SHA quality, Node, engine, preview, release, build, signed HTTP/browser 390/768/1440, independent Non-3D, production and stock PostgreSQL. Repair any actual failures; earlier M142 PASS cannot certify this head.
 - [ ] Next independent slice: test authenticated operator UI display of committed/missing receipt through signed browser and verify it never clears the uncertain-write marker. Genuine stock, signed-in real customer/operator, tailor/QC, Blender, devices, five betas, ten deliveries, privacy/security/staging/schema and owner approvals remain BLOCKED/PENDING.
+
+
+## 2026-11-01 — M144 signed operator status-receipt UI recovery (stacked draft)
+- [x] Add CI-only signed real React Chromium scenario at 390/768/1440 using the built Next operator route and synthetic loopback SQL fixture: show exact committed quote/order status receipts without clearing pending localStorage marker or enabling quote/order writes.
+- [x] Prove an empty lookup is explicitly *not* evidence of noncommit; upstream 503 removes previous success; a deferred response for a changed original marker is vetoed. Only read-only status_receipt_lookup POSTs are permitted; no production mutation, real customer or stock.
+- [x] Wire real browser test into full CI, Node source regression and strict release static gate. Carry forward M143 parent signed HTTP failure-response fix without weakening fail-closed behavior. Preserve original model and deterministic core without paid AI.
+- [ ] Run M144 matching-head quality, Node, engine, preview, release, production build, 390/768/1440 signed browser, independent Non-3D QA and both disposable PostgreSQL checks. Syntax parsing alone does NOT pass code acceptance; troubleshoot real CI failures on the exact child SHA.
+- [ ] No real authenticated owner/customer/operator acceptance, supplier stock/metres, tailor QC, native Blender four-view/UV, physical device, five beta, ten deliveries, privacy/security/staging/migration or owner signoff. Do not merge main, run live SQL, deploy or invoke paid AI.
+
+
+### M144 exact production receipt API wire contract repair — 2026-11-01
+- [x] Matching-head M144 CI #41275485353 exposed real React UI failure: 15s timeout waiting for committed status receipts, even though the built Next signed status-receipt HTTP test passed. Source inspection found the SQL parser expects snake_case keys but the authenticated route deliberately returns camelCase sanitized fields; the browser incorrectly applied the SQL parser again.
+- [x] Add a separate *strict* camelCase API response parser for status receipts, preserve strict SQL upstream parser, duplicate/UUID/status checks and rejection of private extra columns. Wire into actual operator UI; add positive/empty/private-field/duplicate/unknown-status tests and release contract.
+- [x] Discover and fix the same contract mismatch for existing quote/order *creation* receipt recovery. Keep its SQL parser fail-closed; add distinct sanitized API parser, UI adoption, Node regressions and release guard. No changes to SQL, production data or external services.
+- [ ] Require matching-head quality, full Node, engine, preview, release, Next build, signed HTTP and real 390/768/1440 Chromium, independent Non-3D and both disposable PostgreSQL. The earlier M144 browser run FAILED; new code is unverified until its own matching-head CI passes.
+- [ ] Real supplier roll/metre inventory, authenticated human operator/customer, physical tailor/QC, native Blender identity/UV, devices, five beta and ten delivered orders, staging/privacy/security/restore and explicit owner approvals remain blocked. Do not merge or deploy.

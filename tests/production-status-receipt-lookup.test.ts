@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {parseProductionStatusReceipts} from "../src/lib/designer/production-status-receipt-lookup.ts";
+import {parseProductionStatusReceipts,parseProductionStatusReceiptResponse} from "../src/lib/designer/production-status-receipt-lookup.ts";
 
 const quote="123e4567-e89b-42d3-a456-426614174010";
 const order="123e4567-e89b-42d3-a456-426614174011";
@@ -56,7 +56,7 @@ test("operator status receipt recovery cannot clear the hold or trust a changed 
   assert.ok(lookup.length>0);
   assert.match(lookup,/captureProductionWriteReviewSnapshot\(safeProductionHoldStorage\(\)\)/);
   assert.match(lookup,/action:"status_receipt_lookup",requestKey:pendingKey/);
-  assert.match(lookup,/parseProductionStatusReceipts\(data\.receipts\)/);
+  assert.match(lookup,/parseProductionStatusReceiptResponse\(data\.receipts\)/);
   assert.match(lookup,/productionWriteReviewSnapshotUnchanged\(safeProductionHoldStorage\(\),snapshot\)/);
   assert.match(lookup,/setRecoveredStatusReceipts\(receipts\)/);
   assert.match(lookup,/An in-flight SQL transaction may still commit/);
@@ -83,4 +83,50 @@ test("signed built-Next HTTP exercises exact status receipt recovery failures",(
   assert.match(http,/DO-NOT-LEAK-CI-/);
   assert.match(http,/expired/);
   assert.ok(workflow.includes("node scripts/verify-production-status-receipt-private-http.cjs"));
+});
+
+
+test("M144 signed browser UI never treats a status receipt as permission to retry",()=>{
+  const browser=readFileSync("scripts/verify-production-status-receipt-browser.cjs","utf8");
+  const workflow=readFileSync(".github/workflows/ci.yml","utf8");
+  assert.ok(browser.includes("M144 signed status-receipt browser test is GitHub Actions CI-only."));
+  assert.ok(browser.includes("for(const width of [390,768,1440])"));
+  for(const text of [
+    "committed status: accepted",
+    "committed status: delivered",
+    "This is NOT proof that retrying is safe",
+    "A receipt for the superseded marker must never be shown",
+    "changedMarkerVeto:true",
+    'productionPostActions.every(action=>action==="status_receipt_lookup")',
+    "No production write, live SQL, customer data or human signoff.",
+  ])assert.ok(browser.includes(text),"Missing signed browser safety case "+text);
+  assert.ok(workflow.includes("node scripts/verify-production-status-receipt-browser.cjs"));
+});
+
+
+test("operator browser strictly accepts sanitized camelCase status receipts, not raw SQL",()=>{
+  const good=[
+    {action:"quote_status",recordId:quote.toUpperCase(),status:"accepted"},
+    {action:"order_status",recordId:order,status:"delivered"},
+  ];
+  assert.deepEqual(parseProductionStatusReceiptResponse(good),[
+    {action:"quote_status",recordId:quote,status:"accepted"},
+    {action:"order_status",recordId:order,status:"delivered"},
+  ]);
+  assert.deepEqual(parseProductionStatusReceiptResponse([]),[],
+    "An empty read is valid evidence only of what was visible at that instant");
+  for(const bad of [
+    null,{},[null],[{}],
+    [{action:"order_status",record_id:order,target_status:"ready"}],
+    [{action:"order_status",recordId:order,status:"ready",privateCustomerPhone:"sensitive"}],
+    [{action:"order_status",recordId:order,status:"ready",note:"sensitive"}],
+    [{action:"order_status",recordId:order,status:"unknown"}],
+    [{action:"order_status",recordId:"invalid",status:"ready"}],
+    [{action:"quote_status",recordId:quote,status:"delivered"}],
+    [good[0],good[0]],
+    Array(4).fill(good[0]),
+  ])assert.equal(parseProductionStatusReceiptResponse(bad),null,
+    "Malformed, private, duplicate or excessive receipts must be rejected");
+  assert.equal(parseProductionStatusReceipts(good),null,
+    "Server SQL parser must NOT accept API-shaped objects");
 });

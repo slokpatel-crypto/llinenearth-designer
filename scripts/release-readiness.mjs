@@ -2415,6 +2415,48 @@ requireTokens(".github/workflows/ci.yml",[
   "node scripts/verify-production-status-receipt-private-http.cjs",
 ]);
 
+requireTokens("src/lib/designer/production-status-receipt-lookup.ts",[
+  "parseProductionStatusReceiptResponse",
+  "return parseProductionStatusReceipts(sqlRows)",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "parseProductionStatusReceiptResponse(data.receipts)",
+]);
+requireTokens("tests/production-status-receipt-lookup.test.ts",[
+  "operator browser strictly accepts sanitized camelCase status receipts, not raw SQL",
+]);
+
+
+// The M109 creation receipt has the same safe API normalization boundary.
+requireTokens("src/lib/designer/production-creation-receipt-lookup.ts",[
+  "parseProductionCreationReceiptResponse",
+  "return parseProductionCreationReceipts(sqlRows)",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "parseProductionCreationReceiptResponse(data.receipts)",
+]);
+requireTokens("tests/production-creation-receipt-lookup.test.ts",[
+  "operator creation receipt API response accepts only normalized private-safe wire fields",
+]);
+
+// M144: SQL and private HTTP alone do not verify the actual operator React UI.
+// A signed Chromium session must demonstrate that status receipts, absent rows,
+// upstream failures and a changed browser marker NEVER unlock production writes.
+requireTokens("scripts/verify-production-status-receipt-browser.cjs",[
+  "M144 signed Chromium status-receipt UI hold and changed-marker veto PASS",
+  "for(const width of [390,768,1440])",
+  "committed status: accepted",
+  "This is NOT proof that retrying is safe",
+  "changedMarkerVeto:true",
+  'productionPostActions.every(action=>action==="status_receipt_lookup")',
+]);
+requireTokens("tests/production-status-receipt-lookup.test.ts",[
+  "M144 signed browser UI never treats a status receipt as permission to retry",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-status-receipt-browser.cjs",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
