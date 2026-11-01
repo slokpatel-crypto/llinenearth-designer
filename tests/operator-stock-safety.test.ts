@@ -46,7 +46,7 @@ test("actual operator route enforces verification before every recording or rese
   const s=readFileSync("src/app/api/operator/stock/route.ts","utf8");
   assert.ok(s.includes("if(!await authorized())"));
   assert.ok(s.includes("stockMutationRequestError(request)"));
-  assert.ok(s.includes("if(unsafe) return NextResponse.json"));
+  assert.ok(s.includes("if(unsafe) return stockPrivateJson"));
   for(const [normalizer,rpc] of [
     ["normalizeManualStockEvent(body)","fabric_stock_record_v2"],
     ["normalizeStockReservation(body)","fabric_stock_reserve_v2"],
@@ -77,7 +77,7 @@ test("actual stock mutation handler applies byte limit before privileged RPC",()
   const firstRpc=code.indexOf('rpc<string>("fabric_stock_record_v2"');
   assert.ok(parse>0&&firstRpc>parse);
   assert.ok(code.includes("error instanceof StockMutationPayloadTooLarge"));
-  assert.ok(code.includes("{status:413}"));
+  assert.match(code,/status:413[,}]/);
 });
 
 test("operator release UI supplies the real named checker and physical cancellation reference",()=>{
@@ -103,12 +103,12 @@ test("operator stock display does not equate a typed source reference with physi
 
 test("a missing or already closed reservation is never falsely reported as consumed or released",()=>{
   const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
-  assert.ok(route.includes("if(released!==true) return NextResponse.json"));
+  assert.ok(route.includes("if(released!==true) return stockPrivateJson"));
   assert.ok(route.includes('error:"Reservation was not active; no cloth was released."},{status:409}'));
-  assert.ok(route.includes("if(consumed!==true) return NextResponse.json"));
+  assert.ok(route.includes("if(consumed!==true) return stockPrivateJson"));
   assert.ok(route.includes('error:"Reservation was not active; no cloth was consumed."},{status:409}'));
-  assert.ok(route.includes("return NextResponse.json({released:true})"));
-  assert.ok(route.includes("return NextResponse.json({consumed:true})"));
+  assert.ok(route.includes("return stockPrivateJson({released:true})"));
+  assert.ok(route.includes("return stockPrivateJson({consumed:true})"));
 });
 
 
@@ -124,4 +124,14 @@ test("operator stock dashboard fails closed when the live ledger cannot load",()
   assert.ok(code.includes('snapshotState==="ready"?(provenanceReady?"RECORDED":"PENDING"):"UNAVAILABLE"'));
   assert.ok(code.includes('disabled={busy||snapshotState!=="ready"||'));
   assert.ok(code.includes("do not reserve or cut against a missing snapshot"));
+});
+
+test("all stock ledger responses are private and upstream errors do not leak",()=>{
+  const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
+  assert.match(route,/function stockPrivateJson\(/);
+  assert.match(route,/NextResponse\.json\(body,\{\.\.\.init,/);
+  assert.match(route,/"cache-control":"private, no-store"/);
+  assert.equal((route.match(/NextResponse\.json\(/g)||[]).length,1,
+    "all endpoint responses must pass through private no-store helper");
+  assert.ok(route.includes("snapshot unavailable (details redacted)."));
 });
