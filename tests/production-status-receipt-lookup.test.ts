@@ -72,15 +72,15 @@ test("signed built-Next HTTP exercises exact status receipt recovery failures",(
   const workflow=readFileSync(".github/workflows/ci.yml","utf8");
   assert.match(fixture,/STATUS_RECEIPT_LOOKUP_PATH/);
   assert.match(fixture,/CI_STATUS_REQUEST_KEY/);
-  assert.match(fixture,/__fixture\\/status-receipt-mode/);
+  assert.ok(fixture.includes('"/__fixture/status-receipt-mode"'));
   for(const mode of ["valid","empty","malformed","duplicate","missing","upstream","oversized"]){
     assert.ok(fixture.includes('"'+mode+'"'),"missing CI receipt mode "+mode);
     assert.ok(http.includes('"'+mode+'"'),"missing signed HTTP case "+mode);
   }
   assert.match(http,/Signed built-Next status receipt recovery HTTP PASS/);
-  assert.match(http,/assertPrivate\\(failed\\)/);
+  assert.ok(http.includes("assertPrivate(failed)"));
   assert.match(http,/empty lookup is only an observation/);
   assert.match(http,/DO-NOT-LEAK-CI-/);
   assert.match(http,/expired/);
-  assert.match(workflow,/node scripts\\/verify-production-status-receipt-private-http\\.cjs/);
+  assert.ok(workflow.includes("node scripts/verify-production-status-receipt-private-http.cjs"));
 });
