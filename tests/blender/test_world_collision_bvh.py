@@ -52,3 +52,14 @@ scaled_hits = preflight.intersection_pair_count(body, garment)
 assert scaled_hits > 0, "Evaluated object scale must be reflected in world contact evidence"
 
 print(f"LENEN_EARTH_WORLD_SPACE_COLLISION_TEST_PASSED hits={hits}, separated={false_hits}, scaled={scaled_hits}")
+
+# An empty mesh has no BVH and must remain unmeasured, never zero-contact.
+empty_mesh = bpy.data.meshes.new('TEST_EMPTY_CONTACT_MESH')
+empty_object = bpy.data.objects.new('TEST_EMPTY_CONTACT_OBJECT', empty_mesh)
+bpy.context.scene.collection.objects.link(empty_object)
+bpy.context.view_layer.update()
+assert preflight.intersection_pair_count(body, empty_object) is None, (
+    'An empty evaluated mesh must not be reported as collision-free'
+)
+assert preflight.intersection_pair_count(body, None) is None
+print('LINEN_EARTH_UNMEASURED_CONTACT_REMAINS_UNKNOWN_PASSED')
