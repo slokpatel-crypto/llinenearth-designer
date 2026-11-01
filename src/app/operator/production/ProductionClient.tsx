@@ -13,6 +13,7 @@ import {isCurrentVerifiedProductionLedger} from "@/lib/designer/production-ledge
 import {isCurrentVerifiedOperatorLock} from "@/lib/designer/verified-operator-lock";
 import {
   PRODUCTION_WRITE_HOLD_KEY,productionWriteHoldPending,beginProductionWriteHoldAtomically,PRODUCTION_WRITE_LOCK_NAME,
+  PRODUCTION_WRITE_SESSION_LOCK_NAME,
   releaseProductionWriteHold,acknowledgeProductionWriteHold,readProductionWriteHoldKey,
   captureProductionWriteEpoch,productionWriteEpochUnchanged,
   PRODUCTION_WRITE_EPOCH_KEY,captureProductionWriteReviewSnapshot,
@@ -192,7 +193,30 @@ export default function ProductionClient(){
   },[]);
   useEffect(()=>{void load();},[]);
 
-  async function post(body:Record<string,unknown>,success:string){
+  async function post(body:Record<string,unknown>,success:string,sessionLockHeld=false){
+    // The marker claim lock only serializes its first storage write. A live SQL
+    // request needs a SECOND origin-wide lock until its result/review is settled.
+    // Otherwise another tab can refresh a capped ledger and acknowledge the
+    // still-active request, removing the marker while SQL is committing.
+    if(!sessionLockHeld){
+      if(busy||actionInFlight.current)return;
+      try{
+        const locks=navigator.locks;
+        if(!locks||typeof locks.request!=="function")throw new Error("Web Locks unavailable");
+        await locks.request(PRODUCTION_WRITE_SESSION_LOCK_NAME,{mode:"exclusive",ifAvailable:true},async lock=>{
+          if(!lock){
+            setRequiresWriteReview(true);
+            setMessage("Another tab has an active production write. Wait for its result, then refresh verified history before any further action.");
+            return;
+          }
+          await post(body,success,true);
+        });
+      }catch{
+        setRequiresWriteReview(true);
+        setMessage("Cannot verify the exclusive production session. Writes remain blocked until history is refreshed.");
+      }
+      return;
+    }
     if(busy||actionInFlight.current) return;
     if(!configured||requiresWriteReview) return;
     if(!hasCurrentVerifiedLedger()) return;
@@ -323,27 +347,44 @@ export default function ProductionClient(){
   }
 
   function confirmReviewedProductionHistory(){
-    // A validated, configured ledger and explicit operator acknowledgement
-    // are required; this never certifies the previous write did not commit.
+    // A verified GET cannot distinguish a completed crashed write from a
+    // concurrent still-in-flight SQL transaction. Refuse acknowledgement while
+    // ANY same-origin tab holds the full-request Web Lock. The non-queuing
+    // attempt prevents an old click from clearing the marker after that write.
     if(!requiresWriteReview||!configured||busy||actionInFlight.current)return;
     if(!hasCurrentVerifiedLedger())return;
-    const storage=safeProductionHoldStorage();
-    const snapshot=verifiedWriteReviewSnapshot.current;
-    if(!snapshot||!productionWriteReviewSnapshotUnchanged(storage,snapshot)){
-      setMessage("Production write history changed after the last verified refresh. Refresh again before acknowledging.");
-      return;
+    try{
+      const locks=navigator.locks;
+      if(!locks||typeof locks.request!=="function")throw new Error("Web Locks unavailable");
+      void locks.request(PRODUCTION_WRITE_SESSION_LOCK_NAME,{mode:"exclusive",ifAvailable:true},lock=>{
+        if(!lock){
+          setMessage("Another tab has an active production write. Do not acknowledge until it completes and current history is refreshed.");
+          return;
+        }
+        if(!requiresWriteReview||!configured||busy||actionInFlight.current)return;
+        if(!hasCurrentVerifiedLedger())return;
+        const storage=safeProductionHoldStorage();
+        const snapshot=verifiedWriteReviewSnapshot.current;
+        if(!snapshot||!productionWriteReviewSnapshotUnchanged(storage,snapshot)){
+          setMessage("Production write history changed after the last verified refresh. Refresh again before acknowledging.");
+          return;
+        }
+        // A completed remote write may have removed its marker. Clear stale UI
+        // only after checking the exact reviewed epoch under the session lock.
+        if(snapshot.holdToken!==null&&!acknowledgeProductionWriteHold(storage,snapshot.holdToken)){
+          setMessage("Pending production request changed. Do not clear another write; refresh history and review again.");
+          return;
+        }
+        setRequiresWriteReview(false);
+        setPendingWriteReview(null);
+        setRecoveredCreationReceipts(null);
+        setMessage("Reviewed current production history. Writes are enabled; the earlier ambiguous operation may still exist outside the visible ledger. Check before recreating a quote or order.");
+      }).catch(()=>{
+        setMessage("Cannot verify the exclusive production session. Refresh history and keep the review hold.");
+      });
+    }catch{
+      setMessage("Web Locks unavailable. Production review cannot safely clear an active request.");
     }
-    // A remote write may have already confirmed and removed its marker.
-    // In that case explicit review can clear this tab's stale UI hold without
-    // deleting any storage key. A still-present key must match the reviewed UUID.
-    if(snapshot.holdToken!==null&&!acknowledgeProductionWriteHold(storage,snapshot.holdToken)){
-      setMessage("Pending production request changed. Do not clear another write; refresh history and review again.");
-      return;
-    }
-    setRequiresWriteReview(false);
-    setPendingWriteReview(null);
-    setRecoveredCreationReceipts(null);
-    setMessage("Reviewed current production history. Writes are enabled; the earlier ambiguous operation may still exist outside the visible ledger. Check before recreating a quote or order.");
   }
 
   async function loadLockedDesign(){
