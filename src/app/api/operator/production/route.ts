@@ -9,6 +9,7 @@ import { buildProductionLearningContext } from "@/lib/designer/production-learni
 import {secureJsonRequestError,readSecureJsonObject,SecureJsonBodyTooLarge,SecureJsonBodyInvalid} from "@/lib/secure-json-request";
 import {safeOperatorProductionErrorCode} from "@/lib/designer/operator-production-error";
 import {readBoundedJsonResponse} from "@/lib/designer/bounded-json-response";
+import {isMissingOptionalProductionRpc} from "@/lib/designer/operator-optional-rpc";
 
 export const runtime="nodejs";
 
@@ -16,7 +17,7 @@ async function authorized(){
   const jar=await cookies();
   return verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value);
 }
-async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
+async function rpc<T>(name:string,payload:Record<string,unknown>,optional=false):Promise<T>{
   const config=getSupabaseAdminConfig();
   if(!config) throw new Error("Production backend is not configured.");
   const response=await fetch(`${config.url}/rest/v1/rpc/${name}`,{
@@ -27,6 +28,7 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     signal:AbortSignal.timeout(8_000),
   });
   if(!response.ok){
+    if(optional && await isMissingOptionalProductionRpc(response)) return [] as T;
     // Never collect or include PostgREST error bodies: they can contain SQL,
     // recovery tokens, customer details or supplier-pricing information.
     throw new Error("Production upstream request failed.");
@@ -55,28 +57,15 @@ export async function GET(){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
   if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,quotes:[],orders:[]});
   try{
-    const [quotes,orders]=await Promise.all([
+    // Only a verified PostgREST PGRST202 404 permits an empty optional list.
+    // Other backend failures must invalidate the entire operator ledger.
+    const [quotes,orders,qcInspections,customerOutcomes,learningContexts]=await Promise.all([
       rpc("production_quote_list",{p_limit:100}),
       rpc("production_order_list",{p_limit:100}),
+      rpc<unknown[]>("finished_garment_qc_list",{p_limit:250},true),
+      rpc<unknown[]>("production_customer_outcome_list",{p_limit:250},true),
+      rpc<unknown[]>("production_order_learning_context_list",{p_limit:500},true),
     ]);
-    let qcInspections:unknown[]=[];
-    let customerOutcomes:unknown[]=[];
-    let learningContexts:unknown[]=[];
-    try{
-      qcInspections=await rpc<unknown[]>("finished_garment_qc_list",{p_limit:250});
-    }catch{
-      // Keep quote/order operations readable while a new QC migration is being installed.
-    }
-    try{
-      customerOutcomes=await rpc<unknown[]>("production_customer_outcome_list",{p_limit:250});
-    }catch{
-      // Keep the production desk usable while the Phase 11 outcome migration is being installed.
-    }
-    try{
-      learningContexts=await rpc<unknown[]>("production_order_learning_context_list",{p_limit:500});
-    }catch{
-      // Older/manual orders remain readable while durable lineage support is being installed.
-    }
     return NextResponse.json({configured:true,quotes,orders,qcInspections,customerOutcomes,learningContexts},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/production]",safeOperatorProductionErrorCode(error));
