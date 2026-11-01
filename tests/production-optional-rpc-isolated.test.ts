@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import {isMissingOptionalProductionRpc,validateOperatorLedgerRows} from "../src/lib/designer/operator-optional-rpc.ts";
 import {publicOperatorPostError} from "../src/lib/designer/operator-production-errors.ts";
 import {requireOperatorStatusAcknowledgment} from "../src/lib/designer/operator-status-ack.ts";
+import {requireOperatorCreatedId} from "../src/lib/designer/operator-created-id.ts";
 
 const json=(body:unknown,status=404)=>new Response(JSON.stringify(body),{
   status,headers:{"content-type":"application/json; charset=utf-8"},
@@ -151,4 +152,32 @@ test("production quote/order status acknowledgments require literal JSON boolean
   assert.match(route,/readBoundedJsonResponse\(response,maxResponseBytes\)/);
   assert.equal((route.match(/updated:requireOperatorStatusAcknowledgment\(updated\)/g)||[]).length,2);
   assert.doesNotMatch(route,/updated:Boolean\(updated\)/);
+});
+
+test("operator quote/order creation requires a canonical Postgres UUID acknowledgement",()=>{
+  const good="da2879a5-b433-4bf3-b521-e2d9323a186b";
+  assert.equal(requireOperatorCreatedId(good),good);
+  assert.equal(requireOperatorCreatedId(good.toUpperCase()),good);
+  for(const value of [
+    null,undefined,{},[],true,false,0,1,
+    "", "created", "false", "null", "da2879a5-b433-4bf3-b521-e2d9323a186b-extra",
+    {quoteId:good},{orderId:good},[good],
+    "da2879a5-b433-4bf3-7521-e2d9323a186b", // Invalid UUID variant bits.
+    "da2879a5-b433-4bf3-b521-e2d9323a186z",
+  ]) assert.throws(()=>requireOperatorCreatedId(value),/Invalid production creation acknowledgement/);
+
+  const route=readFileSync("src/app/api/operator/production/route.ts","utf8");
+  for(const [name,variable,raw] of [
+    ["production_quote_create","quoteId","rawQuoteId"],
+    ["production_order_create_with_context","orderId","rawOrderId"],
+  ]){
+    const at=route.indexOf('rpc<unknown>("'+name+'"');
+    assert.ok(at>=0,name+" response must remain unknown until validated");
+    const endpoint=route.slice(at,at+530);
+    assert.ok(endpoint.includes('false,MAX_OPERATOR_CREATE_ID_BYTES'),name+" response is MIME-checked and bounded");
+    assert.ok(endpoint.includes("requireOperatorCreatedId("+raw+")"),name+" must validate before acknowledgment");
+    assert.ok(endpoint.includes("return privateProductionResponse({"+variable),name+" must return verified ID");
+  }
+  assert.match(route,/const MAX_OPERATOR_CREATE_ID_BYTES=128/);
+  assert.match(route,/readBoundedJsonResponse\(response,maxResponseBytes\)/);
 });
