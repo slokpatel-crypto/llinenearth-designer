@@ -1,6 +1,20 @@
 # TITAN 3D CONTINUE — authoritative working checkpoint
 
-Updated: 2026-11-01. Status: **REJECTED 3D candidate; NOT production-ready**. This checkpoint describes the current continuation, not an approved model.
+Updated: 2026-11-01. Status: **REJECTED 3D candidate; NOT production-ready**.
+
+## ACTIVE: Authored shirt panels + real armhole seams — new draft continuation
+
+**Active experimental branch:** `work/titan-3d-authored-armholes-20261101` (new stacked draft PR following #676); latest implementation commits: `d9d4c0809d879f1a0f3abee6640fe340abc4c764`, `4f5ea7613891438d8fca8ea23781213be8e76d2f`, `633407dcba1b35a0a810b060cce50c4d7ef57239`, `62bb27cf7102fcae4a21f6f16e7b7bcecde2c71b`. Check the actual head again before changing any files, and don't overwrite concurrent work.
+
+**Why this is a different actual mesh experiment:** The two preceding source-derived shirt candidates failed: source welded shell had 832 skin crossings and 3 disconnected islands; subdivision and bounded normal repair left 69 body crossings and worsened leg contacts to 149/166. Instead of more skin shrinkwrap and pushing, `scripts/blender/authored_shirt_panels.py` now constructs an **entirely new patterned shirt surface** from authored front, back, upper yoke and two sleeves. Each sleeve begins at a deliberately cut opening in a single torso mesh, shares exactly the original opening edge indices, then transitions through five sewn ring sections to the cuff. This is a real geometry/topology candidate and creates no duplicate body-shell polygon surfaces. A 64-segment ring torso is cut at both shoulder/armhole zones and narrowed to an intentionally open neck; the lower hem and both cuffs also remain deliberately open. Actual outline and sizes are exploratory hypotheses, not measurements or canonical likeness proof.
+
+**Independent acceptance plan, BEFORE claiming improvement:** six new pure-Python regression cases enforce one connected garment, four intended open boundary cycles (neck, hem, two cuffs), two stitched source-edge armholes, zero nonmanifold edges, zero mismatched winding, and real front/back/yoke face material regions. Blender script `scripts/blender/experiments/construct-authored-shirt-pattern.py` opens the real canonical contract source .blend, makes `LE_AUTHORED_SHIRT_PATTERN_UNMEASURED`, preserves original Body and six garment mesh hashes, and runs independent world-space body/shirt and shirt/trouser collisions. Workflow `.github/workflows/model-source-candidate.yml` generates a **separate** `.cache/linen-earth/linen-earth-authored-shirt-pattern.blend`, contact JSON and four diagnostic renders. If any original mesh hash changes, abort. If collision counts are positive, reject; never call topology alone full garment fit.
+
+**Current verification:** new exact-head native Blender and application CI **NOT YET VERIFIED** at checkpoint creation. Existing PR #676 native candidate rejected, remains draft; never merge or deploy. Do not silently import/relabel any failed physics, stripe UV, measured fabric, tailor or model identity claims. The new armhole experiment is an unapproved pattern silhouette without a measured fabric construction or source 3D body/pose parity.
+
+**NEXT ACTION:** read exact-head new draft CI and native Blender report. If test or Python workflow fails, correct the concrete code defect and rerun. If topology passes, compare all source/body and trouser intersections and four-angle renders to the previous accepted zero-body-contact six-panel baseline; accept only a measurable and reviewed geometry improvement, otherwise reject. Next extend the armhole/collar/cuff/placket/fly from validated genuine pattern panels and obtain original Blender/four-view dimensions and tailor pattern for accurate fit. DO NOT loosen topology or physical thresholds.
+
+ This checkpoint describes the current continuation, not an approved model.
 
 ## 2026-11-01 next modeling experiment — PR #675 (current)
 
