@@ -8,6 +8,10 @@ import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { requireStockCreatedId, requireStockSnapshotRows } from "@/lib/designer/operator-stock-response";
 
 export const runtime="nodejs";
+function stockPrivateJson(body:unknown,init:{status?:number;headers?:Record<string,string>}={}){
+  return NextResponse.json(body,{...init,
+    headers:{...init.headers,"cache-control":"private, no-store"}});
+}
 
 async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
   const config=getSupabaseAdminConfig();
@@ -41,24 +45,24 @@ function stockInput<T>(validate:()=>T):T{
 }
 
 export async function GET(){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,stock:[]});
+  if(!await authorized()) return stockPrivateJson({error:"Unauthorized."},{status:401});
+  if(!getSupabaseAdminConfig()) return stockPrivateJson({configured:false,stock:[]});
   try{
     const stock=requireStockSnapshotRows(await rpc<unknown>(
       "fabric_stock_snapshot_v2",{p_fabric_ids:null}));
-    return NextResponse.json({configured:true,stock},{headers:{"cache-control":"private, no-store"}});
+    return stockPrivateJson({configured:true,stock},{headers:{"cache-control":"private, no-store"}});
   }catch{
     console.error("[operator/stock] snapshot unavailable (details redacted).");
-    return NextResponse.json({error:"Stock ledger could not be read."},{
+    return stockPrivateJson({error:"Stock ledger could not be read."},{
       status:503,headers:{"cache-control":"private, no-store"}});
   }
 }
 
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  if(!await authorized()) return stockPrivateJson({error:"Unauthorized."},{status:401});
   // Browser Origin and strict JSON are checked before the privileged RPC.
   const unsafe=stockMutationRequestError(request);
-  if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
+  if(unsafe) return stockPrivateJson({error:unsafe.error},{status:unsafe.status});
   try{
     const body=await readBoundedStockMutationJson(request);
     const action=String(body.action||"");
@@ -73,7 +77,7 @@ export async function POST(request:Request){
         p_recorded_by:draft.recordedBy,
         p_source_reference:draft.sourceReference,
       }));
-      return NextResponse.json({eventId});
+      return stockPrivateJson({eventId});
     }
     if(action==="reserve"){
       const draft=stockInput(()=>normalizeStockReservation(body));
@@ -86,7 +90,7 @@ export async function POST(request:Request){
         p_requested_by:draft.requestedBy,
         p_source_reference:draft.sourceReference,
       }));
-      return NextResponse.json({reservationId});
+      return stockPrivateJson({reservationId});
     }
     if(action==="release"){
       const draft=stockInput(()=>normalizeStockRelease(body));
@@ -96,8 +100,8 @@ export async function POST(request:Request){
         p_released_by:draft.releasedBy,
         p_source_reference:draft.sourceReference,
       });
-      if(released!==true) return NextResponse.json({error:"Reservation was not active; no cloth was released."},{status:409});
-      return NextResponse.json({released:true});
+      if(released!==true) return stockPrivateJson({error:"Reservation was not active; no cloth was released."},{status:409});
+      return stockPrivateJson({released:true});
     }
     if(action==="consume"){
       const draft=stockInput(()=>normalizeStockConsumption(body));
@@ -108,21 +112,21 @@ export async function POST(request:Request){
         p_checked_by:draft.checkedBy,
         p_source_reference:draft.sourceReference,
       });
-      if(consumed!==true) return NextResponse.json({error:"Reservation was not active; no cloth was consumed."},{status:409});
-      return NextResponse.json({consumed:true});
+      if(consumed!==true) return stockPrivateJson({error:"Reservation was not active; no cloth was consumed."},{status:409});
+      return stockPrivateJson({consumed:true});
     }
-    return NextResponse.json({error:"Unsupported stock action."},{status:400});
+    return stockPrivateJson({error:"Unsupported stock action."},{status:400});
   }catch(error){
     if(error instanceof StockMutationPayloadTooLarge)
-      return NextResponse.json({error:error.message},{status:413,
+      return stockPrivateJson({error:error.message},{status:413,
         headers:{"cache-control":"private, no-store"}});
     if(error instanceof StockInputError)
-      return NextResponse.json({error:error.message},{status:409,
+      return stockPrivateJson({error:error.message},{status:409,
         headers:{"cache-control":"private, no-store"}});
     // Unexpected backend/transport errors are never echoed to an operator or
     // logged with private supplier/source references.
     console.error("[operator/stock] mutation unavailable (details redacted).");
-    return NextResponse.json({error:"Stock operation could not be verified."},{status:503,
+    return stockPrivateJson({error:"Stock operation could not be verified."},{status:503,
       headers:{"cache-control":"private, no-store"}});
   }
 }
