@@ -72,7 +72,7 @@ async function runViewport(browser,width){
             await state.gate;
             if(ok){
               state.syntheticPosts+=1; // No HTTP or real supplier/order mutation.
-              assert.equal(helper.releaseProductionWriteHold(localStorage,token),true);
+              if(!helper.releaseProductionWriteHold(localStorage,token))throw Error("Synthetic hold release failed");
             }
             return ok;
           }),
@@ -131,7 +131,7 @@ async function runViewport(browser,width){
         localStorage,token,
         claim=>navigator.locks.request(h.PRODUCTION_WRITE_LOCK_NAME,{mode:"exclusive"},claim),
         snapshot);
-      if(ok)assert.equal(h.releaseProductionWriteHold(localStorage,token),true);
+      if(ok&&!h.releaseProductionWriteHold(localStorage,token))throw Error("Fresh claim release failed");
       return ok;
     },secondId);
     assert.equal(recovered,true,"Freshly verified history must permit a later claim");
