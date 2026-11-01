@@ -1,0 +1,61 @@
+name: Linen Earth — Canonical Mannequin Source Intake (No AI)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/blender/canonical_model_source_intake.py'
+      - 'scripts/blender/canonical_source_release_gate.py'
+      - 'scripts/blender/export-linen-earth-officewear.py'
+      - 'tests/python/test_canonical_source_release_gate.py'
+      - 'tests/python/test_export_owner_source_gate_contract.py'
+      - 'tests/python/test_owner_review_packet_binding.py'
+      - 'tests/python/test_canonical_model_source_intake.py'
+      - 'public/model-identity/linen-earth-studio-model-v1.json'
+      - '.github/workflows/canonical-model-source-intake.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-intake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify original-model source intake invariants
+        run: |
+          python3 -m py_compile scripts/blender/canonical_model_source_intake.py scripts/blender/canonical_source_release_gate.py scripts/blender/export-linen-earth-officewear.py
+          python3 -m unittest discover -s tests/python -p 'test_canonical_model_source_intake.py' -v
+          python3 -m unittest discover -s tests/python -p 'test_canonical_source_release_gate.py' -v
+          python3 -m unittest discover -s tests/python -p 'test_export_owner_source_gate_contract.py' -v
+          python3 -m unittest discover -s tests/python -p 'test_owner_review_packet_binding.py' -v
+
+      - name: Record source completeness honestly — no supplied master or hidden views
+        run: |
+          mkdir -p artifacts/identity-source
+          python3 scripts/blender/canonical_model_source_intake.py \
+            --identity-spec public/model-identity/linen-earth-studio-model-v1.json \
+            --reference public/designer/studio-tucked.webp \
+            --output artifacts/identity-source/canonical-source-intake.json \
+            --assert-blocked
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("artifacts/identity-source/canonical-source-intake.json").read_text())
+          assert not r["readyForIndependentOwnerAndTailorVisualReview"]
+          assert not r["samePhotographicModelApproved"]
+          assert not r["customerProductionReady"]
+          assert "owner_original_photo_matched_blend_not_supplied" in r["blockers"]
+          print("MODEL_SOURCE_REVIEW_REQUIRED: original source and hidden views missing; no autoapprovals")
+          PY
+
+      - name: Archive SHA256 source-intake report, not an approval
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linen-earth-canonical-source-intake-${{ github.run_id }}
+          path: artifacts/identity-source/canonical-source-intake.json
+          retention-days: 14
+          if-no-files-found: warn
