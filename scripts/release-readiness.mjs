@@ -2320,6 +2320,29 @@ requireTokens("tests/production-write-hold.test.ts",[
   "M135 packet export checks the anonymous epoch",
 ]);
 
+// M138: native signed Chromium must prove real two-tab Web Locks queueing,
+// reject a stale claim even after the first synthetic POST completes, and
+// permit a later claim only after capturing the fresh anonymous epoch.
+requireTokens("scripts/verify-production-native-web-locks-browser.cjs",[
+  "GITHUB_ACTIONS", "LINEN_BROWSER_QA_RUNTIME",
+  "ts.transpileModule(source",
+  "navigator.locks.request(helper.PRODUCTION_WRITE_LOCK_NAME",
+  "navigator.locks.query()",
+  "completedEpochBlocksStaleClaim:true",
+  "syntheticPostsSecond:0",
+  "freshRecovery:true",
+  "unsupportedLockFailsClosed:true",
+  "No real production POST in synthetic CI",
+  "for(const width of [390,1440])",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-native-web-locks-browser.cjs",
+]);
+requireTokens("tests/production-native-web-locks-browser-contract.test.ts",[
+  "M138 signed Chromium executes the production helper",
+  "completedEpochBlocksStaleClaim:true",
+]);
+
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
