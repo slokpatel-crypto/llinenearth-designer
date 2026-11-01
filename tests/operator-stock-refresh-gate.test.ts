@@ -32,6 +32,6 @@ test("valid stock mutation acknowledgment cannot masquerade as refreshed live st
   assert.match(post,/Stock operation acknowledged, but ledger refresh is unavailable\. Check the ledger before retrying\./);
   assert.doesNotMatch(post,/setMessage\(success\);await load\(\)/);
   assert.match(post,/finally\{mutationGate\.current\.exit\(\);setBusy\(false\);\}/);
-  assert.ok(s.includes('disabled={busy||snapshotState!=="ready"||'),
+  assert.ok(s.includes('disabled={uncertainWrite||busy||snapshotState!=="ready"||'),
     "writes remain prohibited until the next successful ledger refresh");
 });

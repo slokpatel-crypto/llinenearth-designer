@@ -122,7 +122,7 @@ test("operator stock dashboard fails closed when the live ledger cannot load",()
   assert.ok(code.includes('snapshotState==="ready"?`${totalReserved.toFixed(3)} m`:"—"'));
   assert.ok(code.includes('snapshotState==="error"?"UNAVAILABLE"'));
   assert.ok(code.includes('snapshotState==="ready"?(provenanceReady?"RECORDED":"PENDING"):"UNAVAILABLE"'));
-  assert.ok(code.includes('disabled={busy||snapshotState!=="ready"||'));
+  assert.ok(code.includes('disabled={uncertainWrite||busy||snapshotState!=="ready"||'));
   assert.ok(code.includes("do not reserve or cut against a missing snapshot"));
 });
 
