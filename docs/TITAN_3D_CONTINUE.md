@@ -2,6 +2,33 @@
 
 Updated: 2026-11-01. Status: **REJECTED 3D candidate; NOT production-ready**.
 
+## ACTIVE checkpoint: original photographed mannequin source evidence and export gate (PR #690)
+
+Active draft: work/titan-3d-canonical-source-intake-20261101. This is NOT another garment fit fix. Original faceless photo and generic CC0 scanned Blender human are distinct; ID and height flags do not prove likeness. Earlier best sleeve source geometry still has 1954 Body/shirt intersections and 72 waist collisions. Rejected waist and back-inset variants remain archived in prior PRs and cannot be promoted.
+
+NEW: scripts/blender/canonical_model_source_intake.py validates canonical reference photo, locked physical model targets, actual Blender source header + file SHA-256, and distinct front/three-quarter/side/back source renders. Missing, duplicate or fake source files yield BLOCKED, never auto-approved. New fast .github/workflows/canonical-model-source-intake.yml and dedicated Python negative tests; owner original source is NOT supplied to the public repo.
+
+PRODUCTION EXPORT GUARD: scripts/blender/export-linen-earth-officewear.py checks verify_external_owner_review_packet before native Blender preflight and before measured GLB write. Requires canonical scene metadata, external private owner-reviewed JSON path in LINEN_OWNER_MODEL_REVIEW_RECEIPT, current source .blend SHA256, original photo SHA256, SHA-256 of all FOUR distinct renders, explicit named human review/date and independent faceless, shoulders, back tuck and shoes assertions. This checks file consistency, NOT identity automatically or the authenticity of the human signature. No review is approved in current repo. All native geometry/UV and tailor/fabric gates remain mandatory independently.
+
+IMPORTANT fixed mistake: never embed the receipt digest in the same .blend that the receipt hashes; impossible cyclic SHA256 fixed in commit 94f9ec0e6d2ff453d65cf006e36b91c630b44d79. Subsequent tests adjusted to verify external content hashes. Early source-review Python syntax error from literal escaped newline fixed 8e2174af1bf5def0a41d2bb3a567b357eafc71bd; initial fast workflow passed thereafter.
+
+EFFICIENCY: latest source-native original Blender workflow stops rerunning rejected 2/3-row shoulder inset mesh candidates while retaining exact native source preflight, 4-angle diagnostics and mandatory RED rejection gate. Full historic Blender evidence from PR #689 preserved.
+
+External model handoff, private review JSON example and Windows commands: docs/TITAN_CANONICAL_MODEL_SOURCE_HANDOFF.md. Production approval still requires original source or independently reconstructed measurements and multi-angle photo parity, actual pattern and tailors, fabric grain/UV and no geometric collisions.
+
+NEXT: read latest exact-head fast source intake, CI, non-3D, native Blender runs and fix any concrete failure without bypassing production veto. No merge to main or Vercel deployment.
+
+
+## LATEST CONTINUE: canonical mannequin source intake gate, not another guessed mesh
+
+**New active draft branch** `work/titan-3d-canonical-source-intake-20261101`, stacked on rejected PR #689. The real original Designer Studio mannequin is the **faceless 1727-mm photographed studio asset** `/designer/studio-tucked.webp`. The Blender source created via `scripts/blender/prepare-linen-earth-body.py` is a distinct **CC0 Blender Human Base Meshes v1.4.1 realistic male scan**. Merely stamping `linen-earth-studio-model-v1`, height and reference image onto another object's scene does NOT prove 3D/photographic parity. Verified four-angle native runs #686/#687/#689 reject numerous skin/garment intersections and wrong faceless body. Stop iterating guessed shoulder and waist geometry until genuine original 3D pose/measurements can be checked.
+
+**Independent production-critical work completed in this draft**: `scripts/blender/canonical_model_source_intake.py` fingerprints the SHA256 of the canonical original photo, checks the exact identity spec + physical target contract, optionally reads an **actual** original source `.blend` (BLENDER header required), and the front, three-quarter, side and back images. Rejects missing assets, fake .blend/image headers, symlinks, duplicated 3D view hashes, reuse of original front photo as an alleged render, wrong model/target spec. Emits `canonical-source-intake.json` with exact blockers and fingerprints, **NEVER** asserts same-model/photo identity, human reviewer signoff, tailoring fit, UV or customer production. `--require-review-packet` is a fail-closed external handoff option; the current repo without an original model/hidden views yields a BLOCKED receipt. Tested with `tests/python/test_canonical_model_source_intake.py` and new fast <5-minute `.github/workflows/canonical-model-source-intake.yml` (small independent QA, not a substitute for genuine native Blender source verification). The workflow uses `--assert-blocked`, archives only a non-approval report, never fabricates or publishes private model files. External evidence and local Windows PowerShell command: `docs/TITAN_CANONICAL_MODEL_SOURCE_HANDOFF.md`.
+
+**NEXT EXACT ACTION:** read new branch latest HEAD, Python unit results and fast intake workflow; fix any byte-signature/test errors. Keep all rejected 3D PRs unmerged and no Vercel deployment. The original faceless 3D master, four actual source-consistent views and measured armhole/back/tuck/shirt-trouser patterns remain required to close source identity and fit gates. If owner original source is genuinely missing, continue independent deterministic 3D production option/web workflow QA that does not require fabricated scanned-person photo parity, and preserve `public/designer/studio-tucked.webp` unchanged. Once a valid owner package exists, run source intake and independently inspect the model; a complete SHA receipt means *ready for human review*, NOT source approval.
+
+
+
 ## LATEST: two actually sewn back-shoulder inset meshes REJECTED — don't repeat
 
 Active branch `work/titan-3d-sewn-back-shoulder-20261101`, draft PR **#689**, stacked upon rejected #687, then provisional #686. Official Blender 4.5.14 native source [run 41304802002](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/41304802002), artifact `13082838519` (14 days), true candidate .blend copies and **eight 480x640 renders** (four angles per variant), independent native Body/waist/leg BVH, full per-role contact receipt and comparator. Source authored scene SHA256 `27d462e3e5172cf632889558d39117f94b9932a7d1701ba8b190220ffe7ecd60`; original Body and six garment meshes unchanged; original live Designer Studio reference untouched.

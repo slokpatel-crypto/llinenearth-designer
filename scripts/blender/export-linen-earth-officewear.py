@@ -304,8 +304,26 @@ def export_glb(collection, output_path):
 
 def main():
     args = cli_args()
-    run_scene_preflight()
     panel_spec = load_panel_spec(args.panel_spec) if args.panel_spec else None
+    if panel_spec:
+        # A correct identity ID copied onto a CC0 human scan is not the
+        # original faceless Studio mannequin. For measured/production output,
+        # require independent FOUR-view human signoff before any GLB export.
+        # Geometry/UV/tailoring checks remain separately mandatory.
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from canonical_source_release_gate import verify_external_owner_review_packet
+        review_file = os.environ.get("LINEN_OWNER_MODEL_REVIEW_RECEIPT", "").strip()
+        try:
+            verify_external_owner_review_packet(
+                bpy.context.scene,
+                scene_blend_path=bpy.data.filepath,
+                reference_path=os.path.abspath("public/designer/studio-tucked.webp"),
+                identity_spec_path=os.path.abspath("public/model-identity/linen-earth-studio-model-v1.json"),
+                review_path=review_file,
+            )
+        except (ValueError, OSError) as error:
+            raise RuntimeError("Production source/photo identity review gate blocked export: "+str(error)) from error
+    run_scene_preflight()
     source = scene_source_provenance(bpy.context.scene) if panel_spec else None
     model_identity = scene_model_identity(bpy.context.scene) if panel_spec else None
     collection, height = validate_scene(args.collection, args.reference_body)
