@@ -36,19 +36,21 @@ async function main(){
     assert.ok(path.startsWith("/rest/v1/rpc/fabric_stock_"),"unrecognized fake RPC path");
     let response;
     if(path.endsWith("/fabric_stock_snapshot_v2")){
-      response={
+      const outcomes={
         valid:[valid],snapshotNull:null,snapshotObject:{stock:[valid]},
         snapshotWrongFabric:[{...valid,fabric_id:"invented-fabric"}],
         snapshotMissingMetres:[{...valid,available_metres:null}],
         snapshotInconsistent:[{...valid,available_metres:10}],
-      }[mode]??[valid];
+      };
+      response=Object.hasOwn(outcomes,mode)?outcomes[mode]:[valid];
     }else if(path.endsWith("/fabric_stock_record_v2")||
              path.endsWith("/fabric_stock_reserve_v2")){
-      response={
+      const outcomes={
         created:uuid,createNull:null,createObject:{id:uuid},
         createArray:[uuid],createBool:true,createString:"false",
         createWrongUuid:"not-uuid",
-      }[mode]??uuid;
+      };
+      response=Object.hasOwn(outcomes,mode)?outcomes[mode]:uuid;
     }else if(path.endsWith("/fabric_stock_release_v2")||
              path.endsWith("/fabric_stock_consume_reservation_v2")){
       response=mode==="releaseFalse"?false:true;
