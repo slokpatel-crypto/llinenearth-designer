@@ -152,7 +152,7 @@ jobs:
       - name: Verify manual stock request-key idempotency in disposable PostgreSQL
         run: |
           {
-            printf "set titan.synthetic_sql_test='enabled';\\n"
+            printf "set titan.synthetic_sql_test='enabled';\n"
             cat supabase/tests/20261102_stock_record_idempotency.sql
           } | psql -v ON_ERROR_STOP=1
       - name: Confirm native test synthetic data rolled back
