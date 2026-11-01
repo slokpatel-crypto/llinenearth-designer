@@ -55,6 +55,8 @@ async function runViewport(browser,width){
       "Operator must begin with a verified usable synthetic ledger");
     await b.goto(new URL("/",base).toString(),{waitUntil:"domcontentloaded",timeout:20000});
     assert.equal(await b.evaluate(key=>localStorage.getItem(key),epochKey),initialEpoch);
+    assert.equal(await a.getByRole("alert",{name:"Production write review required"}).count(),0,
+      "Opening the second tab must not itself trigger the storage-clear veto");
     // A cross-tab clear emits StorageEvent.key === null; the original handler
     // ignored it and left stale configured history authorized for writes.
     await b.evaluate(()=>localStorage.clear());
@@ -66,7 +68,7 @@ async function runViewport(browser,width){
       hasText:"Production writes changed in another tab",
     }).waitFor({state:"visible",timeout:15000});
     assert.equal(await a.evaluate(key=>localStorage.getItem(key),epochKey),null);
-    await a.getByRole("button",{name:"Refresh production history"}).click();
+    await Promise.all([a.waitForResponse(r=>r.request().method()==="GET"\n      &&new URL(r.url()).pathname==="/api/operator/production",{timeout:15000}),\n      a.getByRole("button",{name:"Refresh production history"}).click()]);\n    await select.waitFor({state:"visible",timeout:15000});
     await a.getByRole("alert",{name:"Production write review required"})
       .waitFor({state:"visible",timeout:15000});
     assert.equal(await select.isDisabled(),true,
