@@ -23,6 +23,7 @@
 ## 2026-11-01 UTC — M3: successful PostgREST 200 list-envelope validation (draft)
 
 - **Exact source parent:** `a04cc6258606c8efdf29b81b45d14d06240abbc9`, PR #688, after matching-head Full CI #41304312342 and Non-3D #41304312350 both completed successfully.
+- **Exact implementation/result commit:** `528dd79d35a9f1e3461e4bcbd492506624cfaf12` (five-file atomic commit); this append is a separate documentation commit, so final PR SHA and its checks must be re-resolved.
 - **Defect:** HTTP 200 with a JSON object, null, scalar row, or more rows than the requested SQL limit was passed through as `configured:true` in the authenticated Production Desk; successful transport is not evidence of a valid ledger.
 - **Fix:** validate all five list envelopes as arrays of object rows with per-RPC row-count caps (100/100/250/250/500), rejecting invalid responses with the existing private/no-store 503. No live SQL, schema, supplier or customer changes.
 - **Regression:** pure Node malformed/oversized list cases and 20 additional authenticated built-Next synthetic HTTP cases (four per RPC). These complement 19 previous optional-function cases. **Final matching-head CI, Non-3D, database and browser checks PENDING** until the new PR head is independently inspected. No physical evidence or full T/J release criterion certified.
