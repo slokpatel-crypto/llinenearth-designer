@@ -11,18 +11,15 @@ test("stock client never infers a successful physical mutation from HTTP 200 alo
     ["record",{eventId:uuid}],["reserve",{reservationId:uuid}],
     ["release",{released:true}],["consume",{consumed:true}],
   ])assert.doesNotThrow(()=>requireStockClientAcknowledgment(action,value));
+  const invalid:unknown[]=[
+    null,undefined,{},[],false,true,"true",
+    {eventId:null,reservationId:null,released:false,consumed:false},
+    {eventId:"not-a-uuid",reservationId:"false",released:"true",consumed:1},
+  ];
   for(const action of ["record","reserve","release","consume"]){
-    for(const value of [null,undefined,{},[],false,true,"true",
-      {eventId:false,reservationId:uuid,released:true,consumed:true},
-      {eventId:"not-a-uuid",reservationId:"false",released:"true",consumed:1},
-    ]){
-      if(value&&typeof value==="object"&&!Array.isArray(value)&&
-        ((action==="reserve"&&value.reservationId===uuid)||
-         (action==="release"&&value.released===true)||
-         (action==="consume"&&value.consumed===true))) continue;
+    for(const value of invalid)
       assert.throws(()=>requireStockClientAcknowledgment(action,value),
         /Stock response could not be verified/,action+" "+JSON.stringify(value));
-    }
   }
   for(const [action,value] of [
     ["record",{eventId:null}],["record",{eventId:"not-uuid"}],
