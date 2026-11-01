@@ -25,3 +25,19 @@ export function parseProductionCreationReceipts(input:unknown):ProductionCreatio
   }
   return result;
 }
+
+/** The private operator API sends normalized safe receipt IDs, not raw SQL
+ * columns. Revalidate exactly this browser wire shape before showing proof;
+ * never widen the upstream SQL parser to tolerate unexpected private fields. */
+export function parseProductionCreationReceiptResponse(input:unknown):ProductionCreationReceipt[]|null{
+  if(!Array.isArray(input)||input.length>2)return null;
+  const sqlRows:Array<Record<string,unknown>>=[];
+  for(const item of input){
+    if(!item||typeof item!=="object"||Array.isArray(item))return null;
+    const row=item as Record<string,unknown>;
+    const keys=Object.keys(row);
+    if(keys.length!==2||!["action","receiptId"].every(key=>Object.prototype.hasOwnProperty.call(row,key)))return null;
+    sqlRows.push({action:row.action,receipt_id:row.receiptId});
+  }
+  return parseProductionCreationReceipts(sqlRows);
+}
