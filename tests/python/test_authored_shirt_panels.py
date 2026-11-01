@@ -53,6 +53,36 @@ class AuthoredShirtPatternTest(unittest.TestCase):
         self.assertEqual(damaged["topology"]["boundaryLoopsAfterSleeves"],4)
         self.assertGreater(damaged["topology"]["armholeSeamEdgeCounts"]["left_sleeve"],0)
 
+    def test_upper_chest_shape_trial_changes_actual_mesh_not_waist_or_neck(self):
+        first=make_shirt_mesh()
+        trial=make_shirt_mesh(upper_ease_mm=18,cuff_radius_mm=75)
+        self.assertEqual(first["topology"]["polygonCount"],
+                         trial["topology"]["polygonCount"])
+        self.assertEqual(first["topology"]["connectedComponents"],1)
+        self.assertEqual(trial["topology"]["connectedComponents"],1)
+        self.assertEqual(trial["topology"]["windingErrors"],0)
+        self.assertEqual(trial["topology"]["nonmanifoldEdges"],0)
+        self.assertEqual(trial["topology"]["boundaryLoopsAfterSleeves"],4)
+        # First 64 vertices are the fixed tucked hem. Last torso ring at
+        # the neck is also unchanged. The chest is intentionally larger.
+        self.assertEqual(first["vertices"][:64],trial["vertices"][:64])
+        self.assertEqual(first["vertices"][11*64:12*64],
+                         trial["vertices"][11*64:12*64])
+        self.assertNotEqual(first["vertices"][6*64],
+                            trial["vertices"][6*64])
+        self.assertFalse(trial["topology"]["supplierMeasurementsApproved"])
+
+    def test_unbounded_or_nonfinite_shape_cannot_be_called_measured_fit(self):
+        for kwargs in (
+            {"upper_ease_mm":-1}, {"upper_ease_mm":31},
+            {"upper_ease_mm":float("nan")},
+            {"cuff_radius_mm":59}, {"cuff_radius_mm":91},
+            {"cuff_radius_mm":float("inf")},
+        ):
+            with self.subTest(kwargs=kwargs):
+                with self.assertRaises(ValueError):
+                    make_shirt_mesh(**kwargs)
+
     def test_invalid_sleeve_request_is_rejected(self):
         with self.assertRaises(ValueError):
             make_shirt_mesh(omit_sleeve="tailored_already")
