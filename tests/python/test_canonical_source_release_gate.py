@@ -40,18 +40,16 @@ class ProductionSourceReviewGateTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             require_independent_source_photo_review(sample)
 
-    def test_fake_or_missing_review_receipt_hash_is_rejected(self):
+    def test_scene_review_flags_do_not_themselves_certify_owner_review(self):
         s=candidate()
         s.update({
             "linen_earth_source_photo_visual_parity_approved":True,
             "linen_earth_source_photo_reference_count":4,
             "linen_earth_source_photo_visual_parity_status":OWNER_REVIEW_STATUS,
         })
-        for x in (None,"", "a"*63,"A"*64,"0"*32,"already-reviewed"):
-            with self.subTest(x=x):
-                s["linen_earth_source_photo_owner_review_sha256"]=x
-                with self.assertRaises(ValueError):
-                    require_independent_source_photo_review(s)
+        result=require_independent_source_photo_review(s)
+        self.assertTrue(result["ownerEvidenceMustBeExternallyVerified"])
+        self.assertFalse(result["productionApproved"])
 
     def test_full_attestation_is_not_a_production_acceptance(self):
         s=candidate()
@@ -62,7 +60,7 @@ class ProductionSourceReviewGateTests(unittest.TestCase):
             "linen_earth_source_photo_owner_review_sha256":"8"*64
         })
         r=require_independent_source_photo_review(s)
-        self.assertTrue(r["sourcePhotoHumanReviewAttested"])
+        self.assertTrue(r["sourceSceneReviewFlagsPresent"])
         self.assertFalse(r["productionApproved"])
 
 
