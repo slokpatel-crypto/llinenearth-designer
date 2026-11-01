@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
+import { requireDesignVaultBooleanAck } from "@/lib/designer/design-vault-ack";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import {
   createDesignVaultAccessKey,
@@ -10,6 +12,9 @@ import {
 } from "@/lib/designer/design-vault";
 
 export const runtime="nodejs";
+// Limit decoded JSON before parsing; preserve room for a complete garment spec.
+const MAX_VAULT_REQUEST_BYTES=1_048_576;
+const MAX_VAULT_RESPONSE_BYTES=8_388_608;
 
 function jsonNoStore(body:unknown,init?:{status?:number}){
   return NextResponse.json(body,{
@@ -41,17 +46,22 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     cache:"no-store",
     signal:AbortSignal.timeout(8_000),
   });
-  if(!response.ok){
-    const detail=(await response.text()).slice(0,300);
-    throw new Error(`Design vault request failed (${response.status}): ${detail}`);
+  if(!response.ok) {
+    // Upstream errors may contain tokens, customer data, or SQL details.
+    throw new Error("Design vault upstream request failed.");
   }
-  return await response.json() as T;
+  const mime=response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+  if(mime!=="application/json") throw new Error("Invalid design vault response type.");
+  return await readBoundedJsonResponse(response,MAX_VAULT_RESPONSE_BYTES) as T;
 }
 
 export async function POST(request:Request){
   if(blocked(request)) return jsonNoStore({error:"Too many design-vault requests."},{status:429});
   try{
-    const body=await request.json() as {
+    const rawBody=await readBoundedJsonResponse(request,MAX_VAULT_REQUEST_BYTES);
+    if(!rawBody||typeof rawBody!=="object"||Array.isArray(rawBody))
+      throw new Error("Invalid design vault request.");
+    const body=rawBody as {
       action?:string;
       revision?:LockedDesignRevision;
       recoveryToken?:string;
@@ -81,7 +91,7 @@ export async function POST(request:Request){
 
       let accountOwned=false;
       if(customer){
-        accountOwned=Boolean(await rpc<boolean>("designer_locked_revision_vault_set_owner",{
+        accountOwned=requireDesignVaultBooleanAck(await rpc<unknown>("designer_locked_revision_vault_set_owner",{
           p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:customer.id,
         }));
         if(accountOwned){
@@ -144,10 +154,10 @@ export async function POST(request:Request){
 
     if(action==="deleteOwned"){
       if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
-      const deleted=await rpc<boolean>("designer_locked_revision_vault_delete_owned",{
+      const deleted=requireDesignVaultBooleanAck(await rpc<unknown>("designer_locked_revision_vault_delete_owned",{
         p_vault_id:String(body.vaultId||""),p_owner_user_id:customer.id,
-      });
-      return jsonNoStore({deleted:Boolean(deleted)});
+      }));
+      return jsonNoStore({deleted});
     }
 
     const parsed=parseDesignVaultRecoveryToken(String(body.recoveryToken||""));
@@ -155,9 +165,9 @@ export async function POST(request:Request){
 
     if(action==="claim"){
       if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
-      const claimed=await rpc<boolean>("designer_locked_revision_vault_set_owner",{
+      const claimed=requireDesignVaultBooleanAck(await rpc<unknown>("designer_locked_revision_vault_set_owner",{
         p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,p_owner_user_id:customer.id,
-      });
+      }));
       if(claimed){
         const rows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>("designer_locked_revision_vault_get",{
           p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
@@ -175,7 +185,7 @@ export async function POST(request:Request){
           }
         }
       }
-      return jsonNoStore({claimed:Boolean(claimed)});
+      return jsonNoStore({claimed});
     }
 
     if(action==="load"){
@@ -192,16 +202,18 @@ export async function POST(request:Request){
     }
 
     if(action==="delete"){
-      const deleted=await rpc<boolean>("designer_locked_revision_vault_delete",{
+      const deleted=requireDesignVaultBooleanAck(await rpc<unknown>("designer_locked_revision_vault_delete",{
         p_vault_id:parsed.vaultId,
         p_access_hash:parsed.accessHash,
-      });
-      return jsonNoStore({deleted:Boolean(deleted)});
+      }));
+      return jsonNoStore({deleted});
     }
 
     return jsonNoStore({error:"Unsupported design-vault action."},{status:400});
-  }catch(error){
-    console.error("[designer/vault]",error);
+  }catch{
+    // Never log exception messages: malformed JSON or a database failure may
+    // embed the recovery token or private design data in the exception text.
+    console.error("[designer/vault] request failed (details redacted).");
     return jsonNoStore({error:"Secure design storage is temporarily unavailable."},{status:503});
   }
 }
