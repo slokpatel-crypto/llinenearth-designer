@@ -48,7 +48,9 @@ test("Stock Desk acquires single-flight before fetch and validates ACK before su
   assert.match(post,/busy\|\|snapshotState!=="ready"\|\|!configured\|\|!mutationGate\.current\.enter\(\)/);
   assert.ok(post.indexOf("mutationGate.current.enter()")<post.indexOf('fetch("/api/operator/stock"'));
   assert.ok(post.indexOf("requireStockClientAcknowledgment(body.action,data)")<
-    post.indexOf("setMessage(success)"));
+    post.indexOf("const refreshed=await load()"));
+  assert.ok(post.indexOf("const refreshed=await load()")<
+    post.indexOf("setMessage(refreshed?success:"));
   assert.match(post,/finally\{mutationGate\.current\.exit\(\);setBusy\(false\);\}/);
   assert.match(post,/const data:unknown=await response\.json\(\)/);
 });
