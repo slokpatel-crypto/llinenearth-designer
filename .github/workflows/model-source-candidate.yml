@@ -86,6 +86,23 @@ jobs:
       - name: Author body-attached candidate shirt / trouser relief
         run: npm run garment:model-garments:author
 
+      - name: Author isolated source-index-welded shoulder geometry candidate
+        id: joined_shoulder_trial
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/connected-shoulder-qa
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
+            --python scripts/blender/experiments/construct-connected-shirt-shoulder.py -- \
+            --output .cache/linen-earth/linen-earth-connected-shirt-shoulder.blend \
+            --report artifacts/connected-shoulder-qa/source-connected-shoulder-measurements.json
+
+      - name: Render actual connected-shoulder diagnostic four-angle candidate
+        if: steps.joined_shoulder_trial.outcome == 'success'
+        run: |
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-connected-shirt-shoulder.blend \
+            --python scripts/blender/render-linen-earth-model-qa.py -- \
+            --output-dir artifacts/connected-shoulder-qa --width 480 --height 640 --samples 8
+
       - name: Check exact-source candidate geometry before expensive rendering
         id: scene_preflight
         continue-on-error: true
@@ -137,6 +154,8 @@ jobs:
           name: linen-earth-3d-source-candidate-${{ github.run_id }}
           path: |
             artifacts/model-qa/**
+            artifacts/connected-shoulder-qa/**
             .cache/linen-earth/linen-earth-officewear-authored.blend
+            .cache/linen-earth/linen-earth-connected-shirt-shoulder.blend
           if-no-files-found: warn
           retention-days: 14
