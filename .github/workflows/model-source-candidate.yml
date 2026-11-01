@@ -86,40 +86,23 @@ jobs:
       - name: Author body-attached candidate shirt / trouser relief
         run: npm run garment:model-garments:author
 
-      - name: Compare two bounded actual upper-shirt shape variants with native BVH
-        id: torso_and_sleeve_ease
+      - name: Build actual connected collar and cuff candidate on native source
+        id: collar_cuff_candidate
         continue-on-error: true
         run: |
-          mkdir -p artifacts/authored-clearance-qa
+          mkdir -p artifacts/authored-finishing-qa
           blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/experiments/construct-authored-shirt-pattern.py -- \
-            --upper-ease-mm 14 --cuff-radius-mm 76 \
-            --output .cache/linen-earth/linen-earth-shirt-ease-14.blend \
-            --report artifacts/authored-clearance-qa/ease-14-mm-contact.json
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
-            --python scripts/blender/experiments/construct-authored-shirt-pattern.py -- \
-            --upper-ease-mm 26 --cuff-radius-mm 85 \
-            --output .cache/linen-earth/linen-earth-shirt-ease-26.blend \
-            --report artifacts/authored-clearance-qa/ease-26-mm-contact.json
+            --with-finishing \
+            --output .cache/linen-earth/linen-earth-shirt-collar-cuffs.blend \
+            --report artifacts/authored-finishing-qa/collar-cuff-native-contacts.json
 
-      - name: Compare native contact measurements against original authored shirt
-        if: steps.torso_and_sleeve_ease.outcome == 'success'
+      - name: Render native connected collar and cuff shirt from four angles
+        if: steps.collar_cuff_candidate.outcome == 'success'
         run: |
-          python3 scripts/blender/compare_native_shirt_candidates.py \
-            --candidate artifacts/authored-clearance-qa/ease-14-mm-contact.json \
-            --candidate artifacts/authored-clearance-qa/ease-26-mm-contact.json \
-            --output artifacts/authored-clearance-qa/native-variant-comparison.json
-
-      - name: Render four angles for BOTH current shirt geometry variants
-        if: steps.torso_and_sleeve_ease.outcome == 'success'
-        run: |
-          mkdir -p artifacts/authored-clearance-qa/ease-14 artifacts/authored-clearance-qa/ease-26
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-shirt-ease-14.blend \
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-shirt-collar-cuffs.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/authored-clearance-qa/ease-14 --width 480 --height 640 --samples 8
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-shirt-ease-26.blend \
-            --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/authored-clearance-qa/ease-26 --width 480 --height 640 --samples 8
+            --output-dir artifacts/authored-finishing-qa --width 480 --height 640 --samples 8
 
       - name: Check exact-source candidate geometry before expensive rendering
         id: scene_preflight
@@ -172,9 +155,8 @@ jobs:
           name: linen-earth-3d-source-candidate-${{ github.run_id }}
           path: |
             artifacts/model-qa/**
-            artifacts/authored-clearance-qa/**
+            artifacts/authored-finishing-qa/**
             .cache/linen-earth/linen-earth-officewear-authored.blend
-            .cache/linen-earth/linen-earth-shirt-ease-14.blend
-            .cache/linen-earth/linen-earth-shirt-ease-26.blend
+            .cache/linen-earth/linen-earth-shirt-collar-cuffs.blend
           if-no-files-found: warn
           retention-days: 14
