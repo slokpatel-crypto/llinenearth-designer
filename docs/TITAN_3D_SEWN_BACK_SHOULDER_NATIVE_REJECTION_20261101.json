@@ -1,0 +1,72 @@
+{
+  "date": "2026-11-01",
+  "status": "BOTH_SEWN_BACK_SHOULDER_INSETS_REJECTED_FOR_SOURCE_FIT",
+  "nativeRun": 41304802002,
+  "sourceArtifactId": 13082838519,
+  "immutableModelSourceSha256": "27d462e3e5172cf632889558d39117f94b9932a7d1701ba8b190220ffe7ecd60",
+  "originalBodyAndSixGarmentMeshesUnchanged": true,
+  "baseline": {
+    "bodyPairs": 1954,
+    "waistPairs": 72,
+    "leftSleeveBodyPairs": 479,
+    "rightSleeveBodyPairs": 471,
+    "legs": [
+      0,
+      0
+    ]
+  },
+  "twoRow": {
+    "addedRealBackShoulderFaces": 24,
+    "bodyPairs": 2204,
+    "waistPairs": 72,
+    "leftSleeveBodyPairs": 542,
+    "rightSleeveBodyPairs": 552,
+    "backInsetBodyPairs": 106,
+    "backBodyPairs": 515,
+    "legs": [
+      0,
+      0
+    ],
+    "topology": {
+      "components": 1,
+      "armholeSeamEdgesPerSide": 34,
+      "openBoundaryLoops": 4,
+      "nonmanifoldEdges": 0,
+      "windingErrors": 0
+    }
+  },
+  "threeRow": {
+    "addedRealBackShoulderFaces": 36,
+    "bodyPairs": 2230,
+    "waistPairs": 72,
+    "leftSleeveBodyPairs": 556,
+    "rightSleeveBodyPairs": 564,
+    "backInsetBodyPairs": 106,
+    "backBodyPairs": 515,
+    "legs": [
+      0,
+      0
+    ],
+    "topology": {
+      "components": 1,
+      "armholeSeamEdgesPerSide": 34,
+      "openBoundaryLoops": 4,
+      "nonmanifoldEdges": 0,
+      "windingErrors": 0
+    }
+  },
+  "physicalViewReview": {
+    "source": "Four actual native 480x640 Blender renders per variant, eight independent views archived with run",
+    "finding": "Both actual back views still reveal two large oval exposed back/upper-arm skin patches. Added back inset faces are attached, but the missing garment coverage remains. Source scan is not the canonical faceless mannequin. Do not infer approved garment fit from connected topology."
+  },
+  "rejectionReasons": [
+    "Both variants increased real Body/cloth triangle intersections (1954 to 2204 / 2230)",
+    "Both variants increased actual sleeve/body intersections (479/471 to 542/552 or 556/564)",
+    "White upper-back/shoulder patches visibly remain despite welded inset surfaces",
+    "Back waistband contacts remained 72, so other known fit failures are unchanged",
+    "Source body model likeness, real tailoring pattern and fabric UV/grain unverified"
+  ],
+  "productionApproved": false,
+  "candidateCanMerge": false,
+  "nextTask": "Avoid repeated arbitrary inset and waist offset designs. Require source-photo-matched original faceless mannequin 3D, or sufficient multi-angle photographs and body/garment tailoring measurements to author a true armhole/back yoke pattern, and continue non-identity-dependent verification separately."
+}
