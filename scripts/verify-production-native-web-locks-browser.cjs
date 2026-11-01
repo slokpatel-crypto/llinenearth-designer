@@ -186,6 +186,78 @@ async function runViewport(browser,width){
       "A completed session must allow deliberate recovery of its exact marker");
     assert.equal(await b.evaluate(()=>localStorage.getItem(
       window.__titanHold.PRODUCTION_WRITE_HOLD_KEY)),null);
+    // M140: exercise the REAL React order-status handler, not only the helper.
+    // The fetch is intercepted in tab A before any HTTP request reaches Next.
+    // Tab B must not acknowledge A's pending marker during the deferred POST.
+    await Promise.all([a,b].map(page=>page.reload({
+      waitUntil:"domcontentloaded",timeout:20000,
+    })));
+    const statusSelect=a.locator("section.productionRecord select").first();
+    await statusSelect.waitFor({state:"visible",timeout:15000});
+    await a.waitForFunction(()=>{
+      const select=document.querySelector("section.productionRecord select");
+      return select&&!select.disabled;
+    },{}, {timeout:15000});
+    await a.evaluate(()=>{
+      const original=window.fetch.bind(window);
+      const state={started:false,requests:0,release:null};
+      window.__titanUiDeferredPost=state;
+      window.fetch=(input,init)=>{
+        const url=new URL(typeof input==="string"?input:input.url,location.href);
+        if(url.pathname==="/api/operator/production"&&init?.method==="POST"){
+          state.started=true;
+          state.requests++;
+          return new Promise(resolve=>{
+            state.release=()=>resolve(new Response(
+              JSON.stringify({error:"Synthetic prewrite denial; no SQL was called."}),
+              {status:400,headers:{"content-type":"application/json"}},
+            ));
+          });
+        }
+        return original(input,init);
+      };
+    });
+    await statusSelect.selectOption("cloth_reserved");
+    await a.waitForFunction(()=>window.__titanUiDeferredPost?.started
+      &&typeof window.__titanUiDeferredPost.release==="function",{}, {timeout:15000});
+    const activeMarker=await a.evaluate(()=>
+      localStorage.getItem(window.__titanHold.PRODUCTION_WRITE_HOLD_KEY));
+    assert.match(activeMarker,/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i);
+    assert.equal(await a.evaluate(async()=>{
+      const h=window.__titanHold;
+      const locks=await navigator.locks.query();
+      return locks.held.some(lock=>lock.name===h.PRODUCTION_WRITE_SESSION_LOCK_NAME);
+    }),true,"Actual React production handler must hold the native session lock while POST is deferred");
+    await b.waitForFunction(token=>localStorage.getItem(
+      window.__titanHold.PRODUCTION_WRITE_HOLD_KEY)===token,activeMarker,{timeout:15000});
+    await b.getByRole("button",{name:"Refresh production history"}).click();
+    const reviewButton=b.getByRole("button",{name:"I reviewed history — enable writes"});
+    await reviewButton.waitFor({state:"visible",timeout:15000});
+    await b.waitForFunction(()=>{
+      const button=[...document.querySelectorAll("button")]
+        .find(el=>el.textContent?.includes("I reviewed history"));
+      return button&&!button.disabled;
+    },{}, {timeout:15000});
+    await reviewButton.click();
+    await b.getByText("Another tab has an active production write",{
+      exact:false,
+    }).waitFor({timeout:15000});
+    assert.equal(await b.evaluate(()=>
+      localStorage.getItem(window.__titanHold.PRODUCTION_WRITE_HOLD_KEY)),activeMarker,
+    "Real React review must not clear a different tab's deferred production POST");
+    await a.evaluate(()=>window.__titanUiDeferredPost.release());
+    await a.waitForFunction(async()=>{
+      const h=window.__titanHold;
+      const locks=await navigator.locks.query();
+      return localStorage.getItem(h.PRODUCTION_WRITE_HOLD_KEY)===null
+        &&!locks.held.some(lock=>lock.name===h.PRODUCTION_WRITE_SESSION_LOCK_NAME);
+    },{}, {timeout:15000});
+    await b.waitForFunction(()=>localStorage.getItem(
+      window.__titanHold.PRODUCTION_WRITE_HOLD_KEY)===null,{}, {timeout:15000});
+    assert.equal(await a.evaluate(()=>window.__titanUiDeferredPost.requests),1,
+      "Exactly one synthetic UI POST was intercepted");
+    assert.deepEqual(productionPosts,[],
+      "Real UI contention test must never send a production POST over HTTP");
     // Unavailable lock must fail closed without any new pending marker.
     assert.equal(await b.evaluate(async()=>{
       const h=window.__titanHold;
