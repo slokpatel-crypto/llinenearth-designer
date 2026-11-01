@@ -2426,6 +2426,19 @@ requireTokens("tests/production-status-receipt-lookup.test.ts",[
   "operator browser strictly accepts sanitized camelCase status receipts, not raw SQL",
 ]);
 
+
+// The M109 creation receipt has the same safe API normalization boundary.
+requireTokens("src/lib/designer/production-creation-receipt-lookup.ts",[
+  "parseProductionCreationReceiptResponse",
+  "return parseProductionCreationReceipts(sqlRows)",
+]);
+requireTokens("src/app/operator/production/ProductionClient.tsx",[
+  "parseProductionCreationReceiptResponse(data.receipts)",
+]);
+requireTokens("tests/production-creation-receipt-lookup.test.ts",[
+  "operator creation receipt API response accepts only normalized private-safe wire fields",
+]);
+
 // M144: SQL and private HTTP alone do not verify the actual operator React UI.
 // A signed Chromium session must demonstrate that status receipts, absent rows,
 // upstream failures and a changed browser marker NEVER unlock production writes.
