@@ -122,3 +122,19 @@ test("operator creation receipt API response accepts only normalized private-saf
   ])assert.equal(parseProductionCreationReceiptResponse(bad),null,
     "Never display malformed, duplicated or unauthorized creation receipt fields");
 });
+
+test("M145 signed Chromium rejects stale creation evidence after same-key epoch change",()=>{
+  const browser=readFileSync("scripts/verify-production-creation-receipt-epoch-browser.cjs","utf8");
+  const ci=readFileSync(".github/workflows/ci.yml","utf8");
+  for(const token of [
+    "M145 signed creation-receipt epoch browser QA is CI-only.",
+    "for(const width of [390,768,1440])",
+    "COMMITTED CREATION RECEIPTS",
+    "window.__m145Race.release()",
+    "originalHoldRetained:true",
+    "An older receipt must not be displayed for a superseded write generation",
+    "No live SQL, real production write, private customer data or owner signoff.",
+  ])assert.ok(browser.includes(token),"Missing M145 browser assertion: "+token);
+  assert.match(browser,/actualWrites,\[\]/);
+  assert.ok(ci.includes("node scripts/verify-production-creation-receipt-epoch-browser.cjs"));
+});
