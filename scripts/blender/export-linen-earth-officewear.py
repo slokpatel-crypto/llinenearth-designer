@@ -301,6 +301,10 @@ def main():
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         from canonical_source_release_gate import verify_external_owner_review_packet
         review_file = os.environ.get("LINEN_OWNER_MODEL_REVIEW_RECEIPT", "").strip()
+        # A review packet hashes SAVED bytes. Unsaved in-memory edits would
+        # make the exported geometry different from those approved bytes.
+        if bpy.data.is_dirty:
+            raise RuntimeError("Production source identity review blocked export: save and re-review modified Blender geometry")
         try:
             verify_external_owner_review_packet(
                 bpy.context.scene,
