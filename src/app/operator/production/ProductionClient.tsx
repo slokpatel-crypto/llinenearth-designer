@@ -30,9 +30,15 @@ export default function ProductionClient(){
   const [loadedRevision,setLoadedRevision]=useState<LockedDesignRevision|null>(null);
 
   async function load(){
-    const response=await fetch("/api/operator/production",{cache:"no-store"});
-    if(response.status===401){window.location.href="/operator/login?next=/operator/production";return;}
-    const data=await response.json();
+    const response=await fetch("/api/operator/production",{cache:"no-store"}).catch(()=>{
+      setConfigured(false);
+      throw new Error("Production records could not be loaded. Refresh before proceeding.");
+    });
+    if(response.status===401){setConfigured(false);window.location.href="/operator/login?next=/operator/production";return;}
+    const data=await response.json().catch(()=>{
+      setConfigured(false);
+      throw new Error("Production records could not be loaded. Refresh before proceeding.");
+    });
     if(!response.ok||!data||typeof data!=="object"||
       (data.configured!==false&&(!Array.isArray(data.quotes)||!Array.isArray(data.orders)||
         !Array.isArray(data.qcInspections)||!Array.isArray(data.customerOutcomes)||!Array.isArray(data.learningContexts)))){
