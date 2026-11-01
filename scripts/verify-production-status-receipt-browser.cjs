@@ -15,7 +15,9 @@ if(process.env.GITHUB_ACTIONS!=="true"||process.env.CI!=="true"){
 const runtime=process.env.LINEN_BROWSER_QA_RUNTIME;
 assert.ok(runtime,"Pinned Playwright runtime is required");
 const {chromium}=createRequire(path.join(runtime,"package.json"))("playwright");
-const base=new URL(process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000");
+// Next start canonicalizes its local hostname to localhost for origin checks.
+// Use the canonical same-origin hostname; do not bypass secure JSON CSRF validation.
+const base=new URL(process.env.LINEN_BROWSER_QA_URL||"http://localhost:3000");
 assert.equal(base.protocol,"http:");
 assert.ok(["127.0.0.1","localhost","[::1]"].includes(base.hostname));
 const secret=process.env.LINEN_OPERATOR_SESSION_SECRET;
