@@ -24,6 +24,8 @@ class SourceShirtTest(unittest.TestCase):
         labels=["left_sleeve","torso","left_sleeve","torso"]
         result=analyze_labelled_faces(faces,labels)
         self.assertEqual(result["connectedComponents"],1)
+        self.assertEqual(result["sourceConnectedIslandFaceCounts"],[4])
+        self.assertEqual(result["sourceConnectedIslandRegionCounts"][0]["regionFaceCounts"]["torso"],2)
         self.assertEqual(result["sourceEdgeSeamCount"],2)
         self.assertEqual(result["sourceSeamRegionPairs"],{"left_sleeve/torso":2})
         self.assertEqual(result["sourceNonmanifoldEdges"],0)
@@ -34,6 +36,7 @@ class SourceShirtTest(unittest.TestCase):
         result=analyze_labelled_faces([(0,1,2),(3,4,5)],["torso","left_sleeve"])
         self.assertEqual(result["sourceEdgeSeamCount"],0)
         self.assertEqual(result["connectedComponents"],2)
+        self.assertEqual(result["sourceConnectedIslandFaceCounts"],[1,1])
 
     def test_bad_winding_cannot_be_masked_by_shared_edge(self):
         result=analyze_labelled_faces([(0,1,2),(1,2,3)],["torso","left_sleeve"])
