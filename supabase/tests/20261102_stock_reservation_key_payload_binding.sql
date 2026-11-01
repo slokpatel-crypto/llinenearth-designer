@@ -6,9 +6,9 @@
 begin;
 do $$
 declare
-  v_fabric text:='SYNTHETIC-TITAN-'+gen_random_uuid()::text;
-  v_key text:='SYNTH-KEY-'+gen_random_uuid()::text;
-  v_second_key text:='SYNTH-KEY-'+gen_random_uuid()::text;
+  v_fabric text:='SYNTHETIC-TITAN-'||gen_random_uuid()::text;
+  v_key text:='SYNTH-KEY-'||gen_random_uuid()::text;
+  v_second_key text:='SYNTH-KEY-'||gen_random_uuid()::text;
   v_revision text:='LE-LOCK-SYNTHETIC-20261102-001';
   v_first uuid;
   v_replayed uuid;
