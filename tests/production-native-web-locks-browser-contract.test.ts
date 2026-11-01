@@ -22,3 +22,19 @@ test("M138 signed Chromium executes the production helper under real two-tab Web
   assert.match(browser,/for\(const width of \[390,1440\]\)/);
   assert.match(workflow,/node scripts\/verify-production-native-web-locks-browser\.cjs/);
 });
+
+
+test("M139 signed native Chromium rejects active-session review and permits later recovery",()=>{
+  const browser=readFileSync("scripts/verify-production-native-web-locks-browser.cjs","utf8");
+  assert.match(browser,/navigator\.locks\.request\(h\.PRODUCTION_WRITE_SESSION_LOCK_NAME/);
+  assert.match(browser,/\{mode:"exclusive",ifAvailable:true\}/);
+  assert.match(browser,/Second tab must not acknowledge an actively in-flight production write/);
+  assert.match(browser,/A completed session must allow deliberate recovery of its exact marker/);
+  assert.match(browser,/activeSessionAcknowledgementBlocked:true/);
+  assert.match(browser,/postSessionAcknowledgementRecovered:true/);
+  assert.match(browser,/realProductionPosts:0,syntheticOnly:true/);
+  const reviewBrowser=readFileSync("scripts/verify-production-ledger-refresh-barrier-browser.cjs","utf8");
+  assert.match(reviewBrowser,/postSessionRefreshAndSecondClickRequired:true/);
+  assert.match(reviewBrowser,/First acknowledgement must not clear a marker before post-session history verification/);
+  assert.match(reviewBrowser,/Only the second explicit acknowledgement after a post-session GET may clear the marker/);
+});

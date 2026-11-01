@@ -8,6 +8,7 @@ import {
   captureProductionWriteEpoch,productionWriteEpochUnchanged,
   captureProductionWriteReviewSnapshot,productionWriteReviewSnapshotUnchanged,
   beginProductionWriteHoldAtomically,PRODUCTION_WRITE_LOCK_NAME,
+  PRODUCTION_WRITE_SESSION_LOCK_NAME,
 } from "../src/lib/designer/production-write-hold.ts";
 
 const id="123e4567-e89b-42d3-a456-426614174000";
@@ -95,7 +96,7 @@ test("browser production write barrier is saved BEFORE POST and reviewed after f
   assert.match(source,/productionWriteHoldPending\(safeProductionHoldStorage\(\)\)/);
   assert.match(source,/window.addEventListener\("storage",onStorage\)/);
   assert.match(source,/event.key===PRODUCTION_WRITE_HOLD_KEY\|\|event.key===PRODUCTION_WRITE_EPOCH_KEY/);
-  assert.match(source,/verifiedWriteReviewSnapshot\.current=null;\s*setRenderedLedgerReadVersion\(0\);\s*setConfigured\(false\);/);
+  assert.match(source,/verifiedWriteReviewSnapshot\.current=null;\s*verifiedReviewSessionReadVersion\.current=0;\s*setRenderedLedgerReadVersion\(0\);\s*setConfigured\(false\);/);
   assert.doesNotMatch(source,/localStorage\.setItem\([^\n]*recoveryToken/);
   assert.doesNotMatch(source,/localStorage\.setItem\([^\n]*pendingWriteReview/);
   const helper=readFileSync("src/lib/designer/production-write-hold.ts","utf8");
@@ -262,4 +263,30 @@ test("M137 browser uses origin-wide Web Locks and rechecks verified history afte
   const claim=post.indexOf("const claimed=await beginProductionWriteHoldAtomically(");
   const postNetwork=post.indexOf('await fetch("/api/operator/production",{method:"POST"');
   assert.ok(claim>=0&&postNetwork>claim,"no SQL mutation before exclusive claim succeeds");
+});
+
+
+test("M139 a full-request Web Lock prevents acknowledgement of an in-flight production POST",()=>{
+  const src=readFileSync("src/app/operator/production/ProductionClient.tsx","utf8");
+  const post=src.split("async function post(")[1]?.split("async function lookupPendingCreationReceipt(")[0]||"";
+  const review=src.split("function confirmReviewedProductionHistory()")[1]?.split("async function loadLockedDesign(")[0]||"";
+  const load=src.split("async function load(")[1]?.split("useEffect(()=>{")[0]||"";
+  assert.equal(PRODUCTION_WRITE_SESSION_LOCK_NAME,"linen-earth:production:active-write-session:v1");
+  assert.match(post,/locks\.request\(PRODUCTION_WRITE_SESSION_LOCK_NAME,\{mode:"exclusive",ifAvailable:true\},async lock=>\{/);
+  assert.match(post,/await post\(body,success,true\)/);
+  assert.match(post,/if\(!sessionLockHeld\)\{/);
+  assert.match(post,/const claimed=await beginProductionWriteHoldAtomically\(/);
+  assert.match(post,/await fetch\("\/api\/operator\/production",\{method:"POST"/);
+  assert.match(review,/locks\.request\(PRODUCTION_WRITE_SESSION_LOCK_NAME,\{mode:"exclusive",ifAvailable:true\},async lock=>\{/);
+  assert.match(review,/if\(!lock\)\{/);
+  const deny=review.indexOf("if(!lock){");
+  const acknowledge=review.indexOf("acknowledgeProductionWriteHold(storage,snapshot.holdToken)");
+  assert.ok(deny>=0&&acknowledge>deny,"no acknowledgement while another tab owns the full-request lock");
+  assert.match(load,/verifiedReviewSessionReadVersion\.current=0/);
+  const recheck=review.indexOf("const refreshed=await load();");
+  const proof=review.indexOf("verifiedReviewSessionReadVersion.current=ledgerReadVersion.current",recheck);
+  assert.ok(recheck>=0&&proof>recheck&&acknowledge>proof,
+    "review must re-fetch authoritative history under the session lock before a second deliberate acknowledgement");
+  assert.match(review,/if\(verifiedReviewSessionReadVersion\.current!==ledgerReadVersion\.current\)/);
+  assert.match(review,/if\(!hasCurrentVerifiedLedger\(\)\)return/);
 });

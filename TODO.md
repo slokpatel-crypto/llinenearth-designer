@@ -1113,3 +1113,12 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [ ] Exact M138 SHA quality, Node, engine, preview-performance, release, build, 390/1440 signed browser, independent Non-3D and both disposable PostgreSQL workflows must finish **PASS**. Browser test is synthetic code evidence only; no actual customer/order or supplier proof.
 - [ ] Next independently verifiable slice: inspect any browser failure; then test whether a second tab can acknowledge an *actively in-flight* first-tab write after refreshing its capped history, and implement a robust no-blind-retry barrier if reproducible.
 - [ ] T1–T6/J1–J6 full acceptance remains PENDING/BLOCKED: real supplier rolls/metres, authenticated customer/operator walkthrough, tailor/physical QC, native Blender four-view/UV, devices, beta/first-ten, security/privacy/staging/schema and separate owner merge/deploy approvals.
+
+## 2026-11-01 — M139 active production POST cross-tab acknowledgement safety (stacked draft)
+- [x] Reproduced the J5/T5 race from source: M137's claim-only Web Lock releases before SQL POST, so another tab's capped history GET and manual review can clear the in-flight request marker.
+- [x] Add a separate non-queuing origin-wide Web Lock held throughout the full POST/readback/error lifecycle; deny competing review and writes while held or unsupported.
+- [x] Under the review lock, require a NEW independently validated production GET and a second explicit click after rendered history; a GET obtained while the prior SQL write was active cannot clear its marker.
+- [x] Add source regression, static release guard and signed native two-tab Chromium contention scenario at 390/1440 with synthetic writes only.
+- [ ] Verify M139 exact-head full CI quality, Node, engine, preview-performance, release check, production build, browser 390/768/1440, Non-3D and both disposable PostgreSQL; repair failures without weakening safety.
+- [ ] Genuine supplier stock, authenticated customer/operator, physical tailor/QC, Blender source/UV, physical devices, beta and ten deliveries, security/privacy/schema and separate owner merge/deploy approvals remain BLOCKED/PENDING. No production writes, live migration, paid AI or main merge/deploy.
+- [ ] Next independent slice: test cross-device/server-side concurrent order/receipt acknowledgement against disposable PostgreSQL and ensure the user cannot misinterpret a missing capped ledger row as proof of noncommit.

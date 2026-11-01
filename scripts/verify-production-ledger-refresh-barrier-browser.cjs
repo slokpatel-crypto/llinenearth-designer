@@ -102,14 +102,28 @@ async function runViewport(browser,width){
     },{}, {timeout:15_000});
     assert.equal(await page.evaluate(key=>localStorage.getItem(key),holdKey),holdUuid,
       "A completed GET cannot silently acknowledge the prior uncertain write");
+    // M139: even a previously rendered GET may have overlapped a remote SQL
+    // write. First click must fetch history AGAIN while holding the full
+    // production-session Web Lock; only a second deliberate click may clear.
     await review.click();
+    assert.equal(await page.evaluate(key=>localStorage.getItem(key),holdKey),holdUuid,
+      "First acknowledgement must not clear a marker before post-session history verification");
+    await page.waitForFunction(()=>{
+      const button=[...document.querySelectorAll("button")]
+        .find(x=>x.textContent?.includes("I reviewed history"));
+      return window.__titanLedgerRefreshRace.reads>=3
+        &&document.body.textContent?.includes("Production history rechecked with no active browser write")
+        &&button&&!button.disabled;
+    },{}, {timeout:15000});
+    await review.click();
+    await page.waitForFunction(key=>localStorage.getItem(key)===null,holdKey,{timeout:15000});
     assert.equal(await page.evaluate(key=>localStorage.getItem(key),holdKey),null,
-      "Explicit acknowledgement after newest history is rendered may clear the marker");
+      "Only the second explicit acknowledgement after a post-session GET may clear the marker");
     assert.deepEqual(productionPosts,[],"Browser race test must never mutate production");
     assert.deepEqual(errors,[],"No JavaScript errors");
     await mkdir(out,{recursive:true});
     await page.screenshot({path:path.join(out,"review-"+width+".png"),fullPage:true});
-    return {width,sameTurnAcknowledgementBlocked:true,explicitAfterRenderRequired:true,
+    return {width,sameTurnAcknowledgementBlocked:true,explicitAfterRenderRequired:true,postSessionRefreshAndSecondClickRequired:true,
       productionPosts:0,syntheticOnly:true};
   }finally{await ctx.close();}
 }

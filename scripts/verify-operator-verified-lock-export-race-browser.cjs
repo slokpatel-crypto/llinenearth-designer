@@ -93,6 +93,13 @@ async function runViewport(browser,width){
     const load=page.getByRole("button",{name:"Load locked design"});
     const handoff=page.getByRole("button",{name:"Export tailor handoff"});
     await token.fill("lev1.synthetic-CI-token");
+    // Wait for the React token state to commit before the first recovery click.
+    // A slower CI render can leave this button disabled for a short interval.
+    await page.waitForFunction(()=>{
+      const b=[...document.querySelectorAll("button")]
+        .find(x=>x.textContent?.includes("Load locked design"));
+      return b&&!b.disabled;
+    },{}, {timeout:15000});
     await load.click();
     await page.getByText("synthetic-shirt-A",{exact:true}).waitFor({timeout:15_000});
     // Positive control: this exact synthetic verified lock really is exportable.

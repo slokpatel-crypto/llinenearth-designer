@@ -135,6 +135,57 @@ async function runViewport(browser,width){
       return ok;
     },secondId);
     assert.equal(recovered,true,"Freshly verified history must permit a later claim");
+    // Chromium can deliver a cross-tab localStorage removal after the writer\'s
+    // Promise resolves. Do not start the NEXT synthetic session against a stale
+    // storage view: wait for both tabs to observe the confirmed release/epoch.
+    await a.waitForFunction(token=>{
+      const h=window.__titanHold;
+      return localStorage.getItem(h.PRODUCTION_WRITE_HOLD_KEY)===null
+        &&localStorage.getItem(h.PRODUCTION_WRITE_EPOCH_KEY)===token;
+    },secondId,{timeout:10000});
+    // M139: an in-flight production POST holds a separate Web Lock until
+    // SQL result/readback settles. A second tab must NOT acknowledge its
+    // marker even after a stale (capped) history GET appeared successful.
+    await a.evaluate(token=>{
+      const h=window.__titanHold;
+      const prior={pending:localStorage.getItem(h.PRODUCTION_WRITE_HOLD_KEY),
+        epoch:localStorage.getItem(h.PRODUCTION_WRITE_EPOCH_KEY),token};
+      if(!h.beginProductionWriteHold(localStorage,token))
+        throw Error("Synthetic active marker missing: "+JSON.stringify(prior));
+      const state={held:false,finished:false};
+      state.gate=new Promise(resolve=>{state.release=resolve;});
+      window.__titanSession=state;
+      state.promise=navigator.locks.request(h.PRODUCTION_WRITE_SESSION_LOCK_NAME,
+        {mode:"exclusive"},async()=>{
+          state.held=true;
+          await state.gate; // Synthetic pending SQL, never an actual HTTP POST.
+        }).then(()=>{state.finished=true;});
+    },firstId);
+    await a.waitForFunction(()=>window.__titanSession?.held,{}, {timeout:10000});
+    const blockedAck=await b.evaluate(token=>{
+      const h=window.__titanHold;
+      return navigator.locks.request(h.PRODUCTION_WRITE_SESSION_LOCK_NAME,
+        {mode:"exclusive",ifAvailable:true},lock=>
+          lock? h.acknowledgeProductionWriteHold(localStorage,token):false);
+    },firstId);
+    assert.equal(blockedAck,false,
+      "Second tab must not acknowledge an actively in-flight production write");
+    assert.equal(await b.evaluate(()=>localStorage.getItem(
+      window.__titanHold.PRODUCTION_WRITE_HOLD_KEY)),firstId);
+    await a.evaluate(()=>window.__titanSession.release());
+    await a.waitForFunction(()=>window.__titanSession.finished,{}, {timeout:10000});
+    // A fresh post-session review is now allowed to clear the exact marker.
+    // ProductionClient independently requires a NEW verified GET and click.
+    const recoveredAck=await b.evaluate(token=>{
+      const h=window.__titanHold;
+      return navigator.locks.request(h.PRODUCTION_WRITE_SESSION_LOCK_NAME,
+        {mode:"exclusive",ifAvailable:true},lock=>
+          lock? h.acknowledgeProductionWriteHold(localStorage,token):false);
+    },firstId);
+    assert.equal(recoveredAck,true,
+      "A completed session must allow deliberate recovery of its exact marker");
+    assert.equal(await b.evaluate(()=>localStorage.getItem(
+      window.__titanHold.PRODUCTION_WRITE_HOLD_KEY)),null);
     // Unavailable lock must fail closed without any new pending marker.
     assert.equal(await b.evaluate(async()=>{
       const h=window.__titanHold;
@@ -149,6 +200,7 @@ async function runViewport(browser,width){
     return {width,nativeWebLocks:true,queuedBehindExclusiveLock:true,
       completedEpochBlocksStaleClaim:true,syntheticPostsFirst:1,
       syntheticPostsSecond:0,freshRecovery:true,unsupportedLockFailsClosed:true,
+      activeSessionAcknowledgementBlocked:true,postSessionAcknowledgementRecovered:true,
       realProductionPosts:0,syntheticOnly:true};
   }finally{await ctx.close();}
 }
@@ -162,6 +214,6 @@ async function runViewport(browser,width){
       synthetic:true,humanEvidence:false,stockEvidence:false,physicalEvidence:false,
       browserNativeLocks:true,viewports,
     },null,2)+"\n");
-    console.log("M138 native two-tab Web Locks safety PASS",viewports);
+    console.log("M138/M139 native two-tab Web Locks safety PASS",viewports);
   }finally{await browser.close();}
 })().catch(error=>{console.error(error.stack||error.message);process.exitCode=1;});

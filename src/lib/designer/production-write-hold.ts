@@ -8,6 +8,9 @@ export const PRODUCTION_WRITE_EPOCH_KEY="linen-earth:production:write-epoch:v1";
 // Web Locks serializes the check-and-set across same-origin tabs. A storage
 // read-then-write alone cannot prevent two concurrent POST starts.
 export const PRODUCTION_WRITE_LOCK_NAME="linen-earth:production:write-hold-lock:v1";
+// Held throughout a live production POST, not just the initial marker claim.
+// A second tab must never acknowledge that marker while SQL may be committing.
+export const PRODUCTION_WRITE_SESSION_LOCK_NAME="linen-earth:production:active-write-session:v1";
 
 export type ProductionHoldStorage={
   getItem(key:string):string|null;
