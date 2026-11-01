@@ -2,6 +2,19 @@
 
 Updated: 2026-11-01. Status: **REJECTED 3D candidate; NOT production-ready**.
 
+## CURRENT continuation: explicit collar/cuff seam geometry (draft, unapproved)
+
+Current branch: work/titan-3d-collar-cuffs-20261101, following drafts #680, #679 and #678. Check latest branch head and exact-head CI before continuing.
+
+Native Blender run 41296714389 measured source-authored shirt variants at 0/14/26 mm experimental upper ease: body collision pairs 2177/2182/2166, waist 72/72/72, leg 0/0. Source scene SHA256 170250f7fc637959d9c1d58edf519f1c2e0652cf9f9de17ae0953013d3d71b0d. All three kept connected topology and original source body/garment hashes unchanged. Both guessed upper-size variations were REJECTED. Do not expand guessed dimensions again: source body/pose and original photographed model are unverified.
+
+PR #680 stops rerunning rejected source shell/adaptive-shell experiments and keeps the real Blender preflight and release veto. Scripts and tests compare native contact counts without treating partial improvement as production readiness.
+
+NEW actual mesh work: scripts/blender/authored_shirt_finishing.py joins an explicit standing band collar and both sleeve cuffs to genuine open source edge rings. Adds two ring bands per opening, preserving sewn edge continuity, one manifold component and four end openings. Native experiment supports --with-finishing and writes separate .blend, measured body/trouser contact JSON, and four-angle renders under artifacts/authored-finishing-qa. Experimental collar band height 30mm, cuff length 42mm are NOT measured or fit approved. Files authored_shirt_finishing.py, tests/python/test_authored_shirt_finishing.py, scripts/blender/experiments/construct-authored-shirt-pattern.py, and .github/workflows/model-source-candidate.yml. Implementation commits 8327c55c8686464a06b4cacb81ee70640d610f1f, 87d6d4af0ae7456721b258f14fee9c0223997524, cad5e370c96796b5b3052b59451b5dd2ee3b2471, 10cc274c1d0385b0d47f404b3f8052e69494bb49.
+
+NEXT: read exact-head new PR native Blender and pure Python outcomes. Fix concrete geometry/test errors and compare body/waist/leg collision receipts and all four rendered views against rejected variants. The new candidate must remain a draft until independent zero-contact proof, proper front placket/waist/fly construction, actual model photo parity, real fabric scale/grain, owner and tailor acceptance. Preserve original customer model, never merge rejected 3D into main and do not deploy to Vercel.
+
+
 ## ACTIVE follow-on: constrained patterned-shirt shape variants (draft child of #678)
 
 - **Branch:** `work/titan-3d-authored-clearance-20261101`; exact head must be re-read before new edits. The previous authored topology PR **#678** remains draft and its native source Blender run **41295697621** intentionally failed the full source-model production gate. No main integration or Vercel deployment.
