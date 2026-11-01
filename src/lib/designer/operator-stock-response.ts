@@ -4,6 +4,15 @@ const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 const KNOWN_FABRICS=new Set(FABRIC_STOCK.map(f=>f.id));
 const DECIMAL=/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
 
+// SQL close RPCs return scalar booleans, not truthy envelopes. An invalid
+// HTTP-200 JSON response indicates a backend contract failure, not an
+// inactive reservation, and must not be reported as a normal stock conflict.
+export function requireStockCloseAck(value:unknown):boolean{
+  if(typeof value!=="boolean")
+    throw new Error("Invalid stock closure acknowledgment.");
+  return value;
+}
+
 export function requireStockCreatedId(value:unknown):string{
   if(typeof value!=="string"||!ID.test(value))
     throw new Error("Invalid stock creation acknowledgment.");
