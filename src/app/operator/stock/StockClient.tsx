@@ -16,6 +16,7 @@ export default function StockClient(){
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState(false);
   const [uncertainWrite,setUncertainWrite]=useState(false);
+  const uncertainWriteRef=useRef(false);
   const mutationGate=useRef(createOperatorMutationGate());
   const reservationAttempt=useRef(createStockReservationAttemptTracker(()=>crypto.randomUUID()));
   const [form,setForm]=useState({fabricId:"",eventType:"receipt",quantityMetres:"",recordedBy:"",sourceReference:"",note:""});
@@ -67,7 +68,7 @@ export default function StockClient(){
   },[]);
 
   async function post(body:Record<string,unknown>,success:string,reservationDraft?:StockReservationAttempt){
-    if(uncertainWrite||busy||snapshotState!=="ready"||!configured||!mutationGate.current.enter()) return;
+    if(uncertainWriteRef.current||uncertainWrite||busy||snapshotState!=="ready"||!configured||!mutationGate.current.enter()) return;
     setBusy(true);setMessage("");
     let requestSent=false,acknowledged=false,httpStatus:number|null=null;
     try{
@@ -88,6 +89,7 @@ export default function StockClient(){
         "Stock operation acknowledged, but ledger refresh is unavailable. Check the ledger before retrying.");
     }catch(error){
       if(stockMutationNeedsReconciliation(requestSent,acknowledged,httpStatus)){
+        uncertainWriteRef.current=true;
         setUncertainWrite(true);
         setMessage("Stock write outcome is uncertain. It may have committed. Check the actual ledger entries and physical source evidence before another write.");
       }else setMessage(error instanceof Error?error.message:"Stock operation failed.");
@@ -112,6 +114,7 @@ export default function StockClient(){
       <p>Uncertain stock write: do not submit another movement until you have checked the real ledger event and its physical source reference. A successful snapshot refresh alone does not prove whether the previous write committed.</p>
       <button disabled={busy||snapshotState==="loading"} onClick={()=>{void (async()=>{
         if(await load()){
+          uncertainWriteRef.current=false;
           setUncertainWrite(false);
           setMessage("Ledger reloaded after operator reconciliation. Confirm the original event and source before any new stock movement.");
         }
