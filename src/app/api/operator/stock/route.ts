@@ -69,13 +69,14 @@ export async function POST(request:Request){
     if(action==="record"){
       const draft=stockInput(()=>normalizeManualStockEvent(body));
       stockInput(()=>assertCurrentFabricId(draft.fabricId));
-      const eventId=requireStockCreatedId(await rpc<string>("fabric_stock_record_v2",{
+      const eventId=requireStockCreatedId(await rpc<string>("fabric_stock_record_v3",{
         p_fabric_id:draft.fabricId,
         p_event_type:draft.eventType,
         p_quantity_metres:draft.quantityMetres,
         p_note:draft.note,
         p_recorded_by:draft.recordedBy,
         p_source_reference:draft.sourceReference,
+        p_request_key:draft.requestKey,
       }));
       return stockPrivateJson({eventId});
     }
