@@ -192,7 +192,9 @@ export default function ProductionClient(){
         setConfigured(false);
         setRecoveredCreationReceipts(null);setRecoveredStatusReceipts(null);
         setRequiresWriteReview(true);
-        setMessage("Production writes changed in another tab. Refresh current history before acknowledging or exporting.");
+        setMessage(event.key===null
+          ?"Production writes changed in another tab: protected browser storage was cleared. Keep writes paused and seek authorized recovery; an empty marker is not proof that a SQL write did not commit."
+          :"Production writes changed in another tab. Refresh current history before acknowledging or exporting.");
       }
     };
     window.addEventListener("storage",onStorage);
