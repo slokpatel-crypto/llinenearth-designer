@@ -138,11 +138,11 @@ def main():
                                   for vid in edge})
             points=[baseline_pattern["vertices"][vid] for vid in seam_vertices]
             root=tuple(sum(p[axis] for p in points)/len(points) for axis in range(3))
-            receipt=sample_scanned_arm_path(
+            arm_observation=sample_scanned_arm_path(
                 body_xyz,sleeve,root,center_x=centre_x,wrist_z=.985
             )
-            scanned_arm_pose[sleeve]=receipt
-            arm_centerlines[sleeve]=receipt["centerline"]
+            scanned_arm_pose[sleeve]=arm_observation
+            arm_centerlines[sleeve]=arm_observation["centerline"]
     source_data=make_shirt_mesh(
         upper_ease_mm=args.upper_ease_mm,
         cuff_radius_mm=args.cuff_radius_mm,
