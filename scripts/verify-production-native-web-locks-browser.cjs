@@ -135,6 +135,14 @@ async function runViewport(browser,width){
       return ok;
     },secondId);
     assert.equal(recovered,true,"Freshly verified history must permit a later claim");
+    // Chromium can deliver a cross-tab localStorage removal after the writer\'s
+    // Promise resolves. Do not start the NEXT synthetic session against a stale
+    // storage view: wait for both tabs to observe the confirmed release/epoch.
+    await a.waitForFunction(token=>{
+      const h=window.__titanHold;
+      return localStorage.getItem(h.PRODUCTION_WRITE_HOLD_KEY)===null
+        &&localStorage.getItem(h.PRODUCTION_WRITE_EPOCH_KEY)===token;
+    },secondId,{timeout:10000});
     // M139: an in-flight production POST holds a separate Web Lock until
     // SQL result/readback settles. A second tab must NOT acknowledge its
     // marker even after a stale (capped) history GET appeared successful.
