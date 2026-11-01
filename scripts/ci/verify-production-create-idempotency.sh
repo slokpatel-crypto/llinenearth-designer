@@ -59,6 +59,9 @@ run_file scripts/ci/m128-production-request-receipt-immutability-assertions.sql
 # M130: protect locked quote pricing/recipe and order revision/quote identity.
 run_file supabase/migrations/20261119_locked_production_identity_immutable.sql
 run_file scripts/ci/m130-locked-production-identity-assertions.sql
+# M142: read-only original-key quote/order/delivery status receipt recovery.
+run_file supabase/migrations/20261120_production_status_receipt_lookup.sql
+run_file scripts/ci/m142-status-receipt-lookup-assertions.sql
 # M123: after all six schema migrations, verify actual installed gates (READ ONLY).
 run_file scripts/ci/m122-qc-schema-readonly-preflight.sql
 # M125: falsify installed schema/ACL safeguards inside rollback-only transactions.
@@ -149,6 +152,48 @@ if [[ $(tr -d '\r\n' < "$tmpdir/os1") != "t" ]] ||
    [[ $(query "select count(*) from private.production_order_events where order_id='$status_order'::uuid and status='cloth_reserved'") != "1" ]] ||
    [[ $(query "select count(*) from private.production_order_status_request_receipts where order_id='$status_order'::uuid") != "1" ]]; then
   echo "Concurrent same-key order status replay duplicated a transition" >&2; exit 1
+fi
+# M142: prove that an empty exact-key lookup during a concurrent transaction
+# does NOT establish noncommit. After the other session commits, the same key
+# must resolve to the one durable status event and receipt.
+lookup_order=$(query "select public.production_order_create('LE-M142-STATUS-LOOKUP-RACE',repeat('d',64),null,'');")
+lookup_key="123e4567-e89b-42d3-a456-426614174351"
+lookup_tx="begin;
+select public.production_order_set_status_idempotent(
+ '$lookup_key'::uuid,'$lookup_order'::uuid,'cloth_reserved','M142 delayed commit');
+select pg_sleep(4);
+commit;"
+docker exec -e PGAPPNAME=titan_m142_status_inflight "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d "$db" -Atc "$lookup_tx" >"$tmpdir/m142-tx" 2>"$tmpdir/m142-tx.err" &
+lookup_pid=$!
+lookup_active=0
+for i in $(seq 1 30); do
+  if [[ $(query "select count(*) from pg_stat_activity where application_name='titan_m142_status_inflight' and state='active' and wait_event='PgSleep'") == "1" ]]; then
+    lookup_active=1
+    break
+  fi
+  sleep 0.1
+done
+if [[ "$lookup_active" != "1" ]]; then
+  echo "M142 delayed status transaction was not observed in PostgreSQL" >&2
+  cat "$tmpdir/m142-tx.err" >&2
+  wait "$lookup_pid" || true
+  exit 1
+fi
+if [[ $(query "select count(*) from public.production_status_request_receipt_lookup('$lookup_key'::uuid)") != "0" ]]; then
+  echo "M142 uncommitted status receipt was visible to another SQL session" >&2
+  exit 1
+fi
+if ! wait "$lookup_pid"; then
+  echo "M142 delayed status transaction did not commit" >&2
+  cat "$tmpdir/m142-tx.err" >&2
+  exit 1
+fi
+if [[ $(query "select count(*) from public.production_status_request_receipt_lookup('$lookup_key'::uuid)
+  where action='order_status' and record_id='$lookup_order'::uuid and target_status='cloth_reserved'") != "1" ]] ||
+   [[ $(query "select count(*) from private.production_order_events where order_id='$lookup_order'::uuid and status='cloth_reserved'") != "1" ]] ||
+   [[ $(query "select count(*) from private.production_order_status_request_receipts where request_key='$lookup_key'::uuid") != "1" ]]; then
+  echo "Status receipt lookup claimed noncommit while another SQL transaction was open" >&2
+  exit 1
 fi
 # Two independent PostgreSQL sessions replay the SAME delivered request UUID.
 # They must serialize under the per-request advisory transaction lock, with
