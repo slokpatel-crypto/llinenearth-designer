@@ -93,3 +93,64 @@ jobs:
           path: artifacts/preview-lifecycle
           if-no-files-found: ignore
           retention-days: 14
+
+  stock-reservation-postgres:
+    name: Disposable PostgreSQL stock reservation invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: titan_synthetic
+          POSTGRES_USER: titan
+          POSTGRES_PASSWORD: synthetic_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U titan -d titan_synthetic"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: titan
+      PGPASSWORD: synthetic_only
+      PGDATABASE: titan_synthetic
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install local disposable database client
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Bootstrap synthetic-only PostgreSQL roles and physical stock schema
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin;
+          create extension if not exists pgcrypto;
+          SQL
+          for migration in \
+            supabase/migrations/20261001_fabric_stock_ledger.sql \
+            supabase/migrations/20261028_fabric_stock_provenance.sql \
+            supabase/migrations/20261029_stock_reservation_provenance.sql \
+            supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql \
+            supabase/migrations/20261102_stock_reservation_key_payload_binding.sql; do
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Run actual SQL key replay, mismatch and rollback tests
+        run: |
+          {
+            printf "set titan.synthetic_sql_test='enabled';\n"
+            cat supabase/tests/20261102_stock_reservation_key_payload_binding.sql
+          } | psql -v ON_ERROR_STOP=1
+      - name: Confirm native test synthetic data rolled back
+        run: |
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select case when count(*)=0 then 'PASS' else 'FAIL' end
+             from private.fabric_stock_ledger
+             where fabric_id like 'SYNTHETIC-TITAN-%'" | grep -qx PASS
