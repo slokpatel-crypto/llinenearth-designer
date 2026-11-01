@@ -27,8 +27,16 @@ class SourceArmReceiptContractTests(unittest.TestCase):
                 writes.append(node)
         self.assertEqual(len(writes),1,"Native report Path must never be shadowed by body scan receipts")
         self.assertIsInstance(writes[0].value,ast.Call)
-        self.assertIsInstance(writes[0].value.func,ast.Name)
-        self.assertEqual(writes[0].value.func.id,"Path")
+        # The real source uses Path(args.report).resolve(): preserve its
+        # canonical absolute output path rather than asserting a literal
+        # un-resolved Path constructor shape.
+        outer=writes[0].value
+        self.assertIsInstance(outer.func,ast.Attribute)
+        self.assertEqual(outer.func.attr,"resolve")
+        inner=outer.func.value
+        self.assertIsInstance(inner,ast.Call)
+        self.assertIsInstance(inner.func,ast.Name)
+        self.assertEqual(inner.func.id,"Path")
 
     def test_native_scan_observation_uses_independent_variable(self):
         code=SCRIPT.read_text(encoding="utf-8")
