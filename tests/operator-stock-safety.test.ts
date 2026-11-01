@@ -48,7 +48,7 @@ test("actual operator route enforces verification before every recording or rese
   assert.ok(s.includes("stockMutationRequestError(request)"));
   assert.ok(s.includes("if(unsafe) return stockPrivateJson"));
   for(const [normalizer,rpc] of [
-    ["normalizeManualStockEvent(body)","fabric_stock_record_v2"],
+    ["normalizeManualStockEvent(body)","fabric_stock_record_v3"],
     ["normalizeStockReservation(body)","fabric_stock_reserve_v2"],
   ]){
     const start=s.indexOf(normalizer),end=s.indexOf(rpc,start);
@@ -74,7 +74,7 @@ test("streamed operator stock body is limited even without Content-Length header
 test("actual stock mutation handler applies byte limit before privileged RPC",()=>{
   const code=readFileSync("src/app/api/operator/stock/route.ts","utf8");
   const parse=code.indexOf("readBoundedStockMutationJson(request)");
-  const firstRpc=code.indexOf('rpc<string>("fabric_stock_record_v2"');
+  const firstRpc=code.indexOf('rpc<string>("fabric_stock_record_v3"');
   assert.ok(parse>0&&firstRpc>parse);
   assert.ok(code.includes("error instanceof StockMutationPayloadTooLarge"));
   assert.match(code,/status:413[,}]/);
