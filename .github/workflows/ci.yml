@@ -43,6 +43,8 @@ jobs:
       - run: npm run build
       - name: Verify private operator production HTTP transport (synthetic)
         run: node scripts/verify-operator-private-transport-http.cjs
+      - name: Verify private stock ledger HTTP response and creation IDs (synthetic)
+        run: node scripts/verify-operator-stock-private-http.cjs
       - name: Verify signed optional production ledger failures (synthetic)
         run: node scripts/verify-operator-optional-evidence-http.cjs
       - name: Verify designer vault JSON bounds and private error logs (synthetic)
