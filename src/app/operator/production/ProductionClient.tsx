@@ -7,6 +7,7 @@ import { buildProductionHandoff } from "@/lib/designer/production-handoff";
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import { buildProductionPacket } from "@/lib/designer/production-packet";
 import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
+import { requireOperatorClientMutationAck } from "@/lib/designer/operator-client-mutation-ack";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
@@ -42,8 +43,10 @@ export default function ProductionClient(){
     try{
       const response=await fetch("/api/operator/production",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
       const data=await response.json();
-      if(!response.ok) throw new Error(data.error||"Production operation failed.");
-      setMessage(success);await load();
+      if(!response.ok) throw new Error(data?.error||"Production operation failed.");
+      requireOperatorClientMutationAck(body.action,data);
+      await load();
+      setMessage(success);
     }catch(error){setMessage(error instanceof Error?error.message:"Production operation failed.");}
     finally{setBusy(false);}
   }
@@ -218,7 +221,7 @@ export default function ProductionClient(){
               {customerOutcome.note&&<p>{customerOutcome.note}</p>}
               <small>Evidence only — not automatically applied to Designer ranking.</small>
             </div>}
-            {nextStatuses.length>0&&<select defaultValue="" onChange={(e)=>{if(e.target.value) void post({action:"order_status",orderId:item.order_id,status:e.target.value},"Order status updated.");}}>
+            {nextStatuses.length>0&&<select defaultValue="" disabled={busy} onChange={(e)=>{const status=e.target.value;e.target.value="";if(status) void post({action:"order_status",orderId:item.order_id,status},"Order status updated.");}}>
               <option value="">Update status…</option>
               {nextStatuses.map((status)=><option key={status} value={status}>{status.replaceAll("_"," ")}</option>)}
             </select>}
