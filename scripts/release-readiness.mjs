@@ -2429,6 +2429,24 @@ requireTokens("tests/secure-json-origin.test.ts",[
   "M146 JSON endpoint checks cross-site metadata before request bytes",
 ]);
 
+
+// M147: the real authenticated React operator request must traverse actual
+// built-Next HTTP, not just mocked fetch or Node-only signed curl. Empty reads,
+// upstream errors and a changed write epoch never clear the pending marker.
+requireTokens("scripts/verify-production-creation-receipt-browser-http.cjs",[
+  "M147 signed Chromium real creation receipt HTTP and unchanged hold PASS",
+  "for(const width of [390,768,1440])",
+  "Old same-key receipt must not be presented after an epoch change",
+  'actualPosts.every(action=>action==="creation_receipt_lookup")',
+  "postStatuses.includes(200)&&postStatuses.includes(409)",
+]);
+requireTokens("tests/production-creation-receipt-http-contract.test.ts",[
+  "M147 real signed browser creation recovery cannot unlock an uncertain write",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-creation-receipt-browser-http.cjs",
+]);
+
 // M146: SQL idempotency and Node parsers alone are insufficient. An actual
 // authenticated built-Next HTTP boundary must prove the original UUID lookup
 // returns ONLY safe receipt fields and fails closed on missing/malformed SQL.
