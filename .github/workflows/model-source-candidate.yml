@@ -86,23 +86,23 @@ jobs:
       - name: Author body-attached candidate shirt / trouser relief
         run: npm run garment:model-garments:author
 
-      - name: Build actual connected collar and cuff candidate on native source
+      - name: Build connected front placket, collar and cuffs on native source
         id: collar_cuff_candidate
         continue-on-error: true
         run: |
-          mkdir -p artifacts/authored-finishing-qa
+          mkdir -p artifacts/authored-placket-qa
           blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/experiments/construct-authored-shirt-pattern.py -- \
-            --with-finishing \
-            --output .cache/linen-earth/linen-earth-shirt-collar-cuffs.blend \
-            --report artifacts/authored-finishing-qa/collar-cuff-native-contacts.json
+            --with-finishing --with-placket --placket-relief-mm 4 \
+            --output .cache/linen-earth/linen-earth-shirt-integrated-placket.blend \
+            --report artifacts/authored-placket-qa/placket-native-contacts.json
 
-      - name: Render native connected collar and cuff shirt from four angles
+      - name: Render native connected placket/collar/cuff shirt from four angles
         if: steps.collar_cuff_candidate.outcome == 'success'
         run: |
-          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-shirt-collar-cuffs.blend \
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-shirt-integrated-placket.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/authored-finishing-qa --width 480 --height 640 --samples 8
+            --output-dir artifacts/authored-placket-qa --width 480 --height 640 --samples 8
 
       - name: Check exact-source candidate geometry before expensive rendering
         id: scene_preflight
@@ -155,8 +155,8 @@ jobs:
           name: linen-earth-3d-source-candidate-${{ github.run_id }}
           path: |
             artifacts/model-qa/**
-            artifacts/authored-finishing-qa/**
+            artifacts/authored-placket-qa/**
             .cache/linen-earth/linen-earth-officewear-authored.blend
-            .cache/linen-earth/linen-earth-shirt-collar-cuffs.blend
+            .cache/linen-earth/linen-earth-shirt-integrated-placket.blend
           if-no-files-found: warn
           retention-days: 14
