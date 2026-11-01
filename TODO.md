@@ -1104,3 +1104,12 @@ Starting point: draft PR #372 head `28a50ac`; its original CI and Non-3D QA runs
 - [x] Add contention, completed-write-epoch, lock-error, marker persistence and source-order regressions; update static release gate. No schema, paid AI, model/photo, production write, main merge or deployment.
 - [ ] Verify this exact child SHA's full CI (quality, Node, engine, preview, release, build and browser), independent Non-3D, production/stock PostgreSQL; CI may still be pending after draft creation. Real two-tab Web Locks browser POST contention remains an independent follow-up; unit-level fake lock is not browser proof.
 - [ ] Genuine supplier inventory, signed-in owner/customer/operator, physical tailoring/QC, native Blender, physical devices, beta/first-ten, security/privacy/schema/staging and owner approvals remain BLOCKED/PENDING. No full T1–T6 or J1–J6 release gate certified.
+
+
+## 2026-11-01 — M138 native two-tab Chromium Web Locks acceptance (stacked draft)
+- [x] Add signed loopback-only Chromium regression at 390px and 1440px that transpiles and executes the **actual** `production-write-hold.ts` helper in two same-origin pages, not a reimplemented fake lock.
+- [x] Force native `navigator.locks` contention, assert the second claim queues, simulate exactly one in-memory production POST, clear the first pending marker before unlocking, and prove the retained epoch rejects the stale second claim. Prove fresh-snapshot recovery and unavailable-lock fail-closed; assert zero real `/api/operator/production` POSTs and no browser exceptions.
+- [x] Wire signed test into full CI, add Node source-contract regression and static release gate; preserve original model, no-paid-AI core and draft-only deployment boundary.
+- [ ] Exact M138 SHA quality, Node, engine, preview-performance, release, build, 390/1440 signed browser, independent Non-3D and both disposable PostgreSQL workflows must finish **PASS**. Browser test is synthetic code evidence only; no actual customer/order or supplier proof.
+- [ ] Next independently verifiable slice: inspect any browser failure; then test whether a second tab can acknowledge an *actively in-flight* first-tab write after refreshing its capped history, and implement a robust no-blind-retry barrier if reproducible.
+- [ ] T1–T6/J1–J6 full acceptance remains PENDING/BLOCKED: real supplier rolls/metres, authenticated customer/operator walkthrough, tailor/physical QC, native Blender four-view/UV, devices, beta/first-ten, security/privacy/staging/schema and separate owner merge/deploy approvals.
