@@ -20,6 +20,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from authored_shirt_panels import make_shirt_mesh, ROLE_NAMES
 from authored_shirt_finishing import add_collar_and_cuffs
 from authored_shirt_placket import add_raised_front_placket
+from shirt_region_contact import summarize_native_region_contacts
 
 MODEL_ID="linen-earth-studio-model-v1"
 NAME="LE_AUTHORED_SHIRT_PATTERN_UNMEASURED"
@@ -45,6 +46,47 @@ def native_intersection(a,b):
     mod=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod.intersection_pair_count(a,b)
+
+
+def independent_body_contacts_by_region(body, waist, source, full_body, full_waist):
+    """Split actual source polygons, measure identical-world BVH per role.
+
+    Temporary inspection objects are destroyed before the source is saved.
+    No guessed contacts or changes to original model/baseline garment assets.
+    """
+    roles=sorted(set(source["roles"]))
+    face_counts={}
+    body_counts={}
+    waist_counts={}
+    for role in roles:
+        region_faces=[tuple(face) for face,r in zip(source["faces"],source["roles"]) if r==role]
+        face_counts[role]=len(region_faces)
+        if not region_faces:
+            raise RuntimeError("No source faces for region "+role)
+        mesh=bpy.data.meshes.new("LE_TEMP_NATIVE_REGION_"+role)
+        fragment=None
+        try:
+            mesh.from_pydata(source["vertices"],[],region_faces)
+            mesh.update(calc_edges=True)
+            fragment=bpy.data.objects.new("LE_TEMP_MEASURE_"+role,mesh)
+            bpy.context.scene.collection.objects.link(fragment)
+            bpy.context.view_layer.update()
+            count=native_intersection(body,fragment)
+            waist_count=native_intersection(waist,fragment)
+            if count is None or waist_count is None:
+                raise RuntimeError("Missing independent real Blender BVH for "+role)
+            body_counts[role]=count
+            waist_counts[role]=waist_count
+        finally:
+            if fragment is not None:
+                bpy.data.objects.remove(fragment,do_unlink=True)
+            if mesh.name in bpy.data.meshes:
+                bpy.data.meshes.remove(mesh,do_unlink=True)
+    body_summary=summarize_native_region_contacts(body_counts,full_body,face_counts)
+    waist_summary=summarize_native_region_contacts(waist_counts,full_waist,face_counts)
+    if body_summary["regionFaceCoverageCount"] != len(source["faces"]):
+        raise RuntimeError("Native garment region evidence is missing faces")
+    return {"body":body_summary,"trouserWaist":waist_summary}
 
 
 def main():
@@ -153,6 +195,12 @@ def main():
     body_pairs=native_intersection(body,obj)
     trouser_pairs={g:native_intersection(obj,bpy.data.objects[g])
                    for g in GARMENTS if g.startswith("Trouser")}
+    if body_pairs is None or any(value is None for value in trouser_pairs.values()):
+        raise RuntimeError("Real world-space BVH observations missing")
+    region_contacts=independent_body_contacts_by_region(
+        body,bpy.data.objects["TrouserWaistFabric"],source_data,
+        body_pairs,trouser_pairs["TrouserWaistFabric"]
+    )
     baseline_after={"Body":mesh_sha(body)}
     baseline_after.update({g:mesh_sha(bpy.data.objects[g]) for g in GARMENTS})
     if baseline_after!=original_hashes:
@@ -167,6 +215,8 @@ def main():
         t["windingErrors"]==0 and
         t["nonmanifoldEdges"]==0 and
         body_pairs==0 and
+        region_contacts["body"]["regionMeasureAgreement"] and
+        region_contacts["trouserWaist"]["regionMeasureAgreement"] and
         all(value==0 for value in trouser_pairs.values())
     )
     report={
@@ -185,6 +235,7 @@ def main():
         "topology":t,
         "actualArmholeSeamEdgesMarked":marked,
         "bodyClothIntersectingTrianglePairs":body_pairs,
+        "independentNativeBodyWaistContactPartitions":region_contacts,
         "clothTrouserIntersectingTrianglePairs":trouser_pairs,
         "candidateGeometricGate":plausible_trial,
         "garmentDesignDimensionsMeasured":False,
