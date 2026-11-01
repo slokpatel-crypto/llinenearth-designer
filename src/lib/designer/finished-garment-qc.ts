@@ -60,3 +60,25 @@ export function latestQcDecision<T extends {decision:string;created_at:string}>(
   if(!items.length) return null;
   return [...items].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))[0]?.decision||null;
 }
+
+// Delivery must not rely on the order of a global, capped QC ledger.
+// Missing timestamps or ties at JS millisecond precision fail closed.
+// The SQL status-write RPC remains the authoritative transactional gate.
+export function latestQcForOrder<T extends {order_id:unknown;created_at?:unknown}>(
+  inspections:readonly T[],orderId:string,
+):T|null{
+  let latest:T|null=null;
+  let newest=-Infinity;
+  let ambiguous=false;
+  for(const inspection of inspections){
+    if(inspection.order_id!==orderId) continue;
+    const stamp=inspection.created_at;
+    if(typeof stamp!=="string"||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(stamp)) return null;
+    const time=Date.parse(stamp);
+    if(!Number.isFinite(time)) return null;
+    if(time>newest){latest=inspection;newest=time;ambiguous=false;}
+    else if(time===newest) ambiguous=true;
+  }
+  return ambiguous?null:latest;
+}

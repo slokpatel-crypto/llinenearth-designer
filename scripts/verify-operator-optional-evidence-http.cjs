@@ -41,9 +41,17 @@ async function main(){
       res.end(JSON.stringify({code:"UNEXPECTED_RPC"}));return;
     }
     if(name===mode.target && mode.kind!=="ok"){
-      if(mode.kind==="qcApproved"){
+      if(["qcApproved","qcStaleApproval","qcTied","qcMissingTime","qcUnsortedApproved"].includes(mode.kind)){
+        const approval={order_id:"synthetic-order",decision:"approved",inspector:"Synthetic Inspector",
+          inspection_reference:"SYNTH-QC-001",created_at:"2026-10-01T10:00:00Z"};
+        const rework={...approval,decision:"rework",created_at:"2026-10-01T11:00:00Z"};
+        const rows=mode.kind==="qcStaleApproval"?[approval,rework]:
+          mode.kind==="qcTied"?[approval,{...rework,created_at:approval.created_at}]:
+          mode.kind==="qcMissingTime"?[{...approval,created_at:null}]:
+          mode.kind==="qcUnsortedApproved"?[rework,{...approval,created_at:"2026-10-01T12:00:00Z"}]:
+          [approval];
         res.writeHead(200,{"content-type":"application/json"});
-        res.end(JSON.stringify([{order_id:"synthetic-order",decision:"approved",inspector:"Synthetic Inspector",inspection_reference:"SYNTH-QC-001"}]));return;
+        res.end(JSON.stringify(rows));return;
       }
       if(mode.kind==="successWrongMime"){
         res.writeHead(200,{"content-type":"text/plain"});res.end("[]");return;
@@ -185,8 +193,32 @@ async function main(){
     assert.match(approved.headers.get("cache-control")||"",/private.*no-store/);
     assert.deepEqual(await approved.json(),{updated:true});
     assert.equal(seen.filter(x=>x.name==="production_order_set_status").length,1);
+    // A stale approval must not win merely because it was listed first.
+    for(const kind of ["qcStaleApproval","qcTied","qcMissingTime"]){
+      mode={target:"finished_garment_qc_list",kind};
+      seen.length=0;
+      const response=await fetch(url,{
+        method:"POST",headers:{cookie,"content-type":"application/json"},
+        body:JSON.stringify({action:"order_status",orderId:"synthetic-order",status:"delivered"}),
+        signal:AbortSignal.timeout(15000),
+      });
+      assert.equal(response.status,409,"delivery "+kind);
+      assert.deepEqual(await response.json(),
+        {error:"Finished-garment QC approval is required before delivery."},kind);
+      assert.match(response.headers.get("cache-control")||"",/private.*no-store/,kind);
+      assert.equal(seen.filter(x=>x.name==="production_order_set_status").length,0,kind+" must not write");
+    }
+    mode={target:"finished_garment_qc_list",kind:"qcUnsortedApproved"};
+    seen.length=0;
+    const unordered=await fetch(url,{
+      method:"POST",headers:{cookie,"content-type":"application/json"},
+      body:JSON.stringify({action:"order_status",orderId:"synthetic-order",status:"delivered"}),
+      signal:AbortSignal.timeout(15000),
+    });
+    assert.equal(unordered.status,200,"newest approval wins even when upstream rows are unordered");
+    assert.equal(seen.filter(x=>x.name==="production_order_set_status").length,1);
     console.log("TITAN operator ledger + delivery QC PASS: "+cases.length+
-      " GET and "+(deliveryKinds.length+1)+" POST signed synthetic HTTP cases; zero real writes.");
+      " GET and "+(deliveryKinds.length+5)+" POST signed synthetic HTTP cases; zero real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>backend.close(resolve));

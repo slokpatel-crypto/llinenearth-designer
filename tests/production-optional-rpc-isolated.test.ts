@@ -74,10 +74,11 @@ test("delivery status QC read is bounded and validated before any status mutatio
   const delivery=route.split('if(action==="order_status"){')[1]?.split('return privateProductionResponse({updated:Boolean(updated)});')[0]??"";
   assert.match(delivery,/rpc<unknown>\("finished_garment_qc_list",\{p_limit:500\},false,MAX_OPERATOR_LEDGER_BYTES\)/);
   assert.match(delivery,/validateOperatorLedgerRows\(rawInspections,500\)/);
-  assert.ok(delivery.indexOf("validateOperatorLedgerRows")<delivery.indexOf("inspections.find"),
+  assert.ok(delivery.indexOf("validateOperatorLedgerRows")<delivery.indexOf("latestQcForOrder"),
     "validate QC envelope before selecting approval");
   assert.ok(delivery.indexOf("validateOperatorLedgerRows")<delivery.indexOf('"production_order_set_status"'),
     "validate QC envelope before any delivery write");
   assert.match(delivery,/latest\?\.decision!=="approved"/);
+  assert.match(delivery,/latestQcForOrder\(inspections,orderId\)/);
   assert.match(delivery,/inspection_reference/);
 });
