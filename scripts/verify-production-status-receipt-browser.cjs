@@ -56,6 +56,22 @@ async function runViewport(browser,width){
   const page=await ctx.newPage();
   const errors=[];
   const productionPostActions=[];
+  const productionPostResponses=[];
+  page.on("response",async response=>{
+    if(response.request().method()!=="POST"||
+       new URL(response.url()).pathname!=="/api/operator/production")return;
+    try{
+      const data=await response.json();
+      productionPostResponses.push({
+        status:response.status(),
+        receiptCount:Array.isArray(data?.receipts)?data.receipts.length:null,
+        responseKeys:data&&typeof data==="object"?Object.keys(data).sort():[],
+        hasPrivateError:typeof data?.error==="string",
+      });
+    }catch{
+      productionPostResponses.push({status:response.status(),invalidJson:true});
+    }
+  });
   page.on("pageerror",e=>errors.push(e.message));
   page.on("request",request=>{
     if(request.method()==="POST"&&new URL(request.url()).pathname==="/api/operator/production"){
@@ -90,7 +106,24 @@ async function runViewport(browser,width){
     // to retry the write or remove its crash-recovery marker.
     await lookup.click();
     const receipts=page.locator('[aria-label="Original committed status receipts"]');
-    await receipts.getByText("COMMITTED STATUS RECEIPTS").waitFor({state:"visible",timeout:15_000});
+    try{
+      await receipts.getByText("COMMITTED STATUS RECEIPTS").waitFor({state:"visible",timeout:10_000});
+    }catch(error){
+      const state=await page.evaluate(()=>{
+        const status=document.querySelector('[role="status"]')?.textContent||"";
+        return {
+          noReceiptPanel:!document.querySelector('[aria-label="Original committed status receipts"]'),
+          hasLookupError:status.includes("Original status receipt could not be verified"),
+          hasMissingKey:status.includes("original request ID is missing"),
+          hasUncertainTransaction:status.includes("in-flight SQL transaction"),
+          reviewPresent:!!document.querySelector('[aria-label="Production write review required"]'),
+        };
+      });
+      throw new Error("M144 signed browser receipt display mismatch: "+
+        JSON.stringify({width,state,postActions:productionPostActions,
+          postResponses:productionPostResponses,pageErrors:errors})+
+        "; original: "+String(error));
+    }
     const committedText=await receipts.innerText();
     assert.match(committedText,/123e4567-e89b-42d3-a456-426614174010/);
     assert.match(committedText,/committed status: accepted/);
