@@ -77,7 +77,10 @@ async function main(){
       assertPrivate(failed);
       assert.equal(failed.status,409,mode+" must fail closed, not produce a false receipt");
       const body=await failed.json();
-      assert.deepEqual(body,{error:"Production operation could not be completed."});
+      assert.deepEqual(body,{error:["malformed","duplicate"].includes(mode)
+        ?"Status receipt lookup could not be verified."
+        :"Production operation could not be completed."},
+        "validated-but-invalid SQL receipts and failed upstream reads have distinct safe errors");
       assert.doesNotMatch(JSON.stringify(body),/DO-NOT-LEAK-CI-/);
     }
   }finally{
