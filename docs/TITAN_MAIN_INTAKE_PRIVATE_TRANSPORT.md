@@ -1,0 +1,18 @@
+# TITAN isolated main intake — private operator production HTTP transport
+
+**Criterion:** T5/J5 operator production privacy; T6/J6 HTTP regression.
+**Parent main:** `8fc78dbd135e75fdbb5709e25cf0dc035f57947c` (verify live before any merge).
+**Origin:** Independently port the privacy invariant from narrow draft PR #669/#672 without importing its 64-commit dependency stack or any unrelated application changes.
+**Change:** The existing main production route now sets `Cache-Control: private, no-store` on every GET and POST outcome, including 401, unconfigured GET, 400, 409, 503 and successful replies. The only NextResponse.json call is the central response constructor. No SQL, stock, model, auth, production logic or schema changes.
+**Regression:** A Node source contract checks all return paths and CI ordering. The actual built-Next synthetic HTTP fixture checks seven GET/POST cases, including signed and anonymous sessions, with zero Supabase/backend configuration. Main CI also runs quality, full Node, engine, preview, release, build and Chromium. Exact-head CI and Non-3D remain **PENDING until verified**; this document is not approval.
+**Release:** No production deployment, live migrations, stock changes or paid AI. Real supplier inventory, tailor/fit/QC, customer/operator, devices, native Blender, beta deliveries, security/privacy/staging and owner approval remain PENDING/BLOCKED. Never merge until all required matching-SHA checks and isolated diff/ancestry are verified.
+**Next 30–40 minute slice:** inspect this branch's actual CI and signed HTTP result; repair any failures, then evaluate whether this four-file intake alone can safely merge with exact main SHA guard and deployment disabled. Do not infer human release readiness.
+
+## 2026-11-01 — isolated privacy transport milestone (draft)
+- **Exact parent:** `8fc78dbd135e75fdbb5709e25cf0dc035f57947c` (live main with Vercel Git deployment disabled).
+- **Implementation sequence:** `6bf1ab01e47e8067effc71e730e6f6c75ecc4b35` (route) → `83b818dfb5ed85001bd9953fe8096b6722ce4927` (test) → `31d1d0eee8dcff40e9d740fdecc3f53729af148f` (HTTP fixture) → `ee9e4170099f40f5de1aa4f87349562a42445532` (CI) → `0b2b7a29a3995177f3a2cc19d1cae1da83b636b7` (checkpoint) → `cd4b596607a4e878b1af33061d6c1c0f8e86cb50` (test regex repair) → **`66c59e1ef4de4ed68bd8460bdb0be641946d6925`** (test count repair) → this checkpoint append.
+- **Exact changed files before this append:** five: route, source test, built-Next HTTP fixture, CI workflow and this checkpoint. Comparison to parent: seven commits ahead, zero behind; no giant draft ancestry imported.
+- **Static evidence:** verified 18 production return sites now use the central private/no-store helper (4 GET, 14 POST); source regression updated to match; Vercel deployment guard verified `false`. **PENDING:** exact final-head npm quality/full tests/engine/preview/release/build, signed seven-case HTTP, Chromium/Non-3D, security and applicable disposable PostgreSQL; do not infer any PASS from parent or sibling.
+- **PR:** #677, draft and **not merged**. Prior separate narrow PR #672 exact `e3de5e38e2e22603a01e56e8ca801b963cac5749` now has Full CI #41290448713 and Non-3D #41290448661 both green, but its 64-commit dependency stack is not imported and those results do not certify #677.
+- **Blockers:** real supplier stock, authenticated human acceptance, physical tailor/QC, native Blender/UV, devices, novice beta, ten genuine deliveries, staging/restore/security/privacy approval and release signoff remain PENDING/BLOCKED.
+- **Next:** inspect PR #677 exact-head CI/HTTP/Non-3D; fix any failure. Only after all required checks and live main guard/ancestry verification consider guarded isolated main integration; no production deploy.

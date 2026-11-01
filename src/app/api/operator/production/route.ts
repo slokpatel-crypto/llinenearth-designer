@@ -44,9 +44,17 @@ async function loadVerifiedLockedRevision(recoveryToken:string){
   return revision;
 }
 
+// Operator data and write acknowledgements are always private, including
+// rejected, unconfigured and error paths. Never allow intermediary caching.
+function privateProductionResponse(body:unknown,init?:ResponseInit){
+  const response=NextResponse.json(body,init);
+  response.headers.set("cache-control","private, no-store");
+  return response;
+}
+
 export async function GET(){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,quotes:[],orders:[]});
+  if(!await authorized()) return privateProductionResponse({error:"Unauthorized."},{status:401});
+  if(!getSupabaseAdminConfig()) return privateProductionResponse({configured:false,quotes:[],orders:[]});
   try{
     const [quotes,orders]=await Promise.all([
       rpc("production_quote_list",{p_limit:100}),
@@ -70,15 +78,15 @@ export async function GET(){
     }catch{
       // Older/manual orders remain readable while durable lineage support is being installed.
     }
-    return NextResponse.json({configured:true,quotes,orders,qcInspections,customerOutcomes,learningContexts},{headers:{"cache-control":"private, no-store"}});
+    return privateProductionResponse({configured:true,quotes,orders,qcInspections,customerOutcomes,learningContexts},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/production]",error);
-    return NextResponse.json({error:"Production records could not be read."},{status:503});
+    return privateProductionResponse({error:"Production records could not be read."},{status:503});
   }
 }
 
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  if(!await authorized()) return privateProductionResponse({error:"Unauthorized."},{status:401});
   try{
     const body=await request.json() as Record<string,unknown>;
     const action=String(body.action||"");
@@ -88,11 +96,11 @@ export async function POST(request:Request){
       const note=String(body.note||"").slice(0,1000);
       const recoveryToken=String(body.recoveryToken||"").trim();
       if(revisionId.length<12||!/^[a-f0-9]{64}$/.test(recipeHash)) {
-        return NextResponse.json({error:"Locked revision and recipe hash are required."},{status:400});
+        return privateProductionResponse({error:"Locked revision and recipe hash are required."},{status:400});
       }
       const revision=await loadVerifiedLockedRevision(recoveryToken);
       if(revision.revisionId!==revisionId||revision.recipeHash.toLowerCase()!==recipeHash){
-        return NextResponse.json({error:"The verified locked design does not match the quote revision/hash."},{status:409});
+        return privateProductionResponse({error:"The verified locked design does not match the quote revision/hash."},{status:409});
       }
       const draft=normalizeProductionQuoteDraft({
         currency:body.currency,
@@ -103,14 +111,14 @@ export async function POST(request:Request){
         p_revision_id:revisionId,p_recipe_hash:recipeHash,p_currency:draft.currency,
         p_line_items:draft.lineItems,p_adjustment:draft.adjustment,p_note:note,
       });
-      return NextResponse.json({quoteId,lockedRevisionVerified:true});
+      return privateProductionResponse({quoteId,lockedRevisionVerified:true});
     }
     if(action==="quote_status"){
       const quoteId=String(body.quoteId||"");
       const status=String(body.status||"");
       const note=String(body.note||"").slice(0,1000);
       const updated=await rpc<boolean>("production_quote_set_status",{p_quote_id:quoteId,p_status:status,p_note:note});
-      return NextResponse.json({updated:Boolean(updated)});
+      return privateProductionResponse({updated:Boolean(updated)});
     }
     if(action==="create_order"){
       const revisionId=String(body.revisionId||"").trim();
@@ -119,11 +127,11 @@ export async function POST(request:Request){
       const note=String(body.note||"").slice(0,1000);
       const recoveryToken=String(body.recoveryToken||"").trim();
       if(revisionId.length<12||!/^[a-f0-9]{64}$/.test(recipeHash)) {
-        return NextResponse.json({error:"Locked revision and recipe hash are required."},{status:400});
+        return privateProductionResponse({error:"Locked revision and recipe hash are required."},{status:400});
       }
       const revision=await loadVerifiedLockedRevision(recoveryToken);
       if(revision.revisionId!==revisionId||revision.recipeHash.toLowerCase()!==recipeHash){
-        return NextResponse.json({error:"The verified locked design does not match the order revision/hash."},{status:409});
+        return privateProductionResponse({error:"The verified locked design does not match the order revision/hash."},{status:409});
       }
       const orderId=await rpc<string>("production_order_create_with_context",{
         p_revision_id:revisionId,
@@ -132,7 +140,7 @@ export async function POST(request:Request){
         p_note:note,
         p_context:buildProductionLearningContext(revision),
       });
-      return NextResponse.json({orderId,learningContextAttached:true,lockedRevisionVerified:true});
+      return privateProductionResponse({orderId,learningContextAttached:true,lockedRevisionVerified:true});
     }
     if(action==="order_status"){
       const orderId=String(body.orderId||"");
@@ -143,22 +151,22 @@ export async function POST(request:Request){
         try{
           inspections=await rpc<Array<{order_id:string;decision:string;inspector?:string;inspection_reference?:string}>>("finished_garment_qc_list",{p_limit:500});
         }catch{
-          return NextResponse.json({error:"Finished-garment QC backend must be installed before delivery can be recorded."},{status:409});
+          return privateProductionResponse({error:"Finished-garment QC backend must be installed before delivery can be recorded."},{status:409});
         }
         const latest=inspections.find((item)=>item.order_id===orderId);
         if(latest?.decision!=="approved"){
-          return NextResponse.json({error:"Finished-garment QC approval is required before delivery."},{status:409});
+          return privateProductionResponse({error:"Finished-garment QC approval is required before delivery."},{status:409});
         }
         if(String(latest.inspector||"").trim().length<2||String(latest.inspection_reference||"").trim().length<3){
-          return NextResponse.json({error:"Provenance-backed finished-garment QC approval is required before delivery."},{status:409});
+          return privateProductionResponse({error:"Provenance-backed finished-garment QC approval is required before delivery."},{status:409});
         }
       }
       const updated=await rpc<boolean>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note});
-      return NextResponse.json({updated:Boolean(updated)});
+      return privateProductionResponse({updated:Boolean(updated)});
     }
-    return NextResponse.json({error:"Unsupported production action."},{status:400});
+    return privateProductionResponse({error:"Unsupported production action."},{status:400});
   }catch(error){
     console.error("[operator/production]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Production operation failed."},{status:409});
+    return privateProductionResponse({error:error instanceof Error?error.message:"Production operation failed."},{status:409});
   }
 }
