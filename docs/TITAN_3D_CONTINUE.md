@@ -2,6 +2,19 @@
 
 Updated: 2026-11-01. Status: **REJECTED 3D candidate; NOT production-ready**.
 
+## FINAL native back-waist result: BOTH source-contour seam variants rejected
+
+Draft PR #687, branch work/titan-3d-back-waist-trial-20261101, source Blender workflow **41303366000**, downloadable 14-day artifact **13082099785** containing two distinct .blend source hypotheses, inside/outside four-angle images, contact JSONs and validator comparison. Unmodified original Body and six source garment hashes; scene source SHA256 bf4e64084fcd5301f748e06e8cd20971469ee4a19da9d6f3bea8c9438c7b23d1. All independent per-panel and per-height BVH source face-partitions reconcile with whole collision counts. Python topology and comparison tests pass. The original source promotion gate intentionally FAILED as before, no production model exported.
+
+**Actual measured results:** verified parent section-fit 1954 body/shirt overlaps and 72 shirt/waistband overlaps (back waist 64, back hem 8), left/right sleeve contacts 479/471, leg zero. Source contour INSIDE trial: body 1958, waist 128, back waist 54/back hem 74, back body 519, sleeves 479/471, legs zero. Source contour OUTSIDE: body 1944, waist 88, back waist 74/back hem 14, back body 505, sleeves 479/471, legs zero. Both honest scenarios use 25 real source waistband positions, world-space source waist median height 1.0254327 metres, 3mm experimental inside/outside margin and max 24mm local 3-ring back movement. The source neckline, armholes, sleeve fitting, front placket, collar, cuffs and original six source garments are unchanged. **REJECT both waist alternatives**: waist overlaps worsen. Outside shows 10 fewer body crossings but 16 MORE waist crossings. Inside causes 56 more waist crossings. Do not promote.
+
+**4-angle visual reject:** variants remain short cropped shirts, with huge exposed back/shoulder holes, blue lower-body/generic scanned human shape, and the existing source body does NOT match faceless canonical photographed Designer Studio mannequin. Do not claim photo likeness or clothing fit from topology alone.
+
+Durable exact evidence: docs/TITAN_3D_BACK_WAIST_NATIVE_REJECTION_20261101.json, commit 7d6573990fea44a0a383cb5153b4a8d0d9e4c74b; source Workflow 41303366000; `artifacts/back-waist-qa/source-waist-inside.json`, `source-waist-outside.json`, `comparison.json` and two sets of four-angle PNGs in archive. Prior source sleeve-section candidate remains the better provisional garment, still 1954 body and 72 waist intersections; no new verified back-waist geometry is approved.
+
+**NEXT 3D CONTINUE:** Do not attempt more guessed x/y waist radius or simplistic outward offsets. True source-matched garment pattern work is required at shoulder/yoke and back-waist tuck. Ask owner for the original photograph-matched model .blend, back and side views, shirt and trouser measurements, sew/tuck rules, and exact fabric grain/repeat, if not already available. While awaiting that evidence, continue independently verifiable cut/seam/option and source-identity gates, not model replacement or fabricated measurements. No merge into main, no production GLB or Vercel deploy. Check exact latest draft head and CI on resumption.
+
+
 ## CURRENT ACTIVE: actual source waistband back-hem/waist seam alternatives
 
 Active NEW draft branch work/titan-3d-back-waist-trial-20261101 stacked on PR #686. Source section-fit baseline is REJECTED for production even though sleeves improved: 1954 body/shirt BVH pairs total, L sleeve 479, R sleeve 471, waist object/shirt 72, all from the back (64 @waist, 8 @hem). Four-angle review still shows wrong faceless model identity and exposed shoulder/back skin. Original Body and 6 baseline garment meshes MUST remain unchanged. Source z-band names are diagnostics, not tailor measurements.
