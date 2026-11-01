@@ -53,7 +53,12 @@ async function main(){
       response=Object.hasOwn(outcomes,mode)?outcomes[mode]:uuid;
     }else if(path.endsWith("/fabric_stock_release_v2")||
              path.endsWith("/fabric_stock_consume_reservation_v2")){
-      response=mode==="releaseFalse"?false:true;
+      const outcomes={
+        closeTrue:true,closeFalse:false,closeNull:null,
+        closeString:"false",closeObject:{released:false},
+        closeArray:[false],closeNumber:1,
+      };
+      response=Object.hasOwn(outcomes,mode)?outcomes[mode]:true;
     }else throw Error("Unexpected stock RPC "+path);
     if(mode==="backend500"){
       res.writeHead(500,{"content-type":"application/json"});
@@ -138,8 +143,37 @@ async function main(){
         else assert.deepEqual(result,{error:"Stock operation could not be verified."});
       }
     }
+    const closures=[
+      {action:"release",reservationId:uuid,releasedBy:"Synthetic checker",
+        sourceReference:"SYNTH-RELEASE-01"},
+      {action:"consume",reservationId:uuid,actualMetres:1.125,
+        checkedBy:"Synthetic checker",sourceReference:"SYNTH-CUT-01"},
+    ];
+    for(const body of closures){
+      for(const kind of [
+        "closeTrue","closeFalse","closeNull","closeString",
+        "closeObject","closeArray","closeNumber","backend500",
+        "wrongMime","oversize",
+      ]){
+        mode=kind;seen.length=0;
+        const {response,result}=await call("POST",body);
+        assert.equal(response.status,kind==="closeTrue"?200:
+          kind==="closeFalse"?409:503,body.action+" "+kind);
+        assert.equal(seen.length,1,body.action+" "+kind);
+        assert.equal(seen[0].path,
+          "/rest/v1/rpc/"+(body.action==="release"?"fabric_stock_release_v2":
+            "fabric_stock_consume_reservation_v2"));
+        if(kind==="closeTrue")assert.deepEqual(result,
+          {[body.action==="release"?"released":"consumed"]:true});
+        else if(kind==="closeFalse")assert.deepEqual(result,
+          {error:body.action==="release"?
+            "Reservation was not active; no cloth was released.":
+            "Reservation was not active; no cloth was consumed."});
+        else assert.deepEqual(result,{error:"Stock operation could not be verified."});
+      }
+    }
     assert.ok(!output.includes(marker),"private fake stock RPC error leaked in server logs");
-    console.log("TITAN stock API private boundary PASS: 29 synthetic authenticated cases, no real writes.");
+    console.log("TITAN stock API private boundary PASS: 49 synthetic authenticated cases, no real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>upstream.close(resolve));
