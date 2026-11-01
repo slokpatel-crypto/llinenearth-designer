@@ -1177,6 +1177,16 @@ requireTokens("tests/production-creation-receipt-lookup.test.ts",[
   "PRODUCTION_WRITE_EPOCH_KEY",
   "productionWriteReviewSnapshotUnchanged(store,old)",
 ]);
+
+requireTokens("scripts/verify-production-creation-receipt-epoch-browser.cjs",[
+  "M145 signed creation-receipt epoch browser QA is CI-only.",
+  "COMMITTED CREATION RECEIPTS", "window.__m145Race.release()",
+  "An older receipt must not be displayed for a superseded write generation.",
+  "for(const width of [390,768,1440])",
+]);
+requireTokens(".github/workflows/ci.yml",[
+  "node scripts/verify-production-creation-receipt-epoch-browser.cjs",
+]);
 // M108: quote and order creation must use one client-provided UUID whose
 // exact intent is deduplicated atomically by private PostgreSQL, not a new
 // server-generated UUID on each retry. Only the service role may execute.
