@@ -11,6 +11,10 @@ test("distributed OTP subjects are keyed normalized email digests, never stored 
   assert.notEqual(a,otpRateSubjectHash("bob@example.test",one));
   assert.notEqual(a,otpRateSubjectHash("alice@example.test",two));
   assert.ok(!a.includes("alice"));
+  const verifyDigest=otpRateSubjectHash("alice@example.test",one,"verify");
+  assert.match(verifyDigest,/^[a-f0-9]{64}$/);
+  assert.notEqual(verifyDigest,a,"OTP send and verify attempts must have isolated budgets");
+  assert.equal(verifyDigest,otpRateSubjectHash("alice@example.test",one,"verify"));
   for(const email of ["", "Alice@example.test","alice@example.test ","x".repeat(255)])
     assert.throws(()=>otpRateSubjectHash(email,one),/Invalid OTP/);
   assert.throws(()=>otpRateSubjectHash("alice@example.test","short"),/Invalid OTP/);
@@ -32,4 +36,10 @@ test("OTP route requires distributed guard before code dispatch and never logs r
   assert.match(sql,/least\(customer_otp_rate_windows.attempts\+1,9\)/);
   assert.match(sql,/grant execute on function public.customer_otp_rate_consume\(text\) to service_role/);
   assert.doesNotMatch(sql,/customer_email|access_token|refresh_token/);
+  const verify=readFileSync("src/app/api/customer-auth/verify/route.ts","utf8");
+  assert.match(verify,/await distributedOtpRateAllowed\(email,"verify"\)/);
+  assert.ok(verify.indexOf('await distributedOtpRateAllowed(email,"verify")')<
+    verify.indexOf("await verifyCustomerOtp(email,token)"));
+  assert.match(verify,/Too many code attempts/);
+  assert.match(verify,/Secure code verification is temporarily unavailable/);
 });

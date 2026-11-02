@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { secureJsonRequestError, readSecureJsonObject, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { customerSessionBearerAllowed, customerSessionRevocationRequired } from "@/lib/customer-session-revocation";
+import { distributedOtpRateAllowed } from "@/lib/customer-otp-rate";
 import {
   CUSTOMER_ACCESS_COOKIE,
   CUSTOMER_REFRESH_COOKIE,
@@ -27,6 +28,16 @@ export async function POST(request:Request){
       return NextResponse.json({error:"Enter the email and code you received."},{status:400});
     }
 
+    // A separate shared email budget limits OTP guessing across instances.
+    // A broken throttle store must not allow unlimited verification attempts.
+    try{
+      if(!await distributedOtpRateAllowed(email,"verify"))
+        return NextResponse.json({error:"Too many code attempts. Try again later."},
+          {status:429,headers:{"cache-control":"private, no-store"}});
+    }catch{
+      return NextResponse.json({error:"Secure code verification is temporarily unavailable."},
+        {status:503,headers:{"cache-control":"private, no-store"}});
+    }
     const session=await verifyCustomerOtp(email,token);
     if(!session.user?.id) {
       return NextResponse.json({error:"The sign-in response was incomplete."},{status:502});
