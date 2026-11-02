@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
+import { operatorEvidenceMutationRequestError } from "@/lib/designer/operator-evidence-mutation-safety";
 import { verifyProductionDeliveryOrders, verifyProductionDeliveryAudits } from "@/lib/designer/production-delivery-ledger-validation";
 import { PRODUCTION_DELIVERY_LEDGER_RPC_LIMIT, deliveryLedgerSnapshotIsExhaustive } from "@/lib/designer/production-delivery-snapshot-completeness";
 import { requireOperatorCreatedId } from "@/lib/designer/operator-created-id";
@@ -69,6 +70,8 @@ export async function GET(){
 
 export async function POST(request:Request){
   if(!await authorized()) return privateEvidenceJson({error:"Unauthorized."},{status:401});
+  const unsafe=operatorEvidenceMutationRequestError(request);
+  if(unsafe)return privateEvidenceJson({error:unsafe.error},{status:unsafe.status});
   let orderId:string;
   let draft:ReturnType<typeof normalizeProductionDeliveryEvidence>;
   try{
