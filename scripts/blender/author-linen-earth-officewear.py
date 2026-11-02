@@ -41,6 +41,8 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
+    parser.add_argument("--experimental-waist-refinement-level", type=int, choices=(0, 1), default=1,
+                        help="0 is the native-control candidate; default 1 fixes real waist body clearance")
     return parser.parse_args(argv)
 
 
@@ -196,7 +198,7 @@ def actual_contact_pairs(body_tree, garment):
     return count
 
 
-def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
+def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinement_level=1):
     # Measured diagnostics only. These are not garment acceptance or fit proof.
     stages = []
     def record_stage(stage):
@@ -210,6 +212,18 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
     smooth.iterations = 3
     apply_modifier(obj, smooth)
     record_stage("afterSmoothing")
+
+    # Real pinned CC0 body measurements showed 122 waistband/body polygon BVH
+    # contacts before and ZERO after level-1 SIMPLE subdivision before 7mm
+    # clearance. Apply to this real panel alone: other five panels regressed
+    # under global subdivision. Never replace the locked source body.
+    if obj.name == "TrouserWaistFabric" and waist_refinement_level == 1:
+        refine = obj.modifiers.new("LE_WAIST_SURFACE_REFINEMENT", "SUBSURF")
+        refine.subdivision_type = "SIMPLE"
+        refine.levels = 1
+        refine.render_levels = 1
+        apply_modifier(obj, refine)
+        obj["linen_earth_waist_surface_refinement_level"] = 1
 
     # Apply actual body clearance AFTER geometry-changing smoothing.
     # No subsequent surface-displacement modifier may consume that clearance.
@@ -282,12 +296,24 @@ def main():
     # (~0.647 of the body); no real cross-section could ever be measured.
     # Extend this shell through the guide while preserving measured fit checks.
     trouser_waist_upper_z = max(z(0.620), trouser_waist_guide_z + 0.028)
+    # The previous shirt region extended down to 51.5% body height and
+    # coincided with the trouser waist shell over most of the abdomen.
+    # Preserve BOTH real photographic waist-guide samples while cutting the
+    # physically tucked shirt hem 30mm below their lower locked landmark.
+    shirt_waist_guide_z = locked_guide_height(bpy.context.scene, "LE_GUIDE_SHIRT_WAIST")
+    if not z(0.58) <= shirt_waist_guide_z <= z(0.70):
+        raise RuntimeError("Locked shirt waist guide is outside the photographed body waist.")
+    if abs(shirt_waist_guide_z - trouser_waist_guide_z) > 0.050:
+        raise RuntimeError("Shirt and trouser waist guides are too far apart for a single tucked seam.")
+    tucked_shirt_hem_z = min(shirt_waist_guide_z, trouser_waist_guide_z) - 0.030
+    if not z(0.57) <= tucked_shirt_hem_z < min(shirt_waist_guide_z, trouser_waist_guide_z):
+        raise RuntimeError("Cannot locate a nonempty photographed tucked shirt hem.")
     torso_half = 0.245
     arm_root = 0.155
     hip_half = 0.245
 
     regions = {
-        "ShirtTorsoFabric": lambda p: z(0.515) <= p.z <= z(0.895) and abs(p.x-center_x) <= torso_half,
+        "ShirtTorsoFabric": lambda p: tucked_shirt_hem_z <= p.z <= z(0.895) and abs(p.x-center_x) <= torso_half,
         "ShirtSleeveLFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x <= -arm_root,
         "ShirtSleeveRFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x >= arm_root,
         "TrouserWaistFabric": lambda p: z(0.455) <= p.z <= trouser_waist_upper_z and abs(p.x-center_x) <= hip_half,
@@ -303,7 +329,8 @@ def main():
     authored = []
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
-        fit_shell(obj, body, clearance_m, thickness_m, body_contact_tree)
+        fit_shell(obj, body, clearance_m, thickness_m, body_contact_tree,
+                  options.experimental_waist_refinement_level)
         planar_grain_uv(obj)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(clearance_m * 1000.0, 3)
@@ -316,6 +343,9 @@ def main():
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
     bpy.context.scene["linen_earth_trouser_waist_guide_z_m"] = round(trouser_waist_guide_z, 6)
     bpy.context.scene["linen_earth_trouser_waist_authored_top_z_m"] = round(trouser_waist_upper_z, 6)
+    bpy.context.scene["linen_earth_tucked_shirt_hem_z_m"] = round(tucked_shirt_hem_z, 6)
+    bpy.context.scene["linen_earth_locked_shirt_waist_guide_z_m"] = round(shirt_waist_guide_z, 6)
+    bpy.context.scene["linen_earth_trouser_waist_refinement_level"] = options.experimental_waist_refinement_level
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
@@ -324,6 +354,7 @@ def main():
     print("Garment objects: " + ", ".join(obj.name for obj in authored))
     print(f"Body clearance: {clearance_m*1000:.1f} mm · cloth shell thickness: {thickness_m*1000:.1f} mm")
     print(f"Locked trouser waist guide Z: {trouser_waist_guide_z:.4f} m · authored shell top: {trouser_waist_upper_z:.4f} m")
+    print(f"Locked shirt waist guide Z: {shirt_waist_guide_z:.4f} m · tucked shirt hem: {tucked_shirt_hem_z:.4f} m (30mm below guide)")
     print("Status: candidate only; run Blender preflight and owner/tailor visual fit review before production export.")
 
 
