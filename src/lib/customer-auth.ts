@@ -86,9 +86,14 @@ export async function verifyCustomerOtp(email:string,token:string):Promise<Supab
 }
 
 export async function getCustomerIdentity(request:Request):Promise<CustomerIdentity|null>{
-  const signedCookie=readCookie(request,CUSTOMER_SESSION_COOKIE);
-  if(signedCookie){
-    // A malformed/expired signed cookie must not silently downgrade to a legacy token.
+  // Presence, not truthiness, determines whether a signed cookie was sent.
+  // An empty or invalidly encoded signed cookie must NEVER downgrade to a
+  // legacy access token. Reject duplicate signed-cookie names as ambiguous.
+  const signedCookieParts=(request.headers.get("cookie")||"").split(";")
+    .filter(part=>part.trim().split("=")[0]===CUSTOMER_SESSION_COOKIE);
+  if(signedCookieParts.length){
+    if(signedCookieParts.length!==1)return null;
+    const signedCookie=readCookie(request,CUSTOMER_SESSION_COOKIE);
     const identity=verifySignedCustomerSession(signedCookie);
     if(!identity)return null;
     return await customerSessionBearerAllowed(signedCookie)?identity:null;
