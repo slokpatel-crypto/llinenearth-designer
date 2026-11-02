@@ -251,10 +251,45 @@ jobs:
       - name: Verify Next operator API against real disposable PostgREST
         run: |
           node scripts/verify-stock-next-postgrest.cjs
-          # Delete only the synthetic stock event minted by this test, so
-          # later PostgREST tests run with their own isolated evidence.
-          psql -v ON_ERROR_STOP=1 -c \
-            "delete from private.fabric_stock_ledger where request_key like 'SYNTH-M48-%';"
+          # M58 creates consume and release records whose request_key is
+          # NULL. Deleting only keyed receipts/reservations would orphan those
+          # genuine committed synthetic ledger events in the staging fixture.
+          # This entire job runs on disposable localhost titan_synthetic.
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          test "$TITAN_SYNTHETIC_PG_TEST" = enabled
+          # The built Next->PostgREST test creates two receipts, two
+          # reservations, one consumption and two release events (including
+          # unused reserved metres returned by the consumption).
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select case when
+              count(*) filter (where event_type='receipt')=2 and
+              count(*) filter (where event_type='reserve')=2 and
+              count(*) filter (where event_type='consume')=1 and
+              count(*) filter (where event_type='release')=2
+              then 'PASS' else 'FAIL' end
+             from private.fabric_stock_ledger
+             where fabric_id='linen-plain-60-sky-blue'" | grep -qx PASS
+          # Derive only M48/M56 synthetic reservation UUIDs from their
+          # persistent keyed 'reserve' rows, then delete their linked
+          # consume/release ledger entries together in one SQL statement.
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          with synthetic_reservations as materialized (
+            select reservation_id from private.fabric_stock_ledger
+            where request_key like 'SYNTH-M48-%'
+              and event_type='reserve' and reservation_id is not null
+          )
+          delete from private.fabric_stock_ledger
+          where request_key like 'SYNTH-M48-%'
+             or reservation_id in (select reservation_id from synthetic_reservations);
+          SQL
+          # The real catalog ID is used for this isolated operator HTTP test
+          # because the production boundary rejects fake IDs. The disposable
+          # DB must have no orphan test rows for it before the next fixture.
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select case when count(*)=0 then 'PASS' else 'FAIL' end
+             from private.fabric_stock_ledger
+             where fabric_id='linen-plain-60-sky-blue'" | grep -qx PASS
           node scripts/verify-stock-postgrest-rpc.cjs after
       - name: Confirm actual PostgREST synthetic ledgers can be discarded
         run: |
