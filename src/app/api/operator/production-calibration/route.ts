@@ -2,9 +2,20 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
+import { validateOperatorLedgerRows } from "@/lib/designer/operator-optional-rpc";
+import { requireOperatorCreatedId } from "@/lib/designer/operator-created-id";
 import { normalizeProductionCutEvidenceDraft } from "@/lib/designer/meterage-calibration";
 
 export const runtime="nodejs";
+const MAX_INCOMING_EVIDENCE_BYTES=32_768;
+const MAX_UPSTREAM_EVIDENCE_BYTES=4_194_304;
+function privateEvidenceJson(body:unknown,init?:ResponseInit){
+  const response=NextResponse.json(body,init);
+  response.headers.set("cache-control","private, no-store");
+  return response;
+}
+
 
 type CutRow={
   evidence_id:string;
@@ -40,11 +51,11 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     cache:"no-store",
     signal:AbortSignal.timeout(8_000),
   });
-  if(!response.ok){
-    const detail=(await response.text()).replace(/\s+/g," ").slice(0,280);
-    throw new Error("Production cut evidence request failed ("+response.status+"): "+detail);
-  }
-  return await response.json() as T;
+  // Never read, echo or log private PostgREST SQL/source details.
+  if(!response.ok) throw new Error("Production evidence upstream unavailable.");
+  const mime=response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+  if(mime!=="application/json") throw new Error("Invalid production evidence response.");
+  return await readBoundedJsonResponse(response,MAX_UPSTREAM_EVIDENCE_BYTES) as T;
 }
 
 function median(values:number[]){
@@ -56,15 +67,16 @@ function median(values:number[]){
 }
 
 export async function GET(){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return NextResponse.json({
+  if(!await authorized()) return privateEvidenceJson({error:"Unauthorized."},{status:401});
+  if(!getSupabaseAdminConfig()) return privateEvidenceJson({
     configured:false,cases:[],
     summary:{total:0,shirtCases:0,trouserCases:0,medianShirtMetres:null,medianTrouserMetres:null,readyForModel:false},
   },{headers:{"cache-control":"private, no-store"}});
 
   try{
     const rows=await rpc<CutRow[]>("production_cut_evidence_list",{p_limit:1000});
-    const cases=rows.map((row)=>({
+    const verifiedRows=validateOperatorLedgerRows(rows,1000) as unknown as CutRow[];
+    const cases=verifiedRows.map((row)=>({
       at:row.created_at,
       caseId:row.case_id,
       orderId:row.order_id,
@@ -84,7 +96,7 @@ export async function GET(){
     }));
     const shirts=cases.filter((item)=>item.garment==="shirt");
     const trousers=cases.filter((item)=>item.garment==="trouser");
-    return NextResponse.json({
+    return privateEvidenceJson({
       configured:true,cases:cases.slice(0,100),
       summary:{
         total:cases.length,
@@ -96,16 +108,19 @@ export async function GET(){
       },
     },{headers:{"cache-control":"private, no-store"}});
   }catch(error){
-    console.error("[operator/production-calibration:get]",error);
-    return NextResponse.json({error:"Production cut evidence could not be read."},{status:503});
+    console.error("[operator/production-calibration:get] request failed (details redacted).");
+    return privateEvidenceJson({error:"Production cut evidence could not be read."},{status:503});
   }
 }
 
 export async function POST(request:Request){
-  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  if(!await authorized()) return privateEvidenceJson({error:"Unauthorized."},{status:401});
   try{
-    const body=await request.json() as Record<string,unknown>;
-    if(String(body.action||"record")!=="record") return NextResponse.json({error:"Unsupported production calibration action."},{status:400});
+    const input=await readBoundedJsonResponse(request,MAX_INCOMING_EVIDENCE_BYTES);
+    if(!input||typeof input!=="object"||Array.isArray(input))
+      return privateEvidenceJson({error:"Valid production evidence JSON object required."},{status:400});
+    const body=input as Record<string,unknown>;
+    if(String(body.action||"record")!=="record") return privateEvidenceJson({error:"Unsupported production calibration action."},{status:400});
     const draft=normalizeProductionCutEvidenceDraft(body);
     const evidenceId=await rpc<string>("production_cut_evidence_record",{
       p_case_id:draft.caseId,
@@ -121,9 +136,9 @@ export async function POST(request:Request){
       p_evidence_reference:draft.evidenceReference,
       p_note:draft.note,
     });
-    return NextResponse.json({evidenceId});
+    return privateEvidenceJson({evidenceId:requireOperatorCreatedId(evidenceId)});
   }catch(error){
-    console.error("[operator/production-calibration:post]",error);
-    return NextResponse.json({error:error instanceof Error?error.message:"Production cut evidence could not be recorded."},{status:409});
+    console.error("[operator/production-calibration:post] request failed (details redacted).");
+    return privateEvidenceJson({error:"Production evidence could not be recorded or verified."},{status:503});
   }
 }
