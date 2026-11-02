@@ -90,14 +90,22 @@ function colorName(hex: string) {
 
 function filenameHint(name: string) {
   const n = name.toLowerCase();
+  // Short fabric abbreviations like TR/PV must be full filename tokens:
+  // "stripe", "texture" and "preview" are not fibre-composition evidence.
+  const tokens = `-${n.replace(/[^a-z0-9]+/g,"-")}-`;
+  const matches = (key: string) => ["tr","pv"].includes(key)
+    ? tokens.includes(`-${key}-`)
+    : n.includes(key);
   const map: Array<[string[], string]> = [
-    [["linen"],"Linen"], [["linencotton","linen-cotton","linen_cotton"],"Linen-Cotton"], [["poplin"],"Cotton Poplin"],
+    // Match the specific blend before the generic fibre, or linen-cotton
+    // sample names silently become pure linen.
+    [["linencotton","linen-cotton","linen_cotton"],"Linen-Cotton"], [["linen"],"Linen"], [["poplin"],"Cotton Poplin"],
     [["oxford"],"Oxford Cotton"], [["twill"],"Cotton Twill"], [["tr-wool","trwool","pvwool"],"TR-Wool / Poly-Viscose-Wool"],
     [["tr","polyviscose","poly-viscose","pv"],"TR / Poly-Viscose Suiting"], [["tropical"],"Tropical Wool"], [["hopsack"],"Hopsack Wool"],
     [["flannel"],"Wool Flannel"], [["seersucker"],"Cotton Seersucker"], [["denim","jean"],"Denim"], [["corduroy","cord"],"Corduroy"],
     [["velvet"],"Velvet"], [["silk"],"Silk Blend"], [["cotton"],"Cotton Poplin"], [["wool"],"Tropical Wool"]
   ];
-  return map.find(([keys]) => keys.some((k) => n.includes(k)))?.[1];
+  return map.find(([keys]) => keys.some(matches))?.[1];
 }
 
 function scoreFamilies(input: FabricAnalysisInput): FabricCandidate[] {
