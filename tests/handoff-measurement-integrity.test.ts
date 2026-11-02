@@ -140,3 +140,21 @@ test("unknown advanced cut ID is never passed off as an exact reconstructable ta
   packet.construction.styleSpec.pant.fit="nonexistent_shape";
   assert.throws(()=>buildTailorTechPackHtml(packet),/Unsafe tailor tech pack construction/);
 });
+
+test("printable tech pack preserves locked ease source and complete block instructions",()=>{
+  const revision=createRevision([chest],[waist,seat]);
+  revision.garmentSpec.blockStrategy={
+    shirtBlock:"shaped-shirt",trouserBlock:"clean-upper-block",
+    torsoShape:"tapered",seatShape:"balanced",
+    adjustments:[{id:"BLOCK-SHOULDER-SLOPING",garment:"shirt",area:"shoulder slope / armhole",
+      severity:"review",message:"Verify shoulder slope at fitting."}],
+  };
+  const packet=buildProductionHandoff(revision);
+  const html=buildTailorTechPackHtml(packet);
+  assert.match(html,/Ease provenance/);
+  assert.match(html,/provisional_house_defaults/);
+  assert.match(html,/house-v1/);
+  assert.match(html,/BLOCK-SHOULDER-SLOPING/);
+  assert.match(html,/Verify shoulder slope at fitting/);
+  assert.match(html,/NOT REQUESTED/);
+});
