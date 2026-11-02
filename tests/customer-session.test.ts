@@ -38,3 +38,19 @@ test("customer session requires a strong signing secret",()=>{
     id:"123e4567-e89b-12d3-a456-426614174000",email:null,
   }),/too short/);
 });
+
+test("customer session cannot be replayed with modified identity or rotated secret",()=>{
+  const now=Date.parse("2026-10-01T10:00:00Z");
+  const token=createCustomerSessionToken(secret,{
+    id:"123e4567-e89b-12d3-a456-426614174000",email:null,
+  },now);
+  const [version,payload,signature]=token.split(".");
+  const forged=Buffer.from(JSON.stringify({
+    v:1,id:"223e4567-e89b-12d3-a456-426614174000",
+    email:null,exp:now+CUSTOMER_SESSION_MAX_AGE_SECONDS*1000,
+  })).toString("base64url");
+  assert.equal(verifyCustomerSessionToken(secret,version+"."+forged+"."+signature,now),null);
+  assert.equal(verifyCustomerSessionToken(secret+"-rotated",token,now),null);
+  assert.equal(verifyCustomerSessionToken(secret,token,now-120_000),null);
+  assert.equal(verifyCustomerSessionToken(secret,token+".extra",now),null);
+});
