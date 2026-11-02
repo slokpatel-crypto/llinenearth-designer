@@ -100,6 +100,11 @@ async function main(){
     if(path==="/rest/v1/rpc/production_claim_revision_ownership"){
       res.writeHead(200,{"content-type":"application/json"});res.end("true");return;
     }
+    if(path==="/rest/v1/rpc/production_quote_accept_owned"){
+      assert.equal(payload.p_quote_id,vaultId);
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end(payload.p_owner_user_id==="123e4567-e89b-12d3-a456-426614174000"?"true":"false");return;
+    }
     if(path==="/rest/v1/rpc/designer_locked_revision_vault_get_owned"){
       assert.equal(payload.p_vault_id,vaultId);
       res.writeHead(200,{"content-type":"application/json"});
@@ -200,7 +205,7 @@ async function main(){
         headers:{...fixtureHeaders(),...headers},
         body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
     }
-    for(const endpoint of ["/api/customer-auth/otp","/api/customer-auth/verify","/api/designer/share"]){
+    for(const endpoint of ["/api/customer-auth/otp","/api/customer-auth/verify","/api/designer/share","/api/customer-account/production"]){
       seen.length=0;
       const response=await authPost(endpoint,{email:"alice@example.com",token:"123456"},
         {origin:"https://attacker.invalid"});
@@ -208,7 +213,7 @@ async function main(){
       assert.equal(seen.length,0,"cross-site request must never touch Supabase");
       assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
     }
-    for(const endpoint of ["/api/customer-auth/otp","/api/customer-auth/verify","/api/designer/share"]){
+    for(const endpoint of ["/api/customer-auth/otp","/api/customer-auth/verify","/api/designer/share","/api/customer-account/production"]){
       seen.length=0;
       const response=await authPost(endpoint,{email:"alice@example.com",token:"123456"},
         {"sec-fetch-site":"same-site"});
@@ -254,6 +259,28 @@ async function main(){
     assert.equal(bobVerify.status,200);
     const bobCookie=bobVerify.headers.get("set-cookie")?.match(/le_customer_session=([^;]+)/)?.[1];
     assert.ok(bobCookie);
+    for(const [name,cookie,expectedStatus,ownerId] of [
+      ["alice",signedCookie,200,"123e4567-e89b-12d3-a456-426614174000"],
+      ["bob",bobCookie,404,"223e4567-e89b-12d3-a456-426614174000"],
+    ]){
+      seen.length=0;
+      const accepted=await fetch(origin+"/api/customer-account/production",{
+        method:"POST",headers:{...fixtureHeaders(),cookie:"le_customer_session="+cookie},
+        body:JSON.stringify({action:"accept_quote",quoteId:vaultId,
+          ownerUserId:"123e4567-e89b-12d3-a456-426614174000"}),
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(accepted.status,expectedStatus,name+" owner-only quote acceptance");
+      assert.equal(seen.length,1);
+      assert.equal(seen[0].path,"/rest/v1/rpc/production_quote_accept_owned");
+      assert.equal(seen[0].payload.p_owner_user_id,ownerId);
+    }
+    seen.length=0;
+    const unauthedQuote=await fetch(origin+"/api/customer-account/production",{
+      method:"POST",headers:fixtureHeaders(),
+      body:JSON.stringify({action:"accept_quote",quoteId:vaultId}),
+      signal:AbortSignal.timeout(15000)});
+    assert.equal(unauthedQuote.status,401);
+    assert.equal(seen.length,0);
     for(const [name,cookie,expectedStatus,expectedOwner] of [
       ["alice",signedCookie,200,"123e4567-e89b-12d3-a456-426614174000"],
       ["bob",bobCookie,404,"223e4567-e89b-12d3-a456-426614174000"],
