@@ -248,6 +248,22 @@ def viewer_manifest_path(output_path):
     return root + ".viewer.json"
 
 
+def validate_export_destination(output_path, panel_spec_path):
+    """Never leave a legacy measured sidecar attached to an unmeasured GLB.
+
+    This check must run before preflight/export scene mutation, and never
+    delete the existing GLB or its source evidence on failure.
+    """
+    manifest_path = viewer_manifest_path(output_path)
+    if not panel_spec_path and os.path.exists(manifest_path):
+        raise RuntimeError(
+            "Refusing to overwrite a GLB without measured --panel-spec while "
+            "a .viewer.json sidecar already exists. Supply a verified panel "
+            "spec or choose a new candidate output path."
+        )
+    return manifest_path
+
+
 def write_viewer_manifest(output_path, height, source, model_identity, panel_spec):
     payload = {
         "version": CONTRACT_VERSION,
@@ -292,6 +308,8 @@ def export_glb(collection, output_path):
 
 def main():
     args = cli_args()
+    # Prevent a false GLB/physical-metre manifest pairing before any export.
+    validate_export_destination(args.output, args.panel_spec)
     run_scene_preflight()
     panel_spec = load_panel_spec(args.panel_spec) if args.panel_spec else None
     source = scene_source_provenance(bpy.context.scene) if panel_spec else None
