@@ -17,7 +17,14 @@ test("only the real trouser waist receives non-smoothing topology refinement bef
     "real waist refinement must follow smoothing and precede unchanged body clearance");
   assert.ok(pipeline.includes('shrink.wrap_method = "NEAREST_SURFACEPOINT"'));
   assert.ok(pipeline.includes('shrink.wrap_mode = "OUTSIDE_SURFACE"'));
-  assert.ok(pipeline.includes('effective_clearance = clearance_m + (waist_extra_m if obj.name == "TrouserWaistFabric" else 0.0)'));
+  assert.ok(pipeline.includes('effective_clearance = clearance_m + ('),
+    "clearance must use the original source body base");
+  assert.ok(pipeline.includes('waist_extra_m if obj.name == "TrouserWaistFabric"'),
+    "only the approved waistband gets its 3mm default extra");
+  assert.ok(pipeline.includes('leg_extra_m if obj.name in ("TrouserLegLFabric", "TrouserLegRFabric")'),
+    "only two real leg shells can get optional native experimental clearance");
+  assert.ok(pipeline.includes('else 0.0'),
+    "shirt torso and both sleeves must retain the unchanged base clearance");
   assert.ok(pipeline.includes("shrink.offset = effective_clearance"));
   assert.ok(file.includes('default=3.0'),"default candidate must use proven +3mm waist layering");
   assert.ok(file.includes('options.experimental_waist_extra_clearance_mm'));
