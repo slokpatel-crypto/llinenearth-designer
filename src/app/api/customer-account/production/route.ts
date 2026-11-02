@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { secureJsonRequestError, readSecureJsonObject, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeCustomerProductionOutcome } from "@/lib/designer/customer-production-outcomes";
 
 export const runtime="nodejs";
+const MAX_CUSTOMER_PRODUCTION_REQUEST_BYTES=16_384;
+const privateJson=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"}});
 
 async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
   const config=getSupabaseAdminConfig();
@@ -16,8 +19,8 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     signal:AbortSignal.timeout(8_000),
   });
   if(!response.ok){
-    const detail=(await response.text()).slice(0,240);
-    throw new Error(`Customer production request failed (${response.status}): ${detail}`);
+    // Do not propagate private upstream payloads to logs or client errors.
+    throw new Error("Customer production upstream request failed.");
   }
   return await response.json() as T;
 }
@@ -39,18 +42,20 @@ export async function GET(request:Request){
       {headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"}},
     );
   }catch(error){
-    console.error("[customer-account/production]",error);
+    console.error("[customer-account/production] request failed (details redacted).");
     return NextResponse.json({error:"Production status is temporarily unavailable."},{status:503});
   }
 }
 
 
 export async function POST(request:Request){
+  const requestError=secureJsonRequestError(request,MAX_CUSTOMER_PRODUCTION_REQUEST_BYTES);
+  if(requestError)return privateJson({error:requestError.error},requestError.status);
   try{
     const customer=await getCustomerIdentity(request);
-    if(!customer) return NextResponse.json({error:"Customer sign-in is required."},{status:401});
+    if(!customer) return privateJson({error:"Customer sign-in is required."},401);
 
-    const body=await request.json() as Record<string,unknown>;
+    const body=await readSecureJsonObject(request,MAX_CUSTOMER_PRODUCTION_REQUEST_BYTES);
     const action=String(body.action||"");
     const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -94,10 +99,9 @@ export async function POST(request:Request){
 
     return NextResponse.json({error:"Unsupported customer production action."},{status:400});
   }catch(error){
-    console.error("[customer-account/production]",error);
-    return NextResponse.json(
-      {error:"Customer production action could not be completed."},
-      {status:409},
-    );
+    if(error instanceof SecureJsonBodyTooLarge)return privateJson({error:"Request payload is too large."},413);
+    if(error instanceof SecureJsonBodyInvalid)return privateJson({error:"Invalid JSON request."},400);
+    console.error("[customer-account/production] action failed (details redacted).");
+    return privateJson({error:"Customer production action could not be completed."},409);
   }
 }
