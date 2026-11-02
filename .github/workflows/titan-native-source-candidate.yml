@@ -12,6 +12,7 @@ on:
       - "scripts/blender/diagnose-linen-earth-contact.py"
       - "scripts/blender/diagnose-linen-earth-crotch.py"
       - "scripts/blender/diagnose-crotch-modifier-stages.py"
+      - "tests/crotch-solidify-rim-trial.test.ts"
       - "tests/crotch-modifier-stage-origin.test.ts"
       - "tests/blender/test_real_contact_diagnostics.py"
       - "tests/blender/test_real_crotch_cross_sections.py"
@@ -30,6 +31,7 @@ on:
       - "scripts/blender/diagnose-linen-earth-contact.py"
       - "scripts/blender/diagnose-linen-earth-crotch.py"
       - "scripts/blender/diagnose-crotch-modifier-stages.py"
+      - "tests/crotch-solidify-rim-trial.test.ts"
       - "tests/crotch-modifier-stage-origin.test.ts"
       - "tests/blender/test_real_contact_diagnostics.py"
       - "tests/blender/test_real_crotch_cross_sections.py"
@@ -526,6 +528,130 @@ jobs:
               "candidateOnly": True,
           }))
           PY
+      - name: Isolate actual Solidify rim contribution to crotch collision (RESEARCH ONLY)
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+            --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
+            --experimental-leg-rim-off \
+            --output .cache/linen-earth/titan-crotch-rimless-research-only.blend
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-crotch-rimless-research-only.blend \
+            --python-exit-code 1 --python scripts/blender/diagnose-linen-earth-crotch.py -- \
+            --output "$RUNNER_TEMP/titan-candidate-evidence/crotch-leg-rimless.json"
+          log="$RUNNER_TEMP/titan-candidate-evidence/crotch-leg-rimless-preflight.log"
+          set +e
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-crotch-rimless-research-only.blend \
+            --python-exit-code 1 --python scripts/blender/preflight-linen-earth-officewear.py \
+            > "$log" 2>&1
+          status=$?
+          set -e
+          python3 scripts/blender/summarize-native-candidate-preflight.py \
+            --log "$log" --exit-code "$status" \
+            --output "$RUNNER_TEMP/titan-candidate-evidence/crotch-leg-rimless-preflight.json"
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          original = json.loads((root / "rejection-report.json").read_text(encoding="utf-8"))
+          source = json.loads((root / "crotch-cross-sections.json").read_text(encoding="utf-8"))
+          trial = json.loads((root / "crotch-leg-rimless-preflight.json").read_text(encoding="utf-8"))
+          rimless = json.loads((root / "crotch-leg-rimless.json").read_text(encoding="utf-8"))
+          for item in (original, source, trial, rimless):
+              assert item["modelIdentityId"] == "linen-earth-studio-model-v1"
+              assert item["candidateOnly"] is True and item["productionApproved"] is False
+          assert trial["preflightReady"] is False and rimless["physicalFitApproved"] is False
+          assert original["rejectionReasonCount"] == 10
+          assert original["boundaryIntersections"]["garmentLegToLeg"] == source["measurements"]["legLegPolygonContactPairs"] == 89
+          assert trial["boundaryIntersections"]["garmentLegToLeg"] == rimless["measurements"]["legLegPolygonContactPairs"]
+          measured = rimless["measurements"]
+          open_edges = {part: measured[f"{part}LegOpenEdges"]["allOpenBoundaryEdges"] for part in ("left","right")}
+          assert open_edges["left"] > 0 and open_edges["right"] > 0, (
+              "Experimental rim-off must reveal unsewn open cloth edges and NEVER be production-safe.")
+          print("TITAN_REAL_RIMLESS_CROTCH_PHYSICAL_EXPERIMENT", json.dumps({
+              "originalLegLeg": original["boundaryIntersections"]["garmentLegToLeg"],
+              "rimlessLegLeg": trial["boundaryIntersections"]["garmentLegToLeg"],
+              "originalLeftBody": original["boundaryIntersections"]["bodyTrouserLegL"],
+              "rimlessLeftBody": trial["boundaryIntersections"]["bodyTrouserLegL"],
+              "originalRightBody": original["boundaryIntersections"]["bodyTrouserLegR"],
+              "rimlessRightBody": trial["boundaryIntersections"]["bodyTrouserLegR"],
+              "openUnsewnLegEdges": open_edges,
+              "rimlessHardRejectionReasons": trial["rejectionReasonCount"],
+              "neverPromote": True,
+          }))
+          print("TITAN_RIMLESS_TEST_COMPLETED_NOT_PRODUCTION_APPROVED")
+          PY
+      - name: Compare real closed-rim inward and symmetric leg cloth thickness (research only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for label in symmetric inward; do
+            if [ "$label" = symmetric ]; then offset=0; else offset=-1; fi
+            "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+              --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
+              --experimental-leg-solidify-offset "$offset" \
+              --output ".cache/linen-earth/titan-leg-thickness-${label}.blend"
+            "$BLENDER_BIN" --background ".cache/linen-earth/titan-leg-thickness-${label}.blend" \
+              --python-exit-code 1 --python scripts/blender/diagnose-linen-earth-crotch.py -- \
+              --output "$RUNNER_TEMP/titan-candidate-evidence/leg-thickness-${label}.json"
+            log="$RUNNER_TEMP/titan-candidate-evidence/leg-thickness-${label}.log"
+            set +e
+            "$BLENDER_BIN" --background ".cache/linen-earth/titan-leg-thickness-${label}.blend" \
+              --python-exit-code 1 --python scripts/blender/preflight-linen-earth-officewear.py \
+              > "$log" 2>&1
+            status=$?
+            set -e
+            python3 scripts/blender/summarize-native-candidate-preflight.py \
+              --log "$log" --exit-code "$status" \
+              --output "$RUNNER_TEMP/titan-candidate-evidence/leg-thickness-${label}-preflight.json"
+          done
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence" <<'PY'
+          import json
+          import math
+          import sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          original = json.loads((root / "rejection-report.json").read_text(encoding="utf-8"))
+          original_diag = json.loads((root / "crotch-cross-sections.json").read_text(encoding="utf-8"))
+          assert original["rejectionReasonCount"] == 10
+          assert original["boundaryIntersections"]["garmentLegToLeg"] == 89
+          for label in ("symmetric", "inward"):
+              report = json.loads((root / f"leg-thickness-{label}-preflight.json").read_text(encoding="utf-8"))
+              diagnostic = json.loads((root / f"leg-thickness-{label}.json").read_text(encoding="utf-8"))
+              for source in (report, diagnostic):
+                  assert source["modelIdentityId"] == "linen-earth-studio-model-v1"
+                  assert source["candidateOnly"] is True and source["productionApproved"] is False
+              assert report["preflightReady"] is False and diagnostic["physicalFitApproved"] is False
+              pairs = report["boundaryIntersections"]
+              assert pairs["garmentLegToLeg"] == diagnostic["measurements"]["legLegPolygonContactPairs"]
+              for part in ("left", "right"):
+                  max_edges = original_diag["measurements"][f"{part}LegOpenEdges"]["allOpenBoundaryEdges"]
+                  actual_edges = diagnostic["measurements"][f"{part}LegOpenEdges"]["allOpenBoundaryEdges"]
+                  assert actual_edges <= max_edges, (
+                      "Closed-rim solidification variant introduces an unsewn open seam.",part)
+              for key, value in original["identityFitMeasurementsMm"].items():
+                  measured = report["identityFitMeasurementsMm"][key]
+                  assert isinstance(measured, (int, float)) and math.isfinite(measured)
+              regressions = {
+                  key: count for key, count in pairs.items()
+                  if count > original["boundaryIntersections"][key]
+              }
+              print(f"TITAN_REAL_CLOSED_CROTCH_SOLIDIFY_{label.upper()}", json.dumps({
+                  "originalLegLeg": original["boundaryIntersections"]["garmentLegToLeg"],
+                  "variantLegLeg": pairs["garmentLegToLeg"],
+                  "originalBodyLeft": original["boundaryIntersections"]["bodyTrouserLegL"],
+                  "variantBodyLeft": pairs["bodyTrouserLegL"],
+                  "originalBodyRight": original["boundaryIntersections"]["bodyTrouserLegR"],
+                  "variantBodyRight": pairs["bodyTrouserLegR"],
+                  "contactedAreaLeftMm2": diagnostic["measurements"]["contactingLeftLegFaceAreaMm2"],
+                  "contactedAreaRightMm2": diagnostic["measurements"]["contactingRightLegFaceAreaMm2"],
+                  "worsenedCollisionTypes": regressions,
+                  "hardPreflightBlockers": report["rejectionReasonCount"],
+                  "productionApproved": False,
+              }))
+          print("TITAN_REAL_CLOSED_SOLIDIFY_OFFSET_VARIANTS_MEASURED_NO_AUTO_PROMOTION")
+          PY
       - name: Upload rejection report, never an unapproved model
         if: always()
         uses: actions/upload-artifact@v4
@@ -541,6 +667,9 @@ jobs:
             ${{ runner.temp }}/titan-candidate-evidence/contact-diagnostics.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-cross-sections.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-modifier-stages.json
+            ${{ runner.temp }}/titan-candidate-evidence/crotch-leg-rimless.json
+            ${{ runner.temp }}/titan-candidate-evidence/crotch-leg-rimless-preflight.json
+            ${{ runner.temp }}/titan-candidate-evidence/leg-thickness-*.json
             ${{ runner.temp }}/titan-candidate-evidence/preflight.log
           if-no-files-found: ignore
           retention-days: 7
