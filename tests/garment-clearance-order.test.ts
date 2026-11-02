@@ -13,8 +13,14 @@ test("garment body clearance is applied AFTER all geometry-smoothing passes",()=
   assert.ok(smooth>=0&&smoothApply>smooth&&shrink>smoothApply&&shrinkApply>shrink&&solid>shrinkApply,
     "never smooth the cloth after final body clearance; inspect native collision counts");
   assert.ok(routine.includes('shrink.wrap_mode = "OUTSIDE_SURFACE"'));
-  assert.ok(routine.includes('effective_clearance = clearance_m + (waist_extra_m if obj.name == "TrouserWaistFabric" else 0.0)'),
-    "every other garment must retain original 7mm body clearance");
+  assert.ok(routine.includes('effective_clearance = clearance_m + ('),
+    "clearance must use the original source body base");
+  assert.ok(routine.includes('waist_extra_m if obj.name == "TrouserWaistFabric"'),
+    "only the approved waistband gets its 3mm default extra");
+  assert.ok(routine.includes('leg_extra_m if obj.name in ("TrouserLegLFabric", "TrouserLegRFabric")'),
+    "only two real leg shells can get optional native experimental clearance");
+  assert.ok(routine.includes('else 0.0'),
+    "shirt torso and both sleeves must retain the unchanged base clearance");
   assert.ok(routine.includes('shrink.offset = effective_clearance'),
     "the real waist-only extra clearance must be applied after smoothing");
   assert.ok(author.includes('"Experimental extra waistband layering clearance", 0.0, 9.0'),
