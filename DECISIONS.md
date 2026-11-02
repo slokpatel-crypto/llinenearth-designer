@@ -562,3 +562,7 @@ Share-link recipients must not be able to disable a link using the bearer URL al
 ## 2026-11-03 — Validate customer production RPC acknowledgments
 
 **Decision:** customer-facing service-role account history RPCs must be JSON, streamed with an explicit bounded response cap, and array-shaped within the existing SQL pagination limits. The customer outcome `returns uuid` RPC must return a valid UUID before the API can report `recorded:true`. Malformed/oversized responses fail closed and redact backend details. Adds pure validation and synthetic HTTP negative tests, without altering database contracts or other owners' production files. Exact-head CI and staging proof remain required.
+
+## 2026-11-03 — Bind OTP provider identity to normalized requested email
+
+**Decision:** bound OTP verification provider JSON to 64 KiB, legacy user identity JSON to 16 KiB, require application/json, and avoid reading/displaying upstream error bodies. A customer OTP verification may mint a durable signed cookie only when the provider returns a valid UUID and its normalized user email equals the requested OTP email. Legacy identity lookups with invalid MIME, JSON, size, or identifier are denied. Negative synthetic HTTP tests cover mismatched provider email, oversized/wrong-MIME identities and no-cookie behavior. No database or existing saved-design format changes; staging/live proxy verification and CI gates remain mandatory.
