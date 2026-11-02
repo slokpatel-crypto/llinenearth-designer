@@ -60,7 +60,13 @@ export function createStockManualAttemptTracker(
           throw new Error("Manual stock retry journal is full.");
         const key=makeKey();
         if(!UUID.test(key))throw new Error("Invalid generated stock key.");
-        storage.setItem(storageKey,JSON.stringify([...attempts,{fingerprint:identity,key}]));
+        const saved=JSON.stringify([...attempts,{fingerprint:identity,key}]);
+        storage.setItem(storageKey,saved);
+        // Browser extensions and mocked/partially unavailable storage can
+        // silently ignore a write. Never send physical stock or a reservation
+        // without first confirming that its retry key survived in this tab.
+        if(storage.getItem(storageKey)!==saved)
+          throw new Error("Stock retry identity did not persist.");
         return key;
       }catch{
         throw new Error("Stock retry tracking is unavailable in this browser tab. No stock movement was sent; reconcile earlier entries before trying again.");
