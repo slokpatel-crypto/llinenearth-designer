@@ -4,8 +4,10 @@ import { readFileSync } from "node:fs";
 import {
   styleDirectorConstructionIssues,
   styleDirectorIntelligenceTrustWeight,
+  styleDirectorPresentationIssues,
 } from "../src/lib/designer/style-director-compatibility.ts";
 import type { StyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
+import type { DesignerStyle } from "../src/lib/designer/engine.ts";
 
 const trust = (reviewStatus: "unreviewed" | "approved" | "corrected" | "rejected",
   level: "reviewed" | "high-confidence" | "provisional") =>
@@ -95,4 +97,46 @@ test("Style Director applies review gates and preserves real versioned camp/band
     'spec.shirt.type="band_collar_shirt"',
     'spec.shirt.collar="mandarin_band_collar"',
   ]) assert.ok(agent.includes(token),token);
+});
+
+const photo = (collar: string, shirtWear: string) =>
+  ({ collar, shirtWear }) as Pick<DesignerStyle, "collar" | "shirtWear">;
+
+test("formal and semi-formal camp proposals keep photo and locked spec aligned but require review", () => {
+  const camp = spec({
+    type: "camp_collar_resort", collar: "cuban_camp_collar", wear: "untucked",
+  });
+  const before = JSON.stringify(camp);
+  assert.deepEqual(styleDirectorPresentationIssues(photo("Cuban / Camp Collar", "Untucked"), camp), []);
+  for (const occasion of ["Formal", "Semi-Formal"] as const) {
+    assert.deepEqual(styleDirectorConstructionIssues(camp, occasion).map(x => x.code), ["formal_camp_collar"]);
+  }
+  assert.deepEqual(styleDirectorConstructionIssues(camp, "Casual"), []);
+  assert.equal(JSON.stringify(camp), before, "review must not rewrite locked construction");
+});
+
+test("band-collar formal proposal preserves compatible photo and versioned collar", () => {
+  const band = spec({type: "band_collar_shirt", collar: "mandarin_band_collar", wear: "tucked"});
+  assert.deepEqual(styleDirectorPresentationIssues(photo("Mandarin / Band Collar", "Tucked"), band), []);
+  assert.deepEqual(styleDirectorConstructionIssues(band, "Formal"), []);
+  assert.deepEqual(styleDirectorPresentationIssues(photo("Point (Standard) Collar", "Tucked"), band).map(x => x.code),
+    ["legacy_collar_mismatch"]);
+});
+
+test("photographic and versioned wear/collar disagreements are both explicit review flags", () => {
+  const camp = spec({type: "camp_collar_resort", collar: "cuban_camp_collar", wear: "untucked"});
+  assert.deepEqual(styleDirectorPresentationIssues(photo("Point (Standard) Collar", "Tucked"), camp).map(x => x.code),
+    ["legacy_wear_mismatch", "legacy_collar_mismatch"]);
+  const band = spec({type: "band_collar_shirt", collar: "mandarin_band_collar", wear: "tucked"});
+  assert.deepEqual(styleDirectorPresentationIssues(photo("Cuban / Camp Collar", "Untucked"), band).map(x => x.code),
+    ["legacy_wear_mismatch", "legacy_collar_mismatch"]);
+  assert.deepEqual(styleDirectorPresentationIssues(photo("Spread Collar", "Tucked"), spec()), []);
+});
+
+test("real-model recommendation wires occasion and presentation review before exposing a status", () => {
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes('if (!/camp|cuban/.test(shirt)) style.shirtWear = "Tucked";'));
+  assert.ok(agent.includes("styleDirectorConstructionIssues(styleSpec,occasion)"));
+  assert.ok(agent.includes("styleDirectorPresentationIssues(best.style,styleSpec)"));
+  assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'));
 });
