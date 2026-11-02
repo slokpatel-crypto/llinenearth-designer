@@ -46,7 +46,7 @@ test("customer account shares can be revoked across devices without retaining is
  assert.match(source,/action:"listOwned"/);
  assert.match(source,/action:"revokeOwned",tokenHash/);
  assert.match(source,/My public design shares/);
- assert.match(route,/const customer=await getCustomerIdentity\(request\)/);
+ assert.match(route,/customer=await getCustomerIdentity\(request\)/);
  assert.match(route,/listOwnedShareRevocations\(customer.id\)/);
  assert.match(route,/revokeOwnedShare\(tokenHash,customer.id\)/);
  assert.match(sql,/where s.owner_user_id=p_owner_user_id/);
