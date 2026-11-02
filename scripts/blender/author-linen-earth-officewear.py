@@ -41,7 +41,7 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
-    parser.add_argument("--experimental-right-hem-taper-mm", type=float, default=0.0,
+    parser.add_argument("--experimental-right-hem-taper-mm", type=float, default=5.0,
                         help="Native research only: gradual right hem taper; never approve on width alone")
     parser.add_argument("--experimental-waist-extra-clearance-mm", type=float, default=3.0,
                         help="Pinned tested waist layering (+3mm); alternatives are native candidate research only")
