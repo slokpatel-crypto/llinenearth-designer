@@ -129,3 +129,48 @@ test("reviewed physical claims are applied independently by field provenance",()
   assert.equal(result.fiberContent,null);
   assert.equal(result.patternScaleVerified,undefined);
 });
+
+test("missing or inconsistent physical repeat never upgrades customer scale",()=>{
+  for(const [repeatMm,stripeWidthMm] of [
+    [null,null],[0,null],[-3,null],[Infinity,null],[10,11],[10,NaN],
+  ] as const) {
+    const reviewed=intelligence("reviewed");
+    reviewed.measuredEvidence.repeatMm=repeatMm;
+    reviewed.measuredEvidence.stripeWidthMm=stripeWidthMm;
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    assert.equal(result.patternScaleVerified,undefined);
+    assert.equal(result.renderScale?.physicalScaleStatus,"unknown");
+  }
+});
+
+test("invalid physical evidence URL and unproven physical facts fail closed",()=>{
+  for(const sourceUrl of ["javascript:alert(1)","http://example.com/spec","https://"]) {
+    const reviewed=intelligence("reviewed");
+    reviewed.verifiedPhysical.sourceUrl=sourceUrl;
+    reviewed.verifiedPhysical.evidenceNote=null;
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    assert.equal(result.patternScaleVerified,undefined);
+    assert.equal(result.weightGsm,null);
+    assert.equal(result.drape,null);
+    assert.equal(result.fiberContent,null);
+  }
+});
+
+test("invalid GSM, drape or fibre values cannot turn into verified physical facts",()=>{
+  const reviewed=intelligence("reviewed");
+  reviewed.verifiedPhysical.gsm=Infinity;
+  reviewed.verifiedPhysical.drape="Rigid" as never;
+  reviewed.verifiedPhysical.fiberContent="   ";
+  const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+  assert.equal(result.weightGsm,null);
+  assert.equal(result.drape,null);
+  assert.equal(result.fiberContent,null);
+  assert.equal(result.fiberContentVerified,undefined);
+});
+
+test("previously verified fibre content is not overwritten by later analysis",()=>{
+  const prior={...fabric,fiberContent:"100% verified cotton",fiberContentVerified:true};
+  const result=applyVerifiedPhysicalFabricEvidence(prior,intelligence("reviewed"));
+  assert.equal(result.fiberContent,"100% verified cotton");
+  assert.equal(result.fiberContentVerified,true);
+});
