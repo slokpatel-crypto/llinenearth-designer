@@ -6,6 +6,7 @@ on:
       - "scripts/blender/bootstrap-human-base-meshes.py"
       - "scripts/blender/prepare-linen-earth-body.py"
       - "scripts/blender/author-linen-earth-officewear.py"
+      - "tests/right-hem-fit-trial.test.ts"
       - "scripts/blender/measure-waist-tuck-contact.py"
       - "scripts/blender/preflight-linen-earth-officewear.py"
       - "scripts/blender/diagnose-linen-earth-contact.py"
@@ -19,6 +20,7 @@ on:
     paths:
       - "scripts/blender/prepare-linen-earth-body.py"
       - "scripts/blender/author-linen-earth-officewear.py"
+      - "tests/right-hem-fit-trial.test.ts"
       - "scripts/blender/measure-waist-tuck-contact.py"
       - "scripts/blender/preflight-linen-earth-officewear.py"
       - "scripts/blender/diagnose-linen-earth-contact.py"
@@ -348,6 +350,63 @@ jobs:
               }))
           print("TITAN_TUCKED_LAYERING_FULL_PHYSICAL_PREFLIGHT_EVIDENCE_VALIDATED")
           PY
+      - name: Trial real photo-guided right trouser hem fit without changing default
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+            --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
+            --experimental-right-hem-taper-mm 5.0 \
+            --output .cache/linen-earth/titan-right-hem-5mm-control.blend
+          log="$RUNNER_TEMP/titan-candidate-evidence/right-hem-5mm-preflight.log"
+          set +e
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-right-hem-5mm-control.blend \
+            --python-exit-code 1 --python scripts/blender/preflight-linen-earth-officewear.py \
+            > "$log" 2>&1
+          exitcode=$?
+          set -e
+          python3 scripts/blender/summarize-native-candidate-preflight.py \
+            --log "$log" --exit-code "$exitcode" \
+            --output "$RUNNER_TEMP/titan-candidate-evidence/right-hem-5mm-preflight.json"
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence/rejection-report.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/right-hem-5mm-preflight.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          baseline, trial = [json.loads(Path(path).read_text(encoding="utf-8")) for path in sys.argv[1:]]
+          for report in (baseline, trial):
+              assert report["candidateOnly"] is True and report["productionApproved"] is False
+              assert report["modelIdentityId"] == "linen-earth-studio-model-v1"
+              assert report["preflightReady"] is False
+              assert report["boundaryIntersections"]["bodyTrouserWaist"] == 0
+              assert report["boundaryIntersections"]["shirtTrouserTuck"] == 0
+          original_width = baseline["identityFitMeasurementsMm"]["rightHemWidthMm"]
+          trial_width = trial["identityFitMeasurementsMm"]["rightHemWidthMm"]
+          assert original_width > 92 and 36 <= trial_width <= 92
+          assert trial_width < original_width, ("No real photographic right hem correction", original_width, trial_width)
+          for key, original in baseline["boundaryIntersections"].items():
+              assert trial["boundaryIntersections"][key] <= original, (
+                  "A real garment collision became worse during hem correction",
+                  key, trial["boundaryIntersections"][key], original)
+          assert trial["rejectionReasonCount"] <= baseline["rejectionReasonCount"] - 1, (
+              "Measured hem improvement did not reduce true hard preflight failures")
+          old_asymmetry = baseline["identityFitMeasurementsMm"]["hemWidthAsymmetryMm"]
+          new_asymmetry = trial["identityFitMeasurementsMm"]["hemWidthAsymmetryMm"]
+          assert 0 <= new_asymmetry < old_asymmetry and new_asymmetry <= 14, (
+              "Symmetric trouser hem adjustment must reduce real left/right width asymmetry",
+              old_asymmetry, new_asymmetry)
+          assert abs(trial_width - trial["identityFitMeasurementsMm"]["leftHemWidthMm"]) <= new_asymmetry + 0.02
+          for key, original in baseline["identityFitMeasurementsMm"].items():
+              if key not in ("rightHemWidthMm", "hemWidthAsymmetryMm"):
+                  assert trial["identityFitMeasurementsMm"][key] == original, (
+                      "Trial hem taper changed unrelated photographed fit dimensions", key)
+          print("TITAN_REAL_RIGHT_HEM_TAPER_NATIVE_FIT_VALIDATED_CANDIDATE_ONLY", json.dumps({
+              "originalRightHemWidthMm": original_width,
+              "trialRightHemWidthMm": trial_width,
+              "remainingHardPreflightFailures": trial["rejectionReasonCount"],
+              "productionApproved": trial["productionApproved"],
+          }))
+          PY
       - name: Upload rejection report, never an unapproved model
         if: always()
         uses: actions/upload-artifact@v4
@@ -355,6 +414,7 @@ jobs:
           name: titan-native-candidate-evidence
           path: |
             ${{ runner.temp }}/titan-candidate-evidence/rejection-report.json
+            ${{ runner.temp }}/titan-candidate-evidence/right-hem-5mm-preflight.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-tuck-control.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-tuck-refined.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-layering-extra-*mm.json
