@@ -1,0 +1,44 @@
+name: TITAN — Native Blender export evidence integrity
+
+on:
+  pull_request:
+    paths:
+      - "scripts/blender/export-linen-earth-officewear.py"
+      - "tests/blender/test_export_sidecar_preservation.py"
+      - "tests/garment-export-sidecar-safety.test.ts"
+      - ".github/workflows/titan-native-export-sidecar.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/blender/export-linen-earth-officewear.py"
+      - "tests/blender/test_export_sidecar_preservation.py"
+      - ".github/workflows/titan-native-export-sidecar.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  measured-export-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download official SHA256-verified Blender 4.5.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --show-error --silent --retry 3 \
+            --connect-timeout 30 --max-time 900 \
+            "https://download.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz" \
+            --output "$RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz"
+          echo "9ba871ff2ecd36526b77432745980b7e6664ecd0c7ca11c48849073dcfe06da3  $RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz" | sha256sum --check --status
+          mkdir -p "$RUNNER_TEMP/titan-blender"
+          tar -xf "$RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz" -C "$RUNNER_TEMP/titan-blender"
+          echo "BLENDER_BIN=$RUNNER_TEMP/titan-blender/blender-4.5.14-linux-x64/blender" >> "$GITHUB_ENV"
+      - name: Prevent unmeasured export inheriting measured GLB metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --version | grep -F "Blender 4.5.14"
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_export_sidecar_preservation.py
