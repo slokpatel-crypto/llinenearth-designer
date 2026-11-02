@@ -115,7 +115,8 @@ export function normalizeStockReservation(input:unknown){
 export function normalizeStockConsumption(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock consumption evidence is required.");
   const source=input as Record<string,unknown>;
-  const reservationId=String(source.reservationId||"").trim();
+  // A JSON array or object must not coerce into a privileged reservation identity.
+  const reservationId=typeof source.reservationId==="string"?source.reservationId.trim():"";
   const actualMetres=exactStockMetres(source.actualMetres,"Actual consumed metres",100);
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
   const checkedBy=String(source.checkedBy||"").replace(/\s+/g," ").trim().slice(0,120);
@@ -137,7 +138,8 @@ export function normalizeStockConsumption(input:unknown){
 export function normalizeStockRelease(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock release evidence is required.");
   const source=input as Record<string,unknown>;
-  const reservationId=String(source.reservationId||"").trim();
+  // A JSON array or object must not coerce into a privileged reservation identity.
+  const reservationId=typeof source.reservationId==="string"?source.reservationId.trim():"";
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
   const releasedBy=String(source.releasedBy||"").replace(/\s+/g," ").trim().slice(0,120);
   const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
