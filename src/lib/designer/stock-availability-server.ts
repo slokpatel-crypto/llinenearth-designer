@@ -2,6 +2,8 @@ import "server-only";
 
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { applyVerifiedStockAvailability, type VerifiedStockSnapshotRow } from "@/lib/designer/stock-availability";
+import { normalizeStockSnapshotTransport } from "@/lib/designer/stock-snapshot-transport";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import type { FabricColorway } from "@/lib/fabric-stock";
 
 export async function loadVerifiedStockSnapshot(fabricIds:string[]):Promise<VerifiedStockSnapshotRow[]>{
@@ -20,17 +22,14 @@ export async function loadVerifiedStockSnapshot(fabricIds:string[]):Promise<Veri
       console.error("[designer/stock-availability] snapshot failed",response.status);
       return [];
     }
-    const rows=await response.json() as Array<Record<string,unknown>>;
-    return rows.map((row)=>({
-      fabric_id:String(row.fabric_id||""),
-      // Never convert a missing/null RPC value into the number zero: that
-      // would falsely label an absent measurement as verified zero stock.
-      available_metres:typeof row.available_metres==="number"||typeof row.available_metres==="string"
-        ?row.available_metres:NaN,
-      provenance_ready:row.provenance_ready===true,
-    }));
-  }catch(error){
-    console.error("[designer/stock-availability] snapshot failed",error);
+    const mime=response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+    if(mime!=="application/json") throw new Error("Unexpected stock snapshot media type.");
+    // A successful upstream status is not proof of bounded, well-formed
+    // ledger data. Parse no more than 2 MiB and verify the requested SKU scope.
+    const data=await readBoundedJsonResponse(response,2_097_152);
+    return normalizeStockSnapshotTransport(data,ids);
+  }catch{
+    console.error("[designer/stock-availability] snapshot unavailable (details redacted).");
     return [];
   }
 }
