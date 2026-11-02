@@ -17,6 +17,25 @@ test("production evidence mutation request accepts same-origin JSON before bound
   })),null);
 });
 
+test("same-origin browser Origin is accepted when Next is behind a localhost reverse proxy",()=>{
+  assert.equal(operatorEvidenceMutationRequestError({
+    url:"http://localhost:3100/api/operator/production-evidence",
+    headers:new Headers({origin:"http://127.0.0.1:3100",
+      host:"127.0.0.1:3100","content-type":"application/json"}),
+  }),null);
+  assert.equal(operatorEvidenceMutationRequestError({
+    url:"http://localhost:3100/api/operator/production-calibration",
+    headers:new Headers({origin:"https://shop.linenearth.example",
+      host:"shop.linenearth.example","content-type":"application/json"}),
+  }),null);
+  const bad=operatorEvidenceMutationRequestError({
+    url:"http://localhost:3100/api/operator/production-evidence",
+    headers:new Headers({origin:"https://evil.example",
+      host:"shop.linenearth.example","content-type":"application/json"}),
+  });
+  assert.equal(bad?.status,403);
+});
+
 test("cross-origin browser writes and spoofed origin values cannot reach privileged RPC",()=>{
   for(const origin of [
     "https://evil.example",
