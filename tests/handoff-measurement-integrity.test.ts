@@ -138,7 +138,11 @@ test("unknown advanced cut ID is never passed off as an exact reconstructable ta
   const packet=buildProductionHandoff(createRevision([chest],[waist,seat]));
   if(!packet.construction.styleSpec) throw Error("Missing packet advanced spec");
   packet.construction.styleSpec.pant.fit="nonexistent_shape";
-  assert.throws(()=>buildTailorTechPackHtml(packet),/Unsafe tailor tech pack construction/);
+  const html=buildTailorTechPackHtml(packet);
+  assert.match(html,/INVALID VERSIONED CONSTRUCTION/);
+  assert.match(html,/nonexistent_shape/);
+  assert.match(html,/review required/);
+  assert.match(html,/NO CUTTING AUTHORISATION/);
 });
 
 test("printable tech pack preserves locked ease source and complete block instructions",()=>{
