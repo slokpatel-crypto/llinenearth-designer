@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export type CustomerSessionIdentity={id:string;email:string|null};
 
@@ -32,6 +32,9 @@ export function createCustomerSessionToken(
     v:1,
     id,
     email:cleanEmail(identity.email),
+    // Independent sign-ins must never share the same revocation identity,
+    // even if the same customer logs in within the same millisecond.
+    nonce:randomBytes(16).toString("base64url"),
     exp:now+CUSTOMER_SESSION_MAX_AGE_SECONDS*1000,
   }),"utf8").toString("base64url");
   return `${VERSION}.${payload}.${sign(secret,payload)}`;
@@ -54,9 +57,16 @@ export function verifyCustomerSessionToken(
   if(a.length!==b.length||!timingSafeEqual(a,b)) return null;
   try{
     const data=JSON.parse(Buffer.from(payload,"base64url").toString("utf8")) as {
-      v?:number;id?:string;email?:string|null;exp?:number;
+      v?:number;id?:string;email?:string|null;exp?:number;nonce?:unknown;
     };
     if(data.v!==1||!validCustomerSessionIdentityId(data.id)) return null;
+    // Compatibility: existing signed lecs1 cookies predate the nonce field.
+    // New cookies must carry a canonical 128-bit nonce. The HMAC authenticates
+    // presence/absence alike, so this does not weaken the legacy check.
+    if(data.nonce!==undefined&&
+      (typeof data.nonce!=="string"||!/^[A-Za-z0-9_-]{22}$/.test(data.nonce)||
+        Buffer.from(data.nonce,"base64url").toString("base64url")!==data.nonce))
+      return null;
     if(typeof data.exp!=="number"||data.exp<=now||data.exp>now+CUSTOMER_SESSION_MAX_AGE_SECONDS*1000+60_000) return null;
     return {id:data.id,email:cleanEmail(data.email)};
   }catch{
