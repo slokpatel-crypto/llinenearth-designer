@@ -21,4 +21,12 @@ test("experimental inner-leg seam displacement must not affect original candidat
   assert.ok(workflow.includes('if name not in ("legCenterSpacingMm",)'));
   assert.ok(workflow.includes('"collisionRegressions": increased'));
   assert.ok(workflow.includes('TITAN_REAL_INNER_LEG_TRIAL_EVIDENCE_COMPLETE_NO_AUTO_SELECTION'));
+  assert.ok(author.includes('"--experimental-inner-leg-seam-reproject", action="store_true"'));
+  assert.ok(author.includes("if options.experimental_inner_leg_seam_reproject and options.experimental_inner_leg_seam_gap_mm == 0"));
+  assert.ok(author.includes('group = obj.vertex_groups.new(name="LE_UNSAVED_MOVED_CROTCH_ONLY")'));
+  assert.ok(author.includes('reprojection.wrap_mode = "OUTSIDE_SURFACE"'));
+  assert.ok(author.includes('reprojection.offset = clearance_m'));
+  assert.ok(workflow.includes('TITAN_INNER_SEAM_REPROJECTED_CANDIDATE_ONLY_NO_AUTO_SELECTION'));
+  assert.ok(workflow.includes('--experimental-inner-leg-seam-reproject'));
+
 });
