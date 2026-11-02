@@ -138,6 +138,40 @@ def verified_modifier_stages(obj, body_polygon_tree):
     return stages
 
 
+def verified_solidify_variants(obj, stages):
+    """Prevent variant data from becoming fictitious or stale fit evidence."""
+    raw = obj.get("linen_earth_solidify_variant_contacts_json")
+    if not isinstance(raw, str):
+        raise RuntimeError("Missing original-mesh solidify comparison evidence.")
+    try:
+        evidence = json.loads(raw)
+    except (ValueError, TypeError) as error:
+        raise RuntimeError("Malformed solidify comparison evidence.") from error
+    if not isinstance(evidence, dict) or type(evidence.get("baselineAfterBodyClearance")) is not int:
+        raise RuntimeError("Invalid real clearance baseline in solidify comparison.")
+    if evidence["baselineAfterBodyClearance"] != stages[2]["bodyIntersectionPairs"]:
+        raise RuntimeError("Solidify baseline disagrees with independently verified clearance stage.")
+    items = evidence.get("variants")
+    expected = (
+        ("outwardNoRim", 1.0, False),
+        ("outwardWithRim", 1.0, True),
+        ("inwardNoRim", -1.0, False),
+        ("inwardWithRim", -1.0, True),
+    )
+    if not isinstance(items, list) or len(items) != len(expected):
+        raise RuntimeError("Incomplete four-variant real Blender solidify comparison.")
+    for item, (label, offset, rim) in zip(items, expected):
+        if (not isinstance(item, dict) or item.get("variant") != label
+                or type(item.get("offset")) not in (float, int) or item["offset"] != offset
+                or type(item.get("rim")) is not bool or item["rim"] != rim
+                or type(item.get("bodyIntersectionPairs")) is not int
+                or item["bodyIntersectionPairs"] < 0):
+            raise RuntimeError("Inconsistent measured Blender solidify variant.")
+    if items[1]["bodyIntersectionPairs"] != stages[3]["bodyIntersectionPairs"]:
+        raise RuntimeError("Expected current outward-with-rim cloth comparison disagrees with actual output.")
+    return evidence
+
+
 def diagnose(body_geometry, garment_geometry):
     """Normals may be reversed; a negative normal projection is NOT an inside test."""
     body_points, body_faces = body_geometry
@@ -199,7 +233,9 @@ def diagnostic_report(scene):
         if obj is None:
             raise RuntimeError(f"Missing real garment panel: {name}")
         records[name] = diagnose(source, evaluated_world_geometry(obj))
-        records[name]["actualModifierContactStages"] = verified_modifier_stages(obj, source_polygon_tree)
+        stages = verified_modifier_stages(obj, source_polygon_tree)
+        records[name]["actualModifierContactStages"] = stages
+        records[name]["realSolidifyVariantComparisons"] = verified_solidify_variants(obj, stages)
     return {
         "version": "titan-actual-contact-diagnostics-v1",
         "modelIdentityId": IDENTITY,
@@ -209,6 +245,7 @@ def diagnostic_report(scene):
         "signedProjectionIsInteriorTest": False,
         "contactHistogramDescription": "Eight low-to-high 12.5%-of-body-height bands; triangle-pair counts, not penetration volumes.",
         "modifierStageMethod": "World-space evaluated polygon BVH with 0.5mm epsilon, independently verified against final garment; not a production clearance approval.",
+        "solidifyExperimentMethod": "Disposable in-memory clones tested with actual Blender SOLIDIFY; +/-normal offsets and rim-on/off. The original outward-with-rim candidate is unchanged. No variant is approved.",
         "explanation": (
             "World-space BVH triangle overlap counts are candidate defects; "
             "nearest-body normal projections are diagnostic only because body normals "
@@ -234,7 +271,8 @@ def main():
         print(f"{name}: {metrics['bodyGarmentIntersectingTrianglePairs']} body intersection pairs, "
               f"{metrics['negativeBodyNormalProjectionCount']} negative normal projections; "
               f"height octiles={metrics['contactPairsByBodyHeightOctile']}; "
-              f"authoring stages={metrics['actualModifierContactStages']}")
+              f"authoring stages={metrics['actualModifierContactStages']}; "
+              f"solidify variants={metrics['realSolidifyVariantComparisons']['variants']}")
 
 
 if __name__ == "__main__":
