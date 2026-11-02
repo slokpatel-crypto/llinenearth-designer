@@ -142,7 +142,8 @@ jobs:
             supabase/migrations/20261028_fabric_stock_provenance.sql \
             supabase/migrations/20261029_stock_reservation_provenance.sql \
             supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql \
-            supabase/migrations/20261102_stock_reservation_key_payload_binding.sql; do
+            supabase/migrations/20261102_stock_reservation_key_payload_binding.sql \
+            supabase/migrations/20261103_stock_reservation_provenance_gate.sql; do
             psql -v ON_ERROR_STOP=1 -f "$migration"
           done
       - name: Run actual SQL key replay, mismatch and rollback tests
@@ -150,6 +151,7 @@ jobs:
           {
             printf "set titan.synthetic_sql_test='enabled';\n"
             cat supabase/tests/20261102_stock_reservation_key_payload_binding.sql
+            cat supabase/tests/20261103_stock_reservation_provenance_gate.sql
           } | psql -v ON_ERROR_STOP=1
       - name: Confirm native test synthetic data rolled back
         run: |
