@@ -29,6 +29,17 @@ function literalStockEvidence(value:unknown,maxLength:number):string{
 }
 
 
+// Idempotency keys and physical fabric/revision identities must never be
+// silently clipped: distinct requests can share a valid prefix.
+function literalStockIdentity(value:unknown,label:string,maxLength:number):string{
+  if(typeof value!=="string") return "";
+  const identity=value.trim();
+  if(identity.length>maxLength)
+    throw new Error(`${label} exceeds ${maxLength} characters; identities cannot be truncated.`);
+  return identity;
+}
+
+
 export function stockSnapshot(events:StockEvent[]){
   // Local ledger replay must agree with the server's no-oversell invariants.
   // A "plausible" negative number is not usable physical stock evidence.
@@ -79,7 +90,7 @@ export function stockSnapshot(events:StockEvent[]){
 export function normalizeManualStockEvent(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock event evidence is required.");
   const source=input as Record<string,unknown>;
-  const fabricId=typeof source.fabricId==="string"?source.fabricId.trim().slice(0,160):"";
+  const fabricId=literalStockIdentity(source.fabricId,"Fabric ID",160);
   const eventType=(typeof source.eventType==="string"?source.eventType:"") as StockEventType;
   const quantityMetres=exactStockMetres(source.quantityMetres,"Stock quantity",100000);
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
@@ -102,9 +113,9 @@ export function normalizeManualStockEvent(input:unknown){
 export function normalizeStockReservation(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock reservation evidence is required.");
   const source=input as Record<string,unknown>;
-  const fabricId=typeof source.fabricId==="string"?source.fabricId.trim().slice(0,160):"";
-  const revisionId=typeof source.revisionId==="string"?source.revisionId.trim().slice(0,220):"";
-  const requestKey=typeof source.requestKey==="string"?source.requestKey.trim().slice(0,180):"";
+  const fabricId=literalStockIdentity(source.fabricId,"Fabric ID",160);
+  const revisionId=literalStockIdentity(source.revisionId,"Locked revision ID",220);
+  const requestKey=literalStockIdentity(source.requestKey,"Reservation request key",180);
   const quantityMetres=exactStockMetres(source.quantityMetres,"Stock quantity",100000);
   const requestedBy=literalStockEvidence(source.requestedBy,120);
   const sourceReference=literalStockEvidence(source.sourceReference,240);
