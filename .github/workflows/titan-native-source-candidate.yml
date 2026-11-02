@@ -159,6 +159,19 @@ jobs:
                       assert type(trial[key]) is int and trial[key] >= 0
               assert trials[0]["bodyPairsAfterWrap"] == stages[2]["bodyIntersectionPairs"]
               assert trials[0]["bodyPairsAfterClothThickness"] == stages[3]["bodyIntersectionPairs"]
+              refinement = metrics["realSurfaceRefinementComparisons"]
+              assert isinstance(refinement, list) and len(refinement) == 2
+              assert [item["simpleSubdivisionLevel"] for item in refinement] == [0, 1]
+              assert refinement[0]["preWrapVertices"] == refinement[0]["sourceVertices"]
+              assert refinement[1]["sourceVertices"] == refinement[0]["sourceVertices"]
+              assert refinement[1]["preWrapVertices"] > refinement[1]["sourceVertices"]
+              for trial in refinement:
+                  assert trial["clearanceMm"] == 7.0 and trial["clothThicknessMm"] == 1.6
+                  for key in ("sourceVertices", "preWrapVertices", "bodyPairsAfterWrap",
+                              "bodyPairsAfterClothThickness"):
+                      assert type(trial[key]) is int and trial[key] >= 0
+              assert refinement[0]["bodyPairsAfterWrap"] == stages[2]["bodyIntersectionPairs"]
+              assert refinement[0]["bodyPairsAfterClothThickness"] == stages[3]["bodyIntersectionPairs"]
               assert type(metrics["evaluatedVertices"]) is int and metrics["evaluatedVertices"] > 0
               assert type(metrics["evaluatedTriangles"]) is int and metrics["evaluatedTriangles"] > 0
           print("TITAN_CONTACT_EVIDENCE_FAIL_CLOSED_VALIDATION_PASSED")
