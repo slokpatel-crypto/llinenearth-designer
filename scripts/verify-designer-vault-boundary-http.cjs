@@ -103,7 +103,7 @@ async function main(){
     if(path==="/rest/v1/rpc/production_quote_accept_owned"){
       assert.equal(payload.p_quote_id,vaultId);
       res.writeHead(200,{"content-type":"application/json"});
-      res.end(payload.p_owner_user_id==="123e4567-e89b-12d3-a456-426614174000"?"true":"false");return;
+      res.end(mode==="quoteString"?'"false"':mode==="quoteNull"?"null":mode==="quoteObject"?'{"accepted":true}':payload.p_owner_user_id==="123e4567-e89b-12d3-a456-426614174000"?"true":"false");return;
     }
     if(path==="/rest/v1/rpc/designer_locked_revision_vault_get_owned"){
       assert.equal(payload.p_vault_id,vaultId);
@@ -274,6 +274,17 @@ async function main(){
       assert.equal(seen[0].path,"/rest/v1/rpc/production_quote_accept_owned");
       assert.equal(seen[0].payload.p_owner_user_id,ownerId);
     }
+    for(const kind of ["quoteString","quoteNull","quoteObject"]){
+      mode=kind;seen.length=0;
+      const response=await fetch(origin+"/api/customer-account/production",{
+        method:"POST",headers:{...fixtureHeaders(),cookie:"le_customer_session="+signedCookie},
+        body:JSON.stringify({action:"accept_quote",quoteId:vaultId}),
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(response.status,409,kind+" cannot forge quote acceptance");
+      assert.equal(seen.length,1);
+      assert.ok(!(await response.text()).includes('"accepted":true'));
+    }
+    mode="ok";
     seen.length=0;
     const unauthedQuote=await fetch(origin+"/api/customer-account/production",{
       method:"POST",headers:fixtureHeaders(),
