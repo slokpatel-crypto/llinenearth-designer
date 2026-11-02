@@ -3,9 +3,14 @@ import { secureJsonRequestError, readSecureJsonObject, SecureJsonBodyInvalid, Se
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeCustomerProductionOutcome } from "@/lib/designer/customer-production-outcomes";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
+import { requireOwnedProductionRows, requireCustomerOutcomeId } from "@/lib/designer/customer-production-rpc-contract";
 
 export const runtime="nodejs";
 const MAX_CUSTOMER_PRODUCTION_REQUEST_BYTES=16_384;
+// A full 100-300 row account history may contain line items, but upstream
+// service-role RPC data must never parse unbounded network responses.
+const MAX_CUSTOMER_PRODUCTION_RPC_RESPONSE_BYTES=4_194_304;
 const privateJson=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"}});
 
 async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
@@ -18,11 +23,12 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
     cache:"no-store",
     signal:AbortSignal.timeout(8_000),
   });
-  if(!response.ok){
-    // Do not propagate private upstream payloads to logs or client errors.
+  if(!response.ok||
+    response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase()!=="application/json"){
+    // Never propagate upstream payloads that could contain customer details.
     throw new Error("Customer production upstream request failed.");
   }
-  return await response.json() as T;
+  return await readBoundedJsonResponse(response,MAX_CUSTOMER_PRODUCTION_RPC_RESPONSE_BYTES) as T;
 }
 
 export async function GET(request:Request){
@@ -37,10 +43,12 @@ export async function GET(request:Request){
       rpc("production_customer_outcome_list_owned",{p_owner_user_id:customer.id,p_limit:100}),
     ]);
 
-    return NextResponse.json(
-      {quotes,orders,orderEvents,outcomes},
-      {headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"}},
-    );
+    return privateJson({
+      quotes:requireOwnedProductionRows(quotes,100),
+      orders:requireOwnedProductionRows(orders,100),
+      orderEvents:requireOwnedProductionRows(orderEvents,300),
+      outcomes:requireOwnedProductionRows(outcomes,100),
+    });
   }catch(error){
     console.error("[customer-account/production] request failed (details redacted).");
     return NextResponse.json({error:"Production status is temporarily unavailable."},{status:503});
@@ -85,7 +93,7 @@ export async function POST(request:Request){
       catch(error){
         return NextResponse.json({error:error instanceof Error?error.message:"Invalid post-delivery feedback."},{status:400});
       }
-      const outcomeId=await rpc<string>("production_customer_outcome_record",{
+      const outcomeAck=await rpc<unknown>("production_customer_outcome_record",{
         p_order_id:orderId,
         p_owner_user_id:customer.id,
         p_overall_rating:outcome.overallRating,
@@ -93,10 +101,8 @@ export async function POST(request:Request){
         p_worn_confirmed:outcome.wornConfirmed,
         p_note:outcome.note,
       });
-      return NextResponse.json(
-        {recorded:true,outcomeId},
-        {headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"}},
-      );
+      const outcomeId=requireCustomerOutcomeId(outcomeAck);
+      return privateJson({recorded:true,outcomeId});
     }
 
     return NextResponse.json({error:"Unsupported customer production action."},{status:400});
