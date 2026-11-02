@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -51,7 +52,7 @@ def safe_candidate_output(raw_output, source_blend):
     output = Path(raw_output).expanduser().resolve()
     if output.suffix.lower() != ".blend":
         raise ValueError("The authored candidate output must end in .blend.")
-    if output == source:
+    if output == source or (output.exists() and os.path.samefile(output, source)):
         raise ValueError("Refusing to overwrite the original identity-locked Blender source.")
     return output
 
