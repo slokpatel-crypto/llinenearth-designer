@@ -115,6 +115,12 @@ def main():
         if backward[entry["nearestOtherEdgeIndex"]]["nearestOtherEdgeIndex"]
         == entry["sourceEdgeIndex"]
     ]
+    mutual_left = {row["sourceEdgeIndex"] for row in mutual}
+    mutual_right = {row["nearestOtherEdgeIndex"] for row in mutual}
+    unmatched_left = sorted(set(range(len(forward))) - mutual_left)
+    unmatched_right = sorted(set(range(len(backward))) - mutual_right)
+    if len(unmatched_left) != len(forward) - len(mutual) or len(unmatched_right) != len(backward) - len(mutual):
+        raise RuntimeError("Mutual source-seam correspondence does not preserve distinct edge identities.")
     if len(forward) != bounds[0]["nearCenterlineBoundaryEdges"] or len(backward) != bounds[1]["nearCenterlineBoundaryEdges"]:
         raise RuntimeError("Cut-edge counts differ from independent native source boundary audit.")
     if len(mutual) > min(len(forward), len(backward)):
@@ -133,6 +139,9 @@ def main():
             "rightToLeft": distances_summary(backward),
         },
         "mutualNearestEdgeCount": len(mutual),
+        "unmatchedOriginalSourceEdgeIndices": {
+            "left": unmatched_left, "right": unmatched_right,
+        },
         "pairedLeftEdgeCount": len(forward),
         "pairedRightEdgeCount": len(backward),
         "mutualPairIndices": [
@@ -148,6 +157,7 @@ def main():
         "leftEdges": len(forward),
         "rightEdges": len(backward),
         "mutualNearestPairs": len(mutual),
+        "unmatchedSourceEdgeIndices": {"left": unmatched_left, "right": unmatched_right},
         "leftToRight": report["nearestEdgeMidpointDistanceMm"]["leftToRight"],
         "rightToLeft": report["nearestEdgeMidpointDistanceMm"]["rightToLeft"],
         "productionApproved": False,
