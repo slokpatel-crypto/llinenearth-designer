@@ -41,6 +41,8 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
+    parser.add_argument("--experimental-inner-leg-seam-reproject", action="store_true",
+                        help="Trial only: reproject moved crotch vertices to same real body clearance")
     parser.add_argument("--experimental-inner-leg-seam-gap-mm", type=float, default=0.0,
                         help="Native experiment only: tiny inner-crotch seam separation; default must stay zero")
     parser.add_argument("--experimental-right-hem-taper-mm", type=float, default=5.0,
@@ -295,7 +297,7 @@ def measure_guided_right_hem_taper(obj, guide_z, taper_mm):
     obj["linen_earth_experimental_right_hem_source_width_mm"] = round(width_m * 1000.0, 3)
 
 
-def trial_inner_leg_seam_separation(obj, center_x, min_z, height, gap_mm):
+def trial_inner_leg_seam_separation(obj, center_x, min_z, height, gap_mm, body=None, clearance_m=None, reproject=False):
     """Gently separate *only* real inner crotch faces, never the hem silhouette.
 
     This is an UNSIGNED seam experiment, not a validated sewn crotch. All
@@ -304,6 +306,8 @@ def trial_inner_leg_seam_separation(obj, center_x, min_z, height, gap_mm):
     preflight is mandatory and cannot be bypassed.
     """
     if obj.name not in ("TrouserLegLFabric", "TrouserLegRFabric") or gap_mm == 0:
+        if reproject:
+            raise RuntimeError("Cannot trial body clearance reprojection without real seam displacement.")
         return
     if not all(math.isfinite(v) for v in (center_x, min_z, height, gap_mm)):
         raise RuntimeError("Real leg seam trial needs finite photographed-model coordinates.")
@@ -315,8 +319,8 @@ def trial_inner_leg_seam_separation(obj, center_x, min_z, height, gap_mm):
     upper = min_z + height * 0.54
     full = min_z + height * 0.43
     sign = -1.0 if obj.name == "TrouserLegLFabric" else 1.0
-    changed = 0
-    for vert in obj.data.vertices:
+    changed_indices = []
+    for index, vert in enumerate(obj.data.vertices):
         if vert.co.z <= lower or vert.co.z >= upper:
             continue
         near_center_weight = max(0.0, 1.0 - abs(vert.co.x - center_x) / 0.095)
@@ -324,12 +328,26 @@ def trial_inner_leg_seam_separation(obj, center_x, min_z, height, gap_mm):
             continue
         vertical_weight = min(1.0, (vert.co.z - lower) / (full - lower))
         vert.co.x += sign * (gap_mm / 2000.0) * near_center_weight * vertical_weight
-        changed += 1
-    if changed < 4:
+        changed_indices.append(index)
+    if len(changed_indices) < 4:
         raise RuntimeError("Native crotch seam trial did not alter any real crotch vertices.")
     obj.data.update()
+    if reproject:
+        if body is None or body.type != "MESH" or clearance_m is None or not 0.003 <= clearance_m <= 0.018:
+            raise RuntimeError("Native seam reprojection requires original real scanned body and valid clearance.")
+        group = obj.vertex_groups.new(name="LE_UNSAVED_MOVED_CROTCH_ONLY")
+        group.add(changed_indices, 1.0, "REPLACE")
+        reprojection = obj.modifiers.new("LE_UNSAVED_BODY_CLEARANCE_FOR_SEAM", "SHRINKWRAP")
+        reprojection.target = body
+        reprojection.vertex_group = group.name
+        reprojection.wrap_method = "NEAREST_SURFACEPOINT"
+        reprojection.wrap_mode = "OUTSIDE_SURFACE"
+        reprojection.offset = clearance_m
+        apply_modifier(obj, reprojection)
+        obj.vertex_groups.remove(group)
     obj["linen_earth_experimental_inner_leg_seam_gap_mm"] = round(gap_mm, 3)
-    obj["linen_earth_experimental_inner_leg_seam_changed_vertices"] = changed
+    obj["linen_earth_experimental_inner_leg_seam_changed_vertices"] = len(changed_indices)
+    obj["linen_earth_experimental_inner_leg_seam_reprojected"] = bool(reproject)
 
 
 def planar_grain_uv(obj):
@@ -359,6 +377,8 @@ def main():
     # Validate every physical authoring parameter before touching the scene.
     clearance_m = bounded_measured_mm(options.clearance_mm, "Body clearance", 3.0, 18.0)
     thickness_m = bounded_measured_mm(options.thickness_mm, "Cloth shell thickness", 0.6, 4.0)
+    if options.experimental_inner_leg_seam_reproject and options.experimental_inner_leg_seam_gap_mm == 0:
+        raise ValueError("Never reproject the standard garment without an explicitly nonzero trial gap.")
     leg_seam_gap_mm = float(options.experimental_inner_leg_seam_gap_mm)
     if not math.isfinite(leg_seam_gap_mm) or not 0 <= leg_seam_gap_mm <= 6:
         raise ValueError("Native inner-leg seam trial must be finite and within 0-6mm.")
@@ -436,7 +456,10 @@ def main():
         if name == "TrouserLegRFabric":
             measure_guided_right_hem_taper(obj, right_hem_guide_z, right_hem_taper_mm)
         if name in ("TrouserLegLFabric", "TrouserLegRFabric"):
-            trial_inner_leg_seam_separation(obj, center_x, min_z, height, leg_seam_gap_mm)
+            trial_inner_leg_seam_separation(
+                obj, center_x, min_z, height, leg_seam_gap_mm,
+                body, clearance_m, options.experimental_inner_leg_seam_reproject
+            )
         planar_grain_uv(obj)
         obj["linen_earth_auto_authored"] = True
         actual_clearance = clearance_m + (waist_extra_m if name == "TrouserWaistFabric" else 0.0)
@@ -456,6 +479,9 @@ def main():
     bpy.context.scene["linen_earth_trouser_waist_refinement_level"] = options.experimental_waist_refinement_level
     bpy.context.scene["linen_earth_experimental_right_hem_taper_mm"] = round(right_hem_taper_mm, 3)
     bpy.context.scene["linen_earth_experimental_inner_leg_seam_gap_mm"] = round(leg_seam_gap_mm, 3)
+    bpy.context.scene["linen_earth_experimental_inner_leg_seam_reprojected"] = bool(
+        options.experimental_inner_leg_seam_reproject
+    )
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
