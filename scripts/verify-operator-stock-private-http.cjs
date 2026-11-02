@@ -152,6 +152,24 @@ async function main(){
     const reservation={action:"reserve",fabricId:fabric,quantityMetres:1.25,
       revisionId:"LE-LOCK-SYNTHETIC-0001",requestKey:"STOCK-REQUEST-SYNTHETIC-0001",
       requestedBy:"Synthetic checker",sourceReference:"SYNTH-CUT-SHEET"};
+    // A valid signed cookie must not bypass browser Fetch Metadata. A
+    // cross-site or same-site request cannot reach the privileged stock RPC
+    // even if Origin was removed by an upstream intermediary.
+    for(const site of ["cross-site","same-site","unexpected"]){
+      for(const origin of [null,"http://127.0.0.1:"+nextPort]){
+        mode="created";seen.length=0;
+        const headers={cookie,"content-type":"application/json",
+          "sec-fetch-site":site,"connection":"close"};
+        if(origin)headers.origin=origin;
+        const res=await fetch(url,{method:"POST",headers,
+          body:JSON.stringify(record),signal:AbortSignal.timeout(15000)});
+        assert.equal(res.status,403,"stock blocked "+site+" "+String(origin));
+        assert.deepEqual(await res.json(),{
+          error:"Cross-site stock changes are not allowed."});
+        assert.match(res.headers.get("cache-control")||"",/private.*no-store/);
+        assert.equal(seen.length,0,"unsafe stock POST reached privileged RPC");
+      }
+    }
     for(const body of [record,reservation]){
       for(const kind of [
         "created","createNull","createObject","createArray","createBool",
