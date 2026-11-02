@@ -823,7 +823,7 @@ async function main(){
       // shared store by rotating forwarding headers or across server instances.
       const verifyTarget="bruteforce@example.com";
       const verifySubject=createHmac("sha256",enforcedEnv.LINEN_CUSTOMER_OTP_RATE_SECRET)
-        .update("linen-earth:customer-otp-verify:v1\\0"+verifyTarget).digest("hex");
+        .update("linen-earth:customer-otp-verify:v1\0"+verifyTarget).digest("hex");
       otpSubjects.delete(verifySubject);
       let verifyDispatches=0;
       for(let i=0;i<8;i++){
