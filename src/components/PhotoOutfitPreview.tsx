@@ -605,6 +605,9 @@ type FabricPatternPlacement={
   // Shared texture origin for torso/sleeves or the corresponding trouser pair.
   referenceX?:number;
   referenceY?:number;
+  // Optional common photographed seam point for adjacent garment panels.
+  phaseLockX?:number;
+  phaseLockY?:number;
   maskPrepared?:boolean;
   // Base panels are assembled into one cloth layer; its outer photographed
   // silhouette is applied once, after all panels have been painted.
@@ -617,9 +620,10 @@ function fabricPatternTransform(fabric:DesignerFabric,placement:FabricPatternPla
   const anchorX=Number(placement.anchorX);
   const anchorY=Number(placement.anchorY);
   if(Number.isFinite(anchorX)&&Number.isFinite(anchorY)) {
+    const hasSharedSeam=Number.isFinite(placement.phaseLockX)&&Number.isFinite(placement.phaseLockY);
     const matrix=photoPanelPatternMatrix({
       reference:{x:placement.referenceX??anchorX,y:placement.referenceY??anchorY},
-      pivot:{x:anchorX,y:anchorY},
+      pivot:hasSharedSeam?{x:placement.phaseLockX!,y:placement.phaseLockY!}:{x:anchorX,y:anchorY},
       fabricRotationDeg:fabricOrientation(fabric),
       panelRotationDeg:placement.rotationDeg??0,
       scale,
@@ -1026,8 +1030,8 @@ export function composePhotoOutfit(
     if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined);
 
     drawGarmentAtlas(context,masks.pant,atlas=>{
-      drawGarment(atlas, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, deferCoverage:true, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftTrouser, anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.leftTrouser.x, anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.leftTrouser.y, referenceX:512, referenceY:542 });
-      drawGarment(atlas, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, deferCoverage:true, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightTrouser, anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.rightTrouser.x, anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.rightTrouser.y, referenceX:512, referenceY:542 });
+      drawGarment(atlas, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, deferCoverage:true, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftTrouser, anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.leftTrouser.x, anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.leftTrouser.y, referenceX:512, referenceY:542, phaseLockX:510, phaseLockY:690 });
+      drawGarment(atlas, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, deferCoverage:true, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightTrouser, anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.rightTrouser.x, anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.rightTrouser.y, referenceX:512, referenceY:542, phaseLockX:510, phaseLockY:690 });
     });
   } else {
     const shirtMask = untuckedGarmentMasks(modelPhoto, template.shirtPath, DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
@@ -1048,6 +1052,8 @@ export function composePhotoOutfit(
         anchorY:PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR[trouserGeometry].leftTrouser.y,
         referenceX:512,
         referenceY:trouserGeometry==="wide"?770:758,
+        phaseLockX:UNTUCKED_TROUSER_SEAM_X,
+        phaseLockY:trouserGeometry==="wide"?774:758,
       });
       drawGarment(atlas, trouserPhoto, pantImage, pant, `M ${UNTUCKED_TROUSER_SEAM_X} 0 H ${WIDTH} V ${HEIGHT} H ${UNTUCKED_TROUSER_SEAM_X} Z`, trouserLegMasks.right, {
         ...calibratedPlacement,
@@ -1058,6 +1064,8 @@ export function composePhotoOutfit(
         anchorY:PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR[trouserGeometry].rightTrouser.y,
         referenceX:512,
         referenceY:trouserGeometry==="wide"?770:758,
+        phaseLockX:UNTUCKED_TROUSER_SEAM_X,
+        phaseLockY:trouserGeometry==="wide"?774:758,
       });
     });
 
