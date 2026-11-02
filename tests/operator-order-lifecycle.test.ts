@@ -135,3 +135,40 @@ test("replay refuses altered destinations, removed history and out-of-order even
   assert.throws(()=>replayOrderLifecycle(id,revision,hash,[{...delivered.audit[0],to:"delivered"}]),/Tampered/);
   assert.throws(()=>replayOrderLifecycle(id,revision,hash,Array(10001).fill(null)),/oversized/);
 });
+
+test("applied audit replay requires a present exact destination on every stored event",()=>{
+  const delivered=step(step(toQc(),"approve_qc",{qc:qc()}),"dispatch");
+  const first=delivered.audit[0];
+  const missing=Object.fromEntries(Object.entries(first).filter(([key])=>key!=="to"));
+  for(const altered of [
+    missing,{...first,to:undefined},{...first,to:null},{...first,to:"delivered"},
+  ]){
+    assert.throws(()=>replayOrderLifecycle(id,revision,hash,[altered]),/Tampered audit destination/);
+  }
+  assert.equal(replayOrderLifecycle(id,revision,hash,delivered.audit).status,"dispatched");
+});
+
+test("calendar-invalid ISO-shaped event dates fail closed, including offset and leap boundaries",()=>{
+  for(const occurredAt of [
+    "2026-02-29T00:00:00Z",
+    "2026-02-30T00:00:00Z",
+    "2026-04-31T12:00:00Z",
+    "1900-02-29T00:00:00Z",
+    "2026-11-03T24:00:00Z",
+    "2026-11-03T00:60:00Z",
+    "2026-11-03T00:00:60Z",
+    "2026-11-03T00:00:00+14:01",
+    "2026-11-03T00:00:00-23:00",
+    "2026-11-03T00:00:00+01:60",
+    "0000-01-01T00:00:00Z",
+  ]) assert.throws(()=>step(base(),"accept",{occurredAt}),/Invalid event timestamp/,occurredAt);
+  for(const occurredAt of [
+    "2024-02-29T23:59:59+14:00",
+    "2000-02-29T00:00:00-14:00",
+    "2026-04-30T23:59:59.999Z",
+    "2026-11-03T00:00:00+05:30",
+  ]) assert.equal(step(base(),"accept",{occurredAt}).status,"accepted",occurredAt);
+  const first=step(base(),"accept",{occurredAt:"2024-02-29T23:59:59+14:00"});
+  assert.throws(()=>step(first,"start_cutting",{occurredAt:"2024-02-29T09:59:59Z"}),
+    /timestamps must increase strictly/,"equivalent instant is not a later audit event");
+});
