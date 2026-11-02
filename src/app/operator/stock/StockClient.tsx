@@ -83,6 +83,11 @@ export default function StockClient(){
     let requestSent=false,acknowledged=false,httpStatus:number|null=null;
     let markedPending=false;
     try{
+      if(body.action==="reserve"&&reservationDraft){
+        // An uncertain reservation must never invent a new idempotency key
+        // after a reload; store the evidence hash before the privileged RPC.
+        body={...body,requestKey:await reservationAttempt.current.keyFor(reservationDraft)};
+      }
       if(body.action==="record"){
         const manual={
           fabricId:String(body.fabricId||""),eventType:String(body.eventType||""),
@@ -114,7 +119,6 @@ export default function StockClient(){
       }
       requireStockClientAcknowledgment(body.action,data);
       acknowledged=true;
-      if(body.action==="reserve"&&reservationDraft) reservationAttempt.current.confirmed(reservationDraft);
       const refreshed=await load();
       setMessage(refreshed?success:
         "Stock operation acknowledged, but ledger refresh is unavailable. Check the ledger before retrying.");
@@ -193,7 +197,7 @@ export default function StockClient(){
         <label>Metres to reserve<input type="number" min=".001" step=".001" value={reservation.quantityMetres} onChange={(e)=>setReservation({...reservation,quantityMetres:e.target.value})}/></label>
         <label>Requested / checked by<input value={reservation.requestedBy} onChange={(e)=>setReservation({...reservation,requestedBy:e.target.value})} maxLength={120} placeholder="Required"/></label>
         <label>Reservation quantity source<input value={reservation.sourceReference} onChange={(e)=>setReservation({...reservation,sourceReference:e.target.value})} maxLength={240} placeholder="Approved meterage sheet, tailor request…"/></label>
-        <button disabled={uncertainWrite||busy||snapshotState!=="ready"||!configured||!reservation.fabricId||reservation.revisionId.length<12||Number(reservation.quantityMetres)<=0||reservation.requestedBy.trim().length<2||reservation.sourceReference.trim().length<3} onClick={()=>{const draft={...reservation,quantityMetres:Number(reservation.quantityMetres)};void post({action:"reserve",...draft,requestKey:reservationAttempt.current.keyFor(draft)},"Provenance-backed reservation created.",draft);}}>Create reservation</button>
+        <button disabled={uncertainWrite||busy||snapshotState!=="ready"||!configured||!reservation.fabricId||reservation.revisionId.length<12||Number(reservation.quantityMetres)<=0||reservation.requestedBy.trim().length<2||reservation.sourceReference.trim().length<3} onClick={()=>{const draft={...reservation,quantityMetres:Number(reservation.quantityMetres)};void post({action:"reserve",...draft,},"Provenance-backed reservation created.",draft);}}>Create reservation</button>
       </article>
 
       <article className="stockPanel">
