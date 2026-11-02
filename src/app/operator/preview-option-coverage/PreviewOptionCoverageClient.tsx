@@ -15,7 +15,7 @@ type Row={
 };
 type Summary={
   total:number;previewApproved:number;previewRejected:number;previewPending:number;
-  noPreviewSupport:number;constructionBlocked:number;constructionPending:number;
+  noPreviewSupport:number;approximatePreview:number;constructionBlocked:number;constructionPending:number;
   fullyCleared:number;coveragePercent:number;gateComplete:boolean;
 };
 
@@ -81,7 +81,11 @@ export default function PreviewOptionCoverageClient(){
       });
       const result=await response.json();
       if(!response.ok||!result.stored) throw new Error(result.error||"Preview review could not be stored.");
-      setMessage(status==="approved"?"Customer preview option approved.":"Customer preview option rejected; coverage gate remains open.");
+      setMessage(status==="approved"
+        ? selected.livePreview==="exact"
+          ? "Exact customer preview review saved; construction approval is separately required."
+          : "Approximate preview review saved. Exact-visual production coverage remains open."
+        : "Customer preview option rejected; coverage gate remains open.");
       await load(selected.id);
     }catch(error){
       setMessage(error instanceof Error?error.message:"Preview review could not be stored.");
@@ -94,7 +98,7 @@ export default function PreviewOptionCoverageClient(){
         <div>
           <p style={{fontSize:12,letterSpacing:2,margin:"0 0 8px"}}>LINEN EARTH / ROADMAP V2 / PHASE 3</p>
           <h1 style={{fontFamily:"Georgia,serif",fontSize:"clamp(34px,5vw,56px)",lineHeight:1,margin:"0 0 10px"}}>Customer Preview Coverage</h1>
-          <p style={{maxWidth:760,lineHeight:1.6,opacity:.72}}>Audit the exact options customers can choose in Designer. Preview approval is separate from construction approval and never upgrades physical fit, drape or colour claims.</p>
+          <p style={{maxWidth:760,lineHeight:1.6,opacity:.72}}>Audit the exact options customers can choose in Designer. Preview approval is separate from construction approval and never upgrades physical fit, drape or colour claims. Only exact live-preview support can clear the production visual-accuracy gate; an approved approximation remains pending.</p>
         </div>
         <nav style={{display:"flex",gap:12,flexWrap:"wrap"}}><Link href="/designer-studio">Open customer Designer</Link><Link href="/operator/construction-approval">Construction Approval</Link><Link href="/operator/phase10-readiness">Readiness</Link></nav>
       </header>
@@ -105,6 +109,7 @@ export default function PreviewOptionCoverageClient(){
       <section style={{...panel,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:12}}>
         <article><small>CUSTOMER CHOICES</small><div style={{fontSize:34,fontWeight:800}}>{summary?.total??0}</div></article>
         <article><small>FULLY CLEARED</small><div style={{fontSize:34,fontWeight:800}}>{summary?.fullyCleared??0}</div></article>
+        <article><small>APPROXIMATE — GATE OPEN</small><div style={{fontSize:34,fontWeight:800}}>{summary?.approximatePreview??0}</div></article>
         <article><small>PREVIEW PENDING</small><div style={{fontSize:34,fontWeight:800}}>{summary?.previewPending??0}</div></article>
         <article><small>CONSTRUCTION PENDING</small><div style={{fontSize:34,fontWeight:800}}>{summary?.constructionPending??0}</div></article>
         <article><small>COVERAGE</small><div style={{fontSize:30,fontWeight:800}}>{summary?.coveragePercent??0}%</div></article>
