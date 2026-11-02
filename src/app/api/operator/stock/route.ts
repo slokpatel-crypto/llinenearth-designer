@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
-import { assertCurrentFabricId, readBoundedStockMutationJson, StockMutationPayloadTooLarge, stockMutationRequestError } from "@/lib/designer/operator-stock-safety";
+import { assertCurrentFabricId, readBoundedStockMutationJson, StockMutationPayloadTooLarge, StockMutationInvalidJson, stockMutationRequestError } from "@/lib/designer/operator-stock-safety";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
@@ -119,6 +119,9 @@ export async function POST(request:Request){
   }catch(error){
     if(error instanceof StockMutationPayloadTooLarge)
       return stockPrivateJson({error:error.message},{status:413,
+        headers:{"cache-control":"private, no-store"}});
+    if(error instanceof StockMutationInvalidJson)
+      return stockPrivateJson({error:"Stock mutation requires a valid JSON object."},{status:400,
         headers:{"cache-control":"private, no-store"}});
     if(error instanceof StockInputError)
       return stockPrivateJson({error:error.message},{status:409,
