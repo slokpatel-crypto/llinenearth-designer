@@ -309,6 +309,7 @@ jobs:
               and (.checks|length)==5
               and (.checks|all(.installed and .security_definer and
                 .fixed_search_path and .service_role_execute and
+                .payload_binding_guard_present and
                 (.anon_execute|not) and (.authenticated_execute|not)))' >/dev/null
       - name: Build isolated real Next stock API route
         run: |
@@ -363,6 +364,30 @@ jobs:
             "select case when count(*)=1 then 'PASS' else 'FAIL' end
              from private.fabric_stock_ledger
              where fabric_id like 'SYNTHETIC-TITAN-POSTGREST-%'" | grep -qx PASS
+      - name: Prove legacy reservation body cannot pass stock rollout preflight even with v3 installed
+        run: |
+          # Isolated localhost only. Both functions exist and retain grants,
+          # but legacy v2 fails to bind replay keys to physical cutting evidence.
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          test "$TITAN_SYNTHETIC_PG_TEST" = enabled
+          (cd "$RUNNER_TEMP" && sha256sum -c titan-legacy-reserve-definition.sha256)
+          psql -X -v ON_ERROR_STOP=1 -f \
+            "$RUNNER_TEMP/titan-legacy-reserve-definition.sql"
+          psql -X -v ON_ERROR_STOP=1 -At -f scripts/stock-v3-readonly-preflight.sql |
+            jq -e '.status=="BLOCKED" and
+              (.checks|any(.function=="reserve_v2" and
+                .installed==true and .service_role_execute==true and
+                .payload_binding_guard_present==false)) and
+              (.checks|any(.function=="record_v3" and
+                .installed==true and .payload_binding_guard_present==true))' >/dev/null
+          # Reapply the source migration before the existing v3 rollback suite.
+          psql -X -v ON_ERROR_STOP=1 -f \
+            supabase/migrations/20261102_stock_reservation_key_payload_binding.sql
+          psql -X -v ON_ERROR_STOP=1 -At -f scripts/stock-v3-readonly-preflight.sql |
+            jq -e '.status=="READY" and
+              (.checks|all(.payload_binding_guard_present==true))' >/dev/null
+          psql -X -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
       - name: Rehearse v3 rollback and PostgREST cache invalidation without changing v2
         run: |
           psql -v ON_ERROR_STOP=1 -c "drop function public.fabric_stock_record_v3(text,text,numeric,text,text,text,text);"
