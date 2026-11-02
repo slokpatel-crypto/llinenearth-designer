@@ -49,3 +49,9 @@ The previously optional revocation ledger now also supports **server-verified, n
 ## Distributed verification attempt protection (2026-11-03)
 
 The same opt-in distributed OTP SQL limiter now has independent keyed HMAC subjects for request dispatch and **verification attempts**. Verified customer sign-in cannot brute-force codes across instances without exhausting the separate 8/10-minute budget. A ninth attempt fails 429 before reaching the OTP provider; missing/malformed/backend failures prevent verification with 503. Existing non-enforced sessions remain compatible. Both paths share the migration but not counters; new HTTP negative tests and exact-head CI verification are required. Real trusted-edge IP/device protection and a staged, configured rollout remain blockers.
+
+## Account-switch async privacy isolation (2026-11-03)
+
+The customer account page now uses a monotonically increasing refresh epoch to prevent late responses to previous account sessions from rendering after sign-out, a second sign-in, or a newer refresh. On customer ID change, old designs, shares, measurements, quotes, orders and outcomes are cleared before displaying new account data. In addition to a static contract regression, the built-browser security suite at 390px pauses Alice's share request, signs out, signs in Bob, then releases Alice's old response and asserts that neither her email nor share appears. This is synthetic-only browser verification; it does not certify staging cookie or proxy behavior.
+
+Security branch feature flags for share/session revocation and OTP distributed send+verify budgets remain disabled pending real staging migration deployment, HTTPS reverse-proxy proof, trusted-edge throttling and owner acceptance. No Vercel deployment and no merge without exact-head green gates.
