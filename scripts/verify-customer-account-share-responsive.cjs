@@ -1,0 +1,89 @@
+"use strict";
+// Customer-owned design share browser UX. Synthetic API responses only:
+// no live accounts, provider credentials, databases or paid rendering.
+const assert=require("node:assert/strict");
+const fs=require("node:fs"),path=require("node:path"),Module=require("node:module");
+const runtime=process.env.LINEN_BROWSER_QA_RUNTIME;
+if(!runtime)throw Error("Set LINEN_BROWSER_QA_RUNTIME for pinned Chromium");
+const {chromium}=Module.createRequire(path.join(runtime,"package.json"))("playwright");
+const origin=process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000";
+const output=path.resolve("artifacts/preview-lifecycle/customer-shares");
+const tokenHash="a".repeat(64);
+const customer={id:"123e4567-e89b-12d3-a456-426614174000",email:"alice@example.test"};
+const errors=[],proof=[];
+let browser;
+async function run(){
+  fs.mkdirSync(output,{recursive:true});
+  browser=await chromium.launch({headless:true});
+  try{
+    for(const width of [390,768,1440]){
+      const context=await browser.newContext({viewport:{width,height:950}});
+      const page=await context.newPage();
+      let revoked=false,failRevoke=true,paidCalls=0,forgedOwnerField=0;
+      const intercepted=[];
+      page.on("pageerror",error=>errors.push(width+": "+error.message));
+      page.on("console",message=>{if(message.type()==="error")
+        errors.push(width+": "+message.text());});
+      page.on("dialog",dialog=>dialog.accept());
+      await context.route("**/api/**",async route=>{
+        const req=route.request(),name=new URL(req.url()).pathname;
+        if(/render|look-inspect|creative-inspect/.test(name))paidCalls++;
+        let body={};
+        if(req.method()==="POST"){
+          try{body=req.postDataJSON()||{};}catch{}
+        }
+        intercepted.push({name,action:body.action||null});
+        if(name==="/api/customer-auth/session")
+          return route.fulfill({status:200,json:{customer}});
+        if(name==="/api/designer/share"){
+          if(body.action==="listOwned")return route.fulfill({status:200,json:{
+            shares:[{tokenHash,expiresAt:"2027-01-01T00:00:00Z",
+              revokedAt:revoked?"2026-11-03T00:00:00Z":null}]
+          }});
+          if(body.action==="revokeOwned"){
+            if("ownerUserId" in body||"revokeKey" in body||"token" in body)forgedOwnerField++;
+            assert.deepEqual(body,{action:"revokeOwned",tokenHash});
+            if(failRevoke)return route.fulfill({status:503,json:{error:"Secure share management is temporarily unavailable."}});
+            revoked=true;return route.fulfill({status:200,json:{revoked:true}});
+          }
+          return route.fulfill({status:400,json:{error:"Unexpected share action"}});
+        }
+        if(name==="/api/designer/vault")
+          return route.fulfill({status:200,json:{designs:[]}});
+        if(name==="/api/measurements/vault")
+          return route.fulfill({status:200,json:{profiles:[]}});
+        if(name==="/api/customer-account/production")
+          return route.fulfill({status:200,json:{quotes:[],orders:[],orderEvents:[],outcomes:[]}});
+        return route.fulfill({status:200,json:{}});
+      });
+      await page.goto(origin+"/account",{waitUntil:"networkidle"});
+      await page.getByRole("heading",{name:/My public design shares/}).waitFor();
+      const revoke=page.getByRole("button",{name:"Revoke this link"});
+      await revoke.waitFor();
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,
+        width+"px account sharing has horizontal overflow");
+      assert.equal(await page.getByText(/Design share a{12}/).count(),1);
+      assert.equal((await page.content()).includes("alice@example.test"),true);
+      assert.equal((await page.content()).includes("private cancellation code: "),false);
+      await page.screenshot({path:path.join(output,"account-share-"+width+".png"),fullPage:true});
+      await revoke.click();
+      await page.getByText("Secure share management is temporarily unavailable.").waitFor();
+      assert.equal(await revoke.count(),1,"503 must not falsely mark link revoked");
+      failRevoke=false;
+      await revoke.click();
+      await page.getByText("Shared design link revoked, including on other devices.").waitFor();
+      await page.getByText(/Revoked/,{exact:false}).first().waitFor();
+      assert.equal(await revoke.count(),0,"successful revocation removes revoke action");
+      assert.equal(forgedOwnerField,0,"UI must not forge or send customer owner identity");
+      assert.equal(paidCalls,0,"account page must not use paid image services");
+      assert.equal(intercepted.filter(x=>x.name==="/api/designer/share"&&x.action==="revokeOwned").length,2);
+      proof.push({width,revocation503Displayed:true,revokeSucceeded:true,paidCalls:0});
+      await page.screenshot({path:path.join(output,"account-revoked-"+width+".png"),fullPage:true});
+      await context.close();
+    }
+    assert.deepEqual(errors,[],"No browser JS or console errors permitted");
+    fs.writeFileSync(path.join(output,"summary.json"),JSON.stringify({browser:"Chromium",scope:"customer account shares",mockedBackends:true,physicalAcceptance:false,proof,errors},null,2));
+    console.log("Customer share/account responsive Chromium PASS: 390, 768, 1440; 503 denial and cross-device revoke UX.");
+  }finally{await browser?.close();}
+}
+run().catch(err=>{console.error(err);process.exitCode=1;});
