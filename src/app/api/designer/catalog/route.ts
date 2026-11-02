@@ -5,6 +5,7 @@ import { attachCatalogFabricPhysics } from "@/lib/designer/fabric-physics-catalo
 import { loadActiveDesignerFabricStock } from "@/lib/designer/catalog-stock-server";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const live=await loadActiveDesignerFabricStock();
@@ -18,5 +19,5 @@ export async function GET() {
     calibrated:live.calibratedFabrics>0,
     calibratedFabrics:live.calibratedFabrics,
     verifiedStockFabrics:live.verifiedStockFabrics,
-  });
+  }, { headers: { "cache-control": "no-store" } });
 }
