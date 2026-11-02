@@ -1,19 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {createOperatorMutationGate} from "@/lib/designer/operator-mutation-gate";
+import {requireOperatorCreatedId} from "@/lib/designer/operator-created-id";
+import {requireDeliveryEvidenceSnapshot} from "@/lib/designer/operator-delivery-snapshot";
+import type {DeliverySnapshotOrder as Order, DeliverySnapshotAudit as Evidence} from "@/lib/designer/operator-delivery-snapshot";
 import {
   PRODUCTION_REENTRY_FIELDS,
   summarizeProductionDeliveryEvidence,
 } from "@/lib/designer/production-delivery-evidence";
 
-type Order={order_id:string;revision_id:string;recipe_hash:string;status:string;note:string;created_at:string};
-type Evidence={evidence_id:string;order_id:string;revision_id:string;recipe_hash:string;manual_design_reentry:boolean;reentry_fields:string[];note:string;operator:string;evidence_reference?:string;created_at:string;order_created_at:string};
 
 export default function ProductionEvidenceClient(){
   const [orders,setOrders]=useState<Order[]>([]);
   const [evidence,setEvidence]=useState<Evidence[]>([]);
-  const [configured,setConfigured]=useState(true);
+  const [configured,setConfigured]=useState(false);
+  const [snapshotState,setSnapshotState]=useState<"loading"|"ready"|"error">("loading");
+  const refreshGeneration=useRef(0);
+  const mutationGate=useRef(createOperatorMutationGate());
   const [selectedOrderId,setSelectedOrderId]=useState("");
   const [manualChoice,setManualChoice]=useState<"unset"|"yes"|"no">("unset");
   const [reentryFields,setReentryFields]=useState<string[]>([]);
@@ -23,21 +28,46 @@ export default function ProductionEvidenceClient(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
 
-  async function load(){
-    const response=await fetch("/api/operator/production-evidence",{cache:"no-store"});
-    if(response.status===401){window.location.href="/operator/login?next=/operator/production-evidence";return;}
-    const data=await response.json();
-    if(!response.ok){setMessage(data.error||"Production evidence could not be loaded.");return;}
-    const nextOrders=Array.isArray(data.orders)?data.orders:[];
-    const nextEvidence=Array.isArray(data.evidence)?data.evidence:[];
-    setConfigured(data.configured!==false);
-    setOrders(nextOrders);
-    setEvidence(nextEvidence);
-    const requested=new URLSearchParams(window.location.search).get("order");
-    const delivered=nextOrders.filter((item:Order)=>item.status==="delivered");
-    const requestedDelivered=delivered.find((item:Order)=>item.order_id===requested);
-    const firstMissing=delivered.find((item:Order)=>!nextEvidence.some((row:Evidence)=>row.order_id===item.order_id));
-    setSelectedOrderId((current)=>current||requestedDelivered?.order_id||firstMissing?.order_id||delivered[0]?.order_id||"");
+  async function load(expectedReceipt?:{orderId:string;evidenceId:string}):Promise<boolean>{
+    const generation=++refreshGeneration.current;
+    const previousSelection=selectedOrderId;
+    // Invalidate old delivered-order counts before any network request.
+    setSnapshotState("loading");
+    setConfigured(false);setOrders([]);setEvidence([]);setSelectedOrderId("");
+    try{
+      const response=await fetch("/api/operator/production-evidence",{cache:"no-store"});
+      if(generation!==refreshGeneration.current)return false;
+      if(response.status===401){
+        setSnapshotState("error");
+        window.location.href="/operator/login?next=/operator/production-evidence";
+        return false;
+      }
+      if(!response.ok)throw new Error("Delivery ledger unavailable");
+      const snapshot=requireDeliveryEvidenceSnapshot(await response.json());
+      if(generation!==refreshGeneration.current)return false;
+      if(expectedReceipt&&!snapshot.evidence.some(row=>
+        row.order_id.toLowerCase()===expectedReceipt.orderId.toLowerCase()&&
+        row.evidence_id.toLowerCase()===expectedReceipt.evidenceId.toLowerCase()))
+        throw new Error("New receipt absent from verified ledger");
+      const nextOrders=snapshot.orders,nextEvidence=snapshot.evidence;
+      const requested=new URLSearchParams(window.location.search).get("order");
+      const delivered=nextOrders.filter(item=>item.status==="delivered");
+      const requestedDelivered=delivered.find(item=>item.order_id===requested);
+      const prior=delivered.find(item=>item.order_id===previousSelection);
+      const firstMissing=delivered.find(item=>
+        !nextEvidence.some(row=>row.order_id===item.order_id));
+      setOrders(nextOrders);setEvidence(nextEvidence);setConfigured(true);
+      setSelectedOrderId(prior?.order_id||requestedDelivered?.order_id||
+        firstMissing?.order_id||delivered[0]?.order_id||"");
+      setSnapshotState("ready");
+      return true;
+    }catch{
+      if(generation!==refreshGeneration.current)return false;
+      setOrders([]);setEvidence([]);setConfigured(false);
+      setSelectedOrderId("");setSnapshotState("error");
+      setMessage("Delivery evidence unavailable or unverified. Previous approval totals were cleared.");
+      return false;
+    }
   }
 
   useEffect(()=>{void load();},[]);
@@ -63,8 +93,13 @@ export default function ProductionEvidenceClient(){
   }
 
   async function saveEvidence(){
-    if(!selected||selectedEvidence||busy||!choiceValid) return;
+    if(!selected||selectedEvidence||busy||!choiceValid||!configured||
+      snapshotState!=="ready"||!mutationGate.current.enter())return;
     setBusy(true);setMessage("");
+    // A failed/uncertain POST must not leave an old COMPLETE gate visible.
+    refreshGeneration.current++;
+    setOrders([]);setEvidence([]);setConfigured(false);
+    setSnapshotState("loading");
     try{
       const response=await fetch("/api/operator/production-evidence",{
         method:"POST",
@@ -73,20 +108,30 @@ export default function ProductionEvidenceClient(){
           action:"record",
           orderId:selected.order_id,
           manualDesignReentry:manualChoice==="yes",
-          reentryFields,
-          note,
-          operator,
-          evidenceReference,
+          reentryFields,note,operator,evidenceReference,
         }),
       });
-      const data=await response.json();
-      if(!response.ok) throw new Error(data.error||"Production completion evidence could not be saved.");
-      setMessage("Immutable completion audit saved for this delivered order.");
-      setManualChoice("unset");setReentryFields([]);setNote("");setOperator("");setEvidenceReference("");
-      await load();
-    }catch(error){
-      setMessage(error instanceof Error?error.message:"Production completion evidence could not be saved.");
-    }finally{setBusy(false);}
+      const body:unknown=await response.json();
+      const receipt=body&&typeof body==="object"&&!Array.isArray(body)?
+        (body as Record<string,unknown>).evidenceId:null;
+      if(!response.ok)throw new Error("Delivery audit write could not be verified");
+      const evidenceId=requireOperatorCreatedId(receipt);
+      const refreshed=await load({orderId:selected.order_id,evidenceId});
+      if(!refreshed){
+        setMessage("Write acknowledged, but current delivery ledger did not verify the receipt. Reconcile before retrying.");
+        return;
+      }
+      setManualChoice("unset");setReentryFields([]);setNote("");
+      setOperator("");setEvidenceReference("");
+      setMessage("Immutable completion audit acknowledged and verified in the latest ledger.");
+    }catch{
+      setOrders([]);setEvidence([]);setConfigured(false);
+      setSelectedOrderId("");setSnapshotState("error");
+      setMessage("Delivery audit outcome unverified. Refresh the ledger and reconcile before any retry.");
+    }finally{
+      mutationGate.current.exit();
+      setBusy(false);
+    }
   }
 
   return <main className="productionEvidence">
@@ -99,21 +144,23 @@ export default function ProductionEvidenceClient(){
       <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/production">Production Desk</Link><Link href="/operator/garment-qc">Garment QC</Link></nav>
     </header>
 
-    {!configured&&<section className="productionEvidenceNotice">Production evidence migration is not installed yet.</section>}
+    {snapshotState==="loading"&&<section role="status" className="productionEvidenceNotice">Refreshing delivery evidence; previous counts are withheld.</section>}
+    {snapshotState==="error"&&<section role="alert" className="productionEvidenceNotice">Delivery evidence is UNVERIFIED. The latest trusted snapshot is unavailable; do not record another delivery audit until reconciliation.</section>}
+    <button type="button" disabled={busy||snapshotState==="loading"} onClick={()=>void load()}>Refresh delivery evidence</button>
     {message&&<section className="productionEvidenceNotice">{message}</section>}
 
     <section className="productionEvidenceScore">
-      <article><span>DELIVERED</span><strong>{summary.deliveredCount}</strong><small>real completed orders</small></article>
-      <article><span>FIRST 10 AUDITED</span><strong>{summary.auditedTargetCount}/10</strong><small>immutable completion audits</small></article>
-      <article><span>ZERO RE-ENTRY</span><strong>{summary.zeroReentryTargetCount}</strong><small>within first 10 delivered</small></article>
-      <article data-alert={summary.reentryIncidentCount>0}><span>RE-ENTRY INCIDENTS</span><strong>{summary.reentryIncidentCount}</strong><small>within first 10 delivered</small></article>
-      <article data-complete={summary.gateComplete}><span>PHASE 8 GATE</span><strong>{summary.gateComplete?"PROVED":"OPEN"}</strong><small>{summary.gateComplete?"first 10 passed":"requires real evidence"}</small></article>
+      <article><span>DELIVERED</span><strong>{snapshotState==="ready"?summary.deliveredCount:"—"}</strong><small>real completed orders</small></article>
+      <article><span>FIRST 10 AUDITED</span><strong>{snapshotState==="ready"?summary.auditedTargetCount:"—"}/10</strong><small>immutable completion audits</small></article>
+      <article><span>ZERO RE-ENTRY</span><strong>{snapshotState==="ready"?summary.zeroReentryTargetCount:"—"}</strong><small>within first 10 delivered</small></article>
+      <article data-alert={summary.reentryIncidentCount>0}><span>RE-ENTRY INCIDENTS</span><strong>{snapshotState==="ready"?summary.reentryIncidentCount:"—"}</strong><small>within first 10 delivered</small></article>
+      <article data-complete={snapshotState==="ready"&&summary.gateComplete}><span>PHASE 8 EVIDENCE GATE</span><strong>{snapshotState!=="ready"?"UNVERIFIED":summary.gateComplete?"SOURCE AUDITED":"OPEN"}</strong><small>{summary.gateComplete&&snapshotState==="ready"?"first ten source audits checked; physical delivery signoff remains separate":"requires current source evidence"}</small></article>
     </section>
 
     <section className="productionEvidenceLayout">
       <aside className="productionEvidenceQueue">
         <div className="productionEvidenceSectionHead"><span>DELIVERED ORDER AUDITS</span><b>{delivered.length}</b></div>
-        {!delivered.length&&<p>No delivered orders exist yet.</p>}
+        {snapshotState==="ready"&&!delivered.length&&<p>No delivered orders exist yet.</p>}
         {delivered.map((item,index)=>{
           const row=evidence.find((entry)=>entry.order_id===item.order_id);
           return <button key={item.order_id} className={selected?.order_id===item.order_id?"active":""} onClick={()=>chooseOrder(item.order_id)}>
@@ -158,7 +205,7 @@ export default function ProductionEvidenceClient(){
               <label>Production-flow evidence reference<input value={evidenceReference} onChange={(event)=>setEvidenceReference(event.target.value)} maxLength={240} placeholder="Tailor job card, cutting packet, dispatch note…"/></label>
               <label>Completion note<textarea rows={4} value={note} onChange={(event)=>setNote(event.target.value)} placeholder="What happened during the real handoff and production flow?"/></label>
             </div>
-            <button className="productionEvidenceSave" disabled={busy||!choiceValid} onClick={()=>void saveEvidence()}>{busy?"Saving…":"Save immutable completion audit"}</button>
+            <button className="productionEvidenceSave" disabled={busy||!choiceValid||snapshotState!=="ready"||!configured} onClick={()=>void saveEvidence()}>{busy?"Saving…":"Save immutable completion audit"}</button>
             <p className="productionEvidenceRule">Save only after checking the actual production workflow. A named checker plus a concrete production-flow reference are required; legacy audits without provenance remain visible but do not satisfy the first-10 gate.</p>
           </>}
         </>}
