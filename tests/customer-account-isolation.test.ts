@@ -28,7 +28,8 @@ test("successful logout invalidates pending account fetches and immediately clea
    "invalidate only after successful logout and before sign-out confirmation");
  for(const stmt of ["loadedOwnerId.current=null","setCustomer(null)","setShares([])",
    "setDesigns([])","setProfiles([])","setQuotes([])","setOrders([])",
-   "setOrderEvents([])","setOutcomes([])","setOutcomeDrafts({})"]){
+   "setOrderEvents([])","setOutcomes([])","setOutcomeDrafts({})",
+   'setClaimDesign("")','setClaimMeasurement("")','setEmail("")','setCode("")']){
    assert.ok(logout.indexOf(stmt)>=0&&logout.indexOf(stmt)<confirmed,
      "must immediately clear private state: "+stmt);
  }
