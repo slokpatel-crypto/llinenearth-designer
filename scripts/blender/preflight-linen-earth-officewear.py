@@ -64,6 +64,25 @@ def transform_ready(obj):
     return scale_ok and rotation_ok
 
 
+def uv_triangle_issue(corners):
+    """Validate actual UV triangle area, without asserting textile calibration.
+
+    UV area alone cannot certify real linen repeat scale, seam placement,
+    anisotropy or woven grain. It CAN rule out nonfinite and collapsed charts.
+    """
+    if len(corners) != 3 or any(len(uv) != 2 for uv in corners):
+        return "malformed"
+    if any(not math.isfinite(float(value)) for uv in corners for value in uv):
+        return "nonfinite"
+    (u0, v0), (u1, v1), (u2, v2) = corners
+    twice_area = (u1 - u0) * (v2 - v0) - (v1 - v0) * (u2 - u0)
+    if not math.isfinite(twice_area):
+        return "nonfinite"
+    if abs(twice_area) <= 1e-12:
+        return "collapsed"
+    return None
+
+
 def evaluated_mesh_stats(obj):
     depsgraph = bpy.context.evaluated_depsgraph_get()
     evaluated = obj.evaluated_get(depsgraph)
@@ -75,7 +94,19 @@ def evaluated_mesh_stats(obj):
         triangles = len(mesh.loop_triangles)
         degenerate = sum(1 for polygon in mesh.polygons if not math.isfinite(polygon.area) or polygon.area <= 1e-10)
         uv_layers = len(mesh.uv_layers)
-        uv_name = mesh.uv_layers.active.name if mesh.uv_layers.active else None
+        uv_channel = mesh.uv_layers.active
+        uv_name = uv_channel.name if uv_channel else None
+        uv_nonfinite = 0
+        uv_collapsed = 0
+        if uv_channel is not None:
+            for triangle in mesh.loop_triangles:
+                status = uv_triangle_issue([
+                    tuple(uv_channel.data[i].uv) for i in triangle.loops
+                ])
+                if status == "nonfinite":
+                    uv_nonfinite += 1
+                elif status in ("collapsed", "malformed"):
+                    uv_collapsed += 1
         return {
             "vertices": vertices,
             "polygons": polygons,
@@ -84,6 +115,8 @@ def evaluated_mesh_stats(obj):
             "degenerateRatio": (degenerate / polygons) if polygons else 1.0,
             "uvLayers": uv_layers,
             "activeUv": uv_name,
+            "uvNonFiniteTriangles": uv_nonfinite,
+            "uvCollapsedTriangles": uv_collapsed,
         }
     finally:
         evaluated.to_mesh_clear()
@@ -422,6 +455,16 @@ def main():
             reasons.append(f"{name} has empty or non-renderable geometry.")
         if stats["uvLayers"] <= 0 or not stats["activeUv"]:
             reasons.append(f"{name} needs an active UV map.")
+        if stats["uvNonFiniteTriangles"] > 0:
+            reasons.append(
+                f"{name} has {stats['uvNonFiniteTriangles']} triangles with non-finite UV coordinates; "
+                "repeat/stripe rendering cannot be certified."
+            )
+        if stats["uvCollapsedTriangles"] > 0:
+            reasons.append(
+                f"{name} has {stats['uvCollapsedTriangles']} collapsed UV triangles; "
+                "fix the garment unwrap before approving fabric mapping."
+            )
         if stats["degenerateRatio"] > MAX_DEGENERATE_FACE_RATIO:
             reasons.append(
                 f"{name} has too many zero-area/degenerate faces: "
