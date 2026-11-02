@@ -208,7 +208,8 @@ async function main(){
     }
     // Even with an approved server flag, an absent, false or malformed
     // database capability must keep the readable stock ledger READ ONLY.
-    for(const bad of ["readinessFalse","readinessMissing","readinessMalformed",\n      "readinessObject","readinessError"]){
+    for(const bad of ["readinessFalse","readinessMissing","readinessMalformed",
+      "readinessObject","readinessError"]){
       mode=bad;seen.length=0;
       const snapshot=await call("GET");
       assert.equal(snapshot.response.status,200,bad);
