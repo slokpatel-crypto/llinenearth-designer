@@ -107,6 +107,11 @@ async function startContext(browser,opts={}){
     assert.equal(request.method(),"POST");
     const body=request.postDataJSON();
     records.push(body);
+    if(opts.revokeOnPost){
+      return route.fulfill({status:423,
+        json:{error:"Stock writes are disabled pending rollout approval."},
+        headers:{"cache-control":"private, no-store"}});
+    }
     assert.equal(body.action,opts.reservationMode?"reserve":"record",
       "only the intended stock fixture may post");
     assert.match(body.requestKey,/^[0-9a-f-]{36}$/i);
@@ -250,6 +255,36 @@ async function main(){
       assert.equal(readOnly.records.length,0,"read-only stock desk must never issue POST");
       console.log("Stock operator Chromium PASS: readable ledger stays read-only without rollout approval.");
     }finally{await readOnly.context.close();}
+    for(const reservationMode of [false,true]){
+      // Page got a positive GET; the flag was revoked before its next POST.
+      // The server's definitive 423 must NOT be mistaken for a committed 503.
+      const revoked=await startContext(browser,{revokeOnPost:true,reservationMode});
+      try{
+        const label=reservationMode?"Create reservation":"Record stock event";
+        if(reservationMode)await fillReservation(revoked.page,"SYNTH-REVOKED-CUT-SHEET");
+        else await fill(revoked.page,"SYNTH-REVOKED-ROLL");
+        const [response]=await Promise.all([
+          revoked.page.waitForResponse(r=>r.url().includes("/api/operator/stock")&&
+            r.request().method()==="POST",{timeout:15000}),
+          revoked.page.getByRole("button",{name:label}).click(),
+        ]);
+        assert.equal(response.status(),423);
+        await revoked.page.getByText(/Stock writes are disabled pending rollout approval\. Refresh the ledger/).waitFor();
+        assert.equal(revoked.records.length,1,"one rejected POST, no replay");
+        for(const name of ["Record stock event","Create reservation","Consume","Release"])
+          assert.equal(await revoked.page.getByRole("button",{name}).isDisabled(),true,
+            "all four write buttons must instantly disable on revoked approval");
+        assert.equal(await revoked.page.getByText(/Uncertain stock write: do not submit another movement/).count(),0,
+          "the server never reached an RPC and must not produce a false maybe-committed warning");
+        await revoked.page.reload({waitUntil:"domcontentloaded"});
+        await ready(revoked.page);
+        assert.equal(await revoked.page.getByText(/An earlier stock operation might have committed/).count(),0,
+          "definitive 423 must clear the persistent pending marker before reload");
+        assert.equal(revoked.records.length,1,"reloading cannot auto-retry a rejected request");
+        console.log("Stock operator Chromium PASS: "+label+
+          " revoked server-side while page open, 423 returns definitive read-only without pending marker.");
+      }finally{await revoked.context.close();}
+    }
     const blocked=await startContext(browser,{blockStorage:true});
     try{
       await fill(blocked.page);

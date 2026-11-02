@@ -67,7 +67,7 @@ export async function POST(request:Request){
   // Keep the inventory ledger read-only until stock v3 is deployed and
   // staging/rollback/physical-source checks are explicitly approved.
   // This is server-side only: no browser flag can enable privileged writes.
-  if(!stockWritesEnabled()) return stockPrivateJson({error:"Stock writes are disabled pending rollout approval."},{status:503});
+  if(!stockWritesEnabled()) return stockPrivateJson({error:"Stock writes are disabled pending rollout approval."},{status:423});
   try{
     const body=await readBoundedStockMutationJson(request);
     const action=String(body.action||"");

@@ -9,6 +9,7 @@ test("uncertain physical stock writes require operator reconciliation before ret
   assert.equal(stockMutationNeedsReconciliation(true,false,200),true,"malformed successful ACK");
   assert.equal(stockMutationNeedsReconciliation(true,false,503),true,"upstream may commit before failure");
   assert.equal(stockMutationNeedsReconciliation(true,false,502),true);
+  assert.equal(stockMutationNeedsReconciliation(true,false,423),false,"rollout gate rejected before RPC");
   assert.equal(stockMutationNeedsReconciliation(true,false,429),false,"explicit client rejection");
   assert.equal(stockMutationNeedsReconciliation(true,false,409),false,"definitive stock conflict");
   assert.equal(stockMutationNeedsReconciliation(true,false,401),false);
