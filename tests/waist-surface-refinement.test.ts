@@ -31,7 +31,7 @@ test("only the real trouser waist receives non-smoothing topology refinement bef
   assert.ok(!footprint.includes("round(7.0 + waist_extra_mm"),"never label actual clearance from a guessed 7mm default");
   const workflow=readFileSync(".github/workflows/titan-native-source-candidate.yml","utf8");
   assert.ok(workflow.includes("TITAN_TUCKED_LAYERING_FULL_PHYSICAL_PREFLIGHT_EVIDENCE_VALIDATED"));
-  assert.ok(workflow.includes('assert standard["rejectionReasonCount"] == 11'));
+  assert.ok(workflow.includes('assert standard["rejectionReasonCount"] == 10'));
   assert.ok(workflow.includes('assert standard["boundaryIntersections"]["shirtTrouserTuck"] == 0'));
   assert.ok(workflow.includes('abs(standard_width - target_waist_width_mm) <= abs(control_width - target_waist_width_mm)'));
 
