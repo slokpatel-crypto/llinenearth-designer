@@ -9,6 +9,7 @@ on:
       - "scripts/blender/preflight-linen-earth-officewear.py"
       - "scripts/blender/summarize-native-candidate-preflight.py"
       - "tests/python/test_native_candidate_preflight_summary.py"
+      - "tests/blender/diagnose_garment_contact_stages.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -66,9 +67,10 @@ jobs:
             --asset-root .cache/linen-earth/blender-human-base-meshes-v1.4.1 \
             --output .cache/linen-earth/linen-earth-officewear-body-base.blend
           "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
-            --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
+            --python-exit-code 1 --python tests/blender/diagnose_garment_contact_stages.py -- \
             --output .cache/linen-earth/linen-earth-officewear-authored.blend
           test -s .cache/linen-earth/linen-earth-officewear-authored.blend
+          test -s .cache/linen-earth/garment-contact-stages.json
       - name: Produce real Blender rejection evidence, not an approved model
         shell: bash
         run: |
@@ -92,5 +94,6 @@ jobs:
           path: |
             ${{ runner.temp }}/titan-candidate-evidence/rejection-report.json
             ${{ runner.temp }}/titan-candidate-evidence/preflight.log
+            .cache/linen-earth/garment-contact-stages.json
           if-no-files-found: ignore
           retention-days: 7
