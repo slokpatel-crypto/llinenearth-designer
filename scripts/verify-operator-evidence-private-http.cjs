@@ -169,6 +169,30 @@ async function main(){
       assert.equal(r.res.status,401);
       assert.equal(seen.length,0,"unauthorized requests may not reach fake PostgREST");
 
+      // Signed operator cookie alone is insufficient: block cross-site browser
+      // origins and simple HTML form submissions before any privileged RPC.
+      for(const attack of [
+        {headers:{origin:"https://cross-site.invalid","content-type":"application/json"},expected:403},
+        {headers:{origin:"null","content-type":"application/json"},expected:403},
+        {headers:{"content-type":"text/plain"},expected:415},
+        {headers:{"content-type":"application/x-www-form-urlencoded"},expected:415},
+      ]){
+        scenario={target:null,kind:"ok"};
+        seen.length=0;
+        const rejected=await request(path,{method:"POST",
+          headers:{cookie,...attack.headers},
+          body:JSON.stringify(route.draft)});
+        assert.equal(rejected.res.status,attack.expected,path+" blocked metadata");
+        assert.equal(seen.length,0,"rejected request reached private production RPC");
+      }
+      seen.length=0;
+      const sameOrigin=await request(path,{method:"POST",
+        headers:{cookie,origin,"content-type":"application/json"},
+        body:JSON.stringify(route.draft)});
+      assert.equal(sameOrigin.res.status,200,"same-origin signed JSON must work");
+      assert.deepEqual(sameOrigin.data,{evidenceId:uuid});
+      assert.equal(seen.length,1);
+
       scenario={target:null,kind:"ok"};
       seen.length=0;
       r=await request(path,{headers:{cookie}});
@@ -231,16 +255,17 @@ async function main(){
           "Production completion evidence could not be read."});
       }
       scenario={target:null,kind:"ok"};
-      for(const invalid of ["{broken","null","[]",
-        '{"action":"record","token":"'+secretMarker+'",',
-        JSON.stringify({...route.draft,operator:"",checkedBy:"",evidenceReference:""}),
-        JSON.stringify({...route.draft,extra:"x".repeat(33_000)}),
+      for(const [invalid,expectedStatus] of [
+        ["{broken",400],["null",400],["[]",400],
+        ['{"action":"record","token":"'+secretMarker+'",',400],
+        [JSON.stringify({...route.draft,operator:"",checkedBy:"",evidenceReference:""}),400],
+        [JSON.stringify({...route.draft,extra:"x".repeat(33_000)}),413],
       ]){
         seen.length=0;
         r=await request(path,{method:"POST",headers:{cookie,"content-type":"application/json"},
           body:invalid});
-        assert.equal(r.res.status,400,path+" invalid input");
-        assert.equal(seen.length,0,"invalid POST must not reach privileged RPC");
+        assert.equal(r.res.status,expectedStatus,path+" rejected invalid or oversized input");
+        assert.equal(seen.length,0,"rejected POST must not reach privileged RPC");
       }
     }
     assert.ok(!output.includes(secretMarker),"built Next server logs exposed private backend/request marker");
