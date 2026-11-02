@@ -128,6 +128,20 @@ async function main(){
       if(kind==="valid")assert.deepEqual(result,{configured:true,stock:[valid]});
       else assert.deepEqual(result,{error:"Stock ledger could not be read."});
     }
+    // Invalid client JSON is a definitive HTTP 400, never an ambiguous
+    // stock-commit 503. In particular, no service-role RPC may be invoked.
+    for(const malformed of [null,"[]","{oops",Buffer.from([0xc3,0x28])]){
+      mode="created";seen.length=0;
+      const response=await fetch(url,{method:"POST",
+        headers:{cookie,"content-type":"application/json","connection":"close"},
+        ...(malformed===null?{}:{body:malformed}),
+        signal:AbortSignal.timeout(15000)});
+      const result=await response.json();
+      assert.equal(response.status,400,"invalid stock JSON must be a definitive 400");
+      assert.deepEqual(result,{error:"Stock mutation requires a valid JSON object."});
+      assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
+      assert.equal(seen.length,0,"malformed stock JSON must never reach a privileged RPC");
+    }
     const record={action:"record",fabricId:fabric,eventType:"receipt",
       quantityMetres:2.125,recordedBy:"Synthetic checker",
       sourceReference:"SYNTH-ROLL-001",requestKey:"STOCK-MANUAL-SYNTHETIC-0001"};
@@ -185,7 +199,7 @@ async function main(){
       }
     }
     assert.ok(!output.includes(marker),"private fake stock RPC error leaked in server logs");
-    console.log("TITAN stock API private boundary PASS: 54 synthetic authenticated cases, no real writes.");
+    console.log("TITAN stock API private boundary PASS: 58 synthetic authenticated cases, no real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>upstream.close(resolve));
