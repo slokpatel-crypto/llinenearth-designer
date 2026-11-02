@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
-import { validateOperatorLedgerRows } from "@/lib/designer/operator-optional-rpc";
+import { verifyProductionDeliveryOrders, verifyProductionDeliveryAudits } from "@/lib/designer/production-delivery-ledger-validation";
 import { requireOperatorCreatedId } from "@/lib/designer/operator-created-id";
 import { normalizeProductionDeliveryEvidence } from "@/lib/designer/production-delivery-evidence";
 
@@ -49,8 +49,8 @@ export async function GET(){
     ]);
     return privateEvidenceJson({
       configured:true,
-      orders:validateOperatorLedgerRows(orders,500),
-      evidence:validateOperatorLedgerRows(evidence,500),
+      orders:verifyProductionDeliveryOrders(orders),
+      evidence:verifyProductionDeliveryAudits(evidence),
     });
   }catch(error){
     console.error("[operator/production-evidence] request failed (details redacted).");

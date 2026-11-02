@@ -47,7 +47,10 @@ for(const path of routes){
     if(path.includes("production-calibration"))
       assert.match(src,/verifyProductionCutLedger\(rows,1000\)/,
         "cut evidence must pass stronger row and duplicate-identity validation");
-    else assert.match(src,/validateOperatorLedgerRows/);
+    else {
+      assert.match(src,/verifyProductionDeliveryOrders\(orders\)/);
+      assert.match(src,/verifyProductionDeliveryAudits\(evidence\)/);
+    }
   });
 }
 
