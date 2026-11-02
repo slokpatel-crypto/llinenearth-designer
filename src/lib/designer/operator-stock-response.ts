@@ -2,7 +2,9 @@ import { FABRIC_STOCK } from "../fabric-stock.ts";
 
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const KNOWN_FABRICS=new Set(FABRIC_STOCK.map(f=>f.id));
-const DECIMAL=/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
+// Ledger quantities are numeric(10,3). Aggregated snapshots must not invent
+// sub-millimetre cloth precision; trailing zeros from NUMERIC are harmless.
+const DECIMAL=/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,3}0*)?$/;
 
 // SQL close RPCs return scalar booleans, not truthy envelopes. An invalid
 // HTTP-200 JSON response indicates a backend contract failure, not an
@@ -22,7 +24,7 @@ export function requireStockCreatedId(value:unknown):string{
 function metres(value:unknown):number {
   if(typeof value!=="number"&&typeof value!=="string")
     throw new Error("Invalid physical stock snapshot.");
-  if(typeof value==="string"&&!DECIMAL.test(value))
+  if(!DECIMAL.test(String(value)))
     throw new Error("Invalid physical stock snapshot.");
   const num=Number(value);
   if(!Number.isFinite(num)||num<0||num>100_000_000)
