@@ -60,6 +60,7 @@ export default function ProductionEvidenceClient(){
       setSelectedOrderId(prior?.order_id||requestedDelivered?.order_id||
         firstMissing?.order_id||delivered[0]?.order_id||"");
       setSnapshotState("ready");
+      setMessage("");
       return true;
     }catch{
       if(generation!==refreshGeneration.current)return false;
