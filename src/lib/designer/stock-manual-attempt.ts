@@ -42,6 +42,7 @@ function parseAttempts(raw:string|null):StoredAttempt[]{
 export function createStockManualAttemptTracker(
   makeKey:()=>string,
   getStorage:()=>AttemptStorage=()=>window.sessionStorage,
+  storageKey=STORAGE_KEY,
 ){
   return {
     async keyFor(record:ManualStockAttempt):Promise<string>{
@@ -50,7 +51,7 @@ export function createStockManualAttemptTracker(
       try{
         const identity=await digest(fingerprint(record));
         const storage=getStorage();
-        const attempts=parseAttempts(storage.getItem(STORAGE_KEY));
+        const attempts=parseAttempts(storage.getItem(storageKey));
         const previous=attempts.find(item=>item.fingerprint===identity);
         if(previous)return previous.key;
         // Evicting an old key would make the same physical receipt writable
@@ -59,7 +60,7 @@ export function createStockManualAttemptTracker(
           throw new Error("Manual stock retry journal is full.");
         const key=makeKey();
         if(!UUID.test(key))throw new Error("Invalid generated stock key.");
-        storage.setItem(STORAGE_KEY,JSON.stringify([...attempts,{fingerprint:identity,key}]));
+        storage.setItem(storageKey,JSON.stringify([...attempts,{fingerprint:identity,key}]));
         return key;
       }catch{
         throw new Error("Stock retry tracking is unavailable in this browser tab. No stock movement was sent; reconcile earlier entries before trying again.");
