@@ -10,6 +10,8 @@ on:
       - "scripts/blender/summarize-native-candidate-preflight.py"
       - "tests/python/test_native_candidate_preflight_summary.py"
       - "tests/blender/diagnose_garment_contact_stages.py"
+      - "scripts/blender/measure-body-contours.py"
+      - "tests/blender/test_body_contour_components.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -46,6 +48,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/titan-blender"
           tar -xf "$RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz" -C "$RUNNER_TEMP/titan-blender"
           echo "BLENDER_BIN=$RUNNER_TEMP/titan-blender/blender-4.5.14-linux-x64/blender" >> "$GITHUB_ENV"
+      - name: Verify native central torso and disconnected arm cross-sections
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_body_contour_components.py
       - name: Fetch official pinned CC0 source body bundle
         shell: bash
         run: |
