@@ -55,7 +55,7 @@ WITH expected(name,signature) AS (
       WHERE split_part(c,'=',1)='search_path'
         AND regexp_replace(
           split_part(c,'=',2), '[[:space:]]+', '', 'g'
-        ) ~ '^(public|"public")(,(private|"private"))?$')),false) AS fixed_search_path,
+        ) ~ '^(public|"public")(,(private|"private"))?$'),false) AS fixed_search_path,
     COALESCE(has_function_privilege('service_role',f.oid,'EXECUTE'),false) AS service_role_execute,
     COALESCE(has_function_privilege('anon',f.oid,'EXECUTE'),false) AS anon_execute,
     COALESCE(has_function_privilege('authenticated',f.oid,'EXECUTE'),false) AS authenticated_execute
