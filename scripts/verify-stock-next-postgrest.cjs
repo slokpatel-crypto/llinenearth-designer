@@ -87,6 +87,8 @@ async function main(){
   const proxyPort=await listen(proxy),nextPort=await freePort();
   const env={...process.env,NODE_ENV:"production",NEXT_TELEMETRY_DISABLED:"1",
     LINEN_OPERATOR_SESSION_SECRET:sessionSecret,
+    // Explicitly opt in ONLY the localhost disposable PG integration fixture.
+    LINEN_STOCK_WRITES_ENABLED:"enabled",
     SUPABASE_URL:"http://127.0.0.1:"+proxyPort,
     SUPABASE_SERVICE_ROLE_KEY:jwt("service_role"),
     SUPABASE_SECRET_KEY:"",
@@ -118,6 +120,12 @@ async function main(){
       await new Promise(resolve=>setTimeout(resolve,100));
     }
     assert.ok(online,"Next stock operator endpoint did not start.");
+    const visibleStock=await call("GET");
+    assert.equal(visibleStock.status,200);
+    assert.equal(visibleStock.data.configured,true);
+    assert.equal(visibleStock.data.writesEnabled,true,
+      "the real synthetic API must reflect the explicit server-side write rollout gate");
+
     const unauthorized=await call("POST",evidence,{authorized:false});
     assert.equal(unauthorized.status,401);
     const crossSite=await call("POST",evidence,{origin:"https://evil.example"});
