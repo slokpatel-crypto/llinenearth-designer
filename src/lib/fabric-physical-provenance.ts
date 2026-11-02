@@ -15,23 +15,27 @@ export type FabricPhysicalEvidenceProvenance={
   sourceUrl?:string;
 };
 
-function clean(value:unknown,limit:number){
-  return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
+function clean(value:unknown,limit:number):string|null{
+  // Do not coerce JSON arrays/objects or shorten a signed supplier reference.
+  if(typeof value!=="string") return null;
+  const normalized=value.replace(/\s+/g," ").trim();
+  return normalized.length<=limit ? normalized : null;
 }
 
 export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricPhysicalEvidenceProvenance|null{
   if(!value||typeof value!=="object"||Array.isArray(value)) return null;
   const source=value as Record<string,unknown>;
-  const sourceType=clean(source.sourceType,40) as FabricPhysicalEvidenceSourceType;
-  if(!FABRIC_PHYSICAL_EVIDENCE_SOURCE_TYPES.includes(sourceType)) return null;
+  const sourceType=clean(source.sourceType,40);
+  if(!sourceType || !FABRIC_PHYSICAL_EVIDENCE_SOURCE_TYPES.includes(sourceType as FabricPhysicalEvidenceSourceType)) return null;
   const reference=clean(source.reference,220);
   const checkedBy=clean(source.checkedBy,120);
-  if(reference.length<2||checkedBy.length<2) return null;
+  if(!reference || reference.length<2 || !checkedBy || checkedBy.length<2) return null;
 
-  const evidenceDate=clean(source.evidenceDate,20);
-  if(evidenceDate&&!/^\d{4}-\d{2}-\d{2}$/.test(evidenceDate)) return null;
+  const evidenceDate=source.evidenceDate==null ? "" : clean(source.evidenceDate,20);
+  if(evidenceDate===null || (evidenceDate&&!/^\d{4}-\d{2}-\d{2}$/.test(evidenceDate))) return null;
 
-  const sourceUrl=clean(source.sourceUrl,500);
+  const sourceUrl=source.sourceUrl==null ? "" : clean(source.sourceUrl,500);
+  if(sourceUrl===null) return null;
   if(sourceUrl){
     try{
       const parsed=new URL(sourceUrl);
@@ -40,7 +44,7 @@ export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricP
   }
 
   return {
-    sourceType,
+    sourceType:sourceType as FabricPhysicalEvidenceSourceType,
     reference,
     checkedBy,
     ...(evidenceDate?{evidenceDate}:{}),
