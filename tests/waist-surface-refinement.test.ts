@@ -37,8 +37,10 @@ test("only the real trouser waist receives non-smoothing topology refinement bef
 
   assert.ok(workflow.includes('for extra in 0 6 9; do'),"native CC0 must retain original zero-extra control");
   assert.ok(workflow.includes('--experimental-waist-extra-clearance-mm 0'),"waist baseline must be explicitly pinned");
-  assert.ok(workflow.includes('assert control["rejectionReasonCount"] == 12'));
-  assert.ok(workflow.includes('assert standard["rejectionReasonCount"] == 11'));
+  assert.ok(workflow.includes('assert control["rejectionReasonCount"] == 11'),
+    "native 7mm waist baseline retains its 11 physical blockers with the measured right hem correction");
+  assert.ok(workflow.includes('assert standard["rejectionReasonCount"] == 10'),
+    "native 10mm waist + right hem default must have exactly ten remaining blockers");
   assert.ok(workflow.includes('assert report["preflightReady"] is False'),"research variants cannot bypass production release gates");
   assert.ok(workflow.includes('assert standard["boundaryIntersections"]["shirtTrouserTuck"] == 0'));
   assert.ok(workflow.includes("TITAN_NATIVE_WAIST_LAYERING_COMPARISONS_VALIDATED_CANDIDATE_ONLY"));
