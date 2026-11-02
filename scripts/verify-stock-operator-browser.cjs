@@ -101,7 +101,7 @@ async function startContext(browser,opts={}){
     const request=route.request();
     if(request.method()==="GET"){
       gets++;
-      return route.fulfill({status:200,json:{configured:true,stock},
+      return route.fulfill({status:200,json:{configured:true,writesEnabled:!opts.readOnly,stock},
         headers:{"cache-control":"private, no-store"}});
     }
     assert.equal(request.method(),"POST");
@@ -238,6 +238,18 @@ async function main(){
       assert.ok(uncertainReserve.getReads()>=2,"operator reconciliation must refresh ledger");
       console.log("Stock operator Chromium PASS: uncertain reservation locked across reload, same-key retry after reconciliation.");
     }finally{await uncertainReserve.context.close();}
+    const readOnly=await startContext(browser,{readOnly:true});
+    try{
+      await readOnly.page.getByText(/Stock ledger is readable, but all stock movements are disabled/).waitFor();
+      await fill(readOnly.page,"SYNTH-READONLY-ROLL");
+      await fillReservation(readOnly.page,"SYNTH-READONLY-CUT-SHEET");
+      for(const name of ["Record stock event","Create reservation","Consume","Release"]){
+        assert.equal(await readOnly.page.getByRole("button",{name}).isDisabled(),true,
+          name+" must be blocked while v2 ledger exists but v3 write rollout is not approved");
+      }
+      assert.equal(readOnly.records.length,0,"read-only stock desk must never issue POST");
+      console.log("Stock operator Chromium PASS: readable ledger stays read-only without rollout approval.");
+    }finally{await readOnly.context.close();}
     const blocked=await startContext(browser,{blockStorage:true});
     try{
       await fill(blocked.page);
