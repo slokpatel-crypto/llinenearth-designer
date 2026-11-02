@@ -129,3 +129,14 @@ test("direct trouser anchors are not silently converted into different lengths o
     assert.throws(()=>buildProductionHandoff(createRevision([chest],[waist,seat,target])),/Unsafe tailor handoff measurements/);
   }
 });
+
+test("unknown advanced cut ID is never passed off as an exact reconstructable tailor instruction",()=>{
+  const revision=createRevision([chest],[waist,seat]);
+  if(!revision.garmentSpec.styleSpec) throw Error("Missing advanced spec");
+  revision.garmentSpec.styleSpec.shirt.cuff="nonexistent_cut_option";
+  assert.throws(()=>buildProductionHandoff(revision),/Unsafe tailor handoff construction/);
+  const packet=buildProductionHandoff(createRevision([chest],[waist,seat]));
+  if(!packet.construction.styleSpec) throw Error("Missing packet advanced spec");
+  packet.construction.styleSpec.pant.fit="nonexistent_shape";
+  assert.throws(()=>buildTailorTechPackHtml(packet),/Unsafe tailor tech pack construction/);
+});
