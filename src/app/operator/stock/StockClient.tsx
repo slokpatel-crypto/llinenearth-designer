@@ -7,6 +7,7 @@ import { requireStockClientAcknowledgment } from "@/lib/designer/operator-stock-
 import { createStockReservationAttemptTracker, type StockReservationAttempt } from "@/lib/designer/stock-reservation-attempt";
 import { stockMutationNeedsReconciliation } from "@/lib/designer/stock-mutation-reconciliation";
 import { createStockManualAttemptTracker } from "@/lib/designer/stock-manual-attempt";
+import { createStockUncertainJournal } from "@/lib/designer/stock-uncertain-journal";
 
 type StockRow={fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;provenance_ready:boolean;last_event_at:string|null};
 
@@ -21,6 +22,7 @@ export default function StockClient(){
   const mutationGate=useRef(createOperatorMutationGate());
   const reservationAttempt=useRef(createStockReservationAttemptTracker(()=>crypto.randomUUID()));
   const manualAttempt=useRef(createStockManualAttemptTracker(()=>crypto.randomUUID(),()=>window.sessionStorage));
+  const uncertainJournal=useRef(createStockUncertainJournal());
   const [form,setForm]=useState({fabricId:"",eventType:"receipt",quantityMetres:"",recordedBy:"",sourceReference:"",note:""});
   const [reservation,setReservation]=useState({fabricId:"",revisionId:"",quantityMetres:"",requestedBy:"",sourceReference:""});
   const [close,setClose]=useState({reservationId:"",actualMetres:"",checkedBy:"",sourceReference:"",note:""});
@@ -54,6 +56,12 @@ export default function StockClient(){
     }
   }
   useEffect(()=>{
+    // Recovery must run before the first verified snapshot can enable buttons.
+    if(uncertainJournal.current.isBlocked()){
+      uncertainWriteRef.current=true;
+      setUncertainWrite(true);
+      setMessage("An earlier stock operation might have committed before this tab reloaded. Check the ledger and physical source before another movement.");
+    }
     void load();
     const params=new URLSearchParams(window.location.search);
     const fabricId=params.get("fabric")||"";
@@ -73,6 +81,7 @@ export default function StockClient(){
     if(uncertainWriteRef.current||uncertainWrite||busy||snapshotState!=="ready"||!configured||!mutationGate.current.enter()) return;
     setBusy(true);setMessage("");
     let requestSent=false,acknowledged=false,httpStatus:number|null=null;
+    let markedPending=false;
     try{
       if(body.action==="record"){
         const manual={
@@ -85,6 +94,15 @@ export default function StockClient(){
         const requestKey=await manualAttempt.current.keyFor(manual);
         body={...body,requestKey};
       }
+      if(uncertainJournal.current.isBlocked()){
+        uncertainWriteRef.current=true;
+        setUncertainWrite(true);
+        throw new Error("An earlier stock write still needs physical ledger reconciliation.");
+      }
+      // The marker MUST survive tab reload even when the HTTP response is lost.
+      // A missing/blocked storage write prevents the privileged mutation.
+      uncertainJournal.current.markPending();
+      markedPending=true;
       requestSent=true;
       const response=await fetch("/api/operator/stock",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
       httpStatus=response.status;
@@ -107,7 +125,16 @@ export default function StockClient(){
         setMessage("Stock write outcome is uncertain. It may have committed. Check the actual ledger entries and physical source evidence before another write.");
       }else setMessage(error instanceof Error?error.message:"Stock operation failed.");
     }
-    finally{mutationGate.current.exit();setBusy(false);}
+    finally{
+      if(markedPending&&!stockMutationNeedsReconciliation(requestSent,acknowledged,httpStatus)){
+        if(!uncertainJournal.current.clearPending()){
+          uncertainWriteRef.current=true;
+          setUncertainWrite(true);
+          setMessage("Stock tracking could not clear its pending marker. Reconcile the ledger and source before continuing.");
+        }
+      }
+      mutationGate.current.exit();setBusy(false);
+    }
   }
 
   const totalAvailable=stock.reduce((sum,row)=>sum+Number(row.available_metres||0),0);
@@ -127,6 +154,12 @@ export default function StockClient(){
       <p>Uncertain stock write: do not submit another movement until you have checked the real ledger event and its physical source reference. A successful snapshot refresh alone does not prove whether the previous write committed.</p>
       <button disabled={busy||snapshotState==="loading"} onClick={()=>{void (async()=>{
         if(await load()){
+          // A verified snapshot is not enough: the operator must also restore
+          // the persisted fail-closed marker or remain locked after a reload.
+          if(!uncertainJournal.current.clearPending()){
+            setMessage("Unable to clear pending stock uncertainty. Do not submit new stock movements.");
+            return;
+          }
           uncertainWriteRef.current=false;
           setUncertainWrite(false);
           setMessage("Ledger reloaded after operator reconciliation. Confirm the original event and source before any new stock movement.");
