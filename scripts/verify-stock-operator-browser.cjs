@@ -78,6 +78,12 @@ async function startContext(browser,opts={}){
     records.push(body);
     assert.equal(body.action,"record","fixture must not exercise reservations");
     assert.match(body.requestKey,/^[0-9a-f-]{36}$/i);
+    if(opts.loseFirstAck&&records.length===1){
+      // Post has already been sent, but no trusted acknowledgment reached
+      // the operator. The browser must lock every subsequent stock mutation.
+      return route.fulfill({status:503,json:{error:"Stock operation could not be verified."},
+        headers:{"cache-control":"private, no-store"}});
+    }
     return route.fulfill({status:200,json:{eventId:uuid},
       headers:{"cache-control":"private, no-store"}});
   });
@@ -105,6 +111,39 @@ async function main(){
       assert.ok(getReads()>=4,"fresh snapshot must be fetched after each ACK and reload");
       console.log("Stock operator Chromium PASS: same evidence, confirmed ACK, reload, distinct roll.");
     }finally{await context.close();}
+    const uncertain=await startContext(browser,{loseFirstAck:true});
+    try{
+      await fill(uncertain.page,"SYNTH-LOST-ACK-001");
+      const [ambiguous]=await Promise.all([
+        uncertain.page.waitForResponse(r=>r.url().includes("/api/operator/stock")&&
+          r.request().method()==="POST"),
+        uncertain.page.getByRole("button",{name:"Record stock event"}).click(),
+      ]);
+      assert.equal(ambiguous.status(),503,"fixture must lose the first POST acknowledgment");
+      await uncertain.page.getByText(/Stock write outcome is uncertain\. It may have committed/).waitFor();
+      assert.equal(uncertain.records.length,1,"uncertain receipt should be sent exactly once");
+      const originalKey=uncertain.records[0].requestKey;
+      const stockButton=uncertain.page.getByRole("button",{name:"Record stock event"});
+      assert.equal(await stockButton.isDisabled(),true,
+        "an uncertain stock outcome must lock every follow-up physical receipt");
+      assert.equal(await uncertain.page.getByRole("button",{name:"Create reservation"}).isDisabled(),true,
+        "an uncertain manual receipt must also block creating another reservation");
+      assert.equal(await uncertain.page.getByRole("button",{name:"Consume"}).isDisabled(),true,
+        "an uncertain manual receipt must block consumption");
+      assert.equal(await uncertain.page.getByRole("button",{name:"Release"}).isDisabled(),true,
+        "an uncertain manual receipt must block release");
+      // The real operator must separately confirm the ledger and the physical
+      // source before clicking this reconciliation control. CI only tests UI.
+      await uncertain.page.getByRole("button",{
+        name:"I checked the ledger and source; refresh to unlock",
+      }).click();
+      await uncertain.page.getByText(/Ledger reloaded after operator reconciliation/).waitFor();
+      const confirmed=await submit(uncertain.page,uncertain.records);
+      assert.equal(confirmed.requestKey,originalKey,
+        "a retry after manual reconciliation must keep the original receipt ID");
+      assert.ok(uncertain.getReads()>=2,"reconciliation must fetch a fresh ledger snapshot");
+      console.log("Stock operator Chromium PASS: lost ACK locks all mutations and reconciliation reuses original receipt key.");
+    }finally{await uncertain.context.close();}
     const blocked=await startContext(browser,{blockStorage:true});
     try{
       await fill(blocked.page);
