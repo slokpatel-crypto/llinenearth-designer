@@ -8,7 +8,7 @@ The existing persisted production order contract in `src/lib/designer/production
 
 ## Implemented invariants
 
-- Every event must match the locked order ID, current status, next sequence, previous event ID and strictly increasing timestamp; duplicate event IDs, replay, stale updates and tampered replay destinations are rejected.
+- Every event must match the locked order ID, current status, next sequence, previous event ID and strictly increasing timestamp; duplicate event IDs, replay, stale updates and tampered replay destinations are rejected. Applied audit replay requires an explicitly present and exact `to` status (missing, null and undefined are rejected); raw unapplied event inputs do not require `to`. Calendar validation rejects impossible local dates, invalid clock fields and offsets outside ±14:00 before `Date.parse` can normalize them; valid leap days and timezone offsets remain accepted.
 - Every event requires an identified actor and external evidence reference; cancellation, QC rejection, recovery hold and resumption require a documented reason.
 - No stage skipping; only QC approval with all six existing finished-garment check IDs, a named inspector, physical inspection reference and matching immutable revision/recipe hash permits dispatch. Dispatch is mandatory before delivery.
 - QC rework returns to stitching; any recovery from a previous QC approval returns to stitching and requires new finishing and QC. A recovery hold cannot be used to jump to dispatch.
@@ -16,15 +16,21 @@ The existing persisted production order contract in `src/lib/designer/production
 
 **Evidence limitations:** The module validates the *shape* and consistency of a claimed physical receipt but cannot establish that a tailor inspected a garment or that a courier dispatched it. Client-supplied event metadata is not a trusted audit until an authenticated, transactional, append-only server store independently verifies identity, provenance and monotonic revisions. Do not enable production controls or infer stock, customer acceptance, QC, delivery, paid AI use or genuine human testing from these synthetic tests.
 
+## Follow-up hardening — 2026-11-02
+
+- Corrected independent central-review findings on the isolated state machine: a deleted `to` field can no longer pass applied audit replay; February 30 / April 31 / invalid leap days, hours and offsets are rejected before chronology evaluation.
+- Added focused negative and positive synthetic tests for missing/null/undefined/tampered `to`, valid leap-year and offset-aware timestamps, invalid calendar and UTC-equivalent duplicate event time.
+- This does **not** provide cryptographic event integrity or prove real-world QC. An authenticated transactional server with immutable append-only records, actor permissions, physical receipt verification and coordinated SQL status mapping is still required.
+
 ## Local verification
 
 - `node --experimental-strip-types --test tests/operator-order-lifecycle.test.ts`: 10/10 passing in Node 22.16.0, local isolated test run.
 - `tsc --noEmit --strict --target ES2022 --module esnext --moduleResolution bundler --skipLibCheck src/lib/operator/order-lifecycle.ts`: passed with local TypeScript 5.8.3.
-- Full repository `npm run quality`, `npm test`, `npm run eval:engine`, `npm run eval:preview-performance`, `npm run release:check`, `npm run build`, browser and CI checks: **not run locally**; only matching-head GitHub Actions can establish repository integration.
+- Full repository `npm run quality`, `npm test`, `npm run eval:engine`, `npm run eval:preview-performance`, `npm run release:check`, `npm run build` and browser checks: **not run locally for this follow-up**. The prior 10/10 Node tests and strict TypeScript validation were on the earlier head, not evidence of the new hardening code. New exact-head CI and Non-3D QA were queued after source/test edits; wait for results.
 
 ## Next checkpoint
 
-1. Obtain matching-head Full CI and independent Non-3D QA. If either fails, fix only isolated order-lifecycle files and retest.
+1. Obtain **new exact-head** Full CI and independent Non-3D QA for the hardening commit; previous success on `f849cf7b` does not verify these changes. If either fails, fix only isolated order-lifecycle files and retest.
 2. Coordinate the proposed states with the central integration owner and current SQL state machine; secure approval for persistence, audit events, idempotent writes, verified actor/physical evidence, cancellation/refund policy and recovery semantics. **Do not** modify shared SQL or production routes from this branch.
 3. After authorized backend implementation in a separate coordinated integration, add authenticated end-to-end tests for concurrency, audit replay, QC rework, cancellation after dispatch, dispatch/delivery evidence and operator device widths 390/768/1440.
 4. No main merge, Vercel deployment or production customer-data changes from this branch.
