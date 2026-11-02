@@ -43,3 +43,21 @@ test("JSON value coercion must not create supplier, roll or inspector proof",()=
   assert.equal(hasFabricPhysicalEvidenceProvenance({...valid,sourceType:"unverified"}),false);
   assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,sourceUrl:"javascript:alert(1)"}),null);
 });
+
+
+test("supplier physical receipts require encrypted source URLs, never HTTP",()=>{
+  assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,sourceUrl:"http://supplier.example/specs/E-2026-140"}),null);
+  assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,sourceUrl:"https://supplier.example/specs/E-2026-140"})?.sourceUrl,valid.sourceUrl);
+});
+
+test("inspection evidence date must be a real calendar day, including leap years",()=>{
+  for(const evidenceDate of [
+    "2026-02-29","2026-02-30","2026-04-31","2026-00-10","2026-13-01",
+    "0000-01-01","2026-11-00","2026-11-32",
+  ]){
+    assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,evidenceDate}),null,evidenceDate);
+  }
+  for(const evidenceDate of ["2024-02-29","2000-02-29","2026-02-28","2026-11-30"]){
+    assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,evidenceDate})?.evidenceDate,evidenceDate);
+  }
+});
