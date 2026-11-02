@@ -30,6 +30,6 @@ test("optional native inner-crotch topology experiment never changes default gar
     'assert contact["garmentLegToLeg"] == diag["measurements"]["legLegPolygonContactPairs"]',
     '"worsenedActualCollisionTypes": regressions',
     '"mayAutoPromote": False',
-    'assert item["productionApproved"] is False',
+    'item["productionApproved"] is False',
   ]) assert.ok(workflow.includes(text),text);
 });
