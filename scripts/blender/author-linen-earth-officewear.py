@@ -42,7 +42,7 @@ def cli_args():
 
 
 def safe_candidate_output(raw_output, source_blend):
-    """Never overwrite the existing body source or an unrelated Blender file."""
+    """Never overwrite the existing identity-locked body source scene."""
     if not source_blend:
         raise RuntimeError("Open a saved identity-locked source .blend before authoring.")
     source = Path(source_blend).expanduser().resolve()
