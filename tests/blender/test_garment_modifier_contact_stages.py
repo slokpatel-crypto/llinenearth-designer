@@ -14,10 +14,11 @@ spec.loader.exec_module(author)
 
 bpy.ops.object.select_all(action="SELECT")
 bpy.ops.object.delete(use_global=False)
-bpy.ops.mesh.primitive_cube_add(size=2, location=(0, 0, 0))
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=1.0, location=(0, 0, 0))
 body = bpy.context.object
 body.name = "Body"
-# Face-interior crossing, not coplanar overlapping cube boundaries.\nbpy.ops.mesh.primitive_cube_add(size=1, location=(1.2, 0, 0))
+# Two actual triangulated surfaces intersect through non-coplanar triangles.
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.8, location=(1.2, 0, 0))
 shell = bpy.context.object
 shell.name = "ShellCandidate"
 bpy.context.view_layer.update()
