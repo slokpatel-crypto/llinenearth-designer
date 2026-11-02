@@ -313,7 +313,8 @@ async function main(){
     assert.equal(crossSiteLogout.status,403);
     assert.ok(!crossSiteLogout.headers.get("set-cookie"),"cross-site logout must not clear cookies");
     const logout=await fetch(origin+"/api/customer-auth/logout",{method:"POST",
-      headers:{origin,cookie:"le_customer_session="+signedCookie}});
+      // Synthetic Node transport has no browser Origin; assert the browser fetch-site boundary instead.
+      headers:{"sec-fetch-site":"same-origin",cookie:"le_customer_session="+signedCookie}});
     assert.equal(logout.status,200);
     assert.match(logout.headers.get("set-cookie")||"",/le_customer_session=/);
 
