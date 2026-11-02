@@ -50,10 +50,26 @@ async function main(){
   const seen=[];
   const upstream=http.createServer(async(req,res)=>{
     const path=req.url||"";
+    if(path==="/auth/v1/user"){
+      seen.push({path,headers:req.headers});
+      if(req.headers.authorization!=="Bearer valid-legacy"){
+        res.writeHead(401,{"content-type":"application/json"});res.end("{}");return;
+      }
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end(JSON.stringify({id:"123e4567-e89b-12d3-a456-426614174000",email:"alice@example.com"}));return;
+    }
     const parts=[];
     for await(const chunk of req)parts.push(chunk);
     const payload=JSON.parse(Buffer.concat(parts).toString("utf8"));
     seen.push({path,headers:req.headers,payload});
+    if(path==="/auth/v1/otp"){
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end("{}");return;
+    }
+    if(path==="/auth/v1/verify"){
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end(JSON.stringify({user:{id:"123e4567-e89b-12d3-a456-426614174000",email:"alice@example.com"}}));return;
+    }
     if(path==="/rest/v1/rpc/designer_locked_revision_vault_store"){
       assert.equal(req.method,"POST");
       assert.equal(payload.p_revision_id,revision.revisionId);
@@ -128,7 +144,8 @@ async function main(){
   const env={...process.env,NODE_ENV:"production",NEXT_TELEMETRY_DISABLED:"1",
     SUPABASE_URL:"http://127.0.0.1:"+upstreamPort,
     SUPABASE_SECRET_KEY:"sb_secret_titan_vault_synthetic_only",
-    SUPABASE_SERVICE_ROLE_KEY:"",SUPABASE_ANON_KEY:"",NEXT_PUBLIC_SUPABASE_ANON_KEY:""};
+    SUPABASE_SERVICE_ROLE_KEY:"",SUPABASE_ANON_KEY:"synthetic-anon-for-local-auth-only",NEXT_PUBLIC_SUPABASE_ANON_KEY:"",
+    LINEN_CUSTOMER_SESSION_SECRET:"synthetic-session-secret-32-chars-not-live-012345"};
   const child=spawn(process.execPath,[require.resolve("next/dist/bin/next"),
     "start","-H","127.0.0.1","-p",String(nextPort)],
     {env,stdio:["ignore","pipe","pipe"]});
@@ -150,6 +167,70 @@ async function main(){
       await new Promise(resolve=>setTimeout(resolve,100));
     }
     assert.ok(ready,"Next did not start: "+output);
+    // Isolated real-Next HTTP OTP/session/signout and share preflight; the fake
+    // Supabase server never touches live customer records.
+    const origin="http://127.0.0.1:"+nextPort;
+    async function authPost(path,body,headers={}){
+      return await fetch(origin+path,{method:"POST",
+        headers:{...fixtureHeaders(),...headers},
+        body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
+    }
+    for(const endpoint of ["/api/customer-auth/otp","/api/customer-auth/verify","/api/designer/share"]){
+      seen.length=0;
+      const response=await authPost(endpoint,{email:"alice@example.com",token:"123456"},
+        {origin:"https://attacker.invalid"});
+      assert.equal(response.status,403,endpoint+" rejects foreign origin");
+      assert.equal(seen.length,0,"cross-site request must never touch Supabase");
+      assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
+    }
+    for(const endpoint of ["/api/customer-auth/otp","/api/customer-auth/verify","/api/designer/share"]){
+      seen.length=0;
+      const response=await authPost(endpoint,{email:"alice@example.com",token:"123456"},
+        {"sec-fetch-site":"same-site"});
+      assert.equal(response.status,403,endpoint+" rejects same-site subdomain");
+      assert.equal(seen.length,0);
+    }
+    seen.length=0;
+    const otp=await authPost("/api/customer-auth/otp",{email:"alice@example.com"});
+    assert.equal(otp.status,200,"synthetic OTP accepted");
+    assert.equal(seen.length,1);
+    assert.equal(seen[0].path,"/auth/v1/otp");
+
+    seen.length=0;
+    const verify=await authPost("/api/customer-auth/verify",
+      {email:"alice@example.com",token:"123456"});
+    assert.equal(verify.status,200,"synthetic OTP verification accepted");
+    assert.equal(seen.length,1);
+    assert.equal(seen[0].path,"/auth/v1/verify");
+    const signedCookie=verify.headers.get("set-cookie")?.match(/le_customer_session=([^;]+)/)?.[1];
+    assert.ok(signedCookie,"verification must set a signed cookie");
+    const authenticated=await fetch(origin+"/api/customer-auth/session",{
+      headers:{cookie:"le_customer_session="+signedCookie}});
+    assert.equal((await authenticated.json()).customer?.id,"123e4567-e89b-12d3-a456-426614174000");
+    assert.match(authenticated.headers.get("cache-control")||"",/private.*no-store/);
+
+    seen.length=0;
+    const invalidSession=await fetch(origin+"/api/customer-auth/session",{
+      headers:{cookie:"le_customer_session="+signedCookie+"tampered; le_customer_access=valid-legacy"}});
+    assert.deepEqual(await invalidSession.json(),{customer:null});
+    assert.equal(seen.length,0,"invalid signed cookie must not downgrade to legacy auth");
+
+    seen.length=0;
+    const legacy=await fetch(origin+"/api/customer-auth/session",{
+      headers:{cookie:"le_customer_access=valid-legacy"}});
+    assert.equal((await legacy.json()).customer?.email,"alice@example.com");
+    assert.equal(seen.length,1,"legacy bridge only if no signed cookie");
+    assert.equal(seen[0].path,"/auth/v1/user");
+
+    const crossSiteLogout=await fetch(origin+"/api/customer-auth/logout",{
+      method:"POST",headers:{origin:"https://attacker.invalid",cookie:"le_customer_session="+signedCookie}});
+    assert.equal(crossSiteLogout.status,403);
+    assert.ok(!crossSiteLogout.headers.get("set-cookie"),"cross-site logout must not clear cookies");
+    const logout=await fetch(origin+"/api/customer-auth/logout",{method:"POST",
+      headers:{origin,cookie:"le_customer_session="+signedCookie}});
+    assert.equal(logout.status,200);
+    assert.match(logout.headers.get("set-cookie")||"",/le_customer_session=/);
+
     // Synthetic real-HTTP authorization preflight: no forged Origin, same-site
     // subdomain, wrong MIME or oversized JSON may reach a service-role RPC.
     for(const [extraHeaders,body,expectedStatus] of [
@@ -256,7 +337,7 @@ async function main(){
       assert.ok(!JSON.stringify(data).includes(privateMarker),kind);
     }
     assert.ok(!output.includes(privateMarker),"sensitive upstream error/JSON must not enter server logs");
-    console.log("TITAN designer vault boundary PASS: 47 synthetic HTTP cases; zero real writes.");
+    console.log("TITAN designer vault boundary PASS: 58 synthetic HTTP cases; zero real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>upstream.close(resolve));
