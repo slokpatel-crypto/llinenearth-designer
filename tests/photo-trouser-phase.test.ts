@@ -48,3 +48,15 @@ test("photographic compositor actually uses the shared seam pivot on both trouse
   assert.notDeepEqual(geometry.leftTrouser,geometry.rightTrouser,"different panel axes are intentionally preserved");
   assert.notDeepEqual(PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR.pleated.leftTrouser,PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR.pleated.rightTrouser);
 });
+
+test("real-browser photo gate covers striped trousers in both photographed legs",()=>{
+  const script=readFileSync("scripts/verify-photo-form.cjs","utf8");
+  assert.match(script,/const stripedPant=\{\.\.\.pant,image:"\/qa-stripe-pant\.png"/);
+  assert.match(script,/compose\(pantStriped\.getContext\("2d"\),model,trouser,shirtImage,stripedImage,shirt,stripedPant,selected\)/);
+  assert.match(script,/pantStripeLeft=changes\(pantStripeData/);
+  assert.match(script,/pantStripeRight=changes\(pantStripeData/);
+  assert.match(script,/assert\.ok\(result\.pantStripeLeft>50/);
+  assert.match(script,/assert\.ok\(result\.pantStripeRight>50/);
+  assert.match(script,/assert\.equal\(result\.protectedPantChanges,0/);
+  assert.match(script,/before-after-\$\{name\}\.png/);
+});
