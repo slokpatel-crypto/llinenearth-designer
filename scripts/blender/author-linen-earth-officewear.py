@@ -252,7 +252,6 @@ def main():
     # (~0.647 of the body); no real cross-section could ever be measured.
     # Extend this shell through the guide while preserving measured fit checks.
     trouser_waist_upper_z = max(z(0.620), trouser_waist_guide_z + 0.028)
-    torso_half = 0.245
     arm_root = 0.155
     hip_half = 0.245
 
