@@ -1,6 +1,7 @@
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
 import { verifyLockedDesignRevision } from "./design-lock.ts";
 import { auditHandoffMeasurements } from "./handoff-measurements.ts";
+import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
 export const PRODUCTION_HANDOFF_VERSION="linen-earth-production-handoff-v1" as const;
 
@@ -64,6 +65,9 @@ export function buildProductionHandoff(
   });
   if(measurementAudit.errors.length) {
     throw new Error(`Unsafe tailor handoff measurements: ${measurementAudit.errors.join(" ")}`);
+  }
+  if (spec.styleSpec && !validateStyleSpecV2(spec.styleSpec)) {
+    throw new Error("Unsafe tailor handoff construction: unrecognised versioned style option.");
   }
   const legacyConstructionNote=spec.styleSpec ? [] : [
     "Versioned StyleSpec v2 cut IDs are missing; confirm the exact legacy shirt and trouser construction before production.",
