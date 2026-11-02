@@ -21,10 +21,8 @@ test("actual manual record API supplies a validated key to v3, never v2",()=>{
 });
 test("manual record browser reuses one key for unchanged evidence, clears only after acknowledged success",()=>{
   const s=client();
-  assert.match(s,/manualAttempt=useRef/);
-  assert.match(s,/manualAttempt\.current\?\.fingerprint!==fingerprint/);
-  assert.match(s,/crypto\.randomUUID\(\)/);
-  assert.match(s,/requestKey:manualKeyFor\(draft\)/);
-  assert.match(s,/if\(body.action==="record"\) manualAttempt.current=null/);
+  assert.match(s,/manualAttempt=useRef\(createStockManualAttemptTracker/);
+  assert.match(s,/requestKey:manualAttempt\.current\.keyFor\(draft\)/);
+  assert.doesNotMatch(s,/manualAttempt\.current=null/);
   assert.match(s,/stockMutationNeedsReconciliation/);
 });
