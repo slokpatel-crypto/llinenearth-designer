@@ -321,6 +321,33 @@ jobs:
                 .fixed_search_path and .service_role_execute and
                 .payload_binding_guard_present and
                 (.anon_execute|not) and (.authenticated_execute|not)))' >/dev/null
+      - name: Prove stock readiness fails closed on synthetic role and function drift
+        run: |
+          # Transactions guarantee the fixture restores itself after each
+          # malicious or accidental catalog change. Never test on live data.
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          test "$TITAN_SYNTHETIC_PG_TEST" = enabled
+          observed=$(psql -X -qAt -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          grant execute on function public.fabric_stock_record_v3(text,text,numeric,text,text,text,text) to authenticated;
+          select case when public.fabric_stock_write_ready_v1() is false then 'grant-blocked' else 'FAIL' end;
+          rollback;
+          select case when public.fabric_stock_write_ready_v1() is true then 'grant-restored' else 'FAIL' end;
+          begin;
+          alter function public.fabric_stock_reserve_v2(text,numeric,text,text,text,text) security invoker;
+          select case when public.fabric_stock_write_ready_v1() is false then 'invoker-blocked' else 'FAIL' end;
+          rollback;
+          select case when public.fabric_stock_write_ready_v1() is true then 'invoker-restored' else 'FAIL' end;
+          begin;
+          alter function public.fabric_stock_snapshot_v2(text[]) reset search_path;
+          select case when public.fabric_stock_write_ready_v1() is false then 'path-blocked' else 'FAIL' end;
+          rollback;
+          select case when public.fabric_stock_write_ready_v1() is true then 'path-restored' else 'FAIL' end;
+          SQL
+          )
+          expected=$'grant-blocked\ngrant-restored\ninvoker-blocked\ninvoker-restored\npath-blocked\npath-restored'
+          test "$observed" = "$expected"
       - name: Build isolated real Next stock API route
         run: |
           npm ci --include=optional
