@@ -41,6 +41,10 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
+    parser.add_argument("--experimental-leg-solidify-offset", type=float, choices=(-1.0, 0.0, 1.0), default=1.0,
+                        help="Native research only: independently test closed leg shell thickness offset")
+    parser.add_argument("--experimental-leg-rim-off", action="store_true",
+                        help="Blender research only: isolate Solidify rim geometry; NEVER production-safe")
     parser.add_argument("--experimental-capture-crotch-stages", action="store_true",
                         help="Research only: emit isolated unapproved leg-stage meshes for native BVH analysis")
     parser.add_argument("--experimental-right-hem-taper-mm", type=float, default=5.0,
@@ -225,7 +229,7 @@ def capture_crotch_stage_for_research(obj, stage, enabled):
 
 
 def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinement_level=1, waist_extra_m=0.0,
-              capture_crotch_stages=False):
+              capture_crotch_stages=False, leg_rim_off=False, leg_solidify_offset=1.0):
     # Measured diagnostics only. These are not garment acceptance or fit proof.
     stages = []
     def record_stage(stage):
@@ -269,7 +273,15 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinem
     solid = obj.modifiers.new("LE_CLOTH_THICKNESS", "SOLIDIFY")
     solid.thickness = thickness_m
     solid.offset = 1.0
+    if obj.name in ("TrouserLegLFabric", "TrouserLegRFabric"):
+        if leg_solidify_offset not in (-1.0, 0.0, 1.0):
+            raise RuntimeError("Unapproved leg thickness offset must be exactly -1, 0, or +1.")
+        solid.offset = leg_solidify_offset
+    # Standard candidate MUST remain rim-closed. Rim-off leg research produces
+    # open cloth seam boundaries and is forbidden for production export.
     solid.use_rim = True
+    if leg_rim_off and obj.name in ("TrouserLegLFabric", "TrouserLegRFabric"):
+        solid.use_rim = False
     apply_modifier(obj, solid)
     record_stage("afterClothThickness")
     if body_tree is not None:
@@ -415,7 +427,8 @@ def main():
         obj = selected_shell(body, name, predicate)
         fit_shell(obj, body, clearance_m, thickness_m, body_contact_tree,
                   options.experimental_waist_refinement_level, waist_extra_m,
-                  options.experimental_capture_crotch_stages)
+                  options.experimental_capture_crotch_stages, options.experimental_leg_rim_off,
+                  options.experimental_leg_solidify_offset)
         if name == "TrouserLegRFabric":
             measure_guided_right_hem_taper(obj, right_hem_guide_z, right_hem_taper_mm)
         planar_grain_uv(obj)
@@ -437,6 +450,8 @@ def main():
     bpy.context.scene["linen_earth_trouser_waist_refinement_level"] = options.experimental_waist_refinement_level
     bpy.context.scene["linen_earth_experimental_right_hem_taper_mm"] = round(right_hem_taper_mm, 3)
     bpy.context.scene["linen_earth_research_crotch_stages_emitted"] = bool(options.experimental_capture_crotch_stages)
+    bpy.context.scene["linen_earth_research_leg_rim_off"] = bool(options.experimental_leg_rim_off)
+    bpy.context.scene["linen_earth_research_leg_solidify_offset"] = options.experimental_leg_solidify_offset
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
