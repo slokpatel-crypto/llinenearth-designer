@@ -41,6 +41,21 @@ def cli_args():
     return parser.parse_args(argv)
 
 
+def safe_candidate_output(raw_output, source_blend):
+    """Never overwrite the existing body source or an unrelated Blender file."""
+    if not source_blend:
+        raise RuntimeError("Open a saved identity-locked source .blend before authoring.")
+    source = Path(source_blend).expanduser().resolve()
+    if source.suffix.lower() != ".blend" or not source.is_file():
+        raise RuntimeError("The identity-locked source must be a saved .blend file.")
+    output = Path(raw_output).expanduser().resolve()
+    if output.suffix.lower() != ".blend":
+        raise ValueError("The authored candidate output must end in .blend.")
+    if output == source:
+        raise ValueError("Refusing to overwrite the original identity-locked Blender source.")
+    return output
+
+
 def world_bounds(obj):
     return [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
 
@@ -163,6 +178,8 @@ def planar_grain_uv(obj):
 
 def main():
     options = cli_args()
+    # Validate the destination before any source-scene geometry is touched.
+    output = safe_candidate_output(options.output, bpy.data.filepath)
     body = bpy.data.objects.get(options.body)
     if body is None or body.type != "MESH":
         raise RuntimeError(f"Locked realistic body mesh not found: {options.body}")
@@ -214,7 +231,6 @@ def main():
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
 
-    output = Path(options.output).expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
 
