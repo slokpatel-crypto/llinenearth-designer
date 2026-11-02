@@ -152,6 +152,21 @@ async function main(){
     const reservation={action:"reserve",fabricId:fabric,quantityMetres:1.25,
       revisionId:"LE-LOCK-SYNTHETIC-0001",requestKey:"STOCK-REQUEST-SYNTHETIC-0001",
       requestedBy:"Synthetic checker",sourceReference:"SYNTH-CUT-SHEET"};
+    // A long physical fabric ID, design revision or idempotency key must
+    // not be silently cut to a valid prefix before a privileged stock RPC.
+    for(const [draft,field,bound] of [
+      [record,"fabricId",160],[reservation,"fabricId",160],
+      [reservation,"revisionId",220],[reservation,"requestKey",180],
+    ]){
+      for(const suffix of ["A","B"]){
+        mode="created";seen.length=0;
+        const {response,result}=await call("POST",{
+          ...draft,[field]:"X".repeat(bound)+suffix});
+        assert.equal(response.status,409,draft.action+" truncated "+field);
+        assert.ok(typeof result.error==="string"&&result.error.includes("cannot be truncated"));
+        assert.equal(seen.length,0,draft.action+" truncated "+field+" reached stock RPC");
+      }
+    }
     // A JSON array must not impersonate a real fabric, locked revision,
     // idempotency key or stock event before any privileged RPC is called.
     for(const [action,field,value] of [
