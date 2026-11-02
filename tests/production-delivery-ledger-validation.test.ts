@@ -85,8 +85,8 @@ test("ledger transport bounded to 500 and rejects non-list or null objects",()=>
 
 test("private delivery GET rejects invalid ledger before reporting configured success",()=>{
   const api=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
-  assert.match(api,/orders:verifyProductionDeliveryOrders\(orders\)/);
-  assert.match(api,/evidence:verifyProductionDeliveryAudits\(evidence\)/);
+  assert.match(api,/const verifiedOrders=verifyProductionDeliveryOrders\(orders\)/);
+  assert.match(api,/const verifiedEvidence=verifyProductionDeliveryAudits\(evidence\)/);
   assert.match(api,/Production completion evidence could not be read/);
   assert.match(api,/cache-control","private, no-store"/);
 });
