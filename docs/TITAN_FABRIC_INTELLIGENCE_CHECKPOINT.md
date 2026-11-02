@@ -22,6 +22,7 @@
 6. Customer-facing projection revalidates persisted JSON field provenance as literal strings, rejects malformed/oversized supplier URL or notes, and does not promote a declared physical repeat without a matching observed stripe axis; width-only calibration requires vertical orientation. Older incomplete metadata remains unverified.
 7. Stale `trust:reviewed` is not authority to promote a rejected or pending fabric profile; approval must have the explicit `approved` or `corrected` review status. Older missing-status records fail closed.
 8. At customer projection, even already-reviewed persisted JSON cannot certify an oversized fibre/composition literal; the 220-character supplier evidence limit is rechecked without truncation, independently from valid GSM or drape.
+9. Persisted render metadata must use literal booleans for repeat detection and finite positive integer pixel dimensions; JSON coercion of strings/arrays/null must never manufacture image repeat evidence or an invented tile size.
 
 ## Physical acceptance still open
 

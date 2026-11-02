@@ -99,3 +99,40 @@ test("oversized physical supplier facts cannot be truncated into certified evide
   assert.equal(edge.verifiedPhysical.fiberContent?.length,220);
   assert.equal(edge.verifiedPhysical.evidenceNote?.length,500);
 });
+
+test("render metadata only accepts literal booleans and valid pixel dimensions",()=>{
+  const valid=adaptFabricProfileToV4({
+    version:"fabric-analyzer-v4",
+    renderAssets:{tileWidthPx:1024,tileHeightPx:2048,repeatDetected:true,scaleApproximate:true},
+  });
+  assert.ok(valid);
+  assert.equal(valid.renderAssets.tileWidthPx,1024);
+  assert.equal(valid.renderAssets.tileHeightPx,2048);
+  assert.equal(valid.renderAssets.repeatDetected,true);
+  for(const falseProof of ["false","true",1,["true"],{},null,undefined]){
+    const result=adaptFabricProfileToV4({
+      version:"fabric-analyzer-v4",
+      renderAssets:{repeatDetected:falseProof,tileWidthPx:null,tileHeightPx:""},
+    });
+    assert.ok(result);
+    assert.equal(result.renderAssets.repeatDetected,false,JSON.stringify(falseProof));
+    assert.equal(result.renderAssets.tileWidthPx,null);
+    assert.equal(result.renderAssets.tileHeightPx,null);
+  }
+  for(const bad of [0,-1,1.5,NaN,Infinity,-Infinity,"1024",[],[1024],true,32769]){
+    const result=adaptFabricProfileToV4({
+      version:"fabric-analyzer-v4",renderAssets:{tileWidthPx:bad,tileHeightPx:bad},
+    });
+    assert.ok(result);
+    assert.equal(result.renderAssets.tileWidthPx,null,String(bad));
+    assert.equal(result.renderAssets.tileHeightPx,null,String(bad));
+  }
+  const max=adaptFabricProfileToV4({
+    version:"fabric-analyzer-v4",
+    renderAssets:{tileWidthPx:32768,tileHeightPx:1,repeatDetected:false},
+  });
+  assert.ok(max);
+  assert.equal(max.renderAssets.tileWidthPx,32768);
+  assert.equal(max.renderAssets.tileHeightPx,1);
+  assert.equal(max.renderAssets.repeatDetected,false);
+});

@@ -129,6 +129,13 @@ function num(value:unknown,min:number,max:number,fallback:number) {
   const n=Number(value);
   return Number.isFinite(n) ? Math.max(min,Math.min(max,n)) : fallback;
 }
+
+function tilePixelDimension(value:unknown):number|null {
+  // Render metadata comes from persisted JSON, not trusted image metadata.
+  // Blank strings, arrays, booleans, negative or fractional values are not pixels.
+  return typeof value==="number" && Number.isSafeInteger(value)
+    && value>0 && value<=32768 ? value : null;
+}
 function enumValue<T extends string>(value:unknown,allowed:readonly T[],fallback:T):T {
   const raw=String(value??"");
   return (allowed as readonly string[]).includes(raw) ? raw as T : fallback;
@@ -243,9 +250,9 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
     renderAssets:{
       tileUrl:str(obj(root.renderAssets).tileUrl,1800)||null,
       placeholderUrl:str(obj(root.renderAssets).placeholderUrl,1800)||null,
-      tileWidthPx:Number.isFinite(Number(obj(root.renderAssets).tileWidthPx))?Number(obj(root.renderAssets).tileWidthPx):null,
-      tileHeightPx:Number.isFinite(Number(obj(root.renderAssets).tileHeightPx))?Number(obj(root.renderAssets).tileHeightPx):null,
-      repeatDetected:Boolean(obj(root.renderAssets).repeatDetected),
+      tileWidthPx:tilePixelDimension(obj(root.renderAssets).tileWidthPx),
+      tileHeightPx:tilePixelDimension(obj(root.renderAssets).tileHeightPx),
+      repeatDetected:obj(root.renderAssets).repeatDetected===true,
       renderAssetVersion:str(obj(root.renderAssets).renderAssetVersion,80)||null,
       scaleApproximate:obj(root.renderAssets).scaleApproximate!==false,
     },
