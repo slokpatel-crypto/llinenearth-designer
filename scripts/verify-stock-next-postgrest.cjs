@@ -44,6 +44,8 @@ async function main(){
   // This creates a genuine ambiguous Next.js 503 without changing the real DB.
   let loseOneCommittedReceiptAck=false;
   let swallowedCommittedReceiptAck=false;
+  let loseOneCommittedReservationAck=false;
+  let swallowedCommittedReservationAck=false;
   const proxy=http.createServer((req,res)=>{
     if(!req.url.startsWith("/rest/v1/rpc/")){
       res.writeHead(404);res.end();return;
@@ -52,15 +54,20 @@ async function main(){
       hostname:"127.0.0.1",port:3017,path:req.url.slice("/rest/v1".length),
       method:req.method,headers:req.headers,
     },remote=>{
-      if(loseOneCommittedReceiptAck&&
-         req.url==="/rest/v1/rpc/fabric_stock_record_v3"){
-        loseOneCommittedReceiptAck=false;
+      const dropReceipt=loseOneCommittedReceiptAck&&
+        req.url==="/rest/v1/rpc/fabric_stock_record_v3";
+      const dropReserve=loseOneCommittedReservationAck&&
+        req.url==="/rest/v1/rpc/fabric_stock_reserve_v2";
+      if(dropReceipt||dropReserve){
+        if(dropReceipt)loseOneCommittedReceiptAck=false;
+        if(dropReserve)loseOneCommittedReservationAck=false;
         // Consume the real upstream 200 fully first: PostgREST/PostgreSQL
         // have already inserted and committed. Replace only its HTTP ack.
         const committed=remote.statusCode===200;
         remote.resume();
         remote.on("end",()=>{
-          swallowedCommittedReceiptAck=committed;
+          if(dropReceipt)swallowedCommittedReceiptAck=committed;
+          if(dropReserve)swallowedCommittedReservationAck=committed;
           res.writeHead(502,{"content-type":"application/json"});
           res.end(JSON.stringify({error:"synthetic gateway lost committed reply"}));
         });
@@ -154,6 +161,52 @@ async function main(){
       "replay after a lost committed acknowledgment must not mint another metre");
     assert.equal(finalRow.manual_event_count,2,
       "replay after a lost acknowledgment must not insert a third event");
+    const reservation={
+      action:"reserve",fabricId,quantityMetres:0.750,
+      revisionId:"LE-LOCK-SYNTHETIC-M56-20261102",
+      requestedBy:"Synthetic cutting checker",
+      sourceReference:"SYNTH-M56-APPROVED-CUT-SHEET",
+      requestKey:"SYNTH-M48-"+randomUUID(),
+    };
+    loseOneCommittedReservationAck=true;
+    const reserveLost=await call("POST",reservation);
+    assert.equal(reserveLost.status,503,"reservation committed but lost ACK must not be reported successful");
+    assert.deepEqual(reserveLost.data,{error:"Stock operation could not be verified."});
+    assert.equal(swallowedCommittedReservationAck,true,
+      "gateway must drop a real HTTP 200 after the reservation transaction committed");
+    const reservedState=await call("GET");
+    assert.equal(reservedState.status,200);
+    const reservedRow=reservedState.data.stock.find(x=>x.fabric_id===fabricId);
+    assert.equal(Number(reservedRow.physical_metres),2.000);
+    assert.equal(Number(reservedRow.reserved_metres),0.750,
+      "reservation really committed despite ambiguous first HTTP outcome");
+    assert.equal(Number(reservedRow.available_metres),1.250);
+    const reserveReplay=await call("POST",reservation);
+    assert.equal(reserveReplay.status,200,"identical reservation must safely replay after a lost ACK");
+    assert.match(reserveReplay.data.reservationId,/^[0-9a-f-]{36}$/i);
+    const reserveRepeated=await call("POST",reservation);
+    assert.equal(reserveRepeated.status,200,"repeated same-key reserve must remain idempotent");
+    assert.equal(reserveRepeated.data.reservationId,reserveReplay.data.reservationId,
+      "reservation replays must return the original committed reservation UUID");
+    const reserveMismatch=await call("POST",{...reservation,quantityMetres:0.751});
+    assert.equal(reserveMismatch.status,503,
+      "changed quantity with an existing reservation key must fail closed");
+    assert.deepEqual(reserveMismatch.data,{error:"Stock operation could not be verified."});
+    const reserveDifferentSource=await call("POST",{
+      ...reservation,sourceReference:"SYNTH-M56-DIFFERENT-CUT-SHEET",
+    });
+    assert.equal(reserveDifferentSource.status,503,
+      "changed cutting-sheet evidence with an old key must fail closed");
+    const reservedFinal=await call("GET");
+    assert.equal(reservedFinal.status,200);
+    const finalReservedRow=reservedFinal.data.stock.find(x=>x.fabric_id===fabricId);
+    assert.equal(Number(finalReservedRow.physical_metres),2.000);
+    assert.equal(Number(finalReservedRow.reserved_metres),0.750,
+      "lost-ACK replay may not reserve the same cloth twice");
+    assert.equal(Number(finalReservedRow.available_metres),1.250);
+    assert.equal(finalReservedRow.manual_event_count,2,
+      "reservation and replay must not change physical-receipt ledger count");
+    console.log("TITAN M56 PASS: real reservation committed but lost ACK; same-key retries hold only 0.750m; changed evidence rejected.");
     console.log("TITAN M49 PASS: committed-but-lost HTTP ack returns 503; same-key retry preserves physical stock.");
     console.log("TITAN M48 Next->PostgREST PASS: authorized v3, replay, mismatch, CSRF, 401, v2 snapshot.");
   }finally{
