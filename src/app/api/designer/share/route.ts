@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { secureJsonRequestError, readSecureJsonObject, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { createDesignShareToken, designShareConfigured, verifyDesignShareToken } from "@/lib/designer/design-share";
-import { createShareRevocationKey } from "@/lib/designer/design-share-revocation-contract";
+import { createShareRevocationKey,shareRevocationKeyDigest } from "@/lib/designer/design-share-revocation-contract";
 import { shareRevocationEnforced,registerShareRevocation,revokeShareToken } from "@/lib/designer/design-share-revocation";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
@@ -21,6 +21,8 @@ export async function POST(request:Request){
       const revokeKey=typeof body.revokeKey==="string"?body.revokeKey:"";
       if(!verifyDesignShareToken(token)||!revokeKey)
         return privateJson({error:"Invalid share revocation request."},400);
+      try{shareRevocationKeyDigest(revokeKey);}
+      catch{return privateJson({error:"Invalid share revocation request."},400);}
       try{
         const revoked=await revokeShareToken(token,revokeKey);
         return privateJson(revoked?{revoked:true}:{error:"Share revocation unavailable."},revoked?200:404);

@@ -49,6 +49,8 @@ async function main(){
   let mode="ok";
   let revocationMode="ok";
   const revokedHashes=new Set();
+  const shareRecords=new Map();
+  let shareMode="ok";
   const seen=[];
   const upstream=http.createServer(async(req,res)=>{
     const path=req.url||"";
@@ -101,6 +103,39 @@ async function main(){
     }
     if(path==="/rest/v1/rpc/production_claim_revision_ownership"){
       res.writeHead(200,{"content-type":"application/json"});res.end("true");return;
+    }
+    if(path==="/rest/v1/rpc/designer_share_register"){
+      assert.match(payload.p_token_hash,/^[a-f0-9]{64}$/);
+      assert.match(payload.p_revoke_key_hash,/^[a-f0-9]{64}$/);
+      assert.ok(Date.parse(payload.p_expires_at)>Date.now());
+      const exists=shareRecords.has(payload.p_token_hash);
+      if(!exists)shareRecords.set(payload.p_token_hash,{
+        key:payload.p_revoke_key_hash,revoked:false
+      });
+      res.writeHead(shareMode==="register500"?503:200,
+        {"content-type":"application/json"});
+      res.end(shareMode==="register500"?JSON.stringify({error:privateMarker}):
+        shareMode==="registerMalformed"?'"true"':
+        (shareMode==="registerFalse"||exists)?"false":"true");return;
+    }
+    if(path==="/rest/v1/rpc/designer_share_is_revoked"){
+      assert.match(payload.p_token_hash,/^[a-f0-9]{64}$/);
+      res.writeHead(shareMode==="lookup500"?503:200,
+        {"content-type":"application/json"});
+      res.end(shareMode==="lookup500"?JSON.stringify({error:privateMarker}):
+        shareMode==="lookupMalformed"?'"false"':
+        shareRecords.get(payload.p_token_hash)?.revoked?"true":"false");return;
+    }
+    if(path==="/rest/v1/rpc/designer_share_revoke"){
+      assert.match(payload.p_token_hash,/^[a-f0-9]{64}$/);
+      assert.match(payload.p_revoke_key_hash,/^[a-f0-9]{64}$/);
+      const record=shareRecords.get(payload.p_token_hash);
+      const valid=Boolean(record&&record.key===payload.p_revoke_key_hash);
+      if(valid&&shareMode!=="revoke500"&&shareMode!=="revokeMalformed")record.revoked=true;
+      res.writeHead(shareMode==="revoke500"?503:200,
+        {"content-type":"application/json"});
+      res.end(shareMode==="revoke500"?JSON.stringify({error:privateMarker}):
+        shareMode==="revokeMalformed"?'"true"':valid?"true":"false");return;
     }
     if(path==="/rest/v1/rpc/customer_session_is_revoked"){
       assert.match(payload.p_token_hash,/^[0-9a-f]{64}$/);
@@ -199,7 +234,8 @@ async function main(){
     SUPABASE_URL:"http://127.0.0.1:"+upstreamPort,
     SUPABASE_SECRET_KEY:"sb_secret_titan_vault_synthetic_only",
     SUPABASE_SERVICE_ROLE_KEY:"",SUPABASE_ANON_KEY:"synthetic-anon-for-local-auth-only",NEXT_PUBLIC_SUPABASE_ANON_KEY:"",
-    LINEN_CUSTOMER_SESSION_SECRET:"synthetic-session-secret-32-chars-not-live-012345"};
+    LINEN_CUSTOMER_SESSION_SECRET:"synthetic-session-secret-32-chars-not-live-012345",
+    LINEN_DESIGN_SHARE_SECRET:"synthetic-design-share-secret-32-chars-not-live-012345"};
   const child=spawn(process.execPath,[require.resolve("next/dist/bin/next"),
     "start","-H","127.0.0.1","-p",String(nextPort)],
     {env,stdio:["ignore","pipe","pipe"]});
@@ -480,7 +516,8 @@ async function main(){
     // synthetic migration flag enabled: no live auth, backend or customer data.
     const enforcedPort=await freePort();
     const enforcedOrigin="http://127.0.0.1:"+enforcedPort;
-    const enforcedEnv={...env,LINEN_CUSTOMER_SESSION_REVOCATION_REQUIRED:"1"};
+    const enforcedEnv={...env,LINEN_CUSTOMER_SESSION_REVOCATION_REQUIRED:"1",
+      LINEN_DESIGN_SHARE_REVOCATION_REQUIRED:"1"};
     const enforcedChild=spawn(process.execPath,[require.resolve("next/dist/bin/next"),
       "start","-H","127.0.0.1","-p",String(enforcedPort)],
       {env:enforcedEnv,stdio:["ignore","pipe","pipe"]});
@@ -561,6 +598,57 @@ async function main(){
           "malformed/unavailable revocation checks must fail closed");
         assert.equal(seen.length,1);
       }
+      // Secure public design-sharing must never reveal a public link unless
+      // the independent private cancellation capability was registered.
+      shareMode="register500";seen.length=0;
+      const deniedIssue=await fetch(enforcedOrigin+"/api/designer/share",{
+        method:"POST",headers:fixtureHeaders(),body:JSON.stringify(revision),
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(deniedIssue.status,503);
+      assert.ok(!("token" in await deniedIssue.json()));
+      assert.equal(seen.at(-1).path,"/rest/v1/rpc/designer_share_register");
+      shareMode="ok";seen.length=0;
+      const issued=await fetch(enforcedOrigin+"/api/designer/share",{
+        method:"POST",headers:fixtureHeaders(),body:JSON.stringify(revision),
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(issued.status,200,"share token requires revocation capability registration");
+      const shared=await issued.json();
+      assert.ok(shared.token?.startsWith("v1."));
+      assert.match(shared.revokeKey,/^[A-Za-z0-9_-]{43}$/);
+      const shareHash=createHash("sha256").update(shared.token).digest("hex");
+      assert.ok(shareRecords.has(shareHash));
+      assert.equal(seen[0].path,"/rest/v1/rpc/designer_share_register");
+      assert.equal(shareRecords.get(shareHash).key,
+        createHash("sha256").update(Buffer.from(shared.revokeKey,"base64url")).digest("hex"));
+      const publicUrl=enforcedOrigin+"/share/"+shared.token;
+      const publicBefore=await fetch(publicUrl,{signal:AbortSignal.timeout(15000)});
+      assert.equal(publicBefore.status,200,"public design link initially readable");
+      assert.match(await publicBefore.text(),/SHARED LOCKED DESIGN/);
+      async function cancelShare(revokeKey){
+        return await fetch(enforcedOrigin+"/api/designer/share",{
+          method:"POST",headers:fixtureHeaders(),
+          body:JSON.stringify({action:"revoke",token:shared.token,revokeKey}),
+          signal:AbortSignal.timeout(15000)});
+      }
+      const forged=await cancelShare("A".repeat(43));
+      assert.notEqual(forged.status,200,"public URL holder cannot forge a cancellation key");
+      assert.equal(shareRecords.get(shareHash).revoked,false);
+      shareMode="revoke500";
+      const backendDown=await cancelShare(shared.revokeKey);
+      assert.equal(backendDown.status,503);
+      assert.equal(shareRecords.get(shareHash).revoked,false);
+      shareMode="ok";
+      const cancelled=await cancelShare(shared.revokeKey);
+      assert.equal(cancelled.status,200);
+      assert.deepEqual(await cancelled.json(),{revoked:true});
+      assert.equal(shareRecords.get(shareHash).revoked,true);
+      const publicAfter=await fetch(publicUrl,{signal:AbortSignal.timeout(15000)});
+      assert.equal(publicAfter.status,404,"revoked public share must never render");
+      shareMode="lookup500";
+      const unavailableView=await fetch(publicUrl,{signal:AbortSignal.timeout(15000)});
+      assert.equal(unavailableView.status,404,"unavailable share control store must fail closed");
+      shareMode="ok";
+
       revocationMode="check500";seen.length=0;
       const failedVerify=await fetch(enforcedOrigin+"/api/customer-auth/verify",{
         method:"POST",headers:fixtureHeaders(),

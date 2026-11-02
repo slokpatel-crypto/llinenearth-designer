@@ -158,7 +158,7 @@ jobs:
              where fabric_id like 'SYNTHETIC-TITAN-%'" | grep -qx PASS
 
   customer-session-revocation-postgres:
-    name: Disposable PostgreSQL customer-session revocation
+    name: Disposable PostgreSQL customer security revocations
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -201,3 +201,8 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/tests/20261103_customer_session_revocation.sql | grep -q PASS
           test "$(psql -At -c "select count(*) from private.customer_session_revocations")" = 0
+      - name: Prove private share-link revocation capabilities (synthetic)
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103_design_share_revocation.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/20261103_design_share_revocation.sql | grep -q PASS
+          test "$(psql -At -c "select count(*) from private.designer_share_revocations")" = 0
