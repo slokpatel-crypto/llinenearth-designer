@@ -69,3 +69,15 @@
 - **Acceptance:** public `inStock:true` needs positive verified physical ledger and literal operator availability confirmation; legacy gallery and missing data remain unavailable. Real supplier stock and operator authenticated physical acceptance are still BLOCKED; this is code evidence only.
 - **New intake exact-head CI/Non-3D/browser/disposable database:** PENDING. Do not merge before these are green and latest main diff/deployment guard are rechecked.
 - **Next independent 30–40 minute slice:** audit operator metadata parser for JSON-coerced availability and malformed overrides, add fail-closed regressions if confirmed. Also verify matching-head intake workflows and integrate isolated PR only when safe.
+
+
+## 2026-11-02 17:xx UTC — Operator availability must be literal (T3/J1, T5/J5, T6/J6)
+
+- **Exact parent intake:** `aa4c99ad979044db4393691f43fef4c5881c7989` on draft PR #858 (source #855 verified; re-intake matching-head workflows PENDING). This dependent slice does not overwrite the intake or import unrelated native 3D work.
+- **Reproduced source defect:** `src/lib/designer-fabric-metadata.ts` used `String(payload.availability)` via `safe()`, so JSON `["available"]` became an explicit operator `available` confirmation. When the physical ledger was positive, the new public inventory gate could wrongly advertise stock. JSON-coerced subtypes could also impersonate metadata notes.
+- **Commits:** `d5aa563394d77dba719f0d072517411790673349` pure literal availability/veto parser; `32dd81e617131d95f0a6b4effa7c60fc62fe0ad4` metadata loader wiring; `179aed4ed65b5e77635cf823ac6e141df56843bf` regression suite. This checkpoint's resulting SHA is recorded by GitHub commit metadata and must be checked on PR head.
+- **Measurable check:** Only literal `available` and `unavailable` are accepted for an exact active fabric. Coerced/padded/missing values become `unknown`; a malformed newer subtype carrying availability for a known fabric vetoes older positive confirmations. Unrelated notes remain ignored. No live supplier fact is fabricated or modified.
+- **Files:** `src/lib/designer/operator-availability-literal.ts`, `src/lib/designer-fabric-metadata.ts`, `tests/operator-availability-literal.test.ts`, this append-only checkpoint. No schema, paid AI, native geometry or model/photo change.
+- **Verification:** New exact-head Full CI, Node, quality, engine, preview, release, build, disposable PostgreSQL, browser and Non-3D **PENDING** until the stacked draft workflow runs finish. No unrun test is claimed.
+- **Remaining:** real supplier inventory, operator-authenticated availability signoff, staging/restore, customer owner-scoped recovery, tailor, native Blender/UV, physical devices, five beta testers, ten deliveries and owner release approval BLOCKED/PENDING. No complete T1–T6/J1–J6 release gate certified.
+- **Next 30–40-minute slice:** verify matching-head CI for PRs #858 and this dependent PR, repair failures, then separately assess safe isolated main intake; audit malformed active fabric IDs and metadata transport bounds independently. No main merge until checks and deployment guard pass; never deploy.
