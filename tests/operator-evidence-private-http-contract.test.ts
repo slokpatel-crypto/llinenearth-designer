@@ -48,8 +48,8 @@ for(const path of routes){
       assert.match(src,/verifyProductionCutLedger\(rows,1000\)/,
         "cut evidence must pass stronger row and duplicate-identity validation");
     else {
-      assert.match(src,/verifyProductionDeliveryOrders\(orders\)/);
-      assert.match(src,/verifyProductionDeliveryAudits\(evidence\)/);
+      assert.match(src,/const verifiedOrders=verifyProductionDeliveryOrders\(orders\)/);
+      assert.match(src,/const verifiedEvidence=verifyProductionDeliveryAudits\(evidence\)/);
     }
   });
 }
