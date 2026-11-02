@@ -162,6 +162,31 @@ test("3D preflight fails closed when body or tucked-waist contact cannot be meas
   assert.match(source,/"ready": len\(reasons\) == 0/);
 });
 
+test("3D identity-fit and garment separation cannot pass with unknown measurements",()=>{
+  const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  for(const required of [
+    'reasons.append(f"Could not sample {key} from garment geometry; identity-fit gate cannot pass without measurement.")',
+    'reasons.append(f"Could not sample {key} for garment centerline QA; production fit cannot pass.")',
+    'reasons.append("Could not sample sleeve-center spacing near the locked hand guides; spacing gate cannot pass without measurement.")',
+    'reasons.append("Could not calculate left/right cuff-zone width symmetry; production fit cannot pass.")',
+    'reasons.append("Could not calculate left/right trouser hem symmetry; production fit cannot pass.")',
+    'reasons.append("Could not sample trouser leg-center spacing from production geometry; spacing gate cannot pass without measurement.")',
+    'boundary_intersections["garmentLegToLeg"] = leg_to_leg',
+    'reasons.append("Could not evaluate real left/right trouser fabric separation.")',
+  ]) assert.ok(source.includes(required),required);
+  for(const formerWarning of [
+    'warnings.append(f"Could not sample {key} from garment geometry',
+    'warnings.append(f"Could not sample {key} for garment centerline QA.',
+    'warnings.append("Could not sample sleeve-center spacing',
+    'warnings.append("Could not calculate left/right cuff-zone',
+    'warnings.append("Could not calculate left/right trouser hem',
+    'warnings.append("Could not sample trouser leg-center spacing',
+  ]) assert.ok(!source.includes(formerWarning),"unknown measurement remains warning: "+formerWarning);
+  assert.match(source,/elif leg_to_leg > 0:/);
+  assert.match(source,/Left\/right trouser fabric shells cross/);
+  assert.match(source,/"ready": len\(reasons\) == 0/);
+});
+
 test("Blender scene preflight verifies canonical identity guide geometry",()=>{
   const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
   for(const token of [
