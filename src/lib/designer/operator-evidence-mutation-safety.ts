@@ -6,10 +6,23 @@ export function operatorEvidenceMutationRequestError(
 ):{status:number;error:string}|null{
   const origin=request.headers.get("origin");
   if(origin){
-    let expected:string;
-    try{expected=new URL(request.url).origin;}
-    catch{return {status:403,error:"Invalid evidence request origin."};}
-    if(origin!==expected)
+    let allowed=false;
+    try{
+      const claimed=new URL(origin);
+      const effective=new URL(request.url);
+      const rawHost=request.headers.get("host");
+      // Next can construct its internal Request.url with a localhost host
+      // behind a proxy. The browser-controlled Origin must match EITHER that
+      // URL or the actual Host header; browsers cannot spoof Host via fetch.
+      // Scheme must agree with the effective URL unless HTTPS was terminated
+      // upstream (internal HTTP + external HTTPS).
+      const matchesHost=rawHost!==null&&
+        claimed.host.toLowerCase()===rawHost.toLowerCase()&&
+        (claimed.protocol===effective.protocol||
+          (effective.protocol==="http:"&&claimed.protocol==="https:"));
+      allowed=claimed.origin===effective.origin||matchesHost;
+    }catch{allowed=false;}
+    if(!allowed)
       return {status:403,error:"Cross-site production evidence changes are not allowed."};
   }
   if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type")||""))
