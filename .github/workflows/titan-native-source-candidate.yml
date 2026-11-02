@@ -555,6 +555,80 @@ jobs:
               }))
           print("TITAN_REAL_LOCAL_CROTCH_REFINEMENT_EXPERIMENT_RECORDED_CANDIDATE_ONLY")
           PY
+      - name: Evaluate coupled local refinement and inner-crotch seam gap against full native physical limits
+        shell: bash
+        run: |
+          set -euo pipefail
+          for gap in 2 4 6; do
+            "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+              --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
+              --experimental-local-crotch-cuts 1 \
+              --experimental-local-crotch-seam-gap-mm "$gap" \
+              --output ".cache/linen-earth/titan-local-seam-gap-${gap}mm.blend"
+            "$BLENDER_BIN" --background ".cache/linen-earth/titan-local-seam-gap-${gap}mm.blend" \
+              --python-exit-code 1 --python scripts/blender/diagnose-linen-earth-crotch.py -- \
+              --output "$RUNNER_TEMP/titan-candidate-evidence/local-seam-gap-${gap}mm.json"
+            log="$RUNNER_TEMP/titan-candidate-evidence/local-seam-gap-${gap}mm.log"
+            set +e
+            "$BLENDER_BIN" --background ".cache/linen-earth/titan-local-seam-gap-${gap}mm.blend" \
+              --python-exit-code 1 --python scripts/blender/preflight-linen-earth-officewear.py \
+              > "$log" 2>&1
+            code=$?
+            set -e
+            python3 scripts/blender/summarize-native-candidate-preflight.py \
+              --log "$log" --exit-code "$code" \
+              --output "$RUNNER_TEMP/titan-candidate-evidence/local-seam-gap-${gap}mm-preflight.json"
+          done
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence" <<'PY'
+          import json
+          import math
+          import sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          baseline = json.loads((root / "rejection-report.json").read_text(encoding="utf-8"))
+          refined = json.loads((root / "crotch-local-refine-1-preflight.json").read_text(encoding="utf-8"))
+          assert baseline["rejectionReasonCount"] == 10
+          assert baseline["boundaryIntersections"]["garmentLegToLeg"] == 89
+          assert refined["boundaryIntersections"]["garmentLegToLeg"] >= 89
+          source_counts = baseline["boundaryIntersections"]
+          for gap in (2, 4, 6):
+              label = f"local-seam-gap-{gap}mm"
+              trial = json.loads((root / (label + "-preflight.json")).read_text(encoding="utf-8"))
+              diag = json.loads((root / (label + ".json")).read_text(encoding="utf-8"))
+              for item in (trial, diag):
+                  assert item["modelIdentityId"] == "linen-earth-studio-model-v1"
+                  assert item["candidateOnly"] is True and item["productionApproved"] is False
+              assert trial["preflightReady"] is False and diag["physicalFitApproved"] is False
+              actual = trial["boundaryIntersections"]
+              assert actual["garmentLegToLeg"] == diag["measurements"]["legLegPolygonContactPairs"]
+              assert all(type(value) is int and value >= 0 for value in actual.values())
+              for key, value in baseline["identityFitMeasurementsMm"].items():
+                  measured = trial["identityFitMeasurementsMm"][key]
+                  assert isinstance(measured, (int, float)) and math.isfinite(measured)
+                  if key not in ("legCenterSpacingMm",):
+                      assert measured == value, (
+                          "Native local seam gap changed an unrelated locked photo measurement", key)
+              worsened = {key: value for key, value in actual.items() if value > source_counts[key]}
+              physically_eligible = (
+                  actual["garmentLegToLeg"] == 0 and
+                  not worsened and
+                  trial["rejectionReasonCount"] < baseline["rejectionReasonCount"]
+              )
+              print(f"TITAN_REAL_REFINED_CROTCH_GAP_{gap}MM", json.dumps({
+                  "legLeg": actual["garmentLegToLeg"],
+                  "bodyLeft": actual["bodyTrouserLegL"],
+                  "bodyRight": actual["bodyTrouserLegR"],
+                  "sourceLegLeg": source_counts["garmentLegToLeg"],
+                  "sourceBodyLeft": source_counts["bodyTrouserLegL"],
+                  "sourceBodyRight": source_counts["bodyTrouserLegR"],
+                  "legCenterSpacingMm": trial["identityFitMeasurementsMm"]["legCenterSpacingMm"],
+                  "remainingPhysicalBlockers": trial["rejectionReasonCount"],
+                  "worsenedContactCategories": worsened,
+                  "meetsIndependentGeometricTrialConditions": physically_eligible,
+                  "productionApproved": False,
+              }))
+          print("TITAN_REAL_COUPLED_CROTCH_REFINEMENT_GAP_VARIANTS_MEASURED_NO_AUTO_PROMOTION")
+          PY
       - name: Upload rejection report, never an unapproved model
         if: always()
         uses: actions/upload-artifact@v4
@@ -570,6 +644,7 @@ jobs:
             ${{ runner.temp }}/titan-candidate-evidence/contact-diagnostics.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-cross-sections.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-local-refine-*.json
+            ${{ runner.temp }}/titan-candidate-evidence/local-seam-gap-*mm.json
             ${{ runner.temp }}/titan-candidate-evidence/preflight.log
           if-no-files-found: ignore
           retention-days: 7
