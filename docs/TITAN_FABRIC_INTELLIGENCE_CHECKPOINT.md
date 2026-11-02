@@ -24,6 +24,7 @@
 8. At customer projection, even already-reviewed persisted JSON cannot certify an oversized fibre/composition literal; the 220-character supplier evidence limit is rechecked without truncation, independently from valid GSM or drape.
 9. Persisted render metadata must use literal booleans for repeat detection and finite positive integer pixel dimensions; JSON coercion of strings/arrays/null must never manufacture image repeat evidence or an invented tile size.
 10. Physical inspection receipt dates must be real dates and cannot claim an inspection several days in the future; permit UTC tomorrow only for legitimate UTC+14 local calendar offsets. A valid date still does not prove inspection happened.
+11. Legacy/corrupt approved profiles with missing or wrong-shape nested measurement/physical objects must return original unverified fabric unchanged rather than throwing a customer-facing runtime error.
 
 ## Physical acceptance still open
 

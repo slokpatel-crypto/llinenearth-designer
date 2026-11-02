@@ -275,3 +275,25 @@ test("overlong persisted fibre claims never gain verified status while exact-lim
   assert.equal(accepted.fiberContent,"L".repeat(220));
   assert.equal(accepted.fiberContentVerified,true);
 });
+
+test("legacy approved profiles without nested evidence fail closed without throwing",()=>{
+  const valid=intelligence("reviewed");
+  for(const [field,value] of [
+    ["measuredEvidence",undefined],
+    ["measuredEvidence",null],
+    ["measuredEvidence",[]],
+    ["measuredEvidence",["declared_repeat"]],
+    ["verifiedPhysical",undefined],
+    ["verifiedPhysical",null],
+    ["verifiedPhysical",[]],
+    ["verifiedPhysical",["source"]],
+  ] as const){
+    const record={...valid,[field]:value} as unknown as DesignerFabricIntelligence;
+    assert.doesNotThrow(()=>applyVerifiedPhysicalFabricEvidence(fabric,record),field);
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,record);
+    assert.deepEqual(result,fabric,field);
+  }
+  const intact=applyVerifiedPhysicalFabricEvidence(fabric,valid);
+  assert.equal(intact.patternScaleVerified,true);
+  assert.equal(intact.fiberContentVerified,true);
+});

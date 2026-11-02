@@ -15,9 +15,15 @@ export function applyVerifiedPhysicalFabricEvidence(
   // cannot override that decision or certify customer-facing physical facts.
   if(!intelligence || intelligence.trust!=="reviewed"
     || (intelligence.reviewStatus!=="approved" && intelligence.reviewStatus!=="corrected")) return fabric;
-  const physicalScale=intelligence.measuredEvidence.patternPhysicalScale;
-  const provenance=intelligence.fieldProvenance||{};
+  // Legacy/corrupt persisted profiles may carry reviewed trust but omit their
+  // nested evidence. An approval must never cause a customer-facing 500 or
+  // upgrade physical facts without the original measurement and source objects.
+  const measured=intelligence.measuredEvidence;
   const physical=intelligence.verifiedPhysical;
+  if(!measured || typeof measured!=="object" || Array.isArray(measured)
+    || !physical || typeof physical!=="object" || Array.isArray(physical)) return fabric;
+  const physicalScale=measured.patternPhysicalScale;
+  const provenance=intelligence.fieldProvenance||{};
   // Values may come from persisted JSON even when TypeScript declares them as
   // strings. Do not coerce arrays/objects into supplier notes or HTTPS links.
   const sourceTextValid=(physical.sourceUrl==null || typeof physical.sourceUrl==="string")
@@ -39,9 +45,9 @@ export function applyVerifiedPhysicalFabricEvidence(
     && (provenance[field]==="declared" || provenance[field]==="reviewed");
   const validMm=(value:unknown)=>typeof value==="number" && Number.isFinite(value)
     && value>=.1 && value<=5000;
-  const repeatMm=intelligence.measuredEvidence.repeatMm;
-  const stripeWidthMm=intelligence.measuredEvidence.stripeWidthMm;
-  const orientation=intelligence.measuredEvidence.patternOrientation;
+  const repeatMm=measured.repeatMm;
+  const stripeWidthMm=measured.stripeWidthMm;
+  const orientation=measured.patternOrientation;
   // A width-only swatch calibrates X-axis period, therefore vertical stripes
   // only. An externally declared repeat may use X or Y, but still requires an
   // observed stripe direction. Older incomplete profiles remain unverified.
