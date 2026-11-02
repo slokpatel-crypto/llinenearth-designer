@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -222,6 +222,7 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   const style = designerStyleForOccasion(occasion);
   const shirt = candidate.garments.shirt.toLowerCase();
   const trouser = candidate.garments.trouser.toLowerCase();
+  const namedCollar = styleDirectorCandidateCollar(shirt, DESIGNER_STYLE_CHOICES.collar);
 
   if (shirt.includes("spread")) {
     style.collar = pickStyleChoice("collar", /spread/i, style.collar);
@@ -229,11 +230,13 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   } else if (shirt.includes("button-down") || shirt.includes("oxford")) {
     style.collar = pickStyleChoice("collar", /button[- ]?down/i, style.collar);
     style.shirtWear = occasion === "Formal" || occasion === "Semi-Formal" ? "Tucked" : "Untucked";
-  } else if (shirt.includes("camp")) {
-    style.collar = pickStyleChoice("collar", /camp|cuban/i, style.collar);
+  } else if (namedCollar?.versioned === "cuban_camp_collar") {
+    // A Cuban-only name must select the same photographic collar as a camp name.
+    // Missing legacy options are left untouched and caught by parity review.
+    if (namedCollar.legacy) style.collar = namedCollar.legacy;
     style.shirtWear = "Untucked";
-  } else if (shirt.includes("band")) {
-    style.collar = pickStyleChoice("collar", /band|mandarin/i, style.collar);
+  } else if (namedCollar?.versioned === "mandarin_band_collar") {
+    if (namedCollar.legacy) style.collar = namedCollar.legacy;
   }
 
   if (trouser.includes("wide")) {
@@ -262,14 +265,15 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   const spec=fromLegacyStyle(style);
   const shirt=String(candidate.garments.shirt||"").toLowerCase();
   const trouser=String(candidate.garments.trouser||"").toLowerCase();
+  const namedCollar=styleDirectorCandidateCollar(shirt,DESIGNER_STYLE_CHOICES.collar);
 
-  if(/camp|cuban/.test(shirt)) {
+  if(namedCollar?.versioned==="cuban_camp_collar") {
     spec.shirt.type="camp_collar_resort";
     spec.shirt.collar="cuban_camp_collar";
     spec.shirt.wear="untucked";
     spec.shirt.length="shirt_length_regular";
     spec.shirt.hem="straight_flat_hem";
-  } else if(/band/.test(shirt)) {
+  } else if(namedCollar?.versioned==="mandarin_band_collar") {
     spec.shirt.type="band_collar_shirt";
     spec.shirt.collar="mandarin_band_collar";
   }
