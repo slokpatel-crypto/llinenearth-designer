@@ -57,8 +57,12 @@ async function run(){
         const engine=window.__photoFormAfter.engine,shirt={...engine.DESIGNER_SHIRTS[0],image:"/qa-solid-shirt.png",hex:"#b46d58",patternType:"Solid",renderScale:undefined},pant={...engine.DESIGNER_PANTS[0],image:"/qa-solid-pant.png",hex:"#b9afa0",patternType:"Solid",renderScale:undefined};
         // Synthetic stripe TEST TILE only; it is never shown as a customer
         // fabric or passed to a provider. Actual mannequin images stay intact.
-        cc.fillStyle="#efeee2";cc.fillRect(0,0,64,64);
-        for(let x=0;x<64;x+=8){cc.fillStyle="#17485b";cc.fillRect(x,0,3,64);}
+        // Use a full-size QA textile tile: swatchTile crops/expands stripes.
+        // A 64px fixture stretches three bands across an entire trouser leg
+        // and could "pass" even when real stripe alternation is absent.
+        control.width=control.height=320;
+        cc.fillStyle="#efeee2";cc.fillRect(0,0,320,320);
+        for(let x=0;x<320;x+=8){cc.fillStyle="#17485b";cc.fillRect(x,0,3,320);}
         const stripedImage=await image(control.toDataURL());
         const stripedFabric={...shirt,image:"/qa-stripe.png",patternType:"Pin Stripe",patternScale:"Fine",renderScale:undefined};
         const stripedPant={...pant,image:"/qa-stripe-pant.png",patternType:"Pin Stripe",patternScale:"Fine",renderScale:undefined};
@@ -110,6 +114,19 @@ async function run(){
           const stripeSleeve=changes(stripeData,{x:307,y:356,w:38,h:190});
           const pantStripeLeft=changes(pantStripeData,{x:389,y:800,w:61,h:480});
           const pantStripeRight=changes(pantStripeData,{x:575,y:800,w:57,h:480});
+          // Detect actual dark-blue textile bands, not merely a different
+          // uniform dye from the solid control. Each photographed leg must
+          // display the QA weave's alternating stripe colour.
+          function blueStripePixels(box){
+            let count=0;
+            for(let y=box.y;y<box.y+box.h;y+=4)for(let x=box.x;x<box.x+box.w;x+=2){
+              const i=(y*W+x)*4,r=pantStripeData[i],g=pantStripeData[i+1],b=pantStripeData[i+2];
+              if(b>r+15&&b>g+8)count++;
+            }
+            return count;
+          }
+          const pantStripeLeftBlue=blueStripePixels({x:389,y:800,w:61,h:480});
+          const pantStripeRightBlue=blueStripePixels({x:575,y:800,w:57,h:480});
           let protectedPantChanges=0;
           for(const r of protectedRegions)for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++){
             const i=(y*W+x)*4;
@@ -124,7 +141,7 @@ async function run(){
           window.__photoFormImages["stripe-"+template]=stripeCanvas.toDataURL("image/png");
           window.__photoFormImages["pant-stripe-"+template]=pantStripeCanvas.toDataURL("image/png");
           window.__photoFormImages[template]=display.toDataURL("image/png");
-          results.push({template,renderMs,folds,protectedChanges,protectedPantChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,pantStripeLeft,pantStripeRight});
+          results.push({template,renderMs,folds,protectedChanges,protectedPantChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,pantStripeLeft,pantStripeRight,pantStripeLeftBlue,pantStripeRightBlue});
         }return results;
       });
       for(const result of summary.forms){
@@ -141,6 +158,8 @@ async function run(){
         assert.ok(result.stripeSleeve>50,result.template+" photo sleeve must render the selected striped tile");
         assert.ok(result.pantStripeLeft>50,result.template+" left trouser must render the selected striped cloth");
         assert.ok(result.pantStripeRight>50,result.template+" right trouser must render the selected striped cloth");
+        assert.ok(result.pantStripeLeftBlue>40,result.template+" left trouser must retain visibly blue stripe bands");
+        assert.ok(result.pantStripeRightBlue>40,result.template+" right trouser must retain visibly blue stripe bands");
         assert.equal(result.protectedPantChanges,0,result.template+" striped trousers must preserve skin, shoes, inner-leg gap and set");
         for(const fold of result.folds)assert.ok(fold.after.slope>fold.before.slope*1.15,`${result.template} ${fold.name}: depicted fold contrast must improve, ${fold.before.slope} -> ${fold.after.slope}`);
       }
