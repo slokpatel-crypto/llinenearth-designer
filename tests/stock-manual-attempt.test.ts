@@ -69,9 +69,9 @@ test("server-equivalent trimmed and capped stock evidence MUST keep the original
   };
   const first=await tracker.keyFor(long);
   assert.equal(await tracker.keyFor({...long,fabricId:long.fabricId.trim().slice(0,160)}),first);
-  assert.equal(await tracker.keyFor({...long,note:long.note.replace(/\\s+/g," ").trim().slice(0,600)}),first);
-  assert.equal(await tracker.keyFor({...long,recordedBy:long.recordedBy.replace(/\\s+/g," ").trim().slice(0,120)}),first);
-  assert.equal(await tracker.keyFor({...long,sourceReference:long.sourceReference.replace(/\\s+/g," ").trim().slice(0,240)}),first);
+  assert.equal(await tracker.keyFor({...long,note:long.note.replace(/\s+/g," ").trim().slice(0,600)}),first);
+  assert.equal(await tracker.keyFor({...long,recordedBy:long.recordedBy.replace(/\s+/g," ").trim().slice(0,120)}),first);
+  assert.equal(await tracker.keyFor({...long,sourceReference:long.sourceReference.replace(/\s+/g," ").trim().slice(0,240)}),first);
   assert.equal(await createStockManualAttemptTracker(keys(),()=>store).keyFor(long),first);
 });
 test("changes inside SQL evidence field bounds continue to get distinct keys",async()=>{
