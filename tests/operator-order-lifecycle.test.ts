@@ -68,6 +68,24 @@ test("QC rework must return through stitching, finishing and a NEW approval",()=
   assert.equal(step(rechecked,"approve_qc",{qc:qc()}).status,"qc_approved");
 });
 
+test("rework and recovery require a new physical QC inspection reference",()=>{
+  const first=step(toQc(),"approve_qc",{qc:qc()});
+  const held=step(first,"hold_for_recovery",{reason:"Seam defect found after first QC"});
+  const resumed=step(held,"resume_recovery",{reason:"Tailor approved rework"});
+  const pending=step(step(resumed,"start_finishing"),"submit_qc");
+  assert.throws(()=>step(pending,"approve_qc",{qc:qc()}),
+    /fresh QC inspection reference/,"an earlier QC receipt cannot approve repaired work");
+  const fresh={...qc(),inspectionReference:"QC-REAL-RECEIPT-002"};
+  const approved=step(pending,"approve_qc",{qc:fresh});
+  assert.equal(approved.status,"qc_approved");
+  assert.equal(approved.audit.filter(x=>x.action==="approve_qc").length,2);
+  assert.equal(replayOrderLifecycle(id,revision,hash,approved.audit).status,"qc_approved");
+  const tampered=approved.audit.map(x=>x.action==="approve_qc" && x.sequence===approved.sequence
+    ? {...x,qc:qc()} : x);
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,tampered),
+    /fresh QC inspection reference/,"replay must also reject duplicated QC receipts");
+});
+
 test("cancellation is audited, reason-required and terminal; dispatch cannot cancel",()=>{
   for(const s of [base(),progress("accept"),toQc(),step(toQc(),"approve_qc",{qc:qc()})]){
     assert.throws(()=>step(s,"cancel"),/reason/);
