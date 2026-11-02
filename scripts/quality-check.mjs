@@ -353,8 +353,9 @@ for (const token of [
   "PHOTO_TUCKED_PANEL_GRAIN_ROTATION",
   "PHOTO_TUCKED_PANEL_PATTERN_ANCHOR",
   "function fabricPatternTransform(fabric:DesignerFabric,placement:FabricPatternPlacement,scale:number)",
-  "translate(anchorX,anchorY)",
-  "translate(-anchorX,-anchorY)",
+  "photoPanelPatternMatrix(",
+  "reference:{x:placement.referenceX??anchorX,y:placement.referenceY??anchorY}",
+  "new DOMMatrix([matrix[0],matrix[1],matrix[2],matrix[3]",
   "rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftSleeve",
   "anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.leftSleeve.x",
   "rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightSleeve",
@@ -382,7 +383,10 @@ for (const token of [
 ]) {
   if (!photoPanelGrain.includes(token)) throw new Error(`Photo panel grain regression: geometry missing ${token}`);
 }
-console.log("Photo panel grain gate passed: directional fabrics follow photographed panel fall and keep repeat phase anchored at panel starts without claiming physical grain evidence.");
+if (!photoPanelGrain.includes("const degrees=-Math.atan2(dx,dy)*180/Math.PI")) throw new Error("Photo panel grain regression: Canvas grain tilt mirrored the photographed panel.");
+if (!photoPanelGrain.includes("export function photoPanelPatternMatrix(")) throw new Error("Photo panel grain regression: pure seam-phase matrix missing.");
+if (/deferCoverage:true, offsetX:\s*(?:11|-9|5|-5)/.test(photoPreview)) throw new Error("Photo panel grain regression: ad-hoc sleeve/trouser pattern shifts returned.");
+console.log("Photo panel grain gate passed: signed panel geometry and shared texture phase without inventing physical repeat evidence.");
 for (const token of [
   "PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION",
   "PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR",

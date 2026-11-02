@@ -40,7 +40,13 @@ async function run(){
     const dark=await page.locator("#designer-shirt option").evaluateAll(options=>options.find(o=>/Black - Jute Feel/.test(o.textContent))?.value);assert.ok(dark);
     await page.locator("#designer-shirt").selectOption(dark);await ready(page);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`dark-tucked-${width}.png`)});
-    summary.viewports.push({width,overflow:false,realCataloguePreview:true});
+    // Real-photo screenshot gates at each required responsive width. No paid
+    // rendering service or replacement model is involved.
+    await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");
+    await ready(page);
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`dark-untucked-${width}.png`)});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+    summary.viewports.push({width,overflow:false,realCataloguePreview:true,tuckedAndUntuckedScreenshots:true});
     if(width===1440){
       await page.addScriptTag({content:`window.__photoFormBefore=${beforeBundle};window.__photoFormAfter=${afterBundle};`});
       summary.forms=await page.evaluate(async()=>{
@@ -49,6 +55,12 @@ async function run(){
         const makeCanvas=()=>{const c=document.createElement("canvas");c.width=W;c.height=H;return c;};
         const control=document.createElement("canvas");control.width=control.height=64;const cc=control.getContext("2d");cc.fillStyle="#b46d58";cc.fillRect(0,0,64,64);const shirtImage=await image(control.toDataURL());cc.fillStyle="#b9afa0";cc.fillRect(0,0,64,64);const pantImage=await image(control.toDataURL());
         const engine=window.__photoFormAfter.engine,shirt={...engine.DESIGNER_SHIRTS[0],image:"/qa-solid-shirt.png",hex:"#b46d58",patternType:"Solid",renderScale:undefined},pant={...engine.DESIGNER_PANTS[0],image:"/qa-solid-pant.png",hex:"#b9afa0",patternType:"Solid",renderScale:undefined};
+        // Synthetic stripe TEST TILE only; it is never shown as a customer
+        // fabric or passed to a provider. Actual mannequin images stay intact.
+        cc.fillStyle="#efeee2";cc.fillRect(0,0,64,64);
+        for(let x=0;x<64;x+=8){cc.fillStyle="#17485b";cc.fillRect(x,0,3,64);}
+        const stripedImage=await image(control.toDataURL());
+        const stripedFabric={...shirt,image:"/qa-stripe.png",patternType:"Pin Stripe",patternScale:"Fine",renderScale:undefined};
         const style={collar:"Point (Standard) Collar",collarFinish:"Self-fabric",cuff:"Barrel Cuff (1-button)",placket:"Standard (visible stitch)",shirtFit:"Regular / Classic Fit",shirtWear:"Tucked",trouser:"Pleated Trouser",rise:"Mid Rise",waistband:"Belt Loops",break:"Slight Break",button:"Plastic / Resin"};
         function stats(source,render,box,limit){let count=0,sx=0,sy=0,sxx=0,sxy=0;for(let y=box.y;y<box.y+box.h;y+=2)for(let x=box.x;x<box.x+box.w;x+=2){const i=(y*W+x)*4;if(Math.max(source[i],source[i+1],source[i+2])>limit)continue;const a=.2126*source[i]+.7152*source[i+1]+.0722*source[i+2],b=.2126*render[i]+.7152*render[i+1]+.0722*render[i+2];count++;sx+=a;sy+=b;sxx+=a*a;sxy+=a*b;}return {count,slope:(sxy-sx*sy/count)/(sxx-sx*sx/count)};}
         window.__photoFormImages={};
@@ -74,11 +86,43 @@ async function run(){
             if(g-r>=2&&b-r>=3&&Math.max(r,g,b)<130&&current[i]<current[i+1]*1.15){wrongWaistPixels++;if(waistExamples.length<20)waistExamples.push({x,y,source:[r,g,b],render:[current[i],current[i+1],current[i+2]]});}
           }
           const display=makeCanvas();display.width=W*2;display.getContext("2d").drawImage(before,0,0);display.getContext("2d").drawImage(after,W,0);
-          window.__photoFormImages[template]=display.toDataURL("image/png");results.push({template,renderMs,folds,protectedChanges,wrongWaistPixels,waistExamples});
+          // Pixel regression using the real fixed photographs: striping must
+          // paint BOTH a body panel and an angled sleeve, not a blank overlay.
+          const striped=makeCanvas();
+          window.__photoFormAfter.compose(striped.getContext("2d"),model,trouser,stripedImage,pantImage,stripedFabric,pant,selected);
+          const stripeData=striped.getContext("2d").getImageData(0,0,W,H).data;
+          function changes(box){
+            let count=0;
+            for(let y=box.y;y<box.y+box.h;y+=4)for(let x=box.x;x<box.x+box.w;x+=4){
+              const i=(y*W+x)*4;
+              if(Math.abs(stripeData[i]-current[i])+Math.abs(stripeData[i+1]-current[i+1])+Math.abs(stripeData[i+2]-current[i+2])>15)count++;
+            }
+            return count;
+          }
+          const stripeBody=changes({x:414,y:310,w:180,h:176});
+          const stripeSleeve=changes({x:307,y:356,w:38,h:190});
+          const stripeCanvas=makeCanvas();stripeCanvas.width=W*2;
+          stripeCanvas.getContext("2d").drawImage(after,0,0);
+          stripeCanvas.getContext("2d").drawImage(striped,W,0);
+          window.__photoFormImages["stripe-"+template]=stripeCanvas.toDataURL("image/png");
+          window.__photoFormImages[template]=display.toDataURL("image/png");
+          results.push({template,renderMs,folds,protectedChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve});
         }return results;
       });
-      for(const result of summary.forms){await page.evaluate(template=>{const image=document.createElement("img");image.id="photo-form-comparison";image.src=window.__photoFormImages[template];image.style.width="1024px";document.body.append(image);},result.template);await page.locator("#photo-form-comparison").screenshot({path:path.join(out,`before-after-${result.template}.png`)});await page.locator("#photo-form-comparison").evaluate(image=>image.remove());}
-      for(const result of summary.forms){assert.equal(result.protectedChanges,0,result.template+" must preserve skin, shoes, inner-leg gap and set");assert.equal(result.wrongWaistPixels,0,"source shirting must stay fully covered at the tucked waist");for(const fold of result.folds)assert.ok(fold.after.slope>fold.before.slope*1.15,`${result.template} ${fold.name}: depicted fold contrast must improve, ${fold.before.slope} -> ${fold.after.slope}`);}
+      for(const result of summary.forms){
+        for(const name of [result.template,"stripe-"+result.template]){
+          await page.evaluate(name=>{const image=document.createElement("img");image.id="photo-form-comparison";image.src=window.__photoFormImages[name];image.style.width="1024px";document.body.append(image);},name);
+          await page.locator("#photo-form-comparison").screenshot({path:path.join(out,`before-after-${name}.png`)});
+          await page.locator("#photo-form-comparison").evaluate(image=>image.remove());
+        }
+      }
+      for(const result of summary.forms){
+        assert.equal(result.protectedChanges,0,result.template+" must preserve skin, shoes, inner-leg gap and set");
+        assert.equal(result.wrongWaistPixels,0,"source shirting must stay fully covered at the tucked waist");
+        assert.ok(result.stripeBody>400,result.template+" photo body must render the selected striped tile");
+        assert.ok(result.stripeSleeve>50,result.template+" photo sleeve must render the selected striped tile");
+        for(const fold of result.folds)assert.ok(fold.after.slope>fold.before.slope*1.15,`${result.template} ${fold.name}: depicted fold contrast must improve, ${fold.before.slope} -> ${fold.after.slope}`);
+      }
       await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");await ready(page);await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,"real-untucked.png")});
     }
     await context.close();

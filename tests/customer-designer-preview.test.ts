@@ -53,7 +53,10 @@ test("tucked directional fabric follows photographed panel grain with stable pat
   assert.match(source,/PHOTO_TUCKED_PANEL_GRAIN_ROTATION/);
   assert.match(source,/PHOTO_TUCKED_PANEL_PATTERN_ANCHOR/);
   assert.match(source,/function fabricPatternTransform\(fabric:DesignerFabric,placement:FabricPatternPlacement,scale:number\)/);
-  assert.match(source,/translate\(anchorX,anchorY\)[\s\S]*rotate\(rotation\)[\s\S]*scale\(scale\)[\s\S]*translate\(-anchorX,-anchorY\)/);
+  assert.match(source,/photoPanelPatternMatrix\(/);
+  assert.match(source,/new DOMMatrix\(\[matrix\[0\]/);
+  assert.match(source,/referenceX:510, referenceY:244/);
+  assert.match(source,/referenceX:512, referenceY:542/);
   assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.leftSleeve[\s\S]*anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR\.leftSleeve\.x/);
   assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.rightSleeve[\s\S]*anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR\.rightSleeve\.x/);
   assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.leftTrouser[\s\S]*anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR\.leftTrouser\.x/);
