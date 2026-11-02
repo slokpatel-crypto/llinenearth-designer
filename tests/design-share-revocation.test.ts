@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {
   createShareRevocationKey,shareBearerDigest,shareRevocationKeyDigest,
   requireShareRevocationBoolean
@@ -25,4 +26,15 @@ test("share revocation RPC responses fail closed unless native boolean",()=>{
  assert.equal(requireShareRevocationBoolean(false),false);
  for(const value of ["false","true",null,{},[true],0,1])
    assert.throws(()=>requireShareRevocationBoolean(value),/Malformed/);
+});
+
+test("Designer share UI retains private cancellation capability away from public URLs",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert.match(source,/shareRevocation/);
+  assert.match(source,/revokeLastSharedDesignLink/);
+  assert.match(source,/action:"revoke",token:shareRevocation.token/);
+  assert.match(source,/Copy private cancellation code/);
+  assert.match(source,/Revoke last public share link/);
+  assert.match(source,/`\/share\/\$\{result.token\}`/);
+  assert.doesNotMatch(source,/`\/share\/\$\{result.token\}[^\n]*revokeKey/);
 });

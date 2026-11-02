@@ -155,6 +155,8 @@ export function DesignerModule() {
   const [lockBusy,setLockBusy]=useState(false);
   const [shareBusy,setShareBusy]=useState(false);
   const [shareMessage,setShareMessage]=useState("");
+  // Keep the cancellation credential separate from the public share URL.
+  const [shareRevocation,setShareRevocation]=useState<{token:string;revokeKey:string}|null>(null);
   const [enquiryBusy,setEnquiryBusy]=useState(false);
   const [enquiryMessage,setEnquiryMessage]=useState("");
   const [vaultBusy,setVaultBusy]=useState(false);
@@ -1145,20 +1147,44 @@ export function DesignerModule() {
         headers:{"content-type":"application/json"},
         body:JSON.stringify(lockedRevision),
       });
-      const result=await response.json() as {token?:string;expiresInDays?:number;audited?:boolean;error?:string};
+      const result=await response.json() as {token?:string;revokeKey?:string;expiresInDays?:number;audited?:boolean;error?:string};
       if(!response.ok||!result.token) throw new Error(result.error||"Share link could not be created.");
       const url=new URL(`/share/${result.token}`,window.location.origin).toString();
+      // Only the issuer receives this separate 256-bit cancellation capability.
+      // Never put the private key in a URL, QR code or the public copied link.
+      setShareRevocation(result.revokeKey?{token:result.token,revokeKey:result.revokeKey}:null);
       try{
         await navigator.clipboard.writeText(url);
-        setShareMessage(`Share link copied · expires in ${result.expiresInDays||30} days${result.audited?" · verified share audit recorded":" · beta audit unavailable"}.`);
+        setShareMessage(`Public view-only design link copied · expires in ${result.expiresInDays||30} days${result.revokeKey?" · keep your separate private revoke code to cancel this link":""}.`);
       }catch{
-        setShareMessage(url);
+        setShareMessage(`Public link: ${url}${result.revokeKey?" · keep your private revoke code separately":""}`);
       }
     }catch(error){
       setShareMessage(error instanceof Error?error.message:"Share link could not be created.");
     }finally{
       setShareBusy(false);
     }
+  }
+
+  async function revokeLastSharedDesignLink() {
+    if(!shareRevocation||shareBusy)return;
+    setShareBusy(true);
+    setShareMessage("");
+    try{
+      const response=await fetch("/api/designer/share",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"revoke",token:shareRevocation.token,
+          revokeKey:shareRevocation.revokeKey}),
+      });
+      const result=await response.json() as {revoked?:boolean;error?:string};
+      if(!response.ok||result.revoked!==true)
+        throw new Error(result.error||"Share link could not be revoked.");
+      setShareRevocation(null);
+      setShareMessage("Share link revoked. Its public design page is no longer available.");
+    }catch(error){
+      setShareMessage(error instanceof Error?error.message:"Share link could not be revoked.");
+    }finally{setShareBusy(false);}
   }
 
   async function openLockedRevisionEnquiry() {
@@ -1507,7 +1533,17 @@ export function DesignerModule() {
                 <p><b>Locked revision:</b> {lockedRevision.revisionId} · recipe {lockedRevision.recipeHash.slice(0,12).toUpperCase()}</p>
                 <button type="button" onClick={downloadProductionHandoff}>Export tailor handoff ↗</button>
                 <button type="button" onClick={downloadTailorTechPack}>Export printable tech pack ↗</button>
-                <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
+                <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Managing share…":"Copy public design link ↗"}</button>
+                {shareRevocation&&<>
+                  <button type="button" onClick={()=>void navigator.clipboard.writeText(shareRevocation.revokeKey)
+                    .then(()=>setShareMessage("Private cancellation code copied. Store it separately from the public link."))
+                    .catch(()=>setShareMessage("Clipboard unavailable; private cancellation code: "+shareRevocation.revokeKey))}>
+                    Copy private cancellation code ↗
+                  </button>
+                  <button type="button" onClick={()=>void revokeLastSharedDesignLink()} disabled={shareBusy}>
+                    Revoke last public share link
+                  </button>
+                </>}
                 {shareMessage&&<p>{shareMessage}</p>}
                 <button type="button" onClick={()=>void openLockedRevisionEnquiry()} disabled={enquiryBusy}>{enquiryBusy?"Opening WhatsApp…":"WhatsApp locked look ↗"}</button>
                 {enquiryMessage&&<p>{enquiryMessage}</p>}
