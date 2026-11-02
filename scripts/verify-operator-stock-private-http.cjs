@@ -174,6 +174,23 @@ async function main(){
       {action:"consume",reservationId:uuid,actualMetres:1.125,
         checkedBy:"Synthetic checker",sourceReference:"SYNTH-CUT-01"},
     ];
+    // A malformed but 36-character reservation ID is a deterministic 409,
+    // never an ambiguous upstream failure or a privileged close RPC.
+    for(const reservationId of [
+      "-".repeat(36),
+      "b287e4700e90-4fd4-b5fb-976eecebd244-",
+      "b287e470-0e904-fd4-b5fb-976eecebd244",
+      "b287e470-0e90-4fd4-b5fb-976eecebd24-",
+      "b287e470-0e90-4fd4-b5fb-976eecebd24g",
+    ]){
+      for(const body of closures){
+        mode="closeTrue";seen.length=0;
+        const {response,result}=await call("POST",{...body,reservationId});
+        assert.equal(response.status,409,body.action+" invalid reservation UUID");
+        assert.deepEqual(result,{error:"Valid reservation ID is required."});
+        assert.equal(seen.length,0,"invalid reservation ID reached privileged close RPC");
+      }
+    }
     for(const body of closures){
       for(const kind of [
         "closeTrue","closeFalse","closeNull","closeString",
@@ -244,7 +261,7 @@ async function main(){
       if(held.exitCode===null){held.kill("SIGTERM");await once(held,"exit");}
     }
     assert.ok(!output.includes(marker),"private fake stock RPC error leaked in server logs");
-    console.log("TITAN stock API private boundary PASS: 53 synthetic authenticated cases, no real writes.");
+    console.log("TITAN stock API private boundary PASS: synthetic authenticated cases, no real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>upstream.close(resolve));
