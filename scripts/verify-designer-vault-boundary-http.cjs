@@ -47,6 +47,8 @@ async function main(){
       "x-forwarded-for":"198.51.100."+client};
   }
   let mode="ok";
+  let revocationMode="ok";
+  const revokedHashes=new Set();
   const seen=[];
   const upstream=http.createServer(async(req,res)=>{
     const path=req.url||"";
@@ -99,6 +101,28 @@ async function main(){
     }
     if(path==="/rest/v1/rpc/production_claim_revision_ownership"){
       res.writeHead(200,{"content-type":"application/json"});res.end("true");return;
+    }
+    if(path==="/rest/v1/rpc/customer_session_is_revoked"){
+      assert.match(payload.p_token_hash,/^[0-9a-f]{64}$/);
+      if(revocationMode==="check500"){
+        res.writeHead(503,{"content-type":"application/json"});
+        res.end(JSON.stringify({error:privateMarker}));return;
+      }
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end(revocationMode==="checkMalformed"?'"false"':
+        revokedHashes.has(payload.p_token_hash)?"true":"false");return;
+    }
+    if(path==="/rest/v1/rpc/customer_session_revoke"){
+      assert.match(payload.p_token_hash,/^[0-9a-f]{64}$/);
+      if(revocationMode==="revoke500"){
+        res.writeHead(503,{"content-type":"application/json"});
+        res.end(JSON.stringify({error:privateMarker}));return;
+      }
+      res.writeHead(200,{"content-type":"application/json"});
+      if(revocationMode==="revokeMalformed"){res.end('"true"');return;}
+      if(revocationMode==="revokeFalse"){res.end("false");return;}
+      revokedHashes.add(payload.p_token_hash);
+      res.end("true");return;
     }
     if(path==="/rest/v1/rpc/production_quote_accept_owned"){
       assert.equal(payload.p_quote_id,vaultId);
@@ -452,6 +476,108 @@ async function main(){
       assert.equal(seen[1].path,"/rest/v1/rpc/designer_locked_revision_vault_set_owner");
       assert.ok(!JSON.stringify(data).includes(privateMarker));
     }
+    // Revocation rollout is opt-in. Run a SECOND isolated Next instance with the
+    // synthetic migration flag enabled: no live auth, backend or customer data.
+    const enforcedPort=await freePort();
+    const enforcedOrigin="http://127.0.0.1:"+enforcedPort;
+    const enforcedEnv={...env,LINEN_CUSTOMER_SESSION_REVOCATION_REQUIRED:"1"};
+    const enforcedChild=spawn(process.execPath,[require.resolve("next/dist/bin/next"),
+      "start","-H","127.0.0.1","-p",String(enforcedPort)],
+      {env:enforcedEnv,stdio:["ignore","pipe","pipe"]});
+    let enforcedOutput="";
+    for(const stream of [enforcedChild.stdout,enforcedChild.stderr])
+      stream.on("data",chunk=>{enforcedOutput=(enforcedOutput+chunk).slice(-8000);});
+    try{
+      let ready=false;
+      for(let i=0;i<120;i++){
+        if(enforcedChild.exitCode!==null)throw Error("Revocation Next exited: "+enforcedOutput);
+        try{
+          const response=await fetch(enforcedOrigin+"/api/customer-auth/session",{
+            signal:AbortSignal.timeout(1200)});
+          ready=response.status===200;
+        }catch{}
+        if(ready)break;
+        await new Promise(resolve=>setTimeout(resolve,100));
+      }
+      assert.ok(ready,"Revocation Next did not start: "+enforcedOutput);
+
+      seen.length=0;
+      const signed=await fetch(enforcedOrigin+"/api/customer-auth/verify",{
+        method:"POST",headers:fixtureHeaders(),
+        body:JSON.stringify({email:"alice@example.com",token:"123456"}),
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(signed.status,200,"revocation-enabled sign-in requires backend proof");
+      const cookie=signed.headers.get("set-cookie")?.match(/le_customer_session=([^;]+)/)?.[1];
+      assert.ok(cookie);
+      assert.deepEqual(seen.map(item=>item.path),
+        ["/auth/v1/verify","/rest/v1/rpc/customer_session_is_revoked"]);
+
+      seen.length=0;
+      const legacyOnly=await fetch(enforcedOrigin+"/api/customer-auth/session",{
+        headers:{cookie:"le_customer_access=valid-legacy"}});
+      assert.deepEqual(await legacyOnly.json(),{customer:null});
+      assert.equal(seen.length,0,"legacy token must not bypass revocation enforcement");
+
+      async function session(){
+        return await fetch(enforcedOrigin+"/api/customer-auth/session",{
+          headers:{cookie:"le_customer_session="+cookie},signal:AbortSignal.timeout(15000)});
+      }
+      async function signOut(){
+        return await fetch(enforcedOrigin+"/api/customer-auth/logout",{
+          method:"POST",headers:{cookie:"le_customer_session="+cookie,
+            "sec-fetch-site":"same-origin"},signal:AbortSignal.timeout(15000)});
+      }
+      seen.length=0;
+      const before=await session();
+      assert.equal((await before.json()).customer?.email,"alice@example.com");
+      assert.equal(seen.length,1);
+      assert.equal(seen[0].path,"/rest/v1/rpc/customer_session_is_revoked");
+      for(const rejection of ["revokeFalse","revokeMalformed","revoke500"]){
+        revocationMode=rejection;seen.length=0;
+        const response=await signOut();
+        assert.equal(response.status,503,"signout cannot claim backend failure as success");
+        assert.equal(response.headers.get("set-cookie"),null,
+          "failed revocation must leave cookie available for retry");
+        assert.equal(seen.length,1);
+        assert.equal(seen[0].path,"/rest/v1/rpc/customer_session_revoke");
+      }
+
+      revocationMode="ok";seen.length=0;
+      const logoutResponse=await signOut();
+      assert.equal(logoutResponse.status,200);
+      assert.match(logoutResponse.headers.get("set-cookie")||"",/le_customer_session=/);
+      assert.equal(revokedHashes.size,1,"only a SHA-256 digest is stored");
+      assert.equal(seen.length,1);
+      assert.equal(seen[0].path,"/rest/v1/rpc/customer_session_revoke");
+      seen.length=0;
+      const replay=await session();
+      assert.deepEqual(await replay.json(),{customer:null},"signed bearer replay must be denied");
+      assert.equal(seen[0]?.path,"/rest/v1/rpc/customer_session_is_revoked");
+
+      for(const failure of ["checkMalformed","check500"]){
+        revocationMode=failure;seen.length=0;
+        const response=await session();
+        assert.deepEqual(await response.json(),{customer:null},
+          "malformed/unavailable revocation checks must fail closed");
+        assert.equal(seen.length,1);
+      }
+      revocationMode="check500";seen.length=0;
+      const failedVerify=await fetch(enforcedOrigin+"/api/customer-auth/verify",{
+        method:"POST",headers:fixtureHeaders(),
+        body:JSON.stringify({email:"bob@example.com",token:"123456"}),
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(failedVerify.status,503);
+      assert.ok(!failedVerify.headers.get("set-cookie"),
+        "new customer cookie must not be issued without working revocation store");
+      assert.deepEqual(seen.map(item=>item.path),
+        ["/auth/v1/verify","/rest/v1/rpc/customer_session_is_revoked"]);
+    }finally{
+      if(enforcedChild.exitCode===null){
+        enforcedChild.kill("SIGTERM");
+        await once(enforcedChild,"exit");
+      }
+    }
+    assert.ok(!enforcedOutput.includes(privateMarker),"revocation errors must redact upstream details");
     assert.ok(!output.includes(privateMarker),"sensitive upstream error/JSON must not enter server logs");
     console.log("TITAN designer vault boundary PASS: synthetic HTTP cases; zero real writes.");
   }finally{
