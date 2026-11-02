@@ -227,3 +227,37 @@ test("privileged stock record and reservation identities require literal JSON st
   assert.equal(normalizeStockReservation(reserve).revisionId,reserve.revisionId);
   assert.equal(normalizeStockReservation(reserve).requestKey,reserve.requestKey);
 });
+
+
+test("all privileged stock operations require literal checker names and physical source references",()=>{
+  const reservationId="11111111-1111-4111-8111-111111111111";
+  const fixtures=[
+    {run:normalizeManualStockEvent,base:{fabricId:"shirt-1",eventType:"receipt",
+      quantityMetres:2.125,recordedBy:"Physical checker",sourceReference:"Signed roll-1"},
+      actor:"recordedBy",actorError:"Named stock checker / recorder is required.",
+      sourceError:"Physical stock source reference is required."},
+    {run:normalizeStockReservation,base:{fabricId:"shirt-1",
+      revisionId:"LE-LOCK-20261102",requestKey:"LE-REQUEST-20261102",
+      quantityMetres:1.125,requestedBy:"Cutting checker",sourceReference:"Approved sheet-2"},
+      actor:"requestedBy",actorError:"Named reservation checker / requester is required.",
+      sourceError:"Reservation quantity evidence reference is required."},
+    {run:normalizeStockRelease,base:{reservationId,releasedBy:"Physical checker",
+      sourceReference:"Signed release-3"},
+      actor:"releasedBy",actorError:"Named reservation release checker is required.",
+      sourceError:"Reservation release reference is required."},
+    {run:normalizeStockConsumption,base:{reservationId,actualMetres:1.125,
+      checkedBy:"Cutting checker",sourceReference:"Signed cut sheet-4"},
+      actor:"checkedBy",actorError:"Named consumption checker is required.",
+      sourceError:"Actual cloth-usage evidence reference is required."},
+  ];
+  for(const {run,base,actor,actorError,sourceError} of fixtures){
+    for(const field of [actor,"sourceReference"]){
+      for(const invalid of [["Forged name"],{value:"Forged name"},null,42,true]){
+        assert.throws(()=>run({...base,[field]:invalid}),{
+          message:field==="sourceReference"?sourceError:actorError,
+        },`Reject coerced ${actor==="recordedBy"?"record":actor} ${field}: ${String(invalid)}`);
+      }
+    }
+    assert.equal(typeof run(base).sourceReference,"string");
+  }
+});
