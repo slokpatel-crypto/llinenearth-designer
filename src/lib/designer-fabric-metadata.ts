@@ -4,6 +4,7 @@ import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import type { DesignerFabricMetadata, DesignerFabricMetadataMap } from "@/lib/designer-fabric-metadata-types";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
+import { parseLiteralOperatorAvailability } from "@/lib/designer/operator-availability-literal";
 
 type MetadataRow = { at:string; payload?:Record<string,unknown> };
 
@@ -12,11 +13,12 @@ function safe(value:unknown,max=180) {
 }
 
 function parseMetadata(payload:Record<string,unknown>,at:string):DesignerFabricMetadata|null {
-  if (safe(payload.subtype,80) !== "designer_fabric_metadata") return null;
-  const fabricId = safe(payload.fabricId,140);
-  if (!fabricId || !FABRIC_STOCK.some((item)=>item.id===fabricId)) return null;
-
-  const availability = safe(payload.availability,20);
+  const identity = parseLiteralOperatorAvailability(payload, FABRIC_STOCK.map((item)=>item.id));
+  if (!identity) return null;
+  const { fabricId, availability } = identity;
+  // A newer malformed active-fabric availability record must not allow an
+  // older 'available' note to win. Do not copy untrusted physical fields.
+  if (!identity.trustedSubtype) return { fabricId, availability:"unknown", verifiedAt:at };
   const weightClass = safe(payload.weightClass,20);
   const drape = safe(payload.drape,20);
   const rawSeasons = Array.isArray(payload.seasonTags) ? payload.seasonTags.map((item)=>safe(item,30)) : [];
@@ -31,7 +33,7 @@ function parseMetadata(payload:Record<string,unknown>,at:string):DesignerFabricM
 
   return {
     fabricId,
-    availability:["available","unavailable"].includes(availability) ? availability as "available"|"unavailable" : "unknown",
+    availability,
     ...(Number.isFinite(weightGsmRaw) && weightGsmRaw >= 40 && weightGsmRaw <= 1000 ? {weightGsm:Math.round(weightGsmRaw)} : {}),
     ...(["Light","Medium","Heavy"].includes(weightClass) ? {weightClass:weightClass as DesignerFabricMetadata["weightClass"]} : {}),
     ...(safe(payload.weave,100) ? {weave:safe(payload.weave,100)} : {}),
