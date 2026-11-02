@@ -101,7 +101,7 @@ jobs:
     timeout-minutes: 10
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17.6
         env:
           POSTGRES_DB: titan_synthetic
           POSTGRES_USER: titan
@@ -127,6 +127,13 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y postgresql-client
           fi
+      - name: Assert disposable PostgreSQL 17.6 matches target database major and minor
+        run: |
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when current_setting('server_version_num')::int=170006
+              then 'PASS' else 'FAIL' end" | grep -qx PASS
       - name: Bootstrap synthetic-only PostgreSQL roles and physical stock schema
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
@@ -189,7 +196,7 @@ jobs:
     timeout-minutes: 25
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17.6
         env:
           POSTGRES_DB: titan_synthetic
           POSTGRES_USER: titan
@@ -217,6 +224,13 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y postgresql-client
           fi
+      - name: Assert disposable PostgreSQL 17.6 matches target database major and minor
+        run: |
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when current_setting('server_version_num')::int=170006
+              then 'PASS' else 'FAIL' end" | grep -qx PASS
       - name: Bootstrap synthetic stock schema through v2, before migration
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
