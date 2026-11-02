@@ -31,11 +31,9 @@ async function fill(page,source="SYNTH-ROLL-001"){
 async function ready(page){
   await page.getByRole("heading",{name:"Fabric Stock Ledger"}).waitFor();
   await page.getByRole("button",{name:"Record stock event"}).waitFor({state:"visible"});
-  await page.getByRole("button",{name:"Record stock event"}).evaluate(
-    async button=>{
-      const started=Date.now();
-      while(button.disabled&&Date.now()-started<15000)await new Promise(r=>setTimeout(r,50));
-    });
+  // A blank form is deliberately disabled. Wait for the ledger snapshot,
+  // not the form button, to become ready.
+  await page.getByText("LIVE SNAPSHOT",{exact:true}).waitFor();
 }
 async function submit(page,records){
   const before=records.length;
@@ -123,6 +121,10 @@ async function main(){
       await uncertain.page.getByText(/Stock write outcome is uncertain\. It may have committed/).waitFor();
       assert.equal(uncertain.records.length,1,"uncertain receipt should be sent exactly once");
       const originalKey=uncertain.records[0].requestKey;
+      await uncertain.page.reload({waitUntil:"domcontentloaded"});
+      await ready(uncertain.page);
+      await uncertain.page.getByText(/An earlier stock operation might have committed/).waitFor();
+      assert.equal(uncertain.records.length,1,"reload must not retry uncertain stock automatically");
       const stockButton=uncertain.page.getByRole("button",{name:"Record stock event"});
       assert.equal(await stockButton.isDisabled(),true,
         "an uncertain stock outcome must lock every follow-up physical receipt");
@@ -138,11 +140,12 @@ async function main(){
         name:"I checked the ledger and source; refresh to unlock",
       }).click();
       await uncertain.page.getByText(/Ledger reloaded after operator reconciliation/).waitFor();
+      await fill(uncertain.page,"SYNTH-LOST-ACK-001");
       const confirmed=await submit(uncertain.page,uncertain.records);
       assert.equal(confirmed.requestKey,originalKey,
         "a retry after manual reconciliation must keep the original receipt ID");
       assert.ok(uncertain.getReads()>=2,"reconciliation must fetch a fresh ledger snapshot");
-      console.log("Stock operator Chromium PASS: lost ACK locks all mutations and reconciliation reuses original receipt key.");
+      console.log("Stock operator Chromium PASS: lost ACK lock survives reload and reconciliation reuses original receipt key.");
     }finally{await uncertain.context.close();}
     const blocked=await startContext(browser,{blockStorage:true});
     try{
