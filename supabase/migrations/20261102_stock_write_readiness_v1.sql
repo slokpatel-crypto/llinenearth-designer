@@ -24,12 +24,10 @@ with expected(name,signature) as (
     -- ALTER FUNCTION could include pg_temp or an untrusted schema while
     -- preserving SECURITY DEFINER and all the normal role grants.
     -- Accept only the paths used by the reviewed v2/v3 stock functions.
-    -- Preserve quotes: a single schema named "public,private" is not two schemas.
+    -- Preserve quotes and quoted whitespace: "pub lic" is not public.
     coalesce(exists(select 1 from unnest(p.proconfig) c
       where split_part(c,'=',1)='search_path'
-        and regexp_replace(
-          split_part(c,'=',2), '[[:space:]]+', '', 'g'
-        ) ~ '^(public|"public")(,(private|"private"))?$'),false) as fixed_path,
+        and split_part(c,'=',2) ~ '^[[:space:]]*(public|"public")([[:space:]]*,[[:space:]]*(private|"private"))?[[:space:]]*$'),false) as fixed_path,
     coalesce(has_function_privilege('service_role',s.oid,'EXECUTE'),false) as service_ok,
     coalesce(has_function_privilege('anon',s.oid,'EXECUTE'),false) as anon_ok,
     coalesce(has_function_privilege('authenticated',s.oid,'EXECUTE'),false) as auth_ok,
