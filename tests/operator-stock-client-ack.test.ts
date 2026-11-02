@@ -51,7 +51,7 @@ test("Stock Desk acquires single-flight before fetch and validates ACK before su
     post.indexOf("const refreshed=await load()"));
   assert.ok(post.indexOf("const refreshed=await load()")<
     post.indexOf("setMessage(refreshed?success:"));
-  assert.match(post,/finally\\{[\\s\\S]*mutationGate\\.current\\.exit\\(\\);setBusy\\(false\\);/);
+  assert.match(post,/finally\{[\s\S]*mutationGate\.current\.exit\(\);setBusy\(false\);/);
   assert.ok(post.indexOf("uncertainJournal.current.clearPending()")<
     post.indexOf("mutationGate.current.exit();setBusy(false);"),
     "pending stock state must be resolved before the client-side mutation gate unlocks");
