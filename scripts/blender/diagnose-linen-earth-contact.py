@@ -214,6 +214,44 @@ def verified_shrinkwrap_modes(obj, stages):
     return report
 
 
+def verified_surface_refinement(obj, stages):
+    """Require both genuine geometry measurements; never auto-approve a variant."""
+    raw = obj.get("linen_earth_surface_refinement_trials_json")
+    if not isinstance(raw, str):
+        raise RuntimeError("Missing actual source-mesh refinement trial evidence.")
+    try:
+        trials = json.loads(raw)
+    except (ValueError, TypeError) as error:
+        raise RuntimeError("Malformed actual source refinement evidence.") from error
+    if not isinstance(trials, list) or len(trials) != 2:
+        raise RuntimeError("Must compare unmodified and one-level simple-subdivision geometry.")
+    original_count = None
+    for index, item in enumerate(trials):
+        if not isinstance(item, dict) or type(item.get("simpleSubdivisionLevel")) is not int:
+            raise RuntimeError("Unmeasured surface subdivision level.")
+        if item["simpleSubdivisionLevel"] != index:
+            raise RuntimeError("Subdivided source candidate trials are unordered.")
+        for key in ("sourceVertices", "preWrapVertices", "bodyPairsAfterWrap", "bodyPairsAfterClothThickness"):
+            if type(item.get(key)) is not int or item[key] < 0:
+                raise RuntimeError("Invalid real source mesh subdivision measurements.")
+        if item["sourceVertices"] <= 0 or item["preWrapVertices"] < item["sourceVertices"]:
+            raise RuntimeError("Surface refinement did not retain actual original vertices.")
+        if index == 0:
+            original_count = item["sourceVertices"]
+            if item["preWrapVertices"] != original_count:
+                raise RuntimeError("No-subdivision control changed real source topology.")
+        elif item["sourceVertices"] != original_count or item["preWrapVertices"] <= original_count:
+            raise RuntimeError("One-level subdivision failed to increase actual mesh density.")
+        if type(item.get("clearanceMm")) not in (int, float) or item["clearanceMm"] != 7.0:
+            raise RuntimeError("Real source refinement cannot silently change 7mm clearance.")
+        if type(item.get("clothThicknessMm")) not in (int, float) or item["clothThicknessMm"] != 1.6:
+            raise RuntimeError("Real source refinement cannot change 1.6mm thickness.")
+    if (trials[0]["bodyPairsAfterWrap"] != stages[2]["bodyIntersectionPairs"]
+        or trials[0]["bodyPairsAfterClothThickness"] != stages[3]["bodyIntersectionPairs"]):
+        raise RuntimeError("Control trial does not reproduce actual unrefined production candidate.")
+    return trials
+
+
 def diagnose(body_geometry, garment_geometry):
     """Normals may be reversed; a negative normal projection is NOT an inside test."""
     body_points, body_faces = body_geometry
@@ -279,6 +317,7 @@ def diagnostic_report(scene):
         records[name]["actualModifierContactStages"] = stages
         records[name]["realSolidifyVariantComparisons"] = verified_solidify_variants(obj, stages)
         records[name]["realShrinkwrapModeComparisons"] = verified_shrinkwrap_modes(obj, stages)
+        records[name]["realSurfaceRefinementComparisons"] = verified_surface_refinement(obj, stages)
     return {
         "version": "titan-actual-contact-diagnostics-v1",
         "modelIdentityId": IDENTITY,
@@ -290,6 +329,7 @@ def diagnostic_report(scene):
         "modifierStageMethod": "World-space evaluated polygon BVH with 0.5mm epsilon, independently verified against final garment; not a production clearance approval.",
         "solidifyExperimentMethod": "Disposable actual Blender SOLIDIFY trials including six variants with +/-normal offsets, rim-on/off and BMesh recalculated face normals. Candidate geometry is unchanged, not approved.",
         "shrinkwrapExperimentMethod": "Unsaved world-space native Blender NEAREST_SURFACEPOINT clones at fixed 7mm clearance, with unchanged final 1.6mm cloth thickness; no mode selected or approved.",
+        "surfaceRefinementExperimentMethod": "Genuine one-level SIMPLE subdivision on disposable meshes BEFORE original 7mm shrinkwrap and 1.6mm outward/rim solidify. Candidate and all release thresholds unchanged.",
         "explanation": (
             "World-space BVH triangle overlap counts are candidate defects; "
             "nearest-body normal projections are diagnostic only because body normals "
@@ -317,7 +357,8 @@ def main():
               f"height octiles={metrics['contactPairsByBodyHeightOctile']}; "
               f"authoring stages={metrics['actualModifierContactStages']}; "
               f"solidify variants={metrics['realSolidifyVariantComparisons']['variants']}; "
-              f"shrinkwrap modes={metrics['realShrinkwrapModeComparisons']['trialModes']}")
+              f"shrinkwrap modes={metrics['realShrinkwrapModeComparisons']['trialModes']}; "
+              f"refinement={metrics['realSurfaceRefinementComparisons']}")
 
 
 if __name__ == "__main__":
