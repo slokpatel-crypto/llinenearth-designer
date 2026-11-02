@@ -192,3 +192,30 @@ test("calendar-invalid ISO-shaped event dates fail closed, including offset and 
   assert.throws(()=>step(first,"start_cutting",{occurredAt:"2024-02-29T09:59:59Z"}),
     /timestamps must increase strictly/,"equivalent instant is not a later audit event");
 });
+
+
+test("external evidence references cannot be reused across stages or forged in audit replay",()=>{
+  const accepted=progress("accept");
+  assert.throws(()=>step(accepted,"start_cutting",{
+    evidenceRef:accepted.audit[0].evidenceRef,
+  }),/already used/,"the same external receipt must not attest two different transitions");
+  const cutting=step(accepted,"start_cutting");
+  const tampered=cutting.audit.map((item,index)=>index===1
+    ? {...item,evidenceRef:cutting.audit[0].evidenceRef} : item);
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,tampered),/already used/,
+    "audit replay must reject a receipt duplicated after the fact");
+});
+
+test("accepted state, audit entries and QC checks are frozen at runtime",()=>{
+  const approved=step(toQc(),"approve_qc",{qc:qc()});
+  const last=approved.audit[approved.audit.length-1];
+  const checks=last.qc?.checks;
+  assert.ok(checks);
+  for(const value of [approved,approved.audit,last,last.qc,checks])
+    assert.equal(Object.isFrozen(value),true,"accepted audit data must be immutable");
+  assert.throws(()=>Object.assign(approved,{status:"delivered"}),TypeError);
+  assert.throws(()=>Object.assign(approved.audit,{0:null}),TypeError);
+  assert.throws(()=>Object.assign(last,{actor:"forged-operator"}),TypeError);
+  assert.throws(()=>Object.assign(checks,{recipe_match:false}),TypeError);
+  assert.equal(replayOrderLifecycle(id,revision,hash,approved.audit).status,"qc_approved");
+});
