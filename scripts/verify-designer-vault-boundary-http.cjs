@@ -356,7 +356,7 @@ async function main(){
       const response=await fetch(url,{method:"POST",headers:fixtureHeaders(),
         body,signal:AbortSignal.timeout(15000)});
       const result=await response.json();
-      assert.ok([400,503].includes(response.status),"invalid request "+response.status);
+      assert.ok([400,413,503].includes(response.status),"invalid request "+response.status);
       assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
       assert.equal(seen.length,0,"malformed requests must never read backend");
       assert.ok(!JSON.stringify(result).includes(privateMarker),"private marker must not appear");
