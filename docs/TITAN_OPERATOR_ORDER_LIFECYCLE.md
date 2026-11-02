@@ -1,0 +1,30 @@
+# TITAN operator order lifecycle — isolated checkpoint
+
+## Scope and decision
+
+The existing persisted production order contract in `src/lib/designer/production-state.ts` remains the only deployed status vocabulary: `created`, `cloth_reserved`, `cutting`, `stitching`, `fitting`, `ready`, `delivered`, `cancelled`. Its SQL RPCs and finished-garment QC transaction checks remain authoritative. This branch deliberately **does not** modify that contract, production routes, Supabase migrations, stock/inventory, auth, measurements, DesignerModule, preview or the original `linen-earth-studio-model-v1` model.
+
+`src/lib/operator/order-lifecycle.ts` introduces a separate, pure, proposed operator lifecycle with explicit **acceptance → cutting → stitching → finishing → QC → dispatch → delivery** and audited cancellation, QC rework and recovery. It is **not wired into production**, and its richer states (`accepted`, `finishing`, `qc_pending`, `qc_rework`, `qc_approved`, `dispatched`, `recovery_pending`) must not be persisted into the existing SQL status column without an owner-reviewed compatible migration and transactional enforcement. This separation avoids a false claim that a UI-only state is durable.
+
+## Implemented invariants
+
+- Every event must match the locked order ID, current status, next sequence, previous event ID and strictly increasing timestamp; duplicate event IDs, replay, stale updates and tampered replay destinations are rejected.
+- Every event requires an identified actor and external evidence reference; cancellation, QC rejection, recovery hold and resumption require a documented reason.
+- No stage skipping; only QC approval with all six existing finished-garment check IDs, a named inspector, physical inspection reference and matching immutable revision/recipe hash permits dispatch. Dispatch is mandatory before delivery.
+- QC rework returns to stitching; any recovery from a previous QC approval returns to stitching and requires new finishing and QC. A recovery hold cannot be used to jump to dispatch.
+- Cancellation is terminal and unavailable after dispatch. Delivered orders are terminal. Replays validate event ordering without mutating inputs.
+
+**Evidence limitations:** The module validates the *shape* and consistency of a claimed physical receipt but cannot establish that a tailor inspected a garment or that a courier dispatched it. Client-supplied event metadata is not a trusted audit until an authenticated, transactional, append-only server store independently verifies identity, provenance and monotonic revisions. Do not enable production controls or infer stock, customer acceptance, QC, delivery, paid AI use or genuine human testing from these synthetic tests.
+
+## Local verification
+
+- `node --experimental-strip-types --test tests/operator-order-lifecycle.test.ts`: 10/10 passing in Node 22.16.0, local isolated test run.
+- `tsc --noEmit --strict --target ES2022 --module esnext --moduleResolution bundler --skipLibCheck src/lib/operator/order-lifecycle.ts`: passed with local TypeScript 5.8.3.
+- Full repository `npm run quality`, `npm test`, `npm run eval:engine`, `npm run eval:preview-performance`, `npm run release:check`, `npm run build`, browser and CI checks: **not run locally**; only matching-head GitHub Actions can establish repository integration.
+
+## Next checkpoint
+
+1. Obtain matching-head Full CI and independent Non-3D QA. If either fails, fix only isolated order-lifecycle files and retest.
+2. Coordinate the proposed states with the central integration owner and current SQL state machine; secure approval for persistence, audit events, idempotent writes, verified actor/physical evidence, cancellation/refund policy and recovery semantics. **Do not** modify shared SQL or production routes from this branch.
+3. After authorized backend implementation in a separate coordinated integration, add authenticated end-to-end tests for concurrency, audit replay, QC rework, cancellation after dispatch, dispatch/delivery evidence and operator device widths 390/768/1440.
+4. No main merge, Vercel deployment or production customer-data changes from this branch.
