@@ -16,6 +16,13 @@ test("native right-hem taper is optional, guide-based, bounded and remains a ful
   assert.ok(workflow.includes('--experimental-right-hem-taper-mm 0.0'),"retain original 0mm source control");
   assert.ok(workflow.includes('assert standard["rejectionReasonCount"] == 10'),"keep exact ten original hard defects");
   assert.ok(workflow.includes('assert evidence["rejectionReasonCount"] <= 10'),"all native gates remain active");
+  assert.ok(workflow.includes('new_asymmetry < old_asymmetry'),"hem fit must actually improve left/right symmetry");
+  assert.ok(workflow.includes('new_asymmetry <= 14'),"retain photographic hem symmetry tolerance");
+  assert.ok(workflow.includes('if key not in ("rightHemWidthMm", "hemWidthAsymmetryMm")'),
+    "only true right hem and its derived asymmetry may change");
+  assert.ok(workflow.includes('assert trial["boundaryIntersections"][key] <= original'),
+    "native QA must reject every new garment/body and fabric/fabric collision");
+
 
   for(const lockedGate of [
     "TITAN_REAL_RIGHT_HEM_TAPER_NATIVE_FIT_VALIDATED_CANDIDATE_ONLY",
