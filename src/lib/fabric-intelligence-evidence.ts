@@ -35,7 +35,7 @@ export function applyVerifiedPhysicalFabricEvidence(
   const patternScaleVerified=Boolean(
     (physicalScale==="declared_repeat" || physicalScale==="declared_swatch_width")
     && validMm(repeatMm)
-    && (stripeWidthMm===null || (validMm(stripeWidthMm) && stripeWidthMm!>repeatMm!))
+    && (stripeWidthMm===null || (validMm(stripeWidthMm) && stripeWidthMm!<=repeatMm!))
     && physicalSource("measured.pattern.physicalScale")
   );
   const gsmVerified=physicalSource("verifiedPhysical.gsm")
