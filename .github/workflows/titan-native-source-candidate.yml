@@ -11,6 +11,8 @@ on:
       - "scripts/blender/preflight-linen-earth-officewear.py"
       - "scripts/blender/diagnose-linen-earth-contact.py"
       - "scripts/blender/diagnose-linen-earth-crotch.py"
+      - "scripts/blender/diagnose-crotch-modifier-stages.py"
+      - "tests/crotch-modifier-stage-origin.test.ts"
       - "tests/blender/test_real_contact_diagnostics.py"
       - "tests/blender/test_real_crotch_cross_sections.py"
       - "tests/blender/test_garment_modifier_contact_stages.py"
@@ -27,6 +29,8 @@ on:
       - "scripts/blender/preflight-linen-earth-officewear.py"
       - "scripts/blender/diagnose-linen-earth-contact.py"
       - "scripts/blender/diagnose-linen-earth-crotch.py"
+      - "scripts/blender/diagnose-crotch-modifier-stages.py"
+      - "tests/crotch-modifier-stage-origin.test.ts"
       - "tests/blender/test_real_contact_diagnostics.py"
       - "tests/blender/test_real_crotch_cross_sections.py"
       - "tests/blender/test_garment_modifier_contact_stages.py"
@@ -480,6 +484,48 @@ jobs:
               "candidateOnly": True,
           }))
           PY
+      - name: Measure real crotch intersections at four actual garment modifier stages
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+            --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
+            --experimental-capture-crotch-stages \
+            --output .cache/linen-earth/titan-research-crotch-stages.blend
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-research-crotch-stages.blend \
+            --python-exit-code 1 --python scripts/blender/diagnose-crotch-modifier-stages.py -- \
+            --output "$RUNNER_TEMP/titan-candidate-evidence/crotch-modifier-stages.json"
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence/crotch-modifier-stages.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/rejection-report.json" <<'PY'
+          import json
+          import math
+          import sys
+          from pathlib import Path
+          source, physical = [json.loads(Path(p).read_text(encoding="utf-8")) for p in sys.argv[1:]]
+          assert source["modelIdentityId"] == physical["modelIdentityId"] == "linen-earth-studio-model-v1"
+          assert source["candidateOnly"] is True and physical["candidateOnly"] is True
+          assert source["productionApproved"] is False and physical["productionApproved"] is False
+          assert source["changesProductionGeometry"] is False
+          stages = source["stages"]
+          required = ("selectedBodyShell", "afterSmoothing", "afterBodyClearance", "afterClothThickness")
+          assert set(stages) == set(required)
+          for name in required:
+              data = stages[name]
+              assert type(data["legLegPolygonContactPairs"]) is int and data["legLegPolygonContactPairs"] >= 0
+              assert data["leftFaces"] > 0 and data["rightFaces"] > 0
+              assert all(math.isfinite(data[key]) and data[key] >= 0 for key in
+                         ("leftContactingFaceAreaMm2", "rightContactingFaceAreaMm2"))
+          assert stages["afterClothThickness"]["legLegPolygonContactPairs"] == physical["boundaryIntersections"]["garmentLegToLeg"]
+          assert source["actualFinalGarmentLegContactPairs"] == physical["boundaryIntersections"]["garmentLegToLeg"]
+          assert physical["rejectionReasonCount"] == 10
+          print("TITAN_REAL_CROTCH_MODIFIER_STAGES_MATCH_FULL_PREFLIGHT",json.dumps({
+              "source": stages["selectedBodyShell"],
+              "afterSmoothing": stages["afterSmoothing"],
+              "afterClearance": stages["afterBodyClearance"],
+              "afterSolidify": stages["afterClothThickness"],
+              "candidateOnly": True,
+          }))
+          PY
       - name: Upload rejection report, never an unapproved model
         if: always()
         uses: actions/upload-artifact@v4
@@ -494,6 +540,7 @@ jobs:
             ${{ runner.temp }}/titan-candidate-evidence/waist-layering-preflight-extra-*mm.json
             ${{ runner.temp }}/titan-candidate-evidence/contact-diagnostics.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-cross-sections.json
+            ${{ runner.temp }}/titan-candidate-evidence/crotch-modifier-stages.json
             ${{ runner.temp }}/titan-candidate-evidence/preflight.log
           if-no-files-found: ignore
           retention-days: 7
