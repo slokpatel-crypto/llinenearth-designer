@@ -250,6 +250,13 @@ jobs:
             supabase/migrations/20261102_stock_reservation_key_payload_binding.sql; do
             psql -v ON_ERROR_STOP=1 -f "$migration"
           done
+      - name: Verify read-only staging preflight blocks rollout before v3 migration
+        run: |
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          psql -X -v ON_ERROR_STOP=1 -At -f scripts/stock-v3-readonly-preflight.sql |
+            jq -e '.status=="BLOCKED" and
+              (.checks|any(.function=="record_v3" and .installed==false))' >/dev/null
       - name: Start pinned real PostgREST server on disposable localhost
         run: |
           docker run -d --name titan-postgrest-m46 --network host \
@@ -270,6 +277,16 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102_stock_record_idempotency.sql
           psql -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
           sleep 2
+      - name: Verify read-only staging preflight passes every function and privilege after v3
+        run: |
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          psql -X -v ON_ERROR_STOP=1 -At -f scripts/stock-v3-readonly-preflight.sql |
+            jq -e '.status=="READY" and .ledger_schema_present==true
+              and (.checks|length)==5
+              and (.checks|all(.installed and .security_definer and
+                .fixed_search_path and .service_role_execute and
+                (.anon_execute|not) and (.authenticated_execute|not)))' >/dev/null
       - name: Build isolated real Next stock API route
         run: |
           npm ci --include=optional
