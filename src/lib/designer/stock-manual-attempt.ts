@@ -11,11 +11,17 @@ const STORAGE_KEY="linen-earth:manual-stock-attempts:v1";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256=/^[0-9a-f]{64}$/;
 const MAX_ATTEMPTS=64;
-function normalize(value:string):string{return value.replace(/\s+/g," ").trim();}
+function normalize(value:string,maxLength:number):string{
+  // Keep this byte-for-byte equivalent to the manual event normalizer at the
+  // operator API boundary. Otherwise two inputs which record the SAME SQL
+  // evidence could acquire distinct request keys and double-count stock.
+  return value.replace(/\s+/g," ").trim().slice(0,maxLength);
+}
 function fingerprint(record:ManualStockAttempt):string{
   return JSON.stringify([
-    record.fabricId.trim(),record.eventType,record.quantityMetres,
-    normalize(record.note),normalize(record.recordedBy),normalize(record.sourceReference),
+    record.fabricId.trim().slice(0,160),record.eventType,record.quantityMetres,
+    normalize(record.note,600),normalize(record.recordedBy,120),
+    normalize(record.sourceReference,240),
   ]);
 }
 async function digest(value:string):Promise<string>{
