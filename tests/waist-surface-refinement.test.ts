@@ -17,7 +17,32 @@ test("only the real trouser waist receives non-smoothing topology refinement bef
     "real waist refinement must follow smoothing and precede unchanged body clearance");
   assert.ok(pipeline.includes('shrink.wrap_method = "NEAREST_SURFACEPOINT"'));
   assert.ok(pipeline.includes('shrink.wrap_mode = "OUTSIDE_SURFACE"'));
-  assert.ok(pipeline.includes("shrink.offset = clearance_m"));
+  assert.ok(pipeline.includes('effective_clearance = clearance_m + (waist_extra_m if obj.name == "TrouserWaistFabric" else 0.0)'));
+  assert.ok(pipeline.includes("shrink.offset = effective_clearance"));
+  assert.ok(file.includes('default=3.0'),"default candidate must use proven +3mm waist layering");
+  assert.ok(file.includes('options.experimental_waist_extra_clearance_mm'));
+  assert.ok(file.includes('"Experimental extra waistband layering clearance", 0.0, 9.0'));
+  assert.ok(file.includes('clearance_m + waist_extra_m > 0.018'),"experimental trials cannot exceed original 18mm bound");
+  assert.ok(file.includes('obj["linen_earth_fit_clearance_mm"] = round(actual_clearance * 1000.0, 3)'));
+  const footprint=readFileSync("scripts/blender/measure-waist-tuck-contact.py","utf8");
+  assert.ok(footprint.includes('scene.get("linen_earth_garment_clearance_mm")'));
+  assert.ok(footprint.includes('scene.get("linen_earth_waist_extra_clearance_mm")'));
+  assert.ok(footprint.includes('"waistAbsoluteClearanceMm": round(base_clearance_mm + waist_extra_mm, 3)'));
+  assert.ok(!footprint.includes("round(7.0 + waist_extra_mm"),"never label actual clearance from a guessed 7mm default");
+  const workflow=readFileSync(".github/workflows/titan-native-source-candidate.yml","utf8");
+  assert.ok(workflow.includes("TITAN_TUCKED_LAYERING_FULL_PHYSICAL_PREFLIGHT_EVIDENCE_VALIDATED"));
+  assert.ok(workflow.includes('assert standard["rejectionReasonCount"] == 11'));
+  assert.ok(workflow.includes('assert standard["boundaryIntersections"]["shirtTrouserTuck"] == 0'));
+  assert.ok(workflow.includes('abs(standard_width - target_waist_width_mm) <= abs(control_width - target_waist_width_mm)'));
+
+  assert.ok(workflow.includes('for extra in 0 6 9; do'),"native CC0 must retain original zero-extra control");
+  assert.ok(workflow.includes('--experimental-waist-extra-clearance-mm 0'),"waist baseline must be explicitly pinned");
+  assert.ok(workflow.includes('assert control["rejectionReasonCount"] == 12'));
+  assert.ok(workflow.includes('assert standard["rejectionReasonCount"] == 11'));
+  assert.ok(workflow.includes('assert report["preflightReady"] is False'),"research variants cannot bypass production release gates");
+  assert.ok(workflow.includes('assert standard["boundaryIntersections"]["shirtTrouserTuck"] == 0'));
+  assert.ok(workflow.includes("TITAN_NATIVE_WAIST_LAYERING_COMPARISONS_VALIDATED_CANDIDATE_ONLY"));
+
   assert.ok(pipeline.includes("solid.thickness = thickness_m"));
   assert.ok(pipeline.includes("solid.offset = 1.0"));
   assert.ok(pipeline.includes("solid.use_rim = True"));

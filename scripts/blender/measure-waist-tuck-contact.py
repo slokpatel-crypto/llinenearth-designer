@@ -79,6 +79,15 @@ def main():
     level = scene.get("linen_earth_trouser_waist_refinement_level")
     if type(level) is not int or level not in (0, 1):
         raise RuntimeError("Missing measured original-vs-refined waist candidate provenance.")
+    waist_extra_mm = scene.get("linen_earth_waist_extra_clearance_mm")
+    base_clearance_mm = scene.get("linen_earth_garment_clearance_mm")
+    if (type(base_clearance_mm) not in (int, float) or not math.isfinite(base_clearance_mm)
+        or not 3 <= base_clearance_mm <= 18):
+        raise RuntimeError("Actual source candidate garment-body clearance provenance is invalid.")
+    if (type(waist_extra_mm) not in (int, float) or not math.isfinite(waist_extra_mm)
+        or not 0 <= waist_extra_mm <= 9
+        or base_clearance_mm + waist_extra_mm > 18):
+        raise RuntimeError("Missing, nonfinite or out-of-range real waist radial-layer trial provenance.")
     col = bpy.data.collections.get("LinenEarthExport")
     if col is None:
         raise RuntimeError("Candidate garment collection is missing.")
@@ -89,6 +98,8 @@ def main():
         "version": "titan-waist-contact-footprint-v1",
         "modelIdentityId": IDENTITY,
         "waistRefinementLevel": level,
+        "experimentalWaistExtraClearanceMm": waist_extra_mm,
+        "waistAbsoluteClearanceMm": round(base_clearance_mm + waist_extra_mm, 3),
         "candidateOnly": True,
         "productionApproved": False,
         "contactAreaInterpretation": (
@@ -103,6 +114,7 @@ def main():
     args.output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     print("TITAN_REAL_CONTACT_FOOTPRINT_RECORDED " + json.dumps({
         "level": level,
+        "extraWaistClearanceMm": waist_extra_mm,
         "bodyWaistPairs": report["bodyVsWaist"]["polygonContactPairs"],
         "shirtWaistPairs": report["shirtVsWaist"]["polygonContactPairs"],
         "shirtContactAreaMm2": report["shirtVsWaist"]["contactingLeftFaceAreaMm2"],
