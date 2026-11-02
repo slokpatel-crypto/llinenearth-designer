@@ -62,7 +62,7 @@ test("JSON-coerced operator approval and mismatched metadata keys cannot certify
   const result=catalogue([fabric("fabric-a"),fabric("fabric-b")],[
     ledger("fabric-a",6),ledger("fabric-b",6),
   ],{
-    "fabric-a":operator("fabric-a",raw?.availability),
+    "fabric-a":operator("fabric-a",raw?.availability ?? "unknown"),
     "fabric-b":operator("fabric-a"),
   });
   assert.deepEqual(result,[]);
