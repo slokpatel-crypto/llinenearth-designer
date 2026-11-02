@@ -36,6 +36,23 @@ test("stock snapshot accepts verified real balances and numeric decimal strings 
   assert.deepEqual(requireStockSnapshotRows([noManual]),[noManual]);
 });
 
+test("stock snapshot rejects sub-0.001m balances even when arithmetic is self-consistent",()=>{
+  // The physical ledger stores numeric(10,3): a fractional 0.001m cannot
+  // be created by valid stock events. A forged upstream snapshot must never
+  // be presented as genuine rounded-to-3dp cutting availability.
+  for(const bad of [
+    {...sample,physical_metres:10.2504,available_metres:8.1254},
+    {...sample,reserved_metres:2.1254,available_metres:8.1246},
+    {...sample,physical_metres:"10.2504",available_metres:"8.1254"},
+    {...sample,physical_metres:10.2504,reserved_metres:2.1254},
+    {...sample,physical_metres:"10.2500001",available_metres:"8.1250001"},
+  ]) assert.throws(()=>requireStockSnapshotRows([bad]),/Invalid physical stock snapshot/);
+  const exact={...sample,physical_metres:"10.2500000",
+    reserved_metres:"2.125000",available_metres:"8.1250"};
+  assert.deepEqual(requireStockSnapshotRows([exact]),[sample],
+    "SQL NUMERIC trailing zeroes must not become false precision errors");
+});
+
 test("snapshot fails closed on invented, inconsistent or malformed stock",()=>{
   const invalid=[
     null,undefined,{},false,"[]",5,[null],[true],[{}],[[]],
