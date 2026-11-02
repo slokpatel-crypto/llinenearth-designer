@@ -1,5 +1,6 @@
 import { createHash,randomBytes } from "node:crypto";
-import { MAX_DESIGN_SHARE_TOKEN_LENGTH } from "@/lib/designer/design-share";
+// Keep aligned with MAX_DESIGN_SHARE_TOKEN_LENGTH in design-share.ts.
+const MAX_DESIGN_SHARE_TOKEN_LENGTH=65_536;
 
 export function shareBearerDigest(token:unknown):string{
   if(typeof token!=="string"||!token.startsWith("v1.")||token.length>MAX_DESIGN_SHARE_TOKEN_LENGTH||token.length<32)
