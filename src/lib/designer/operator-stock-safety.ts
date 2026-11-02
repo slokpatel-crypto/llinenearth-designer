@@ -28,9 +28,10 @@ export function stockMutationRequestError(request:Pick<Request,"url"|"headers">)
  * before ever parsing JSON; reject rather than truncating a physical record.
  */
 export class StockMutationPayloadTooLarge extends Error {}
+export class StockMutationInvalidJson extends Error {}
 
 export async function readBoundedStockMutationJson(request:Request):Promise<Record<string,unknown>>{
-  if(!request.body) throw new Error("Stock mutation body is required.");
+  if(!request.body) throw new StockMutationInvalidJson("Stock mutation body is required.");
   const reader=request.body.getReader();
   const chunks:Uint8Array[]=[];
   let total=0;
@@ -55,9 +56,9 @@ export async function readBoundedStockMutationJson(request:Request):Promise<Reco
   try{
     parsed=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(data));
   }catch{
-    throw new Error("Stock mutation body must be valid UTF-8 JSON.");
+    throw new StockMutationInvalidJson("Stock mutation body must be valid UTF-8 JSON.");
   }
   if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))
-    throw new Error("Stock mutation JSON must be an object.");
+    throw new StockMutationInvalidJson("Stock mutation JSON must be an object.");
   return parsed as Record<string,unknown>;
 }
