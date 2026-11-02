@@ -5,7 +5,7 @@ const assert=require("node:assert/strict");
 const http=require("node:http");
 const {once}=require("node:events");
 const {spawn}=require("node:child_process");
-const {randomBytes,createHash}=require("node:crypto");
+const {randomBytes,createHash,createHmac}=require("node:crypto");
 
 async function listen(server){
   server.listen(0,"127.0.0.1");
@@ -69,6 +69,8 @@ async function main(){
   const revokedHashes=new Set();
   const shareRecords=new Map();
   let shareMode="ok";
+  let otpMode="ok";
+  const otpSubjects=new Map();
   const seen=[];
   const upstream=http.createServer(async(req,res)=>{
     const path=req.url||"";
@@ -84,6 +86,19 @@ async function main(){
     for await(const chunk of req)parts.push(chunk);
     const payload=JSON.parse(Buffer.concat(parts).toString("utf8"));
     seen.push({path,headers:req.headers,payload});
+    if(path==="/rest/v1/rpc/customer_otp_rate_consume"){
+      assert.match(payload.p_subject_hash,/^[a-f0-9]{64}$/);
+      assert.ok(!JSON.stringify(payload).includes("@"),"the database must never receive raw customer emails");
+      if(otpMode==="backend500"){
+        res.writeHead(503,{"content-type":"application/json"});
+        res.end(JSON.stringify({error:privateMarker}));return;
+      }
+      res.writeHead(200,{"content-type":"application/json"});
+      if(otpMode==="malformed"){res.end('"true"');return;}
+      const count=(otpSubjects.get(payload.p_subject_hash)||0)+1;
+      otpSubjects.set(payload.p_subject_hash,count);
+      res.end(count<=8?"true":"false");return;
+    }
     if(path==="/auth/v1/otp"){
       res.writeHead(200,{"content-type":"application/json"});
       res.end("{}");return;
@@ -260,7 +275,8 @@ async function main(){
     SUPABASE_SECRET_KEY:"sb_secret_titan_vault_synthetic_only",
     SUPABASE_SERVICE_ROLE_KEY:"",SUPABASE_ANON_KEY:"synthetic-anon-for-local-auth-only",NEXT_PUBLIC_SUPABASE_ANON_KEY:"",
     LINEN_CUSTOMER_SESSION_SECRET:"synthetic-session-secret-32-chars-not-live-012345",
-    LINEN_DESIGN_SHARE_SECRET:"synthetic-design-share-secret-32-chars-not-live-012345"};
+    LINEN_DESIGN_SHARE_SECRET:"synthetic-design-share-secret-32-chars-not-live-012345",
+    LINEN_CUSTOMER_OTP_RATE_SECRET:"dedicated-synthetic-otp-hmac-secret-12345678901234567890"};
   const child=spawn(process.execPath,[require.resolve("next/dist/bin/next"),
     "start","-H","127.0.0.1","-p",String(nextPort)],
     {env,stdio:["ignore","pipe","pipe"]});
@@ -542,7 +558,8 @@ async function main(){
     const enforcedPort=await freePort();
     const enforcedOrigin="http://127.0.0.1:"+enforcedPort;
     const enforcedEnv={...env,LINEN_CUSTOMER_SESSION_REVOCATION_REQUIRED:"1",
-      LINEN_DESIGN_SHARE_REVOCATION_REQUIRED:"1"};
+      LINEN_DESIGN_SHARE_REVOCATION_REQUIRED:"1",
+      LINEN_CUSTOMER_OTP_DISTRIBUTED_REQUIRED:"1"};
     const enforcedChild=spawn(process.execPath,[require.resolve("next/dist/bin/next"),
       "start","-H","127.0.0.1","-p",String(enforcedPort)],
       {env:enforcedEnv,stdio:["ignore","pipe","pipe"]});
@@ -563,7 +580,36 @@ async function main(){
       }
       assert.ok(ready,"Revocation Next did not start: "+enforcedOutput);
 
+      // Eight OTP emails per normalized subject per ten minutes, regardless
+      // of untrusted forwarded IP/header rotation or serverless instance.
+      otpSubjects.clear();otpMode="ok";seen.length=0;
+      const expectedOtpDigest=createHmac("sha256",enforcedEnv.LINEN_CUSTOMER_OTP_RATE_SECRET)
+        .update("linen-earth:customer-otp:v1\0alice@example.com").digest("hex");
+      for(let i=0;i<8;i++){
+        const response=await fetch(enforcedOrigin+"/api/customer-auth/otp",{
+          method:"POST",headers:fixtureHeaders(),
+          body:JSON.stringify({email:i%2?"Alice@Example.Com":"alice@example.com"}),
+          signal:AbortSignal.timeout(15000)});
+        assert.equal(response.status,200,"eight distributed OTP requests should be allowed");
+      }
+      assert.equal(otpSubjects.get(expectedOtpDigest),8,"normalized email must consume one digest budget");
+      assert.equal(seen.filter(item=>item.path==="/auth/v1/otp").length,8);
       seen.length=0;
+      const ninthOtp=await fetch(enforcedOrigin+"/api/customer-auth/otp",{
+        method:"POST",headers:fixtureHeaders(),
+        body:JSON.stringify({email:"alice@example.com"}),signal:AbortSignal.timeout(15000)});
+      assert.equal(ninthOtp.status,429,"ninth OTP request must be blocked server-wide");
+      assert.deepEqual(seen.map(item=>item.path),["/rest/v1/rpc/customer_otp_rate_consume"],
+        "denied OTP must never reach auth provider");
+      for(const failure of ["backend500","malformed"]){
+        otpMode=failure;seen.length=0;
+        const response=await fetch(enforcedOrigin+"/api/customer-auth/otp",{
+          method:"POST",headers:fixtureHeaders(),
+          body:JSON.stringify({email:"bob@example.com"}),signal:AbortSignal.timeout(15000)});
+        assert.equal(response.status,503,failure+" must fail closed before OTP dispatch");
+        assert.deepEqual(seen.map(item=>item.path),["/rest/v1/rpc/customer_otp_rate_consume"]);
+      }
+      otpMode="ok";seen.length=0;
       const signed=await fetch(enforcedOrigin+"/api/customer-auth/verify",{
         method:"POST",headers:fixtureHeaders(),
         body:JSON.stringify({email:"alice@example.com",token:"123456"}),
