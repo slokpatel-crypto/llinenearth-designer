@@ -57,10 +57,15 @@ async function run(){
         const engine=window.__photoFormAfter.engine,shirt={...engine.DESIGNER_SHIRTS[0],image:"/qa-solid-shirt.png",hex:"#b46d58",patternType:"Solid",renderScale:undefined},pant={...engine.DESIGNER_PANTS[0],image:"/qa-solid-pant.png",hex:"#b9afa0",patternType:"Solid",renderScale:undefined};
         // Synthetic stripe TEST TILE only; it is never shown as a customer
         // fabric or passed to a provider. Actual mannequin images stay intact.
-        cc.fillStyle="#efeee2";cc.fillRect(0,0,64,64);
-        for(let x=0;x<64;x+=8){cc.fillStyle="#17485b";cc.fillRect(x,0,3,64);}
+        // Use a full-size QA textile tile: swatchTile crops/expands stripes.
+        // A 64px fixture stretches three bands across an entire trouser leg
+        // and could "pass" even when real stripe alternation is absent.
+        control.width=control.height=320;
+        cc.fillStyle="#efeee2";cc.fillRect(0,0,320,320);
+        for(let x=0;x<320;x+=8){cc.fillStyle="#17485b";cc.fillRect(x,0,3,320);}
         const stripedImage=await image(control.toDataURL());
         const stripedFabric={...shirt,image:"/qa-stripe.png",patternType:"Pin Stripe",patternScale:"Fine",renderScale:undefined};
+        const stripedPant={...pant,image:"/qa-stripe-pant.png",patternType:"Pin Stripe",patternScale:"Fine",renderScale:undefined};
         const style={collar:"Point (Standard) Collar",collarFinish:"Self-fabric",cuff:"Barrel Cuff (1-button)",placket:"Standard (visible stitch)",shirtFit:"Regular / Classic Fit",shirtWear:"Tucked",trouser:"Pleated Trouser",rise:"Mid Rise",waistband:"Belt Loops",break:"Slight Break",button:"Plastic / Resin"};
         function stats(source,render,box,limit){let count=0,sx=0,sy=0,sxx=0,sxy=0;for(let y=box.y;y<box.y+box.h;y+=2)for(let x=box.x;x<box.x+box.w;x+=2){const i=(y*W+x)*4;if(Math.max(source[i],source[i+1],source[i+2])>limit)continue;const a=.2126*source[i]+.7152*source[i+1]+.0722*source[i+2],b=.2126*render[i]+.7152*render[i+1]+.0722*render[i+2];count++;sx+=a;sy+=b;sxx+=a*a;sxy+=a*b;}return {count,slope:(sxy-sx*sy/count)/(sxx-sx*sx/count)};}
         window.__photoFormImages={};
@@ -91,26 +96,56 @@ async function run(){
           const striped=makeCanvas();
           window.__photoFormAfter.compose(striped.getContext("2d"),model,trouser,stripedImage,pantImage,stripedFabric,pant,selected);
           const stripeData=striped.getContext("2d").getImageData(0,0,W,H).data;
-          function changes(box){
+          // The previous visual suite used a stripe SHIRT with solid trousers.
+          // Exercise each photographed trouser cut with real browser pixels too:
+          // a bad per-leg canvas transform must not silently pass unit tests.
+          const pantStriped=makeCanvas();
+          window.__photoFormAfter.compose(pantStriped.getContext("2d"),model,trouser,shirtImage,stripedImage,shirt,stripedPant,selected);
+          const pantStripeData=pantStriped.getContext("2d").getImageData(0,0,W,H).data;
+          function changes(pixels,box){
             let count=0;
             for(let y=box.y;y<box.y+box.h;y+=4)for(let x=box.x;x<box.x+box.w;x+=4){
               const i=(y*W+x)*4;
-              if(Math.abs(stripeData[i]-current[i])+Math.abs(stripeData[i+1]-current[i+1])+Math.abs(stripeData[i+2]-current[i+2])>15)count++;
+              if(Math.abs(pixels[i]-current[i])+Math.abs(pixels[i+1]-current[i+1])+Math.abs(pixels[i+2]-current[i+2])>15)count++;
             }
             return count;
           }
-          const stripeBody=changes({x:414,y:310,w:180,h:176});
-          const stripeSleeve=changes({x:307,y:356,w:38,h:190});
+          const stripeBody=changes(stripeData,{x:414,y:310,w:180,h:176});
+          const stripeSleeve=changes(stripeData,{x:307,y:356,w:38,h:190});
+          const pantStripeLeft=changes(pantStripeData,{x:389,y:800,w:61,h:480});
+          const pantStripeRight=changes(pantStripeData,{x:575,y:800,w:57,h:480});
+          // Detect actual dark-blue textile bands, not merely a different
+          // uniform dye from the solid control. Each photographed leg must
+          // display the QA weave's alternating stripe colour.
+          function blueStripePixels(box){
+            let count=0;
+            for(let y=box.y;y<box.y+box.h;y+=4)for(let x=box.x;x<box.x+box.w;x+=2){
+              const i=(y*W+x)*4,r=pantStripeData[i],g=pantStripeData[i+1],b=pantStripeData[i+2];
+              if(b>r+15&&b>g+8)count++;
+            }
+            return count;
+          }
+          const pantStripeLeftBlue=blueStripePixels({x:389,y:800,w:61,h:480});
+          const pantStripeRightBlue=blueStripePixels({x:575,y:800,w:57,h:480});
+          let protectedPantChanges=0;
+          for(const r of protectedRegions)for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++){
+            const i=(y*W+x)*4;
+            if(pantStripeData[i]!==current[i]||pantStripeData[i+1]!==current[i+1]||pantStripeData[i+2]!==current[i+2])protectedPantChanges++;
+          }
           const stripeCanvas=makeCanvas();stripeCanvas.width=W*2;
           stripeCanvas.getContext("2d").drawImage(after,0,0);
           stripeCanvas.getContext("2d").drawImage(striped,W,0);
+          const pantStripeCanvas=makeCanvas();pantStripeCanvas.width=W*2;
+          pantStripeCanvas.getContext("2d").drawImage(after,0,0);
+          pantStripeCanvas.getContext("2d").drawImage(pantStriped,W,0);
           window.__photoFormImages["stripe-"+template]=stripeCanvas.toDataURL("image/png");
+          window.__photoFormImages["pant-stripe-"+template]=pantStripeCanvas.toDataURL("image/png");
           window.__photoFormImages[template]=display.toDataURL("image/png");
-          results.push({template,renderMs,folds,protectedChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve});
+          results.push({template,renderMs,folds,protectedChanges,protectedPantChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,pantStripeLeft,pantStripeRight,pantStripeLeftBlue,pantStripeRightBlue});
         }return results;
       });
       for(const result of summary.forms){
-        for(const name of [result.template,"stripe-"+result.template]){
+        for(const name of [result.template,"stripe-"+result.template,"pant-stripe-"+result.template]){
           await page.evaluate(name=>{const image=document.createElement("img");image.id="photo-form-comparison";image.src=window.__photoFormImages[name];image.style.width="1024px";document.body.append(image);},name);
           await page.locator("#photo-form-comparison").screenshot({path:path.join(out,`before-after-${name}.png`)});
           await page.locator("#photo-form-comparison").evaluate(image=>image.remove());
@@ -121,12 +156,17 @@ async function run(){
         assert.equal(result.wrongWaistPixels,0,"source shirting must stay fully covered at the tucked waist");
         assert.ok(result.stripeBody>400,result.template+" photo body must render the selected striped tile");
         assert.ok(result.stripeSleeve>50,result.template+" photo sleeve must render the selected striped tile");
+        assert.ok(result.pantStripeLeft>50,result.template+" left trouser must render the selected striped cloth");
+        assert.ok(result.pantStripeRight>50,result.template+" right trouser must render the selected striped cloth");
+        assert.ok(result.pantStripeLeftBlue>40,result.template+" left trouser must retain visibly blue stripe bands");
+        assert.ok(result.pantStripeRightBlue>40,result.template+" right trouser must retain visibly blue stripe bands");
+        assert.equal(result.protectedPantChanges,0,result.template+" striped trousers must preserve skin, shoes, inner-leg gap and set");
         for(const fold of result.folds)assert.ok(fold.after.slope>fold.before.slope*1.15,`${result.template} ${fold.name}: depicted fold contrast must improve, ${fold.before.slope} -> ${fold.after.slope}`);
       }
       await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");await ready(page);await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,"real-untucked.png")});
     }
     await context.close();
   }
-  assert.equal(summary.paidCalls,0);assert.deepEqual(summary.errors,[]);fs.writeFileSync(path.join(out,"summary.json"),JSON.stringify(summary,null,2));console.log(`Photo form passed: ${summary.viewports.length} widths, ${summary.forms.length} photographed cuts, stronger folds and no protected-region/waist leaks.`);
+  assert.equal(summary.paidCalls,0);assert.deepEqual(summary.errors,[]);fs.writeFileSync(path.join(out,"summary.json"),JSON.stringify(summary,null,2));console.log(`Photo form passed: ${summary.viewports.length} widths, ${summary.forms.length} photographed cuts, striped shirt and both trouser legs, stronger folds and no protected-region/waist leaks.`);
 }
 run().catch(async error=>{summary.errors.push(error.stack||String(error));fs.mkdirSync(out,{recursive:true});if(activePage&&!activePage.isClosed())await activePage.screenshot({path:path.join(out,"failure.png"),fullPage:true}).catch(()=>{});fs.writeFileSync(path.join(out,"summary.json"),JSON.stringify(summary,null,2));console.error(error);process.exitCode=1;}).finally(async()=>{await browser?.close();});
