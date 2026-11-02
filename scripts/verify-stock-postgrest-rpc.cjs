@@ -4,7 +4,7 @@
 const assert=require("node:assert/strict");
 const {createHmac,randomUUID}=require("node:crypto");
 const mode=process.argv[2];
-if(!["before","after"].includes(mode))throw new Error("Specify before or after staged v3 migration.");
+if(!["before","after","rolledback"].includes(mode))throw new Error("Specify before, after or rolledback staged v3 migration.");
 if(process.env.PGDATABASE!=="titan_synthetic"||
    process.env.PGHOST!=="127.0.0.1"||
    process.env.TITAN_SYNTHETIC_PG_TEST!=="enabled")
@@ -39,6 +39,17 @@ async function main(){
     assert.ok(r.status===404||r.status===401,
       "new RPC must not exist in PostgREST schema before migration; got "+r.status);
     console.log("M46 PostgREST initial schema verified: stock v3 RPC absent.");
+    return;
+  }
+  if(mode==="rolledback"){
+    const absent=await request("fabric_stock_record_v3",payload);
+    assert.equal(absent.status,404,"v3 stock route must be removed from PostgREST schema after rollback");
+    const v2=await request("fabric_stock_record_v2",{
+      p_fabric_id:"",p_event_type:"receipt",p_quantity_metres:0,
+      p_note:"",p_recorded_by:"",p_source_reference:"",
+    });
+    assert.equal(v2.status,400,"v2 must remain exposed; invalid zero-metres write must be rejected");
+    console.log("M47 PostgREST rollback PASS: v3 API removed; existing v2 API still reachable and safely rejects invalid mutation.");
     return;
   }
   const inserted=await request("fabric_stock_record_v3",payload);
