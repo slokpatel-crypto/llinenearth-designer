@@ -100,6 +100,9 @@ export default function ProductionEvidenceClient(){
     </header>
 
     {!configured&&<section className="productionEvidenceNotice">Production evidence migration is not installed yet.</section>}
+    {summary.evidenceIntegrityIssues>0&&<section className="productionEvidenceNotice" role="alert">
+      Delivery evidence integrity blocked: {summary.evidenceIntegrityIssues} duplicate, malformed or contradictory source records. The first-ten acceptance gate cannot pass until the source ledger is reconciled.
+    </section>}
     {message&&<section className="productionEvidenceNotice">{message}</section>}
 
     <section className="productionEvidenceScore">
@@ -107,7 +110,7 @@ export default function ProductionEvidenceClient(){
       <article><span>FIRST 10 AUDITED</span><strong>{summary.auditedTargetCount}/10</strong><small>immutable completion audits</small></article>
       <article><span>ZERO RE-ENTRY</span><strong>{summary.zeroReentryTargetCount}</strong><small>within first 10 delivered</small></article>
       <article data-alert={summary.reentryIncidentCount>0}><span>RE-ENTRY INCIDENTS</span><strong>{summary.reentryIncidentCount}</strong><small>within first 10 delivered</small></article>
-      <article data-complete={summary.gateComplete}><span>PHASE 8 GATE</span><strong>{summary.gateComplete?"PROVED":"OPEN"}</strong><small>{summary.gateComplete?"first 10 passed":"requires real evidence"}</small></article>
+      <article data-complete={summary.gateComplete}><span>PHASE 8 EVIDENCE GATE</span><strong>{summary.gateComplete?"SOURCE AUDITED":"OPEN"}</strong><small>{summary.gateComplete?"ten unique delivery records audited; physical signoff is separate":"requires ten distinct, corroborated delivery records"}</small></article>
     </section>
 
     <section className="productionEvidenceLayout">
