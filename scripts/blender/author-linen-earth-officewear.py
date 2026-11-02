@@ -253,7 +253,9 @@ def main():
     # Extend this shell through the guide while preserving measured fit checks.
     trouser_waist_upper_z = max(z(0.620), trouser_waist_guide_z + 0.028)
     arm_root = 0.155
-    hip_half = 0.245
+    # CC0 central waist ~305mm; locked trouser photo width 344mm. 172mm
+    # half-width preserves positive physical ease without capturing hanging arms.
+    hip_half = 0.172
 
     regions = {
         "ShirtTorsoFabric": lambda p: z(0.515) <= p.z <= z(0.895) and abs(p.x-center_x) <= shirt_torso_half_width_at_height(p.z, shirt_waist_guide_z, shirt_shoulder_guide_z),
