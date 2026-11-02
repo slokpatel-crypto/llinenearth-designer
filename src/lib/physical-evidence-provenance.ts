@@ -18,7 +18,7 @@ export function hasVerifiedPhysicalEvidence(input:VerifiedPhysicalEvidenceInput)
     || Number.isFinite(input.repeatRealMm)
     || Number.isFinite(input.verifiedGsm)
     || input.verifiedDrape
-    || String(input.verifiedFiberContent||"").trim()
+    || (typeof input.verifiedFiberContent==="string" && input.verifiedFiberContent.trim())
     || Number.isFinite(input.verifiedStructure)
     || Number.isFinite(input.verifiedBreathability)
     || Number.isFinite(input.verifiedWrinkleResistance)
@@ -27,9 +27,27 @@ export function hasVerifiedPhysicalEvidence(input:VerifiedPhysicalEvidenceInput)
 }
 
 export function validateVerifiedPhysicalEvidence(input:VerifiedPhysicalEvidenceInput){
+  // JSON bodies are not trusted TypeScript values. Arrays and objects must not
+  // impersonate supplier documents, inspector notes or certified composition.
+  for(const [label,value] of [
+    ["fibre content",input.verifiedFiberContent],
+    ["source URL",input.verifiedPhysicalSourceUrl],
+    ["evidence note",input.verifiedPhysicalEvidenceNote],
+  ] as const) {
+    if(value!==undefined && value!==null && typeof value!=="string") {
+      throw new Error(`Verified physical ${label} must be a text string.`);
+    }
+  }
+  const fiberContent=(input.verifiedFiberContent??"").trim();
+  const sourceUrl=(input.verifiedPhysicalSourceUrl??"").trim();
+  const note=(input.verifiedPhysicalEvidenceNote??"").replace(/\s+/g," ").trim();
+  if(fiberContent.length>220 || sourceUrl.length>1800 || note.length>500) {
+    throw new Error("Verified physical evidence exceeds the field's allowed length.");
+  }
+  if(input.verifiedFiberContent && !fiberContent) {
+    throw new Error("Verified fibre content cannot be whitespace-only.");
+  }
   const hasEvidence=hasVerifiedPhysicalEvidence(input);
-  const sourceUrl=String(input.verifiedPhysicalSourceUrl||"").trim();
-  const note=String(input.verifiedPhysicalEvidenceNote||"").replace(/\s+/g," ").trim();
 
   if(sourceUrl) {
     try {

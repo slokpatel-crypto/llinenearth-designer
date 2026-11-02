@@ -39,3 +39,25 @@ test("a protocol prefix alone is not an auditable HTTPS physical source",()=>{
     repeatRealMm:24,verifiedPhysicalSourceUrl:"https://supplier.example/certificate/24",
   }));
 });
+
+test("malformed JSON text fields cannot become supplier proof",()=>{
+  const evidence={verifiedGsm:145,verifiedPhysicalEvidenceNote:"Supplier checked this lot in person."};
+  assert.equal(hasVerifiedPhysicalEvidence({verifiedFiberContent:["100% linen"] as never}),false);
+  for(const field of ["verifiedFiberContent","verifiedPhysicalSourceUrl","verifiedPhysicalEvidenceNote"] as const){
+    for(const malformed of [["https://supplier.example/report"],{value:"Physical roll certificate"}]){
+      assert.throws(()=>validateVerifiedPhysicalEvidence({...evidence,[field]:malformed} as never),/text string/i,field);
+    }
+  }
+  assert.throws(()=>validateVerifiedPhysicalEvidence({
+    verifiedFiberContent:"100% cotton",verifiedPhysicalEvidenceNote:"Supplier measured physical fabric. ".repeat(30),
+  }),/allowed length/i);
+  assert.throws(()=>validateVerifiedPhysicalEvidence({
+    verifiedFiberContent:"W".repeat(221),verifiedPhysicalEvidenceNote:"Supplier reviewed and measured this roll.",
+  }),/allowed length/i);
+  assert.throws(()=>validateVerifiedPhysicalEvidence({
+    verifiedFiberContent:"   ",verifiedPhysicalEvidenceNote:"Supplier reviewed and measured this roll.",
+  }),/whitespace-only/i);
+  assert.doesNotThrow(()=>validateVerifiedPhysicalEvidence({
+    verifiedFiberContent:"100% linen",verifiedPhysicalEvidenceNote:"Physical inspector reviewed this roll.",
+  }));
+});
