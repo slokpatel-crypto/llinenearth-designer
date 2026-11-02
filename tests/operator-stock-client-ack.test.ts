@@ -45,7 +45,7 @@ test("Stock Desk acquires single-flight before fetch and validates ACK before su
   const s=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
   const post=s.split("  async function post(")[1]?.split("  const totalAvailable=")[0]??"";
   assert.match(s,/useRef\(createOperatorMutationGate\(\)\)/);
-  assert.match(post,/uncertainWriteRef\.current\|\|uncertainWrite\|\|busy\|\|snapshotState!=="ready"\|\|!configured\|\|!mutationGate\.current\.enter\(\)/);
+  assert.match(post,/uncertainWriteRef\.current\|\|uncertainWrite\|\|busy\|\|snapshotState!=="ready"\|\|!configured\|\|!writesEnabled\|\|!mutationGate\.current\.enter\(\)/);
   assert.ok(post.indexOf("mutationGate.current.enter()")<post.indexOf('fetch("/api/operator/stock"'));
   assert.ok(post.indexOf("requireStockClientAcknowledgment(body.action,data)")<
     post.indexOf("const refreshed=await load()"));

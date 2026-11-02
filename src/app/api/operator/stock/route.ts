@@ -6,6 +6,7 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { requireStockCloseAck, requireStockCreatedId, requireStockSnapshotRows } from "@/lib/designer/operator-stock-response";
+import { legacyStockWritesEnabled } from "@/lib/designer/stock-v2-write-hold";
 
 export const runtime="nodejs";
 function stockPrivateJson(body:unknown,init:{status?:number;headers?:Record<string,string>}={}){
@@ -46,11 +47,11 @@ function stockInput<T>(validate:()=>T):T{
 
 export async function GET(){
   if(!await authorized()) return stockPrivateJson({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return stockPrivateJson({configured:false,stock:[]});
+  if(!getSupabaseAdminConfig()) return stockPrivateJson({configured:false,writesEnabled:false,stock:[]});
   try{
     const stock=requireStockSnapshotRows(await rpc<unknown>(
       "fabric_stock_snapshot_v2",{p_fabric_ids:null}));
-    return stockPrivateJson({configured:true,stock},{headers:{"cache-control":"private, no-store"}});
+    return stockPrivateJson({configured:true,writesEnabled:legacyStockWritesEnabled(),stock},{headers:{"cache-control":"private, no-store"}});
   }catch{
     console.error("[operator/stock] snapshot unavailable (details redacted).");
     return stockPrivateJson({error:"Stock ledger could not be read."},{
@@ -65,6 +66,11 @@ export async function POST(request:Request){
   if(unsafe) return stockPrivateJson({error:unsafe.error},{status:unsafe.status});
   try{
     const body=await readBoundedStockMutationJson(request);
+    // Keep existing 400/413 parsing, but reject every privileged v2 write
+    // on real environments. The only exception is the synthetic localhost
+    // Next/PostgREST HTTP regression fixture (never production stock).
+    if(!legacyStockWritesEnabled())
+      return stockPrivateJson({error:"Legacy v2 stock writes are disabled pending v3 rollout approval."},{status:423});
     const action=String(body.action||"");
     if(action==="record"){
       const draft=stockInput(()=>normalizeManualStockEvent(body));

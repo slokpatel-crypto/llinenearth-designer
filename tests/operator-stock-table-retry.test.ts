@@ -20,9 +20,9 @@ test("failed stock ledger can be retried explicitly without enabling stock write
   assert.match(table,/disabled=\{busy\|\|snapshotState==="loading"\}/);
   assert.match(table,/onClick=\{\(\)=>void load\(\)\}/);
   assert.match(table,/Stock balances are unavailable\. Refresh the ledger before recording, reserving or cutting cloth/);
-  assert.match(s,/if\(uncertainWriteRef\.current\|\|uncertainWrite\|\|busy\|\|snapshotState!=="ready"\|\|!configured\|\|!mutationGate\.current\.enter\(\)\) return/);
+  assert.match(s,/if\(uncertainWriteRef\.current\|\|uncertainWrite\|\|busy\|\|snapshotState!=="ready"\|\|!configured\|\|!writesEnabled\|\|!mutationGate\.current\.enter\(\)\) return/);
   assert.match(s,/setSnapshotState\("loading"\);[\s\S]*?fetch\("\/api\/operator\/stock",\{cache:"no-store"\}\)/);
-  assert.match(s,/setConfigured\(false\);\s*setStock\(\[\]\);\s*setSnapshotState\("error"\);/);
+  assert.match(s,/setWritesEnabled\(false\);\s*setConfigured\(false\);\s*setStock\(\[\]\);\s*setSnapshotState\("error"\);/);
 });
 
 test("stock quantity figures require a fresh ready state after errors",()=>{

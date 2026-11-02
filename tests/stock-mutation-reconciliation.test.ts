@@ -19,7 +19,7 @@ test("uncertain physical stock writes require operator reconciliation before ret
 test("Stock Desk blocks repeat writes on ambiguous ACK until operator rechecks and reloads",()=>{
   const source=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
   const post=source.split("  async function post(")[1]?.split("  const totalAvailable=")[0]??"";
-  assert.match(post,/if\(uncertainWriteRef\.current\|\|uncertainWrite\|\|busy\|\|snapshotState!=="ready"\|\|!configured\|\|!mutationGate\.current\.enter\(\)\)/);
+  assert.match(post,/if\(uncertainWriteRef\.current\|\|uncertainWrite\|\|busy\|\|snapshotState!=="ready"\|\|!configured\|\|!writesEnabled\|\|!mutationGate\.current\.enter\(\)\)/);
   assert.ok(post.indexOf("requestSent=true")<post.indexOf('fetch("/api/operator/stock"'));
   assert.ok(post.indexOf("httpStatus=response.status")<post.indexOf("const data:unknown=await response.json()"));
   assert.ok(post.indexOf("requireStockClientAcknowledgment(body.action,data)")<post.indexOf("acknowledged=true"));

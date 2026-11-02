@@ -83,6 +83,11 @@ async function main(){
   const upstreamPort=await listen(upstream),nextPort=await freePort();
   const env={...process.env,NODE_ENV:"production",NEXT_TELEMETRY_DISABLED:"1",
     LINEN_OPERATOR_SESSION_SECRET:secret,
+    // Only this local, synthetic, explicitly marked v2 fixture can exercise
+    // old stock mutation contract responses. Live deployments remain read-only.
+    LINEN_STOCK_WRITES_ENABLED:"test-v2-only",
+    TITAN_SYNTHETIC_STOCK_TEST:"enabled",
+    VERCEL:"",
     SUPABASE_URL:"http://127.0.0.1:"+upstreamPort,
     SUPABASE_SECRET_KEY:"sb_secret_titan_fake_stock_only",
     SUPABASE_SERVICE_ROLE_KEY:"",SUPABASE_ANON_KEY:"",NEXT_PUBLIC_SUPABASE_ANON_KEY:""};
@@ -125,7 +130,7 @@ async function main(){
       const {response,result}=await call("GET");
       assert.equal(response.status,kind==="valid"?200:503,kind);
       assert.equal(seen.length,1,kind);
-      if(kind==="valid")assert.deepEqual(result,{configured:true,stock:[valid]});
+      if(kind==="valid")assert.deepEqual(result,{configured:true,writesEnabled:true,stock:[valid]});
       else assert.deepEqual(result,{error:"Stock ledger could not be read."});
     }
     // Malformed input is a definitive client error and cannot commit stock.
@@ -191,6 +196,52 @@ async function main(){
             "Reservation was not active; no cloth was consumed."});
         else assert.deepEqual(result,{error:"Stock operation could not be verified."});
       }
+    }
+    // A separate built Next process proves default legacy v2 writes stay
+    // disabled even when a future v3 'enabled' flag is accidentally supplied.
+    mode="valid";
+    const heldPort=await freePort();
+    const held=spawn(process.execPath,[require.resolve("next/dist/bin/next"),
+      "start","-H","127.0.0.1","-p",String(heldPort)],{
+      env:{...env,LINEN_STOCK_WRITES_ENABLED:"enabled"},
+      stdio:["ignore","pipe","pipe"],
+    });
+    let heldOutput="";
+    for(const stream of [held.stdout,held.stderr])
+      stream.on("data",chunk=>{heldOutput=(heldOutput+chunk).slice(-7000);});
+    try{
+      const heldUrl="http://127.0.0.1:"+heldPort+"/api/operator/stock";
+      let started=false;
+      for(let i=0;i<120;i++){
+        if(held.exitCode!==null) throw Error("Held Next fixture exited early: "+heldOutput);
+        try{
+          const res=await fetch(heldUrl,{signal:AbortSignal.timeout(800)});
+          started=res.status===401;
+        }catch{}
+        if(started)break;
+        await new Promise(resolve=>setTimeout(resolve,100));
+      }
+      assert.ok(started,"read-only Next stock fixture did not start");
+      seen.length=0;
+      const available=await fetch(heldUrl,{headers:{cookie,"connection":"close"},
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(available.status,200);
+      assert.deepEqual(await available.json(),{configured:true,writesEnabled:false,stock:[valid]});
+      assert.equal(seen.length,1,"stock snapshot GET remains accessible");
+      seen.length=0;
+      for(const body of [record,reservation,...closures]){
+        const heldResponse=await fetch(heldUrl,{method:"POST",
+          headers:{cookie,"content-type":"application/json","connection":"close"},
+          body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
+        assert.equal(heldResponse.status,423,"unapproved v2 stock write must be locked");
+        assert.deepEqual(await heldResponse.json(),{
+          error:"Legacy v2 stock writes are disabled pending v3 rollout approval."
+        });
+        assert.match(heldResponse.headers.get("cache-control")||"",/private.*no-store/);
+        assert.equal(seen.length,0,"blocked write must never reach privileged RPC");
+      }
+    }finally{
+      if(held.exitCode===null){held.kill("SIGTERM");await once(held,"exit");}
     }
     assert.ok(!output.includes(marker),"private fake stock RPC error leaked in server logs");
     console.log("TITAN stock API private boundary PASS: 53 synthetic authenticated cases, no real writes.");
