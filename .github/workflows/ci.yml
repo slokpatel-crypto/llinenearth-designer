@@ -170,7 +170,7 @@ jobs:
   stock-postgrest-staging:
     name: Disposable PostgREST stock v3 API and role migration rehearsal
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:16
@@ -240,6 +240,17 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102_stock_record_idempotency.sql
           psql -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
           sleep 2
+      - name: Build isolated real Next stock API route
+        run: |
+          npm ci --include=optional
+          npm run build
+      - name: Verify Next operator API against real disposable PostgREST
+        run: |
+          node scripts/verify-stock-next-postgrest.cjs
+          # Delete only the synthetic stock event minted by this test, so
+          # later PostgREST tests run with their own isolated evidence.
+          psql -v ON_ERROR_STOP=1 -c \
+            "delete from private.fabric_stock_ledger where request_key like 'SYNTH-M48-%';"
           node scripts/verify-stock-postgrest-rpc.cjs after
       - name: Confirm actual PostgREST synthetic ledgers can be discarded
         run: |
