@@ -152,6 +152,21 @@ async function main(){
     const reservation={action:"reserve",fabricId:fabric,quantityMetres:1.25,
       revisionId:"LE-LOCK-SYNTHETIC-0001",requestKey:"STOCK-REQUEST-SYNTHETIC-0001",
       requestedBy:"Synthetic checker",sourceReference:"SYNTH-CUT-SHEET"};
+    // A long physical fabric ID, design revision or idempotency key must
+    // not be silently cut to a valid prefix before a privileged stock RPC.
+    for(const [draft,field,bound] of [
+      [record,"fabricId",160],[reservation,"fabricId",160],
+      [reservation,"revisionId",220],[reservation,"requestKey",180],
+    ]){
+      for(const suffix of ["A","B"]){
+        mode="created";seen.length=0;
+        const {response,result}=await call("POST",{
+          ...draft,[field]:"X".repeat(bound)+suffix});
+        assert.equal(response.status,409,draft.action+" truncated "+field);
+        assert.ok(typeof result.error==="string"&&result.error.includes("cannot be truncated"));
+        assert.equal(seen.length,0,draft.action+" truncated "+field+" reached stock RPC");
+      }
+    }
     // A JSON array must not impersonate a real fabric, locked revision,
     // idempotency key or stock event before any privileged RPC is called.
     for(const [action,field,value] of [
@@ -217,6 +232,24 @@ async function main(){
       {action:"consume",reservationId:uuid,actualMetres:1.125,
         checkedBy:"Synthetic checker",sourceReference:"SYNTH-CUT-01"},
     ];
+    // A one-element JSON array/object or overlong string must not become a named physical
+    // checker or a signed supplier/cutting source. Every stock action fails
+    // before privileged PostgREST even in the synthetic writable fixture.
+    for(const [draft,actor] of [
+      [record,"recordedBy"],[reservation,"requestedBy"],
+      [closures[0],"releasedBy"],[closures[1],"checkedBy"],
+    ]){
+      for(const field of [actor,"sourceReference"]){
+        for(const invalid of [[draft[field]],{value:draft[field]},null,42,
+          "X".repeat(field==="sourceReference"?241:121)]){
+          mode="created";seen.length=0;
+          const {response,result}=await call("POST",{...draft,[field]:invalid});
+          assert.equal(response.status,409,draft.action+" coerced physical "+field);
+          assert.ok(typeof result.error==="string"&&result.error.includes("required"));
+          assert.equal(seen.length,0,draft.action+" coerced "+field+" reached a privileged stock RPC");
+        }
+      }
+    }
     // Malformed and JSON-coerced reservation identities are definitive 409s.
     // Neither a syntactically invalid UUID nor a one-element JSON array may
     // reach the privileged stock release/consume RPC.

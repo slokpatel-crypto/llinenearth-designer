@@ -227,3 +227,99 @@ test("privileged stock record and reservation identities require literal JSON st
   assert.equal(normalizeStockReservation(reserve).revisionId,reserve.revisionId);
   assert.equal(normalizeStockReservation(reserve).requestKey,reserve.requestKey);
 });
+
+
+test("all privileged stock operations require literal checker names and physical source references",()=>{
+  const reservationId="11111111-1111-4111-8111-111111111111";
+  const fixtures=[
+    {run:normalizeManualStockEvent,base:{fabricId:"shirt-1",eventType:"receipt",
+      quantityMetres:2.125,recordedBy:"Physical checker",sourceReference:"Signed roll-1"},
+      actor:"recordedBy",actorError:"Named stock checker / recorder is required.",
+      sourceError:"Physical stock source reference is required."},
+    {run:normalizeStockReservation,base:{fabricId:"shirt-1",
+      revisionId:"LE-LOCK-20261102",requestKey:"LE-REQUEST-20261102",
+      quantityMetres:1.125,requestedBy:"Cutting checker",sourceReference:"Approved sheet-2"},
+      actor:"requestedBy",actorError:"Named reservation checker / requester is required.",
+      sourceError:"Reservation quantity evidence reference is required."},
+    {run:normalizeStockRelease,base:{reservationId,releasedBy:"Physical checker",
+      sourceReference:"Signed release-3"},
+      actor:"releasedBy",actorError:"Named reservation release checker is required.",
+      sourceError:"Reservation release reference is required."},
+    {run:normalizeStockConsumption,base:{reservationId,actualMetres:1.125,
+      checkedBy:"Cutting checker",sourceReference:"Signed cut sheet-4"},
+      actor:"checkedBy",actorError:"Named consumption checker is required.",
+      sourceError:"Actual cloth-usage evidence reference is required."},
+  ];
+  for(const {run,base,actor,actorError,sourceError} of fixtures){
+    for(const field of [actor,"sourceReference"]){
+      for(const invalid of [["Forged name"],{value:"Forged name"},null,42,true]){
+        assert.throws(()=>run({...base,[field]:invalid}),{
+          message:field==="sourceReference"?sourceError:actorError,
+        },`Reject coerced ${actor==="recordedBy"?"record":actor} ${field}: ${String(invalid)}`);
+      }
+    }
+    assert.equal(typeof run(base).sourceReference,"string");
+  }
+});
+
+
+test("physical stock evidence never silently truncates a checker or signed source",()=>{
+  const reservationId="11111111-1111-4111-8111-111111111111";
+  const cases=[
+    {run:normalizeManualStockEvent,base:{fabricId:"shirt-1",eventType:"receipt",
+      quantityMetres:1.125,recordedBy:"Operator",sourceReference:"Signed roll"},
+      actor:"recordedBy",actorError:/Named stock checker/,refError:/Physical stock source/},
+    {run:normalizeStockReservation,base:{fabricId:"shirt-1",
+      revisionId:"LE-LOCK-20261102",requestKey:"LE-REQUEST-20261102",
+      quantityMetres:1.125,requestedBy:"Operator",sourceReference:"Signed sheet"},
+      actor:"requestedBy",actorError:/Named reservation checker/,refError:/quantity evidence reference/},
+    {run:normalizeStockRelease,base:{reservationId,releasedBy:"Operator",
+      sourceReference:"Signed release"},actor:"releasedBy",
+      actorError:/Named reservation release checker/,refError:/Reservation release reference/},
+    {run:normalizeStockConsumption,base:{reservationId,actualMetres:1.125,
+      checkedBy:"Operator",sourceReference:"Signed cutting"},
+      actor:"checkedBy",actorError:/Named consumption checker/,refError:/cloth-usage evidence reference/},
+  ];
+  for(const {run,base,actor,actorError,refError} of cases){
+    assert.throws(()=>run({...base,[actor]:"A".repeat(121)}),actorError);
+    assert.throws(()=>run({...base,sourceReference:"R".repeat(241)}),refError);
+    assert.throws(()=>run({...base,[actor]:"  "+"A".repeat(121)+"  "}),actorError);
+    assert.throws(()=>run({...base,sourceReference:"  "+"R".repeat(241)+"  "}),refError);
+    const accepted=run({...base,[actor]:"A".repeat(120),
+      sourceReference:"R".repeat(240)});
+    assert.equal(accepted[actor as keyof typeof accepted],"A".repeat(120));
+    assert.equal(accepted.sourceReference,"R".repeat(240));
+    const normalized=run({...base,[actor]:"  A  B  ",
+      sourceReference:"  R  1  "});
+    assert.equal(normalized[actor as keyof typeof normalized],"A B");
+    assert.equal(normalized.sourceReference,"R 1");
+  }
+});
+
+
+test("stock identities fail closed on overlong prefixes rather than aliasing valid requests",()=>{
+  const record={fabricId:"shirt-1",eventType:"receipt",quantityMetres:2.125,
+    recordedBy:"Physical checker",sourceReference:"Signed roll LE-101"};
+  const reserve={fabricId:"shirt-1",revisionId:"LE-LOCK-20261102",
+    requestKey:"LE-REQUEST-20261102",quantityMetres:1.125,
+    requestedBy:"Cutting checker",sourceReference:"Approved sheet LE-102"};
+  for(const fabricId of ["X".repeat(160)+"A","X".repeat(160)+"B"]){
+    assert.throws(()=>normalizeManualStockEvent({...record,fabricId}),
+      /Fabric ID exceeds 160 characters/);
+    assert.throws(()=>normalizeStockReservation({...reserve,fabricId}),
+      /Fabric ID exceeds 160 characters/);
+  }
+  for(const revisionId of ["R".repeat(220)+"A","R".repeat(220)+"B"])
+    assert.throws(()=>normalizeStockReservation({...reserve,revisionId}),
+      /Locked revision ID exceeds 220 characters/);
+  for(const requestKey of ["K".repeat(180)+"A","K".repeat(180)+"B"])
+    assert.throws(()=>normalizeStockReservation({...reserve,requestKey}),
+      /Reservation request key exceeds 180 characters/);
+  const longAllowed=normalizeStockReservation({...reserve,
+    fabricId:"F".repeat(160),revisionId:"R".repeat(220),requestKey:"K".repeat(180)});
+  assert.equal(longAllowed.fabricId.length,160);
+  assert.equal(longAllowed.revisionId.length,220);
+  assert.equal(longAllowed.requestKey.length,180);
+  assert.equal(normalizeStockReservation({...reserve,requestKey:"  LE-REQUEST-20261102  "}).requestKey,
+    reserve.requestKey);
+});

@@ -18,6 +18,27 @@ function exactStockMetres(raw:unknown,field:string,maxMetres:number):number{
   return millimetres/1000;
 }
 
+// Physical checker names and signed source references are identity-bearing
+// stock evidence, never coercible arrays/objects or fabricated numbers.
+function literalStockEvidence(value:unknown,maxLength:number):string{
+  if(typeof value!=="string") return "";
+  const normalized=value.replace(/\s+/g," ").trim();
+  // A clipped checker or signed reference is a different physical receipt.
+  // Reject instead of silently turning a long input into verified evidence.
+  return normalized.length<=maxLength?normalized:"";
+}
+
+
+// Idempotency keys and physical fabric/revision identities must never be
+// silently clipped: distinct requests can share a valid prefix.
+function literalStockIdentity(value:unknown,label:string,maxLength:number):string{
+  if(typeof value!=="string") return "";
+  const identity=value.trim();
+  if(identity.length>maxLength)
+    throw new Error(`${label} exceeds ${maxLength} characters; identities cannot be truncated.`);
+  return identity;
+}
+
 
 export function stockSnapshot(events:StockEvent[]){
   // Local ledger replay must agree with the server's no-oversell invariants.
@@ -69,12 +90,12 @@ export function stockSnapshot(events:StockEvent[]){
 export function normalizeManualStockEvent(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock event evidence is required.");
   const source=input as Record<string,unknown>;
-  const fabricId=typeof source.fabricId==="string"?source.fabricId.trim().slice(0,160):"";
+  const fabricId=literalStockIdentity(source.fabricId,"Fabric ID",160);
   const eventType=(typeof source.eventType==="string"?source.eventType:"") as StockEventType;
   const quantityMetres=exactStockMetres(source.quantityMetres,"Stock quantity",100000);
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
-  const recordedBy=String(source.recordedBy||"").replace(/\s+/g," ").trim().slice(0,120);
-  const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
+  const recordedBy=literalStockEvidence(source.recordedBy,120);
+  const sourceReference=literalStockEvidence(source.sourceReference,240);
 
   if(!fabricId) throw new Error("Fabric ID is required.");
   if(!["receipt","adjustment_in","adjustment_out"].includes(eventType)) throw new Error("Unsupported manual stock event.");
@@ -92,12 +113,12 @@ export function normalizeManualStockEvent(input:unknown){
 export function normalizeStockReservation(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock reservation evidence is required.");
   const source=input as Record<string,unknown>;
-  const fabricId=typeof source.fabricId==="string"?source.fabricId.trim().slice(0,160):"";
-  const revisionId=typeof source.revisionId==="string"?source.revisionId.trim().slice(0,220):"";
-  const requestKey=typeof source.requestKey==="string"?source.requestKey.trim().slice(0,180):"";
+  const fabricId=literalStockIdentity(source.fabricId,"Fabric ID",160);
+  const revisionId=literalStockIdentity(source.revisionId,"Locked revision ID",220);
+  const requestKey=literalStockIdentity(source.requestKey,"Reservation request key",180);
   const quantityMetres=exactStockMetres(source.quantityMetres,"Stock quantity",100000);
-  const requestedBy=String(source.requestedBy||"").replace(/\s+/g," ").trim().slice(0,120);
-  const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
+  const requestedBy=literalStockEvidence(source.requestedBy,120);
+  const sourceReference=literalStockEvidence(source.sourceReference,240);
 
   if(!fabricId) throw new Error("Fabric ID is required.");
   if(revisionId.length<12) throw new Error("Locked revision ID is required.");
@@ -121,8 +142,8 @@ export function normalizeStockConsumption(input:unknown){
   const reservationId=typeof source.reservationId==="string"?source.reservationId.trim():"";
   const actualMetres=exactStockMetres(source.actualMetres,"Actual consumed metres",100);
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
-  const checkedBy=String(source.checkedBy||"").replace(/\s+/g," ").trim().slice(0,120);
-  const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
+  const checkedBy=literalStockEvidence(source.checkedBy,120);
+  const sourceReference=literalStockEvidence(source.sourceReference,240);
 
   if(!RESERVATION_UUID.test(reservationId)) throw new Error("Valid reservation ID is required.");
   
@@ -143,8 +164,8 @@ export function normalizeStockRelease(input:unknown){
   // A JSON array or object must not coerce into a privileged reservation identity.
   const reservationId=typeof source.reservationId==="string"?source.reservationId.trim():"";
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
-  const releasedBy=String(source.releasedBy||"").replace(/\s+/g," ").trim().slice(0,120);
-  const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
+  const releasedBy=literalStockEvidence(source.releasedBy,120);
+  const sourceReference=literalStockEvidence(source.sourceReference,240);
   if(!RESERVATION_UUID.test(reservationId)) throw new Error("Valid reservation ID is required.");
   if(releasedBy.length<2) throw new Error("Named reservation release checker is required.");
   if(sourceReference.length<3) throw new Error("Reservation release reference is required.");
