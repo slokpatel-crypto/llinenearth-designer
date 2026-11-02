@@ -377,6 +377,35 @@ jobs:
              (.[0].checks|any(.function=="snapshot_v2" and .fixed_search_path==false)) and
              .[1].status=="READY" and
              (.[1].checks|all(.fixed_search_path==true))' >/dev/null
+      - name: Reject a quoted comma schema impersonating approved stock search path
+        run: |
+          # '"public,private"' names one schema, not two trusted schemas.
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          test "$TITAN_SYNTHETIC_PG_TEST" = enabled
+          observed=$(psql -X -qAt -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          alter function public.fabric_stock_snapshot_v2(text[])
+            set search_path='"public,private"';
+          select case when public.fabric_stock_write_ready_v1() is false
+            then 'attestation-blocked' else 'FAIL' end;
+          \i scripts/stock-v3-readonly-preflight.sql
+          rollback;
+          select case when public.fabric_stock_write_ready_v1() is true
+            then 'attestation-restored' else 'FAIL' end;
+          \i scripts/stock-v3-readonly-preflight.sql
+          SQL
+          )
+          mapfile -t rows <<< "$observed"
+          test "${#rows[@]}" -eq 4
+          test "${rows[0]}" = attestation-blocked
+          printf '%s\n' "${rows[1]}" | jq -e \
+            '.status=="BLOCKED" and
+             (.checks|any(.function=="snapshot_v2" and .fixed_search_path==false))' >/dev/null
+          test "${rows[2]}" = attestation-restored
+          printf '%s\n' "${rows[3]}" | jq -e \
+            '.status=="READY" and
+             (.checks|all(.fixed_search_path==true))' >/dev/null
       - name: Build isolated real Next stock API route
         run: |
           npm ci --include=optional
