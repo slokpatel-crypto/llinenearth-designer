@@ -41,6 +41,8 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
+    parser.add_argument("--experimental-capture-crotch-stages", action="store_true",
+                        help="Research only: emit isolated unapproved leg-stage meshes for native BVH analysis")
     parser.add_argument("--experimental-right-hem-taper-mm", type=float, default=5.0,
                         help="Native research only: gradual right hem taper; never approve on width alone")
     parser.add_argument("--experimental-waist-extra-clearance-mm", type=float, default=3.0,
@@ -202,12 +204,34 @@ def actual_contact_pairs(body_tree, garment):
     return count
 
 
-def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinement_level=1, waist_extra_m=0.0):
+def capture_crotch_stage_for_research(obj, stage, enabled):
+    """Save actual evaluated geometry outside EXPORT_COLLECTION, never promote."""
+    if not enabled or obj.name not in ("TrouserLegLFabric", "TrouserLegRFabric"):
+        return
+    collection = bpy.data.collections.get("TITAN_CrotchStageResearch")
+    if collection is None:
+        collection = bpy.data.collections.new("TITAN_CrotchStageResearch")
+        bpy.context.scene.collection.children.link(collection)
+    name = f"TITAN_RESEARCH_{stage}_{obj.name}"
+    if bpy.data.objects.get(name) is not None:
+        raise RuntimeError("Crotch research duplicate stage mesh would invalidate provenance.")
+    clone = bpy.data.objects.new(name, obj.data.copy())
+    clone.matrix_world = obj.matrix_world.copy()
+    clone.hide_render = True
+    clone["candidateOnly"] = True
+    clone["productionApproved"] = False
+    clone["sourceStage"] = stage
+    collection.objects.link(clone)
+
+
+def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinement_level=1, waist_extra_m=0.0,
+              capture_crotch_stages=False):
     # Measured diagnostics only. These are not garment acceptance or fit proof.
     stages = []
     def record_stage(stage):
         if body_tree is not None:
             stages.append({"stage": stage, "bodyIntersectionPairs": actual_contact_pairs(body_tree, obj)})
+        capture_crotch_stage_for_research(obj, stage, capture_crotch_stages)
     record_stage("selectedBodyShell")
     # Smooth first. The old shrinkwrap→smooth order allowed smoothing to
     # pull the garment back THROUGH the scanned body after clearance was set.
@@ -390,7 +414,8 @@ def main():
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
         fit_shell(obj, body, clearance_m, thickness_m, body_contact_tree,
-                  options.experimental_waist_refinement_level, waist_extra_m)
+                  options.experimental_waist_refinement_level, waist_extra_m,
+                  options.experimental_capture_crotch_stages)
         if name == "TrouserLegRFabric":
             measure_guided_right_hem_taper(obj, right_hem_guide_z, right_hem_taper_mm)
         planar_grain_uv(obj)
@@ -411,6 +436,7 @@ def main():
     bpy.context.scene["linen_earth_locked_shirt_waist_guide_z_m"] = round(shirt_waist_guide_z, 6)
     bpy.context.scene["linen_earth_trouser_waist_refinement_level"] = options.experimental_waist_refinement_level
     bpy.context.scene["linen_earth_experimental_right_hem_taper_mm"] = round(right_hem_taper_mm, 3)
+    bpy.context.scene["linen_earth_research_crotch_stages_emitted"] = bool(options.experimental_capture_crotch_stages)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
