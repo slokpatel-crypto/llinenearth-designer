@@ -156,6 +156,46 @@ def intersection_pair_count(left, right):
     return len(left_tree.overlap(right_tree))
 
 
+def triangle_plane_span_x(obj, z_world):
+    """Measure actual evaluated cloth/guide-plane intersections in world space.
+
+    Sparse garments can straddle a horizontal photo guide without vertices in
+    its 18 mm sampling band. Edge crossings supply actual surface positions;
+    never invent a width from the bounding box of an unrelated height.
+    """
+    if obj is None or obj.type != "MESH" or z_world is None or not math.isfinite(z_world):
+        return None
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        mesh.calc_loop_triangles()
+        matrix = evaluated.matrix_world
+        world = [matrix @ vertex.co for vertex in mesh.vertices]
+        xs = []
+        epsilon = 1e-8
+        for triangle in mesh.loop_triangles:
+            corners = [world[index] for index in triangle.vertices]
+            if any(not all(math.isfinite(v) for v in corner) for corner in corners):
+                return None
+            for i, j in ((0, 1), (1, 2), (2, 0)):
+                a, b = corners[i], corners[j]
+                dz = b.z - a.z
+                if abs(dz) <= epsilon:
+                    if abs(a.z - z_world) <= epsilon:
+                        xs.extend((a.x, b.x))
+                    continue
+                t = (z_world - a.z) / dz
+                if -epsilon <= t <= 1.0 + epsilon:
+                    t = max(0.0, min(1.0, t))
+                    xs.append(a.x + t * (b.x - a.x))
+        if len(xs) < 2 or max(xs) - min(xs) <= 1e-6:
+            return None
+        return min(xs), max(xs)
+    finally:
+        evaluated.to_mesh_clear()
+
+
 def guide_world_points(obj):
     if obj is None or obj.type != "CURVE":
         return []
@@ -316,9 +356,13 @@ def main():
                 point = matrix @ vertex.co
                 if abs(point.z - z_world) <= band:
                     xs.append(point.x)
-            return (min(xs), max(xs)) if len(xs) >= 4 else None
+            if len(xs) >= 4:
+                return min(xs), max(xs)
         finally:
             evaluated.to_mesh_clear()
+        # Fallback uses genuine triangle/guide-plane intersections rather
+        # than marking a sparse but measurable garment as unknown.
+        return triangle_plane_span_x(obj, z_world)
 
     def width_at_z(obj, z_world, band=0.018):
         span = x_span_at_z(obj, z_world, band)
