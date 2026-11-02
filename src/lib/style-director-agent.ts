@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -250,7 +250,10 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   }
 
   if (occasion === "Formal" || occasion === "Semi-Formal") {
-    style.shirtWear = "Tucked";
+    // Camp-collar resort shirts have an untucked construction. Do not let the
+    // formality preset silently contradict the proposed versioned garment.
+    // The occasion mismatch is flagged for review below instead.
+    if (!/camp|cuban/.test(shirt)) style.shirtWear = "Tucked";
     style.rise = pickStyleChoice("rise", /mid rise|high rise/i, style.rise);
   }
   return style;
@@ -311,7 +314,10 @@ function buildRealModelSpec(
   const best = ranked[0]?.recommendation;
   if (!best) return undefined;
   const styleSpec=styleSpecForDirectorCandidate(candidate,best.style);
-  const constructionIssues=styleDirectorConstructionIssues(styleSpec);
+  const constructionIssues=[
+    ...styleDirectorConstructionIssues(styleSpec,occasion),
+    ...styleDirectorPresentationIssues(best.style,styleSpec),
+  ];
   return {
     shirtId: best.shirt.id,
     shirtName: best.shirt.name,
