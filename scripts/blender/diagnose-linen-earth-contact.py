@@ -172,6 +172,38 @@ def verified_solidify_variants(obj, stages):
     return evidence
 
 
+def verified_shrinkwrap_modes(obj, stages):
+    """Fail closed on missing or mislabeled live-geometry trial data."""
+    raw = obj.get("linen_earth_shrinkwrap_modes_json")
+    if not isinstance(raw, str):
+        raise RuntimeError("Real shrinkwrap mode trial measurements missing.")
+    try:
+        report = json.loads(raw)
+    except (ValueError, TypeError) as error:
+        raise RuntimeError("Invalid real shrinkwrap mode trial JSON.") from error
+    if not isinstance(report, dict) or type(report.get("beforeWrap")) is not int:
+        raise RuntimeError("Invalid shrinkwrap baseline.")
+    if report["beforeWrap"] != stages[1]["bodyIntersectionPairs"]:
+        raise RuntimeError("Shrinkwrap trial baseline does not match actual smoothed shell.")
+    trials = report.get("trialModes")
+    modes = ("OUTSIDE_SURFACE", "ABOVE_SURFACE", "ON_SURFACE")
+    if not isinstance(trials, list) or len(trials) != len(modes):
+        raise RuntimeError("Missing an actual Blender shrinkwrap comparison mode.")
+    for item, mode in zip(trials, modes):
+        if not isinstance(item, dict) or item.get("mode") != mode:
+            raise RuntimeError("Wrong/out-of-order shrinkwrap trial.")
+        if type(item.get("clearanceMm")) not in (int, float) or item["clearanceMm"] != 7.0:
+            raise RuntimeError("Shrinkwrap comparison cannot change locked 7mm clearance.")
+        for key in ("bodyPairsAfterWrap", "bodyPairsAfterClothThickness"):
+            if type(item.get(key)) is not int or item[key] < 0:
+                raise RuntimeError("Unmeasured shrinkwrap trial contact pairs.")
+    current = trials[0]
+    if (current["bodyPairsAfterWrap"] != stages[2]["bodyIntersectionPairs"]
+        or current["bodyPairsAfterClothThickness"] != stages[3]["bodyIntersectionPairs"]):
+        raise RuntimeError("Real candidate's original shrinkwrap recipe disagrees with trial.")
+    return report
+
+
 def diagnose(body_geometry, garment_geometry):
     """Normals may be reversed; a negative normal projection is NOT an inside test."""
     body_points, body_faces = body_geometry
@@ -236,6 +268,7 @@ def diagnostic_report(scene):
         stages = verified_modifier_stages(obj, source_polygon_tree)
         records[name]["actualModifierContactStages"] = stages
         records[name]["realSolidifyVariantComparisons"] = verified_solidify_variants(obj, stages)
+        records[name]["realShrinkwrapModeComparisons"] = verified_shrinkwrap_modes(obj, stages)
     return {
         "version": "titan-actual-contact-diagnostics-v1",
         "modelIdentityId": IDENTITY,
@@ -246,6 +279,7 @@ def diagnostic_report(scene):
         "contactHistogramDescription": "Eight low-to-high 12.5%-of-body-height bands; triangle-pair counts, not penetration volumes.",
         "modifierStageMethod": "World-space evaluated polygon BVH with 0.5mm epsilon, independently verified against final garment; not a production clearance approval.",
         "solidifyExperimentMethod": "Disposable in-memory clones tested with actual Blender SOLIDIFY; +/-normal offsets and rim-on/off. The original outward-with-rim candidate is unchanged. No variant is approved.",
+        "shrinkwrapExperimentMethod": "Unsaved world-space native Blender NEAREST_SURFACEPOINT clones at fixed 7mm clearance, with unchanged final 1.6mm cloth thickness; no mode selected or approved.",
         "explanation": (
             "World-space BVH triangle overlap counts are candidate defects; "
             "nearest-body normal projections are diagnostic only because body normals "
@@ -272,7 +306,8 @@ def main():
               f"{metrics['negativeBodyNormalProjectionCount']} negative normal projections; "
               f"height octiles={metrics['contactPairsByBodyHeightOctile']}; "
               f"authoring stages={metrics['actualModifierContactStages']}; "
-              f"solidify variants={metrics['realSolidifyVariantComparisons']['variants']}")
+              f"solidify variants={metrics['realSolidifyVariantComparisons']['variants']}; "
+              f"shrinkwrap modes={metrics['realShrinkwrapModeComparisons']['trialModes']}")
 
 
 if __name__ == "__main__":

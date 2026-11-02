@@ -56,6 +56,23 @@ assert not any(obj.name.startswith("LE_UNSAVED_CONTACT_VARIANT_") for obj in bpy
     "A disposable solidification probe was left in the authored candidate scene"
 )
 
+shrink_modes = json.loads(shell["linen_earth_shrinkwrap_modes_json"])
+assert shrink_modes["beforeWrap"] == stages[1]["bodyIntersectionPairs"]
+assert [t["mode"] for t in shrink_modes["trialModes"]] == [
+    "OUTSIDE_SURFACE", "ABOVE_SURFACE", "ON_SURFACE",
+], shrink_modes
+assert all(t["clearanceMm"] == 7.0 for t in shrink_modes["trialModes"])
+assert all(
+    type(t["bodyPairsAfterWrap"]) is int and type(t["bodyPairsAfterClothThickness"]) is int
+    and t["bodyPairsAfterWrap"] >= 0 and t["bodyPairsAfterClothThickness"] >= 0
+    for t in shrink_modes["trialModes"]
+), shrink_modes
+assert shrink_modes["trialModes"][0]["bodyPairsAfterWrap"] == stages[2]["bodyIntersectionPairs"]
+assert shrink_modes["trialModes"][0]["bodyPairsAfterClothThickness"] == stages[3]["bodyIntersectionPairs"]
+assert not any(o.name.startswith("LE_UNSAVED_SHRINKWRAP_TRIAL_") for o in bpy.data.objects), (
+    "A disposable shrinkwrap comparison modified the final Blender scene"
+)
+
 
 # Fail closed on empty evaluated surfaces instead of fabricating a zero count.
 empty = bpy.data.objects.new("EmptyPanel", bpy.data.meshes.new("EmptyMesh"))
