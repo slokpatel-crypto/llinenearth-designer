@@ -13,6 +13,8 @@ on:
       - "scripts/blender/diagnose-linen-earth-crotch.py"
       - "scripts/blender/diagnose-crotch-modifier-stages.py"
       - "scripts/blender/diagnose-crotch-seam-proximity.py"
+      - "scripts/blender/diagnose-crotch-seam-pairing.py"
+      - "tests/crotch-seam-pairing-native.test.ts"
       - "tests/crotch-source-seam-proximity.test.ts"
       - "tests/crotch-solidify-rim-trial.test.ts"
       - "tests/crotch-modifier-stage-origin.test.ts"
@@ -34,6 +36,8 @@ on:
       - "scripts/blender/diagnose-linen-earth-crotch.py"
       - "scripts/blender/diagnose-crotch-modifier-stages.py"
       - "scripts/blender/diagnose-crotch-seam-proximity.py"
+      - "scripts/blender/diagnose-crotch-seam-pairing.py"
+      - "tests/crotch-seam-pairing-native.test.ts"
       - "tests/crotch-source-seam-proximity.test.ts"
       - "tests/crotch-solidify-rim-trial.test.ts"
       - "tests/crotch-modifier-stage-origin.test.ts"
@@ -698,6 +702,52 @@ jobs:
               "productionApproved": False,
           }))
           PY
+      - name: Measure native original open-edge nearest sewing correspondences (research only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-research-crotch-stages.blend \
+            --python-exit-code 1 --python scripts/blender/diagnose-crotch-seam-pairing.py -- \
+            --output "$RUNNER_TEMP/titan-candidate-evidence/crotch-source-seam-pairing.json"
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence/crotch-source-seam-pairing.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/crotch-source-seam-proximity.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/rejection-report.json" <<'PY'
+          import json
+          import math
+          import sys
+          from pathlib import Path
+          pairing, proximity, rejected = (json.loads(Path(p).read_text(encoding="utf-8")) for p in sys.argv[1:])
+          assert all(x["modelIdentityId"]=="linen-earth-studio-model-v1" for x in (pairing,proximity,rejected))
+          assert all(x["candidateOnly"] is True and x["productionApproved"] is False for x in (pairing,proximity,rejected))
+          assert pairing["physicalFitApproved"] is False and pairing["changesProductionGeometry"] is False
+          assert rejected["preflightReady"] is False and rejected["rejectionReasonCount"] == 10
+          assert rejected["boundaryIntersections"]["garmentLegToLeg"] == proximity["actualFinalLegLegBVHPairs"] > 0
+          left, right = pairing["pairedLeftEdgeCount"], pairing["pairedRightEdgeCount"]
+          assert left == proximity["actualSourceBoundaryEdges"]["left"]["nearCenterlineBoundaryEdges"] > 0
+          assert right == proximity["actualSourceBoundaryEdges"]["right"]["nearCenterlineBoundaryEdges"] > 0
+          assert 0 <= pairing["mutualNearestEdgeCount"] <= min(left,right)
+          correspondences = pairing["mutualPairIndices"]
+          assert len(correspondences) == pairing["mutualNearestEdgeCount"]
+          assert len(set(map(tuple, correspondences))) == len(correspondences)
+          for l,r in correspondences:
+              assert type(l) is int and type(r) is int and 0 <= l < left and 0 <= r < right
+          for side, count in (("leftToRight",left),("rightToLeft",right)):
+              samples=pairing["nearestEdgeMidpointDistanceMm"][side]
+              assert samples["count"] == count
+              assert all(math.isfinite(samples[k]) and samples[k] >= 0 for k in ("minMm","medianMm","maxMm"))
+              assert samples["minMm"] <= samples["medianMm"] <= samples["maxMm"]
+              thresholds=samples["withinMm"]
+              assert set(thresholds) == {"5","10","20","40","80"}
+              values=[thresholds[str(mm)] for mm in (5,10,20,40,80)]
+              assert values == sorted(values) and all(type(v) is int and 0 <= v <= count for v in values)
+          print("TITAN_REAL_CROTCH_SOURCE_CUT_EDGE_ALIGNMENT_MEASURED_NO_BRIDGE_APPROVAL", json.dumps({
+              "leftEdges":left,"rightEdges":right,
+              "mutualNearestPairs":pairing["mutualNearestEdgeCount"],
+              "leftToRight":pairing["nearestEdgeMidpointDistanceMm"]["leftToRight"],
+              "rightToLeft":pairing["nearestEdgeMidpointDistanceMm"]["rightToLeft"],
+              "productionApproved":False,
+          }))
+          PY
       - name: Upload rejection report, never an unapproved model
         if: always()
         uses: actions/upload-artifact@v4
@@ -714,6 +764,7 @@ jobs:
             ${{ runner.temp }}/titan-candidate-evidence/crotch-cross-sections.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-modifier-stages.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-source-seam-proximity.json
+            ${{ runner.temp }}/titan-candidate-evidence/crotch-source-seam-pairing.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-leg-rimless.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-leg-rimless-preflight.json
             ${{ runner.temp }}/titan-candidate-evidence/leg-thickness-*.json
