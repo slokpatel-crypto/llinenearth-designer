@@ -300,7 +300,7 @@ def main():
         measured = width_at_z(sample_object, sample_z, band) if sample_object and sample_z is not None else None
         identity_measurements[key] = round(measured, 2) if measured is not None else None
         if sample_object and measured is None:
-            warnings.append(f"Could not sample {key} from garment geometry for identity-fit QA.")
+            reasons.append(f"Could not sample {key} from garment geometry; identity-fit gate cannot pass without measurement.")
         elif measured is not None and abs(measured - target) > tolerance:
             reasons.append(
                 f"{key} is {measured:.1f} mm; locked model target is {target:.1f} mm ± {tolerance:.1f} mm."
@@ -319,7 +319,7 @@ def main():
         ("trouserCenterOffsetMm", trouser_center, 18.0),
     ):
         if measured is None:
-            warnings.append(f"Could not sample {key} for garment centerline QA.")
+            reasons.append(f"Could not sample {key} for garment centerline QA; production fit cannot pass.")
         elif abs(measured) > tolerance:
             reasons.append(f"{key} is {measured:.1f} mm from model center; allowed offset is ±{tolerance:.1f} mm.")
 
@@ -334,7 +334,7 @@ def main():
     identity_measurements["sleeveCenterSpacingMm"] = round(sleeve_spacing, 2) if sleeve_spacing is not None else None
     identity_measurements["cuffWidthAsymmetryMm"] = round(cuff_width_asymmetry, 2) if cuff_width_asymmetry is not None else None
     if sleeve_spacing is None:
-        warnings.append("Could not sample sleeve-center spacing near the locked hand guides.")
+        reasons.append("Could not sample sleeve-center spacing near the locked hand guides; spacing gate cannot pass without measurement.")
     else:
         target_hand_spacing = EXPECTED_IDENTITY_TARGETS_MM["handCenterSpacing"]
         if abs(sleeve_spacing - target_hand_spacing) > 36.0:
@@ -343,7 +343,7 @@ def main():
                 f"locked hand-center target is {target_hand_spacing:.1f} mm ± 36.0 mm."
             )
     if cuff_width_asymmetry is None:
-        warnings.append("Could not calculate left/right cuff-zone width symmetry.")
+        reasons.append("Could not calculate left/right cuff-zone width symmetry; production fit cannot pass.")
     elif cuff_width_asymmetry > 14.0:
         reasons.append(
             f"Left/right cuff-zone width asymmetry is {cuff_width_asymmetry:.1f} mm; "
@@ -355,7 +355,7 @@ def main():
     hem_asymmetry = abs(left_hem - right_hem) if left_hem is not None and right_hem is not None else None
     identity_measurements["hemWidthAsymmetryMm"] = round(hem_asymmetry, 2) if hem_asymmetry is not None else None
     if hem_asymmetry is None:
-        warnings.append("Could not calculate left/right trouser hem symmetry.")
+        reasons.append("Could not calculate left/right trouser hem symmetry; production fit cannot pass.")
     elif hem_asymmetry > 10.0:
         reasons.append(f"Trouser hem width asymmetry is {hem_asymmetry:.1f} mm; allowed difference is 10.0 mm.")
 
@@ -366,7 +366,7 @@ def main():
     leg_spacing = abs(right_leg_center - left_leg_center) if left_leg_center is not None and right_leg_center is not None else None
     identity_measurements["legCenterSpacingMm"] = round(leg_spacing, 2) if leg_spacing is not None else None
     if leg_spacing is None:
-        warnings.append("Could not sample trouser leg-center spacing from production geometry.")
+        reasons.append("Could not sample trouser leg-center spacing from production geometry; spacing gate cannot pass without measurement.")
     else:
         target_leg_spacing = EXPECTED_IDENTITY_TARGETS_MM["legCenterSpacing"]
         if abs(leg_spacing - target_leg_spacing) > 24.0:
@@ -447,6 +447,21 @@ def main():
                 reasons.append(
                     f"{key} has {count} intersecting triangle pairs; production garment/body boundaries must be clean."
                 )
+
+        # Garment-vs-garment contact matters even if neither leg shell
+        # penetrates the body. Require actual evidence of fabric separation.
+        leg_to_leg = intersection_pair_count(
+            bpy.data.objects.get("TrouserLegLFabric"),
+            bpy.data.objects.get("TrouserLegRFabric"),
+        )
+        boundary_intersections["garmentLegToLeg"] = leg_to_leg
+        if leg_to_leg is None:
+            reasons.append("Could not evaluate real left/right trouser fabric separation.")
+        elif leg_to_leg > 0:
+            reasons.append(
+                f"Left/right trouser fabric shells cross at {leg_to_leg} triangle pairs; "
+                "leg-gap correction must not create self-intersecting cloth."
+            )
 
         tuck_overlap = intersection_pair_count(
             bpy.data.objects.get("ShirtTorsoFabric"),
