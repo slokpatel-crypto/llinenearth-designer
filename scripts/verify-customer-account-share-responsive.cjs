@@ -20,10 +20,24 @@ async function run(){
       const context=await browser.newContext({viewport:{width,height:950}});
       const page=await context.newPage();
       let revoked=false,failRevoke=true,paidCalls=0,forgedOwnerField=0;
-      const intercepted=[];
+      const intercepted=[],failedResponses=[];
+      let expectedResource503Errors=0;
+      page.on("response",response=>{
+        if(response.status()>=400)failedResponses.push({
+          status:response.status(),pathname:new URL(response.url()).pathname,
+        });
+      });
       page.on("pageerror",error=>errors.push(width+": "+error.message));
-      page.on("console",message=>{if(message.type()==="error")
-        errors.push(width+": "+message.text());});
+      page.on("console",message=>{
+        if(message.type()!=="error")return;
+        // The deliberate 503 from the first revocation attempt is a
+        // required negative test. Chromium logs it as a resource error.
+        // Match its precise string, require exactly one correlated HTTP
+        // failure, and still fail for every unrelated console error.
+        if(message.text()==="Failed to load resource: the server responded with a status of 503 (Service Unavailable)"){
+          expectedResource503Errors++;
+        }else errors.push(width+": "+message.text());
+      });
       page.on("dialog",dialog=>dialog.accept());
       await context.route("**/api/**",async route=>{
         const req=route.request(),name=new URL(req.url()).pathname;
@@ -77,11 +91,16 @@ async function run(){
       assert.equal(forgedOwnerField,0,"UI must not forge or send customer owner identity");
       assert.equal(paidCalls,0,"account page must not use paid image services");
       assert.equal(intercepted.filter(x=>x.name==="/api/designer/share"&&x.action==="revokeOwned").length,2);
-      proof.push({width,revocation503Displayed:true,revokeSucceeded:true,paidCalls:0});
+      assert.deepEqual(failedResponses,[{status:503,pathname:"/api/designer/share"}],
+        "Only the explicitly expected revocation 503 may fail over HTTP");
+      assert.ok(expectedResource503Errors<=1,
+        "Unexpected duplicate 503 resource console errors");
+      proof.push({width,revocation503Displayed:true,revokeSucceeded:true,
+        expectedResource503Errors,paidCalls:0});
       await page.screenshot({path:path.join(output,"account-revoked-"+width+".png"),fullPage:true});
       await context.close();
     }
-    assert.deepEqual(errors,[],"No browser JS or console errors permitted");
+    assert.deepEqual(errors,[],"No unexpected browser JS or console errors permitted");
     fs.writeFileSync(path.join(output,"summary.json"),JSON.stringify({browser:"Chromium",scope:"customer account shares",mockedBackends:true,physicalAcceptance:false,proof,errors},null,2));
     console.log("Customer share/account responsive Chromium PASS: 390, 768, 1440; 503 denial and cross-device revoke UX.");
   }finally{await browser?.close();}
