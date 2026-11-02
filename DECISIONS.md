@@ -570,3 +570,8 @@ Share-link recipients must not be able to disable a link using the bearer URL al
 ## 2026-11-03 — Independent customer session revocation per login
 
 **Decision:** new `lecs1` signed customer session bearers include a cryptographically random 128-bit nonce inside their HMAC-covered payload. Two sign-ins for the same customer in the same millisecond now produce independently revocable bearer hashes, avoiding unintended cross-session logout if token issuance timestamps collide. Existing valid signed pre-nonce `lecs1` cookies continue to verify until their normal expiry; no cookie name, key rotation, SQL migration or user-record changes are required. Nonce syntax/canonical base64url is checked for new-format sessions, alongside existing signature/UUID/expiry validation. Synthetic unit tests cover collision independence, malformed nonce rejection and backward compatibility; staging/exact-head verification still applies.
+
+## 2026-11-03 — Fail closed on interrupted account rechecks and ambiguous signed cookies
+
+**Decision:** on an unavailable/malformed customer-session response, hide previously loaded private account data and erase unfinished bearer recovery inputs; provide explicit retry rather than silently retaining the old owner's data. Reject empty, undecodable and duplicated signed customer cookies even while the temporary legacy auth bridge is enabled; allow legacy authentication only when the signed-cookie name is **absent**. Synthetic HTTP and Chromium tests prove these boundaries without live customer accounts. Keep draft PR and deployment hold until exact-head CI, staging migrations and trusted-edge verification are complete.
+
