@@ -8,3 +8,10 @@
 - **Code verification:** matching-head Full CI, disposable PostgreSQL, Non-3D/browser, quality, tests, engine, preview performance, release check and build **PENDING** until GitHub finishes. No test is claimed green in advance.
 - **Human/physical gates:** real supplier inventory, staged migration approval/restore, authenticated operator/customer acceptance, tailor checks, Blender geometry, devices, five testers, ten deliveries and owner signoff **PENDING/BLOCKED**. No production deployment, live migration, stock writes or paid AI.
 - **Next bounded slice:** inspect exact-head CI and native SQL result; fix failures on the same draft; after all-green compare current main ancestry, guard `vercel.json` deploymentEnabled=false and consider only dependency-complete isolated intake.
+
+## 2026-11-03 — committed engineering slice
+
+- **Exact parent:** main `b7965866b8ddf4e037e71f1c6a69af65413663dd`; **code/workflow commit:** `8ffd3454e017319b939cc22df89f5ce6ac15b173`; draft PR #872, five-file dependency-complete diff, no unrelated backlog.
+- **Criteria:** J1/T3 reservation source-of-truth and T5/J5 privilege integrity; J6/T6 disposable native regression coverage. This does not certify any full launch gate.
+- **Evidence status:** static source diff inspected; GitHub Full CI and Non-3D exact-head runs have not yet been reported. Native PostgreSQL result, browser QA, full tests, build and release checks remain **PENDING**. No claim of pass.
+- **Next action:** inspect fresh PR #872 exact-head workflow jobs, repair failures, then compare newest main and no-deploy guard before any possible isolated integration. Keep staging migration and physical approvals blocked.
