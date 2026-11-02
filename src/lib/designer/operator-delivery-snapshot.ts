@@ -59,8 +59,8 @@ export function requireDeliveryEvidenceSnapshot(input:unknown):DeliverySnapshot{
       !Array.isArray(v.reentry_fields)||v.reentry_fields.length>12||
       !v.reentry_fields.every((x:unknown)=>typeof x==="string"&&REENTRY.has(x))||
       typeof v.note!=="string"||
-      ![null,undefined].includes(v.operator as null|undefined)&&typeof v.operator!=="string"||
-      ![null,undefined].includes(v.evidence_reference as null|undefined)&&typeof v.evidence_reference!=="string"||
+      (v.operator!==null&&v.operator!==undefined&&typeof v.operator!=="string")||
+      (v.evidence_reference!==null&&v.evidence_reference!==undefined&&typeof v.evidence_reference!=="string")||
       !validDate(v.created_at)||!validDate(v.order_created_at)||
       Date.parse(v.created_at)<Date.parse(v.order_created_at))return fail();
     auditIds.add(v.evidence_id.toLowerCase());
