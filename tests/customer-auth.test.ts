@@ -19,4 +19,7 @@ test("provider OTP responses and legacy account bridge are size-bounded and type
    "provider errors should never read unbounded private responses");
  assert.match(verify,/normalizeCustomerEmail\(session\.user\.email\)!==email/,
    "signed owner must be the email address that actually received the OTP");
+ assert.match(verify,/const privateJson=\(body:unknown,status=200\)=>NextResponse\.json/);
+ assert.doesNotMatch(verify,/return NextResponse\.json\(/,
+   "no OTP verification result or error may skip private no-store response headers");
 });
