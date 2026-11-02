@@ -335,16 +335,32 @@ def trial_inner_leg_seam_separation(obj, center_x, min_z, height, gap_mm, body=N
     if reproject:
         if body is None or body.type != "MESH" or clearance_m is None or not 0.003 <= clearance_m <= 0.018:
             raise RuntimeError("Native seam reprojection requires original real scanned body and valid clearance.")
-        group = obj.vertex_groups.new(name="LE_UNSAVED_MOVED_CROTCH_ONLY")
-        group.add(changed_indices, 1.0, "REPLACE")
-        reprojection = obj.modifiers.new("LE_UNSAVED_BODY_CLEARANCE_FOR_SEAM", "SHRINKWRAP")
-        reprojection.target = body
-        reprojection.vertex_group = group.name
-        reprojection.wrap_method = "NEAREST_SURFACEPOINT"
-        reprojection.wrap_mode = "OUTSIDE_SURFACE"
-        reprojection.offset = clearance_m
-        apply_modifier(obj, reprojection)
-        obj.vertex_groups.remove(group)
+        # The source mesh has no vertex-weight deform layer. A shrinkwrap
+        # modifier pointing to a transient vertex group fails in native Blender
+        # ("DeformGroup ... not in object"). Evaluate the identical native
+        # modifier on a disposable full-mesh copy, then copy back ONLY the
+        # seam vertices that were physically moved. No other vertices change.
+        probe = obj.copy()
+        original_probe_mesh = obj.data.copy()
+        probe.data = original_probe_mesh
+        probe.name = "LE_UNSAVED_CROTCH_REPROJECTION"
+        bpy.context.scene.collection.objects.link(probe)
+        try:
+            reprojection = probe.modifiers.new("LE_UNSAVED_BODY_CLEARANCE_FOR_SEAM", "SHRINKWRAP")
+            reprojection.target = body
+            reprojection.wrap_method = "NEAREST_SURFACEPOINT"
+            reprojection.wrap_mode = "OUTSIDE_SURFACE"
+            reprojection.offset = clearance_m
+            apply_modifier(probe, reprojection)
+            if len(probe.data.vertices) != len(obj.data.vertices):
+                raise RuntimeError("Crotch source vertices changed during native clearance reprojection.")
+            for index in changed_indices:
+                obj.data.vertices[index].co = probe.data.vertices[index].co.copy()
+            obj.data.update()
+        finally:
+            bpy.data.objects.remove(probe, do_unlink=True)
+            if original_probe_mesh.users == 0:
+                bpy.data.meshes.remove(original_probe_mesh)
     obj["linen_earth_experimental_inner_leg_seam_gap_mm"] = round(gap_mm, 3)
     obj["linen_earth_experimental_inner_leg_seam_changed_vertices"] = len(changed_indices)
     obj["linen_earth_experimental_inner_leg_seam_reprojected"] = bool(reproject)
