@@ -39,9 +39,10 @@ test("legacy gallery cannot claim availability even with an unrelated verified I
 test("public inventory endpoint uses verified ledger for structured fabrics and never certifies legacy scans",async()=>{
   const {readFile}=await import("node:fs/promises");
   const route=await readFile(new URL("../src/app/api/inventory/route.ts",import.meta.url),"utf8");
-  assert.match(route,/applyLiveVerifiedStockAvailability\(FABRIC_STOCK\)/);
-  assert.match(route,/requireVerifiedPublicAvailability\(verified\.stock, verified\.verifiedFabricIds\)/);
-  assert.match(route,/requireVerifiedPublicAvailability\(legacy, \[\]\)/);
+  assert.match(route,/applyLiveVerifiedStockAvailability\(metadataStock\)/);
+  assert.match(route,/loadDesignerFabricMetadata\(\)/);
+  assert.match(route,/requireVerifiedPublicAvailability\(verified\.stock, verified\.verifiedFabricIds, operatorAvailableIds\)/);
+  assert.match(route,/requireVerifiedPublicAvailability\(legacy, \[\], \[\]\)/);
   assert.match(route,/inStock: structured\.filter\(\(fabric\) => fabric\.inStock\)\.length/);
   assert.match(route,/cache-control": "no-store"/);
 });
