@@ -126,6 +126,20 @@ jobs:
               for stage, label in zip(stages, expected):
                   assert stage["stage"] == label
                   assert type(stage["bodyIntersectionPairs"]) is int and stage["bodyIntersectionPairs"] >= 0
+              trials = metrics["realSolidifyVariantComparisons"]
+              assert trials["baselineAfterBodyClearance"] == stages[2]["bodyIntersectionPairs"]
+              configurations = (
+                  ("outwardNoRim", 1.0, False), ("outwardWithRim", 1.0, True),
+                  ("inwardNoRim", -1.0, False), ("inwardWithRim", -1.0, True),
+              )
+              variants = trials["variants"]
+              assert isinstance(variants, list) and len(variants) == 4
+              for variant, (label, offset, rim) in zip(variants, configurations):
+                  assert variant["variant"] == label
+                  assert type(variant["offset"]) in (float, int) and variant["offset"] == offset
+                  assert type(variant["rim"]) is bool and variant["rim"] is rim
+                  assert type(variant["bodyIntersectionPairs"]) is int and variant["bodyIntersectionPairs"] >= 0
+              assert variants[1]["bodyIntersectionPairs"] == stages[-1]["bodyIntersectionPairs"]
               assert type(metrics["evaluatedVertices"]) is int and metrics["evaluatedVertices"] > 0
               assert type(metrics["evaluatedTriangles"]) is int and metrics["evaluatedTriangles"] > 0
           print("TITAN_CONTACT_EVIDENCE_FAIL_CLOSED_VALIDATION_PASSED")

@@ -196,6 +196,47 @@ def actual_contact_pairs(body_tree, garment):
     return count
 
 
+def measure_solidify_variants(obj, body_tree, thickness_m):
+    """Run destructive solidification only on disposable in-memory mesh copies.
+
+    Four measured variants isolate panel normal offset from rim closure without
+    changing the candidate or the original identity-locked .blend file.
+    """
+    specs = (
+        ("outwardNoRim", 1.0, False),
+        ("outwardWithRim", 1.0, True),
+        ("inwardNoRim", -1.0, False),
+        ("inwardWithRim", -1.0, True),
+    )
+    baseline = actual_contact_pairs(body_tree, obj)
+    observations = []
+    for label, offset, rim in specs:
+        clone = obj.copy()
+        temporary_mesh = obj.data.copy()
+        clone.data = temporary_mesh
+        clone.name = "LE_UNSAVED_CONTACT_VARIANT_" + label
+        bpy.context.scene.collection.objects.link(clone)
+        try:
+            modifier = clone.modifiers.new("LE_EXPERIMENTAL_CLOTH_THICKNESS", "SOLIDIFY")
+            modifier.thickness = thickness_m
+            modifier.offset = offset
+            modifier.use_rim = rim
+            apply_modifier(clone, modifier)
+            observations.append({
+                "variant": label,
+                "offset": offset,
+                "rim": rim,
+                "bodyIntersectionPairs": actual_contact_pairs(body_tree, clone),
+            })
+        finally:
+            bpy.data.objects.remove(clone, do_unlink=True)
+            if temporary_mesh.users == 0:
+                bpy.data.meshes.remove(temporary_mesh)
+    if len(observations) != len(specs):
+        raise RuntimeError("Native solidify variant evaluation was incomplete.")
+    return {"baselineAfterBodyClearance": baseline, "variants": observations}
+
+
 def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
     # Measured diagnostics only. These are not garment acceptance or fit proof.
     stages = []
@@ -220,6 +261,7 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
     shrink.offset = clearance_m
     apply_modifier(obj, shrink)
     record_stage("afterBodyClearance")
+    variants = measure_solidify_variants(obj, body_tree, thickness_m) if body_tree is not None else None
 
     solid = obj.modifiers.new("LE_CLOTH_THICKNESS", "SOLIDIFY")
     solid.thickness = thickness_m
@@ -228,6 +270,14 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
     apply_modifier(obj, solid)
     record_stage("afterClothThickness")
     if body_tree is not None:
+        if variants is None or variants["baselineAfterBodyClearance"] != stages[2]["bodyIntersectionPairs"]:
+            raise RuntimeError("Solidify trials disagree with the measured clearance-stage geometry.")
+        production_variant = next(
+            item for item in variants["variants"] if item["variant"] == "outwardWithRim"
+        )
+        if production_variant["bodyIntersectionPairs"] != stages[3]["bodyIntersectionPairs"]:
+            raise RuntimeError("Solidify trial no longer matches the unchanged final authoring recipe.")
+        obj["linen_earth_solidify_variant_contacts_json"] = json.dumps(variants, separators=(",", ":"))
         obj["linen_earth_body_contact_stages_json"] = json.dumps(stages, separators=(",", ":"))
 
 
