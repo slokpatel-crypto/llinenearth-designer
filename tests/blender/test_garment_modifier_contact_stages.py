@@ -81,6 +81,24 @@ assert not any(o.name.startswith("LE_UNSAVED_SHRINKWRAP_TRIAL_") for o in bpy.da
     "A disposable shrinkwrap comparison modified the final Blender scene"
 )
 
+refinement = json.loads(shell["linen_earth_surface_refinement_trials_json"])
+assert [trial["simpleSubdivisionLevel"] for trial in refinement] == [0, 1]
+assert refinement[0]["preWrapVertices"] == refinement[0]["sourceVertices"]
+assert refinement[1]["sourceVertices"] == refinement[0]["sourceVertices"]
+assert refinement[1]["preWrapVertices"] > refinement[1]["sourceVertices"]
+assert all(trial["clearanceMm"] == 7.0 and trial["clothThicknessMm"] == 1.6
+           for trial in refinement)
+assert refinement[0]["bodyPairsAfterWrap"] == stages[2]["bodyIntersectionPairs"]
+assert refinement[0]["bodyPairsAfterClothThickness"] == stages[3]["bodyIntersectionPairs"]
+assert all(type(trial["bodyPairsAfterWrap"]) is int and
+           type(trial["bodyPairsAfterClothThickness"]) is int and
+           trial["bodyPairsAfterWrap"] >= 0 and
+           trial["bodyPairsAfterClothThickness"] >= 0
+           for trial in refinement)
+assert not any(obj.name.startswith("LE_UNSAVED_REFINEMENT_TRIAL_") for obj in bpy.data.objects), (
+    "A disposable refined garment leaked into the production Blender scene"
+)
+
 
 # Fail closed on empty evaluated surfaces instead of fabricating a zero count.
 empty = bpy.data.objects.new("EmptyPanel", bpy.data.meshes.new("EmptyMesh"))
