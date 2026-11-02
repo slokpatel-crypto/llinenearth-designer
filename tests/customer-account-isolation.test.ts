@@ -8,8 +8,9 @@ test("customer account refresh invalidates stale owner responses before renderin
  assert.match(source,/const epoch=\+\+refreshEpoch\.current/);
  assert.equal(source.split("if(epoch!==refreshEpoch.current)return").length-1,2,
    "check session fetch and all owned vault/share responses separately");
- const clear=source.indexOf("setShares([]);setDesigns([]);setProfiles([])");
  const ownerGuard=source.indexOf("loadedOwnerId.current!==(next?.id??null)");
+ const clear=source.indexOf("setShares([]);setShareListUnavailable(false);setDesigns([])",ownerGuard);
+
  assert.ok(ownerGuard>=0&&clear>ownerGuard,
    "clear previous owner state before displaying the new account");
  const assign=source.indexOf("setDesigns(Array.isArray(d.designs)?d.designs:[])");
