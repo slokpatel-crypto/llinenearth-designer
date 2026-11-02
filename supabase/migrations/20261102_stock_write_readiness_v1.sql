@@ -62,6 +62,12 @@ select coalesce(bool_and(
     else true
   end
 ),false) and to_regclass('private.fabric_stock_ledger') is not null
+  -- Approved paths are not trustworthy if an unprivileged caller can CREATE
+  -- a shadow object in either schema used by SECURITY DEFINER stock code.
+  and not has_schema_privilege('anon','public','CREATE')
+  and not has_schema_privilege('authenticated','public','CREATE')
+  and not has_schema_privilege('anon','private','CREATE')
+  and not has_schema_privilege('authenticated','private','CREATE')
 from checked;
 $$;
 
