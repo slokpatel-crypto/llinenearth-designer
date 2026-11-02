@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -250,12 +250,11 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   }
 
   if (occasion === "Formal" || occasion === "Semi-Formal") {
-    // Camp-collar resort shirts have an untucked construction. Do not let the
-    // formality preset silently contradict the proposed versioned garment.
-    // The occasion mismatch is flagged for review below instead.
-    if (!/camp|cuban/.test(shirt)) style.shirtWear = "Tucked";
     style.rise = pickStyleChoice("rise", /mid rise|high rise/i, style.rise);
   }
+  // Pure resolution keeps proposed photo wear aligned with versioned camp
+  // construction; a formal camp is still explicitly flagged for review.
+  style.shirtWear = styleDirectorWearForCandidate(occasion,shirt,style.shirtWear);
   return style;
 }
 
