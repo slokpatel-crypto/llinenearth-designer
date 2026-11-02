@@ -32,14 +32,23 @@ export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricP
   if(!reference || reference.length<2 || !checkedBy || checkedBy.length<2) return null;
 
   const evidenceDate=source.evidenceDate==null ? "" : clean(source.evidenceDate,20);
-  if(evidenceDate===null || (evidenceDate&&!/^\d{4}-\d{2}-\d{2}$/.test(evidenceDate))) return null;
+  if(evidenceDate===null) return null;
+  if(evidenceDate){
+    // A formatted string is not proof of an actual inspection day.
+    const match=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(evidenceDate);
+    if(!match) return null;
+    const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]);
+    if(year<1 || month<1 || month>12 || day<1 || day>31) return null;
+    const daysInMonth=[31,(year%4===0 && (year%100!==0 || year%400===0))?29:28,31,30,31,30,31,31,30,31,30,31];
+    if(day>daysInMonth[month-1]) return null;
+  }
 
   const sourceUrl=source.sourceUrl==null ? "" : clean(source.sourceUrl,500);
   if(sourceUrl===null) return null;
   if(sourceUrl){
     try{
       const parsed=new URL(sourceUrl);
-      if(!["https:","http:"].includes(parsed.protocol)) return null;
+      // A supplier verification link must use TLS, matching the evidence intake contract.\n      if(parsed.protocol!=="https:" || !parsed.hostname) return null;
     }catch{return null;}
   }
 
