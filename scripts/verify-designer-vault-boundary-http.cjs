@@ -68,7 +68,7 @@ async function main(){
     }
     if(path==="/auth/v1/verify"){
       res.writeHead(200,{"content-type":"application/json"});
-      res.end(JSON.stringify({user:{id:"123e4567-e89b-12d3-a456-426614174000",email:"alice@example.com"}}));return;
+      res.end(JSON.stringify({user:{id:payload.email==="bob@example.com"?"223e4567-e89b-12d3-a456-426614174000":"123e4567-e89b-12d3-a456-426614174000",email:payload.email}}));return;
     }
     if(path==="/rest/v1/rpc/designer_locked_revision_vault_store"){
       assert.equal(req.method,"POST");
@@ -88,6 +88,20 @@ async function main(){
         {"content-type":mode==="storeWrongMime"?"text/plain":"application/json"});
       res.end(mode==="storeBackend500"?JSON.stringify({error:privateMarker}):
         outcomes[mode]??JSON.stringify(vaultId));return;
+    }
+    if(path==="/rest/v1/rpc/designer_locked_revision_vault_get_owned"){
+      assert.equal(payload.p_vault_id,vaultId);
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end(payload.p_owner_user_id==="123e4567-e89b-12d3-a456-426614174000"?
+        JSON.stringify([{payload:revision,expires_at:"2027-01-01T00:00:00Z"}]):"[]");return;
+    }
+    if(path==="/rest/v1/rpc/designer_locked_revision_vault_list_owned"){
+      res.writeHead(200,{"content-type":"application/json"});res.end("[]");return;
+    }
+    if(path==="/rest/v1/rpc/designer_locked_revision_vault_delete_owned"){
+      assert.equal(payload.p_vault_id,vaultId);
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end(payload.p_owner_user_id==="123e4567-e89b-12d3-a456-426614174000"?"true":"false");return;
     }
     if(path==="/rest/v1/rpc/designer_locked_revision_vault_delete"){
       assert.equal(req.method,"POST");
@@ -222,6 +236,40 @@ async function main(){
     assert.equal(seen.length,1,"legacy bridge only if no signed cookie");
     assert.equal(seen[0].path,"/auth/v1/user");
 
+    // Two synthetic accounts, one locked vault: owner IDs must come from the
+    // verified cookie, never from forged JSON fields or another account.
+    const bobVerify=await authPost("/api/customer-auth/verify",
+      {email:"bob@example.com",token:"123456"});
+    assert.equal(bobVerify.status,200);
+    const bobCookie=bobVerify.headers.get("set-cookie")?.match(/le_customer_session=([^;]+)/)?.[1];
+    assert.ok(bobCookie);
+    for(const [name,cookie,expectedStatus,expectedOwner] of [
+      ["alice",signedCookie,200,"123e4567-e89b-12d3-a456-426614174000"],
+      ["bob",bobCookie,404,"223e4567-e89b-12d3-a456-426614174000"],
+    ]){
+      seen.length=0;
+      const response=await fetch(url,{method:"POST",
+        headers:{...fixtureHeaders(),cookie:"le_customer_session="+cookie},
+        body:JSON.stringify({action:"loadOwned",vaultId,
+          ownerUserId:"123e4567-e89b-12d3-a456-426614174000"}),
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(response.status,expectedStatus,name+" private vault isolation");
+      assert.equal(seen.length,1);
+      assert.equal(seen[0].path,"/rest/v1/rpc/designer_locked_revision_vault_get_owned");
+      assert.equal(seen[0].payload.p_owner_user_id,expectedOwner);
+      const data=await response.json();
+      if(name==="bob")assert.ok(!JSON.stringify(data).includes(recipeHash));
+      else assert.equal(data.revision?.recipeHash,recipeHash);
+    }
+    seen.length=0;
+    const bobDelete=await fetch(url,{method:"POST",
+      headers:{...fixtureHeaders(),cookie:"le_customer_session="+bobCookie},
+      body:JSON.stringify({action:"deleteOwned",vaultId,ownerUserId:"123e4567-e89b-12d3-a456-426614174000"}),
+      signal:AbortSignal.timeout(15000)});
+    assert.equal(bobDelete.status,200);
+    assert.deepEqual(await bobDelete.json(),{deleted:false});
+    assert.equal(seen.length,1);
+    assert.equal(seen[0].payload.p_owner_user_id,"223e4567-e89b-12d3-a456-426614174000");
     const crossSiteLogout=await fetch(origin+"/api/customer-auth/logout",{
       method:"POST",headers:{origin:"https://attacker.invalid",cookie:"le_customer_session="+signedCookie}});
     assert.equal(crossSiteLogout.status,403);
@@ -337,7 +385,7 @@ async function main(){
       assert.ok(!JSON.stringify(data).includes(privateMarker),kind);
     }
     assert.ok(!output.includes(privateMarker),"sensitive upstream error/JSON must not enter server logs");
-    console.log("TITAN designer vault boundary PASS: 58 synthetic HTTP cases; zero real writes.");
+    console.log("TITAN designer vault boundary PASS: 62 synthetic HTTP cases; zero real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>upstream.close(resolve));
