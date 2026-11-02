@@ -19,7 +19,7 @@ async function run(){
     for(const width of [390,768,1440]){
       const context=await browser.newContext({viewport:{width,height:950}});
       const page=await context.newPage();
-      let revoked=false,failRevoke=true,paidCalls=0,forgedOwnerField=0;
+      let revoked=false,failRevoke=true,failList=width===390,paidCalls=0,forgedOwnerField=0;
       const intercepted=[],failedResponses=[];
       let expectedResource503Errors=0;
       page.on("response",response=>{
@@ -50,6 +50,8 @@ async function run(){
         if(name==="/api/customer-auth/session")
           return route.fulfill({status:200,json:{customer}});
         if(name==="/api/designer/share"){
+          if(body.action==="listOwned"&&failList)
+            return route.fulfill({status:503,json:{error:"Share list unavailable"}});
           if(body.action==="listOwned")return route.fulfill({status:200,json:{
             shares:[{tokenHash,expiresAt:"2027-01-01T00:00:00Z",
               revokedAt:revoked?"2026-11-03T00:00:00Z":null}]
@@ -72,6 +74,13 @@ async function run(){
       });
       await page.goto(origin+"/account",{waitUntil:"networkidle"});
       await page.getByRole("heading",{name:/My public design shares/}).waitFor();
+      if(failList){
+        await page.getByRole("alert").getByText(/share management is unavailable/).waitFor();
+        assert.equal(await page.getByText("No managed share links are linked to this account.").count(),0,
+          "Backend failure must never be reported as empty account shares");
+        failList=false;
+        await page.getByRole("button",{name:"Retry share list"}).click();
+      }
       const revoke=page.getByRole("button",{name:"Revoke this link"});
       await revoke.waitFor();
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,
@@ -91,11 +100,14 @@ async function run(){
       assert.equal(forgedOwnerField,0,"UI must not forge or send customer owner identity");
       assert.equal(paidCalls,0,"account page must not use paid image services");
       assert.equal(intercepted.filter(x=>x.name==="/api/designer/share"&&x.action==="revokeOwned").length,2);
-      assert.deepEqual(failedResponses,[{status:503,pathname:"/api/designer/share"}],
-        "Only the explicitly expected revocation 503 may fail over HTTP");
-      assert.ok(expectedResource503Errors<=1,
-        "Unexpected duplicate 503 resource console errors");
-      proof.push({width,revocation503Displayed:true,revokeSucceeded:true,
+      const expectedFailures=width===390?2:1;
+      assert.deepEqual(failedResponses,
+        Array.from({length:expectedFailures},()=>({status:503,pathname:"/api/designer/share"})),
+        "Only the explicitly expected list and revocation 503s may fail over HTTP");
+      assert.ok(expectedResource503Errors<=expectedFailures,
+        "Unexpected 503 resource console errors");
+      proof.push({width,shareList503RetryPassed:width===390,
+        revocation503Displayed:true,revokeSucceeded:true,
         expectedResource503Errors,paidCalls:0});
       await page.screenshot({path:path.join(output,"account-revoked-"+width+".png"),fullPage:true});
       await context.close();
