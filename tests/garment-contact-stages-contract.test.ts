@@ -17,6 +17,14 @@ test("native Blender contact evidence measures the unchanged six-panel authoring
   assert.ok(diagnostics.includes("set(observations) != set(author.GARMENT_OBJECTS)"));
   for(const name of ["LE_BODY_CLEARANCE","LE_GARMENT_SMOOTH","LE_CLOTH_THICKNESS"])
     assert.ok(diagnostics.includes(name),name);
+  for(const part of [
+    "def evaluated_body_guide_width_mm(obj, guide_z):",
+    'mesh.calc_loop_triangles()',
+    'guide_center = preflight.guide_center(guide)',
+    'source_width = evaluated_body_guide_width_mm(body, guide_center.z)',
+    '"sourceBodyGuideWidths": body_guide_widths',
+    '"sourceBodyWiderThanPhotoGarment": source_width > target_width',
+  ]) assert.ok(diagnostics.includes(part),part);
   assert.match(diagnostics,/"candidateOnly": True/);
   assert.match(diagnostics,/"productionApproved": False/);
   assert.ok(workflow.includes("--python tests/blender/diagnose_garment_contact_stages.py"));
