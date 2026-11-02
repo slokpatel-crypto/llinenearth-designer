@@ -726,6 +726,12 @@ jobs:
           assert left == proximity["actualSourceBoundaryEdges"]["left"]["nearCenterlineBoundaryEdges"] > 0
           assert right == proximity["actualSourceBoundaryEdges"]["right"]["nearCenterlineBoundaryEdges"] > 0
           assert 0 <= pairing["mutualNearestEdgeCount"] <= min(left,right)
+          unmatched = pairing["unmatchedOriginalSourceEdgeIndices"]
+          for side, total in (("left", left), ("right", right)):
+              indexes = unmatched[side]
+              assert indexes == sorted(set(indexes))
+              assert all(type(k) is int and 0 <= k < total for k in indexes)
+              assert len(indexes) == total - pairing["mutualNearestEdgeCount"] == 4
           correspondences = pairing["mutualPairIndices"]
           assert len(correspondences) == pairing["mutualNearestEdgeCount"]
           assert len(set(map(tuple, correspondences))) == len(correspondences)
@@ -743,6 +749,7 @@ jobs:
           print("TITAN_REAL_CROTCH_SOURCE_CUT_EDGE_ALIGNMENT_MEASURED_NO_BRIDGE_APPROVAL", json.dumps({
               "leftEdges":left,"rightEdges":right,
               "mutualNearestPairs":pairing["mutualNearestEdgeCount"],
+              "unmatchedEdgeIndices":pairing["unmatchedOriginalSourceEdgeIndices"],
               "leftToRight":pairing["nearestEdgeMidpointDistanceMm"]["leftToRight"],
               "rightToLeft":pairing["nearestEdgeMidpointDistanceMm"]["rightToLeft"],
               "productionApproved":False,
