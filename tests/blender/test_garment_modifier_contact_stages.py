@@ -17,7 +17,7 @@ bpy.ops.object.delete(use_global=False)
 bpy.ops.mesh.primitive_cube_add(size=2, location=(0, 0, 0))
 body = bpy.context.object
 body.name = "Body"
-bpy.ops.mesh.primitive_cube_add(size=2, location=(0.4, 0, 0))
+# Face-interior crossing, not coplanar overlapping cube boundaries.\nbpy.ops.mesh.primitive_cube_add(size=1, location=(1.2, 0, 0))
 shell = bpy.context.object
 shell.name = "ShellCandidate"
 bpy.context.view_layer.update()
