@@ -102,7 +102,7 @@ function record(value: unknown): Record<string, unknown> {
 }
 function timestamp(value: unknown): number {
   const text = nonEmpty(value, "event timestamp", 20, 40);
-  const parts = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d+)?(?:Z|([+-])(\\d{2}):(\\d{2}))$/.exec(text);
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/.exec(text);
   if (!parts || !ISO_TIMESTAMP.test(text)) throw new Error("Invalid event timestamp.");
   const year = Number(parts[1]);
   const month = Number(parts[2]);
