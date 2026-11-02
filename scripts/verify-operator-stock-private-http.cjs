@@ -217,6 +217,24 @@ async function main(){
       {action:"consume",reservationId:uuid,actualMetres:1.125,
         checkedBy:"Synthetic checker",sourceReference:"SYNTH-CUT-01"},
     ];
+    // A one-element JSON array/object or overlong string must not become a named physical
+    // checker or a signed supplier/cutting source. Every stock action fails
+    // before privileged PostgREST even in the synthetic writable fixture.
+    for(const [draft,actor] of [
+      [record,"recordedBy"],[reservation,"requestedBy"],
+      [closures[0],"releasedBy"],[closures[1],"checkedBy"],
+    ]){
+      for(const field of [actor,"sourceReference"]){
+        for(const invalid of [[draft[field]],{value:draft[field]},null,42,
+          "X".repeat(field==="sourceReference"?241:121)]){
+          mode="created";seen.length=0;
+          const {response,result}=await call("POST",{...draft,[field]:invalid});
+          assert.equal(response.status,409,draft.action+" coerced physical "+field);
+          assert.ok(typeof result.error==="string"&&result.error.includes("required"));
+          assert.equal(seen.length,0,draft.action+" coerced "+field+" reached a privileged stock RPC");
+        }
+      }
+    }
     // Malformed and JSON-coerced reservation identities are definitive 409s.
     // Neither a syntactically invalid UUID nor a one-element JSON array may
     // reach the privileged stock release/consume RPC.
