@@ -246,10 +246,33 @@ jobs:
             supabase/migrations/20261001_fabric_stock_ledger.sql \
             supabase/migrations/20261028_fabric_stock_provenance.sql \
             supabase/migrations/20261029_stock_reservation_provenance.sql \
-            supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql \
-            supabase/migrations/20261102_stock_reservation_key_payload_binding.sql; do
+            supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql; do
             psql -v ON_ERROR_STOP=1 -f "$migration"
           done
+          # Capture the *original* reservation function BEFORE replacing it
+          # with the stricter M53 payload-bound definition. This is disposable
+          # CI, not a claim of a full Supabase backup or live restoration.
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          test "$TITAN_SYNTHETIC_PG_TEST" = enabled
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select pg_get_functiondef('public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)'::regprocedure)" \
+            > "$RUNNER_TEMP/titan-legacy-reserve-definition.sql"
+          grep -qi 'create or replace function public.fabric_stock_reserve_v2' \
+            "$RUNNER_TEMP/titan-legacy-reserve-definition.sql"
+          sha256sum "$RUNNER_TEMP/titan-legacy-reserve-definition.sql" \
+            > "$RUNNER_TEMP/titan-legacy-reserve-definition.sha256"
+          psql -v ON_ERROR_STOP=1 -f \
+            supabase/migrations/20261102_stock_reservation_key_payload_binding.sql
+          # Confirm the migration really changed the saved body.
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select pg_get_functiondef('public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)'::regprocedure)" \
+            > "$RUNNER_TEMP/titan-reserve-upgraded.sql"
+          if cmp -s "$RUNNER_TEMP/titan-legacy-reserve-definition.sql" \
+                    "$RUNNER_TEMP/titan-reserve-upgraded.sql"; then
+            echo "Reservation payload binding did not change the function" >&2
+            exit 1
+          fi
       - name: Verify read-only staging preflight blocks rollout before v3 migration
         run: |
           test "$PGDATABASE" = titan_synthetic
@@ -350,6 +373,38 @@ jobs:
             "select case when to_regprocedure('public.fabric_stock_record_v3(text,text,numeric,text,text,text,text)') is null
                      and to_regprocedure('public.fabric_stock_record_v2(text,text,numeric,text,text,text)') is not null
                     then 'PASS' else 'FAIL' end" | grep -qx PASS
+      - name: Restore exact original reservation definition and verify role isolation
+        run: |
+          # Revert both source-only stock changes on DISPOSABLE PG17:
+          # v3 is already dropped; now restore the pre-upgrade v2 body.
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          test "$TITAN_SYNTHETIC_PG_TEST" = enabled
+          (cd "$RUNNER_TEMP" && sha256sum -c titan-legacy-reserve-definition.sha256)
+          psql -X -v ON_ERROR_STOP=1 -f \
+            "$RUNNER_TEMP/titan-legacy-reserve-definition.sql"
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select pg_get_functiondef('public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)'::regprocedure)" \
+            > "$RUNNER_TEMP/titan-reserve-restored.sql"
+          cmp "$RUNNER_TEMP/titan-legacy-reserve-definition.sql" \
+              "$RUNNER_TEMP/titan-reserve-restored.sql"
+          # The restored function must have the original service-only policy.
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when
+               to_regprocedure('public.fabric_stock_record_v3(text,text,numeric,text,text,text,text)') is null
+               and has_function_privilege('service_role',
+                 'public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)','EXECUTE')
+               and not has_function_privilege('anon',
+                 'public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)','EXECUTE')
+               and not has_function_privilege('authenticated',
+                 'public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)','EXECUTE')
+               then 'PASS' else 'FAIL' end" | grep -qx PASS
+          psql -X -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
+          sleep 2
+          node scripts/verify-stock-postgrest-rpc.cjs rolledback
+          psql -X -v ON_ERROR_STOP=1 -At -f scripts/stock-v3-readonly-preflight.sql |
+            jq -e '.status=="BLOCKED" and
+              (.checks|any(.function=="record_v3" and .installed==false))' >/dev/null
       - name: Stop disposable PostgREST container
         if: always()
         run: docker rm -f titan-postgrest-m46 || true
