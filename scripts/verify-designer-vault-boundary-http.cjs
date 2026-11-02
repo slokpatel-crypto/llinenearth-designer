@@ -76,11 +76,14 @@ async function main(){
     const path=req.url||"";
     if(path==="/auth/v1/user"){
       seen.push({path,headers:req.headers});
-      if(req.headers.authorization!=="Bearer valid-legacy"){
+      if(req.headers.authorization!=="Bearer valid-legacy"&&
+        req.headers.authorization!=="Bearer malformed-legacy"){
         res.writeHead(401,{"content-type":"application/json"});res.end("{}");return;
       }
       res.writeHead(200,{"content-type":"application/json"});
-      res.end(JSON.stringify({id:"123e4567-e89b-12d3-a456-426614174000",email:"alice@example.com"}));return;
+      res.end(JSON.stringify({id:req.headers.authorization==="Bearer malformed-legacy"
+        ?"broken-owner-identity":"123e4567-e89b-12d3-a456-426614174000",
+        email:"alice@example.com"}));return;
     }
     const parts=[];
     for await(const chunk of req)parts.push(chunk);
@@ -386,6 +389,13 @@ async function main(){
     assert.equal((await legacy.json()).customer?.email,"alice@example.com");
     assert.equal(seen.length,1,"legacy bridge only if no signed cookie");
     assert.equal(seen[0].path,"/auth/v1/user");
+
+    seen.length=0;
+    const malformedLegacy=await fetch(origin+"/api/customer-auth/session",{
+      headers:{cookie:"le_customer_access=malformed-legacy"}});
+    assert.deepEqual(await malformedLegacy.json(),{customer:null},
+      "malformed legacy provider owner ID must not become an authenticated customer");
+    assert.deepEqual(seen.map(item=>item.path),["/auth/v1/user"]);
 
     // Two synthetic accounts, one locked vault: owner IDs must come from the
     // verified cookie, never from forged JSON fields or another account.
