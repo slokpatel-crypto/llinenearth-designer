@@ -7,6 +7,8 @@ on:
       - "scripts/blender/prepare-linen-earth-body.py"
       - "scripts/blender/author-linen-earth-officewear.py"
       - "scripts/blender/preflight-linen-earth-officewear.py"
+      - "scripts/blender/diagnose-linen-earth-contact.py"
+      - "tests/blender/test_real_contact_diagnostics.py"
       - "scripts/blender/summarize-native-candidate-preflight.py"
       - "tests/python/test_native_candidate_preflight_summary.py"
       - ".github/workflows/titan-native-source-candidate.yml"
@@ -16,6 +18,8 @@ on:
       - "scripts/blender/prepare-linen-earth-body.py"
       - "scripts/blender/author-linen-earth-officewear.py"
       - "scripts/blender/preflight-linen-earth-officewear.py"
+      - "scripts/blender/diagnose-linen-earth-contact.py"
+      - "tests/blender/test_real_contact_diagnostics.py"
       - "scripts/blender/summarize-native-candidate-preflight.py"
       - ".github/workflows/titan-native-source-candidate.yml"
 
@@ -57,6 +61,12 @@ jobs:
           set -euo pipefail
           "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
             --python tests/blender/test_sparse_garment_plane_section.py
+      - name: Verify real world-space diagnostic fixtures (not fit approval)
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_real_contact_diagnostics.py
       - name: Fetch official pinned CC0 source body bundle
         shell: bash
         run: |
@@ -75,6 +85,15 @@ jobs:
             --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
             --output .cache/linen-earth/linen-earth-officewear-authored.blend
           test -s .cache/linen-earth/linen-earth-officewear-authored.blend
+      - name: Record real contact and mesh topology before rejection
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/titan-candidate-evidence"
+          "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+            --python-exit-code 1 --python scripts/blender/diagnose-linen-earth-contact.py -- \
+            --output "$RUNNER_TEMP/titan-candidate-evidence/contact-diagnostics.json"
+          test -s "$RUNNER_TEMP/titan-candidate-evidence/contact-diagnostics.json"
       - name: Produce real Blender rejection evidence, not an approved model
         shell: bash
         run: |
@@ -97,6 +116,7 @@ jobs:
           name: titan-native-candidate-evidence
           path: |
             ${{ runner.temp }}/titan-candidate-evidence/rejection-report.json
+            ${{ runner.temp }}/titan-candidate-evidence/contact-diagnostics.json
             ${{ runner.temp }}/titan-candidate-evidence/preflight.log
           if-no-files-found: ignore
           retention-days: 7
