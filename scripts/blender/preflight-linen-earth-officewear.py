@@ -481,6 +481,12 @@ def main():
                 f"{name} does not yet carry its canonical material slot name; exporter will replace it."
             )
 
+        # Preserve independently evaluated panel geometry in the structured
+        # production report. Without this assignment every valid six-piece
+        # garment disappears from report["objects"], losing the actual
+        # vertices/triangles/UV and transform evidence needed for review.
+        objects[name] = entry
+
     if total_triangles > MAX_TOTAL_TRIANGLES:
         reasons.append(
             f"Garment geometry has {total_triangles:,} evaluated triangles; advisory mobile budget is {MAX_TOTAL_TRIANGLES:,}."
