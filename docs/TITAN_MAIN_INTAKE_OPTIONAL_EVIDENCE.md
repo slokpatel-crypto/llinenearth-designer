@@ -350,3 +350,10 @@
 - **Documentation note:** `docs/TITAN_RELEASE_CHECKLIST.md`, `docs/TITAN_RELEASE_CHECKPOINT.md` and `TODO.md` are absent from the current #735/main-derived tree; this existing main-intake checkpoint is the persistent record for this isolated slice. Do not infer that their older-branch contents are current.
 
 No main merge, production deployment, live migration, physical stock mutation or paid AI operation.
+
+### M45 browser acceptance extension (2026-11-02 UTC)
+
+- **Exact preceding checkpoint:** `3faf0ae23937256f26c06b98673b248484cb91ee`; **browser regression commit:** `72bf2d838f15264ff45d50bbdcf56f9dc02ca8e9`. The final documentation commit is a new head; verify all workflows against that SHA, not against the earlier code commit.
+- **Acceptance assertion:** pinned real Chromium, authenticated 390px Stock Desk, intercepted synthetic stock APIs. When `sessionStorage.setItem` silently discards the manual retry journal, the UI must show its existing fail-closed message and send **zero** physical-stock POST requests. Existing blocked-storage, same-key replay and same-tab reload checks remain intact.
+- **Execution:** matching-head CI and browser outcomes **PENDING**; no local browser run is claimed. Parent #735 M44's earlier workflow outcomes do not certify this child.
+- **Next:** inspect Full CI and Non-3D exact-head results; repair test/implementation failures, preserve the draft and staging-only migration boundary. No main merge or production deployment.
