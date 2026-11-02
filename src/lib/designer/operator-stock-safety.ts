@@ -14,6 +14,11 @@ export function stockMutationRequestError(request:Pick<Request,"url"|"headers">)
   const origin=request.headers.get("origin");
   if(origin&&origin!==new URL(request.url).origin)
     return {status:403,error:"Cross-site stock changes are not allowed."};
+  // Origin may be omitted by a proxy or intermediary; reject independent
+  // browser Fetch Metadata unless it certifies this exact origin.
+  const fetchSite=request.headers.get("sec-fetch-site");
+  if(fetchSite&&fetchSite!=="same-origin"&&fetchSite!=="none")
+    return {status:403,error:"Cross-site stock changes are not allowed."};
   if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type")||""))
     return {status:415,error:"Stock mutations require JSON."};
   const length=request.headers.get("content-length");
