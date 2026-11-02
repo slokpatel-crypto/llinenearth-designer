@@ -108,3 +108,18 @@ export function styleDirectorPresentationIssues(
   }
   return issues;
 }
+
+/**
+ * Resolve the wear choice of a proposed (not yet locked) Style Director shirt.
+ * Camp-collar construction stays untucked even in formal prompts, where it
+ * is separately marked needs_review rather than silently changed.
+ */
+export function styleDirectorWearForCandidate(
+  occasion: OccasionTier,
+  candidateShirt: string,
+  proposedWear: DesignerStyle["shirtWear"],
+): DesignerStyle["shirtWear"] {
+  if (/camp|cuban/i.test(candidateShirt)) return "Untucked";
+  if (occasion === "Formal" || occasion === "Semi-Formal") return "Tucked";
+  return proposedWear;
+}
