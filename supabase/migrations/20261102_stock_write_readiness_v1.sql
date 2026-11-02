@@ -20,8 +20,16 @@ with expected(name,signature) as (
   from expected e
 ), checked as (
   select s.name,s.oid,p.prosecdef,
+    -- Merely having a search_path setting is insufficient: a later
+    -- ALTER FUNCTION could include pg_temp or an untrusted schema while
+    -- preserving SECURITY DEFINER and all the normal role grants.
+    -- Accept only the paths used by the reviewed v2/v3 stock functions.
     coalesce(exists(select 1 from unnest(p.proconfig) c
-      where c like 'search_path=%'),false) as fixed_path,
+      where split_part(c,'=',1)='search_path'
+        and regexp_replace(
+          replace(lower(split_part(c,'=',2)), '"', ''),
+          '[[:space:]]+', '', 'g'
+        ) in ('public','public,private')),false) as fixed_path,
     coalesce(has_function_privilege('service_role',s.oid,'EXECUTE'),false) as service_ok,
     coalesce(has_function_privilege('anon',s.oid,'EXECUTE'),false) as anon_ok,
     coalesce(has_function_privilege('authenticated',s.oid,'EXECUTE'),false) as auth_ok,

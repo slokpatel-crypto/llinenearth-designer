@@ -344,9 +344,16 @@ jobs:
           select case when public.fabric_stock_write_ready_v1() is false then 'path-blocked' else 'FAIL' end;
           rollback;
           select case when public.fabric_stock_write_ready_v1() is true then 'path-restored' else 'FAIL' end;
+          begin;
+          -- A fixed but unsafe path must fail just like a missing path.
+          alter function public.fabric_stock_snapshot_v2(text[])
+            set search_path=public,pg_temp;
+          select case when public.fabric_stock_write_ready_v1() is false then 'temp-path-blocked' else 'FAIL' end;
+          rollback;
+          select case when public.fabric_stock_write_ready_v1() is true then 'temp-path-restored' else 'FAIL' end;
           SQL
           )
-          expected=$'grant-blocked\ngrant-restored\ninvoker-blocked\ninvoker-restored\npath-blocked\npath-restored'
+          expected=$'grant-blocked\ngrant-restored\ninvoker-blocked\ninvoker-restored\npath-blocked\npath-restored\ntemp-path-blocked\ntemp-path-restored'
           test "$observed" = "$expected"
       - name: Build isolated real Next stock API route
         run: |
