@@ -19,7 +19,9 @@ export function photoPanelRotationFromVertical(axis:PhotoPanelAxis) {
   // Canvas positive rotation sends the downwards vertical grain to the LEFT.
   // Negate the photo's rightward measured lean to follow each source panel.
   const degrees=-Math.atan2(dx,dy)*180/Math.PI;
-  return Math.round(degrees*10)/10;
+  const rounded=Math.round(degrees*10)/10;
+  // Signed zero has no directional meaning and must not fail strict snapshots.
+  return rounded===0 ? 0 : rounded;
 }
 
 

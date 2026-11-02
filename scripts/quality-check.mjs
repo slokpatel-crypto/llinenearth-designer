@@ -385,7 +385,7 @@ for (const token of [
 }
 if (!photoPanelGrain.includes("const degrees=-Math.atan2(dx,dy)*180/Math.PI")) throw new Error("Photo panel grain regression: Canvas grain tilt mirrored the photographed panel.");
 if (!photoPanelGrain.includes("export function photoPanelPatternMatrix(")) throw new Error("Photo panel grain regression: pure seam-phase matrix missing.");
-if (/deferCoverage:true, offsetX:\\s*(?:11|-9|5|-5)/.test(photoPreview)) throw new Error("Photo panel grain regression: ad-hoc sleeve/trouser pattern shifts returned.");
+if (/deferCoverage:true, offsetX:\s*(?:11|-9|5|-5)/.test(photoPreview)) throw new Error("Photo panel grain regression: ad-hoc sleeve/trouser pattern shifts returned.");
 console.log("Photo panel grain gate passed: signed panel geometry and shared texture phase without inventing physical repeat evidence.");
 for (const token of [
   "PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION",
