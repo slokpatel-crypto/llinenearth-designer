@@ -1155,7 +1155,7 @@ export function DesignerModule() {
       setShareRevocation(result.revokeKey?{token:result.token,revokeKey:result.revokeKey}:null);
       try{
         await navigator.clipboard.writeText(url);
-        setShareMessage(`Public view-only design link copied · expires in ${result.expiresInDays||30} days${result.revokeKey?" · keep your separate private revoke code to cancel this link":""}.`);
+        setShareMessage(`Public view-only design link copied · expires in ${result.expiresInDays||30} days${result.audited?" · verified share audit recorded":" · beta audit unavailable"}${result.revokeKey?" · keep your separate private revoke code to cancel this link":""}.`);
       }catch{
         setShareMessage(`Public link: ${url}${result.revokeKey?" · keep your private revoke code separately":""}`);
       }
