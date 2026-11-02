@@ -13,7 +13,14 @@ test("garment body clearance is applied AFTER all geometry-smoothing passes",()=
   assert.ok(smooth>=0&&smoothApply>smooth&&shrink>smoothApply&&shrinkApply>shrink&&solid>shrinkApply,
     "never smooth the cloth after final body clearance; inspect native collision counts");
   assert.ok(routine.includes('shrink.wrap_mode = "OUTSIDE_SURFACE"'));
-  assert.ok(routine.includes('shrink.offset = clearance_m'));
+  assert.ok(routine.includes('effective_clearance = clearance_m + (waist_extra_m if obj.name == "TrouserWaistFabric" else 0.0)'),
+    "every other garment must retain original 7mm body clearance");
+  assert.ok(routine.includes('shrink.offset = effective_clearance'),
+    "the real waist-only extra clearance must be applied after smoothing");
+  assert.ok(author.includes('"Experimental extra waistband layering clearance", 0.0, 9.0'),
+    "extra waist clearance remains strictly bounded");
+  assert.ok(author.includes('clearance_m + waist_extra_m > 0.018'),
+    "never exceed the original 18mm total body-clearance limit");
   assert.ok(routine.includes('solid.thickness = thickness_m'));
   const workflow=readFileSync(".github/workflows/titan-native-source-candidate.yml","utf8");
   assert.ok(workflow.includes("scripts/blender/author-linen-earth-officewear.py"));
