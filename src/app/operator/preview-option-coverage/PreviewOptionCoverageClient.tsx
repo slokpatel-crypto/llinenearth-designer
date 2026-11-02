@@ -17,6 +17,7 @@ type Summary={
   total:number;previewApproved:number;previewRejected:number;previewPending:number;
   noPreviewSupport:number;approximatePreview:number;constructionBlocked:number;constructionPending:number;
   fullyCleared:number;coveragePercent:number;gateComplete:boolean;
+  catalogueComplete:boolean;missingOptionCount:number;duplicateOptionCount:number;unknownOptionCount:number;
 };
 
 const panel:React.CSSProperties={background:"#fff",border:"1px solid #ddd7cc",borderRadius:18,padding:20};
@@ -113,6 +114,7 @@ export default function PreviewOptionCoverageClient(){
         <article><small>PREVIEW PENDING</small><div style={{fontSize:34,fontWeight:800}}>{summary?.previewPending??0}</div></article>
         <article><small>CONSTRUCTION PENDING</small><div style={{fontSize:34,fontWeight:800}}>{summary?.constructionPending??0}</div></article>
         <article><small>COVERAGE</small><div style={{fontSize:30,fontWeight:800}}>{summary?.coveragePercent??0}%</div></article>
+        <article><small>CATALOG INTEGRITY</small><div style={{fontSize:24,fontWeight:800}}>{summary?.catalogueComplete?"COMPLETE":"OPEN"}</div><small>Missing {summary?.missingOptionCount??0} · Duplicate {summary?.duplicateOptionCount??0} · Unknown {summary?.unknownOptionCount??0}</small></article>
         <article><small>GATE</small><div style={{fontSize:24,fontWeight:800}}>{summary?.gateComplete?"COMPLETE":"OPEN"}</div></article>
       </section>
 
