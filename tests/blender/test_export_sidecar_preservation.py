@@ -6,6 +6,7 @@ or physical measurement is rewritten.
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 from pathlib import Path
 
@@ -44,5 +45,37 @@ with tempfile.TemporaryDirectory(prefix="titan-export-pair-safety-") as temp:
     # Different output basename cannot steal the old sidecar.
     clean = folder / "different-candidate.glb"
     assert export.validate_export_destination(str(clean), None) == str(folder / "different-candidate.viewer.json")
+
+    # A failed measured-manifest serialization must not truncate or replace
+    # the last complete evidence file paired with the existing GLB.
+    old_manifest = sidecar.read_bytes()
+    original_dump = export.json.dump
+    def fail_after_partial_write(payload, handle, **kwargs):
+        handle.write('{"partial":')
+        raise RuntimeError("simulated manifest serialization failure")
+    export.json.dump = fail_after_partial_write
+    try:
+        export.write_viewer_manifest(
+            str(glb), 1.727, {"name": "fixture"},
+            {"id": export.MODEL_IDENTITY_ID}, {"panels": {"fixture": {}}},
+        )
+    except RuntimeError as exc:
+        assert "simulated manifest" in str(exc)
+    else:
+        raise AssertionError("Manifest serialization failure was swallowed")
+    finally:
+        export.json.dump = original_dump
+    assert sidecar.read_bytes() == old_manifest
+    assert not list(folder.glob(".linen-earth-viewer-*.tmp"))
+
+    written = export.write_viewer_manifest(
+        str(glb), 1.727, {"name": "fixture"},
+        {"id": export.MODEL_IDENTITY_ID}, {"panels": {"fixture": {}}},
+    )
+    assert written == str(sidecar)
+    manifest = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert manifest["modelIdentity"]["id"] == export.MODEL_IDENTITY_ID
+    assert manifest["referenceHeightMm"] == 1727
+    assert not list(folder.glob(".linen-earth-viewer-*.tmp"))
 
 print("TITAN_NATIVE_MEASURED_SIDECAR_EXPORT_GUARD_PASSED")

@@ -43,6 +43,34 @@ def args():
     return parser.parse_args(argv)
 
 
+
+def verify_render_settings(width, height, samples):
+    """Reject unbounded or silently downgraded QA render requests."""
+    if (not isinstance(width, int) or not isinstance(height, int)
+        or not isinstance(samples, int)
+        or not 480 <= width <= 2048
+        or not 640 <= height <= 3072
+        or width * height > 6_000_000
+        or not 8 <= samples <= 256):
+        raise ValueError(
+            "Four-angle QA requires 480–2048px width, 640–3072px height, "
+            "at most 6 million pixels and 8–256 real render samples."
+        )
+
+
+def apply_render_samples(scene, samples):
+    """Require an actual Blender render-sampling property, not a no-op flag."""
+    eevee = getattr(scene, "eevee", None)
+    if eevee is not None:
+        for name in ("taa_render_samples", "taa_samples"):
+            if hasattr(eevee, name):
+                setattr(eevee, name, samples)
+                if getattr(eevee, name) == samples:
+                    return
+    raise RuntimeError("Blender EEVEE render-sample setting is unavailable; QA cannot certify this render.")
+
+
+
 def verify_source():
     source = Path(bpy.data.filepath)
     if not source.is_file() or not source.name.endswith(".blend"):
@@ -96,6 +124,7 @@ def add_area(name, location, power, size, target):
 def setup_studio(mid_height, floor_z, options):
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE_NEXT"
+    apply_render_samples(scene, options.samples)
     scene.render.resolution_x = options.width
     scene.render.resolution_y = options.height
     scene.render.resolution_percentage = 100
@@ -134,8 +163,7 @@ def setup_studio(mid_height, floor_z, options):
 
 def main():
     options = args()
-    if options.width < 480 or options.height < 640 or options.samples < 8:
-        raise RuntimeError("QA render resolution/samples must retain usable inspection detail.")
+    verify_render_settings(options.width, options.height, options.samples)
     source, mid_height, floor_z = verify_source()
     output = options.output_dir.expanduser().resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -155,6 +183,8 @@ def main():
         "measuredFabricDrapeApproved": False,
         "renderEngine": scene.render.engine,
         "resolution": [options.width, options.height],
+        "requestedRenderSamples": options.samples,
+        "renderSamplesApplied": True,
         "angles": [],
     }
     target = Vector((0, 0, mid_height))

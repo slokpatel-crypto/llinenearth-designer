@@ -19,6 +19,7 @@ import os
 import re
 import runpy
 import sys
+import tempfile
 
 import bpy
 from mathutils import Vector
@@ -277,9 +278,30 @@ def write_viewer_manifest(output_path, height, source, model_identity, panel_spe
         payload["cameraOrbits"] = panel_spec["cameraOrbits"]
 
     manifest_path = viewer_manifest_path(output_path)
-    with open(manifest_path, "w", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2)
-        handle.write("\n")
+    manifest_dir = os.path.dirname(manifest_path)
+    os.makedirs(manifest_dir, exist_ok=True)
+    descriptor, staged_path = tempfile.mkstemp(
+        prefix=".linen-earth-viewer-",
+        suffix=".tmp",
+        dir=manifest_dir,
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(staged_path, manifest_path)
+    except BaseException:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        try:
+            os.unlink(staged_path)
+        except FileNotFoundError:
+            pass
+        raise
     return manifest_path
 
 
