@@ -46,6 +46,8 @@ async function main(){
   let swallowedCommittedReceiptAck=false;
   let loseOneCommittedReservationAck=false;
   let swallowedCommittedReservationAck=false;
+  let loseOneCommittedCloseAck=null;
+  let swallowedCommittedCloseAck=null;
   const proxy=http.createServer((req,res)=>{
     if(!req.url.startsWith("/rest/v1/rpc/")){
       res.writeHead(404);res.end();return;
@@ -58,9 +60,12 @@ async function main(){
         req.url==="/rest/v1/rpc/fabric_stock_record_v3";
       const dropReserve=loseOneCommittedReservationAck&&
         req.url==="/rest/v1/rpc/fabric_stock_reserve_v2";
-      if(dropReceipt||dropReserve){
+      const dropClose=loseOneCommittedCloseAck!==null&&
+        req.url==="/rest/v1/rpc/"+loseOneCommittedCloseAck;
+      if(dropReceipt||dropReserve||dropClose){
         if(dropReceipt)loseOneCommittedReceiptAck=false;
         if(dropReserve)loseOneCommittedReservationAck=false;
+        if(dropClose)loseOneCommittedCloseAck=null;
         // Consume the real upstream 200 fully first: PostgREST/PostgreSQL
         // have already inserted and committed. Replace only its HTTP ack.
         const committed=remote.statusCode===200;
@@ -68,6 +73,7 @@ async function main(){
         remote.on("end",()=>{
           if(dropReceipt)swallowedCommittedReceiptAck=committed;
           if(dropReserve)swallowedCommittedReservationAck=committed;
+          if(dropClose)swallowedCommittedCloseAck=committed;
           res.writeHead(502,{"content-type":"application/json"});
           res.end(JSON.stringify({error:"synthetic gateway lost committed reply"}));
         });
@@ -206,6 +212,88 @@ async function main(){
     assert.equal(Number(finalReservedRow.available_metres),1.250);
     assert.equal(finalReservedRow.manual_event_count,2,
       "reservation and replay must not change physical-receipt ledger count");
+    // A committed consume closes the reservation and returns unused cloth.
+    // The gateway drops the ACK only AFTER PostgREST successfully commits.
+    const consume={
+      action:"consume",reservationId:reserveReplay.data.reservationId,
+      actualMetres:0.500,note:"synthetic measured cutting usage",
+      checkedBy:"Synthetic cutting checker",
+      sourceReference:"SYNTH-M58-USAGE-CARD",
+    };
+    swallowedCommittedCloseAck=null;
+    loseOneCommittedCloseAck="fabric_stock_consume_reservation_v2";
+    const consumedLost=await call("POST",consume);
+    assert.equal(consumedLost.status,503,"lost committed consume ACK must fail closed");
+    assert.deepEqual(consumedLost.data,{error:"Stock operation could not be verified."});
+    assert.equal(swallowedCommittedCloseAck,true,
+      "the consume transaction must have committed before dropping the HTTP ACK");
+    const afterConsume=await call("GET");
+    assert.equal(afterConsume.status,200);
+    const consumedRow=afterConsume.data.stock.find(x=>x.fabric_id===fabricId);
+    assert.equal(Number(consumedRow.physical_metres),1.500,
+      "exactly 0.500m of fabric must be consumed once");
+    assert.equal(Number(consumedRow.reserved_metres),0,
+      "consuming the cutting sheet must release all unused held metres");
+    assert.equal(Number(consumedRow.available_metres),1.500);
+    const consumeRetry=await call("POST",consume);
+    assert.equal(consumeRetry.status,409,
+      "replaying an already committed consume must be a definitive no-op");
+    assert.deepEqual(consumeRetry.data,{
+      error:"Reservation was not active; no cloth was consumed.",
+    });
+    const afterConsumeRetry=await call("GET");
+    assert.equal(afterConsumeRetry.status,200);
+    const afterConsumeRetryRow=afterConsumeRetry.data.stock.find(x=>x.fabric_id===fabricId);
+    assert.equal(Number(afterConsumeRetryRow.physical_metres),1.500);
+    assert.equal(Number(afterConsumeRetryRow.reserved_metres),0);
+    assert.equal(Number(afterConsumeRetryRow.available_metres),1.500);
+
+    // A fresh documented cutting sheet may be reserved, then released.
+    // Again a lost ACK must not create a second stock release on retry.
+    const reserveToRelease={...reservation,
+      revisionId:"LE-LOCK-SYNTHETIC-M58-RELEASE",
+      quantityMetres:0.400,
+      sourceReference:"SYNTH-M58-CANCELLATION-CUT-SHEET",
+      requestKey:"SYNTH-M48-"+randomUUID(),
+    };
+    const reservedForRelease=await call("POST",reserveToRelease);
+    assert.equal(reservedForRelease.status,200);
+    assert.match(reservedForRelease.data.reservationId,/^[0-9a-f-]{36}$/i);
+    const beforeRelease=await call("GET");
+    const beforeReleaseRow=beforeRelease.data.stock.find(x=>x.fabric_id===fabricId);
+    assert.equal(Number(beforeReleaseRow.reserved_metres),0.400);
+    assert.equal(Number(beforeReleaseRow.available_metres),1.100);
+    const release={
+      action:"release",reservationId:reservedForRelease.data.reservationId,
+      note:"synthetic canceled cutting sheet",
+      releasedBy:"Synthetic cutting checker",
+      sourceReference:"SYNTH-M58-CANCELLATION-EVIDENCE",
+    };
+    swallowedCommittedCloseAck=null;
+    loseOneCommittedCloseAck="fabric_stock_release_v2";
+    const releaseLost=await call("POST",release);
+    assert.equal(releaseLost.status,503,"lost committed release ACK must fail closed");
+    assert.equal(swallowedCommittedCloseAck,true,
+      "the release transaction must commit before dropping the HTTP ACK");
+    const afterRelease=await call("GET");
+    const releasedRow=afterRelease.data.stock.find(x=>x.fabric_id===fabricId);
+    assert.equal(Number(releasedRow.physical_metres),1.500);
+    assert.equal(Number(releasedRow.reserved_metres),0);
+    assert.equal(Number(releasedRow.available_metres),1.500);
+    const releaseRetry=await call("POST",release);
+    assert.equal(releaseRetry.status,409,
+      "replaying a committed release must reject an already-closed reservation");
+    assert.deepEqual(releaseRetry.data,{
+      error:"Reservation was not active; no cloth was released.",
+    });
+    const afterReleaseRetry=await call("GET");
+    const releasedRetryRow=afterReleaseRetry.data.stock.find(x=>x.fabric_id===fabricId);
+    assert.equal(Number(releasedRetryRow.physical_metres),1.500);
+    assert.equal(Number(releasedRetryRow.reserved_metres),0);
+    assert.equal(Number(releasedRetryRow.available_metres),1.500);
+    assert.equal(releasedRetryRow.manual_event_count,2,
+      "closing reservations cannot mint extra manual stock events");
+    console.log("TITAN M58 PASS: lost committed consume/release ACK returns 503, retry 409 and stable ledger balances.");
     console.log("TITAN M56 PASS: real reservation committed but lost ACK; same-key retries hold only 0.750m; changed evidence rejected.");
     console.log("TITAN M49 PASS: committed-but-lost HTTP ack returns 503; same-key retry preserves physical stock.");
     console.log("TITAN M48 Next->PostgREST PASS: authorized v3, replay, mismatch, CSRF, 401, v2 snapshot.");
