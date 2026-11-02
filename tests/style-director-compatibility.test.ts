@@ -2,13 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  styleDirectorCandidateCollar,
   styleDirectorConstructionIssues,
   styleDirectorIntelligenceTrustWeight,
   styleDirectorPresentationIssues,
   styleDirectorWearForCandidate,
 } from "../src/lib/designer/style-director-compatibility.ts";
 import type { StyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
-import type { DesignerStyle } from "../src/lib/designer/engine.ts";
+import { DESIGNER_STYLE_CHOICES, type DesignerStyle } from "../src/lib/designer/engine.ts";
 
 const trust = (reviewStatus: "unreviewed" | "approved" | "corrected" | "rejected",
   level: "reviewed" | "high-confidence" | "provisional") =>
@@ -152,4 +153,47 @@ test("pure proposed-wear rule keeps formal camp untucked without changing other 
   assert.equal(styleDirectorWearForCandidate("Casual", "Camp-Collar Shirt", "Tucked"), "Untucked");
   assert.equal(styleDirectorWearForCandidate("Smart-Casual", "Oxford Button-Down Shirt", "Untucked"), "Untucked");
   assert.equal(styleDirectorWearForCandidate("Casual", "Spread-Collar Dress Shirt", "Tucked"), "Tucked");
+});
+
+test("Cuban-only and camp aliases share canonical collar construction without inventing a photo option", () => {
+  const choices=DESIGNER_STYLE_CHOICES.collar;
+  const camp=styleDirectorCandidateCollar("Camp-Collar Shirt",choices);
+  const cuban=styleDirectorCandidateCollar("Cuban Resort Shirt",choices);
+  assert.deepEqual(cuban,camp,"Cuban-only candidate must not use a different legacy mapping");
+  assert.equal(camp?.versioned,"cuban_camp_collar");
+  // The current closed photographic vocabulary does not expose the advanced
+  // Cuban collar. Retain its canonical construction, but never claim the
+  // original photo can render the collar or silently insert a new option.
+  assert.equal(camp?.legacy,null);
+  const band=styleDirectorCandidateCollar("Band-Collar Shirt",choices);
+  assert.deepEqual(band,{legacy:"Mandarin / Band Collar",versioned:"mandarin_band_collar"});
+  assert.equal(styleDirectorCandidateCollar("Spread-Collar Dress Shirt",choices),null);
+});
+
+test("named Cuban and camp candidate paths remain review-only across formal and casual wear", () => {
+  for(const candidate of ["Camp-Collar Shirt","Cuban Resort Shirt"]){
+    const named=styleDirectorCandidateCollar(candidate,DESIGNER_STYLE_CHOICES.collar);
+    assert.equal(named?.versioned,"cuban_camp_collar");
+    const versioned=spec({
+      type:"camp_collar_resort",collar:named.versioned,
+      wear:"untucked",
+    });
+    for(const occasion of ["Formal","Casual"] as const){
+      const wear=styleDirectorWearForCandidate(occasion,candidate,"Tucked");
+      assert.equal(wear,"Untucked");
+      const photoStyle=photo(named.legacy??"Point (Standard) Collar",wear);
+      const presentation=styleDirectorPresentationIssues(photoStyle,versioned);
+      assert.deepEqual(presentation.map(issue=>issue.code),["legacy_collar_mismatch"],
+        "unrepresentable camp photo must be marked for review, not treated as accurate");
+      const construction=styleDirectorConstructionIssues(versioned,occasion);
+      assert.deepEqual(construction.map(issue=>issue.code),
+        occasion==="Formal"?["formal_camp_collar"]:[]);
+      assert.ok([...presentation,...construction].length>0,
+        "the real-model decision must remain needs_review without a matching photo option");
+    }
+  }
+  const agent=readFileSync("src/lib/style-director-agent.ts","utf8");
+  assert.equal(agent.split("styleDirectorCandidateCollar(shirt,").length-1,2,
+    "photo selection and versioned spec must use the same named-collar resolver");
+  assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'));
 });
