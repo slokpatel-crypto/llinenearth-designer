@@ -95,7 +95,7 @@ test("operator release UI supplies the real named checker and physical cancellat
   const action=code.slice(code.indexOf('action:"release"'));
   assert.ok(action.includes("releasedBy:close.checkedBy"));
   assert.ok(action.includes("sourceReference:close.sourceReference"));
-  assert.ok(code.includes('close.sourceReference.trim().length<3} onClick={()=>void post({action:"release"'));
+  assert.ok(code.includes('close.sourceReference.trim().length<3||!writesEnabled} onClick={()=>void post({action:"release"'));
   assert.ok(code.includes("totalAvailable.toFixed(3)"));
   assert.ok(code.includes("totalReserved.toFixed(3)"));
 });
@@ -144,4 +144,22 @@ test("all stock ledger responses are private and upstream errors do not leak",()
   assert.equal((route.match(/NextResponse\.json\(/g)||[]).length,1,
     "all endpoint responses must pass through private no-store helper");
   assert.ok(route.includes("snapshot unavailable (details redacted)."));
+});
+
+test("legacy v2 stock route fails closed before any privileged write without synthetic fixture approval",()=>{
+  const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
+  const client=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
+  const helper=readFileSync("src/lib/designer/stock-v2-write-hold.ts","utf8");
+  const firstRpc=route.indexOf('rpc<string>("fabric_stock_record_v2"');
+  const hold=route.indexOf('if(!legacyStockWritesEnabled())');
+  const parsed=route.indexOf("readBoundedStockMutationJson(request)");
+  assert.ok(parsed>=0&&hold>parsed&&firstRpc>hold);
+  assert.ok(route.includes('status:423'));
+  assert.ok(route.includes("writesEnabled:legacyStockWritesEnabled()"));
+  assert.ok(client.includes('setWritesEnabled(data.writesEnabled)'));
+  assert.ok(client.includes('!configured||!writesEnabled||!mutationGate.current.enter()'));
+  assert.equal((client.match(/disabled=\{uncertainWrite\|\|busy\|\|snapshotState!==\"ready\"\|\|!configured\|\|!writesEnabled\|\|/g)||[]).length,4);
+  assert.ok(helper.includes('setting==="test-v2-only"'));
+  assert.ok(helper.includes('synthetic==="enabled"'));
+  assert.ok(helper.includes('!vercel'));
 });
