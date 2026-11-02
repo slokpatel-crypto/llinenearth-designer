@@ -17,54 +17,52 @@ import {
 
 export const runtime="nodejs";
 const MAX_VERIFY_REQUEST_BYTES=4_096;
+const privateJson=(body:unknown,status=200)=>NextResponse.json(body,{
+  status,headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"},
+});
 
 export async function POST(request:Request){
   const requestError=secureJsonRequestError(request,MAX_VERIFY_REQUEST_BYTES);
-  if(requestError)return NextResponse.json({error:requestError.error},{status:requestError.status,headers:{"cache-control":"private, no-store"}});
+  if(requestError)return privateJson({error:requestError.error},requestError.status);
   try{
     const body=await readSecureJsonObject(request,MAX_VERIFY_REQUEST_BYTES);
     const email=normalizeCustomerEmail(body.email);
     const token=String(body.token||"").replace(/\s/g,"");
     if(!email||token.length<6||token.length>12) {
-      return NextResponse.json({error:"Enter the email and code you received."},{status:400});
+      return privateJson({error:"Enter the email and code you received."},400);
     }
 
     // A separate shared email budget limits OTP guessing across instances.
     // A broken throttle store must not allow unlimited verification attempts.
     try{
       if(!await distributedOtpRateAllowed(email,"verify"))
-        return NextResponse.json({error:"Too many code attempts. Try again later."},
-          {status:429,headers:{"cache-control":"private, no-store"}});
+        return privateJson({error:"Too many code attempts. Try again later."},429);
     }catch{
-      return NextResponse.json({error:"Secure code verification is temporarily unavailable."},
-        {status:503,headers:{"cache-control":"private, no-store"}});
+      return privateJson({error:"Secure code verification is temporarily unavailable."},503);
     }
     const session=await verifyCustomerOtp(email,token);
     // Never bind an OTP sent for Alice to a different Supabase account.
     // Inconsistent upstream identity data must not issue a durable cookie.
     if(!validCustomerSessionIdentityId(session.user?.id)||
       normalizeCustomerEmail(session.user.email)!==email) {
-      return NextResponse.json({error:"The sign-in response was incomplete."},{status:502});
+      return privateJson({error:"The sign-in response was incomplete."},502);
     }
 
     const customer={id:session.user.id,email:session.user.email||email};
     const durableToken=createSignedCustomerSession(customer);
     if(!durableToken){
-      return NextResponse.json({error:"Customer session signing is not configured."},{status:503});
+      return privateJson({error:"Customer session signing is not configured."},503);
     }
     if(customerSessionRevocationRequired()){
       try{
         if(!await customerSessionBearerAllowed(durableToken))
           throw new Error("New signed session unexpectedly revoked.");
       }catch{
-        return NextResponse.json({error:"Secure customer sessions are temporarily unavailable."},
-          {status:503,headers:{"cache-control":"private, no-store"}});
+        return privateJson({error:"Secure customer sessions are temporarily unavailable."},503);
       }
     }
 
-    const response=NextResponse.json({ok:true,customer},{
-      headers:{"cache-control":"private, no-store","pragma":"no-cache"},
-    });
+    const response=privateJson({ok:true,customer});
     response.cookies.set(CUSTOMER_SESSION_COOKIE,durableToken,CUSTOMER_SESSION_COOKIE_OPTIONS);
 
     for(const name of [CUSTOMER_ACCESS_COOKIE,CUSTOMER_REFRESH_COOKIE]){
@@ -75,9 +73,9 @@ export async function POST(request:Request){
     }
     return response;
   }catch(error){
-    if(error instanceof SecureJsonBodyTooLarge)return NextResponse.json({error:"Request payload is too large."},{status:413});
-    if(error instanceof SecureJsonBodyInvalid)return NextResponse.json({error:"Invalid JSON request."},{status:400});
+    if(error instanceof SecureJsonBodyTooLarge)return privateJson({error:"Request payload is too large."},413);
+    if(error instanceof SecureJsonBodyInvalid)return privateJson({error:"Invalid JSON request."},400);
     console.error("[customer-auth/verify] verification failed (details redacted).");
-    return NextResponse.json({error:"That code is invalid or expired."},{status:401,headers:{"cache-control":"private, no-store"}});
+    return privateJson({error:"That code is invalid or expired."},401);
   }
 }
