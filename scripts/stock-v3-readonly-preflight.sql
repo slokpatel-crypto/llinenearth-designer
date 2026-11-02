@@ -48,14 +48,14 @@ WITH expected(name,signature) AS (
       ELSE true
     END AS payload_binding_guard_present,
     COALESCE(p.prosecdef,false) AS security_definer,
+    -- Preserve quoted identifier boundaries: "public,private" is one schema.
     -- Must agree with fabric_stock_write_ready_v1(): accepting any
     -- search_path= setting would report READY for unsafe pg_temp drift.
     COALESCE(EXISTS(SELECT 1 FROM unnest(p.proconfig) c
       WHERE split_part(c,'=',1)='search_path'
         AND regexp_replace(
-          replace(lower(split_part(c,'=',2)), '"', ''),
-          '[[:space:]]+', '', 'g'
-        ) IN ('public','public,private')),false) AS fixed_search_path,
+          split_part(c,'=',2), '[[:space:]]+', '', 'g'
+        ) ~ '^(public|"public")(,(private|"private"))?$')),false) AS fixed_search_path,
     COALESCE(has_function_privilege('service_role',f.oid,'EXECUTE'),false) AS service_role_execute,
     COALESCE(has_function_privilege('anon',f.oid,'EXECUTE'),false) AS anon_execute,
     COALESCE(has_function_privilege('authenticated',f.oid,'EXECUTE'),false) AS authenticated_execute
