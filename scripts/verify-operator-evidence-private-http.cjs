@@ -174,6 +174,9 @@ async function main(){
       for(const attack of [
         {headers:{origin:"https://cross-site.invalid","content-type":"application/json"},expected:403},
         {headers:{origin:"null","content-type":"application/json"},expected:403},
+        {headers:{"sec-fetch-site":"cross-site","content-type":"application/json"},expected:403},
+        {headers:{"sec-fetch-site":"same-site","content-type":"application/json"},expected:403},
+        {headers:{origin,"sec-fetch-site":"cross-site","content-type":"application/json"},expected:403},
         {headers:{"content-type":"text/plain"},expected:415},
         {headers:{"content-type":"application/x-www-form-urlencoded"},expected:415},
       ]){

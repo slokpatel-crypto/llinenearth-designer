@@ -51,11 +51,30 @@ test("cross-origin browser writes and spoofed origin values cannot reach privile
   }
 });
 
+test("Fetch Metadata blocks cross-site and same-site-subdomain writes even without Origin",()=>{
+  for(const site of ["cross-site","same-site","invalid"]){
+    const result=operatorEvidenceMutationRequestError(request({
+      "sec-fetch-site":site,"content-type":"application/json",
+    }));
+    assert.equal(result?.status,403);
+    const withMatchingOrigin=operatorEvidenceMutationRequestError(request({
+      origin:"https://shop.linenearth.example",
+      "sec-fetch-site":site,"content-type":"application/json",
+    }));
+    assert.equal(withMatchingOrigin?.status,403);
+  }
+  for(const site of ["same-origin","none"]){
+    assert.equal(operatorEvidenceMutationRequestError(request({
+      "sec-fetch-site":site,"content-type":"application/json",
+    })),null);
+  }
+});
+
 test("simple cross-site form body, missing JSON content-type, and advertised over-limit payloads are rejected",()=>{
   for(const type of ["text/plain","application/x-www-form-urlencoded","multipart/form-data","application/jsonp","", "application/json-notreally"]){
     assert.equal(operatorEvidenceMutationRequestError(request({"content-type":type}))?.status,415);
   }
-  for(const len of ["32769","9999999","-1","invalid","3.5"]){
+  for(const len of ["32769","9999999","-1","invalid","3.5","9007199254740993"]){
     assert.equal(operatorEvidenceMutationRequestError(request({
       "content-type":"application/json","content-length":len,
     }))?.status,413);
