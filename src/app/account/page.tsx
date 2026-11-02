@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CustomerFitResult, CustomerOutcomeRating } from "@/lib/designer/customer-production-outcomes";
 
 type Customer={id?:string;email:string|null};
@@ -46,12 +46,24 @@ export default function AccountPage(){
   const [claimMeasurement,setClaimMeasurement]=useState("");
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState(false);
+  // A delayed Alice vault/share request must never repopulate Bob's account,
+  // nor update the screen after sign-out. Epochs invalidate stale refreshes.
+  const refreshEpoch=useRef(0);
+  const loadedOwnerId=useRef<string|null>(null);
 
   const refresh=useCallback(async()=>{
+    const epoch=++refreshEpoch.current;
     const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
-    const next=session.customer||null;
+    if(epoch!==refreshEpoch.current)return;
+    const next:Customer|null=session.customer||null;
+    if(loadedOwnerId.current!==next?.id){
+      // Clear prior account data in the same render batch as identity change.
+      loadedOwnerId.current=next?.id??null;
+      setShares([]);setDesigns([]);setProfiles([]);setQuotes([]);
+      setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});
+    }
     setCustomer(next);
-    if(!next){setShares([]);setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});return;}
+    if(!next)return;
 
     const [d,m,p,s]=await Promise.all([
       fetch("/api/designer/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
@@ -60,6 +72,7 @@ export default function AccountPage(){
       fetch("/api/designer/share",{method:"POST",headers:{"content-type":"application/json"},
         body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()).catch(()=>({shares:[]})),
     ]);
+    if(epoch!==refreshEpoch.current)return;
     setDesigns(Array.isArray(d.designs)?d.designs:[]);
     setShares(Array.isArray(s.shares)?s.shares:[]);
     setProfiles(Array.isArray(m.profiles)?m.profiles:[]);
