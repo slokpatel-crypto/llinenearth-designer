@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -49,6 +50,21 @@ def bounded_measured_mm(value, field, minimum_mm, maximum_mm):
             f"{maximum_mm:g} mm; the garment will not be silently resized."
         )
     return value / 1000.0
+
+
+def safe_candidate_output(raw_output, source_blend):
+    """Never overwrite the existing identity-locked body source scene."""
+    if not source_blend:
+        raise RuntimeError("Open a saved identity-locked source .blend before authoring.")
+    source = Path(source_blend).expanduser().resolve()
+    if source.suffix.lower() != ".blend" or not source.is_file():
+        raise RuntimeError("The identity-locked source must be a saved .blend file.")
+    output = Path(raw_output).expanduser().resolve()
+    if output.suffix.lower() != ".blend":
+        raise ValueError("The authored candidate output must end in .blend.")
+    if output == source or (output.exists() and os.path.samefile(output, source)):
+        raise ValueError("Refusing to overwrite the original identity-locked Blender source.")
+    return output
 
 
 def world_bounds(obj):
@@ -192,6 +208,8 @@ def planar_grain_uv(obj):
 
 def main():
     options = cli_args()
+    # Preserve the original locked .blend before any scene mutation.
+    output = safe_candidate_output(options.output, bpy.data.filepath)
     # Validate every physical authoring parameter before touching the scene.
     clearance_m = bounded_measured_mm(options.clearance_mm, "Body clearance", 3.0, 18.0)
     thickness_m = bounded_measured_mm(options.thickness_mm, "Cloth shell thickness", 0.6, 4.0)
@@ -252,7 +270,6 @@ def main():
     bpy.context.scene["linen_earth_trouser_waist_guide_z_m"] = round(trouser_waist_guide_z, 6)
     bpy.context.scene["linen_earth_trouser_waist_authored_top_z_m"] = round(trouser_waist_upper_z, 6)
 
-    output = Path(options.output).expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
 
