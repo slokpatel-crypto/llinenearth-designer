@@ -25,7 +25,12 @@ export function operatorEvidenceMutationRequestError(
     if(!allowed)
       return {status:403,error:"Cross-site production evidence changes are not allowed."};
   }
-  // Fetch Metadata is an independent browser signal when a reverse proxy\n  // drops Origin. A same-site subdomain is not the same authenticated origin.\n  const fetchSite=request.headers.get("sec-fetch-site");\n  if(fetchSite&&fetchSite!=="same-origin"&&fetchSite!=="none")\n    return {status:403,error:"Cross-site production evidence changes are not allowed."};\n  if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type")||""))
+  // Fetch Metadata is an independent browser signal when a reverse proxy
+  // drops Origin. A same-site subdomain is not the same authenticated origin.
+  const fetchSite=request.headers.get("sec-fetch-site");
+  if(fetchSite&&fetchSite!=="same-origin"&&fetchSite!=="none")
+    return {status:403,error:"Cross-site production evidence changes are not allowed."};
+  if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type")||""))
     return {status:415,error:"Production evidence mutations require JSON."};
   const length=request.headers.get("content-length");
   if(length!==null&&(!/^\d+$/.test(length)||!Number.isSafeInteger(Number(length))||Number(length)>maxBytes))
