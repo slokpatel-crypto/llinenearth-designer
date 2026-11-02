@@ -39,8 +39,15 @@ async function ready(page){
 }
 async function submit(page,records){
   const before=records.length;
-  await page.getByRole("button",{name:"Record stock event"}).click();
-  await page.waitForFunction(({count})=>document.querySelector(".stockMessage")?.textContent?.includes("Provenance-backed stock event recorded.")===true,{count:before},{timeout:15000});
+  // Wait for this click's own network response, not a stale success label
+  // left in the DOM from a previous acknowledged manual receipt.
+  const [response]=await Promise.all([
+    page.waitForResponse(r=>r.url().includes("/api/operator/stock")&&
+      r.request().method()==="POST",{timeout:15000}),
+    page.getByRole("button",{name:"Record stock event"}).click(),
+  ]);
+  assert.equal(response.status(),200);
+  await page.getByText("Provenance-backed stock event recorded.",{exact:true}).waitFor();
   assert.equal(records.length,before+1,"exactly one record POST should be issued");
   return records.at(-1);
 }
