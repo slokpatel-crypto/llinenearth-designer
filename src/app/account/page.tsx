@@ -36,6 +36,7 @@ export default function AccountPage(){
   const [codeSent,setCodeSent]=useState(false);
   const [designs,setDesigns]=useState<OwnedDesign[]>([]);
   const [shares,setShares]=useState<OwnedShare[]>([]);
+  const [shareListUnavailable,setShareListUnavailable]=useState(false);
   const [profiles,setProfiles]=useState<OwnedProfile[]>([]);
   const [quotes,setQuotes]=useState<OwnedQuote[]>([]);
   const [orders,setOrders]=useState<OwnedOrder[]>([]);
@@ -59,7 +60,7 @@ export default function AccountPage(){
     if(loadedOwnerId.current!==(next?.id??null)){
       // Clear prior account data in the same render batch as identity change.
       loadedOwnerId.current=next?.id??null;
-      setShares([]);setDesigns([]);setProfiles([]);setQuotes([]);
+      setShares([]);setShareListUnavailable(false);setDesigns([]);setProfiles([]);setQuotes([]);
       setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});
     }
     setCustomer(next);
@@ -70,11 +71,14 @@ export default function AccountPage(){
       fetch("/api/measurements/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
       fetch("/api/customer-account/production",{cache:"no-store"}).then(r=>r.json()),
       fetch("/api/designer/share",{method:"POST",headers:{"content-type":"application/json"},
-        body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()).catch(()=>({shares:[]})),
+        body:JSON.stringify({action:"listOwned"})})
+        .then(r=>r.ok?r.json():Promise.reject(new Error("Share management unavailable")))
+        .catch(()=>({shares:[],unavailable:true})),
     ]);
     if(epoch!==refreshEpoch.current)return;
     setDesigns(Array.isArray(d.designs)?d.designs:[]);
     setShares(Array.isArray(s.shares)?s.shares:[]);
+    setShareListUnavailable(Boolean(s.unavailable)||!Array.isArray(s.shares));
     setProfiles(Array.isArray(m.profiles)?m.profiles:[]);
     setQuotes(Array.isArray(p.quotes)?p.quotes:[]);
     setOrders(Array.isArray(p.orders)?p.orders:[]);
@@ -150,7 +154,8 @@ export default function AccountPage(){
       // the follow-up session request is slow or unavailable.
       refreshEpoch.current+=1;
       loadedOwnerId.current=null;
-      setCustomer(null);setShares([]);setDesigns([]);setProfiles([]);
+      setCustomer(null);setShares([]);setShareListUnavailable(false);
+      setDesigns([]);setProfiles([]);
       setQuotes([]);setOrders([]);setOrderEvents([]);setOutcomes([]);
       setOutcomeDrafts({});
       // A failed recovery claim can leave its bearer credential in the form.
@@ -260,7 +265,10 @@ export default function AccountPage(){
         <section style={card}>
           <h2 style={{marginTop:0}}>My public design shares <span style={{opacity:.45}}>({shares.length})</span></h2>
           <p style={{opacity:.65,fontSize:13}}>Only shares created while signed into this account appear here. Public links and private cancellation codes are never displayed in account history.</p>
-          {shares.length===0?<p style={{opacity:.65}}>No managed share links are linked to this account.</p>:
+          {shareListUnavailable?<div style={{display:"grid",gap:10,justifyItems:"start"}}>
+            <p role="alert" style={{opacity:.8}}>Private share management is unavailable. Your existing links may still be active.</p>
+            <button type="button" disabled={busy} style={button} onClick={()=>void refresh()}>Retry share list</button>
+          </div>:shares.length===0?<p style={{opacity:.65}}>No managed share links are linked to this account.</p>:
             <div style={{display:"grid",gap:12}}>
               {shares.map(share=><div key={share.tokenHash} style={{display:"flex",gap:12,alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",borderTop:"1px solid #ece6dc",paddingTop:12}}>
                 <div style={{display:"grid",gap:4}}>
