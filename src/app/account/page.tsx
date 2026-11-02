@@ -37,6 +37,7 @@ export default function AccountPage(){
   const [designs,setDesigns]=useState<OwnedDesign[]>([]);
   const [shares,setShares]=useState<OwnedShare[]>([]);
   const [shareListUnavailable,setShareListUnavailable]=useState(false);
+  const [sessionUnavailable,setSessionUnavailable]=useState(false);
   const [profiles,setProfiles]=useState<OwnedProfile[]>([]);
   const [quotes,setQuotes]=useState<OwnedQuote[]>([]);
   const [orders,setOrders]=useState<OwnedOrder[]>([]);
@@ -54,14 +55,27 @@ export default function AccountPage(){
 
   const refresh=useCallback(async()=>{
     const epoch=++refreshEpoch.current;
-    const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
+    // A failed session recheck must not leave the previous owner's private
+    // account history or bearer recovery inputs visible on a shared device.
+    const session=await fetch("/api/customer-auth/session",{cache:"no-store"})
+      .then(r=>r.ok?r.json():Promise.reject(new Error("Session check unavailable")))
+      .catch(()=>({customer:null,unavailable:true}));
     if(epoch!==refreshEpoch.current)return;
-    const next:Customer|null=session.customer||null;
+    const raw=session.customer;
+    const next:Customer|null=raw&&typeof raw==="object"&&!Array.isArray(raw)&&
+      typeof raw.id==="string"&&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw.id)&&
+      (raw.email===null||typeof raw.email==="string")?raw:null;
+    const unavailable=Boolean(session.unavailable)||(raw!=null&&!next);
+    setSessionUnavailable(unavailable);
     if(loadedOwnerId.current!==(next?.id??null)){
       // Clear prior account data in the same render batch as identity change.
       loadedOwnerId.current=next?.id??null;
       setShares([]);setShareListUnavailable(false);setDesigns([]);setProfiles([]);setQuotes([]);
       setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});
+      // Also clear unfinished bearer claims if cookies changed outside this tab.
+      setClaimDesign("");setClaimMeasurement("");
+      setEmail("");setCode("");setCodeSent(false);
     }
     setCustomer(next);
     if(!next)return;
@@ -155,6 +169,7 @@ export default function AccountPage(){
       refreshEpoch.current+=1;
       loadedOwnerId.current=null;
       setCustomer(null);setShares([]);setShareListUnavailable(false);
+      setSessionUnavailable(false);
       setDesigns([]);setProfiles([]);
       setQuotes([]);setOrders([]);setOrderEvents([]);setOutcomes([]);
       setOutcomeDrafts({});
@@ -246,6 +261,10 @@ export default function AccountPage(){
         <p style={{maxWidth:700,lineHeight:1.6,opacity:.72}}>Keep locked designs, measurements, quotes and production progress tied to one private account while preserving the recovery-token backup.</p>
       </header>
 
+      {sessionUnavailable&&<section role="alert" style={{...card,display:"grid",gap:10,justifyItems:"start"}}>
+        <p style={{margin:0}}>Account session could not be verified. Previously loaded private details have been hidden.</p>
+        <button type="button" disabled={busy} style={button} onClick={()=>void refresh()}>Retry account session</button>
+      </section>}
       {!customer?<section style={card}>
         <h2 style={{marginTop:0}}>Email sign in</h2>
         <div style={{display:"grid",gap:10,maxWidth:520}}>
