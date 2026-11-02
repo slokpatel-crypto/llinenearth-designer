@@ -110,3 +110,23 @@ test("server-accepted floating-point drift must not mint a second stock key",asy
     "an actual millimetre change must be a separate physical movement"
   );
 });
+
+test("silent manual stock journal write loss and replacement fail closed",async()=>{
+  const ignored={getItem(){return null;},setItem(_key:string,_value:string){}};
+  await assert.rejects(
+    ()=>createStockManualAttemptTracker(keys(),()=>ignored).keyFor(record),
+    /No stock movement was sent/
+  );
+  let stored:string|null=null;
+  const rewritten={
+    getItem(){return stored;},
+    setItem(_key:string,_value:string){stored="[]";},
+  };
+  await assert.rejects(
+    ()=>createStockManualAttemptTracker(keys(),()=>rewritten).keyFor(record),
+    /No stock movement was sent/
+  );
+  const working=memoryStorage(),tracker=createStockManualAttemptTracker(keys(),()=>working);
+  const first=await tracker.keyFor(record);
+  assert.equal(await tracker.keyFor(record),first);
+});
