@@ -23,8 +23,17 @@ test("Stock Desk blocks repeat writes on ambiguous ACK until operator rechecks a
   assert.ok(post.indexOf("requestSent=true")<post.indexOf('fetch("/api/operator/stock"'));
   assert.ok(post.indexOf("httpStatus=response.status")<post.indexOf("const data:unknown=await response.json()"));
   assert.ok(post.indexOf("requireStockClientAcknowledgment(body.action,data)")<post.indexOf("acknowledged=true"));
-  assert.ok(post.indexOf("stockMutationNeedsReconciliation(requestSent,acknowledged,httpStatus)")<post.indexOf("setUncertainWrite(true)"));
-  assert.ok(post.indexOf("uncertainWriteRef.current=true")<post.indexOf("setUncertainWrite(true)"));
+  const failureBranch=post.split("}catch(error){")[1]?.split("finally{")[0]??"";
+  assert.ok(failureBranch.indexOf("stockMutationNeedsReconciliation(requestSent,acknowledged,httpStatus)")<
+    failureBranch.indexOf("setUncertainWrite(true)"),
+    "only ambiguous HTTP outcomes enter the catch-block reconciliation lock");
+  assert.ok(failureBranch.indexOf("uncertainWriteRef.current=true")<
+    failureBranch.indexOf("setUncertainWrite(true)"),
+    "synchronous uncertainty reference must lock before React state updates");
+  assert.ok(post.indexOf("uncertainJournal.current.markPending()")<post.indexOf("requestSent=true"),
+    "pending marker must persist before the privileged HTTP request");
+  assert.ok(post.includes("if(!uncertainJournal.current.clearPending())"),
+    "storage failure must not silently unlock stock writes");
   assert.ok(source.indexOf("uncertainWriteRef.current=false")<source.indexOf("setUncertainWrite(false)"));
   assert.match(post,/Stock write outcome is uncertain\. It may have committed\./);
   assert.equal((source.match(/disabled=\{uncertainWrite\|\|busy\|\|snapshotState!=="ready"/g)||[]).length,4,
