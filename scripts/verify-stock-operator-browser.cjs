@@ -97,6 +97,12 @@ async function startContext(browser,opts={}){
       "only the intended stock fixture may post");
     assert.match(body.requestKey,/^[0-9a-f-]{36}$/i);
     if(opts.reservationMode){
+      if(opts.loseFirstAck&&records.length===1){
+        // Reservation may have committed but the operator never saw a valid
+        // acknowledgment; the browser must require ledger reconciliation.
+        return route.fulfill({status:503,json:{error:"Stock operation could not be verified."},
+          headers:{"cache-control":"private, no-store"}});
+      }
       return route.fulfill({status:200,json:{reservationId:uuid},
         headers:{"cache-control":"private, no-store"}});
     }
@@ -189,6 +195,35 @@ async function main(){
       assert.ok(reserve.getReads()>=4,"each reserve acknowledgment must refresh ledger");
       console.log("Stock operator Chromium PASS: reservation same-sheet retry across reload, changed-sheet key.");
     }finally{await reserve.context.close();}
+    const uncertainReserve=await startContext(browser,{reservationMode:true,loseFirstAck:true});
+    try{
+      await fillReservation(uncertainReserve.page,"SYNTH-M55-UNCERTAIN-CUT-SHEET");
+      const [unconfirmed]=await Promise.all([
+        uncertainReserve.page.waitForResponse(r=>r.url().includes("/api/operator/stock")&&
+          r.request().method()==="POST",{timeout:15000}),
+        uncertainReserve.page.getByRole("button",{name:"Create reservation"}).click(),
+      ]);
+      assert.equal(unconfirmed.status(),503,"the reservation reply must be ambiguous");
+      await uncertainReserve.page.getByText(/Stock write outcome is uncertain\. It may have committed/).waitFor();
+      assert.equal(uncertainReserve.records.length,1,"no second reservation before reconciliation");
+      const key=uncertainReserve.records[0].requestKey;
+      assert.equal(uncertainReserve.records[0].action,"reserve");
+      await uncertainReserve.page.reload({waitUntil:"domcontentloaded"});
+      await ready(uncertainReserve.page);
+      await fillReservation(uncertainReserve.page,"SYNTH-M55-UNCERTAIN-CUT-SHEET");
+      await uncertainReserve.page.getByText(/An earlier stock operation might have committed/).waitFor();
+      assert.equal(await uncertainReserve.page.getByRole("button",{name:"Create reservation"}).isDisabled(),
+        true,"a reload must not unlock an uncertain reservation despite a filled form");
+      assert.equal(uncertainReserve.records.length,1,"reload cannot auto-reserve fabric");
+      await uncertainReserve.page.getByRole("button",{
+        name:"I checked the ledger and source; refresh to unlock",
+      }).click();
+      await uncertainReserve.page.getByText(/Ledger reloaded after operator reconciliation/).waitFor();
+      const retried=await submitReservation(uncertainReserve.page,uncertainReserve.records);
+      assert.equal(retried.requestKey,key,"retry after lost reservation ACK must keep same UUID key");
+      assert.ok(uncertainReserve.getReads()>=2,"operator reconciliation must refresh ledger");
+      console.log("Stock operator Chromium PASS: uncertain reservation locked across reload, same-key retry after reconciliation.");
+    }finally{await uncertainReserve.context.close();}
     const blocked=await startContext(browser,{blockStorage:true});
     try{
       await fill(blocked.page);
