@@ -321,6 +321,172 @@ jobs:
                 .fixed_search_path and .service_role_execute and
                 .payload_binding_guard_present and
                 (.anon_execute|not) and (.authenticated_execute|not)))' >/dev/null
+      - name: Prove stock readiness fails closed on synthetic role and function drift
+        run: |
+          # Transactions guarantee the fixture restores itself after each
+          # malicious or accidental catalog change. Never test on live data.
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          test "$TITAN_SYNTHETIC_PG_TEST" = enabled
+          observed=$(psql -X -qAt -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          grant execute on function public.fabric_stock_record_v3(text,text,numeric,text,text,text,text) to authenticated;
+          select case when public.fabric_stock_write_ready_v1() is false then 'grant-blocked' else 'FAIL' end;
+          rollback;
+          select case when public.fabric_stock_write_ready_v1() is true then 'grant-restored' else 'FAIL' end;
+          begin;
+          alter function public.fabric_stock_reserve_v2(text,numeric,text,text,text,text) security invoker;
+          select case when public.fabric_stock_write_ready_v1() is false then 'invoker-blocked' else 'FAIL' end;
+          rollback;
+          select case when public.fabric_stock_write_ready_v1() is true then 'invoker-restored' else 'FAIL' end;
+          begin;
+          alter function public.fabric_stock_snapshot_v2(text[]) reset search_path;
+          select case when public.fabric_stock_write_ready_v1() is false then 'path-blocked' else 'FAIL' end;
+          rollback;
+          select case when public.fabric_stock_write_ready_v1() is true then 'path-restored' else 'FAIL' end;
+          SQL
+          )
+          expected=        run: |
+          npm ci --include=optional
+          npm run build
+      - name: Verify Next operator API against real disposable PostgREST
+        run: |
+          node scripts/verify-stock-next-postgrest.cjs
+          # M58 creates consume and release records whose request_key is
+          # NULL. Deleting only keyed receipts/reservations would orphan those
+          # genuine committed synthetic ledger events in the staging fixture.
+          # This entire job runs on disposable localhost titan_synthetic.
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          test "$TITAN_SYNTHETIC_PG_TEST" = enabled
+          # The built Next->PostgREST test creates two receipts, two
+          # reservations, one consumption and two release events (including
+          # unused reserved metres returned by the consumption).
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select case when
+              count(*) filter (where event_type='receipt')=2 and
+              count(*) filter (where event_type='reserve')=2 and
+              count(*) filter (where event_type='consume')=1 and
+              count(*) filter (where event_type='release')=2
+              then 'PASS' else 'FAIL' end
+             from private.fabric_stock_ledger
+             where fabric_id='linen-plain-60-sky-blue'" | grep -qx PASS
+          # Derive only M48/M56 synthetic reservation UUIDs from their
+          # persistent keyed 'reserve' rows, then delete their linked
+          # consume/release ledger entries together in one SQL statement.
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          with synthetic_reservations as materialized (
+            select reservation_id from private.fabric_stock_ledger
+            where request_key like 'SYNTH-M48-%'
+              and event_type='reserve' and reservation_id is not null
+          )
+          delete from private.fabric_stock_ledger
+          where request_key like 'SYNTH-M48-%'
+             or reservation_id in (select reservation_id from synthetic_reservations);
+          SQL
+          # The real catalog ID is used for this isolated operator HTTP test
+          # because the production boundary rejects fake IDs. The disposable
+          # DB must have no orphan test rows for it before the next fixture.
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select case when count(*)=0 then 'PASS' else 'FAIL' end
+             from private.fabric_stock_ledger
+             where fabric_id='linen-plain-60-sky-blue'" | grep -qx PASS
+          node scripts/verify-stock-postgrest-rpc.cjs after
+      - name: Confirm actual PostgREST synthetic ledgers can be discarded
+        run: |
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select case when count(*)=1 then 'PASS' else 'FAIL' end
+             from private.fabric_stock_ledger
+             where fabric_id like 'SYNTHETIC-TITAN-POSTGREST-%'" | grep -qx PASS
+      - name: Prove legacy reservation body cannot pass stock rollout preflight even with v3 installed
+        run: |
+          # Isolated localhost only. Both functions exist and retain grants,
+          # but legacy v2 fails to bind replay keys to physical cutting evidence.
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          test "$TITAN_SYNTHETIC_PG_TEST" = enabled
+          (cd "$RUNNER_TEMP" && sha256sum -c titan-legacy-reserve-definition.sha256)
+          psql -X -v ON_ERROR_STOP=1 -f \
+            "$RUNNER_TEMP/titan-legacy-reserve-definition.sql"
+          psql -X -v ON_ERROR_STOP=1 -At -f scripts/stock-v3-readonly-preflight.sql |
+            jq -e '.status=="BLOCKED" and
+              (.checks|any(.function=="reserve_v2" and
+                .installed==true and .service_role_execute==true and
+                .payload_binding_guard_present==false)) and
+              (.checks|any(.function=="record_v3" and
+                .installed==true and .payload_binding_guard_present==true))' >/dev/null
+          # The privileged server cannot be tricked by the existence of
+          # the older reservation function with the same signature/grants.
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when public.fabric_stock_write_ready_v1() is false
+              then 'PASS' else 'FAIL' end" | grep -qx PASS
+          # Reapply the source migration before the existing v3 rollback suite.
+          psql -X -v ON_ERROR_STOP=1 -f \
+            supabase/migrations/20261102_stock_reservation_key_payload_binding.sql
+          psql -X -v ON_ERROR_STOP=1 -At -f scripts/stock-v3-readonly-preflight.sql |
+            jq -e '.status=="READY" and
+              (.checks|all(.payload_binding_guard_present==true))' >/dev/null
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when public.fabric_stock_write_ready_v1() is true
+              then 'PASS' else 'FAIL' end" | grep -qx PASS
+          psql -X -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
+      - name: Rehearse v3 rollback and PostgREST cache invalidation without changing v2
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "drop function public.fabric_stock_record_v3(text,text,numeric,text,text,text,text);"
+          psql -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
+          sleep 2
+          node scripts/verify-stock-postgrest-rpc.cjs rolledback
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select case when to_regprocedure('public.fabric_stock_record_v3(text,text,numeric,text,text,text,text)') is null
+                     and to_regprocedure('public.fabric_stock_record_v2(text,text,numeric,text,text,text)') is not null
+                    then 'PASS' else 'FAIL' end" | grep -qx PASS
+      - name: Restore exact original reservation definition and verify role isolation
+        run: |
+          # Revert both source-only stock changes on DISPOSABLE PG17:
+          # v3 is already dropped; now restore the pre-upgrade v2 body.
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          test "$TITAN_SYNTHETIC_PG_TEST" = enabled
+          (cd "$RUNNER_TEMP" && sha256sum -c titan-legacy-reserve-definition.sha256)
+          psql -X -v ON_ERROR_STOP=1 -f \
+            "$RUNNER_TEMP/titan-legacy-reserve-definition.sql"
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select pg_get_functiondef('public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)'::regprocedure)" \
+            > "$RUNNER_TEMP/titan-reserve-restored.sql"
+          cmp "$RUNNER_TEMP/titan-legacy-reserve-definition.sql" \
+              "$RUNNER_TEMP/titan-reserve-restored.sql"
+          # The restored function must have the original service-only policy.
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when
+               to_regprocedure('public.fabric_stock_record_v3(text,text,numeric,text,text,text,text)') is null
+               and has_function_privilege('service_role',
+                 'public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)','EXECUTE')
+               and not has_function_privilege('anon',
+                 'public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)','EXECUTE')
+               and not has_function_privilege('authenticated',
+                 'public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)','EXECUTE')
+               then 'PASS' else 'FAIL' end" | grep -qx PASS
+          psql -X -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
+          sleep 2
+          node scripts/verify-stock-postgrest-rpc.cjs rolledback
+          psql -X -v ON_ERROR_STOP=1 -At -f scripts/stock-v3-readonly-preflight.sql |
+            jq -e '.status=="BLOCKED" and
+              (.checks|any(.function=="record_v3" and .installed==false))' >/dev/null
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when public.fabric_stock_write_ready_v1() is false
+              then 'PASS' else 'FAIL' end" | grep -qx PASS
+          # Remove the M69 catalog-only guard during exact synthetic rollback.
+          psql -X -v ON_ERROR_STOP=1 -c \
+            "drop function public.fabric_stock_write_ready_v1();"
+          psql -X -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when to_regprocedure('public.fabric_stock_write_ready_v1()') is null
+              then 'PASS' else 'FAIL' end" | grep -qx PASS
+      - name: Stop disposable PostgREST container
+        if: always()
+        run: docker rm -f titan-postgrest-m46 || true
+grant-blocked\ngrant-restored\ninvoker-blocked\ninvoker-restored\npath-blocked\npath-restored'
+          test "$observed" = "$expected"
       - name: Build isolated real Next stock API route
         run: |
           npm ci --include=optional
