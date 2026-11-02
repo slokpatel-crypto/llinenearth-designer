@@ -1,5 +1,6 @@
 import type { DesignerFabricIntelligence } from "../fabric-intelligence-types";
 import type { StyleSpecV2 } from "./style-spec-v2";
+import type { DesignerStyle, OccasionTier } from "./engine";
 
 /**
  * Styling confidence is not a physical-fabric approval. A rejected review
@@ -18,7 +19,8 @@ export function styleDirectorIntelligenceTrustWeight(
 
 export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "short_sleeve_double_cuff" |
-    "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break";
+    "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" |
+    "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch";
   explanation: string;
 };
 
@@ -29,6 +31,7 @@ export type DirectorConstructionIssue = {
  */
 export function styleDirectorConstructionIssues(
   spec: Pick<StyleSpecV2, "shirt" | "pant">,
+  occasion?: OccasionTier,
 ): DirectorConstructionIssue[] {
   const issues: DirectorConstructionIssue[] = [];
   const { shirt, pant } = spec;
@@ -37,6 +40,13 @@ export function styleDirectorConstructionIssues(
     issues.push({
       code: "camp_collar_construction",
       explanation: "The proposed camp-collar resort shirt needs an untucked, open camp-collar construction review.",
+    });
+  }
+  if (shirt.type === "camp_collar_resort" &&
+      (occasion === "Formal" || occasion === "Semi-Formal")) {
+    issues.push({
+      code: "formal_camp_collar",
+      explanation: "An open, untucked camp-collar shirt needs an explicit formality review for this occasion; no tailor approval is implied.",
     });
   }
   if (shirt.sleeve === "half_sleeve" && shirt.cuff === "french_double_cuff") {
@@ -62,6 +72,38 @@ export function styleDirectorConstructionIssues(
     issues.push({
       code: "cropped_full_break",
       explanation: "A cropped trouser hem conflicts with a full shoe break; confirm the intended length.",
+    });
+  }
+  return issues;
+}
+
+/**
+ * Fail closed when the legacy photographic style and the versioned garment
+ * construction would tell a customer to wear or cut different shirts.
+ * Only camp/band collars are compared by label here: other advanced collars
+ * may have intentionally approximate legacy previews.
+ */
+export function styleDirectorPresentationIssues(
+  style: Pick<DesignerStyle, "collar" | "shirtWear">,
+  spec: Pick<StyleSpecV2, "shirt">,
+): DirectorConstructionIssue[] {
+  const issues: DirectorConstructionIssue[] = [];
+  const expectedWear = style.shirtWear === "Tucked" ? "tucked"
+    : style.shirtWear === "Untucked" ? "untucked" : null;
+  if (expectedWear !== spec.shirt.wear) {
+    issues.push({
+      code: "legacy_wear_mismatch",
+      explanation: "The photographic shirt-wear choice disagrees with the versioned construction; verify the intended tuck before proceeding.",
+    });
+  }
+  const legacyCollar = /camp|cuban/i.test(style.collar) ? "cuban_camp_collar"
+    : /band|mandarin/i.test(style.collar) ? "mandarin_band_collar" : null;
+  const versionedCollar = spec.shirt.collar;
+  if (legacyCollar !== versionedCollar &&
+      (legacyCollar !== null || versionedCollar === "cuban_camp_collar" || versionedCollar === "mandarin_band_collar")) {
+    issues.push({
+      code: "legacy_collar_mismatch",
+      explanation: "The photographic collar choice disagrees with the versioned camp/band collar; review both without changing the locked IDs.",
     });
   }
   return issues;
