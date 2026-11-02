@@ -197,7 +197,16 @@ ${handoff.construction.creative?`<section class="card" style="margin-bottom:12px
       ["Trouser block",handoff.construction.blockStrategy?.trouserBlock??"Not resolved"],
       ["Torso",handoff.construction.blockStrategy?.torsoShape??"Not resolved"],
       ["Seat",handoff.construction.blockStrategy?.seatShape??"Not resolved"],
+      ["Fit assessment",handoff.construction.fitProvenance.fitConstructionVersion??"NOT RECORDED"],
+      ["Ease provenance",handoff.construction.fitProvenance.easeSource??"NOT RECORDED"],
+      ["Ease table version",handoff.construction.fitProvenance.easeTableVersion??"NOT RECORDED"],
     ])}</table>
+    <p class="muted">Starting blocks and ranges are review guidance, not signed cutting dimensions. Physical measurements use centimetres.</p>
+    <h2>Pattern and fit adjustments for tailor review</h2>
+    <ul>${list((handoff.construction.blockStrategy?.adjustments??[]).map((item)=>
+      `${item.garment} / ${item.area} [${item.id}] ${item.severity.toUpperCase()}: ${item.message}`
+    ))}</ul>
+    <h2>Construction checks</h2>
     <ul>${list(handoff.construction.checks.map((item)=>`${item.severity.toUpperCase()}: ${item.message}`))}</ul>
   </article>
   <article class="card">
