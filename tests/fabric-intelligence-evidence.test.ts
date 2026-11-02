@@ -257,3 +257,21 @@ test("rejected or pending review cannot promote customer fabric claims even with
   (missing as unknown as Record<string,unknown>).reviewStatus=undefined;
   assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,missing).patternScaleVerified,undefined);
 });
+
+test("overlong persisted fibre claims never gain verified status while exact-limit evidence remains valid",()=>{
+  const previous={...fabric,weightGsm:null,drape:null};
+  for(const value of ["L".repeat(221), " ".repeat(5)+"L".repeat(221)+" ".repeat(2)]){
+    const reviewed=intelligence("reviewed");
+    reviewed.verifiedPhysical.fiberContent=value;
+    const output=applyVerifiedPhysicalFabricEvidence(previous,reviewed);
+    assert.equal(output.fiberContent,null,"overlong composition is not certified");
+    assert.equal(output.fiberContentVerified,undefined);
+    assert.equal(output.weightGsm,145,"independent genuine GSM field remains eligible");
+    assert.equal(output.drape,"Balanced","independent genuine drape field remains eligible");
+  }
+  const limit=intelligence("reviewed");
+  limit.verifiedPhysical.fiberContent="L".repeat(220);
+  const accepted=applyVerifiedPhysicalFabricEvidence(previous,limit);
+  assert.equal(accepted.fiberContent,"L".repeat(220));
+  assert.equal(accepted.fiberContentVerified,true);
+});

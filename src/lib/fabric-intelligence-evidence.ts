@@ -59,8 +59,13 @@ export function applyVerifiedPhysicalFabricEvidence(
   const drapeVerified=physicalSource("verifiedPhysical.drape")
     && typeof physical.drape==="string"
     && ["Fluid","Balanced","Structured"].includes(physical.drape);
+  // Recheck the full literal at the customer-facing boundary, not just in the
+  // v4 adapter. Older persisted JSON or another caller may bypass normalization.
+  // Never truncate supplier-certified composition into a different claim.
   const fiberVerified=physicalSource("verifiedPhysical.fiberContent")
-    && typeof physical.fiberContent==="string" && physical.fiberContent.trim().length>0;
+    && typeof physical.fiberContent==="string"
+    && physical.fiberContent.trim().length>0
+    && physical.fiberContent.trim().length<=220;
   return {
     ...fabric,
     ...(patternScaleVerified ? {
