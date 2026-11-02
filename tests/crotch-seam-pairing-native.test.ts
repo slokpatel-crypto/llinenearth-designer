@@ -16,6 +16,8 @@ test("actual original crotch source edge pairing is native, fail-closed and neve
     'def nearest_point_to_segment(point, segment):',
     'fraction = max(0.0, min(1.0,',
     'mutualNearestEdgeCount',
+    'unmatchedOriginalSourceEdgeIndices',
+    'unmatched_left = sorted(set(range(len(forward))) - mutual_left)',
     'midpointToOtherCutEdgeMm',
     '"changesProductionGeometry": False',
     '"productionApproved": False',
@@ -34,6 +36,7 @@ test("actual original crotch source edge pairing is native, fail-closed and neve
     'pairing["changesProductionGeometry"] is False',
     'assert left == proximity["actualSourceBoundaryEdges"]["left"]["nearCenterlineBoundaryEdges"] > 0',
     'assert right == proximity["actualSourceBoundaryEdges"]["right"]["nearCenterlineBoundaryEdges"] > 0',
+    'assert len(indexes) == total - pairing["mutualNearestEdgeCount"] == 4',
     'titan-candidate-evidence/crotch-source-seam-pairing.json',
   ]) assert.ok(workflow.includes(required),required);
   assert.equal((workflow.match(/"scripts\/blender\/diagnose-crotch-seam-pairing.py"/g)||[]).length,2);
