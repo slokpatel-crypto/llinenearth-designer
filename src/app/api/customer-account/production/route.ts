@@ -63,11 +63,13 @@ export async function POST(request:Request){
       const quoteId=String(body.quoteId||"").trim();
       if(!uuid.test(quoteId)) return NextResponse.json({error:"Valid quote ID is required."},{status:400});
 
-      const accepted=await rpc<boolean>("production_quote_accept_owned",{
+      const accepted=await rpc<unknown>("production_quote_accept_owned",{
         p_quote_id:quoteId,
         p_owner_user_id:customer.id,
       });
-      if(!accepted) return NextResponse.json({error:"Quote is unavailable."},{status:404});
+      if(accepted===false) return privateJson({error:"Quote is unavailable."},404);
+      // PostgREST JSON must be a literal boolean; do not coerce truthy "false".
+      if(accepted!==true)throw new Error("Invalid quote acceptance acknowledgment.");
 
       return NextResponse.json(
         {accepted:true},
