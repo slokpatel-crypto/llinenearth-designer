@@ -37,10 +37,21 @@ export function styleDirectorCandidateCollar(
   };
 }
 
+/** Candidate wording is not a measured sleeve length. Only an explicit
+ * short-/half-sleeve request maps to the existing construction IDs. */
+export function styleDirectorCandidateSleeve(
+  candidateShirt: string,
+): { sleeve: "half_sleeve"; cuff: "open_short_hem_cuff" } | null {
+  return /\b(?:short|half)[ -]?sleeve\b/i.test(candidateShirt)
+    ? { sleeve: "half_sleeve", cuff: "open_short_hem_cuff" }
+    : null;
+}
+
 export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "short_sleeve_double_cuff" |
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" |
-    "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo";
+    "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
+    "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo";
   explanation: string;
 };
 
@@ -73,6 +84,25 @@ export function styleDirectorConstructionIssues(
     issues.push({
       code: "short_sleeve_double_cuff",
       explanation: "A short-sleeve shirt cannot use the proposed full-length French double-cuff construction.",
+    });
+  }
+  if (shirt.type === "short_sleeve_shirt" && shirt.sleeve !== "half_sleeve") {
+    issues.push({
+      code: "short_sleeve_type_mismatch",
+      explanation: "The selected short-sleeve shirt type still specifies a full-length sleeve; confirm the actual sleeve before production.",
+    });
+  }
+  if (shirt.sleeve === "half_sleeve" &&
+      shirt.cuff !== "open_short_hem_cuff" && shirt.cuff !== "french_double_cuff") {
+    issues.push({
+      code: "short_sleeve_cuff_review",
+      explanation: "The proposed half-sleeve uses a full-length cuff option; confirm a buildable short-sleeve finish.",
+    });
+  }
+  if (shirt.sleeve !== "half_sleeve" && shirt.cuff === "open_short_hem_cuff") {
+    issues.push({
+      code: "full_sleeve_open_hem_cuff",
+      explanation: "An open short-sleeve hem is paired with a non-short sleeve; confirm the sleeve finish.",
     });
   }
   if (pant.type === "pleated_trouser" && pant.pleat === "flat_front") {
@@ -133,6 +163,14 @@ export function styleDirectorPresentationIssues(
     issues.push({
       code: "unverified_camp_photo",
       explanation: "The Cuban/Camp collar is selectable but has no verified live photographic rendering; confirm the preview against the intended construction.",
+    });
+  }
+  if (spec.shirt.sleeve === "half_sleeve") {
+    // DesignerStyle has no sleeve-length field. A versioned half sleeve can be
+    // buildable without being represented by the existing photographic style.
+    issues.push({
+      code: "unverified_short_sleeve_photo",
+      explanation: "The photographic style has no sleeve-length selection, so its preview cannot verify the proposed half-sleeve construction.",
     });
   }
   return issues;
