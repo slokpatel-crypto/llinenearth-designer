@@ -17,10 +17,10 @@ export async function POST(request:Request){
       return privateJson({error:"A locked Linen Earth design revision is required."},400);
     }
     if(!await verifyLockedDesignRevision(revision)) {
-      return NextResponse.json({error:"The locked design revision did not pass integrity verification."},409);
+      return privateJson({error:"The locked design revision did not pass integrity verification."},409);
     }
     if(!designShareConfigured()) {
-      return NextResponse.json({error:"Design sharing is not configured on this deployment."},503);
+      return privateJson({error:"Design sharing is not configured on this deployment."},503);
     }
     const token=createDesignShareToken(revision);
     if(!token) return privateJson({error:"Could not create a share token."},413);
