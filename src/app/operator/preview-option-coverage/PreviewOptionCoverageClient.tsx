@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect,useMemo,useState } from "react";
+import { useEffect,useMemo,useRef,useState } from "react";
 
 type Review={id:string;status:"approved"|"rejected";note:string;reviewedAt:string};
 type Row={
@@ -26,7 +26,9 @@ const button:React.CSSProperties={border:0,borderRadius:9,padding:"9px 12px",bac
 export default function PreviewOptionCoverageClient(){
   const [rows,setRows]=useState<Row[]>([]);
   const [summary,setSummary]=useState<Summary|null>(null);
-  const [configured,setConfigured]=useState(true);
+  const [configured,setConfigured]=useState(false);
+  const [snapshotState,setSnapshotState]=useState<"loading"|"ready"|"error">("loading");
+  const loadEpoch=useRef(0);
   const [filter,setFilter]=useState<"pending"|"approved"|"rejected"|"all">("pending");
   const [styleKey,setStyleKey]=useState("all");
   const [selectedId,setSelectedId]=useState("");
@@ -34,16 +36,53 @@ export default function PreviewOptionCoverageClient(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
 
-  async function load(preferredId?:string){
-    const response=await fetch("/api/operator/preview-option-coverage",{cache:"no-store"});
-    if(response.status===401){window.location.href="/operator/login?next=/operator/preview-option-coverage";return;}
-    const data=await response.json();
-    if(!response.ok){setMessage(data.error||"Preview coverage could not be loaded.");return;}
-    const nextRows=Array.isArray(data.rows)?data.rows:[];
-    setRows(nextRows);setSummary(data.summary||null);setConfigured(data.configured!==false);
-    const current=nextRows.find((row:Row)=>row.id===(preferredId||selectedId));
-    const fallback=current||nextRows.find((row:Row)=>!row.previewReview)||nextRows[0];
-    if(fallback){setSelectedId(fallback.id);setNote(fallback.previewReview?.note||"");}
+  async function load(preferredId?:string):Promise<boolean>{
+    // Invalidate the last summary before every network refresh. A successful
+    // but stale request may not restore an earlier "COMPLETE" verdict.
+    const epoch=++loadEpoch.current;
+    setSnapshotState("loading");
+    setSummary(null);
+    const invalidate=()=>{
+      setRows([]);setSummary(null);setConfigured(false);
+      setSelectedId("");setNote("");
+    };
+    try{
+      const response=await fetch("/api/operator/preview-option-coverage",{cache:"no-store"});
+      if(epoch!==loadEpoch.current) return false;
+      if(response.status===401){
+        invalidate();setSnapshotState("error");
+        window.location.href="/operator/login?next=/operator/preview-option-coverage";
+        return false;
+      }
+      if(!response.ok) throw new Error("Preview coverage could not be loaded.");
+      const data:unknown=await response.json();
+      if(epoch!==loadEpoch.current) return false;
+      if(!data||typeof data!=="object"||Array.isArray(data)||
+        !("rows" in data)||!Array.isArray(data.rows)||
+        !("summary" in data)||!data.summary||typeof data.summary!=="object"||Array.isArray(data.summary)||
+        !("gateComplete" in data.summary)||typeof data.summary.gateComplete!=="boolean"||
+        !("catalogueComplete" in data.summary)||typeof data.summary.catalogueComplete!=="boolean"||
+        !("configured" in data)||typeof data.configured!=="boolean")
+        throw new Error("Preview coverage response is invalid.");
+      if(!data.configured){
+        invalidate();setSnapshotState("error");
+        setMessage("Preview coverage backend is not configured; no approvals can be verified.");
+        return false;
+      }
+      const nextRows=data.rows as Row[];
+      setRows(nextRows);setSummary(data.summary as Summary);setConfigured(true);
+      const current=nextRows.find((row)=>row.id===(preferredId||selectedId));
+      const fallback=current||nextRows.find((row)=>!row.previewReview)||nextRows[0];
+      if(fallback){setSelectedId(fallback.id);setNote(fallback.previewReview?.note||"");}
+      else{setSelectedId("");setNote("");}
+      setSnapshotState("ready");
+      return true;
+    }catch{
+      if(epoch!==loadEpoch.current) return false;
+      invalidate();setSnapshotState("error");
+      setMessage("Preview coverage unavailable. The previous approvals were cleared; refresh to verify again.");
+      return false;
+    }
   }
   useEffect(()=>{void load();},[]);
 
@@ -56,7 +95,7 @@ export default function PreviewOptionCoverageClient(){
   const selected=rows.find((row)=>row.id===selectedId)||null;
 
   async function save(status:"approved"|"rejected"){
-    if(!selected||busy||!configured) return;
+    if(!selected||busy||!configured||snapshotState!=="ready") return;
     if(status==="approved"&&(selected.livePreview==="none"||selected.constructionStatus==="rejected")){
       setMessage("This option cannot be approved while preview support is none or construction is rejected.");
       return;
@@ -104,7 +143,10 @@ export default function PreviewOptionCoverageClient(){
         <nav style={{display:"flex",gap:12,flexWrap:"wrap"}}><Link href="/designer-studio">Open customer Designer</Link><Link href="/operator/construction-approval">Construction Approval</Link><Link href="/operator/phase10-readiness">Readiness</Link></nav>
       </header>
 
-      {!configured&&<section style={{...panel,background:"#fff4df"}}>Cloud memory is not configured, so review decisions cannot be stored.</section>}
+      {snapshotState==="error"&&<section role="alert" style={{...panel,background:"#fff4df"}}>Preview coverage evidence unavailable. No previous approvals or production-readiness result are certified.</section>}
+      {snapshotState==="loading"&&<section role="status" style={panel}>Refreshing preview evidence. Previous approval totals are withheld.</section>}
+      {snapshotState==="ready"&&!configured&&<section role="alert" style={{...panel,background:"#fff4df"}}>Cloud memory is not configured, so review decisions cannot be stored.</section>}
+      <button type="button" style={button} disabled={busy||snapshotState==="loading"} onClick={()=>void load()}>Refresh preview evidence</button>
       {message&&<section style={{...panel,background:"#ece8df"}}>{message}</section>}
 
       <section style={{...panel,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:12}}>
@@ -115,7 +157,7 @@ export default function PreviewOptionCoverageClient(){
         <article><small>CONSTRUCTION PENDING</small><div style={{fontSize:34,fontWeight:800}}>{summary?.constructionPending??0}</div></article>
         <article><small>COVERAGE</small><div style={{fontSize:30,fontWeight:800}}>{summary?.coveragePercent??0}%</div></article>
         <article><small>CATALOG INTEGRITY</small><div style={{fontSize:24,fontWeight:800}}>{summary?.catalogueComplete?"COMPLETE":"OPEN"}</div><small>Missing {summary?.missingOptionCount??0} · Duplicate {summary?.duplicateOptionCount??0} · Unknown {summary?.unknownOptionCount??0}</small></article>
-        <article><small>GATE</small><div style={{fontSize:24,fontWeight:800}}>{summary?.gateComplete?"COMPLETE":"OPEN"}</div></article>
+        <article><small>GATE</small><div style={{fontSize:24,fontWeight:800}}>{snapshotState!=="ready"?"UNVERIFIED":summary?.gateComplete?"COMPLETE":"OPEN"}</div></article>
       </section>
 
       <section style={{display:"grid",gridTemplateColumns:"minmax(300px,.72fr) minmax(360px,1.28fr)",gap:18}}>
@@ -151,8 +193,8 @@ export default function PreviewOptionCoverageClient(){
             <label style={{display:"grid",gap:6,marginTop:14}}>Review note<textarea rows={5} value={note} onChange={(e)=>setNote(e.target.value.slice(0,800))} placeholder="What was visually checked, what remains approximate, or why it should be removed."/></label>
             {selected.previewReview&&<p style={{fontSize:12,opacity:.62}}>Last review: {selected.previewReview.status} · {new Date(selected.previewReview.reviewedAt).toLocaleString("en-IN")}</p>}
             <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:14}}>
-              <button style={{...button,background:"#fff",color:"#7a2f2f",border:"1px solid #d8c6c1"}} disabled={busy} onClick={()=>void save("rejected")}>Reject preview support</button>
-              <button style={button} disabled={busy||selected.livePreview==="none"||selected.constructionStatus==="rejected"} onClick={()=>void save("approved")}>Approve customer preview</button>
+              <button style={{...button,background:"#fff",color:"#7a2f2f",border:"1px solid #d8c6c1"}} disabled={busy||snapshotState!=="ready"||!configured} onClick={()=>void save("rejected")}>Reject preview support</button>
+              <button style={button} disabled={busy||snapshotState!=="ready"||!configured||selected.livePreview==="none"||selected.constructionStatus==="rejected"} onClick={()=>void save("approved")}>Approve customer preview</button>
             </div>
           </>}
         </article>
