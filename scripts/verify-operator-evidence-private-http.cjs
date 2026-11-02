@@ -83,8 +83,26 @@ async function main(){
       res.end(JSON.stringify({rows:[]}));return;
     }
     if(kind==="cappedList"){
+      // Test 500 genuinely schema-valid synthetic records: malformed
+      // responses should be 503, valid but non-exhaustive history 409.
+      const makeId=(n)=>"00000000-0000-4000-8000-"+n.toString(16).padStart(12,"0");
+      const records=Array.from({length:500},(_,i)=>{
+        const id=makeId(i+1);
+        if(name==="production_order_list")
+          return {order_id:id,revision_id:"LE-REV-"+(i+1),
+            recipe_hash:"a".repeat(64),quote_id:null,status:"delivered",
+            note:"",created_at:"2026-10-01T10:00:00+00:00",
+            updated_at:"2026-10-02T10:00:00+00:00"};
+        return {evidence_id:makeId(i+10001),order_id:id,
+          revision_id:"LE-REV-"+(i+1),recipe_hash:"a".repeat(64),
+          manual_design_reentry:false,reentry_fields:[],note:"",
+          operator:"Synthetic checker",
+          evidence_reference:"Synthetic dispatch "+(i+1),
+          created_at:"2026-10-03T10:00:00+00:00",
+          order_created_at:"2026-10-01T10:00:00+00:00"};
+      });
       res.writeHead(200,{"content-type":"application/json"});
-      res.end(JSON.stringify(Array.from({length:500},()=>({}))));
+      res.end(JSON.stringify(records));
       return;
     }
     if(kind==="ackNull"||kind==="ackObject"||kind==="ackString"){
