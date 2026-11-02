@@ -29,7 +29,7 @@ with expected(name,signature) as (
       where split_part(c,'=',1)='search_path'
         and regexp_replace(
           split_part(c,'=',2), '[[:space:]]+', '', 'g'
-        ) ~ '^(public|"public")(,(private|"private"))?$')),false) as fixed_path,
+        ) ~ '^(public|"public")(,(private|"private"))?$'),false) as fixed_path,
     coalesce(has_function_privilege('service_role',s.oid,'EXECUTE'),false) as service_ok,
     coalesce(has_function_privilege('anon',s.oid,'EXECUTE'),false) as anon_ok,
     coalesce(has_function_privilege('authenticated',s.oid,'EXECUTE'),false) as auth_ok,
