@@ -174,3 +174,66 @@ test("previously verified fibre content is not overwritten by later analysis",()
   assert.equal(result.fiberContent,"100% verified cotton");
   assert.equal(result.fiberContentVerified,true);
 });
+
+test("persisted JSON cannot coerce provenance or supplier source into reviewed physical claims",()=>{
+  for(const field of ["measured.pattern.physicalScale","verifiedPhysical.gsm","verifiedPhysical.drape","verifiedPhysical.fiberContent"] as const){
+    const reviewed=intelligence("reviewed");
+    reviewed.fieldProvenance={...reviewed.fieldProvenance,[field]:["declared"] as never};
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    if(field==="measured.pattern.physicalScale") assert.equal(result.patternScaleVerified,undefined);
+    if(field==="verifiedPhysical.gsm") assert.equal(result.weightGsm,null);
+    if(field==="verifiedPhysical.drape") assert.equal(result.drape,null);
+    if(field==="verifiedPhysical.fiberContent") assert.equal(result.fiberContentVerified,undefined);
+  }
+  for(const [field,value] of [
+    ["sourceUrl",["https://supplier.example/roll"]],
+    ["evidenceNote",["Inspector measured physical roll"]],
+    ["sourceUrl",{url:"https://supplier.example/roll"}],
+    ["evidenceNote",{text:"Inspector measured physical roll"}],
+  ] as const){
+    const reviewed=intelligence("reviewed");
+    reviewed.verifiedPhysical={...reviewed.verifiedPhysical,sourceUrl:null,evidenceNote:"Inspector recorded physical roll", [field]:value as never};
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    assert.equal(result.patternScaleVerified,undefined,field);
+    assert.equal(result.weightGsm,null,field);
+    assert.equal(result.drape,null,field);
+    assert.equal(result.fiberContentVerified,undefined,field);
+  }
+  for(const [field,value] of [
+    ["sourceUrl","https://supplier.example/"+"a".repeat(1800)],
+    ["evidenceNote","e".repeat(501)],
+  ] as const){
+    const reviewed=intelligence("reviewed");
+    reviewed.verifiedPhysical={...reviewed.verifiedPhysical,[field]:value};
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    assert.equal(result.patternScaleVerified,undefined,field);
+    assert.equal(result.weightGsm,null,field);
+  }
+  const wrongDrape=intelligence("reviewed");
+  wrongDrape.verifiedPhysical.drape=["Balanced"] as never;
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,wrongDrape).drape,null);
+});
+
+test("customer scale certification rejects unsupported axis even with reviewed supplier numbers",()=>{
+  for(const physicalScale of ["declared_repeat","declared_swatch_width"] as const){
+    for(const patternOrientation of ["none","uncertain","grid",null] as const){
+      const reviewed=intelligence("reviewed");
+      reviewed.measuredEvidence.patternPhysicalScale=physicalScale;
+      reviewed.measuredEvidence.patternOrientation=patternOrientation;
+      const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+      assert.equal(result.patternScaleVerified,undefined,`${physicalScale} / ${patternOrientation}`);
+    }
+  }
+  for(const patternOrientation of ["horizontal","grid","uncertain"] as const){
+    const reviewed=intelligence("reviewed");
+    reviewed.measuredEvidence.patternPhysicalScale="declared_swatch_width";
+    reviewed.measuredEvidence.patternOrientation=patternOrientation;
+    assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,reviewed).patternScaleVerified,undefined,patternOrientation);
+  }
+  const horizontal=intelligence("reviewed");
+  horizontal.measuredEvidence.patternOrientation="horizontal";
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,horizontal).patternScaleVerified,true);
+  const validSwatch=intelligence("reviewed");
+  validSwatch.measuredEvidence.patternPhysicalScale="declared_swatch_width";
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,validSwatch).patternScaleVerified,true);
+});

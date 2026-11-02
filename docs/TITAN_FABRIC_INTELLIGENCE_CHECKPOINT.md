@@ -19,6 +19,7 @@
 3. Physical repeat and swatch-width dimensions must be finite, positive, bounded and resolvable at existing reported precision. No zero-mm rounded physical repeat is published.
 4. Consumer-facing reviewed evidence additionally rejects missing or incompatible repeat/stripe widths, invalid source URLs, invalid GSM/drape/fibre values and field-level unproven claims. Existing verified fibre values retain precedence.
 5. Physical input validation rejects explicitly supplied nonfinite or malformed numeric values and malformed HTTPS URLs rather than silently treating them as absent.
+6. Customer-facing projection revalidates persisted JSON field provenance as literal strings, rejects malformed/oversized supplier URL or notes, and does not promote a declared physical repeat without a matching observed stripe axis; width-only calibration requires vertical orientation. Older incomplete metadata remains unverified.
 
 ## Physical acceptance still open
 
