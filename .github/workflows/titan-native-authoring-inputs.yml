@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "scripts/blender/author-linen-earth-officewear.py"
+      - "scripts/blender/diagnose-linen-earth-crotch.py"
       - "tests/blender/test_authoring_parameters.py"
       - "tests/garment-authoring-input-safety.test.ts"
       - ".github/workflows/titan-native-authoring-inputs.yml"
@@ -11,6 +12,7 @@ on:
     branches: [main]
     paths:
       - "scripts/blender/author-linen-earth-officewear.py"
+      - "scripts/blender/diagnose-linen-earth-crotch.py"
       - "tests/blender/test_authoring_parameters.py"
       - ".github/workflows/titan-native-authoring-inputs.yml"
 
