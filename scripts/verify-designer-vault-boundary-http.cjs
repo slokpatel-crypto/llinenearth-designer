@@ -741,6 +741,9 @@ async function main(){
       assert.equal(unavailableView.status,404,"unavailable share control store must fail closed");
       shareMode="ok";
 
+      // Restore the healthy session backend after the preceding explicit
+      // revocation-check 503 test, before validating two real signed identities.
+      revocationMode="ok";
       // A signed-in creator may revoke an issued link from another device,
       // without the private cancellation key or a public bearer URL.
       async function signInForShare(email){
