@@ -150,6 +150,24 @@ async function main(){
       await new Promise(resolve=>setTimeout(resolve,100));
     }
     assert.ok(ready,"Next did not start: "+output);
+    // Synthetic real-HTTP authorization preflight: no forged Origin, same-site
+    // subdomain, wrong MIME or oversized JSON may reach a service-role RPC.
+    for(const [extraHeaders,body,expectedStatus] of [
+      [{origin:"https://attacker.invalid"},JSON.stringify({action:"load",recoveryToken:token}),403],
+      [{"sec-fetch-site":"cross-site"},JSON.stringify({action:"delete",recoveryToken:token}),403],
+      [{origin:"http://127.0.0.1:"+nextPort,"sec-fetch-site":"same-site"},JSON.stringify({action:"load",recoveryToken:token}),403],
+      [{"content-type":"text/plain"},JSON.stringify({action:"load",recoveryToken:token}),415],
+      [{},JSON.stringify({action:"load",recoveryToken:token,pad:"x".repeat(1_048_576)}),413],
+    ]){
+      seen.length=0;
+      const response=await fetch(url,{method:"POST",headers:{...fixtureHeaders(),...extraHeaders},
+        body,signal:AbortSignal.timeout(15000)});
+      const data=await response.json();
+      assert.equal(response.status,expectedStatus,"vault preflight rejection");
+      assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
+      assert.equal(seen.length,0,"rejected request must not reach privileged RPC");
+      assert.ok(!JSON.stringify(data).includes(privateMarker));
+    }
     for(const body of [
       "null","[]","true",'"load"',"{}",
       JSON.stringify({action:"load",recoveryToken:privateMarker.repeat(25000)}),
@@ -238,7 +256,7 @@ async function main(){
       assert.ok(!JSON.stringify(data).includes(privateMarker),kind);
     }
     assert.ok(!output.includes(privateMarker),"sensitive upstream error/JSON must not enter server logs");
-    console.log("TITAN designer vault boundary PASS: 42 synthetic HTTP cases; zero real writes.");
+    console.log("TITAN designer vault boundary PASS: 47 synthetic HTTP cases; zero real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>upstream.close(resolve));
