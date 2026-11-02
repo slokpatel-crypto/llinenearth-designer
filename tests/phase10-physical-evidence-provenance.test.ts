@@ -21,3 +21,21 @@ test("physical value ranges are bounded",()=>{
   assert.throws(()=>validateVerifiedPhysicalEvidence({verifiedBreathability:-0.1,verifiedPhysicalEvidenceNote:"Owner ran a breathability test."}),/between 0 and 1/i);
   assert.doesNotThrow(()=>validateVerifiedPhysicalEvidence({verifiedStructure:0,verifiedBreathability:1,verifiedWrinkleResistance:.65,verifiedStretch:.08,verifiedPhysicalEvidenceNote:"Owner recorded repeatable shop test indices."}));
 });
+
+test("supplied nonfinite or nonnumeric physical values fail validation instead of becoming unknown",()=>{
+  const note="Owner recorded the fabric physical measurement.";
+  assert.throws(()=>validateVerifiedPhysicalEvidence({verifiedGsm:Infinity,verifiedPhysicalEvidenceNote:note}),/finite number between 20 and 1000/i);
+  assert.throws(()=>validateVerifiedPhysicalEvidence({verifiedGsm:"145" as never,verifiedPhysicalEvidenceNote:note}),/finite number/i);
+  assert.throws(()=>validateVerifiedPhysicalEvidence({repeatRealMm:NaN,verifiedPhysicalEvidenceNote:note}),/finite number/i);
+  assert.throws(()=>validateVerifiedPhysicalEvidence({swatchRealWidthMm:-Infinity,verifiedPhysicalEvidenceNote:note}),/finite number/i);
+  assert.throws(()=>validateVerifiedPhysicalEvidence({verifiedDrape:"Rigid" as never,verifiedPhysicalEvidenceNote:note}),/Verified drape/i);
+});
+
+test("a protocol prefix alone is not an auditable HTTPS physical source",()=>{
+  assert.throws(()=>validateVerifiedPhysicalEvidence({
+    repeatRealMm:24,verifiedPhysicalSourceUrl:"https://",
+  }),/valid URL/i);
+  assert.doesNotThrow(()=>validateVerifiedPhysicalEvidence({
+    repeatRealMm:24,verifiedPhysicalSourceUrl:"https://supplier.example/certificate/24",
+  }));
+});
