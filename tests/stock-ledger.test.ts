@@ -227,3 +227,71 @@ test("privileged stock record and reservation identities require literal JSON st
   assert.equal(normalizeStockReservation(reserve).revisionId,reserve.revisionId);
   assert.equal(normalizeStockReservation(reserve).requestKey,reserve.requestKey);
 });
+
+
+test("all privileged stock operations require literal checker names and physical source references",()=>{
+  const reservationId="11111111-1111-4111-8111-111111111111";
+  const fixtures=[
+    {run:normalizeManualStockEvent,base:{fabricId:"shirt-1",eventType:"receipt",
+      quantityMetres:2.125,recordedBy:"Physical checker",sourceReference:"Signed roll-1"},
+      actor:"recordedBy",actorError:"Named stock checker / recorder is required.",
+      sourceError:"Physical stock source reference is required."},
+    {run:normalizeStockReservation,base:{fabricId:"shirt-1",
+      revisionId:"LE-LOCK-20261102",requestKey:"LE-REQUEST-20261102",
+      quantityMetres:1.125,requestedBy:"Cutting checker",sourceReference:"Approved sheet-2"},
+      actor:"requestedBy",actorError:"Named reservation checker / requester is required.",
+      sourceError:"Reservation quantity evidence reference is required."},
+    {run:normalizeStockRelease,base:{reservationId,releasedBy:"Physical checker",
+      sourceReference:"Signed release-3"},
+      actor:"releasedBy",actorError:"Named reservation release checker is required.",
+      sourceError:"Reservation release reference is required."},
+    {run:normalizeStockConsumption,base:{reservationId,actualMetres:1.125,
+      checkedBy:"Cutting checker",sourceReference:"Signed cut sheet-4"},
+      actor:"checkedBy",actorError:"Named consumption checker is required.",
+      sourceError:"Actual cloth-usage evidence reference is required."},
+  ];
+  for(const {run,base,actor,actorError,sourceError} of fixtures){
+    for(const field of [actor,"sourceReference"]){
+      for(const invalid of [["Forged name"],{value:"Forged name"},null,42,true]){
+        assert.throws(()=>run({...base,[field]:invalid}),{
+          message:field==="sourceReference"?sourceError:actorError,
+        },`Reject coerced ${actor==="recordedBy"?"record":actor} ${field}: ${String(invalid)}`);
+      }
+    }
+    assert.equal(typeof run(base).sourceReference,"string");
+  }
+});
+
+
+test("physical stock evidence never silently truncates a checker or signed source",()=>{
+  const reservationId="11111111-1111-4111-8111-111111111111";
+  const cases=[
+    {run:normalizeManualStockEvent,base:{fabricId:"shirt-1",eventType:"receipt",
+      quantityMetres:1.125,recordedBy:"Operator",sourceReference:"Signed roll"},
+      actor:"recordedBy",actorError:/Named stock checker/,refError:/Physical stock source/},
+    {run:normalizeStockReservation,base:{fabricId:"shirt-1",
+      revisionId:"LE-LOCK-20261102",requestKey:"LE-REQUEST-20261102",
+      quantityMetres:1.125,requestedBy:"Operator",sourceReference:"Signed sheet"},
+      actor:"requestedBy",actorError:/Named reservation checker/,refError:/quantity evidence reference/},
+    {run:normalizeStockRelease,base:{reservationId,releasedBy:"Operator",
+      sourceReference:"Signed release"},actor:"releasedBy",
+      actorError:/Named reservation release checker/,refError:/Reservation release reference/},
+    {run:normalizeStockConsumption,base:{reservationId,actualMetres:1.125,
+      checkedBy:"Operator",sourceReference:"Signed cutting"},
+      actor:"checkedBy",actorError:/Named consumption checker/,refError:/cloth-usage evidence reference/},
+  ];
+  for(const {run,base,actor,actorError,refError} of cases){
+    assert.throws(()=>run({...base,[actor]:"A".repeat(121)}),actorError);
+    assert.throws(()=>run({...base,sourceReference:"R".repeat(241)}),refError);
+    assert.throws(()=>run({...base,[actor]:"  "+"A".repeat(121)+"  "}),actorError);
+    assert.throws(()=>run({...base,sourceReference:"  "+"R".repeat(241)+"  "}),refError);
+    const accepted=run({...base,[actor]:"A".repeat(120),
+      sourceReference:"R".repeat(240)});
+    assert.equal(accepted[actor as keyof typeof accepted],"A".repeat(120));
+    assert.equal(accepted.sourceReference,"R".repeat(240));
+    const normalized=run({...base,[actor]:"  A  B  ",
+      sourceReference:"  R  1  "});
+    assert.equal(normalized[actor as keyof typeof normalized],"A B");
+    assert.equal(normalized.sourceReference,"R 1");
+  }
+});
