@@ -1,6 +1,7 @@
 import "server-only";
 import { normalizeCustomerEmail } from "@/lib/customer-account";
 import { CUSTOMER_SESSION_COOKIE, verifySignedCustomerSession } from "@/lib/customer-session";
+import { validCustomerSessionIdentityId } from "@/lib/customer-session-token";
 import { customerSessionBearerAllowed, customerSessionRevocationRequired } from "@/lib/customer-session-revocation";
 export { normalizeCustomerEmail } from "@/lib/customer-account";
 
@@ -95,7 +96,7 @@ export async function getCustomerIdentity(request:Request):Promise<CustomerIdent
   });
   if(!response.ok) return null;
   const user=await response.json() as {id?:string;email?:string|null};
-  if(!user.id) return null;
+  if(!validCustomerSessionIdentityId(user.id)) return null;
   return {id:user.id,email:user.email||null};
 }
 
