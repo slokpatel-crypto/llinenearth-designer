@@ -76,6 +76,7 @@ jobs:
           # observed in CI); do not abort an otherwise passing scene after 5m.
           # This 12m cap does NOT relax the strict 20s native first-frame SLA.
           # Prototype-only mode exits after a lighter interactive smoke gate.
+          node scripts/verify-stock-operator-browser.cjs
           timeout --signal=TERM --kill-after=10s 12m node scripts/verify-garment-viewer.cjs
           node scripts/verify-premium-atelier.cjs
           node scripts/verify-designer-advisor.cjs
@@ -85,7 +86,6 @@ jobs:
           node scripts/verify-preview-lifecycle.cjs
           node scripts/verify-style-director-lifecycle.cjs
           node scripts/verify-style-director-handoff.cjs
-          node scripts/verify-stock-operator-browser.cjs
       - name: Save browser verification evidence
         if: always()
         uses: actions/upload-artifact@v4
