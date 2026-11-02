@@ -89,7 +89,7 @@ test("construction review is deterministic and never mutates locked style IDs", 
 test("Style Director applies review gates and preserves real versioned camp/band collar IDs", () => {
   const agent=readFileSync("src/lib/style-director-agent.ts","utf8");
   assert.ok(agent.includes("styleDirectorIntelligenceTrustWeight(intel)"));
-  assert.ok(agent.includes("styleDirectorConstructionIssues(styleSpec)"));
+  assert.ok(agent.includes("styleDirectorConstructionIssues(styleSpec,occasion)"));
   assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'));
   for (const token of [
     'spec.shirt.type="camp_collar_resort"',
