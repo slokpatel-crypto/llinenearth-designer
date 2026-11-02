@@ -199,6 +199,7 @@ async function main(){
     }
     // A separate built Next process proves default legacy v2 writes stay
     // disabled even when a future v3 'enabled' flag is accidentally supplied.
+    mode="valid";
     const heldPort=await freePort();
     const held=spawn(process.execPath,[require.resolve("next/dist/bin/next"),
       "start","-H","127.0.0.1","-p",String(heldPort)],{
