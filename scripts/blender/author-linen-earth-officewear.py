@@ -16,6 +16,7 @@ import os
 import sys
 from pathlib import Path
 
+import bmesh
 import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
@@ -199,24 +200,63 @@ def actual_contact_pairs(body_tree, garment):
 def measure_solidify_variants(obj, body_tree, thickness_m):
     """Run destructive solidification only on disposable in-memory mesh copies.
 
-    Four measured variants isolate panel normal offset from rim closure without
+    Six measured variants isolate normal winding, normal offset and rim closure without
     changing the candidate or the original identity-locked .blend file.
     """
     specs = (
-        ("outwardNoRim", 1.0, False),
-        ("outwardWithRim", 1.0, True),
-        ("inwardNoRim", -1.0, False),
-        ("inwardWithRim", -1.0, True),
+        ("outwardNoRim", 1.0, False, False),
+        ("outwardWithRim", 1.0, True, False),
+        ("inwardNoRim", -1.0, False, False),
+        ("inwardWithRim", -1.0, True, False),
+        # Real Blender BMesh winding repair trials. These must not replace
+        # the saved production candidate without physical-geometry proof.
+        ("recalculatedOutwardWithRim", 1.0, True, True),
+        ("recalculatedInwardWithRim", -1.0, True, True),
     )
     baseline = actual_contact_pairs(body_tree, obj)
     observations = []
-    for label, offset, rim in specs:
+    for label, offset, rim, recalculate_normals in specs:
         clone = obj.copy()
         temporary_mesh = obj.data.copy()
         clone.data = temporary_mesh
         clone.name = "LE_UNSAVED_CONTACT_VARIANT_" + label
         bpy.context.scene.collection.objects.link(clone)
         try:
+            face_count = len(clone.data.polygons)
+            if face_count <= 0:
+                raise RuntimeError("Cannot characterize face winding for an empty cloth.")
+            face_normal_changes = None
+            if recalculate_normals:
+                # Compare the same actual polygon vertex sets before/after BMesh
+                # orientation. Face order need not survive Blender reconstruction.
+                original_normals = {
+                    tuple(sorted(face.vertices)): face.normal.copy()
+                    for face in clone.data.polygons
+                }
+                if len(original_normals) != face_count:
+                    raise RuntimeError("Duplicate face topology prevents reliable winding measurements.")
+                bm = bmesh.new()
+                try:
+                    bm.from_mesh(clone.data)
+                    if not bm.faces:
+                        raise RuntimeError("Cannot recalculate normals for an empty garment shell.")
+                    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+                    bm.to_mesh(clone.data)
+                finally:
+                    bm.free()
+                clone.data.update()
+                if len(clone.data.polygons) != face_count:
+                    raise RuntimeError("Face winding trial changed real mesh topology.")
+                face_normal_changes = 0
+                for face in clone.data.polygons:
+                    original = original_normals.get(tuple(sorted(face.vertices)))
+                    if original is None:
+                        raise RuntimeError("Recalculated face no longer corresponds to the same cloth polygon.")
+                    agreement = face.normal.dot(original)
+                    if not math.isfinite(agreement) or abs(agreement) < 0.5:
+                        raise RuntimeError("Cannot interpret a nonparallel face-normal comparison.")
+                    if agreement < -0.5:
+                        face_normal_changes += 1
             modifier = clone.modifiers.new("LE_EXPERIMENTAL_CLOTH_THICKNESS", "SOLIDIFY")
             modifier.thickness = thickness_m
             modifier.offset = offset
@@ -226,6 +266,9 @@ def measure_solidify_variants(obj, body_tree, thickness_m):
                 "variant": label,
                 "offset": offset,
                 "rim": rim,
+                "recalculatedNormals": recalculate_normals,
+                "sourceClothFaceCount": face_count,
+                "reversedClothFaceCount": face_normal_changes,
                 "bodyIntersectionPairs": actual_contact_pairs(body_tree, clone),
             })
         finally:
