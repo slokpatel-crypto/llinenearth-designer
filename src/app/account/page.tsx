@@ -153,6 +153,11 @@ export default function AccountPage(){
       setCustomer(null);setShares([]);setDesigns([]);setProfiles([]);
       setQuotes([]);setOrders([]);setOrderEvents([]);setOutcomes([]);
       setOutcomeDrafts({});
+      // A failed recovery claim can leave its bearer credential in the form.
+      // Never retain recovery tokens, OTP codes or the previous account email
+      // on a shared browser after the server confirms sign-out.
+      setClaimDesign("");setClaimMeasurement("");
+      setEmail("");setCode("");
       setMessage("Signed out.");setCodeSent(false);
       // Never restore old identity/data in a best-effort post-logout refresh.
       // A later explicit sign-in starts its own guarded refresh.
