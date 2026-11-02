@@ -58,7 +58,7 @@ test("nonfinite, negative, zero, and unreasonable physical dimensions cannot bec
 
 function reviewed():DesignerFabricIntelligence{
   return {
-    trust:"reviewed",
+    trust:"reviewed",reviewStatus:"approved",
     measuredEvidence:{patternPhysicalScale:"declared_repeat",patternOrientation:"vertical",repeatMm:12,stripeWidthMm:3},
     verifiedPhysical:{gsm:150,drape:"Balanced",fiberContent:"100% linen",sourceUrl:null,evidenceNote:"Supplier measured sample roll on 2026-10-01."},
     fieldProvenance:{

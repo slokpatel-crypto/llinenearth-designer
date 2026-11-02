@@ -237,3 +237,23 @@ test("customer scale certification rejects unsupported axis even with reviewed s
   validSwatch.measuredEvidence.patternPhysicalScale="declared_swatch_width";
   assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,validSwatch).patternScaleVerified,true);
 });
+
+test("rejected or pending review cannot promote customer fabric claims even with stale reviewed trust",()=>{
+  for(const reviewStatus of ["rejected","unreviewed"] as const){
+    const stale=intelligence("reviewed");
+    stale.reviewStatus=reviewStatus;
+    const output=applyVerifiedPhysicalFabricEvidence(fabric,stale);
+    assert.equal(output.patternScaleVerified,undefined,reviewStatus);
+    assert.equal(output.renderScale?.physicalScaleStatus,"unknown",reviewStatus);
+    assert.equal(output.weightGsm,null,reviewStatus);
+    assert.equal(output.drape,null,reviewStatus);
+    assert.equal(output.fiberContentVerified,undefined,reviewStatus);
+  }
+  const corrected=intelligence("reviewed");
+  corrected.reviewStatus="corrected";
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,corrected).patternScaleVerified,true);
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,corrected).fiberContentVerified,true);
+  const missing=intelligence("reviewed");
+  (missing as unknown as Record<string,unknown>).reviewStatus=undefined;
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,missing).patternScaleVerified,undefined);
+});

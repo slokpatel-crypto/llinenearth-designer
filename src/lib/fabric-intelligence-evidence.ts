@@ -10,7 +10,11 @@ export function applyVerifiedPhysicalFabricEvidence(
   fabric:DesignerFabric,
   intelligence:DesignerFabricIntelligence|undefined,
 ):DesignerFabric {
-  if(!intelligence || intelligence.trust!=="reviewed") return fabric;
+  // Persisted review status is authoritative: a previously reviewed profile
+  // may later be rejected or reverted to pending review. Trust metadata alone
+  // cannot override that decision or certify customer-facing physical facts.
+  if(!intelligence || intelligence.trust!=="reviewed"
+    || (intelligence.reviewStatus!=="approved" && intelligence.reviewStatus!=="corrected")) return fabric;
   const physicalScale=intelligence.measuredEvidence.patternPhysicalScale;
   const provenance=intelligence.fieldProvenance||{};
   const physical=intelligence.verifiedPhysical;
