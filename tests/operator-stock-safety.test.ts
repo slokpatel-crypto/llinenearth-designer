@@ -35,6 +35,25 @@ test("privileged stock mutations reject hostile browser Origin and unsafe media 
   assert.equal(stockMutationRequestError(request(null,""))?.status,415);
 });
 
+test("stock mutation Fetch Metadata blocks cross-site and same-site writes even without Origin",()=>{
+  for(const site of ["cross-site","same-site","unexpected"]){
+    for(const origin of [null,"https://linenearth.example"]){
+      const req=request(origin);
+      req.headers.set("sec-fetch-site",site);
+      assert.deepEqual(stockMutationRequestError(req),{
+        status:403,error:"Cross-site stock changes are not allowed."
+      },site+" "+String(origin));
+    }
+  }
+  for(const site of ["same-origin","none"]){
+    const req=request(null);
+    req.headers.set("sec-fetch-site",site);
+    assert.equal(stockMutationRequestError(req),null);
+  }
+  assert.equal(stockMutationRequestError(request(null)),null,
+    "non-browser/legacy calls without Fetch Metadata remain allowed");
+});
+
 test("body bounds apply before any service-role stock mutation",()=>{
   assert.equal(stockMutationRequestError(request(null,"application/json","24000")),null);
   assert.equal(stockMutationRequestError(request(null,"application/json","24001"))?.status,413);
