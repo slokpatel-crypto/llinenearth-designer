@@ -128,6 +128,19 @@ async function main(){
       if(kind==="valid")assert.deepEqual(result,{configured:true,stock:[valid]});
       else assert.deepEqual(result,{error:"Stock ledger could not be read."});
     }
+    // Malformed input is a definitive client error and cannot commit stock.
+    for(const malformed of [null,"[]","{oops",Buffer.from([0xc3,0x28])]){
+      mode="created";seen.length=0;
+      const response=await fetch(url,{method:"POST",
+        headers:{cookie,"content-type":"application/json","connection":"close"},
+        ...(malformed===null?{}:{body:malformed}),
+        signal:AbortSignal.timeout(15000)});
+      const result=await response.json();
+      assert.equal(response.status,400,"invalid stock JSON must be a definitive 400");
+      assert.deepEqual(result,{error:"Stock mutation requires a valid JSON object."});
+      assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
+      assert.equal(seen.length,0,"malformed JSON must never reach a stock RPC");
+    }
     const record={action:"record",fabricId:fabric,eventType:"receipt",
       quantityMetres:2.125,recordedBy:"Synthetic checker",
       sourceReference:"SYNTH-ROLL-001"};

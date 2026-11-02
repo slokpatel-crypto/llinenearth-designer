@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {FABRIC_STOCK} from "../src/lib/fabric-stock.ts";
-import {assertCurrentFabricId,readBoundedStockMutationJson,StockMutationPayloadTooLarge,stockMutationRequestError}
+import {assertCurrentFabricId,readBoundedStockMutationJson,StockMutationPayloadTooLarge,StockMutationInvalidJson,stockMutationRequestError}
   from "../src/lib/designer/operator-stock-safety.ts";
 import {readFileSync} from "node:fs";
 
@@ -67,8 +67,14 @@ test("streamed operator stock body is limited even without Content-Length header
   const oversized=make(JSON.stringify({action:"record",note:"₹".repeat(8_200)}));
   assert.equal(stockMutationRequestError(oversized),null);
   await assert.rejects(()=>readBoundedStockMutationJson(oversized),StockMutationPayloadTooLarge);
-  await assert.rejects(()=>readBoundedStockMutationJson(make("[]")) ,/must be an object/);
-  await assert.rejects(()=>readBoundedStockMutationJson(make("{oops")),/valid UTF-8 JSON/);
+  await assert.rejects(()=>readBoundedStockMutationJson(make("[]")),StockMutationInvalidJson);
+  await assert.rejects(()=>readBoundedStockMutationJson(make("{oops")),StockMutationInvalidJson);
+  await assert.rejects(()=>readBoundedStockMutationJson(new Request("https://linenearth.example/api/operator/stock",{
+    method:"POST",headers:{"content-type":"application/json"}
+  })),StockMutationInvalidJson);
+  await assert.rejects(()=>readBoundedStockMutationJson(new Request("https://linenearth.example/api/operator/stock",{
+    method:"POST",headers:{"content-type":"application/json"},body:new Uint8Array([0xc3,0x28])
+  })),StockMutationInvalidJson);
 });
 
 test("actual stock mutation handler applies byte limit before privileged RPC",()=>{
@@ -77,7 +83,11 @@ test("actual stock mutation handler applies byte limit before privileged RPC",()
   const firstRpc=code.indexOf('rpc<string>("fabric_stock_record_v2"');
   assert.ok(parse>0&&firstRpc>parse);
   assert.ok(code.includes("error instanceof StockMutationPayloadTooLarge"));
+  assert.ok(code.includes("error instanceof StockMutationInvalidJson"));
   assert.match(code,/status:413[,}]/);
+  assert.match(code,/status:400[,}]/);
+  assert.ok(code.indexOf("error instanceof StockMutationInvalidJson")<code.indexOf("error instanceof StockInputError"),
+    "invalid JSON must be rejected before business validation or privileged RPC");
 });
 
 test("operator release UI supplies the real named checker and physical cancellation reference",()=>{
