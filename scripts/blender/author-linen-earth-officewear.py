@@ -41,6 +41,8 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
+    parser.add_argument("--experimental-right-hem-taper-mm", type=float, default=0.0,
+                        help="Native research only: gradual right hem taper; never approve on width alone")
     parser.add_argument("--experimental-waist-extra-clearance-mm", type=float, default=3.0,
                         help="Pinned tested waist layering (+3mm); alternatives are native candidate research only")
     parser.add_argument("--experimental-waist-refinement-level", type=int, choices=(0, 1), default=1,
@@ -250,6 +252,47 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinem
         obj["linen_earth_body_contact_stages_json"] = json.dumps(stages, separators=(",", ":"))
 
 
+def measure_guided_right_hem_taper(obj, guide_z, taper_mm):
+    """Apply a gradual symmetric hem-only reduction to an actual *candidate* mesh.
+
+    This is not automatic tailoring or a production fit override. The normal
+    candidate passes 0mm here. A native CC0 experiment must verify whether
+    a 5mm right-hem reduction can satisfy the photographic hem guide without
+    increasing genuine garment/body or garment/garment penetrations.
+    """
+    if obj.name != "TrouserLegRFabric" or taper_mm == 0.0:
+        return
+    if not math.isfinite(guide_z) or not math.isfinite(taper_mm) or not 0 < taper_mm <= 8:
+        raise RuntimeError("Native right hem taper must have a finite measured guide and 0-8mm reduction.")
+    if any(abs(value) > 1e-8 for value in obj.rotation_euler) or any(abs(value - 1) > 1e-8 for value in obj.scale):
+        raise RuntimeError("Right hem trial requires physical Blender garment coordinates.")
+    vertex_coords = [obj.matrix_world @ v.co for v in obj.data.vertices]
+    band = [p.x for p in vertex_coords if abs(p.z - guide_z) <= 0.028]
+    if len(band) < 4:
+        raise RuntimeError("Physical right hem has insufficient measured vertices at photographed hem guide.")
+    xmin, xmax = min(band), max(band)
+    width_m = xmax - xmin
+    reduction_m = taper_mm / 1000.0
+    if width_m <= reduction_m + 0.02 or not math.isfinite(width_m):
+        raise RuntimeError("Right hem photo width is too small to taper physically.")
+    center_x = (xmin + xmax) * 0.5
+    blend_top_z = guide_z + 0.095
+    full_taper_top_z = guide_z + 0.028
+    adjusted = 0
+    for vertex in obj.data.vertices:
+        z = vertex.co.z
+        if z >= blend_top_z:
+            continue
+        weight = 1.0 if z <= full_taper_top_z else (blend_top_z - z) / (blend_top_z - full_taper_top_z)
+        vertex.co.x = center_x + (vertex.co.x - center_x) * (1.0 - reduction_m / width_m * weight)
+        adjusted += 1
+    if adjusted < 4:
+        raise RuntimeError("No real garment hem geometry responded to the photo guide.")
+    obj.data.update()
+    obj["linen_earth_experimental_right_hem_taper_mm"] = round(taper_mm, 3)
+    obj["linen_earth_experimental_right_hem_source_width_mm"] = round(width_m * 1000.0, 3)
+
+
 def planar_grain_uv(obj):
     mesh = obj.data
     if not mesh.uv_layers:
@@ -277,6 +320,9 @@ def main():
     # Validate every physical authoring parameter before touching the scene.
     clearance_m = bounded_measured_mm(options.clearance_mm, "Body clearance", 3.0, 18.0)
     thickness_m = bounded_measured_mm(options.thickness_mm, "Cloth shell thickness", 0.6, 4.0)
+    right_hem_taper_mm = float(options.experimental_right_hem_taper_mm)
+    if not math.isfinite(right_hem_taper_mm) or not 0 <= right_hem_taper_mm <= 8:
+        raise ValueError("Research-only right hem reduction must be finite and 0-8mm.")
     waist_extra_m = bounded_measured_mm(
         options.experimental_waist_extra_clearance_mm,
         "Experimental extra waistband layering clearance", 0.0, 9.0
@@ -319,6 +365,9 @@ def main():
     tucked_shirt_hem_z = min(shirt_waist_guide_z, trouser_waist_guide_z) - 0.030
     if not z(0.57) <= tucked_shirt_hem_z < min(shirt_waist_guide_z, trouser_waist_guide_z):
         raise RuntimeError("Cannot locate a nonempty photographed tucked shirt hem.")
+    right_hem_guide_z = locked_guide_height(bpy.context.scene, "LE_GUIDE_RIGHT_HEM")
+    if not z(0.025) <= right_hem_guide_z <= z(0.18):
+        raise RuntimeError("Locked photographed right trouser hem guide lies outside actual lower leg.")
     torso_half = 0.245
     arm_root = 0.155
     hip_half = 0.245
@@ -342,6 +391,8 @@ def main():
         obj = selected_shell(body, name, predicate)
         fit_shell(obj, body, clearance_m, thickness_m, body_contact_tree,
                   options.experimental_waist_refinement_level, waist_extra_m)
+        if name == "TrouserLegRFabric":
+            measure_guided_right_hem_taper(obj, right_hem_guide_z, right_hem_taper_mm)
         planar_grain_uv(obj)
         obj["linen_earth_auto_authored"] = True
         actual_clearance = clearance_m + (waist_extra_m if name == "TrouserWaistFabric" else 0.0)
@@ -359,6 +410,7 @@ def main():
     bpy.context.scene["linen_earth_tucked_shirt_hem_z_m"] = round(tucked_shirt_hem_z, 6)
     bpy.context.scene["linen_earth_locked_shirt_waist_guide_z_m"] = round(shirt_waist_guide_z, 6)
     bpy.context.scene["linen_earth_trouser_waist_refinement_level"] = options.experimental_waist_refinement_level
+    bpy.context.scene["linen_earth_experimental_right_hem_taper_mm"] = round(right_hem_taper_mm, 3)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
