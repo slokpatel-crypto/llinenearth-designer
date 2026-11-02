@@ -60,16 +60,24 @@ export async function GET(){
 
 export async function POST(request:Request){
   if(!await authorized()) return privateEvidenceJson({error:"Unauthorized."},{status:401});
+  let orderId:string;
+  let draft:ReturnType<typeof normalizeProductionDeliveryEvidence>;
   try{
     const input=await readBoundedJsonResponse(request,MAX_INCOMING_EVIDENCE_BYTES);
     if(!input||typeof input!=="object"||Array.isArray(input))
       return privateEvidenceJson({error:"Valid production evidence JSON object required."},{status:400});
     const body=input as Record<string,unknown>;
-    if(String(body.action||"")!=="record") return privateEvidenceJson({error:"Unsupported evidence action."},{status:400});
-    const orderId=String(body.orderId||"").trim();
-    if(!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(orderId)) return privateEvidenceJson({error:"Valid delivered order ID is required."},{status:400});
-    const draft=normalizeProductionDeliveryEvidence(body);
-    const evidenceId=await rpc<string>("production_delivery_evidence_record_v2",{
+    if(String(body.action||"")!=="record")
+      return privateEvidenceJson({error:"Unsupported evidence action."},{status:400});
+    orderId=String(body.orderId||"").trim();
+    if(!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(orderId))
+      return privateEvidenceJson({error:"Valid delivered order ID is required."},{status:400});
+    draft=normalizeProductionDeliveryEvidence(body);
+  }catch{
+    return privateEvidenceJson({error:"Invalid production delivery evidence fields or JSON."},{status:400});
+  }
+  try{
+    const evidenceId=await rpc<unknown>("production_delivery_evidence_record_v2",{
       p_order_id:orderId,
       p_manual_design_reentry:draft.manualDesignReentry,
       p_reentry_fields:draft.reentryFields,
@@ -78,7 +86,7 @@ export async function POST(request:Request){
       p_evidence_reference:draft.evidenceReference,
     });
     return privateEvidenceJson({evidenceId:requireOperatorCreatedId(evidenceId)});
-  }catch(error){
+  }catch{
     console.error("[operator/production-evidence] request failed (details redacted).");
     return privateEvidenceJson({error:"Production evidence could not be recorded or verified."},{status:503});
   }
