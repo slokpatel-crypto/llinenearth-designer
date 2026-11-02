@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { secureJsonRequestError, readSecureJsonObject, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { createDesignShareToken, designShareConfigured, verifyDesignShareToken } from "@/lib/designer/design-share";
 import { createShareRevocationKey,shareRevocationKeyDigest } from "@/lib/designer/design-share-revocation-contract";
-import { shareRevocationEnforced,registerShareRevocation,revokeShareToken } from "@/lib/designer/design-share-revocation";
+import { shareRevocationEnforced,registerShareRevocation,revokeShareToken,listOwnedShareRevocations,revokeOwnedShare } from "@/lib/designer/design-share-revocation";
+import { getCustomerIdentity } from "@/lib/customer-auth";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 
@@ -15,6 +16,26 @@ export async function POST(request:Request){
   if(requestError)return privateJson({error:requestError.error},requestError.status);
   try{
     const body=await readSecureJsonObject(request,MAX_SHARE_REQUEST_BYTES);
+    if(body.action==="listOwned"||body.action==="revokeOwned"){
+      if(!shareRevocationEnforced())return privateJson({error:"Share management is not configured."},503);
+      let customer;
+      try{customer=await getCustomerIdentity(request);}
+      catch{return privateJson({error:"Secure customer session temporarily unavailable."},503);}
+      if(!customer)return privateJson({error:"Customer sign-in is required."},401);
+      try{
+        if(body.action==="listOwned"){
+          const shares=await listOwnedShareRevocations(customer.id);
+          return privateJson({shares});
+        }
+        const tokenHash=typeof body.tokenHash==="string"?body.tokenHash:"";
+        if(!/^[a-f0-9]{64}$/.test(tokenHash))
+          return privateJson({error:"Invalid share identifier."},400);
+        const revoked=await revokeOwnedShare(tokenHash,customer.id);
+        return revoked?privateJson({revoked:true}):privateJson({error:"Shared link not found."},404);
+      }catch{
+        return privateJson({error:"Secure share management is temporarily unavailable."},503);
+      }
+    }
     if(body.action==="revoke"){
       if(!shareRevocationEnforced())return privateJson({error:"Share revocation is not configured."},503);
       const token=typeof body.token==="string"?body.token:"";
@@ -48,7 +69,10 @@ export async function POST(request:Request){
       if(!payload)return privateJson({error:"Could not verify signed share."},503);
       revokeKey=createShareRevocationKey();
       try{
-        await registerShareRevocation(token,revokeKey,payload.expiresAt);
+        // Owner is derived from the server-verified customer cookie, never
+        // from user-submitted JSON. Anonymous shares retain code-only revocation.
+        const customer=await getCustomerIdentity(request);
+        await registerShareRevocation(token,revokeKey,payload.expiresAt,customer?.id??null);
       }catch{
         // Never leak a bearer link that cannot be revoked under enforcement.
         console.error("[designer/share] revocation registration failed (details redacted).");
