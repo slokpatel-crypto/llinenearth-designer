@@ -82,6 +82,11 @@ async function main(){
       res.writeHead(200,{"content-type":"application/json"});
       res.end(JSON.stringify({rows:[]}));return;
     }
+    if(kind==="cappedList"){
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end(JSON.stringify(Array.from({length:500},()=>({}))));
+      return;
+    }
     if(kind==="ackNull"||kind==="ackObject"||kind==="ackString"){
       res.writeHead(200,{"content-type":"application/json"});
       res.end(kind==="ackNull"?"null":kind==="ackObject"?
@@ -159,6 +164,22 @@ async function main(){
         assert.deepEqual(r.data.evidence,[]);
       }
       assert.equal(seen.length,path==="production-calibration"?1:2);
+
+      if(path==="production-evidence"){
+        // Order RPC returns newest 500; receipt RPC returns oldest 500.
+        // Either bound makes first-ten historical coverage unverifiable.
+        for(const truncated of ["production_order_list",
+          "production_delivery_evidence_list"]){
+          scenario={target:truncated,kind:"cappedList"};
+          seen.length=0;
+          const capped=await request(path,{headers:{cookie}});
+          assert.equal(capped.res.status,409,"capped "+truncated+" must fail closed");
+          assert.deepEqual(capped.data,{error:
+            "Delivery ledger is incomplete; full historical pagination is required before acceptance."});
+          assert.equal(seen.length,2,"both list RPCs must be checked");
+        }
+        scenario={target:null,kind:"ok"};
+      }
 
       seen.length=0;
       r=await request(path,{method:"POST",headers:{cookie,"content-type":"application/json"},
