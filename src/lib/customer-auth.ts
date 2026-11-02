@@ -1,6 +1,7 @@
 import "server-only";
 import { normalizeCustomerEmail } from "@/lib/customer-account";
 import { CUSTOMER_SESSION_COOKIE, verifySignedCustomerSession } from "@/lib/customer-session";
+import { customerSessionBearerAllowed, customerSessionRevocationRequired } from "@/lib/customer-session-revocation";
 export { normalizeCustomerEmail } from "@/lib/customer-account";
 
 export type CustomerIdentity = {
@@ -77,8 +78,12 @@ export async function getCustomerIdentity(request:Request):Promise<CustomerIdent
   const signedCookie=readCookie(request,CUSTOMER_SESSION_COOKIE);
   if(signedCookie){
     // A malformed/expired signed cookie must not silently downgrade to a legacy token.
-    return verifySignedCustomerSession(signedCookie);
+    const identity=verifySignedCustomerSession(signedCookie);
+    if(!identity)return null;
+    return await customerSessionBearerAllowed(signedCookie)?identity:null;
   }
+  // Once revocation is enforced, legacy bearer cookies cannot bypass it.
+  if(customerSessionRevocationRequired())return null;
 
   // Backward-compatible bridge for sessions created before the durable
   // Linen Earth customer-session cookie was introduced.
