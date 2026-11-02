@@ -28,6 +28,25 @@ async function fill(page,source="SYNTH-ROLL-001"){
   await page.getByLabel("Recorded by / checker").fill("Synthetic checker");
   await page.getByLabel("Physical source reference").fill(source);
 }
+async function fillReservation(page,source="SYNTH-CUT-SHEET-001"){
+  await page.getByLabel("Fabric ID",{exact:true}).nth(1).fill(fabric);
+  await page.getByLabel("Locked revision ID").fill("LE-LOCK-20261102-SYNTH-M54-0001");
+  await page.getByLabel("Metres to reserve").fill("1.125");
+  await page.getByLabel("Requested / checked by").fill("Synthetic tailor");
+  await page.getByLabel("Reservation quantity source").fill(source);
+}
+async function submitReservation(page,records){
+  const before=records.length;
+  const [response]=await Promise.all([
+    page.waitForResponse(r=>r.url().includes("/api/operator/stock")&&
+      r.request().method()==="POST",{timeout:15000}),
+    page.getByRole("button",{name:"Create reservation"}).click(),
+  ]);
+  assert.equal(response.status(),200);
+  await page.getByText("Provenance-backed reservation created.",{exact:true}).waitFor();
+  assert.equal(records.length,before+1,"one reserve POST expected");
+  return records.at(-1);
+}
 async function ready(page){
   await page.getByRole("heading",{name:"Fabric Stock Ledger"}).waitFor();
   await page.getByRole("button",{name:"Record stock event"}).waitFor({state:"visible"});
@@ -74,8 +93,13 @@ async function startContext(browser,opts={}){
     assert.equal(request.method(),"POST");
     const body=request.postDataJSON();
     records.push(body);
-    assert.equal(body.action,"record","fixture must not exercise reservations");
+    assert.equal(body.action,opts.reservationMode?"reserve":"record",
+      "only the intended stock fixture may post");
     assert.match(body.requestKey,/^[0-9a-f-]{36}$/i);
+    if(opts.reservationMode){
+      return route.fulfill({status:200,json:{reservationId:uuid},
+        headers:{"cache-control":"private, no-store"}});
+    }
     if(opts.loseFirstAck&&records.length===1){
       // Post has already been sent, but no trusted acknowledgment reached
       // the operator. The browser must lock every subsequent stock mutation.
@@ -147,6 +171,24 @@ async function main(){
       assert.ok(uncertain.getReads()>=2,"reconciliation must fetch a fresh ledger snapshot");
       console.log("Stock operator Chromium PASS: lost ACK lock survives reload and reconciliation reuses original receipt key.");
     }finally{await uncertain.context.close();}
+    const reserve=await startContext(browser,{reservationMode:true});
+    try{
+      await fillReservation(reserve.page);
+      const first=await submitReservation(reserve.page,reserve.records);
+      assert.equal(first.action,"reserve");
+      await reserve.page.reload({waitUntil:"domcontentloaded"});
+      await ready(reserve.page);
+      await fillReservation(reserve.page);
+      const repeated=await submitReservation(reserve.page,reserve.records);
+      assert.equal(repeated.requestKey,first.requestKey,
+        "reload must not mint another reservation for identical cutting-sheet evidence");
+      await reserve.page.getByLabel("Reservation quantity source").fill("SYNTH-CUT-SHEET-002");
+      const changed=await submitReservation(reserve.page,reserve.records);
+      assert.notEqual(changed.requestKey,first.requestKey,
+        "a distinct cutting sheet must get a distinct reservation key");
+      assert.ok(reserve.getReads()>=4,"each reserve acknowledgment must refresh ledger");
+      console.log("Stock operator Chromium PASS: reservation same-sheet retry across reload, changed-sheet key.");
+    }finally{await reserve.context.close();}
     const blocked=await startContext(browser,{blockStorage:true});
     try{
       await fill(blocked.page);
