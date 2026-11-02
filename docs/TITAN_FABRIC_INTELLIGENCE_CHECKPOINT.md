@@ -1,0 +1,35 @@
+# TITAN — fabric intelligence provenance checkpoint (2026-11-02)
+
+**Scope:** Pure fabric measurement, validation, customer-facing evidence promotion, and dedicated regression tests. No stock, inventory, operator availability, catalogue loading, DesignerModule, photographic preview or model changes. No paid model requirement or Vercel deployment.
+
+**Baseline:** `main` at `5835a5533281b8306e9bfa1fd9786a30d59c8053` at branch creation.
+
+## Provenance distinctions (do not conflate them)
+
+- **Image measured:** pixel colour, pixel repeat, image stripe axis and apparent texture. These are *not* physical colour checks, fibre composition, GSM, yarn/Lea count or verified weave construction.
+- **Measured physical:** record a real calibrated reference and measurement method/evidence; review and retain field-level provenance. The code does not create such a measurement or invent a fabric value.
+- **Supplier/owner declared:** use only an auditable supplier record or owner's explicitly documented measurement with field-level declaration and human approval. The declaration's provenance must remain distinct from an independent measured fact.
+- **Estimated/model judged:** may support visual suggestions only, never verified pattern size, yarn count, composition, GSM, grain direction or physical colour.
+- **Unknown:** no verified physical claim and no true-scale preview certification.
+
+## Code invariants added
+
+1. An actual detectable pixel-period and unambiguous repeat axis are required to calibrate motif mm, even when an external repeat is declared.
+2. A *width-only* reference calibrates horizontal image distance (vertical stripe motifs), not horizontal stripe spacing on the image Y axis or two-dimensional grid spacing.
+3. Physical repeat and swatch-width dimensions must be finite, positive, bounded and resolvable at existing reported precision. No zero-mm rounded physical repeat is published.
+4. Consumer-facing reviewed evidence additionally rejects missing or incompatible repeat/stripe widths, invalid source URLs, invalid GSM/drape/fibre values and field-level unproven claims. Existing verified fibre values retain precedence.
+5. Physical input validation rejects explicitly supplied nonfinite or malformed numeric values and malformed HTTPS URLs rather than silently treating them as absent.
+
+## Physical acceptance still open
+
+- No real roll measurement, documented calibrated pixel/mm ratio, warp/weft repeat and grain-rotation measurement, lab/cutter GSM, composition certificate, Lea/yarn count certificate, verified weave, controlled-light colour capture or independently reviewed supplier evidence was supplied in this branch.
+- Source colour extraction remains a **screen-photo observation**. A named D65/colourimeter session and actual physical sample are required for colour truth.
+- A verified single-axis repeat does **not** certify whole cloth grain orientation, a two-axis check pattern, fabric drape or all garment panel mappings.
+- Existing v4 profile contract is unchanged; no migration. Old profiles with incomplete evidence are intentionally **not upgraded** by these checks.
+
+## Verification plan and evidence
+
+- Dedicated Node regression suites: `tests/phase10-measurement.test.ts`, `tests/fabric-intelligence-evidence.test.ts`, `tests/phase10-physical-evidence-provenance.test.ts`, `tests/fabric-pattern-scale-provenance.test.ts`.
+- Required CI gates via pull request: `npm run quality`, `npm test`, `npm run eval:engine`, `npm run eval:preview-performance`, `npm run release:check`, `npm run build` (plus CI native/browser checks). Record result from **latest head SHA**.
+- Local full-repository execution was not available in this tool environment because direct GitHub checkout failed DNS resolution. Do not mark checks green from code inspection.
+- Do not merge before green matching-head checks, latest main reconciliation and independent production evidence; do not deploy Vercel.
