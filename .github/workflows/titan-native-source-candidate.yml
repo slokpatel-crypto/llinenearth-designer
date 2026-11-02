@@ -14,6 +14,8 @@ on:
       - "scripts/blender/diagnose-crotch-modifier-stages.py"
       - "scripts/blender/diagnose-crotch-seam-proximity.py"
       - "scripts/blender/diagnose-crotch-seam-pairing.py"
+      - "scripts/blender/prototype-crotch-source-seam-weld.py"
+      - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
       - "tests/crotch-source-seam-proximity.test.ts"
       - "tests/crotch-solidify-rim-trial.test.ts"
@@ -37,6 +39,8 @@ on:
       - "scripts/blender/diagnose-crotch-modifier-stages.py"
       - "scripts/blender/diagnose-crotch-seam-proximity.py"
       - "scripts/blender/diagnose-crotch-seam-pairing.py"
+      - "scripts/blender/prototype-crotch-source-seam-weld.py"
+      - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
       - "tests/crotch-source-seam-proximity.test.ts"
       - "tests/crotch-solidify-rim-trial.test.ts"
@@ -755,6 +759,47 @@ jobs:
               "productionApproved":False,
           }))
           PY
+      - name: Actually weld matching original source cut edges in disposable Blender research mesh
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-research-crotch-stages.blend \
+            --python-exit-code 1 --python scripts/blender/prototype-crotch-source-seam-weld.py -- \
+            --output "$RUNNER_TEMP/titan-candidate-evidence/crotch-source-weld-research-only.json"
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence/crotch-source-weld-research-only.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/crotch-source-seam-pairing.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/rejection-report.json" <<'PY'
+          import json
+          import math
+          import sys
+          from pathlib import Path
+          trial, edges, physical = (json.loads(Path(p).read_text(encoding="utf-8")) for p in sys.argv[1:])
+          assert all(x["modelIdentityId"] == "linen-earth-studio-model-v1" for x in (trial, edges, physical))
+          assert all(x["candidateOnly"] is True and x["productionApproved"] is False for x in (trial, edges, physical))
+          assert trial["sewnGarmentApproved"] is False and trial["physicalFitApproved"] is False
+          assert trial["changesProductionGeometry"] is False
+          assert physical["preflightReady"] is False and physical["rejectionReasonCount"] == 10
+          assert physical["boundaryIntersections"]["garmentLegToLeg"] == 89
+          source=trial["originalInnerOpenCutEdges"]
+          assert source["left"] == edges["pairedLeftEdgeCount"] == 14
+          assert source["right"] == edges["pairedRightEdgeCount"] == 14
+          assert 0 < trial["actualJoinedInnerCutEdges"] <= edges["mutualNearestEdgeCount"]
+          counts=trial["researchOnlyCombinedMesh"]
+          assert counts["closedBoundaryEdges"] == 2*trial["actualJoinedInnerCutEdges"] > 0
+          assert counts["afterWeldOpenEdges"] < counts["leftBeforeOpenEdges"]+counts["rightBeforeOpenEdges"]
+          assert counts["nonManifoldEdges"] == counts["degenerateFaces"] == 0
+          distances=trial["weldVertexDistanceMm"]
+          assert math.isfinite(distances["minimum"]) and math.isfinite(distances["maximum"])
+          assert 0 <= distances["minimum"] <= distances["maximum"] <= 0.5
+          print("TITAN_ORIGINAL_CROTCH_SEAM_VERTEX_WELD_RESEARCH_ONLY_NOT_CLOTH_APPROVED",json.dumps({
+              "pairedEdges":trial["actualJoinedInnerCutEdges"],
+              "weldedVertices":trial["reciprocalWeldedSourceVertices"],
+              "beforeOpenEdges":counts["leftBeforeOpenEdges"]+counts["rightBeforeOpenEdges"],
+              "afterOpenEdges":counts["afterWeldOpenEdges"],
+              "physicalBlockersRemain":physical["rejectionReasonCount"],
+              "productionApproved":False
+          }))
+          PY
       - name: Upload rejection report, never an unapproved model
         if: always()
         uses: actions/upload-artifact@v4
@@ -772,6 +817,7 @@ jobs:
             ${{ runner.temp }}/titan-candidate-evidence/crotch-modifier-stages.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-source-seam-proximity.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-source-seam-pairing.json
+            ${{ runner.temp }}/titan-candidate-evidence/crotch-source-weld-research-only.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-leg-rimless.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-leg-rimless-preflight.json
             ${{ runner.temp }}/titan-candidate-evidence/leg-thickness-*.json
