@@ -389,6 +389,26 @@ async function main(){
       assert.equal(response.status,403,endpoint+" rejects same-site subdomain");
       assert.equal(seen.length,0);
     }
+    // Every OTP dispatch denial stays uncacheable and cannot touch the
+    // provider when the local request itself is malformed or oversized.
+    for(const [label,body,headers,expectedStatus] of [
+      ["invalid-email",JSON.stringify({email:"not-an-email"}),fixtureHeaders(),400],
+      ["invalid-type",JSON.stringify({email:"alice@example.com"}),{
+        ...fixtureHeaders(),"content-type":"text/plain"},415],
+      ["invalid-json","{unparseable",fixtureHeaders(),400],
+      ["oversized-body",JSON.stringify({email:"alice@example.com",
+        padding:"x".repeat(4_097)}),fixtureHeaders(),413],
+    ]){
+      seen.length=0;
+      const denial=await fetch(origin+"/api/customer-auth/otp",{
+        method:"POST",headers,body,signal:AbortSignal.timeout(15000)});
+      assert.equal(denial.status,expectedStatus,label+" must be denied");
+      assert.match(denial.headers.get("cache-control")||"",/private.*no-store/,
+        label+" must not produce cacheable auth responses");
+      assert.equal(denial.headers.get("set-cookie"),null);
+      assert.deepEqual(seen,[],label+" must not dispatch OTP or query a database");
+    }
+
     seen.length=0;
     const otp=await authPost("/api/customer-auth/otp",{email:"alice@example.com"});
     assert.equal(otp.status,200,"synthetic OTP accepted");
