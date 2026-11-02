@@ -31,7 +31,10 @@ test("valid stock mutation acknowledgment cannot masquerade as refreshed live st
   assert.ok(ack>=0&&loaded>ack&&message>loaded);
   assert.match(post,/Stock operation acknowledged, but ledger refresh is unavailable\. Check the ledger before retrying\./);
   assert.doesNotMatch(post,/setMessage\(success\);await load\(\)/);
-  assert.match(post,/finally\{mutationGate\.current\.exit\(\);setBusy\(false\);\}/);
+  assert.match(post,/finally\\{[\\s\\S]*mutationGate\\.current\\.exit\\(\\);setBusy\\(false\\);/);
+  assert.ok(post.indexOf("uncertainJournal.current.clearPending()")<
+    post.indexOf("mutationGate.current.exit();setBusy(false);"),
+    "pending stock state must be resolved before the client-side mutation gate unlocks");
   assert.ok(s.includes('disabled={uncertainWrite||busy||snapshotState!=="ready"||'),
     "writes remain prohibited until the next successful ledger refresh");
 });
