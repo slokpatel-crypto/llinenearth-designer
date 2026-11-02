@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "scripts/blender/author-linen-earth-officewear.py"
+      - "scripts/blender/diagnose-linen-earth-crotch.py"
       - "tests/blender/test_authoring_scene_protection.py"
       - "tests/garment-authoring-scene-protection.test.ts"
       - ".github/workflows/titan-native-scene-preservation.yml"
@@ -11,6 +12,7 @@ on:
     branches: [main]
     paths:
       - "scripts/blender/author-linen-earth-officewear.py"
+      - "scripts/blender/diagnose-linen-earth-crotch.py"
       - "tests/blender/test_authoring_scene_protection.py"
       - ".github/workflows/titan-native-scene-preservation.yml"
 
