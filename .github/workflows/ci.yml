@@ -160,6 +160,10 @@ jobs:
         env:
           TITAN_SYNTHETIC_PG_TEST: enabled
         run: bash scripts/verify-stock-record-concurrent-pg.sh
+      - name: Verify cross-action reserve versus stock adjustment cannot oversell fabric
+        env:
+          TITAN_SYNTHETIC_PG_TEST: enabled
+        run: bash scripts/verify-stock-reserve-adjust-concurrent-pg.sh
       - name: Confirm native test synthetic data rolled back
         run: |
           psql -v ON_ERROR_STOP=1 -Atc \
