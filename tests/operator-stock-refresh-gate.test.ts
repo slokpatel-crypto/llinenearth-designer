@@ -11,13 +11,13 @@ test("stock ledger reload suppresses previously verified metres while fetching",
   assert.ok(load.indexOf('setSnapshotState("loading")')<load.indexOf('fetch("/api/operator/stock"'));
   assert.match(load,/if\(!response\.ok\) throw new Error\("Stock ledger request failed\."\)/);
   assert.match(load,/data\.configured!==true/);
-  assert.match(load,/setConfigured\(true\);\s*setStock\(data\.stock as StockRow\[\]\);\s*setSnapshotState\("ready"\);\s*return true/);
-  assert.match(load,/catch\{\s*\/\/ Never show[\s\S]*setConfigured\(false\);\s*setStock\(\[\]\);\s*setSnapshotState\("error"\);\s*return false/);
+  assert.match(load,/setWritesEnabled\(data\.writesEnabled\);\s*setConfigured\(true\);\s*setStock\(data\.stock as StockRow\[\]\);\s*setSnapshotState\("ready"\);\s*return true/);
+  assert.match(load,/catch\{\s*\/\/ Never show[\s\S]*setWritesEnabled\(false\);\s*setConfigured\(false\);\s*setStock\(\[\]\);\s*setSnapshotState\("error"\);\s*return false/);
 });
 
 test("stock login redirect and malformed HTTP 200 fail closed",()=>{
   const load=source().split("  async function load():Promise<boolean>{")[1]?.split("  useEffect(")[0]??"";
-  assert.match(load,/if\(response\.status===401\)\{\s*setConfigured\(false\);setStock\(\[\]\);setSnapshotState\("error"\);/);
+  assert.match(load,/if\(response\.status===401\)\{\s*setWritesEnabled\(false\);setConfigured\(false\);setStock\(\[\]\);setSnapshotState\("error"\);/);
   assert.match(load,/window\.location\.href="\/operator\/login\?next=\/operator\/stock";\s*return false/);
   assert.ok(load.includes('!("configured" in data)||data.configured!==true'));
 });
