@@ -20,6 +20,7 @@ export type GarmentViewerFabric = {
   line:string;
   image:string;
   tileKey:string;
+  availabilityVerified?:boolean;
   drape?:string;
   weightClass?:string;
   weightGsm?:number;
@@ -1081,7 +1082,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <div>
         <span className="garmentViewerEyebrow">REAL FABRIC → REUSABLE MODEL</span>
         <h1>Live tailoring + fabric model.</h1>
-        <p>The mannequin identity stays fixed while fabric and real tailoring construction switch independently: shirt type/fit/rise-aware waist-shaped tuck/sleeves/360° cuffs/raised-back collar band/collar construction/white contrast collar-cuffs/placket/pockets/yoke/hem plus trouser type/shape/rise/pleat direction/waistband/break/turn-up/pockets. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same live Designer stock.</p>
+        <p>The mannequin identity stays fixed while fabric and real tailoring construction switch independently: shirt type/fit/rise-aware waist-shaped tuck/sleeves/360° cuffs/raised-back collar band/collar construction/white contrast collar-cuffs/placket/pockets/yoke/hem plus trouser type/shape/rise/pleat direction/waistband/break/turn-up/pockets. {shirtFabrics.length} shirt swatches and {trouserFabrics.length} trouser swatches support prototype visualisation. Unverified catalogue swatches are preview-only and are not live stock.</p>
       </div>
 
       <div className="garmentViewerReference">
@@ -1145,12 +1146,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       </section>
 
       <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Shirt</b><small>Types: {SHIRT_GARMENT_CATEGORY.typeExamples.slice(0,6).join(" · ")}</small><small>Details: {SHIRT_GARMENT_CATEGORY.detailFamilies.join(" · ")}</small></div>
-      <label><span>Shirt fabric</span><select value={shirtId} onChange={(event)=>{beginFabricInteraction();setShirtId(event.target.value);}}>{shirtFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
+      <label><span>Shirt fabric</span><select value={shirtId} onChange={(event)=>{beginFabricInteraction();setShirtId(event.target.value);}}>{shirtFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}{fabric.availabilityVerified===true?"":" · Preview only — confirm stock"}</option>)}</select></label>
       <div className="garmentSwatchPreview">{shirt&&<><img src={shirt.image} alt="" /><span><b>{shirt.name}</b><small>{shirt.line}</small><small className="garmentDrapeMeta">Drape · {fabricDrapeClass(shirt)}{shirt.weightGsm ? " · "+shirt.weightGsm+" GSM" : ""}{shirt.weave ? " · "+shirt.weave : ""}</small><em data-calibrated={Boolean(shirtMeasuredTileMm)}>{shirtMeasuredTileMm?`Calibrated tile · ${shirtMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${shirtManualTileMm} mm`}</em></span></>}</div>
       {!shirtMeasuredTileMm&&<label className="garmentRange"><span>Approx. shirt tile width <b>{shirtManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={shirtManualTileMm} onChange={(event)=>setShirtManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
 
       <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Trouser</b><small>Types: {TROUSER_GARMENT_CATEGORY.typeExamples.slice(0,6).join(" · ")}</small><small>Details: {TROUSER_GARMENT_CATEGORY.detailFamilies.join(" · ")}</small></div>
-      <label><span>Trouser fabric</span><select value={trouserId} onChange={(event)=>{beginFabricInteraction();setTrouserId(event.target.value);}}>{trouserFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
+      <label><span>Trouser fabric</span><select value={trouserId} onChange={(event)=>{beginFabricInteraction();setTrouserId(event.target.value);}}>{trouserFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}{fabric.availabilityVerified===true?"":" · Preview only — confirm stock"}</option>)}</select></label>
       <div className="garmentSwatchPreview">{trouser&&<><img src={trouser.image} alt="" /><span><b>{trouser.name}</b><small>{trouser.line}</small><small className="garmentDrapeMeta">Drape · {fabricDrapeClass(trouser)}{trouser.weightGsm ? " · "+trouser.weightGsm+" GSM" : ""}{trouser.weave ? " · "+trouser.weave : ""}</small><em data-calibrated={Boolean(trouserMeasuredTileMm)}>{trouserMeasuredTileMm?`Calibrated tile · ${trouserMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${trouserManualTileMm} mm`}</em></span></>}</div>
       {!trouserMeasuredTileMm&&<label className="garmentRange"><span>Approx. trouser tile width <b>{trouserManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={trouserManualTileMm} onChange={(event)=>setTrouserManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
 

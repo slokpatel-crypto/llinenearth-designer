@@ -1659,9 +1659,11 @@ for(const token of ["garmentViewerPromotionReadiness","ROADMAP_SCALE_TOLERANCE_P
 for(const token of ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability","verifiedStockFabrics"]) {
   if(!designerCatalogStock.includes(token)) throw new Error(`Shared Designer stock regression: missing ${token}`);
 }
-for(const token of ["loadActiveDesignerFabricStock","activeStock","src=\"/vendor/model-viewer\""]) {
+for(const token of ["loadActiveDesignerFabricStock","composeViewerPreviewStock(FABRIC_STOCK,live.stock)","Preview only","src=\"/vendor/model-viewer\""]) {
   if(!garmentViewerLabPage.includes(token)) throw new Error(`GarmentViewer live-catalogue/runtime regression: missing ${token}`);
 }
+if(!designerCatalogStock.includes("verifiedDesignerCatalogueStock(liveStock.stock,liveStock.verifiedFabricIds,metadata)")) throw new Error("Designer live catalogue must require independently verified ledger and operator availability.");
+if(garmentViewerLabPage.includes("const activeStock=live.stock")) throw new Error("Internal 3D lab must not drop signed draft fabrics when no supplier stock is verified.");
 for(const token of ["@google/model-viewer@4.3.1","text/javascript","s-maxage=2592000"]) {
   if(!garmentViewerVendorRoute.includes(token)) throw new Error(`GarmentViewer same-origin engine regression: missing ${token}`);
 }
