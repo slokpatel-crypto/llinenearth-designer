@@ -7,7 +7,7 @@ test("Blender garment authoring refuses source .blend overwrite before mutations
   assert.match(source,/def safe_candidate_output\(raw_output, source_blend\):/);
   assert.match(source,/Path\(source_blend\)\.expanduser\(\)\.resolve\(\)/);
   assert.match(source,/Path\(raw_output\)\.expanduser\(\)\.resolve\(\)/);
-  assert.match(source,/if output == source:/);
+  assert.match(source,/if output == source or \(output\.exists\(\) and os\.path\.samefile\(output, source\)\):/);
   assert.match(source,/Refusing to overwrite the original identity-locked Blender source/);
   const main=source.slice(source.indexOf("def main():"));
   const validated=main.indexOf("output = safe_candidate_output(options.output, bpy.data.filepath)");
@@ -19,5 +19,6 @@ test("Blender garment authoring refuses source .blend overwrite before mutations
   const fixture=readFileSync("tests/blender/test_authoring_scene_protection.py","utf8");
   assert.match(fixture,/original\.read_bytes\(\)/);
   assert.match(fixture,/alias\.symlink_to\(original\)/);
+  assert.match(fixture,/os\.link\(original, hardlink\)/);
   assert.match(fixture,/author\.safe_candidate_output/);
 });
