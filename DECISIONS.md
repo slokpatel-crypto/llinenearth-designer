@@ -532,3 +532,11 @@ Architecture and product decisions that must persist across coding sessions.
 **Compatibility:** no schema/database migration; existing saved Designer designs, model identity IDs, source photographs and versioned option contracts are unchanged. Internal prototype rendering remains available to engineers, never as evidence of a completed realistic model. Passing structural preflight is still not visual realism approval, verified textile scale, tailor fit approval or deployment authorization.
 
 **Next engineering gate:** exact single identity body mesh, production garment/drape fit and UV evidence, independent front/3-4/side/back visual comparisons, verified supplier physical scale and tailor approval before customer-facing 3D promotion.
+
+## 2026-11-03 — Customer sign-out needs durable bearer revocation before production approval
+
+**Decision:** retain the signed customer-session format; use a service-role-only PostgreSQL denylist of SHA-256 bearer digests. After applying the migration and staging verification, activate with \`LINEN_CUSTOMER_SESSION_REVOCATION_REQUIRED=1\`.
+
+**Why:** clearing the browser cookie does not invalidate a stolen signed copy for the remaining 30-day lifetime. Under enforcement, every authenticated customer request checks the revocation RPC; sign-out records the digest before reporting success. Unavailable or malformed RPC responses fail closed, and the account UI cannot claim logout succeeded. Legacy access-token fallback is disabled when the flag is active.
+
+**Compatibility and rollout:** no saved-design, fabric, measurement, or production schema changes. Flag defaults off until migration and staging evidence are proven. The digest table holds no bearer plaintext, customer records or credentials; direct table access and client execution are denied. This is not production-complete without verified deployment migration, flag enabled, real proxy/account tests and owner approval. Vercel deployment remains prohibited.
