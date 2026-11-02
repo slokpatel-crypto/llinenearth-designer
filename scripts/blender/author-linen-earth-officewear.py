@@ -42,6 +42,8 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
+    parser.add_argument("--experimental-local-crotch-seam-gap-mm", type=float, choices=(0, 2, 4, 6), default=0,
+                        help="Native trial only: local inner-crotch seam panel separation AFTER actual thickness")
     parser.add_argument("--experimental-local-crotch-cuts", type=int, choices=(0, 1, 2), default=0,
                         help="Research only: subdivide measured inner-crotch source faces before body clearance")
     parser.add_argument("--experimental-right-hem-taper-mm", type=float, default=5.0,
@@ -246,8 +248,45 @@ def trial_local_crotch_edge_refinement(obj, center_x, min_z, height, cuts):
     obj["linen_earth_experimental_crotch_source_face_count"] = before_faces
 
 
+def trial_refined_crotch_seam_gap(obj, center_x, min_z, height, gap_mm):
+    """Displace only refined inner-crotch cloth near actual centerline.
+
+    This remains an unapproved Blender-only experiment. Any extra body
+    collision makes this ineligible even if it clears two cloth shells.
+    """
+    if obj.name not in ("TrouserLegLFabric", "TrouserLegRFabric") or gap_mm == 0:
+        return
+    if not all(math.isfinite(x) for x in (center_x, min_z, height, gap_mm)):
+        raise RuntimeError("Native crotch seam correction requires real measured source coordinates.")
+    if gap_mm not in (2, 4, 6) or height <= 0:
+        raise RuntimeError("Only finite 2/4/6mm locally tested separation is allowed.")
+    lower = min_z + 0.395 * height
+    upper = min_z + 0.535 * height
+    mid = (lower + upper) * 0.5
+    direction = -1.0 if obj.name == "TrouserLegLFabric" else 1.0
+    changed = 0
+    for vertex in obj.data.vertices:
+        p = vertex.co
+        if p.z <= lower or p.z >= upper:
+            continue
+        wx = max(0.0, 1.0 - abs(p.x - center_x) / 0.030)
+        wy = max(0.0, 1.0 - abs(p.y) / 0.150)
+        wz = max(0.0, min(1.0, (p.z - lower) / max(mid - lower, 1e-9),
+                               (upper - p.z) / max(upper - mid, 1e-9)))
+        factor = wx * wy * wz
+        if factor <= 0.0:
+            continue
+        vertex.co.x += direction * (gap_mm / 2000.0) * factor
+        changed += 1
+    if changed < 4:
+        raise RuntimeError("No real measured inner-crotch garment vertices responded to native seam gap.")
+    obj.data.update()
+    obj["linen_earth_experimental_local_seam_gap_mm"] = round(gap_mm, 3)
+    obj["linen_earth_experimental_local_seam_moved_vertices"] = changed
+
+
 def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinement_level=1, waist_extra_m=0.0,
-              crotch_cuts=0, body_center_x=0.0, body_min_z=0.0, body_height=0.0):
+              crotch_cuts=0, body_center_x=0.0, body_min_z=0.0, body_height=0.0, local_gap_mm=0):
     # Measured diagnostics only. These are not garment acceptance or fit proof.
     stages = []
     def record_stage(stage):
@@ -293,6 +332,7 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinem
     solid.offset = 1.0
     solid.use_rim = True
     apply_modifier(obj, solid)
+    trial_refined_crotch_seam_gap(obj, body_center_x, body_min_z, body_height, local_gap_mm)
     record_stage("afterClothThickness")
     if body_tree is not None:
         obj["linen_earth_body_contact_stages_json"] = json.dumps(stages, separators=(",", ":"))
@@ -366,6 +406,9 @@ def main():
     # Validate every physical authoring parameter before touching the scene.
     clearance_m = bounded_measured_mm(options.clearance_mm, "Body clearance", 3.0, 18.0)
     thickness_m = bounded_measured_mm(options.thickness_mm, "Cloth shell thickness", 0.6, 4.0)
+    local_gap_mm = options.experimental_local_crotch_seam_gap_mm
+    if local_gap_mm not in (0, 2, 4, 6) or (local_gap_mm != 0 and options.experimental_local_crotch_cuts == 0):
+        raise ValueError("Native seam gap requires measured crotch subdivision and bounded 2/4/6mm trial.")
     crotch_cuts = options.experimental_local_crotch_cuts
     if type(crotch_cuts) is not int or crotch_cuts not in (0, 1, 2):
         raise ValueError("Native-only local crotch tessellation must be 0, 1 or 2 cuts.")
@@ -440,7 +483,7 @@ def main():
         obj = selected_shell(body, name, predicate)
         fit_shell(obj, body, clearance_m, thickness_m, body_contact_tree,
                   options.experimental_waist_refinement_level, waist_extra_m,
-                  crotch_cuts, center_x, min_z, height)
+                  crotch_cuts, center_x, min_z, height, local_gap_mm)
         if name == "TrouserLegRFabric":
             measure_guided_right_hem_taper(obj, right_hem_guide_z, right_hem_taper_mm)
         planar_grain_uv(obj)
@@ -462,6 +505,7 @@ def main():
     bpy.context.scene["linen_earth_trouser_waist_refinement_level"] = options.experimental_waist_refinement_level
     bpy.context.scene["linen_earth_experimental_right_hem_taper_mm"] = round(right_hem_taper_mm, 3)
     bpy.context.scene["linen_earth_experimental_local_crotch_cuts"] = crotch_cuts
+    bpy.context.scene["linen_earth_experimental_local_crotch_seam_gap_mm"] = local_gap_mm
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
