@@ -97,16 +97,14 @@ grep -q "adjustment exceeds available stock" "$tmp/adjust.err" || {
   exit 1
 }
 
-balances="$(psql -X -At -v ON_ERROR_STOP=1 -c \
-  "select physical_metres::text||'/'||reserved_metres::text||'/'||available_metres::text
+balances_ok="$(psql -X -At -v ON_ERROR_STOP=1 -c \
+  "select case when physical_metres=3.000 and reserved_metres=2.000
+               and available_metres=1.000 then 'PASS' else 'FAIL' end
    from public.fabric_stock_snapshot_v2(array['${fabric}']);")"
 count="$(psql -X -At -v ON_ERROR_STOP=1 -c \
   "select count(*) from private.fabric_stock_ledger where fabric_id='${fabric}';")"
-[[ "$balances" == "3.000/2.000/1.000" || "$balances" == "3/2/1" ||
-   "$balances" == "3.000/2.000/1" || "$balances" == "3/2/1.000" ||
-   "$balances" == "3.000/2/1.000" || "$balances" == "3/2.000/1" ||
-   "$balances" == "3.000/2/1" || "$balances" == "3/2.000/1.000" ]] || {
-  echo "M50 unexpected stock balances: $balances" >&2
+[[ "$balances_ok" == PASS ]] || {
+  echo "M50 unexpected stock balances after simultaneous adjustment and reservation" >&2
   exit 1
 }
 [[ "$count" == 2 ]] || {
