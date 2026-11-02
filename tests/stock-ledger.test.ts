@@ -161,3 +161,24 @@ test("operator writes never silently round stock receipts, reservations or cutti
   assert.equal(normalizeStockReservation({...base,quantityMetres:q}).quantityMetres,q);
   assert.equal(normalizeStockConsumption({...base,actualMetres:q}).actualMetres,q);
 });
+
+test("release and consume reject malformed reservation UUIDs before privileged RPC",()=>{
+  const valid="B287E470-0E90-4FD4-B5FB-976EECEBD244";
+  const base={reservationId:valid,actualMetres:1.25,checkedBy:"Cutting checker",
+    releasedBy:"Stock checker",sourceReference:"Cutting/return sheet LE-2026-11"};
+  assert.equal(normalizeStockConsumption(base).reservationId,valid);
+  assert.equal(normalizeStockRelease(base).reservationId,valid);
+  for(const reservationId of [
+    "-".repeat(36),
+    "b287e4700e90-4fd4-b5fb-976eecebd244-",
+    "b287e470-0e904-fd4-b5fb-976eecebd244",
+    "b287e470-0e90-4fd4-b5fb-976eecebd24-",
+    "b287e470-0e90-4fd4-b5fb-976eecebd24g",
+  ]){
+    assert.equal(reservationId.length,36,"test only same-length malformed IDs");
+    assert.throws(()=>normalizeStockConsumption({...base,reservationId}),
+      /Valid reservation ID/,reservationId);
+    assert.throws(()=>normalizeStockRelease({...base,reservationId}),
+      /Valid reservation ID/,reservationId);
+  }
+});
