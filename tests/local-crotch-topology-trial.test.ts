@@ -19,6 +19,16 @@ test("optional native inner-crotch topology experiment never changes default gar
     '"linen_earth_experimental_local_crotch_cuts"',
     'safe_candidate_output(options.output, bpy.data.filepath)',
   ]) assert.ok(code.includes(text),text);
+  for(const text of [
+    '"--experimental-local-crotch-seam-gap-mm", type=float, choices=(0, 2, 4, 6), default=0',
+    'if local_gap_mm not in (0, 2, 4, 6) or (local_gap_mm != 0 and options.experimental_local_crotch_cuts == 0)',
+    'trial_refined_crotch_seam_gap(obj, body_center_x, body_min_z, body_height, local_gap_mm)',
+    'if gap_mm not in (2, 4, 6)',
+    'abs(p.x - center_x) / 0.030',
+    'abs(p.y) / 0.150',
+    'obj["linen_earth_experimental_local_seam_gap_mm"]',
+    '"linen_earth_experimental_local_crotch_seam_gap_mm"',
+  ]) assert.ok(code.includes(text),text);
   assert.ok(!code.includes('default=1,\n                        help="Research only: subdivide measured inner-crotch'),
     "trial must never become default");
   for(const text of [
@@ -31,5 +41,14 @@ test("optional native inner-crotch topology experiment never changes default gar
     '"worsenedActualCollisionTypes": regressions',
     '"mayAutoPromote": False',
     'item["productionApproved"] is False',
+  ]) assert.ok(workflow.includes(text),text);
+  for(const text of [
+    'for gap in 2 4 6; do',
+    '--experimental-local-crotch-cuts 1',
+    '--experimental-local-crotch-seam-gap-mm "$gap"',
+    'TITAN_REAL_COUPLED_CROTCH_REFINEMENT_GAP_VARIANTS_MEASURED_NO_AUTO_PROMOTION',
+    '"worsenedContactCategories": worsened',
+    '"productionApproved": False',
+    'assert actual["garmentLegToLeg"] == diag["measurements"]["legLegPolygonContactPairs"]',
   ]) assert.ok(workflow.includes(text),text);
 });
