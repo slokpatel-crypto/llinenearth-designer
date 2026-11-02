@@ -95,3 +95,18 @@ test("at journal capacity, old physical receipts stay protected and new writes f
   assert.equal(store.values().join(""),before,"full journal must not discard original key");
   assert.equal(await createStockManualAttemptTracker(keys(),()=>store).keyFor(record),first);
 });
+
+test("server-accepted floating-point drift must not mint a second stock key",async()=>{
+  const store=memoryStorage(),tracker=createStockManualAttemptTracker(keys(),()=>store);
+  const first=await tracker.keyFor({...record,quantityMetres:1.125});
+  assert.equal(
+    await tracker.keyFor({...record,quantityMetres:1.12500000000001}),
+    first,
+    "API normalizes both numbers to the same 0.001-metre quantity"
+  );
+  assert.notEqual(
+    await tracker.keyFor({...record,quantityMetres:1.126}),
+    first,
+    "an actual millimetre change must be a separate physical movement"
+  );
+});
