@@ -77,14 +77,17 @@ async function main(){
     const path=req.url||"";
     if(path==="/auth/v1/user"){
       seen.push({path,headers:req.headers});
-      if(req.headers.authorization!=="Bearer valid-legacy"&&
-        req.headers.authorization!=="Bearer malformed-legacy"){
+      if(!["Bearer valid-legacy","Bearer malformed-legacy",
+        "Bearer oversized-legacy","Bearer html-legacy"].includes(req.headers.authorization)){
         res.writeHead(401,{"content-type":"application/json"});res.end("{}");return;
       }
-      res.writeHead(200,{"content-type":"application/json"});
-      res.end(JSON.stringify({id:req.headers.authorization==="Bearer malformed-legacy"
+      const legacyBearer=req.headers.authorization;
+      res.writeHead(200,{"content-type":legacyBearer==="Bearer html-legacy"
+        ?"text/html":"application/json"});
+      res.end(JSON.stringify({id:legacyBearer==="Bearer malformed-legacy"
         ?"broken-owner-identity":"123e4567-e89b-12d3-a456-426614174000",
-        email:"alice@example.com"}));return;
+        email:"alice@example.com",
+        ...(legacyBearer==="Bearer oversized-legacy"?{padding:"z".repeat(16_384)}:{})}));return;
     }
     const parts=[];
     for await(const chunk of req)parts.push(chunk);
@@ -108,11 +111,16 @@ async function main(){
       res.end("{}");return;
     }
     if(path==="/auth/v1/verify"){
-      res.writeHead(200,{"content-type":"application/json"});
+      res.writeHead(200,{"content-type":payload.email==="html-provider@example.com"
+        ?"text/html":"application/json"});
       res.end(JSON.stringify({user:{id:payload.email==="invalid-owner@example.com"
         ?"not-an-authenticated-uuid":payload.email==="bob@example.com"
         ?"223e4567-e89b-12d3-a456-426614174000"
-        :"123e4567-e89b-12d3-a456-426614174000",email:payload.email}}));return;
+        :"123e4567-e89b-12d3-a456-426614174000",
+        email:payload.email==="mismatched-provider@example.com"
+          ?"another-customer@example.com":payload.email},
+        ...(payload.email==="oversized-provider@example.com"
+          ?{padding:"z".repeat(65_536)}:{})}));return;
     }
     if(path==="/rest/v1/rpc/designer_locked_revision_vault_store"){
       assert.equal(req.method,"POST");
@@ -397,6 +405,21 @@ async function main(){
       "invalid upstream owner ID must never issue an authenticated cookie");
     assert.deepEqual(seen.map(item=>item.path),["/auth/v1/verify"]);
 
+    for(const [email,expectedStatus] of [
+      ["mismatched-provider@example.com",502],
+      ["html-provider@example.com",401],
+      ["oversized-provider@example.com",401],
+    ]){
+      seen.length=0;
+      const invalidProvider=await authPost("/api/customer-auth/verify",
+        {email,token:"123456"});
+      assert.equal(invalidProvider.status,expectedStatus,email+" unsafe provider data denied");
+      assert.equal(invalidProvider.headers.get("set-cookie"),null,
+        email+" must never issue a customer cookie");
+      assert.match(invalidProvider.headers.get("cache-control")||"",/private.*no-store/);
+      assert.deepEqual(seen.map(item=>item.path),["/auth/v1/verify"]);
+    }
+
     seen.length=0;
     const verify=await authPost("/api/customer-auth/verify",
       {email:"alice@example.com",token:"123456"});
@@ -429,6 +452,16 @@ async function main(){
     assert.deepEqual(await malformedLegacy.json(),{customer:null},
       "malformed legacy provider owner ID must not become an authenticated customer");
     assert.deepEqual(seen.map(item=>item.path),["/auth/v1/user"]);
+    for(const kind of ["oversized-legacy","html-legacy"]){
+      seen.length=0;
+      const unsafeLegacy=await fetch(origin+"/api/customer-auth/session",{
+        headers:{cookie:"le_customer_access="+kind}});
+      assert.equal(unsafeLegacy.status,200);
+      assert.deepEqual(await unsafeLegacy.json(),{customer:null},
+        kind+" cannot become a legacy customer identity");
+      assert.match(unsafeLegacy.headers.get("cache-control")||"",/private.*no-store/);
+      assert.deepEqual(seen.map(item=>item.path),["/auth/v1/user"]);
+    }
 
     // Two synthetic accounts, one locked vault: owner IDs must come from the
     // verified cookie, never from forged JSON fields or another account.
