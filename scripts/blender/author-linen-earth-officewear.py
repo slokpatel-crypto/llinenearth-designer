@@ -41,6 +41,16 @@ def cli_args():
     return parser.parse_args(argv)
 
 
+def bounded_measured_mm(value, field, minimum_mm, maximum_mm):
+    """Reject invalid tailored dimensions instead of silently changing them."""
+    if not math.isfinite(value) or not minimum_mm <= value <= maximum_mm:
+        raise ValueError(
+            f"{field} must be finite and between {minimum_mm:g} and "
+            f"{maximum_mm:g} mm; the garment will not be silently resized."
+        )
+    return value / 1000.0
+
+
 def world_bounds(obj):
     return [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
 
@@ -193,8 +203,8 @@ def main():
         "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x >= center_x,
     }
 
-    clearance_m = max(0.003, min(0.018, options.clearance_mm / 1000.0))
-    thickness_m = max(0.0006, min(0.004, options.thickness_mm / 1000.0))
+    clearance_m = bounded_measured_mm(options.clearance_mm, "Body clearance", 3.0, 18.0)
+    thickness_m = bounded_measured_mm(options.thickness_mm, "Cloth shell thickness", 0.6, 4.0)
 
     for name in GARMENT_OBJECTS:
         remove_existing(name)
