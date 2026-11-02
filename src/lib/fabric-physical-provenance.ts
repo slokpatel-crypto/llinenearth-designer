@@ -35,7 +35,7 @@ export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricP
   if(evidenceDate===null) return null;
   if(evidenceDate){
     // A formatted string is not proof of an actual inspection day.
-    const match=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(evidenceDate);
+    const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(evidenceDate);
     if(!match) return null;
     const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]);
     if(year<1 || month<1 || month>12 || day<1 || day>31) return null;
@@ -48,7 +48,8 @@ export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricP
   if(sourceUrl){
     try{
       const parsed=new URL(sourceUrl);
-      // A supplier verification link must use TLS, matching the evidence intake contract.\n      if(parsed.protocol!=="https:" || !parsed.hostname) return null;
+      // A supplier verification link must use TLS, matching the evidence intake contract.
+      if(parsed.protocol!=="https:" || !parsed.hostname) return null;
     }catch{return null;}
   }
 
