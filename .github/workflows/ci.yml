@@ -206,3 +206,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103_design_share_revocation.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/20261103_design_share_revocation.sql | grep -q PASS
           test "$(psql -At -c "select count(*) from private.designer_share_revocations")" = 0
+      - name: Verify distributed OTP budget, expiry and private ACL (synthetic)
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103_customer_otp_distributed_rate.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/20261103_customer_otp_distributed_rate.sql | grep -q PASS
+          test "$(psql -At -c "select count(*) from private.customer_otp_rate_windows")" = 0
