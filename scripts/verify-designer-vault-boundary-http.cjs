@@ -481,6 +481,7 @@ async function main(){
     seen.length=0;
     const anonymousHistory=await fetch(origin+"/api/customer-account/production");
     assert.equal(anonymousHistory.status,401);
+    assert.match(anonymousHistory.headers.get("cache-control")||"",/private.*no-store/);
     assert.equal(seen.length,0);
     for(const failure of ["wrongMime","badRows","tooMany","oversize"]){
       productionMode=failure;seen.length=0;
