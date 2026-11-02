@@ -212,9 +212,11 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
       gsm:typeof obj(root.verifiedPhysical).gsm === "number" && Number.isFinite(obj(root.verifiedPhysical).gsm)
         && Number(obj(root.verifiedPhysical).gsm) >= 20 && Number(obj(root.verifiedPhysical).gsm) <= 1000
         ? Number(obj(root.verifiedPhysical).gsm) : null,
-      drape:["Fluid","Balanced","Structured"].includes(String(obj(root.verifiedPhysical).drape))
-        ? String(obj(root.verifiedPhysical).drape) as "Fluid"|"Balanced"|"Structured" : null,
-      fiberContent:str(obj(root.verifiedPhysical).fiberContent,220)||null,
+      drape:typeof obj(root.verifiedPhysical).drape==="string"
+        && ["Fluid","Balanced","Structured"].includes(obj(root.verifiedPhysical).drape as string)
+        ? obj(root.verifiedPhysical).drape as "Fluid"|"Balanced"|"Structured" : null,
+      fiberContent:typeof obj(root.verifiedPhysical).fiberContent==="string"
+        ? str(obj(root.verifiedPhysical).fiberContent,220)||null : null,
       structure:typeof obj(root.verifiedPhysical).structure === "number" && Number.isFinite(obj(root.verifiedPhysical).structure)
         && Number(obj(root.verifiedPhysical).structure) >= 0 && Number(obj(root.verifiedPhysical).structure) <= 1
         ? Number(obj(root.verifiedPhysical).structure) : null,
@@ -227,8 +229,10 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
       stretch:typeof obj(root.verifiedPhysical).stretch === "number" && Number.isFinite(obj(root.verifiedPhysical).stretch)
         && Number(obj(root.verifiedPhysical).stretch) >= 0 && Number(obj(root.verifiedPhysical).stretch) <= 1
         ? Number(obj(root.verifiedPhysical).stretch) : null,
-      sourceUrl:str(obj(root.verifiedPhysical).sourceUrl,1800)||null,
-      evidenceNote:str(obj(root.verifiedPhysical).evidenceNote,500)||null,
+      sourceUrl:typeof obj(root.verifiedPhysical).sourceUrl==="string"
+        ? str(obj(root.verifiedPhysical).sourceUrl,1800)||null : null,
+      evidenceNote:typeof obj(root.verifiedPhysical).evidenceNote==="string"
+        ? str(obj(root.verifiedPhysical).evidenceNote,500)||null : null,
     },
     measured:root.measured && typeof root.measured==="object" ? root.measured as FabricMeasuredData : null,
     imageQuality:root.imageQuality && typeof root.imageQuality==="object" ? root.imageQuality as FabricImageQuality : null,
@@ -250,7 +254,8 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
       : [],
     provenanceByField:Object.fromEntries(
       Object.entries(obj(root.provenanceByField))
-        .filter(([,value])=>["measured","modelJudged","declared","reviewed"].includes(String(value)))
+        .filter(([,value])=>typeof value==="string"
+          && ["measured","modelJudged","declared","reviewed"].includes(value))
         .map(([key,value])=>[key,String(value) as FabricFieldProvenance]),
     ),
     reviewNeeded:[...new Set([...(Array.isArray(root.reviewNeeded)?arr(root.reviewNeeded,30):[]),...reviewNeeded])],
