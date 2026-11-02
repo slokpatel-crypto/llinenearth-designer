@@ -1,24 +1,29 @@
 import { NextResponse } from "next/server";
+import { secureJsonRequestError, readSecureJsonObject, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { createDesignShareToken, designShareConfigured } from "@/lib/designer/design-share";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 
 export const runtime="nodejs";
+const MAX_SHARE_REQUEST_BYTES=1_048_576;
+const privateJson=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"}});
 
 export async function POST(request:Request){
+  const requestError=secureJsonRequestError(request,MAX_SHARE_REQUEST_BYTES);
+  if(requestError)return privateJson({error:requestError.error},requestError.status);
   try{
-    const revision=await request.json() as LockedDesignRevision;
+    const revision=await readSecureJsonObject(request,MAX_SHARE_REQUEST_BYTES) as unknown as LockedDesignRevision;
     if(!revision || revision.version!=="linen-earth-design-lock-v1") {
-      return NextResponse.json({error:"A locked Linen Earth design revision is required."},{status:400});
+      return privateJson({error:"A locked Linen Earth design revision is required."},400);
     }
     if(!await verifyLockedDesignRevision(revision)) {
-      return NextResponse.json({error:"The locked design revision did not pass integrity verification."},{status:409});
+      return NextResponse.json({error:"The locked design revision did not pass integrity verification."},409);
     }
     if(!designShareConfigured()) {
-      return NextResponse.json({error:"Design sharing is not configured on this deployment."},{status:503});
+      return NextResponse.json({error:"Design sharing is not configured on this deployment."},503);
     }
     const token=createDesignShareToken(revision);
-    if(!token) return NextResponse.json({error:"Could not create a share token."},{status:500});
+    if(!token) return privateJson({error:"Could not create a share token."},413);
 
     let audited=false;
     const cloud=getSupabaseAdminConfig();
@@ -32,14 +37,16 @@ export async function POST(request:Request){
           signal:AbortSignal.timeout(8_000),
         });
         audited=audit.ok;
-        if(!audit.ok) console.error("[designer/share] audit failed",audit.status,(await audit.text()).slice(0,240));
-      }catch(error){
-        console.error("[designer/share] audit failed",error);
+        if(!audit.ok) console.error("[designer/share] audit failed (upstream details redacted).");
+      }catch{
+        console.error("[designer/share] audit failed (upstream details redacted).");
       }
     }
 
-    return NextResponse.json({token,expiresInDays:30,audited});
-  }catch{
-    return NextResponse.json({error:"Could not create a share link for this design."},{status:400});
+    return privateJson({token,expiresInDays:30,audited});
+  }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge)return privateJson({error:"Request payload is too large."},413);
+    if(error instanceof SecureJsonBodyInvalid)return privateJson({error:"Invalid JSON request."},400);
+    return privateJson({error:"Could not create a share link for this design."},400);
   }
 }
