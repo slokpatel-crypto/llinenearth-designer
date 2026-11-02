@@ -168,6 +168,10 @@ jobs:
         env:
           TITAN_SYNTHETIC_PG_TEST: enabled
         run: bash scripts/verify-stock-consume-adjust-concurrent-pg.sh
+      - name: Verify simultaneous consume vs release closes reservation once in both orders
+        env:
+          TITAN_SYNTHETIC_PG_TEST: enabled
+        run: bash scripts/verify-stock-close-race-concurrent-pg.sh
       - name: Confirm native test synthetic data rolled back
         run: |
           psql -v ON_ERROR_STOP=1 -Atc \
