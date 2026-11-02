@@ -1,5 +1,6 @@
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
 import { verifyLockedDesignRevision } from "./design-lock.ts";
+import { auditHandoffMeasurements } from "./handoff-measurements.ts";
 
 export const PRODUCTION_HANDOFF_VERSION="linen-earth-production-handoff-v1" as const;
 
@@ -57,9 +58,26 @@ export function buildProductionHandoff(
   generatedAt=new Date().toISOString(),
 ):ProductionHandoff {
   const spec=revision.garmentSpec;
+  const measurementAudit=auditHandoffMeasurements({
+    shirt:spec.shirt.finishedTargets,
+    trouser:spec.trouser.finishedTargets,
+  });
+  if(measurementAudit.errors.length) {
+    throw new Error(`Unsafe tailor handoff measurements: ${measurementAudit.errors.join(" ")}`);
+  }
+  const legacyConstructionNote=spec.styleSpec ? [] : [
+    "Versioned StyleSpec v2 cut IDs are missing; confirm the exact legacy shirt and trouser construction before production.",
+  ];
+  const unresolved=[...new Set([
+    ...spec.unresolved,
+    ...measurementAudit.missing,
+    ...legacyConstructionNote,
+  ])];
   const ready=spec.status==="ready_for_tailor_review"
     && spec.readiness.tailoring!=="insufficient_measurements"
-    && spec.readiness.materialVerification==="verified";
+    && spec.readiness.materialVerification==="verified"
+    && measurementAudit.missing.length===0
+    && legacyConstructionNote.length===0;
   return {
     version:PRODUCTION_HANDOFF_VERSION,
     designRevisionId:revision.revisionId,
@@ -95,7 +113,7 @@ export function buildProductionHandoff(
       stockReservation:{status:"not_requested",reservationId:null},
       quote:{status:"pending",amount:null,currency:null},
     },
-    unresolved:[...spec.unresolved],
+    unresolved,
     caveats:[
       ...spec.caveats,
       "This handoff preserves the locked design recipe but is not a cutting pattern.",
