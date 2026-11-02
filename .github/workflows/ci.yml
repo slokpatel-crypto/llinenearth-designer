@@ -298,8 +298,18 @@ jobs:
       - name: Apply source-only stock v3 migration and reload actual schema cache
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102_stock_record_idempotency.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102_stock_write_readiness_v1.sql
           psql -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
           sleep 2
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when public.fabric_stock_write_ready_v1() is true
+              and has_function_privilege('service_role',
+                'public.fabric_stock_write_ready_v1()','EXECUTE')
+              and not has_function_privilege('anon',
+                'public.fabric_stock_write_ready_v1()','EXECUTE')
+              and not has_function_privilege('authenticated',
+                'public.fabric_stock_write_ready_v1()','EXECUTE')
+             then 'PASS' else 'FAIL' end" | grep -qx PASS
       - name: Verify read-only staging preflight passes every function and privilege after v3
         run: |
           test "$PGDATABASE" = titan_synthetic
@@ -381,12 +391,20 @@ jobs:
                 .payload_binding_guard_present==false)) and
               (.checks|any(.function=="record_v3" and
                 .installed==true and .payload_binding_guard_present==true))' >/dev/null
+          # The privileged server cannot be tricked by the existence of
+          # the older reservation function with the same signature/grants.
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when public.fabric_stock_write_ready_v1() is false
+              then 'PASS' else 'FAIL' end" | grep -qx PASS
           # Reapply the source migration before the existing v3 rollback suite.
           psql -X -v ON_ERROR_STOP=1 -f \
             supabase/migrations/20261102_stock_reservation_key_payload_binding.sql
           psql -X -v ON_ERROR_STOP=1 -At -f scripts/stock-v3-readonly-preflight.sql |
             jq -e '.status=="READY" and
               (.checks|all(.payload_binding_guard_present==true))' >/dev/null
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when public.fabric_stock_write_ready_v1() is true
+              then 'PASS' else 'FAIL' end" | grep -qx PASS
           psql -X -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
       - name: Rehearse v3 rollback and PostgREST cache invalidation without changing v2
         run: |
@@ -430,6 +448,16 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -At -f scripts/stock-v3-readonly-preflight.sql |
             jq -e '.status=="BLOCKED" and
               (.checks|any(.function=="record_v3" and .installed==false))' >/dev/null
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when public.fabric_stock_write_ready_v1() is false
+              then 'PASS' else 'FAIL' end" | grep -qx PASS
+          # Remove the M69 catalog-only guard during exact synthetic rollback.
+          psql -X -v ON_ERROR_STOP=1 -c \
+            "drop function public.fabric_stock_write_ready_v1();"
+          psql -X -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
+          psql -X -v ON_ERROR_STOP=1 -Atc \
+            "select case when to_regprocedure('public.fabric_stock_write_ready_v1()') is null
+              then 'PASS' else 'FAIL' end" | grep -qx PASS
       - name: Stop disposable PostgREST container
         if: always()
         run: docker rm -f titan-postgrest-m46 || true
