@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorCandidateCollar, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorCandidateSleeve, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -278,9 +278,18 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
     spec.shirt.collar="mandarin_band_collar";
   }
   else if(/overshirt/.test(shirt)) spec.shirt.type="overshirt";
-  else if(/short[- ]?sleeve/.test(shirt)) spec.shirt.type="short_sleeve_shirt";
+  else if(/(?:short|half)[- ]?sleeve/.test(shirt)) spec.shirt.type="short_sleeve_shirt";
   else if(/oxford|button[- ]?down/.test(shirt)) spec.shirt.type="casual_shirt";
   else spec.shirt.type="dress_shirt";
+
+  // A named half/short sleeve must survive the legacy-to-versioned bridge.
+  // The legacy photo has no sleeve-length selector, so the pure presentation
+  // gate marks this as review-only rather than claiming visual accuracy.
+  const namedSleeve=styleDirectorCandidateSleeve(shirt);
+  if(namedSleeve){
+    spec.shirt.sleeve=namedSleeve.sleeve;
+    spec.shirt.cuff=namedSleeve.cuff;
+  }
 
   if(/wide/.test(trouser)) spec.pant.type="wide_leg_relaxed_drape";
   else if(/pleat/.test(trouser)) spec.pant.type="pleated_trouser";
