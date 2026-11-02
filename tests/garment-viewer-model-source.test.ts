@@ -216,6 +216,26 @@ test("3D contact BVHs use evaluated world coordinates for body and garments",()=
   ]) assert.ok(native.includes(token),token);
 });
 
+test("native 3D UV preflight rejects unmeasurable textile coordinates",()=>{
+  const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  for(const token of [
+    "def uv_triangle_issue(corners):",
+    "mesh.calc_loop_triangles()",
+    "for triangle in mesh.loop_triangles:",
+    'status = uv_triangle_issue([',
+    '"uvNonFiniteTriangles": uv_nonfinite',
+    '"uvCollapsedTriangles": uv_collapsed',
+    'if stats["uvNonFiniteTriangles"] > 0:',
+    'if stats["uvCollapsedTriangles"] > 0:',
+    "fix the garment unwrap before approving fabric mapping.",
+  ]) assert.ok(source.includes(token),token);
+  const fixture=readFileSync("tests/blender/test_uv_preflight_triangles.py","utf8");
+  assert.match(fixture,/preflight\.evaluated_mesh_stats\(collapsed\)/);
+  assert.match(fixture,/preflight\.evaluated_mesh_stats\(valid\)/);
+  const workflow=readFileSync(".github/workflows/titan-native-blender.yml","utf8");
+  assert.ok(workflow.includes("tests/blender/test_uv_preflight_triangles.py"));
+});
+
 test("Blender scene preflight verifies canonical identity guide geometry",()=>{
   const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
   for(const token of [
