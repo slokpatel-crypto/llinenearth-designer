@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
-import { validateOperatorLedgerRows } from "@/lib/designer/operator-optional-rpc";
+import { verifyProductionCutLedger } from "@/lib/designer/production-cut-ledger-validation";
 import { requireOperatorCreatedId } from "@/lib/designer/operator-created-id";
 import { normalizeProductionCutEvidenceDraft } from "@/lib/designer/meterage-calibration";
 
@@ -16,25 +16,6 @@ function privateEvidenceJson(body:unknown,init?:ResponseInit){
   return response;
 }
 
-
-type CutRow={
-  evidence_id:string;
-  case_id:string;
-  order_id:string;
-  revision_id:string;
-  recipe_hash:string;
-  garment:"shirt"|"trouser";
-  fabric_id:string;
-  fabric_width_cm:number|string;
-  actual_metres:number|string;
-  pattern_repeat_mm:number|string|null;
-  pattern_matching:boolean;
-  cut_context:string;
-  checked_by:string;
-  evidence_reference:string;
-  note:string;
-  created_at:string;
-};
 
 async function authorized(){
   const jar=await cookies();
@@ -74,8 +55,8 @@ export async function GET(){
   },{headers:{"cache-control":"private, no-store"}});
 
   try{
-    const rows=await rpc<CutRow[]>("production_cut_evidence_list",{p_limit:1000});
-    const verifiedRows=validateOperatorLedgerRows(rows,1000) as unknown as CutRow[];
+    const rows=await rpc<unknown>("production_cut_evidence_list",{p_limit:1000});
+    const verifiedRows=verifyProductionCutLedger(rows,1000);
     const cases=verifiedRows.map((row)=>({
       at:row.created_at,
       caseId:row.case_id,
