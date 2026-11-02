@@ -5,6 +5,7 @@ import { FABRIC_STOCK } from "@/lib/fabric-stock";
 import { loadGarmentViewerProductionAssetStatus } from "@/lib/garment-viewer-model-server";
 import { PROTOTYPE_MODEL_ID } from "@/lib/garment-viewer-prototype";
 import { loadActiveDesignerFabricStock } from "@/lib/designer/catalog-stock-server";
+import { composeViewerPreviewStock } from "@/lib/designer/viewer-preview-stock";
 import "./garment-viewer.css";
 
 export const metadata={
@@ -26,13 +27,17 @@ function viewerFabric(fabric:(typeof FABRIC_STOCK)[number]):GarmentViewerFabric 
     weightClass:fabric.weightClass,
     weightGsm:fabric.weightGsm,
     weave:fabric.weave,
+    availabilityVerified:fabric.inStock===true && fabric.availabilityVerified===true,
   };
 }
 
 export default async function GarmentViewerLabPage() {
   const production=await loadGarmentViewerProductionAssetStatus();
   const live=await loadActiveDesignerFabricStock();
-  const activeStock=live.stock;
+  // Internal prototype lab: preserve full Designer recipe reconstruction even
+  // when supplier/ledger/operator evidence is absent. Unverified swatches are
+  // explicitly preview-only; the customer live catalogue remains fail-closed.
+  const previewStock=composeViewerPreviewStock(FABRIC_STOCK,live.stock);
   // `configured` only means a path was supplied; the file may be missing or
   // fail structural/identity manifest preflight. Never offer that URL as an
   // approved 3D model. The internal lab can still inspect its named prototype.
@@ -46,8 +51,8 @@ export default async function GarmentViewerLabPage() {
   const previewModelSrc=approvedModelSrc || candidateModelSrc;
   const modelManifestSrc=previewModelSrc ? production.manifestSrc : null;
   const modelId=previewModelSrc ? production.modelId : PROTOTYPE_MODEL_ID;
-  const shirtFabrics=activeStock.filter((fabric)=>fabric.suitableFor.includes("shirt")).map(viewerFabric);
-  const trouserFabrics=activeStock.filter((fabric)=>fabric.suitableFor.includes("trouser")).map(viewerFabric);
+  const shirtFabrics=previewStock.filter((fabric)=>fabric.suitableFor.includes("shirt")).map(viewerFabric);
+  const trouserFabrics=previewStock.filter((fabric)=>fabric.suitableFor.includes("trouser")).map(viewerFabric);
 
   return <>
     <Script
@@ -63,6 +68,7 @@ export default async function GarmentViewerLabPage() {
         <div><span>LINEN EARTH · DEEP ENGINE</span><b>3D VIEWER LAB</b></div>
         <Link href="/designer-studio">Designer Studio ↗</Link>
       </header>
+      <p role="note" className="garmentViewerStockNotice">Preview only — the 3D lab keeps catalogue fabrics selectable for reconstructing saved designs. {live.stock.length} fabrics currently have both verified positive ledger stock and operator approval; all other fabrics need a fresh stock check before an enquiry or order. No cloth is reserved by this preview.</p>
       <GarmentViewer shirtFabrics={shirtFabrics} trouserFabrics={trouserFabrics} modelSrc={previewModelSrc} modelManifestSrc={modelManifestSrc} modelId={modelId} assetIdentity={production.assetIdentity}/>
     </main>
   </>;
