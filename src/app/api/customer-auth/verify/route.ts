@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { secureJsonRequestError, readSecureJsonObject, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { customerSessionBearerAllowed, customerSessionRevocationRequired } from "@/lib/customer-session-revocation";
 import { distributedOtpRateAllowed } from "@/lib/customer-otp-rate";
+import { validCustomerSessionIdentityId } from "@/lib/customer-session-token";
 import {
   CUSTOMER_ACCESS_COOKIE,
   CUSTOMER_REFRESH_COOKIE,
@@ -39,7 +40,7 @@ export async function POST(request:Request){
         {status:503,headers:{"cache-control":"private, no-store"}});
     }
     const session=await verifyCustomerOtp(email,token);
-    if(!session.user?.id) {
+    if(!validCustomerSessionIdentityId(session.user?.id)) {
       return NextResponse.json({error:"The sign-in response was incomplete."},{status:502});
     }
 

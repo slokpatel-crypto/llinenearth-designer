@@ -33,6 +33,27 @@ test("customer session rejects tampering and expiry",()=>{
   );
 });
 
+test("customer identity must be a real UUID before signing or accepting a bearer",()=>{
+  const now=Date.parse("2026-10-01T10:00:00Z");
+  for(const id of [
+    "1234567890abcdef1234567890abcdef",
+    "123e4567-e89b-02d3-a456-426614174000",
+    "123e4567-e89b-12d3-2456-426614174000",
+    "123e4567-e89b-12d3-a456-42661417400g",
+    "../123e4567-e89b-12d3-a456-426614174000",
+    "00000000-0000-0000-0000-000000000000",
+  ]){
+    assert.throws(()=>createCustomerSessionToken(secret,{id,email:null},now),/invalid/);
+  }
+  const legitimate=createCustomerSessionToken(secret,{
+    id:"123e4567-e89b-12d3-a456-426614174000",email:null,
+  },now);
+  assert.equal(verifyCustomerSessionToken(secret,legitimate+"x".repeat(2049),now),null,
+    "oversized bearer cookies must be rejected before HMAC decoding");
+  assert.equal(verifyCustomerSessionToken(secret,legitimate.replace(/.$/,"!"),now),null,
+    "non-base64url signature bytes must fail closed");
+});
+
 test("customer session requires a strong signing secret",()=>{
   assert.throws(()=>createCustomerSessionToken("short",{
     id:"123e4567-e89b-12d3-a456-426614174000",email:null,
