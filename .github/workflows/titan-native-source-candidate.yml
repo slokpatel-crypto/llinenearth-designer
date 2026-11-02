@@ -45,6 +45,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/titan-blender"
           tar -xf "$RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz" -C "$RUNNER_TEMP/titan-blender"
           echo "BLENDER_BIN=$RUNNER_TEMP/titan-blender/blender-4.5.14-linux-x64/blender" >> "$GITHUB_ENV"
+      - name: Verify world centering preserves parent/child body geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_body_world_centering.py
       - name: Fetch official pinned CC0 source body bundle
         shell: bash
         run: |

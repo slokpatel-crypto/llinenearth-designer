@@ -127,6 +127,42 @@ def normalize_floor(objects, body):
     return min_z
 
 
+def normalize_horizontal_center(objects, body):
+    """Center the licensed scan in the same world frame as photo identity guides.
+
+    Source asset mesh coordinates may be several metres away from world X=0.
+    Move only roots of the imported hierarchy, preserving parent/child
+    geometry, pose and relative proportions; never alter mesh vertex data.
+    """
+    points = world_bounds(body)
+    center_x = (min(p.x for p in points) + max(p.x for p in points)) * 0.5
+    center_y = (min(p.y for p in points) + max(p.y for p in points)) * 0.5
+    if not math.isfinite(center_x) or not math.isfinite(center_y):
+        raise RuntimeError("The real source body has a nonfinite horizontal center.")
+    selected = {obj.as_pointer() for obj in objects}
+    roots = [
+        obj for obj in objects
+        if obj.parent is None or obj.parent.as_pointer() not in selected
+    ]
+    if not roots:
+        raise RuntimeError("Imported real body hierarchy has no movable root.")
+    for obj in roots:
+        transform = obj.matrix_world.copy()
+        transform.translation.x -= center_x
+        transform.translation.y -= center_y
+        obj.matrix_world = transform
+    bpy.context.view_layer.update()
+    measured = world_bounds(body)
+    residual_x = (min(p.x for p in measured) + max(p.x for p in measured)) * 0.5
+    residual_y = (min(p.y for p in measured) + max(p.y for p in measured)) * 0.5
+    if abs(residual_x) > 0.002 or abs(residual_y) > 0.002:
+        raise RuntimeError(
+            f"Body horizontal centering failed: residual X/Y "
+            f"{residual_x:.4f}/{residual_y:.4f} m."
+        )
+    return center_x, center_y
+
+
 def create_identity_guides(identity_spec):
     existing = bpy.data.collections.get(IDENTITY_GUIDE_COLLECTION)
     if existing is not None:
@@ -328,6 +364,7 @@ def main():
     body.name = BODY_NAME
     original_height, factor, measured = normalize_height(objects, body)
     floor_shift = normalize_floor(objects, body)
+    body_source_center_xy = normalize_horizontal_center(objects, body)
     ensure_export_collection(objects)
     create_identity_guides(identity_spec)
     stamp_provenance(
@@ -350,6 +387,10 @@ def main():
     print(f"Body object: {original_name} -> {BODY_NAME}")
     print(f"Explicit height normalization: {original_height:.4f} m -> {measured:.4f} m")
     print(f"Floor normalization shift: {floor_shift:.4f} m")
+    print(
+        f"Horizontal body center shift: X={body_source_center_xy[0]:.4f} m "
+        f"Y={body_source_center_xy[1]:.4f} m → model/guide center X=0, Y=0"
+    )
     print(f"Identity guide collection: {IDENTITY_GUIDE_COLLECTION}")
     print(f"Identity targets: {json.dumps(identity_spec['physicalTargetsMm'], sort_keys=True)}")
     print(
