@@ -56,7 +56,7 @@ export default function AccountPage(){
     const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
     if(epoch!==refreshEpoch.current)return;
     const next:Customer|null=session.customer||null;
-    if(loadedOwnerId.current!==next?.id){
+    if(loadedOwnerId.current!==(next?.id??null)){
       // Clear prior account data in the same render batch as identity change.
       loadedOwnerId.current=next?.id??null;
       setShares([]);setDesigns([]);setProfiles([]);setQuotes([]);
