@@ -36,6 +36,24 @@ async function main(){
   const revision={version:"linen-earth-design-lock-v1",
     revisionId:"LE-LOCK-20261101180000-"+recipeHash.slice(0,12).toUpperCase(),
     parentRevisionId:null,recipeHash,lockedAt:"2026-11-01T18:00:00.000Z",garmentSpec:spec};
+  // The vault-boundary fixture is intentionally sparse. The public-share
+  // fixture must contain the complete recipe fields required by the signed
+  // share verifier, without borrowing any real customer or fabric records.
+  const shareSpec={
+    version:"linen-earth-garment-spec-v1",
+    context:{occasion:"Semi-Formal",climate:"Not specified",intention:"Balanced"},
+    fabrics:{
+      shirt:{id:"SYNTHETIC-SHIRT",name:"Synthetic Shirt",line:"Synthetic Linen"},
+      trouser:{id:"SYNTHETIC-TROUSER",name:"Synthetic Trouser",line:"Synthetic Linen"},
+    },
+    shirt:{fit:"Regular",wear:"Tucked",collar:"Point",collarFinish:"Self-fabric",
+      cuff:"Barrel",placket:"Standard",button:"Corozo"},
+    trouser:{shape:"Regular",rise:"Mid Rise",waistband:"Standard",break:"Slight Break"},
+    creative:null,
+  };
+  const shareRecipeHash=createHash("sha256").update(JSON.stringify(canonical(shareSpec))).digest("hex");
+  const shareRevision={...revision,recipeHash:shareRecipeHash,garmentSpec:shareSpec,
+    revisionId:"LE-LOCK-20261101180000-"+shareRecipeHash.slice(0,12).toUpperCase()};
   const privateMarker="SYNTHETIC_PRIVATE_RECOVERY_TOKEN_NOT_FOR_LOGGING";
   // Every independent fixture scenario uses an RFC 5737 documentation IP.
   // Otherwise 30+ synthetic tests correctly trip the real 30/min rate guard.
@@ -104,12 +122,19 @@ async function main(){
     if(path==="/rest/v1/rpc/production_claim_revision_ownership"){
       res.writeHead(200,{"content-type":"application/json"});res.end("true");return;
     }
+    if(path==="/rest/v1/rpc/design_share_audit_record"){
+      assert.equal(payload.p_revision_id,shareRevision.revisionId);
+      assert.equal(payload.p_recipe_hash,shareRevision.recipeHash);
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end("true");return;
+    }
     if(path==="/rest/v1/rpc/designer_share_register"){
       assert.match(payload.p_token_hash,/^[a-f0-9]{64}$/);
       assert.match(payload.p_revoke_key_hash,/^[a-f0-9]{64}$/);
       assert.ok(Date.parse(payload.p_expires_at)>Date.now());
       const exists=shareRecords.has(payload.p_token_hash);
-      if(!exists)shareRecords.set(payload.p_token_hash,{
+      if(!exists&&shareMode!=="register500"&&shareMode!=="registerMalformed"
+        &&shareMode!=="registerFalse")shareRecords.set(payload.p_token_hash,{
         key:payload.p_revoke_key_hash,revoked:false
       });
       res.writeHead(shareMode==="register500"?503:200,
@@ -602,14 +627,14 @@ async function main(){
       // the independent private cancellation capability was registered.
       shareMode="register500";seen.length=0;
       const deniedIssue=await fetch(enforcedOrigin+"/api/designer/share",{
-        method:"POST",headers:fixtureHeaders(),body:JSON.stringify(revision),
+        method:"POST",headers:fixtureHeaders(),body:JSON.stringify(shareRevision),
         signal:AbortSignal.timeout(15000)});
       assert.equal(deniedIssue.status,503);
       assert.ok(!("token" in await deniedIssue.json()));
       assert.equal(seen.at(-1).path,"/rest/v1/rpc/designer_share_register");
       shareMode="ok";seen.length=0;
       const issued=await fetch(enforcedOrigin+"/api/designer/share",{
-        method:"POST",headers:fixtureHeaders(),body:JSON.stringify(revision),
+        method:"POST",headers:fixtureHeaders(),body:JSON.stringify(shareRevision),
         signal:AbortSignal.timeout(15000)});
       assert.equal(issued.status,200,"share token requires revocation capability registration");
       const shared=await issued.json();
