@@ -57,7 +57,16 @@ test("inspection evidence date must be a real calendar day, including leap years
   ]){
     assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,evidenceDate}),null,evidenceDate);
   }
-  for(const evidenceDate of ["2024-02-29","2000-02-29","2026-02-28","2026-11-30"]){
+  for(const evidenceDate of ["2024-02-29","2000-02-29","2026-02-28","2024-11-30"]){
     assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,evidenceDate})?.evidenceDate,evidenceDate);
   }
+});
+
+test("future-dated inspection receipts fail closed while UTC-plus time zones remain supported",()=>{
+  const future=new Date(Date.now()+4*86_400_000).toISOString().slice(0,10);
+  assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,evidenceDate:future}),null,
+    "an inspection days in the future must never be recorded as completed");
+  const tomorrowUtc=new Date(Date.now()+86_400_000).toISOString().slice(0,10);
+  assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,evidenceDate:tomorrowUtc})?.evidenceDate,tomorrowUtc,
+    "permit current local date in UTC+14 while today's UTC calendar day is earlier");
 });

@@ -41,6 +41,13 @@ export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricP
     if(year<1 || month<1 || month>12 || day<1 || day>31) return null;
     const daysInMonth=[31,(year%4===0 && (year%100!==0 || year%400===0))?29:28,31,30,31,30,31,31,30,31,30,31];
     if(day>daysInMonth[month-1]) return null;
+    // A future-dated inspection has not happened. UTC+14 locations may
+    // already be in tomorrow's calendar day, so permit at most UTC tomorrow.
+    // This limits impossible future receipts without rejecting real local
+    // inspections around a UTC midnight; it is not proof of authenticity.
+    const now=new Date();
+    const utcToday=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate());
+    if(Date.UTC(year,month-1,day)>utcToday+86_400_000) return null;
   }
 
   const sourceUrl=source.sourceUrl==null ? "" : clean(source.sourceUrl,500);
