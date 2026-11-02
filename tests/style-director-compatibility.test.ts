@@ -5,6 +5,7 @@ import {
   styleDirectorConstructionIssues,
   styleDirectorIntelligenceTrustWeight,
   styleDirectorPresentationIssues,
+  styleDirectorWearForCandidate,
 } from "../src/lib/designer/style-director-compatibility.ts";
 import type { StyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
 import type { DesignerStyle } from "../src/lib/designer/engine.ts";
@@ -135,8 +136,20 @@ test("photographic and versioned wear/collar disagreements are both explicit rev
 
 test("real-model recommendation wires occasion and presentation review before exposing a status", () => {
   const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
-  assert.ok(agent.includes('if (!/camp|cuban/.test(shirt)) style.shirtWear = "Tucked";'));
+  assert.ok(agent.includes("styleDirectorWearForCandidate(occasion,shirt,style.shirtWear)"));
   assert.ok(agent.includes("styleDirectorConstructionIssues(styleSpec,occasion)"));
   assert.ok(agent.includes("styleDirectorPresentationIssues(best.style,styleSpec)"));
   assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'));
+});
+
+test("pure proposed-wear rule keeps formal camp untucked without changing other formality presets", () => {
+  for (const occasion of ["Formal", "Semi-Formal"] as const) {
+    assert.equal(styleDirectorWearForCandidate(occasion, "Camp-Collar Shirt", "Tucked"), "Untucked");
+    assert.equal(styleDirectorWearForCandidate(occasion, "Cuban Resort Shirt", "Tucked"), "Untucked");
+    assert.equal(styleDirectorWearForCandidate(occasion, "Band-Collar Shirt", "Untucked"), "Tucked");
+    assert.equal(styleDirectorWearForCandidate(occasion, "Spread-Collar Dress Shirt", "Untucked"), "Tucked");
+  }
+  assert.equal(styleDirectorWearForCandidate("Casual", "Camp-Collar Shirt", "Tucked"), "Untucked");
+  assert.equal(styleDirectorWearForCandidate("Smart-Casual", "Oxford Button-Down Shirt", "Untucked"), "Untucked");
+  assert.equal(styleDirectorWearForCandidate("Casual", "Spread-Collar Dress Shirt", "Tucked"), "Tucked");
 });
