@@ -64,6 +64,16 @@ async function startContext(browser,opts={}){
       };
     });
   }
+  if(opts.discardStorage){
+    await context.addInitScript(()=>{
+      const original=Storage.prototype.setItem;
+      Storage.prototype.setItem=function(k,v){
+        if(String(k).startsWith("linen-earth:manual-stock-attempts:"))
+          return; // Browser accepted the call but did not retain the retry key.
+        return original.call(this,k,v);
+      };
+    });
+  }
   const records=[];
   let gets=0;
   await context.route("**/api/operator/stock",route=>{
@@ -113,6 +123,15 @@ async function main(){
       assert.equal(blocked.records.length,0,"storage failure must not submit an RPC");
       console.log("Stock operator Chromium PASS: blocked storage prevents privileged POST.");
     }finally{await blocked.context.close();}
+    const discarded=await startContext(browser,{discardStorage:true});
+    try{
+      await fill(discarded.page);
+      await discarded.page.getByRole("button",{name:"Record stock event"}).click();
+      await discarded.page.getByText(/Stock retry tracking is unavailable in this browser tab/).waitFor();
+      assert.equal(discarded.records.length,0,
+        "silently discarded stock retry identity must never issue a privileged POST");
+      console.log("Stock operator Chromium PASS: silent journal write loss prevents privileged POST.");
+    }finally{await discarded.context.close();}
   }finally{await browser.close();}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

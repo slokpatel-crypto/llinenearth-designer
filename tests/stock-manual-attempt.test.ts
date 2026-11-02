@@ -110,3 +110,30 @@ test("server-accepted floating-point drift must not mint a second stock key",asy
     "an actual millimetre change must be a separate physical movement"
   );
 });
+
+test("silent session journal write loss or replacement fails closed",async()=>{
+  const discarded={
+    getItem(){return null;},
+    setItem(_key:string,_value:string){/* silently ignored */},
+  };
+  await assert.rejects(
+    ()=>createStockManualAttemptTracker(keys(),()=>discarded).keyFor(record),
+    /No stock movement was sent/,
+    "a no-op storage write must never authorize a physical stock POST"
+  );
+  let stored:string|null=null;
+  const altered={
+    getItem(){return stored;},
+    setItem(_key:string,_value:string){stored="[]";},
+  };
+  await assert.rejects(
+    ()=>createStockManualAttemptTracker(keys(),()=>altered).keyFor(record),
+    /No stock movement was sent/,
+    "a rewritten journal must never authorize a physical stock POST"
+  );
+  const working=memoryStorage();
+  const tracker=createStockManualAttemptTracker(keys(),()=>working);
+  const original=await tracker.keyFor(record);
+  assert.equal(await tracker.keyFor(record),original,
+    "read-back validation must preserve legitimate same-evidence retries");
+});
