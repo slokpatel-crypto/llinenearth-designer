@@ -296,12 +296,24 @@ def main():
     # (~0.647 of the body); no real cross-section could ever be measured.
     # Extend this shell through the guide while preserving measured fit checks.
     trouser_waist_upper_z = max(z(0.620), trouser_waist_guide_z + 0.028)
+    # The previous shirt region extended down to 51.5% body height and
+    # coincided with the trouser waist shell over most of the abdomen.
+    # Preserve BOTH real photographic waist-guide samples while cutting the
+    # physically tucked shirt hem 30mm below their lower locked landmark.
+    shirt_waist_guide_z = locked_guide_height(bpy.context.scene, "LE_GUIDE_SHIRT_WAIST")
+    if not z(0.58) <= shirt_waist_guide_z <= z(0.70):
+        raise RuntimeError("Locked shirt waist guide is outside the photographed body waist.")
+    if abs(shirt_waist_guide_z - trouser_waist_guide_z) > 0.050:
+        raise RuntimeError("Shirt and trouser waist guides are too far apart for a single tucked seam.")
+    tucked_shirt_hem_z = min(shirt_waist_guide_z, trouser_waist_guide_z) - 0.030
+    if not z(0.57) <= tucked_shirt_hem_z < min(shirt_waist_guide_z, trouser_waist_guide_z):
+        raise RuntimeError("Cannot locate a nonempty photographed tucked shirt hem.")
     torso_half = 0.245
     arm_root = 0.155
     hip_half = 0.245
 
     regions = {
-        "ShirtTorsoFabric": lambda p: z(0.515) <= p.z <= z(0.895) and abs(p.x-center_x) <= torso_half,
+        "ShirtTorsoFabric": lambda p: tucked_shirt_hem_z <= p.z <= z(0.895) and abs(p.x-center_x) <= torso_half,
         "ShirtSleeveLFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x <= -arm_root,
         "ShirtSleeveRFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x >= arm_root,
         "TrouserWaistFabric": lambda p: z(0.455) <= p.z <= trouser_waist_upper_z and abs(p.x-center_x) <= hip_half,
@@ -331,6 +343,8 @@ def main():
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
     bpy.context.scene["linen_earth_trouser_waist_guide_z_m"] = round(trouser_waist_guide_z, 6)
     bpy.context.scene["linen_earth_trouser_waist_authored_top_z_m"] = round(trouser_waist_upper_z, 6)
+    bpy.context.scene["linen_earth_tucked_shirt_hem_z_m"] = round(tucked_shirt_hem_z, 6)
+    bpy.context.scene["linen_earth_locked_shirt_waist_guide_z_m"] = round(shirt_waist_guide_z, 6)
     bpy.context.scene["linen_earth_trouser_waist_refinement_level"] = options.experimental_waist_refinement_level
 
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -340,6 +354,7 @@ def main():
     print("Garment objects: " + ", ".join(obj.name for obj in authored))
     print(f"Body clearance: {clearance_m*1000:.1f} mm · cloth shell thickness: {thickness_m*1000:.1f} mm")
     print(f"Locked trouser waist guide Z: {trouser_waist_guide_z:.4f} m · authored shell top: {trouser_waist_upper_z:.4f} m")
+    print(f"Locked shirt waist guide Z: {shirt_waist_guide_z:.4f} m · tucked shirt hem: {tucked_shirt_hem_z:.4f} m (30mm below guide)")
     print("Status: candidate only; run Blender preflight and owner/tailor visual fit review before production export.")
 
 
