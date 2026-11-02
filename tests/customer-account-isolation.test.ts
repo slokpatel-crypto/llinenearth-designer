@@ -46,3 +46,23 @@ test("owned-share loading errors remain visible rather than pretending no shares
  assert.match(source,/Retry share list/);
  assert.match(source,/shareListUnavailable\?</);
 });
+
+test("failed session rechecks fail closed and clear all old owner credentials",()=>{
+ const source=readFileSync("src/app/account/page.tsx","utf8");
+ const refresh=source.slice(source.indexOf("const refresh=useCallback"),source.indexOf("useEffect(()=>"));
+ const ownerSwitch=refresh.slice(refresh.indexOf("if(loadedOwnerId.current"),refresh.indexOf("setCustomer(next)"));
+ assert.match(refresh,/r\.ok\?r\.json\(\):Promise\.reject/);
+ assert.match(refresh,/\.catch\(\(\)=>\(\{customer:null,unavailable:true\}\)\)/);
+ assert.match(refresh,/setSessionUnavailable\(unavailable\)/);
+ assert.match(ownerSwitch,/setShares\(\[\]\)/);
+ assert.match(ownerSwitch,/setDesigns\(\[\]\)/);
+ assert.match(ownerSwitch,/setProfiles\(\[\]\)/);
+ assert.match(ownerSwitch,/setOrders\(\[\]\)/);
+ assert.match(ownerSwitch,/setOutcomeDrafts\(\{\}\)/);
+ for(const clear of [
+   'setClaimDesign("")','setClaimMeasurement("")','setEmail("")',
+   'setCode("")','setCodeSent(false)',
+ ])assert.ok(ownerSwitch.includes(clear),"owner transition must scrub "+clear);
+ assert.match(source,/Account session could not be verified\. Previously loaded private details have been hidden/);
+ assert.match(source,/Retry account session/);
+});
