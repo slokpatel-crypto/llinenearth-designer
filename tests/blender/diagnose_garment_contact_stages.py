@@ -31,37 +31,7 @@ def load_module(name, path):
     return module
 
 
-def evaluated_body_guide_width_mm(obj, guide_z):
-    """Measure the real CC0 source body's surface at the locked photo guide plane."""
-    if not math.isfinite(guide_z):
-        raise RuntimeError("Nonfinite locked guide height cannot be compared.")
-    depsgraph = bpy.context.evaluated_depsgraph_get()
-    evaluated = obj.evaluated_get(depsgraph)
-    mesh = evaluated.to_mesh()
-    try:
-        mesh.calc_loop_triangles()
-        world = [evaluated.matrix_world @ vertex.co for vertex in mesh.vertices]
-        xs = []
-        epsilon = 1e-8
-        for triangle in mesh.loop_triangles:
-            corners = [world[index] for index in triangle.vertices]
-            if any(not all(math.isfinite(value) for value in point) for point in corners):
-                raise RuntimeError("Real source body contains nonfinite geometry.")
-            for left, right in ((0, 1), (1, 2), (2, 0)):
-                a, b = corners[left], corners[right]
-                dz = b.z - a.z
-                if abs(dz) <= epsilon:
-                    if abs(a.z - guide_z) <= epsilon:
-                        xs.extend((a.x, b.x))
-                    continue
-                t = (guide_z - a.z) / dz
-                if 0 <= t <= 1:
-                    xs.append(a.x + t * (b.x - a.x))
-        if len(xs) < 2 or max(xs) - min(xs) <= 1e-6:
-            raise RuntimeError("Real source body does not intersect locked photo guide height.")
-        return round((max(xs) - min(xs)) * 1000.0, 2)
-    finally:
-        evaluated.to_mesh_clear()
+contours = load_module("titan_body_contours", ROOT / "scripts/blender/measure-body-contours.py")
 
 
 author = load_module("titan_author", AUTHOR_PATH)
@@ -123,15 +93,23 @@ for key, name, target_key in (
     guide_center = preflight.guide_center(guide)
     if guide_center is None:
         raise RuntimeError(f"Missing locked photo guide for source body comparison: {name}")
-    source_width = evaluated_body_guide_width_mm(body, guide_center.z)
+    components = contours.measured_plane_components(body, guide_center.z)
+    body_bounds = author.world_bounds(body)
+    source_center = (min(p.x for p in body_bounds) + max(p.x for p in body_bounds)) * 0.5
+    torso = contours.central_torso_component(components, source_center)
+    outer_width = round((max(c["maxX"] for c in components) - min(c["minX"] for c in components)) * 1000, 2)
     target_width = preflight.EXPECTED_IDENTITY_TARGETS_MM[target_key]
     body_guide_widths[key] = {
-        "sourceBodyWidthMm": source_width,
+        "allBodyContoursIncludingArmsWidthMm": outer_width,
+        "centralTorsoContourWidthMm": torso["widthMm"],
+        "centralTorsoSegments": torso["segmentCount"],
+        "contourComponentCount": len(components),
         "lockedPhotoGarmentWidthMm": target_width,
-        "sourceBodyWiderThanPhotoGarment": source_width > target_width,
+        "centralTorsoWiderThanPhotoGarment": torso["widthMm"] > target_width,
     }
     print(
-        f"TITAN_LOCKED_BODY_GUIDE {key} sourceBodyWidthMm={source_width} "
+        f"TITAN_LOCKED_BODY_GUIDE {key} centralTorsoWidthMm={torso['widthMm']} "
+        f"allBodyContoursWidthMm={outer_width} componentCount={len(components)} "
         f"lockedPhotoGarmentWidthMm={target_width}"
     )
 
