@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import os
 import sys
@@ -17,6 +18,7 @@ from pathlib import Path
 
 import bpy
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -162,13 +164,52 @@ def apply_modifier(obj, modifier):
         obj.select_set(False)
 
 
-def fit_shell(obj, body, clearance_m, thickness_m):
+def actual_world_bvh(obj):
+    """Use the exact 0.5 mm world-space polygon BVH contract from preflight."""
+    if obj is None or obj.type != "MESH":
+        raise RuntimeError("Missing real mesh for contact-stage evidence.")
+    bpy.context.view_layer.update()
+    evaluated = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    mesh = evaluated.to_mesh()
+    try:
+        points = [evaluated.matrix_world @ v.co for v in mesh.vertices]
+        polygons = [tuple(poly.vertices) for poly in mesh.polygons]
+        if not points or not polygons:
+            raise RuntimeError("No actual surface geometry for contact-stage evidence.")
+        if any(not all(math.isfinite(v) for v in p) for p in points):
+            raise RuntimeError("Nonfinite world-space contact-stage geometry.")
+        tree = BVHTree.FromPolygons(
+            points, polygons, all_triangles=False, epsilon=0.0005
+        )
+        if tree is None:
+            raise RuntimeError("Cannot create measured polygon BVH for contact stage.")
+        return tree
+    finally:
+        evaluated.to_mesh_clear()
+
+
+def actual_contact_pairs(body_tree, garment):
+    """Count real evaluated world-space triangle contacts, not fake clearance."""
+    count = len(body_tree.overlap(actual_world_bvh(garment)))
+    if not isinstance(count, int) or count < 0:
+        raise RuntimeError("Unmeasurable garment/body contact-stage count.")
+    return count
+
+
+def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
+    # Measured diagnostics only. These are not garment acceptance or fit proof.
+    stages = []
+    def record_stage(stage):
+        if body_tree is not None:
+            stages.append({"stage": stage, "bodyIntersectionPairs": actual_contact_pairs(body_tree, obj)})
+    record_stage("selectedBodyShell")
     # Smooth first. The old shrinkwrap→smooth order allowed smoothing to
     # pull the garment back THROUGH the scanned body after clearance was set.
     smooth = obj.modifiers.new("LE_GARMENT_SMOOTH", "CORRECTIVE_SMOOTH")
     smooth.factor = 0.22
     smooth.iterations = 3
     apply_modifier(obj, smooth)
+    record_stage("afterSmoothing")
 
     # Apply actual body clearance AFTER geometry-changing smoothing.
     # No subsequent surface-displacement modifier may consume that clearance.
@@ -178,12 +219,16 @@ def fit_shell(obj, body, clearance_m, thickness_m):
     shrink.wrap_mode = "OUTSIDE_SURFACE"
     shrink.offset = clearance_m
     apply_modifier(obj, shrink)
+    record_stage("afterBodyClearance")
 
     solid = obj.modifiers.new("LE_CLOTH_THICKNESS", "SOLIDIFY")
     solid.thickness = thickness_m
     solid.offset = 1.0
     solid.use_rim = True
     apply_modifier(obj, solid)
+    record_stage("afterClothThickness")
+    if body_tree is not None:
+        obj["linen_earth_body_contact_stages_json"] = json.dumps(stages, separators=(",", ":"))
 
 
 def planar_grain_uv(obj):
@@ -250,13 +295,15 @@ def main():
         "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x >= center_x,
     }
 
+    # One original-body BVH, shared across all six actual modifier-stage samples.
+    body_contact_tree = actual_world_bvh(body)
     for name in GARMENT_OBJECTS:
         remove_existing(name)
 
     authored = []
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
-        fit_shell(obj, body, clearance_m, thickness_m)
+        fit_shell(obj, body, clearance_m, thickness_m, body_contact_tree)
         planar_grain_uv(obj)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(clearance_m * 1000.0, 3)
