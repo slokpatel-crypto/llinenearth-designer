@@ -28,5 +28,9 @@ test("customer-production route fail-closes on unbounded or malformed service-ro
  assert.match(route,/requireOwnedProductionRows\(orderEvents,300\)/);
  assert.match(route,/requireOwnedProductionRows\(outcomes,100\)/);
  assert.match(route,/const outcomeId=requireCustomerOutcomeId\(outcomeAck\)/);
+ assert.match(route,/return privateJson\(\{error:"Production status is temporarily unavailable\."\},503\)/);
+ assert.match(route,/return privateJson\(\{error:"Customer sign-in is required\."\},401\)/);
+ assert.doesNotMatch(route,/return NextResponse\.json\(/,
+   "every private customer production response, including errors, must be no-store");
  assert.ok(route.indexOf("requireCustomerOutcomeId(outcomeAck)")<route.indexOf("return privateJson({recorded:true,outcomeId})"));
 });
