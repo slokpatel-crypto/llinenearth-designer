@@ -175,7 +175,7 @@ test("named Cuban and camp candidate paths remain review-only across formal and 
     const named=styleDirectorCandidateCollar(candidate,DESIGNER_STYLE_CHOICES.collar);
     assert.equal(named?.versioned,"cuban_camp_collar");
     const versioned=spec({
-      type:"camp_collar_resort",collar:named.versioned,
+      type:"camp_collar_resort",collar:named!.versioned,
       wear:"untucked",
     });
     for(const occasion of ["Formal","Casual"] as const){
