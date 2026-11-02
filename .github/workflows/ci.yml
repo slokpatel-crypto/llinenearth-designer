@@ -355,6 +355,28 @@ jobs:
           )
           expected=$'grant-blocked\ngrant-restored\ninvoker-blocked\ninvoker-restored\npath-blocked\npath-restored\ntemp-path-blocked\ntemp-path-restored'
           test "$observed" = "$expected"
+      - name: Prove standalone staging preflight agrees with server search-path attestation
+        run: |
+          # The read-only staging SQL must BLOCK the same unsafe pg_temp
+          # configuration the service-role readiness RPC refuses.
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          test "$TITAN_SYNTHETIC_PG_TEST" = enabled
+          result=$(psql -X -qAt -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          alter function public.fabric_stock_snapshot_v2(text[])
+            set search_path=public,pg_temp;
+          \i scripts/stock-v3-readonly-preflight.sql
+          rollback;
+          \i scripts/stock-v3-readonly-preflight.sql
+          SQL
+          )
+          printf '%s\n' "$result" | jq -s -e \
+            'length==2 and
+             .[0].status=="BLOCKED" and
+             (.[0].checks|any(.function=="snapshot_v2" and .fixed_search_path==false)) and
+             .[1].status=="READY" and
+             (.[1].checks|all(.fixed_search_path==true))' >/dev/null
       - name: Build isolated real Next stock API route
         run: |
           npm ci --include=optional
