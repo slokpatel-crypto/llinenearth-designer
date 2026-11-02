@@ -52,11 +52,13 @@ export function createStockManualAttemptTracker(
         const attempts=parseAttempts(storage.getItem(STORAGE_KEY));
         const previous=attempts.find(item=>item.fingerprint===identity);
         if(previous)return previous.key;
+        // Evicting an old key would make the same physical receipt writable
+        // again. Stop and reconcile instead of silently dropping retry history.
+        if(attempts.length>=MAX_ATTEMPTS)
+          throw new Error("Manual stock retry journal is full.");
         const key=makeKey();
         if(!UUID.test(key))throw new Error("Invalid generated stock key.");
-        storage.setItem(STORAGE_KEY,JSON.stringify([
-          ...attempts.slice(-(MAX_ATTEMPTS-1)),{fingerprint:identity,key},
-        ]));
+        storage.setItem(STORAGE_KEY,JSON.stringify([...attempts,{fingerprint:identity,key}]));
         return key;
       }catch{
         throw new Error("Stock retry tracking is unavailable in this browser tab. No stock movement was sent; reconcile earlier entries before trying again.");
