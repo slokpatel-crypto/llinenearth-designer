@@ -36,3 +36,12 @@ test("successful logout invalidates pending account fetches and immediately clea
  assert.ok(!logout.includes("await refresh()"),
    "a failed post-logout network read must not be required to clear private data");
 });
+
+test("owned-share loading errors remain visible rather than pretending no shares exist",()=>{
+ const source=readFileSync("src/app/account/page.tsx","utf8");
+ assert.match(source,/setShareListUnavailable\(Boolean\(s\.unavailable\)\|\|!Array\.isArray\(s\.shares\)\)/);
+ assert.match(source,/r\.ok\?r\.json\(\):Promise\.reject/);
+ assert.match(source,/Your existing links may still be active/);
+ assert.match(source,/Retry share list/);
+ assert.match(source,/shareListUnavailable\?</);
+});
