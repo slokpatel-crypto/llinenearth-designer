@@ -74,8 +74,11 @@ export async function verifyCustomerOtp(email:string,token:string):Promise<Supab
 }
 
 export async function getCustomerIdentity(request:Request):Promise<CustomerIdentity|null>{
-  const durable=verifySignedCustomerSession(readCookie(request,CUSTOMER_SESSION_COOKIE));
-  if(durable) return durable;
+  const signedCookie=readCookie(request,CUSTOMER_SESSION_COOKIE);
+  if(signedCookie){
+    // A malformed/expired signed cookie must not silently downgrade to a legacy token.
+    return verifySignedCustomerSession(signedCookie);
+  }
 
   // Backward-compatible bridge for sessions created before the durable
   // Linen Earth customer-session cookie was introduced.
