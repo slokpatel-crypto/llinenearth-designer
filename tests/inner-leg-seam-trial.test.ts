@@ -9,7 +9,10 @@ test("experimental inner-leg seam displacement must not affect original candidat
     "real production candidate must retain original leg geometry");
   assert.ok(author.includes('not 0 <= leg_seam_gap_mm <= 6'),"trials must be physically bounded");
   assert.ok(author.includes('if obj.name not in ("TrouserLegLFabric", "TrouserLegRFabric") or gap_mm == 0'));
-  assert.ok(author.includes('trial_inner_leg_seam_separation(obj, center_x, min_z, height, leg_seam_gap_mm)'));
+  assert.ok(author.includes('trial_inner_leg_seam_separation('));
+  assert.ok(author.includes('obj, center_x, min_z, height, leg_seam_gap_mm,'));
+  assert.ok(author.includes('body, clearance_m, options.experimental_inner_leg_seam_reproject'),
+    "trial must explicitly retain true source-body clearance and never change the default");
   assert.ok(author.includes('sign = -1.0 if obj.name == "TrouserLegLFabric" else 1.0'));
   assert.ok(author.includes('lower = min_z + height * 0.32'));
   assert.ok(author.includes('upper = min_z + height * 0.54'));
