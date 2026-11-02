@@ -9,9 +9,9 @@ export function composeViewerPreviewStock(
   catalogue: readonly FabricColorway[],
   verifiedAvailable: readonly FabricColorway[],
 ): FabricColorway[] {
-  const eligible = new Map(verifiedAvailable
+  const eligible = new Map<string, FabricColorway>(verifiedAvailable
     .filter((fabric) => fabric.inStock === true && fabric.availabilityVerified === true)
-    .map((fabric) => [fabric.id, fabric]));
+    .map((fabric) => [fabric.id, fabric] as const));
   return catalogue.map((fabric) => eligible.get(fabric.id) ?? {
     ...fabric,
     inStock: false,
