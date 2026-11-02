@@ -459,6 +459,19 @@ async function main(){
     assert.deepEqual(await invalidSession.json(),{customer:null});
     assert.equal(seen.length,0,"invalid signed cookie must not downgrade to legacy auth");
 
+    for(const cookie of [
+      "le_customer_session=; le_customer_access=valid-legacy",
+      "le_customer_session=%; le_customer_access=valid-legacy",
+      "le_customer_session="+signedCookie+"; le_customer_session=; le_customer_access=valid-legacy",
+    ]){
+      seen.length=0;
+      const denied=await fetch(origin+"/api/customer-auth/session",{headers:{cookie}});
+      assert.deepEqual(await denied.json(),{customer:null},
+        "empty, undecodable or duplicated signed cookies must not downgrade to legacy auth");
+      assert.equal(seen.length,0,"forbidden cookie downgrade must not reach legacy provider");
+      assert.match(denied.headers.get("cache-control")||"",/private.*no-store/);
+    }
+
     seen.length=0;
     const legacy=await fetch(origin+"/api/customer-auth/session",{
       headers:{cookie:"le_customer_access=valid-legacy"}});
