@@ -96,6 +96,48 @@ def overlap_height_bands(body_points, garment_points, garment_triangles, overlap
     return counts
 
 
+def polygon_world_bvh(obj):
+    """Independent same-parameter polygon BVH as the production contact gate."""
+    evaluated = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    mesh = evaluated.to_mesh()
+    try:
+        points = [evaluated.matrix_world @ vertex.co for vertex in mesh.vertices]
+        polygons = [tuple(face.vertices) for face in mesh.polygons]
+        if not points or not polygons:
+            raise RuntimeError("Cannot verify contact-stage count without real polygons.")
+        if any(not all(math.isfinite(v) for v in p) for p in points):
+            raise RuntimeError("Nonfinite polygon contact-stage vertices.")
+        tree = BVHTree.FromPolygons(points, polygons, all_triangles=False, epsilon=BVH_EPSILON_M)
+        if tree is None:
+            raise RuntimeError("Failed to evaluate actual polygon contact-stage BVH.")
+        return tree
+    finally:
+        evaluated.to_mesh_clear()
+
+
+def verified_modifier_stages(obj, body_polygon_tree):
+    """Reject missing, reordered or unverified authoring contact evidence."""
+    raw = obj.get("linen_earth_body_contact_stages_json")
+    if not isinstance(raw, str):
+        raise RuntimeError("Garment has no real modifier-stage body contact evidence.")
+    try:
+        stages = json.loads(raw)
+    except (ValueError, TypeError) as error:
+        raise RuntimeError("Invalid garment modifier-stage evidence JSON.") from error
+    expected = ("selectedBodyShell", "afterSmoothing", "afterBodyClearance", "afterClothThickness")
+    if not isinstance(stages, list) or len(stages) != len(expected):
+        raise RuntimeError("Incomplete real contact-stage measurements.")
+    for stage, label in zip(stages, expected):
+        if (not isinstance(stage, dict) or stage.get("stage") != label
+            or type(stage.get("bodyIntersectionPairs")) is not int
+            or stage["bodyIntersectionPairs"] < 0):
+            raise RuntimeError("Invalid or out-of-order real contact-stage measurement.")
+    final_measured = len(body_polygon_tree.overlap(polygon_world_bvh(obj)))
+    if stages[-1]["bodyIntersectionPairs"] != final_measured:
+        raise RuntimeError("Stale modifier-stage evidence no longer matches actual final cloth.")
+    return stages
+
+
 def diagnose(body_geometry, garment_geometry):
     """Normals may be reversed; a negative normal projection is NOT an inside test."""
     body_points, body_faces = body_geometry
@@ -150,12 +192,14 @@ def diagnostic_report(scene):
     if body is None or body.type != "MESH" or collection is None:
         raise RuntimeError("Source body or exact candidate export collection is missing.")
     source = evaluated_world_geometry(body)
+    source_polygon_tree = polygon_world_bvh(body)
     records = {}
     for name in GARMENTS:
         obj = collection.objects.get(name)
         if obj is None:
             raise RuntimeError(f"Missing real garment panel: {name}")
         records[name] = diagnose(source, evaluated_world_geometry(obj))
+        records[name]["actualModifierContactStages"] = verified_modifier_stages(obj, source_polygon_tree)
     return {
         "version": "titan-actual-contact-diagnostics-v1",
         "modelIdentityId": IDENTITY,
@@ -164,6 +208,7 @@ def diagnostic_report(scene):
         "physicalFitApproved": False,
         "signedProjectionIsInteriorTest": False,
         "contactHistogramDescription": "Eight low-to-high 12.5%-of-body-height bands; triangle-pair counts, not penetration volumes.",
+        "modifierStageMethod": "World-space evaluated polygon BVH with 0.5mm epsilon, independently verified against final garment; not a production clearance approval.",
         "explanation": (
             "World-space BVH triangle overlap counts are candidate defects; "
             "nearest-body normal projections are diagnostic only because body normals "
@@ -188,7 +233,8 @@ def main():
     for name, metrics in report["panels"].items():
         print(f"{name}: {metrics['bodyGarmentIntersectingTrianglePairs']} body intersection pairs, "
               f"{metrics['negativeBodyNormalProjectionCount']} negative normal projections; "
-              f"height octiles={metrics['contactPairsByBodyHeightOctile']}")
+              f"height octiles={metrics['contactPairsByBodyHeightOctile']}; "
+              f"authoring stages={metrics['actualModifierContactStages']}")
 
 
 if __name__ == "__main__":
