@@ -216,16 +216,17 @@ async function main(){
           "Production completion evidence could not be read."});
       }
       scenario={target:null,kind:"ok"};
-      for(const invalid of ["{broken","null","[]",
-        '{"action":"record","token":"'+secretMarker+'",',
-        JSON.stringify({...route.draft,operator:"",checkedBy:"",evidenceReference:""}),
-        JSON.stringify({...route.draft,extra:"x".repeat(33_000)}),
+      for(const [invalid,expectedStatus] of [
+        ["{broken",400],["null",400],["[]",400],
+        ['{"action":"record","token":"'+secretMarker+'",',400],
+        [JSON.stringify({...route.draft,operator:"",checkedBy:"",evidenceReference:""}),400],
+        [JSON.stringify({...route.draft,extra:"x".repeat(33_000)}),413],
       ]){
         seen.length=0;
         r=await request(path,{method:"POST",headers:{cookie,"content-type":"application/json"},
           body:invalid});
-        assert.equal(r.res.status,400,path+" invalid input");
-        assert.equal(seen.length,0,"invalid POST must not reach privileged RPC");
+        assert.equal(r.res.status,expectedStatus,path+" rejected invalid or oversized input");
+        assert.equal(seen.length,0,"rejected POST must not reach privileged RPC");
       }
     }
     assert.ok(!output.includes(secretMarker),"built Next server logs exposed private backend/request marker");
