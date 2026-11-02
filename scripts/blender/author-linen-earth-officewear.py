@@ -323,6 +323,62 @@ def measure_shrinkwrap_modes(obj, body, body_tree, clearance_m, thickness_m):
     return {"beforeWrap": before, "trialModes": results}
 
 
+def measure_surface_refinement_trial(obj, body, body_tree, clearance_m, thickness_m):
+    """Measure whether true 7mm surface projection needs more cloth vertices.
+
+    Simple subdivision creates edges and interpolated vertices without moving
+    the original garment surface. All geometry is temporary and unapproved.
+    No candidate output parameters or photographic guides are modified.
+    """
+    outcomes = []
+    for level in (0, 1):
+        probe = obj.copy()
+        probe_mesh = obj.data.copy()
+        probe.data = probe_mesh
+        probe.name = "LE_UNSAVED_REFINEMENT_TRIAL_" + str(level)
+        bpy.context.scene.collection.objects.link(probe)
+        try:
+            original_vertices = len(probe.data.vertices)
+            if level:
+                subdivision = probe.modifiers.new("LE_UNSAVED_SIMPLE_REFINEMENT", "SUBSURF")
+                subdivision.subdivision_type = "SIMPLE"
+                subdivision.levels = level
+                subdivision.render_levels = level
+                apply_modifier(probe, subdivision)
+            refined_vertices = len(probe.data.vertices)
+            if refined_vertices < original_vertices or (level and refined_vertices == original_vertices):
+                raise RuntimeError("Native surface refinement did not create actual mesh vertices.")
+
+            shrink = probe.modifiers.new("LE_UNSAVED_REFINEMENT_CLEARANCE", "SHRINKWRAP")
+            shrink.target = body
+            shrink.wrap_method = "NEAREST_SURFACEPOINT"
+            shrink.wrap_mode = "OUTSIDE_SURFACE"
+            shrink.offset = clearance_m
+            apply_modifier(probe, shrink)
+            after_clearance = actual_contact_pairs(body_tree, probe)
+            solid = probe.modifiers.new("LE_UNSAVED_REFINEMENT_THICKNESS", "SOLIDIFY")
+            solid.thickness = thickness_m
+            solid.offset = 1.0
+            solid.use_rim = True
+            apply_modifier(probe, solid)
+            outcomes.append({
+                "simpleSubdivisionLevel": level,
+                "sourceVertices": original_vertices,
+                "preWrapVertices": refined_vertices,
+                "clearanceMm": round(clearance_m * 1000.0, 3),
+                "clothThicknessMm": round(thickness_m * 1000.0, 3),
+                "bodyPairsAfterWrap": after_clearance,
+                "bodyPairsAfterClothThickness": actual_contact_pairs(body_tree, probe),
+            })
+        finally:
+            bpy.data.objects.remove(probe, do_unlink=True)
+            if probe_mesh.users == 0:
+                bpy.data.meshes.remove(probe_mesh)
+    if len(outcomes) != 2:
+        raise RuntimeError("Incomplete native simple-subdivision trials.")
+    return outcomes
+
+
 def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
     # Measured diagnostics only. These are not garment acceptance or fit proof.
     stages = []
@@ -337,6 +393,10 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
     smooth.iterations = 3
     apply_modifier(obj, smooth)
     record_stage("afterSmoothing")
+    surface_refinement = (
+        measure_surface_refinement_trial(obj, body, body_tree, clearance_m, thickness_m)
+        if body_tree is not None else None
+    )
     shrinkwrap_modes = (
         measure_shrinkwrap_modes(obj, body, body_tree, clearance_m, thickness_m)
         if body_tree is not None else None
@@ -374,6 +434,18 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
             or current_mode["bodyPairsAfterWrap"] != stages[2]["bodyIntersectionPairs"]
             or current_mode["bodyPairsAfterClothThickness"] != stages[3]["bodyIntersectionPairs"]):
             raise RuntimeError("Unchanged real shrinkwrap recipe does not match separately measured trial.")
+        if surface_refinement is None or len(surface_refinement) != 2:
+            raise RuntimeError("Native real-surface refinement measurements are incomplete.")
+        baseline = surface_refinement[0]
+        if (baseline["simpleSubdivisionLevel"] != 0
+            or baseline["bodyPairsAfterWrap"] != stages[2]["bodyIntersectionPairs"]
+            or baseline["bodyPairsAfterClothThickness"] != stages[3]["bodyIntersectionPairs"]):
+            raise RuntimeError("Unrefined surface trial disagrees with unchanged production candidate.")
+        if surface_refinement[1]["simpleSubdivisionLevel"] != 1:
+            raise RuntimeError("Simple surface refinement was not actually measured.")
+        obj["linen_earth_surface_refinement_trials_json"] = json.dumps(
+            surface_refinement, separators=(",", ":")
+        )
         obj["linen_earth_shrinkwrap_modes_json"] = json.dumps(shrinkwrap_modes, separators=(",", ":"))
         obj["linen_earth_solidify_variant_contacts_json"] = json.dumps(variants, separators=(",", ":"))
         obj["linen_earth_body_contact_stages_json"] = json.dumps(stages, separators=(",", ":"))
