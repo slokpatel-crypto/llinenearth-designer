@@ -150,13 +150,25 @@ async function run(){
       await page.goto(origin+"/account",{waitUntil:"domcontentloaded"});
       await aliceRequested;
       await page.getByText("alice@example.test").waitFor();
+      // A failed/abandoned claim may still hold a bearer in a React input.
+      // Sign-out must clear it before another account signs into this tab.
+      const designRecovery=page.getByPlaceholder("Paste an older design recovery token to claim it");
+      const measurementRecovery=page.getByPlaceholder("Paste an older measurement recovery token to claim it");
+      await designRecovery.fill("synthetic-alice-design-secret");
+      await measurementRecovery.fill("synthetic-alice-measurement-secret");
       await page.getByRole("button",{name:"Sign out"}).click();
       await page.getByRole("heading",{name:"Email sign in"}).waitFor();
+      assert.equal(await page.getByPlaceholder("you@example.com").inputValue(),"",
+        "successful logout must clear the previous sign-in email");
       await page.getByPlaceholder("you@example.com").fill("bob@example.test");
       await page.getByRole("button",{name:"Send secure code"}).click();
       await page.getByPlaceholder("Email code").fill("123456");
       await page.getByRole("button",{name:"Verify and sign in"}).click();
       await page.getByText("bob@example.test").waitFor();
+      assert.equal(await designRecovery.inputValue(),"",
+        "Alice's unfinished design recovery bearer must not persist into Bob's account");
+      assert.equal(await measurementRecovery.inputValue(),"",
+        "Alice's unfinished measurement recovery bearer must not persist into Bob's account");
       // Resolve stale Alice's pre-logout fetch *after* Bob has signed in.
       releaseAliceRequest();
       await page.waitForTimeout(200);
