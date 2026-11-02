@@ -295,3 +295,31 @@ test("physical stock evidence never silently truncates a checker or signed sourc
     assert.equal(normalized.sourceReference,"R 1");
   }
 });
+
+
+test("stock identities fail closed on overlong prefixes rather than aliasing valid requests",()=>{
+  const record={fabricId:"shirt-1",eventType:"receipt",quantityMetres:2.125,
+    recordedBy:"Physical checker",sourceReference:"Signed roll LE-101"};
+  const reserve={fabricId:"shirt-1",revisionId:"LE-LOCK-20261102",
+    requestKey:"LE-REQUEST-20261102",quantityMetres:1.125,
+    requestedBy:"Cutting checker",sourceReference:"Approved sheet LE-102"};
+  for(const fabricId of ["X".repeat(160)+"A","X".repeat(160)+"B"]){
+    assert.throws(()=>normalizeManualStockEvent({...record,fabricId}),
+      /Fabric ID exceeds 160 characters/);
+    assert.throws(()=>normalizeStockReservation({...reserve,fabricId}),
+      /Fabric ID exceeds 160 characters/);
+  }
+  for(const revisionId of ["R".repeat(220)+"A","R".repeat(220)+"B"])
+    assert.throws(()=>normalizeStockReservation({...reserve,revisionId}),
+      /Locked revision ID exceeds 220 characters/);
+  for(const requestKey of ["K".repeat(180)+"A","K".repeat(180)+"B"])
+    assert.throws(()=>normalizeStockReservation({...reserve,requestKey}),
+      /Reservation request key exceeds 180 characters/);
+  const longAllowed=normalizeStockReservation({...reserve,
+    fabricId:"F".repeat(160),revisionId:"R".repeat(220),requestKey:"K".repeat(180)});
+  assert.equal(longAllowed.fabricId.length,160);
+  assert.equal(longAllowed.revisionId.length,220);
+  assert.equal(longAllowed.requestKey.length,180);
+  assert.equal(normalizeStockReservation({...reserve,requestKey:"  LE-REQUEST-20261102  "}).requestKey,
+    reserve.requestKey);
+});
