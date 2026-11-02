@@ -22,6 +22,18 @@ The existing persisted production order contract in `src/lib/designer/production
 - Added focused negative and positive synthetic tests for missing/null/undefined/tampered `to`, valid leap-year and offset-aware timestamps, invalid calendar and UTC-equivalent duplicate event time.
 - This does **not** provide cryptographic event integrity or prove real-world QC. An authenticated transactional server with immutable append-only records, actor permissions, physical receipt verification and coordinated SQL status mapping is still required.
 
+## Audit snapshot hardening — 2026-11-03
+
+- Lifecycle states, audit arrays, applied events, QC approval objects and six named QC-check records are now frozen at runtime, not merely marked `readonly` in TypeScript. Consumers cannot silently mutate a returned in-memory approved audit to claim a different stage, operator or QC result.
+- An external event `evidenceRef` may appear **only once per order**. A second transition claiming the same receipt is rejected, including when replaying tampered stored history. Separate QC inspection-reference freshness remains required across rework/recovery.
+- Added two focused regression tests for duplicate event evidence (live reducer and stored replay) and runtime mutation attempts (state, audit, event and QC checks).
+- These protections do **not** authenticate a real operator, establish receipt ownership or replace a transactional append-only database. No production state or schema changes were made.
+
+## Verification for latest hardening
+
+- The prior exact head `320a8a001712939cd7984f1df52450d5124af8bc` passed Full CI #41531261832 and Non-3D QA #41531261782, including synthetic HTTP and disposable PostgreSQL checks. **These successes predate the runtime immutability and receipt-reuse patch.**
+- New exact-head CI/Non-3D must finish before the current patch can be described as repository-verified. Do not infer local full-repo tests or physical signoff.
+
 ## Local verification
 
 - `node --experimental-strip-types --test tests/operator-order-lifecycle.test.ts`: 10/10 passing in Node 22.16.0, local isolated test run.
