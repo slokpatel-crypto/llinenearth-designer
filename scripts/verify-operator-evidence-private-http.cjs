@@ -146,6 +146,30 @@ async function main(){
       assert.equal(r.res.status,401);
       assert.equal(seen.length,0,"unauthorized requests may not reach fake PostgREST");
 
+      // Signed operator cookie alone is insufficient: block cross-site browser
+      // origins and simple HTML form submissions before any privileged RPC.
+      for(const attack of [
+        {headers:{origin:"https://cross-site.invalid","content-type":"application/json"},expected:403},
+        {headers:{origin:"null","content-type":"application/json"},expected:403},
+        {headers:{"content-type":"text/plain"},expected:415},
+        {headers:{"content-type":"application/x-www-form-urlencoded"},expected:415},
+      ]){
+        scenario={target:null,kind:"ok"};
+        seen.length=0;
+        const rejected=await request(path,{method:"POST",
+          headers:{cookie,...attack.headers},
+          body:JSON.stringify(route.draft)});
+        assert.equal(rejected.res.status,attack.expected,path+" blocked metadata");
+        assert.equal(seen.length,0,"rejected request reached private production RPC");
+      }
+      seen.length=0;
+      const sameOrigin=await request(path,{method:"POST",
+        headers:{cookie,origin,"content-type":"application/json"},
+        body:JSON.stringify(route.draft)});
+      assert.equal(sameOrigin.res.status,200,"same-origin signed JSON must work");
+      assert.deepEqual(sameOrigin.data,{evidenceId:uuid});
+      assert.equal(seen.length,1);
+
       scenario={target:null,kind:"ok"};
       seen.length=0;
       r=await request(path,{headers:{cookie}});
