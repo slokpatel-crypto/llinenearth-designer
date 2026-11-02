@@ -442,7 +442,7 @@ def main():
             count = intersection_pair_count(left_obj, right_obj)
             boundary_intersections[key] = count
             if count is None:
-                warnings.append(f"Could not evaluate intersection QA for {key}.")
+                reasons.append(f"Could not evaluate intersection QA for {key}; production boundaries require measured contact evidence.")
             elif count > allowed_pairs:
                 reasons.append(
                     f"{key} has {count} intersecting triangle pairs; production garment/body boundaries must be clean."
@@ -454,7 +454,7 @@ def main():
         )
         boundary_intersections["shirtTrouserTuck"] = tuck_overlap
         if tuck_overlap is None:
-            warnings.append("Could not evaluate tucked shirt/trouser overlap.")
+            reasons.append("Could not evaluate tucked shirt/trouser overlap; production tuck requires measured contact evidence.")
         elif tuck_overlap > 120:
             reasons.append(
                 f"Tucked shirt/trouser junction has {tuck_overlap} intersecting triangle pairs; "
