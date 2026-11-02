@@ -130,8 +130,8 @@ export function createOrderLifecycle(orderId: string, revisionId: string, recipe
   identifier(orderId, "order ID");
   nonEmpty(revisionId, "locked revision ID", 12, 200);
   if (!/^[a-f0-9]{64}$/.test(recipeHash)) throw new Error("Invalid locked recipe hash.");
-  return { orderId, revisionId, recipeHash, status: "created", sequence: 0,
-    lastEventId: null, heldFrom: null, audit: [] };
+  return Object.freeze({ orderId, revisionId, recipeHash, status: "created", sequence: 0,
+    lastEventId: null, heldFrom: null, audit: Object.freeze([]) });
 }
 
 function validateQc(qc: unknown, state: OrderLifecycleState): OrderQcEvidence {
@@ -151,8 +151,8 @@ function validateQc(qc: unknown, state: OrderLifecycleState): OrderQcEvidence {
       ORDER_QC_CHECKS.some(check => checks[check] !== true)) {
     throw new Error("All six named finished-garment QC checks must be true.");
   }
-  return { inspector, inspectionReference, revisionId: state.revisionId,
-    recipeHash: state.recipeHash, checks: Object.fromEntries(ORDER_QC_CHECKS.map(check => [check, true])) as Record<OrderQcCheck, boolean> };
+  return Object.freeze({ inspector, inspectionReference, revisionId: state.revisionId,
+    recipeHash: state.recipeHash, checks: Object.freeze(Object.fromEntries(ORDER_QC_CHECKS.map(check => [check, true])) as Record<OrderQcCheck, boolean>) });
 }
 
 /** Pure reducer: reject stale writes, illegal jumps, replay, chronology regressions and fabricated QC approvals. */
@@ -173,6 +173,10 @@ export function applyOrderLifecycleEvent(state: OrderLifecycleState, rawEvent: u
   if (at <= previousAt) throw new Error("Order audit timestamps must increase strictly.");
   const actor = nonEmpty(event.actor, "operator actor", 3, 120);
   const evidenceRef = nonEmpty(event.evidenceRef, "external evidence reference", 8, 240);
+  // One receipt cannot independently attest two distinct lifecycle events.
+  // Reusing a prior event receipt would weaken the claimed audit chain.
+  if (state.audit.some(item => item.evidenceRef === evidenceRef))
+    throw new Error("External evidence reference already used by this order.");
   let to = NEXT[state.status]?.[action];
   let heldFrom: OrderLifecycleStage | null = state.heldFrom;
   if (action === "cancel" && CANCELLABLE.has(state.status)) to = "cancelled";
@@ -192,15 +196,17 @@ export function applyOrderLifecycleEvent(state: OrderLifecycleState, rawEvent: u
   if (action === "approve_qc") validateQc(event.qc, state);
   else if (event.qc !== undefined) throw new Error("QC approval evidence belongs only on QC approval events.");
   if (to !== "recovery_pending" && action !== "resume_recovery") heldFrom = null;
-  const applied: AppliedOrderLifecycleEvent = {
+  const applied: AppliedOrderLifecycleEvent = Object.freeze({
     eventId, orderId: state.orderId, action, from: state.status, to,
     sequence: event.sequence as number, previousEventId: state.lastEventId,
     occurredAt: event.occurredAt as string, actor, evidenceRef,
     ...(reason === undefined ? {} : { reason }),
     ...(action === "approve_qc" ? { qc: validateQc(event.qc, state) } : {}),
-  };
-  return { ...state, status: to, sequence: applied.sequence, lastEventId: eventId,
-    heldFrom, audit: [...state.audit, applied] };
+  });
+  // TypeScript readonly is compile-time only. Freeze the new snapshot and
+  // nested QC record so downstream code cannot mutate accepted audit history.
+  return Object.freeze({ ...state, status: to, sequence: applied.sequence, lastEventId: eventId,
+    heldFrom, audit: Object.freeze([...state.audit, applied]) });
 }
 
 /** Replays the entire event history, refusing mismatched audit destinations. */
