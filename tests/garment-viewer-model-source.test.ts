@@ -187,6 +187,35 @@ test("3D identity-fit and garment separation cannot pass with unknown measuremen
   assert.match(source,/"ready": len\(reasons\) == 0/);
 });
 
+test("3D contact BVHs use evaluated world coordinates for body and garments",()=>{
+  const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  const helper=source.slice(source.indexOf("def evaluated_world_bvh("),
+    source.indexOf("def guide_world_points("));
+  for(const step of [
+    "evaluated = obj.evaluated_get(depsgraph)",
+    "mesh = evaluated.to_mesh()",
+    "transform = evaluated.matrix_world",
+    "vertices = [transform @ vertex.co for vertex in mesh.vertices]",
+    "polygons = [tuple(polygon.vertices) for polygon in mesh.polygons]",
+    "BVHTree.FromPolygons(vertices, polygons, all_triangles=False, epsilon=epsilon)",
+    "evaluated.to_mesh_clear()",
+    "left_tree = evaluated_world_bvh(left, depsgraph)",
+    "right_tree = evaluated_world_bvh(right, depsgraph)",
+  ]) assert.ok(helper.includes(step),step);
+  assert.doesNotMatch(helper,/BVHTree\.FromObject/,
+    "two independently local-space BVHs cannot prove physical contact");
+  const native=readFileSync("tests/blender/test_world_collision_bvh.py","utf8");
+  for(const token of [
+    "importlib.util",
+    "body.data.update()",
+    "bpy.context.view_layer.update()",
+    "hits > 0",
+    "false_hits == 0",
+    "scaled_hits > 0",
+    "intersection_pair_count(body, empty_object) is None",
+  ]) assert.ok(native.includes(token),token);
+});
+
 test("Blender scene preflight verifies canonical identity guide geometry",()=>{
   const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
   for(const token of [
