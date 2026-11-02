@@ -136,8 +136,8 @@ export function summarizeProductionDeliveryEvidence(
     reentryIncidentCount,
     missingEvidenceCount,
     evidenceIntegrityIssues,
-    gateComplete:Number.isInteger(target)&&target>0&&
-      firstTarget.length>=target&&auditedTargetCount===target&&
+    gateComplete:firstTarget.length>=target&&
+      Number.isInteger(target)&&target>0&&auditedTargetCount===target&&
       zeroReentryTargetCount===target&&reentryIncidentCount===0&&
       evidenceIntegrityIssues===0,
   };
