@@ -153,17 +153,21 @@ def verified_solidify_variants(obj, stages):
         raise RuntimeError("Solidify baseline disagrees with independently verified clearance stage.")
     items = evidence.get("variants")
     expected = (
-        ("outwardNoRim", 1.0, False),
-        ("outwardWithRim", 1.0, True),
-        ("inwardNoRim", -1.0, False),
-        ("inwardWithRim", -1.0, True),
+        ("outwardNoRim", 1.0, False, False),
+        ("outwardWithRim", 1.0, True, False),
+        ("inwardNoRim", -1.0, False, False),
+        ("inwardWithRim", -1.0, True, False),
+        ("recalculatedOutwardWithRim", 1.0, True, True),
+        ("recalculatedInwardWithRim", -1.0, True, True),
     )
     if not isinstance(items, list) or len(items) != len(expected):
-        raise RuntimeError("Incomplete four-variant real Blender solidify comparison.")
-    for item, (label, offset, rim) in zip(items, expected):
+        raise RuntimeError("Incomplete six-variant real Blender solidify and face-normal comparison.")
+    for item, (label, offset, rim, recalculate) in zip(items, expected):
         if (not isinstance(item, dict) or item.get("variant") != label
                 or type(item.get("offset")) not in (float, int) or item["offset"] != offset
                 or type(item.get("rim")) is not bool or item["rim"] != rim
+                or type(item.get("recalculatedNormals")) is not bool
+                or item["recalculatedNormals"] != recalculate
                 or type(item.get("bodyIntersectionPairs")) is not int
                 or item["bodyIntersectionPairs"] < 0):
             raise RuntimeError("Inconsistent measured Blender solidify variant.")
@@ -278,7 +282,7 @@ def diagnostic_report(scene):
         "signedProjectionIsInteriorTest": False,
         "contactHistogramDescription": "Eight low-to-high 12.5%-of-body-height bands; triangle-pair counts, not penetration volumes.",
         "modifierStageMethod": "World-space evaluated polygon BVH with 0.5mm epsilon, independently verified against final garment; not a production clearance approval.",
-        "solidifyExperimentMethod": "Disposable in-memory clones tested with actual Blender SOLIDIFY; +/-normal offsets and rim-on/off. The original outward-with-rim candidate is unchanged. No variant is approved.",
+        "solidifyExperimentMethod": "Disposable actual Blender SOLIDIFY trials including six variants with +/-normal offsets, rim-on/off and BMesh recalculated face normals. Candidate geometry is unchanged, not approved.",
         "shrinkwrapExperimentMethod": "Unsaved world-space native Blender NEAREST_SURFACEPOINT clones at fixed 7mm clearance, with unchanged final 1.6mm cloth thickness; no mode selected or approved.",
         "explanation": (
             "World-space BVH triangle overlap counts are candidate defects; "
