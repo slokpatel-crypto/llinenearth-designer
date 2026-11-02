@@ -9,9 +9,9 @@
 The real Chromium `verify-photo-form.cjs` suite previously applied its synthetic striped test tile only to the shirt. Mathematical trouser seam-pivot unit checks were present but could not prove the stripe was actually displayed on *both* trouser legs in the browser.
 
 - Render an independently striped *trouser* beside the previously existing solid control, with the exact existing fixed real photographic model and garment regions.
-- Assert changed pixels on both photographed leg interiors for tucked, untucked pleated and untucked wide cuts; fail when either leg silently loses selected fabric.
+- Assert changed pixels and **actual blue stripe-band pixels** on both photographed leg interiors for tucked, untucked pleated and untucked wide cuts; fail when either leg silently loses selected fabric or becomes a flat dye.
 - Assert skin, hands, shoes, floor, head and the central leg gap retain the solid control's pixels.
-- Save `before-after-pant-stripe-{tucked,pleated,wide}.png` as visual QA artifacts; keep shirt stripe and source-fold tests intact.
+- Use a 320×320 synthetic QA tile before the existing stripe crop (the old 64px tile stretched to unnaturally broad bands); save `before-after-pant-stripe-{tucked,pleated,wide}.png` as visual QA artifacts. Keep shirt stripe and source-fold tests intact.
 - Add a unit source-contract test that requires these real-browser checks to remain in the suite.
 
 ## Exact-head acceptance (pending)
