@@ -1,6 +1,8 @@
 export type StockEventType="receipt"|"adjustment_in"|"adjustment_out"|"reserve"|"release"|"consume";
 
 export type StockEvent={type:StockEventType;quantityMetres:number};
+// Match PostgreSQL UUID text grouping without restricting future UUID versions.
+const RESERVATION_UUID=/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 /**
  * Operators must supply actual measured quantities at ledger precision.
  * Silently rounding incoming evidence (especially a receipt) can mint fabric,
@@ -118,7 +120,7 @@ export function normalizeStockConsumption(input:unknown){
   const checkedBy=String(source.checkedBy||"").replace(/\s+/g," ").trim().slice(0,120);
   const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
 
-  if(!/^[0-9a-f-]{36}$/i.test(reservationId)) throw new Error("Valid reservation ID is required.");
+  if(!RESERVATION_UUID.test(reservationId)) throw new Error("Valid reservation ID is required.");
   
   if(checkedBy.length<2) throw new Error("Named consumption checker is required.");
   if(sourceReference.length<3) throw new Error("Actual cloth-usage evidence reference is required.");
@@ -138,7 +140,7 @@ export function normalizeStockRelease(input:unknown){
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
   const releasedBy=String(source.releasedBy||"").replace(/\s+/g," ").trim().slice(0,120);
   const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
-  if(!/^[0-9a-f-]{36}$/i.test(reservationId)) throw new Error("Valid reservation ID is required.");
+  if(!RESERVATION_UUID.test(reservationId)) throw new Error("Valid reservation ID is required.");
   if(releasedBy.length<2) throw new Error("Named reservation release checker is required.");
   if(sourceReference.length<3) throw new Error("Reservation release reference is required.");
   return {reservationId,note,releasedBy,sourceReference};
