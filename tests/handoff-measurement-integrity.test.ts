@@ -117,3 +117,15 @@ test("a legacy handoff claiming ready cannot print misleading ready status",()=>
   packet.status="ready_for_tailor_review";
   assert.match(buildTailorTechPackHtml(packet),/review required/);
 });
+
+test("direct trouser anchors are not silently converted into different lengths or fabricated ease",()=>{
+  const inseam:FinishedTarget={label:"Inseam anchor",bodyCm:76.0,finishedCm:{min:76,max:76},basis:"customer_desired"};
+  assert.deepEqual(auditHandoffMeasurements({shirt:[chest],trouser:[waist,seat,inseam]}).errors,[]);
+  const changed={...inseam,finishedCm:{min:73,max:75}};
+  const fabricated={...inseam,easeCm:{min:0,max:2},finishedCm:{min:76,max:78}};
+  for(const target of [changed,fabricated]){
+    const report=auditHandoffMeasurements({shirt:[chest],trouser:[waist,seat,target]});
+    assert.ok(report.errors.some(s=>s.includes("anchor") || s.includes("ease")));
+    assert.throws(()=>buildProductionHandoff(createRevision([chest],[waist,seat,target])),/Unsafe tailor handoff measurements/);
+  }
+});
