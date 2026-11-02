@@ -192,6 +192,65 @@ async function run(){
       await page.screenshot({path:path.join(output,"account-switch-race-390.png"),fullPage:true});
       await context.close();
     }
+    // A lost/malformed session response must hide Alice's previously loaded
+    // private data and recovery inputs, not leave them onscreen for Bob.
+    {
+      const context=await browser.newContext({viewport:{width:390,height:950}});
+      const page=await context.newPage();
+      let sessionOutage=false;
+      const marker="PRIVATE-ALICE-REVISION-SYNTHETIC";
+      let expected503=0;
+      page.on("pageerror",error=>errors.push("session-outage: "+error.message));
+      page.on("console",message=>{
+        if(message.type()!=="error")return;
+        if(message.text()==="Failed to load resource: the server responded with a status of 503 (Service Unavailable)")
+          expected503++;
+        else errors.push("session-outage: "+message.text());
+      });
+      await context.route("**/api/**",async route=>{
+        const path=new URL(route.request().url()).pathname;
+        if(path==="/api/customer-auth/session")
+          return sessionOutage
+            ?route.fulfill({status:503,json:{error:"Synthetic session backend unavailable"}})
+            :route.fulfill({status:200,json:{customer}});
+        if(path==="/api/designer/share")
+          return route.fulfill({status:503,json:{error:"Synthetic shares unavailable"}});
+        if(path==="/api/designer/vault")
+          return route.fulfill({status:200,json:{designs:[{
+            vaultId:"123e4567-e89b-12d3-a456-426614174000",
+            revisionId:marker,recipeHash:"b".repeat(64),
+            createdAt:"2026-11-03T00:00:00Z",expiresAt:"2027-01-01T00:00:00Z",
+          }]}});
+        if(path==="/api/measurements/vault")
+          return route.fulfill({status:200,json:{profiles:[]}});
+        if(path==="/api/customer-account/production")
+          return route.fulfill({status:200,json:{
+            quotes:[],orders:[],orderEvents:[],outcomes:[],
+          }});
+        return route.fulfill({status:200,json:{}});
+      });
+      await page.goto(origin+"/account",{waitUntil:"networkidle"});
+      await page.getByText(marker).waitFor();
+      await page.getByPlaceholder("Paste an older design recovery token to claim it")
+        .fill("SYNTHETIC-ALICE-PRIVATE-RECOVERY-BEARER");
+      sessionOutage=true;
+      await page.getByRole("button",{name:"Retry share list"}).click();
+      await page.getByRole("button",{name:"Retry account session"}).waitFor();
+      assert.equal(await page.getByText(marker).count(),0,
+        "session failure must hide the prior owner's saved design immediately");
+      assert.equal(await page.getByText("alice@example.test").count(),0,
+        "session failure must hide the previous customer's identity");
+      sessionOutage=false;
+      await page.getByRole("button",{name:"Retry account session"}).click();
+      await page.getByText(marker).waitFor();
+      assert.equal(await page.getByPlaceholder(
+        "Paste an older design recovery token to claim it").inputValue(),"",
+        "failed session rechecks must scrub unfinished bearer credentials");
+      assert.ok(expected503<=3,"unexpected duplicate session/shares outage resource errors");
+      proof.push({width:390,session503FailsClosed:true,privateRecoveryScrubbed:true});
+      await page.screenshot({path:path.join(output,"account-session-outage-390.png"),fullPage:true});
+      await context.close();
+    }
     assert.deepEqual(errors,[],"No unexpected browser JS or console errors permitted");
     fs.writeFileSync(path.join(output,"summary.json"),JSON.stringify({browser:"Chromium",scope:"customer account shares",mockedBackends:true,physicalAcceptance:false,proof,errors},null,2));
     console.log("Customer share/account responsive Chromium PASS: 390, 768, 1440; 503 denial and cross-device revoke UX.");
