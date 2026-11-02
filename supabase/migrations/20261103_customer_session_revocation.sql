@@ -42,7 +42,7 @@ begin
   values(p_token_hash)
   on conflict(token_hash) do update set
     revoked_at=now(),
-    expires_at=greatest(private.customer_session_revocations.expires_at,now()+interval '31 days');
+    expires_at=greatest(customer_session_revocations.expires_at,now()+interval '31 days');
   return true;
 end;
 $$;
