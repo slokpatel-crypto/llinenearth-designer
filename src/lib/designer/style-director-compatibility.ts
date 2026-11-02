@@ -40,7 +40,7 @@ export function styleDirectorCandidateCollar(
 export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "short_sleeve_double_cuff" |
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" |
-    "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch";
+    "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo";
   explanation: string;
 };
 
@@ -124,6 +124,15 @@ export function styleDirectorPresentationIssues(
     issues.push({
       code: "legacy_collar_mismatch",
       explanation: "The photographic collar choice disagrees with the versioned camp/band collar; review both without changing the locked IDs.",
+    });
+  }
+  if (versionedCollar === "cuban_camp_collar") {
+    // The selectable garment-option library currently declares this advanced
+    // collar's livePreview as "none". A matching *label* does not establish a
+    // matching photographic garment; retain the canonical ID and review it.
+    issues.push({
+      code: "unverified_camp_photo",
+      explanation: "The Cuban/Camp collar is selectable but has no verified live photographic rendering; confirm the preview against the intended construction.",
     });
   }
   return issues;
