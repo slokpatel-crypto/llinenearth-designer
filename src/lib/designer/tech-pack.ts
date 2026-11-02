@@ -1,4 +1,5 @@
 import type { ProductionHandoff } from "@/lib/designer/production-handoff";
+import { auditHandoffMeasurements } from "./handoff-measurements.ts";
 
 export const TECH_PACK_VERSION="linen-earth-tech-pack-v1" as const;
 
@@ -16,8 +17,16 @@ function rows(items:Array<[string,unknown]>){
 }
 
 function measurementRows(items:ProductionHandoff["construction"]["shirt"]["finishedTargets"]){
-  if(!items.length) return `<tr><td colspan="4">No finished-garment targets are available yet.</td></tr>`;
-  return items.map((item)=>`<tr><td>${esc(item.label)}</td><td>${item.bodyCm.toFixed(1)} cm</td><td>${item.finishedCm.min.toFixed(1)}–${item.finishedCm.max.toFixed(1)} cm</td><td>${esc(item.basis.replaceAll("_"," "))}</td></tr>`).join("");
+  if(!items.length) return `<tr><td colspan="5">No finished-garment targets are available yet. Obtain physical measurements before cutting.</td></tr>`;
+  return items.map((item)=>{
+    const ease=item.easeCm
+      ? `${item.easeCm.min.toFixed(1)}–${item.easeCm.max.toFixed(1)} cm`
+      : "— (not an ease calculation)";
+    const basis=item.basis==="recorded_anchor" ? "recorded anchor — verify against pattern"
+      : item.basis==="customer_desired" ? "customer desired — tailor to verify"
+      : "body + provisional/approved ease (see source)";
+    return `<tr><td>${esc(item.label)}</td><td>${item.bodyCm.toFixed(1)} cm</td><td>${esc(ease)}</td><td>${item.finishedCm.min.toFixed(1)}–${item.finishedCm.max.toFixed(1)} cm</td><td>${esc(basis)}</td></tr>`;
+  }).join("");
 }
 
 function list(items:string[]){
@@ -28,6 +37,20 @@ function list(items:string[]){
 export function buildTailorTechPackHtml(handoff:ProductionHandoff){
   const shirt=handoff.construction.shirt;
   const trouser=handoff.construction.trouser;
+  const audit=auditHandoffMeasurements({
+    shirt:shirt.finishedTargets,
+    trouser:trouser.finishedTargets,
+  });
+  if(audit.errors.length) {
+    throw new Error(`Unsafe tailor tech pack measurements: ${audit.errors.join(" ")}`);
+  }
+  const missingConstruction=handoff.construction.styleSpec ? [] : [
+    "Exact StyleSpec v2 garment construction is absent; tailor must verify legacy options.",
+  ];
+  const outstanding=[...new Set([...handoff.unresolved,...audit.missing,...missingConstruction])];
+  const displayStatus=handoff.status==="ready_for_tailor_review"
+    && !audit.missing.length && !missingConstruction.length
+    ? handoff.status : "review_required";
   const title=`Linen Earth · Tailor Tech Pack · ${handoff.designRevisionId}`;
   return `<!doctype html>
 <html lang="en">
@@ -63,7 +86,7 @@ footer{margin-top:14px;padding-top:10px;border-top:1px solid #cfd3d6;color:#6872
     <div>${esc(handoff.designRevisionId)}</div>
   </div>
   <div>
-    <div class="badge">${esc(handoff.status.replaceAll("_"," "))}</div>
+    <div class="badge">${esc(displayStatus.replaceAll("_"," "))}</div>
     <div class="muted" style="margin-top:8px">Recipe ${esc(handoff.recipeHash.slice(0,16).toUpperCase())}</div>
     <div class="muted">Generated ${esc(handoff.generatedAt)}</div>
   </div>
@@ -154,12 +177,12 @@ footer{margin-top:14px;padding-top:10px;border-top:1px solid #cfd3d6;color:#6872
 ${handoff.construction.creative?`<section class="card" style="margin-bottom:12px"><h2>Creative recipe / sample review</h2><p>${esc(handoff.construction.creative.name)} · ${esc(handoff.construction.creative.thesis)}</p><ul>${list(handoff.construction.creative.treatments.map(t=>`${t.zone}: ${t.instruction}`))}</ul>${handoff.construction.creative.craft?`<p>Craft version: ${esc(handoff.construction.creative.craft.version)} · Proposed sample dimensions</p><ul>${list(handoff.construction.creative.craft.panels.map(p=>`${p.zone}: ${p.fabric.name} (${p.fabric.id}); provenance: ${p.fabric.source}`))}</ul><pre>${esc(JSON.stringify(handoff.construction.creative.craft.decoration,null,2))}</pre>`:""}</section>`:""}
 <section class="card" style="margin-bottom:12px">
   <h2>Shirt finished-garment targets</h2>
-  <table class="measure"><thead><tr><th>Target</th><th>Body</th><th>Finished range</th><th>Basis</th></tr></thead><tbody>${measurementRows(shirt.finishedTargets)}</tbody></table>
+  <table class="measure"><thead><tr><th>Target</th><th>Body (cm)</th><th>Ease (cm)</th><th>Finished range (cm)</th><th>Basis</th></tr></thead><tbody>${measurementRows(shirt.finishedTargets)}</tbody></table>
 </section>
 
 <section class="card" style="margin-bottom:12px">
   <h2>Trouser finished-garment targets</h2>
-  <table class="measure"><thead><tr><th>Target</th><th>Body</th><th>Finished range</th><th>Basis</th></tr></thead><tbody>${measurementRows(trouser.finishedTargets)}</tbody></table>
+  <table class="measure"><thead><tr><th>Target</th><th>Body (cm)</th><th>Ease (cm)</th><th>Finished range (cm)</th><th>Basis</th></tr></thead><tbody>${measurementRows(trouser.finishedTargets)}</tbody></table>
 </section>
 
 <section class="grid">
@@ -186,7 +209,7 @@ ${handoff.construction.creative?`<section class="card" style="margin-bottom:12px
 </section>
 
 <section class="grid">
-  <article class="card"><h2>Unresolved before production</h2><ul>${list(handoff.unresolved)}</ul></article>
+  <article class="card"><h2>Unresolved before production</h2><ul>${list(outstanding)}</ul></article>
   <article class="card"><h2>Caveats</h2><ul>${list(handoff.caveats)}</ul></article>
 </section>
 
