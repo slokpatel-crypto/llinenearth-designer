@@ -93,12 +93,31 @@ def material_slot_names(obj):
     return [slot.material.name if slot.material else "" for slot in obj.material_slots]
 
 
+def evaluated_world_bvh(obj, depsgraph, epsilon=0.0005):
+    """Build mesh contact geometry in world coordinates, not object-local.
+
+    Scan bodies can retain translated mesh origins. Comparing two local-space
+    BVHs incorrectly makes coincident body/garment surfaces look separated.
+    """
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        transform = evaluated.matrix_world
+        vertices = [transform @ vertex.co for vertex in mesh.vertices]
+        polygons = [tuple(polygon.vertices) for polygon in mesh.polygons]
+        if not vertices or not polygons:
+            return None
+        return BVHTree.FromPolygons(vertices, polygons, all_triangles=False, epsilon=epsilon)
+    finally:
+        evaluated.to_mesh_clear()
+
+
 def intersection_pair_count(left, right):
     if left is None or right is None or left.type != "MESH" or right.type != "MESH":
         return None
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    left_tree = BVHTree.FromObject(left, depsgraph, epsilon=0.0005)
-    right_tree = BVHTree.FromObject(right, depsgraph, epsilon=0.0005)
+    left_tree = evaluated_world_bvh(left, depsgraph)
+    right_tree = evaluated_world_bvh(right, depsgraph)
     if left_tree is None or right_tree is None:
         return None
     return len(left_tree.overlap(right_tree))
