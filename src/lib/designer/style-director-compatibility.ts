@@ -17,6 +17,26 @@ export function styleDirectorIntelligenceTrustWeight(
   return 0.28;
 }
 
+/**
+ * One deterministic interpretation of named camp/band shirt candidates for
+ * both the photographic legacy selector and the versioned construction.
+ * If a legacy photo option is unavailable, keep its existing selection and
+ * let presentation parity explicitly require review; never invent a label.
+ */
+export function styleDirectorCandidateCollar(
+  candidateShirt: string,
+  legacyChoices: readonly string[],
+): { legacy: string | null; versioned: "cuban_camp_collar" | "mandarin_band_collar" } | null {
+  const camp = /camp|cuban/i.test(candidateShirt);
+  const band = !camp && /band|mandarin/i.test(candidateShirt);
+  if (!camp && !band) return null;
+  const matcher = camp ? /camp|cuban/i : /band|mandarin/i;
+  return {
+    legacy: legacyChoices.find((label) => matcher.test(label)) ?? null,
+    versioned: camp ? "cuban_camp_collar" : "mandarin_band_collar",
+  };
+}
+
 export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "short_sleeve_double_cuff" |
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" |
