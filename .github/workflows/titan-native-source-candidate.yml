@@ -98,6 +98,7 @@ jobs:
           "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
             --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
             --experimental-waist-refinement-level 0 \
+            --experimental-waist-extra-clearance-mm 0 \
             --output .cache/linen-earth/linen-earth-officewear-waist-control.blend
           test -s .cache/linen-earth/linen-earth-officewear-waist-control.blend
       - name: Measure actual waist/tuck contacted face area for both real Blender candidates
@@ -132,9 +133,65 @@ jobs:
                       assert 0 <= fraction <= 1
           assert original["bodyVsWaist"]["polygonContactPairs"] == 122, "Pinned original waist baseline changed"
           assert refined["bodyVsWaist"]["polygonContactPairs"] == 0, "Targeted native waist fix regressed"
+          assert refined["shirtVsWaist"]["polygonContactPairs"] == 0, "Default layered waist did not clear actual tuck"
           print("TITAN_REAL_PINNED_WAIST_CONTROL_VS_REFINEMENT_MEASURED")
           print("Original shirt-waist contact:", original["shirtVsWaist"])
           print("Refined shirt-waist contact:", refined["shirtVsWaist"])
+          PY
+      - name: Compare true extra waistband clearance against original tucked shirt (research only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # All three experiments use the SAME CC0 locked source, same 30mm
+          # tucked hem, same 1.6mm thickness and one-level real waist mesh.
+          # +3mm is the smallest fully preflight-verified candidate correction.
+          # Retain an exact +0mm control and +6/+9mm research alternatives.
+          for extra in 0 6 9; do
+            "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+              --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
+              --experimental-waist-extra-clearance-mm "$extra" \
+              --output ".cache/linen-earth/titan-waist-layering-extra-${extra}mm.blend"
+            "$BLENDER_BIN" --background ".cache/linen-earth/titan-waist-layering-extra-${extra}mm.blend" \
+              --python-exit-code 1 --python scripts/blender/measure-waist-tuck-contact.py -- \
+              --output "$RUNNER_TEMP/titan-candidate-evidence/waist-layering-extra-${extra}mm.json"
+          done
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          location = Path(sys.argv[1])
+          standard = json.loads((location / "waist-tuck-refined.json").read_text(encoding="utf-8"))
+          assert standard["waistRefinementLevel"] == 1
+          assert standard["experimentalWaistExtraClearanceMm"] == 3
+          assert standard["waistAbsoluteClearanceMm"] == 10
+          assert standard["bodyVsWaist"]["polygonContactPairs"] == 0
+          assert standard["shirtVsWaist"]["polygonContactPairs"] == 0
+          print("REAL_TUCK_LAYERING_STANDARD", standard["shirtVsWaist"])
+          for extra in (0, 6, 9):
+              report = json.loads((location / f"waist-layering-extra-{extra}mm.json").read_text(encoding="utf-8"))
+              assert report["candidateOnly"] is True and report["productionApproved"] is False
+              assert report["modelIdentityId"] == "linen-earth-studio-model-v1"
+              assert report["waistRefinementLevel"] == 1
+              assert report["experimentalWaistExtraClearanceMm"] == extra
+              assert report["waistAbsoluteClearanceMm"] == 7 + extra
+              assert report["bodyVsWaist"]["polygonContactPairs"] == 0
+              assert report["shirtVsWaist"]["polygonContactPairs"] == (1507 if extra == 0 else 0)
+              for key in ("bodyVsWaist", "shirtVsWaist"):
+                  actual = report[key]
+                  assert type(actual["polygonContactPairs"]) is int and actual["polygonContactPairs"] >= 0
+                  for side in ("Left", "Right"):
+                      coverage = actual[f"contacting{side}FaceFraction"]
+                      assert isinstance(coverage, (int, float)) and 0 <= coverage <= 1
+              assert report["shirtVsWaist"]["wholeLeftSurfaceAreaMm2"] == standard["shirtVsWaist"]["wholeLeftSurfaceAreaMm2"], (
+                  "Waist-only experiment changed the real shirt mesh."
+              )
+              print(f"TITAN_REAL_TUCK_LAYERING_EXTRA_{extra}MM", json.dumps({
+                  "bodyPairs": report["bodyVsWaist"]["polygonContactPairs"],
+                  "shirtWaistPairs": report["shirtVsWaist"]["polygonContactPairs"],
+                  "contactingShirtFaceAreaMm2": report["shirtVsWaist"]["contactingLeftFaceAreaMm2"],
+                  "contactingWaistFaceAreaMm2": report["shirtVsWaist"]["contactingRightFaceAreaMm2"],
+              }))
+          print("TITAN_NATIVE_WAIST_LAYERING_COMPARISONS_VALIDATED_CANDIDATE_ONLY")
           PY
       - name: Record real contact and mesh topology before rejection
         shell: bash
@@ -206,8 +263,9 @@ jobs:
           assert contact["bodyTrouserWaist"] == 0, (
               "One-level simple waist refinement did not clear true waist/body intersections: "
               + str(contact["bodyTrouserWaist"]))
-          assert evidence["rejectionReasonCount"] <= 12, (
-              "New hard physical failures offset the candidate waist collision fix")
+          assert evidence["rejectionReasonCount"] <= 11, (
+              "New hard physical failures offset the two measured waist collision repairs")
+          assert contact["shirtTrouserTuck"] == 0, "Tucked shirt and real waist must not intersect"
           # Unmodified five real panels must retain or improve their original
           # world-space triangle-pair BVH counts at the same 0.5mm epsilon.
           original = {
@@ -220,6 +278,76 @@ jobs:
                   name, contact[name], previous)
           print("TITAN_REAL_WAIST_BODY_COLLISION_REPAIRED_NOT_PRODUCTION_APPROVED")
           PY
+      - name: Audit full unchanged physical preflight on extra waist layering trials
+        shell: bash
+        run: |
+          set -euo pipefail
+          for extra in 0 6 9; do
+            log="$RUNNER_TEMP/titan-candidate-evidence/waist-layering-preflight-extra-${extra}mm.log"
+            set +e
+            "$BLENDER_BIN" --background ".cache/linen-earth/titan-waist-layering-extra-${extra}mm.blend" \
+              --python-exit-code 1 --python scripts/blender/preflight-linen-earth-officewear.py \
+              > "$log" 2>&1
+            exitcode=$?
+            set -e
+            python3 scripts/blender/summarize-native-candidate-preflight.py \
+              --log "$log" --exit-code "$exitcode" \
+              --output "$RUNNER_TEMP/titan-candidate-evidence/waist-layering-preflight-extra-${extra}mm.json"
+          done
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          standard = json.loads((root / "rejection-report.json").read_text(encoding="utf-8"))
+          control = json.loads((root / "waist-layering-preflight-extra-0mm.json").read_text(encoding="utf-8"))
+          for report in (control, standard):
+              assert report["candidateOnly"] is True and report["productionApproved"] is False
+              assert report["preflightReady"] is False
+              assert report["modelIdentityId"] == "linen-earth-studio-model-v1"
+              assert report["boundaryIntersections"]["bodyTrouserWaist"] == 0
+          assert control["rejectionReasonCount"] == 12
+          assert control["boundaryIntersections"]["shirtTrouserTuck"] == 1507
+          assert standard["rejectionReasonCount"] == 11
+          assert standard["boundaryIntersections"]["shirtTrouserTuck"] == 0
+          # The measured target is anchored to the locked photographic
+          # identity guide, not an assistant-selected fashion silhouette.
+          target_waist_width_mm = 344.0
+          control_width = control["identityFitMeasurementsMm"]["trouserWaistWidthMm"]
+          standard_width = standard["identityFitMeasurementsMm"]["trouserWaistWidthMm"]
+          assert abs(standard_width - target_waist_width_mm) <= abs(control_width - target_waist_width_mm), (
+              "Layered trouser waist degrades the measured photographic guide width")
+          for key in ("shirtShoulderWidthMm", "shirtWaistWidthMm", "rightHemWidthMm",
+                      "sleeveCenterSpacingMm", "legCenterSpacingMm"):
+              assert standard["identityFitMeasurementsMm"][key] == control["identityFitMeasurementsMm"][key], (
+                  "Waist-only layering changed other photographic fit measurements", key)
+          for name, original_count in control["boundaryIntersections"].items():
+              if name not in ("shirtTrouserTuck", "bodyTrouserWaist"):
+                  assert standard["boundaryIntersections"][name] <= original_count, (
+                      "Waist-only fix worsened existing garment contacts", name)
+          print("TITAN_REAL_TUCK_CONTROL_PHOTOGRAPHIC_FIT_MM", json.dumps(control["identityFitMeasurementsMm"]))
+          print("TITAN_REAL_TUCK_DEFAULT_PHOTOGRAPHIC_FIT_MM", json.dumps(standard["identityFitMeasurementsMm"]))
+          for extra in (6, 9):
+              report = json.loads((root / f"waist-layering-preflight-extra-{extra}mm.json").read_text(encoding="utf-8"))
+              assert report["modelIdentityId"] == "linen-earth-studio-model-v1"
+              assert report["candidateOnly"] is True and report["productionApproved"] is False
+              assert report["preflightReady"] is False
+              assert report["boundaryIntersections"]["shirtTrouserTuck"] == 0
+              assert report["boundaryIntersections"]["bodyTrouserWaist"] == 0
+              assert report["rejectionReasonCount"] <= 11, "Additional waist layering introduced new physical failures"
+              for name, original_count in control["boundaryIntersections"].items():
+                  if name not in ("shirtTrouserTuck", "bodyTrouserWaist"):
+                      assert report["boundaryIntersections"][name] <= original_count, (
+                          "Non-waist body or fabric collisions regressed", name)
+              print(f"TITAN_REAL_TUCK_EXTRA_{extra}MM_PHYSICAL_GUIDE_FIT", json.dumps({
+                  "remainingHardPreflightReasons": report["rejectionReasonCount"],
+                  "identityFitMeasurementsMm": report["identityFitMeasurementsMm"],
+                  "zeroWaistVsBodyPairs": report["boundaryIntersections"]["bodyTrouserWaist"],
+                  "zeroShirtVsWaistPairs": report["boundaryIntersections"]["shirtTrouserTuck"],
+                  "productionApproved": report["productionApproved"],
+              }))
+          print("TITAN_TUCKED_LAYERING_FULL_PHYSICAL_PREFLIGHT_EVIDENCE_VALIDATED")
+          PY
       - name: Upload rejection report, never an unapproved model
         if: always()
         uses: actions/upload-artifact@v4
@@ -229,6 +357,8 @@ jobs:
             ${{ runner.temp }}/titan-candidate-evidence/rejection-report.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-tuck-control.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-tuck-refined.json
+            ${{ runner.temp }}/titan-candidate-evidence/waist-layering-extra-*mm.json
+            ${{ runner.temp }}/titan-candidate-evidence/waist-layering-preflight-extra-*mm.json
             ${{ runner.temp }}/titan-candidate-evidence/contact-diagnostics.json
             ${{ runner.temp }}/titan-candidate-evidence/preflight.log
           if-no-files-found: ignore
