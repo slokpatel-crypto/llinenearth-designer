@@ -14,6 +14,7 @@ type StockRow={fabric_id:string;physical_metres:number;reserved_metres:number;av
 export default function StockClient(){
   const [stock,setStock]=useState<StockRow[]>([]);
   const [configured,setConfigured]=useState(true);
+  const [writesEnabled,setWritesEnabled]=useState(false);
   const [snapshotState,setSnapshotState]=useState<"loading"|"ready"|"error">("loading");
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState(false);
@@ -34,21 +35,24 @@ export default function StockClient(){
     try{
       const response=await fetch("/api/operator/stock",{cache:"no-store"});
       if(response.status===401){
-        setConfigured(false);setStock([]);setSnapshotState("error");
+        setWritesEnabled(false);setConfigured(false);setStock([]);setSnapshotState("error");
         window.location.href="/operator/login?next=/operator/stock";
         return false;
       }
       if(!response.ok) throw new Error("Stock ledger request failed.");
       const data:unknown=await response.json();
       if(!data||typeof data!=="object"||!("stock" in data)||!Array.isArray(data.stock)||
-        !("configured" in data)||data.configured!==true)
+        !("configured" in data)||data.configured!==true||
+        !("writesEnabled" in data)||typeof data.writesEnabled!=="boolean")
         throw new Error("Stock ledger response is invalid.");
+      setWritesEnabled(data.writesEnabled);
       setConfigured(true);
       setStock(data.stock as StockRow[]);
       setSnapshotState("ready");
       return true;
     }catch{
       // Never show an API failure as verified zero metres of cloth.
+      setWritesEnabled(false);
       setConfigured(false);
       setStock([]);
       setSnapshotState("error");
@@ -79,6 +83,8 @@ export default function StockClient(){
 
   async function post(body:Record<string,unknown>,success:string,reservationDraft?:StockReservationAttempt){
     if(uncertainWriteRef.current||uncertainWrite||busy||snapshotState!=="ready"||!configured||!mutationGate.current.enter()) return;
+    // A readable v2 ledger is not proof that v3 writes are installed.
+    if(!writesEnabled){mutationGate.current.exit();return;}
     setBusy(true);setMessage("");
     let requestSent=false,acknowledged=false,httpStatus:number|null=null;
     let markedPending=false;
@@ -170,12 +176,13 @@ export default function StockClient(){
         }
       })();}}>I checked the ledger and source; refresh to unlock</button>
     </section>}
+    {snapshotState==="ready"&&!writesEnabled&&<p className="stockMessage" role="alert">Stock ledger is readable, but all stock movements are disabled pending migration, isolated staging validation and explicit rollout approval. Viewing metres is not permission to record, reserve, consume or release fabric.</p>}
     <section className="stockStats">
       <article><small>FABRICS TRACKED</small><strong>{snapshotState==="ready"?stock.length:"—"}</strong></article>
       <article><small>AVAILABLE</small><strong>{snapshotState==="ready"?`${totalAvailable.toFixed(3)} m`:"—"}</strong></article>
       <article><small>RESERVED</small><strong>{snapshotState==="ready"?`${totalReserved.toFixed(3)} m`:"—"}</strong></article>
       <article><small>PHYSICAL PROVENANCE</small><strong>{snapshotState==="ready"?(provenanceReady?"RECORDED":"PENDING"):"UNAVAILABLE"}</strong><small>{snapshotState==="ready"?<>Documented entries only; not independent roll or metreage certification. {legacyUnverified} legacy/unverified manual event(s)</>:"Awaiting an accessible ledger snapshot; no provenance claim is possible."}</small></article>
-      <article><small>BACKEND</small><strong>{snapshotState==="error"?"UNAVAILABLE":snapshotState==="loading"?"CHECKING":configured?"LIVE":"NOT CONFIGURED"}</strong></article>
+      <article><small>BACKEND</small><strong>{snapshotState==="error"?"UNAVAILABLE":snapshotState==="loading"?"CHECKING":!configured?"NOT CONFIGURED":writesEnabled?"WRITES ENABLED":"READ ONLY"}</strong></article>
     </section>
 
     <section className="stockGrid">
@@ -187,7 +194,7 @@ export default function StockClient(){
         <label>Recorded by / checker<input value={form.recordedBy} onChange={(e)=>setForm({...form,recordedBy:e.target.value})} maxLength={120} placeholder="Required"/></label>
         <label>Physical source reference<input value={form.sourceReference} onChange={(e)=>setForm({...form,sourceReference:e.target.value})} maxLength={240} placeholder="Roll tag, receipt, stock-count sheet…"/></label>
         <label>Note<textarea rows={2} value={form.note} onChange={(e)=>setForm({...form,note:e.target.value})}/></label>
-        <button disabled={uncertainWrite||busy||snapshotState!=="ready"||!configured||!form.fabricId||Number(form.quantityMetres)<=0||form.recordedBy.trim().length<2||form.sourceReference.trim().length<3} onClick={()=>void post({action:"record",...form,quantityMetres:Number(form.quantityMetres)},"Provenance-backed stock event recorded.")}>Record stock event</button>
+        <button disabled={uncertainWrite||busy||snapshotState!=="ready"||!configured||!writesEnabled||!form.fabricId||Number(form.quantityMetres)<=0||form.recordedBy.trim().length<2||form.sourceReference.trim().length<3} onClick={()=>void post({action:"record",...form,quantityMetres:Number(form.quantityMetres)},"Provenance-backed stock event recorded.")}>Record stock event</button>
       </article>
 
       <article className="stockPanel">
@@ -197,7 +204,7 @@ export default function StockClient(){
         <label>Metres to reserve<input type="number" min=".001" step=".001" value={reservation.quantityMetres} onChange={(e)=>setReservation({...reservation,quantityMetres:e.target.value})}/></label>
         <label>Requested / checked by<input value={reservation.requestedBy} onChange={(e)=>setReservation({...reservation,requestedBy:e.target.value})} maxLength={120} placeholder="Required"/></label>
         <label>Reservation quantity source<input value={reservation.sourceReference} onChange={(e)=>setReservation({...reservation,sourceReference:e.target.value})} maxLength={240} placeholder="Approved meterage sheet, tailor request…"/></label>
-        <button disabled={uncertainWrite||busy||snapshotState!=="ready"||!configured||!reservation.fabricId||reservation.revisionId.length<12||Number(reservation.quantityMetres)<=0||reservation.requestedBy.trim().length<2||reservation.sourceReference.trim().length<3} onClick={()=>{const draft={...reservation,quantityMetres:Number(reservation.quantityMetres)};void post({action:"reserve",...draft,},"Provenance-backed reservation created.",draft);}}>Create reservation</button>
+        <button disabled={uncertainWrite||busy||snapshotState!=="ready"||!configured||!writesEnabled||!reservation.fabricId||reservation.revisionId.length<12||Number(reservation.quantityMetres)<=0||reservation.requestedBy.trim().length<2||reservation.sourceReference.trim().length<3} onClick={()=>{const draft={...reservation,quantityMetres:Number(reservation.quantityMetres)};void post({action:"reserve",...draft,},"Provenance-backed reservation created.",draft);}}>Create reservation</button>
       </article>
 
       <article className="stockPanel">
@@ -208,8 +215,8 @@ export default function StockClient(){
         <label>Close action source<input value={close.sourceReference} onChange={(e)=>setClose({...close,sourceReference:e.target.value})} maxLength={240} placeholder="Cutting sheet, cancellation note, usage card…"/></label>
         <label>Note<textarea rows={2} value={close.note} onChange={(e)=>setClose({...close,note:e.target.value})}/></label>
         <div className="stockActions">
-          <button disabled={uncertainWrite||busy||snapshotState!=="ready"||!configured||!close.reservationId||Number(close.actualMetres)<=0||close.checkedBy.trim().length<2||close.sourceReference.trim().length<3} onClick={()=>void post({action:"consume",reservationId:close.reservationId,actualMetres:Number(close.actualMetres),checkedBy:close.checkedBy,sourceReference:close.sourceReference,note:close.note},"Reservation consumed from measured usage and unused metres released.")}>Consume</button>
-          <button disabled={uncertainWrite||busy||snapshotState!=="ready"||!configured||!close.reservationId||close.checkedBy.trim().length<2||close.sourceReference.trim().length<3} onClick={()=>void post({action:"release",reservationId:close.reservationId,releasedBy:close.checkedBy,sourceReference:close.sourceReference,note:close.note},"Reservation released.")}>Release</button>
+          <button disabled={uncertainWrite||busy||snapshotState!=="ready"||!configured||!writesEnabled||!close.reservationId||Number(close.actualMetres)<=0||close.checkedBy.trim().length<2||close.sourceReference.trim().length<3} onClick={()=>void post({action:"consume",reservationId:close.reservationId,actualMetres:Number(close.actualMetres),checkedBy:close.checkedBy,sourceReference:close.sourceReference,note:close.note},"Reservation consumed from measured usage and unused metres released.")}>Consume</button>
+          <button disabled={uncertainWrite||busy||snapshotState!=="ready"||!configured||!writesEnabled||!close.reservationId||close.checkedBy.trim().length<2||close.sourceReference.trim().length<3} onClick={()=>void post({action:"release",reservationId:close.reservationId,releasedBy:close.checkedBy,sourceReference:close.sourceReference,note:close.note},"Reservation released.")}>Release</button>
         </div>
       </article>
     </section>
