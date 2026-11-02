@@ -21,7 +21,11 @@ function exactStockMetres(raw:unknown,field:string,maxMetres:number):number{
 // Physical checker names and signed source references are identity-bearing
 // stock evidence, never coercible arrays/objects or fabricated numbers.
 function literalStockEvidence(value:unknown,maxLength:number):string{
-  return typeof value==="string"?value.replace(/\s+/g," ").trim().slice(0,maxLength):"";
+  if(typeof value!=="string") return "";
+  const normalized=value.replace(/\s+/g," ").trim();
+  // A clipped checker or signed reference is a different physical receipt.
+  // Reject instead of silently turning a long input into verified evidence.
+  return normalized.length<=maxLength?normalized:"";
 }
 
 
