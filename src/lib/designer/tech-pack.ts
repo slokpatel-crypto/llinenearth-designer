@@ -1,5 +1,6 @@
 import type { ProductionHandoff } from "@/lib/designer/production-handoff";
 import { auditHandoffMeasurements } from "./handoff-measurements.ts";
+import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
 export const TECH_PACK_VERSION="linen-earth-tech-pack-v1" as const;
 
@@ -43,6 +44,9 @@ export function buildTailorTechPackHtml(handoff:ProductionHandoff){
   });
   if(audit.errors.length) {
     throw new Error(`Unsafe tailor tech pack measurements: ${audit.errors.join(" ")}`);
+  }
+  if (handoff.construction.styleSpec && !validateStyleSpecV2(handoff.construction.styleSpec)) {
+    throw new Error("Unsafe tailor tech pack construction: unrecognised versioned style option.");
   }
   const missingConstruction=handoff.construction.styleSpec ? [] : [
     "Exact StyleSpec v2 garment construction is absent; tailor must verify legacy options.",
