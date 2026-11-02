@@ -13,7 +13,7 @@ Scope: `titan-parallel-customer-security` only; customer-auth, customer-account 
 ## Verification evidence
 - New Node unit test: `tests/customer-security-request-boundary.test.ts`.
 - Extended `tests/customer-session.test.ts` and `tests/design-share.test.ts`.
-- Extended `scripts/verify-designer-vault-boundary-http.cjs` from 42 to 47 synthetic HTTP cases; it only runs against a local fake backend and uses no live records.
+- Extended `scripts/verify-designer-vault-boundary-http.cjs` with actual local Next HTTP tests: five vault preflight denials, customer OTP/verification/logout, signed-cookie downgrade rejection, legacy bridge, share preflight, and two-account owner-scoped vault load/delete negatives. All use a local fake backend, with no live records. These tests still require matching-head CI proof.
 - **Not yet verified as passed at checkpoint creation.** Require matching-PR-head GitHub CI: quality, npm test, engine, preview-performance, release-check, build, synthetic HTTP, browser verification. Confirm no Vercel deploy; inspect exact branch/main diff before merge.
 
 ## Unresolved production controls (do not call production ready)
