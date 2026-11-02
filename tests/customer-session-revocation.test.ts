@@ -44,6 +44,17 @@ test("sign-out is fail closed and account UI cannot acknowledge a 503 as success
   assert.match(auth,/await customerSessionBearerAllowed\(signedCookie\)/);
 });
 
+test("signed-cookie presence is authoritative, including empty and duplicate values",()=>{
+  const auth=readFileSync("src/lib/customer-auth.ts","utf8");
+  const marker=auth.indexOf("const signedCookieParts=");
+  const legacy=auth.indexOf("if(customerSessionRevocationRequired())return null");
+  assert.ok(marker>=0&&marker<legacy);
+  assert.match(auth,/if\(signedCookieParts\.length\)/);
+  assert.match(auth,/if\(signedCookieParts\.length!==1\)return null/);
+  assert.ok(auth.indexOf("verifySignedCustomerSession(signedCookie)")<legacy,
+    "only truly absent signed-cookie names may use the temporary legacy path");
+});
+
 test("migration stores digest only and forbids public RPC and direct table access",()=>{
   const sql=readFileSync("supabase/migrations/20261103_customer_session_revocation.sql","utf8");
   assert.match(sql,/token_hash text primary key/);
