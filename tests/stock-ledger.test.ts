@@ -202,3 +202,28 @@ test("stock closure IDs must be literal strings, not coercible arrays or objects
   assert.equal(normalizeStockConsumption(base).reservationId,valid);
   assert.equal(normalizeStockRelease(base).reservationId,valid);
 });
+
+
+test("privileged stock record and reservation identities require literal JSON strings",()=>{
+  const record={fabricId:"shirt-1",eventType:"receipt",quantityMetres:2.125,
+    recordedBy:"Physical checker",sourceReference:"Signed roll LE-001"};
+  const reserve={fabricId:"shirt-1",revisionId:"LE-LOCK-20261102",
+    requestKey:"LE-REQUEST-20261102",quantityMetres:1.125,
+    requestedBy:"Cutting checker",sourceReference:"Approved sheet LE-002"};
+  for(const fabricId of [["shirt-1"],{0:"shirt-1",length:1},null,42]){
+    assert.throws(()=>normalizeManualStockEvent({...record,fabricId}),/Fabric ID is required/);
+    assert.throws(()=>normalizeStockReservation({...reserve,fabricId}),/Fabric ID is required/);
+  }
+  for(const eventType of [["receipt"],{0:"receipt",length:1},null]){
+    assert.throws(()=>normalizeManualStockEvent({...record,eventType}),/Unsupported manual stock event/);
+  }
+  for(const revisionId of [[reserve.revisionId],{0:reserve.revisionId,length:1},null]){
+    assert.throws(()=>normalizeStockReservation({...reserve,revisionId}),/Locked revision ID is required/);
+  }
+  for(const requestKey of [[reserve.requestKey],{0:reserve.requestKey,length:1},null]){
+    assert.throws(()=>normalizeStockReservation({...reserve,requestKey}),/Reservation request key is required/);
+  }
+  assert.equal(normalizeManualStockEvent(record).fabricId,"shirt-1");
+  assert.equal(normalizeStockReservation(reserve).revisionId,reserve.revisionId);
+  assert.equal(normalizeStockReservation(reserve).requestKey,reserve.requestKey);
+});

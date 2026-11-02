@@ -64,11 +64,13 @@ export function stockSnapshot(events:StockEvent[]){
 }
 
 
+// Privileged ledger identities and event types must be literal JSON strings.
+// Arrays must not be coerced into valid supplier IDs or physical stock events.
 export function normalizeManualStockEvent(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock event evidence is required.");
   const source=input as Record<string,unknown>;
-  const fabricId=String(source.fabricId||"").trim().slice(0,160);
-  const eventType=String(source.eventType||"") as StockEventType;
+  const fabricId=typeof source.fabricId==="string"?source.fabricId.trim().slice(0,160):"";
+  const eventType=(typeof source.eventType==="string"?source.eventType:"") as StockEventType;
   const quantityMetres=exactStockMetres(source.quantityMetres,"Stock quantity",100000);
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
   const recordedBy=String(source.recordedBy||"").replace(/\s+/g," ").trim().slice(0,120);
@@ -90,9 +92,9 @@ export function normalizeManualStockEvent(input:unknown){
 export function normalizeStockReservation(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock reservation evidence is required.");
   const source=input as Record<string,unknown>;
-  const fabricId=String(source.fabricId||"").trim().slice(0,160);
-  const revisionId=String(source.revisionId||"").trim().slice(0,220);
-  const requestKey=String(source.requestKey||"").trim().slice(0,180);
+  const fabricId=typeof source.fabricId==="string"?source.fabricId.trim().slice(0,160):"";
+  const revisionId=typeof source.revisionId==="string"?source.revisionId.trim().slice(0,220):"";
+  const requestKey=typeof source.requestKey==="string"?source.requestKey.trim().slice(0,180):"";
   const quantityMetres=exactStockMetres(source.quantityMetres,"Stock quantity",100000);
   const requestedBy=String(source.requestedBy||"").replace(/\s+/g," ").trim().slice(0,120);
   const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
