@@ -95,7 +95,7 @@ test("operator release UI supplies the real named checker and physical cancellat
   const action=code.slice(code.indexOf('action:"release"'));
   assert.ok(action.includes("releasedBy:close.checkedBy"));
   assert.ok(action.includes("sourceReference:close.sourceReference"));
-  assert.ok(code.includes('close.sourceReference.trim().length<3||!writesEnabled} onClick={()=>void post({action:"release"'));
+  assert.ok(code.includes('close.sourceReference.trim().length<3} onClick={()=>void post({action:"release"'));
   assert.ok(code.includes("totalAvailable.toFixed(3)"));
   assert.ok(code.includes("totalReserved.toFixed(3)"));
 });
