@@ -1,0 +1,29 @@
+# TITAN — stock v3 staging and rollout evidence gate
+
+**Status:** Source-only instructions, not authorization to write production stock. The authenticated operator stock page is **read-only by default**; `LINEN_STOCK_WRITES_ENABLED=enabled` is a separate explicit server-side approval, never a browser setting. A passing CI test does not constitute a production rollout.
+
+## Confirmed connected-state blocker (read-only inspection, 2026-11-02)
+
+The connected `llinen-earth-designer` Supabase project runs PostgreSQL 17.6. Its `fabric_stock_snapshot_v2(text[])` and `fabric_stock_reserve_v2(...)` functions exist, but **`fabric_stock_record_v3(...)` does not**. No Supabase development branch was available when checked. Creating a development branch may incur charges and requires owner approval; these instructions create no branch and change no live SQL. The Supabase security advisory reports RLS enabled/no policies for multiple `private` tables (informational; deny-by-default is deliberate and must not be “fixed” with broad policies).
+
+## Migration inventory and controlled sequence
+
+Use a **separate isolated, access-controlled Supabase staging database** (never a live connection disguised as staging). Record the staging project/branch ID, PostgreSQL version, authorized owner, backup/snapshot restore point and time before touching schema.
+
+1. With **stock writes disabled**, verify the staging project contains the existing v2 stock ledger, snapshot and reservation functions, and no pre-existing unreviewed divergent SQL versions. Snapshot real staging data/roles/configuration for restore; check off-site or documented backup recoverability.
+2. Run the non-mutating, catalog-only check: `psql -X -v ON_ERROR_STOP=1 -At -f scripts/stock-v3-readonly-preflight.sql | jq .`. Before deploying stock v3, its expected status is **BLOCKED** (missing v3). The query examines function existence, SECURITY DEFINER, fixed search_path, service_role grants and anon/authenticated denials. It does **not** read or mutate customer/fabric ledger rows.
+3. Apply only the review-approved source migrations to **staging**, using the same ledger-compatible ordering as CI: `supabase/migrations/20261102_stock_reservation_key_payload_binding.sql` (after v2 stock/20261031 reservation migrations), followed by `supabase/migrations/20261102_stock_record_idempotency.sql`. Use a verified staging-only connection; do not substitute production project credentials. Refresh PostgREST schema cache.
+4. Re-run the catalog-only SQL. Require **READY**, five installed functions, fixed search_path, service-role execute, anon/authenticated denied; inspect all per-function results. **READY is only schema/permissions readiness**, not supplier truth or approval to enable writes.
+5. On synthetic **staging-only** roll/locked design records, verify 0.001m quantities, exact request-key replay and mismatched-payload rejection; reserve/consume/release; concurrent stock adjustment, lost acknowledgment and retry; an authenticated operator, forged/unauthorized caller and CSRF rejection. Keep identifiers uniquely prefixed; capture SQL balances, event counts and redacted logs. Test both `LINEN_STOCK_WRITES_ENABLED` unset (**read-only**) and explicitly `enabled` on **staging only**.
+6. Exercise full **restore**, not merely `DROP FUNCTION`: restore staging data and SQL functions to the captured baseline, including the original `fabric_stock_reserve_v2` definition, permissions, PostgREST cache, reservation linkage, and retry behavior. The v3 drop-only CI check proves only a narrow rollback; it is not equivalent to a full Supabase backup restoration.
+7. Record exact integrated repository commit, CI/QA run IDs, staging database identity (non-secret), migration checksums, before/after catalog preflight output, synthetic-ledger evidence, restoration evidence and independent human signoff. Mark unknown evidence **not verified**, not passed.
+
+## Physical and business release gates
+
+The staging database cannot certify real available stock. Require supplier/roll identities, measured composition/GSM, meterage, pattern repeat and provenance, verified cutting-card evidence, tailor measurements/usage, five full-journey testers, ten actual production deliveries, mobile/desktop accessibility and security evidence, final model/photo/UV acceptance, and launch-owner signoff. Physical stock opening figures must come from real measurements, never synthetic fixtures or a simulated snapshot.
+
+## Production change control
+
+No rollout until all criteria above pass **and** the owner explicitly authorizes the production migration and subsequent flag change. Create a change window, approved backup and tested restore, staged permissions review and an on-call reconciliation plan. Apply reviewed migration first with **writes still disabled**, confirm catalog-only preflight and read-only GET, then enable the server flag in a separately approved release. If there is any uncertainty, disable the flag first to halt new writes, preserve ledger and physical evidence, reconcile ambiguous actions by their original request keys and use the tested restore plan only under approved change control. Do not use a blanket ledger delete or casual destructive rollback on production.
+
+**Current gate:** CI PostgreSQL 17.6 and real local PostgREST replay safety are verified on draft commits, but isolated Supabase staging, full backup/restore, physical evidence and production owner approval are not yet verified. No merge to main or Vercel deployment is authorized by this document.
