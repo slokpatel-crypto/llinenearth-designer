@@ -639,7 +639,8 @@ async function main(){
       const cookie=signed.headers.get("set-cookie")?.match(/le_customer_session=([^;]+)/)?.[1];
       assert.ok(cookie);
       assert.deepEqual(seen.map(item=>item.path),
-        ["/auth/v1/verify","/rest/v1/rpc/customer_session_is_revoked"]);
+        ["/rest/v1/rpc/customer_otp_rate_consume","/auth/v1/verify",
+         "/rest/v1/rpc/customer_session_is_revoked"]);
 
       seen.length=0;
       const legacyOnly=await fetch(enforcedOrigin+"/api/customer-auth/session",{
@@ -818,6 +819,47 @@ async function main(){
         signal:AbortSignal.timeout(15000)});
       assert.equal(ownerReplayed.status,404,"owner-controlled revocation must deny old public URL");
 
+      // Isolated verification digest: repeated code guesses cannot bypass the
+      // shared store by rotating forwarding headers or across server instances.
+      const verifyTarget="bruteforce@example.com";
+      const verifySubject=createHmac("sha256",enforcedEnv.LINEN_CUSTOMER_OTP_RATE_SECRET)
+        .update("linen-earth:customer-otp-verify:v1\\0"+verifyTarget).digest("hex");
+      otpSubjects.delete(verifySubject);
+      let verifyDispatches=0;
+      for(let i=0;i<8;i++){
+        seen.length=0;
+        const response=await fetch(enforcedOrigin+"/api/customer-auth/verify",{
+          method:"POST",headers:fixtureHeaders(),
+          body:JSON.stringify({email:verifyTarget,token:"123456"}),
+          signal:AbortSignal.timeout(15000)});
+        assert.equal(response.status,200,"verification attempts one through eight may reach provider");
+        verifyDispatches+=seen.filter(item=>item.path==="/auth/v1/verify").length;
+      }
+      assert.equal(otpSubjects.get(verifySubject),8);
+      assert.equal(verifyDispatches,8);
+      seen.length=0;
+      const ninthVerify=await fetch(enforcedOrigin+"/api/customer-auth/verify",{
+        method:"POST",headers:fixtureHeaders(),
+        body:JSON.stringify({email:verifyTarget,token:"123456"}),
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(ninthVerify.status,429,"ninth verification must be denied before OTP provider");
+      assert.equal(ninthVerify.headers.get("set-cookie"),null,
+        "throttled verification must not set a customer session");
+      assert.deepEqual(seen.map(item=>item.path),
+        ["/rest/v1/rpc/customer_otp_rate_consume"]);
+      for(const backendState of ["backend500","malformed"]){
+        otpMode=backendState;seen.length=0;
+        const response=await fetch(enforcedOrigin+"/api/customer-auth/verify",{
+          method:"POST",headers:fixtureHeaders(),
+          body:JSON.stringify({email:"anotherverify@example.com",token:"123456"}),
+          signal:AbortSignal.timeout(15000)});
+        assert.equal(response.status,503,"verification RPC failure must fail closed");
+        assert.equal(response.headers.get("set-cookie"),null);
+        assert.deepEqual(seen.map(item=>item.path),
+          ["/rest/v1/rpc/customer_otp_rate_consume"],
+          "unavailable rate store must never forward OTP guesses to provider");
+      }
+      otpMode="ok";
       revocationMode="check500";seen.length=0;
       const failedVerify=await fetch(enforcedOrigin+"/api/customer-auth/verify",{
         method:"POST",headers:fixtureHeaders(),
@@ -827,7 +869,8 @@ async function main(){
       assert.ok(!failedVerify.headers.get("set-cookie"),
         "new customer cookie must not be issued without working revocation store");
       assert.deepEqual(seen.map(item=>item.path),
-        ["/auth/v1/verify","/rest/v1/rpc/customer_session_is_revoked"]);
+        ["/rest/v1/rpc/customer_otp_rate_consume","/auth/v1/verify",
+         "/rest/v1/rpc/customer_session_is_revoked"]);
     }finally{
       if(enforcedChild.exitCode===null){
         enforcedChild.kill("SIGTERM");
