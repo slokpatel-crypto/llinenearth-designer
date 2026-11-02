@@ -982,4 +982,5 @@ if (failed) {
   process.exit(1);
 }
 
-console.log("\nLinen Earth release foundation is ready.");
+warn("TITAN launch acceptance was NOT evaluated: original 3D/UV, measured fabrics and live stock v3 migration/restore, tailor review, five real testers, ten deliveries and owner signoff remain separate evidence gates.");
+console.log("\nLinen Earth static/legacy release contract checks passed; TITAN production launch is NOT certified.");
