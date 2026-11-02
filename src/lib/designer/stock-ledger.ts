@@ -64,7 +64,9 @@ export function stockSnapshot(events:StockEvent[]){
 }
 
 
-// Privileged ledger identities and event types must be literal JSON strings.\n// Arrays must not be coerced into valid supplier IDs or physical stock events.\nexport function normalizeManualStockEvent(input:unknown){
+// Privileged ledger identities and event types must be literal JSON strings.
+// Arrays must not be coerced into valid supplier IDs or physical stock events.
+export function normalizeManualStockEvent(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock event evidence is required.");
   const source=input as Record<string,unknown>;
   const fabricId=typeof source.fabricId==="string"?source.fabricId.trim().slice(0,160):"";
