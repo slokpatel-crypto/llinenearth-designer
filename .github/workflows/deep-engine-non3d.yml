@@ -19,7 +19,7 @@ jobs:
       contents: read
     env:
       LINEN_BROWSER_QA_RUNTIME: /tmp/linen-deep-engine-browser
-      LINEN_OPERATOR_SESSION_SECRET: deep-engine-browser-${{ github.run_id }}
+      LINEN_OPERATOR_SESSION_SECRET: deep-engine-browser-session-qa-${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -59,6 +59,7 @@ jobs:
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null
+          node scripts/verify-stock-operator-browser.cjs
           node scripts/verify-deep-engine-fabric-discovery.cjs
           node scripts/verify-designer-advisor.cjs
           node scripts/verify-photo-form.cjs

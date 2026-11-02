@@ -72,7 +72,7 @@ test("operator stock endpoint validates response and never exposes privileged up
   assert.doesNotMatch(route,/response\.text\(\)/);
   assert.doesNotMatch(route,/return await response\.json\(\)/);
   assert.match(route,/requireStockSnapshotRows\(await rpc<unknown>/);
-  assert.match(route,/requireStockCreatedId\(await rpc<string>\("fabric_stock_record_v2"/);
+  assert.match(route,/requireStockCreatedId\(await rpc<string>\("fabric_stock_record_v3"/);
   assert.match(route,/requireStockCreatedId\(await rpc<string>\("fabric_stock_reserve_v2"/);
   assert.equal((route.match(/requireStockCreatedId\(/g)||[]).length,2);
   assert.match(route,/snapshot unavailable \(details redacted\)/);

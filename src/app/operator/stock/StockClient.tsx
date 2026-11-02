@@ -6,6 +6,7 @@ import { createOperatorMutationGate } from "@/lib/designer/operator-mutation-gat
 import { requireStockClientAcknowledgment } from "@/lib/designer/operator-stock-client-ack";
 import { createStockReservationAttemptTracker, type StockReservationAttempt } from "@/lib/designer/stock-reservation-attempt";
 import { stockMutationNeedsReconciliation } from "@/lib/designer/stock-mutation-reconciliation";
+import { createStockManualAttemptTracker } from "@/lib/designer/stock-manual-attempt";
 
 type StockRow={fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;provenance_ready:boolean;last_event_at:string|null};
 
@@ -19,6 +20,7 @@ export default function StockClient(){
   const uncertainWriteRef=useRef(false);
   const mutationGate=useRef(createOperatorMutationGate());
   const reservationAttempt=useRef(createStockReservationAttemptTracker(()=>crypto.randomUUID()));
+  const manualAttempt=useRef(createStockManualAttemptTracker(()=>crypto.randomUUID(),()=>window.sessionStorage));
   const [form,setForm]=useState({fabricId:"",eventType:"receipt",quantityMetres:"",recordedBy:"",sourceReference:"",note:""});
   const [reservation,setReservation]=useState({fabricId:"",revisionId:"",quantityMetres:"",requestedBy:"",sourceReference:""});
   const [close,setClose]=useState({reservationId:"",actualMetres:"",checkedBy:"",sourceReference:"",note:""});
@@ -72,6 +74,17 @@ export default function StockClient(){
     setBusy(true);setMessage("");
     let requestSent=false,acknowledged=false,httpStatus:number|null=null;
     try{
+      if(body.action==="record"){
+        const manual={
+          fabricId:String(body.fabricId||""),eventType:String(body.eventType||""),
+          quantityMetres:Number(body.quantityMetres),note:String(body.note||""),
+          recordedBy:String(body.recordedBy||""),sourceReference:String(body.sourceReference||""),
+        };
+        // Persist the retry identity before the privileged POST, and only
+        // after the single-flight gate has locked out duplicate clicks.
+        const requestKey=await manualAttempt.current.keyFor(manual);
+        body={...body,requestKey};
+      }
       requestSent=true;
       const response=await fetch("/api/operator/stock",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
       httpStatus=response.status;
@@ -130,7 +143,7 @@ export default function StockClient(){
 
     <section className="stockGrid">
       <article className="stockPanel">
-        <span>01 / PHYSICAL STOCK</span><h2>Record verified metres.</h2>
+        <span>01 / PHYSICAL STOCK</span><h2>Record verified metres.</h2><p>Unchanged evidence reuses its original stock event across page reloads in this tab; supply a different measured roll/source reference for a new receipt. No stock entry is sent if safe retry tracking is unavailable.</p>
         <label>Fabric ID<input value={form.fabricId} onChange={(e)=>setForm({...form,fabricId:e.target.value})}/></label>
         <label>Event<select value={form.eventType} onChange={(e)=>setForm({...form,eventType:e.target.value})}><option value="receipt">Receipt / opening verified stock</option><option value="adjustment_in">Adjustment in</option><option value="adjustment_out">Adjustment out</option></select></label>
         <label>Metres<input type="number" min=".001" step=".001" value={form.quantityMetres} onChange={(e)=>setForm({...form,quantityMetres:e.target.value})}/></label>
