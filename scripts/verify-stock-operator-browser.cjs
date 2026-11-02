@@ -81,6 +81,20 @@ async function startContext(browser,opts={}){
       };
     });
   }
+  if(opts.silentJournalStorage){
+    await context.addInitScript(()=>{
+      const original=Storage.prototype.setItem;
+      Storage.prototype.setItem=function(k,v){
+        // Browser reports success but does NOT persist a retry key. Keep
+        // the separate uncertainty marker functional so the key journal
+        // read-back itself must be what blocks the privileged POST.
+        if(String(k).startsWith("linen-earth:manual-stock-attempts:")||
+           String(k).startsWith("linen-earth:reservation-attempts:"))
+          return;
+        return original.call(this,k,v);
+      };
+    });
+  }
   const records=[];
   let gets=0;
   await context.route("**/api/operator/stock",route=>{
@@ -232,6 +246,21 @@ async function main(){
       assert.equal(blocked.records.length,0,"storage failure must not submit an RPC");
       console.log("Stock operator Chromium PASS: blocked storage prevents privileged POST.");
     }finally{await blocked.context.close();}
+
+    for(const reservationMode of [false,true]){
+      const silent=await startContext(browser,{silentJournalStorage:true,reservationMode});
+      try{
+        if(reservationMode)await fillReservation(silent.page,"SYNTH-SILENT-CUT-SHEET");
+        else await fill(silent.page,"SYNTH-SILENT-ROLL");
+        const label=reservationMode?"Create reservation":"Record stock event";
+        await silent.page.getByRole("button",{name:label}).click();
+        await silent.page.getByText(/Stock retry tracking is unavailable in this browser tab/).waitFor();
+        assert.equal(silent.records.length,0,
+          "silently ignored browser journal writes must prevent "+label+" before POST");
+        console.log("Stock operator Chromium PASS: silently ignored "+
+          (reservationMode?"reservation":"receipt")+" retry journal cannot trigger POST.");
+      }finally{await silent.context.close();}
+    }
   }finally{await browser.close();}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

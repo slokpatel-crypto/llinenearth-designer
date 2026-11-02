@@ -103,3 +103,15 @@ test("existing reserve SQL serializes an identical idempotency key",()=>{
   assert.match(reserve,/where request_key=v_key limit 1/);
   assert.match(reserve,/if v_existing is not null then return v_existing/);
 });
+
+test("reservation must not be sent if sessionStorage reports success but drops its retry key",async()=>{
+  const ignored={
+    getItem(_key:string){return null;},
+    setItem(_key:string,_value:string){/* silently discard a reserve journal */},
+  };
+  await assert.rejects(
+    ()=>createStockReservationAttemptTracker(keys(),()=>ignored).keyFor(draft),
+    /No stock movement was sent/,
+    "the same cutting sheet may otherwise acquire a new key after reload"
+  );
+});
