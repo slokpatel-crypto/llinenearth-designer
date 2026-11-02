@@ -163,21 +163,20 @@ def apply_modifier(obj, modifier):
 
 
 def fit_shell(obj, body, clearance_m, thickness_m):
-    # Smooth first. The old shrinkwrap→smooth order allowed smoothing to
-    # pull the garment back THROUGH the scanned body after clearance was set.
-    smooth = obj.modifiers.new("LE_GARMENT_SMOOTH", "CORRECTIVE_SMOOTH")
-    smooth.factor = 0.22
-    smooth.iterations = 3
-    apply_modifier(obj, smooth)
-
-    # Apply actual body clearance AFTER geometry-changing smoothing.
-    # No subsequent surface-displacement modifier may consume that clearance.
+    # Actual CC0 body contact evidence showed smoothing-first increases
+    # tucked-waist crossings by >500 pairs; restore the safer measured order.
+    # Neither order resolves body penetration: new pattern geometry is needed.
     shrink = obj.modifiers.new("LE_BODY_CLEARANCE", "SHRINKWRAP")
     shrink.target = body
     shrink.wrap_method = "NEAREST_SURFACEPOINT"
     shrink.wrap_mode = "OUTSIDE_SURFACE"
     shrink.offset = clearance_m
     apply_modifier(obj, shrink)
+
+    smooth = obj.modifiers.new("LE_GARMENT_SMOOTH", "CORRECTIVE_SMOOTH")
+    smooth.factor = 0.22
+    smooth.iterations = 3
+    apply_modifier(obj, smooth)
 
     solid = obj.modifiers.new("LE_CLOTH_THICKNESS", "SOLIDIFY")
     solid.thickness = thickness_m
