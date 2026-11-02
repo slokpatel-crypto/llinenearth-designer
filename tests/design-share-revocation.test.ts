@@ -42,7 +42,7 @@ test("Designer share UI retains private cancellation capability away from public
 test("public signed-share bearer paths have no-referrer, noindex and no-store headers",()=>{
  const source=readFileSync("next.config.ts","utf8");
  const page=readFileSync("src/app/share/[token]/page.tsx","utf8");
- assert.match(source,/source:"\\/share\\/:path\\*"/);
+ assert.ok(source.includes('source:"/share/:path*"'));
  assert.match(source,/Referrer-Policy",value:"no-referrer"/);
  assert.match(source,/Cache-Control",value:"private, no-store, max-age=0"/);
  assert.match(source,/X-Robots-Tag",value:"noindex, nofollow, noarchive"/);
