@@ -532,3 +532,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Compatibility:** no schema/database migration; existing saved Designer designs, model identity IDs, source photographs and versioned option contracts are unchanged. Internal prototype rendering remains available to engineers, never as evidence of a completed realistic model. Passing structural preflight is still not visual realism approval, verified textile scale, tailor fit approval or deployment authorization.
 
 **Next engineering gate:** exact single identity body mesh, production garment/drape fit and UV evidence, independent front/3-4/side/back visual comparisons, verified supplier physical scale and tailor approval before customer-facing 3D promotion.
+
+
+## 2026-11-02 — Manual stock retry keys survive reloads without persisting supplier evidence
+
+**Decision:** The operator's manual physical-stock receipt/adjustment UI must persist its v3 idempotency key *before* sending a privileged stock movement. Within the same browser tab, a bounded (64-entry) sessionStorage journal maps SHA-256 fingerprints of the exact normalized physical-stock fields to random UUIDs. It stores neither supplier references nor roll notes in plaintext. Unchanged evidence retains its key across page reloads and after a confirmed acknowledgment; changed evidence uses a different key. A stale source reference must not be reused to represent a new physical receipt.
+
+**Failure behavior:** If session storage, hashing, or the journal is unavailable/corrupt, the browser blocks the movement before its HTTP request. The single-flight mutation gate still protects double clicks. The server's service-role-only `fabric_stock_record_v3` SQL is authoritative for request-key replay and payload comparison. The browser journal cannot prevent duplication from another device/tab or after its stored keys are lost: real roll-ledger reconciliation remains mandatory.
+
+**Compatibility and rollout:** This is a draft-only browser/API change dependent on the stock-record v3 SQL migration. The connected production Supabase instance still exposes v2, not v3. No production migration, Vercel deploy, real physical-stock write, live-mode rollout, substitute mannequin or paid-AI use is authorized by this decision. Native disposable PostgreSQL, signed synthetic HTTP, full application/browser matching-head CI, separate staging schema/PostgREST validation, backup/restore and human physical evidence remain release gates.
