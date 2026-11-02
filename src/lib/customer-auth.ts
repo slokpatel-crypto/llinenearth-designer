@@ -1,4 +1,5 @@
 import "server-only";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { normalizeCustomerEmail } from "@/lib/customer-account";
 import { CUSTOMER_SESSION_COOKIE, verifySignedCustomerSession } from "@/lib/customer-session";
 import { validCustomerSessionIdentityId } from "@/lib/customer-session-token";
@@ -9,6 +10,12 @@ export type CustomerIdentity = {
   id:string;
   email:string|null;
 };
+
+const MAX_VERIFY_PROVIDER_BYTES=65_536;
+const MAX_LEGACY_USER_PROVIDER_BYTES=16_384;
+function jsonProviderResponse(response:Response){
+  return response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase()==="application/json";
+}
 
 type SupabaseAuthSession = {
   access_token?:string;
@@ -58,8 +65,8 @@ export async function requestCustomerOtp(email:string){
     body:JSON.stringify({email,create_user:true}),
   });
   if(!response.ok){
-    const detail=(await response.text()).slice(0,240);
-    throw new Error(`Customer OTP request failed (${response.status}): ${detail}`);
+    // Error bodies can contain private identifiers or be arbitrarily large.
+    throw new Error(`Customer OTP request failed (${response.status}).`);
   }
 }
 
@@ -69,10 +76,13 @@ export async function verifyCustomerOtp(email:string,token:string):Promise<Supab
     body:JSON.stringify({email,token,type:"email"}),
   });
   if(!response.ok){
-    const detail=(await response.text()).slice(0,240);
-    throw new Error(`Customer OTP verification failed (${response.status}): ${detail}`);
+    throw new Error(`Customer OTP verification failed (${response.status}).`);
   }
-  return await response.json() as SupabaseAuthSession;
+  if(!jsonProviderResponse(response))throw new Error("Invalid customer OTP provider content type.");
+  const payload=await readBoundedJsonResponse(response,MAX_VERIFY_PROVIDER_BYTES);
+  if(!payload||typeof payload!=="object"||Array.isArray(payload))
+    throw new Error("Invalid customer OTP provider response.");
+  return payload as SupabaseAuthSession;
 }
 
 export async function getCustomerIdentity(request:Request):Promise<CustomerIdentity|null>{
@@ -95,7 +105,10 @@ export async function getCustomerIdentity(request:Request):Promise<CustomerIdent
     headers:{authorization:`Bearer ${token}`},
   });
   if(!response.ok) return null;
-  const user=await response.json() as {id?:string;email?:string|null};
+  if(!jsonProviderResponse(response))return null;
+  const raw=await readBoundedJsonResponse(response,MAX_LEGACY_USER_PROVIDER_BYTES);
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
+  const user=raw as {id?:string;email?:string|null};
   if(!validCustomerSessionIdentityId(user.id)) return null;
   return {id:user.id,email:user.email||null};
 }

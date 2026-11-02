@@ -40,7 +40,10 @@ export async function POST(request:Request){
         {status:503,headers:{"cache-control":"private, no-store"}});
     }
     const session=await verifyCustomerOtp(email,token);
-    if(!validCustomerSessionIdentityId(session.user?.id)) {
+    // Never bind an OTP sent for Alice to a different Supabase account.
+    // Inconsistent upstream identity data must not issue a durable cookie.
+    if(!validCustomerSessionIdentityId(session.user?.id)||
+      normalizeCustomerEmail(session.user.email)!==email) {
       return NextResponse.json({error:"The sign-in response was incomplete."},{status:502});
     }
 
