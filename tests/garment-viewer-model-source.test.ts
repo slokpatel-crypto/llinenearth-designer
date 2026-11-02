@@ -145,6 +145,23 @@ test("Blender scene preflight rejects garment/body boundary intersections",()=>{
   ]) assert(source.includes(token),`missing boundary QA token: ${token}`);
 });
 
+test("3D preflight fails closed when body or tucked-waist contact cannot be measured",()=>{
+  const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  const boundary=source.slice(source.indexOf("for key, left_obj, right_obj, allowed_pairs in boundary_pairs:"),
+    source.indexOf("tuck_overlap = intersection_pair_count("));
+  const tuck=source.slice(source.indexOf("tuck_overlap = intersection_pair_count("),
+    source.indexOf("    report = {",source.indexOf("tuck_overlap = intersection_pair_count(")));
+  assert.match(boundary,/if count is None:\s*reasons\.append\(f"Could not evaluate intersection QA for \{key\}; production boundaries require measured contact evidence\."\)/);
+  assert.match(tuck,/if tuck_overlap is None:\s*reasons\.append\("Could not evaluate tucked shirt\/trouser overlap; production tuck requires measured contact evidence\."\)/);
+  assert.doesNotMatch(boundary,/if count is None:\s*warnings\.append/);
+  assert.doesNotMatch(tuck,/if tuck_overlap is None:\s*warnings\.append/);
+  // Measured zero-contact is valid, but >0 body intersections and excessive
+  // tuck overlap are still reasons for rejection, never suppressed.
+  assert.match(boundary,/elif count > allowed_pairs:/);
+  assert.match(tuck,/elif tuck_overlap > 120:/);
+  assert.match(source,/"ready": len\(reasons\) == 0/);
+});
+
 test("Blender scene preflight verifies canonical identity guide geometry",()=>{
   const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
   for(const token of [
