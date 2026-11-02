@@ -21,8 +21,15 @@ test("stock POST checks rollout approval after authentication/origin and before 
     "only authorized same-origin callers can be evaluated; disabled rollout must block all writes before any privileged RPC");
   assert.match(post,/Stock writes are disabled pending rollout approval\./);
   assert.match(post,/status:423/);
+  const guarded=post.indexOf("if(!await verifiedStockBackendReady())");
+  assert.ok(guarded>parse&&guarded<rpc,
+    "privileged stock SQL must not run unless the backend confirms its migration");
+  assert.match(src,/return await rpc<unknown>\("fabric_stock_write_ready_v1",\{\}\)===true/);
+  assert.match(src,/catch\{return false;\}/);
+  assert.match(src,/if\(!stockWritesEnabled\(\)\)return false/);
   const get=src.split("export async function GET(")[1]?.split("export async function POST(")[0]??"";
-  assert.ok(get.includes("writesEnabled:stockWritesEnabled()"));
+  assert.ok(get.includes("writesEnabled:await verifiedStockBackendReady()"),
+    "the browser must not see writable status from an env flag alone");
   assert.ok(get.includes("writesEnabled:false"));
   assert.ok(get.includes('rpc<unknown>("fabric_stock_snapshot_v2"')||
     get.includes('"fabric_stock_snapshot_v2"'),

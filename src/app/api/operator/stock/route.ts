@@ -36,6 +36,15 @@ async function authorized(){
   const jar=await cookies();
   return verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value);
 }
+async function verifiedStockBackendReady():Promise<boolean>{
+  if(!stockWritesEnabled())return false;
+  try{
+    // Only the precise boolean true from a service-only read-only catalog
+    // function permits mutations. Missing function, wrong grants, wrong
+    // migration version, RPC error, timeout and malformed data all fail shut.
+    return await rpc<unknown>("fabric_stock_write_ready_v1",{})===true;
+  }catch{return false;}
+}
 class StockInputError extends Error {}
 function stockInput<T>(validate:()=>T):T{
   try{return validate();}
@@ -51,7 +60,7 @@ export async function GET(){
   try{
     const stock=requireStockSnapshotRows(await rpc<unknown>(
       "fabric_stock_snapshot_v2",{p_fabric_ids:null}));
-    return stockPrivateJson({configured:true,writesEnabled:stockWritesEnabled(),stock},{headers:{"cache-control":"private, no-store"}});
+    return stockPrivateJson({configured:true,writesEnabled:await verifiedStockBackendReady(),stock},{headers:{"cache-control":"private, no-store"}});
   }catch{
     console.error("[operator/stock] snapshot unavailable (details redacted).");
     return stockPrivateJson({error:"Stock ledger could not be read."},{
@@ -70,6 +79,11 @@ export async function POST(request:Request){
   if(!stockWritesEnabled()) return stockPrivateJson({error:"Stock writes are disabled pending rollout approval."},{status:423});
   try{
     const body=await readBoundedStockMutationJson(request);
+    // The server flag is necessary but NOT sufficient. An older Supabase
+    // instance can still serve a v2 snapshot without installing v3 recorder
+    // or upgrading the v2 reservation key/evidence binding.
+    if(!await verifiedStockBackendReady())
+      return stockPrivateJson({error:"Stock writes are disabled pending rollout approval."},{status:423});
     const action=String(body.action||"");
     if(action==="record"){
       const draft=stockInput(()=>normalizeManualStockEvent(body));
