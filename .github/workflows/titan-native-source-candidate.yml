@@ -15,6 +15,8 @@ on:
       - "scripts/blender/diagnose-crotch-seam-proximity.py"
       - "scripts/blender/diagnose-crotch-seam-pairing.py"
       - "scripts/blender/prototype-crotch-source-seam-weld.py"
+      - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
+      - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
       - "tests/crotch-source-seam-proximity.test.ts"
@@ -40,6 +42,8 @@ on:
       - "scripts/blender/diagnose-crotch-seam-proximity.py"
       - "scripts/blender/diagnose-crotch-seam-pairing.py"
       - "scripts/blender/prototype-crotch-source-seam-weld.py"
+      - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
+      - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
       - "tests/crotch-source-seam-proximity.test.ts"
@@ -800,6 +804,46 @@ jobs:
               "productionApproved":False
           }))
           PY
+      - name: Trial a four-edge real crotch bridge in non-export Blender research geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-research-crotch-stages.blend \
+            --python-exit-code 1 --python scripts/blender/prototype-crotch-unmatched-source-bridge.py -- \
+            --output "$RUNNER_TEMP/titan-candidate-evidence/crotch-unmatched-bridge-research-only.json"
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence/crotch-unmatched-bridge-research-only.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/crotch-source-weld-research-only.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/rejection-report.json" <<'PY'
+          import json
+          import math
+          import sys
+          from pathlib import Path
+          trial, base, physical = (json.loads(Path(p).read_text(encoding="utf-8")) for p in sys.argv[1:])
+          assert all(x["modelIdentityId"] == "linen-earth-studio-model-v1" for x in (trial,base,physical))
+          assert all(x["candidateOnly"] is True and x["productionApproved"] is False for x in (trial,base,physical))
+          assert trial["physicalFitApproved"] is False and trial["sewnGarmentApproved"] is False
+          assert trial["changesProductionGeometry"] is False and trial["finalClothQAApproved"] is False
+          assert physical["preflightReady"] is False and physical["rejectionReasonCount"] == 10
+          assert physical["boundaryIntersections"]["garmentLegToLeg"] == 89
+          assert trial["partialWeldJoinedEdges"] == base["actualJoinedInnerCutEdges"] == 10
+          assert trial["unmatchedCutEdgesBefore"] == {"left":4,"right":4}
+          assert len(trial["trialSegments"]) == 4
+          assert trial["trialAddedBridgeTriangles"] == sum(row["bridgeTriangles"] for row in trial["trialSegments"]) > 0
+          assert all(math.isfinite(row["measuredMidpointGapMm"]) and
+                     0 <= row["measuredMidpointGapMm"] <= 80 for row in trial["trialSegments"])
+          assert type(trial["bridgeToOriginalBodyBVHPairs"]) is int and trial["bridgeToOriginalBodyBVHPairs"] >= 0
+          assert trial["openSourceBoundaryEdgesBeforeBridge"] == base["researchOnlyCombinedMesh"]["afterWeldOpenEdges"] == 132
+          assert trial["openSourceBoundaryEdgesAfterBridge"] < 132
+          assert trial["actualReductionOpenEdges"] == 132 - trial["openSourceBoundaryEdgesAfterBridge"]
+          assert trial["degenerateFaces"] == trial["nonManifoldEdges"] == 0
+          print("TITAN_REAL_FOUR_EDGE_CROTCH_BRIDGE_MEASURED_NEVER_PRODUCTION_APPROVED",json.dumps({
+              "trialTriangles":trial["trialAddedBridgeTriangles"],
+              "boundaryEdgesRemaining":trial["openSourceBoundaryEdgesAfterBridge"],
+              "newBridgeToBodyBVHPairs":trial["bridgeToOriginalBodyBVHPairs"],
+              "hardPhysicalBlockers":physical["rejectionReasonCount"],
+              "productionApproved":False,
+          }))
+          PY
       - name: Upload rejection report, never an unapproved model
         if: always()
         uses: actions/upload-artifact@v4
@@ -818,6 +862,7 @@ jobs:
             ${{ runner.temp }}/titan-candidate-evidence/crotch-source-seam-proximity.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-source-seam-pairing.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-source-weld-research-only.json
+            ${{ runner.temp }}/titan-candidate-evidence/crotch-unmatched-bridge-research-only.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-leg-rimless.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-leg-rimless-preflight.json
             ${{ runner.temp }}/titan-candidate-evidence/leg-thickness-*.json
