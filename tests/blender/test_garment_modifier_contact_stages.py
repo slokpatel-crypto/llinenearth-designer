@@ -50,6 +50,12 @@ assert [item["variant"] for item in comparison["variants"]] == [
 ], comparison
 assert [item["rim"] for item in comparison["variants"]] == [False, True, False, True, True, True]
 assert [item["recalculatedNormals"] for item in comparison["variants"]] == [False, False, False, False, True, True]
+assert all(type(item["sourceClothFaceCount"]) is int and item["sourceClothFaceCount"] > 0
+           for item in comparison["variants"])
+assert all(item["reversedClothFaceCount"] is None for item in comparison["variants"][:4])
+assert all(type(item["reversedClothFaceCount"]) is int and
+           0 <= item["reversedClothFaceCount"] <= item["sourceClothFaceCount"]
+           for item in comparison["variants"][4:])
 assert [item["offset"] for item in comparison["variants"]] == [1.0, 1.0, -1.0, -1.0, 1.0, -1.0]
 assert all(type(item["bodyIntersectionPairs"]) is int and item["bodyIntersectionPairs"] >= 0
            for item in comparison["variants"])
