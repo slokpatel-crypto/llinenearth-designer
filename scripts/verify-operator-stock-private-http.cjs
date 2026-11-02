@@ -49,7 +49,7 @@ async function main(){
           provenance_event_count:0,provenance_ready:true}],
       };
       response=Object.hasOwn(outcomes,mode)?outcomes[mode]:[valid];
-    }else if(path.endsWith("/fabric_stock_record_v2")||
+    }else if(path.endsWith("/fabric_stock_record_v3")||
              path.endsWith("/fabric_stock_reserve_v2")){
       const outcomes={
         created:uuid,createNull:null,createObject:{id:uuid},
@@ -130,10 +130,20 @@ async function main(){
     }
     const record={action:"record",fabricId:fabric,eventType:"receipt",
       quantityMetres:2.125,recordedBy:"Synthetic checker",
-      sourceReference:"SYNTH-ROLL-001"};
+      sourceReference:"SYNTH-ROLL-001",requestKey:"4d5c3a21-7000-42a4-98cd-bdf0e6c2c100"};
     const reservation={action:"reserve",fabricId:fabric,quantityMetres:1.25,
       revisionId:"LE-LOCK-SYNTHETIC-0001",requestKey:"STOCK-REQUEST-SYNTHETIC-0001",
       requestedBy:"Synthetic checker",sourceReference:"SYNTH-CUT-SHEET"};
+    for(const invalid of [
+      {...record,requestKey:undefined},
+      {...record,requestKey:"short"},
+      {...record,requestKey:"x".repeat(181)},
+    ]){
+      mode="created";seen.length=0;
+      const {response}=await call("POST",invalid);
+      assert.equal(response.status,409,"invalid manual request key must fail before RPC");
+      assert.equal(seen.length,0,"invalid request key must not reach service-role RPC");
+    }
     for(const body of [record,reservation]){
       for(const kind of [
         "created","createNull","createObject","createArray","createBool",
@@ -144,7 +154,7 @@ async function main(){
         assert.equal(response.status,kind==="created"?200:503,body.action+" "+kind);
         assert.equal(seen.length,1,kind);
         assert.equal(seen[0].path,
-          "/rest/v1/rpc/"+(body.action==="record"?"fabric_stock_record_v2":"fabric_stock_reserve_v2"));
+          "/rest/v1/rpc/"+(body.action==="record"?"fabric_stock_record_v3":"fabric_stock_reserve_v2"));
         if(kind==="created")assert.deepEqual(result,
           {[body.action==="record"?"eventId":"reservationId"]:uuid});
         else assert.deepEqual(result,{error:"Stock operation could not be verified."});

@@ -83,6 +83,16 @@ export function normalizeManualStockEvent(input:unknown){
   };
 }
 
+/** Manual stock writes require an immutable retry key bound to physical evidence. */
+export function normalizeManualStockRequest(input:unknown){
+  const draft=normalizeManualStockEvent(input);
+  const raw=(input as Record<string,unknown>).requestKey;
+  if(typeof raw!=="string"||raw.length<12||raw.length>180||
+     raw!==raw.trim()||/[^!-~]/.test(raw))
+    throw new Error("Valid stock request key is required.");
+  return {...draft,requestKey:raw};
+}
+
 
 export function normalizeStockReservation(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock reservation evidence is required.");

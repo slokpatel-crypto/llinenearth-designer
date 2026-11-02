@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation, stockSnapshot } from "../src/lib/designer/stock-ledger.ts";
+import { normalizeManualStockEvent, normalizeManualStockRequest, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation, stockSnapshot } from "../src/lib/designer/stock-ledger.ts";
 
 test("reservation reduces available stock without changing physical stock",()=>{
   assert.deepEqual(stockSnapshot([
@@ -160,4 +160,16 @@ test("operator writes never silently round stock receipts, reservations or cutti
   assert.equal(normalizeManualStockEvent({...base,quantityMetres:q}).quantityMetres,q);
   assert.equal(normalizeStockReservation({...base,quantityMetres:q}).quantityMetres,q);
   assert.equal(normalizeStockConsumption({...base,actualMetres:q}).actualMetres,q);
+});
+
+
+test("manual stock request keys are required and never silently truncated or coerced",()=>{
+  const draft={fabricId:"shirt-1",eventType:"receipt",quantityMetres:1.125,
+    recordedBy:"Physical checker",sourceReference:"Real roll tag A",note:"Roll count"};
+  const requestKey="a4d00b5a-4455-4c12-83ae-77e124121b77";
+  assert.equal(normalizeManualStockRequest({...draft,requestKey}).requestKey,requestKey);
+  for(const bad of [undefined,null,42,{},true,"short"," leading-key-123456",
+    "trailing-key-123456 ","x".repeat(181),"line"+String.fromCharCode(10)+"break-key-123456"]){
+    assert.throws(()=>normalizeManualStockRequest({...draft,requestKey:bad}),/request key/i);
+  }
 });

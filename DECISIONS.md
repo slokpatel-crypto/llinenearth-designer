@@ -1,5 +1,14 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-11-02 — Manual stock idempotency is a staged API/UI/SQL contract (M37)
+
+**Decision:** the operator manual receipt/adjustment path requires a client-generated stable request key, validated without coercion or truncation, and sends it to the service-role-only `fabric_stock_record_v3` RPC. The Stock Desk reuses a key for an identical in-tab uncertain retry, rotates it when any physical evidence changes, and clears it only after a validated acknowledgment. The existing reconciliation hold remains mandatory after uncertain responses; a successful snapshot alone does not establish whether a physical write committed.
+
+**Rollout boundary:** M36 SQL and M37 API/UI must stay together in draft until controlled staging migration, compatible backend verification, rollback/restore and owner authorization. No live migration, deployment, real stock mutation or mandatory AI. The tracker is tab-memory only: a reload, another device or changed evidence is NOT guaranteed to replay the same key; cross-session reconciliation remains a physical/operator gate.
+
+**Compatibility:** reserve/release/consume RPCs and the published stock catalog remain unchanged. SQL and HTTP synthetic tests do not certify supplier roll counts or physical provenance.
+
+
 Architecture and product decisions that must persist across coding sessions.
 
 ## 2026-10-05 — Style Director signs the complete garment recipe
