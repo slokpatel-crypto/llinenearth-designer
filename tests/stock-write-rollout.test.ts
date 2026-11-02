@@ -41,6 +41,8 @@ test("operator stock actions require server-confirmed rollout AND verified ledge
   assert.ok(submit.indexOf('if(!writesEnabled){mutationGate.current.exit();return;}')<
     submit.indexOf('fetch("/api/operator/stock"'),
     "UI must refuse a click even if disabled buttons are bypassed");
+  assert.match(submit,/if\\(httpStatus===423\\)\\{[\\s\\S]*setWritesEnabled\\(false\\)/);
+  assert.ok(submit.indexOf("setWritesEnabled(false)")<submit.indexOf("mutationGate.current.exit();setBusy(false);"));
   const matches=src.match(/disabled=\{uncertainWrite\|\|busy\|\|snapshotState!=="ready"\|\|!configured\|\|!writesEnabled\|\|/g)??[];
   assert.equal(matches.length,4,
     "record, reserve, consume, and release must all be disabled when rollout is off");
