@@ -129,7 +129,14 @@ export default function StockClient(){
       setMessage(refreshed?success:
         "Stock operation acknowledged, but ledger refresh is unavailable. Check the ledger before retrying.");
     }catch(error){
-      if(stockMutationNeedsReconciliation(requestSent,acknowledged,httpStatus)){
+      if(httpStatus===423){
+        // The server explicitly denied this request before any privileged RPC.
+        // Unlike a lost 5xx acknowledgment, this is a definitive no-write:
+        // revoke stale open-tab UI permission immediately and clear pending
+        // state via the existing fail-closed journal handling in finally.
+        setWritesEnabled(false);
+        setMessage("Stock writes are disabled pending rollout approval. Refresh the ledger after authorization changes.");
+      }else if(stockMutationNeedsReconciliation(requestSent,acknowledged,httpStatus)){
         uncertainWriteRef.current=true;
         setUncertainWrite(true);
         setMessage("Stock write outcome is uncertain. It may have committed. Check the actual ledger entries and physical source evidence before another write.");
