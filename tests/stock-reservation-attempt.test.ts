@@ -5,59 +5,98 @@ import {createStockReservationAttemptTracker} from "../src/lib/designer/stock-re
 
 const draft={fabricId:"linen-plain-60-sky-blue",revisionId:"LE-LOCK-20261101190000-ABABABABABAB",
   quantityMetres:2.125,requestedBy:"Verified tailor",sourceReference:"Cutting sheet 24"};
-
-test("reservation retries of exactly the same draft reuse the original SQL idempotency key",()=>{
+function memoryStorage(){
+  const values=new Map<string,string>();
+  return {
+    getItem(key:string){return values.get(key)??null;},
+    setItem(key:string,value:string){values.set(key,value);},
+    values(){return [...values.values()];},
+  };
+}
+function keys(){
   let n=0;
-  const tracker=createStockReservationAttemptTracker(()=>`synthetic-attempt-${++n}`);
-  const first=tracker.keyFor(draft);
-  assert.equal(tracker.keyFor({...draft}),first);
-  assert.equal(n,1);
-  // HTTP 500, network timeout or invalid ACK must NOT call confirmed().
-  assert.equal(tracker.keyFor(draft),first);
-  tracker.confirmed({...draft,quantityMetres:3});
-  assert.equal(tracker.keyFor(draft),first,"confirming a different request must not clear pending key");
-  tracker.confirmed(draft);
-  assert.notEqual(tracker.keyFor(draft),first,"acknowledged new reservation is a new intent");
-  assert.equal(n,2);
+  return ()=>`00000000-0000-4000-8000-${String(++n).padStart(12,"0")}`;
+}
+
+test("reservation retry key survives uncertain acknowledgment, tab reload and confirmed ACK",async()=>{
+  const store=memoryStorage(),next=keys();
+  const tracker=createStockReservationAttemptTracker(next,()=>store);
+  const first=await tracker.keyFor(draft);
+  assert.equal(await tracker.keyFor({...draft}),first);
+  const afterReload=createStockReservationAttemptTracker(next,()=>store);
+  assert.equal(await afterReload.keyFor({...draft}),first);
+  assert.equal(await afterReload.keyFor({...draft}),first,
+    "even after an ACK a repeated physical source must not become a new reservation");
+  assert.ok(!store.values().join("").includes(draft.sourceReference),
+    "no cutting sheet may be stored in plaintext");
+  assert.ok(!store.values().join("").includes(draft.revisionId),
+    "locked customer design revision IDs remain hashed");
 });
 
-test("changed fabric, revision, metres, checker or source NEVER shares an old reservation key",()=>{
-  let n=0;
-  const tracker=createStockReservationAttemptTracker(()=>`request-${++n}`);
-  let previous=tracker.keyFor(draft);
-  for(const next of [
+test("changed locked design, source, requested metres or checker gets a distinct durable key",async()=>{
+  const store=memoryStorage(),tracker=createStockReservationAttemptTracker(keys(),()=>store);
+  const first=await tracker.keyFor(draft);
+  for(const changed of [
     {...draft,fabricId:"linen-plain-60-peach"},
     {...draft,revisionId:"LE-LOCK-20261101190001-ABABABABABAB"},
     {...draft,quantityMetres:2.126},
     {...draft,requestedBy:"Another tailor"},
-    {...draft,sourceReference:"New cutting sheet"},
+    {...draft,sourceReference:"Cutting sheet 25"},
   ]){
-    const key=tracker.keyFor(next);
-    assert.notEqual(key,previous);
-    assert.equal(tracker.keyFor({...next}),key);
-    previous=key;
+    const key=await tracker.keyFor(changed);
+    assert.notEqual(key,first);
+    assert.equal(await createStockReservationAttemptTracker(keys(),()=>store).keyFor(changed),key);
   }
-  assert.equal(n,6);
-  assert.notEqual(tracker.keyFor(draft),previous);
+  assert.equal(await tracker.keyFor(draft),first,
+    "revisiting the same source after other reservations must retain its key");
 });
 
-test("Stock Desk uses deterministic logical retry key and clears it only after valid success ACK",()=>{
+test("server-equivalent quantity and trimmed/capped evidence share the same reservation key",async()=>{
+  const store=memoryStorage(),tracker=createStockReservationAttemptTracker(keys(),()=>store);
+  const first=await tracker.keyFor({...draft,quantityMetres:1.125,
+    sourceReference:" "+draft.sourceReference+" "});
+  assert.equal(await tracker.keyFor({...draft,quantityMetres:1.12500000000001}),first);
+  const long={...draft,revisionId:"LE-LOCK-"+ "r".repeat(300)};
+  assert.equal(await tracker.keyFor(long),
+    await tracker.keyFor({...long,revisionId:long.revisionId.trim().slice(0,220)}));
+});
+
+test("blocked/corrupt/full reservation retry storage prevents a privileged submission",async()=>{
+  const denied=createStockReservationAttemptTracker(keys(),()=>{throw Error("SecurityError");});
+  await assert.rejects(()=>denied.keyFor(draft),/No stock movement was sent/);
+  const bad=memoryStorage();
+  bad.setItem("linen-earth:reservation-attempts:v2","invalid json");
+  await assert.rejects(
+    ()=>createStockReservationAttemptTracker(keys(),()=>bad).keyFor(draft),
+    /No stock movement was sent/);
+  const full=memoryStorage(),tracker=createStockReservationAttemptTracker(keys(),()=>full);
+  const original=await tracker.keyFor(draft);
+  for(let i=1;i<64;i++)
+    await tracker.keyFor({...draft,sourceReference:"Synthetic cutting sheet "+i});
+  await assert.rejects(
+    ()=>tracker.keyFor({...draft,sourceReference:"Synthetic cutting sheet 65"}),
+    /No stock movement was sent/);
+  assert.equal(await tracker.keyFor(draft),original,
+    "full retry journal must never discard an existing physical reservation key");
+});
+
+test("Stock Desk persists the reservation key before network POST and never resets it at ACK",()=>{
   const src=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
   assert.match(src,/useRef\(createStockReservationAttemptTracker\(\(\)=>crypto\.randomUUID\(\)\)\)/);
   const post=src.split("  async function post(")[1]?.split("  const totalAvailable=")[0]??"";
   const action=src.slice(src.indexOf('onClick={()=>{const draft={...reservation,quantityMetres:Number(reservation.quantityMetres)}'));
+  assert.ok(post.indexOf("reservationAttempt.current.keyFor(reservationDraft)")<
+    post.indexOf("uncertainJournal.current.markPending()"));
+  assert.ok(post.indexOf("uncertainJournal.current.markPending()")<
+    post.indexOf('fetch("/api/operator/stock"'));
   assert.ok(post.indexOf("requireStockClientAcknowledgment(body.action,data)")<
-    post.indexOf('reservationAttempt.current.confirmed(reservationDraft)'));
-  assert.ok(post.indexOf('reservationAttempt.current.confirmed(reservationDraft)')<
     post.indexOf("const refreshed=await load()"));
-  assert.ok(post.indexOf("const refreshed=await load()")<
-    post.indexOf("setMessage(refreshed?success:"));
-  assert.match(action,/requestKey:reservationAttempt\.current\.keyFor\(draft\)/);
-  assert.match(action,/draft\);\}\}/);
+  assert.doesNotMatch(post,/reservationAttempt\.current\.confirmed\(/);
+  assert.match(action,/void post\(\{action:"reserve",\.\.\.draft,\},"Provenance-backed reservation created\.",draft\)/);
   assert.doesNotMatch(src,/requestKey:crypto\.randomUUID\(\)/);
 });
 
-test("existing reserve SQL is idempotent under the exact same request key",()=>{
+test("existing reserve SQL serializes an identical idempotency key",()=>{
   const sql=readFileSync("supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql","utf8");
   const reserve=sql.split("create or replace function public.fabric_stock_reserve_v2(")[1]?.split("create or replace function public.fabric_stock_release_v2(")[0]??"";
   assert.match(reserve,/pg_advisory_xact_lock\(hashtext\('stock-request:'\|\|v_key\)\)/);
