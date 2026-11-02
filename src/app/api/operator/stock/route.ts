@@ -6,6 +6,7 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { requireStockCloseAck, requireStockCreatedId, requireStockSnapshotRows } from "@/lib/designer/operator-stock-response";
+import { stockWritesEnabled } from "@/lib/designer/stock-write-rollout";
 
 export const runtime="nodejs";
 function stockPrivateJson(body:unknown,init:{status?:number;headers?:Record<string,string>}={}){
@@ -46,11 +47,11 @@ function stockInput<T>(validate:()=>T):T{
 
 export async function GET(){
   if(!await authorized()) return stockPrivateJson({error:"Unauthorized."},{status:401});
-  if(!getSupabaseAdminConfig()) return stockPrivateJson({configured:false,stock:[]});
+  if(!getSupabaseAdminConfig()) return stockPrivateJson({configured:false,writesEnabled:false,stock:[]});
   try{
     const stock=requireStockSnapshotRows(await rpc<unknown>(
       "fabric_stock_snapshot_v2",{p_fabric_ids:null}));
-    return stockPrivateJson({configured:true,stock},{headers:{"cache-control":"private, no-store"}});
+    return stockPrivateJson({configured:true,writesEnabled:stockWritesEnabled(),stock},{headers:{"cache-control":"private, no-store"}});
   }catch{
     console.error("[operator/stock] snapshot unavailable (details redacted).");
     return stockPrivateJson({error:"Stock ledger could not be read."},{
@@ -63,6 +64,10 @@ export async function POST(request:Request){
   // Browser Origin and strict JSON are checked before the privileged RPC.
   const unsafe=stockMutationRequestError(request);
   if(unsafe) return stockPrivateJson({error:unsafe.error},{status:unsafe.status});
+  // Keep the inventory ledger read-only until stock v3 is deployed and
+  // staging/rollback/physical-source checks are explicitly approved.
+  // This is server-side only: no browser flag can enable privileged writes.
+  if(!stockWritesEnabled()) return stockPrivateJson({error:"Stock writes are disabled pending rollout approval."},{status:503});
   try{
     const body=await readBoundedStockMutationJson(request);
     const action=String(body.action||"");

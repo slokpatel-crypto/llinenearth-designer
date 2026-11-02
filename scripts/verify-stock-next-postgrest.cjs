@@ -87,6 +87,8 @@ async function main(){
   const proxyPort=await listen(proxy),nextPort=await freePort();
   const env={...process.env,NODE_ENV:"production",NEXT_TELEMETRY_DISABLED:"1",
     LINEN_OPERATOR_SESSION_SECRET:sessionSecret,
+    // Explicitly opt in ONLY the localhost disposable PG integration fixture.
+    LINEN_STOCK_WRITES_ENABLED:"enabled",
     SUPABASE_URL:"http://127.0.0.1:"+proxyPort,
     SUPABASE_SERVICE_ROLE_KEY:jwt("service_role"),
     SUPABASE_SECRET_KEY:"",
@@ -118,6 +120,12 @@ async function main(){
       await new Promise(resolve=>setTimeout(resolve,100));
     }
     assert.ok(online,"Next stock operator endpoint did not start.");
+    const visibleStock=await call("GET");
+    assert.equal(visibleStock.status,200);
+    assert.equal(visibleStock.data.configured,true);
+    assert.equal(visibleStock.data.writesEnabled,true,
+      "the real synthetic API must reflect the explicit server-side write rollout gate");
+
     const unauthorized=await call("POST",evidence,{authorized:false});
     assert.equal(unauthorized.status,401);
     const crossSite=await call("POST",evidence,{origin:"https://evil.example"});
@@ -293,6 +301,74 @@ async function main(){
     assert.equal(Number(releasedRetryRow.available_metres),1.500);
     assert.equal(releasedRetryRow.manual_event_count,2,
       "closing reservations cannot mint extra manual stock events");
+    // Production may have a working v2 snapshot while the v3 recorder is not
+    // migrated. Start the SAME built Next route in a separate server process,
+    // without the rollout approval flag. This proves the server (not a forged
+    // browser flag) prevents all four stock mutations before any SQL RPC.
+    const disabledPort=await freePort();
+    const disabledChild=spawn(process.execPath,[require.resolve("next/dist/bin/next"),
+      "start","-H","127.0.0.1","-p",String(disabledPort)],{
+      env:{...env,LINEN_STOCK_WRITES_ENABLED:"disabled"},
+      stdio:["ignore","pipe","pipe"],
+    });
+    let disabledLog="";
+    for(const stream of [disabledChild.stdout,disabledChild.stderr])
+      stream.on("data",chunk=>{disabledLog=(disabledLog+chunk).slice(-6000);});
+    const disabledUrl="http://127.0.0.1:"+disabledPort+"/api/operator/stock";
+    async function callDisabled(method,payload,opts={}){
+      const result=await fetch(disabledUrl,{method,headers:{
+        "content-type":"application/json",
+        ...(opts.authorized===false?{}:{cookie:operatorCookie}),
+        ...(opts.origin?{origin:opts.origin}:{}),
+      },...(payload?{body:JSON.stringify(payload)}:{}),
+      signal:AbortSignal.timeout(10000)});
+      assert.match(result.headers.get("cache-control")||"",/private.*no-store/);
+      return {status:result.status,data:await result.json()};
+    }
+    try{
+      let onlineDisabled=false;
+      for(let i=0;i<120;i++){
+        if(disabledChild.exitCode!==null)
+          throw Error("Next read-only fixture stopped: "+disabledLog);
+        try{
+          const r=await callDisabled("GET",null,{authorized:false});
+          onlineDisabled=r.status===401;
+        }catch{}
+        if(onlineDisabled)break;
+        await new Promise(resolve=>setTimeout(resolve,100));
+      }
+      assert.ok(onlineDisabled,"read-only Next operator fixture did not start");
+      const readOnlySnapshot=await callDisabled("GET");
+      assert.equal(readOnlySnapshot.status,200);
+      assert.equal(readOnlySnapshot.data.configured,true,
+        "v2 inventory must stay readable when all v3 stock writes are disabled");
+      assert.equal(readOnlySnapshot.data.writesEnabled,false,
+        "server may never advertise stock writes without exact rollout approval");
+      for(const payload of [evidence,reservation,consume,release]){
+        const result=await callDisabled("POST",payload);
+        assert.equal(result.status,503,
+          payload.action+" must be blocked before an upstream RPC if rollout is disabled");
+        assert.deepEqual(result.data,{error:"Stock writes are disabled pending rollout approval."});
+      }
+      assert.equal((await callDisabled("POST",evidence,{authorized:false})).status,401,
+        "stock auth gate must still precede rollout checks");
+      assert.equal((await callDisabled("POST",evidence,{origin:"https://evil.example"})).status,403,
+        "stock CSRF gate must still precede rollout checks");
+      const readOnlyAfter=await callDisabled("GET");
+      assert.equal(readOnlyAfter.status,200);
+      const afterRow=readOnlyAfter.data.stock.find(x=>x.fabric_id===fabricId);
+      assert.equal(Number(afterRow.physical_metres),1.500);
+      assert.equal(Number(afterRow.reserved_metres),0);
+      assert.equal(Number(afterRow.available_metres),1.500);
+      assert.equal(afterRow.manual_event_count,2,
+        "forbidden writes cannot create stock events");
+      console.log("TITAN M64 PASS: same built Next route defaults read-only, blocks all four actions and preserves actual v2 ledger.");
+    }finally{
+      if(disabledChild.exitCode===null){
+        disabledChild.kill("SIGTERM");
+        await once(disabledChild,"exit");
+      }
+    }
     console.log("TITAN M58 PASS: lost committed consume/release ACK returns 503, retry 409 and stable ledger balances.");
     console.log("TITAN M56 PASS: real reservation committed but lost ACK; same-key retries hold only 0.750m; changed evidence rejected.");
     console.log("TITAN M49 PASS: committed-but-lost HTTP ack returns 503; same-key retry preserves physical stock.");

@@ -83,6 +83,9 @@ async function main(){
   const upstreamPort=await listen(upstream),nextPort=await freePort();
   const env={...process.env,NODE_ENV:"production",NEXT_TELEMETRY_DISABLED:"1",
     LINEN_OPERATOR_SESSION_SECRET:secret,
+    // This fixture verifies ALL authorized stock RPC boundary cases against
+    // a fake localhost server; explicitly opt it in, never the live site.
+    LINEN_STOCK_WRITES_ENABLED:"enabled",
     SUPABASE_URL:"http://127.0.0.1:"+upstreamPort,
     SUPABASE_SECRET_KEY:"sb_secret_titan_fake_stock_only",
     SUPABASE_SERVICE_ROLE_KEY:"",SUPABASE_ANON_KEY:"",NEXT_PUBLIC_SUPABASE_ANON_KEY:""};
@@ -125,7 +128,7 @@ async function main(){
       const {response,result}=await call("GET");
       assert.equal(response.status,kind==="valid"?200:503,kind);
       assert.equal(seen.length,1,kind);
-      if(kind==="valid")assert.deepEqual(result,{configured:true,stock:[valid]});
+      if(kind==="valid")assert.deepEqual(result,{configured:true,writesEnabled:true,stock:[valid]});
       else assert.deepEqual(result,{error:"Stock ledger could not be read."});
     }
     const record={action:"record",fabricId:fabric,eventType:"receipt",
