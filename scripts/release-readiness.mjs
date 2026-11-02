@@ -394,8 +394,11 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION",
   "PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR",
   "function fabricPatternTransform(fabric:DesignerFabric,placement:FabricPatternPlacement,scale:number)",
-  "translate(anchorX,anchorY)",
-  "translate(-anchorX,-anchorY)",
+  "photoPanelPatternMatrix(",
+  "reference:{x:placement.referenceX??anchorX,y:placement.referenceY??anchorY}",
+  "pivot:hasSharedSeam?{x:placement.phaseLockX!,y:placement.phaseLockY!}",
+  "phaseLockX:510, phaseLockY:690",
+  "phaseLockX:UNTUCKED_TROUSER_SEAM_X",
 ]);
 requireTokens("src/lib/designer/photo-shading.ts", [
   "weightedGarmentLuminanceMean",
@@ -404,6 +407,8 @@ requireTokens("src/lib/designer/photo-shading.ts", [
 ]);
 requireTokens("src/lib/designer/photo-panel-grain.ts", [
   "photoPanelRotationFromVertical",
+  "const degrees=-Math.atan2(dx,dy)*180/Math.PI",
+  "export function photoPanelPatternMatrix(",
   "PHOTO_TUCKED_PANEL_AXES",
   "PHOTO_TUCKED_PANEL_GRAIN_ROTATION",
   "PHOTO_TUCKED_PANEL_PATTERN_ANCHOR",
