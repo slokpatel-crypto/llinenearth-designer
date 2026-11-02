@@ -5,6 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
+import { styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -101,13 +102,6 @@ function colorScore(fabric: FabricColorway, direction: StyleDirectorAnswers["col
   return /beige|taupe|cream|khakhi|brown|oak|sand|jute|saffron/.test(name) ? 38 : (r > b && g > b ? 10 : 0);
 }
 
-function intelligenceTrustWeight(value:DesignerFabricIntelligence|undefined) {
-  if(!value) return 0;
-  if(value.trust==="reviewed") return 1;
-  if(value.trust==="high-confidence") return .72;
-  return .28;
-}
-
 function directorIntelligenceScore(
   a:StyleDirectorAnswers,
   fabric:FabricColorway,
@@ -115,7 +109,7 @@ function directorIntelligenceScore(
 ) {
   const intel=map?.[fabric.id];
   if(!intel) return 0;
-  const w=intelligenceTrustWeight(intel);
+  const w=styleDirectorIntelligenceTrustWeight(intel);
   const targetFormality:Record<StyleDirectorAnswers["occasion"],number>={
     Wedding:4.4,
     Work:4,
@@ -164,11 +158,11 @@ function directorPairIntelligenceScore(
   let score=0;
   for(const intel of [shirt,pant]) {
     if(!intel) continue;
-    const w=intelligenceTrustWeight(intel);
+    const w=styleDirectorIntelligenceTrustWeight(intel);
     score+=(1-Math.min(1,Math.abs(intel.formality-target[occasion])/3.5))*8*w;
   }
   if(shirt && pant) {
-    const pairWeight=Math.min(intelligenceTrustWeight(shirt),intelligenceTrustWeight(pant));
+    const pairWeight=Math.min(styleDirectorIntelligenceTrustWeight(shirt),styleDirectorIntelligenceTrustWeight(pant));
     const pantColor=pant.colorFamily;
     const shirtColor=shirt.colorFamily;
     const shirtPairSignal=colorFamilyPairSignal(shirt.pairing.goodColorFamilies,shirt.pairing.avoidColorFamilies,pantColor);
@@ -267,8 +261,16 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   const shirt=String(candidate.garments.shirt||"").toLowerCase();
   const trouser=String(candidate.garments.trouser||"").toLowerCase();
 
-  if(/camp|cuban/.test(shirt)) spec.shirt.type="camp_collar_resort";
-  else if(/band/.test(shirt)) spec.shirt.type="band_collar_shirt";
+  if(/camp|cuban/.test(shirt)) {
+    spec.shirt.type="camp_collar_resort";
+    spec.shirt.collar="cuban_camp_collar";
+    spec.shirt.wear="untucked";
+    spec.shirt.length="shirt_length_regular";
+    spec.shirt.hem="straight_flat_hem";
+  } else if(/band/.test(shirt)) {
+    spec.shirt.type="band_collar_shirt";
+    spec.shirt.collar="mandarin_band_collar";
+  }
   else if(/overshirt/.test(shirt)) spec.shirt.type="overshirt";
   else if(/short[- ]?sleeve/.test(shirt)) spec.shirt.type="short_sleeve_shirt";
   else if(/oxford|button[- ]?down/.test(shirt)) spec.shirt.type="casual_shirt";
@@ -309,6 +311,7 @@ function buildRealModelSpec(
   const best = ranked[0]?.recommendation;
   if (!best) return undefined;
   const styleSpec=styleSpecForDirectorCandidate(candidate,best.style);
+  const constructionIssues=styleDirectorConstructionIssues(styleSpec);
   return {
     shirtId: best.shirt.id,
     shirtName: best.shirt.name,
@@ -321,8 +324,10 @@ function buildRealModelSpec(
     intention: context.intention,
     style: best.style,
     styleSpec,
-    reason: best.shortReason,
-    status: best.status,
+    reason: constructionIssues.length
+      ? best.shortReason+" Construction review: "+constructionIssues.map((issue)=>issue.explanation).join(" ")
+      : best.shortReason,
+    status: constructionIssues.length ? "needs_review" : best.status,
     confidenceScore: best.confidenceScore,
     designFitScore: best.designFitScore,
   };
