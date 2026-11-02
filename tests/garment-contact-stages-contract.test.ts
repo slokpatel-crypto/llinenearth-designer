@@ -17,14 +17,23 @@ test("native Blender contact evidence measures the unchanged six-panel authoring
   assert.ok(diagnostics.includes("set(observations) != set(author.GARMENT_OBJECTS)"));
   for(const name of ["LE_BODY_CLEARANCE","LE_GARMENT_SMOOTH","LE_CLOTH_THICKNESS"])
     assert.ok(diagnostics.includes(name),name);
+  const contours=readFileSync("scripts/blender/measure-body-contours.py","utf8");
+  const native=readFileSync("tests/blender/test_body_contour_components.py","utf8");
   for(const part of [
-    "def evaluated_body_guide_width_mm(obj, guide_z):",
-    'mesh.calc_loop_triangles()',
-    'guide_center = preflight.guide_center(guide)',
-    'source_width = evaluated_body_guide_width_mm(body, guide_center.z)',
+    'contours.measured_plane_components(body, guide_center.z)',
+    'contours.central_torso_component(components, source_center)',
+    '"centralTorsoContourWidthMm": torso["widthMm"]',
+    '"allBodyContoursIncludingArmsWidthMm": outer_width',
     '"sourceBodyGuideWidths": body_guide_widths',
-    '"sourceBodyWiderThanPhotoGarment": source_width > target_width',
   ]) assert.ok(diagnostics.includes(part),part);
+  for(const part of [
+    "def measured_plane_components(obj, z_world",
+    "for tri in mesh.loop_triangles:",
+    "def central_torso_component(components, source_center_x):",
+    "component[\"minX\"]<=source_center_x<=component[\"maxX\"]",
+  ]) assert.ok(contours.includes(part),part);
+  assert.match(native,/len\(sections\) == 3/);
+  assert.match(native,/central_torso_component/);
   assert.match(diagnostics,/"candidateOnly": True/);
   assert.match(diagnostics,/"productionApproved": False/);
   assert.ok(workflow.includes("--python tests/blender/diagnose_garment_contact_stages.py"));
