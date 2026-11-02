@@ -48,7 +48,13 @@ async function main(){
   let swallowedCommittedReservationAck=false;
   let loseOneCommittedCloseAck=null;
   let swallowedCommittedCloseAck=null;
+  let hideReadinessRpc=false;
   const proxy=http.createServer((req,res)=>{
+    if(hideReadinessRpc&&req.url==="/rest/v1/rpc/fabric_stock_write_ready_v1"){
+      res.writeHead(404,{"content-type":"application/json"});
+      res.end(JSON.stringify({error:"synthetic readiness route unavailable"}));
+      return;
+    }
     if(!req.url.startsWith("/rest/v1/rpc/")){
       res.writeHead(404);res.end();return;
     }
@@ -301,6 +307,31 @@ async function main(){
     assert.equal(Number(releasedRetryRow.available_metres),1.500);
     assert.equal(releasedRetryRow.manual_event_count,2,
       "closing reservations cannot mint extra manual stock events");
+    // A server flag was deliberately enabled in this disposable fixture;
+    // simulate the read-only readiness RPC being missing in PostgREST (as
+    // happens before the M69 source migration). The same built Next instance
+    // must still refuse ALL write actions despite the flag.
+    hideReadinessRpc=true;
+    try{
+      const noCapability=await call("GET");
+      assert.equal(noCapability.status,200);
+      assert.equal(noCapability.data.configured,true);
+      assert.equal(noCapability.data.writesEnabled,false,
+        "missing schema capability must never be advertised as a writable backend");
+      for(const action of [evidence,reservation,consume,release]){
+        const denied=await call("POST",action);
+        assert.equal(denied.status,423,
+          action.action+" must be denied when backend readiness RPC is absent");
+        assert.deepEqual(denied.data,{error:"Stock writes are disabled pending rollout approval."});
+      }
+      const stable=await call("GET");
+      assert.equal(stable.status,200);
+      const row=stable.data.stock.find(x=>x.fabric_id===fabricId);
+      assert.equal(Number(row.physical_metres),1.500);
+      assert.equal(Number(row.reserved_metres),0);
+      assert.equal(Number(row.available_metres),1.500);
+      console.log("TITAN M69 PASS: enabled server flag with absent backend attestation stays read-only for all four stock actions.");
+    }finally{hideReadinessRpc=false;}
     // Production may have a working v2 snapshot while the v3 recorder is not
     // migrated. Start the SAME built Next route in a separate server process,
     // without the rollout approval flag. This proves the server (not a forged
