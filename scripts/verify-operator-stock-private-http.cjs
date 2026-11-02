@@ -168,6 +168,15 @@ async function main(){
       assert.ok(typeof result.error==="string"&&result.error.length>0);
       assert.equal(seen.length,0,action+" coerced "+field+" reached privileged stock RPC");
     }
+    // The action dispatcher must also reject JSON arrays that stringify to
+    // privileged operation names, even with otherwise valid payloads.
+    for(const draft of [record,reservation]){
+      mode="created";seen.length=0;
+      const {response,result}=await call("POST",{...draft,action:[draft.action]});
+      assert.equal(response.status,400,"coerced action must be unsupported");
+      assert.deepEqual(result,{error:"Unsupported stock action."});
+      assert.equal(seen.length,0,"coerced action reached privileged stock RPC");
+    }
     // A valid signed cookie must not bypass browser Fetch Metadata. A
     // cross-site or same-site request cannot reach the privileged stock RPC
     // even if Origin was removed by an upstream intermediary.
