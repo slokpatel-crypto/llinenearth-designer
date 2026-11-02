@@ -48,14 +48,18 @@ export async function GET(){
       rpc<unknown[]>("production_order_list",{p_limit:PRODUCTION_DELIVERY_LEDGER_RPC_LIMIT}),
       rpc<unknown[]>("production_delivery_evidence_list",{p_limit:PRODUCTION_DELIVERY_LEDGER_RPC_LIMIT}),
     ]);
+    // Reject malformed upstream lists as an invalid response (503) before
+    // evaluating whether otherwise valid historical rows are capped (409).
+    const verifiedOrders=verifyProductionDeliveryOrders(orders);
+    const verifiedEvidence=verifyProductionDeliveryAudits(evidence);
     // Opposite sort directions in the two v1 RPCs make a capped snapshot
     // insufficient to certify the *first ten* actual delivered orders.
-    if(!deliveryLedgerSnapshotIsExhaustive(orders,evidence))
+    if(!deliveryLedgerSnapshotIsExhaustive(verifiedOrders,verifiedEvidence))
       return privateEvidenceJson({error:"Delivery ledger is incomplete; full historical pagination is required before acceptance."},{status:409});
     return privateEvidenceJson({
       configured:true,
-      orders:verifyProductionDeliveryOrders(orders),
-      evidence:verifyProductionDeliveryAudits(evidence),
+      orders:verifiedOrders,
+      evidence:verifiedEvidence,
     });
   }catch(error){
     console.error("[operator/production-evidence] request failed (details redacted).");
