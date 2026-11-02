@@ -145,8 +145,17 @@ export default function AccountPage(){
         setMessage("Secure sign-out could not be completed. Please retry.");
         return;
       }
+      // The server confirmed cookie invalidation. Immediately hide all
+      // private account data and invalidate in-flight owner fetches, even if
+      // the follow-up session request is slow or unavailable.
+      refreshEpoch.current+=1;
+      loadedOwnerId.current=null;
+      setCustomer(null);setShares([]);setDesigns([]);setProfiles([]);
+      setQuotes([]);setOrders([]);setOrderEvents([]);setOutcomes([]);
+      setOutcomeDrafts({});
       setMessage("Signed out.");setCodeSent(false);
-      await refresh();
+      // Never restore old identity/data in a best-effort post-logout refresh.
+      // A later explicit sign-in starts its own guarded refresh.
     }catch{
       setMessage("Secure sign-out could not be completed. Please retry.");
     }finally{setBusy(false);}
