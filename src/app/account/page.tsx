@@ -5,6 +5,7 @@ import type { CustomerFitResult, CustomerOutcomeRating } from "@/lib/designer/cu
 
 type Customer={id?:string;email:string|null};
 type OwnedDesign={vaultId:string;revisionId:string;recipeHash:string;createdAt:string;expiresAt:string};
+type OwnedShare={tokenHash:string;expiresAt:string;revokedAt:string|null};
 type OwnedProfile={vaultId:string;createdAt:string;expiresAt:string;unit?:string};
 type OwnedQuote={quote_id:string;revision_id:string;currency:string;line_items:Array<{label:string;amount:number|string}>;subtotal:number|string;adjustment:number|string;total:number|string;status:string;created_at:string;updated_at:string};
 type OwnedOrder={order_id:string;revision_id:string;quote_id:string|null;status:string;created_at:string;updated_at:string};
@@ -34,6 +35,7 @@ export default function AccountPage(){
   const [code,setCode]=useState("");
   const [codeSent,setCodeSent]=useState(false);
   const [designs,setDesigns]=useState<OwnedDesign[]>([]);
+  const [shares,setShares]=useState<OwnedShare[]>([]);
   const [profiles,setProfiles]=useState<OwnedProfile[]>([]);
   const [quotes,setQuotes]=useState<OwnedQuote[]>([]);
   const [orders,setOrders]=useState<OwnedOrder[]>([]);
@@ -49,14 +51,17 @@ export default function AccountPage(){
     const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
     const next=session.customer||null;
     setCustomer(next);
-    if(!next){setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});return;}
+    if(!next){setShares([]);setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});return;}
 
-    const [d,m,p]=await Promise.all([
+    const [d,m,p,s]=await Promise.all([
       fetch("/api/designer/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
       fetch("/api/measurements/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
       fetch("/api/customer-account/production",{cache:"no-store"}).then(r=>r.json()),
+      fetch("/api/designer/share",{method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()).catch(()=>({shares:[]})),
     ]);
     setDesigns(Array.isArray(d.designs)?d.designs:[]);
+    setShares(Array.isArray(s.shares)?s.shares:[]);
     setProfiles(Array.isArray(m.profiles)?m.profiles:[]);
     setQuotes(Array.isArray(p.quotes)?p.quotes:[]);
     setOrders(Array.isArray(p.orders)?p.orders:[]);
@@ -134,6 +139,24 @@ export default function AccountPage(){
     }finally{setBusy(false);}
   }
 
+  async function revokeOwnedShareLink(tokenHash:string){
+    if(!window.confirm("Revoke this shared design link? Anyone with the old link will lose access."))return;
+    setBusy(true);setMessage("");
+    try{
+      const response=await fetch("/api/designer/share",{
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"revokeOwned",tokenHash}),
+      });
+      const data=await response.json();
+      if(!response.ok||data.revoked!==true)
+        throw new Error(data.error||"Could not revoke shared design.");
+      setMessage("Shared design link revoked, including on other devices.");
+      await refresh();
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Could not revoke shared design.");
+    }finally{setBusy(false);}
+  }
+
   async function acceptQuote(quoteId:string){
     if(!window.confirm("Accept this quote and lock it for production handoff?")) return;
     setBusy(true);setMessage("");
@@ -205,6 +228,22 @@ export default function AccountPage(){
         <section style={{...card,display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,flexWrap:"wrap"}}>
           <div><strong>Signed in</strong><div style={{opacity:.7,marginTop:4}}>{customer.email}</div></div>
           <button style={{...button,background:"#6b7a63"}} onClick={logout}>Sign out</button>
+        </section>
+
+        <section style={card}>
+          <h2 style={{marginTop:0}}>My public design shares <span style={{opacity:.45}}>({shares.length})</span></h2>
+          <p style={{opacity:.65,fontSize:13}}>Only shares created while signed into this account appear here. Public links and private cancellation codes are never displayed in account history.</p>
+          {shares.length===0?<p style={{opacity:.65}}>No managed share links are linked to this account.</p>:
+            <div style={{display:"grid",gap:12}}>
+              {shares.map(share=><div key={share.tokenHash} style={{display:"flex",gap:12,alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",borderTop:"1px solid #ece6dc",paddingTop:12}}>
+                <div style={{display:"grid",gap:4}}>
+                  <strong>Design share {share.tokenHash.slice(0,12)}…</strong>
+                  <small style={{opacity:.65}}>Expires {new Date(share.expiresAt).toLocaleDateString()} · {share.revokedAt?"Revoked":"Active"}</small>
+                </div>
+                {!share.revokedAt&&<button type="button" style={button} disabled={busy}
+                  onClick={()=>void revokeOwnedShareLink(share.tokenHash)}>Revoke this link</button>}
+              </div>)}
+            </div>}
         </section>
 
         <section style={card}>
