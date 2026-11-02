@@ -115,7 +115,9 @@ function obj(value:unknown):Record<string,unknown> {
   return value && typeof value==="object" && !Array.isArray(value) ? value as Record<string,unknown> : {};
 }
 function str(value:unknown,limit=180) {
-  return String(value??"").trim().slice(0,limit);
+  // Untrusted profile values must remain literal strings. Arrays, objects and
+  // numbers cannot be coerced into supplier/source evidence or review labels.
+  return typeof value==="string" ? value.trim().slice(0,limit) : "";
 }
 function arr(value:unknown,limit=12) {
   return Array.isArray(value) ? value.map((item)=>str(item)).filter(Boolean).slice(0,limit) : [];
@@ -231,8 +233,7 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
         ? Number(obj(root.verifiedPhysical).stretch) : null,
       sourceUrl:typeof obj(root.verifiedPhysical).sourceUrl==="string"
         ? str(obj(root.verifiedPhysical).sourceUrl,1800)||null : null,
-      evidenceNote:typeof obj(root.verifiedPhysical).evidenceNote==="string"
-        ? str(obj(root.verifiedPhysical).evidenceNote,500)||null : null,
+      evidenceNote:str(obj(root.verifiedPhysical).evidenceNote,500)||null,
     },
     measured:root.measured && typeof root.measured==="object" ? root.measured as FabricMeasuredData : null,
     imageQuality:root.imageQuality && typeof root.imageQuality==="object" ? root.imageQuality as FabricImageQuality : null,
