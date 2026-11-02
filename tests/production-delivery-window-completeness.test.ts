@@ -34,9 +34,12 @@ test("private production evidence GET fails closed before reporting configured t
   const route=readFileSync("src/app/api/operator/production-evidence/route.ts","utf8");
   const orders=route.indexOf('"production_order_list"');
   const evidence=route.indexOf('"production_delivery_evidence_list"');
-  const check=route.indexOf("if(!deliveryLedgerSnapshotIsExhaustive(orders,evidence))");
+  const validateOrders=route.indexOf("const verifiedOrders=verifyProductionDeliveryOrders(orders)");
+  const validateAudits=route.indexOf("const verifiedEvidence=verifyProductionDeliveryAudits(evidence)");
+  const check=route.indexOf("if(!deliveryLedgerSnapshotIsExhaustive(verifiedOrders,verifiedEvidence))");
   const configured=route.indexOf("configured:true",check);
-  assert.ok(orders>=0&&evidence>orders&&check>evidence&&configured>check);
+  assert.ok(orders>=0&&evidence>orders&&validateOrders>evidence&&
+    validateAudits>validateOrders&&check>validateAudits&&configured>check);
   assert.match(route,/status:409/);
   assert.match(route,/Delivery ledger is incomplete; full historical pagination is required before acceptance/);
   assert.match(route,/PRODUCTION_DELIVERY_LEDGER_RPC_LIMIT/);
