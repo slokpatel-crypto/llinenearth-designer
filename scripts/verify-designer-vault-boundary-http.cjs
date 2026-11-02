@@ -89,6 +89,17 @@ async function main(){
       res.end(mode==="storeBackend500"?JSON.stringify({error:privateMarker}):
         outcomes[mode]??JSON.stringify(vaultId));return;
     }
+    if(path==="/rest/v1/rpc/designer_locked_revision_vault_set_owner"){
+      assert.equal(payload.p_vault_id,vaultId);
+      assert.match(payload.p_access_hash,/^[0-9a-f]{64}$/);
+      res.writeHead(mode==="ownerBackend500"?500:200,{"content-type":"application/json"});
+      res.end(mode==="ownerBackend500"?JSON.stringify({error:privateMarker}):
+        mode==="ownerMalformed"?'"false"':
+        mode==="ownerFalse"?"false":"true");return;
+    }
+    if(path==="/rest/v1/rpc/production_claim_revision_ownership"){
+      res.writeHead(200,{"content-type":"application/json"});res.end("true");return;
+    }
     if(path==="/rest/v1/rpc/designer_locked_revision_vault_get_owned"){
       assert.equal(payload.p_vault_id,vaultId);
       res.writeHead(200,{"content-type":"application/json"});
@@ -384,8 +395,26 @@ async function main(){
       }else assert.deepEqual(data,{error:"Secure design storage is temporarily unavailable."});
       assert.ok(!JSON.stringify(data).includes(privateMarker),kind);
     }
+    for(const [kind,expectedOwned,expectedCalls] of [
+      ["ownerBackend500",false,2],["ownerMalformed",false,2],
+      ["ownerFalse",false,2],["ownerGood",true,3],
+    ]){
+      mode=kind;seen.length=0;
+      const response=await fetch(url,{method:"POST",
+        headers:{...fixtureHeaders(),cookie:"le_customer_session="+signedCookie},
+        body:JSON.stringify({action:"store",revision}),
+        signal:AbortSignal.timeout(15000)});
+      const data=await response.json();
+      assert.equal(response.status,200,"recovery key survives post-store ownership: "+kind);
+      assert.equal(data.accountOwned,expectedOwned,kind);
+      assert.ok(data.recoveryToken?.startsWith("lev1."+vaultId+"."));
+      assert.equal(seen.length,expectedCalls,kind);
+      assert.equal(seen[0].path,"/rest/v1/rpc/designer_locked_revision_vault_store");
+      assert.equal(seen[1].path,"/rest/v1/rpc/designer_locked_revision_vault_set_owner");
+      assert.ok(!JSON.stringify(data).includes(privateMarker));
+    }
     assert.ok(!output.includes(privateMarker),"sensitive upstream error/JSON must not enter server logs");
-    console.log("TITAN designer vault boundary PASS: 62 synthetic HTTP cases; zero real writes.");
+    console.log("TITAN designer vault boundary PASS: synthetic HTTP cases; zero real writes.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
     await new Promise(resolve=>upstream.close(resolve));
