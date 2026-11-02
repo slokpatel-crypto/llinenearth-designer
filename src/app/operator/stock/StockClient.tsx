@@ -6,6 +6,7 @@ import { createOperatorMutationGate } from "@/lib/designer/operator-mutation-gat
 import { requireStockClientAcknowledgment } from "@/lib/designer/operator-stock-client-ack";
 import { createStockReservationAttemptTracker, type StockReservationAttempt } from "@/lib/designer/stock-reservation-attempt";
 import { stockMutationNeedsReconciliation } from "@/lib/designer/stock-mutation-reconciliation";
+import { createStockManualAttemptTracker } from "@/lib/designer/stock-manual-attempt";
 
 type StockRow={fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;provenance_ready:boolean;last_event_at:string|null};
 
@@ -19,13 +20,7 @@ export default function StockClient(){
   const uncertainWriteRef=useRef(false);
   const mutationGate=useRef(createOperatorMutationGate());
   const reservationAttempt=useRef(createStockReservationAttemptTracker(()=>crypto.randomUUID()));
-  const manualAttempt=useRef<{fingerprint:string;key:string}|null>(null);
-  function manualKeyFor(draft:Record<string,unknown>){
-    const fingerprint=JSON.stringify(draft);
-    if(manualAttempt.current?.fingerprint!==fingerprint)
-      manualAttempt.current={fingerprint,key:crypto.randomUUID()};
-    return manualAttempt.current.key;
-  }
+  const manualAttempt=useRef(createStockManualAttemptTracker(()=>crypto.randomUUID()));
   const [form,setForm]=useState({fabricId:"",eventType:"receipt",quantityMetres:"",recordedBy:"",sourceReference:"",note:""});
   const [reservation,setReservation]=useState({fabricId:"",revisionId:"",quantityMetres:"",requestedBy:"",sourceReference:""});
   const [close,setClose]=useState({reservationId:"",actualMetres:"",checkedBy:"",sourceReference:"",note:""});
@@ -91,7 +86,6 @@ export default function StockClient(){
       requireStockClientAcknowledgment(body.action,data);
       acknowledged=true;
       if(body.action==="reserve"&&reservationDraft) reservationAttempt.current.confirmed(reservationDraft);
-      if(body.action==="record") manualAttempt.current=null;
       const refreshed=await load();
       setMessage(refreshed?success:
         "Stock operation acknowledged, but ledger refresh is unavailable. Check the ledger before retrying.");
@@ -138,14 +132,14 @@ export default function StockClient(){
 
     <section className="stockGrid">
       <article className="stockPanel">
-        <span>01 / PHYSICAL STOCK</span><h2>Record verified metres.</h2>
+        <span>01 / PHYSICAL STOCK</span><h2>Record verified metres.</h2><p>Repeated unchanged evidence reuses the original stock event; use a distinct physical source reference for a new receipt.</p>
         <label>Fabric ID<input value={form.fabricId} onChange={(e)=>setForm({...form,fabricId:e.target.value})}/></label>
         <label>Event<select value={form.eventType} onChange={(e)=>setForm({...form,eventType:e.target.value})}><option value="receipt">Receipt / opening verified stock</option><option value="adjustment_in">Adjustment in</option><option value="adjustment_out">Adjustment out</option></select></label>
         <label>Metres<input type="number" min=".001" step=".001" value={form.quantityMetres} onChange={(e)=>setForm({...form,quantityMetres:e.target.value})}/></label>
         <label>Recorded by / checker<input value={form.recordedBy} onChange={(e)=>setForm({...form,recordedBy:e.target.value})} maxLength={120} placeholder="Required"/></label>
         <label>Physical source reference<input value={form.sourceReference} onChange={(e)=>setForm({...form,sourceReference:e.target.value})} maxLength={240} placeholder="Roll tag, receipt, stock-count sheet…"/></label>
         <label>Note<textarea rows={2} value={form.note} onChange={(e)=>setForm({...form,note:e.target.value})}/></label>
-        <button disabled={uncertainWrite||busy||snapshotState!=="ready"||!configured||!form.fabricId||Number(form.quantityMetres)<=0||form.recordedBy.trim().length<2||form.sourceReference.trim().length<3} onClick={()=>{const draft={action:"record",...form,quantityMetres:Number(form.quantityMetres)};void post({...draft,requestKey:manualKeyFor(draft)},"Provenance-backed stock event recorded.");}}>Record stock event</button>
+        <button disabled={uncertainWrite||busy||snapshotState!=="ready"||!configured||!form.fabricId||Number(form.quantityMetres)<=0||form.recordedBy.trim().length<2||form.sourceReference.trim().length<3} onClick={()=>{const draft={action:"record",...form,quantityMetres:Number(form.quantityMetres)};void post({...draft,requestKey:manualAttempt.current.keyFor(draft)},"Provenance-backed stock event recorded.");}}>Record stock event</button>
       </article>
 
       <article className="stockPanel">
