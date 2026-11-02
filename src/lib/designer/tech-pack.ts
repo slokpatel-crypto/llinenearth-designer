@@ -45,13 +45,12 @@ export function buildTailorTechPackHtml(handoff:ProductionHandoff){
   if(audit.errors.length) {
     throw new Error(`Unsafe tailor tech pack measurements: ${audit.errors.join(" ")}`);
   }
-  const styleValid=handoff.construction.styleSpec !== null
-    && handoff.construction.styleSpec !== undefined
-    && validateStyleSpecV2(handoff.construction.styleSpec);
-  const invalidConstruction=Boolean(handoff.construction.styleSpec) && !styleValid;
+  const originalStyleSpec=handoff.construction.styleSpec;
+  const validStyleSpec=validateStyleSpecV2(originalStyleSpec) ? originalStyleSpec : null;
+  const invalidConstruction=Boolean(originalStyleSpec) && !validStyleSpec;
   const missingConstruction=invalidConstruction ? [
     "StyleSpec v2 contains invalid or unknown garment choices; the raw selection is included for review only and cannot authorise cutting.",
-  ] : styleValid ? [] : [
+  ] : validStyleSpec ? [] : [
     "Exact StyleSpec v2 garment construction is absent; tailor must verify legacy options.",
   ];
   const outstanding=[...new Set([...handoff.unresolved,...audit.missing,...missingConstruction])];
@@ -148,33 +147,33 @@ footer{margin-top:14px;padding-top:10px;border-top:1px solid #cfd3d6;color:#6872
   <h2>Exact selected cut · StyleSpec v2</h2>
   ${invalidConstruction?`
     <p><b>INVALID VERSIONED CONSTRUCTION — TAILOR REVIEW REQUIRED.</b> These values are unverified input, not exact cut instructions. Do not cut from this document.</p>
-    <pre style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(JSON.stringify(handoff.construction.styleSpec).slice(0,6000))}</pre>
-  `:styleValid?`
+    <pre style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(JSON.stringify(originalStyleSpec).slice(0,6000))}</pre>
+  `:validStyleSpec?`
     <p class="muted">These are the actual locked tailoring choices. The earlier shorthand above may only describe the closest photographic preview.</p>
     <div class="grid">
       <table>${rows([
-        ["Shirt construction",handoff.construction.styleSpec.shirt.type],
-        ["Collar",handoff.construction.styleSpec.shirt.collar],
-        ["Collar finish",handoff.construction.styleSpec.shirt.collarFinish],
-        ["Sleeve length",handoff.construction.styleSpec.shirt.sleeve],
-        ["Cuff construction",handoff.construction.styleSpec.shirt.cuff],
-        ["Placket",handoff.construction.styleSpec.shirt.placket],
-        ["Pocket",handoff.construction.styleSpec.shirt.pocket],
-        ["Fit",handoff.construction.styleSpec.shirt.fit],
-        ["Body length",handoff.construction.styleSpec.shirt.length],
-        ["Shirt hem",handoff.construction.styleSpec.shirt.hem],
-        ["Back shaping",handoff.construction.styleSpec.shirt.back],
-        ["Wear",handoff.construction.styleSpec.shirt.wear],
-        ["Button",handoff.construction.styleSpec.shirt.button],
+        ["Shirt construction",validStyleSpec.shirt.type],
+        ["Collar",validStyleSpec.shirt.collar],
+        ["Collar finish",validStyleSpec.shirt.collarFinish],
+        ["Sleeve length",validStyleSpec.shirt.sleeve],
+        ["Cuff construction",validStyleSpec.shirt.cuff],
+        ["Placket",validStyleSpec.shirt.placket],
+        ["Pocket",validStyleSpec.shirt.pocket],
+        ["Fit",validStyleSpec.shirt.fit],
+        ["Body length",validStyleSpec.shirt.length],
+        ["Shirt hem",validStyleSpec.shirt.hem],
+        ["Back shaping",validStyleSpec.shirt.back],
+        ["Wear",validStyleSpec.shirt.wear],
+        ["Button",validStyleSpec.shirt.button],
       ])}</table>
       <table>${rows([
-        ["Trouser construction",handoff.construction.styleSpec.pant.type],
-        ["Leg shape",handoff.construction.styleSpec.pant.fit],
-        ["Rise",handoff.construction.styleSpec.pant.rise],
-        ["Pleat",handoff.construction.styleSpec.pant.pleat],
-        ["Waistband",handoff.construction.styleSpec.pant.waistband],
-        ["Hem",handoff.construction.styleSpec.pant.hem],
-        ["Break",handoff.construction.styleSpec.pant.break],
+        ["Trouser construction",validStyleSpec.pant.type],
+        ["Leg shape",validStyleSpec.pant.fit],
+        ["Rise",validStyleSpec.pant.rise],
+        ["Pleat",validStyleSpec.pant.pleat],
+        ["Waistband",validStyleSpec.pant.waistband],
+        ["Hem",validStyleSpec.pant.hem],
+        ["Break",validStyleSpec.pant.break],
         ["Occasion",handoff.construction.context?.occasion],
         ["Climate",handoff.construction.context?.climate],
         ["Intention",handoff.construction.context?.intention],
