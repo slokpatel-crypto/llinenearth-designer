@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { secureJsonRequestError, readSecureJsonObject, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
+import { customerSessionBearerAllowed, customerSessionRevocationRequired } from "@/lib/customer-session-revocation";
 import {
   CUSTOMER_ACCESS_COOKIE,
   CUSTOMER_REFRESH_COOKIE,
@@ -35,6 +36,15 @@ export async function POST(request:Request){
     const durableToken=createSignedCustomerSession(customer);
     if(!durableToken){
       return NextResponse.json({error:"Customer session signing is not configured."},{status:503});
+    }
+    if(customerSessionRevocationRequired()){
+      try{
+        if(!await customerSessionBearerAllowed(durableToken))
+          throw new Error("New signed session unexpectedly revoked.");
+      }catch{
+        return NextResponse.json({error:"Secure customer sessions are temporarily unavailable."},
+          {status:503,headers:{"cache-control":"private, no-store"}});
+      }
     }
 
     const response=NextResponse.json({ok:true,customer},{
