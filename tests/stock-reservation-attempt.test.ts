@@ -103,3 +103,27 @@ test("existing reserve SQL serializes an identical idempotency key",()=>{
   assert.match(reserve,/where request_key=v_key limit 1/);
   assert.match(reserve,/if v_existing is not null then return v_existing/);
 });
+
+test("silent cutting-sheet reservation journal loss cannot authorize a second reservation",async()=>{
+  const ignored={getItem(){return null;},setItem(_key:string,_value:string){}};
+  await assert.rejects(
+    ()=>createStockReservationAttemptTracker(keys(),()=>ignored).keyFor(draft),
+    /No stock movement was sent/,
+    "lost reservation identity must block the privileged POST"
+  );
+  let stored:string|null=null;
+  const rewritten={
+    getItem(){return stored;},
+    setItem(_key:string,_value:string){stored="[]";},
+  };
+  await assert.rejects(
+    ()=>createStockReservationAttemptTracker(keys(),()=>rewritten).keyFor(draft),
+    /No stock movement was sent/
+  );
+  const working=memoryStorage(),next=keys();
+  const first=await createStockReservationAttemptTracker(next,()=>working).keyFor(draft);
+  assert.equal(
+    await createStockReservationAttemptTracker(next,()=>working).keyFor(draft),first,
+    "read-after-write protection must not alter valid same-sheet replay"
+  );
+});

@@ -81,6 +81,17 @@ async function startContext(browser,opts={}){
       };
     });
   }
+  if(opts.discardAttemptJournal){
+    await context.addInitScript(()=>{
+      const original=Storage.prototype.setItem;
+      Storage.prototype.setItem=function(key,value){
+        if(String(key).startsWith("linen-earth:manual-stock-attempts:")||
+           String(key).startsWith("linen-earth:reservation-attempts:"))
+          return; // Simulate an accepted but silently discarded retry identity.
+        return original.call(this,key,value);
+      };
+    });
+  }
   const records=[];
   let gets=0;
   await context.route("**/api/operator/stock",route=>{
@@ -197,6 +208,23 @@ async function main(){
       assert.equal(blocked.records.length,0,"storage failure must not submit an RPC");
       console.log("Stock operator Chromium PASS: blocked storage prevents privileged POST.");
     }finally{await blocked.context.close();}
+    for(const reservationMode of [false,true]){
+      const discarded=await startContext(browser,{discardAttemptJournal:true,reservationMode});
+      try{
+        if(reservationMode){
+          await fillReservation(discarded.page,"SYNTH-CUT-SHEET-DISCARDED");
+          await discarded.page.getByRole("button",{name:"Create reservation"}).click();
+        }else{
+          await fill(discarded.page,"SYNTH-ROLL-DISCARDED");
+          await discarded.page.getByRole("button",{name:"Record stock event"}).click();
+        }
+        await discarded.page.getByText(/Stock retry tracking is unavailable in this browser tab/).waitFor();
+        assert.equal(discarded.records.length,0,
+          "silently discarded retry identity must not issue a privileged stock POST");
+        console.log("Stock operator Chromium PASS: silent "+
+          (reservationMode?"reservation":"manual receipt")+" journal loss prevents stock POST.");
+      }finally{await discarded.context.close();}
+    }
   }finally{await browser.close();}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
