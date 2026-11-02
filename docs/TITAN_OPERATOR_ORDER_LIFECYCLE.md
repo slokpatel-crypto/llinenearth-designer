@@ -40,6 +40,14 @@ The existing persisted production order contract in `src/lib/designer/production
 - `tsc --noEmit --strict --target ES2022 --module esnext --moduleResolution bundler --skipLibCheck src/lib/operator/order-lifecycle.ts`: passed with local TypeScript 5.8.3.
 - Full repository `npm run quality`, `npm test`, `npm run eval:engine`, `npm run eval:preview-performance`, `npm run release:check`, `npm run build` and browser checks: **not run locally for this follow-up**. The prior 10/10 Node tests and strict TypeScript validation were on the earlier head, not evidence of the new hardening code. New exact-head CI and Non-3D QA were queued after source/test edits; wait for results.
 
+## Serialized snapshot replay gate — 2026-11-03
+
+- Added `restoreOrderLifecycleSnapshot(raw)` to rehydrate a serialized lifecycle only after replaying every applied event and comparing the claimed status, sequence, last event ID and recovery origin with the computed canonical result. The result is a new immutable snapshot, not the mutable persisted input.
+- Added synthetic regression coverage for valid JSON round-trip and continuation; corrupted stage, sequence, previous-event pointer, recovery origin, truncated/tampered audit, wrong order identity, wrong locked revision/hash and missing audit must fail closed.
+- **Trust boundary:** this catches internal inconsistency and malformed serialized state, but a malicious writer capable of replacing the entire internally consistent audit can still forge events. A trusted authenticated, append-only transactional server, authorization, physical proof and integrity guarantees remain required before production.
+- Previous exact head `86a3ccc0333a43e5c87f7f20f21b5b0a852af9c5` has now passed Full CI #41539874575 and Non-3D QA #41539874515. Those runs predate this new snapshot gate. New exact-head checks are pending until the commit is published.
+- Main has advanced to `4309ce97660067ba949fc3f215d0b1dfbf2243e6` (stock provenance integration). No operator-file overlap in the inspected main delta; the operator branch is not rebased, merged or deployed.
+
 ## Next checkpoint
 
 1. Obtain **new exact-head** Full CI and independent Non-3D QA for the hardening commit; previous success on `f849cf7b` does not verify these changes. If either fails, fix only isolated order-lifecycle files and retest.

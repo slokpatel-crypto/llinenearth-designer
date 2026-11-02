@@ -223,3 +223,27 @@ export function replayOrderLifecycle(orderId: string, revisionId: string, recipe
   }
   return state;
 }
+
+/**
+ * Rehydrate a serialized lifecycle only by replaying its complete audit.
+ * Never trust a stored status, sequence or recovery pointer independently of
+ * the event chain. This is consistency validation, not authentication or a
+ * cryptographic integrity guarantee for a database-controlled audit.
+ */
+export function restoreOrderLifecycleSnapshot(rawSnapshot: unknown): OrderLifecycleState {
+  const snapshot = record(rawSnapshot);
+  const orderId = identifier(snapshot.orderId, "order ID");
+  const revisionId = nonEmpty(snapshot.revisionId, "locked revision ID", 12, 200);
+  const recipeHash = snapshot.recipeHash;
+  if (typeof recipeHash !== "string" || !/^[a-f0-9]{64}$/.test(recipeHash))
+    throw new Error("Invalid locked recipe hash.");
+  if (!Array.isArray(snapshot.audit)) throw new Error("Invalid or missing order audit.");
+  const canonical = replayOrderLifecycle(orderId, revisionId, recipeHash, snapshot.audit);
+  if (snapshot.status !== canonical.status || snapshot.sequence !== canonical.sequence ||
+      snapshot.lastEventId !== canonical.lastEventId || snapshot.heldFrom !== canonical.heldFrom) {
+    throw new Error("Order lifecycle snapshot does not match audited history.");
+  }
+  // Return a newly reconstructed, deeply frozen snapshot; do not retain the
+  // mutable input's object or nested QC references.
+  return canonical;
+}

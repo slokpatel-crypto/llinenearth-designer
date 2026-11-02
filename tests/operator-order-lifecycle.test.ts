@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  createOrderLifecycle, applyOrderLifecycleEvent, replayOrderLifecycle,
+  createOrderLifecycle, applyOrderLifecycleEvent, replayOrderLifecycle, restoreOrderLifecycleSnapshot,
   ORDER_QC_CHECKS, type OrderLifecycleAction, type OrderLifecycleState,
 } from "../src/lib/operator/order-lifecycle.ts";
 
@@ -218,4 +218,34 @@ test("accepted state, audit entries and QC checks are frozen at runtime",()=>{
   assert.throws(()=>Object.assign(last,{actor:"forged-operator"}),TypeError);
   assert.throws(()=>Object.assign(checks,{recipe_match:false}),TypeError);
   assert.equal(replayOrderLifecycle(id,revision,hash,approved.audit).status,"qc_approved");
+});
+
+
+test("serialized order snapshots must replay exactly before reuse",()=>{
+  const approved=step(toQc(),"approve_qc",{qc:qc()});
+  const saved=JSON.parse(JSON.stringify(approved));
+  const restored=restoreOrderLifecycleSnapshot(saved);
+  assert.deepEqual(restored,approved);
+  assert.notEqual(restored,saved,"rehydration must not trust a mutable input object");
+  assert.equal(Object.isFrozen(restored.audit),true);
+  assert.equal(Object.isFrozen(restored.audit.at(-1)?.qc?.checks),true);
+  assert.equal(step(restored,"dispatch").status,"dispatched");
+
+  const held=step(approved,"hold_for_recovery",{reason:"New seam defect requires recovery"});
+  const heldSnapshot=JSON.parse(JSON.stringify(held));
+  assert.deepEqual(restoreOrderLifecycleSnapshot(heldSnapshot),held);
+  for(const corrupted of [
+    {...saved,status:"delivered"},
+    {...saved,sequence:0},
+    {...saved,lastEventId:"event-99999999"},
+    {...saved,heldFrom:"stitching"},
+    {...saved,audit:saved.audit.slice(0,-1)},
+    {...saved,audit:[...saved.audit.slice(0,-1),{...saved.audit.at(-1),to:"delivered"}]},
+    {...saved,orderId:"123e4567-e89b-12d3-a456-426614174000"},
+    {...saved,revisionId:"rev-locked-00000002"},
+    {...saved,recipeHash:"b".repeat(64)},
+    {...saved,audit:null},
+    {...heldSnapshot,heldFrom:"cutting"},
+  ]) assert.throws(()=>restoreOrderLifecycleSnapshot(corrupted),
+    /snapshot|audit|identity|revision|recipe|destination|Invalid|Stale|non-sequential/);
 });
