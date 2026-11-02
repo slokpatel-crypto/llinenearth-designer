@@ -105,7 +105,10 @@ async function main(){
     }
     if(path==="/auth/v1/verify"){
       res.writeHead(200,{"content-type":"application/json"});
-      res.end(JSON.stringify({user:{id:payload.email==="bob@example.com"?"223e4567-e89b-12d3-a456-426614174000":"123e4567-e89b-12d3-a456-426614174000",email:payload.email}}));return;
+      res.end(JSON.stringify({user:{id:payload.email==="invalid-owner@example.com"
+        ?"not-an-authenticated-uuid":payload.email==="bob@example.com"
+        ?"223e4567-e89b-12d3-a456-426614174000"
+        :"123e4567-e89b-12d3-a456-426614174000",email:payload.email}}));return;
     }
     if(path==="/rest/v1/rpc/designer_locked_revision_vault_store"){
       assert.equal(req.method,"POST");
@@ -347,6 +350,16 @@ async function main(){
     assert.equal(otp.status,200,"synthetic OTP accepted");
     assert.equal(seen.length,1);
     assert.equal(seen[0].path,"/auth/v1/otp");
+
+    seen.length=0;
+    seen.length=0;
+    const forgedOwner=await authPost("/api/customer-auth/verify",
+      {email:"invalid-owner@example.com",token:"123456"});
+    assert.equal(forgedOwner.status,502,
+      "malformed authentication provider owner ID cannot become signed user");
+    assert.equal(forgedOwner.headers.get("set-cookie"),null,
+      "invalid upstream owner ID must never issue an authenticated cookie");
+    assert.deepEqual(seen.map(item=>item.path),["/auth/v1/verify"]);
 
     seen.length=0;
     const verify=await authPost("/api/customer-auth/verify",
