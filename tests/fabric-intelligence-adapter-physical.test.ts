@@ -67,3 +67,35 @@ test("model-judged provenance stays distinct from physically declared/reviewed e
   assert.equal(result.provenanceByField["verifiedPhysical.fiberContent"],"reviewed");
   assert.equal(result.provenanceByField["verifiedPhysical.drape"],undefined);
 });
+
+test("oversized physical supplier facts cannot be truncated into certified evidence",()=>{
+  const valid={
+    gsm:175,
+    drape:"Balanced",
+    fiberContent:"60% linen, 40% cotton",
+    sourceUrl:"https://supplier.example/lot-72",
+    evidenceNote:"Inspected supplier lot with a signed report.",
+  };
+  for(const [field,value] of [
+    ["fiberContent","F".repeat(221)],
+    ["sourceUrl","https://supplier.example/"+ "A".repeat(1780)],
+    ["evidenceNote","R".repeat(501)],
+  ] as const){
+    const result=adaptFabricProfileToV4({
+      version:"fabric-analyzer-v4",
+      verifiedPhysical:{...valid,[field]:value},
+    });
+    assert.ok(result);
+    assert.equal(result.verifiedPhysical[field],null,field);
+    for(const unaffected of (["gsm","drape"] as const)){
+      assert.equal(result.verifiedPhysical[unaffected],valid[unaffected]);
+    }
+  }
+  const edge=adaptFabricProfileToV4({
+    version:"fabric-analyzer-v4",
+    verifiedPhysical:{fiberContent:"F".repeat(220),sourceUrl:"https://supplier.example/lot-72",evidenceNote:"R".repeat(500)},
+  });
+  assert.ok(edge);
+  assert.equal(edge.verifiedPhysical.fiberContent?.length,220);
+  assert.equal(edge.verifiedPhysical.evidenceNote?.length,500);
+});

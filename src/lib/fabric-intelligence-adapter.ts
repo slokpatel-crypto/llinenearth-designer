@@ -114,10 +114,13 @@ export type FabricAnalyzerProfileV4 = {
 function obj(value:unknown):Record<string,unknown> {
   return value && typeof value==="object" && !Array.isArray(value) ? value as Record<string,unknown> : {};
 }
-function str(value:unknown,limit=180) {
-  // Untrusted profile values must remain literal strings. Arrays, objects and
-  // numbers cannot be coerced into supplier/source evidence or review labels.
-  return typeof value==="string" ? value.trim().slice(0,limit) : "";
+function str(value:unknown,limit=180,rejectOverlength=false) {
+  // Untrusted profile values must remain literal strings. Supplier evidence
+  // must also retain its exact bounded value: never truncate an inspection
+  // receipt, composition or URL into a different, apparently valid proof.
+  if(typeof value!=="string") return "";
+  const literal=value.trim();
+  return rejectOverlength && literal.length>limit ? "" : literal.slice(0,limit);
 }
 function arr(value:unknown,limit=12) {
   return Array.isArray(value) ? value.map((item)=>str(item)).filter(Boolean).slice(0,limit) : [];
@@ -218,7 +221,7 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
         && ["Fluid","Balanced","Structured"].includes(obj(root.verifiedPhysical).drape as string)
         ? obj(root.verifiedPhysical).drape as "Fluid"|"Balanced"|"Structured" : null,
       fiberContent:typeof obj(root.verifiedPhysical).fiberContent==="string"
-        ? str(obj(root.verifiedPhysical).fiberContent,220)||null : null,
+        ? str(obj(root.verifiedPhysical).fiberContent,220,true)||null : null,
       structure:typeof obj(root.verifiedPhysical).structure === "number" && Number.isFinite(obj(root.verifiedPhysical).structure)
         && Number(obj(root.verifiedPhysical).structure) >= 0 && Number(obj(root.verifiedPhysical).structure) <= 1
         ? Number(obj(root.verifiedPhysical).structure) : null,
@@ -232,8 +235,8 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
         && Number(obj(root.verifiedPhysical).stretch) >= 0 && Number(obj(root.verifiedPhysical).stretch) <= 1
         ? Number(obj(root.verifiedPhysical).stretch) : null,
       sourceUrl:typeof obj(root.verifiedPhysical).sourceUrl==="string"
-        ? str(obj(root.verifiedPhysical).sourceUrl,1800)||null : null,
-      evidenceNote:str(obj(root.verifiedPhysical).evidenceNote,500)||null,
+        ? str(obj(root.verifiedPhysical).sourceUrl,1800,true)||null : null,
+      evidenceNote:str(obj(root.verifiedPhysical).evidenceNote,500,true)||null,
     },
     measured:root.measured && typeof root.measured==="object" ? root.measured as FabricMeasuredData : null,
     imageQuality:root.imageQuality && typeof root.imageQuality==="object" ? root.imageQuality as FabricImageQuality : null,
