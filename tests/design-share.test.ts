@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { LockedDesignRevision } from "../src/lib/designer/design-lock.ts";
-import { createDesignShareToken, sharePayloadFromRevision, verifyDesignShareToken } from "../src/lib/designer/design-share.ts";
+import { MAX_DESIGN_SHARE_TOKEN_LENGTH, createDesignShareToken, sharePayloadFromRevision, verifyDesignShareToken } from "../src/lib/designer/design-share.ts";
 
 process.env.LINEN_DESIGN_SHARE_SECRET="test-secret-for-design-share-links-1234567890";
 
@@ -59,4 +59,11 @@ test("tampered share token is rejected",()=>{
   const parts=token.split(".");
   parts[1]=parts[1].slice(0,-1)+(parts[1].endsWith("A")?"B":"A");
   assert.equal(verifyDesignShareToken(parts.join("."),1_010),null);
+});
+
+test("share URL verifier rejects overlong bearer tokens and malformed signatures",()=>{
+  const token=createDesignShareToken(revision,1_000) as string;
+  assert.equal(verifyDesignShareToken("x".repeat(MAX_DESIGN_SHARE_TOKEN_LENGTH+1),1_100),null);
+  assert.equal(verifyDesignShareToken(token+".replay",1_100),null);
+  assert.equal(verifyDesignShareToken(token.replace(/^v1\./,"v2."),1_100),null);
 });
