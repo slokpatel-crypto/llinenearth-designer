@@ -150,13 +150,34 @@ async function main(){
       const exists=shareRecords.has(payload.p_token_hash);
       if(!exists&&shareMode!=="register500"&&shareMode!=="registerMalformed"
         &&shareMode!=="registerFalse")shareRecords.set(payload.p_token_hash,{
-        key:payload.p_revoke_key_hash,revoked:false
+        key:payload.p_revoke_key_hash,revoked:false,
+        owner:payload.p_owner_user_id||null,expiresAt:payload.p_expires_at,
       });
       res.writeHead(shareMode==="register500"?503:200,
         {"content-type":"application/json"});
       res.end(shareMode==="register500"?JSON.stringify({error:privateMarker}):
         shareMode==="registerMalformed"?'"true"':
         (shareMode==="registerFalse"||exists)?"false":"true");return;
+    }
+    if(path==="/rest/v1/rpc/designer_share_list_owned"){
+      assert.match(payload.p_owner_user_id,/^[0-9a-f-]{36}$/);
+      res.writeHead(shareMode==="list500"?503:200,{"content-type":"application/json"});
+      if(shareMode==="list500"){res.end(JSON.stringify({error:privateMarker}));return;}
+      if(shareMode==="listMalformed"){res.end(JSON.stringify({token_hash:privateMarker}));return;}
+      const rows=Array.from(shareRecords.entries())
+        .filter(([,record])=>record.owner===payload.p_owner_user_id)
+        .map(([token_hash,record])=>({token_hash,expires_at:record.expiresAt,
+          revoked_at:record.revoked?"2026-11-03T00:00:00Z":null}));
+      res.end(JSON.stringify(rows));return;
+    }
+    if(path==="/rest/v1/rpc/designer_share_revoke_owned"){
+      assert.match(payload.p_token_hash,/^[0-9a-f]{64}$/);
+      const record=shareRecords.get(payload.p_token_hash);
+      const ownerMatches=Boolean(record?.owner&&record.owner===payload.p_owner_user_id);
+      if(ownerMatches&&shareMode!=="ownedRevoke500")record.revoked=true;
+      res.writeHead(shareMode==="ownedRevoke500"?503:200,{"content-type":"application/json"});
+      res.end(shareMode==="ownedRevoke500"?JSON.stringify({error:privateMarker}):
+        shareMode==="ownedRevokeMalformed"?'"true"':ownerMatches?"true":"false");return;
     }
     if(path==="/rest/v1/rpc/designer_share_is_revoked"){
       assert.match(payload.p_token_hash,/^[a-f0-9]{64}$/);
@@ -719,6 +740,76 @@ async function main(){
       const unavailableView=await fetch(publicUrl,{signal:AbortSignal.timeout(15000)});
       assert.equal(unavailableView.status,404,"unavailable share control store must fail closed");
       shareMode="ok";
+
+      // A signed-in creator may revoke an issued link from another device,
+      // without the private cancellation key or a public bearer URL.
+      async function signInForShare(email){
+        const response=await fetch(enforcedOrigin+"/api/customer-auth/verify",{
+          method:"POST",headers:fixtureHeaders(),
+          body:JSON.stringify({email,token:"123456"}),signal:AbortSignal.timeout(15000)});
+        assert.equal(response.status,200);
+        const signed=response.headers.get("set-cookie")?.match(/le_customer_session=([^;]+)/)?.[1];
+        assert.ok(signed);return signed;
+      }
+      const aliceCookie=await signInForShare("alice@example.com");
+      const bobShareCookie=await signInForShare("bob@example.com");
+      async function ownedAction(action,cookie,other={}){
+        return await fetch(enforcedOrigin+"/api/designer/share",{
+          method:"POST",headers:{...fixtureHeaders(),cookie:"le_customer_session="+cookie},
+          body:JSON.stringify({action,...other}),signal:AbortSignal.timeout(15000)});
+      }
+      seen.length=0;
+      const ownedCreation=await fetch(enforcedOrigin+"/api/designer/share",{
+        method:"POST",headers:{...fixtureHeaders(),cookie:"le_customer_session="+aliceCookie},
+        body:JSON.stringify(shareRevision),signal:AbortSignal.timeout(15000)});
+      assert.equal(ownedCreation.status,200);
+      const ownedIssued=await ownedCreation.json();
+      const ownedHash=createHash("sha256").update(ownedIssued.token).digest("hex");
+      assert.equal(shareRecords.get(ownedHash)?.owner,"123e4567-e89b-12d3-a456-426614174000");
+      assert.ok(seen.some(item=>item.path==="/rest/v1/rpc/customer_session_is_revoked"));
+      const anonymousList=await fetch(enforcedOrigin+"/api/designer/share",{
+        method:"POST",headers:fixtureHeaders(),body:JSON.stringify({action:"listOwned"}),
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(anonymousList.status,401,"anonymous visitors cannot enumerate share digests");
+      seen.length=0;
+      const bobList=await ownedAction("listOwned",bobShareCookie,{
+        ownerUserId:"123e4567-e89b-12d3-a456-426614174000"});
+      assert.equal(bobList.status,200);
+      assert.deepEqual((await bobList.json()).shares,[],
+        "forged owner fields must not cross account boundaries");
+      const aliceList=await ownedAction("listOwned",aliceCookie);
+      assert.equal(aliceList.status,200);
+      const myShares=(await aliceList.json()).shares;
+      assert.equal(myShares.length,1);
+      assert.equal(myShares[0].tokenHash,ownedHash);
+      assert.ok(!JSON.stringify(myShares).includes(ownedIssued.revokeKey),
+        "owner listing must not disclose issuer cancellation capability");
+      for(const fail of ["listMalformed","list500"]){
+        shareMode=fail;
+        const response=await ownedAction("listOwned",aliceCookie);
+        assert.equal(response.status,503,"share listing must fail closed on bad backend");
+      }
+      shareMode="ok";
+      const anonymousRevocation=await fetch(enforcedOrigin+"/api/designer/share",{
+        method:"POST",headers:fixtureHeaders(),
+        body:JSON.stringify({action:"revokeOwned",tokenHash:ownedHash}),
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(anonymousRevocation.status,401);
+      const deniedBob=await ownedAction("revokeOwned",bobShareCookie,{
+        tokenHash:ownedHash,ownerUserId:"123e4567-e89b-12d3-a456-426614174000"});
+      assert.equal(deniedBob.status,404,"Bob must not revoke Alice's share");
+      assert.equal(shareRecords.get(ownedHash).revoked,false);
+      shareMode="ownedRevoke500";
+      const backendDenied=await ownedAction("revokeOwned",aliceCookie,{tokenHash:ownedHash});
+      assert.equal(backendDenied.status,503);
+      assert.equal(shareRecords.get(ownedHash).revoked,false);
+      shareMode="ok";
+      const ownerRevoked=await ownedAction("revokeOwned",aliceCookie,{tokenHash:ownedHash});
+      assert.equal(ownerRevoked.status,200);
+      assert.deepEqual(await ownerRevoked.json(),{revoked:true});
+      const ownerReplayed=await fetch(enforcedOrigin+"/share/"+ownedIssued.token,{
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(ownerReplayed.status,404,"owner-controlled revocation must deny old public URL");
 
       revocationMode="check500";seen.length=0;
       const failedVerify=await fetch(enforcedOrigin+"/api/customer-auth/verify",{
