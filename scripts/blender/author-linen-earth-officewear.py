@@ -237,6 +237,49 @@ def measure_solidify_variants(obj, body_tree, thickness_m):
     return {"baselineAfterBodyClearance": baseline, "variants": observations}
 
 
+def measure_shrinkwrap_modes(obj, body, body_tree, clearance_m, thickness_m):
+    """Compare actual native shrinkwrap modes using unsaved, disposable mesh copies.
+
+    All trials use the exact original 7 mm clearance and 1.6 mm cloth
+    thickness. They never change the approved candidate or body source.
+    """
+    modes = ("OUTSIDE_SURFACE", "ABOVE_SURFACE", "ON_SURFACE")
+    before = actual_contact_pairs(body_tree, obj)
+    results = []
+    for mode in modes:
+        clone = obj.copy()
+        temporary_mesh = obj.data.copy()
+        clone.data = temporary_mesh
+        clone.name = "LE_UNSAVED_SHRINKWRAP_TRIAL_" + mode
+        bpy.context.scene.collection.objects.link(clone)
+        try:
+            wrap = clone.modifiers.new("LE_UNSAVED_SHRINKWRAP", "SHRINKWRAP")
+            wrap.target = body
+            wrap.wrap_method = "NEAREST_SURFACEPOINT"
+            wrap.wrap_mode = mode
+            wrap.offset = clearance_m
+            apply_modifier(clone, wrap)
+            after_wrap = actual_contact_pairs(body_tree, clone)
+            thick = clone.modifiers.new("LE_UNSAVED_SOLIDIFY", "SOLIDIFY")
+            thick.thickness = thickness_m
+            thick.offset = 1.0
+            thick.use_rim = True
+            apply_modifier(clone, thick)
+            results.append({
+                "mode": mode,
+                "clearanceMm": round(clearance_m * 1000.0, 3),
+                "bodyPairsAfterWrap": after_wrap,
+                "bodyPairsAfterClothThickness": actual_contact_pairs(body_tree, clone),
+            })
+        finally:
+            bpy.data.objects.remove(clone, do_unlink=True)
+            if temporary_mesh.users == 0:
+                bpy.data.meshes.remove(temporary_mesh)
+    if len(results) != len(modes):
+        raise RuntimeError("Real shrinkwrap mode test failed to examine all native variants.")
+    return {"beforeWrap": before, "trialModes": results}
+
+
 def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
     # Measured diagnostics only. These are not garment acceptance or fit proof.
     stages = []
@@ -251,6 +294,10 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
     smooth.iterations = 3
     apply_modifier(obj, smooth)
     record_stage("afterSmoothing")
+    shrinkwrap_modes = (
+        measure_shrinkwrap_modes(obj, body, body_tree, clearance_m, thickness_m)
+        if body_tree is not None else None
+    )
 
     # Apply actual body clearance AFTER geometry-changing smoothing.
     # No subsequent surface-displacement modifier may consume that clearance.
@@ -277,6 +324,14 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
         )
         if production_variant["bodyIntersectionPairs"] != stages[3]["bodyIntersectionPairs"]:
             raise RuntimeError("Solidify trial no longer matches the unchanged final authoring recipe.")
+        if shrinkwrap_modes is None or shrinkwrap_modes["beforeWrap"] != stages[1]["bodyIntersectionPairs"]:
+            raise RuntimeError("Measured shrinkwrap alternatives disagree with the smoothed source shell.")
+        current_mode = shrinkwrap_modes["trialModes"][0]
+        if (current_mode["mode"] != "OUTSIDE_SURFACE"
+            or current_mode["bodyPairsAfterWrap"] != stages[2]["bodyIntersectionPairs"]
+            or current_mode["bodyPairsAfterClothThickness"] != stages[3]["bodyIntersectionPairs"]):
+            raise RuntimeError("Unchanged real shrinkwrap recipe does not match separately measured trial.")
+        obj["linen_earth_shrinkwrap_modes_json"] = json.dumps(shrinkwrap_modes, separators=(",", ":"))
         obj["linen_earth_solidify_variant_contacts_json"] = json.dumps(variants, separators=(",", ":"))
         obj["linen_earth_body_contact_stages_json"] = json.dumps(stages, separators=(",", ":"))
 
