@@ -15,10 +15,12 @@ export function summarizePreviewOptionCoverage(rows:PreviewCoverageRow[]){
   const previewRejected=rows.filter((row)=>row.previewStatus==="rejected").length;
   const previewPending=rows.filter((row)=>row.previewStatus==="pending").length;
   const noPreviewSupport=rows.filter((row)=>row.livePreview==="none").length;
+  const approximatePreview=rows.filter((row)=>row.livePreview==="approximate").length;
   const constructionBlocked=rows.filter((row)=>row.constructionStatus==="rejected").length;
   const constructionPending=rows.filter((row)=>row.constructionStatus==="pending").length;
   const fullyCleared=rows.filter((row)=>
-    row.livePreview!=="none"
+    // Human approval cannot make an approximate drawing exact for launch.
+    row.livePreview==="exact"
     && row.previewStatus==="approved"
     && (row.constructionStatus==="approved"||row.constructionStatus==="not_required")
   ).length;
@@ -28,6 +30,7 @@ export function summarizePreviewOptionCoverage(rows:PreviewCoverageRow[]){
     previewRejected,
     previewPending,
     noPreviewSupport,
+    approximatePreview,
     constructionBlocked,
     constructionPending,
     fullyCleared,
