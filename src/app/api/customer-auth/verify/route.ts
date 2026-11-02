@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { secureJsonRequestError, readSecureJsonObject, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import {
   CUSTOMER_ACCESS_COOKIE,
   CUSTOMER_REFRESH_COOKIE,
@@ -12,10 +13,13 @@ import {
 } from "@/lib/customer-session";
 
 export const runtime="nodejs";
+const MAX_VERIFY_REQUEST_BYTES=4_096;
 
 export async function POST(request:Request){
+  const requestError=secureJsonRequestError(request,MAX_VERIFY_REQUEST_BYTES);
+  if(requestError)return NextResponse.json({error:requestError.error},{status:requestError.status,headers:{"cache-control":"private, no-store"}});
   try{
-    const body=await request.json() as {email?:string;token?:string};
+    const body=await readSecureJsonObject(request,MAX_VERIFY_REQUEST_BYTES);
     const email=normalizeCustomerEmail(body.email);
     const token=String(body.token||"").replace(/\s/g,"");
     if(!email||token.length<6||token.length>12) {
@@ -46,7 +50,9 @@ export async function POST(request:Request){
     }
     return response;
   }catch(error){
-    console.error("[customer-auth/verify]",error);
-    return NextResponse.json({error:"That code is invalid or expired."},{status:401});
+    if(error instanceof SecureJsonBodyTooLarge)return NextResponse.json({error:"Request payload is too large."},{status:413});
+    if(error instanceof SecureJsonBodyInvalid)return NextResponse.json({error:"Invalid JSON request."},{status:400});
+    console.error("[customer-auth/verify] verification failed (details redacted).");
+    return NextResponse.json({error:"That code is invalid or expired."},{status:401,headers:{"cache-control":"private, no-store"}});
   }
 }
