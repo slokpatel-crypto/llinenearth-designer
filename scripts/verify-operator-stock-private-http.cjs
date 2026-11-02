@@ -27,12 +27,26 @@ async function main(){
     legacy_unverified_event_count:0,provenance_ready:true,
     last_event_at:"2026-11-01T18:00:00Z"};
   let mode="valid";
+  let readinessProbes=0;
   const seen=[];
   const upstream=http.createServer(async(req,res)=>{
     const chunks=[];for await(const chunk of req)chunks.push(chunk);
     const body=JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    seen.push({path:req.url,body});
     const path=req.url||"";
+    // Catalog attestation is itself a read-only service-role RPC, never an
+    // application stock mutation. Keep old 54 boundary-case request counts
+    // for the underlying mutation RPC separate from readiness probes.
+    if(path.endsWith("/fabric_stock_write_ready_v1")){
+      readinessProbes++;
+      if(mode==="readinessMissing"){
+        res.writeHead(404,{"content-type":"application/json"});
+        res.end(JSON.stringify({error:"function not installed"}));return;
+      }
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end(JSON.stringify(mode==="readinessFalse"?false:
+        mode==="readinessMalformed"?"true":true));return;
+    }
+    seen.push({path:req.url,body});
     assert.ok(path.startsWith("/rest/v1/rpc/fabric_stock_"),"unrecognized fake RPC path");
     let response;
     if(path.endsWith("/fabric_stock_snapshot_v2")){
@@ -187,6 +201,26 @@ async function main(){
         else assert.deepEqual(result,{error:"Stock operation could not be verified."});
       }
     }
+    // Even with an approved server flag, an absent, false or malformed
+    // database capability must keep the readable stock ledger READ ONLY.
+    for(const bad of ["readinessFalse","readinessMissing","readinessMalformed"]){
+      mode=bad;seen.length=0;
+      const snapshot=await call("GET");
+      assert.equal(snapshot.response.status,200,bad);
+      assert.deepEqual(snapshot.result,{configured:true,writesEnabled:false,stock:[valid]});
+      assert.equal(seen.length,1,"read-only snapshot must still read the v2 ledger");
+      seen.length=0;
+      const before=readinessProbes;
+      for(const action of [record,reservation,...closures]){
+        const denied=await call("POST",action);
+        assert.equal(denied.response.status,423,
+          bad+" must definitively prohibit "+action.action+" without DB mutations");
+        assert.deepEqual(denied.result,{error:"Stock writes are disabled pending rollout approval."});
+        assert.equal(seen.length,0,"readiness refusal must not reach a physical mutation");
+      }
+      assert.equal(readinessProbes,before+4,"each attempted stock write must re-check real DB readiness");
+    }
+    assert.ok(readinessProbes>=4,"the positive stock path must inspect the backend too");
     assert.ok(!output.includes(marker),"private fake stock RPC error leaked in server logs");
     console.log("TITAN stock API private boundary PASS: 54 synthetic authenticated cases, no real writes.");
   }finally{
