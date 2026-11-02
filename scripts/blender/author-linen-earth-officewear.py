@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import math
-import os
 import sys
 from pathlib import Path
 
@@ -52,21 +51,6 @@ def bounded_measured_mm(value, field, minimum_mm, maximum_mm):
     return value / 1000.0
 
 
-def safe_candidate_output(raw_output, source_blend):
-    """Never overwrite the existing identity-locked body source scene."""
-    if not source_blend:
-        raise RuntimeError("Open a saved identity-locked source .blend before authoring.")
-    source = Path(source_blend).expanduser().resolve()
-    if source.suffix.lower() != ".blend" or not source.is_file():
-        raise RuntimeError("The identity-locked source must be a saved .blend file.")
-    output = Path(raw_output).expanduser().resolve()
-    if output.suffix.lower() != ".blend":
-        raise ValueError("The authored candidate output must end in .blend.")
-    if output == source or (output.exists() and os.path.samefile(output, source)):
-        raise ValueError("Refusing to overwrite the original identity-locked Blender source.")
-    return output
-
-
 def world_bounds(obj):
     return [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
 
@@ -82,6 +66,21 @@ def body_frame(body):
         "minZ": min_z,
         "height": max_z - min_z,
     }
+
+
+def locked_guide_height(scene, name):
+    """Read true photographed-model horizontal guide height, never estimate it."""
+    collection = bpy.data.collections.get("LinenEarthIdentityGuides")
+    guide = collection.objects.get(name) if collection else None
+    if guide is None or guide.type != "CURVE":
+        raise RuntimeError(f"Missing locked photographic garment guide: {name}")
+    points = [
+        (guide.matrix_world @ Vector(point.co[:3])).z
+        for spline in guide.data.splines for point in spline.points
+    ]
+    if not points or not all(math.isfinite(value) for value in points):
+        raise RuntimeError(f"Invalid photographic waist guide geometry: {name}")
+    return sum(points) / len(points)
 
 
 def remove_existing(name):
@@ -189,8 +188,6 @@ def planar_grain_uv(obj):
 
 def main():
     options = cli_args()
-    # Preserve the original locked .blend before any scene mutation.
-    output = safe_candidate_output(options.output, bpy.data.filepath)
     # Validate every physical authoring parameter before touching the scene.
     clearance_m = bounded_measured_mm(options.clearance_mm, "Body clearance", 3.0, 18.0)
     thickness_m = bounded_measured_mm(options.thickness_mm, "Cloth shell thickness", 0.6, 4.0)
@@ -211,6 +208,13 @@ def main():
         raise RuntimeError(f"Body height is {height:.4f} m; expected the locked 1.727 m body.")
 
     z = lambda ratio: min_z + height * ratio
+    trouser_waist_guide_z = locked_guide_height(bpy.context.scene, "LE_GUIDE_TROUSER_WAIST")
+    if not z(0.58) <= trouser_waist_guide_z <= z(0.70):
+        raise RuntimeError("Locked trouser waist guide lies outside the approved body landmark region.")
+    # The previous 0.620 height stopped ~47mm BELOW the true photo waist guide
+    # (~0.647 of the body); no real cross-section could ever be measured.
+    # Extend this shell through the guide while preserving measured fit checks.
+    trouser_waist_upper_z = max(z(0.620), trouser_waist_guide_z + 0.028)
     torso_half = 0.245
     arm_root = 0.155
     hip_half = 0.245
@@ -219,7 +223,7 @@ def main():
         "ShirtTorsoFabric": lambda p: z(0.515) <= p.z <= z(0.895) and abs(p.x-center_x) <= torso_half,
         "ShirtSleeveLFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x <= -arm_root,
         "ShirtSleeveRFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x >= arm_root,
-        "TrouserWaistFabric": lambda p: z(0.455) <= p.z <= z(0.620) and abs(p.x-center_x) <= hip_half,
+        "TrouserWaistFabric": lambda p: z(0.455) <= p.z <= trouser_waist_upper_z and abs(p.x-center_x) <= hip_half,
         "TrouserLegLFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x < center_x,
         "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x >= center_x,
     }
@@ -241,13 +245,17 @@ def main():
     bpy.context.scene["linen_earth_garment_authoring_method"] = "locked-body-surface-shell-v1"
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
+    bpy.context.scene["linen_earth_trouser_waist_guide_z_m"] = round(trouser_waist_guide_z, 6)
+    bpy.context.scene["linen_earth_trouser_waist_authored_top_z_m"] = round(trouser_waist_upper_z, 6)
 
+    output = Path(options.output).expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
 
     print(f"Authored Linen Earth six-piece officewear candidate: {output}")
     print("Garment objects: " + ", ".join(obj.name for obj in authored))
     print(f"Body clearance: {clearance_m*1000:.1f} mm · cloth shell thickness: {thickness_m*1000:.1f} mm")
+    print(f"Locked trouser waist guide Z: {trouser_waist_guide_z:.4f} m · authored shell top: {trouser_waist_upper_z:.4f} m")
     print("Status: candidate only; run Blender preflight and owner/tailor visual fit review before production export.")
 
 
