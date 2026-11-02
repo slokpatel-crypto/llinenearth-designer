@@ -31,6 +31,9 @@ test("OTP route requires distributed guard before code dispatch and never logs r
   assert.ok(source.indexOf("await distributedOtpRateAllowed(email)")<
     source.indexOf("await requestCustomerOtp(email)"));
   assert.match(source,/sign-in request failed \(details redacted\)/);
+  assert.match(source,/const privateJson=\(body:unknown,status=200\)=>NextResponse\.json/);
+  assert.doesNotMatch(source,/return NextResponse\.json\(/,
+    "all OTP responses including blocked, invalid and failed must be private no-store");
   const sql=readFileSync("supabase/migrations/20261103_customer_otp_distributed_rate.sql","utf8");
   assert.match(sql,/on conflict\(subject_hash\) do update/);
   assert.match(sql,/least\(customer_otp_rate_windows.attempts\+1,9\)/);
