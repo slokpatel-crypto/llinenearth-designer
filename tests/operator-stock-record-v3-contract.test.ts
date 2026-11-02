@@ -19,10 +19,12 @@ test("actual manual record API supplies a validated key to v3, never v2",()=>{
   assert.match(record,/p_request_key:draft.requestKey/);
   assert.doesNotMatch(record,/fabric_stock_record_v2/);
 });
-test("manual record browser reuses one key for unchanged evidence, clears only after acknowledged success",()=>{
+test("manual record browser persists the retry key before POST and replays unchanged evidence",()=>{
   const s=client();
   assert.match(s,/manualAttempt=useRef\(createStockManualAttemptTracker/);
-  assert.match(s,/requestKey:manualAttempt\.current\.keyFor\(draft\)/);
+  assert.match(s,/const requestKey=await manualAttempt\.current\.keyFor\(manual\)/);
+  assert.match(s,/body=\{\.\.\.body,requestKey\}/);
+  assert.ok(s.indexOf("const requestKey=await manualAttempt.current.keyFor(manual)")<s.indexOf("requestSent=true;"));
   assert.doesNotMatch(s,/manualAttempt\.current=null/);
   assert.match(s,/stockMutationNeedsReconciliation/);
 });
