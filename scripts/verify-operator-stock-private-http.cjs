@@ -152,6 +152,31 @@ async function main(){
     const reservation={action:"reserve",fabricId:fabric,quantityMetres:1.25,
       revisionId:"LE-LOCK-SYNTHETIC-0001",requestKey:"STOCK-REQUEST-SYNTHETIC-0001",
       requestedBy:"Synthetic checker",sourceReference:"SYNTH-CUT-SHEET"};
+    // A JSON array must not impersonate a real fabric, locked revision,
+    // idempotency key or stock event before any privileged RPC is called.
+    for(const [action,field,value] of [
+      ["record","fabricId",[fabric]],
+      ["record","eventType",["receipt"]],
+      ["reserve","fabricId",[fabric]],
+      ["reserve","revisionId",[reservation.revisionId]],
+      ["reserve","requestKey",[reservation.requestKey]],
+    ]){
+      mode="created";seen.length=0;
+      const draft=action==="record"?record:reservation;
+      const {response,result}=await call("POST",{...draft,[field]:value});
+      assert.equal(response.status,409,action+" coerced "+field);
+      assert.ok(typeof result.error==="string"&&result.error.length>0);
+      assert.equal(seen.length,0,action+" coerced "+field+" reached privileged stock RPC");
+    }
+    // The action dispatcher must also reject JSON arrays that stringify to
+    // privileged operation names, even with otherwise valid payloads.
+    for(const draft of [record,reservation]){
+      mode="created";seen.length=0;
+      const {response,result}=await call("POST",{...draft,action:[draft.action]});
+      assert.equal(response.status,400,"coerced action must be unsupported");
+      assert.deepEqual(result,{error:"Unsupported stock action."});
+      assert.equal(seen.length,0,"coerced action reached privileged stock RPC");
+    }
     // A valid signed cookie must not bypass browser Fetch Metadata. A
     // cross-site or same-site request cannot reach the privileged stock RPC
     // even if Origin was removed by an upstream intermediary.

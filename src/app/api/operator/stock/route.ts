@@ -71,7 +71,8 @@ export async function POST(request:Request){
     // Next/PostgREST HTTP regression fixture (never production stock).
     if(!legacyStockWritesEnabled())
       return stockPrivateJson({error:"Legacy v2 stock writes are disabled pending v3 rollout approval."},{status:423});
-    const action=String(body.action||"");
+    // Reject JSON-coerced action arrays before selecting a privileged stock RPC.
+    const action=typeof body.action==="string"?body.action:"";
     if(action==="record"){
       const draft=stockInput(()=>normalizeManualStockEvent(body));
       stockInput(()=>assertCurrentFabricId(draft.fabricId));
