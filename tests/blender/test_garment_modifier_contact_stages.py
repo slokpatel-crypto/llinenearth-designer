@@ -46,9 +46,11 @@ comparison = json.loads(shell["linen_earth_solidify_variant_contacts_json"])
 assert comparison["baselineAfterBodyClearance"] == stages[2]["bodyIntersectionPairs"]
 assert [item["variant"] for item in comparison["variants"]] == [
     "outwardNoRim", "outwardWithRim", "inwardNoRim", "inwardWithRim",
+    "recalculatedOutwardWithRim", "recalculatedInwardWithRim",
 ], comparison
-assert [item["rim"] for item in comparison["variants"]] == [False, True, False, True]
-assert [item["offset"] for item in comparison["variants"]] == [1.0, 1.0, -1.0, -1.0]
+assert [item["rim"] for item in comparison["variants"]] == [False, True, False, True, True, True]
+assert [item["recalculatedNormals"] for item in comparison["variants"]] == [False, False, False, False, True, True]
+assert [item["offset"] for item in comparison["variants"]] == [1.0, 1.0, -1.0, -1.0, 1.0, -1.0]
 assert all(type(item["bodyIntersectionPairs"]) is int and item["bodyIntersectionPairs"] >= 0
            for item in comparison["variants"])
 assert comparison["variants"][1]["bodyIntersectionPairs"] == stages[-1]["bodyIntersectionPairs"]
