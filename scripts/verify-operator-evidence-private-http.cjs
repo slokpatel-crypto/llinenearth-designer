@@ -200,8 +200,23 @@ async function main(){
         seen.length=0;
         r=await request(path,{method:"POST",headers:{cookie,"content-type":"application/json"},
           body:invalid});
-        assert.equal(r.res.status,400,path+" invalid input");
+        const expected=path==="production-calibration"&&Buffer.byteLength(invalid,"utf8")>32_768?413:400;
+        assert.equal(r.res.status,expected,path+" invalid input");
         assert.equal(seen.length,0,"invalid POST must not reach privileged RPC");
+      }
+      if(path==="production-calibration"){
+        for(const [headers,expected] of [
+          [{origin:"https://untrusted.example","content-type":"application/json"},403],
+          [{"sec-fetch-site":"cross-site","content-type":"application/json"},403],
+          [{"content-type":"text/plain"},415],
+          [{"content-type":"application/x-www-form-urlencoded"},415],
+        ]){
+          seen.length=0;
+          r=await request(path,{method:"POST",headers:{cookie,...headers},
+            body:JSON.stringify(route.draft)});
+          assert.equal(r.res.status,expected,path+" unsafe request");
+          assert.equal(seen.length,0,"unsafe physical-cut POST must not reach privileged RPC");
+        }
       }
     }
     assert.ok(!output.includes(secretMarker),"built Next server logs exposed private backend/request marker");
