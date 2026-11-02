@@ -9,6 +9,7 @@ on:
       - "scripts/blender/preflight-linen-earth-officewear.py"
       - "scripts/blender/diagnose-linen-earth-contact.py"
       - "tests/blender/test_real_contact_diagnostics.py"
+      - "tests/blender/test_garment_modifier_contact_stages.py"
       - "scripts/blender/summarize-native-candidate-preflight.py"
       - "tests/python/test_native_candidate_preflight_summary.py"
       - ".github/workflows/titan-native-source-candidate.yml"
@@ -20,6 +21,7 @@ on:
       - "scripts/blender/preflight-linen-earth-officewear.py"
       - "scripts/blender/diagnose-linen-earth-contact.py"
       - "tests/blender/test_real_contact_diagnostics.py"
+      - "tests/blender/test_garment_modifier_contact_stages.py"
       - "scripts/blender/summarize-native-candidate-preflight.py"
       - ".github/workflows/titan-native-source-candidate.yml"
 
@@ -67,6 +69,12 @@ jobs:
           set -euo pipefail
           "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
             --python tests/blender/test_real_contact_diagnostics.py
+      - name: Verify garment body contact at each actual Blender modifier stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_garment_modifier_contact_stages.py
       - name: Fetch official pinned CC0 source body bundle
         shell: bash
         run: |
@@ -112,6 +120,12 @@ jobs:
               bands = metrics["contactPairsByBodyHeightOctile"]
               assert len(bands) == 8 and all(type(n) is int and n >= 0 for n in bands)
               assert sum(bands) == metrics["bodyGarmentIntersectingTrianglePairs"]
+              expected = ("selectedBodyShell", "afterSmoothing", "afterBodyClearance", "afterClothThickness")
+              stages = metrics["actualModifierContactStages"]
+              assert isinstance(stages, list) and len(stages) == 4
+              for stage, label in zip(stages, expected):
+                  assert stage["stage"] == label
+                  assert type(stage["bodyIntersectionPairs"]) is int and stage["bodyIntersectionPairs"] >= 0
               assert type(metrics["evaluatedVertices"]) is int and metrics["evaluatedVertices"] > 0
               assert type(metrics["evaluatedTriangles"]) is int and metrics["evaluatedTriangles"] > 0
           print("TITAN_CONTACT_EVIDENCE_FAIL_CLOSED_VALIDATION_PASSED")
