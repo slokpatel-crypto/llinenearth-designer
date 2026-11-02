@@ -42,9 +42,14 @@ async function main(){
         res.writeHead(404,{"content-type":"application/json"});
         res.end(JSON.stringify({error:"function not installed"}));return;
       }
+      if(mode==="readinessError"){
+        res.writeHead(503,{"content-type":"application/json"});
+        res.end(JSON.stringify({error:marker}));return;
+      }
       res.writeHead(200,{"content-type":"application/json"});
       res.end(JSON.stringify(mode==="readinessFalse"?false:
-        mode==="readinessMalformed"?"true":true));return;
+        mode==="readinessMalformed"?"true":
+        mode==="readinessObject"?{ready:true}:true));return;
     }
     seen.push({path:req.url,body});
     assert.ok(path.startsWith("/rest/v1/rpc/fabric_stock_"),"unrecognized fake RPC path");
@@ -203,7 +208,7 @@ async function main(){
     }
     // Even with an approved server flag, an absent, false or malformed
     // database capability must keep the readable stock ledger READ ONLY.
-    for(const bad of ["readinessFalse","readinessMissing","readinessMalformed"]){
+    for(const bad of ["readinessFalse","readinessMissing","readinessMalformed",\n      "readinessObject","readinessError"]){
       mode=bad;seen.length=0;
       const snapshot=await call("GET");
       assert.equal(snapshot.response.status,200,bad);
