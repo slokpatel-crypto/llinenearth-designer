@@ -173,6 +173,9 @@ def planar_grain_uv(obj):
 
 def main():
     options = cli_args()
+    # Validate every physical authoring parameter before touching the scene.
+    clearance_m = bounded_measured_mm(options.clearance_mm, "Body clearance", 3.0, 18.0)
+    thickness_m = bounded_measured_mm(options.thickness_mm, "Cloth shell thickness", 0.6, 4.0)
     body = bpy.data.objects.get(options.body)
     if body is None or body.type != "MESH":
         raise RuntimeError(f"Locked realistic body mesh not found: {options.body}")
@@ -202,9 +205,6 @@ def main():
         "TrouserLegLFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x < center_x,
         "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x >= center_x,
     }
-
-    clearance_m = bounded_measured_mm(options.clearance_mm, "Body clearance", 3.0, 18.0)
-    thickness_m = bounded_measured_mm(options.thickness_mm, "Cloth shell thickness", 0.6, 4.0)
 
     for name in GARMENT_OBJECTS:
         remove_existing(name)
