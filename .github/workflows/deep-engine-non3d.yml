@@ -19,7 +19,7 @@ jobs:
       contents: read
     env:
       LINEN_BROWSER_QA_RUNTIME: /tmp/linen-deep-engine-browser
-      LINEN_OPERATOR_SESSION_SECRET: deep-engine-browser-${{ github.run_id }}
+      LINEN_OPERATOR_SESSION_SECRET: deep-engine-browser-session-qa-${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
