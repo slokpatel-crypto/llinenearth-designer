@@ -21,7 +21,7 @@ function spec(shirt: Record<string,string> = {}, pant: Record<string,string> = {
       type: "formal_flat_front", pleat: "flat_front", hem: "plain_hem",
       break: "slight_break", ...pant,
     },
-  } as StyleSpecV2;
+  } as unknown as StyleSpecV2;
 }
 
 test("rejected or unreviewed intelligence cannot masquerade as physically reviewed", () => {
