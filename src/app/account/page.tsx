@@ -120,9 +120,18 @@ export default function AccountPage(){
   }
 
   async function logout(){
-    await fetch("/api/customer-auth/logout",{method:"POST"});
-    setMessage("Signed out.");setCodeSent(false);
-    await refresh();
+    setBusy(true);
+    try{
+      const response=await fetch("/api/customer-auth/logout",{method:"POST"});
+      if(!response.ok){
+        setMessage("Secure sign-out could not be completed. Please retry.");
+        return;
+      }
+      setMessage("Signed out.");setCodeSent(false);
+      await refresh();
+    }catch{
+      setMessage("Secure sign-out could not be completed. Please retry.");
+    }finally{setBusy(false);}
   }
 
   async function acceptQuote(quoteId:string){
