@@ -140,6 +140,16 @@ jobs:
                   assert type(variant["rim"]) is bool and variant["rim"] is rim
                   assert type(variant["bodyIntersectionPairs"]) is int and variant["bodyIntersectionPairs"] >= 0
               assert variants[1]["bodyIntersectionPairs"] == stages[-1]["bodyIntersectionPairs"]
+              wraps = metrics["realShrinkwrapModeComparisons"]
+              assert wraps["beforeWrap"] == stages[1]["bodyIntersectionPairs"]
+              trials = wraps["trialModes"]
+              assert isinstance(trials, list) and len(trials) == 3
+              for trial, mode in zip(trials, ("OUTSIDE_SURFACE", "ABOVE_SURFACE", "ON_SURFACE")):
+                  assert trial["mode"] == mode and trial["clearanceMm"] == 7.0
+                  for key in ("bodyPairsAfterWrap", "bodyPairsAfterClothThickness"):
+                      assert type(trial[key]) is int and trial[key] >= 0
+              assert trials[0]["bodyPairsAfterWrap"] == stages[2]["bodyIntersectionPairs"]
+              assert trials[0]["bodyPairsAfterClothThickness"] == stages[3]["bodyIntersectionPairs"]
               assert type(metrics["evaluatedVertices"]) is int and metrics["evaluatedVertices"] > 0
               assert type(metrics["evaluatedTriangles"]) is int and metrics["evaluatedTriangles"] > 0
           print("TITAN_CONTACT_EVIDENCE_FAIL_CLOSED_VALIDATION_PASSED")
