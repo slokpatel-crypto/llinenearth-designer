@@ -41,6 +41,8 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
+    parser.add_argument("--experimental-waist-refinement-level", type=int, choices=(0, 1), default=1,
+                        help="0 is the native-control candidate; default 1 fixes real waist body clearance")
     return parser.parse_args(argv)
 
 
@@ -196,7 +198,7 @@ def actual_contact_pairs(body_tree, garment):
     return count
 
 
-def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
+def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinement_level=1):
     # Measured diagnostics only. These are not garment acceptance or fit proof.
     stages = []
     def record_stage(stage):
@@ -210,6 +212,18 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None):
     smooth.iterations = 3
     apply_modifier(obj, smooth)
     record_stage("afterSmoothing")
+
+    # Real pinned CC0 body measurements showed 122 waistband/body polygon BVH
+    # contacts before and ZERO after level-1 SIMPLE subdivision before 7mm
+    # clearance. Apply to this real panel alone: other five panels regressed
+    # under global subdivision. Never replace the locked source body.
+    if obj.name == "TrouserWaistFabric" and waist_refinement_level == 1:
+        refine = obj.modifiers.new("LE_WAIST_SURFACE_REFINEMENT", "SUBSURF")
+        refine.subdivision_type = "SIMPLE"
+        refine.levels = 1
+        refine.render_levels = 1
+        apply_modifier(obj, refine)
+        obj["linen_earth_waist_surface_refinement_level"] = 1
 
     # Apply actual body clearance AFTER geometry-changing smoothing.
     # No subsequent surface-displacement modifier may consume that clearance.
@@ -303,7 +317,8 @@ def main():
     authored = []
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
-        fit_shell(obj, body, clearance_m, thickness_m, body_contact_tree)
+        fit_shell(obj, body, clearance_m, thickness_m, body_contact_tree,
+                  options.experimental_waist_refinement_level)
         planar_grain_uv(obj)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(clearance_m * 1000.0, 3)
@@ -316,6 +331,7 @@ def main():
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
     bpy.context.scene["linen_earth_trouser_waist_guide_z_m"] = round(trouser_waist_guide_z, 6)
     bpy.context.scene["linen_earth_trouser_waist_authored_top_z_m"] = round(trouser_waist_upper_z, 6)
+    bpy.context.scene["linen_earth_trouser_waist_refinement_level"] = options.experimental_waist_refinement_level
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
