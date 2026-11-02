@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
 import { DESIGNER_PANTS, DESIGNER_SHIRTS, designerStyleForOccasion } from "@/lib/designer/engine";
 import { verifyDesignShareToken } from "@/lib/designer/design-share";
+import { isShareTokenAllowed } from "@/lib/designer/design-share-revocation";
 import "./share.css";
 
 export const dynamic="force-dynamic";
@@ -11,6 +12,8 @@ export default async function SharedDesignPage({params}:{params:Promise<{token:s
   const {token}=await params;
   const payload=verifyDesignShareToken(token);
   if(!payload) notFound();
+  // A revoked bearer can never render its public recipe, even with a valid HMAC.
+  try{if(!await isShareTokenAllowed(token))notFound();}catch{notFound();}
 
   const shirt=DESIGNER_SHIRTS.find((item)=>item.id===payload.fabrics.shirt.id);
   const pant=DESIGNER_PANTS.find((item)=>item.id===payload.fabrics.trouser.id);
