@@ -44,7 +44,10 @@ for(const path of routes){
     const rpcIndex=src.indexOf('const evidenceId=await rpc<unknown>');
     const ackIndex=src.indexOf('requireOperatorCreatedId(evidenceId)');
     assert.ok(rpcIndex>0&&ackIndex>rpcIndex);
-    assert.match(src,/validateOperatorLedgerRows/);
+    if(path.includes("production-calibration"))
+      assert.match(src,/verifyProductionCutLedger\\(rows,1000\\)/,
+        "cut evidence must pass stronger row and duplicate-identity validation");
+    else assert.match(src,/validateOperatorLedgerRows/);
   });
 }
 
