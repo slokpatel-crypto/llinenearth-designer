@@ -7,6 +7,8 @@ on:
       - "scripts/blender/prepare-linen-earth-body.py"
       - "scripts/blender/author-linen-earth-officewear.py"
       - "scripts/blender/preflight-linen-earth-officewear.py"
+      - "scripts/blender/diagnose-linen-earth-contact.py"
+      - "tests/blender/test_real_contact_diagnostics.py"
       - "scripts/blender/summarize-native-candidate-preflight.py"
       - "tests/python/test_native_candidate_preflight_summary.py"
       - ".github/workflows/titan-native-source-candidate.yml"
@@ -16,6 +18,8 @@ on:
       - "scripts/blender/prepare-linen-earth-body.py"
       - "scripts/blender/author-linen-earth-officewear.py"
       - "scripts/blender/preflight-linen-earth-officewear.py"
+      - "scripts/blender/diagnose-linen-earth-contact.py"
+      - "tests/blender/test_real_contact_diagnostics.py"
       - "scripts/blender/summarize-native-candidate-preflight.py"
       - ".github/workflows/titan-native-source-candidate.yml"
 
@@ -57,6 +61,12 @@ jobs:
           set -euo pipefail
           "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
             --python tests/blender/test_sparse_garment_plane_section.py
+      - name: Verify real world-space diagnostic fixtures (not fit approval)
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_real_contact_diagnostics.py
       - name: Fetch official pinned CC0 source body bundle
         shell: bash
         run: |
@@ -75,6 +85,37 @@ jobs:
             --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
             --output .cache/linen-earth/linen-earth-officewear-authored.blend
           test -s .cache/linen-earth/linen-earth-officewear-authored.blend
+      - name: Record real contact and mesh topology before rejection
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/titan-candidate-evidence"
+          "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+            --python-exit-code 1 --python scripts/blender/diagnose-linen-earth-contact.py -- \
+            --output "$RUNNER_TEMP/titan-candidate-evidence/contact-diagnostics.json"
+          test -s "$RUNNER_TEMP/titan-candidate-evidence/contact-diagnostics.json"
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence/contact-diagnostics.json" <<'PY'
+          import json
+          import sys
+          with open(sys.argv[1], encoding="utf-8") as source:
+              report = json.load(source)
+          names = (
+              "ShirtTorsoFabric", "ShirtSleeveLFabric", "ShirtSleeveRFabric",
+              "TrouserWaistFabric", "TrouserLegLFabric", "TrouserLegRFabric",
+          )
+          assert report["modelIdentityId"] == "linen-earth-studio-model-v1"
+          assert report["candidateOnly"] is True and report["productionApproved"] is False
+          assert report["physicalFitApproved"] is False
+          assert report["signedProjectionIsInteriorTest"] is False
+          assert tuple(report["panels"]) == names
+          for metrics in report["panels"].values():
+              bands = metrics["contactPairsByBodyHeightOctile"]
+              assert len(bands) == 8 and all(type(n) is int and n >= 0 for n in bands)
+              assert sum(bands) == metrics["bodyGarmentIntersectingTrianglePairs"]
+              assert type(metrics["evaluatedVertices"]) is int and metrics["evaluatedVertices"] > 0
+              assert type(metrics["evaluatedTriangles"]) is int and metrics["evaluatedTriangles"] > 0
+          print("TITAN_CONTACT_EVIDENCE_FAIL_CLOSED_VALIDATION_PASSED")
+          PY
       - name: Produce real Blender rejection evidence, not an approved model
         shell: bash
         run: |
@@ -97,6 +138,7 @@ jobs:
           name: titan-native-candidate-evidence
           path: |
             ${{ runner.temp }}/titan-candidate-evidence/rejection-report.json
+            ${{ runner.temp }}/titan-candidate-evidence/contact-diagnostics.json
             ${{ runner.temp }}/titan-candidate-evidence/preflight.log
           if-no-files-found: ignore
           retention-days: 7
