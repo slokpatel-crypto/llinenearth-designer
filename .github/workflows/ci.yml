@@ -247,6 +247,16 @@ jobs:
             "select case when count(*)=1 then 'PASS' else 'FAIL' end
              from private.fabric_stock_ledger
              where fabric_id like 'SYNTHETIC-TITAN-POSTGREST-%'" | grep -qx PASS
+      - name: Rehearse v3 rollback and PostgREST cache invalidation without changing v2
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "drop function public.fabric_stock_record_v3(text,text,numeric,text,text,text,text);"
+          psql -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
+          sleep 2
+          node scripts/verify-stock-postgrest-rpc.cjs rolledback
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select case when to_regprocedure('public.fabric_stock_record_v3(text,text,numeric,text,text,text,text)') is null
+                     and to_regprocedure('public.fabric_stock_record_v2(text,text,numeric,text,text,text)') is not null
+                    then 'PASS' else 'FAIL' end" | grep -qx PASS
       - name: Stop disposable PostgREST container
         if: always()
         run: docker rm -f titan-postgrest-m46 || true
