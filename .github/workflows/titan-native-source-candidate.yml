@@ -51,6 +51,12 @@ jobs:
           set -euo pipefail
           "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
             --python tests/blender/test_body_world_centering.py
+      - name: Verify actual sparse Blender garment plane section
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_sparse_garment_plane_section.py
       - name: Fetch official pinned CC0 source body bundle
         shell: bash
         run: |
