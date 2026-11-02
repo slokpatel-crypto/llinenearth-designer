@@ -156,6 +156,10 @@ jobs:
             printf "set titan.synthetic_sql_test='enabled';\n"
             cat supabase/tests/20261102_stock_record_idempotency.sql
           } | psql -v ON_ERROR_STOP=1
+      - name: Verify manual stock request-key races across independent PostgreSQL sessions
+        env:
+          TITAN_SYNTHETIC_PG_TEST: enabled
+        run: bash scripts/verify-stock-record-concurrent-pg.sh
       - name: Confirm native test synthetic data rolled back
         run: |
           psql -v ON_ERROR_STOP=1 -Atc \
