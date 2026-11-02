@@ -34,7 +34,7 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 export async function GET(request:Request){
   try{
     const customer=await getCustomerIdentity(request);
-    if(!customer) return NextResponse.json({error:"Customer sign-in is required."},{status:401});
+    if(!customer) return privateJson({error:"Customer sign-in is required."},401);
 
     const [quotes,orders,orderEvents,outcomes]=await Promise.all([
       rpc("production_quote_list_owned_v2",{p_owner_user_id:customer.id,p_limit:100}),
@@ -51,7 +51,7 @@ export async function GET(request:Request){
     });
   }catch(error){
     console.error("[customer-account/production] request failed (details redacted).");
-    return NextResponse.json({error:"Production status is temporarily unavailable."},{status:503});
+    return privateJson({error:"Production status is temporarily unavailable."},503);
   }
 }
 
@@ -69,7 +69,7 @@ export async function POST(request:Request){
 
     if(action==="accept_quote"){
       const quoteId=String(body.quoteId||"").trim();
-      if(!uuid.test(quoteId)) return NextResponse.json({error:"Valid quote ID is required."},{status:400});
+      if(!uuid.test(quoteId)) return privateJson({error:"Valid quote ID is required."},400);
 
       const accepted=await rpc<unknown>("production_quote_accept_owned",{
         p_quote_id:quoteId,
@@ -79,19 +79,16 @@ export async function POST(request:Request){
       // PostgREST JSON must be a literal boolean; do not coerce truthy "false".
       if(accepted!==true)throw new Error("Invalid quote acceptance acknowledgment.");
 
-      return NextResponse.json(
-        {accepted:true},
-        {headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"}},
-      );
+      return privateJson({accepted:true});
     }
 
     if(action==="record_outcome"){
       const orderId=String(body.orderId||"").trim();
-      if(!uuid.test(orderId)) return NextResponse.json({error:"Valid order ID is required."},{status:400});
+      if(!uuid.test(orderId)) return privateJson({error:"Valid order ID is required."},400);
       let outcome;
       try{outcome=normalizeCustomerProductionOutcome(body);}
       catch(error){
-        return NextResponse.json({error:error instanceof Error?error.message:"Invalid post-delivery feedback."},{status:400});
+        return privateJson({error:error instanceof Error?error.message:"Invalid post-delivery feedback."},400);
       }
       const outcomeAck=await rpc<unknown>("production_customer_outcome_record",{
         p_order_id:orderId,
@@ -105,7 +102,7 @@ export async function POST(request:Request){
       return privateJson({recorded:true,outcomeId});
     }
 
-    return NextResponse.json({error:"Unsupported customer production action."},{status:400});
+    return privateJson({error:"Unsupported customer production action."},400);
   }catch(error){
     if(error instanceof SecureJsonBodyTooLarge)return privateJson({error:"Request payload is too large."},413);
     if(error instanceof SecureJsonBodyInvalid)return privateJson({error:"Invalid JSON request."},400);
