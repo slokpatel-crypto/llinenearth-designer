@@ -68,6 +68,16 @@ export function auditHandoffMeasurements(groups: TargetGroup): HandoffMeasuremen
       } else if (value.basis === "body_plus_ease") {
         errors.push(`${name}: body-plus-ease target lacks its ease range.`);
       }
+      if ((value.basis === "recorded_anchor" || value.basis === "customer_desired")) {
+        if (ease !== undefined) {
+          errors.push(`${name}: a directly recorded or customer-desired anchor cannot claim a calculated ease range.`);
+        }
+        if (finite(value.bodyCm) && finished && finite(finished.min) && finite(finished.max)
+          && (Math.abs(value.bodyCm - finished.min) > 0.11
+            || Math.abs(value.bodyCm - finished.max) > 0.11)) {
+          errors.push(`${name}: direct anchor differs from its recorded centimetre value.`);
+        }
+      }
     }
 
     for (const label of ESSENTIAL_TARGETS[garment]) {
