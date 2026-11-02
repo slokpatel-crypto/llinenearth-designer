@@ -95,9 +95,17 @@ export async function POST(request:Request){
 
       let accountOwned=false;
       if(customer){
-        accountOwned=requireDesignVaultBooleanAck(await rpc<unknown>("designer_locked_revision_vault_set_owner",{
-          p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:customer.id,
-        }));
+        try{
+          accountOwned=requireDesignVaultBooleanAck(await rpc<unknown>("designer_locked_revision_vault_set_owner",{
+            p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:customer.id,
+          }));
+        }catch{
+          // The store RPC already succeeded. Returning 503 here loses the only
+          // recovery key and leaves an unrecoverable private vault row.
+          // Never claim ownership succeeded without a strict positive ack.
+          console.error("[designer/vault] ownership attachment failed (details redacted).");
+          accountOwned=false;
+        }
         if(accountOwned){
           try{
             await rpc("production_claim_revision_ownership",{
