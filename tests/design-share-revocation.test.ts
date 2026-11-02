@@ -38,3 +38,18 @@ test("Designer share UI retains private cancellation capability away from public
   assert.match(source,/`\/share\/\$\{result.token\}`/);
   assert.doesNotMatch(source,/`\/share\/\$\{result.token\}[^\n]*revokeKey/);
 });
+
+test("customer account shares can be revoked across devices without retaining issuer key",()=>{
+ const source=readFileSync("src/app/account/page.tsx","utf8");
+ const route=readFileSync("src/app/api/designer/share/route.ts","utf8");
+ const sql=readFileSync("supabase/migrations/20261103_design_share_revocation.sql","utf8");
+ assert.match(source,/action:"listOwned"/);
+ assert.match(source,/action:"revokeOwned",tokenHash/);
+ assert.match(source,/My public design shares/);
+ assert.match(route,/const customer=await getCustomerIdentity\(request\)/);
+ assert.match(route,/listOwnedShareRevocations\(customer.id\)/);
+ assert.match(route,/revokeOwnedShare\(tokenHash,customer.id\)/);
+ assert.match(sql,/where s.owner_user_id=p_owner_user_id/);
+ assert.match(sql,/token_hash=p_token_hash and owner_user_id=p_owner_user_id/);
+ assert.doesNotMatch(sql,/share_bearer|plaintext_token|revoke_key_plaintext/);
+});
