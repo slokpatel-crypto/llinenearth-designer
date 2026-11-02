@@ -97,5 +97,5 @@ test("unknown delivery audit write outcome cannot be called saved or retried bef
   assert.ok(save.includes('setSelectedOrderId("");setSnapshotState("error")'));
   assert.ok(save.includes('mutationGate.current.exit()'));
   assert.ok(source.includes('disabled={busy||!choiceValid||snapshotState!=="ready"||!configured}'));
-  assert.ok(source.includes('previous approval totals were cleared'));
+  assert.ok(source.includes('Previous approval totals were cleared'));
 });
