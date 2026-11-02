@@ -60,3 +60,14 @@ test("real-browser photo gate covers striped trousers in both photographed legs"
   assert.match(script,/assert\.equal\(result\.protectedPantChanges,0/);
   assert.match(script,/before-after-\$\{name\}\.png/);
 });
+
+test("browser stripe evidence must show dye bands, not only a flat trouser recolour",()=>{
+  const script=readFileSync("scripts/verify-photo-form.cjs","utf8");
+  for(const required of [
+    "control.width=control.height=320",
+    "pantStripeLeftBlue=blueStripePixels",
+    "pantStripeRightBlue=blueStripePixels",
+    "result.pantStripeLeftBlue>40",
+    "result.pantStripeRightBlue>40",
+  ]) assert.ok(script.includes(required),`missing dyed stripe verification: ${required}`);
+});
