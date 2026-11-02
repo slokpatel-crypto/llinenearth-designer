@@ -80,3 +80,18 @@ test("changes inside SQL evidence field bounds continue to get distinct keys",as
   assert.notEqual(await tracker.keyFor({...record,sourceReference:"ROLL-0002"}),id);
   assert.notEqual(await tracker.keyFor({...record,recordedBy:"other"}),id);
 });
+
+test("at journal capacity, old physical receipts stay protected and new writes fail closed",async()=>{
+  const store=memoryStorage(),tracker=createStockManualAttemptTracker(keys(),()=>store);
+  const first=await tracker.keyFor(record);
+  for(let i=1;i<64;i++)
+    await tracker.keyFor({...record,sourceReference:"ROLL-"+String(i).padStart(4,"0")});
+  assert.equal(await tracker.keyFor(record),first);
+  const before=store.values().join("");
+  await assert.rejects(
+    ()=>tracker.keyFor({...record,sourceReference:"ROLL-0064"}),
+    /No stock movement was sent/
+  );
+  assert.equal(store.values().join(""),before,"full journal must not discard original key");
+  assert.equal(await createStockManualAttemptTracker(keys(),()=>store).keyFor(record),first);
+});
