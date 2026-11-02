@@ -40,6 +40,10 @@ async function main(){
   // PostgREST is mounted at /rpc/*. Supabase's Next SDK uses /rest/v1/rpc/*.
   // A local-only transport adapter rewrites the URL path and forwards the
   // original service-role JWT without altering the real REST request/response.
+  // One synthetic gateway response will be lost after a successful SQL commit.
+  // This creates a genuine ambiguous Next.js 503 without changing the real DB.
+  let loseOneCommittedReceiptAck=false;
+  let swallowedCommittedReceiptAck=false;
   const proxy=http.createServer((req,res)=>{
     if(!req.url.startsWith("/rest/v1/rpc/")){
       res.writeHead(404);res.end();return;
@@ -47,7 +51,23 @@ async function main(){
     const incoming=http.request({
       hostname:"127.0.0.1",port:3017,path:req.url.slice("/rest/v1".length),
       method:req.method,headers:req.headers,
-    },remote=>{res.writeHead(remote.statusCode||502,remote.headers);remote.pipe(res);});
+    },remote=>{
+      if(loseOneCommittedReceiptAck&&
+         req.url==="/rest/v1/rpc/fabric_stock_record_v3"){
+        loseOneCommittedReceiptAck=false;
+        // Consume the real upstream 200 fully first: PostgREST/PostgreSQL
+        // have already inserted and committed. Replace only its HTTP ack.
+        const committed=remote.statusCode===200;
+        remote.resume();
+        remote.on("end",()=>{
+          swallowedCommittedReceiptAck=committed;
+          res.writeHead(502,{"content-type":"application/json"});
+          res.end(JSON.stringify({error:"synthetic gateway lost committed reply"}));
+        });
+        return;
+      }
+      res.writeHead(remote.statusCode||502,remote.headers);remote.pipe(res);
+    });
     incoming.on("error",()=>{if(!res.headersSent)res.writeHead(502);res.end();});
     req.pipe(incoming);
   });
@@ -109,6 +129,32 @@ async function main(){
     assert.equal(Number(row.available_metres),1.375);
     assert.equal(row.manual_event_count,1,"same-key retry created multiple ledger records");
     assert.equal(row.provenance_ready,true);
+
+    const ambiguous={...evidence,quantityMetres:0.625,
+      sourceReference:"SYNTH-M49-LOST-ACK",
+      requestKey:"SYNTH-M48-"+randomUUID()};
+    loseOneCommittedReceiptAck=true;
+    const lostAck=await call("POST",ambiguous);
+    assert.equal(lostAck.status,503,"committed stock receipt must not be falsely acknowledged");
+    assert.deepEqual(lostAck.data,{error:"Stock operation could not be verified."});
+    assert.equal(swallowedCommittedReceiptAck,true,"gateway loss must occur AFTER a real successful SQL write");
+    const afterLoss=await call("GET");
+    assert.equal(afterLoss.status,200);
+    const pendingRow=afterLoss.data.stock.find(x=>x.fabric_id===fabricId);
+    assert.equal(Number(pendingRow.physical_metres),2.000,
+      "the lost-ack stock receipt really committed despite the Next 503");
+    assert.equal(pendingRow.manual_event_count,2);
+    const replayAfterLoss=await call("POST",ambiguous);
+    assert.equal(replayAfterLoss.status,200,"same key must be safe after ambiguous 503");
+    assert.match(replayAfterLoss.data.eventId,/^[0-9a-f-]{36}$/i);
+    const final=await call("GET");
+    assert.equal(final.status,200);
+    const finalRow=final.data.stock.find(x=>x.fabric_id===fabricId);
+    assert.equal(Number(finalRow.physical_metres),2.000,
+      "replay after a lost committed acknowledgment must not mint another metre");
+    assert.equal(finalRow.manual_event_count,2,
+      "replay after a lost acknowledgment must not insert a third event");
+    console.log("TITAN M49 PASS: committed-but-lost HTTP ack returns 503; same-key retry preserves physical stock.");
     console.log("TITAN M48 Next->PostgREST PASS: authorized v3, replay, mismatch, CSRF, 401, v2 snapshot.");
   }finally{
     if(child.exitCode===null){child.kill("SIGTERM");await once(child,"exit");}
