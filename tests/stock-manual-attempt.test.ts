@@ -57,3 +57,26 @@ test("session storage blocked or corrupted fails closed before any stock RPC",as
     /No stock movement was sent/
   );
 });
+
+test("server-equivalent trimmed and capped stock evidence MUST keep the original key",async()=>{
+  const store=memoryStorage(),tracker=createStockManualAttemptTracker(keys(),()=>store);
+  const long={
+    ...record,
+    fabricId:" F".padEnd(190,"x"),
+    note:" ".repeat(3)+"n".repeat(610),
+    recordedBy:" C".padEnd(145,"h"),
+    sourceReference:" R".padEnd(267,"s"),
+  };
+  const first=await tracker.keyFor(long);
+  assert.equal(await tracker.keyFor({...long,fabricId:long.fabricId.trim().slice(0,160)}),first);
+  assert.equal(await tracker.keyFor({...long,note:long.note.replace(/\\s+/g," ").trim().slice(0,600)}),first);
+  assert.equal(await tracker.keyFor({...long,recordedBy:long.recordedBy.replace(/\\s+/g," ").trim().slice(0,120)}),first);
+  assert.equal(await tracker.keyFor({...long,sourceReference:long.sourceReference.replace(/\\s+/g," ").trim().slice(0,240)}),first);
+  assert.equal(await createStockManualAttemptTracker(keys(),()=>store).keyFor(long),first);
+});
+test("changes inside SQL evidence field bounds continue to get distinct keys",async()=>{
+  const store=memoryStorage(),tracker=createStockManualAttemptTracker(keys(),()=>store);
+  const id=await tracker.keyFor(record);
+  assert.notEqual(await tracker.keyFor({...record,sourceReference:"ROLL-0002"}),id);
+  assert.notEqual(await tracker.keyFor({...record,recordedBy:"other"}),id);
+});
