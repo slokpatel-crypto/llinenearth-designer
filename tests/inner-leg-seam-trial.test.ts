@@ -26,9 +26,17 @@ test("experimental inner-leg seam displacement must not affect original candidat
   assert.ok(workflow.includes('TITAN_REAL_INNER_LEG_TRIAL_EVIDENCE_COMPLETE_NO_AUTO_SELECTION'));
   assert.ok(author.includes('"--experimental-inner-leg-seam-reproject", action="store_true"'));
   assert.ok(author.includes("if options.experimental_inner_leg_seam_reproject and options.experimental_inner_leg_seam_gap_mm == 0"));
-  assert.ok(author.includes('group = obj.vertex_groups.new(name="LE_UNSAVED_MOVED_CROTCH_ONLY")'));
+  assert.ok(author.includes('probe = obj.copy()'),"trial uses a disposable native full-mesh projection");
+  assert.ok(author.includes('original_probe_mesh = obj.data.copy()'));
+  assert.ok(author.includes('bpy.context.scene.collection.objects.link(probe)'));
   assert.ok(author.includes('reprojection.wrap_mode = "OUTSIDE_SURFACE"'));
   assert.ok(author.includes('reprojection.offset = clearance_m'));
+  assert.ok(author.includes('for index in changed_indices:'));
+  assert.ok(author.includes('obj.data.vertices[index].co = probe.data.vertices[index].co.copy()'),
+    "only initially displaced seam vertices may receive actual body clearance");
+  assert.ok(author.includes('bpy.data.objects.remove(probe, do_unlink=True)'));
+  assert.ok(!author.includes('reprojection.vertex_group = group.name'),
+    "never use source scan meshes without a matching Blender deform layer");
   assert.ok(workflow.includes('TITAN_INNER_SEAM_REPROJECTED_CANDIDATE_ONLY_NO_AUTO_SELECTION'));
   assert.ok(workflow.includes('--experimental-inner-leg-seam-reproject'));
 
