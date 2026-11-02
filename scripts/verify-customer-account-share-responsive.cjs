@@ -100,6 +100,74 @@ async function run(){
       await page.screenshot({path:path.join(output,"account-revoked-"+width+".png"),fullPage:true});
       await context.close();
     }
+    // Account switching while an old owner's request is still in flight must
+    // never repopulate the new account's share list (real browser race proof).
+    {
+      const context=await browser.newContext({viewport:{width:390,height:950}});
+      const page=await context.newPage();
+      let identity={...customer};
+      let signalAliceRequest,releaseAliceRequest;
+      const aliceRequested=new Promise(resolve=>{signalAliceRequest=resolve;});
+      const aliceGate=new Promise(resolve=>{releaseAliceRequest=resolve;});
+      const bob={id:"223e4567-e89b-12d3-a456-426614174000",email:"bob@example.test"};
+      page.on("pageerror",error=>errors.push("account-switch: "+error.message));
+      page.on("console",message=>{if(message.type()==="error")
+        errors.push("account-switch: "+message.text());});
+      await context.route("**/api/**",async route=>{
+        const req=route.request(),name=new URL(req.url()).pathname;
+        let body={};
+        if(req.method()==="POST"){
+          try{body=req.postDataJSON()||{};}catch{}
+        }
+        if(name==="/api/customer-auth/session")
+          return route.fulfill({status:200,json:{customer:identity}});
+        if(name==="/api/customer-auth/logout"){
+          identity=null;return route.fulfill({status:200,json:{ok:true}});
+        }
+        if(name==="/api/customer-auth/otp")
+          return route.fulfill({status:200,json:{ok:true}});
+        if(name==="/api/customer-auth/verify"){
+          identity=bob;return route.fulfill({status:200,json:{ok:true,customer:bob}});
+        }
+        if(name==="/api/designer/share"&&body.action==="listOwned"){
+          if(identity?.id===customer.id){
+            signalAliceRequest();
+            await aliceGate;
+            return route.fulfill({status:200,json:{shares:[{
+              tokenHash,expiresAt:"2027-01-01T00:00:00Z",revokedAt:null,
+            }]}});
+          }
+          return route.fulfill({status:200,json:{shares:[]}});
+        }
+        if(name==="/api/designer/vault")
+          return route.fulfill({status:200,json:{designs:[]}});
+        if(name==="/api/measurements/vault")
+          return route.fulfill({status:200,json:{profiles:[]}});
+        if(name==="/api/customer-account/production")
+          return route.fulfill({status:200,json:{quotes:[],orders:[],orderEvents:[],outcomes:[]}});
+        return route.fulfill({status:200,json:{}});
+      });
+      await page.goto(origin+"/account",{waitUntil:"domcontentloaded"});
+      await aliceRequested;
+      await page.getByText("alice@example.test").waitFor();
+      await page.getByRole("button",{name:"Sign out"}).click();
+      await page.getByRole("heading",{name:"Email sign in"}).waitFor();
+      await page.getByPlaceholder("you@example.com").fill("bob@example.test");
+      await page.getByRole("button",{name:"Send secure code"}).click();
+      await page.getByPlaceholder("Email code").fill("123456");
+      await page.getByRole("button",{name:"Verify and sign in"}).click();
+      await page.getByText("bob@example.test").waitFor();
+      // Resolve stale Alice's pre-logout fetch *after* Bob has signed in.
+      releaseAliceRequest();
+      await page.waitForTimeout(200);
+      assert.equal(await page.getByText(/Design share a{12}/).count(),0,
+        "Alice's old share must not appear after switching to Bob");
+      assert.equal(await page.getByText("alice@example.test").count(),0,
+        "prior customer identity must not persist after Bob signs in");
+      proof.push({width:390,accountSwitchStaleResponseDenied:true});
+      await page.screenshot({path:path.join(output,"account-switch-race-390.png"),fullPage:true});
+      await context.close();
+    }
     assert.deepEqual(errors,[],"No unexpected browser JS or console errors permitted");
     fs.writeFileSync(path.join(output,"summary.json"),JSON.stringify({browser:"Chromium",scope:"customer account shares",mockedBackends:true,physicalAcceptance:false,proof,errors},null,2));
     console.log("Customer share/account responsive Chromium PASS: 390, 768, 1440; 503 denial and cross-device revoke UX.");
