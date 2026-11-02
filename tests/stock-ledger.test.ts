@@ -187,3 +187,18 @@ test("operator writes never silently round stock receipts, reservations or cutti
   assert.equal(normalizeStockReservation({...base,quantityMetres:q}).quantityMetres,q);
   assert.equal(normalizeStockConsumption({...base,actualMetres:q}).actualMetres,q);
 });
+
+
+test("stock closure IDs must be literal strings, not coercible arrays or objects",()=>{
+  const valid="B287E470-0E90-4FD4-B5FB-976EECEBD244";
+  const base={reservationId:valid,actualMetres:1.125,checkedBy:"Cutting checker",
+    releasedBy:"Stock checker",sourceReference:"Signed cut/return sheet LE-2026-11"};
+  for(const reservationId of [[valid],{0:valid,length:1},{value:valid},null,42,true]){
+    assert.throws(()=>normalizeStockConsumption({...base,reservationId}),
+      /Valid reservation ID/,String(reservationId));
+    assert.throws(()=>normalizeStockRelease({...base,reservationId}),
+      /Valid reservation ID/,String(reservationId));
+  }
+  assert.equal(normalizeStockConsumption(base).reservationId,valid);
+  assert.equal(normalizeStockRelease(base).reservationId,valid);
+});
