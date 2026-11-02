@@ -19,7 +19,8 @@ function normalize(value:string,maxLength:number):string{
 }
 function fingerprint(record:ManualStockAttempt):string{
   return JSON.stringify([
-    record.fabricId.trim().slice(0,160),record.eventType,record.quantityMetres,
+    record.fabricId.trim().slice(0,160),record.eventType,
+    Math.round(record.quantityMetres*1000)/1000,
     normalize(record.note,600),normalize(record.recordedBy,120),
     normalize(record.sourceReference,240),
   ]);
