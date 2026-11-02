@@ -43,6 +43,8 @@ def cli_args():
     parser.add_argument("--thickness-mm", type=float, default=1.6)
     parser.add_argument("--experimental-right-hem-taper-mm", type=float, default=5.0,
                         help="Native research only: gradual right hem taper; never approve on width alone")
+    parser.add_argument("--experimental-leg-extra-clearance-mm", type=float, default=0.0,
+                        help="Native trial only: +0/+3/+6mm nearest-body leg shell clearance; default zero")
     parser.add_argument("--experimental-waist-extra-clearance-mm", type=float, default=3.0,
                         help="Pinned tested waist layering (+3mm); alternatives are native candidate research only")
     parser.add_argument("--experimental-waist-refinement-level", type=int, choices=(0, 1), default=1,
@@ -202,7 +204,7 @@ def actual_contact_pairs(body_tree, garment):
     return count
 
 
-def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinement_level=1, waist_extra_m=0.0):
+def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinement_level=1, waist_extra_m=0.0, leg_extra_m=0.0):
     # Measured diagnostics only. These are not garment acceptance or fit proof.
     stages = []
     def record_stage(stage):
@@ -237,7 +239,11 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinem
     shrink.wrap_mode = "OUTSIDE_SURFACE"
     # Other five garments keep the locked 7mm. Only isolated waist candidates
     # test +0/+3/+6/+9mm radial layering; never silently alter live previews.
-    effective_clearance = clearance_m + (waist_extra_m if obj.name == "TrouserWaistFabric" else 0.0)
+    effective_clearance = clearance_m + (
+        waist_extra_m if obj.name == "TrouserWaistFabric"
+        else leg_extra_m if obj.name in ("TrouserLegLFabric", "TrouserLegRFabric")
+        else 0.0
+    )
     shrink.offset = effective_clearance
     apply_modifier(obj, shrink)
     record_stage("afterBodyClearance")
@@ -329,6 +335,12 @@ def main():
     )
     if clearance_m + waist_extra_m > 0.018:
         raise ValueError("Real garment waist clearance cannot exceed the original validated 18mm bound.")
+    leg_extra_m = bounded_measured_mm(
+        options.experimental_leg_extra_clearance_mm,
+        "Experimental extra leg body clearance", 0.0, 6.0
+    )
+    if clearance_m + leg_extra_m > 0.018:
+        raise ValueError("Real source leg clearance cannot exceed the original 18mm bound.")
     body = bpy.data.objects.get(options.body)
     if body is None or body.type != "MESH":
         raise RuntimeError(f"Locked realistic body mesh not found: {options.body}")
@@ -390,12 +402,16 @@ def main():
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
         fit_shell(obj, body, clearance_m, thickness_m, body_contact_tree,
-                  options.experimental_waist_refinement_level, waist_extra_m)
+                  options.experimental_waist_refinement_level, waist_extra_m, leg_extra_m)
         if name == "TrouserLegRFabric":
             measure_guided_right_hem_taper(obj, right_hem_guide_z, right_hem_taper_mm)
         planar_grain_uv(obj)
         obj["linen_earth_auto_authored"] = True
-        actual_clearance = clearance_m + (waist_extra_m if name == "TrouserWaistFabric" else 0.0)
+        actual_clearance = clearance_m + (
+            waist_extra_m if name == "TrouserWaistFabric"
+            else leg_extra_m if name in ("TrouserLegLFabric", "TrouserLegRFabric")
+            else 0.0
+        )
         obj["linen_earth_fit_clearance_mm"] = round(actual_clearance * 1000.0, 3)
         obj["linen_earth_cloth_thickness_mm"] = round(thickness_m * 1000.0, 3)
         authored.append(obj)
@@ -405,6 +421,7 @@ def main():
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
     bpy.context.scene["linen_earth_waist_extra_clearance_mm"] = round(waist_extra_m * 1000.0, 3)
+    bpy.context.scene["linen_earth_experimental_leg_extra_clearance_mm"] = round(leg_extra_m * 1000.0, 3)
     bpy.context.scene["linen_earth_trouser_waist_guide_z_m"] = round(trouser_waist_guide_z, 6)
     bpy.context.scene["linen_earth_trouser_waist_authored_top_z_m"] = round(trouser_waist_upper_z, 6)
     bpy.context.scene["linen_earth_tucked_shirt_hem_z_m"] = round(tucked_shirt_hem_z, 6)
