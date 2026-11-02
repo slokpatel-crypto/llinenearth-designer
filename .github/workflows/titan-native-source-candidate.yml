@@ -265,7 +265,7 @@ jobs:
           assert contact["bodyTrouserWaist"] == 0, (
               "One-level simple waist refinement did not clear true waist/body intersections: "
               + str(contact["bodyTrouserWaist"]))
-          assert evidence["rejectionReasonCount"] <= 11, (
+          assert evidence["rejectionReasonCount"] <= 10, (
               "New hard physical failures offset the two measured waist collision repairs")
           assert contact["shirtTrouserTuck"] == 0, "Tucked shirt and real waist must not intersect"
           # Unmodified five real panels must retain or improve their original
@@ -308,9 +308,9 @@ jobs:
               assert report["preflightReady"] is False
               assert report["modelIdentityId"] == "linen-earth-studio-model-v1"
               assert report["boundaryIntersections"]["bodyTrouserWaist"] == 0
-          assert control["rejectionReasonCount"] == 12
+          assert control["rejectionReasonCount"] == 11
           assert control["boundaryIntersections"]["shirtTrouserTuck"] == 1507
-          assert standard["rejectionReasonCount"] == 11
+          assert standard["rejectionReasonCount"] == 10
           assert standard["boundaryIntersections"]["shirtTrouserTuck"] == 0
           # The measured target is anchored to the locked photographic
           # identity guide, not an assistant-selected fashion silhouette.
@@ -336,7 +336,7 @@ jobs:
               assert report["preflightReady"] is False
               assert report["boundaryIntersections"]["shirtTrouserTuck"] == 0
               assert report["boundaryIntersections"]["bodyTrouserWaist"] == 0
-              assert report["rejectionReasonCount"] <= 11, "Additional waist layering introduced new physical failures"
+              assert report["rejectionReasonCount"] <= 10, "Additional waist layering introduced new physical failures"
               for name, original_count in control["boundaryIntersections"].items():
                   if name not in ("shirtTrouserTuck", "bodyTrouserWaist"):
                       assert report["boundaryIntersections"][name] <= original_count, (
@@ -350,26 +350,26 @@ jobs:
               }))
           print("TITAN_TUCKED_LAYERING_FULL_PHYSICAL_PREFLIGHT_EVIDENCE_VALIDATED")
           PY
-      - name: Trial real photo-guided right trouser hem fit without changing default
+      - name: Compare actual default 5mm right hem against unchanged 0mm source control
         shell: bash
         run: |
           set -euo pipefail
           "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
             --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
-            --experimental-right-hem-taper-mm 5.0 \
-            --output .cache/linen-earth/titan-right-hem-5mm-control.blend
-          log="$RUNNER_TEMP/titan-candidate-evidence/right-hem-5mm-preflight.log"
+            --experimental-right-hem-taper-mm 0.0 \
+            --output .cache/linen-earth/titan-right-hem-0mm-control.blend
+          log="$RUNNER_TEMP/titan-candidate-evidence/right-hem-0mm-preflight.log"
           set +e
-          "$BLENDER_BIN" --background .cache/linen-earth/titan-right-hem-5mm-control.blend \
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-right-hem-0mm-control.blend \
             --python-exit-code 1 --python scripts/blender/preflight-linen-earth-officewear.py \
             > "$log" 2>&1
           exitcode=$?
           set -e
           python3 scripts/blender/summarize-native-candidate-preflight.py \
             --log "$log" --exit-code "$exitcode" \
-            --output "$RUNNER_TEMP/titan-candidate-evidence/right-hem-5mm-preflight.json"
-          python3 - "$RUNNER_TEMP/titan-candidate-evidence/rejection-report.json" \
-                     "$RUNNER_TEMP/titan-candidate-evidence/right-hem-5mm-preflight.json" <<'PY'
+            --output "$RUNNER_TEMP/titan-candidate-evidence/right-hem-0mm-preflight.json"
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence/right-hem-0mm-preflight.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/rejection-report.json" <<'PY'
           import json
           import sys
           from pathlib import Path
@@ -414,7 +414,7 @@ jobs:
           name: titan-native-candidate-evidence
           path: |
             ${{ runner.temp }}/titan-candidate-evidence/rejection-report.json
-            ${{ runner.temp }}/titan-candidate-evidence/right-hem-5mm-preflight.json
+            ${{ runner.temp }}/titan-candidate-evidence/right-hem-0mm-preflight.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-tuck-control.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-tuck-refined.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-layering-extra-*mm.json
