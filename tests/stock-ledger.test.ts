@@ -84,6 +84,32 @@ test("stock release requires a named operational reason source",()=>{
 });
 
 
+test("stock release and consumption require canonical valid reservation UUIDs",()=>{
+  for(const reservationId of [
+    "a".repeat(36),
+    "111111111111-4111-8111-111111111111",
+    "11111111-1111-0111-8111-111111111111",
+    "11111111-1111-4111-7111-111111111111",
+    "11111111-1111-4111-8111-11111111111z",
+    "11111111-1111-4111-8111-111111111111X",
+    "not-a-uuid",
+  ]){
+    assert.throws(()=>normalizeStockRelease({
+      reservationId,releasedBy:"Operator",sourceReference:"Cancellation LE-11",
+    }),/Valid reservation ID/,reservationId);
+    assert.throws(()=>normalizeStockConsumption({
+      reservationId,actualMetres:1.125,checkedBy:"Tailor",sourceReference:"Cut LE-11",
+    }),/Valid reservation ID/,reservationId);
+  }
+  const reservationId="B287E470-0E90-4FD4-B5FB-976EECEBD244";
+  assert.equal(normalizeStockRelease({
+    reservationId,releasedBy:"Operator",sourceReference:"Cancellation LE-11",
+  }).reservationId,reservationId,"existing upper-case UUIDs remain compatible");
+  assert.equal(normalizeStockConsumption({
+    reservationId,actualMetres:1.125,checkedBy:"Tailor",sourceReference:"Cut LE-11",
+  }).reservationId,reservationId);
+});
+
 test("physical stock replay fails closed on overselling, overrelease and consumption without reservations",()=>{
   const receipt={type:"receipt",quantityMetres:5} as const;
   for(const events of [
