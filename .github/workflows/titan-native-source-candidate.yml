@@ -141,6 +141,12 @@ jobs:
                   assert type(variant["offset"]) in (float, int) and variant["offset"] == offset
                   assert type(variant["rim"]) is bool and variant["rim"] is rim
                   assert type(variant["recalculatedNormals"]) is bool and variant["recalculatedNormals"] is recalculate
+                  assert type(variant["sourceClothFaceCount"]) is int and variant["sourceClothFaceCount"] > 0
+                  if recalculate:
+                      assert type(variant["reversedClothFaceCount"]) is int
+                      assert 0 <= variant["reversedClothFaceCount"] <= variant["sourceClothFaceCount"]
+                  else:
+                      assert variant["reversedClothFaceCount"] is None
                   assert type(variant["bodyIntersectionPairs"]) is int and variant["bodyIntersectionPairs"] >= 0
               assert variants[1]["bodyIntersectionPairs"] == stages[-1]["bodyIntersectionPairs"]
               wraps = metrics["realShrinkwrapModeComparisons"]
