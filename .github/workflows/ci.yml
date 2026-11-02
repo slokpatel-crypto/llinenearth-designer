@@ -406,6 +406,46 @@ jobs:
           printf '%s\n' "${rows[3]}" | jq -e \
             '.status=="READY" and
              (.checks|all(.fixed_search_path==true))' >/dev/null
+      - name: Reject whitespace inside quoted trusted stock schema identifiers
+        run: |
+          # The GUC text is NOT safe to normalize by deleting all spaces:
+          # '"pub lic"' and 'public,"priv ate"' are different schema names.
+          test "$PGDATABASE" = titan_synthetic
+          test "$PGHOST" = 127.0.0.1
+          test "$TITAN_SYNTHETIC_PG_TEST" = enabled
+          observed=$(psql -X -qAt -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          alter function public.fabric_stock_snapshot_v2(text[])
+            set search_path='"pub lic"';
+          select case when public.fabric_stock_write_ready_v1() is false
+            then 'public-blocked' else 'FAIL' end;
+          \i scripts/stock-v3-readonly-preflight.sql
+          rollback;
+          begin;
+          alter function public.fabric_stock_snapshot_v2(text[])
+            set search_path='public,"priv ate"';
+          select case when public.fabric_stock_write_ready_v1() is false
+            then 'private-blocked' else 'FAIL' end;
+          \i scripts/stock-v3-readonly-preflight.sql
+          rollback;
+          select case when public.fabric_stock_write_ready_v1() is true
+            then 'restored' else 'FAIL' end;
+          \i scripts/stock-v3-readonly-preflight.sql
+          SQL
+          )
+          mapfile -t rows <<< "$observed"
+          test "${#rows[@]}" -eq 6
+          test "${rows[0]}" = public-blocked
+          test "${rows[2]}" = private-blocked
+          test "${rows[4]}" = restored
+          for index in 1 3; do
+            printf '%s\n' "${rows[$index]}" | jq -e \
+              '.status=="BLOCKED" and
+               (.checks|any(.function=="snapshot_v2" and .fixed_search_path==false))' >/dev/null
+          done
+          printf '%s\n' "${rows[5]}" | jq -e \
+            '.status=="READY" and
+             (.checks|all(.fixed_search_path==true))' >/dev/null
       - name: Build isolated real Next stock API route
         run: |
           npm ci --include=optional
