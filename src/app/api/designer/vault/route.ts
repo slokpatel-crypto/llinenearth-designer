@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { secureJsonRequestError } from "@/lib/secure-json-request";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
@@ -58,6 +59,8 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 }
 
 export async function POST(request:Request){
+  const requestError=secureJsonRequestError(request,MAX_VAULT_REQUEST_BYTES);
+  if(requestError)return jsonNoStore({error:requestError.error},{status:requestError.status});
   if(blocked(request)) return jsonNoStore({error:"Too many design-vault requests."},{status:429});
   try{
     const rawBody=await readBoundedJsonResponse(request,MAX_VAULT_REQUEST_BYTES);
