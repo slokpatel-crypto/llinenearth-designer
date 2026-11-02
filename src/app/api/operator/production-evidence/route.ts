@@ -4,6 +4,7 @@ import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { verifyProductionDeliveryOrders, verifyProductionDeliveryAudits } from "@/lib/designer/production-delivery-ledger-validation";
+import { PRODUCTION_DELIVERY_LEDGER_RPC_LIMIT, deliveryLedgerSnapshotIsExhaustive } from "@/lib/designer/production-delivery-snapshot-completeness";
 import { requireOperatorCreatedId } from "@/lib/designer/operator-created-id";
 import { normalizeProductionDeliveryEvidence } from "@/lib/designer/production-delivery-evidence";
 
@@ -44,9 +45,13 @@ export async function GET(){
   if(!getSupabaseAdminConfig()) return privateEvidenceJson({configured:false,orders:[],evidence:[]});
   try{
     const [orders,evidence]=await Promise.all([
-      rpc<unknown[]>("production_order_list",{p_limit:500}),
-      rpc<unknown[]>("production_delivery_evidence_list",{p_limit:500}),
+      rpc<unknown[]>("production_order_list",{p_limit:PRODUCTION_DELIVERY_LEDGER_RPC_LIMIT}),
+      rpc<unknown[]>("production_delivery_evidence_list",{p_limit:PRODUCTION_DELIVERY_LEDGER_RPC_LIMIT}),
     ]);
+    // Opposite sort directions in the two v1 RPCs make a capped snapshot
+    // insufficient to certify the *first ten* actual delivered orders.
+    if(!deliveryLedgerSnapshotIsExhaustive(orders,evidence))
+      return privateEvidenceJson({error:"Delivery ledger is incomplete; full historical pagination is required before acceptance."},{status:409});
     return privateEvidenceJson({
       configured:true,
       orders:verifyProductionDeliveryOrders(orders),
