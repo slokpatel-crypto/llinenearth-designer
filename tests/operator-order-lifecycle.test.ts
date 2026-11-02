@@ -111,7 +111,9 @@ test("recovery holds are audited and never restore old QC approval",()=>{
   assert.equal(resumed.heldFrom,null);
   assert.throws(()=>step(resumed,"dispatch"),/Illegal/);
   const newQc=step(step(resumed,"start_finishing"),"submit_qc");
-  assert.equal(step(newQc,"approve_qc",{qc:qc()}).status,"qc_approved");
+  assert.equal(step(newQc,"approve_qc",{
+    qc:{...qc(),inspectionReference:"QC-REAL-RECEIPT-002"},
+  }).status,"qc_approved");
 });
 
 test("recovery from accepted/cutting preserves stage without advancing",()=>{
