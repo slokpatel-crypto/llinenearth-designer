@@ -7,6 +7,7 @@ Run from repository root with Blender 4.2+:
 from __future__ import annotations
 
 import importlib.util
+import os
 import tempfile
 from pathlib import Path
 
@@ -27,10 +28,13 @@ with tempfile.TemporaryDirectory(prefix="titan-source-preservation-") as tmp:
 
     alias = directory / "linked-source.blend"
     alias.symlink_to(original)
+    hardlink = directory / "hardlinked-source.blend"
+    os.link(original, hardlink)
     for requested in (
         str(original),
         str(directory / "subdirectory" / ".." / "source-body.blend"),
         str(alias),
+        str(hardlink),
     ):
         try:
             author.safe_candidate_output(requested, str(original))
