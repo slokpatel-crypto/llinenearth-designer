@@ -65,6 +65,7 @@ async function main(){
       "x-forwarded-for":"198.51.100."+client};
   }
   let mode="ok";
+  let productionMode="ok";
   let revocationMode="ok";
   const revokedHashes=new Set();
   const shareRecords=new Map();
@@ -225,6 +226,38 @@ async function main(){
       if(revocationMode==="revokeFalse"){res.end("false");return;}
       revokedHashes.add(payload.p_token_hash);
       res.end("true");return;
+    }
+    if([
+      "/rest/v1/rpc/production_quote_list_owned_v2",
+      "/rest/v1/rpc/production_order_list_owned",
+      "/rest/v1/rpc/production_order_event_list_owned",
+      "/rest/v1/rpc/production_customer_outcome_list_owned",
+    ].includes(path)){
+      assert.match(payload.p_owner_user_id,/^[a-f0-9-]{36}$/);
+      if(productionMode==="wrongMime"&&path.endsWith("quote_list_owned_v2")){
+        res.writeHead(200,{"content-type":"text/plain"});res.end("[]");return;
+      }
+      res.writeHead(200,{"content-type":"application/json"});
+      if(path.endsWith("quote_list_owned_v2")){
+        if(productionMode==="badRows"){res.end('["not-a-row"]');return;}
+        if(productionMode==="tooMany"){res.end(JSON.stringify(Array(101).fill({})));return;}
+        if(productionMode==="oversize"){res.end('["'+ "z".repeat(4_194_304)+'"]');return;}
+      }
+      res.end("[]");return;
+    }
+    if(path==="/rest/v1/rpc/production_customer_outcome_record"){
+      assert.equal(payload.p_order_id,vaultId);
+      assert.equal(payload.p_overall_rating,"good");
+      assert.equal(payload.p_fit_result,"not_checked");
+      if(payload.p_owner_user_id!=="123e4567-e89b-12d3-a456-426614174000"){
+        res.writeHead(403,{"content-type":"application/json"});
+        res.end(JSON.stringify({error:privateMarker}));return;
+      }
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end(productionMode==="outcomeNull"?"null":
+        productionMode==="outcomeBool"?"true":
+        productionMode==="outcomeObject"?JSON.stringify({outcomeId:vaultId}):
+        JSON.stringify(vaultId));return;
     }
     if(path==="/rest/v1/rpc/production_quote_accept_owned"){
       assert.equal(payload.p_quote_id,vaultId);
@@ -429,6 +462,59 @@ async function main(){
       assert.equal(seen.length,1);
       assert.ok(!(await response.text()).includes('"accepted":true'));
     }
+    mode="ok";
+    // Private customer history is owner-scoped and bounded even when an
+    // upstream service-role response is malformed, oversized or wrong MIME.
+    for(const [name,cookie,ownerId] of [
+      ["alice",signedCookie,"123e4567-e89b-12d3-a456-426614174000"],
+      ["bob",bobCookie,"223e4567-e89b-12d3-a456-426614174000"],
+    ]){
+      productionMode="ok";seen.length=0;
+      const result=await fetch(origin+"/api/customer-account/production",{
+        headers:{cookie:"le_customer_session="+cookie},signal:AbortSignal.timeout(15000)});
+      assert.equal(result.status,200,name+" owned account history");
+      assert.deepEqual(await result.json(),{quotes:[],orders:[],orderEvents:[],outcomes:[]});
+      assert.equal(seen.length,4);
+      assert.ok(seen.every(x=>x.payload.p_owner_user_id===ownerId),
+        "backend owner must come only from signed cookie");
+    }
+    seen.length=0;
+    const anonymousHistory=await fetch(origin+"/api/customer-account/production");
+    assert.equal(anonymousHistory.status,401);
+    assert.equal(seen.length,0);
+    for(const failure of ["wrongMime","badRows","tooMany","oversize"]){
+      productionMode=failure;seen.length=0;
+      const result=await fetch(origin+"/api/customer-account/production",{
+        headers:{cookie:"le_customer_session="+signedCookie},
+        signal:AbortSignal.timeout(15000)});
+      assert.equal(result.status,503,failure+" production history must fail closed");
+      assert.match(result.headers.get("cache-control")||"",/private.*no-store/);
+      assert.ok(!(await result.text()).includes(privateMarker));
+    }
+    const outcomeBody={action:"record_outcome",orderId:vaultId,overallRating:"good",
+      fitResult:"not_checked",wornConfirmed:false,note:"synthetic evidence"};
+    for(const [failure,expect] of [["ok",200],["outcomeNull",409],
+      ["outcomeBool",409],["outcomeObject",409]]){
+      productionMode=failure;seen.length=0;
+      const result=await fetch(origin+"/api/customer-account/production",{
+        method:"POST",headers:{...fixtureHeaders(),cookie:"le_customer_session="+signedCookie},
+        body:JSON.stringify(outcomeBody),signal:AbortSignal.timeout(15000)});
+      assert.equal(result.status,expect,failure+" outcome receipt validation");
+      assert.equal(seen.length,1);
+      assert.equal(seen[0].path,"/rest/v1/rpc/production_customer_outcome_record");
+      const body=await result.json();
+      assert.equal(body.recorded,expect===200?true:undefined,
+        "a malformed outcome UUID can never claim a successful write");
+      if(expect===200)assert.equal(body.outcomeId,vaultId);
+    }
+    productionMode="ok";seen.length=0;
+    const crossAccountOutcome=await fetch(origin+"/api/customer-account/production",{
+      method:"POST",headers:{...fixtureHeaders(),cookie:"le_customer_session="+bobCookie},
+      body:JSON.stringify({...outcomeBody,ownerUserId:"123e4567-e89b-12d3-a456-426614174000"}),
+      signal:AbortSignal.timeout(15000)});
+    assert.equal(crossAccountOutcome.status,409);
+    assert.equal(seen[0]?.payload.p_owner_user_id,"223e4567-e89b-12d3-a456-426614174000");
+    assert.ok(!(await crossAccountOutcome.text()).includes(privateMarker));
     mode="ok";
     seen.length=0;
     const unauthedQuote=await fetch(origin+"/api/customer-account/production",{
