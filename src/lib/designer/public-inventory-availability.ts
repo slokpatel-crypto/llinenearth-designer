@@ -1,4 +1,4 @@
-import type { FabricColorway } from "../../fabric-stock";
+import type { FabricColorway } from "@/lib/fabric-stock";
 
 /** Public availability is never inferred from a catalogue or gallery image.
  * Both the upstream physical ledger and an explicit operator availability
