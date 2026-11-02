@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 import bpy
+import bmesh
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
@@ -41,6 +42,8 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
+    parser.add_argument("--experimental-local-crotch-cuts", type=int, choices=(0, 1, 2), default=0,
+                        help="Research only: subdivide measured inner-crotch source faces before body clearance")
     parser.add_argument("--experimental-right-hem-taper-mm", type=float, default=5.0,
                         help="Native research only: gradual right hem taper; never approve on width alone")
     parser.add_argument("--experimental-waist-extra-clearance-mm", type=float, default=3.0,
@@ -202,7 +205,49 @@ def actual_contact_pairs(body_tree, garment):
     return count
 
 
-def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinement_level=1, waist_extra_m=0.0):
+def trial_local_crotch_edge_refinement(obj, center_x, min_z, height, cuts):
+    """Candidate-only BMesh topology refinement in an observed source contact band.
+
+    Never shifts the legs, never deletes existing cloth faces, and cannot be
+    used to justify production fit without body/cloth and photo preflight.
+    """
+    if obj.name not in ("TrouserLegLFabric", "TrouserLegRFabric") or cuts == 0:
+        return
+    if type(cuts) is not int or cuts not in (1, 2):
+        raise RuntimeError("Native crotch tessellation supports only 1 or 2 optional cuts.")
+    if any(not math.isfinite(v) for v in (center_x, min_z, height)) or height <= 0:
+        raise RuntimeError("Local garment refinement requires the original real body frame.")
+    before_vertices = len(obj.data.vertices)
+    before_faces = len(obj.data.polygons)
+    bm = bmesh.new()
+    try:
+        bm.from_mesh(obj.data)
+        bm.verts.ensure_lookup_table()
+        bm.edges.ensure_lookup_table()
+        lower = min_z + 0.40 * height
+        upper = min_z + 0.535 * height
+        selected = []
+        for edge in bm.edges:
+            mid = (edge.verts[0].co + edge.verts[1].co) * 0.5
+            if (abs(mid.x - center_x) <= 0.030 and abs(mid.y) <= 0.150
+                    and lower <= mid.z <= upper):
+                selected.append(edge)
+        if not selected:
+            raise RuntimeError("True locked-body crotch mesh has no local edges in the observed contact band.")
+        bmesh.ops.subdivide_edges(bm, edges=selected, cuts=cuts, use_grid_fill=True)
+        bm.to_mesh(obj.data)
+    finally:
+        bm.free()
+    obj.data.update(calc_edges=True)
+    if len(obj.data.vertices) <= before_vertices or len(obj.data.polygons) <= before_faces:
+        raise RuntimeError("Crotch trial changed no actual topology; cannot claim a native refinement.")
+    obj["linen_earth_experimental_crotch_refinement_cuts"] = cuts
+    obj["linen_earth_experimental_crotch_refined_source_edges"] = len(selected)
+    obj["linen_earth_experimental_crotch_source_face_count"] = before_faces
+
+
+def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinement_level=1, waist_extra_m=0.0,
+              crotch_cuts=0, body_center_x=0.0, body_min_z=0.0, body_height=0.0):
     # Measured diagnostics only. These are not garment acceptance or fit proof.
     stages = []
     def record_stage(stage):
@@ -216,6 +261,7 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinem
     smooth.iterations = 3
     apply_modifier(obj, smooth)
     record_stage("afterSmoothing")
+    trial_local_crotch_edge_refinement(obj, body_center_x, body_min_z, body_height, crotch_cuts)
 
     # Real pinned CC0 body measurements showed 122 waistband/body polygon BVH
     # contacts before and ZERO after level-1 SIMPLE subdivision before 7mm
@@ -320,6 +366,9 @@ def main():
     # Validate every physical authoring parameter before touching the scene.
     clearance_m = bounded_measured_mm(options.clearance_mm, "Body clearance", 3.0, 18.0)
     thickness_m = bounded_measured_mm(options.thickness_mm, "Cloth shell thickness", 0.6, 4.0)
+    crotch_cuts = options.experimental_local_crotch_cuts
+    if type(crotch_cuts) is not int or crotch_cuts not in (0, 1, 2):
+        raise ValueError("Native-only local crotch tessellation must be 0, 1 or 2 cuts.")
     right_hem_taper_mm = float(options.experimental_right_hem_taper_mm)
     if not math.isfinite(right_hem_taper_mm) or not 0 <= right_hem_taper_mm <= 8:
         raise ValueError("Research-only right hem reduction must be finite and 0-8mm.")
@@ -390,7 +439,8 @@ def main():
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
         fit_shell(obj, body, clearance_m, thickness_m, body_contact_tree,
-                  options.experimental_waist_refinement_level, waist_extra_m)
+                  options.experimental_waist_refinement_level, waist_extra_m,
+                  crotch_cuts, center_x, min_z, height)
         if name == "TrouserLegRFabric":
             measure_guided_right_hem_taper(obj, right_hem_guide_z, right_hem_taper_mm)
         planar_grain_uv(obj)
@@ -411,6 +461,7 @@ def main():
     bpy.context.scene["linen_earth_locked_shirt_waist_guide_z_m"] = round(shirt_waist_guide_z, 6)
     bpy.context.scene["linen_earth_trouser_waist_refinement_level"] = options.experimental_waist_refinement_level
     bpy.context.scene["linen_earth_experimental_right_hem_taper_mm"] = round(right_hem_taper_mm, 3)
+    bpy.context.scene["linen_earth_experimental_local_crotch_cuts"] = crotch_cuts
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
