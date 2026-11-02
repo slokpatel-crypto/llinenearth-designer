@@ -129,15 +129,18 @@ jobs:
               trials = metrics["realSolidifyVariantComparisons"]
               assert trials["baselineAfterBodyClearance"] == stages[2]["bodyIntersectionPairs"]
               configurations = (
-                  ("outwardNoRim", 1.0, False), ("outwardWithRim", 1.0, True),
-                  ("inwardNoRim", -1.0, False), ("inwardWithRim", -1.0, True),
+                  ("outwardNoRim", 1.0, False, False), ("outwardWithRim", 1.0, True, False),
+                  ("inwardNoRim", -1.0, False, False), ("inwardWithRim", -1.0, True, False),
+                  ("recalculatedOutwardWithRim", 1.0, True, True),
+                  ("recalculatedInwardWithRim", -1.0, True, True),
               )
               variants = trials["variants"]
-              assert isinstance(variants, list) and len(variants) == 4
-              for variant, (label, offset, rim) in zip(variants, configurations):
+              assert isinstance(variants, list) and len(variants) == 6
+              for variant, (label, offset, rim, recalculate) in zip(variants, configurations):
                   assert variant["variant"] == label
                   assert type(variant["offset"]) in (float, int) and variant["offset"] == offset
                   assert type(variant["rim"]) is bool and variant["rim"] is rim
+                  assert type(variant["recalculatedNormals"]) is bool and variant["recalculatedNormals"] is recalculate
                   assert type(variant["bodyIntersectionPairs"]) is int and variant["bodyIntersectionPairs"] >= 0
               assert variants[1]["bodyIntersectionPairs"] == stages[-1]["bodyIntersectionPairs"]
               wraps = metrics["realShrinkwrapModeComparisons"]
