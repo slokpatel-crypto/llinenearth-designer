@@ -346,8 +346,8 @@ async function main(){
         "server may never advertise stock writes without exact rollout approval");
       for(const payload of [evidence,reservation,consume,release]){
         const result=await callDisabled("POST",payload);
-        assert.equal(result.status,503,
-          payload.action+" must be blocked before an upstream RPC if rollout is disabled");
+        assert.equal(result.status,423,
+          payload.action+" must be definitively blocked before an upstream RPC if rollout is disabled");
         assert.deepEqual(result.data,{error:"Stock writes are disabled pending rollout approval."});
       }
       assert.equal((await callDisabled("POST",evidence,{authorized:false})).status,401,
