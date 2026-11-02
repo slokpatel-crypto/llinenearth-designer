@@ -6,6 +6,7 @@ on:
       - "scripts/blender/bootstrap-human-base-meshes.py"
       - "scripts/blender/prepare-linen-earth-body.py"
       - "scripts/blender/author-linen-earth-officewear.py"
+      - "tests/leg-clearance-native-trial.test.ts"
       - "tests/right-hem-fit-trial.test.ts"
       - "scripts/blender/measure-waist-tuck-contact.py"
       - "scripts/blender/preflight-linen-earth-officewear.py"
@@ -20,6 +21,7 @@ on:
     paths:
       - "scripts/blender/prepare-linen-earth-body.py"
       - "scripts/blender/author-linen-earth-officewear.py"
+      - "tests/leg-clearance-native-trial.test.ts"
       - "tests/right-hem-fit-trial.test.ts"
       - "scripts/blender/measure-waist-tuck-contact.py"
       - "scripts/blender/preflight-linen-earth-officewear.py"
@@ -407,6 +409,76 @@ jobs:
               "productionApproved": trial["productionApproved"],
           }))
           PY
+      - name: Measure actual 7mm vs 10mm and 13mm source body-clearance for both leg shells
+        shell: bash
+        run: |
+          set -euo pipefail
+          for extra in 3 6; do
+            "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+              --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
+              --experimental-leg-extra-clearance-mm "$extra" \
+              --output ".cache/linen-earth/titan-legs-extra-${extra}mm.blend"
+            log="$RUNNER_TEMP/titan-candidate-evidence/leg-clearance-extra-${extra}mm.log"
+            set +e
+            "$BLENDER_BIN" --background ".cache/linen-earth/titan-legs-extra-${extra}mm.blend" \
+              --python-exit-code 1 --python scripts/blender/preflight-linen-earth-officewear.py \
+              > "$log" 2>&1
+            status=$?
+            set -e
+            python3 scripts/blender/summarize-native-candidate-preflight.py \
+              --log "$log" --exit-code "$status" \
+              --output "$RUNNER_TEMP/titan-candidate-evidence/leg-clearance-extra-${extra}mm.json"
+          done
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence" <<'PY'
+          import json
+          import math
+          import sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          baseline = json.loads((root / "rejection-report.json").read_text(encoding="utf-8"))
+          assert baseline["candidateOnly"] is True and baseline["productionApproved"] is False
+          assert baseline["modelIdentityId"] == "linen-earth-studio-model-v1"
+          assert baseline["rejectionReasonCount"] == 10
+          original = baseline["boundaryIntersections"]
+          assert original["garmentLegToLeg"] == 89
+          assert original["bodyTrouserLegL"] == 336
+          assert original["bodyTrouserLegR"] == 358
+          for extra in (3, 6):
+              trial = json.loads((root / f"leg-clearance-extra-{extra}mm.json").read_text(encoding="utf-8"))
+              assert trial["candidateOnly"] is True and trial["productionApproved"] is False
+              assert trial["preflightReady"] is False
+              assert trial["modelIdentityId"] == "linen-earth-studio-model-v1"
+              assert set(trial["boundaryIntersections"]) == set(original)
+              measured = trial["boundaryIntersections"]
+              assert all(type(count) is int and count >= 0 for count in measured.values())
+              for key, value in baseline["identityFitMeasurementsMm"].items():
+                  actual = trial["identityFitMeasurementsMm"][key]
+                  assert isinstance(actual, (int, float)) and math.isfinite(actual)
+                  if key not in ("leftHemWidthMm", "rightHemWidthMm",
+                                 "hemWidthAsymmetryMm", "legCenterSpacingMm"):
+                      assert actual == value, ("Other locked photographic guide moved", key, value, actual)
+              # Report experiments honestly. NEVER choose a variant by only
+              # reducing one contact count; regressions disqualify promotion.
+              regressions = {
+                  key: count for key, count in measured.items()
+                  if count > original[key]
+              }
+              print(f"TITAN_REAL_BODY_LEG_CLEARANCE_EXTRA_{extra}MM", json.dumps({
+                  "waistBody": measured["bodyTrouserWaist"],
+                  "shirtWaist": measured["shirtTrouserTuck"],
+                  "bodyLeft": measured["bodyTrouserLegL"],
+                  "bodyRight": measured["bodyTrouserLegR"],
+                  "legLeg": measured["garmentLegToLeg"],
+                  "originalBodyLeft": original["bodyTrouserLegL"],
+                  "originalBodyRight": original["bodyTrouserLegR"],
+                  "originalLegLeg": original["garmentLegToLeg"],
+                  "photographicMeasurementsMm": trial["identityFitMeasurementsMm"],
+                  "remainingPhysicalBlockers": trial["rejectionReasonCount"],
+                  "contactRegressions": regressions,
+                  "safeToAutoPromote": False,
+              }))
+          print("TITAN_REAL_LEG_CLEARANCE_NATIVE_TRIALS_MEASURED_NO_AUTO_PROMOTION")
+          PY
       - name: Upload rejection report, never an unapproved model
         if: always()
         uses: actions/upload-artifact@v4
@@ -414,6 +486,7 @@ jobs:
           name: titan-native-candidate-evidence
           path: |
             ${{ runner.temp }}/titan-candidate-evidence/rejection-report.json
+            ${{ runner.temp }}/titan-candidate-evidence/leg-clearance-extra-*mm.json
             ${{ runner.temp }}/titan-candidate-evidence/right-hem-0mm-preflight.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-tuck-control.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-tuck-refined.json
