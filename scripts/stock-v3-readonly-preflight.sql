@@ -65,9 +65,21 @@ SELECT jsonb_build_object(
       AND NOT anon_execute AND NOT authenticated_execute
       AND payload_binding_guard_present
   ) AND to_regclass('private.fabric_stock_ledger') IS NOT NULL
+      AND NOT (
+      has_schema_privilege('anon','public','CREATE') OR
+      has_schema_privilege('authenticated','public','CREATE') OR
+      has_schema_privilege('anon','private','CREATE') OR
+      has_schema_privilege('authenticated','private','CREATE')
+    )
        THEN 'READY' ELSE 'BLOCKED' END,
   'pg_version',current_setting('server_version'),
   'ledger_schema_present',to_regclass('private.fabric_stock_ledger') IS NOT NULL,
+  'schema_create_isolated',NOT (
+      has_schema_privilege('anon','public','CREATE') OR
+      has_schema_privilege('authenticated','public','CREATE') OR
+      has_schema_privilege('anon','private','CREATE') OR
+      has_schema_privilege('authenticated','private','CREATE')
+    ),
   'checks',jsonb_agg(jsonb_build_object(
     'function',name,'installed',installed,'payload_binding_guard_present',payload_binding_guard_present,
     'security_definer',security_definer,
