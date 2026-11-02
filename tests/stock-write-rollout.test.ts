@@ -20,6 +20,7 @@ test("stock POST checks rollout approval after authentication/origin and before 
   assert.ok(auth>=0&&origin>auth&&gate>origin&&parse>gate&&rpc>parse,
     "only authorized same-origin callers can be evaluated; disabled rollout must block all writes before any privileged RPC");
   assert.match(post,/Stock writes are disabled pending rollout approval\./);
+  assert.match(post,/status:423/);
   const get=src.split("export async function GET(")[1]?.split("export async function POST(")[0]??"";
   assert.ok(get.includes("writesEnabled:stockWritesEnabled()"));
   assert.ok(get.includes("writesEnabled:false"));
@@ -41,7 +42,8 @@ test("operator stock actions require server-confirmed rollout AND verified ledge
   assert.ok(submit.indexOf('if(!writesEnabled){mutationGate.current.exit();return;}')<
     submit.indexOf('fetch("/api/operator/stock"'),
     "UI must refuse a click even if disabled buttons are bypassed");
-  assert.match(submit,/if\\(httpStatus===423\\)\\{[\\s\\S]*setWritesEnabled\\(false\\)/);
+  assert.ok(submit.includes("if(httpStatus===423){")&&submit.includes("setWritesEnabled(false)"),
+    "explicit server revocation must disable all stale stock controls immediately");
   assert.ok(submit.indexOf("setWritesEnabled(false)")<submit.indexOf("mutationGate.current.exit();setBusy(false);"));
   const matches=src.match(/disabled=\{uncertainWrite\|\|busy\|\|snapshotState!=="ready"\|\|!configured\|\|!writesEnabled\|\|/g)??[];
   assert.equal(matches.length,4,
