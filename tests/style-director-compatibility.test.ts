@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   styleDirectorCandidateCollar,
+  styleDirectorCandidateSleeve,
   styleDirectorConstructionIssues,
   styleDirectorIntelligenceTrustWeight,
   styleDirectorPresentationIssues,
@@ -207,5 +208,60 @@ test("named Cuban and camp candidate paths remain review-only across formal and 
   const agent=readFileSync("src/lib/style-director-agent.ts","utf8");
   assert.equal(agent.split("styleDirectorCandidateCollar(shirt,").length-1,2,
     "photo selection and versioned spec must use the same named-collar resolver");
+  assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'));
+});
+
+
+test("named short/half sleeves use existing construction IDs without inventing physical measurements", () => {
+  const names=["Short-Sleeve Shirt","Short Sleeve Camp-Collar Shirt","Half-Sleeve Band-Collar Shirt"];
+  for(const name of names){
+    assert.deepEqual(styleDirectorCandidateSleeve(name),{
+      sleeve:"half_sleeve",cuff:"open_short_hem_cuff",
+    });
+  }
+  assert.equal(styleDirectorCandidateSleeve("Spread-Collar Dress Shirt"),null);
+  assert.equal(styleDirectorCandidateSleeve("Sleeveless Layer"),null);
+  assert.ok(optionsFor("shirt.sleeve").some(option=>option.id==="half_sleeve"));
+  assert.ok(optionsFor("shirt.cuff").some(option=>option.id==="open_short_hem_cuff"));
+  const named=styleDirectorCandidateSleeve(names[0])!;
+  const short=spec({type:"short_sleeve_shirt",sleeve:named.sleeve,cuff:named.cuff});
+  const before=JSON.stringify(short);
+  assert.deepEqual(styleDirectorConstructionIssues(short),[]);
+  assert.deepEqual(styleDirectorPresentationIssues(photo("Spread Collar","Tucked"),short)
+    .map(issue=>issue.code),["unverified_short_sleeve_photo"],
+    "the legacy photographic style cannot represent sleeve length");
+  assert.equal(JSON.stringify(short),before,"review must never rewrite construction");
+});
+
+test("short-sleeve type, sleeve and cuff disagreements require explicit review", () => {
+  assert.deepEqual(styleDirectorConstructionIssues(spec({
+    type:"short_sleeve_shirt",sleeve:"full_sleeve",cuff:"barrel_cuff_1_button",
+  })).map(issue=>issue.code),["short_sleeve_type_mismatch"]);
+  assert.deepEqual(styleDirectorConstructionIssues(spec({
+    type:"short_sleeve_shirt",sleeve:"half_sleeve",cuff:"barrel_cuff_1_button",
+  })).map(issue=>issue.code),["short_sleeve_cuff_review"]);
+  assert.deepEqual(styleDirectorConstructionIssues(spec({
+    sleeve:"half_sleeve",cuff:"french_double_cuff",
+  })).map(issue=>issue.code),["short_sleeve_double_cuff"]);
+  assert.deepEqual(styleDirectorConstructionIssues(spec({
+    sleeve:"full_sleeve",cuff:"open_short_hem_cuff",
+  })).map(issue=>issue.code),["full_sleeve_open_hem_cuff"]);
+});
+
+test("combined camp and short sleeve proposals retain both review gates and canonical IDs", () => {
+  const collar=styleDirectorCandidateCollar("Short-Sleeve Camp-Collar Shirt",selectableCollars);
+  const sleeve=styleDirectorCandidateSleeve("Short-Sleeve Camp-Collar Shirt");
+  assert.equal(collar?.versioned,"cuban_camp_collar");
+  assert.deepEqual(sleeve,{sleeve:"half_sleeve",cuff:"open_short_hem_cuff"});
+  const combined=spec({type:"camp_collar_resort",collar:collar!.versioned,
+    wear:"untucked",sleeve:sleeve!.sleeve,cuff:sleeve!.cuff});
+  assert.deepEqual(styleDirectorConstructionIssues(combined,"Formal").map(issue=>issue.code),
+    ["formal_camp_collar"]);
+  assert.deepEqual(styleDirectorPresentationIssues(photo("Cuban / Camp Collar","Untucked"),combined)
+    .map(issue=>issue.code),["unverified_camp_photo","unverified_short_sleeve_photo"]);
+  const agent=readFileSync("src/lib/style-director-agent.ts","utf8");
+  assert.ok(agent.includes("styleDirectorCandidateSleeve(shirt)"));
+  assert.ok(agent.includes("spec.shirt.sleeve=namedSleeve.sleeve"));
+  assert.ok(agent.includes("spec.shirt.cuff=namedSleeve.cuff"));
   assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'));
 });
