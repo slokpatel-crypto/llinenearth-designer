@@ -110,3 +110,24 @@ test("server-accepted floating-point drift must not mint a second stock key",asy
     "an actual millimetre change must be a separate physical movement"
   );
 });
+
+test("silently ignored or altered sessionStorage writes must not authorize a stock receipt",async()=>{
+  const silentlyIgnored={
+    getItem(_key:string){return null;},
+    setItem(_key:string,_value:string){/* simulated storage extension discards write */},
+  };
+  await assert.rejects(
+    ()=>createStockManualAttemptTracker(keys(),()=>silentlyIgnored).keyFor(record),
+    /No stock movement was sent/,
+    "a browser may acknowledge setItem but silently drop the key"
+  );
+  const altered={
+    getItem(_key:string){return "[]";},
+    setItem(_key:string,_value:string){/* stale journal survives despite setItem */},
+  };
+  await assert.rejects(
+    ()=>createStockManualAttemptTracker(keys(),()=>altered).keyFor(record),
+    /No stock movement was sent/,
+    "an unchanged/stale journal must never cause a new request key to be sent"
+  );
+});
