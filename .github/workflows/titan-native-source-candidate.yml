@@ -472,6 +472,68 @@ jobs:
               }))
           print("TITAN_REAL_INNER_LEG_TRIAL_EVIDENCE_COMPLETE_NO_AUTO_SELECTION")
           PY
+      - name: Verify whether reprojecting the moved inner crotch clears body overlap
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+            --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
+            --experimental-inner-leg-seam-gap-mm 4 \
+            --experimental-inner-leg-seam-reproject \
+            --output .cache/linen-earth/titan-inner-leg-reprojection-4mm.blend
+          log="$RUNNER_TEMP/titan-candidate-evidence/inner-leg-reproject-4mm.log"
+          set +e
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-inner-leg-reprojection-4mm.blend \
+            --python-exit-code 1 --python scripts/blender/preflight-linen-earth-officewear.py \
+            > "$log" 2>&1
+          code=$?
+          set -e
+          python3 scripts/blender/summarize-native-candidate-preflight.py \
+            --log "$log" --exit-code "$code" \
+            --output "$RUNNER_TEMP/titan-candidate-evidence/inner-leg-reproject-4mm.json"
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence/rejection-report.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/inner-leg-seam-4mm.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/inner-leg-reproject-4mm.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          standard, shifted, reprojected = [
+              json.loads(Path(p).read_text(encoding="utf-8")) for p in sys.argv[1:]
+          ]
+          for report in (standard, shifted, reprojected):
+              assert report["modelIdentityId"] == "linen-earth-studio-model-v1"
+              assert report["candidateOnly"] is True and report["productionApproved"] is False
+              assert report["preflightReady"] is False
+              assert set(report["boundaryIntersections"]) == set(standard["boundaryIntersections"])
+          actual = reprojected["boundaryIntersections"]
+          for name, count in actual.items():
+              assert type(count) is int and count >= 0
+          assert standard["boundaryIntersections"]["garmentLegToLeg"] == 89
+          assert shifted["boundaryIntersections"]["garmentLegToLeg"] == 0
+          assert standard["rejectionReasonCount"] == 10
+          for key, value in standard["identityFitMeasurementsMm"].items():
+              other = reprojected["identityFitMeasurementsMm"][key]
+              assert isinstance(other, (int, float)) and other >= 0 if key.endswith("WidthMm") else isinstance(other, (int, float))
+              if key != "legCenterSpacingMm":
+                  assert other == value, ("Reprojection changed an unrelated photographic landmark", key, other, value)
+          worsened = {
+              key: value for key, value in actual.items()
+              if value > standard["boundaryIntersections"][key]
+          }
+          print("TITAN_REAL_INNER_SEAM_REPROJECTED_NATIVE_EVIDENCE", json.dumps({
+              "beforeOriginalLegLeg": 89,
+              "lateralOnlyLegLeg": shifted["boundaryIntersections"]["garmentLegToLeg"],
+              "reprojectedLegLeg": actual["garmentLegToLeg"],
+              "beforeOriginalLeftBody": standard["boundaryIntersections"]["bodyTrouserLegL"],
+              "reprojectedLeftBody": actual["bodyTrouserLegL"],
+              "beforeOriginalRightBody": standard["boundaryIntersections"]["bodyTrouserLegR"],
+              "reprojectedRightBody": actual["bodyTrouserLegR"],
+              "remainingHardPreflightReasons": reprojected["rejectionReasonCount"],
+              "otherCollisionRegressions": worsened,
+              "productionApproved": False,
+          }))
+          print("TITAN_INNER_SEAM_REPROJECTED_CANDIDATE_ONLY_NO_AUTO_SELECTION")
+          PY
       - name: Upload rejection report, never an unapproved model
         if: always()
         uses: actions/upload-artifact@v4
@@ -479,6 +541,7 @@ jobs:
           name: titan-native-candidate-evidence
           path: |
             ${{ runner.temp }}/titan-candidate-evidence/rejection-report.json
+            ${{ runner.temp }}/titan-candidate-evidence/inner-leg-reproject-4mm.json
             ${{ runner.temp }}/titan-candidate-evidence/inner-leg-seam-*mm.json
             ${{ runner.temp }}/titan-candidate-evidence/right-hem-0mm-preflight.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-tuck-control.json
