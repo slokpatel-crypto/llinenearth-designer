@@ -217,7 +217,7 @@ async function main(){
       {action:"consume",reservationId:uuid,actualMetres:1.125,
         checkedBy:"Synthetic checker",sourceReference:"SYNTH-CUT-01"},
     ];
-    // A one-element JSON array/object must not become a named physical
+    // A one-element JSON array/object or overlong string must not become a named physical
     // checker or a signed supplier/cutting source. Every stock action fails
     // before privileged PostgREST even in the synthetic writable fixture.
     for(const [draft,actor] of [
@@ -225,7 +225,8 @@ async function main(){
       [closures[0],"releasedBy"],[closures[1],"checkedBy"],
     ]){
       for(const field of [actor,"sourceReference"]){
-        for(const invalid of [[draft[field]],{value:draft[field]},null,42]){
+        for(const invalid of [[draft[field]],{value:draft[field]},null,42,
+          "X".repeat(field==="sourceReference"?241:121)]){
           mode="created";seen.length=0;
           const {response,result}=await call("POST",{...draft,[field]:invalid});
           assert.equal(response.status,409,draft.action+" coerced physical "+field);
