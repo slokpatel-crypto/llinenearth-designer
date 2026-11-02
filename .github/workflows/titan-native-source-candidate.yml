@@ -9,6 +9,7 @@ on:
       - "scripts/blender/preflight-linen-earth-officewear.py"
       - "scripts/blender/summarize-native-candidate-preflight.py"
       - "tests/python/test_native_candidate_preflight_summary.py"
+      - "tests/blender/test_shirt_torso_photo_taper.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -57,6 +58,12 @@ jobs:
           set -euo pipefail
           "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
             --python tests/blender/test_sparse_garment_plane_section.py
+      - name: Verify native photo-guided shirt waist taper
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_shirt_torso_photo_taper.py
       - name: Fetch official pinned CC0 source body bundle
         shell: bash
         run: |

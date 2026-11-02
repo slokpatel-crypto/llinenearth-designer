@@ -99,6 +99,23 @@ def locked_guide_height(scene, name):
     return sum(points) / len(points)
 
 
+def shirt_torso_half_width_at_height(height_z, waist_guide_z, shoulder_guide_z):
+    """Transition from photo waist width to full shoulder panel without clipping a hard seam.
+
+    The real locked CC0 torso contour is ~304mm at photo waist, while the
+    photographed garment target is 294mm ±38mm. The 318mm candidate width
+    gives ~7mm clearance per side without swallowing the nearby hanging arms.
+    Candidate remains subject to the ORIGINAL world-body collision/fit gates.
+    """
+    if not all(math.isfinite(v) for v in (height_z, waist_guide_z, shoulder_guide_z)):
+        raise ValueError("Photo-locked shirt waist and shoulder guide heights must be finite.")
+    if shoulder_guide_z <= waist_guide_z + 0.06:
+        raise ValueError("Photo-locked shirt shoulder must be above waist for tailored taper.")
+    t = max(0.0, min(1.0, (height_z - waist_guide_z) / (shoulder_guide_z - waist_guide_z)))
+    smooth = t*t*(3.0-2.0*t)
+    return 0.159 + (0.245 - 0.159) * smooth
+
+
 def remove_existing(name):
     obj = bpy.data.objects.get(name)
     if obj is not None:
@@ -226,6 +243,8 @@ def main():
         raise RuntimeError(f"Body height is {height:.4f} m; expected the locked 1.727 m body.")
 
     z = lambda ratio: min_z + height * ratio
+    shirt_waist_guide_z = locked_guide_height(bpy.context.scene, "LE_GUIDE_SHIRT_WAIST")
+    shirt_shoulder_guide_z = locked_guide_height(bpy.context.scene, "LE_GUIDE_SHIRT_SHOULDER")
     trouser_waist_guide_z = locked_guide_height(bpy.context.scene, "LE_GUIDE_TROUSER_WAIST")
     if not z(0.58) <= trouser_waist_guide_z <= z(0.70):
         raise RuntimeError("Locked trouser waist guide lies outside the approved body landmark region.")
@@ -233,12 +252,11 @@ def main():
     # (~0.647 of the body); no real cross-section could ever be measured.
     # Extend this shell through the guide while preserving measured fit checks.
     trouser_waist_upper_z = max(z(0.620), trouser_waist_guide_z + 0.028)
-    torso_half = 0.245
     arm_root = 0.155
     hip_half = 0.245
 
     regions = {
-        "ShirtTorsoFabric": lambda p: z(0.515) <= p.z <= z(0.895) and abs(p.x-center_x) <= torso_half,
+        "ShirtTorsoFabric": lambda p: z(0.515) <= p.z <= z(0.895) and abs(p.x-center_x) <= shirt_torso_half_width_at_height(p.z, shirt_waist_guide_z, shirt_shoulder_guide_z),
         "ShirtSleeveLFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x <= -arm_root,
         "ShirtSleeveRFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x >= arm_root,
         "TrouserWaistFabric": lambda p: z(0.455) <= p.z <= trouser_waist_upper_z and abs(p.x-center_x) <= hip_half,
