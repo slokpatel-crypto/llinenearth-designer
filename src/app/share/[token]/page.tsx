@@ -7,7 +7,7 @@ import { isShareTokenAllowed } from "@/lib/designer/design-share-revocation";
 import "./share.css";
 
 export const dynamic="force-dynamic";
-export const metadata={robots:{index:false,follow:false}};
+export const metadata={referrer:"no-referrer",robots:{index:false,follow:false}};
 
 export default async function SharedDesignPage({params}:{params:Promise<{token:string}>}){
   const {token}=await params;

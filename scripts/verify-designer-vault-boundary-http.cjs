@@ -715,6 +715,10 @@ async function main(){
       const publicUrl=enforcedOrigin+"/share/"+shared.token;
       const publicBefore=await fetch(publicUrl,{signal:AbortSignal.timeout(15000)});
       assert.equal(publicBefore.status,200,"public design link initially readable");
+      assert.equal(publicBefore.headers.get("referrer-policy"),"no-referrer",
+        "public bearer URLs must not escape through outgoing Referer headers");
+      assert.match(publicBefore.headers.get("x-robots-tag")||"",/noindex/);
+      assert.match(publicBefore.headers.get("cache-control")||"",/no-store/);
       assert.match(await publicBefore.text(),/SHARED LOCKED DESIGN/);
       async function cancelShare(revokeKey){
         return await fetch(enforcedOrigin+"/api/designer/share",{
