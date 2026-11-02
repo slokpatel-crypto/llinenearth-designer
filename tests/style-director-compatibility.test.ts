@@ -9,7 +9,15 @@ import {
   styleDirectorWearForCandidate,
 } from "../src/lib/designer/style-director-compatibility.ts";
 import type { StyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
-import { DESIGNER_STYLE_CHOICES, type DesignerStyle } from "../src/lib/designer/engine.ts";
+import type { DesignerStyle } from "../src/lib/designer/engine.ts";
+import { optionsFor } from "../src/lib/designer/options/library.ts";
+
+// Mirror engine.ts optionLabels("shirt.collar") from the real selectable library.
+// Do not runtime-import engine.ts: its unannotated JSON import is incompatible
+// with bare Node --experimental-strip-types, unlike the options library.
+const selectableCollars = optionsFor("shirt.collar")
+  .filter((option) => option.legacySelectable !== false)
+  .map((option) => option.legacyLabel || option.label);
 
 const trust = (reviewStatus: "unreviewed" | "approved" | "corrected" | "rejected",
   level: "reviewed" | "high-confidence" | "provisional") =>
@@ -109,7 +117,8 @@ test("formal and semi-formal camp proposals keep photo and locked spec aligned b
     type: "camp_collar_resort", collar: "cuban_camp_collar", wear: "untucked",
   });
   const before = JSON.stringify(camp);
-  assert.deepEqual(styleDirectorPresentationIssues(photo("Cuban / Camp Collar", "Untucked"), camp), []);
+  assert.deepEqual(styleDirectorPresentationIssues(photo("Cuban / Camp Collar", "Untucked"), camp).map(x => x.code),
+    ["unverified_camp_photo"], "selectable Cuban label does not prove the live photograph renders it");
   for (const occasion of ["Formal", "Semi-Formal"] as const) {
     assert.deepEqual(styleDirectorConstructionIssues(camp, occasion).map(x => x.code), ["formal_camp_collar"]);
   }
@@ -128,7 +137,7 @@ test("band-collar formal proposal preserves compatible photo and versioned colla
 test("photographic and versioned wear/collar disagreements are both explicit review flags", () => {
   const camp = spec({type: "camp_collar_resort", collar: "cuban_camp_collar", wear: "untucked"});
   assert.deepEqual(styleDirectorPresentationIssues(photo("Point (Standard) Collar", "Tucked"), camp).map(x => x.code),
-    ["legacy_wear_mismatch", "legacy_collar_mismatch"]);
+    ["legacy_wear_mismatch", "legacy_collar_mismatch", "unverified_camp_photo"]);
   const band = spec({type: "band_collar_shirt", collar: "mandarin_band_collar", wear: "tucked"});
   assert.deepEqual(styleDirectorPresentationIssues(photo("Cuban / Camp Collar", "Untucked"), band).map(x => x.code),
     ["legacy_wear_mismatch", "legacy_collar_mismatch"]);
@@ -156,15 +165,17 @@ test("pure proposed-wear rule keeps formal camp untucked without changing other 
 });
 
 test("Cuban-only and camp aliases share canonical collar construction without inventing a photo option", () => {
-  const choices=DESIGNER_STYLE_CHOICES.collar;
+  const choices=selectableCollars;
   const camp=styleDirectorCandidateCollar("Camp-Collar Shirt",choices);
   const cuban=styleDirectorCandidateCollar("Cuban Resort Shirt",choices);
   assert.deepEqual(cuban,camp,"Cuban-only candidate must not use a different legacy mapping");
   assert.equal(camp?.versioned,"cuban_camp_collar");
-  // The current closed photographic vocabulary does not expose the advanced
-  // Cuban collar. Retain its canonical construction, but never claim the
-  // original photo can render the collar or silently insert a new option.
-  assert.equal(camp?.legacy,null);
+  // The real selectable vocabulary *does* include the advanced Cuban label,
+  // but its option metadata says livePreview:none: label parity is not visual proof.
+  const cubanOption=optionsFor("shirt.collar").find(option=>option.id==="cuban_camp_collar");
+  assert.equal(cubanOption?.renderSupport.livePreview,"none");
+  assert.equal(camp?.legacy,cubanOption?.label);
+  assert.ok(choices.includes("Cuban / Camp Collar"));
   const band=styleDirectorCandidateCollar("Band-Collar Shirt",choices);
   assert.deepEqual(band,{legacy:"Mandarin / Band Collar",versioned:"mandarin_band_collar"});
   assert.equal(styleDirectorCandidateCollar("Spread-Collar Dress Shirt",choices),null);
@@ -172,7 +183,7 @@ test("Cuban-only and camp aliases share canonical collar construction without in
 
 test("named Cuban and camp candidate paths remain review-only across formal and casual wear", () => {
   for(const candidate of ["Camp-Collar Shirt","Cuban Resort Shirt"]){
-    const named=styleDirectorCandidateCollar(candidate,DESIGNER_STYLE_CHOICES.collar);
+    const named=styleDirectorCandidateCollar(candidate,selectableCollars);
     assert.equal(named?.versioned,"cuban_camp_collar");
     const versioned=spec({
       type:"camp_collar_resort",collar:named!.versioned,
@@ -181,15 +192,16 @@ test("named Cuban and camp candidate paths remain review-only across formal and 
     for(const occasion of ["Formal","Casual"] as const){
       const wear=styleDirectorWearForCandidate(occasion,candidate,"Tucked");
       assert.equal(wear,"Untucked");
+      assert.equal(named?.legacy,"Cuban / Camp Collar");
       const photoStyle=photo(named.legacy??"Point (Standard) Collar",wear);
       const presentation=styleDirectorPresentationIssues(photoStyle,versioned);
-      assert.deepEqual(presentation.map(issue=>issue.code),["legacy_collar_mismatch"],
-        "unrepresentable camp photo must be marked for review, not treated as accurate");
+      assert.deepEqual(presentation.map(issue=>issue.code),["unverified_camp_photo"],
+        "selectable Cuban label cannot imply verified live photographic rendering");
       const construction=styleDirectorConstructionIssues(versioned,occasion);
       assert.deepEqual(construction.map(issue=>issue.code),
         occasion==="Formal"?["formal_camp_collar"]:[]);
       assert.ok([...presentation,...construction].length>0,
-        "the real-model decision must remain needs_review without a matching photo option");
+        "the real-model decision must remain needs_review without verified photo support");
     }
   }
   const agent=readFileSync("src/lib/style-director-agent.ts","utf8");
