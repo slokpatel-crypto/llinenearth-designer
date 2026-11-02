@@ -145,6 +145,77 @@ test("Blender scene preflight rejects garment/body boundary intersections",()=>{
   ]) assert(source.includes(token),`missing boundary QA token: ${token}`);
 });
 
+test("3D preflight fails closed when body or tucked-waist contact cannot be measured",()=>{
+  const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  const boundary=source.slice(source.indexOf("for key, left_obj, right_obj, allowed_pairs in boundary_pairs:"),
+    source.indexOf("tuck_overlap = intersection_pair_count("));
+  const tuck=source.slice(source.indexOf("tuck_overlap = intersection_pair_count("),
+    source.indexOf("    report = {",source.indexOf("tuck_overlap = intersection_pair_count(")));
+  assert.match(boundary,/if count is None:\s*reasons\.append\(f"Could not evaluate intersection QA for \{key\}; production boundaries require measured contact evidence\."\)/);
+  assert.match(tuck,/if tuck_overlap is None:\s*reasons\.append\("Could not evaluate tucked shirt\/trouser overlap; production tuck requires measured contact evidence\."\)/);
+  assert.doesNotMatch(boundary,/if count is None:\s*warnings\.append/);
+  assert.doesNotMatch(tuck,/if tuck_overlap is None:\s*warnings\.append/);
+  // Measured zero-contact is valid, but >0 body intersections and excessive
+  // tuck overlap are still reasons for rejection, never suppressed.
+  assert.match(boundary,/elif count > allowed_pairs:/);
+  assert.match(tuck,/elif tuck_overlap > 120:/);
+  assert.match(source,/"ready": len\(reasons\) == 0/);
+});
+
+test("3D identity-fit and garment separation cannot pass with unknown measurements",()=>{
+  const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  for(const required of [
+    'reasons.append(f"Could not sample {key} from garment geometry; identity-fit gate cannot pass without measurement.")',
+    'reasons.append(f"Could not sample {key} for garment centerline QA; production fit cannot pass.")',
+    'reasons.append("Could not sample sleeve-center spacing near the locked hand guides; spacing gate cannot pass without measurement.")',
+    'reasons.append("Could not calculate left/right cuff-zone width symmetry; production fit cannot pass.")',
+    'reasons.append("Could not calculate left/right trouser hem symmetry; production fit cannot pass.")',
+    'reasons.append("Could not sample trouser leg-center spacing from production geometry; spacing gate cannot pass without measurement.")',
+    'boundary_intersections["garmentLegToLeg"] = leg_to_leg',
+    'reasons.append("Could not evaluate real left/right trouser fabric separation.")',
+  ]) assert.ok(source.includes(required),required);
+  for(const formerWarning of [
+    'warnings.append(f"Could not sample {key} from garment geometry',
+    'warnings.append(f"Could not sample {key} for garment centerline QA.',
+    'warnings.append("Could not sample sleeve-center spacing',
+    'warnings.append("Could not calculate left/right cuff-zone',
+    'warnings.append("Could not calculate left/right trouser hem',
+    'warnings.append("Could not sample trouser leg-center spacing',
+  ]) assert.ok(!source.includes(formerWarning),"unknown measurement remains warning: "+formerWarning);
+  assert.match(source,/elif leg_to_leg > 0:/);
+  assert.match(source,/Left\/right trouser fabric shells cross/);
+  assert.match(source,/"ready": len\(reasons\) == 0/);
+});
+
+test("3D contact BVHs use evaluated world coordinates for body and garments",()=>{
+  const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  const helper=source.slice(source.indexOf("def evaluated_world_bvh("),
+    source.indexOf("def guide_world_points("));
+  for(const step of [
+    "evaluated = obj.evaluated_get(depsgraph)",
+    "mesh = evaluated.to_mesh()",
+    "transform = evaluated.matrix_world",
+    "vertices = [transform @ vertex.co for vertex in mesh.vertices]",
+    "polygons = [tuple(polygon.vertices) for polygon in mesh.polygons]",
+    "BVHTree.FromPolygons(vertices, polygons, all_triangles=False, epsilon=epsilon)",
+    "evaluated.to_mesh_clear()",
+    "left_tree = evaluated_world_bvh(left, depsgraph)",
+    "right_tree = evaluated_world_bvh(right, depsgraph)",
+  ]) assert.ok(helper.includes(step),step);
+  assert.doesNotMatch(helper,/BVHTree\.FromObject/,
+    "two independently local-space BVHs cannot prove physical contact");
+  const native=readFileSync("tests/blender/test_world_collision_bvh.py","utf8");
+  for(const token of [
+    "importlib.util",
+    "body.data.update()",
+    "bpy.context.view_layer.update()",
+    "hits > 0",
+    "false_hits == 0",
+    "scaled_hits > 0",
+    "intersection_pair_count(body, empty_object) is None",
+  ]) assert.ok(native.includes(token),token);
+});
+
 test("Blender scene preflight verifies canonical identity guide geometry",()=>{
   const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
   for(const token of [
