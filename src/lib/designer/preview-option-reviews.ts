@@ -33,6 +33,13 @@ export function previewOptionId(styleKey:keyof DesignerStyle,label:string){
   return `preview:${styleKey}:${normalized}`;
 }
 
+/** Single source of truth for the full set of selectable preview audit IDs. */
+export function expectedPreviewOptionIds():string[]{
+  return (Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>)
+    .flatMap((styleKey)=>DESIGNER_STYLE_CHOICES[styleKey]
+      .map((label)=>previewOptionId(styleKey,label)));
+}
+
 export async function loadDesignerPreviewOptionReviews():Promise<Record<string,DesignerPreviewOptionReview>>{
   const cloud=getSupabaseAdminConfig();
   if(!cloud) return {};
