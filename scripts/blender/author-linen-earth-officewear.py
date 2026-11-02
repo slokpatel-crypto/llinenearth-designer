@@ -166,7 +166,9 @@ def fit_shell(obj, body, clearance_m, thickness_m):
     shrink = obj.modifiers.new("LE_BODY_CLEARANCE", "SHRINKWRAP")
     shrink.target = body
     shrink.wrap_method = "NEAREST_SURFACEPOINT"
-    shrink.wrap_mode = "OUTSIDE_SURFACE"
+    # Experiment: project requested 7mm clearance along the scanned target normal.
+    # Preserve the exact offset and require actual body-contact evidence before adoption.
+    shrink.wrap_mode = "ABOVE_SURFACE"
     shrink.offset = clearance_m
     apply_modifier(obj, shrink)
 
