@@ -146,13 +146,15 @@ test("catalogue GET retains stock filtering and accepted metadata while attachin
   });
   globalThis.fetch = async () => { throw new Error("Catalogue contract must not call external providers"); };
   const unavailable = engine.DESIGNER_SHIRTS[1].id;
+  const verifiedPant = engine.DESIGNER_PANTS[0].id;
   metadata.loadDesignerFabricMetadata = async () => ({
     [base.id]: { fabricId: base.id, availability: "available", weightGsm: 160, drape: "fluid",
       physicalEvidence: { sourceType: "physical_roll", reference: "roll-1", checkedBy: "test checker" } },
     [unavailable]: { fabricId: unavailable, availability: "unavailable" },
+    [verifiedPant]: { fabricId: verifiedPant, availability: "available" },
   });
   stockStore.applyLiveVerifiedStockAvailability = async (stock: any[]) => ({
-    stock: stock.map((fabric) => fabric.id === base.id ? { ...fabric, availableMetres: 12 } : fabric), verifiedFabricIds: [base.id],
+    stock: stock.map((fabric) => [base.id,verifiedPant].includes(fabric.id) ? { ...fabric, availableMetres: 12 } : fabric), verifiedFabricIds: [base.id,verifiedPant],
   });
   intelligenceStore.loadDesignerFabricIntelligence = async (ids: string[]) => {
     assert(!ids.includes(unavailable));
@@ -162,9 +164,11 @@ test("catalogue GET retains stock filtering and accepted metadata while attachin
   assert.equal(response.status, 200);
   const data = await response.json();
   assert.equal(data.calibrated, true);
-  assert.equal(data.calibratedFabrics, 2);
-  assert.equal(data.verifiedStockFabrics, 1);
-  assert(data.shirts.length && data.pants.length);
+  assert.equal(data.calibratedFabrics, 3);
+  assert.equal(data.verifiedStockFabrics, 2);
+  assert.equal(response.headers.get("cache-control"),"no-store");
+  assert.deepEqual(data.shirts.map((fabric:DesignerFabric)=>fabric.id),[base.id]);
+  assert.deepEqual(data.pants.map((fabric:DesignerFabric)=>fabric.id),[verifiedPant]);
   assert(!data.shirts.some((fabric: DesignerFabric) => fabric.id === unavailable));
   const selected: DesignerFabric = data.shirts.find((fabric: DesignerFabric) => fabric.id === base.id);
   assert.equal(selected.weightGsm, 160);
