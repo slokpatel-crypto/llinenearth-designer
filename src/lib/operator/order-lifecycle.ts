@@ -102,8 +102,27 @@ function record(value: unknown): Record<string, unknown> {
 }
 function timestamp(value: unknown): number {
   const text = nonEmpty(value, "event timestamp", 20, 40);
+  const parts = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d+)?(?:Z|([+-])(\\d{2}):(\\d{2}))$/.exec(text);
+  if (!parts || !ISO_TIMESTAMP.test(text)) throw new Error("Invalid event timestamp.");
+  const year = Number(parts[1]);
+  const month = Number(parts[2]);
+  const day = Number(parts[3]);
+  const hour = Number(parts[4]);
+  const minute = Number(parts[5]);
+  const second = Number(parts[6]);
+  const offsetHour = parts[8] === undefined ? 0 : Number(parts[8]);
+  const offsetMinute = parts[9] === undefined ? 0 : Number(parts[9]);
+  // Date.parse silently normalizes e.g. February 30 to March 2.
+  // Validate the written local calendar day before applying any timezone offset.
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > daysInMonth[month - 1] ||
+      hour > 23 || minute > 59 || second > 59 || offsetHour > 14 ||
+      offsetMinute > 59 || (offsetHour === 14 && offsetMinute !== 0)) {
+    throw new Error("Invalid event timestamp.");
+  }
   const millis = Date.parse(text);
-  if (!ISO_TIMESTAMP.test(text) || !Number.isFinite(millis)) throw new Error("Invalid event timestamp.");
+  if (!Number.isFinite(millis)) throw new Error("Invalid event timestamp.");
   return millis;
 }
 
@@ -186,7 +205,9 @@ export function replayOrderLifecycle(orderId: string, revisionId: string, recipe
   for (const raw of events) {
     const source = record(raw);
     state = applyOrderLifecycleEvent(state, source);
-    if (source.to !== undefined && source.to !== state.status) throw new Error("Tampered audit destination.");
+    // Stored applied events must explicitly carry the computed destination.
+    // Missing/null/undefined `to` is tampering, not an unapplied event.
+    if (source.to !== state.status) throw new Error("Tampered audit destination.");
   }
   return state;
 }
