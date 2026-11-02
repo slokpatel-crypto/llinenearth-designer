@@ -140,6 +140,12 @@ function validateQc(qc: unknown, state: OrderLifecycleState): OrderQcEvidence {
   const inspectionReference = nonEmpty(value.inspectionReference, "physical QC reference", 3, 240);
   if (value.revisionId !== state.revisionId || value.recipeHash !== state.recipeHash)
     throw new Error("QC evidence does not match the locked order revision and recipe.");
+  // Rework or recovery invalidates the prior physical QC signoff. A fresh
+  // approval must cite a distinct inspection record, not replay the old one.
+  if (state.audit.some(item => item.action === "approve_qc" &&
+      item.qc?.inspectionReference === inspectionReference)) {
+    throw new Error("A fresh QC inspection reference is required after rework or recovery.");
+  }
   const checks = record(value.checks);
   if (Object.keys(checks).length !== ORDER_QC_CHECKS.length ||
       ORDER_QC_CHECKS.some(check => checks[check] !== true)) {
