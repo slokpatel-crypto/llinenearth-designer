@@ -168,6 +168,12 @@ def verified_solidify_variants(obj, stages):
                 or type(item.get("rim")) is not bool or item["rim"] != rim
                 or type(item.get("recalculatedNormals")) is not bool
                 or item["recalculatedNormals"] != recalculate
+                or type(item.get("sourceClothFaceCount")) is not int
+                or item["sourceClothFaceCount"] <= 0
+                or (recalculate and (
+                    type(item.get("reversedClothFaceCount")) is not int
+                    or not 0 <= item["reversedClothFaceCount"] <= item["sourceClothFaceCount"]))
+                or (not recalculate and item.get("reversedClothFaceCount", "invalid") is not None)
                 or type(item.get("bodyIntersectionPairs")) is not int
                 or item["bodyIntersectionPairs"] < 0):
             raise RuntimeError("Inconsistent measured Blender solidify variant.")
