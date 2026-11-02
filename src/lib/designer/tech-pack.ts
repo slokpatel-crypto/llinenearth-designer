@@ -45,10 +45,13 @@ export function buildTailorTechPackHtml(handoff:ProductionHandoff){
   if(audit.errors.length) {
     throw new Error(`Unsafe tailor tech pack measurements: ${audit.errors.join(" ")}`);
   }
-  if (handoff.construction.styleSpec && !validateStyleSpecV2(handoff.construction.styleSpec)) {
-    throw new Error("Unsafe tailor tech pack construction: unrecognised versioned style option.");
-  }
-  const missingConstruction=handoff.construction.styleSpec ? [] : [
+  const styleValid=handoff.construction.styleSpec !== null
+    && handoff.construction.styleSpec !== undefined
+    && validateStyleSpecV2(handoff.construction.styleSpec);
+  const invalidConstruction=Boolean(handoff.construction.styleSpec) && !styleValid;
+  const missingConstruction=invalidConstruction ? [
+    "StyleSpec v2 contains invalid or unknown garment choices; the raw selection is included for review only and cannot authorise cutting.",
+  ] : styleValid ? [] : [
     "Exact StyleSpec v2 garment construction is absent; tailor must verify legacy options.",
   ];
   const outstanding=[...new Set([...handoff.unresolved,...audit.missing,...missingConstruction])];
@@ -143,7 +146,10 @@ footer{margin-top:14px;padding-top:10px;border-top:1px solid #cfd3d6;color:#6872
 
 <section class="card" style="margin-bottom:12px">
   <h2>Exact selected cut · StyleSpec v2</h2>
-  ${handoff.construction.styleSpec?`
+  ${invalidConstruction?`
+    <p><b>INVALID VERSIONED CONSTRUCTION — TAILOR REVIEW REQUIRED.</b> These values are unverified input, not exact cut instructions. Do not cut from this document.</p>
+    <pre style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(JSON.stringify(handoff.construction.styleSpec).slice(0,6000))}</pre>
+  `:styleValid?`
     <p class="muted">These are the actual locked tailoring choices. The earlier shorthand above may only describe the closest photographic preview.</p>
     <div class="grid">
       <table>${rows([
