@@ -14,11 +14,20 @@ function migrationVersion(file) {
   const match = /^(\d+)_([\w-]+)\.sql$/.exec(name);
   return match ? match[1] : null;
 }
+function migrationPathsFromEntries(entries) {
+  const ambiguous = entries.filter(entry =>
+    entry.isSymbolicLink() || entry.isDirectory() ||
+    (!entry.isFile() && /\\.sql$/i.test(entry.name)) ||
+    (entry.isFile() && /\\.sql$/i.test(entry.name) && !entry.name.endsWith(".sql")));
+  if (ambiguous.length > 0) {
+    throw Error("Ambiguous migration entry (symlink, nested directory or SQL filename case): " +
+      ambiguous.map(entry => entry.name).sort().join(", "));
+  }
+  return entries.filter(entry => entry.isFile() && entry.name.endsWith(".sql"))
+    .map(entry => "supabase/migrations/" + entry.name).sort();
+}
 function collectMigrationPaths(dir = migrationDir) {
-  return fs.readdirSync(dir, { withFileTypes: true })
-    .filter(entry => entry.isFile() && entry.name.endsWith(".sql"))
-    .map(entry => "supabase/migrations/" + entry.name)
-    .sort();
+  return migrationPathsFromEntries(fs.readdirSync(dir, { withFileTypes: true }));
 }
 function inspectMigrations(paths) {
   const ordered = [...paths].sort();
@@ -225,7 +234,8 @@ function main(args = process.argv.slice(2)) {
   return 0;
 }
 if (require.main === module) process.exitCode = main();
-module.exports = { migrationVersion, collectMigrationPaths, inspectMigrations, checkAgainstBaseline,
+module.exports = { migrationVersion, collectMigrationPaths, migrationPathsFromEntries,
+  inspectMigrations, checkAgainstBaseline,
   gitBlobSha, verifyHistoricalBlobs, parsePinnedMigrationTree,
   verifyBaselineFromGit, inspectReserveOverride, validTimestampVersion,
   inspectNewMigrationSafety, main };
