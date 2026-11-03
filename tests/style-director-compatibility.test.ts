@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   styleDirectorCandidateCollar,
   styleDirectorCandidateSleeve,
+  styleDirectorCandidateFrontConstructionIssues,
   styleDirectorCandidateTrouserFront,
   styleDirectorCandidateWordingIssues,
   styleDirectorConstructionIssues,
@@ -714,4 +715,41 @@ test("photographic shirt construction details match exact selectable versioned o
   const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
   assert.ok(agent.includes("...styleDirectorPresentationIssues(best.style,styleSpec)"),
     "real recommendation must evaluate the complete photo style and versioned spec");
+});
+
+
+test("candidate pleat instructions cannot silently disappear from the versioned trouser", () => {
+  const cases: ReadonlyArray<readonly [string, string, string[]]> = [
+    ["Wide-Leg Pleated Trouser", "flat_front", ["candidate_trouser_pleat_mismatch"]],
+    ["Wide-Leg Double Pleats", "flat_front", ["candidate_trouser_pleat_mismatch"]],
+    ["Single-Pleat Tailored Trouser", "flat_front", ["candidate_trouser_pleat_mismatch"]],
+    ["Flat-Front Tailored Trouser", "single_pleat_forward", ["candidate_trouser_pleat_mismatch"]],
+    ["Flat Front Non-Pleated Trouser", "single_pleat_forward", ["candidate_trouser_pleat_mismatch"]],
+    ["Wide-Leg Pleated Trouser", "single_pleat_forward", []],
+    ["Single-Pleat Tailored Trouser", "single_pleat_forward", []],
+    ["Flat Front Non-Pleated Trouser", "flat_front", []],
+    ["Wide-Leg Trouser", "flat_front", []],
+    ["Drawstring Linen Trouser", "flat_front", []],
+  ];
+  for (const [candidate, pleat, expected] of cases) {
+    const versioned = spec({}, { pleat });
+    const before = JSON.stringify(versioned);
+    assert.deepEqual(
+      styleDirectorCandidateFrontConstructionIssues(candidate, versioned.pant).map(x => x.code),
+      expected, candidate + " with " + pleat,
+    );
+    assert.equal(JSON.stringify(versioned), before, "the checker must not rewrite locked specs");
+  }
+  assert.deepEqual(
+    styleDirectorCandidateWordingIssues("Spread-Collar Dress Shirt", "Flat-Front Pleated Trouser")
+      .map(x => x.code),
+    ["ambiguous_candidate_trouser_front"],
+    "ambiguous instructions are independently routed for explicit review",
+  );
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes(
+    "...styleDirectorCandidateFrontConstructionIssues(candidate.garments.trouser, styleSpec.pant)",
+  ), "actual recommendations must check candidate/front construction parity");
+  assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'),
+    "conflicting requested front construction must not be approved");
 });
