@@ -71,7 +71,8 @@ export type DirectorConstructionIssue = {
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_type_hem_mismatch" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
-    "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "legacy_trouser_mismatch";
+    "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "legacy_trouser_mismatch" |
+    "ambiguous_candidate_trouser_front";
   explanation: string;
 };
 
@@ -80,7 +81,7 @@ export type DirectorConstructionIssue = {
  * A null resolver alone could otherwise leave default full-sleeve construction
  * looking acceptable despite explicitly contradictory instructions.
  */
-export function styleDirectorCandidateWordingIssues(candidateShirt: string): DirectorConstructionIssue[] {
+export function styleDirectorCandidateWordingIssues(candidateShirt: string, candidateTrouser = ""): DirectorConstructionIssue[] {
   const issues: DirectorConstructionIssue[] = [];
   const { camp, band, cutaway } = candidateCollarFamilies(candidateShirt);
   if (Number(camp) + Number(band) + Number(cutaway) > 1) {
@@ -94,6 +95,19 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string): Dir
     issues.push({
       code: "ambiguous_candidate_sleeve",
       explanation: "This proposed shirt names both short and long sleeves; confirm one sleeve construction before approving the recommendation.",
+    });
+  }
+  // A tailored flat front and a positive pleat instruction are incompatible.
+  // Explicit negations (non-pleated / no pleats / without pleats) are flat-front
+  // descriptions, not competing construction requests.
+  const flatFront = /\bflat[- ]?front\b/i.test(candidateTrouser);
+  const positivePleat = /\bpleat(?:ed|s)?\b/i.test(
+    candidateTrouser.replace(/\b(?:non[- ]?pleated|no\s+pleats?|without\s+pleats?)\b/gi, ""),
+  );
+  if (flatFront && positivePleat) {
+    issues.push({
+      code: "ambiguous_candidate_trouser_front",
+      explanation: "This proposed trouser names both a flat front and positive pleats; confirm one front construction before approving the recommendation.",
     });
   }
   return issues;
