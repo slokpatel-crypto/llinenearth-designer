@@ -1065,6 +1065,7 @@ def main():
     body_geom=geom(body)
     center_x=(min(v.x for v in body_geom["points"])+max(v.x for v in body_geom["points"]))/2
     source_geoms=[]
+    source_stage_uv_provenance=[]
     for name in LEGS:
         original=export.objects.get(name)
         stage=research.objects.get(f"TITAN_RESEARCH_{STAGE}_{name}")
@@ -1074,6 +1075,34 @@ def main():
                 or stage.get("sourceStage") != STAGE):
             raise RuntimeError("Cannot prototype without exact unapproved source cut-stage provenance.")
         source_geoms.append(geom(stage))
+        # Only actual original Blender UV loops may be reported, NEVER a
+        # fabricated physical repeat, millimetre scale, or UV for new seams.
+        uv_layers = []
+        for layer in stage.data.uv_layers:
+            finite = all(
+                all(math.isfinite(float(coord)) for coord in item.uv)
+                for item in layer.data
+            )
+            uv_layers.append({
+                "name": layer.name,
+                "originalUVLoopCount": len(layer.data),
+                "originalMeshLoopCount": len(stage.data.loops),
+                "finiteAndComplete": bool(
+                    finite and len(layer.data) == len(stage.data.loops)
+                ),
+            })
+        source_stage_uv_provenance.append({
+            "actualOriginalStageObject": stage.name,
+            "originalMeshPolygonCount": len(stage.data.polygons),
+            "activeOriginalUVLayerName": (
+                stage.data.uv_layers.active.name
+                if stage.data.uv_layers.active is not None else None
+            ),
+            "originalUVLayers": uv_layers,
+            "originalStageHasFiniteCompleteUV": bool(
+                uv_layers and all(row["finiteAndComplete"] for row in uv_layers)
+            ),
+        })
     left,right=source_geoms
     l_all,l_inner=seam_ops["original_inner_cut_edges"](left,center_x)
     r_all,r_inner=seam_ops["original_inner_cut_edges"](right,center_x)
@@ -1188,6 +1217,70 @@ def main():
     if (current_polygon!=len(bridge_faces) or sum(
             row["originalBodyBVHPairs"] for row in per_bridge_pair)!=bridge_body_pairs):
         raise RuntimeError("Original bridge contact ownership did not reconcile with physical BVH.")
+
+    # Enumerate the actual six bridge triangle orientation choices against
+    # 2,650 IMMUTABLE original trouser source faces. This is seam ownership,
+    # not approval of physical stitching or manufactured UV pattern scale.
+    winding_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-crotch-seam-winding.py")
+    ))
+    seam_winding = winding_ops["solve_original_source_seam_winding"](
+        base_faces, bridge_faces, l_remaining + r_remaining_mapped
+    )
+    corrected_bridge_faces = [
+        tuple(face) for face in seam_winding["correctedResearchBridgeFaces"]
+    ]
+    corrected_all_faces = base_faces + corrected_bridge_faces
+    corrected_open, corrected_edge_counts = seam_ops["edge_topology"](
+        corrected_all_faces
+    )
+    if (set(corrected_open) != set(after_open)
+            or any(value > 2 for value in corrected_edge_counts.values())
+            or seam_winding["corrected"]["openBoundaryEdgeCount"] != len(after_open)):
+        raise RuntimeError("Research winding invalidated a genuine source seam boundary.")
+
+    corrected_name = "TITAN_RESEARCH_CrotchSourceBridgeWindingOnly"
+    if bpy.data.objects.get(corrected_name) is not None:
+        raise RuntimeError("Would overwrite independent original source winding evidence.")
+    corrected_mesh = bpy.data.meshes.new(corrected_name + "Mesh")
+    corrected_mesh.from_pydata(merged_verts, [], corrected_all_faces)
+    corrected_mesh.update(calc_edges=True)
+    if (len(corrected_mesh.polygons) != len(corrected_all_faces)
+            or any(not math.isfinite(face.area) or face.area <= 1e-12
+                   for face in corrected_mesh.polygons)):
+        raise RuntimeError("Original source bridge orientation trial has missing/degenerate faces.")
+    corrected_obj = bpy.data.objects.new(corrected_name, corrected_mesh)
+    corrected_obj.hide_render = True
+    corrected_obj["candidateOnly"] = True
+    corrected_obj["productionApproved"] = False
+    corrected_obj["physicalFitApproved"] = False
+    corrected_obj["sewnGarmentApproved"] = False
+    research.objects.link(corrected_obj)
+    if export.objects.get(corrected_name) is not None:
+        raise RuntimeError("Unapproved original seam winding geometry entered production export.")
+    corrected_geom = geom(corrected_obj)
+    corrected_contacts = body_tree.overlap(geom_ops["real_tree"](corrected_geom))
+    source_offset = len(base_faces)
+    bridge_contacts = {
+        index for _body_id, index in corrected_contacts
+        if index >= source_offset
+    }
+    contacted_bridge_area = sum(
+        corrected_geom["areas"][i] for i in bridge_contacts
+    ) * 1e6
+    if not math.isfinite(contacted_bridge_area) or contacted_bridge_area < 0:
+        raise RuntimeError("Corrected original crotch seam has unknown measured contact area.")
+    seam_winding["realScannedBodyBVHPairsOnOrientedResearchBridge"] = sum(
+        i >= source_offset for _, i in corrected_contacts
+    )
+    seam_winding["realScannedBodyContactedBridgeAreaMm2"] = round(
+        contacted_bridge_area, 4
+    )
+    seam_winding["originalScannedBodyBVHPairsOnSourceBridge"] = bridge_body_pairs
+    seam_winding["originalSourceUVProvenance"] = source_stage_uv_provenance
+    seam_winding["newResearchBridgeHasCertifiedPhysicalUVScale"] = False
+    seam_winding["measuredSupplierPhysicalFabricRepeatMm"] = None
+    seam_winding["sourceSewnGarmentUVApproved"] = False
     clearance_trial = None
     targeted_reroute_trial = None
     if args.experimental_centroid_clearance_mm == 7.0:
@@ -1247,6 +1340,7 @@ def main():
       "partialWeldJoinedEdges":10,
       "unmatchedCutEdgesBefore":{"left":len(l_remaining),"right":len(r_remaining_mapped)},
       "trialAddedBridgeTriangles":len(bridge_faces),
+      "researchOnlyOriginalSeamWindingAndUVProvenance":seam_winding,
       "trialSegments":per_pair,
       "actualBodyContactByOriginalCutEdgePair":per_bridge_pair,
       "bridgeToOriginalBodyBVHPairs":bridge_body_pairs,

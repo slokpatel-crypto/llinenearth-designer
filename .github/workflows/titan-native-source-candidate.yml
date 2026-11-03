@@ -16,6 +16,7 @@ on:
       - "scripts/blender/diagnose-crotch-seam-pairing.py"
       - "scripts/blender/prototype-crotch-source-seam-weld.py"
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
+      - "scripts/blender/source-crotch-seam-winding.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -24,6 +25,7 @@ on:
       - "tests/crotch-source-ring-falloff-native.test.ts"
       - "tests/crotch-local-body-normal-ring-native.test.ts"
       - "tests/crotch-connected-face-remesh-native.test.ts"
+      - "tests/crotch-seam-winding-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -35,6 +37,7 @@ on:
       - "tests/blender/test_garment_modifier_contact_stages.py"
       - "scripts/blender/summarize-native-candidate-preflight.py"
       - "tests/python/test_native_candidate_preflight_summary.py"
+      - "tests/python/test_source_crotch_seam_winding.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -51,6 +54,7 @@ on:
       - "scripts/blender/diagnose-crotch-seam-pairing.py"
       - "scripts/blender/prototype-crotch-source-seam-weld.py"
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
+      - "scripts/blender/source-crotch-seam-winding.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -59,6 +63,7 @@ on:
       - "tests/crotch-source-ring-falloff-native.test.ts"
       - "tests/crotch-local-body-normal-ring-native.test.ts"
       - "tests/crotch-connected-face-remesh-native.test.ts"
+      - "tests/crotch-seam-winding-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -85,6 +90,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 tests/python/test_native_candidate_preflight_summary.py
+          python3 tests/python/test_source_crotch_seam_winding.py
       - name: Fetch checksum-verified Blender 4.5.14
         shell: bash
         run: |
@@ -902,6 +908,80 @@ jobs:
                   assert math.isfinite(row["contactingBridgeFaceAreaMm2"])
                   assert 0 <= row["contactingBridgeFaceAreaMm2"] <= row["bridgeFaceAreaMm2"] + 0.0001
           assert original["actualBodyContactByOriginalCutEdgePair"] == offset["actualBodyContactByOriginalCutEdgePair"]
+          seam_cut_edges={
+              tuple(sorted(part[k]))
+              for part in offset["trialSegments"]
+              for k in ("leftEdge","rightEdge")
+          }
+          assert len(seam_cut_edges) == 8
+          for evidence in (original, offset):
+              oriented=evidence["researchOnlyOriginalSeamWindingAndUVProvenance"]
+              assert oriented["researchOnly"] is True
+              assert oriented["originalSourceFaceCount"] == 2650
+              assert oriented["experimentalBridgeFaceCount"] == 6
+              assert oriented["originalCutEdgeCount"] == 8
+              assert oriented["exhaustiveWindingCombinationsChecked"] == 64
+              assert oriented["changesProductionGeometry"] is False
+              assert oriented["productionApproved"] is False
+              assert oriented["sewnGarmentApproved"] is False
+              assert oriented["sourceUVAndFabricRepeatVerified"] is False
+              assert oriented["newResearchBridgeHasCertifiedPhysicalUVScale"] is False
+              assert oriented["measuredSupplierPhysicalFabricRepeatMm"] is None
+              assert oriented["sourceSewnGarmentUVApproved"] is False
+              assert len(oriented["correctedResearchBridgeFaces"]) == 6
+              assert all(len(row) == 3 and len(set(row)) == 3
+                         for row in oriented["correctedResearchBridgeFaces"])
+              control_wind=oriented["control"]
+              corrected_wind=oriented["corrected"]
+              assert control_wind["openBoundaryEdgeCount"] == corrected_wind["openBoundaryEdgeCount"] == 126
+              assert control_wind["nonManifoldEdgeCount"] == corrected_wind["nonManifoldEdgeCount"] == 0
+              assert control_wind["unchangedOriginalSourceWindingMismatchEdges"] == (
+                  corrected_wind["unchangedOriginalSourceWindingMismatchEdges"]
+              )
+              assert len(corrected_wind["newResearchBridgeWindingMismatchEdges"]) <= len(
+                  control_wind["newResearchBridgeWindingMismatchEdges"]
+              )
+              assert oriented["strictBridgeSeamWindingImprovementObserved"] is (
+                  len(corrected_wind["newResearchBridgeWindingMismatchEdges"]) <
+                  len(control_wind["newResearchBridgeWindingMismatchEdges"])
+              )
+              assert oriented["allNewResearchBridgeTwoOwnerEdgesOppositelyWound"] is (
+                  not corrected_wind["newResearchBridgeWindingMismatchEdges"]
+              )
+              for winding in (control_wind,corrected_wind):
+                  cut=winding["originalCutEdgeOwnership"]
+                  assert len(cut) == 8
+                  assert {tuple(row["originalCutEdge"]) for row in cut} == seam_cut_edges
+                  assert all(type(row["originalAndResearchOppositeWinding"]) is bool
+                             and row["originalFaceIndex"] >= 0
+                             and 0 <= row["bridgeFaceIndex"] < 6 for row in cut)
+              assert all(0 <= i < 6 for i in oriented["flippedResearchBridgeFaceIndices"])
+              assert len(oriented["flippedResearchBridgeFaceIndices"]) <= 6
+              assert type(oriented["realScannedBodyBVHPairsOnOrientedResearchBridge"]) is int
+              assert oriented["realScannedBodyBVHPairsOnOrientedResearchBridge"] >= 0
+              assert oriented["originalScannedBodyBVHPairsOnSourceBridge"] == evidence["bridgeToOriginalBodyBVHPairs"]
+              assert math.isfinite(oriented["realScannedBodyContactedBridgeAreaMm2"])
+              assert oriented["realScannedBodyContactedBridgeAreaMm2"] >= 0
+              uv_stages=oriented["originalSourceUVProvenance"]
+              assert len(uv_stages) == 2
+              for stage in uv_stages:
+                  assert stage["originalMeshPolygonCount"] > 0
+                  assert type(stage["originalStageHasFiniteCompleteUV"]) is bool
+                  assert type(stage["originalUVLayers"]) is list
+                  for layer in stage["originalUVLayers"]:
+                      assert layer["originalUVLoopCount"] >= 0
+                      assert layer["originalMeshLoopCount"] > 0
+                      if layer["finiteAndComplete"]:
+                          assert layer["originalUVLoopCount"] == layer["originalMeshLoopCount"]
+                  assert stage["originalStageHasFiniteCompleteUV"] is bool(
+                      stage["originalUVLayers"] and all(
+                          entry["finiteAndComplete"] for entry in stage["originalUVLayers"]
+                      )
+                  )
+              assert "never sufficient" in oriented["metricCaveat"]
+          assert original["researchOnlyOriginalSeamWindingAndUVProvenance"] == (
+              offset["researchOnlyOriginalSeamWindingAndUVProvenance"]
+          )
           trial = offset["researchOnlyCentroidClearanceTrial"]
           assert trial["testedOriginalBodyNormalOffsetMm"] == 7.0
           assert trial["originalBridgeTriangles"] == 6 and trial["triangulatedFanFaces"] == 18
@@ -1332,6 +1412,14 @@ jobs:
               "radial18TriangleContactedAreaMm2":radial["contactingBridgeAreaMm2"],
               "radialDisplacementMm":shifts,
               "originalCutSegmentBodyContacts":original["actualBodyContactByOriginalCutEdgePair"],
+              "originalSourceSeamWinding": {
+                  "controlBridgeMismatchCount":len(offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["control"]["newResearchBridgeWindingMismatchEdges"]),
+                  "orientedBridgeMismatchCount":len(offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["corrected"]["newResearchBridgeWindingMismatchEdges"]),
+                  "reversedBridgeFaceIndices":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["flippedResearchBridgeFaceIndices"],
+                  "sourceOriginalStageUVProvenance":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["originalSourceUVProvenance"],
+                  "sewnGarmentApproved":False,
+                  "sourceUVAndFabricRepeatVerified":False,
+              },
               "radialAreaReductionObserved":trial["radialStrictContactedAreaImprovementObserved"],
               "preservedCutBoundaryEdges":trial["preservedCutEdgeBoundaryCount"],
               "reducedBodyPairs":trial["strictBodyCollisionImprovementObserved"],
