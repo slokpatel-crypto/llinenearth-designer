@@ -16,8 +16,42 @@ export function photoPanelRotationFromVertical(axis:PhotoPanelAxis) {
   const dx=Number(axis.bottomX)-Number(axis.topX);
   const dy=Number(axis.bottomY)-Number(axis.topY);
   if(!Number.isFinite(dx) || !Number.isFinite(dy) || Math.abs(dy)<1) return 0;
-  const degrees=Math.atan2(dx,dy)*180/Math.PI;
-  return Math.round(degrees*10)/10;
+  // Canvas positive rotation sends the downwards vertical grain to the LEFT.
+  // Negate the photo's rightward measured lean to follow each source panel.
+  const degrees=-Math.atan2(dx,dy)*180/Math.PI;
+  const rounded=Math.round(degrees*10)/10;
+  // Signed zero has no directional meaning and must not fail strict snapshots.
+  return rounded===0 ? 0 : rounded;
+}
+
+
+/**
+ * CanvasPattern forward fabric-to-screen transform with a shared textile
+ * reference. The seam pivot keeps exactly the same source texture coordinate
+ * across a rotated panel and the common unrotated panel at any valid scale.
+ * These are photographic screen coordinates, not physical repeat evidence.
+ */
+export function photoPanelPatternMatrix(input:{
+  reference:PhotoPanelPoint;
+  pivot:PhotoPanelPoint;
+  fabricRotationDeg:number;
+  panelRotationDeg:number;
+  scale:number;
+}):readonly [number,number,number,number,number,number] {
+  const {reference,pivot,fabricRotationDeg,panelRotationDeg,scale}=input;
+  if(![reference.x,reference.y,pivot.x,pivot.y,fabricRotationDeg,panelRotationDeg,scale].every(Number.isFinite)||scale<=0) {
+    throw new RangeError("Photo pattern transform requires finite coordinates and positive scale.");
+  }
+  const fabricRad=fabricRotationDeg*Math.PI/180,panelRad=panelRotationDeg*Math.PI/180;
+  const fc=Math.cos(fabricRad),fs=Math.sin(fabricRad);
+  const pc=Math.cos(panelRad),ps=Math.sin(panelRad);
+  const combined=fabricRad+panelRad;
+  const a=scale*Math.cos(combined),b=scale*Math.sin(combined),c=-b,d=a;
+  const baseX=reference.x-scale*(fc*reference.x-fs*reference.y);
+  const baseY=reference.y-scale*(fs*reference.x+fc*reference.y);
+  const e=pivot.x+pc*(baseX-pivot.x)-ps*(baseY-pivot.y);
+  const f=pivot.y+ps*(baseX-pivot.x)+pc*(baseY-pivot.y);
+  return [a,b,c,d,e,f];
 }
 
 // Approximate center-line anchors traced from the fixed 1024x1536 tucked

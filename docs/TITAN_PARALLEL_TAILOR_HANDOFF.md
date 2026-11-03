@@ -1,6 +1,6 @@
 # TITAN — parallel tailor handoff checkpoint
 
-Branch: `titan-parallel-tailor-handoff` (isolated from main at `5835a5533281b8306e9bfa1fd9786a30d59c8053`).
+Branch: `titan-parallel-tailor-handoff` (originally isolated from main at `5835a5533281b8306e9bfa1fd9786a30d59c8053`, reconciled with main `4dd8020abd83429449ff53ea5bb71b046394d86e` via an explicit two-parent merge on this branch).
 
 ## Scope / preserved boundaries
 Work only in measurement audit, existing production handoff and printable tailor tech-pack rendering, plus dedicated regression tests. No inventory, catalogue, visual rendering, operator orders, model identity, migrations, Vercel configuration or deployments.
@@ -16,8 +16,10 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [x] Missing shirt chest, trouser waist/seat and legacy non-versioned construction are explicit review items; sparse older designs remain exportable for **review**, never promoted to `ready_for_tailor_review`.
 - [x] Tech pack separates body, ease, finished range and calculation basis; never implies that a recorded anchor or provisional ease is signed cutting guidance.
 - [x] Added regression tests for coherent, missing, duplicate, non-finite, reversed and tampered targets, and unsigned physical acceptance.
-- [ ] Matching-head CI and Node tests, including quality, full tests, engine evaluation, preview-performance, release check and Next build.
-- [ ] Revalidate against latest main and review PR diff before merge.
+- [x] Prior isolated head `3982df4078f28302b742a89e095d8b112b8d7d88` passed Full CI run `41501082501` (quality, all tests, engine, preview, release, build, HTTP, browser) and Non-3D run `41501082547` (actual Studio/mobile browser verification). Those passing results applied only to that previous commit.
+- [ ] Reconciled two-parent head: obtain new exact-head Full CI, Non-3D, disposable PostgreSQL and browser checks (the main branch gained fourteen commits).
+- [ ] Recheck that current main has not moved again; isolate this five-file diff, and request independent integration review before readiness for merge.
+- [ ] Revalidate integrated handoff reconstruction/physical-ease provenance against latest main; do not treat an unsigned tech pack as a cutting authorization.
 - [ ] Real tailor-confirmed landmark definitions, measurement calibration, garment tolerances, pattern ID and signed physical fit evidence (external dependency).
 - [ ] Representative measured cloth widths, shrinkage and actual order outcomes (external dependency).
 
