@@ -297,3 +297,29 @@ test("legacy approved profiles without nested evidence fail closed without throw
   assert.equal(intact.patternScaleVerified,true);
   assert.equal(intact.fiberContentVerified,true);
 });
+
+test("padded oversize supplier source and composition cannot bypass literal receipt limits",()=>{
+  const padded=[
+    ["fiberContent"," ".repeat(221)+"100% linen"],
+    ["sourceUrl"," ".repeat(1801)+"https://supplier.example/lot"],
+    ["evidenceNote"," ".repeat(501)+"Measured physical roll last week."],
+  ] as const;
+  for(const [key,value] of padded){
+    const reviewed=intelligence("reviewed");
+    reviewed.verifiedPhysical={...reviewed.verifiedPhysical,[key]:value};
+    const output=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    if(key==="fiberContent"){
+      assert.equal(output.fiberContentVerified,undefined);
+      assert.equal(output.fiberContent,null);
+      assert.equal(output.weightGsm,145,"independent bounded GSM still eligible");
+    } else {
+      assert.equal(output.patternScaleVerified,undefined, key);
+      assert.equal(output.weightGsm,null, key);
+      assert.equal(output.drape,null, key);
+      assert.equal(output.fiberContentVerified,undefined, key);
+    }
+  }
+  const justBounded=intelligence("reviewed");
+  justBounded.verifiedPhysical.fiberContent=" ".repeat(210)+"100% linen";
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,justBounded).fiberContentVerified,true);
+});

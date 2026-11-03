@@ -25,6 +25,7 @@
 9. Persisted render metadata must use literal booleans for repeat detection and finite positive integer pixel dimensions; JSON coercion of strings/arrays/null must never manufacture image repeat evidence or an invented tile size.
 10. Physical inspection receipt dates must be real dates and cannot claim an inspection several days in the future; permit UTC tomorrow only for legitimate UTC+14 local calendar offsets. A valid date still does not prove inspection happened.
 11. Legacy/corrupt approved profiles with missing or wrong-shape nested measurement/physical objects must return original unverified fabric unchanged rather than throwing a customer-facing runtime error.
+12. At the customer-facing boundary, physical supplier URL, note, and fibre literals are bounded *before* trimming, so oversized whitespace-padded persisted JSON cannot bypass source/evidence length constraints. Exact-limit valid declarations remain accepted.
 
 ## Physical acceptance still open
 

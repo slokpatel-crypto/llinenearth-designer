@@ -26,8 +26,8 @@ export function applyVerifiedPhysicalFabricEvidence(
   const provenance=intelligence.fieldProvenance||{};
   // Values may come from persisted JSON even when TypeScript declares them as
   // strings. Do not coerce arrays/objects into supplier notes or HTTPS links.
-  const sourceTextValid=(physical.sourceUrl==null || typeof physical.sourceUrl==="string")
-    && (physical.evidenceNote==null || typeof physical.evidenceNote==="string");
+  const sourceTextValid=(physical.sourceUrl==null || (typeof physical.sourceUrl==="string" && physical.sourceUrl.length<=1800))
+    && (physical.evidenceNote==null || (typeof physical.evidenceNote==="string" && physical.evidenceNote.length<=500));
   const sourceUrl=typeof physical.sourceUrl==="string" ? physical.sourceUrl.trim() : "";
   const evidenceNote=typeof physical.evidenceNote==="string" ? physical.evidenceNote.trim() : "";
   let validSourceUrl=sourceTextValid && sourceUrl.length<=1800 && evidenceNote.length<=500 && !sourceUrl;
@@ -71,7 +71,7 @@ export function applyVerifiedPhysicalFabricEvidence(
   const fiberVerified=physicalSource("verifiedPhysical.fiberContent")
     && typeof physical.fiberContent==="string"
     && physical.fiberContent.trim().length>0
-    && physical.fiberContent.trim().length<=220;
+    && physical.fiberContent.length<=220;
   return {
     ...fabric,
     ...(patternScaleVerified ? {
