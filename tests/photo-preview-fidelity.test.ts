@@ -142,4 +142,7 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/advanced-construction-disclosed-/);
   assert.match(script,/collar-cuff-placket-disclosed-1440/);
   assert.match(script,/advancedConstructionDisclosed=true/);
+  assert.match(script,/actualPhotoPixelHash\(page\)/);
+  assert.match(script,/specOnlyPhotoPixelsUnchanged=true/);
+  assert.match(script,/advanced spec-only sleeve\/pleat options must not repaint/);
 });
