@@ -286,6 +286,69 @@ export function applyOrderLifecycleEvent(state: OrderLifecycleState, rawEvent: u
     heldFrom, audit: Object.freeze([...state.audit, applied]) }));
 }
 
+/**
+ * A pure retry decision for a FUTURE transaction-backed persistence adapter.
+ * It does not replace the server's atomic compare-and-set, actor authentication,
+ * idempotency-key reservation or evidence provenance validation.
+ */
+export type OrderLifecycleWriteResult = Readonly<{
+  outcome: "applied" | "already_applied";
+  state: OrderLifecycleState;
+}>;
+
+function sameAppliedEvent(previous: AppliedOrderLifecycleEvent, event: Record<string, unknown>): boolean {
+  // Live callers may omit the computed destination, unlike stored events.
+  // No other field (including explicit undefined optional claims) may differ.
+  const keys = Object.keys(previous).filter(key => key !== "to" || Object.hasOwn(event, "to"));
+  if (Object.keys(event).length !== keys.length ||
+      keys.some(key => !Object.hasOwn(event, key))) return false;
+  for (const key of keys) {
+    if (key === "qc") {
+      const claimed = record(event.qc);
+      const approved = previous.qc;
+      if (!approved) return false;
+      rejectUnknownFields(claimed, QC_FIELDS, "QC evidence");
+      if (Object.keys(claimed).length !== QC_FIELDS.size ||
+          claimed.inspector !== approved.inspector ||
+          claimed.inspectionReference !== approved.inspectionReference ||
+          claimed.revisionId !== approved.revisionId ||
+          claimed.recipeHash !== approved.recipeHash) return false;
+      const checks = record(claimed.checks);
+      rejectUnknownFields(checks, QC_CHECK_FIELDS, "QC check");
+      if (Object.keys(checks).length !== QC_CHECK_FIELDS.size ||
+          ORDER_QC_CHECKS.some(check => checks[check] !== approved.checks[check])) return false;
+    } else if (event[key] !== previous[key as keyof AppliedOrderLifecycleEvent]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Return the same frozen state for a byte-for-byte-equivalent logical retry,
+ * even when later events have been applied. Reuse of an event ID with modified
+ * actor, stage, sequence, evidence, QC or destination must fail closed.
+ * Persisted idempotency still requires a database-atomic unique event ID and
+ * order-version compare-and-set; never use this alone for multi-user writes.
+ */
+export function applyOrderLifecycleEventIdempotently(
+  state: OrderLifecycleState, rawEvent: unknown,
+): OrderLifecycleWriteResult {
+  if (!state || typeof state !== "object" || !TRUSTED_STATES.has(state))
+    throw new Error("Untrusted lifecycle snapshot; restore audited history before applying events.");
+  const event = record(rawEvent);
+  rejectUnknownFields(event, APPLIED_EVENT_FIELDS, "order event");
+  const eventId = identifier(event.eventId, "event ID");
+  if (event.orderId !== state.orderId) throw new Error("Order identity mismatch.");
+  const previous = state.audit.find(item => item.eventId === eventId);
+  if (previous) {
+    if (!sameAppliedEvent(previous, event))
+      throw new Error("Conflicting order event retry.");
+    return Object.freeze({ outcome: "already_applied", state });
+  }
+  return Object.freeze({ outcome: "applied", state: applyOrderLifecycleEvent(state, event) });
+}
+
 /** Replays the entire event history, refusing mismatched audit destinations. */
 export function replayOrderLifecycle(orderId: string, revisionId: string, recipeHash: string,
   events: readonly unknown[]): OrderLifecycleState {
