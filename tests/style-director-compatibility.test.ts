@@ -306,3 +306,17 @@ test("incidental collar substrings never rewrite a named candidate or photograph
   assert.equal(styleDirectorCandidateCollar("Band Collar Shirt", selectableCollars)?.versioned, "mandarin_band_collar");
   assert.equal(styleDirectorCandidateCollar("Cutaway Collar Shirt", selectableCollars)?.versioned, "cutaway_collar");
 });
+
+test("band-collar shirt type cannot silently use a spread or camp collar", () => {
+  const mismatched=spec({type:"band_collar_shirt",collar:"spread_collar",wear:"tucked"});
+  const before=JSON.stringify(mismatched);
+  assert.deepEqual(styleDirectorConstructionIssues(mismatched,"Formal").map(issue=>issue.code),
+    ["band_collar_construction"]);
+  assert.equal(JSON.stringify(mismatched),before,"review must not rewrite locked style IDs");
+  assert.deepEqual(styleDirectorConstructionIssues(spec({
+    type:"band_collar_shirt",collar:"cuban_camp_collar",wear:"tucked",
+  }),"Casual").map(issue=>issue.code),["band_collar_construction"]);
+  assert.deepEqual(styleDirectorConstructionIssues(spec({
+    type:"band_collar_shirt",collar:"mandarin_band_collar",wear:"tucked",
+  }),"Formal"),[]);
+});
