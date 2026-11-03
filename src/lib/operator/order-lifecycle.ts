@@ -186,6 +186,8 @@ export function applyOrderLifecycleEvent(state: OrderLifecycleState, rawEvent: u
     throw new Error("Untrusted lifecycle snapshot; restore audited history before applying events.");
   }
   const event = record(rawEvent);
+  // Live inputs are untrusted too: never silently drop unexpected claims.
+  rejectUnknownFields(event, APPLIED_EVENT_FIELDS, "order event");
   const eventId = identifier(event.eventId, "event ID");
   if (event.orderId !== state.orderId) throw new Error("Order identity mismatch.");
   if (!Number.isSafeInteger(event.sequence) || event.sequence !== state.sequence + 1)
