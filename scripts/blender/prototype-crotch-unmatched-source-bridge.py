@@ -1281,6 +1281,79 @@ def main():
     seam_winding["newResearchBridgeHasCertifiedPhysicalUVScale"] = False
     seam_winding["measuredSupplierPhysicalFabricRepeatMm"] = None
     seam_winding["sourceSewnGarmentUVApproved"] = False
+
+    # The original source leg objects have NO source UV maps. A separate
+    # research-only six-triangle panel is nonetheless unfolded from TRUE
+    # source triangle lengths. These unitless display UVs cannot be stitched
+    # into source material charts or called a supplier textile repeat.
+    flatten_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-crotch-bridge-flat-charts.py")
+    ))
+    geometric_flat = flatten_ops["flatten_original_bridge_charts"](
+        merged_verts, corrected_bridge_faces, per_pair
+    )
+    flat_mesh_name = "TITAN_RESEARCH_CrotchBridgeFlatChartsMesh"
+    flat_obj_name = "TITAN_RESEARCH_CrotchBridgeUnverifiedUVOnly"
+    if bpy.data.objects.get(flat_obj_name) is not None:
+        raise RuntimeError("Do not overwrite the native research crotch flat-chart mesh.")
+    flat_mesh = bpy.data.meshes.new(flat_mesh_name)
+    flat_mesh.from_pydata(merged_verts, [], corrected_bridge_faces)
+    flat_mesh.update(calc_edges=True)
+    if len(flat_mesh.polygons) != 6 or any(
+            not math.isfinite(face.area) or face.area <= 1e-12
+            for face in flat_mesh.polygons):
+        raise RuntimeError("Cannot make UV witness from invalid original bridge triangle.")
+    flat_layer = flat_mesh.uv_layers.new(name="TITAN_RESEARCH_UNVERIFIED_BRIDGE_GEOMETRIC_UV")
+    filled_uv_loop_ids = set()
+    chart_offset_mm = 0.0
+    for chart in geometric_flat["charts"]:
+        coords = chart["flatChartLocalVertexCoordsMm"]
+        for face_index in chart["actualBridgeFaceIndices"]:
+            poly = flat_mesh.polygons[face_index]
+            for loop_id in poly.loop_indices:
+                vertex_id = flat_mesh.loops[loop_id].vertex_index
+                pos = coords.get(str(vertex_id))
+                if pos is None or loop_id in filled_uv_loop_ids:
+                    raise RuntimeError("Bridge source UV chart loop not attributed to original face.")
+                # Numerical 2D unit here is 1000 geometric millimetres per
+                # Blender research UV. No printed fabric repeat/mm scale exists.
+                u, v = (chart_offset_mm + pos[0]) / 1000.0, pos[1] / 1000.0
+                if not math.isfinite(u) or not math.isfinite(v):
+                    raise RuntimeError("Native research bridge UV loop not finite.")
+                flat_layer.data[loop_id].uv = (u, v)
+                filled_uv_loop_ids.add(loop_id)
+        chart_offset_mm += chart["flatChartWidthMm"] + 5.0
+    if (len(flat_mesh.loops) != 18 or len(flat_layer.data) != 18
+            or len(filled_uv_loop_ids) != 18
+            or not all(all(math.isfinite(float(v)) for v in cell.uv)
+                       for cell in flat_layer.data)):
+        raise RuntimeError("All 18 genuine source bridge UV loops must be explicit and finite.")
+
+    flat_obj = bpy.data.objects.new(flat_obj_name, flat_mesh)
+    flat_obj.hide_render = True
+    flat_obj["candidateOnly"] = True
+    flat_obj["productionApproved"] = False
+    flat_obj["physicalFitApproved"] = False
+    flat_obj["sourceSewnGarmentUVApproved"] = False
+    research.objects.link(flat_obj)
+    if export.objects.get(flat_obj_name) is not None:
+        raise RuntimeError("Nonproduction flat UV chart entered original garment export.")
+    native_flat_geom = geom(flat_obj)
+    real_source_flat_area_mm2 = sum(native_flat_geom["areas"]) * 1e6
+    reported_flat_area_mm2 = sum(
+        row["flattenedSurfaceAreaMm2"] for row in geometric_flat["charts"]
+    )
+    if (not math.isfinite(real_source_flat_area_mm2)
+            or abs(real_source_flat_area_mm2 - reported_flat_area_mm2)
+               > max(0.1, real_source_flat_area_mm2 * 1e-5)):
+        raise RuntimeError("Bridge 2D flat pattern area does not preserve true 3D source area.")
+    geometric_flat["nativeBlenderSourceBridgePolygonCount"] = len(flat_mesh.polygons)
+    geometric_flat["nativeBlenderResearchUVLoopCount"] = len(flat_layer.data)
+    geometric_flat["nativeBlenderResearchUVLayerName"] = flat_layer.name
+    geometric_flat["nativeBlenderSourceBridgeSurfaceAreaMm2"] = round(real_source_flat_area_mm2, 5)
+    geometric_flat["researchBridgeUVDisplayUnitsAreVerifiedTextileScale"] = False
+    geometric_flat["originalSourceGarmentUVStillMissing"] = True
+    seam_winding["researchOnlyGeometricFlatBridgeCharts"] = geometric_flat
     clearance_trial = None
     targeted_reroute_trial = None
     if args.experimental_centroid_clearance_mm == 7.0:
