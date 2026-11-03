@@ -1352,7 +1352,13 @@ def main():
     geometric_flat["nativeBlenderResearchUVLayerName"] = flat_layer.name
     geometric_flat["nativeBlenderSourceBridgeSurfaceAreaMm2"] = round(real_source_flat_area_mm2, 5)
     geometric_flat["researchBridgeUVDisplayUnitsAreVerifiedTextileScale"] = False
-    geometric_flat["originalSourceGarmentUVStillMissing"] = True
+    geometric_flat["originalSourceTrouserUVPresent"] = any(
+        stage["originalUVLayers"] for stage in source_stage_uv_provenance
+    )
+    geometric_flat["originalSourceGarmentUVStillMissing"] = not all(
+        stage["originalStageHasFiniteCompleteUV"]
+        for stage in source_stage_uv_provenance
+    )
     seam_winding["researchOnlyGeometricFlatBridgeCharts"] = geometric_flat
     clearance_trial = None
     targeted_reroute_trial = None
