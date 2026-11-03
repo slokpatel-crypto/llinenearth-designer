@@ -27,6 +27,12 @@ test("actual crotch original source faces are replaced by equal-topology connect
     '"researchBridgeBodyPairs": len(bridge)',
     '"bodyContactedRemeshedOriginalAreaMm2": round(contact_area, 4)',
     '"bodyGuidedSourceFaceNormalReversals": normal_reversal_count',
+    '"equalTopologyBodyGuidedCentroidSweepMm": {',
+    '"bodyGuidedSourceFaceNormalReversalsByOffsetMm": flipped_per_offset',
+    'projected_points7.append(projected_7)',
+    'projected_points11.append(projected_11)',
+    'candidate7 = make("BodyGuidedCentres7Mm", projected_points7)',
+    'candidate11 = make("BodyGuidedCentres11Mm", projected_points11)',
     '"productionApproved": False',
     '"changesProductionGeometry": False',
   ]) assert.ok(code.includes(needle), needle);
@@ -43,6 +49,10 @@ test("actual crotch original source faces are replaced by equal-topology connect
     'remesh_control["untouchedOriginalSourceBodyPairs"] == remesh_candidate["untouchedOriginalSourceBodyPairs"]',
     'remesh_control["researchBridgeBodyPairs"] == remesh_candidate["researchBridgeBodyPairs"]',
     'remesh["bodyGuidedSourceFaceNormalReversals"]',
+    'remesh_sweep=remesh["equalTopologyBodyGuidedCentroidSweepMm"]',
+    'assert set(remesh_sweep) == {"7","9","11"}',
+    'for remesh_row in (remesh_control,*remesh_sweep.values()):',
+    'remesh_flip_sweep=remesh["bodyGuidedSourceFaceNormalReversalsByOffsetMm"]',
     '"connectedOriginalFaceRetriangulation":targeted["researchOnlyConnectedFaceRetriangulation"]',
   ]) assert.ok(native.includes(needle), needle);
   for (const needle of [
