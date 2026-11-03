@@ -26,14 +26,15 @@ export function styleDirectorIntelligenceTrustWeight(
 export function styleDirectorCandidateCollar(
   candidateShirt: string,
   legacyChoices: readonly string[],
-): { legacy: string | null; versioned: "cuban_camp_collar" | "mandarin_band_collar" } | null {
+): { legacy: string | null; versioned: "cuban_camp_collar" | "mandarin_band_collar" | "cutaway_collar" } | null {
   const camp = /camp|cuban/i.test(candidateShirt);
   const band = !camp && /band|mandarin/i.test(candidateShirt);
-  if (!camp && !band) return null;
-  const matcher = camp ? /camp|cuban/i : /band|mandarin/i;
+  const cutaway = !camp && !band && /cutaway/i.test(candidateShirt);
+  if (!camp && !band && !cutaway) return null;
+  const matcher = camp ? /camp|cuban/i : band ? /band|mandarin/i : /cutaway/i;
   return {
     legacy: legacyChoices.find((label) => matcher.test(label)) ?? null,
-    versioned: camp ? "cuban_camp_collar" : "mandarin_band_collar",
+    versioned: camp ? "cuban_camp_collar" : band ? "mandarin_band_collar" : "cutaway_collar",
   };
 }
 
@@ -51,7 +52,7 @@ export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "short_sleeve_double_cuff" |
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
-    "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo";
+    "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo";
   explanation: string;
 };
 
@@ -130,8 +131,8 @@ export function styleDirectorConstructionIssues(
 /**
  * Fail closed when the legacy photographic style and the versioned garment
  * construction would tell a customer to wear or cut different shirts.
- * Only camp/band collars are compared by label here: other advanced collars
- * may have intentionally approximate legacy previews.
+ * Compare named camp/band/cutaway collars by their canonical IDs. Other
+ * advanced collars may have intentionally approximate legacy previews.
  */
 export function styleDirectorPresentationIssues(
   style: Pick<DesignerStyle, "collar" | "shirtWear">,
@@ -147,10 +148,11 @@ export function styleDirectorPresentationIssues(
     });
   }
   const legacyCollar = /camp|cuban/i.test(style.collar) ? "cuban_camp_collar"
-    : /band|mandarin/i.test(style.collar) ? "mandarin_band_collar" : null;
+    : /band|mandarin/i.test(style.collar) ? "mandarin_band_collar"
+    : /cutaway/i.test(style.collar) ? "cutaway_collar" : null;
   const versionedCollar = spec.shirt.collar;
   if (legacyCollar !== versionedCollar &&
-      (legacyCollar !== null || versionedCollar === "cuban_camp_collar" || versionedCollar === "mandarin_band_collar")) {
+      (legacyCollar !== null || ["cuban_camp_collar", "mandarin_band_collar", "cutaway_collar"].includes(versionedCollar))) {
     issues.push({
       code: "legacy_collar_mismatch",
       explanation: "The photographic collar choice disagrees with the versioned camp/band collar; review both without changing the locked IDs.",
@@ -163,6 +165,14 @@ export function styleDirectorPresentationIssues(
     issues.push({
       code: "unverified_camp_photo",
       explanation: "The Cuban/Camp collar is selectable but has no verified live photographic rendering; confirm the preview against the intended construction.",
+    });
+  }
+  if (versionedCollar === "cutaway_collar") {
+    // Reference-library support is approximate, not an approved photographic
+    // proof of the actual cutaway shape or measured tailoring.
+    issues.push({
+      code: "unverified_cutaway_photo",
+      explanation: "The cutaway collar is a selectable construction, but its live preview is approximate; confirm the actual collar before production.",
     });
   }
   if (spec.shirt.sleeve === "half_sleeve") {
