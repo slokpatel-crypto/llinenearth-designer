@@ -612,9 +612,31 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
             raise RuntimeError("No actual scanned-body surface for original seam source vertex.")
         nearest[index] = (point.copy(), normal.normalized())
 
-    def make(label, signed_offset_mm):
+    # Mesh-graph rings come from the ACTUAL original source trouser faces.
+    # Research falloff is topological, not a claimed physically measured drape.
+    neighbours = {}
+    for face in base_faces:
+        for i in range(len(face)):
+            a, b = face[i], face[(i + 1) % len(face)]
+            neighbours.setdefault(a, set()).add(b)
+            neighbours.setdefault(b, set()).add(a)
+    source_rings = {i: 0 for i in source_indices}
+    frontier = set(source_indices)
+    for depth in (1, 2):
+        next_frontier = set()
+        for vertex in frontier:
+            next_frontier.update(neighbours.get(vertex, set()))
+        next_frontier.difference_update(source_rings)
+        for vertex in sorted(next_frontier):
+            source_rings[vertex] = depth
+        frontier = next_frontier
+    if not any(v == 1 for v in source_rings.values()) or not any(v == 2 for v in source_rings.values()):
+        raise RuntimeError("Original source trouser has no genuine two-ring geometry for falloff.")
+    def make(label, signed_offset_mm, ring_weights=()):
         points = [point.copy() for point in vertices]
         movements = []
+        seed_displacements = {}
+        neighbor_motion_by_ring = {1: [], 2: []}
         if signed_offset_mm:
             for index in boundary:
                 nearest_point, direction = nearest[index]
@@ -624,6 +646,20 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
                 if (not math.isfinite(move_mm) or move_mm > 25.0):
                     raise RuntimeError("Connected trial source vertex moved outside research bound.")
                 movements.append(move_mm)
+                seed_displacements[index] = points[index] - initial
+            for ring, weight in enumerate(ring_weights, start=1):
+                if ring not in (1, 2) or not (0.0 <= weight <= 0.8):
+                    raise RuntimeError("Research ring falloff must be finite and bounded.")
+                for index in sorted(i for i, depth in source_rings.items() if depth == ring):
+                    nearest_source = min(
+                        source_indices,
+                        key=lambda i: ((vertices[index] - vertices[i]).length, i)
+                    )
+                    movement = seed_displacements[nearest_source] * weight
+                    if not all(math.isfinite(v) for v in movement):
+                        raise RuntimeError("Source ring displacement is not finite.")
+                    points[index] = vertices[index] + movement
+                    neighbor_motion_by_ring[ring].append(movement.length * 1000.0)
         name = "TITAN_RESEARCH_ConnectedCrotchSource_" + label
         if bpy.data.objects.get(name) is not None:
             raise RuntimeError("Connected original source research object already exists.")
@@ -704,20 +740,37 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
                     round(max(movements), 5) if movements else 0.0
                 ),
                 "originalSourceCoordinatesChanged": signed_offset_mm != 0,
+                "ringFalloffWeights": list(ring_weights),
+                "movedNeighborVertexCountsByRing": {
+                    str(ring): len(values) for ring, values in neighbor_motion_by_ring.items()
+                },
+                "maxNeighborMotionMm": round(max(
+                    (distance for values in neighbor_motion_by_ring.values() for distance in values),
+                    default=0.0
+                ), 5),
                 "productionApproved": False,
             },
         }
 
     control = make("UnchangedControl", 0.0)
     moved = make("Positive9Mm", 9.0)
+    one_ring = make("Positive9MmOneRingHalf", 9.0, (0.5,))
+    two_ring = make("Positive9MmTwoRing", 9.0, (0.66, 0.33))
+    falloff_trials = {
+        "oneRingHalf": one_ring,
+        "twoRing": two_ring,
+    }
     original_normals = control["mesh"].polygons
     displaced_normals = moved["mesh"].polygons
     changed_winding = sum(
         original_normals[index].normal.dot(displaced_normals[index].normal) <= 0
         for index in affected_source_faces
     )
-    if control["report"]["triangleOrPolygonCount"] != moved["report"]["triangleOrPolygonCount"]:
-        raise RuntimeError("Connected source faces are not equal topology.")
+    for variant in (moved, one_ring, two_ring):
+        if control["report"]["triangleOrPolygonCount"] != variant["report"]["triangleOrPolygonCount"]:
+            raise RuntimeError("Source falloff changed original garment face count.")
+        if control["report"]["originalSourceAdjacentFaceCount"] != variant["report"]["originalSourceAdjacentFaceCount"]:
+            raise RuntimeError("Source falloff lost original connected seam face provenance.")
     if control["report"]["originalSourceAdjacentFaceCount"] != moved["report"]["originalSourceAdjacentFaceCount"]:
         raise RuntimeError("Original adjacent source regions no longer match.")
     return {
@@ -728,6 +781,25 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
         "originalOpenBoundaryEdgeCount": len(original_open),
         "control": control["report"],
         "positiveNineMm": moved["report"],
+        "falloffTrials": {
+            label: trial["report"] for label, trial in falloff_trials.items()
+        },
+        "originalSourceMeshRingVertexCounts": {
+            str(ring): sum(d == ring for d in source_rings.values())
+            for ring in (0, 1, 2)
+        },
+        "falloffSourceAdjacentFaceNormalFlips": {
+            label: sum(
+                original_normals[index].normal.dot(
+                    trial["mesh"].polygons[index].normal
+                ) <= 0 for index in affected_source_faces
+            ) for label, trial in falloff_trials.items()
+        },
+        "falloffReducedAdjacentBodyPairsObserved": {
+            label: trial["report"]["adjacentOriginalSourceBodyBVHPairs"] <
+                   moved["report"]["adjacentOriginalSourceBodyBVHPairs"]
+            for label, trial in falloff_trials.items()
+        },
         "sourceAdjacentFaceNormalFlipsAfterNineMm": changed_winding,
         "localAdjacentSourceBodyCollisionImprovementObserved": (
             moved["report"]["adjacentOriginalSourceBodyBVHPairs"] <
@@ -738,7 +810,7 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
             control["report"]["targetBridgeBodyBVHPairs"]
         ),
         "metricCaveat": (
-            "Measured connected research source-shell topology, not continuous "
+            "Measured source-face ring falloff in connected Blender research topology, not continuous "
             "tailor-approved sewn trouser. Original face UVs, 1.6mm cloth, "
             "real source inner stitching allowances, cut/garment identity "
             "and original six-panel preflight remain unapproved."
