@@ -1163,6 +1163,32 @@ jobs:
               assert candidate["wholeSourceBodyBVHPairs"] >= 0
               assert candidate["adjacentOriginalSourceContactedAreaMm2"] >= 0
               assert candidate["targetBridgeContactedAreaMm2"] >= 0
+          regional=connected["falloffSameOriginalFaceRegionContactEvidence"]
+          assert set(regional) == set(falloffs)
+          for label, evidence in regional.items():
+              current=falloffs[label]
+              region=set(evidence["sameOriginalSourceFaceIndices"])
+              assert len(region) == evidence["sameFaceCount"] == current["alteredOriginalSourceFaceCount"]
+              assert region == set(current["alteredOriginalSourceFaceIndices"])
+              assert len(region) >= len(adjacent)
+              assert evidence["outsideModifiedFacesPairCountsEqual"] is True
+              assert type(evidence["unmodifiedSourceBodyPairs"]) is int
+              assert evidence["unmodifiedSourceBodyPairs"] >= 0
+              for key in ("unchangedControl","nineMmNoFalloff","withRingFalloff"):
+                  sampled=evidence[key]
+                  assert type(sampled["bodyBVHPairs"]) is int and sampled["bodyBVHPairs"] >= 0
+                  assert type(sampled["contactedOriginalSourceFaceCount"]) is int
+                  assert 0 <= sampled["contactedOriginalSourceFaceCount"] <= len(region)
+                  assert math.isfinite(sampled["contactedOriginalSourceAreaMm2"])
+                  assert sampled["contactedOriginalSourceAreaMm2"] >= 0
+              assert evidence["strictOriginalRegionPairReductionVersusNineMm"] is (
+                  evidence["withRingFalloff"]["bodyBVHPairs"]
+                  < evidence["nineMmNoFalloff"]["bodyBVHPairs"]
+              )
+              assert evidence["strictOriginalRegionAreaReductionVersusNineMm"] is (
+                  evidence["withRingFalloff"]["contactedOriginalSourceAreaMm2"]
+                  < evidence["nineMmNoFalloff"]["contactedOriginalSourceAreaMm2"]
+              )
           assert "not continuous" in connected["metricCaveat"]
           assert all(row["productionApproved"] is False for row in source_variants.values())
           assert "No continuous" in source_offset["metricCaveat"]
@@ -1219,6 +1245,7 @@ jobs:
                   for label,row in connected["falloffTrials"].items()
               },
               "sourceFalloffNormalFlipCounts":connected["falloffAllAlteredSourceFaceNormalFlips"],
+              "sameOriginalFacesRegionEvidence":connected["falloffSameOriginalFaceRegionContactEvidence"],
               "positiveNormalOffsetSweep":source_offset["positiveNormalOffsetSweepMm"],
               "jointSampledTargetObserved":source_offset["jointSampledTargetObserved"],
               "targetedEqualTopologyVariants":variants,
