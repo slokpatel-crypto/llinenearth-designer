@@ -380,3 +380,22 @@ test("Mandarin/Band collar on an unrelated shirt type requires review without re
     type: "dress_shirt", collar: "spread_collar",
   })), []);
 });
+
+test("cropped ankle construction cannot claim slight shoe break", () => {
+  for (const pant of [
+    { type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "slight_break" },
+    { type: "formal_flat_front", hem: "cropped_above_ankle_hem", break: "slight_break" },
+  ]) {
+    const selected = spec({}, pant);
+    const before = JSON.stringify(selected);
+    assert.deepEqual(styleDirectorConstructionIssues(selected).map(issue => issue.code),
+      ["cropped_slight_break"]);
+    assert.equal(JSON.stringify(selected), before);
+  }
+  assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
+    type: "formal_flat_front", hem: "plain_hem", break: "slight_break",
+  })), [], "ordinary full-length trousers can have a slight break");
+  assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
+    type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "no_break",
+  })), [], "cropped trousers with no break remain compatible");
+});
