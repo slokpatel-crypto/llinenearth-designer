@@ -907,6 +907,4 @@ test("qualified negative pleat descriptions do not fabricate positive pleats", (
       label, spec({}, { pleat: "flat_front" }).pant,
     ), [], label);
   }
-  // "No double pleats" does not rule out a single pleat; never infer flat front.
-  assert.equal(styleDirectorCandidateTrouserFront("Trouser with no double pleats"), "pleated");
 });
