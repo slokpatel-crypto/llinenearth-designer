@@ -5,6 +5,7 @@ import { FABRIC_STOCK } from "@/lib/fabric-stock";
 import { loadFabricAnalyzerGroundTruthHistory } from "@/lib/fabric-analyzer-store";
 import {
   FABRIC_GROUND_TRUTH_VERSION,
+  isStockBoundFabricGroundTruthId,
   normalizeExplicitFabricGroundTruthState,
   fabricGroundTruthStateFromProfile,
   reconstructOriginalFabricGroundTruthState,
@@ -26,6 +27,9 @@ export async function loadFabricGroundTruthLabels(){
   const labels=new Map<string,FabricGroundTruthLabel>();
   let explicitLabels=0;
   let backfilledLabels=0;
+  // Owner-labelled benchmark counts physical stock units, not arbitrary
+  // operator-note IDs or historic catalogue rows that are no longer active.
+  const eligibleStockIds=new Set(FABRIC_STOCK.filter((fabric)=>fabric.inStock).map((fabric)=>fabric.id));
 
   try{
     const params=new URLSearchParams({
@@ -49,7 +53,8 @@ export async function loadFabricGroundTruthLabels(){
         const profileId=clean(payload.profileId,160);
         const original=normalizeExplicitFabricGroundTruthState(payload.original);
         const final=normalizeExplicitFabricGroundTruthState(payload.final);
-        if(!fabricId || !profileId || !original || !final || labels.has(fabricId)) continue;
+        if(!isStockBoundFabricGroundTruthId(fabricId,eligibleStockIds)
+          || !profileId || !original || !final || labels.has(fabricId)) continue;
         labels.set(fabricId,{
           fabricId,
           profileId,
@@ -67,9 +72,10 @@ export async function loadFabricGroundTruthLabels(){
   }
 
   try{
-    const history=await loadFabricAnalyzerGroundTruthHistory(FABRIC_STOCK.filter((fabric)=>fabric.inStock).map((fabric)=>fabric.id));
+    const history=await loadFabricAnalyzerGroundTruthHistory([...eligibleStockIds]);
     for(const row of history){
-      if(!row.fabric_id || labels.has(row.fabric_id)) continue;
+      if(!isStockBoundFabricGroundTruthId(row.fabric_id,eligibleStockIds)
+        || labels.has(row.fabric_id)) continue;
       const final=fabricGroundTruthStateFromProfile(row.profile);
       const original=row.review_status==="corrected"
         ? reconstructOriginalFabricGroundTruthState(final,(row.feedback||[]).map((item)=>({

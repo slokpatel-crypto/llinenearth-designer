@@ -15,6 +15,13 @@ export const FABRIC_GROUND_TRUTH_FIELDS=[
 export type FabricGroundTruthField=typeof FABRIC_GROUND_TRUTH_FIELDS[number];
 export type FabricGroundTruthState=Record<FabricGroundTruthField,string>;
 
+/** Only actual active stock identifiers may enter owner-labelled accuracy. */
+export function isStockBoundFabricGroundTruthId(
+  value:unknown, eligibleStockIds:ReadonlySet<string>,
+):value is string {
+  return typeof value==="string" && value.length>0 && eligibleStockIds.has(value);
+}
+
 /**
  * Normalize the independent operator's explicit comparison, not a reconstructed
  * Analyzer result. Reject coercible arrays/objects and overlong persisted JSON

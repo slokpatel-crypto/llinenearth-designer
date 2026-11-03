@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fabricGroundTruthStateFromProfile, normalizeExplicitFabricGroundTruthState, reconstructOriginalFabricGroundTruthState, scoreFabricGroundTruth, type FabricGroundTruthLabel } from "../src/lib/fabric-ground-truth-scorecard.ts";
+import { fabricGroundTruthStateFromProfile, isStockBoundFabricGroundTruthId, normalizeExplicitFabricGroundTruthState, reconstructOriginalFabricGroundTruthState, scoreFabricGroundTruth, type FabricGroundTruthLabel } from "../src/lib/fabric-ground-truth-scorecard.ts";
 
 function label(fabricId:string,changes:Partial<Record<string,string>>={},at="2026-09-30T10:00:00Z"):FabricGroundTruthLabel{
   const original={
@@ -208,4 +208,25 @@ test("explicit labels may have unknown fields but require a real literal classif
   assert.equal(accepted?.formality,"4");
   assert.equal(accepted?.statementLevel,"2");
   assert.equal(accepted?.colorFamily,"");
+});
+
+test("benchmark only admits exact active stock fabric IDs, never unrelated operator notes",()=>{
+  const active=new Set(["linen-plain-60-sky-blue","linen-print-60-01"]);
+  assert.equal(isStockBoundFabricGroundTruthId("linen-plain-60-sky-blue",active),true);
+  for(const bad of [
+    "made-up-lot-007","linen-plain-60-sky-blue ", "linen-plain-60-sky",
+    ["linen-plain-60-sky-blue"],{id:"linen-plain-60-sky-blue"},null,undefined,0,"",
+  ]){
+    assert.equal(isStockBoundFabricGroundTruthId(bad,active),false,String(bad));
+  }
+  const incoming=[
+    label("linen-plain-60-sky-blue"),
+    label("made-up-lot-007"),
+    label("linen-print-60-01",{patternFamily:"check"}),
+  ];
+  const eligible=incoming.filter((item)=>isStockBoundFabricGroundTruthId(item.fabricId,active));
+  const score=scoreFabricGroundTruth(eligible);
+  assert.equal(score.uniqueFabrics,2);
+  assert.equal(score.exactProfileMatches,1);
+  assert.equal(score.correctedFabrics,1);
 });

@@ -92,3 +92,8 @@
 - Invalid partial/forged quality records normalize to `null`, keeping fabric trust provisional rather than manufacturing an image quality or calibrated physical claim. Valid historical records emitted by `assessImageQuality` remain unchanged.
 - The analyzer profile version must be a literal v3/v4 string; arrays such as `["fabric-analyzer-v4"]` can no longer masquerade as a supported serialized contract. Added regressions for both boundaries.
 - No changes to stock/inventory/customer rendering, no schema migration, no physical certificate implied.
+
+## 2026-11-03 — Active stock binding for owner-labelled accuracy
+- The scorecard loader previously accepted any literal `payload.fabricId` in an explicit operator event, even if it was not a real current Linen Earth catalogue fabric. Fabric labels for unknown or retired stock IDs could inflate the 40-case benchmark and render misleading confidence.
+- The loader now checks exact canonical IDs against currently in-stock `FABRIC_STOCK` members for both explicit labels and historical backfills before counting or scoring them. This does not edit stock, change availability, or infer that listed stock is physically verified.
+- Added a pure predicate and regression tests for exact stock IDs, unknown IDs, array/object coercions, whitespace suffixes and mixed label sets. No UI/schema/stock ledger changes; independent owner labels are still required.
