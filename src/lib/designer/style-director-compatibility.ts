@@ -71,7 +71,7 @@ export type DirectorConstructionIssue = {
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_type_hem_mismatch" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
-    "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve";
+    "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "legacy_trouser_mismatch";
   explanation: string;
 };
 
@@ -216,8 +216,8 @@ export function styleDirectorConstructionIssues(
  * advanced collars may have intentionally approximate legacy previews.
  */
 export function styleDirectorPresentationIssues(
-  style: Pick<DesignerStyle, "collar" | "shirtWear">,
-  spec: Pick<StyleSpecV2, "shirt">,
+  style: Pick<DesignerStyle, "collar" | "shirtWear"> & Partial<Pick<DesignerStyle, "trouser">>,
+  spec: Pick<StyleSpecV2, "shirt"> & Partial<Pick<StyleSpecV2, "pant">>,
 ): DirectorConstructionIssue[] {
   const issues: DirectorConstructionIssue[] = [];
   const expectedWear = style.shirtWear === "Tucked" ? "tucked"
@@ -269,6 +269,16 @@ export function styleDirectorPresentationIssues(
       code: "unverified_cutaway_photo",
       explanation: "The cutaway collar is a selectable construction, but its live preview is approximate; confirm the actual collar before production.",
     });
+  }
+  if (style.trouser !== undefined && spec.pant !== undefined) {
+    const selectedTrouser = optionsFor("pant.type").find((option) =>
+      option.legacySelectable !== false && option.legacyLabel === style.trouser);
+    if (!selectedTrouser || selectedTrouser.id !== spec.pant.type) {
+      issues.push({
+        code: "legacy_trouser_mismatch",
+        explanation: "The photographic trouser type disagrees with the versioned trouser construction; verify the silhouette without changing the locked design.",
+      });
+    }
   }
   if (spec.shirt.sleeve === "half_sleeve") {
     // DesignerStyle has no sleeve-length field. A versioned half sleeve can be
