@@ -320,3 +320,17 @@ test("band-collar shirt type cannot silently use a spread or camp collar", () =>
     type:"band_collar_shirt",collar:"mandarin_band_collar",wear:"tucked",
   }),"Formal"),[]);
 });
+
+test("Cuban camp collar on another shirt type requires review without changing IDs", () => {
+  for (const type of ["dress_shirt", "band_collar_shirt"] as const) {
+    const mismatched=spec({type,collar:"cuban_camp_collar",wear:"untucked"});
+    const before=JSON.stringify(mismatched);
+    const issues=styleDirectorConstructionIssues(mismatched,"Casual").map(issue=>issue.code);
+    assert.ok(issues.includes("camp_collar_type_mismatch"));
+    assert.equal(JSON.stringify(mismatched),before,"review must not rewrite the proposed construction");
+  }
+  const valid=spec({type:"camp_collar_resort",collar:"cuban_camp_collar",wear:"untucked"});
+  assert.deepEqual(styleDirectorConstructionIssues(valid,"Casual"),[]);
+  assert.deepEqual(styleDirectorConstructionIssues(valid,"Formal").map(issue=>issue.code),
+    ["formal_camp_collar"]);
+});
