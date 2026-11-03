@@ -230,3 +230,40 @@ test("benchmark only admits exact active stock fabric IDs, never unrelated opera
   assert.equal(score.exactProfileMatches,1);
   assert.equal(score.correctedFabrics,1);
 });
+
+test("owner-labelled scorecard must use canonical classifier values, not typos or aliases",()=>{
+  const valid=label("canonical").original;
+  for(const [field,bad] of [
+    ["colorFamily","blue"],
+    ["colorFamily","neutral_family"],
+    ["colorFamily","blue_family " + "x".repeat(5)],
+    ["patternFamily","pinstripe"],
+    ["patternFamily","plaid"],
+    ["patternScale","tiny"],
+    ["patternDensity","very-dense"],
+    ["orientation","diagonal"],
+    ["sheen","glossy"],
+    ["visualWeight","150gsm"],
+  ] as const){
+    assert.equal(normalizeExplicitFabricGroundTruthState({...valid,[field]:bad}),null,field);
+  }
+  const canonical=normalizeExplicitFabricGroundTruthState({
+    ...valid,colorFamily:"teal_family",patternFamily:"botanical",
+    patternScale:"bold",patternDensity:"sparse",orientation:"all-over",
+    sheen:"uncertain",visualWeight:"uncertain",
+  });
+  assert.ok(canonical);
+  assert.equal(canonical.colorFamily,"teal_family");
+  assert.equal(canonical.patternFamily,"botanical");
+});
+
+test("unknown is still permitted as an empty field, not a synthetic category",()=>{
+  const partial=normalizeExplicitFabricGroundTruthState({
+    colorFamily:"",patternFamily:"stripe",patternScale:null,orientation:undefined,
+  });
+  assert.ok(partial);
+  assert.equal(partial.colorFamily,"");
+  assert.equal(partial.patternScale,"");
+  assert.equal(partial.orientation,"");
+  assert.equal(partial.patternFamily,"stripe");
+});

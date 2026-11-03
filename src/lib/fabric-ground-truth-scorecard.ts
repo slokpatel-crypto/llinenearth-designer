@@ -1,3 +1,6 @@
+import { colorFamilies } from "./vocab/colors.ts";
+import { patternFamilies } from "./vocab/patterns.ts";
+
 export const FABRIC_GROUND_TRUTH_VERSION="fabric-ground-truth-v1" as const;
 
 export const FABRIC_GROUND_TRUTH_FIELDS=[
@@ -14,6 +17,18 @@ export const FABRIC_GROUND_TRUTH_FIELDS=[
 
 export type FabricGroundTruthField=typeof FABRIC_GROUND_TRUTH_FIELDS[number];
 export type FabricGroundTruthState=Record<FabricGroundTruthField,string>;
+
+const GROUND_TRUTH_CHOICES:Record<
+  Exclude<FabricGroundTruthField,"formality"|"statementLevel">,ReadonlySet<string>
+>={
+  colorFamily:new Set(colorFamilies.map((family)=>family.id)),
+  patternFamily:new Set(patternFamilies.map((family)=>family.id)),
+  patternScale:new Set(["none","fine","medium","bold"]),
+  patternDensity:new Set(["none","sparse","balanced","dense"]),
+  orientation:new Set(["none","vertical","horizontal","grid","all-over","directional","uncertain"]),
+  sheen:new Set(["matte","low","medium","high","uncertain"]),
+  visualWeight:new Set(["light-looking","medium-looking","heavy-looking","uncertain"]),
+};
 
 /** Only actual active stock identifiers may enter owner-labelled accuracy. */
 export function isStockBoundFabricGroundTruthId(
@@ -42,7 +57,13 @@ export function normalizeExplicitFabricGroundTruthState(value:unknown):FabricGro
     }
     if(typeof given!=="string" || given.length>80) return null;
     const normalized=given.trim();
-    if(ordinal && normalized && !/^[1-5]$/.test(normalized)) return null;
+    if(ordinal){
+      if(normalized && !/^[1-5]$/.test(normalized)) return null;
+    } else if(normalized && !GROUND_TRUTH_CHOICES[field].has(normalized)){
+      // Reject aliases, typos and impossible classifier outputs rather than
+      // counting an arbitrary label as an independent accuracy comparison.
+      return null;
+    }
     state[field]=normalized;
   }
   return FABRIC_GROUND_TRUTH_FIELDS.some((field)=>state[field]!=="") ? state : null;

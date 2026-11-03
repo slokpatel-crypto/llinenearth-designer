@@ -49,7 +49,9 @@ export async function loadFabricGroundTruthLabels(){
         const payload=row.payload||{};
         if(clean(payload.subtype,80)!=="fabric_ground_truth_label") continue;
         if(clean(payload.version,80)!==FABRIC_GROUND_TRUTH_VERSION) continue;
-        const fabricId=clean(payload.fabricId,160);
+        // Exact stock identity must be checked on the raw JSON literal.
+        // Trimming here could silently turn "stock-id " into "stock-id".
+        const fabricId=payload.fabricId;
         const profileId=clean(payload.profileId,160);
         const original=normalizeExplicitFabricGroundTruthState(payload.original);
         const final=normalizeExplicitFabricGroundTruthState(payload.final);
