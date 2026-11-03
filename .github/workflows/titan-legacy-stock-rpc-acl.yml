@@ -8,6 +8,7 @@ on:
       - 'supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql'
       - 'supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql'
       - 'scripts/test-legacy-stock-rpc-acl-invocation.sh'
+      - 'scripts/test-stock-reserve-filename-order-overwrite.sh'
       - '.github/workflows/titan-legacy-stock-rpc-acl.yml'
   workflow_dispatch:
 
@@ -129,3 +130,11 @@ jobs:
             and (select count(*) from private.customer_otp_rate_windows)=0
           then 'PASS' else 'FAIL' end;
           SQL
+      - name: Reproduce filename-order stock identity truncation and restore strict gate
+        run: bash scripts/test-stock-reserve-filename-order-overwrite.sh
+      - name: Verify legacy v1 ACL still denied after function-order replay
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -At -f supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql \
+            | grep -q 'PASS: all four v1 stock mutators denied'
+          bash scripts/test-legacy-stock-rpc-acl-invocation.sh
