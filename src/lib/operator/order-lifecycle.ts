@@ -95,7 +95,7 @@ const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d
 
 function nonEmpty(value: unknown, name: string, min: number, max: number): string {
   if (typeof value !== "string" || value.length < min || value.length > max ||
-      value.trim() !== value || /[\u0000-\u001f\u007f]/.test(value)) {
+      value.trim() !== value || value.trim().length === 0 || /[\u0000-\u001f\u007f]/.test(value)) {
     throw new Error("Invalid " + name + ".");
   }
   return value;

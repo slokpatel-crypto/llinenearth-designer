@@ -149,6 +149,21 @@ test("reject malformed identities, evidence, actor, event action and unrecognize
     {eventId:"short"},{qc:qc()}]) assert.throws(()=>step(s,"accept",extra));
 });
 
+test("blank-only operator, receipt, reason and QC evidence fail closed",()=>{
+  const s=base();
+  for(const extra of [
+    {actor:"   "}, {evidenceRef:"        "},
+  ]) assert.throws(()=>step(s,"accept",extra),/Invalid/);
+  assert.throws(()=>step(s,"cancel",{reason:"   "}),/Invalid reason/);
+  assert.throws(()=>step(toQc(),"reject_qc",{reason:"   "}),/Invalid reason/);
+  for(const wrong of [
+    {...qc(),inspector:"  "},
+    {...qc(),inspectionReference:"   "},
+  ]) assert.throws(()=>step(toQc(),"approve_qc",{qc:wrong}),/Invalid/);
+  assert.equal(step(s,"accept").status,"accepted",
+    "normal nonblank operator evidence remains accepted");
+});
+
 test("replay refuses altered destinations, removed history and out-of-order events",()=>{
   const delivered=step(step(toQc(),"approve_qc",{qc:qc()}),"dispatch");
   assert.throws(()=>replayOrderLifecycle(id,revision,hash,delivered.audit.slice(1)),/Stale|non-sequential/);
