@@ -129,3 +129,17 @@ test("rear construction stays explicitly unverified in the fixed front photograp
   assert.deepEqual(rows.map((x)=>x.field),["shirt.back"]);
   assert.match(rows[0].reason,/front photograph cannot verify/i);
 });
+
+test("photographic browser harness verifies actual customer advanced-cut and legacy controls at responsive widths", () => {
+  const script=readFileSync("scripts/verify-photo-form.cjs","utf8");
+  assert.match(script,/name:"Sleeve length",exact:true/);
+  assert.match(script,/selectOption\("half_sleeve"\)/);
+  assert.match(script,/name:"Trouser pleats",exact:true/);
+  assert.match(script,/selectOption\("double_pleat_forward"\)/);
+  assert.match(script,/name:"Shirt collar",exact:true/);
+  assert.match(script,/name:"Shirt cuff",exact:true/);
+  assert.match(script,/name:"Shirt placket",exact:true/);
+  assert.match(script,/advanced-construction-disclosed-/);
+  assert.match(script,/collar-cuff-placket-disclosed-1440/);
+  assert.match(script,/advancedConstructionDisclosed=true/);
+});
