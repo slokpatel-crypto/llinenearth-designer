@@ -1226,6 +1226,16 @@ def main():
                 body_tree, research, geom_ops, seam_ops,
             )
         )
+        face_remesh_ops = runpy.run_path(str(Path(__file__).with_name(
+            "prototype-crotch-connected-face-remesh.py"
+        )))
+        targeted_reroute_trial["researchOnlyConnectedFaceRetriangulation"] = (
+            face_remesh_ops["trial_connected_face_retriangulation"](
+                merged_verts, base_faces, bridge_faces,
+                (tuple(worst["leftEdge"]), tuple(worst["rightEdge"])),
+                body_tree, research, geom_ops, seam_ops,
+            )
+        )
     # If the trial is worse, preserve that number. Never auto-promote geometry.
     # These may legitimately be nonzero: always report, NEVER suppress as accepted fit.
     report={
