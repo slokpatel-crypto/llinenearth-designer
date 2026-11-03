@@ -43,7 +43,7 @@ export function styleDirectorCandidateCollar(
 export function styleDirectorCandidateSleeve(
   candidateShirt: string,
 ): { sleeve: "half_sleeve"; cuff: "open_short_hem_cuff" } | null {
-  return /\b(?:short|half)[ -]?sleeve\b/i.test(candidateShirt)
+  return /\b(?:short|half)[ -]?sleeved?\b/i.test(candidateShirt)
     ? { sleeve: "half_sleeve", cuff: "open_short_hem_cuff" }
     : null;
 }
