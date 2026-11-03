@@ -998,8 +998,17 @@ jobs:
           assert source_offset["physicalFitApproved"] is False
           assert source_offset["sewnGarmentApproved"] is False
           source_variants=source_offset["equalTopologyVariants"]
-          assert set(source_variants) == {"unchangedControl","positiveBodyNormal","negativeBodyNormal"}
+          expected_offsets={
+              "unchangedControl":0.0,
+              "positiveBodyNormal":7.0,
+              "negativeBodyNormal":-7.0,
+              "positiveBodyNormal9Mm":9.0,
+              "positiveBodyNormal11Mm":11.0,
+          }
+          assert set(source_variants) == set(expected_offsets)
+          assert source_offset["positiveNormalOffsetSweepMm"] == [7.0,9.0,11.0]
           for name,row in source_variants.items():
+              assert row["signedBodyNormalOffsetMm"] == expected_offsets[name]
               assert row["triangles"] == 4
               assert row["degenerateFaces"] == row["nonManifoldEdges"] == 0
               assert row["productionApproved"] is False
@@ -1047,6 +1056,17 @@ jobs:
           assert source_offset["strictSampledSevenMmImprovementObserved"] is (
               best["sourceEdgeSamplesBelowSevenMm"] < source_control["sourceEdgeSamplesBelowSevenMm"]
           )
+          swept=["positiveBodyNormal","positiveBodyNormal9Mm","positiveBodyNormal11Mm"]
+          expected_joint=[
+              label for label in swept if (
+                  source_variants[label]["bodyBVHPairs"] == 0
+                  and source_variants[label]["sourceEdgeSamplesBelowSevenMm"] == 0
+                  and source_variants[label]["degenerateFaces"] == 0
+                  and source_variants[label]["nonManifoldEdges"] == 0)
+          ]
+          assert source_offset["jointSampledZeroBVHAndSevenMmCandidateLabels"] == expected_joint
+          assert source_offset["jointSampledTargetObserved"] is bool(expected_joint)
+          assert all(row["productionApproved"] is False for row in source_variants.values())
           assert "No continuous" in source_offset["metricCaveat"]
           assert "zero rays does not prove clearance" in fixed["rayTestCaveat"]
           assert "do not certify continuous boundary clearance" in fixed["rayTestCaveat"]
@@ -1095,6 +1115,8 @@ jobs:
               "targetedWorstSourcePair":targeted["targetOriginalCutEdgePair"],
               "fixedBoundaryBodyRayEvidence":targeted["fixedBridgeBoundaryBodyRayEvidence"],
               "sourceCutEdgeReprojectionTrial":targeted["researchOnlySourceCutEdgeReprojectionTrial"],
+              "positiveNormalOffsetSweep":source_offset["positiveNormalOffsetSweepMm"],
+              "jointSampledTargetObserved":source_offset["jointSampledTargetObserved"],
               "targetedEqualTopologyVariants":variants,
               "targetedLowestContactAreaDirection":targeted["lowestContactAreaDirection"],
               "targetedContactAreaImprovementObserved":targeted["strictContactAreaImprovementObserved"],
