@@ -1432,6 +1432,67 @@ def main():
     uv_report["originalSourceUVFromGarmentProduction"] = False
     uv_report["originalSourceStageUVProvenance"] = source_stage_uv_provenance
     seam_winding["researchOnlyOriginalSourcePanelUvSurvey"] = uv_report
+
+    # A second, independent research-only copy of the same ORIGINAL 2,650
+    # source faces tests metric per-quad flattening without any invented cloth
+    # topology or fabric repeat. Each real quad is an independent UV island.
+    quad_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-trouser-quad-metric-uv.py")
+    ))
+    quad_evidence = quad_ops["unfold_original_trouser_source_quads"](
+        merged_verts, base_faces, l_remaining + r_remaining_mapped
+    )
+    quad_name = "TITAN_RESEARCH_OriginalTrouserQuadsUnstitchedMetricUVOnly"
+    if bpy.data.objects.get(quad_name) is not None:
+        raise RuntimeError("Original-source metric UV trial must never overwrite existing geometry.")
+    quad_mesh = bpy.data.meshes.new(quad_name + "Mesh")
+    quad_mesh.from_pydata(merged_verts, [], base_faces)
+    quad_mesh.update(calc_edges=True)
+    if (len(quad_mesh.polygons) != 2650
+            or any(len(poly.loop_indices) != 4 for poly in quad_mesh.polygons)
+            or any(not math.isfinite(poly.area) or poly.area <= 1e-12
+                   for poly in quad_mesh.polygons)):
+        raise RuntimeError("Real original trouser quad source is not valid for metric UV research.")
+    quad_layer = quad_mesh.uv_layers.new(
+        name="TITAN_RESEARCH_UNSTITCHED_METRIC_QUAD_ISLANDS"
+    )
+    quad_loops = 0
+    for poly, row in zip(quad_mesh.polygons, quad_evidence["face_uv_loops"]):
+        if len(poly.loop_indices) != 4 or len(row) != 4:
+            raise RuntimeError("True original trouser source quad lost UV corners.")
+        for loop_id, coord in zip(poly.loop_indices, row):
+            if not all(math.isfinite(v) for v in coord):
+                raise RuntimeError("Real source metric quad chart has nonfinite coordinates.")
+            quad_layer.data[loop_id].uv = coord
+            quad_loops += 1
+    if (quad_loops != len(quad_mesh.loops)
+            or len(quad_layer.data) != len(quad_mesh.loops)
+            or not all(all(math.isfinite(float(v)) for v in uv.uv)
+                       for uv in quad_layer.data)):
+        raise RuntimeError("Actual original quad UV research has incomplete loops.")
+    quad_obj = bpy.data.objects.new(quad_name, quad_mesh)
+    quad_obj.hide_render = True
+    quad_obj["candidateOnly"] = True
+    quad_obj["productionApproved"] = False
+    quad_obj["physicalTextileScaleVerified"] = False
+    quad_obj["sourceUVApproved"] = False
+    research.objects.link(quad_obj)
+    if export.objects.get(quad_name) is not None:
+        raise RuntimeError("Independent unstitched source UV islands entered production export.")
+    quad_geom = geom(quad_obj)
+    quad_body_contacts = body_tree.overlap(geom_ops["real_tree"](quad_geom))
+    if len(quad_body_contacts) != unchanged_source_pairs:
+        raise RuntimeError("Metric UV atlas altered true original trouser-body geometry.")
+    qr = quad_evidence["report"]
+    if (qr["sourceOpenBoundaryEdgeCount"] != initial["afterWeldOpenEdges"]
+            or qr["actualOriginalSourceQuadCount"] != 2650
+            or qr["actualOriginalSourceUvLoopCount"] != quad_loops):
+        raise RuntimeError("Metric UV study omitted source topology or cut edges.")
+    qr["nativeResearchUvLayerName"] = quad_layer.name
+    qr["nativeUvLoopsAssigned"] = quad_loops
+    qr["originalBodyBVHPairsStillUnchanged"] = len(quad_body_contacts)
+    qr["originalSourceUvProvenance"] = source_stage_uv_provenance
+    seam_winding["researchOnlyUnstitchedOriginalQuadMetricUvSurvey"] = qr
     clearance_trial = None
     targeted_reroute_trial = None
     if args.experimental_centroid_clearance_mm == 7.0:
