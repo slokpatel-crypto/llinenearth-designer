@@ -49,7 +49,7 @@ export function styleDirectorCandidateSleeve(
 }
 
 export type DirectorConstructionIssue = {
-  code: "camp_collar_construction" | "short_sleeve_double_cuff" |
+  code: "camp_collar_construction" | "band_collar_construction" | "short_sleeve_double_cuff" |
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
     "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo";
@@ -72,6 +72,12 @@ export function styleDirectorConstructionIssues(
     issues.push({
       code: "camp_collar_construction",
       explanation: "The proposed camp-collar resort shirt needs an untucked, open camp-collar construction review.",
+    });
+  }
+  if (shirt.type === "band_collar_shirt" && shirt.collar !== "mandarin_band_collar") {
+    issues.push({
+      code: "band_collar_construction",
+      explanation: "The proposed band-collar shirt type has a different collar construction; confirm the canonical collar before cutting.",
     });
   }
   if (shirt.type === "camp_collar_resort" &&
