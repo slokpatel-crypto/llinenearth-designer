@@ -632,11 +632,13 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
         frontier = next_frontier
     if not any(v == 1 for v in source_rings.values()) or not any(v == 2 for v in source_rings.values()):
         raise RuntimeError("Original source trouser has no genuine two-ring geometry for falloff.")
-    def make(label, signed_offset_mm, ring_weights=()):
+    def make(label, signed_offset_mm, ring_weights=(), ring_normal_targets_mm=()):
         points = [point.copy() for point in vertices]
         movements = []
         seed_displacements = {}
         neighbor_motion_by_ring = {1: [], 2: []}
+        if ring_weights and ring_normal_targets_mm:
+            raise RuntimeError("Never mix displacement-vector and original-body-normal ring variants.")
         if signed_offset_mm:
             for index in boundary:
                 nearest_point, direction = nearest[index]
@@ -663,12 +665,33 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
         moved_source_ids = set(source_indices) if signed_offset_mm else set()
         moved_source_ids.update(
             index for index, depth in source_rings.items()
-            if 0 < depth <= len(ring_weights) and ring_weights[depth - 1] > 0
+            if (0 < depth <= len(ring_weights) and ring_weights[depth - 1] > 0)
+            or (0 < depth <= len(ring_normal_targets_mm))
         )
         altered_source_faces = [
             i for i, face in enumerate(base_faces)
             if any(vertex in moved_source_ids for vertex in face)
         ]
+        if ring_normal_targets_mm:
+            if len(ring_normal_targets_mm) > 2:
+                raise RuntimeError("Original-source body projection is restricted to two measured rings.")
+            for ring, target_mm in enumerate(ring_normal_targets_mm, start=1):
+                if not math.isfinite(target_mm) or not (0.0 < target_mm <= 9.0):
+                    raise RuntimeError("Ring source body-normal distance must be finite and bounded.")
+                for index in sorted(i for i, depth in source_rings.items() if depth == ring):
+                    source_location, source_normal, body_polygon, sample_distance = body_tree.find_nearest(vertices[index])
+                    if (source_location is None or source_normal is None or body_polygon is None
+                            or sample_distance is None or not math.isfinite(sample_distance)
+                            or source_normal.length <= 1e-9):
+                        raise RuntimeError("Nearest measured original-body surface for ring vertex unavailable.")
+                    original_point = vertices[index].copy()
+                    target_point = source_location + source_normal.normalized() * (target_mm / 1000.0)
+                    move = (target_point - original_point).length * 1000.0
+                    if (not math.isfinite(move) or move > 25.0
+                            or not all(math.isfinite(v) for v in target_point)):
+                        raise RuntimeError("Native source ring reprojection exceeds physical research bound.")
+                    points[index] = target_point
+                    neighbor_motion_by_ring[ring].append(move)
         name = "TITAN_RESEARCH_ConnectedCrotchSource_" + label
         if bpy.data.objects.get(name) is not None:
             raise RuntimeError("Connected original source research object already exists.")
@@ -752,6 +775,7 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
                 ),
                 "originalSourceCoordinatesChanged": signed_offset_mm != 0,
                 "ringFalloffWeights": list(ring_weights),
+                "ringOriginalBodyNormalTargetsMm": list(ring_normal_targets_mm),
                 "alteredOriginalSourceFaceIndices": altered_source_faces,
                 "alteredOriginalSourceFaceCount": len(altered_source_faces),
                 "movedNeighborVertexCountsByRing": {
@@ -769,9 +793,15 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
     moved = make("Positive9Mm", 9.0)
     one_ring = make("Positive9MmOneRingHalf", 9.0, (0.5,))
     two_ring = make("Positive9MmTwoRing", 9.0, (0.66, 0.33))
+    local_body_one = make("Positive9MmLocalBodyNormalRing7Mm", 9.0,
+                          ring_normal_targets_mm=(7.0,))
+    local_body_two = make("Positive9MmLocalBodyNormalTwoRings7And4Mm", 9.0,
+                          ring_normal_targets_mm=(7.0, 4.0))
     falloff_trials = {
         "oneRingHalf": one_ring,
         "twoRing": two_ring,
+        "localBodyNormalOneRing7Mm": local_body_one,
+        "localBodyNormalTwoRings7And4Mm": local_body_two,
     }
     original_normals = control["mesh"].polygons
     displaced_normals = moved["mesh"].polygons
