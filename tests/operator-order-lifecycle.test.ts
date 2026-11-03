@@ -341,3 +341,24 @@ test("stored audit replay rejects unknown evidence fields rather than silently d
   assert.equal(step(restoreOrderLifecycleSnapshot(JSON.parse(JSON.stringify(accepted))),
     "start_cutting").status,"cutting");
 });
+
+test("unknown QC and snapshot evidence claims are rejected during live approval and restore",()=>{
+  const pending=toQc();
+  const approved=step(pending,"approve_qc",{qc:qc()});
+  for(const invalid of [
+    {...qc(), overrideApproved:true},
+    {...qc(), checks:{...qc().checks, forgedInspection:true}},
+  ]) assert.throws(()=>step(pending,"approve_qc",{qc:invalid}),/Unexpected QC/);
+  const saved=JSON.parse(JSON.stringify(approved));
+  assert.throws(()=>restoreOrderLifecycleSnapshot({...saved, paymentVerified:true}),
+    /Unexpected lifecycle snapshot field/);
+  for(const altered of [
+    {...qc(), inspectorSignatureVerified:true},
+    {...qc(), checks:{...qc().checks, forgedInspection:true}},
+  ]) {
+    const tampered=JSON.parse(JSON.stringify(saved));
+    tampered.audit.at(-1).qc=altered;
+    assert.throws(()=>restoreOrderLifecycleSnapshot(tampered),/Unexpected QC/);
+  }
+  assert.equal(restoreOrderLifecycleSnapshot(saved).status,"qc_approved");
+});
