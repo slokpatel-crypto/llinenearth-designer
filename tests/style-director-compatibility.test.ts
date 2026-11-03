@@ -453,3 +453,19 @@ test("ambiguous collar names never force camp-collar wear without a resolved con
   assert.equal(styleDirectorWearForCandidate("Casual", "Cuban Resort Shirt", "Tucked"), "Untucked");
   assert.equal(styleDirectorWearForCandidate("Formal", "Mandarin Band-Collar Shirt", "Untucked"), "Tucked");
 });
+
+test("conflicting photographic collar labels require review even when one matches locked ID", () => {
+  for (const label of ["Cuban Band-Collar", "Camp Cutaway Collar", "Mandarin Cuban Collar"]) {
+    for (const collar of ["spread_collar", "cuban_camp_collar", "mandarin_band_collar", "cutaway_collar"] as const) {
+      const locked = spec({ collar, wear: "tucked" });
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorPresentationIssues(photo(label, "Tucked"), locked);
+      assert.ok(issues.some(issue => issue.code === "legacy_collar_mismatch"), label + " / " + collar);
+      assert.equal(JSON.stringify(locked), before, "photographic ambiguity must not rewrite locked IDs");
+    }
+  }
+  assert.deepEqual(styleDirectorPresentationIssues(
+    photo("Mandarin / Band Collar", "Tucked"),
+    spec({ type: "band_collar_shirt", collar: "mandarin_band_collar" }),
+  ), [], "two aliases from the same collar family remain valid");
+});
