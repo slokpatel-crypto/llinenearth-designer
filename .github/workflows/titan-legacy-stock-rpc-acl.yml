@@ -99,3 +99,33 @@ jobs:
           grep -q 'PASS: all four v1 stock mutators denied' /tmp/stock-acl-test.log
       - name: Execute retired v1 calls as service_role; positive v2 call rolls back
         run: bash scripts/test-legacy-stock-rpc-acl-invocation.sh
+      - name: Apply customer session share and OTP security migrations in same stock database
+        run: |
+          set -euo pipefail
+          for migration in \
+            supabase/migrations/20261103_customer_session_revocation.sql \
+            supabase/migrations/20261103_design_share_revocation.sql \
+            supabase/migrations/20261103_customer_otp_distributed_rate.sql; do
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Verify combined customer revocation ACL and cross-domain stock permissions
+        run: |
+          set -euo pipefail
+          for test_file in \
+            supabase/tests/20261103_customer_session_revocation.sql \
+            supabase/tests/20261103_design_share_revocation.sql \
+            supabase/tests/20261103_customer_otp_distributed_rate.sql; do
+            psql -v ON_ERROR_STOP=1 -At -f "$test_file" | grep -qx PASS
+          done
+          # Detect any unexpected privilege regrant from the customer migrations.
+          psql -v ON_ERROR_STOP=1 -At -f supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql \
+            | grep -q 'PASS: all four v1 stock mutators denied'
+          bash scripts/test-legacy-stock-rpc-acl-invocation.sh
+          psql -v ON_ERROR_STOP=1 -At <<'SQL' | grep -qx PASS
+          select case when
+            (select count(*) from private.fabric_stock_ledger)=0
+            and (select count(*) from private.customer_session_revocations)=0
+            and (select count(*) from private.designer_share_revocations)=0
+            and (select count(*) from private.customer_otp_rate_windows)=0
+          then 'PASS' else 'FAIL' end;
+          SQL
