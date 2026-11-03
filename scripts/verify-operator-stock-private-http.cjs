@@ -9,9 +9,9 @@ const {join}=require("node:path");
 const stockRoute=readFileSync(join(process.cwd(),"src/app/api/operator/stock/route.ts"),"utf8");
 // Capture typed and untyped calls, with either quote style. An untyped
 // legacy RPC must not evade the privileged allowlist regression.
-const invokedStockRpcs=[...stockRoute.matchAll(/\\.rpc(?:<[^>]+>)?\\s*\\(\\s*(['"])([^'"]+)\\1/g)]
+const invokedStockRpcs=[...stockRoute.matchAll(/\.rpc(?:<[^>]+>)?\s*\(\s*(['"])([^'"]+)\1/g)]
   .map(match=>match[2]);
-const rpcCallCount=[...stockRoute.matchAll(/\\.rpc(?:<[^>]+>)?\\s*\\(/g)].length;
+const rpcCallCount=[...stockRoute.matchAll(/\.rpc(?:<[^>]+>)?\s*\(/g)].length;
 assert.equal(invokedStockRpcs.length,rpcCallCount,
   "operator stock RPC name must be a literal approved name; dynamic calls are prohibited");
 const approvedStockRpcs=new Set([
