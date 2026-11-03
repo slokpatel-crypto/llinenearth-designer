@@ -235,7 +235,9 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
     // Missing legacy options are left untouched and caught by parity review.
     if (namedCollar.legacy) style.collar = namedCollar.legacy;
     style.shirtWear = "Untucked";
-  } else if (namedCollar?.versioned === "mandarin_band_collar") {
+  } else if (namedCollar?.versioned === "mandarin_band_collar" || namedCollar?.versioned === "cutaway_collar") {
+    // Keep the photographed label and canonical cutaway/band construction aligned.
+    // Cutaway preview support is approximate and separately requires review.
     if (namedCollar.legacy) style.collar = namedCollar.legacy;
   }
 
@@ -276,6 +278,9 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   } else if(namedCollar?.versioned==="mandarin_band_collar") {
     spec.shirt.type="band_collar_shirt";
     spec.shirt.collar="mandarin_band_collar";
+  } else if(namedCollar?.versioned==="cutaway_collar") {
+    spec.shirt.type="dress_shirt";
+    spec.shirt.collar="cutaway_collar";
   }
   else if(/overshirt/.test(shirt)) spec.shirt.type="overshirt";
   else if(/(?:short|half)[- ]?sleeve/.test(shirt)) spec.shirt.type="short_sleeve_shirt";
