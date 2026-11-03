@@ -25,6 +25,7 @@ export async function measureFabricImageBytes(
   const pattern=measurePattern(gray,size,size,paletteResult.palette,{
     ...physical,
     originalWidthPx:originalWidth,
+    originalHeightPx:originalHeight,
   });
   const perceptualHash=averageHash(gray,size,size);
 

@@ -13,7 +13,7 @@ for(let y=0;y<size;y++) for(let x=0;x<size;x++){
   horizontal[y*size+x]=Math.floor(y/4)%2===0?40:210;
 }
 const plain=new Uint8Array(size*size).fill(120);
-const pattern=(gray:Uint8Array,physical?:{swatchRealWidthMm?:number;repeatRealMm?:number;originalWidthPx?:number})=>
+const pattern=(gray:Uint8Array,physical?:{swatchRealWidthMm?:number;repeatRealMm?:number;originalWidthPx?:number;originalHeightPx?:number})=>
   measurePattern(gray,size,size,[],physical);
 
 test("width-only swatch calibration measures the X-axis stripe repeat, not the Y-axis",()=>{
@@ -125,4 +125,32 @@ test("model judgement, unreviewed profiles and image-only estimates never promot
   const unreviewed=apply(model);
   assert.equal(unreviewed.patternScaleVerified,undefined);
   assert.equal(unreviewed.weightGsm,null);
+});
+
+test("resized low-resolution captures cannot manufacture a physical swatch-width repeat",()=>{
+  const evidence={swatchRealWidthMm:256};
+  const tooNarrow=pattern(vertical,{...evidence,originalWidthPx:399,originalHeightPx:1200});
+  const tooShort=pattern(vertical,{...evidence,originalWidthPx:1200,originalHeightPx:399});
+  const forgedFraction=pattern(vertical,{...evidence,originalWidthPx:400.5,originalHeightPx:1200});
+  const upscaledTiny=pattern(vertical,{...evidence,originalWidthPx:1,originalHeightPx:1});
+  for(const result of [tooNarrow,tooShort,forgedFraction,upscaledTiny]){
+    assert.equal(result.orientation,"vertical");
+    assert.equal(result.repeatPeriodPx,8);
+    assert.equal(result.physicalScaleStatus,"unknown");
+    assert.equal(result.repeatMm,null);
+    assert.equal(result.stripeWidthMm,null);
+  }
+  const minQualified=pattern(vertical,{...evidence,originalWidthPx:400,originalHeightPx:400});
+  assert.equal(minQualified.physicalScaleStatus,"declared_swatch_width");
+  assert.equal(minQualified.repeatMm,16);
+});
+
+test("low-resolution source dimensions do not turn a separate supplier repeat into a width-based claim",()=>{
+  const result=pattern(vertical,{
+    swatchRealWidthMm:256,repeatRealMm:12,originalWidthPx:200,originalHeightPx:200,
+  });
+  // The independent declared-repeat route remains visibly distinct from
+  // pixel/mm inferred using a purported photographed swatch width.
+  assert.equal(result.physicalScaleStatus,"declared_repeat");
+  assert.equal(result.repeatMm,12);
 });

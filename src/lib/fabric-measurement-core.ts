@@ -223,7 +223,7 @@ export function measurePattern(
   width:number,
   height:number,
   palette:MeasuredPaletteEntry[],
-  physical?:{swatchRealWidthMm?:number;repeatRealMm?:number;originalWidthPx?:number},
+  physical?:{swatchRealWidthMm?:number;repeatRealMm?:number;originalWidthPx?:number;originalHeightPx?:number},
 ):FabricPatternMeasurement {
   const {rows,cols}=rowColMeans(gray,width,height);
   const colVar=variance(cols),rowVar=variance(rows);
@@ -269,8 +269,15 @@ export function measurePattern(
     }
   } else if(
     detectedRepeat && orientation==="vertical" && validMm(physical?.swatchRealWidthMm)
-    && typeof physical?.originalWidthPx==="number"
-    && Number.isFinite(physical.originalWidthPx) && physical.originalWidthPx>0
+    // Sharp's 128px working image can be an *upscale* of a tiny original.
+    // A declared ruler width alone cannot turn interpolation into an actual
+    // repeat measurement. Use the existing 400px capture-quality floor and
+    // check the original height when supplied by the server. The height is
+    // optional for backwards-compatible direct measurement callers.
+    && Number.isInteger(physical?.originalWidthPx)
+    && physical.originalWidthPx>=400
+    && (physical.originalHeightPx===undefined
+      || (Number.isInteger(physical.originalHeightPx) && physical.originalHeightPx>=400))
   ) {
     // Swatch width calibrates the X axis only. Horizontal stripes repeat on Y
     // and grid motifs may have two different periods; neither is measurable

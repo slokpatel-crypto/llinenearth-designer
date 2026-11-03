@@ -65,3 +65,8 @@
 - Field-level accuracy counts only pairs of known original/final values; correctedFabrics counts actual known mismatches. Exact-profile accuracy is withheld (`null`) whenever any labelled case lacks a complete before/after nine-field comparison, preserving the operator desk's existing exact-matches / unique-fabrics denominator without a misleading percentage.
 - Pure scorecard now exposes completeFabrics and incompleteFabrics for future evidence audits (additive API shape). Regression tests cover missing initial values, partial genuine corrections, mixed complete/partial batches and unknown final values.
 - No UI, stock, model or database changes. Independent physical fabric evidence and approved owner-labelled benchmark remain outstanding.
+
+## 2026-11-03 — low-resolution source-photo physical calibration
+- A 128x128 normalized analyzer frame can be an upscale of a tiny original. The width-only swatch ruler path now requires an original integer image width of at least 400 px, matching the existing source-quality floor. The server also passes the original image height and rejects width-only physical calibration when either source dimension is below 400 px.
+- Direct pure-library callers without source-height metadata remain compatible; if source height is provided it must pass the same minimum. The separately sourced real-repeat declaration path is kept distinct and is not automatically converted into a width-ruler calibration.
+- Regression tests cover tiny upscaled photographs, narrow and short originals, fractional pixel dimensions, 400px source boundary and separately declared repeats. This does not certify physical scale without the other required supplier / ruler review evidence.
