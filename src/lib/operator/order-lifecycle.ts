@@ -91,7 +91,7 @@ function trustState<T extends OrderLifecycleState>(state: T): T {
 const STAGES = new Set<string>(ORDER_LIFECYCLE_STAGES);
 const ACTIONS = new Set<string>(ORDER_LIFECYCLE_ACTIONS);
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_-]{7,127}$/;
-const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/;
 
 function nonEmpty(value: unknown, name: string, min: number, max: number): string {
   if (typeof value !== "string" || value.length < min || value.length > max ||
@@ -111,7 +111,7 @@ function record(value: unknown): Record<string, unknown> {
 }
 function timestamp(value: unknown): number {
   const text = nonEmpty(value, "event timestamp", 20, 40);
-  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/.exec(text);
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|([+-])(\d{2}):(\d{2}))$/.exec(text);
   if (!parts || !ISO_TIMESTAMP.test(text)) throw new Error("Invalid event timestamp.");
   const year = Number(parts[1]);
   const month = Number(parts[2]);
