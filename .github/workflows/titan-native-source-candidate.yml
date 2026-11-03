@@ -16,6 +16,7 @@ on:
       - "scripts/blender/diagnose-crotch-seam-pairing.py"
       - "scripts/blender/prototype-crotch-source-seam-weld.py"
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
+      - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -43,6 +44,7 @@ on:
       - "scripts/blender/diagnose-crotch-seam-pairing.py"
       - "scripts/blender/prototype-crotch-source-seam-weld.py"
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
+      - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -844,6 +846,142 @@ jobs:
               "productionApproved":False,
           }))
           PY
+      - name: Trial scanned-body 7mm centroid clearance on non-export crotch bridge only
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-research-crotch-stages.blend \
+            --python-exit-code 1 --python scripts/blender/prototype-crotch-unmatched-source-bridge.py -- \
+            --experimental-centroid-clearance-mm 7 \
+            --output "$RUNNER_TEMP/titan-candidate-evidence/crotch-bridge-centroid-clearance-research-only.json"
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence/crotch-bridge-centroid-clearance-research-only.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/crotch-unmatched-bridge-research-only.json" \
+                     "$RUNNER_TEMP/titan-candidate-evidence/rejection-report.json" <<'PY'
+          import json
+          import sys
+          import math
+          from pathlib import Path
+          offset, original, physical = [json.loads(Path(p).read_text(encoding="utf8")) for p in sys.argv[1:]]
+          assert all(x["modelIdentityId"] == "linen-earth-studio-model-v1" for x in (offset,original,physical))
+          assert all(x["candidateOnly"] is True and x["productionApproved"] is False
+                     for x in (offset,original,physical))
+          assert physical["rejectionReasonCount"] == 10 and physical["preflightReady"] is False
+          assert offset["physicalFitApproved"] is False and offset["sewnGarmentApproved"] is False
+          assert offset["changesProductionGeometry"] is False and offset["finalClothQAApproved"] is False
+          assert original["researchOnlyCentroidClearanceTrial"] is None
+          assert offset["trialAddedBridgeTriangles"] == original["trialAddedBridgeTriangles"] == 6
+          assert offset["openSourceBoundaryEdgesAfterBridge"] == original["openSourceBoundaryEdgesAfterBridge"] == 126
+          assert original["bridgeToOriginalBodyBVHPairs"] == offset["bridgeToOriginalBodyBVHPairs"] == 20
+          for evidence in (original,offset):
+              records=evidence["actualBodyContactByOriginalCutEdgePair"]
+              assert len(records) == len(evidence["trialSegments"]) == 4
+              assert sum(row["bridgeTriangles"] for row in records) == 6
+              assert sum(row["originalBodyBVHPairs"] for row in records) == 20
+              for row,segment in zip(records,evidence["trialSegments"]):
+                  assert row["leftEdge"] == segment["leftEdge"]
+                  assert row["rightEdge"] == segment["rightEdge"]
+                  assert row["bridgeTriangles"] == segment["bridgeTriangles"]
+                  assert type(row["originalBodyBVHPairs"]) is int and row["originalBodyBVHPairs"] >= 0
+                  assert type(row["contactingBridgeFaceCount"]) is int
+                  assert 0 <= row["contactingBridgeFaceCount"] <= row["bridgeTriangles"]
+                  assert math.isfinite(row["bridgeFaceAreaMm2"]) and row["bridgeFaceAreaMm2"] > 0
+                  assert math.isfinite(row["contactingBridgeFaceAreaMm2"])
+                  assert 0 <= row["contactingBridgeFaceAreaMm2"] <= row["bridgeFaceAreaMm2"] + 0.0001
+          assert original["actualBodyContactByOriginalCutEdgePair"] == offset["actualBodyContactByOriginalCutEdgePair"]
+          trial = offset["researchOnlyCentroidClearanceTrial"]
+          assert trial["testedOriginalBodyNormalOffsetMm"] == 7.0
+          assert trial["originalBridgeTriangles"] == 6 and trial["triangulatedFanFaces"] == 18
+          assert trial["newInteriorCentroidVertices"] == 6
+          assert trial["originalCutEdgeBoundaryCount"] == trial["preservedCutEdgeBoundaryCount"]
+          assert trial["originalBridgeBodyBVHPairs"] == 20
+          assert type(trial["afterCentroidDisplacementBodyBVHPairs"]) is int
+          assert trial["afterCentroidDisplacementBodyBVHPairs"] >= 0
+          control=trial["equalTopologyControl"]
+          candidate=trial["equalTopologyDisplaced"]
+          assert control["triangles"] == candidate["triangles"] == 18
+          assert candidate["bodyPolygonBVHPairs"] == trial["afterCentroidDisplacementBodyBVHPairs"]
+          for part in (control,candidate):
+              assert type(part["bodyPolygonBVHPairs"]) is int and part["bodyPolygonBVHPairs"] >= 0
+              assert type(part["contactingBridgeTriangleCount"]) is int and 0 <= part["contactingBridgeTriangleCount"] <= 18
+              assert math.isfinite(part["totalBridgeAreaMm2"]) and part["totalBridgeAreaMm2"] > 0
+              assert math.isfinite(part["contactingBridgeAreaMm2"]) and part["contactingBridgeAreaMm2"] >= 0
+              assert 0 <= part["contactingBridgeAreaFraction"] <= 1
+              assert part["contactingBridgeAreaMm2"] <= part["totalBridgeAreaMm2"] + 0.0001
+              assert part["degenerateFaces"] == 0 and part["productionApproved"] is False
+          assert trial["strictBodyCollisionImprovementObserved"] is (
+              candidate["bodyPolygonBVHPairs"] < control["bodyPolygonBVHPairs"])
+          assert trial["strictContactedAreaImprovementObserved"] is (
+              candidate["contactingBridgeAreaMm2"] < control["contactingBridgeAreaMm2"])
+          radial=trial["equalTopologyRadial"]
+          assert radial["triangles"] == control["triangles"] == candidate["triangles"] == 18
+          assert radial["productionApproved"] is False and radial["degenerateFaces"] == 0
+          assert math.isfinite(radial["contactingBridgeAreaMm2"])
+          assert 0 <= radial["contactingBridgeAreaMm2"] <= radial["totalBridgeAreaMm2"] + 0.0001
+          assert type(radial["bodyPolygonBVHPairs"]) is int and radial["bodyPolygonBVHPairs"] >= 0
+          shifts=trial["radialCentroidDisplacementMm"]
+          assert 0 <= shifts["minimum"] <= shifts["maximum"] <= 7.0
+          assert shifts["moved"] + shifts["unchanged"] == 6
+          assert trial["radialStrictContactedAreaImprovementObserved"] is (
+              radial["contactingBridgeAreaMm2"] < control["contactingBridgeAreaMm2"])
+          assert trial["radialStrictBodyPairImprovementObserved"] is (
+              radial["bodyPolygonBVHPairs"] < control["bodyPolygonBVHPairs"])
+          assert "unsigned" in trial["metricCaveat"]
+          assert trial["degenerateFaces"] == trial["nonManifoldEdges"] == 0
+          assert trial["productionApproved"] is False
+          for x in trial["originalCentroidNearestBodyDistanceMm"].values():
+              assert isinstance(x,(int,float)) and math.isfinite(x) and x >= 0
+          targeted=offset["researchOnlyTargetedSeamRerouteTrial"]
+          assert targeted["testedOffsetMm"] == 7.0
+          assert targeted["preservedBoundaryEdgeCount"] == 4
+          assert len(targeted["targetSourceBoundaryVertices"]) == 4
+          assert len(set(targeted["targetSourceBoundaryVertices"])) == 4
+          assert targeted["targetOriginalCutEdgePair"]["originalBodyBVHPairs"] == 17
+          assert targeted["targetOriginalCutEdgePair"]["bridgeTriangles"] == 2
+          assert targeted["changesProductionGeometry"] is False
+          assert targeted["productionApproved"] is False
+          assert targeted["physicalFitApproved"] is False
+          assert targeted["sewnGarmentApproved"] is False
+          variants=targeted["equalTopologyVariants"]
+          assert set(variants) == {"unchangedControl","positiveBodyNormal","negativeBodyNormal"}
+          for label,part in variants.items():
+              assert part["triangles"] == 4
+              assert type(part["bodyPolygonBVHPairs"]) is int and part["bodyPolygonBVHPairs"] >= 0
+              assert 0 <= part["contactingTriangleCount"] <= 4
+              assert math.isfinite(part["totalAreaMm2"]) and part["totalAreaMm2"] > 0
+              assert math.isfinite(part["contactingAreaMm2"])
+              assert 0 <= part["contactingAreaMm2"] <= part["totalAreaMm2"] + 0.0001
+              assert 0 <= part["contactingAreaFraction"] <= 1
+              assert part["degenerateFaces"] == part["nonManifoldEdges"] == 0
+              assert part["productionApproved"] is False
+          best=variants[targeted["lowestContactAreaDirection"]]
+          targeted_control=variants["unchangedControl"]
+          assert targeted["lowestContactAreaDirection"] in {"positiveBodyNormal","negativeBodyNormal"}
+          assert targeted["strictContactAreaImprovementObserved"] is (
+              best["contactingAreaMm2"] < targeted_control["contactingAreaMm2"])
+          assert targeted["strictBodyPairImprovementObserved"] is (
+              best["bodyPolygonBVHPairs"] < targeted_control["bodyPolygonBVHPairs"])
+          assert "Any nonzero" in targeted["metricCaveat"]
+          print("TITAN_REAL_CROTCH_BRIDGE_BODY_CLEARANCE_EXPERIMENT_MEASURED_NO_APPROVAL",json.dumps({
+              "originalBridgeBodyPairs":original["bridgeToOriginalBodyBVHPairs"],
+              "candidateBridgeBodyPairs":trial["afterCentroidDisplacementBodyBVHPairs"],
+              "equal18TriangleControlPairs":trial["equalTopologyControl"]["bodyPolygonBVHPairs"],
+              "equal18TriangleControlContactAreaMm2":trial["equalTopologyControl"]["contactingBridgeAreaMm2"],
+              "equal18TriangleCandidateContactAreaMm2":trial["equalTopologyDisplaced"]["contactingBridgeAreaMm2"],
+              "contactAreaReductionObserved":trial["strictContactedAreaImprovementObserved"],
+              "radial18TriangleBodyPairs":radial["bodyPolygonBVHPairs"],
+              "radial18TriangleContactedAreaMm2":radial["contactingBridgeAreaMm2"],
+              "radialDisplacementMm":shifts,
+              "originalCutSegmentBodyContacts":original["actualBodyContactByOriginalCutEdgePair"],
+              "radialAreaReductionObserved":trial["radialStrictContactedAreaImprovementObserved"],
+              "preservedCutBoundaryEdges":trial["preservedCutEdgeBoundaryCount"],
+              "reducedBodyPairs":trial["strictBodyCollisionImprovementObserved"],
+              "targetedWorstSourcePair":targeted["targetOriginalCutEdgePair"],
+              "targetedEqualTopologyVariants":variants,
+              "targetedLowestContactAreaDirection":targeted["lowestContactAreaDirection"],
+              "targetedContactAreaImprovementObserved":targeted["strictContactAreaImprovementObserved"],
+              "productionApproved":False,
+          }))
+          PY
       - name: Upload rejection report, never an unapproved model
         if: always()
         uses: actions/upload-artifact@v4
@@ -863,6 +1001,7 @@ jobs:
             ${{ runner.temp }}/titan-candidate-evidence/crotch-source-seam-pairing.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-source-weld-research-only.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-unmatched-bridge-research-only.json
+            ${{ runner.temp }}/titan-candidate-evidence/crotch-bridge-centroid-clearance-research-only.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-leg-rimless.json
             ${{ runner.temp }}/titan-candidate-evidence/crotch-leg-rimless-preflight.json
             ${{ runner.temp }}/titan-candidate-evidence/leg-thickness-*.json
