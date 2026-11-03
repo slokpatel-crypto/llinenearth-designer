@@ -822,9 +822,14 @@ async function main(){
       const ninthOtp=await fetch(enforcedOrigin+"/api/customer-auth/otp",{
         method:"POST",headers:fixtureHeaders(),
         body:JSON.stringify({email:"alice@example.com"}),signal:AbortSignal.timeout(15000)});
-      assert.equal(ninthOtp.status,429,"ninth OTP request must be blocked server-wide");
-      assert.deepEqual(seen.map(item=>item.path),["/rest/v1/rpc/customer_otp_rate_consume"],
-        "denied OTP must never reach auth provider");
+      assert.equal(ninthOtp.status,429,"ninth OTP request must be blocked");
+      assert.match(ninthOtp.headers.get("cache-control")||"",/private.*no-store/);
+      // The local per-recipient limit rejects first, before issuing another
+      // distributed rate RPC. PostgreSQL has already proved its own separate
+      // eight-attempt budget in the synthetic SQL regression job.
+      assert.deepEqual(seen,[],"local denial must not reach rate RPC or auth provider");
+      assert.equal(otpSubjects.get(expectedOtpDigest),8,
+        "local denial must not consume a ninth distributed OTP rate slot");
       for(const failure of ["backend500","malformed"]){
         otpMode=failure;seen.length=0;
         const response=await fetch(enforcedOrigin+"/api/customer-auth/otp",{
