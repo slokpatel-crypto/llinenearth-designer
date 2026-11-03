@@ -2,11 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readdirSync, readFileSync} from "node:fs";
 import {extname, join, relative} from "node:path";
+import ts from "typescript";
 
 // Runtime app/library/component code only. Migrations intentionally retain the
 // retired v1 function definition so existing ledgers remain recoverable.
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
-const LEGACY_STOCK_WRITER = /\bfabric_stock_record\b/g;
+const LEGACY_STOCK_WRITER = /\bfabric_stock_(?:record|reserve|release|consume_reservation)\b/g;
 
 function deployedSourceFiles(directory: string): string[] {
   const paths: string[] = [];
@@ -18,7 +19,7 @@ function deployedSourceFiles(directory: string): string[] {
   return paths;
 }
 
-test("deployed source never references provenance-free legacy stock writer v1", () => {
+test("deployed source never references any legacy stock mutation RPC v1", () => {
   const violations: string[] = [];
   for (const file of deployedSourceFiles("src")) {
     const lines = readFileSync(file, "utf8").split(/\r?\n/);
@@ -33,6 +34,62 @@ test("deployed source never references provenance-free legacy stock writer v1", 
   assert.deepEqual(
     violations,
     [],
-    "Legacy stock RPC v1 bypasses physical provenance and the shared fabric lock. Use fabric_stock_record_v2; verify all dynamic RPC names separately."
+    "Legacy stock v1 write RPCs bypass provenance or shared lock guarantees. Use only audited v2 RPCs; verify dynamic RPC names separately."
   );
+});
+
+ 
+// Read syntactic calls, not source-code strings/comments. Regex counting could be
+// spoofed by an irrelevant comment masking a newly dynamic RPC destination.
+function operatorRpcTargets(source: string): string[] {
+  const root = ts.createSourceFile("operator-stock-route.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const targets: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const isRpc = (ts.isIdentifier(callee) && callee.text === "rpc") ||
+        (ts.isPropertyAccessExpression(callee) && callee.name.text === "rpc") ||
+        (ts.isElementAccessExpression(callee) && ts.isStringLiteral(callee.argumentExpression) &&
+          callee.argumentExpression.text === "rpc");
+      if (isRpc) {
+        const arg = node.arguments[0];
+        assert.ok(arg && ts.isStringLiteral(arg), "Operator stock RPC target must be a literal audited name.");
+        targets.push(arg.text);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(root);
+  return targets.sort();
+}
+
+// An explicit allowlist catches dynamically assembled or newly introduced
+// privileged stock RPC calls even when literal v1 identifiers are absent.
+test("operator stock route uses only audited literal v2 RPC targets", () => {
+  const route = readFileSync("src/app/api/operator/stock/route.ts", "utf8");
+  assert.deepEqual(operatorRpcTargets(route), [
+    "fabric_stock_snapshot_v2",
+    "fabric_stock_record_v2",
+    "fabric_stock_reserve_v2",
+    "fabric_stock_release_v2",
+    "fabric_stock_consume_reservation_v2",
+  ].sort());
+});
+
+test("operator RPC target guard cannot be spoofed with comments or dynamic arguments", () => {
+  assert.deepEqual(operatorRpcTargets(`
+    // rpc("fabric_stock_record_v2", {})
+    const documentation = 'rpc("fabric_stock_reserve_v2")';
+    async function rpc(name: string): Promise<void> { void name; }
+    rpc("fabric_stock_snapshot_v2");
+  `), ["fabric_stock_snapshot_v2"]);
+  assert.throws(() => operatorRpcTargets(`
+    // rpc("fabric_stock_record_v2") might fool a regex counter
+    rpc(stockRpcName);
+  `), /literal audited name/);
+  assert.throws(() => operatorRpcTargets('rpc(`fabric_stock_record_v2`);'), /literal audited name/);
+  assert.deepEqual(operatorRpcTargets('client.rpc("fabric_stock_snapshot_v2")'), ["fabric_stock_snapshot_v2"]);
+  assert.deepEqual(operatorRpcTargets('client["rpc"]("fabric_stock_snapshot_v2")'), ["fabric_stock_snapshot_v2"]);
+  assert.throws(() => operatorRpcTargets('client.rpc(assembledStockName)'), /literal audited name/);
+  assert.throws(() => operatorRpcTargets('client["rpc"](assembledStockName)'), /literal audited name/);
 });
