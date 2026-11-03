@@ -146,7 +146,7 @@ function auditArray(value: unknown): readonly unknown[] {
   const entries = Reflect.ownKeys(value);
   for (const key of entries) {
     if (key === "length") continue;
-    if (typeof key !== "string" || !/^(0|[1-9]\\d*)$/.test(key) ||
+    if (typeof key !== "string" || !/^(0|[1-9]\d*)$/.test(key) ||
         Number(key) >= value.length) {
       throw new Error("Invalid order audit array property.");
     }
