@@ -91,7 +91,7 @@ export function styleDirectorCandidateTrouserFront(
   // Negating a particular pleat count does not prohibit all pleats. In
   // particular, "no double pleats" must not become a positive pleat request.
   const unqualifiedPositiveWording = positiveWording.replace(
-    /\b(?:no|without)\s+(?:any\s+)?(?:single|double|one|two|1|2)[ -]?pleats?\b/gi,
+    /\b(?:no|without)\s+(?:(?:any|visible|front|side)\s+){0,3}(?:single|double|one|two|1|2)[ -]?pleats?\b/gi,
     "",
   );
   const positivePleat = /\bpleat(?:ed|s)?\b/i.test(unqualifiedPositiveWording);
