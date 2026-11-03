@@ -399,3 +399,18 @@ test("cropped ankle construction cannot claim slight shoe break", () => {
     type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "no_break",
   })), [], "cropped trousers with no break remain compatible");
 });
+
+
+test("photographic collar label matching ignores incidental substrings", () => {
+  const choices = ["Campus Collar", "Bandwidth Collar", "Cutawayish Collar",
+    "Cuban / Camp Collar", "Mandarin / Band Collar", "Cutaway Collar"];
+  assert.deepEqual(styleDirectorCandidateCollar("Camp-Collar Shirt", choices),
+    { legacy: "Cuban / Camp Collar", versioned: "cuban_camp_collar" });
+  assert.deepEqual(styleDirectorCandidateCollar("Band-Collar Shirt", choices),
+    { legacy: "Mandarin / Band Collar", versioned: "mandarin_band_collar" });
+  assert.deepEqual(styleDirectorCandidateCollar("Cutaway-Collar Shirt", choices),
+    { legacy: "Cutaway Collar", versioned: "cutaway_collar" });
+  assert.deepEqual(styleDirectorCandidateCollar("Camp-Collar Shirt", ["Campus Collar"]),
+    { legacy: null, versioned: "cuban_camp_collar" },
+    "missing supported photo label must fail closed rather than select a lookalike");
+});
