@@ -209,3 +209,30 @@ claims of new real-world photographs or tailor acceptance.
 - **Next:** exact-head CI, real Chromium and screenshot inspection required
   after the new tests. Do not mark the new head verified from preceding green
   SHA or merge/deploy without independent review.
+
+## November 3 — green exact-head pixel proof and on-photo warning visibility
+
+- Both exact-head checks for `f1cb20430ff0608b827428ee6a1261bd0d9731b6` completed **SUCCESS**:
+  Full CI run **41695949575** and Studio/Non-3D run **41695949445**.
+- Downloaded Studio artifact **13261042443**. In its real Chromium
+  `photo-form/summary.json`, `specOnlyPhotoPixelsUnchanged:true` at
+  **390/768/1440px**; zero overflow, page errors, wrong-waist/protected
+  pixel changes or paid calls. Tucked, untucked pleated and wide trouser
+  photographs each retain both stripe legs. This validates *no spurious
+  geometry change* for selected half sleeves/double pleats, not reconstruction.
+- Reviewed both `advanced-construction-disclosed-390.png` and
+  `collar-cuff-placket-disclosed-1440.png`. Floating contact links can
+  overlap the lengthy detailed photo-construction explanation near the
+  bottom of a photographed preview; preserve that detailed text for scroll
+  and accessibility, but make the status immediately visible on the photo.
+- The existing top overlay is now conditionally
+  `FRONT / STUDIO MODEL · CUTS APPROX.` when the selected construction
+  differs from the fixed source. Exact photographed cuts retain
+  `FRONT / STUDIO MODEL`, and a real final photoreal view retains its own
+  `PHOTOREAL` label. No shape, image, mask, physical-scale or locked-spec
+  changes; no fabric-colour claim is introduced.
+- Added a real-browser label assertion at all **390, 768, 1440px** viewports
+  and source-contract regressions to prevent removal of the warning. Still
+  requires **fresh exact-head** source/unit/CI/photographic browser validation.
+  The preceding green head alone cannot approve this UI change.
+- Remains a draft PR; do not merge, deploy or claim physical tailoring signoff.
