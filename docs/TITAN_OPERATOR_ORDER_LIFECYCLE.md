@@ -96,3 +96,11 @@ The existing persisted production order contract in `src/lib/designer/production
 - Exact-head CI and Non-3D QA for the new source/test/docs commits must be checked before declaring verification. No local full-repo test run is claimed.
 - The latest inspected main was `fd2f29771a24ae888719d64504a0b1fb3595ffb1`; this continuation compared the branch with current main and found only the three isolated operator files on the branch. No main merge, Vercel deploy, SQL migration, shared auth/stock/Designer files or production data changes.
 - **Next:** verify new exact-head workflows; coordinate authenticated transactional append-only storage, SQL state compatibility, real physical evidence and independent signoff before any production integration.
+
+
+## Unknown-field enforcement repair — 2026-11-03
+
+- Fixed a mismatch between declared QC/snapshot field allowlists and runtime enforcement: `validateQc` now rejects extra top-level QC fields and extra QC-check keys, while `restoreOrderLifecycleSnapshot` rejects extra snapshot fields before replay. These checks prevent unsupported evidence claims from being silently dropped.
+- Existing regression test `unknown QC and snapshot evidence claims are rejected during live approval and restore` covers forged QC fields, forged check keys and extra snapshot metadata; no tests were removed or weakened.
+- Source commit `c997c16b02d6cf8d9012c5ca0b71c0121207656c` is **not yet CI-verified**. The prior exact-head checks cannot validate this patch. Obtain Full CI and Non-3D QA for the new head and correct failures within this isolated scope.
+- Compared current main `fd2f29771a24ae888719d64504a0b1fb3595ffb1` against branch merge-base: no overlapping operator source/test/checkpoint paths. Branch remains isolated; 11 main commits behind. No production persistence, SQL, auth, stock, model, merge or deployment changes.
