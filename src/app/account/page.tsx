@@ -80,16 +80,41 @@ export default function AccountPage(){
     setCustomer(next);
     if(!next)return;
 
-    const [d,m,p,s]=await Promise.all([
-      fetch("/api/designer/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
-      fetch("/api/measurements/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
-      fetch("/api/customer-account/production",{cache:"no-store"}).then(r=>r.json()),
+    const owned=await Promise.all([
+      fetch("/api/designer/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})})
+        .then(r=>r.ok?r.json():Promise.reject(new Error("Owned design lookup unavailable"))),
+      fetch("/api/measurements/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})})
+        .then(r=>r.ok?r.json():Promise.reject(new Error("Owned profile lookup unavailable"))),
+      fetch("/api/customer-account/production",{cache:"no-store"})
+        .then(r=>r.ok?r.json():Promise.reject(new Error("Owned production lookup unavailable"))),
       fetch("/api/designer/share",{method:"POST",headers:{"content-type":"application/json"},
         body:JSON.stringify({action:"listOwned"})})
         .then(r=>r.ok?r.json():Promise.reject(new Error("Share management unavailable")))
         .catch(()=>({shares:[],unavailable:true})),
-    ]);
+    ]).catch(()=>null);
     if(epoch!==refreshEpoch.current)return;
+    // Authentication is checked again after the private reads. Cookies may
+    // have switched from Alice to Bob in another tab while requests were
+    // outstanding; a single initial session check does not bind the result.
+    const confirmed=owned?await fetch("/api/customer-auth/session",{cache:"no-store"})
+      .then(r=>r.ok?r.json():Promise.reject(new Error("Session recheck unavailable")))
+      .catch(()=>({customer:null})):null;
+    if(epoch!==refreshEpoch.current)return;
+    if(!owned||!confirmed?.customer||confirmed.customer.id!==next.id||
+      !Array.isArray(owned[0]?.designs)||!Array.isArray(owned[1]?.profiles)||
+      !Array.isArray(owned[2]?.quotes)||!Array.isArray(owned[2]?.orders)||
+      !Array.isArray(owned[2]?.orderEvents)||!Array.isArray(owned[2]?.outcomes)){
+      // On any owner mismatch, malformed backend or failed private read,
+      // fail closed instead of showing mixed-owner or stale private history.
+      loadedOwnerId.current=null;
+      setCustomer(null);setSessionUnavailable(true);
+      setShares([]);setShareListUnavailable(false);setDesigns([]);setProfiles([]);setQuotes([]);
+      setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});
+      setClaimDesign("");setClaimMeasurement("");
+      setEmail("");setCode("");setCodeSent(false);
+      return;
+    }
+    const [d,m,p,s]=owned;
     setDesigns(Array.isArray(d.designs)?d.designs:[]);
     setShares(Array.isArray(s.shares)?s.shares:[]);
     setShareListUnavailable(Boolean(s.unavailable)||!Array.isArray(s.shares));
