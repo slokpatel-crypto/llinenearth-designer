@@ -63,8 +63,8 @@ assert curved["joinedSharedUvEdges"] == (
 assert curved["unclosedSharedUvCutCandidateEdges"] == (
     curved_tree["report"]["nonTreeCycleUnclosedUvEdges"]
 )
-assert curved["originalSharedSourceEdgeCount"] == 5147
-assert curved["joinedSharedUvEdges"] + curved["unclosedSharedUvCutCandidateEdges"] == 5147
+assert curved["originalSharedSourceEdgeCount"] == (nx*(ny-1)+ny*(nx-1))
+assert curved["joinedSharedUvEdges"] + curved["unclosedSharedUvCutCandidateEdges"] == (nx*(ny-1)+ny*(nx-1))
 assert curved["unclosedSharedUvCutCandidateEdges"] > 0
 assert curved["totalRealGeometryOfUvCutCandidatesMm"] > 0
 assert curved["uvCutCandidateGraphComponentCount"] >= 1
