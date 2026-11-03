@@ -51,3 +51,21 @@ only on saved option selection or a canvas mask.
 **Current status:** code committed to isolated branch; quality/build/browser
 CI results and human screenshot review **not yet claimed**. Keep as draft PR;
 do not merge to main or deploy Vercel until checks and review pass.
+
+## Continued audit — versioned/photo drift protection (Nov 3)
+- Pure fidelity guard now compares the selected v2 shirt-wear choice with the
+  legacy choice actually used to pick the photograph. A mismatch is explicitly
+  disclosed and cannot be mistaken for a visibly rendered tuck.
+- v2 collar-contrast selection, trouser type and `pant.break` are compared to
+  the photographed geometry independently of the legacy display labels.
+- Rear shaping such as darts/pleats is explicitly unverified by a front-only
+  photograph. No speculative vector overlays or substitutes were introduced.
+- Added regression cases for these silent differences; corrected the wide-leg
+  fixture to carry the actual versioned wide-trouser type/break IDs.
+- The untouched original model has no matching new photographs of French cuffs,
+  Cuban collars, alternative plackets, short sleeves, straight shirt hems or
+  multiple trouser pleats; truthful labels do not complete those reconstructions.
+
+**Review caution:** GitHub CI must be checked on the final exact PR head after
+these commits. Any earlier green run applies only to its recorded SHA. No
+claims of new real-world photographs or tailor acceptance.
