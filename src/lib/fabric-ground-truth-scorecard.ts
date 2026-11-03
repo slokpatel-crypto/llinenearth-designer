@@ -23,6 +23,10 @@ export type FabricGroundTruthLabel={
   final:FabricGroundTruthState;
   note:string;
   at:string;
+  // Historical approved/corrected profiles are useful context but are not
+  // independently labelled Analyzer-versus-truth comparisons. Keep them
+  // visible without manufacturing 100% agreement from profile self-matches.
+  eligibleForAccuracy?:boolean;
 };
 
 const PATH_TO_FIELD:Record<string,FabricGroundTruthField>={
@@ -83,7 +87,8 @@ function same(a:string,b:string){
 
 export function scoreFabricGroundTruth(labels:FabricGroundTruthLabel[]){
   const unique=new Map<string,FabricGroundTruthLabel>();
-  for(const label of [...labels].sort((a,b)=>new Date(b.at).getTime()-new Date(a.at).getTime())) {
+  for(const label of labels.filter((item)=>item.eligibleForAccuracy!==false)
+    .sort((a,b)=>new Date(b.at).getTime()-new Date(a.at).getTime())) {
     if(label.fabricId && !unique.has(label.fabricId)) unique.set(label.fabricId,label);
   }
   const latest=[...unique.values()];

@@ -94,6 +94,10 @@ export async function loadFabricGroundTruthLabels(){
           ? "Backfilled from reviewed Analyzer correction history."
           : "Backfilled from an approved Analyzer profile.",
         at:row.reviewed_at,
+        // Approved backfills compare a profile to itself; corrected history
+        // captures only edited fields and assumes the rest are perfect. Neither
+        // is an independent owner-labelled accuracy denominator.
+        eligibleForAccuracy:false,
       });
       backfilledLabels+=1;
     }

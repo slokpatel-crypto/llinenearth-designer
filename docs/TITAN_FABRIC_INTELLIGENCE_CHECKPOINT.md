@@ -41,3 +41,10 @@
 - Required CI gates via pull request: `npm run quality`, `npm test`, `npm run eval:engine`, `npm run eval:preview-performance`, `npm run release:check`, `npm run build` (plus CI native/browser checks). Record result from **latest head SHA**.
 - Local full-repository execution was not available in this tool environment because direct GitHub checkout failed DNS resolution. Do not mark checks green from code inspection.
 - Do not merge before green matching-head checks, latest main reconciliation and independent production evidence; do not deploy Vercel.
+
+## 2026-11-03 — Classification evaluation denominator integrity
+
+- Ground-truth scorecard must never score approved Analyzer backfills as self-confirming 100% accuracy. Corrected-profile history also reconstructs only edited fields and cannot independently certify all untouched classifications.
+- Retain historical records for operator review, but mark both forms of backfill `eligibleForAccuracy:false` in the in-memory label contract. Quantitative scoring excludes these records; actual explicit owner labels remain eligible, including older labels without the optional flag.
+- Tests reject artificial 100% from approved backfills, overcounting of corrected history and a newer synthetic duplicate eclipsing a valid owner label. No persisted schema migration or new source dependency; production score becomes `null` rather than a fake percentage when no independently labelled cases exist.
+- Physical GSM, weave, fibre certificates, repeat calibration and independent owner labels are still not supplied. Keep PR draft, no merge, no deployment.

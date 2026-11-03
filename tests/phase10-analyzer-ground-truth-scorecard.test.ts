@@ -77,7 +77,7 @@ test("reviewed profile history can reconstruct the pre-correction Analyzer state
   assert.equal(original.formality,"4");
 });
 
-test("approved profile history becomes an exact owner match",()=>{
+test("approved profile backfill is not a fabricated 100 percent accuracy match",()=>{
   const state=fabricGroundTruthStateFromProfile({
     observed:{
       colorFamily:"neutral_family",
@@ -98,9 +98,32 @@ test("approved profile history becomes an exact owner match",()=>{
     final:{...state},
     note:"Backfilled approved profile.",
     at:"2026-09-30T11:00:00Z",
+    eligibleForAccuracy:false,
   }]);
-  assert.equal(score.exactProfilePercent,100);
-  assert.equal(score.fieldAgreementPercent,100);
+  assert.equal(score.uniqueFabrics,0);
+  assert.equal(score.exactProfileMatches,0);
+  assert.equal(score.exactProfilePercent,null);
+  assert.equal(score.fieldAgreementPercent,null);
+  assert.equal(score.fieldTotal,0);
+});
+
+test("corrected history is not independent truth for untouched fields",()=>{
+  const corrected={...label("corrected",{patternFamily:"check"}),eligibleForAccuracy:false};
+  const actual=scoreFabricGroundTruth([corrected]);
+  assert.equal(actual.uniqueFabrics,0);
+  assert.equal(actual.fieldTotal,0);
+  assert.equal(actual.exactProfilePercent,null);
+});
+
+test("legacy owner labels remain eligible while synthetic backfills cannot displace them",()=>{
+  const owner=label("a",{patternFamily:"check"},"2026-10-01T09:00:00Z");
+  const synthetic={...label("a",{},"2026-10-02T09:00:00Z"),eligibleForAccuracy:false};
+  const actual=scoreFabricGroundTruth([owner,synthetic]);
+  assert.equal(actual.uniqueFabrics,1);
+  assert.equal(actual.exactProfileMatches,0);
+  assert.equal(actual.fieldMatches,8);
+  assert.equal(actual.fieldTotal,9);
+  assert.equal(actual.exactProfilePercent,0);
 });
 
 
