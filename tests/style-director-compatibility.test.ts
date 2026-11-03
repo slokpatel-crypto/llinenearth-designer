@@ -926,7 +926,7 @@ test("front-facing and side-facing pleat negations do not request positive pleat
 
 
 test("negating a specific pleat count does not invent positive pleats or a flat front", () => {
-  for (const label of ["No Double Pleats Trouser", "Without Single Pleats Trouser", "No Two Pleats Trouser"]) {
+  for (const label of ["No Double Pleats Trouser", "Without Single Pleats Trouser", "No Two Pleats Trouser", "No visible double pleats", "Without any visible single pleat", "No front double pleats"]) {
     assert.equal(styleDirectorCandidateTrouserFront(label), null, label);
     assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, { pleat: "flat_front" }), [], label);
   }
