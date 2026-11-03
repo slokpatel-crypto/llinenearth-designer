@@ -934,3 +934,14 @@ test("negating a specific pleat count does not invent positive pleats or a flat 
   assert.equal(styleDirectorCandidateTrouserFront("No double pleats, add a single pleat"), "pleated");
   assert.equal(styleDirectorCandidateTrouserFront("No double pleats but two pleats"), "pleated");
 });
+
+test("negated pleat count cannot masquerade as a requested pleat count", () => {
+  const selected = spec({}, { pleat: "single_pleat" });
+  const label = "No double pleats, single pleat trouser";
+  assert.equal(styleDirectorCandidateTrouserFront(label), "pleated");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, selected.pant), [],
+    "rejecting double pleats is compatible with requesting a single pleat");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    "No single pleats, double pleat trouser", selected.pant,
+  ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
+});
