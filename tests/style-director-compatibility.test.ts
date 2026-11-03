@@ -334,3 +334,18 @@ test("Cuban camp collar on another shirt type requires review without changing I
   assert.deepEqual(styleDirectorConstructionIssues(valid,"Formal").map(issue=>issue.code),
     ["formal_camp_collar"]);
 });
+
+
+test("Mandarin/Band collar on an unrelated shirt type requires review without rewriting IDs", () => {
+  const mismatched = spec({ type: "dress_shirt", collar: "mandarin_band_collar" });
+  const before = JSON.stringify(mismatched);
+  assert.deepEqual(styleDirectorConstructionIssues(mismatched).map(issue => issue.code),
+    ["band_collar_type_mismatch"]);
+  assert.equal(JSON.stringify(mismatched), before);
+  assert.deepEqual(styleDirectorConstructionIssues(spec({
+    type: "band_collar_shirt", collar: "mandarin_band_collar",
+  })), []);
+  assert.deepEqual(styleDirectorConstructionIssues(spec({
+    type: "dress_shirt", collar: "spread_collar",
+  })), []);
+});
