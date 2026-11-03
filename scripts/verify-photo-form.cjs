@@ -29,6 +29,22 @@ const runtime=process.env.LINEN_BROWSER_QA_RUNTIME;if(!runtime)throw Error("Set 
 const {chromium}=Module.createRequire(path.join(runtime,"package.json"))("playwright"),base=process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000",out=path.resolve("artifacts/preview-lifecycle/photo-form");
 const summary={baseline:BASE,browser:"Chromium",physicalAcceptance:false,paidCalls:0,viewports:[],forms:[],errors:[]};let browser,activePage;
 async function ready(page){await page.locator('.newDesignerPhotoStage[data-ready="true"]').waitFor();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.locator('.newDesignerPhotoStage[data-ready="true"]').waitFor();}
+async function actualPhotoPixelHash(page) {
+  return page.locator(".newDesignerPhotoStage>canvas").evaluate(canvas=>{
+    const context=canvas.getContext("2d");
+    if(!context)throw Error("Studio 2D canvas unavailable");
+    const bytes=context.getImageData(0,0,canvas.width,canvas.height).data;
+    // Fixed sample stride and two channels. Detect changed pixels without
+    // shipping the whole image over Playwright transport.
+    let hash=2166136261;
+    for(let i=0;i<bytes.length;i+=16){
+      hash=Math.imul(hash^bytes[i],16777619)>>>0;
+      hash=Math.imul(hash^bytes[i+1],16777619)>>>0;
+      hash=Math.imul(hash^bytes[i+2],16777619)>>>0;
+    }
+    return hash;
+  });
+}
 async function run(){
   fs.mkdirSync(out,{recursive:true});browser=await chromium.launch({headless:true});
   for(const width of [390,768,1440]){
@@ -56,6 +72,7 @@ async function run(){
     // Exercise the ACTUAL customer controls, not just pure IDs. Advanced v2
     // sleeve/pleat specifications may be valid tailor instructions while the
     // original fixed photograph continues to show full sleeves/single pleats.
+    const beforeSpecOnlyPixels=await actualPhotoPixelHash(page);
     const precision=page.locator("details.newDesignerPrecisionCut");
     await precision.locator("summary").click();
     await page.getByRole("combobox",{name:"Sleeve length",exact:true}).selectOption("half_sleeve");
@@ -67,9 +84,13 @@ async function run(){
     assert.match(advancedNote,/trouser pleats/i);
     assert.equal(await page.getByRole("combobox",{name:"Sleeve length",exact:true}).inputValue(),"half_sleeve");
     assert.equal(await page.getByRole("combobox",{name:"Trouser pleats",exact:true}).inputValue(),"double_pleat_forward");
+    await ready(page);
+    assert.equal(await actualPhotoPixelHash(page),beforeSpecOnlyPixels,
+      "advanced spec-only sleeve/pleat options must not repaint the fixed real photo as if new geometry existed");
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`advanced-construction-disclosed-${width}.png`)});
     summary.viewports[summary.viewports.length-1].advancedConstructionDisclosed=true;
+    summary.viewports[summary.viewports.length-1].specOnlyPhotoPixelsUnchanged=true;
     if(width===1440) {
       // Legacy controls also must not claim that unphotographed collar,
       // cuff or placket geometry has appeared in the trusted source image.
