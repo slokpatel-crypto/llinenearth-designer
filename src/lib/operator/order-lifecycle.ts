@@ -228,17 +228,18 @@ export function applyOrderLifecycleEvent(state: OrderLifecycleState, rawEvent: u
   const reasonRequired = ["cancel", "reject_qc", "hold_for_recovery", "resume_recovery"].includes(action);
   if (reasonRequired && !reason)
     throw new Error("A documented reason is required for cancellation, rework or recovery.");
-  if (!reasonRequired && reason !== undefined)
+  if (!reasonRequired && Object.hasOwn(event, "reason"))
     throw new Error("Unexpected reason on an ordinary order transition.");
-  if (action === "approve_qc") validateQc(event.qc, state);
-  else if (event.qc !== undefined) throw new Error("QC approval evidence belongs only on QC approval events.");
+  const validatedQc = action === "approve_qc" ? validateQc(event.qc, state) : undefined;
+  if (action !== "approve_qc" && Object.hasOwn(event, "qc"))
+    throw new Error("QC approval evidence belongs only on QC approval events.");
   if (to !== "recovery_pending" && action !== "resume_recovery") heldFrom = null;
   const applied: AppliedOrderLifecycleEvent = Object.freeze({
     eventId, orderId: state.orderId, action, from: state.status, to,
     sequence: event.sequence as number, previousEventId: state.lastEventId,
     occurredAt: event.occurredAt as string, actor, evidenceRef,
     ...(reason === undefined ? {} : { reason }),
-    ...(action === "approve_qc" ? { qc: validateQc(event.qc, state) } : {}),
+    ...(validatedQc ? { qc: validatedQc } : {}),
   });
   // TypeScript readonly is compile-time only. Freeze the new snapshot and
   // nested QC record so downstream code cannot mutate accepted audit history.
