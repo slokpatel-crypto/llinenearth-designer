@@ -64,3 +64,13 @@ test("migration stores digest only and forbids public RPC and direct table acces
   assert.match(sql,/revoke all on function public.customer_session_revoke\(text\) from public,anon,authenticated/);
   assert.match(sql,/grant execute on function public.customer_session_revoke\(text\) to service_role/);
 });
+
+test("session revocation backend outage is an explicit private 503, not an ordinary signed-out user",()=>{
+  const route=readFileSync("src/app/api/customer-auth/session/route.ts","utf8");
+  assert.match(route,/status:503,headers:\{"cache-control":"private, no-store, max-age=0"/);
+  assert.match(route,/Customer session temporarily unavailable/);
+  assert.match(route,/console\.error\("\[customer-auth\/session\] session lookup failed \(details redacted\)\."\)/);
+  const account=readFileSync("src/app/account/page.tsx","utf8");
+  assert.match(account,/r\.ok\?r\.json\(\):Promise\.reject/);
+  assert.match(account,/Retry account session/);
+});

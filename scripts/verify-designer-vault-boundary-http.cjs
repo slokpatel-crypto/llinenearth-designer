@@ -909,8 +909,14 @@ async function main(){
       for(const failure of ["checkMalformed","check500"]){
         revocationMode=failure;seen.length=0;
         const response=await session();
-        assert.deepEqual(await response.json(),{customer:null},
-          "malformed/unavailable revocation checks must fail closed");
+        assert.equal(response.status,503,
+          "failed revocation backend must not masquerade as an ordinary signed-out session");
+        assert.deepEqual(await response.json(),{
+          customer:null,error:"Customer session temporarily unavailable.",
+        },"outage must not leak upstream error details");
+        assert.match(response.headers.get("cache-control")||"",/private.*no-store/);
+        assert.equal(response.headers.get("set-cookie"),null,
+          "unavailable revocation backend must not modify or invalidate the caller's cookie");
         assert.equal(seen.length,1);
       }
       // Secure public design-sharing must never reveal a public link unless
