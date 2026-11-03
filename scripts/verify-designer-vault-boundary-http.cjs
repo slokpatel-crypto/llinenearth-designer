@@ -512,6 +512,20 @@ async function main(){
     assert.deepEqual(await malformedLegacy.json(),{customer:null},
       "malformed legacy provider owner ID must not become an authenticated customer");
     assert.deepEqual(seen.map(item=>item.path),["/auth/v1/user"]);
+    for(const [name,cookie] of [
+      ["large legacy bearer","le_customer_access="+"z".repeat(4097)],
+      ["newline legacy bearer","le_customer_access=valid-legacy%0AInjected"],
+      ["space legacy bearer","le_customer_access=valid%20legacy"],
+    ]){
+      seen.length=0;
+      const denied=await fetch(origin+"/api/customer-auth/session",{headers:{cookie},
+        signal:AbortSignal.timeout(15000)});
+      assert.deepEqual(await denied.json(),{customer:null},
+        name+" must not authenticate");
+      assert.deepEqual(seen,[],
+        name+" must be denied before sending any Supabase Authorization header");
+      assert.match(denied.headers.get("cache-control")||"",/private.*no-store/);
+    }
     for(const kind of ["oversized-legacy","html-legacy"]){
       seen.length=0;
       const unsafeLegacy=await fetch(origin+"/api/customer-auth/session",{

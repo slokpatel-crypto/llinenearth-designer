@@ -3,6 +3,7 @@ import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { normalizeCustomerEmail } from "@/lib/customer-account";
 import { CUSTOMER_SESSION_COOKIE, verifySignedCustomerSession } from "@/lib/customer-session";
 import { validCustomerSessionIdentityId } from "@/lib/customer-session-token";
+import { validLegacyCustomerAccessBearer } from "@/lib/customer-auth-legacy-token";
 import { customerSessionBearerAllowed, customerSessionRevocationRequired } from "@/lib/customer-session-revocation";
 export { normalizeCustomerEmail } from "@/lib/customer-account";
 
@@ -104,7 +105,7 @@ export async function getCustomerIdentity(request:Request):Promise<CustomerIdent
   // Backward-compatible bridge for sessions created before the durable
   // Linen Earth customer-session cookie was introduced.
   const token=readCookie(request,CUSTOMER_ACCESS_COOKIE);
-  if(!token) return null;
+  if(!validLegacyCustomerAccessBearer(token)) return null;
   const response=await authFetch("/auth/v1/user",{
     method:"GET",
     headers:{authorization:`Bearer ${token}`},
