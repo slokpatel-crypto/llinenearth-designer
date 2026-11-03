@@ -16,12 +16,14 @@ on:
       - "scripts/blender/diagnose-crotch-seam-pairing.py"
       - "scripts/blender/prototype-crotch-source-seam-weld.py"
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
+      - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
       - "tests/crotch-source-edge-reprojection-native.test.ts"
       - "tests/crotch-connected-source-nine-native.test.ts"
       - "tests/crotch-source-ring-falloff-native.test.ts"
       - "tests/crotch-local-body-normal-ring-native.test.ts"
+      - "tests/crotch-connected-face-remesh-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -49,12 +51,14 @@ on:
       - "scripts/blender/diagnose-crotch-seam-pairing.py"
       - "scripts/blender/prototype-crotch-source-seam-weld.py"
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
+      - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
       - "tests/crotch-source-edge-reprojection-native.test.ts"
       - "tests/crotch-connected-source-nine-native.test.ts"
       - "tests/crotch-source-ring-falloff-native.test.ts"
       - "tests/crotch-local-body-normal-ring-native.test.ts"
+      - "tests/crotch-connected-face-remesh-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -1203,6 +1207,76 @@ jobs:
               )
           assert connected["falloffSameOriginalFaceRegionContactEvidence"]["localBodyNormalOneRing7Mm"]
           assert connected["falloffSameOriginalFaceRegionContactEvidence"]["localBodyNormalTwoRings7And4Mm"]
+          remesh=targeted["researchOnlyConnectedFaceRetriangulation"]
+          assert remesh["researchOnly"] is True
+          assert remesh["changesProductionGeometry"] is False
+          assert remesh["productionApproved"] is False
+          assert remesh["physicalFitApproved"] is False
+          assert remesh["sewnGarmentApproved"] is False
+          assert remesh["topologyEqualBetweenControlAndBodyGuided"] is True
+          assert remesh["originalOpenSourceBoundaryEdges"] == remesh["remeshOpenSourceBoundaryEdges"] == 126
+          assert set(remesh["originalAffectedSourceFaceIndices"]) == set(connected["originalSourceAdjacentFaceIndices"])
+          assert len(remesh["originalAffectedSourceFaceIndices"]) == 6
+          assert set(int(k) for k in remesh["originalFaceToNewTriangleIndices"]) == set(
+              remesh["originalAffectedSourceFaceIndices"]
+          )
+          original_faces=set()
+          for old_face, new_faces in remesh["originalFaceToNewTriangleIndices"].items():
+              assert len(new_faces) >= 3
+              assert len(new_faces) == len(set(new_faces))
+              assert all(type(i) is int and i >= 0 for i in new_faces)
+              assert not original_faces.intersection(new_faces)
+              original_faces.update(new_faces)
+          assert len(remesh["originalFaceCentroidProvenance"]) == 6
+          for entry in remesh["originalFaceCentroidProvenance"]:
+              assert entry["originalSourceFaceIndex"] in remesh["originalAffectedSourceFaceIndices"]
+              assert math.isfinite(entry["originalFaceCentroidNearestBodyMm"])
+              assert entry["originalFaceCentroidNearestBodyMm"] >= 0
+              assert 0 <= entry["projectedCentroidMoveMm"] <= 25
+              assert type(entry["projectedOriginalBodyPolygonIndex"]) is int
+              assert entry["projectedOriginalBodyPolygonIndex"] >= 0
+          assert 0 < remesh["originalSourceCutVertexDisplacementMaxMm"] <= 25
+          remesh_control=remesh["control"]
+          remesh_candidate=remesh["bodyGuidedCentres9Mm"]
+          for trial in (remesh_control,remesh_candidate):
+              assert trial["productionApproved"] is False
+              assert trial["originalSourceFaceCount"] == 2650
+              assert trial["newSourceTrianglesFromSixFaces"] == len(original_faces)
+              assert trial["sourceFaceCountAfterRetriangulation"] == (
+                  trial["originalSourceFaceCount"] - 6 + len(original_faces)
+              )
+              assert trial["allFaceCount"] == trial["sourceFaceCountAfterRetriangulation"] + 6
+              assert trial["degenerateFaces"] == 0
+              assert type(trial["bodyPairsOnRemeshedOriginalFaces"]) is int
+              assert trial["bodyPairsOnRemeshedOriginalFaces"] >= 0
+              assert 0 <= trial["bodyContactedRemeshedOriginalFaceCount"] <= len(original_faces)
+              assert math.isfinite(trial["bodyContactedRemeshedOriginalAreaMm2"])
+              assert math.isfinite(trial["totalRemeshedOriginalAreaMm2"])
+              assert 0 <= trial["bodyContactedRemeshedOriginalAreaMm2"] <= trial["totalRemeshedOriginalAreaMm2"] + 0.0001
+              assert len(trial["originalCutEdgeSampleResults"]) == 2
+              assert trial["sourceEdgeSamplesUnderSevenMm"] == sum(
+                  part["samplesUnderSevenMm"] for part in trial["originalCutEdgeSampleResults"]
+              )
+              for part in trial["originalCutEdgeSampleResults"]:
+                  assert tuple(sorted(part["originalSourceCutEdgeVertices"])) in expected_cut_edges
+                  assert len(part["bodyDistancesMm"]) == 7
+                  assert all(math.isfinite(v) and v >= 0 for v in part["bodyDistancesMm"])
+                  assert part["minimumMm"] == min(part["bodyDistancesMm"])
+                  assert part["samplesUnderSevenMm"] == sum(v < 7 for v in part["bodyDistancesMm"])
+              assert trial["sourceEdgeSamplesUnderSevenMm"] == 0
+          assert remesh_control["allFaceCount"] == remesh_candidate["allFaceCount"]
+          assert remesh_control["untouchedOriginalSourceBodyPairs"] == remesh_candidate["untouchedOriginalSourceBodyPairs"]
+          assert remesh_control["researchBridgeBodyPairs"] == remesh_candidate["researchBridgeBodyPairs"]
+          assert 0 <= remesh["bodyGuidedSourceFaceNormalReversals"] <= len(original_faces)
+          assert remesh["strictContactedOriginalSourceAreaImprovementObserved"] is (
+              remesh_candidate["bodyContactedRemeshedOriginalAreaMm2"]
+              < remesh_control["bodyContactedRemeshedOriginalAreaMm2"]
+          )
+          assert remesh["strictOriginalBodyPairImprovementObserved"] is (
+              remesh_candidate["bodyPairsOnRemeshedOriginalFaces"]
+              < remesh_control["bodyPairsOnRemeshedOriginalFaces"]
+          )
+          assert "No sewn garment" in remesh["metricCaveat"]
           assert "not continuous" in connected["metricCaveat"]
           assert all(row["productionApproved"] is False for row in source_variants.values())
           assert "No continuous" in source_offset["metricCaveat"]
@@ -1264,6 +1338,7 @@ jobs:
               },
               "sourceFalloffNormalFlipCounts":connected["falloffAllAlteredSourceFaceNormalFlips"],
               "sameOriginalFacesRegionEvidence":connected["falloffSameOriginalFaceRegionContactEvidence"],
+              "connectedOriginalFaceRetriangulation":targeted["researchOnlyConnectedFaceRetriangulation"],
               "positiveNormalOffsetSweep":source_offset["positiveNormalOffsetSweepMm"],
               "jointSampledTargetObserved":source_offset["jointSampledTargetObserved"],
               "targetedEqualTopologyVariants":variants,
