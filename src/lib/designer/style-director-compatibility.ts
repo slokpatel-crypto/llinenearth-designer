@@ -159,14 +159,24 @@ export function styleDirectorCandidateFrontConstructionIssues(
     ? requestsDouble && !requestsSingle ? 2
       : requestsSingle && !requestsDouble ? 1 : null
     : null;
-  const declaredCount = optionsFor("pant.pleat").find(option => option.id === pant.pleat)?.parameters.pleatCount;
+  const pleatOption = optionsFor("pant.pleat").find(option => option.id === pant.pleat);
+  const declaredCount = pleatOption?.parameters.pleatCount;
+  // The option catalogue also distinguishes forward/reverse pleat direction.
+  // Do not silently substitute one for the other in tailoring instructions.
+  const requestsForward = front === "pleated" && /\bforward\b/i.test(positiveWording);
+  const requestsReverse = front === "pleated" && /\breverse\b/i.test(positiveWording);
+  const expectedDirection = requestsForward !== requestsReverse
+    ? requestsForward ? "forward" : "reverse" : null;
+  const declaredDirection = pleatOption?.parameters.pleatDirection;
   if ((front === "pleated" && pant.pleat === "flat_front") ||
       (front === "flat_front" && pant.pleat !== "flat_front") ||
       (expectedCount !== null && declaredCount !== expectedCount) ||
-      (front === "pleated" && requestsSingle && requestsDouble)) {
+      (front === "pleated" && requestsSingle && requestsDouble) ||
+      (front === "pleated" && requestsForward && requestsReverse) ||
+      (expectedDirection !== null && declaredDirection !== expectedDirection)) {
     return [{
       code: "candidate_trouser_pleat_mismatch",
-      explanation: "The proposed trouser pleat count or front contradicts its versioned construction; confirm the intended pleats before cutting without inventing a pleat.",
+      explanation: "The proposed trouser front, pleat count or direction contradicts its versioned construction; confirm the intended pleats before cutting without inventing a pleat.",
     }];
   }
   return [];
