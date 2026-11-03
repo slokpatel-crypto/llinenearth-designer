@@ -121,6 +121,15 @@ function rejectUnknownFields(value: Record<string, unknown>, allowed: ReadonlySe
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid lifecycle event.");
+  // Audit records must be plain data. Inherited claims, getters and symbol
+  // properties are not representable in a durable JSON event and could be
+  // silently dropped or evaluated with side effects during validation.
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) throw new Error("Invalid lifecycle record prototype.");
+  if (Reflect.ownKeys(value).some(key => typeof key !== "string" ||
+      !Object.hasOwn(Object.getOwnPropertyDescriptor(value, key) ?? {}, "value"))) {
+    throw new Error("Invalid lifecycle record property.");
+  }
   return value as Record<string, unknown>;
 }
 function timestamp(value: unknown): number {
