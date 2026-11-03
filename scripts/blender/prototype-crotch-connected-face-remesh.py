@@ -54,6 +54,8 @@ def trial_connected_face_retriangulation(
     base_count = len(original_faces)
     control_points = [point.copy() for point in points]
     projected_points = [point.copy() for point in points]
+    projected_points7 = [point.copy() for point in points]
+    projected_points11 = [point.copy() for point in points]
     for original_id, face in enumerate(original_faces):
         if original_id not in touched:
             faces.append(face)
@@ -65,13 +67,19 @@ def trial_connected_face_retriangulation(
                 or direction.length <= 1e-9):
             raise RuntimeError("Original trouser face centre has unknown scanned-body direction.")
         projected = nearest + direction.normalized() * 0.009
+        projected_7 = nearest + direction.normalized() * 0.007
+        projected_11 = nearest + direction.normalized() * 0.011
         shift_mm = (projected - central).length * 1000.0
-        if (not math.isfinite(shift_mm) or shift_mm > 25.0
-                or not all(math.isfinite(x) for x in projected)):
+        shift_7 = (projected_7 - central).length * 1000.0
+        shift_11 = (projected_11 - central).length * 1000.0
+        if (not all(math.isfinite(d) and d <= 25.0 for d in (shift_mm, shift_7, shift_11))
+                or not all(math.isfinite(x) for point in (projected, projected_7, projected_11) for x in point)):
             raise RuntimeError("Native original source face remesh centroid moved beyond 25mm.")
         centroid_id = len(control_points)
         control_points.append(central)
         projected_points.append(projected)
+        projected_points7.append(projected_7)
+        projected_points11.append(projected_11)
         affected_ids = []
         for local in range(len(face)):
             affected_ids.append(len(faces))
@@ -81,9 +89,12 @@ def trial_connected_face_retriangulation(
             "originalSourceFaceIndex": original_id,
             "originalFaceCentroidNearestBodyMm": round(native_distance * 1000.0, 5),
             "projectedCentroidMoveMm": round(shift_mm, 5),
+            "projectedCentroidMoveMm7": round(shift_7, 5),
+            "projectedCentroidMoveMm11": round(shift_11, 5),
             "projectedOriginalBodyPolygonIndex": int(polygon_id),
         })
-    if len(control_points) != len(projected_points) or len(face_centres) != 6:
+    if (len({len(control_points), len(projected_points), len(projected_points7), len(projected_points11)}) != 1
+            or len(face_centres) != 6):
         raise RuntimeError("Original-face remesh has lost true source face ancestry.")
     source_face_count = len(faces)
     faces += research_bridge
@@ -178,17 +189,32 @@ def trial_connected_face_retriangulation(
 
     control = make("Control", control_points)
     candidate = make("BodyGuidedCentres9Mm", projected_points)
-    if (control["data"]["allFaceCount"] != candidate["data"]["allFaceCount"]
-            or control["data"]["untouchedOriginalSourceBodyPairs"] !=
-               candidate["data"]["untouchedOriginalSourceBodyPairs"]
-            or control["data"]["researchBridgeBodyPairs"] !=
-               candidate["data"]["researchBridgeBodyPairs"]):
-        raise RuntimeError("Body-centroid source remesh changed truly unmodified source faces.")
+    candidate7 = make("BodyGuidedCentres7Mm", projected_points7)
+    candidate11 = make("BodyGuidedCentres11Mm", projected_points11)
+    equal_source_trials = {
+        "7": candidate7,
+        "9": candidate,
+        "11": candidate11,
+    }
+    for variant in equal_source_trials.values():
+        if (control["data"]["allFaceCount"] != variant["data"]["allFaceCount"]
+                or control["data"]["untouchedOriginalSourceBodyPairs"] !=
+                   variant["data"]["untouchedOriginalSourceBodyPairs"]
+                or control["data"]["researchBridgeBodyPairs"] !=
+                   variant["data"]["researchBridgeBodyPairs"]):
+            raise RuntimeError("Body-centroid source remesh changed truly unmodified source faces.")
     normal_reversal_count = sum(
         control["mesh"].polygons[i].normal.dot(
             candidate["mesh"].polygons[i].normal
         ) <= 0 for i in target_new_indices
     )
+    flipped_per_offset = {
+        offset: sum(
+            control["mesh"].polygons[i].normal.dot(
+                variant["mesh"].polygons[i].normal
+            ) <= 0 for i in target_new_indices
+        ) for offset, variant in equal_source_trials.items()
+    }
     return {
         "researchOnly": True,
         "originalAffectedSourceFaceIndices": touched,
@@ -200,6 +226,10 @@ def trial_connected_face_retriangulation(
         "originalSourceCutVertexDisplacementMaxMm": round(max(original_source_vertex_move_mm), 5),
         "control": control["data"],
         "bodyGuidedCentres9Mm": candidate["data"],
+        "equalTopologyBodyGuidedCentroidSweepMm": {
+            offset: variant["data"] for offset, variant in equal_source_trials.items()
+        },
+        "bodyGuidedSourceFaceNormalReversalsByOffsetMm": flipped_per_offset,
         "bodyGuidedSourceFaceNormalReversals": normal_reversal_count,
         "strictContactedOriginalSourceAreaImprovementObserved": (
             candidate["data"]["bodyContactedRemeshedOriginalAreaMm2"]
