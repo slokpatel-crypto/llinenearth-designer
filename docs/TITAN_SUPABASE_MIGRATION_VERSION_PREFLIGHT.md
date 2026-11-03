@@ -18,6 +18,8 @@ At main `4dd8020abd83429449ff53ea5bb71b046394d86e`, 58 historical SQL migration 
 
 Additional new-file gate: an added SQL migration must use a real calendar-valid 14-digit timestamp, must not be backdated before the latest frozen historical prefix, and must not redefine `public.fabric_stock_reserve_v2` without the active nontruncation checks on all five identity/evidence fields. These are source-level checks to prevent **new regressions**; they cannot certify remote history or prove SQL behavior without disposable PostgreSQL replay.
 
+The inventory now **fails closed** if the migration directory contains a symbolic link, nested directory or case-ambiguous SQL filename (such as `.SQL`) instead of silently skipping it. These are rejected at scan time to prevent untracked SQL from bypassing version and hash checks.
+
 The `TITAN Supabase Migration Version Inventory` GitHub Actions workflow runs only file-system reads and Node tests. It labels its passing job **legacy baseline, NOT deploy ready**. Do not remove legacy files or rename already-applied versions without comparing staging/remote migration history and a signed-off forward-only version map.
 
 ## Owner-approved migration-path remediation (still pending)
