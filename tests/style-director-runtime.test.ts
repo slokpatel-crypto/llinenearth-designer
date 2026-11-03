@@ -30,8 +30,19 @@ test("createStyleDirectorLooks reconstructs an actual catalogued resort shirt lo
   };
   const looks = createStyleDirectorLooks(answers, stock);
   assert.equal(looks.length, 1, "one eligible shirt yields one catalogue recommendation");
-  assert.deepEqual(looks, createStyleDirectorLooks(answers, stock),
-    "recommendations must be deterministic for identical catalogue inputs");
+  const repeated = createStyleDirectorLooks(answers, stock);
+  // Version creation timestamps legitimately differ across two requests.
+  // Assert their validity separately; compare every deterministic field.
+  const withoutClock = (items: typeof looks) => items.map((look) => ({
+    ...look,
+    version: { ...look.version, createdAt: "<creation-time>" },
+  }));
+  for (const look of [...looks, ...repeated]) {
+    assert.ok(Number.isFinite(Date.parse(look.version.createdAt)),
+      "every newly created version must have a valid timestamp");
+  }
+  assert.deepEqual(withoutClock(looks), withoutClock(repeated),
+    "recommendation content and versioned selections must be deterministic");
   assert.equal(JSON.stringify(stock), before, "recommendations must not mutate stock");
 
   const look = looks[0];
