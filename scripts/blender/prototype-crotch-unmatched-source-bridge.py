@@ -305,6 +305,24 @@ def measure_fixed_bridge_boundary_body_rays(vertices, boundary, source_cut_edges
         location, normal, polygon_index, hit_distance = body_tree.ray_cast(
             start + direction * trim, direction, length - 2.0 * trim
         )
+        # A ray misses parallel/tangent/nearby surfaces. Independently sample
+        # seven strict interior positions on this FIXED original edge, using
+        # the same measured scanned-body BVH. These are sampled unsigned
+        # nearest distances, not a continuous clearance certificate.
+        nearest_samples = []
+        for fraction in (0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875):
+            sample = start + delta * fraction
+            closest_sample, normal_sample, polygon_sample, distance_sample = body_tree.find_nearest(sample)
+            if (closest_sample is None or normal_sample is None
+                    or polygon_sample is None or distance_sample is None
+                    or not math.isfinite(distance_sample) or distance_sample < 0):
+                raise RuntimeError("Original edge has unknown scanned-body proximity.")
+            nearest_samples.append({
+                "edgeFraction": fraction,
+                "nearestBodyDistanceMm": round(distance_sample * 1000.0, 5),
+                "nearestBodyPolygonIndex": int(polygon_sample),
+            })
+        sampled_distances = [v["nearestBodyDistanceMm"] for v in nearest_samples]
         hit = location is not None
         if hit:
             if (polygon_index is None or hit_distance is None
@@ -318,6 +336,12 @@ def measure_fixed_bridge_boundary_body_rays(vertices, boundary, source_cut_edges
                          if tuple(sorted((a, b))) in original_cut_edges
                          else "experimentalConnector"),
             "edgeLengthMm": round(length * 1000.0, 4),
+            "sampledNearestBodyDistances": nearest_samples,
+            "sampledMinimumBodyDistanceMm": min(sampled_distances),
+            "sampledMaximumBodyDistanceMm": max(sampled_distances),
+            "sampledInteriorPointsUnderResearchSevenMm": sum(
+                distance < 7.0 for distance in sampled_distances
+            ),
             "strictInteriorRayHit": hit,
             "bodyPolygonIndex": int(polygon_index) if hit else None,
             "firstHitDistanceFromEdgeStartMm": (
@@ -334,18 +358,27 @@ def measure_fixed_bridge_boundary_body_rays(vertices, boundary, source_cut_edges
     )
     if sum(row["edgeKind"] == "originalSourceCutEdge" for row in results) != 2:
         raise RuntimeError("Lost one of the two real source cut boundary segments.")
+    source_rows = [row for row in results if row["edgeKind"] == "originalSourceCutEdge"]
+    source_under_seven = sum(
+        row["sampledInteriorPointsUnderResearchSevenMm"] for row in source_rows
+    )
     return {
         "boundaryEdgeCount": len(results),
         "originalSourceCutEdgeCount": 2,
         "experimentalConnectorCount": 2,
         "originalSourceCutEdgeInteriorRayHits": source_hits,
+        "perBoundaryEdgeNearestBodySampleCount": 7,
+        "originalSourceEdgeSamplesUnderResearchSevenMm": source_under_seven,
+        "sourceFixedBoundaryFailsSampledResearchSevenMm": source_under_seven > 0,
         "experimentalConnectorInteriorRayHits": connector_hits,
         "boundaryEdges": results,
         "originalSourceCutEdgeHitMakesFixedBoundaryClearanceImpossible": source_hits > 0,
         "rayTestCaveat": (
             "Ray tests only strict segment-interior intersections against original body "
             "triangles; zero rays does not prove clearance, tangency, garment fit, "
-            "actual sewing allowance or physical approval. Experimental connectors "
+            "actual sewing allowance or physical approval. Seven strict-interior "
+            "unsigned nearest samples per edge test bounded local proximity, but "
+            "do not certify continuous boundary clearance. Experimental connectors "
             "are not real source cut edges."
         ),
         "productionApproved": False,
