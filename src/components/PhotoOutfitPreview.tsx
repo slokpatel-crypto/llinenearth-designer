@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
+import { photoConstructionMismatches } from "@/lib/designer/photo-preview-fidelity";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { applyRuntimeFabricScale, photoFabricPatternScale, visiblePatternScaleVerified, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
@@ -1253,6 +1254,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const templateId = photoTemplateForStyle(style);
   const template = DESIGNER_PHOTO_TEMPLATES[templateId];
   const gaps = photoTemplateGaps(style, templateId);
+  const constructionMismatches = photoConstructionMismatches(style,styleSpec);
   const tucked = style.shirtWear === "Tucked";
   const resolvedCraft=useMemo(()=>resolvePhotoCraft(creativeDirection?.craft,craftFabrics||[],shirt.id,pant.id),[creativeDirection?.craft,craftFabrics,shirt.id,pant.id]);
   const previewCreative=useMemo(()=>creativeDirection?{...creativeDirection,craft:resolvedCraft?.craft}:undefined,[creativeDirection,resolvedCraft]);
@@ -1759,6 +1761,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       </div>
     </div>
     {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {previewScaleVerified ? "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
+    {!showCreativeAi && constructionMismatches.length>0 && <p className="newDesignerPhotoApproximation" data-photo-construction-mismatch="true"><strong>Photographic construction limits</strong> · {constructionMismatches.map((gap)=>gap.label).join(", ")} not reconstructed in the fixed studio photograph. Your selected construction remains in the saved design specification.</p>}
     {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}
     {creativeAi?.cached && <p className="newDesignerPhotoCache">Cached final render reused · no new FASHN generation was needed.</p>}
     {creativeAi && !creativeDirection && <p className="newDesignerPhotoLock"><strong>MODEL IDENTITY LOCKED</strong> · {LINEN_EARTH_MODEL_IDENTITY_ID} stays identical across Front / 3/4 / Side / Back; only camera angle and hidden garment surfaces may change.</p>}
