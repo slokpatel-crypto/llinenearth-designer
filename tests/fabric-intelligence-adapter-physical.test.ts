@@ -175,3 +175,44 @@ test("persisted array-shaped measured data and image quality cannot masquerade a
   assert.equal(invalid.measured,null);
   assert.equal(invalid.imageQuality,null);
 });
+
+test("malformed persisted numbers cannot become high-confidence Analyzer classifications",()=>{
+  const good=adaptFabricProfileToV4({
+    version:"fabric-analyzer-v4",
+    confidence:{color:.9,pattern:.6,texture:1,styling:0},
+    inferredStyle:{formality:4,statementLevel:5},
+    observed:{patternFamily:"stripe",orientation:"vertical"},
+  });
+  assert.ok(good);
+  assert.deepEqual(good.confidence,{color:.9,pattern:.6,texture:1,styling:0});
+  assert.equal(good.inferredStyle.formality,4);
+  assert.equal(good.inferredStyle.statementLevel,5);
+  assert.equal(good.observed.patternFamily,"stripe");
+  assert.equal(good.observed.orientation,"vertical");
+
+  for(const invalid of [[.99],"0.99",true,false,{},null,undefined,NaN,Infinity,-1,2]){
+    const profile=adaptFabricProfileToV4({
+      version:"fabric-analyzer-v4",
+      confidence:{color:invalid,pattern:invalid,texture:invalid,styling:invalid},
+    });
+    assert.ok(profile);
+    assert.deepEqual(profile.confidence,{color:0,pattern:0,texture:0,styling:0},
+      String(invalid));
+  }
+});
+
+test("classification enums and ordinal scores reject coerced JSON arrays and booleans",()=>{
+  for(const invalid of [["stripe"],["vertical"],["4"],"4",true,3.5,0,6]){
+    const output=adaptFabricProfileToV4({
+      version:"fabric-analyzer-v4",
+      observed:{patternFamily:invalid,orientation:invalid,sheen:invalid},
+      inferredStyle:{formality:invalid,statementLevel:invalid},
+    });
+    assert.ok(output);
+    assert.equal(output.observed.patternFamily,"other",String(invalid));
+    assert.equal(output.observed.orientation,"uncertain",String(invalid));
+    assert.equal(output.observed.sheen,"uncertain",String(invalid));
+    assert.equal(output.inferredStyle.formality,3,String(invalid));
+    assert.equal(output.inferredStyle.statementLevel,2,String(invalid));
+  }
+});

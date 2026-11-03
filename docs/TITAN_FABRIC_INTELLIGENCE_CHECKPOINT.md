@@ -75,3 +75,8 @@
 - The legacy v3/v4 profile adapter now rejects supplier fibre, HTTPS source and inspection-note **raw** literals exceeding their field bounds *before trim*, matching the physical intake and customer-projection checks. Whitespace-padded overlength evidence must not transform into acceptable shorter documentation.
 - Corrupt persisted `measured` and `imageQuality` arrays can no longer be cast to typed physical measurement objects; they normalize to `null`, without implying any measured fabric facts.
 - Targeted regression tests cover all three padded supplier fields, valid unrelated field preservation and array-shaped physical records. Existing v4 contract and physical provenance semantics unchanged; no schema migration.
+
+## 2026-11-03 — persisted Analyzer confidence and enum literal integrity
+- V3/V4 profile adapter no longer uses `Number(value)` to coerce arrays, booleans, null, or stringified values into classifier confidence; out-of-range confidence falls back to 0, rather than clamping to an unjustified 100% value.
+- Literal numeric 1–5 integer formality/statement rankings are accepted; malformed ordinal values use the existing safe defaults. Classification enum inputs must be literal strings, not arrays converted via `String(["stripe"])`.
+- Valid v4 numeric and string classifications remain unchanged. Regression tests cover valid boundaries, invalid JSON types and out-of-range values. No persistence migration or physical proof inferred.

@@ -130,8 +130,15 @@ function arr(value:unknown,limit=12) {
   return Array.isArray(value) ? value.map((item)=>str(item)).filter(Boolean).slice(0,limit) : [];
 }
 function num(value:unknown,min:number,max:number,fallback:number) {
-  const n=Number(value);
-  return Number.isFinite(n) ? Math.max(min,Math.min(max,n)) : fallback;
+  // Persisted JSON has no TypeScript runtime contract: strings, arrays and
+  // booleans must not be cast into apparent Analyzer confidence. An invalid
+  // out-of-range number is unknown, not perfect confidence after clamping.
+  return typeof value==="number" && Number.isFinite(value)
+    && value>=min && value<=max ? value : fallback;
+}
+function ordinal(value:unknown,fallback:1|2|3|4|5):1|2|3|4|5 {
+  return typeof value==="number" && Number.isInteger(value)
+    && value>=1 && value<=5 ? value as 1|2|3|4|5 : fallback;
 }
 
 function tilePixelDimension(value:unknown):number|null {
@@ -141,8 +148,9 @@ function tilePixelDimension(value:unknown):number|null {
     && value>0 && value<=32768 ? value : null;
 }
 function enumValue<T extends string>(value:unknown,allowed:readonly T[],fallback:T):T {
-  const raw=String(value??"");
-  return (allowed as readonly string[]).includes(raw) ? raw as T : fallback;
+  // String(["stripe"]) === "stripe", but an array is not a classifier label.
+  return typeof value==="string" && (allowed as readonly string[]).includes(value)
+    ? value as T : fallback;
 }
 
 export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|null {
@@ -190,8 +198,8 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
     },
     inferredStyle:{
       personality:arr(inferred.personality,8),
-      formality:Math.round(num(inferred.formality,1,5,3)) as 1|2|3|4|5,
-      statementLevel:Math.round(num(inferred.statementLevel,1,5,2)) as 1|2|3|4|5,
+      formality:ordinal(inferred.formality,3),
+      statementLevel:ordinal(inferred.statementLevel,2),
       bestGarments:garments.values,
       bestOccasions:occasionIds.values,
       climateVisualFit:climate.values,
