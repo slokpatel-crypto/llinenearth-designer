@@ -449,3 +449,20 @@ test("audit evidence rejects C1 controls, invisible soft hyphens and Unicode lin
   }
   assert.equal(step(base(),"accept").status,"accepted");
 });
+
+
+test("live order transitions enforce the same audit cap as serialized replay",()=>{
+  // The limit is checked before parsing an untrusted event. Build the large
+  // history through valid transitions rather than forging trusted state.
+  let state=base();
+  state=step(state,"accept");
+  for(let i=0;i<4999;i++){
+    state=step(state,"hold_for_recovery",{reason:"Temporary production hold"});
+    state=step(state,"resume_recovery",{reason:"Production resumed"});
+  }
+  state=step(state,"hold_for_recovery",{reason:"Temporary production hold"});
+  assert.equal(state.audit.length,10000);
+  assert.equal(replayOrderLifecycle(id,revision,hash,state.audit).sequence,10000);
+  assert.throws(()=>step(state,"resume_recovery",{reason:"Production resumed"}),
+    /maximum event count/);
+});
