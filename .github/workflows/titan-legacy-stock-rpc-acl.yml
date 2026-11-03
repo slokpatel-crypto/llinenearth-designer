@@ -7,6 +7,7 @@ on:
     paths:
       - 'supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql'
       - 'supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql'
+      - 'scripts/test-legacy-stock-rpc-acl-invocation.sh'
       - '.github/workflows/titan-legacy-stock-rpc-acl.yml'
   workflow_dispatch:
 
@@ -92,3 +93,5 @@ jobs:
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql | tee /tmp/stock-acl-test.log
           grep -q 'PASS: all four v1 stock mutators denied' /tmp/stock-acl-test.log
+      - name: Execute retired v1 calls as service_role; positive v2 call rolls back
+        run: bash scripts/test-legacy-stock-rpc-acl-invocation.sh
