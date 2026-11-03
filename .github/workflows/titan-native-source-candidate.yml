@@ -17,6 +17,7 @@ on:
       - "scripts/blender/prototype-crotch-source-seam-weld.py"
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
       - "scripts/blender/source-crotch-seam-winding.py"
+      - "scripts/blender/source-crotch-bridge-flat-charts.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -26,6 +27,7 @@ on:
       - "tests/crotch-local-body-normal-ring-native.test.ts"
       - "tests/crotch-connected-face-remesh-native.test.ts"
       - "tests/crotch-seam-winding-uv-native.test.ts"
+      - "tests/crotch-bridge-flat-charts-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -38,6 +40,7 @@ on:
       - "scripts/blender/summarize-native-candidate-preflight.py"
       - "tests/python/test_native_candidate_preflight_summary.py"
       - "tests/python/test_source_crotch_seam_winding.py"
+      - "tests/python/test_source_crotch_bridge_flat_charts.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -55,6 +58,7 @@ on:
       - "scripts/blender/prototype-crotch-source-seam-weld.py"
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
       - "scripts/blender/source-crotch-seam-winding.py"
+      - "scripts/blender/source-crotch-bridge-flat-charts.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -64,6 +68,7 @@ on:
       - "tests/crotch-local-body-normal-ring-native.test.ts"
       - "tests/crotch-connected-face-remesh-native.test.ts"
       - "tests/crotch-seam-winding-uv-native.test.ts"
+      - "tests/crotch-bridge-flat-charts-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -91,6 +96,7 @@ jobs:
           set -euo pipefail
           python3 tests/python/test_native_candidate_preflight_summary.py
           python3 tests/python/test_source_crotch_seam_winding.py
+          python3 tests/python/test_source_crotch_bridge_flat_charts.py
       - name: Fetch checksum-verified Blender 4.5.14
         shell: bash
         run: |
@@ -978,6 +984,62 @@ jobs:
                           entry["finiteAndComplete"] for entry in stage["originalUVLayers"]
                       )
                   )
+              flat=oriented["researchOnlyGeometricFlatBridgeCharts"]
+              assert flat["researchOnly"] is True
+              assert flat["chartCount"] == 4
+              assert flat["triangleCount"] == 6
+              assert flat["nativeBlenderSourceBridgePolygonCount"] == 6
+              assert flat["nativeBlenderResearchUVLoopCount"] == 18
+              assert flat["nativeBlenderResearchUVLayerName"] == "TITAN_RESEARCH_UNVERIFIED_BRIDGE_GEOMETRIC_UV"
+              assert flat["flattenedBridgeHasEdgeLengthAccuracyToOneMicrometre"] is True
+              assert flat["researchBridgeUVDisplayUnitsAreVerifiedTextileScale"] is False
+              assert flat["originalSourceUVContinuityProven"] is False
+              assert flat["supplierFabricRepeatVerified"] is False
+              assert flat["measuredTextileScaleProven"] is False
+              assert flat["productionApproved"] is False
+              assert flat["sewnGarmentApproved"] is False
+              assert flat["sourceGeometryCoordinateUnit"] == "Blender metres"
+              assert len(flat["charts"]) == 4
+              assert [chart["triangleCount"] for chart in flat["charts"]] == [2,1,2,1]
+              assert sum(chart["triangleCount"] for chart in flat["charts"]) == 6
+              assert [chart["actualBridgeFaceIndices"] for chart in flat["charts"]] == [
+                  [0,1],[2],[3,4],[5]
+              ]
+              assert math.isfinite(flat["nativeBlenderSourceBridgeSurfaceAreaMm2"])
+              assert flat["nativeBlenderSourceBridgeSurfaceAreaMm2"] > 0
+              assert abs(
+                  flat["nativeBlenderSourceBridgeSurfaceAreaMm2"] -
+                  sum(chart["flattenedSurfaceAreaMm2"] for chart in flat["charts"])
+              ) <= max(0.1, flat["nativeBlenderSourceBridgeSurfaceAreaMm2"]*1e-5)
+              assert flat["originalSourceTrouserUVPresent"] is any(
+                  bool(stage["originalUVLayers"]) for stage in uv_stages
+              )
+              assert flat["originalSourceGarmentUVStillMissing"] is not all(
+                  stage["originalStageHasFiniteCompleteUV"] for stage in uv_stages
+              )
+              for chart,segment in zip(flat["charts"], evidence["trialSegments"]):
+                  assert chart["originalCutEdgeLeft"] == segment["leftEdge"]
+                  assert chart["originalCutEdgeRight"] == segment["rightEdge"]
+                  assert chart["triangleCount"] == segment["bridgeTriangles"]
+                  assert len(chart["signedFlatTriangleAreasMm2"]) == chart["triangleCount"]
+                  assert all(math.isfinite(v) and v != 0 for v in chart["signedFlatTriangleAreasMm2"])
+                  assert chart["flattenedSurfaceAreaMm2"] > 0
+                  assert 0 <= chart["maxActualBridgeEdgeLengthErrorMm"] <= 0.001
+                  assert chart["originalCutEdgeLeftLengthMm"] > 0
+                  assert chart["originalCutEdgeRightLengthMm"] > 0
+                  assert chart["actualCutEdgeLengthMismatchMm"] >= 0
+                  assert chart["flatChartWidthMm"] > 0
+                  assert chart["flatChartHeightMm"] > 0
+                  assert len(chart["flatChartLocalVertexCoordsMm"]) in (3,4)
+                  assert all(
+                      len(xy) == 2 and all(math.isfinite(v) for v in xy)
+                      for xy in chart["flatChartLocalVertexCoordsMm"].values()
+                  )
+                  assert chart["sourceTrouserLegUVContinuityVerified"] is False
+                  assert chart["supplierFabricRepeatVerified"] is False
+                  assert chart["tailorSeamAllowanceApproved"] is False
+                  assert chart["productionApproved"] is False
+              assert "does not establish" in flat["metricCaveat"]
               assert "never sufficient" in oriented["metricCaveat"]
           assert original["researchOnlyOriginalSeamWindingAndUVProvenance"] == (
               offset["researchOnlyOriginalSeamWindingAndUVProvenance"]
@@ -1412,6 +1474,18 @@ jobs:
               "radial18TriangleContactedAreaMm2":radial["contactingBridgeAreaMm2"],
               "radialDisplacementMm":shifts,
               "originalCutSegmentBodyContacts":original["actualBodyContactByOriginalCutEdgePair"],
+              "metricBridgeFlatChartEvidence": {
+                  "geometryOnly":True,
+                  "researchChartCount":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyGeometricFlatBridgeCharts"]["chartCount"],
+                  "researchTriangleCount":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyGeometricFlatBridgeCharts"]["triangleCount"],
+                  "sourceCutEdgeLengthMismatchesMm":[
+                      row["actualCutEdgeLengthMismatchMm"]
+                      for row in offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyGeometricFlatBridgeCharts"]["charts"]
+                  ],
+                  "newBridgeUVPresentOnlyInResearch":True,
+                  "supplierRepeatOrPhysicalScaleApproved":False,
+                  "productionApproved":False,
+              },
               "originalSourceSeamWinding": {
                   "controlBridgeMismatchCount":len(offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["control"]["newResearchBridgeWindingMismatchEdges"]),
                   "orientedBridgeMismatchCount":len(offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["corrected"]["newResearchBridgeWindingMismatchEdges"]),
