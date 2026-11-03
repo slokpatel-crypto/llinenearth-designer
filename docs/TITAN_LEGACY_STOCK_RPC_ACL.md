@@ -19,6 +19,8 @@ The independent `.github/workflows/titan-legacy-stock-rpc-acl.yml` starts only a
 
 The disposable workflow includes a **red-before-green control**: it first runs the actual privilege-denial SQL against historical grants *without* the retirement migration and requires a failure identifying `service_role` access to v1. It then applies the retirement migration **twice** to assert safe repeatability and reruns the same SQL requiring success. This avoids accidentally accepting a test that always passes or an ACL change that breaks on replay.
 
+A separate disposable-shell regression, `scripts/test-legacy-stock-rpc-acl-invocation.sh`, also **actually switches to service_role** and calls each of the four v1 methods, checking for the function-level `permission denied` error rather than an unrelated SQL failure. A positive `service_role` call to the provenance-bearing v2 manual receipt confirms authorized service functionality, with a transaction rollback and a final zero-row assertion. These calls use only synthetic data and cannot establish a live environment's role inheritance or production permissions.
+
 This proves an isolated migration ACL contract, not the permissions of the live Supabase database, not the correctness of externally deployed callers, and not verified physical inventory. Never run these synthetic role bootstrap commands on a live database.
 
 ## Compatibility, rollout and rollback gate
