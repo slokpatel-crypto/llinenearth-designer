@@ -35,6 +35,24 @@ The four flat-chart triangle areas total **1,611.46614 mm²** (rounded to 5 deci
 
 **Longest real edge mismatch** is the fourth source cut-edge pair (**0.42672 mm**). Do not assume a tailored stretch/ease allowance without a real tailor and fabric test; no approved seam lengths, shrinkage, supplier grain and repeat, physical cloth scale or fabrication instructions exist. Original left/right trouser stage UV remains absent, so the additional bridge-only UV witness is deliberately **not connected to original garment texture charts**. Original 20 research bridge-body pairs, 126 open shell edges and all ten hard full six-garment preflight blockers remain.
 
+## Next native research: complete UV witness for all actual original trouser source faces
+
+The latest branch continues the verified bridge-only chart research into a **separate unexported research copy of all 2,650 original trouser source faces**. Original production garment data, original 1,325-face left and 1,325-face right source-stage meshes, original model identity and source lacking UVs remain unchanged.
+
+`scripts/blender/source-trouser-provisional-uv.py` constructs mathematically reproducible, source-coordinate-derived **provisional cylindrical UV display coordinates** for every actual original source-face loop. It uses the two legs' shared original geometry center and a real geometry-derived mean radius; no supplied physical print/grain, repeat or material identity is presumed.
+
+New native evidence records:
+
+- Actual 2,650 original faces, original source vertex count, complete Blender research UV loops, exact eight original unmatched cut edges, original 132 open source-shell edges and every actual shared original source edge
+- For **all original face edges**, true 3D geometry-vs-display-UV length errors, maximum and RMS in millimetres, and 2D/3D original-face area distortion, including collapsed projected faces
+- Every shared original source edge's 2D chart discontinuity (UV endpoint distance), true continuous versus discontinuous edge counts and maximum gap; *not* a claim that interleg/bridge seams are sewn
+- The eight original cut-edge identifiers, their true 3D edge lengths, display-projection lengths and measured flattening discrepancy, with all physical-scale approvals false
+- An independent native scanned-body BVH check that adding the research-only UV layer changes **zero original source geometry/body contacts**; original unmodified source-stage UV provenance remains reported accurately
+
+The Blender research copy `TITAN_RESEARCH_OriginalTrouserPanelsProvisionalUVOnly` has explicit 2D coordinates on all real original-source loops, but the projection is **not a tailored UV unwrap**. It may stretch, collapse, or open seams, and none of those defects can be hidden. Its display coordinate scale is geometrically derived from the source body, not supplier measured repeat or calibrated weaving grain. Real source-to-bridge UV joins, fabric scale, thermal/shrinkage allowances and cloth drape remain **unverified**.
+
+A dedicated Python adversarial numeric test and Node structural regression verify this fail-closed provenance. Actual native numeric results require new **exact-head** Blender workflow evidence; any green diagnostic workflow is not a garment quality approval.
+
 ## Remaining blockers and verification
 
 - [x] Original seam edge winding fixed in research and native measured; body collisions and original source missing UV verified
