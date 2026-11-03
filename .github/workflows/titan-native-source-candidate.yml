@@ -20,6 +20,7 @@ on:
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
       - "tests/crotch-source-edge-reprojection-native.test.ts"
       - "tests/crotch-connected-source-nine-native.test.ts"
+      - "tests/crotch-source-ring-falloff-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -51,6 +52,7 @@ on:
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
       - "tests/crotch-source-edge-reprojection-native.test.ts"
       - "tests/crotch-connected-source-nine-native.test.ts"
+      - "tests/crotch-source-ring-falloff-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -1121,6 +1123,72 @@ jobs:
               src_nine["targetBridgeBodyBVHPairs"] <
               src_control["targetBridgeBodyBVHPairs"]
           )
+          rings=connected["originalSourceMeshRingVertexCounts"]
+          assert rings["0"] == 4 and rings["1"] > 0 and rings["2"] > 0
+          falloffs=connected["falloffTrials"]
+          expected_ring_weights={
+              "oneRingHalf":[0.5],
+              "twoRing":[0.66,0.33],
+          }
+          assert set(falloffs) == set(expected_ring_weights)
+          flip_counts=connected["falloffSourceAdjacentFaceNormalFlips"]
+          all_flips=connected["falloffAllAlteredSourceFaceNormalFlips"]
+          observed_less=connected["falloffReducedAdjacentBodyPairsObserved"]
+          assert set(flip_counts) == set(all_flips) == set(observed_less) == set(falloffs)
+          assert src_control["alteredOriginalSourceFaceCount"] == 0
+          assert src_nine["alteredOriginalSourceFaceCount"] == len(adjacent)
+          for label, candidate in falloffs.items():
+              assert candidate["ringFalloffWeights"] == expected_ring_weights[label]
+              assert candidate["triangleOrPolygonCount"] == src_nine["triangleOrPolygonCount"]
+              assert candidate["originalSourceAdjacentFaceCount"] == len(adjacent)
+              assert candidate["sourceEdgeReadingsUnderSevenMm"] == 0
+              assert candidate["originalSourceCoordinatesChanged"] is True
+              assert candidate["productionApproved"] is False
+              assert candidate["originalVertexMovementMaxMm"] == src_nine["originalVertexMovementMaxMm"]
+              assert 0 <= candidate["maxNeighborMotionMm"] <= 25
+              assert candidate["movedNeighborVertexCountsByRing"]["1"] == rings["1"]
+              assert candidate["movedNeighborVertexCountsByRing"]["2"] == (
+                  rings["2"] if label == "twoRing" else 0
+              )
+              assert len(candidate["alteredOriginalSourceFaceIndices"]) == candidate["alteredOriginalSourceFaceCount"]
+              assert len(set(candidate["alteredOriginalSourceFaceIndices"])) == candidate["alteredOriginalSourceFaceCount"]
+              assert candidate["alteredOriginalSourceFaceCount"] >= len(adjacent)
+              assert 0 <= flip_counts[label] <= len(adjacent)
+              assert 0 <= all_flips[label] <= candidate["alteredOriginalSourceFaceCount"]
+              assert observed_less[label] is (
+                  candidate["adjacentOriginalSourceBodyBVHPairs"] <
+                  src_nine["adjacentOriginalSourceBodyBVHPairs"]
+              )
+              assert type(candidate["wholeSourceBodyBVHPairs"]) is int
+              assert candidate["wholeSourceBodyBVHPairs"] >= 0
+              assert candidate["adjacentOriginalSourceContactedAreaMm2"] >= 0
+              assert candidate["targetBridgeContactedAreaMm2"] >= 0
+          regional=connected["falloffSameOriginalFaceRegionContactEvidence"]
+          assert set(regional) == set(falloffs)
+          for label, evidence in regional.items():
+              current=falloffs[label]
+              region=set(evidence["sameOriginalSourceFaceIndices"])
+              assert len(region) == evidence["sameFaceCount"] == current["alteredOriginalSourceFaceCount"]
+              assert region == set(current["alteredOriginalSourceFaceIndices"])
+              assert len(region) >= len(adjacent)
+              assert evidence["outsideModifiedFacesPairCountsEqual"] is True
+              assert type(evidence["unmodifiedSourceBodyPairs"]) is int
+              assert evidence["unmodifiedSourceBodyPairs"] >= 0
+              for key in ("unchangedControl","nineMmNoFalloff","withRingFalloff"):
+                  sampled=evidence[key]
+                  assert type(sampled["bodyBVHPairs"]) is int and sampled["bodyBVHPairs"] >= 0
+                  assert type(sampled["contactedOriginalSourceFaceCount"]) is int
+                  assert 0 <= sampled["contactedOriginalSourceFaceCount"] <= len(region)
+                  assert math.isfinite(sampled["contactedOriginalSourceAreaMm2"])
+                  assert sampled["contactedOriginalSourceAreaMm2"] >= 0
+              assert evidence["strictOriginalRegionPairReductionVersusNineMm"] is (
+                  evidence["withRingFalloff"]["bodyBVHPairs"]
+                  < evidence["nineMmNoFalloff"]["bodyBVHPairs"]
+              )
+              assert evidence["strictOriginalRegionAreaReductionVersusNineMm"] is (
+                  evidence["withRingFalloff"]["contactedOriginalSourceAreaMm2"]
+                  < evidence["nineMmNoFalloff"]["contactedOriginalSourceAreaMm2"]
+              )
           assert "not continuous" in connected["metricCaveat"]
           assert all(row["productionApproved"] is False for row in source_variants.values())
           assert "No continuous" in source_offset["metricCaveat"]
@@ -1172,6 +1240,12 @@ jobs:
               "fixedBoundaryBodyRayEvidence":targeted["fixedBridgeBoundaryBodyRayEvidence"],
               "sourceCutEdgeReprojectionTrial":targeted["researchOnlySourceCutEdgeReprojectionTrial"],
               "connectedSourceNineMmTrial":targeted["researchOnlyConnectedSourceNineMmTrial"],
+              "sourceFalloffAdjacentBodyPairs": {
+                  label: row["adjacentOriginalSourceBodyBVHPairs"]
+                  for label,row in connected["falloffTrials"].items()
+              },
+              "sourceFalloffNormalFlipCounts":connected["falloffAllAlteredSourceFaceNormalFlips"],
+              "sameOriginalFacesRegionEvidence":connected["falloffSameOriginalFaceRegionContactEvidence"],
               "positiveNormalOffsetSweep":source_offset["positiveNormalOffsetSweepMm"],
               "jointSampledTargetObserved":source_offset["jointSampledTargetObserved"],
               "targetedEqualTopologyVariants":variants,
