@@ -8,7 +8,9 @@ test("real source UV spanning forest joins actual original mesh edges but reject
   const workflow=readFileSync(".github/workflows/titan-native-source-candidate.yml","utf8");
   const fixture=readFileSync("tests/python/test_source_trouser_dual_tree_uv.py","utf8");
   for (const term of [
-    "def connect_original_source_uv_forest(original_faces, separate_face_uv, original_cut_edges):",
+    "def connect_original_source_uv_forest(",
+    "preferred_tree_edges=None):",
+    "Selected edges disconnected a real original source component.",
     "if len(original_faces) != 2650 or len(separate_face_uv) != 2650:",
     "if left[1] == right[1]:",
     "adjacent[a].append((b, edge))",
