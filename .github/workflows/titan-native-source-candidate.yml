@@ -971,9 +971,13 @@ jobs:
                   for layer in stage["originalUVLayers"]:
                       assert layer["originalUVLoopCount"] >= 0
                       assert layer["originalMeshLoopCount"] > 0
-                      assert layer["finiteAndComplete"] is (
-                          layer["originalUVLoopCount"] == layer["originalMeshLoopCount"]
+                      if layer["finiteAndComplete"]:
+                          assert layer["originalUVLoopCount"] == layer["originalMeshLoopCount"]
+                  assert stage["originalStageHasFiniteCompleteUV"] is bool(
+                      stage["originalUVLayers"] and all(
+                          entry["finiteAndComplete"] for entry in stage["originalUVLayers"]
                       )
+                  )
               assert "never sufficient" in oriented["metricCaveat"]
           assert original["researchOnlyOriginalSeamWindingAndUVProvenance"] == (
               offset["researchOnlyOriginalSeamWindingAndUVProvenance"]
