@@ -108,7 +108,7 @@ test("cropped trouser type must agree with its hem without rewriting locked IDs"
   const mismatch = spec({}, {type:"cropped_ankle",hem:"plain_hem",break:"slight_break"});
   const original = JSON.stringify(mismatch);
   assert.deepEqual(styleDirectorConstructionIssues(mismatch).map(issue=>issue.code),
-    ["cropped_type_hem_mismatch"]);
+    ["cropped_type_hem_mismatch", "cropped_slight_break"]);
   assert.equal(JSON.stringify(mismatch),original);
   assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
     type:"cropped_ankle",hem:"cropped_above_ankle_hem",break:"no_break",
