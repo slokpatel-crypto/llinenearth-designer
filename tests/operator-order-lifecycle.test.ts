@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createOrderLifecycle, applyOrderLifecycleEvent, replayOrderLifecycle, restoreOrderLifecycleSnapshot,
-  applyOrderLifecycleEventIdempotently,
+  applyOrderLifecycleEventIdempotently, orderLifecycleVersionFence, applyOrderLifecycleEventWithVersionFence,
   ORDER_QC_CHECKS, ORDER_LIFECYCLE_ACTIONS, ORDER_LIFECYCLE_STAGES,
   type OrderLifecycleAction, type OrderLifecycleStage, type OrderLifecycleState,
 } from "../src/lib/operator/order-lifecycle.ts";
@@ -687,4 +687,102 @@ test("all reachable lifecycle stages enforce the exhaustive action matrix",()=>{
   }
   assert.equal(permitted+denied,ORDER_LIFECYCLE_STAGES.length*ORDER_LIFECYCLE_ACTIONS.length);
   assert.ok(permitted>20&&denied>100);
+});
+
+
+test("version fence rejects lost updates while allowing exact historical idempotent retries",()=>{
+  const initial=base();
+  const initialFence=orderLifecycleVersionFence(initial);
+  assert.deepEqual(initialFence,{
+    orderId:id,revisionId:revision,recipeHash:hash,sequence:0,lastEventId:null,
+  });
+  assert.equal(Object.isFrozen(initialFence),true);
+  const acceptance=step(initial,"accept").audit[0];
+  const applied=applyOrderLifecycleEventWithVersionFence(initial,acceptance,initialFence);
+  assert.equal(applied.outcome,"applied");
+  assert.equal(applied.state.status,"accepted");
+  const next=step(applied.state,"start_cutting").audit.at(-1);
+  assert.ok(next);
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(applied.state,next,initialFence),
+    /Stale order lifecycle version fence/,"second operator cannot use the original version to progress order");
+  const acceptedFence=orderLifecycleVersionFence(applied.state);
+  assert.equal(acceptedFence.sequence,1);
+  assert.equal(acceptedFence.lastEventId,acceptance.eventId);
+  const cutting=applyOrderLifecycleEventWithVersionFence(applied.state,next,acceptedFence);
+  assert.equal(cutting.outcome,"applied");
+  assert.equal(cutting.state.status,"cutting");
+  assert.equal(cutting.state.audit.length,2);
+
+  const retried=applyOrderLifecycleEventWithVersionFence(cutting.state,acceptance,initialFence);
+  assert.equal(retried.outcome,"already_applied");
+  assert.equal(retried.state,cutting.state,"retry must not regress the order or add audit events");
+  const conflicting={...acceptance,actor:"forged-operator"};
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(cutting.state,conflicting,initialFence),
+    /Conflicting order event retry/,"old fence must never authorize tampering with a prior event");
+});
+
+test("version fence requires exact locked order identity and a plain complete record",()=>{
+  const initial=base();
+  const fence=orderLifecycleVersionFence(initial);
+  const event=step(initial,"accept").audit[0];
+  for(const invalid of [
+    {...fence,orderId:"another-order-0001"},
+    {...fence,revisionId:"rev-locked-00000002"},
+    {...fence,recipeHash:"b".repeat(64)},
+  ]) assert.throws(()=>applyOrderLifecycleEventWithVersionFence(initial,event,invalid),
+    /locked identity mismatch/);
+
+  for(const invalid of [
+    {...fence,sequence:-1},
+    {...fence,sequence:1},
+    {...fence,sequence:10001},
+    {...fence,sequence:0.5},
+    {...fence,sequence:"0"},
+    {...fence,lastEventId:"event-00000001"},
+    {...fence,lastEventId:undefined},
+    {...fence,sequence:1,lastEventId:null},
+    {...fence,sequence:1,lastEventId:"bad"},
+    {orderId:id,revisionId:revision,recipeHash:hash,sequence:0},
+  ]) assert.throws(()=>applyOrderLifecycleEventWithVersionFence(initial,event,invalid),
+    /Invalid order lifecycle version fence/);
+
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(initial,event,{
+    ...fence,operatorApproved:true,
+  }),/Unexpected version fence field/);
+  const symbol={...fence,[Symbol("override")]:true};
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(initial,event,symbol),/record property/);
+  const getter={...fence};
+  Object.defineProperty(getter,"sequence",{enumerable:true,get(){throw Error("getter must not run");}});
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(initial,event,getter),/record property/);
+  assert.throws(()=>orderLifecycleVersionFence({...initial}),/Untrusted lifecycle snapshot/);
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(
+    JSON.parse(JSON.stringify(initial)),event,fence),/Untrusted lifecycle snapshot/);
+  assert.equal(applyOrderLifecycleEventWithVersionFence(initial,event,fence).outcome,"applied");
+  const restored=restoreOrderLifecycleSnapshot(JSON.parse(JSON.stringify(step(initial,"accept"))));
+  assert.equal(orderLifecycleVersionFence(restored).sequence,1);
+});
+
+test("version-fenced terminal delivery refuses later transitions and stale fresh event IDs",()=>{
+  const signed=step(toQc(),"approve_qc",{qc:qc()});
+  const readyFence=orderLifecycleVersionFence(signed);
+  const dispatched=step(signed,"dispatch");
+  const delivery=step(dispatched,"deliver").audit.at(-1);
+  assert.ok(delivery);
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(dispatched,delivery,readyFence),
+    /Stale order lifecycle version fence/);
+  const delivered=applyOrderLifecycleEventWithVersionFence(
+    dispatched,delivery,orderLifecycleVersionFence(dispatched));
+  assert.equal(delivered.state.status,"delivered");
+  assert.equal(delivered.outcome,"applied");
+  assert.equal(applyOrderLifecycleEventWithVersionFence(
+    delivered.state,delivery,orderLifecycleVersionFence(dispatched)).outcome,"already_applied");
+  const illegal={
+    ...delivery,eventId:"event-00000099",sequence:delivered.state.sequence+1,
+    previousEventId:delivered.state.lastEventId,from:"delivered",
+    occurredAt:new Date(Date.UTC(2026,10,3,0,1,0)).toISOString(),
+    evidenceRef:"receipt-new-000099",action:"dispatch",to:"dispatched",
+  };
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(
+    delivered.state,illegal,orderLifecycleVersionFence(delivered.state)),
+    /Illegal order transition/);
 });
