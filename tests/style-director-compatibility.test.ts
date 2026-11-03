@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   styleDirectorCandidateCollar,
   styleDirectorCandidateSleeve,
+  styleDirectorCandidateTrouserFront,
   styleDirectorCandidateWordingIssues,
   styleDirectorConstructionIssues,
   styleDirectorIntelligenceTrustWeight,
@@ -641,4 +642,40 @@ test("flat-front negated pleats with qualifiers do not create false construction
       "an explicit positive pleat request must still require review",
     );
   }
+});
+
+test("trouser-front intent is shared by photo and versioned selectors", () => {
+  const examples: ReadonlyArray<readonly [string, ReturnType<typeof styleDirectorCandidateTrouserFront>]> = [
+    ["Flat-Front Tailored Trouser", "flat_front"],
+    ["Flat Front Non-Pleated Trouser", "flat_front"],
+    ["Flat-front without any pleats", "flat_front"],
+    ["Flat Front without visible pleats", "flat_front"],
+    ["Flat-front no visible pleats", "flat_front"],
+    ["Flat-front pleatless", "flat_front"],
+    ["Single-Pleat Tailored Trouser", "pleated"],
+    ["Tailored Pleated Trouser", "pleated"],
+    ["Wide-Leg Double Pleats", "pleated"],
+    ["Flat-Front Single-Pleat Trouser", "ambiguous"],
+    ["Flat-front without pleats but add a pleat", "ambiguous"],
+    ["Wide-Leg Trouser", null],
+    ["Tailored Drawstring Trouser", null],
+  ];
+  for (const [label, expected] of examples) {
+    assert.equal(styleDirectorCandidateTrouserFront(label), expected, label);
+    const review = styleDirectorCandidateWordingIssues("Spread-Collar Dress Shirt", label)
+      .map(issue => issue.code);
+    assert.deepEqual(review, expected === "ambiguous" ? ["ambiguous_candidate_trouser_front"] : [], label);
+    assert.equal(styleDirectorCandidateTrouserFront(label), expected,
+      "wording classification must be stable for the same candidate");
+  }
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("const trouserFront = styleDirectorCandidateTrouserFront(trouser);"),
+    "photographic recipe must use the same candidate front interpreter");
+  assert.ok(agent.includes("const trouserFront=styleDirectorCandidateTrouserFront(trouser);"),
+    "versioned recipe must use the same candidate front interpreter");
+  assert.ok(agent.includes('trouserFront === "pleated"') &&
+    agent.includes('trouserFront === "flat_front"') &&
+    agent.includes('trouserFront==="pleated"') &&
+    agent.includes('trouserFront==="flat_front"'),
+    "neither recipe may regress to treating non-pleated as positive pleats");
 });
