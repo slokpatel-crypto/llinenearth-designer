@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   styleDirectorCandidateCollar,
   styleDirectorCandidateSleeve,
+  styleDirectorCandidateWordingIssues,
   styleDirectorConstructionIssues,
   styleDirectorIntelligenceTrustWeight,
   styleDirectorPresentationIssues,
