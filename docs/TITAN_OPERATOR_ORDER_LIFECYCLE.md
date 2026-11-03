@@ -155,3 +155,10 @@ The existing persisted production order contract in `src/lib/designer/production
 - Closed a live/replay mismatch: persisted replay rejects more than 10,000 events, but previously a trusted live reducer could produce 10,001 events, making its own output impossible to restore. Live transitions now stop at 10,000 applied events, before reading the next untrusted event.
 - Added a synthetic 10,000-event acceptance/recovery-cycle regression checking the boundary, valid replay at the limit and rejection of event 10,001. This is not a production retention or archival policy; coordinate any long-lived audit partitioning with the authenticated persistence owner.
 - Prior exact head dfb90cb89e7d37f03d162e98e17358315414528b passed CI #41638215373 and Non-3D QA #41638215372. These checks predate this patch. New exact-head verification required. Main 4dd8020abd83429449ff53ea5bb71b046394d86e changes no operator-owned paths; no merge or deployment.
+
+## 2026-11-03 — plain-data audit boundary
+
+- Reject non-plain event, QC, QC-check and snapshot records, accessor properties and symbol-keyed claims before validation. These values cannot be faithfully represented in persisted JSON and could previously inject inherited claims, execute getters or silently discard symbol evidence.
+- Added focused synthetic negative tests for inherited live/replayed events, accessor actors, symbol evidence, forged snapshot prototypes and accessor QC checks, plus valid replay.
+- Source commit `6ddf151d`; regression commit `6a3699f9`. **Exact-head CI remains pending after this checkpoint commit; no local npm checks are claimed.** Earlier `6014be8a` passed CI #41647107160 and Non-3D QA #41647107224, but those results do not cover this change.
+- Main comparison found no operator-file overlap (12 main-only commits at inspection). Remain draft/unmerged; do not deploy or modify production data. Next: verify new exact-head workflows, then coordinate authenticated transactional persistence, SQL state mapping and physical QC evidence.
