@@ -6,8 +6,8 @@ test("customer account refresh invalidates stale owner responses before renderin
  const source=readFileSync("src/app/account/page.tsx","utf8");
  assert.match(source,/const refreshEpoch=useRef\(0\)/);
  assert.match(source,/const epoch=\+\+refreshEpoch\.current/);
- assert.equal(source.split("if(epoch!==refreshEpoch.current)return").length-1,2,
-   "check session fetch and all owned vault/share responses separately");
+ assert.equal(source.split("if(epoch!==refreshEpoch.current)return").length-1,3,
+   "check initial session, owned reads and final session confirmation separately");
  const ownerGuard=source.indexOf("loadedOwnerId.current!==(next?.id??null)");
  const clear=source.indexOf("setShares([]);setShareListUnavailable(false);setDesigns([])",ownerGuard);
 
@@ -65,4 +65,26 @@ test("failed session rechecks fail closed and clear all old owner credentials",(
  ])assert.ok(ownerSwitch.includes(clear),"owner transition must scrub "+clear);
  assert.match(source,/Account session could not be verified\. Previously loaded private details have been hidden/);
  assert.match(source,/Retry account session/);
+});
+
+test("account-owned results require a second same-owner session confirmation before rendering",()=>{
+ const src=readFileSync("src/app/account/page.tsx","utf8");
+ const refresh=src.slice(src.indexOf("const refresh=useCallback"),src.indexOf("useEffect(()=>"));
+ const initial=refresh.indexOf('const session=await fetch("/api/customer-auth/session"');
+ const owned=refresh.indexOf("const owned=await Promise.all");
+ const recheck=refresh.indexOf('const confirmed=owned?await fetch("/api/customer-auth/session"');
+ const publish=refresh.indexOf("setDesigns(Array.isArray(d.designs)?d.designs:[])");
+ assert.ok(initial>=0&&owned>initial&&recheck>owned&&publish>recheck,
+   "two signed session reads must bracket the private reads");
+ const guard=refresh.indexOf("confirmed.customer.id!==next.id",recheck);
+ const hide=refresh.indexOf("setCustomer(null);setSessionUnavailable(true)",guard);
+ assert.ok(guard>recheck&&hide>guard&&hide<publish,
+   "identity mismatch must clear the page before publishing any owned results");
+ for(const endpoint of ["Owned design lookup unavailable","Owned profile lookup unavailable",
+   "Owned production lookup unavailable"]){
+   assert.ok(refresh.includes(endpoint),
+     "failed backend HTTP responses must never be treated as empty owned history: "+endpoint);
+ }
+ assert.match(refresh,/!Array\.isArray\(owned\[0\]\?\.designs\)/);
+ assert.match(refresh,/!Array\.isArray\(owned\[2\]\?\.outcomes\)/);
 });
