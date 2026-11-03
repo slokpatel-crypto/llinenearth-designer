@@ -374,3 +374,22 @@ test("live lifecycle inputs reject unknown operator, payment and QC claims",()=>
   }
   assert.equal(step(base(),"accept").status,"accepted");
 });
+
+
+test("live event destination claims must match the computed transition",()=>{
+  const created=base();
+  for(const to of ["delivered","qc_approved",null,undefined]) {
+    assert.throws(()=>step(created,"accept",{to}),/Claimed order destination/,
+      "a forged or empty destination must not be silently discarded");
+  }
+  const accepted=step(created,"accept",{to:"accepted"});
+  assert.equal(accepted.status,"accepted");
+  assert.equal(replayOrderLifecycle(id,revision,hash,accepted.audit).status,"accepted");
+  const held=step(accepted,"hold_for_recovery",{
+    reason:"Machine maintenance requires a documented hold",to:"recovery_pending",
+  });
+  assert.equal(held.status,"recovery_pending");
+  assert.throws(()=>step(held,"resume_recovery",{
+    reason:"Machine is available again",to:"qc_approved",
+  }),/Claimed order destination/);
+});
