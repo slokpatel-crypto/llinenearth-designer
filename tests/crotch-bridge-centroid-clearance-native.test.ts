@@ -34,6 +34,12 @@ test("real-body 7mm crotch bridge centroid trial preserves source boundaries and
     '"finalClothQAApproved":False',
     'if args.experimental_centroid_clearance_mm == 7.0:',
     'candidate["bodyPolygonBVHPairs"] < control["bodyPolygonBVHPairs"]',
+    'def trial_targeted_seam_reroute(',
+    '"positiveBodyNormal": closest + unit_normal * (offset_mm / 1000.0)',
+    '"negativeBodyNormal": closest - unit_normal * (offset_mm / 1000.0)',
+    'if {tuple(sorted(edge)) for edge in fan_boundary} != original_boundary:',
+    '"researchOnlyTargetedSeamRerouteTrial":targeted_reroute_trial',
+    'targeted_reroute_trial["targetOriginalCutEdgePair"] = worst',
   ]) assert.ok(author.includes(required),required);
   assert.ok(!author.includes("bpy.ops."),"No original .blend mutation/export permitted");
   for(const required of [
@@ -54,6 +60,9 @@ test("real-body 7mm crotch bridge centroid trial preserves source boundaries and
     'physical["rejectionReasonCount"] == 10 and physical["preflightReady"] is False',
     'offset["physicalFitApproved"] is False and offset["sewnGarmentApproved"] is False',
     'crotch-bridge-centroid-clearance-research-only.json',
+    'targeted=offset["researchOnlyTargetedSeamRerouteTrial"]',
+    'set(variants) == {"unchangedControl","positiveBodyNormal","negativeBodyNormal"}',
+    'targeted["targetOriginalCutEdgePair"]["originalBodyBVHPairs"] == 17',
   ]) assert.ok(workflow.includes(required),required);
   assert.equal(workflow.split('"tests/crotch-bridge-centroid-clearance-native.test.ts"').length-1,2);
   assert.equal(workflow.split('- name: Trial scanned-body 7mm centroid clearance').length-1,1);

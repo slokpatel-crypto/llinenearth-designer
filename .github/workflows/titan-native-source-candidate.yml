@@ -930,6 +930,37 @@ jobs:
           assert trial["productionApproved"] is False
           for x in trial["originalCentroidNearestBodyDistanceMm"].values():
               assert isinstance(x,(int,float)) and math.isfinite(x) and x >= 0
+          targeted=offset["researchOnlyTargetedSeamRerouteTrial"]
+          assert targeted["testedOffsetMm"] == 7.0
+          assert targeted["preservedBoundaryEdgeCount"] == 4
+          assert len(targeted["targetSourceBoundaryVertices"]) == 4
+          assert len(set(targeted["targetSourceBoundaryVertices"])) == 4
+          assert targeted["targetOriginalCutEdgePair"]["originalBodyBVHPairs"] == 17
+          assert targeted["targetOriginalCutEdgePair"]["bridgeTriangles"] == 2
+          assert targeted["changesProductionGeometry"] is False
+          assert targeted["productionApproved"] is False
+          assert targeted["physicalFitApproved"] is False
+          assert targeted["sewnGarmentApproved"] is False
+          variants=targeted["equalTopologyVariants"]
+          assert set(variants) == {"unchangedControl","positiveBodyNormal","negativeBodyNormal"}
+          for label,part in variants.items():
+              assert part["triangles"] == 4
+              assert type(part["bodyPolygonBVHPairs"]) is int and part["bodyPolygonBVHPairs"] >= 0
+              assert 0 <= part["contactingTriangleCount"] <= 4
+              assert math.isfinite(part["totalAreaMm2"]) and part["totalAreaMm2"] > 0
+              assert math.isfinite(part["contactingAreaMm2"])
+              assert 0 <= part["contactingAreaMm2"] <= part["totalAreaMm2"] + 0.0001
+              assert 0 <= part["contactingAreaFraction"] <= 1
+              assert part["degenerateFaces"] == part["nonManifoldEdges"] == 0
+              assert part["productionApproved"] is False
+          best=variants[targeted["lowestContactAreaDirection"]]
+          targeted_control=variants["unchangedControl"]
+          assert targeted["lowestContactAreaDirection"] in {"positiveBodyNormal","negativeBodyNormal"}
+          assert targeted["strictContactAreaImprovementObserved"] is (
+              best["contactingAreaMm2"] < targeted_control["contactingAreaMm2"])
+          assert targeted["strictBodyPairImprovementObserved"] is (
+              best["bodyPolygonBVHPairs"] < targeted_control["bodyPolygonBVHPairs"])
+          assert "Any nonzero" in targeted["metricCaveat"]
           print("TITAN_REAL_CROTCH_BRIDGE_BODY_CLEARANCE_EXPERIMENT_MEASURED_NO_APPROVAL",json.dumps({
               "originalBridgeBodyPairs":original["bridgeToOriginalBodyBVHPairs"],
               "candidateBridgeBodyPairs":trial["afterCentroidDisplacementBodyBVHPairs"],
@@ -944,6 +975,10 @@ jobs:
               "radialAreaReductionObserved":trial["radialStrictContactedAreaImprovementObserved"],
               "preservedCutBoundaryEdges":trial["preservedCutEdgeBoundaryCount"],
               "reducedBodyPairs":trial["strictBodyCollisionImprovementObserved"],
+              "targetedWorstSourcePair":targeted["targetOriginalCutEdgePair"],
+              "targetedEqualTopologyVariants":variants,
+              "targetedLowestContactAreaDirection":targeted["lowestContactAreaDirection"],
+              "targetedContactAreaImprovementObserved":targeted["strictContactAreaImprovementObserved"],
               "productionApproved":False,
           }))
           PY

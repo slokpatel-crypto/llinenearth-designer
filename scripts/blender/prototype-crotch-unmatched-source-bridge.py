@@ -238,6 +238,142 @@ def topology_of_triangles(faces):
     return [edge for edge, n in edges.items() if n == 1], edges
 
 
+def ordered_triangle_patch_boundary(faces):
+    """Return one deterministic cycle around a two-triangle source patch."""
+    open_edges, incidence = topology_of_triangles(faces)
+    if len(faces) != 2 or len(open_edges) != 4 or any(n > 2 for n in incidence.values()):
+        raise RuntimeError("Targeted seam reroute requires one valid two-triangle quad patch.")
+    neighbours = {}
+    for a, b in open_edges:
+        neighbours.setdefault(a, []).append(b)
+        neighbours.setdefault(b, []).append(a)
+    if len(neighbours) != 4 or any(len(items) != 2 for items in neighbours.values()):
+        raise RuntimeError("Targeted seam bridge boundary is not one four-vertex cycle.")
+    first = min(neighbours)
+    cycle = [first]
+    previous = None
+    current = first
+    while True:
+        choices = sorted(n for n in neighbours[current] if n != previous)
+        if not choices:
+            raise RuntimeError("Targeted seam bridge boundary cycle is incomplete.")
+        following = choices[0]
+        if following == first:
+            break
+        if following in cycle or len(cycle) >= 4:
+            raise RuntimeError("Targeted seam bridge boundary cycle self-intersects.")
+        cycle.append(following)
+        previous, current = current, following
+    if len(cycle) != 4:
+        raise RuntimeError("Targeted seam bridge boundary did not contain four vertices.")
+    return cycle, {tuple(sorted(edge)) for edge in open_edges}
+
+
+def trial_targeted_seam_reroute(vertices, target_faces, body_tree, research, geom_ops, offset_mm):
+    """Measure both signs of the real body normal on only the worst source seam.
+
+    Body-normal orientation is not trusted. Positive and negative candidates
+    use identical four-face topology and the exact original cut-edge boundary.
+    This is diagnostic geometry only; nonzero contact always remains rejected.
+    """
+    if offset_mm != 7.0:
+        raise RuntimeError("Only the measured 7mm targeted seam trial is supported.")
+    boundary, original_boundary = ordered_triangle_patch_boundary(target_faces)
+    centre = sum((vertices[i] for i in boundary), vertices[boundary[0]].copy() * 0.0) / 4.0
+    closest, normal, body_polygon, distance = body_tree.find_nearest(centre)
+    if (closest is None or normal is None or body_polygon is None or distance is None
+            or not math.isfinite(distance) or normal.length <= 1e-9):
+        raise RuntimeError("Targeted seam centre has no finite original-body surface normal.")
+    unit_normal = normal.normalized()
+    centres = {
+        "unchangedControl": centre,
+        "positiveBodyNormal": closest + unit_normal * (offset_mm / 1000.0),
+        "negativeBodyNormal": closest - unit_normal * (offset_mm / 1000.0),
+    }
+
+    def measure(label, new_centre):
+        points = [point.copy() for point in vertices]
+        centre_index = len(points)
+        points.append(new_centre)
+        fan_faces = [
+            (boundary[i], boundary[(i + 1) % len(boundary)], centre_index)
+            for i in range(len(boundary))
+        ]
+        fan_boundary, fan_incidence = topology_of_triangles(fan_faces)
+        if {tuple(sorted(edge)) for edge in fan_boundary} != original_boundary:
+            raise RuntimeError("Targeted reroute changed original source seam endpoints or boundary.")
+        if any(n > 2 for n in fan_incidence.values()):
+            raise RuntimeError("Targeted reroute generated nonmanifold topology.")
+        name = "TITAN_RESEARCH_TargetedCrotchReroute_" + label
+        if bpy.data.objects.get(name) is not None:
+            raise RuntimeError("Do not overwrite independent targeted reroute evidence.")
+        mesh = bpy.data.meshes.new(name + "Mesh")
+        mesh.from_pydata(points, [], fan_faces)
+        mesh.update(calc_edges=True)
+        degenerate = sum(not math.isfinite(face.area) or face.area <= 1e-12
+                         for face in mesh.polygons)
+        if degenerate or len(mesh.polygons) != 4:
+            raise RuntimeError("Targeted seam reroute produced degenerate or missing faces.")
+        obj = bpy.data.objects.new(name, mesh)
+        obj.hide_render = True
+        obj["candidateOnly"] = True
+        obj["productionApproved"] = False
+        obj["physicalFitApproved"] = False
+        obj["sewnGarmentApproved"] = False
+        research.objects.link(obj)
+        if bpy.data.collections[EXPORT].objects.get(name) is not None:
+            raise RuntimeError("Targeted reroute contaminated the production export collection.")
+        measured = geom_ops["world_geometry"](obj)
+        overlaps = body_tree.overlap(geom_ops["real_tree"](measured))
+        contacting = {bridge_face for _body_face, bridge_face in overlaps}
+        total_area = sum(measured["areas"]) * 1e6
+        contact_area = sum(measured["areas"][i] for i in contacting) * 1e6
+        if (not math.isfinite(total_area) or total_area <= 0
+                or not math.isfinite(contact_area) or contact_area < 0
+                or contact_area > total_area + 1e-5):
+            raise RuntimeError("Targeted reroute contact surface area is invalid.")
+        return {
+            "triangles": len(mesh.polygons),
+            "bodyPolygonBVHPairs": len(overlaps),
+            "contactingTriangleCount": len(contacting),
+            "totalAreaMm2": round(total_area, 4),
+            "contactingAreaMm2": round(contact_area, 4),
+            "contactingAreaFraction": round(contact_area / total_area, 7),
+            "degenerateFaces": degenerate,
+            "nonManifoldEdges": sum(n > 2 for n in fan_incidence.values()),
+            "productionApproved": False,
+        }
+
+    measured = {label: measure(label, point) for label, point in centres.items()}
+    control = measured["unchangedControl"]
+    candidates = ("positiveBodyNormal", "negativeBodyNormal")
+    best = min(candidates, key=lambda label: (
+        measured[label]["contactingAreaMm2"],
+        measured[label]["bodyPolygonBVHPairs"],
+        label,
+    ))
+    return {
+        "testedOffsetMm": offset_mm,
+        "targetSourceBoundaryVertices": boundary,
+        "preservedBoundaryEdgeCount": len(original_boundary),
+        "nearestBodyPolygonIndex": int(body_polygon),
+        "originalCentreNearestBodyDistanceMm": round(distance * 1000.0, 4),
+        "equalTopologyVariants": measured,
+        "lowestContactAreaDirection": best,
+        "strictContactAreaImprovementObserved": (
+            measured[best]["contactingAreaMm2"] < control["contactingAreaMm2"]
+        ),
+        "strictBodyPairImprovementObserved": (
+            measured[best]["bodyPolygonBVHPairs"] < control["bodyPolygonBVHPairs"]
+        ),
+        "metricCaveat": "Body-normal sign is not trusted; both directions are measured. Any nonzero original-body contact rejects this research patch and no sewing allowance, UV, cloth thickness or tailor approval is inferred.",
+        "changesProductionGeometry": False,
+        "productionApproved": False,
+        "physicalFitApproved": False,
+        "sewnGarmentApproved": False,
+    }
+
+
 def main():
     argv = sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
     parser = argparse.ArgumentParser()
@@ -386,6 +522,7 @@ def main():
             row["originalBodyBVHPairs"] for row in per_bridge_pair)!=bridge_body_pairs):
         raise RuntimeError("Original bridge contact ownership did not reconcile with physical BVH.")
     clearance_trial = None
+    targeted_reroute_trial = None
     if args.experimental_centroid_clearance_mm == 7.0:
         clearance_trial = trial_centerline_body_clearance(
             merged_verts, bridge_faces, body_tree, research, geom_ops,
@@ -395,6 +532,24 @@ def main():
         # Do not compare 18-triangle BVH counts with 6-triangle source.
         # Equal 18-face control/candidate and contacted-area comparisons above
         # are the only comparable research metrics.
+        worst_index = max(range(len(per_bridge_pair)), key=lambda i: (
+            per_bridge_pair[i]["originalBodyBVHPairs"],
+            per_bridge_pair[i]["contactingBridgeFaceAreaMm2"],
+            -i,
+        ))
+        worst = per_bridge_pair[worst_index]
+        if worst["bridgeTriangles"] != 2 or worst["originalBodyBVHPairs"] <= 0:
+            raise RuntimeError("Expected one measurable two-triangle worst source seam pair.")
+        face_start = sum(row["bridgeTriangles"] for row in per_pair[:worst_index])
+        targeted_reroute_trial = trial_targeted_seam_reroute(
+            merged_verts,
+            bridge_faces[face_start:face_start + worst["bridgeTriangles"]],
+            body_tree,
+            research,
+            geom_ops,
+            args.experimental_centroid_clearance_mm,
+        )
+        targeted_reroute_trial["targetOriginalCutEdgePair"] = worst
     # If the trial is worse, preserve that number. Never auto-promote geometry.
     # These may legitimately be nonzero: always report, NEVER suppress as accepted fit.
     report={
@@ -416,6 +571,7 @@ def main():
       "nonManifoldEdges":sum(n>2 for n in owners.values()),
       "finalClothQAApproved":False,
       "researchOnlyCentroidClearanceTrial":clearance_trial,
+      "researchOnlyTargetedSeamRerouteTrial":targeted_reroute_trial,
     }
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(report,indent=2,allow_nan=False)+"\n",encoding="utf-8")
