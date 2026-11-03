@@ -114,6 +114,36 @@ export type FabricAnalyzerProfileV4 = {
 function obj(value:unknown):Record<string,unknown> {
   return value && typeof value==="object" && !Array.isArray(value) ? value as Record<string,unknown> : {};
 }
+function isRecord(value:unknown):value is Record<string,unknown> {
+  return value!==null && typeof value==="object" && !Array.isArray(value);
+}
+function validatedImageQuality(value:unknown):FabricImageQuality|null {
+  if(!isRecord(value)) return null;
+  // A string or array-coerced "100" must not unlock a high-confidence
+  // material match. Keep unknown and legacy incomplete evidence provisional.
+  if(typeof value.score!=="number" || !Number.isFinite(value.score)
+    || value.score<0 || value.score>100) return null;
+  return value as FabricImageQuality;
+}
+function validatedMeasuredData(value:unknown):FabricMeasuredData|null {
+  if(!isRecord(value) || !isRecord(value.colour)
+    || !isRecord(value.pattern) || !validatedImageQuality(value.imageQuality)) return null;
+  const colour=value.colour;
+  const pattern=value.pattern;
+  // The downstream projection reads these nested fields without structural
+  // checks. Do not promote a malformed blob to a typed measured swatch.
+  if(typeof colour.hex!=="string" || !/^#[0-9a-f]{6}$/i.test(colour.hex)
+    || typeof colour.deltaE!=="number" || !Number.isFinite(colour.deltaE)
+    || colour.deltaE<0) return null;
+  if(!["none","vertical","horizontal","grid","uncertain"].includes(String(pattern.orientation??""))
+    || !["unknown","declared_repeat","declared_swatch_width"].includes(String(pattern.physicalScaleStatus??""))) return null;
+  for(const key of ["repeatMm","stripeWidthMm","contrastDeltaE"] as const) {
+    const val=pattern[key];
+    if(val!==null && val!==undefined &&
+      (typeof val!=="number" || !Number.isFinite(val) || val<0)) return null;
+  }
+  return value as FabricMeasuredData;
+}
 function str(value:unknown,limit=180,rejectOverlength=false) {
   // Untrusted profile values must remain literal strings. Supplier evidence
   // must also retain its exact bounded value: never truncate an inspection
@@ -257,10 +287,8 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
         ? str(obj(root.verifiedPhysical).sourceUrl,1800,true)||null : null,
       evidenceNote:str(obj(root.verifiedPhysical).evidenceNote,500,true)||null,
     },
-    measured:root.measured && typeof root.measured==="object" && !Array.isArray(root.measured)
-      ? root.measured as FabricMeasuredData : null,
-    imageQuality:root.imageQuality && typeof root.imageQuality==="object" && !Array.isArray(root.imageQuality)
-      ? root.imageQuality as FabricImageQuality : null,
+    measured:validatedMeasuredData(root.measured),
+    imageQuality:validatedImageQuality(root.imageQuality),
     renderAssets:{
       tileUrl:str(obj(root.renderAssets).tileUrl,1800)||null,
       placeholderUrl:str(obj(root.renderAssets).placeholderUrl,1800)||null,

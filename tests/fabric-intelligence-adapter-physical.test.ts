@@ -216,3 +216,43 @@ test("classification enums and ordinal scores reject coerced JSON arrays and boo
     assert.equal(output.inferredStyle.statementLevel,2,String(invalid));
   }
 });
+
+test("malformed nested measured objects fail closed instead of crashing downstream physical projection",()=>{
+  const colour={hex:"#507050",deltaE:3.2};
+  const pattern={orientation:"vertical",physicalScaleStatus:"declared_repeat",repeatMm:12,stripeWidthMm:3,contrastDeltaE:8};
+  const quality={score:88};
+  const valid={colour,pattern,imageQuality:quality};
+  const accepted=adaptFabricProfileToV4({version:"fabric-analyzer-v4",measured:valid,imageQuality:quality});
+  assert.ok(accepted);
+  assert.equal(accepted.measured?.pattern.repeatMm,12);
+  assert.equal(accepted.imageQuality?.score,88);
+
+  for(const invalid of [
+    {},{...valid,colour:null},{...valid,colour:[]},
+    {...valid,pattern:null},{...valid,pattern:[]},
+    {...valid,imageQuality:{}},{...valid,imageQuality:[quality]},
+    {...valid,colour:{...colour,hex:["#507050"]}},
+    {...valid,colour:{...colour,deltaE:"3.2"}},
+    {...valid,pattern:{...pattern,repeatMm:"12"}},
+    {...valid,pattern:{...pattern,stripeWidthMm:Infinity}},
+    {...valid,pattern:{...pattern,orientation:["vertical"]}},
+    {...valid,pattern:{...pattern,physicalScaleStatus:"verified_by_model"}},
+  ]){
+    const adapted=adaptFabricProfileToV4({version:"fabric-analyzer-v4",measured:invalid});
+    assert.ok(adapted);
+    assert.equal(adapted.measured,null,JSON.stringify(invalid));
+  }
+});
+
+test("image quality requires a bounded literal numeric score to avoid fictional confidence",()=>{
+  for(const invalid of [null,[],{}, {score:"100"},{score:[100]},{score:true},{score:-1},{score:101},{score:Infinity},{score:NaN}]){
+    const result=adaptFabricProfileToV4({version:"fabric-analyzer-v4",imageQuality:invalid});
+    assert.ok(result);
+    assert.equal(result.imageQuality,null,String(invalid));
+  }
+  for(const score of [0,75,100]){
+    const result=adaptFabricProfileToV4({version:"fabric-analyzer-v4",imageQuality:{score}});
+    assert.ok(result);
+    assert.equal(result.imageQuality?.score,score);
+  }
+});

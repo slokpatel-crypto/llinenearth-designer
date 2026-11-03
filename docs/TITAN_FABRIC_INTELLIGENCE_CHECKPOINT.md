@@ -80,3 +80,9 @@
 - V3/V4 profile adapter no longer uses `Number(value)` to coerce arrays, booleans, null, or stringified values into classifier confidence; out-of-range confidence falls back to 0, rather than clamping to an unjustified 100% value.
 - Literal numeric 1–5 integer formality/statement rankings are accepted; malformed ordinal values use the existing safe defaults. Classification enum inputs must be literal strings, not arrays converted via `String(["stripe"])`.
 - Valid v4 numeric and string classifications remain unchanged. Regression tests cover valid boundaries, invalid JSON types and out-of-range values. No persistence migration or physical proof inferred.
+
+## 2026-11-03 — Nested persisted visual measurement shape integrity
+- The profile adapter must not trust a top-level `measured: {}` object as a full FabricMeasuredData contract. Downstream server projection dereferences `measured.colour`, `measured.pattern` and `measured.imageQuality`; missing or array-shaped nested values can cause runtime errors or contaminate physical-scale fields.
+- Validation now rejects incomplete nested records, malformed image colour and deltaE, invalid orientation/scale status and nonnumeric pattern measurements. Invalid records become `measured:null`; valid independent verifiedPhysical evidence remains separate and unchanged.
+- Standalone image-quality evidence requires a finite literal numeric 0–100 score. Coerced `"100"`, `[100]`, booleans and out-of-range values cannot create apparent high-confidence visual evidence. Existing well-formed profiles remain usable; no schema migration.
+- Tests cover malformed nested objects, mixed good/bad visual readings, valid scores and rejected forged scores. This is shape validation, **not** independent proof of physical fibre/GSM/weave/repeat.
