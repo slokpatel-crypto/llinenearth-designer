@@ -1,0 +1,33 @@
+name: TITAN Supabase Migration Version Inventory
+
+# Read-only, baseline-drift gate. Passing is NOT permission for db push or
+# proof that pre-existing duplicate versions can deploy through Supabase CLI.
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/audit-supabase-migration-versions.cjs'
+      - 'scripts/test-supabase-migration-versions.cjs'
+      - 'docs/TITAN_SUPABASE_MIGRATION_BASELINE.json'
+      - '.github/workflows/titan-supabase-migration-inventory.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migration-version-inventory:
+    name: No-new migration collisions (legacy baseline, NOT deploy ready)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify migration-version guard and expected strict release block
+        run: node --test scripts/test-supabase-migration-versions.cjs
+      - name: Reject new version collisions or historical migration renames
+        run: node scripts/audit-supabase-migration-versions.cjs --enforce-new
+      - name: Report historical blockers without applying migrations
+        run: node scripts/audit-supabase-migration-versions.cjs --report
