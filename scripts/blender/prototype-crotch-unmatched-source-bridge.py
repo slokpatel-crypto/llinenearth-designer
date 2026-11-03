@@ -1578,6 +1578,103 @@ def main():
             or cut_audit["originalSourceUvLoopCount"] != tree_written):
         raise RuntimeError("Original-source UV cut candidate lost real mesh edge provenance.")
     seam_winding["researchOnlyOriginalSourceUvCutNetworkEvidence"] = cut_audit
+
+    # A SECOND actual original-body UV reconstruction experiment chooses the
+    # shared-source edges to preserve by maximum REAL 3D edge length. This
+    # minimizes theoretical omitted tree edges, but cycle closure, fabric
+    # pattern, physical cut paths, overlap and garment fit remain UNAPPROVED.
+    weighted_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-trouser-max-retained-uv.py")
+    ))
+    weighted_selection = weighted_ops["select_original_source_max_retained_uv_tree"](
+        merged_verts, base_faces, l_remaining + r_remaining_mapped
+    )
+    weighted_uv = tree_ops["connect_original_source_uv_forest"](
+        base_faces, quad_evidence["face_uv_loops"],
+        l_remaining + r_remaining_mapped,
+        preferred_tree_edges=weighted_selection["retainedOriginalSourceEdges"],
+    )
+    weighted_report = weighted_uv["report"]
+    weighted_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+        merged_verts, base_faces, weighted_uv["face_uv_loops"],
+        l_remaining + r_remaining_mapped, weighted_report
+    )
+    weighted_object_name = "TITAN_RESEARCH_OriginalTrouserMaximumRetainedUvOnly"
+    if bpy.data.objects.get(weighted_object_name) is not None:
+        raise RuntimeError("Cannot overwrite an actual independent source max-tree UV trial.")
+    weighted_mesh = bpy.data.meshes.new(weighted_object_name + "Mesh")
+    weighted_mesh.from_pydata(merged_verts, [], base_faces)
+    weighted_mesh.update(calc_edges=True)
+    if (len(weighted_mesh.polygons) != 2650 or any(
+            len(poly.loop_indices) != 4 or
+            not math.isfinite(poly.area) or poly.area <= 1e-12
+            for poly in weighted_mesh.polygons)):
+        raise RuntimeError("True original source max-tree UV mesh has invalid topology.")
+    weighted_layer = weighted_mesh.uv_layers.new(
+        name="TITAN_RESEARCH_UNVERIFIED_MAXIMUM_RETAINED_SOURCE_EDGES"
+    )
+    written_max = 0
+    for face, uv_row in zip(weighted_mesh.polygons, weighted_uv["face_uv_loops"]):
+        if len(uv_row) != 4 or len(face.loop_indices) != 4:
+            raise RuntimeError("Actual source max-tree UV lost original four-corner face.")
+        for loop_id, coordinate in zip(face.loop_indices, uv_row):
+            if len(coordinate) != 2 or not all(math.isfinite(v) for v in coordinate):
+                raise RuntimeError("Actual original source maximum-tree UV is not finite.")
+            weighted_layer.data[loop_id].uv = coordinate
+            written_max += 1
+    if (written_max != 10600 or len(weighted_layer.data) != 10600
+            or not all(all(math.isfinite(float(v)) for v in row.uv)
+                       for row in weighted_layer.data)):
+        raise RuntimeError("Native source weighted UV has incomplete original face loops.")
+    weighted_obj = bpy.data.objects.new(weighted_object_name, weighted_mesh)
+    weighted_obj.hide_render = True
+    weighted_obj["candidateOnly"] = True
+    weighted_obj["sourceUvPhysicallyApproved"] = False
+    weighted_obj["productionApproved"] = False
+    research.objects.link(weighted_obj)
+    if export.objects.get(weighted_object_name) is not None:
+        raise RuntimeError("Unapproved weighted original source UV changed garment export.")
+    weighted_geom = geom(weighted_obj)
+    weighted_body = body_tree.overlap(geom_ops["real_tree"](weighted_geom))
+    if len(weighted_body) != unchanged_source_pairs:
+        raise RuntimeError("UV max-tree changed true original source-body contact count.")
+    original_max_report = weighted_selection["report"]
+    if (original_max_report["originalSourceSharedEdgeCount"] != 5234
+            or original_max_report["originalSourceComponentCount"] !=
+               tree_report["dualGraphComponentCount"]
+            or original_max_report["maximumRetainedTreeEdgeCount"] !=
+               weighted_report["verifiedTreeConnectedSharedEdges"]
+            or weighted_cut["originalOpenSourceBoundaryEdges"] != 132
+            or weighted_cut["unclosedSharedUvCutCandidateEdges"] !=
+               weighted_report["nonTreeCycleUnclosedUvEdges"]):
+        raise RuntimeError("Original max-tree UV changed actual cut-edge provenance.")
+    # Baseline native actual original source had ZERO naturally closed cycles.
+    # The max-weight tree minimizes total omitted 3D edge length. If all old
+    # baseline non-tree edges are unclosed, the ACTUAL weighted seam candidate
+    # total cannot exceed the measured old candidate total (within rounding).
+    if tree_report["nonTreeCycleEdgesWithinOneMicrometre"] == 0 and (
+            weighted_cut["totalRealGeometryOfUvCutCandidatesMm"] >
+            cut_audit["totalRealGeometryOfUvCutCandidatesMm"] + 0.001):
+        raise RuntimeError("Real source max-retained tree increased omitted UV cut length.")
+    weighted_report["nativeResearchUvLoopCount"] = written_max
+    weighted_report["nativeResearchUvLayerName"] = weighted_layer.name
+    weighted_report["nativeOriginalBodyContactPairsUnchanged"] = len(weighted_body)
+    weighted_report["originalSourceStageUVProvenance"] = source_stage_uv_provenance
+    weighted_report["maxRetainedOriginalSourceSelection"] = original_max_report
+    weighted_report["actualSourceCutNetworkEvidence"] = weighted_cut
+    weighted_report["baselineBfsSourceCutNetworkLengthMm"] = (
+        cut_audit["totalRealGeometryOfUvCutCandidatesMm"]
+    )
+    weighted_report["maxRetainedActualSourceCutNetworkLengthMm"] = (
+        weighted_cut["totalRealGeometryOfUvCutCandidatesMm"]
+    )
+    weighted_report["maxRetainedActualCutLengthChangeVsBfsMm"] = round(
+        weighted_cut["totalRealGeometryOfUvCutCandidatesMm"] -
+        cut_audit["totalRealGeometryOfUvCutCandidatesMm"], 5
+    )
+    weighted_report["originalGarmentTexelScaleAndGrainApproved"] = False
+    weighted_report["physicalSewnCrotchPatternApproved"] = False
+    seam_winding["researchOnlyOriginalSourceMaxRetainedUvEvidence"] = weighted_report
     clearance_trial = None
     targeted_reroute_trial = None
     if args.experimental_centroid_clearance_mm == 7.0:
