@@ -753,3 +753,39 @@ test("candidate pleat instructions cannot silently disappear from the versioned 
   assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'),
     "conflicting requested front construction must not be approved");
 });
+
+
+test("explicit single and double pleat counts cannot silently mismatch the canonical pant specification", () => {
+  // Each identifier comes from the existing pant.pleat catalogue; tests
+  // should never assert imaginary tailoring options or rewrite the spec.
+  const cases: ReadonlyArray<readonly [string, string, string[]]> = [
+    ["Double Pleats Trouser", "single_pleat_forward", ["candidate_trouser_pleat_mismatch"]],
+    ["Wide-Leg Double Pleats", "single_pleat_reverse", ["candidate_trouser_pleat_mismatch"]],
+    ["Wide-Leg Double Pleats", "double_pleat_forward", []],
+    ["Two Pleats Trouser", "double_pleat_reverse", []],
+    ["Two Pleats Trouser", "single_pleat_forward", ["candidate_trouser_pleat_mismatch"]],
+    ["Single-Pleat Tailored Trouser", "double_pleat_forward", ["candidate_trouser_pleat_mismatch"]],
+    ["Single-Pleat Tailored Trouser", "single_pleat_reverse", []],
+    ["One Pleat Trouser", "single_pleat_forward", []],
+    ["Single and Double Pleats Trouser", "single_pleat_forward", ["candidate_trouser_pleat_mismatch"]],
+    ["Pleated Trouser", "single_pleat_forward", []],
+    ["Pleated Trouser", "double_pleat_forward", []],
+    ["Flat-Front Non-Pleated Trouser", "flat_front", []],
+  ];
+  for (const [label, id, expected] of cases) {
+    assert.ok(optionsFor("pant.pleat").some(option => option.id === id),
+      "only canonical pant pleat options may be used");
+    const versioned = spec({}, { pleat: id });
+    const before = JSON.stringify(versioned);
+    assert.deepEqual(
+      styleDirectorCandidateFrontConstructionIssues(label, versioned.pant).map(issue => issue.code),
+      expected,
+      label + " with " + id,
+    );
+    assert.equal(JSON.stringify(versioned), before, "pleat review never rewrites a locked construction");
+  }
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes(
+    "...styleDirectorCandidateFrontConstructionIssues(candidate.garments.trouser, styleSpec.pant)"
+  ), "real recommendations must carry pleat-count review through their production bridge");
+});
