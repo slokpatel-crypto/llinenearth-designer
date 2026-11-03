@@ -408,3 +408,15 @@ test("explicit undefined reason and QC claims are not silently discarded",()=>{
   assert.throws(()=>replayOrderLifecycle(id,revision,hash,qcAudit),/QC approval evidence/);
   assert.equal(step(toQc(),"approve_qc",{qc:qc()}).status,"qc_approved");
 });
+
+test("audit identity, operator, reason and physical evidence reject bidi spoofing controls",()=>{
+  const bidi = "\u202e";
+  assert.throws(()=>createOrderLifecycle(id,revision+bidi,hash),/Invalid locked revision ID/);
+  assert.throws(()=>step(base(),"accept",{actor:"operator"+bidi+"-001"}),/Invalid operator actor/);
+  assert.throws(()=>step(base(),"accept",{evidenceRef:"receipt-"+bidi+"00000001"}),/Invalid external evidence reference/);
+  assert.throws(()=>step(base(),"cancel",{reason:"Customer "+bidi+"confirmed"}),/Invalid reason/);
+  const accepted=step(base(),"accept");
+  const tampered=accepted.audit.map(event=>({...event,actor:"operator"+bidi+"-001"}));
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,tampered),/Invalid operator actor/);
+  assert.equal(step(base(),"accept").status,"accepted");
+});
