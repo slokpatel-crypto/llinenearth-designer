@@ -13,13 +13,13 @@ trap cleanup EXIT
 holder_pid=$!
 # Wait until the holder actually owns the advisory lock (not merely until its process starts).
 for i in $(seq 1 60); do
-  if psql -Atc "select count(*) from pg_locks where locktype='advisory' and granted and pid <> pg_backend_pid()" | grep -qE '^[1-9]'; then
+  if psql -v ON_ERROR_STOP=1 -Atc "select count(*) from pg_locks where locktype='advisory' and granted and pid <> pg_backend_pid() and classid=0 and objid=hashtext('stock-fabric:$fabric')::oid and objsubid=1" | grep -qE '^[1-9]'; then
     touch "$signal_file"
     break
   fi
   sleep 0.05
 done
-[[ -f "$signal_file" ]] || { echo "advisory lock holder never acquired lock"; exit 1; }
+[[ -f "$signal_file" ]] || { echo "specific reservation fabric advisory lock was never acquired"; exit 1; }
 set +e
 result=$(psql -v ON_ERROR_STOP=1 2>&1 <<SQL
 begin;
