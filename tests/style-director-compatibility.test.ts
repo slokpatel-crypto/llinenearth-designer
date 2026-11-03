@@ -431,3 +431,12 @@ test("candidate sleeve type and construction share one strict resolver", () => {
       "partial sleeve words must not create an incompatible versioned shirt type");
   }
 });
+
+
+test("conflicting named collar families fail closed rather than silently selecting a construction", () => {
+  for (const name of ["Cuban Band-Collar Shirt", "Mandarin Cutaway Shirt", "Camp Cutaway Shirt", "Cuban Mandarin Cutaway Shirt"]) {
+    assert.equal(styleDirectorCandidateCollar(name, selectableCollars), null, name);
+  }
+  assert.equal(styleDirectorCandidateCollar("Cuban Resort Shirt", selectableCollars)?.versioned, "cuban_camp_collar");
+  assert.equal(styleDirectorCandidateCollar("Mandarin Band-Collar Shirt", selectableCollars)?.versioned, "mandarin_band_collar");
+});
