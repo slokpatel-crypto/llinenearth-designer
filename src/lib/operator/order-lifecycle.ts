@@ -159,6 +159,7 @@ export function createOrderLifecycle(orderId: string, revisionId: string, recipe
 
 function validateQc(qc: unknown, state: OrderLifecycleState): OrderQcEvidence {
   const value = record(qc);
+  rejectUnknownFields(value, QC_FIELDS, "QC evidence");
   const inspector = nonEmpty(value.inspector, "QC inspector", 2, 120);
   const inspectionReference = nonEmpty(value.inspectionReference, "physical QC reference", 3, 240);
   if (value.revisionId !== state.revisionId || value.recipeHash !== state.recipeHash)
@@ -170,6 +171,7 @@ function validateQc(qc: unknown, state: OrderLifecycleState): OrderQcEvidence {
     throw new Error("A fresh QC inspection reference is required after rework or recovery.");
   }
   const checks = record(value.checks);
+  rejectUnknownFields(checks, QC_CHECK_FIELDS, "QC check");
   if (Object.keys(checks).length !== ORDER_QC_CHECKS.length ||
       ORDER_QC_CHECKS.some(check => checks[check] !== true)) {
     throw new Error("All six named finished-garment QC checks must be true.");
@@ -262,6 +264,7 @@ export function replayOrderLifecycle(orderId: string, revisionId: string, recipe
  */
 export function restoreOrderLifecycleSnapshot(rawSnapshot: unknown): OrderLifecycleState {
   const snapshot = record(rawSnapshot);
+  rejectUnknownFields(snapshot, SNAPSHOT_FIELDS, "lifecycle snapshot");
   const orderId = identifier(snapshot.orderId, "order ID");
   const revisionId = nonEmpty(snapshot.revisionId, "locked revision ID", 12, 200);
   const recipeHash = snapshot.recipeHash;
