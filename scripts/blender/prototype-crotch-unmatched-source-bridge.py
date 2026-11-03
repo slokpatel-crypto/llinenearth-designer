@@ -417,14 +417,14 @@ def trial_source_cut_edge_reprojection(vertices, boundary, source_cut_edges,
             raise RuntimeError("Original boundary vertex has no finite body-normal evidence.")
         nearest[index] = (closest.copy(), normal.normalized())
 
-    def measure(label, sign):
+    def measure(label, signed_offset_mm):
         points = [v.copy() for v in vertices]
         displacements = []
         for index in boundary:
-            if sign:
+            if signed_offset_mm != 0:
                 original = points[index].copy()
                 closest, unit_normal = nearest[index]
-                points[index] = closest + unit_normal * (sign * offset_mm / 1000.0)
+                points[index] = closest + unit_normal * (signed_offset_mm / 1000.0)
                 delta_mm = (points[index] - original).length * 1000.0
                 if not math.isfinite(delta_mm) or delta_mm > 25:
                     raise RuntimeError("Research cut-edge movement exceeded bounded 25mm trial.")
@@ -496,9 +496,10 @@ def trial_source_cut_edge_reprojection(vertices, boundary, source_cut_edges,
             "totalBridgeAreaMm2": round(total, 4),
             "contactingBridgeAreaMm2": round(touched_area, 4),
             "contactingBridgeAreaFraction": round(touched_area / total, 7),
-            "maxSourceVertexDisplacementMm": round(max(displacements), 5) if sign else 0.0,
-            "minSourceVertexDisplacementMm": round(min(displacements), 5) if sign else 0.0,
-            "sourceCutBoundaryCoordinatesChanged": bool(sign),
+            "maxSourceVertexDisplacementMm": round(max(displacements), 5) if signed_offset_mm else 0.0,
+            "minSourceVertexDisplacementMm": round(min(displacements), 5) if signed_offset_mm else 0.0,
+            "sourceCutBoundaryCoordinatesChanged": signed_offset_mm != 0,
+            "signedBodyNormalOffsetMm": signed_offset_mm,
             "originalSourceEdgeMeasurements": samples,
             "sourceEdgeSamplesBelowSevenMm": sum(
                 entry["samplesBelowResearchSevenMm"] for entry in samples
@@ -508,14 +509,28 @@ def trial_source_cut_edge_reprojection(vertices, boundary, source_cut_edges,
             "productionApproved": False,
         }
 
-    original = measure("unchangedControl", 0)
-    positive = measure("positiveBodyNormal", 1)
-    negative = measure("negativeBodyNormal", -1)
+    original = measure("unchangedControl", 0.0)
+    positive = measure("positiveBodyNormal", offset_mm)
+    negative = measure("negativeBodyNormal", -offset_mm)
+    # Positive 7mm had zero native body intersections but all 14 cut-edge
+    # samples remained within 7mm. Try 9/11mm without presuming fit.
+    # Keep exact original control topology and original source identity.
+    positive_nine = measure("positiveBodyNormal9Mm", 9.0)
+    positive_eleven = measure("positiveBodyNormal11Mm", 11.0)
     variants = {
         "unchangedControl": original,
         "positiveBodyNormal": positive,
         "negativeBodyNormal": negative,
+        "positiveBodyNormal9Mm": positive_nine,
+        "positiveBodyNormal11Mm": positive_eleven,
     }
+    joint_sampled_candidates = [
+        label for label in ("positiveBodyNormal", "positiveBodyNormal9Mm", "positiveBodyNormal11Mm")
+        if (variants[label]["bodyBVHPairs"] == 0
+            and variants[label]["sourceEdgeSamplesBelowSevenMm"] == 0
+            and variants[label]["degenerateFaces"] == 0
+            and variants[label]["nonManifoldEdges"] == 0)
+    ]
     best = min(("positiveBodyNormal", "negativeBodyNormal"), key=lambda label: (
         variants[label]["sourceEdgeSamplesBelowSevenMm"],
         variants[label]["contactingBridgeAreaMm2"],
@@ -528,6 +543,9 @@ def trial_source_cut_edge_reprojection(vertices, boundary, source_cut_edges,
         "sourceBoundaryVertexIndices": list(boundary),
         "sourceCutEdgeVertexPairs": [list(edge) for edge in source_cut_edges],
         "equalTopologyVariants": variants,
+        "positiveNormalOffsetSweepMm": [7.0, 9.0, 11.0],
+        "jointSampledZeroBVHAndSevenMmCandidateLabels": joint_sampled_candidates,
+        "jointSampledTargetObserved": bool(joint_sampled_candidates),
         "lowestSampledCutEdgeContactCandidate": best,
         "strictOriginalBodyPairImprovementObserved": (
             variants[best]["bodyBVHPairs"] < original["bodyBVHPairs"]
@@ -540,7 +558,7 @@ def trial_source_cut_edge_reprojection(vertices, boundary, source_cut_edges,
             < original["sourceEdgeSamplesBelowSevenMm"]
         ),
         "metricCaveat": (
-            "This 7mm signed-normal trial actually moves ONLY a separate local "
+            "This signed-normal 7/9/11mm research sweep moves ONLY a separate local "
             "four-face research patch's original cut-edge vertices. No continuous "
             "seam attachment to adjacent leg cloth, fitted full garment, UV, "
             "fabric thickness, safe normal orientation, sewing allowance or "
