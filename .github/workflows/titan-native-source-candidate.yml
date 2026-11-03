@@ -1238,32 +1238,32 @@ jobs:
           assert 0 < remesh["originalSourceCutVertexDisplacementMaxMm"] <= 25
           remesh_control=remesh["control"]
           remesh_candidate=remesh["bodyGuidedCentres9Mm"]
-          for trial in (remesh_control,remesh_candidate):
-              assert trial["productionApproved"] is False
-              assert trial["originalSourceFaceCount"] == 2650
-              assert trial["newSourceTrianglesFromSixFaces"] == len(original_faces)
-              assert trial["sourceFaceCountAfterRetriangulation"] == (
-                  trial["originalSourceFaceCount"] - 6 + len(original_faces)
+          for remesh_row in (remesh_control,remesh_candidate):
+              assert remesh_row["productionApproved"] is False
+              assert remesh_row["originalSourceFaceCount"] == 2650
+              assert remesh_row["newSourceTrianglesFromSixFaces"] == len(original_faces)
+              assert remesh_row["sourceFaceCountAfterRetriangulation"] == (
+                  remesh_row["originalSourceFaceCount"] - 6 + len(original_faces)
               )
-              assert trial["allFaceCount"] == trial["sourceFaceCountAfterRetriangulation"] + 6
-              assert trial["degenerateFaces"] == 0
-              assert type(trial["bodyPairsOnRemeshedOriginalFaces"]) is int
-              assert trial["bodyPairsOnRemeshedOriginalFaces"] >= 0
-              assert 0 <= trial["bodyContactedRemeshedOriginalFaceCount"] <= len(original_faces)
-              assert math.isfinite(trial["bodyContactedRemeshedOriginalAreaMm2"])
-              assert math.isfinite(trial["totalRemeshedOriginalAreaMm2"])
-              assert 0 <= trial["bodyContactedRemeshedOriginalAreaMm2"] <= trial["totalRemeshedOriginalAreaMm2"] + 0.0001
-              assert len(trial["originalCutEdgeSampleResults"]) == 2
-              assert trial["sourceEdgeSamplesUnderSevenMm"] == sum(
-                  part["samplesUnderSevenMm"] for part in trial["originalCutEdgeSampleResults"]
+              assert remesh_row["allFaceCount"] == remesh_row["sourceFaceCountAfterRetriangulation"] + 6
+              assert remesh_row["degenerateFaces"] == 0
+              assert type(remesh_row["bodyPairsOnRemeshedOriginalFaces"]) is int
+              assert remesh_row["bodyPairsOnRemeshedOriginalFaces"] >= 0
+              assert 0 <= remesh_row["bodyContactedRemeshedOriginalFaceCount"] <= len(original_faces)
+              assert math.isfinite(remesh_row["bodyContactedRemeshedOriginalAreaMm2"])
+              assert math.isfinite(remesh_row["totalRemeshedOriginalAreaMm2"])
+              assert 0 <= remesh_row["bodyContactedRemeshedOriginalAreaMm2"] <= remesh_row["totalRemeshedOriginalAreaMm2"] + 0.0001
+              assert len(remesh_row["originalCutEdgeSampleResults"]) == 2
+              assert remesh_row["sourceEdgeSamplesUnderSevenMm"] == sum(
+                  part["samplesUnderSevenMm"] for part in remesh_row["originalCutEdgeSampleResults"]
               )
-              for part in trial["originalCutEdgeSampleResults"]:
+              for part in remesh_row["originalCutEdgeSampleResults"]:
                   assert tuple(sorted(part["originalSourceCutEdgeVertices"])) in expected_cut_edges
                   assert len(part["bodyDistancesMm"]) == 7
                   assert all(math.isfinite(v) and v >= 0 for v in part["bodyDistancesMm"])
                   assert part["minimumMm"] == min(part["bodyDistancesMm"])
                   assert part["samplesUnderSevenMm"] == sum(v < 7 for v in part["bodyDistancesMm"])
-              assert trial["sourceEdgeSamplesUnderSevenMm"] == 0
+              assert remesh_row["sourceEdgeSamplesUnderSevenMm"] == 0
           assert remesh_control["allFaceCount"] == remesh_candidate["allFaceCount"]
           assert remesh_control["untouchedOriginalSourceBodyPairs"] == remesh_candidate["untouchedOriginalSourceBodyPairs"]
           assert remesh_control["researchBridgeBodyPairs"] == remesh_candidate["researchBridgeBodyPairs"]
