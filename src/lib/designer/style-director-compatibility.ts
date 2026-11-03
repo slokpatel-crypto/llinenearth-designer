@@ -72,16 +72,26 @@ export function styleDirectorCandidateSleeve(
  * Null means the label supplies no supported front construction instruction.
  * Ambiguous means the author asked for incompatible front constructions.
  */
+// A negative-only trouser name is an explicit flat-front instruction too.
+// Normalise once so review, photo and versioned garment selectors cannot
+// disagree about "No Pleats" or misread "Non-Pleated" as positive pleats.
+function stripNegatedPleatWording(candidateTrouser: string) {
+  return candidateTrouser.replace(
+    /\b(?:non[- ]?pleated|unpleated|pleat[- ]?free|pleatless|no\s+(?:(?:visible|front|side)\s+)?pleats?|without\s+(?:(?:any|visible|front|side)\s+)?pleats?|zero\s+pleats?)\b/gi,
+    "",
+  );
+}
+
 export function styleDirectorCandidateTrouserFront(
   candidateTrouser: string,
 ): "flat_front" | "pleated" | "ambiguous" | null {
   const flatFront = /\bflat[- ]?front\b/i.test(candidateTrouser);
-  const positivePleat = /\bpleat(?:ed|s)?\b/i.test(
-    candidateTrouser.replace(/\b(?:non[- ]?pleated|no\s+(?:(?:visible|front|side)\s+)?pleats?|without\s+(?:(?:any|visible|front|side)\s+)?pleats?)\b/gi, ""),
-  );
-  if (flatFront && positivePleat) return "ambiguous";
+  const positiveWording = stripNegatedPleatWording(candidateTrouser);
+  const explicitlyNoPleats = positiveWording !== candidateTrouser;
+  const positivePleat = /\bpleat(?:ed|s)?\b/i.test(positiveWording);
+  if ((flatFront || explicitlyNoPleats) && positivePleat) return "ambiguous";
   if (positivePleat) return "pleated";
-  return flatFront ? "flat_front" : null;
+  return flatFront || explicitlyNoPleats ? "flat_front" : null;
 }
 
 export type DirectorConstructionIssue = {
@@ -142,9 +152,7 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // A labelled double pleat is not equivalent to a generic single pleat.
   // Read count from the canonical option's construction parameters instead
   // of inferring it from the potentially stale photographed trouser label.
-  const positiveWording = candidateTrouser.replace(
-    /\b(?:non[- ]?pleated|no\s+(?:(?:visible|front|side)\s+)?pleats?|without\s+(?:(?:any|visible|front|side)\s+)?pleats?)\b/gi, "",
-  );
+  const positiveWording = stripNegatedPleatWording(candidateTrouser);
   const requestsDouble = /\b(?:double|two|2)[ -]?pleats?\b/i.test(positiveWording);
   const requestsSingle = /\b(?:single|one|1)[ -]?pleats?\b/i.test(positiveWording);
   const expectedCount = front === "pleated"
