@@ -290,3 +290,16 @@ test("generated cutaway dress shirt preserves exact legacy and versioned collar 
   assert.ok(agent.includes("styleDirectorPresentationIssues(best.style,styleSpec)"),
     "unverified cutaway photo must affect the exposed recommendation status");
 });
+
+test("incidental collar substrings never rewrite a named candidate or photographic choice", () => {
+  for (const candidate of ["Campus Work Shirt", "Bandwidth Travel Shirt", "Mandarinette Print Shirt", "Cutawayish Dress Shirt"]) {
+    assert.equal(styleDirectorCandidateCollar(candidate, selectableCollars), null, candidate);
+    assert.equal(styleDirectorWearForCandidate("Casual", candidate, "Tucked"), "Tucked", candidate);
+  }
+  for (const collar of ["Campus Collar", "Bandwidth Collar", "Mandarinette Collar", "Cutawayish Collar"]) {
+    assert.deepEqual(styleDirectorPresentationIssues(photo(collar, "Tucked"), spec()), [], collar);
+  }
+  assert.equal(styleDirectorCandidateCollar("Cuban-Collar Shirt", selectableCollars)?.versioned, "cuban_camp_collar");
+  assert.equal(styleDirectorCandidateCollar("Band Collar Shirt", selectableCollars)?.versioned, "mandarin_band_collar");
+  assert.equal(styleDirectorCandidateCollar("Cutaway Collar Shirt", selectableCollars)?.versioned, "cutaway_collar");
+});
