@@ -135,8 +135,10 @@ function validatedMeasuredData(value:unknown):FabricMeasuredData|null {
   if(typeof colour.hex!=="string" || !/^#[0-9a-f]{6}$/i.test(colour.hex)
     || typeof colour.deltaE!=="number" || !Number.isFinite(colour.deltaE)
     || colour.deltaE<0) return null;
-  if(!["none","vertical","horizontal","grid","uncertain"].includes(String(pattern.orientation??""))
-    || !["unknown","declared_repeat","declared_swatch_width"].includes(String(pattern.physicalScaleStatus??""))) return null;
+  if(typeof pattern.orientation!=="string"
+    || !["none","vertical","horizontal","grid","uncertain"].includes(pattern.orientation)
+    || typeof pattern.physicalScaleStatus!=="string"
+    || !["unknown","declared_repeat","declared_swatch_width"].includes(pattern.physicalScaleStatus)) return null;
   for(const key of ["repeatMm","stripeWidthMm","contrastDeltaE"] as const) {
     const val=pattern[key];
     if(val!==null && val!==undefined &&
