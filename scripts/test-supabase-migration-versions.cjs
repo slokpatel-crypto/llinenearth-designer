@@ -64,12 +64,12 @@ test("pinned Git history verifies immutable baseline provenance instead of trust
   const b="supabase/migrations/20261001_beta.sql";
   const shaA="a".repeat(40), shaB="b".repeat(40);
   const manifest={ migrationPaths:[a,b], blobShaByPath:{[a]:shaA,[b]:shaB} };
-  const gitTree=`100644 blob ${shaA}\\t${a}\\n100644 blob ${shaB}\\t${b}\\n`;
+  const gitTree=`100644 blob ${shaA}\t${a}\n100644 blob ${shaB}\t${b}\n`;
   assert.deepEqual([...audit.parsePinnedMigrationTree(gitTree).keys()], [a,b]);
   assert.equal(audit.verifyBaselineFromGit(manifest,gitTree).ok,true);
   assert.deepEqual(audit.verifyBaselineFromGit(manifest,gitTree.replace(shaB,shaA)).mismatched,[b]);
-  assert.deepEqual(audit.verifyBaselineFromGit(manifest,gitTree.split("\\n")[0]+"\\n").absent,[b]);
-  assert.throws(() => audit.parsePinnedMigrationTree("100755 blob "+shaA+"\\t"+a),/Unexpected Git migration-tree entry/);
+  assert.deepEqual(audit.verifyBaselineFromGit(manifest,gitTree.split("\n")[0]+"\n").absent,[b]);
+  assert.throws(() => audit.parsePinnedMigrationTree("100755 blob "+shaA+"\t"+a),/Unexpected Git migration-tree entry/);
 });
 test("filename-ordered stock RPC overwrite can lose a strict identity guard", () => {
   const paths = ["supabase/migrations/20261103_stock_reservation_identity_length_gate.sql",
