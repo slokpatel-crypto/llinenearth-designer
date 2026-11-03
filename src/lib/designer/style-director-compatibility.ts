@@ -88,7 +88,13 @@ export function styleDirectorCandidateTrouserFront(
   const flatFront = /\bflat[- ]?front\b/i.test(candidateTrouser);
   const positiveWording = stripNegatedPleatWording(candidateTrouser);
   const explicitlyNoPleats = positiveWording !== candidateTrouser;
-  const positivePleat = /\bpleat(?:ed|s)?\b/i.test(positiveWording);
+  // Negating a particular pleat count does not prohibit all pleats. In
+  // particular, "no double pleats" must not become a positive pleat request.
+  const unqualifiedPositiveWording = positiveWording.replace(
+    /\b(?:no|without)\s+(?:any\s+)?(?:single|double|one|two|1|2)[ -]?pleats?\b/gi,
+    "",
+  );
+  const positivePleat = /\bpleat(?:ed|s)?\b/i.test(unqualifiedPositiveWording);
   if ((flatFront || explicitlyNoPleats) && positivePleat) return "ambiguous";
   if (positivePleat) return "pleated";
   return flatFront || explicitlyNoPleats ? "flat_front" : null;
