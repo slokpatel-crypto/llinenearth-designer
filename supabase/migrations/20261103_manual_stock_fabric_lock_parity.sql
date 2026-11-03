@@ -23,6 +23,13 @@ begin
   if coalesce(length(trim(p_recorded_by)),0)<2 then raise exception 'named stock checker or recorder is required'; end if;
   if coalesce(length(trim(p_source_reference)),0)<3 then raise exception 'physical stock source reference is required'; end if;
 
+  -- Reject unsupported precision and oversized evidence rather than silently changing physical facts.
+  if p_quantity_metres <> round(p_quantity_metres,3) then raise exception 'quantity precision exceeds 0.001 metres'; end if;
+  if length(trim(p_fabric_id))>160 then raise exception 'fabric id exceeds 160 characters'; end if;
+  if length(trim(coalesce(p_note,'')))>600 then raise exception 'stock note exceeds 600 characters'; end if;
+  if length(trim(p_recorded_by))>120 then raise exception 'stock checker exceeds 120 characters'; end if;
+  if length(trim(p_source_reference))>240 then raise exception 'stock source reference exceeds 240 characters'; end if;
+
   perform pg_advisory_xact_lock(hashtext('stock-fabric:'||left(trim(p_fabric_id),160)));
 
   if p_event_type='adjustment_out' then
