@@ -526,13 +526,16 @@ async function main(){
         name+" must be denied before sending any Supabase Authorization header");
       assert.match(denied.headers.get("cache-control")||"",/private.*no-store/);
     }
-    for(const kind of ["oversized-legacy","html-legacy"]){
+    for(const [kind,status] of [["oversized-legacy",503],["html-legacy",200]]){
       seen.length=0;
       const unsafeLegacy=await fetch(origin+"/api/customer-auth/session",{
         headers:{cookie:"le_customer_access="+kind}});
-      assert.equal(unsafeLegacy.status,200);
-      assert.deepEqual(await unsafeLegacy.json(),{customer:null},
-        kind+" cannot become a legacy customer identity");
+      assert.equal(unsafeLegacy.status,status,
+        kind+" must not be authenticated or pretend an upstream size fault is normal logout");
+      assert.deepEqual(await unsafeLegacy.json(),status===503?{
+        customer:null,error:"Customer session temporarily unavailable.",
+      }:{customer:null},kind+" cannot become a legacy customer identity");
+      assert.equal(unsafeLegacy.headers.get("set-cookie"),null);
       assert.match(unsafeLegacy.headers.get("cache-control")||"",/private.*no-store/);
       assert.deepEqual(seen.map(item=>item.path),["/auth/v1/user"]);
     }
