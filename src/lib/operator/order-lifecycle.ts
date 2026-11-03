@@ -185,6 +185,9 @@ export function applyOrderLifecycleEvent(state: OrderLifecycleState, rawEvent: u
   if (!state || typeof state !== "object" || !TRUSTED_STATES.has(state)) {
     throw new Error("Untrusted lifecycle snapshot; restore audited history before applying events.");
   }
+  // Replays reject audits above 10,000 entries; live transitions must enforce
+  // the same bound so no reducer-minted state becomes impossible to restore.
+  if (state.audit.length >= 10000) throw new Error("Order audit exceeds maximum event count.");
   const event = record(rawEvent);
   // Live inputs are untrusted too: never silently drop unexpected claims.
   rejectUnknownFields(event, APPLIED_EVENT_FIELDS, "order event");
