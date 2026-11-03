@@ -102,6 +102,7 @@ test("customer photographic preview displays selected construction mismatch noti
   assert.match(source,/photoConstructionMismatches\(style,styleSpec\)/);
   assert.match(source,/data-photo-construction-mismatch/);
   assert.match(source,/not reconstructed in the fixed studio photograph/);
+  assert.match(source,/FRONT \/ STUDIO MODEL · CUTS APPROX\./);
   // Keep the existing photographic QA selector strict-mode safe: only one
   // direct-child approximation paragraph; the fidelity warning nests inside.
   assert.equal((source.match(/<p className="newDesignerPhotoApproximation">/g)||[]).length,1);
@@ -142,6 +143,8 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/advanced-construction-disclosed-/);
   assert.match(script,/collar-cuff-placket-disclosed-1440/);
   assert.match(script,/advancedConstructionDisclosed=true/);
+  assert.match(script,/newDesignerPhotoTag/);
+  assert.match(script,/CUTS APPROX/);
   assert.match(script,/actualPhotoPixelHash\(page\)/);
   assert.match(script,/specOnlyPhotoPixelsUnchanged=true/);
   assert.match(script,/advanced spec-only sleeve\/pleat options must not repaint/);
