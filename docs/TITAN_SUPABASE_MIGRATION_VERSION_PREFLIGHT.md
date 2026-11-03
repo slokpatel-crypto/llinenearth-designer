@@ -16,6 +16,8 @@ At main `4dd8020abd83429449ff53ea5bb71b046394d86e`, 58 historical SQL migration 
 - `node scripts/audit-supabase-migration-versions.cjs --strict`: intentionally **fails** while any historical duplicate/nonstandard versions or last-definition strict identity loss remain. This is the future deployment-history gate, not a permitted bypass.
 - `node --test scripts/test-supabase-migration-versions.cjs`: exercises duplicate/overlap fixtures, known historical debt and strict red-before-green enforcement.
 
+Additional new-file gate: an added SQL migration must use a real calendar-valid 14-digit timestamp, must not be backdated before the latest frozen historical prefix, and must not redefine `public.fabric_stock_reserve_v2` without the active nontruncation checks on all five identity/evidence fields. These are source-level checks to prevent **new regressions**; they cannot certify remote history or prove SQL behavior without disposable PostgreSQL replay.
+
 The `TITAN Supabase Migration Version Inventory` GitHub Actions workflow runs only file-system reads and Node tests. It labels its passing job **legacy baseline, NOT deploy ready**. Do not remove legacy files or rename already-applied versions without comparing staging/remote migration history and a signed-off forward-only version map.
 
 ## Owner-approved migration-path remediation (still pending)
