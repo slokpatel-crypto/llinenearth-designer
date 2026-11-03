@@ -40,3 +40,22 @@ rollback;
 SQL
 psql -Atc "select count(*) from private.fabric_stock_ledger where fabric_id='$fabric'" | grep -qx 0
 echo "PASS: manual stock and reservation fabric lock serialize; synthetic writes rolled back"
+
+# Privileged legacy manual writer must be unreachable after the migration.
+# Check effective privileges (including PUBLIC), not merely explicit grants.
+psql -v ON_ERROR_STOP=1 <<'SQL'
+do $$
+begin
+  if has_function_privilege('service_role', 'public.fabric_stock_record(text,text,numeric,text)', 'EXECUTE') then
+    raise exception 'legacy manual stock writer still executable by service_role';
+  end if;
+  if has_function_privilege('anon', 'public.fabric_stock_record(text,text,numeric,text)', 'EXECUTE') then
+    raise exception 'legacy manual stock writer still executable by anon';
+  end if;
+  if has_function_privilege('authenticated', 'public.fabric_stock_record(text,text,numeric,text)', 'EXECUTE') then
+    raise exception 'legacy manual stock writer still executable by authenticated';
+  end if;
+end;
+$$;
+SQL
+echo "PASS: legacy provenance-free manual stock RPC is inaccessible to service_role/anon/authenticated"
