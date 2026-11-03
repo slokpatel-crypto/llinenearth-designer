@@ -134,3 +134,10 @@ The existing persisted production order contract in `src/lib/designer/production
 - Operator actor, revision ID, evidence reference and reason fields now reject Unicode bidirectional override/isolate controls (U+202A–U+202E and U+2066–U+2069), which can visually reorder audit claims in logs and reviews. The existing ASCII identifier restrictions remain unchanged.
 - Added synthetic regression coverage for live events, cancellation reasons and stored audit replay. This is a source-level checkpoint: exact-head CI is required before claiming a verified pass.
 - Production persistence, actor authentication, SQL status mapping and physical receipt verification remain separate central-integration gates. No shared scope was edited.
+
+## Invisible audit text hardening — 2026-11-03
+
+- Reject invisible Unicode formatting characters U+200B–U+200F, U+2060 and U+FEFF in audit text, in addition to existing bidi overrides and ASCII controls. These can disguise otherwise distinct actor, evidence, reason and locked-revision values.
+- Added regression cases for live inputs, stored replay and a valid transition. This is synthetic validation only, not authentication or physical evidence.
+- Prior head `11de729e` passed CI #41621555354 and Non-3D QA #41621555223. Those runs predate this change; **new exact-head CI is pending**. No local full-repository test claim.
+- Next: verify new exact-head checks, reconcile main and coordinate authenticated transactional persistence, SQL compatibility and physical QC receipts with central integration. No production writes, merges or deployment.
