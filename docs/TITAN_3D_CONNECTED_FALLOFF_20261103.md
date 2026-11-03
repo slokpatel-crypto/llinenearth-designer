@@ -17,6 +17,27 @@ Official pinned Blender 4.5.14 job [41685340310](https://github.com/slokpatel-cr
 
 Connected +9mm fixes original bridge contact and sampled source edge clearance but worsens actual original adjacent cloth-facing shell geometry. Reject promotion of **both** detached +9mm and attached +9mm. Original full six-panel garment still fails its ten hard physical preflight gates.
 
+## Verified first falloff native results
+
+Official pinned source Blender workflow [41686465535](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/41686465535) returned actual all-source body BVH evidence:
+
+| Source geometry trial | Six initial seam-adjacent body BVH pairs | Entire research source/body BVH pairs | Altered original faces | Original cut-edge samples below 7mm |
+|---|---:|---:|---:|---:|
+| Original control | 45 | 29,620 | 0 | 14/14 |
+| +9mm seam vertices only | 81 | 29,637 | 6 | 0/14 |
+| +9mm + first-ring 50% (7 neighbor vertices) | **10** | 29,649 | 14 | 0/14 |
+| +9mm + first-ring 66%, second-ring 33% (7+9 neighbors) | **0** | 29,681 | 24 | 0/14 |
+
+Across the altered original source regions, native Blender reported **zero reversed original-source face normals** for both falloff trials. The two experimental source connector faces have zero measured body contact after positive +9mm relocation.
+
+**Do not promote the two-ring candidate:** the immediate six-face area improved but total source/body intersections worsened (29,620→29,681). The contact count may have shifted into other faces of the expanded 24-face region. This requires a SAME-original-face-region comparison rather than a misleading adjacent-six-only success claim.
+
+### New same-face causal attribution gate
+
+The next native test uses **exactly the same 14 or 24 original source face IDs** for each variant's unchanged baseline, +9mm no-falloff trial, and ring-falloff trial. It counts actual original-body BVH face pairs and contacted source-face area for each matched region. It separately proves that no original source faces **outside** the modified region changed their collision counts, explicitly excluding the two movable experimental bridge faces from original trouser body statistics.
+
+No improvement is preclaimed; measure all counts and any worsening exactly. The two original cut-edge segments must retain their actual ≥7mm sampled separation; any complete production fit remains unverified.
+
 ## New bounded Blender geometry trial
 
 Branch `work/titan-3d-connected-source-falloff-20261103` is stacked on tested research #888 and retains original unmodified six garments, source CC0 body scan, canonical image and `linen-earth-studio-model-v1`.
@@ -37,6 +58,8 @@ Native workflow must **record any worsening or flipped face normals truthfully**
 - [x] Verified original source-connected +9mm failure and documented the real collision transfer
 - [x] Implemented two independent ring-distributed actual Blender source geometry variants
 - [x] Added native Blender provenance, face-normal and contact measurements plus dedicated fail-closed Node regression
+- [x] Verified first-ring and two-ring physical results; original six-face improvement does NOT prove source-shell improvement
+- [x] Added exact matched-region body contact attribution, excluding experimental connector triangles from original-source comparisons; new exact-head native CI pending
 - [ ] Obtain new exact-head native source measurements and compare each variant's actual original body BVH/area/normal flips
 - [ ] Obtain exact-head Full CI, Non-3D, native collision and source candidate checks; approve only research evidence
 - [ ] Production-approved 3D sewn and UV-correct garment, photographer comparison and physical tailoring fit remain blocked
