@@ -822,3 +822,34 @@ test("negated front and side pleats never become positive pleat instructions", (
     "Double Pleats Trouser", spec({}, { pleat: "single_pleat_forward" }).pant,
   ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
 });
+
+
+test("forward and reverse pleat intent must match the versioned tailoring direction", () => {
+  // Direction is source data on the already-canonical pant.pleat option.
+  // A photographic "Pleated Trouser" label alone does not convey direction.
+  const cases: ReadonlyArray<readonly [string, string, string[]]> = [
+    ["Single Reverse Pleat Trouser", "single_pleat_forward", ["candidate_trouser_pleat_mismatch"]],
+    ["Single Reverse Pleat Trouser", "single_pleat_reverse", []],
+    ["Single Forward Pleat Trouser", "single_pleat_forward", []],
+    ["Single Forward Pleat Trouser", "single_pleat_reverse", ["candidate_trouser_pleat_mismatch"]],
+    ["Double Reverse Pleats Trouser", "double_pleat_forward", ["candidate_trouser_pleat_mismatch"]],
+    ["Double Reverse Pleats Trouser", "double_pleat_reverse", []],
+    ["Double Forward Pleats Trouser", "double_pleat_forward", []],
+    ["Double Forward Pleats Trouser", "double_pleat_reverse", ["candidate_trouser_pleat_mismatch"]],
+    ["Forward and Reverse Pleats Trouser", "single_pleat_forward", ["candidate_trouser_pleat_mismatch"]],
+    ["Pleated Trouser", "single_pleat_forward", []],
+    ["Pleated Trouser", "single_pleat_reverse", []],
+    ["No Pleats Trouser", "flat_front", []],
+  ];
+  for (const [candidate, id, expected] of cases) {
+    const option = optionsFor("pant.pleat").find(item => item.id === id);
+    assert.ok(option, "pleat IDs must belong to the actual catalogue");
+    const versioned = spec({}, { pleat: id });
+    const before = JSON.stringify(versioned);
+    assert.deepEqual(
+      styleDirectorCandidateFrontConstructionIssues(candidate, versioned.pant).map(issue => issue.code),
+      expected, candidate + " with " + id,
+    );
+    assert.equal(JSON.stringify(versioned), before, "direction checks never change a locked design");
+  }
+});
