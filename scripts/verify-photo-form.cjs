@@ -44,6 +44,12 @@ async function run(){
     // rendering service or replacement model is involved.
     await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");
     await ready(page);
+    // The source untucked photograph has a curved shirttail, whereas the
+    // selected versioned shirt can request a straight hem. Never claim a photo
+    // reconstruction that did not happen; verify the warning in real Chromium.
+    const fidelity=page.locator('[data-photo-construction-mismatch="true"]');
+    await fidelity.waitFor();
+    assert.match(await fidelity.textContent(),/shirt hem/i);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`dark-untucked-${width}.png`)});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     summary.viewports.push({width,overflow:false,realCataloguePreview:true,tuckedAndUntuckedScreenshots:true});
