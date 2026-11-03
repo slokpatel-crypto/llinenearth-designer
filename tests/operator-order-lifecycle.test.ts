@@ -420,3 +420,17 @@ test("audit identity, operator, reason and physical evidence reject bidi spoofin
   assert.throws(()=>replayOrderLifecycle(id,revision,hash,tampered),/Invalid operator actor/);
   assert.equal(step(base(),"accept").status,"accepted");
 });
+
+
+test("audit text rejects invisible formatting in live events and replay",()=>{
+  for(const mark of ["\u200b","\u200c","\u200d","\u200e","\u200f","\u2060","\ufeff"]){
+    assert.throws(()=>createOrderLifecycle(id,revision+mark,hash),/Invalid locked revision ID/);
+    assert.throws(()=>step(base(),"accept",{actor:"operator"+mark+"-001"}),/Invalid operator actor/);
+    assert.throws(()=>step(base(),"accept",{evidenceRef:"receipt-"+mark+"00000001"}),/Invalid external evidence reference/);
+    assert.throws(()=>step(base(),"cancel",{reason:"Customer"+mark+" confirmed cancellation"}),/Invalid reason/);
+    const accepted=step(base(),"accept");
+    assert.throws(()=>replayOrderLifecycle(id,revision,hash,
+      accepted.audit.map(event=>({...event,actor:"operator"+mark+"-001"}))),/Invalid operator actor/);
+  }
+  assert.equal(step(base(),"accept").status,"accepted");
+});
