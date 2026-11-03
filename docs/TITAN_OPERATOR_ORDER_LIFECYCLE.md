@@ -104,3 +104,11 @@ The existing persisted production order contract in `src/lib/designer/production
 - Existing regression test `unknown QC and snapshot evidence claims are rejected during live approval and restore` covers forged QC fields, forged check keys and extra snapshot metadata; no tests were removed or weakened.
 - Source commit `c997c16b02d6cf8d9012c5ca0b71c0121207656c` is **not yet CI-verified**. The prior exact-head checks cannot validate this patch. Obtain Full CI and Non-3D QA for the new head and correct failures within this isolated scope.
 - Compared current main `fd2f29771a24ae888719d64504a0b1fb3595ffb1` against branch merge-base: no overlapping operator source/test/checkpoint paths. Branch remains isolated; 11 main commits behind. No production persistence, SQL, auth, stock, model, merge or deployment changes.
+
+
+## Incoming event field integrity — 2026-11-03
+
+- The live reducer now rejects unexpected top-level event fields instead of silently dropping fabricated operator, payment or QC claims. This complements the existing stored-audit allowlist and does not authenticate actors or receipts.
+- Added a focused negative regression test for three forged live-event claims and a valid acceptance control.
+- Source/test commit `51e5c38da518bb1613d8fdb9913fc2063f4a6273`. **Exact-head CI and Non-3D QA must be checked; no passing claim until verified.** Previous head `4f8a618c` passed both workflows.
+- Main `fd2f2977` was 11 commits ahead of branch merge base at inspection; operator paths were isolated. Next: verify exact-head workflows, coordinate SQL-state and authenticated transactional integration with central owner. Do not merge or deploy.
