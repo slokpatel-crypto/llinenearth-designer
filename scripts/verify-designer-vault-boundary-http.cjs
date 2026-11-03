@@ -1053,8 +1053,11 @@ async function main(){
       assert.equal(ninthVerify.status,429,"ninth verification must be denied before OTP provider");
       assert.equal(ninthVerify.headers.get("set-cookie"),null,
         "throttled verification must not set a customer session");
-      assert.deepEqual(seen.map(item=>item.path),
-        ["/rest/v1/rpc/customer_otp_rate_consume"]);
+      assert.match(ninthVerify.headers.get("cache-control")||"",/private.*no-store/);
+      assert.deepEqual(seen,[],
+        "local per-email verification denial must not reach distributed RPC or provider");
+      assert.equal(otpSubjects.get(verifySubject),8,
+        "rejected verification cannot consume a ninth distributed rate slot");
       for(const backendState of ["backend500","malformed"]){
         otpMode=backendState;seen.length=0;
         const response=await fetch(enforcedOrigin+"/api/customer-auth/verify",{
