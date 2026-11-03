@@ -120,3 +120,12 @@ The existing persisted production order contract in `src/lib/designer/production
 - Added regression cases for forged, null, undefined and valid live destination claims, including recovery. Preserved the existing `Tampered audit destination` diagnostic used by replay tests.
 - Prior branch head `10a7d1011006b45f1375faacd8fa9b0bca5d0496` passed CI #41598682561 and Non-3D QA #41598682398. **These checks predate this change**. The new exact head must pass both workflows before being called verified; no local tests were run in this connector session.
 - Compared against main `fd2f29771a24ae888719d64504a0b1fb3595ffb1`: only the three isolated operator files differ on this branch. Next: check new exact-head CI, coordinate SQL state mapping and authenticated transactional persistence with central integration. No merge, deployment, production data access or model changes.
+
+
+## Explicit optional-evidence presence gate — 2026-11-03
+
+- Prior exact head `5a06e09123a81df7419a470f77b98ea202f71018` passed CI #41605620195 and Non-3D QA #41605620218. Those results predate this patch.
+- Live and replayed ordinary events now reject explicitly present `reason: undefined` instead of silently omitting that unsupported claim. Non-QC events likewise reject `qc: undefined` or `qc: null` instead of discarding the evidence field. Legitimate QC approval validates its physical-evidence shape once, preserving the immutable canonical event.
+- Added focused regression tests for live/replayed explicit-undefined fields and valid QC approval. Source commit `903bb1b4`; test commit `771fb594`. **New exact-head CI and Non-3D QA not yet verified.** No local npm suite claimed.
+- Main `fd2f2977` diverges by 11 commits after the operator merge-base; comparison showed no overlap with operator source, test or checkpoint paths. This remains a draft proposal without authenticated transactional persistence or physical QC verification.
+- Next: confirm exact-head workflows; coordinate SQL status mapping, authenticated append-only persistence, verified physical receipts and integration review. No main merge, Vercel deployment, production data, stock or shared routes modified.
