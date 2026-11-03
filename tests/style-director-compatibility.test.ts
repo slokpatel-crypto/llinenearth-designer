@@ -519,7 +519,7 @@ test("ambiguous candidate descriptions force an explicit recommendation review",
     "Campus Office Shirt", "Bandwidth Print Shirt", "Sleevelet Shirt",
   ]) assert.deepEqual(styleDirectorCandidateWordingIssues(name), [], name);
   const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
-  assert.ok(agent.includes("...styleDirectorCandidateWordingIssues(candidate.garments.shirt)"),
+  assert.ok(agent.includes("...styleDirectorCandidateWordingIssues(candidate.garments.shirt, candidate.garments.trouser)"),
     "ambiguous names must affect final recommendation review status");
   assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'));
 });
@@ -582,4 +582,40 @@ test("photographic trouser selection and versioned trouser type must agree", () 
   const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
   assert.ok(agent.includes("styleDirectorPresentationIssues(best.style,styleSpec)"),
     "full Style Director recommendation must run trouser/photo parity");
+});
+
+test("conflicting flat-front and pleat candidate descriptions force explicit review", () => {
+  const candidates = [
+    "Flat-Front Pleated Trouser",
+    "Flat Front Single-Pleat Tailored Trouser",
+    "Flat-Front Double Pleats",
+  ];
+  for (const candidate of candidates) {
+    const first = styleDirectorCandidateWordingIssues("Spread-Collar Dress Shirt", candidate);
+    assert.deepEqual(first.map(issue => issue.code), ["ambiguous_candidate_trouser_front"], candidate);
+    assert.deepEqual(first,
+      styleDirectorCandidateWordingIssues("Spread-Collar Dress Shirt", candidate),
+      "candidate review must be deterministic");
+  }
+  for (const candidate of [
+    "Flat-Front Tailored Trouser", "Single-Pleat Tailored Trouser",
+    "Wide-Leg Pleated Trouser", "Flat Front Non-Pleated Trouser",
+    "Flat-front no pleats", "Flat-front without pleats", "Pleatless Flat Front",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Spread-Collar Dress Shirt", candidate), [],
+      candidate + " must not be considered contradictory");
+  }
+  const both = styleDirectorCandidateWordingIssues(
+    "Cuban Cutaway Short-Sleeve Full-Sleeve Shirt", "Flat-Front Pleated Trouser",
+  );
+  assert.deepEqual(both.map(issue => issue.code), [
+    "ambiguous_candidate_collar",
+    "ambiguous_candidate_sleeve",
+    "ambiguous_candidate_trouser_front",
+  ], "independent construction conflicts must accumulate without rewriting selected options");
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes(
+    "...styleDirectorCandidateWordingIssues(candidate.garments.shirt, candidate.garments.trouser)",
+  ), "shirt and trouser wording must both flow to the final recommendation review");
+  assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'));
 });
