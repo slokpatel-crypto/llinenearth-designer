@@ -3,6 +3,7 @@
 // Read-only Supabase migration-history preflight. Never connects to a database.
 const fs = require("node:fs");
 const path = require("node:path");
+const { createHash } = require("node:crypto");
 const root = path.resolve(__dirname, "..");
 const migrationDir = path.join(root, "supabase", "migrations");
 const baselinePath = path.join(root, "docs", "TITAN_SUPABASE_MIGRATION_BASELINE.json");
@@ -33,6 +34,20 @@ function inspectMigrations(paths) {
     .map(([version,files]) => ({ version, files })).sort((a,b) => a.version.localeCompare(b.version));
   return { total: ordered.length, distinctVersions: versions.size,
     invalidNames, nonstandardVersions, duplicates };
+}
+// Git's blob hash binds both exact SQL bytes and length; no remote DB reads.
+function gitBlobSha(data) {
+  const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
+  return createHash("sha1").update("blob " + buf.length + "\\0").update(buf).digest("hex");
+}
+function verifyHistoricalBlobs(baselinePaths, expected, readFile) {
+  const missingDigests = baselinePaths.filter(file =>
+    !Object.hasOwn(expected, file) || !/^[0-9a-f]{40}$/.test(expected[file])).sort();
+  const unexpectedDigests = Object.keys(expected).filter(file => !baselinePaths.includes(file)).sort();
+  const modifiedHistorical = baselinePaths.filter(file => !missingDigests.includes(file) &&
+    gitBlobSha(readFile(file)) !== expected[file]).sort();
+  return { ok: missingDigests.length === 0 && unexpectedDigests.length === 0 &&
+      modifiedHistorical.length === 0, missingDigests, unexpectedDigests, modifiedHistorical };
 }
 function checkAgainstBaseline(paths, baseline) {
   const current = new Set(paths);
@@ -77,18 +92,27 @@ function main(args = process.argv.slice(2)) {
   const override = inspectReserveOverride(files, file => fs.readFileSync(path.join(root,file), "utf8"));
   const result = { ...report, stockReserveV2FilenameOrder: override };
   if (opts.has("--enforce-new")) {
-    const baseline = JSON.parse(fs.readFileSync(baselinePath, "utf8")).migrationPaths;
+    const baselineData = JSON.parse(fs.readFileSync(baselinePath, "utf8"));
+    const baseline = baselineData.migrationPaths;
     if (!Array.isArray(baseline) || new Set(baseline).size !== baseline.length) {
       throw Error("Migration baseline must be an array with unique paths");
     }
+    if (baselineData.baseCommit !== "4dd8020abd83429449ff53ea5bb71b046394d86e"
+      || !baselineData.blobShaByPath || typeof baselineData.blobShaByPath !== "object"
+      || Array.isArray(baselineData.blobShaByPath)) {
+      throw Error("Migration baseline provenance or content digests are invalid");
+    }
     result.baseline = checkAgainstBaseline(files, baseline);
-    if (!result.baseline.ok) {
+    result.contents = verifyHistoricalBlobs(baseline, baselineData.blobShaByPath,
+      file => fs.readFileSync(path.join(root,file)));
+    if (!result.baseline.ok || !result.contents.ok) {
       console.error(JSON.stringify(result, null, 2));
-      console.error("BLOCKED: new or renamed migration introduces unsupported/duplicate versions, or removes historical paths.");
+      console.error("BLOCKED: new/renamed migration or unreviewed historical SQL content mutation detected.");
       return 1;
     }
-    console.log("PASS: no new ambiguous versions or historical-file changes; historical collisions remain NOT DEPLOY-SAFE.");
-    console.log(JSON.stringify({ baseline: result.baseline, historicalCollisionGroups: report.duplicates.length,
+    console.log("PASS: no new ambiguous versions, historical path removals, or historical SQL content edits; NOT DEPLOY-SAFE.");
+    console.log(JSON.stringify({ baseline: result.baseline, contents: result.contents,
+      historicalCollisionGroups: report.duplicates.length,
       historicalNonstandardFiles: report.nonstandardVersions.length }));
     return 0;
   }
@@ -105,4 +129,4 @@ function main(args = process.argv.slice(2)) {
 }
 if (require.main === module) process.exitCode = main();
 module.exports = { migrationVersion, collectMigrationPaths, inspectMigrations, checkAgainstBaseline,
-  inspectReserveOverride, main };
+  gitBlobSha, verifyHistoricalBlobs, inspectReserveOverride, main };
