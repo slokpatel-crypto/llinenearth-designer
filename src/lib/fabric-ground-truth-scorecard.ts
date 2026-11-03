@@ -124,7 +124,9 @@ export function scoreFabricGroundTruth(labels:FabricGroundTruthLabel[]){
     for(const label of latest){
       const original=label.original[field];
       const final=label.final[field];
-      if(final==="") continue;
+      // A missing initial or final classification is unknown, not a
+      // disagreement. Do not inflate a correction count from absent evidence.
+      if(original==="" || final==="") continue;
       total+=1;
       if(same(original,final)) matches+=1;
     }
@@ -135,15 +137,28 @@ export function scoreFabricGroundTruth(labels:FabricGroundTruthLabel[]){
       percent:total?Math.round(matches/total*1000)/10:null,
     };
   });
-  const exactLookMatches=latest.filter((label)=>FABRIC_GROUND_TRUTH_FIELDS.every((field)=>label.final[field]!=="" && same(label.original[field],label.final[field]))).length;
-  const corrected=latest.length-exactLookMatches;
+  const complete=latest.filter((label)=>FABRIC_GROUND_TRUTH_FIELDS.every((field)=>
+    label.original[field]!=="" && label.final[field]!==""));
+  const exactLookMatches=complete.filter((label)=>FABRIC_GROUND_TRUTH_FIELDS.every((field)=>
+    same(label.original[field],label.final[field]))).length;
+  // A partially labelled fabric is not automatically "corrected": only an
+  // actual, comparable field change is evidence of an operator correction.
+  const corrected=latest.filter((label)=>FABRIC_GROUND_TRUTH_FIELDS.some((field)=>
+    label.original[field]!=="" && label.final[field]!=="" &&
+    !same(label.original[field],label.final[field]))).length;
   const fieldMatches=perField.reduce((sum,row)=>sum+row.matches,0);
   const fieldTotal=perField.reduce((sum,row)=>sum+row.total,0);
   return {
     uniqueFabrics:latest.length,
+    completeFabrics:complete.length,
+    incompleteFabrics:latest.length-complete.length,
     correctedFabrics:corrected,
     exactProfileMatches:exactLookMatches,
-    exactProfilePercent:latest.length?Math.round(exactLookMatches/latest.length*1000)/10:null,
+    // The desk displays exact matches / unique fabrics. If any owner label
+    // is incomplete, hide the aggregate exact-match rate instead of assigning
+    // an invented failure or a mismatched denominator.
+    exactProfilePercent:complete.length===latest.length && complete.length>0
+      ? Math.round(exactLookMatches/complete.length*1000)/10 : null,
     fieldAgreementPercent:fieldTotal?Math.round(fieldMatches/fieldTotal*1000)/10:null,
     fieldMatches,
     fieldTotal,

@@ -133,8 +133,51 @@ test("incomplete final labels are not counted as exact profile matches",()=>{
   base.final.colorFamily="";
   const score=scoreFabricGroundTruth([base]);
   assert.equal(score.exactProfileMatches,0);
-  assert.equal(score.exactProfilePercent,0);
+  assert.equal(score.exactProfilePercent,null);
+  assert.equal(score.completeFabrics,0);
+  assert.equal(score.incompleteFabrics,1);
+  assert.equal(score.correctedFabrics,0);
   assert.equal(score.fieldTotal,8);
+});
+
+test("unknown analyzer field is not a false disagreement or correction",()=>{
+  const incomplete=label("partial");
+  incomplete.original.patternFamily="";
+  const result=scoreFabricGroundTruth([incomplete]);
+  assert.equal(result.uniqueFabrics,1);
+  assert.equal(result.completeFabrics,0);
+  assert.equal(result.exactProfileMatches,0);
+  assert.equal(result.exactProfilePercent,null);
+  assert.equal(result.correctedFabrics,0);
+  assert.equal(result.fieldTotal,8);
+  assert.equal(result.fieldMatches,8);
+  assert.equal(result.fieldAgreementPercent,100);
+});
+
+test("a real correction in a partial label is counted without faking exact-profile accuracy",()=>{
+  const incomplete=label("partial",{patternFamily:"check"});
+  incomplete.original.colorFamily="";
+  incomplete.final.colorFamily="";
+  const result=scoreFabricGroundTruth([incomplete]);
+  assert.equal(result.uniqueFabrics,1);
+  assert.equal(result.completeFabrics,0);
+  assert.equal(result.correctedFabrics,1);
+  assert.equal(result.exactProfilePercent,null);
+  assert.equal(result.fieldTotal,8);
+  assert.equal(result.fieldMatches,7);
+});
+
+test("a mixture of complete and partial labels cannot publish a misleading exact-profile rate",()=>{
+  const partial=label("partial");
+  partial.original.colorFamily="";
+  partial.final.colorFamily="";
+  const result=scoreFabricGroundTruth([label("complete"),partial]);
+  assert.equal(result.uniqueFabrics,2);
+  assert.equal(result.completeFabrics,1);
+  assert.equal(result.incompleteFabrics,1);
+  assert.equal(result.exactProfileMatches,1);
+  assert.equal(result.exactProfilePercent,null);
+  assert.equal(result.correctedFabrics,0);
 });
 
 test("explicit owner labels reject JSON arrays, objects and oversized field literals",()=>{

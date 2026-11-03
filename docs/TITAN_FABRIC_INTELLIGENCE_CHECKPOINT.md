@@ -59,3 +59,9 @@
 - Arrays/objects/booleans, oversized literal fields and malformed ordinal formality/statement values are rejected rather than coerced into apparently real labels; empty label states cannot populate the scorecard. Numeric 1–5 formality/statement entries remain compatible with older operator records.
 - Persisted label identifiers and metadata must be literal bounded text; no shortening of an oversized/forged identifier into a valid stock ID. Incomplete but genuine owner-labelled fields remain allowed and are excluded from their own per-field denominator.
 - New regression tests cover malformed persisted JSON and valid partial labels. No database schema changes or stock / visual changes.
+
+## 2026-11-03 — Partial independent-label denominators
+- Genuine owner labels with absent original or final classification values remain independently labelled records but must not be scored as disagreement, a correction, or an exact-profile failure.
+- Field-level accuracy counts only pairs of known original/final values; correctedFabrics counts actual known mismatches. Exact-profile accuracy is withheld (`null`) whenever any labelled case lacks a complete before/after nine-field comparison, preserving the operator desk's existing exact-matches / unique-fabrics denominator without a misleading percentage.
+- Pure scorecard now exposes completeFabrics and incompleteFabrics for future evidence audits (additive API shape). Regression tests cover missing initial values, partial genuine corrections, mixed complete/partial batches and unknown final values.
+- No UI, stock, model or database changes. Independent physical fabric evidence and approved owner-labelled benchmark remain outstanding.
