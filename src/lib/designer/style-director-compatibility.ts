@@ -187,12 +187,18 @@ export function styleDirectorPresentationIssues(
       explanation: "The photographic shirt-wear choice disagrees with the versioned construction; verify the intended tuck before proceeding.",
     });
   }
-  const legacyCollar = /\b(?:camp|cuban)(?:[- ]collar)?\b/i.test(style.collar) ? "cuban_camp_collar"
-    : /\b(?:band|mandarin)(?:[- ]collar)?\b/i.test(style.collar) ? "mandarin_band_collar"
-    : /\bcutaway(?:[- ]collar)?\b/i.test(style.collar) ? "cutaway_collar" : null;
+  // A photographic label naming multiple collar families is ambiguous. Do
+  // not let regex precedence silently assert parity with a locked collar ID.
+  const campLabel = /\b(?:camp|cuban)(?:[- ]collar)?\b/i.test(style.collar);
+  const bandLabel = /\b(?:band|mandarin)(?:[- ]collar)?\b/i.test(style.collar);
+  const cutawayLabel = /\bcutaway(?:[- ]collar)?\b/i.test(style.collar);
+  const namedFamilies = Number(campLabel) + Number(bandLabel) + Number(cutawayLabel);
+  const legacyCollar = namedFamilies !== 1 ? null
+    : campLabel ? "cuban_camp_collar"
+    : bandLabel ? "mandarin_band_collar" : "cutaway_collar";
   const versionedCollar = spec.shirt.collar;
-  if (legacyCollar !== versionedCollar &&
-      (legacyCollar !== null || ["cuban_camp_collar", "mandarin_band_collar", "cutaway_collar"].includes(versionedCollar))) {
+  if (namedFamilies > 1 || (legacyCollar !== versionedCollar &&
+      (legacyCollar !== null || ["cuban_camp_collar", "mandarin_band_collar", "cutaway_collar"].includes(versionedCollar)))) {
     issues.push({
       code: "legacy_collar_mismatch",
       explanation: "The photographic collar choice disagrees with the versioned camp/band collar; review both without changing the locked IDs.",
