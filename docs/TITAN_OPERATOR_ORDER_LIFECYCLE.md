@@ -196,3 +196,11 @@ The existing persisted production order contract in `src/lib/designer/production
 - Implementation commit `954af6c6`, regression commit `0f4ffb4d`. **Exact-head CI and independent Non-3D QA must complete before declaring this patch verified.** No local full-repository tests claimed.
 - This helper is **not** durable idempotency or concurrency safety. Production requires a centrally reviewed, authenticated database transaction with unique `(order_id, event_id)` constraints, atomic order-version compare-and-set, append-only events, physical evidence and actor verification, and explicit mapping to current SQL statuses. No schema, routes, auth, inventory, stock, measurement or UI files changed; no merge or Vercel deploy.
 
+
+
+## 2026-11-03 — exhaustive 156-combination transition matrix
+
+- Added an independent test oracle for **all 12 reachable lifecycle stages × 13 actions**. Every permitted transition must reach the expected destination, extend the immutable audit exactly once and replay successfully; every prohibited stage-action combination must throw without changing the input snapshot.
+- This explicitly covers QC pending/rework/approval, cancellation throughout pre-dispatch, hold/resume recovery, mandatory dispatch, and the delivered/cancelled terminal restrictions. Future unreviewed changes to stage or action vocabulary will also fail the exhaustive test.
+- Test-only commit `c9079074`. The latest previously verified head `cf1d76c` passed CI #41680636634 and Non-3D QA #41680636318; the subsequent idempotent source/test patch `9cdd2435` had matching-head workflows #41687257770 and #41687257457 still running at this checkpoint. **Neither prior green result can certify this latest test addition.** Obtain new matching-head workflows and repair failures.
+- No shared production files, database schema or routes were changed. The separate server-side transactional append-only persistence, deployed SQL-state mapping, real actor authentication, physical QC/delivery proof and cancellation/refund policy remain integration blockers. Keep draft; do not merge or deploy.
