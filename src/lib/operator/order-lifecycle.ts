@@ -132,6 +132,33 @@ function record(value: unknown): Record<string, unknown> {
   }
   return value as Record<string, unknown>;
 }
+/**
+ * Stored history is JSON data, not an arbitrary JavaScript array. Reject holes,
+ * custom properties, symbols, accessors and exotic prototypes before iterating:
+ * they would otherwise be dropped by serialization or evaluated during replay.
+ * The ordinary non-enumerable Array.length is the sole permitted exception.
+ */
+function auditArray(value: unknown): readonly unknown[] {
+  if (!Array.isArray(value) || value.length > 10000)
+    throw new Error("Invalid or oversized order audit.");
+  if (Object.getPrototypeOf(value) !== Array.prototype)
+    throw new Error("Invalid order audit array prototype.");
+  const entries = Reflect.ownKeys(value);
+  for (const key of entries) {
+    if (key === "length") continue;
+    if (typeof key !== "string" || !/^(0|[1-9]\\d*)$/.test(key) ||
+        Number(key) >= value.length) {
+      throw new Error("Invalid order audit array property.");
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.hasOwn(descriptor, "value") || !descriptor.enumerable)
+      throw new Error("Invalid order audit array property.");
+  }
+  if (entries.length !== value.length + 1)
+    throw new Error("Invalid or sparse order audit.");
+  return value;
+}
+
 function timestamp(value: unknown): number {
   const text = nonEmpty(value, "event timestamp", 20, 40);
   const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|([+-])(\d{2}):(\d{2}))$/.exec(text);
@@ -262,9 +289,9 @@ export function applyOrderLifecycleEvent(state: OrderLifecycleState, rawEvent: u
 /** Replays the entire event history, refusing mismatched audit destinations. */
 export function replayOrderLifecycle(orderId: string, revisionId: string, recipeHash: string,
   events: readonly unknown[]): OrderLifecycleState {
-  if (!Array.isArray(events) || events.length > 10000) throw new Error("Invalid or oversized order audit.");
+  const verifiedEvents = auditArray(events);
   let state = createOrderLifecycle(orderId, revisionId, recipeHash);
-  for (const raw of events) {
+  for (const raw of verifiedEvents) {
     const source = record(raw);
     rejectUnknownFields(source, APPLIED_EVENT_FIELDS, "stored audit");
     state = applyOrderLifecycleEvent(state, source);
