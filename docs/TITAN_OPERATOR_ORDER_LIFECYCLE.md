@@ -236,3 +236,9 @@ The existing persisted production order contract in `src/lib/designer/production
 - Regression tests cover empty and direct-cancellation histories (zero incompatibilities but **no** production write authorization), acceptance (one), recovery (two), and complete acceptance-to-delivery (seven incompatible transitions, with the one existing `cutting -> stitching` edge recognized). Tests also assert the ordered gap records and immutable outputs, and restored audited history produces the same review.
 - This is a planning diagnostic only. Existing SQL status vocabulary, database transactions, stock reserve, actor authentication and physical QC/delivery evidence remain untouched. No migration or production write. Shared architectural decisions must be approved by central integration before any attempt at persistence.
 - This checkpoint changes only the compatibility helper, its dedicated tests and this operator document. Exact-head Full CI and Non-3D QA must be checked after commit; no local full repository run is claimed.
+
+## 2026-11-03 — complete 64-pair deployed SQL graph regression
+
+- Independently pinned the complete existing eight-status `ORDER_TRANSITIONS` map in `tests/operator-order-lifecycle-legacy-sql.test.ts` (all statuses, every outgoing edge and both terminal-state empty sets), instead of sampling just `created`, `ready` and `delivered`.
+- Exhaustively checks `canTransitionOrder` on all **8 × 8 = 64** status pairs against the independent expected graph. A future deployed SQL-contract change now requires explicit compatibility review rather than silently changing the proposed operator integration assumptions.
+- This is a synthetic read-only regression contract, **not** approval to map new operator stages into deployed SQL or evidence of database atomicity, actor permissions, QC receipts or physical delivery. No shared production files touched. Verify exact-head Full CI and Non-3D QA after commit; no local full-repo tests claimed.

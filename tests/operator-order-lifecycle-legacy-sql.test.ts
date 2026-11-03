@@ -5,7 +5,7 @@ import {
   ORDER_QC_CHECKS, type OrderLifecycleState, type OrderLifecycleAction,
 } from "../src/lib/operator/order-lifecycle.ts";
 import { reviewOrderLifecycleLegacySqlCompatibility } from "../src/lib/operator/order-lifecycle-legacy-sql.ts";
-import { ORDER_TRANSITIONS } from "../src/lib/designer/production-state.ts";
+import { ORDER_TRANSITIONS, canTransitionOrder, type ProductionOrderStatus } from "../src/lib/designer/production-state.ts";
 
 const orderId="01234567-89ab-4cde-8f01-23456789abcd";
 const revision="rev-locked-00000001";
@@ -28,13 +28,28 @@ const qc=()=>({
   checks:Object.fromEntries(ORDER_QC_CHECKS.map(check=>[check,true])),
 });
 
-test("deployed SQL transition contract is narrower than the operator proposal",()=>{
-  assert.deepEqual(Object.keys(ORDER_TRANSITIONS),[
-    "created","cloth_reserved","cutting","stitching","fitting","ready","delivered","cancelled",
-  ]);
-  assert.deepEqual(ORDER_TRANSITIONS.created,["cloth_reserved","cancelled"]);
-  assert.deepEqual(ORDER_TRANSITIONS.ready,["delivered","cancelled"]);
-  assert.deepEqual(ORDER_TRANSITIONS.delivered,[]);
+test("deployed SQL order transition graph is pinned across every state pair",()=>{
+  // A literal independent oracle detects a changed production status/edge
+  // before any proposed lifecycle compatibility result is trusted.
+  const expected:Record<ProductionOrderStatus,readonly ProductionOrderStatus[]>={
+    created:["cloth_reserved","cancelled"],
+    cloth_reserved:["cutting","cancelled"],
+    cutting:["stitching","cancelled"],
+    stitching:["fitting","ready","cancelled"],
+    fitting:["stitching","ready","cancelled"],
+    ready:["delivered","cancelled"],
+    delivered:[],
+    cancelled:[],
+  };
+  assert.deepEqual(ORDER_TRANSITIONS,expected,"full legacy graph requires explicit integration review");
+  const statuses=Object.keys(expected) as ProductionOrderStatus[];
+  assert.equal(statuses.length,8);
+  for(const from of statuses){
+    for(const to of statuses){
+      assert.equal(canTransitionOrder(from,to),expected[from].includes(to),
+        `unexpected SQL production transition ${from} -> ${to}`);
+    }
+  }
 });
 
 test("read-only diagnostics fail closed even when labels happen to match legacy SQL",()=>{
