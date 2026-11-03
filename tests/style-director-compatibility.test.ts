@@ -923,3 +923,14 @@ test("front-facing and side-facing pleat negations do not request positive pleat
   assert.equal(styleDirectorCandidateTrouserFront("Flat-Front with front-facing pleats"), "ambiguous");
   assert.equal(styleDirectorCandidateTrouserFront("Trouser with side-facing pleats"), "pleated");
 });
+
+
+test("negating a specific pleat count does not invent positive pleats or a flat front", () => {
+  for (const label of ["No Double Pleats Trouser", "Without Single Pleats Trouser", "No Two Pleats Trouser"]) {
+    assert.equal(styleDirectorCandidateTrouserFront(label), null, label);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, { pleat: "flat_front" }), [], label);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Flat-Front Trouser without double pleats"), "flat_front");
+  assert.equal(styleDirectorCandidateTrouserFront("No double pleats, add a single pleat"), "pleated");
+  assert.equal(styleDirectorCandidateTrouserFront("No double pleats but two pleats"), "pleated");
+});
