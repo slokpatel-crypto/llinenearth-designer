@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { photoConstructionMismatches } from "@/lib/designer/photo-preview-fidelity";
+import { photoFabricCaptionSafeCrop } from "@/lib/designer/photo-fabric-caption-crop";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { applyRuntimeFabricScale, photoFabricPatternScale, visiblePatternScaleVerified, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
@@ -147,10 +148,15 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
   const plain = fabric.patternType === "Solid";
   const stripe = /stripe/i.test(fabric.patternType);
   if (plain || stripe) {
-    const sourceX = image.width * (plain ? .35 : .31);
-    const sourceY = image.height * (plain ? .22 : .16);
-    const sourceWidth = image.width * (plain ? .3 : .38);
-    const sourceHeight = image.height * (plain ? .22 : .27);
+    // Generated tiles are preferred, but local/offline fallback to a raw
+    // plain swatch must also avoid printed names near the photographed centre.
+    // Match the builder's upper-cloth crop rather than reverting to its
+    // previous centre-biased crop (22–44% of source height).
+    const plainCrop = plain ? photoFabricCaptionSafeCrop(image.width,image.height) : null;
+    const sourceX = plainCrop?.left ?? image.width * .31;
+    const sourceY = plainCrop?.top ?? image.height * .16;
+    const sourceWidth = plainCrop?.width ?? image.width * .38;
+    const sourceHeight = plainCrop?.height ?? image.height * .27;
     if(plain) {
       // Only visually plain cloth is mirrored to soften source-photo lighting
       // seams. Mirroring stripes would manufacture false stripe spacing.
