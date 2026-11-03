@@ -484,3 +484,17 @@ test("candidate photo selection skips ambiguous collar labels and preserves cano
     { legacy: null, versioned: "cuban_camp_collar" },
     "ambiguous photo choices must not masquerade as verified legacy options");
 });
+
+
+test("contradictory sleeve length descriptions do not select a half-sleeve construction", () => {
+  for (const label of [
+    "Short-Sleeve Long-Sleeve Shirt",
+    "Half Sleeve Full Sleeve Shirt",
+    "Long Sleeved Short Sleeved Resort Shirt",
+  ]) {
+    assert.equal(styleDirectorCandidateSleeve(label), null, label);
+  }
+  assert.deepEqual(styleDirectorCandidateSleeve("Short-Sleeve Resort Shirt"),
+    { sleeve: "half_sleeve", cuff: "open_short_hem_cuff" });
+  assert.equal(styleDirectorCandidateSleeve("Full-Sleeve Shirt"), null);
+});
