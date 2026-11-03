@@ -908,3 +908,18 @@ test("qualified negative pleat descriptions do not fabricate positive pleats", (
     ), [], label);
   }
 });
+
+
+test("front-facing and side-facing pleat negations do not request positive pleats", () => {
+  for (const label of [
+    "Flat-Front Trouser without front-facing pleats",
+    "Trouser with no side-facing pleats",
+    "Trouser without any visible front-facing pleats",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(label), "flat_front", label);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("", label), [], label);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, {pleat:"flat_front"}), [], label);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Flat-Front with front-facing pleats"), "ambiguous");
+  assert.equal(styleDirectorCandidateTrouserFront("Trouser with side-facing pleats"), "pleated");
+});
