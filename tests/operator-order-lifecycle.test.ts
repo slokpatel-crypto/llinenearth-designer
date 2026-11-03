@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {
   createOrderLifecycle, applyOrderLifecycleEvent, replayOrderLifecycle, restoreOrderLifecycleSnapshot,
   applyOrderLifecycleEventIdempotently,
-  ORDER_QC_CHECKS, type OrderLifecycleAction, type OrderLifecycleState,
+  ORDER_QC_CHECKS, ORDER_LIFECYCLE_ACTIONS, ORDER_LIFECYCLE_STAGES,
+  type OrderLifecycleAction, type OrderLifecycleStage, type OrderLifecycleState,
 } from "../src/lib/operator/order-lifecycle.ts";
 
 const id = "01234567-89ab-4cde-8f01-23456789abcd";
@@ -622,4 +623,68 @@ test("idempotent retries preserve QC, recovery and terminal-stage audit integrit
     JSON.parse(JSON.stringify(delivered)),delivered.audit.at(-1)),/Untrusted lifecycle snapshot/);
   assert.throws(()=>applyOrderLifecycleEventIdempotently(
     {...delivered},delivered.audit.at(-1)),/Untrusted lifecycle snapshot/);
+});
+
+
+test("all reachable lifecycle stages enforce the exhaustive action matrix",()=>{
+  // Independent contract oracle: new actions/stages must not silently gain
+  // permission to skip fitting, physical QC, dispatch or terminal constraints.
+  const states:Record<OrderLifecycleStage,OrderLifecycleState>={
+    created:base(),
+    accepted:progress("accept"),
+    cutting:progress("accept","start_cutting"),
+    stitching:progress("accept","start_cutting","start_stitching"),
+    finishing:progress("accept","start_cutting","start_stitching","start_finishing"),
+    qc_pending:toQc(),
+    qc_rework:step(toQc(),"reject_qc",{reason:"Defective seam must be restitched"}),
+    qc_approved:step(toQc(),"approve_qc",{qc:qc()}),
+    dispatched:step(step(toQc(),"approve_qc",{qc:qc()}),"dispatch"),
+    delivered:step(step(step(toQc(),"approve_qc",{qc:qc()}),"dispatch"),"deliver"),
+    cancelled:step(base(),"cancel",{reason:"Customer cancelled order"}),
+    recovery_pending:step(progress("accept"),"hold_for_recovery",{
+      reason:"Machine unavailable during order acceptance",
+    }),
+  };
+  const allowed:Record<OrderLifecycleStage,Partial<Record<OrderLifecycleAction,OrderLifecycleStage>>>={
+    created:{accept:"accepted",cancel:"cancelled"},
+    accepted:{start_cutting:"cutting",cancel:"cancelled",hold_for_recovery:"recovery_pending"},
+    cutting:{start_stitching:"stitching",cancel:"cancelled",hold_for_recovery:"recovery_pending"},
+    stitching:{start_finishing:"finishing",cancel:"cancelled",hold_for_recovery:"recovery_pending"},
+    finishing:{submit_qc:"qc_pending",cancel:"cancelled",hold_for_recovery:"recovery_pending"},
+    qc_pending:{reject_qc:"qc_rework",approve_qc:"qc_approved",cancel:"cancelled",
+      hold_for_recovery:"recovery_pending"},
+    qc_rework:{start_rework:"stitching",cancel:"cancelled",hold_for_recovery:"recovery_pending"},
+    qc_approved:{dispatch:"dispatched",cancel:"cancelled",hold_for_recovery:"recovery_pending"},
+    dispatched:{deliver:"delivered"},
+    delivered:{},
+    cancelled:{},
+    recovery_pending:{resume_recovery:"accepted",cancel:"cancelled"},
+  };
+  let permitted=0,denied=0;
+  for(const stage of ORDER_LIFECYCLE_STAGES){
+    const initial=states[stage];
+    assert.equal(initial.status,stage);
+    for(const action of ORDER_LIFECYCLE_ACTIONS){
+      const extra:Record<string,unknown>={};
+      if(["cancel","reject_qc","hold_for_recovery","resume_recovery"].includes(action))
+        extra.reason="Documented production exception";
+      if(action==="approve_qc")extra.qc=qc();
+      const destination=allowed[stage][action];
+      if(destination){
+        const next=step(initial,action,extra);
+        assert.equal(next.status,destination,`${stage} + ${action}`);
+        assert.equal(next.sequence,initial.sequence+1);
+        assert.equal(next.audit.at(-1)?.to,destination);
+        assert.equal(replayOrderLifecycle(id,revision,hash,next.audit).status,destination);
+        permitted++;
+      }else{
+        assert.throws(()=>step(initial,action,extra),/Illegal order transition/,
+          `Disallowed ${stage} + ${action} must fail closed`);
+        denied++;
+      }
+      assert.equal(states[stage],initial,"the test must not mutate its own state");
+    }
+  }
+  assert.equal(permitted+denied,ORDER_LIFECYCLE_STAGES.length*ORDER_LIFECYCLE_ACTIONS.length);
+  assert.ok(permitted>20&&denied>100);
 });
