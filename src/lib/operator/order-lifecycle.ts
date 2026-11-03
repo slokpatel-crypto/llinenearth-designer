@@ -349,6 +349,68 @@ export function applyOrderLifecycleEventIdempotently(
   return Object.freeze({ outcome: "applied", state: applyOrderLifecycleEvent(state, event) });
 }
 
+/**
+ * Pure optimistic-write boundary for a future authenticated transactional adapter.
+ * It captures both the locked garment identity and the last known event sequence.
+ * This is a precondition contract, never a database lock or durable CAS.
+ */
+export type OrderLifecycleVersionFence = Readonly<{
+  orderId: string;
+  revisionId: string;
+  recipeHash: string;
+  sequence: number;
+  lastEventId: string | null;
+}>;
+
+const VERSION_FENCE_FIELDS = new Set(["orderId", "revisionId", "recipeHash", "sequence", "lastEventId"]);
+
+export function orderLifecycleVersionFence(state: OrderLifecycleState): OrderLifecycleVersionFence {
+  if (!state || typeof state !== "object" || !TRUSTED_STATES.has(state))
+    throw new Error("Untrusted lifecycle snapshot; restore audited history before applying events.");
+  return Object.freeze({
+    orderId: state.orderId, revisionId: state.revisionId, recipeHash: state.recipeHash,
+    sequence: state.sequence, lastEventId: state.lastEventId,
+  });
+}
+
+/**
+ * An exact duplicate event can be acknowledged even if its original fence is
+ * old. A *new* event must carry the latest sequence and last-event pointer.
+ * A production server must perform this comparison and event append atomically
+ * against stored rows, with authorization and unique event IDs.
+ */
+export function applyOrderLifecycleEventWithVersionFence(
+  state: OrderLifecycleState, rawEvent: unknown, rawFence: unknown,
+): OrderLifecycleWriteResult {
+  if (!state || typeof state !== "object" || !TRUSTED_STATES.has(state))
+    throw new Error("Untrusted lifecycle snapshot; restore audited history before applying events.");
+  const fence = record(rawFence);
+  rejectUnknownFields(fence, VERSION_FENCE_FIELDS, "version fence");
+  if (Object.keys(fence).length !== VERSION_FENCE_FIELDS.size ||
+      !Number.isSafeInteger(fence.sequence) || (fence.sequence as number) < 0 ||
+      (fence.sequence as number) > 10000 ||
+      (fence.sequence === 0 && fence.lastEventId !== null) ||
+      (fence.sequence !== 0 &&
+        (typeof fence.lastEventId !== "string" || !IDENTIFIER.test(fence.lastEventId)))) {
+    throw new Error("Invalid order lifecycle version fence.");
+  }
+  if (fence.orderId !== state.orderId || fence.revisionId !== state.revisionId ||
+      fence.recipeHash !== state.recipeHash) {
+    throw new Error("Order version fence locked identity mismatch.");
+  }
+  const event = record(rawEvent);
+  rejectUnknownFields(event, APPLIED_EVENT_FIELDS, "order event");
+  const eventId = identifier(event.eventId, "event ID");
+  if (event.orderId !== state.orderId) throw new Error("Order identity mismatch.");
+  if (state.audit.some(previous => previous.eventId === eventId)) {
+    // The idempotent reducer proves every field matches the existing audit.
+    return applyOrderLifecycleEventIdempotently(state, event);
+  }
+  if (fence.sequence !== state.sequence || fence.lastEventId !== state.lastEventId)
+    throw new Error("Stale order lifecycle version fence.");
+  return applyOrderLifecycleEventIdempotently(state, event);
+}
+
 /** Replays the entire event history, refusing mismatched audit destinations. */
 export function replayOrderLifecycle(orderId: string, revisionId: string, recipeHash: string,
   events: readonly unknown[]): OrderLifecycleState {
