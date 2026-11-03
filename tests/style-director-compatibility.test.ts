@@ -619,3 +619,26 @@ test("conflicting flat-front and pleat candidate descriptions force explicit rev
   ), "shirt and trouser wording must both flow to the final recommendation review");
   assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'));
 });
+
+test("flat-front negated pleats with qualifiers do not create false construction conflicts", () => {
+  for (const candidate of [
+    "Flat-front without any pleats",
+    "Flat Front without visible pleats",
+    "Flat-front no visible pleats",
+    "Flat-front without pleats",
+  ]) {
+    const before = candidate;
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", candidate), [], candidate);
+    assert.equal(candidate, before, "wording review must not rewrite descriptions");
+  }
+  for (const candidate of [
+    "Flat-front without any pleats but add single pleat",
+    "Flat-front no visible pleats with double pleats",
+  ]) {
+    assert.deepEqual(
+      styleDirectorCandidateWordingIssues("Dress Shirt", candidate).map(issue => issue.code),
+      ["ambiguous_candidate_trouser_front"],
+      "an explicit positive pleat request must still require review",
+    );
+  }
+});
