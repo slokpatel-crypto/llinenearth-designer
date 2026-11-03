@@ -31,7 +31,7 @@ export function styleDirectorCandidateCollar(
   const band = !camp && /\b(?:band|mandarin)(?:[- ]collar)?\b/i.test(candidateShirt);
   const cutaway = !camp && !band && /\bcutaway(?:[- ]collar)?\b/i.test(candidateShirt);
   if (!camp && !band && !cutaway) return null;
-  const matcher = camp ? /camp|cuban/i : band ? /band|mandarin/i : /cutaway/i;
+  const matcher = camp ? /\b(?:camp|cuban)\b/i : band ? /\b(?:band|mandarin)\b/i : /\bcutaway\b/i;
   return {
     legacy: legacyChoices.find((label) => matcher.test(label)) ?? null,
     versioned: camp ? "cuban_camp_collar" : band ? "mandarin_band_collar" : "cutaway_collar",
