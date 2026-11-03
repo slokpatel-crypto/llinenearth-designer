@@ -789,3 +789,22 @@ test("explicit single and double pleat counts cannot silently mismatch the canon
     "...styleDirectorCandidateFrontConstructionIssues(candidate.garments.trouser, styleSpec.pant)"
   ), "real recommendations must carry pleat-count review through their production bridge");
 });
+
+test("negated front and side pleats never become positive pleat instructions", () => {
+  for (const label of [
+    "Flat-Front Trouser with no front pleats",
+    "Flat-Front Trouser without side pleats",
+    "Flat-Front Trouser with no visible pleats",
+    "Flat-Front Trouser without any pleats",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(label), "flat_front", label);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, spec({}, {
+      pleat: "flat_front",
+    }).pant), [], label);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", label), [], label);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Flat-Front Trouser with two pleats"), "ambiguous");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    "Double Pleats Trouser", spec({}, { pleat: "single_pleat_forward" }).pant,
+  ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
+});
