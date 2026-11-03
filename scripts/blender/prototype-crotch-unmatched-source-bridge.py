@@ -729,6 +729,8 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
         return {
             "object": obj,
             "mesh": mesh,
+            "actualBodyFacePairs": pairs,
+            "actualSourceFaceAreas": measured["areas"],
             "report": {
                 "triangleOrPolygonCount": len(mesh.polygons),
                 "originalSourceAdjacentFaceCount": len(affected_source_faces),
@@ -784,6 +786,52 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
             raise RuntimeError("Source falloff lost original connected seam face provenance.")
     if control["report"]["originalSourceAdjacentFaceCount"] != moved["report"]["originalSourceAdjacentFaceCount"]:
         raise RuntimeError("Original adjacent source regions no longer match.")
+    def measured_region(trial, face_ids):
+        contacted = {
+            source_id for _body_id, source_id in trial["actualBodyFacePairs"]
+            if source_id in face_ids
+        }
+        body_pairs = sum(
+            source_id in face_ids
+            for _body_id, source_id in trial["actualBodyFacePairs"]
+        )
+        area_mm2 = sum(trial["actualSourceFaceAreas"][i] for i in contacted) * 1e6
+        if not math.isfinite(area_mm2) or area_mm2 < 0:
+            raise RuntimeError("Original connected-region body-contact area not finite.")
+        return {
+            "bodyBVHPairs": body_pairs,
+            "contactedOriginalSourceAreaMm2": round(area_mm2, 4),
+            "contactedOriginalSourceFaceCount": len(contacted),
+        }
+
+    regional_attribution = {}
+    for label, variant in falloff_trials.items():
+        region = set(variant["report"]["alteredOriginalSourceFaceIndices"])
+        if not region or any(i >= len(base_faces) or i < 0 for i in region):
+            raise RuntimeError("Source falloff impacted original face IDs are not valid.")
+        baseline = measured_region(control, region)
+        nine = measured_region(moved, region)
+        falloff = measured_region(variant, region)
+        outside_control = control["report"]["wholeSourceBodyBVHPairs"] - baseline["bodyBVHPairs"]
+        outside_variant = variant["report"]["wholeSourceBodyBVHPairs"] - falloff["bodyBVHPairs"]
+        if outside_variant != outside_control:
+            raise RuntimeError("Changed body contacts outside actual modified original source faces.")
+        regional_attribution[label] = {
+            "sameOriginalSourceFaceIndices": sorted(region),
+            "sameFaceCount": len(region),
+            "unchangedControl": baseline,
+            "nineMmNoFalloff": nine,
+            "withRingFalloff": falloff,
+            "unmodifiedSourceBodyPairs": outside_control,
+            "outsideModifiedFacesPairCountsEqual": True,
+            "strictOriginalRegionPairReductionVersusNineMm": (
+                falloff["bodyBVHPairs"] < nine["bodyBVHPairs"]
+            ),
+            "strictOriginalRegionAreaReductionVersusNineMm": (
+                falloff["contactedOriginalSourceAreaMm2"]
+                < nine["contactedOriginalSourceAreaMm2"]
+            ),
+        }
     return {
         "researchOnly": True,
         "offsetMm": 9.0,
@@ -795,6 +843,7 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
         "falloffTrials": {
             label: trial["report"] for label, trial in falloff_trials.items()
         },
+        "falloffSameOriginalFaceRegionContactEvidence": regional_attribution,
         "originalSourceMeshRingVertexCounts": {
             str(ring): sum(d == ring for d in source_rings.values())
             for ring in (0, 1, 2)
