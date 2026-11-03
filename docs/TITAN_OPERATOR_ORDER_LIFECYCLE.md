@@ -170,3 +170,11 @@ The existing persisted production order contract in `src/lib/designer/production
 - Added focused negative tests for hidden live/replayed event claims, snapshot claims, QC metadata and check claims; retained a valid replay control.
 - Source commit `ea34634b`, test commit `00571284`. Exact-head CI and Non-3D QA are **pending**; no local full-repository test run or physical inspection is claimed.
 - Current main `4dd8020a` has no overlap with the three operator-owned paths, but is 12 commits ahead of the merge base. Keep this PR draft and coordinate SQL state mapping, authenticated append-only persistence and physical QC proof with central integration. No merge, deploy or production data modifications.
+
+## 2026-11-03 — exact-head CI failure and regression fixture repair
+
+- Inspected branch `b36051d280d48f01c0ac367a9653f2759393f9df`: CI run #41666496049 and Non-3D QA run #41666496085 both **FAILED**. CI quality passed, but `npm test` failed at `tests/operator-order-lifecycle.test.ts:495` (`Missing expected exception`); the Non-3D source/unit gate also failed. This is not a passing checkpoint.
+- Root cause: the live-event negative test spread a record with a non-enumerable `paymentApproved` property. JavaScript object spread intentionally drops non-enumerable fields, so the live input contained no hidden claim to reject. Fixed the test fixture to define the hidden field directly on the live event. The stored-audit, snapshot and QC negative cases remain unchanged; no production validation was weakened.
+- Test-only repair commit `3bbb2fc06a05c49bff39a7d6b377a9b207cd487d`. **Exact-head CI and Non-3D QA for the repair remain pending; no local test execution claimed.** If they fail, inspect exact-head logs before further changes.
+- Main `4dd8020abd83429449ff53ea5bb71b046394d86e` is 12 commits ahead of merge base; reverse comparison shows no operator-owned path overlap. Draft PR #869 stays unmerged and unreconciled. No shared stock/auth/SQL/model files, production data or Vercel deployment changed.
+- Next: confirm both exact-head workflows pass, then coordinate SQL-state mapping, authenticated transactional append-only persistence and independently verified physical QC evidence with central integration.
