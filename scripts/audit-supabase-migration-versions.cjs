@@ -4,6 +4,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { createHash } = require("node:crypto");
+const { spawnSync } = require("node:child_process");
 const root = path.resolve(__dirname, "..");
 const migrationDir = path.join(root, "supabase", "migrations");
 const baselinePath = path.join(root, "docs", "TITAN_SUPABASE_MIGRATION_BASELINE.json");
@@ -49,6 +50,29 @@ function verifyHistoricalBlobs(baselinePaths, expected, readFile) {
   return { ok: missingDigests.length === 0 && unexpectedDigests.length === 0 &&
       modifiedHistorical.length === 0, missingDigests, unexpectedDigests, modifiedHistorical };
 }
+function parsePinnedMigrationTree(output) {
+  const entries = new Map();
+  for (const line of output.split("\n")) {
+    if (!line.trim()) continue;
+    const match = /^100644 blob ([0-9a-f]{40})\t(supabase\/migrations\/[^\t]+\.sql)$/.exec(line);
+    if (!match) throw Error("Unexpected Git migration-tree entry: " + line);
+    if (entries.has(match[2])) throw Error("Duplicate Git tree path: " + match[2]);
+    entries.set(match[2], match[1]);
+  }
+  return entries;
+}
+function verifyBaselineFromGit(data, gitOutput) {
+  const expected = data.blobShaByPath;
+  const actual = parsePinnedMigrationTree(gitOutput);
+  const listed = [...data.migrationPaths].sort();
+  const actualPaths = [...actual.keys()].sort();
+  const mismatched = listed.filter(file => actual.get(file) !== expected[file]);
+  const absent = listed.filter(file => !actual.has(file));
+  const additional = actualPaths.filter(file => !listed.includes(file));
+  return { ok: listed.length === actualPaths.length && mismatched.length === 0 &&
+      absent.length === 0 && additional.length === 0,
+    mismatched, absent, additional, treeCount: actualPaths.length };
+}
 function checkAgainstBaseline(paths, baseline) {
   const current = new Set(paths);
   const previous = new Set(baseline);
@@ -79,11 +103,15 @@ function inspectReserveOverride(paths, readSql) {
 }
 function main(args = process.argv.slice(2)) {
   const opts = new Set(args);
-  if (args.some(arg => !["--report", "--enforce-new", "--strict"].includes(arg))) {
-    console.error("Usage: node scripts/audit-supabase-migration-versions.cjs [--report|--enforce-new|--strict]");
+  if (args.some(arg => !["--report", "--enforce-new", "--strict", "--verify-git-baseline"].includes(arg))) {
+    console.error("Usage: node scripts/audit-supabase-migration-versions.cjs [--report|--enforce-new|--strict] [--verify-git-baseline]");
     return 2;
   }
-  if ([...opts].filter(x => x !== "--report").length > 1) {
+  if (opts.has("--verify-git-baseline") && !opts.has("--enforce-new")) {
+    console.error("--verify-git-baseline requires --enforce-new");
+    return 2;
+  }
+  if ([...opts].filter(x => x !== "--report" && x !== "--verify-git-baseline").length > 1) {
     console.error("Use only one enforcement mode.");
     return 2;
   }
@@ -105,14 +133,23 @@ function main(args = process.argv.slice(2)) {
     result.baseline = checkAgainstBaseline(files, baseline);
     result.contents = verifyHistoricalBlobs(baseline, baselineData.blobShaByPath,
       file => fs.readFileSync(path.join(root,file)));
-    if (!result.baseline.ok || !result.contents.ok) {
+    if (opts.has("--verify-git-baseline")) {
+      const git = spawnSync("git", ["ls-tree", "-r", "--full-tree", baselineData.baseCommit,
+        "--", "supabase/migrations"], {cwd:root, encoding:"utf8"});
+      if (git.status !== 0) {
+        throw Error("Could not verify pinned original Git commit tree; fail closed: " + git.stderr);
+      }
+      result.gitProvenance = verifyBaselineFromGit(baselineData, git.stdout);
+    }
+    if (!result.baseline.ok || !result.contents.ok ||
+       (opts.has("--verify-git-baseline") && !result.gitProvenance.ok)) {
       console.error(JSON.stringify(result, null, 2));
       console.error("BLOCKED: new/renamed migration or unreviewed historical SQL content mutation detected.");
       return 1;
     }
     console.log("PASS: no new ambiguous versions, historical path removals, or historical SQL content edits; NOT DEPLOY-SAFE.");
     console.log(JSON.stringify({ baseline: result.baseline, contents: result.contents,
-      historicalCollisionGroups: report.duplicates.length,
+      gitProvenance: result.gitProvenance || null, historicalCollisionGroups: report.duplicates.length,
       historicalNonstandardFiles: report.nonstandardVersions.length }));
     return 0;
   }
@@ -129,4 +166,5 @@ function main(args = process.argv.slice(2)) {
 }
 if (require.main === module) process.exitCode = main();
 module.exports = { migrationVersion, collectMigrationPaths, inspectMigrations, checkAgainstBaseline,
-  gitBlobSha, verifyHistoricalBlobs, inspectReserveOverride, main };
+  gitBlobSha, verifyHistoricalBlobs, parsePinnedMigrationTree,
+  verifyBaselineFromGit, inspectReserveOverride, main };
