@@ -178,3 +178,11 @@ The existing persisted production order contract in `src/lib/designer/production
 - Test-only repair commit `3bbb2fc06a05c49bff39a7d6b377a9b207cd487d`. **Exact-head CI and Non-3D QA for the repair remain pending; no local test execution claimed.** If they fail, inspect exact-head logs before further changes.
 - Main `4dd8020abd83429449ff53ea5bb71b046394d86e` is 12 commits ahead of merge base; reverse comparison shows no operator-owned path overlap. Draft PR #869 stays unmerged and unreconciled. No shared stock/auth/SQL/model files, production data or Vercel deployment changed.
 - Next: confirm both exact-head workflows pass, then coordinate SQL-state mapping, authenticated transactional append-only persistence and independently verified physical QC evidence with central integration.
+
+
+## 2026-11-03 — audit array structural integrity
+
+- Stored lifecycle audit arrays now reject non-index metadata (including hidden and symbol fields), accessor index properties, sparse history, and inherited/exotic array prototypes before invoking any event getter. Previously, even strict per-event validation could silently ignore attached array-level approval claims or evaluate a hostile accessor during replay.
+- An ordinary JSON-parsed array and runtime-frozen reducer audit remain supported. Replay and snapshot restoration use the same validator; a synthetic regression covers valid/empty audits, metadata, symbols, getters, holes, prototypes and snapshot corruption.
+- Source commits `326c626f` and `80ee35ac`; test commit `adcc88c7`. Matching-head CI and Non-3D QA after the documentation checkpoint are required before asserting repo-wide green. No local full-repository run is claimed.
+- The open draft remains an isolated pure lifecycle proposal, **not** an authenticated transactional store. Production enablement remains blocked on coordinated SQL status mapping, idempotent persisted writes, verified operator identity and physical QC/delivery evidence, cancellation/refund policy and independent approval. Do not merge or deploy.
