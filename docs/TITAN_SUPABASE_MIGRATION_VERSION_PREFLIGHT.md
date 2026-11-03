@@ -11,7 +11,7 @@ At main `4dd8020abd83429449ff53ea5bb71b046394d86e`, 58 historical SQL migration 
 ## Commands and meaning
 
 - `node scripts/audit-supabase-migration-versions.cjs --report`: inventory duplicate versions and detect the last filename-ordered `fabric_stock_reserve_v2` definition. Report only; no database connection.
-- `node scripts/audit-supabase-migration-versions.cjs --enforce-new`: prevents *additional* ambiguous migration prefixes, newly added non-14-digit timestamps, and deletion/renaming of any historic path in `docs/TITAN_SUPABASE_MIGRATION_BASELINE.json`. **Passing means no newly introduced violations, NOT deployment readiness**.
+- `node scripts/audit-supabase-migration-versions.cjs --enforce-new`: prevents *additional* ambiguous migration prefixes, newly added non-14-digit timestamps, deletion/renaming of any historic path, **and modification of historic SQL bytes** (checked against its original Git blob SHA-1 at frozen main `4dd8020a`). The manifest in `docs/TITAN_SUPABASE_MIGRATION_BASELINE.json` records all 58 original paths and hashes. **Passing means no newly introduced violations, NOT deployment readiness**; altering the manifest itself must require independent security/release review.
 - `node scripts/audit-supabase-migration-versions.cjs --strict`: intentionally **fails** while any historical duplicate/nonstandard versions or last-definition strict identity loss remain. This is the future deployment-history gate, not a permitted bypass.
 - `node --test scripts/test-supabase-migration-versions.cjs`: exercises duplicate/overlap fixtures, known historical debt and strict red-before-green enforcement.
 
