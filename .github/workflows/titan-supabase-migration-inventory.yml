@@ -22,12 +22,14 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to prove the baseline against original immutable main commit
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Verify migration-version guard and expected strict release block
         run: node --test scripts/test-supabase-migration-versions.cjs
       - name: Reject new version collisions or historical migration renames
-        run: node scripts/audit-supabase-migration-versions.cjs --enforce-new
+        run: node scripts/audit-supabase-migration-versions.cjs --enforce-new --verify-git-baseline
       - name: Report historical blockers without applying migrations
         run: node scripts/audit-supabase-migration-versions.cjs --report
