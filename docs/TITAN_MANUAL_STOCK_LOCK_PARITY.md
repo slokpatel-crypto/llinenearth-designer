@@ -85,3 +85,11 @@
 - **Verification:** parent `0a2019a232cc85ce79e7e304c6b0a1b66ea6d1d6` Full CI `41668152404` and Non-3D `41668152463` both SUCCESS. These do **not** certify the new test SHA or this checkpoint SHA. New matching-head CI/Non-3D and actual HTTP execution remain PENDING until observed.
 - **Remaining blockers:** external legacy RPC clients, staged migration/rollback approval, real supplier inventory, authenticated operator/customer acceptance, tailor, Blender, physical devices, five testers, ten deliveries and owner approval. Do not merge stacked draft into main or deploy.
 - **Next slice:** verify exact-head CI and built-Next synthetic HTTP suite; if green, inspect live main ancestry and isolate dependency-complete intake only with the no-deploy guard.
+
+## CI regex syntax correction — 2026-11-03
+
+- **Parent:** `14d8043acc2e5f3a663900d4cef4d816d08a1aaa`; **fix commit:** `67cf712398da36ccf87442fee1a8f4098baca2bd`.
+- **Observed exact-head evidence at parent:** Full CI run `41678750579` **FAILURE** in build job `126067030536` at `node scripts/verify-operator-stock-private-http.cjs`: JavaScript `SyntaxError: Invalid regular expression: Unterminated group`. The newly added allowlist regex used doubled backslashes in JavaScript regex literals. Disposable PostgreSQL job passed. Non-3D QA `41678750486` **SUCCESS** at the same parent SHA.
+- **Correction:** normalize escapes in the two `stockRoute.matchAll` regex literals to recognize literal `.rpc`, optional generic type, whitespace and opening parenthesis. The allowlist assertions are preserved. This is a source fix, not proof of passing built-Next HTTP verification.
+- **Affected criteria:** T5/J5 operator RPC allowlist and T6/J6 CI regression. **Matching-head Full CI, Non-3D and built-Next synthetic HTTP at fix SHA remain PENDING** until GitHub results are observed. No main merge, deployment, live migration or stock mutation.
+- **Next slice:** check exact-head workflow results for the checkpoint commit; if failing, inspect logs and fix. If green, reconcile current main and isolated dependency-complete intake. External clients, real inventory, staging, customer/operator acceptance, tailor, native Blender, devices, five testers, ten deliveries and owner signoff remain BLOCKED/PENDING.
