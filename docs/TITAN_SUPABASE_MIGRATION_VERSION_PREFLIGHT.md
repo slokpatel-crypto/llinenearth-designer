@@ -22,6 +22,31 @@ The inventory now **fails closed** if the migration directory contains a symboli
 
 The `TITAN Supabase Migration Version Inventory` GitHub Actions workflow runs only file-system reads and Node tests. It labels its passing job **legacy baseline, NOT deploy ready**. Do not remove legacy files or rename already-applied versions without comparing staging/remote migration history and a signed-off forward-only version map.
 
+## Read-only staging migration-history reconciliation
+
+A separate offline tool, \`scripts/reconcile-supabase-migration-history.cjs\`, can compare a **version-only export** from an explicitly approved **staging** project with the local migration tree. The tool never accesses Supabase, reads credentials, issues SQL, repairs migration history, or deploys anything. It is deliberately not an automatic live-project inspection.
+
+Once a reviewer authorizes a safe staging read, obtain the applied \`version\` values from \`supabase_migrations.schema_migrations\` through an approved **read-only** console/role (not from customer/application tables). Do not run the query against production without specific approval. Locally write a temporary JSON file **outside this repo** with precisely these three fields:
+
+\`\`\`json
+{
+  "environment": "staging",
+  "readOnly": true,
+  "appliedVersions": ["20260920", "20260929"]
+}
+\`\`\`
+
+Those example versions are **illustrative only** and not a claim about any database. Include the full staging version list rather than substituting the example. Do not include project IDs, URLs, tokens, credentials or customer records. Run:
+
+\`\`\`bash
+node scripts/reconcile-supabase-migration-history.cjs --snapshot /secure/local/path/approved-staging-versions.json
+\`\`\`
+
+A report marked \`BLOCKED\` lists duplicate local versions, nonstandard prefixes, duplicate/unknown applied versions, and local migration paths not found in the staging version list. Such discrepancies must not be auto-repaired or hidden. A \`STRUCTURALLY_CONSISTENT_REQUIRES_INDEPENDENT_REVIEW\` report **still does not authorize a migration**: it has not checked actual remote function definitions, migration SQL ordering, data invariants, drift, rollback readiness or external callers. Remove the temporary staging version export securely according to the organization's retention practices; do not commit it.
+
+The automated workflow uses only **synthetic snapshots** and confirms that existing duplicate-version history remains blocked even when a staging snapshot looks superficially plausible.
+
+
 ## Owner-approved migration-path remediation (still pending)
 
 1. Read the actual approved staging migration history without mutating it (`supabase migration list --remote`, authenticated in a safe environment), and record the deployment mechanism and versions already applied.
