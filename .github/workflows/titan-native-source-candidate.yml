@@ -19,6 +19,7 @@ on:
       - "scripts/blender/source-crotch-seam-winding.py"
       - "scripts/blender/source-crotch-bridge-flat-charts.py"
       - "scripts/blender/source-trouser-provisional-uv.py"
+      - "scripts/blender/source-trouser-quad-metric-uv.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -30,6 +31,7 @@ on:
       - "tests/crotch-seam-winding-uv-native.test.ts"
       - "tests/crotch-bridge-flat-charts-native.test.ts"
       - "tests/crotch-trouser-provisional-uv-native.test.ts"
+      - "tests/crotch-trouser-quad-metric-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -44,6 +46,7 @@ on:
       - "tests/python/test_source_crotch_seam_winding.py"
       - "tests/python/test_source_crotch_bridge_flat_charts.py"
       - "tests/python/test_source_trouser_provisional_uv.py"
+      - "tests/python/test_source_trouser_quad_metric_uv.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -63,6 +66,7 @@ on:
       - "scripts/blender/source-crotch-seam-winding.py"
       - "scripts/blender/source-crotch-bridge-flat-charts.py"
       - "scripts/blender/source-trouser-provisional-uv.py"
+      - "scripts/blender/source-trouser-quad-metric-uv.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -74,6 +78,7 @@ on:
       - "tests/crotch-seam-winding-uv-native.test.ts"
       - "tests/crotch-bridge-flat-charts-native.test.ts"
       - "tests/crotch-trouser-provisional-uv-native.test.ts"
+      - "tests/crotch-trouser-quad-metric-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -103,6 +108,7 @@ jobs:
           python3 tests/python/test_source_crotch_seam_winding.py
           python3 tests/python/test_source_crotch_bridge_flat_charts.py
           python3 tests/python/test_source_trouser_provisional_uv.py
+          python3 tests/python/test_source_trouser_quad_metric_uv.py
       - name: Fetch checksum-verified Blender 4.5.14
         shell: bash
         run: |
@@ -1095,6 +1101,47 @@ jobs:
               assert source_uv["productionApproved"] is False
               assert source_uv["originalSourceUVFromGarmentProduction"] is False
               assert source_uv["originalSourceStageUVProvenance"] == uv_stages
+              quads=oriented["researchOnlyUnstitchedOriginalQuadMetricUvSurvey"]
+              assert quads["researchOnly"] is True
+              assert quads["actualOriginalSourceQuadCount"] == 2650
+              assert quads["originalSourceVertexCount"] == source_uv["actualOriginalSourceVertexCount"]
+              assert quads["actualOriginalSourceUvLoopCount"] == 10600
+              assert quads["nativeUvLoopsAssigned"] == 10600
+              assert quads["nativeResearchUvLayerName"] == "TITAN_RESEARCH_UNSTITCHED_METRIC_QUAD_ISLANDS"
+              assert quads["originalBodyBVHPairsStillUnchanged"] == (
+                  source_uv["originalSourceScannedBodyBVHPairsUnchanged"]
+              )
+              assert quads["originalSourceUvProvenance"] == uv_stages
+              assert quads["originalSourceCutEdgeCount"] == 8
+              assert quads["sourceOpenBoundaryEdgeCount"] == 132
+              assert quads["sharedOriginalSourceEdgeCount"] == source_uv["sharedOriginalSourceEdgeCount"]
+              assert quads["unstitchedUvIslandCount"] == 2650
+              assert quads["quadResearchDisplayGridColumns"] == 53
+              assert quads["displayIslandGapMm"] == 5
+              assert quads["provisionalUvContinuousSharedEdges"] + (
+                  quads["provisionalUvDiscontinuousSharedEdges"]
+              ) == quads["sharedOriginalSourceEdgeCount"]
+              assert 0 <= quads["provisionalUvDiscontinuousSharedEdges"] <= (
+                  quads["sharedOriginalSourceEdgeCount"]
+              )
+              assert math.isfinite(quads["maximumUnstitchedUvGapMm"])
+              assert quads["maximumUnstitchedUvGapMm"] >= 0
+              assert 0 <= quads["maximumActualQuadTriangleEdgeErrorMm"] <= 0.001
+              assert quads["trueOriginalSourceQuadTriangleAreaMm2"] > 0
+              assert math.isfinite(quads["trueOriginalSourceQuadTriangleAreaMm2"])
+              assert math.isfinite(quads["flattenedUnstitchedQuadTriangleAreaMm2"])
+              assert abs(
+                  quads["trueOriginalSourceQuadTriangleAreaMm2"] -
+                  quads["flattenedUnstitchedQuadTriangleAreaMm2"]
+              ) <= max(0.1,quads["trueOriginalSourceQuadTriangleAreaMm2"]*1e-5)
+              assert quads["physicalSeamAllowanceVerified"] is False
+              assert quads["flatChartsHaveConnectedGarmentUV"] is False
+              assert quads["realSourceToBridgeUVJoined"] is False
+              assert quads["physicalTextileGrainVerified"] is False
+              assert quads["supplierFabricRepeatMm"] is None
+              assert quads["sourceUVFromProduction"] is False
+              assert quads["productionApproved"] is False
+              assert "DIFFERENT UV island" in quads["metricCaveat"]
               assert source_uv["displayProjection"].endswith("not garment unwrap")
               assert "does not establish" in flat["metricCaveat"]
               assert "never sufficient" in oriented["metricCaveat"]
@@ -1531,6 +1578,15 @@ jobs:
               "radial18TriangleContactedAreaMm2":radial["contactingBridgeAreaMm2"],
               "radialDisplacementMm":shifts,
               "originalCutSegmentBodyContacts":original["actualBodyContactByOriginalCutEdgePair"],
+              "unstitchedOriginalSourceQuadMetricUvEvidence": {
+                  "originalQuads":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyUnstitchedOriginalQuadMetricUvSurvey"]["actualOriginalSourceQuadCount"],
+                  "actualUvLoops":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyUnstitchedOriginalQuadMetricUvSurvey"]["nativeUvLoopsAssigned"],
+                  "standaloneResearchIslands":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyUnstitchedOriginalQuadMetricUvSurvey"]["unstitchedUvIslandCount"],
+                  "unstitchedSharedSeams":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyUnstitchedOriginalQuadMetricUvSurvey"]["provisionalUvDiscontinuousSharedEdges"],
+                  "maxMetricTriangleEdgeErrorMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyUnstitchedOriginalQuadMetricUvSurvey"]["maximumActualQuadTriangleEdgeErrorMm"],
+                  "sewnOrTextureScaleApproved":False,
+                  "productionApproved":False,
+              },
               "provisionalActualSourceTrouserUvEvidence": {
                   "uvLayerName":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourcePanelUvSurvey"]["nativeResearchUvLayerName"],
                   "trueOriginalSourceFaces":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourcePanelUvSurvey"]["actualOriginalSourceFaceCount"],
