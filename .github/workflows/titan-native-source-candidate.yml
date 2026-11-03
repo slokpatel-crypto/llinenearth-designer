@@ -941,6 +941,13 @@ jobs:
           source_rows=[row for row in fixed["boundaryEdges"] if row["edgeKind"] == "originalSourceCutEdge"]
           connector_rows=[row for row in fixed["boundaryEdges"] if row["edgeKind"] == "experimentalConnector"]
           assert len(source_rows) == len(connector_rows) == 2
+          assert fixed["perBoundaryEdgeNearestBodySampleCount"] == 7
+          assert fixed["originalSourceEdgeSamplesUnderResearchSevenMm"] == sum(
+              row["sampledInteriorPointsUnderResearchSevenMm"] for row in source_rows
+          )
+          assert fixed["sourceFixedBoundaryFailsSampledResearchSevenMm"] is (
+              fixed["originalSourceEdgeSamplesUnderResearchSevenMm"] > 0
+          )
           expected_cut_edges={tuple(sorted(pair)) for pair in (
               targeted["targetOriginalCutEdgePair"]["leftEdge"],
               targeted["targetOriginalCutEdgePair"]["rightEdge"],
@@ -949,6 +956,18 @@ jobs:
           for row in fixed["boundaryEdges"]:
               assert len(set(row["boundaryVertexIndices"])) == 2
               assert math.isfinite(row["edgeLengthMm"]) and row["edgeLengthMm"] > 0
+              samples=row["sampledNearestBodyDistances"]
+              assert len(samples) == fixed["perBoundaryEdgeNearestBodySampleCount"]
+              assert [v["edgeFraction"] for v in samples] == [
+                  0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875
+              ]
+              measured=[v["nearestBodyDistanceMm"] for v in samples]
+              assert all(math.isfinite(d) and d >= 0 for d in measured)
+              assert all(type(v["nearestBodyPolygonIndex"]) is int and
+                         v["nearestBodyPolygonIndex"] >= 0 for v in samples)
+              assert row["sampledMinimumBodyDistanceMm"] == min(measured)
+              assert row["sampledMaximumBodyDistanceMm"] == max(measured)
+              assert row["sampledInteriorPointsUnderResearchSevenMm"] == sum(d < 7 for d in measured)
               assert type(row["strictInteriorRayHit"]) is bool
               if row["strictInteriorRayHit"]:
                   assert type(row["bodyPolygonIndex"]) is int and row["bodyPolygonIndex"] >= 0
@@ -968,6 +987,7 @@ jobs:
           )
           assert fixed["productionApproved"] is False
           assert "zero rays does not prove clearance" in fixed["rayTestCaveat"]
+          assert "do not certify continuous boundary clearance" in fixed["rayTestCaveat"]
           assert len(targeted["targetSourceBoundaryVertices"]) == 4
           assert len(set(targeted["targetSourceBoundaryVertices"])) == 4
           assert targeted["targetOriginalCutEdgePair"]["originalBodyBVHPairs"] == 17
