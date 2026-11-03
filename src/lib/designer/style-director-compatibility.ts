@@ -77,7 +77,7 @@ export function styleDirectorCandidateTrouserFront(
 ): "flat_front" | "pleated" | "ambiguous" | null {
   const flatFront = /\bflat[- ]?front\b/i.test(candidateTrouser);
   const positivePleat = /\bpleat(?:ed|s)?\b/i.test(
-    candidateTrouser.replace(/\b(?:non[- ]?pleated|no\s+(?:visible\s+)?pleats?|without\s+(?:any\s+|visible\s+)?pleats?)\b/gi, ""),
+    candidateTrouser.replace(/\b(?:non[- ]?pleated|no\s+(?:(?:visible|front|side)\s+)?pleats?|without\s+(?:(?:any|visible|front|side)\s+)?pleats?)\b/gi, ""),
   );
   if (flatFront && positivePleat) return "ambiguous";
   if (positivePleat) return "pleated";
@@ -143,7 +143,7 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // Read count from the canonical option's construction parameters instead
   // of inferring it from the potentially stale photographed trouser label.
   const positiveWording = candidateTrouser.replace(
-    /\b(?:non[- ]?pleated|no\s+(?:visible\s+)?pleats?|without\s+(?:any\s+|visible\s+)?pleats?)\b/gi, "",
+    /\b(?:non[- ]?pleated|no\s+(?:(?:visible|front|side)\s+)?pleats?|without\s+(?:(?:any|visible|front|side)\s+)?pleats?)\b/gi, "",
   );
   const requestsDouble = /\b(?:double|two|2)[ -]?pleats?\b/i.test(positiveWording);
   const requestsSingle = /\b(?:single|one|1)[ -]?pleats?\b/i.test(positiveWording);
