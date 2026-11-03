@@ -71,3 +71,12 @@ The existing persisted production order contract in `src/lib/designer/production
 - Previous exact head `29c77456190f6c239bdbb688b8cfcdb9c719efbf` passed Full CI #41554636606 and Non-3D QA #41554636801. **These checks predate this patch.** Obtain new matching-head results before calling this change CI-verified.
 - Main `05c180c215929df6f487a1d3a758cce7df75fa58` and active PR patches #863/#862/#874/#868/#861/#871 were inspected; none touched these three operator files. Branch remains draft and not reconciled with main. No deployment, SQL or production data modifications.
 - **Next:** verify exact-head CI and Non-3D QA, then coordinate the SQL status mapping and authenticated append-only transactional persistence with central integration. Real QC and courier receipts remain unverified.
+
+## 2026-11-03 02:45 UTC — timestamp precision hardening
+
+- New code head `2cb99efe43389ddc0d44daa10cdf15112d1effef` (two sequential commits: `f0c27817` and `2cb99efe`).
+- Audit event timestamps now require ISO-8601 fractional seconds to be at most three digits. JavaScript Date.parse silently truncates extra precision, so accepting a purportedly more precise timestamp can misrepresent chronology and allow indistinguishable instants in persisted audit data. The validator and its parsing expression use the same bound.
+- Added negative cases for four/six fractional digits, valid one/three digit cases and snapshot replay rejection of extra precision. No production order state or physical QC facts were changed.
+- Previous exact head `e8bc0f63`: Full CI #41561895184 SUCCESS; Non-3D QA #41561895185 SUCCESS. **New head CI not yet established at checkpoint; do not inherit prior green status.** No local full-repository verification claimed.
+- Latest main observed via AGENTS.md `006e0bb3f8864fda6e1de6649d7a063113be9403`; comparison main-vs-operator showed stock/catalogue/3D/workflow changes only, no overlapping operator lifecycle source/tests. The draft remains isolated and not reconciled to main.
+- Next: verify exact-head CI, inspect and repair failures, check concurrent PR overlaps, then reconcile latest main only after independent review. Authenticated SQL transaction and physical QC evidence remain blockers. No merge, Vercel deploy or production data changes.
