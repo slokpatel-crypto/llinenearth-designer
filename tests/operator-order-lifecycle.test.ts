@@ -786,3 +786,53 @@ test("version-fenced terminal delivery refuses later transitions and stale fresh
     delivered.state,illegal,orderLifecycleVersionFence(delivered.state)),
     /Illegal order transition/);
 });
+
+
+test("retry version fence must identify the original audit predecessor",()=>{
+  const created=base();
+  const createdFence=orderLifecycleVersionFence(created);
+  const accepted=step(created,"accept");
+  const acceptedFence=orderLifecycleVersionFence(accepted);
+  const cutting=step(accepted,"start_cutting");
+  const cuttingFence=orderLifecycleVersionFence(cutting);
+  const stitching=step(cutting,"start_stitching");
+
+  // Exact retry body plus its original predecessor fence is safe even after
+  // other stages have advanced.
+  const acceptedAgain=applyOrderLifecycleEventWithVersionFence(
+    stitching,accepted.audit[0],createdFence);
+  assert.equal(acceptedAgain.outcome,"already_applied");
+  assert.equal(acceptedAgain.state,stitching);
+
+  const cuttingAgain=applyOrderLifecycleEventWithVersionFence(
+    stitching,cutting.audit[1],acceptedFence);
+  assert.equal(cuttingAgain.outcome,"already_applied");
+  assert.equal(cuttingAgain.state,stitching);
+
+  // A matching body must not be acknowledged using an arbitrary, later,
+  // inconsistent or unrelated fence from the same locked order.
+  const invalidFences=[
+    acceptedFence,
+    cuttingFence,
+    orderLifecycleVersionFence(stitching),
+    {...acceptedFence,lastEventId:"event-99999999"},
+    {...acceptedFence,sequence:3},
+  ];
+  for(const fence of invalidFences){
+    assert.throws(()=>applyOrderLifecycleEventWithVersionFence(
+      stitching,accepted.audit[0],fence),/retry version fence/);
+  }
+
+  // This includes terminal orders: no invented fence should cause an old
+  // dispatch receipt to be acknowledged as a new write.
+  const approved=step(toQc(),"approve_qc",{qc:qc()});
+  const approvalFence=orderLifecycleVersionFence(approved);
+  const dispatched=step(approved,"dispatch");
+  const delivered=step(dispatched,"deliver");
+  assert.equal(applyOrderLifecycleEventWithVersionFence(
+    delivered,dispatched.audit.at(-1),approvalFence).outcome,"already_applied");
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(
+    delivered,dispatched.audit.at(-1),orderLifecycleVersionFence(delivered)),
+    /retry version fence/);
+  assert.equal(delivered.audit.length,8);
+});
