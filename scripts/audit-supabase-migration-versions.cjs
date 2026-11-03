@@ -38,7 +38,7 @@ function inspectMigrations(paths) {
 // Git's blob hash binds both exact SQL bytes and length; no remote DB reads.
 function gitBlobSha(data) {
   const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
-  return createHash("sha1").update("blob " + buf.length + "\\0").update(buf).digest("hex");
+  return createHash("sha1").update("blob " + buf.length + "\0").update(buf).digest("hex");
 }
 function verifyHistoricalBlobs(baselinePaths, expected, readFile) {
   const missingDigests = baselinePaths.filter(file =>
