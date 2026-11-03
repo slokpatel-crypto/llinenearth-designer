@@ -393,3 +393,18 @@ test("live event destination claims must match the computed transition",()=>{
     reason:"Machine is available again",to:"qc_approved",
   }),/Claimed order destination/);
 });
+
+
+test("explicit undefined reason and QC claims are not silently discarded",()=>{
+  for (const action of ["accept"] as const) {
+    assert.throws(()=>step(base(),action,{reason:undefined}),/Unexpected reason/);
+    assert.throws(()=>step(base(),action,{qc:undefined}),/QC approval evidence/);
+    assert.throws(()=>step(base(),action,{qc:null}),/QC approval evidence/);
+  }
+  const accepted=step(base(),"accept");
+  const audit=accepted.audit.map(e=>({...e,reason:undefined}));
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,audit),/Unexpected reason/);
+  const qcAudit=accepted.audit.map(e=>({...e,qc:undefined}));
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,qcAudit),/QC approval evidence/);
+  assert.equal(step(toQc(),"approve_qc",{qc:qc()}).status,"qc_approved");
+});
