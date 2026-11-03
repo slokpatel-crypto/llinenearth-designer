@@ -102,7 +102,7 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
   // descriptions, not competing construction requests.
   const flatFront = /\bflat[- ]?front\b/i.test(candidateTrouser);
   const positivePleat = /\bpleat(?:ed|s)?\b/i.test(
-    candidateTrouser.replace(/\b(?:non[- ]?pleated|no\s+pleats?|without\s+pleats?)\b/gi, ""),
+    candidateTrouser.replace(/\b(?:non[- ]?pleated|no\s+(?:visible\s+)?pleats?|without\s+(?:any\s+|visible\s+)?pleats?)\b/gi, ""),
   );
   if (flatFront && positivePleat) {
     issues.push({
