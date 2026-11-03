@@ -107,7 +107,7 @@ function identifier(value: unknown, name: string): string {
 }
 // Persisted audits must not silently discard unexpected evidence fields during
 // canonical replay. The allowlist is versioned with the event contract.
-const APPLIED_EVENT_FIELDS = new Set([
+const QC_FIELDS = new Set(["inspector", "inspectionReference", "revisionId", "recipeHash", "checks"]);\nconst QC_CHECK_FIELDS = new Set<string>(ORDER_QC_CHECKS);\nconst SNAPSHOT_FIELDS = new Set(["orderId", "revisionId", "recipeHash", "status", "sequence", "lastEventId", "heldFrom", "audit"]);\nconst APPLIED_EVENT_FIELDS = new Set([
   "eventId", "orderId", "action", "from", "to", "sequence",
   "previousEventId", "occurredAt", "actor", "evidenceRef", "reason", "qc",
 ]);
