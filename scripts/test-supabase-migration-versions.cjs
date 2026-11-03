@@ -116,6 +116,51 @@ test("active stock RPC guard checks real statements and rejects comments or trun
   assert.equal(inspect(valid.replace("if length(v_fabric)>160", "if false and length(v_fabric)>160")).hasStrictLengthGate, false);
 });
 
+test("new Supabase versions must be real timestamps and ordered after historical versions", () => {
+  assert.equal(audit.validTimestampVersion("20261103162000"),true);
+  assert.equal(audit.validTimestampVersion("20261103"),false);
+  assert.equal(audit.validTimestampVersion("20261131090000"),false);
+  assert.equal(audit.validTimestampVersion("20260229090000"),false);
+  assert.equal(audit.validTimestampVersion("20240229090000"),true);
+  assert.equal(audit.validTimestampVersion("20261103246000"),false);
+  const baseline=["supabase/migrations/20261103_historical.sql"];
+  const check=paths=>audit.inspectNewMigrationSafety(paths,baseline,()=>"-- no stock RPC override");
+  assert.equal(check([...baseline,"supabase/migrations/20261103170000_valid.sql"]).ok,true);
+  assert.deepEqual(check([...baseline,"supabase/migrations/20261102170000_backdated.sql"]).backdated,
+    ["supabase/migrations/20261102170000_backdated.sql"]);
+  assert.deepEqual(check([...baseline,"supabase/migrations/20261131170000_invalid.sql"]).invalidTimestamps,
+    ["supabase/migrations/20261131170000_invalid.sql"]);
+});
+test("new stock reservation migration cannot silently disable strict identity checks", () => {
+  const baseline=["supabase/migrations/20261103_historical.sql"];
+  const file="supabase/migrations/20261103170000_reserve_gate.sql";
+  const header="create or replace function public.fabric_stock_reserve_v2("+
+    "p_fabric_id text,p_quantity_metres numeric,p_revision_id text,"+
+    "p_request_key text,p_requested_by text,p_source_reference text)"+
+    " returns uuid language plpgsql as $body$";
+  const body=[
+    "declare",
+    "v_fabric text:=trim(coalesce(p_fabric_id,''));",
+    "v_key text:=trim(coalesce(p_request_key,''));",
+    "v_revision text:=trim(coalesce(p_revision_id,''));",
+    "v_requester text:=trim(coalesce(p_requested_by,''));",
+    "v_source text:=trim(coalesce(p_source_reference,''));",
+    "begin",
+    "if length(v_fabric)>160 or length(v_key)>180 or length(v_revision)>220",
+    "or length(v_requester)>120 or length(v_source)>240 then",
+    "raise exception 'reservation identity or evidence exceeds supported length';",
+    "end if; return gen_random_uuid(); end;"
+  ].join("\n");
+  const inspect=sql=>audit.inspectNewMigrationSafety([...baseline,file],baseline,()=>sql);
+  assert.equal(inspect(header+body+"$body$;").ok,true);
+  const missing=body.replace("raise exception 'reservation identity or evidence exceeds supported length'",
+    "raise exception 'generic error'");
+  assert.deepEqual(inspect(header+missing+"$body$;").unsafeReserveOverrides,[file]);
+  const truncation=body.replace("v_key text:=trim(coalesce(p_request_key,''));",
+    "v_key text:=left(trim(coalesce(p_request_key,'')),180);");
+  assert.deepEqual(inspect(header+truncation+"$body$;").unsafeReserveOverrides,[file]);
+});
+
 test("current legacy baseline inventory is stable but strict deployment readiness fails", () => {
   const baseline = JSON.parse(fs.readFileSync(path.join(__dirname,
     "../docs/TITAN_SUPABASE_MIGRATION_BASELINE.json"),"utf8")).migrationPaths;
