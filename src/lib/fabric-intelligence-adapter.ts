@@ -137,7 +137,8 @@ function validatedImageQuality(value:unknown):FabricImageQuality|null {
     const n=value[key];
     if(typeof n!=="number" || !Number.isFinite(n) || n<min || n>max) return null;
   }
-  if(!Number.isSafeInteger(value.widthPx) || !Number.isSafeInteger(value.heightPx)) return null;
+  if(typeof value.widthPx!=="number" || typeof value.heightPx!=="number"
+    || !Number.isSafeInteger(value.widthPx) || !Number.isSafeInteger(value.heightPx)) return null;
   if(!Array.isArray(value.issues) || value.issues.length>30
     || !value.issues.every((issue:unknown)=>typeof issue==="string" && issue.length<=80)) return null;
   return value as FabricImageQuality;
