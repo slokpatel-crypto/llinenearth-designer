@@ -50,7 +50,7 @@ export function styleDirectorCandidateSleeve(
 
 export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "band_collar_construction" | "short_sleeve_double_cuff" |
-    "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_type_hem_mismatch" |
+    "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_type_hem_mismatch" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo";
   explanation: string;
@@ -154,6 +154,13 @@ export function styleDirectorConstructionIssues(
     issues.push({
       code: "cropped_half_break",
       explanation: "An above-ankle cropped hem cannot form a half shoe break; confirm the intended length before cutting.",
+    });
+  }
+  if ((pant.type === "cropped_ankle" || pant.hem === "cropped_above_ankle_hem") &&
+      pant.break === "slight_break") {
+    issues.push({
+      code: "cropped_slight_break",
+      explanation: "An above-ankle cropped hem cannot form a slight shoe break; confirm the intended length before cutting.",
     });
   }
   return issues;
