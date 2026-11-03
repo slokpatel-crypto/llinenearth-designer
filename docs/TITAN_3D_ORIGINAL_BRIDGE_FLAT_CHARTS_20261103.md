@@ -20,13 +20,28 @@ Branch `work/titan-3d-original-bridge-flat-pattern-20261103` implements `scripts
 - Asserts genuine 3D-vs-flattened surface area agreement, 6 native bridge triangles, 18 explicitly finite UV loops, no unassigned loops, no export, no source edits, and independent native scannned-body physical rejection gates unchanged.
 - Pure Python topology/geometry adversarial tests plus dedicated Node static regression guarantee no unsupported textile, origin UV or production approval claim.
 
+## Official native Blender 4.5.14 actual original-source geometry outcome
+
+The pinned source [workflow 41695867287](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/41695867287), tested at `8eb263bd848a670e37d8d6d022014e5fae8af9dd`, **completed successfully as research measurement/rejection evidence**, not a fitted garment. Native Blender built the **four** research geometric flat charts (2 + 1 + 2 + 1 real source bridge triangles), attached **18 out of 18** finite research UV loops and retained no original trouser-source UV.
+
+| Genuine original cut-edge source pair | Source left edge (mm) | Source right edge (mm) | Difference (mm) | 3D-triangle geometric surface (mm²) |
+|---|---:|---:|---:|---:|
+| 0 | 28.47255 | 28.49421 | 0.02166 | 662.12512 |
+| 1 | 24.67540 | 24.64113 | 0.03427 | 80.85468 |
+| 2 | 25.65192 | 25.79545 | 0.14354 | 578.19631 |
+| 3 | 25.49605 | 25.06933 | **0.42672** | 290.29003 |
+
+The four flat-chart triangle areas total **1,611.46614 mm²** (rounded to 5 decimal places per chart); the independent real Blender original 3D research six-face mesh measured **1,611.46609 mm²**. Every chart recorded `maxActualBridgeEdgeLengthErrorMm=0` when rounded to 8 decimals, and the native **≤0.001 mm** length preservation assertion passed. This is exact geometry research, **not a guarantee that cut linen can be sewn under 0.001mm tolerance**.
+
+**Longest real edge mismatch** is the fourth source cut-edge pair (**0.42672 mm**). Do not assume a tailored stretch/ease allowance without a real tailor and fabric test; no approved seam lengths, shrinkage, supplier grain and repeat, physical cloth scale or fabrication instructions exist. Original left/right trouser stage UV remains absent, so the additional bridge-only UV witness is deliberately **not connected to original garment texture charts**. Original 20 research bridge-body pairs, 126 open shell edges and all ten hard full six-garment preflight blockers remain.
+
 ## Remaining blockers and verification
 
 - [x] Original seam edge winding fixed in research and native measured; body collisions and original source missing UV verified
 - [x] Pure deterministic exact-length bridge triangle flattening implemented for all four actual unmatched source seam segments
 - [x] Non-export Blender six-triangle UV witness, real original cut-edge length mismatch measurements and failure-closed numerical checks added
 - [x] Dedicated Python and Node unit regression plus real pinned native Blender workflow assertions implemented
-- [ ] **Exact-head** native source Blender must actually measure four charts, six source triangles, original seam length mismatches and research UV-loop completion; inspect true values
+- [x] Official source Blender measured four charts, six genuine triangles, 18 research UV loops, true cut-edge lengths and mismatches; research-only native gate passed
 - [ ] Exact-head Full CI, Non-3D QA and standalone Blender collision suite pass
 - [ ] Body/leg collisions: at least 20 research bridge/body pairs remain and ten original full garment physical preflight blockers remain unresolved
 - [ ] Connect real trouser UV charts to mapped original source, supplier measured grain and repeat, actual cutting/seam allowances, body clearance, pre-shrunk textile, cloth thickness/drape, canonical four-angle photographic and independent tailor evidence
