@@ -249,3 +249,27 @@ test("serialized order snapshots must replay exactly before reuse",()=>{
   ]) assert.throws(()=>restoreOrderLifecycleSnapshot(corrupted),
     /snapshot|audit|identity|revision|recipe|destination|Invalid|Stale|non-sequential/);
 });
+
+test("untrusted lifecycle objects cannot bypass QC, recovery or audit rehydration",()=>{
+  const created=base();
+  // This fabricated state used to allow a direct dispatch without any QC
+  // event: its structural TypeScript shape was trusted by the reducer.
+  const forgedApproved={...created,status:"qc_approved" as const};
+  assert.throws(()=>step(forgedApproved,"dispatch"),
+    /Untrusted lifecycle snapshot/, "a forged approved stage cannot dispatch");
+  const forgedHeld={...created,status:"recovery_pending" as const,heldFrom:"accepted" as const};
+  assert.throws(()=>step(forgedHeld,"resume_recovery",{reason:"Fake recovery"}),
+    /Untrusted lifecycle snapshot/, "a fabricated recovery pointer cannot resume");
+  const realApproved=step(toQc(),"approve_qc",{qc:qc()});
+  const jsonClone=JSON.parse(JSON.stringify(realApproved)) as OrderLifecycleState;
+  assert.throws(()=>step(jsonClone,"dispatch"),/Untrusted lifecycle snapshot/,
+    "serialized data must be replayed before authorizing a transition");
+  const prototypeClone=Object.create(realApproved) as OrderLifecycleState;
+  assert.throws(()=>step(prototypeClone,"dispatch"),/Untrusted lifecycle snapshot/,
+    "inherited state fields cannot borrow the trusted object's identity");
+  const restored=restoreOrderLifecycleSnapshot(jsonClone);
+  assert.equal(step(restored,"dispatch").status,"dispatched",
+    "canonical audit replay restores trusted transition eligibility");
+  assert.equal(step(realApproved,"dispatch").status,"dispatched",
+    "original reducer-minted state remains usable");
+});
