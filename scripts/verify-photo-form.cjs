@@ -53,6 +53,38 @@ async function run(){
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`dark-untucked-${width}.png`)});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     summary.viewports.push({width,overflow:false,realCataloguePreview:true,tuckedAndUntuckedScreenshots:true});
+    // Exercise the ACTUAL customer controls, not just pure IDs. Advanced v2
+    // sleeve/pleat specifications may be valid tailor instructions while the
+    // original fixed photograph continues to show full sleeves/single pleats.
+    const precision=page.locator("details.newDesignerPrecisionCut");
+    await precision.locator("summary").click();
+    await page.getByRole("combobox",{name:"Sleeve length",exact:true}).selectOption("half_sleeve");
+    await page.waitForFunction(()=>document.querySelector('[data-photo-construction-mismatch="true"]')?.textContent?.includes("sleeve length"));
+    await page.getByRole("combobox",{name:"Trouser pleats",exact:true}).selectOption("double_pleat_forward");
+    await page.waitForFunction(()=>document.querySelector('[data-photo-construction-mismatch="true"]')?.textContent?.includes("trouser pleats"));
+    const advancedNote=await fidelity.textContent();
+    assert.match(advancedNote,/sleeve length/i);
+    assert.match(advancedNote,/trouser pleats/i);
+    assert.equal(await page.getByRole("combobox",{name:"Sleeve length",exact:true}).inputValue(),"half_sleeve");
+    assert.equal(await page.getByRole("combobox",{name:"Trouser pleats",exact:true}).inputValue(),"double_pleat_forward");
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`advanced-construction-disclosed-${width}.png`)});
+    summary.viewports[summary.viewports.length-1].advancedConstructionDisclosed=true;
+    if(width===1440) {
+      // Legacy controls also must not claim that unphotographed collar,
+      // cuff or placket geometry has appeared in the trusted source image.
+      await page.getByRole("combobox",{name:"Shirt collar",exact:true}).selectOption("Mandarin / Band Collar");
+      await page.waitForFunction(()=>document.querySelector('[data-photo-construction-mismatch="true"]')?.textContent?.includes("collar shape"));
+      await page.locator("details.newDesignerTechnicalDrawer").filter({has:page.locator("summary", {hasText:"More cut options"})}).locator("summary").click();
+      await page.getByRole("combobox",{name:"Shirt cuff",exact:true}).selectOption("French / Double Cuff");
+      await page.getByRole("combobox",{name:"Shirt placket",exact:true}).selectOption("Hidden / Fly-front");
+      await page.waitForFunction(()=> {
+        const text=document.querySelector('[data-photo-construction-mismatch="true"]')?.textContent||"";
+        return text.includes("collar shape") && text.includes("cuff shape") && text.includes("placket");
+      });
+      await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,"collar-cuff-placket-disclosed-1440.png")});
+      summary.viewports[summary.viewports.length-1].collarCuffPlacketDisclosed=true;
+    }
     if(width===1440){
       await page.addScriptTag({content:`window.__photoFormBefore=${beforeBundle};window.__photoFormAfter=${afterBundle};`});
       summary.forms=await page.evaluate(async()=>{
