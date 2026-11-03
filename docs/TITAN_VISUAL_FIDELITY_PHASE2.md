@@ -136,3 +136,29 @@ claims of new real-world photographs or tailor acceptance.
 - New exact-head CI remains mandatory; no claim that preceding runs on
   `3dcf077e` verify these additional fallback changes. Keep draft, do not
   merge or deploy.
+
+## November 3 — browser-sized synthetic swatch regression (CI fix)
+
+- Exact head `322e9e7` **FAILED both Full CI #41688002752 and
+  Deep Engine Non-3D QA #41688002755** on `verify-photo-form.cjs` after the
+  quality, unit, engine, preview-performance, release and build gates passed.
+  GitHub logs show `RangeError: Expected swatch image dimensions of at least
+  150px` in `photoFabricCaptionSafeCrop` called by `swatchTile`.
+- Root cause is concrete: the real-browser photo-form regression intentionally
+  builds a **64×64 solid synthetic control** before exercising full-size
+  320×320 stripe tiles. Those synthetic samples are not production supplier
+  catalogue images. A build-time 150px source-asset check was inadvertently
+  duplicated in a general-purpose browser crop helper.
+- Fixed the pure crop helper to accept square or rectangular **32px+ valid
+  image/QA tiles**, keeping the same upper 4–36% caption-safe geometry. It
+  still rejects malformed/zero/unready source dimensions. The catalogue
+  generator retains its independent **150px minimum source** enforcement, so
+  tiny supplier source images do not enter generated production assets.
+- Added focused regression coverage for the exact 64×64 synthetic case, 96px
+  and 128px tiles, invalid 31px cases, deterministic integer crop coordinates,
+  upper-cloth-only crop and the preserved 150px catalogue source gate.
+- No physical scale/provenance upgrade, original model change, texture
+  falsification, paid rendering dependency, production deploy or merge.
+- **Next:** verify both fresh exact-head GitHub CI runs, including real
+  390/768/1440 photographic checks; save/check artifacts before considering
+  independent visual approval. Older failed/green runs do not certify the fix.
