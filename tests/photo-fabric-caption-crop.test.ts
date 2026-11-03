@@ -30,3 +30,13 @@ test("tile builder uses caption-safe crop for its generated assets and advances 
   assert.match(script,/measured\.physicalScaleStatus/);
   assert.match(script,/scaleApproximate:tileRealWidthMm===null/);
 });
+
+test("fallback raw photographic swatches use the same caption-safe plain crop", () => {
+  const component=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(component,/const plainCrop = plain \? photoFabricCaptionSafeCrop\(image\.width,image\.height\) : null/);
+  assert.match(component,/const sourceX = plainCrop\?\.left/);
+  assert.match(component,/const sourceY = plainCrop\?\.top/);
+  assert.match(component,/const sourceWidth = plainCrop\?\.width/);
+  assert.match(component,/const sourceHeight = plainCrop\?\.height/);
+  assert.doesNotMatch(component,/image\.height \* \(plain \? \.22 : \.16\)/);
+});
