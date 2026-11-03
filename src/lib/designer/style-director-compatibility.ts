@@ -158,7 +158,10 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // A labelled double pleat is not equivalent to a generic single pleat.
   // Read count from the canonical option's construction parameters instead
   // of inferring it from the potentially stale photographed trouser label.
-  const positiveWording = stripNegatedPleatWording(candidateTrouser);
+  const positiveWording = stripNegatedPleatWording(candidateTrouser).replace(
+    /\b(?:no|without)\s+(?:(?:any|visible|front|side)\s+){0,3}(?:single|double|one|two|1|2)[ -]?pleats?\b/gi,
+    "",
+  );
   const requestsDouble = /\b(?:double|two|2)[ -]?pleats?\b/i.test(positiveWording);
   const requestsSingle = /\b(?:single|one|1)[ -]?pleats?\b/i.test(positiveWording);
   const expectedCount = front === "pleated"
