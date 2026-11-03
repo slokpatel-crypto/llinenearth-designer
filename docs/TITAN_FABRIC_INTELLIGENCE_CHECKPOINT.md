@@ -53,3 +53,9 @@
 - Development classification must not default to a fictional Linen fabric and navy colour when no image visual signals exist.
 - Without image or material filename hints: zero alternatives, blank palette, unresolved material/colour and zero unsupported confidence. With a filename hint only: retain the known family as provisional confidence 0.3, **not** as an image measurement or physical fibre certificate.
 - Regression tests cover both cases. No vocabulary, customer model or stock changes; `FabricProfile` retains its existing structure, but clients must tolerate an empty alternatives/palette array where no evidence exists.
+
+## 2026-11-03 — Explicit owner-label input integrity
+- The cloud ground-truth intake now normalizes explicit operator labels with a pure fail-closed parser before counting them as independent accuracy comparisons.
+- Arrays/objects/booleans, oversized literal fields and malformed ordinal formality/statement values are rejected rather than coerced into apparently real labels; empty label states cannot populate the scorecard. Numeric 1–5 formality/statement entries remain compatible with older operator records.
+- Persisted label identifiers and metadata must be literal bounded text; no shortening of an oversized/forged identifier into a valid stock ID. Incomplete but genuine owner-labelled fields remain allowed and are excluded from their own per-field denominator.
+- New regression tests cover malformed persisted JSON and valid partial labels. No database schema changes or stock / visual changes.

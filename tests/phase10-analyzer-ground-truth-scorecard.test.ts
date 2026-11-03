@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fabricGroundTruthStateFromProfile, reconstructOriginalFabricGroundTruthState, scoreFabricGroundTruth, type FabricGroundTruthLabel } from "../src/lib/fabric-ground-truth-scorecard.ts";
+import { fabricGroundTruthStateFromProfile, normalizeExplicitFabricGroundTruthState, reconstructOriginalFabricGroundTruthState, scoreFabricGroundTruth, type FabricGroundTruthLabel } from "../src/lib/fabric-ground-truth-scorecard.ts";
 
 function label(fabricId:string,changes:Partial<Record<string,string>>={},at="2026-09-30T10:00:00Z"):FabricGroundTruthLabel{
   const original={
@@ -135,4 +135,34 @@ test("incomplete final labels are not counted as exact profile matches",()=>{
   assert.equal(score.exactProfileMatches,0);
   assert.equal(score.exactProfilePercent,0);
   assert.equal(score.fieldTotal,8);
+});
+
+test("explicit owner labels reject JSON arrays, objects and oversized field literals",()=>{
+  const valid=label("owner").original;
+  assert.deepEqual(normalizeExplicitFabricGroundTruthState(valid),valid);
+  for(const [field,value] of [
+    ["patternFamily",["stripe"]],
+    ["colorFamily",{id:"blue_family"}],
+    ["patternScale",true],
+    ["orientation",1],
+    ["sheen"," ".repeat(81)+"low"],
+    ["formality",Infinity],
+    ["statementLevel","5".repeat(81)],
+    ["formality","6"],
+  ] as const){
+    assert.equal(normalizeExplicitFabricGroundTruthState({...valid,[field]:value}),null,field);
+  }
+});
+
+test("explicit labels may have unknown fields but require a real literal classification",()=>{
+  assert.equal(normalizeExplicitFabricGroundTruthState({}),null);
+  assert.equal(normalizeExplicitFabricGroundTruthState([]),null);
+  assert.equal(normalizeExplicitFabricGroundTruthState(null),null);
+  const accepted=normalizeExplicitFabricGroundTruthState({
+    patternFamily:" stripe ",formality:4,statementLevel:"2",
+  });
+  assert.equal(accepted?.patternFamily,"stripe");
+  assert.equal(accepted?.formality,"4");
+  assert.equal(accepted?.statementLevel,"2");
+  assert.equal(accepted?.colorFamily,"");
 });

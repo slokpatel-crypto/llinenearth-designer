@@ -4,26 +4,19 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { FABRIC_STOCK } from "@/lib/fabric-stock";
 import { loadFabricAnalyzerGroundTruthHistory } from "@/lib/fabric-analyzer-store";
 import {
-  FABRIC_GROUND_TRUTH_FIELDS,
   FABRIC_GROUND_TRUTH_VERSION,
+  normalizeExplicitFabricGroundTruthState,
   fabricGroundTruthStateFromProfile,
   reconstructOriginalFabricGroundTruthState,
   type FabricGroundTruthLabel,
-  type FabricGroundTruthState,
 } from "@/lib/fabric-ground-truth-scorecard";
 
 type Row={at:string;payload?:Record<string,unknown>};
 
 function clean(value:unknown,limit=180){
-  return String(value??"").trim().slice(0,limit);
-}
-
-function state(value:unknown):FabricGroundTruthState|null{
-  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
-  const raw=value as Record<string,unknown>;
-  const out={} as FabricGroundTruthState;
-  for(const field of FABRIC_GROUND_TRUTH_FIELDS) out[field]=clean(raw[field],80);
-  return out;
+  // An identifier or signed receipt supplied through JSON must be literal and
+  // bounded before normalization; arrays/objects are not owner-labelled facts.
+  return typeof value==="string" && value.length<=limit ? value.trim() : "";
 }
 
 export async function loadFabricGroundTruthLabels(){
@@ -54,8 +47,8 @@ export async function loadFabricGroundTruthLabels(){
         if(clean(payload.version,80)!==FABRIC_GROUND_TRUTH_VERSION) continue;
         const fabricId=clean(payload.fabricId,160);
         const profileId=clean(payload.profileId,160);
-        const original=state(payload.original);
-        const final=state(payload.final);
+        const original=normalizeExplicitFabricGroundTruthState(payload.original);
+        const final=normalizeExplicitFabricGroundTruthState(payload.final);
         if(!fabricId || !profileId || !original || !final || labels.has(fabricId)) continue;
         labels.set(fabricId,{
           fabricId,

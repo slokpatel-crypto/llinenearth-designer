@@ -15,6 +15,32 @@ export const FABRIC_GROUND_TRUTH_FIELDS=[
 export type FabricGroundTruthField=typeof FABRIC_GROUND_TRUTH_FIELDS[number];
 export type FabricGroundTruthState=Record<FabricGroundTruthField,string>;
 
+/**
+ * Normalize the independent operator's explicit comparison, not a reconstructed
+ * Analyzer result. Reject coercible arrays/objects and overlong persisted JSON
+ * instead of turning them into plausible classification labels.
+ */
+export function normalizeExplicitFabricGroundTruthState(value:unknown):FabricGroundTruthState|null {
+  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
+  const raw=value as Record<string,unknown>;
+  const state={} as FabricGroundTruthState;
+  for(const field of FABRIC_GROUND_TRUTH_FIELDS){
+    const given=raw[field];
+    if(given===undefined || given===null){state[field]="";continue;}
+    const ordinal=field==="formality" || field==="statementLevel";
+    if(ordinal && typeof given==="number"
+      && Number.isInteger(given) && given>=1 && given<=5){
+      state[field]=String(given);
+      continue;
+    }
+    if(typeof given!=="string" || given.length>80) return null;
+    const normalized=given.trim();
+    if(ordinal && normalized && !/^[1-5]$/.test(normalized)) return null;
+    state[field]=normalized;
+  }
+  return FABRIC_GROUND_TRUTH_FIELDS.some((field)=>state[field]!=="") ? state : null;
+}
+
 export type FabricGroundTruthLabel={
   fabricId:string;
   profileId:string;
