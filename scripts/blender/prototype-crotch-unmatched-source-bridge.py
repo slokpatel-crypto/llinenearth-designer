@@ -812,8 +812,17 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
         baseline = measured_region(control, region)
         nine = measured_region(moved, region)
         falloff = measured_region(variant, region)
-        outside_control = control["report"]["wholeSourceBodyBVHPairs"] - baseline["bodyBVHPairs"]
-        outside_variant = variant["report"]["wholeSourceBodyBVHPairs"] - falloff["bodyBVHPairs"]
+        # Only genuine original-source faces are comparable here. The separate
+        # experimental bridge triangles are also moved and MUST NOT be counted
+        # as alleged extra contact on otherwise untouched original cloth.
+        outside_control = sum(
+            0 <= index < len(base_faces) and index not in region
+            for _body, index in control["actualBodyFacePairs"]
+        )
+        outside_variant = sum(
+            0 <= index < len(base_faces) and index not in region
+            for _body, index in variant["actualBodyFacePairs"]
+        )
         if outside_variant != outside_control:
             raise RuntimeError("Changed body contacts outside actual modified original source faces.")
         regional_attribution[label] = {
