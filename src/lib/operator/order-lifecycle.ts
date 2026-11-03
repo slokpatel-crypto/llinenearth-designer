@@ -203,8 +203,11 @@ export function applyOrderLifecycleEvent(state: OrderLifecycleState, rawEvent: u
   }
   if (!to) throw new Error("Illegal order transition from " + state.status + " using " + action + ".");
   const reason = event.reason === undefined ? undefined : nonEmpty(event.reason, "reason", 3, 500);
-  if (["cancel", "reject_qc", "hold_for_recovery", "resume_recovery"].includes(action) && !reason)
+  const reasonRequired = ["cancel", "reject_qc", "hold_for_recovery", "resume_recovery"].includes(action);
+  if (reasonRequired && !reason)
     throw new Error("A documented reason is required for cancellation, rework or recovery.");
+  if (!reasonRequired && reason !== undefined)
+    throw new Error("Unexpected reason on an ordinary order transition.");
   if (action === "approve_qc") validateQc(event.qc, state);
   else if (event.qc !== undefined) throw new Error("QC approval evidence belongs only on QC approval events.");
   if (to !== "recovery_pending" && action !== "resume_recovery") heldFrom = null;
