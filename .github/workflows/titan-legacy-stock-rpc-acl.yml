@@ -66,8 +66,27 @@ jobs:
             supabase/migrations/20261103_stock_close_evidence_integrity.sql; do
             psql -v ON_ERROR_STOP=1 -f "$migration"
           done
-      - name: Apply permission-only retirement migration
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql
+      - name: Prove ACL regression catches the original unsafe historical grants
+        run: |
+          set -euo pipefail
+          # The existing historical migration intentionally grants service_role all
+          # four v1 mutators. Without retirement, the real negative test MUST fail.
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql \
+            > /tmp/pre-retirement-acl.log 2>&1
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo 'FAIL: v1 ACL regression passed before retirement (vacuous test)'
+            exit 1
+          fi
+          grep -q 'unsafe effective v1 EXECUTE: role service_role' /tmp/pre-retirement-acl.log
+          test "$(psql -v ON_ERROR_STOP=1 -Atc 'select count(*) from private.fabric_stock_ledger')" = 0
+      - name: Apply permission-only retirement migration twice (idempotent)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql
       - name: Verify effective ACL, unchanged v2 grants and zero stock rows
         run: |
           set -euo pipefail
