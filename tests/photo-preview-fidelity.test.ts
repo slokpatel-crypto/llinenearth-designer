@@ -73,7 +73,7 @@ test("default untucked straight construction does not silently claim the picture
 
 test("untucked wide source matches wide silhouette but not a flat-front v2 pleat", () => {
   const style:DesignerStyle={...baseStyle,shirtWear:"Untucked",trouser:"Wide-leg / Relaxed Drape Trouser",break:"Full Break"};
-  const spec:StyleSpecV2={...baseSpec,shirt:{...baseSpec.shirt,wear:"untucked",length:"shirt_length_regular"},pant:{...baseSpec.pant,fit:"wide_leg_drape",pleat:"flat_front"},legacy:style};
+  const spec:StyleSpecV2={...baseSpec,shirt:{...baseSpec.shirt,wear:"untucked",length:"shirt_length_regular"},pant:{...baseSpec.pant,type:"wide_leg_relaxed_drape",fit:"wide_leg_drape",pleat:"flat_front",break:"full_break"},legacy:style};
   const gaps=fields(style,spec);
   assert.ok(gaps.includes("pant.pleat"));
   assert.equal(gaps.includes("pant.type"),false);
@@ -102,4 +102,26 @@ test("customer photographic preview displays selected construction mismatch noti
   assert.match(source,/photoConstructionMismatches\(style,styleSpec\)/);
   assert.match(source,/data-photo-construction-mismatch/);
   assert.match(source,/not reconstructed in the fixed studio photograph/);
+});
+
+test("versioned wear choice cannot silently borrow the legacy tucked photograph", () => {
+  const spec:StyleSpecV2={...baseSpec,shirt:{...baseSpec.shirt,wear:"untucked",collarFinish:"White contrast collar"}};
+  const rows=photoConstructionMismatches(baseStyle,spec);
+  assert.ok(rows.some((x)=>x.field==="shirt.wear" && /photographed tuck mode/i.test(x.reason)));
+  assert.ok(rows.some((x)=>x.field==="shirt.collarFinish"));
+});
+
+test("versioned trouser cut and break do not inherit legacy photographic support", () => {
+  const spec:StyleSpecV2={...baseSpec,pant:{...baseSpec.pant,type:"formal_flat_front",break:"cropped_above_ankle"}};
+  const rows=photoConstructionMismatches(baseStyle,spec);
+  assert.ok(rows.some((x)=>x.field==="pant.type"));
+  assert.ok(rows.some((x)=>x.field==="pant.break"));
+  assert.equal(new Set(rows.map((x)=>x.field)).size,rows.length);
+});
+
+test("rear construction stays explicitly unverified in the fixed front photograph", () => {
+  const spec:StyleSpecV2={...baseSpec,shirt:{...baseSpec.shirt,back:"darts_back"}};
+  const rows=photoConstructionMismatches(baseStyle,spec);
+  assert.deepEqual(rows.map((x)=>x.field),["shirt.back"]);
+  assert.match(rows[0].reason,/front photograph cannot verify/i);
 });
