@@ -485,3 +485,22 @@ test("audit records reject inherited, accessor and symbol evidence before transi
   assert.throws(()=>step(toQc(),"approve_qc",{qc:{...qc(),checks:forgedChecks}}),/record property/);
   assert.equal(replayOrderLifecycle(id,revision,hash,accepted.audit).status,"accepted");
 });
+
+test("non-enumerable audit claims are rejected rather than erased by JSON serialization",()=>{
+  const accepted=step(base(),"accept");
+  const event={...accepted.audit[0]};
+  Object.defineProperty(event,"paymentApproved",{value:true,enumerable:false});
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,[event]),/record property/);
+  const live={...event};
+  assert.throws(()=>applyOrderLifecycleEvent(base(),live),/record property/);
+  const snapshot={...accepted};
+  Object.defineProperty(snapshot,"operatorOverride",{value:true,enumerable:false});
+  assert.throws(()=>restoreOrderLifecycleSnapshot(snapshot),/record property/);
+  const hiddenQc={...qc()};
+  Object.defineProperty(hiddenQc,"verifiedByTailor",{value:true,enumerable:false});
+  assert.throws(()=>step(toQc(),"approve_qc",{qc:hiddenQc}),/record property/);
+  const hiddenChecks={...qc().checks};
+  Object.defineProperty(hiddenChecks,"inspectionOverride",{value:true,enumerable:false});
+  assert.throws(()=>step(toQc(),"approve_qc",{qc:{...qc(),checks:hiddenChecks}}),/record property/);
+  assert.equal(replayOrderLifecycle(id,revision,hash,accepted.audit).status,"accepted");
+});
