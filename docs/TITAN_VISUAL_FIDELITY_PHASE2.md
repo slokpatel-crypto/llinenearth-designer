@@ -185,3 +185,27 @@ claims of new real-world photographs or tailor acceptance.
   measurement assumptions, saved-design rewrites, stock/catalogue changes or
   Vercel deployment. Run **new exact-head** source, browser, build and release
   gates; keep the PR draft pending independent review.
+
+## November 3 — pixel-invariance QA for specification-only cuts
+
+- Retrieved the exact-head green Studio QA artifact for `f36147a`.
+  `photo-form/summary.json` confirms advanced construction warnings at
+  **390, 768, 1440px** and the 1440px collar/cuff/placket warning, with
+  `errors:[]`, no paid AI calls, no responsive overflow, zero protected-pixel
+  changes and zero waistband spill for tucked, pleated and wide photos.
+- Reviewed `advanced-construction-disclosed-390.png`: the source full-sleeve
+  photographed garment remains visibly intact while the customer-selected
+  half sleeve/double pleat are disclosed as unrendered construction.
+- Added another **actual pixel acceptance gate**, not just text matching:
+  `actualPhotoPixelHash` samples real Studio canvas RGB pixels before and
+  after selecting half sleeves and double-forward pleats. The test now
+  asserts that versioned spec-only changes do **not** alter the trusted fixed
+  photograph, and records `specOnlyPhotoPixelsUnchanged:true` for all three
+  responsive widths. Browser proof uses actual customer selectors and real
+  pixels, without invoking AI.
+- Focused test protects the existence of this browser pixel-invariance
+  assertion. This is a guard against *false* visual accuracy, not a claim
+  that alternative sleeves/pleats have been reconstructed.
+- **Next:** exact-head CI, real Chromium and screenshot inspection required
+  after the new tests. Do not mark the new head verified from preceding green
+  SHA or merge/deploy without independent review.
