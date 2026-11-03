@@ -196,11 +196,14 @@ test("calendar-invalid ISO-shaped event dates fail closed, including offset and 
     "2026-11-03T00:00:00-23:00",
     "2026-11-03T00:00:00+01:60",
     "0000-01-01T00:00:00Z",
+    "2026-11-03T00:00:00.1234Z",
+    "2026-11-03T00:00:00.000000+05:30",
   ]) assert.throws(()=>step(base(),"accept",{occurredAt}),/Invalid event timestamp/,occurredAt);
   for(const occurredAt of [
     "2024-02-29T23:59:59+14:00",
     "2000-02-29T00:00:00-14:00",
     "2026-04-30T23:59:59.999Z",
+    "2026-04-30T23:59:59.1Z",
     "2026-11-03T00:00:00+05:30",
   ]) assert.equal(step(base(),"accept",{occurredAt}).status,"accepted",occurredAt);
   const first=step(base(),"accept",{occurredAt:"2024-02-29T23:59:59+14:00"});
@@ -287,4 +290,16 @@ test("untrusted lifecycle objects cannot bypass QC, recovery or audit rehydratio
     "canonical audit replay restores trusted transition eligibility");
   assert.equal(step(realApproved,"dispatch").status,"dispatched",
     "original reducer-minted state remains usable");
+});
+
+
+test("sub-millisecond audit timestamp ambiguity is rejected before replay",()=>{
+  const first=step(base(),"accept",{occurredAt:"2026-11-03T00:00:00.123Z"});
+  assert.throws(()=>step(first,"start_cutting",{
+    occurredAt:"2026-11-03T00:00:00.1239Z",
+  }),/Invalid event timestamp/,
+  "extra fractional precision must not silently truncate into a prior millisecond");
+  const serialized=JSON.parse(JSON.stringify(first));
+  serialized.audit[0].occurredAt="2026-11-03T00:00:00.123000Z";
+  assert.throws(()=>restoreOrderLifecycleSnapshot(serialized),/Invalid event timestamp/);
 });
