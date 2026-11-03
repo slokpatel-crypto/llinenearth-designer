@@ -41,6 +41,24 @@ test("approved historical inventory does not allow new 8-digit or duplicate vers
   assert.equal(sameVersion.ok, false);
   assert.equal(sameVersion.conflictingNew.length, 2);
 });
+test("historical migration hashes fail closed on edits, malformed entries or path replacement", () => {
+  const file = "supabase/migrations/20261001_fabric_stock_ledger.sql";
+  const pristine = Buffer.from("synthetic historical SQL;");
+  const digest = audit.gitBlobSha(pristine);
+  assert.match(digest,/^[0-9a-f]{40}$/);
+  assert.equal(audit.verifyHistoricalBlobs([file],{[file]:digest}, () => pristine).ok,true);
+  const modified = audit.verifyHistoricalBlobs([file],{[file]:digest},
+    () => Buffer.from("synthetic historical SQL; -- sneaky edit"));
+  assert.equal(modified.ok,false);
+  assert.deepEqual(modified.modifiedHistorical,[file]);
+  const missing = audit.verifyHistoricalBlobs([file],{},() => pristine);
+  assert.equal(missing.ok,false);
+  assert.deepEqual(missing.missingDigests,[file]);
+  const extraneous = audit.verifyHistoricalBlobs([file],
+    {[file]:digest,"supabase/migrations/20261103000000_unapproved.sql":digest},() => pristine);
+  assert.equal(extraneous.ok,false);
+  assert.equal(extraneous.unexpectedDigests.length,1);
+});
 test("filename-ordered stock RPC overwrite can lose a strict identity guard", () => {
   const paths = ["supabase/migrations/20261103_stock_reservation_identity_length_gate.sql",
     "supabase/migrations/20261103_stock_reservation_provenance_gate.sql"];
@@ -57,6 +75,12 @@ test("current legacy baseline inventory is stable but strict deployment readines
     "../docs/TITAN_SUPABASE_MIGRATION_BASELINE.json"),"utf8")).migrationPaths;
   const paths = audit.collectMigrationPaths();
   assert.equal(audit.checkAgainstBaseline(paths, baseline).ok, true);
+  const provenance=JSON.parse(fs.readFileSync(path.join(__dirname,
+    "../docs/TITAN_SUPABASE_MIGRATION_BASELINE.json"),"utf8"));
+  assert.equal(Object.keys(provenance.blobShaByPath).length, baseline.length);
+  const hashes=audit.verifyHistoricalBlobs(paths,provenance.blobShaByPath,
+    file => fs.readFileSync(path.join(__dirname,"..",file)));
+  assert.equal(hashes.ok,true,JSON.stringify(hashes));
   const r = audit.inspectMigrations(paths);
   assert.ok(r.duplicates.length > 0, "legacy collision debt must be recognized");
   assert.ok(r.nonstandardVersions.length > 0, "legacy 8-digit timestamps remain unresolved");
