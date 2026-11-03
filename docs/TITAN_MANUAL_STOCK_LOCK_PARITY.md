@@ -58,3 +58,11 @@
 - **Limit:** This is an inspected operator-route compatibility result, **not** a complete repository-wide or external-client caller audit. GitHub code search returned zero hits with `incomplete_results=true`; it cannot prove no other caller exists. Do not claim the legacy RPC retirement safe for all clients or merge to main based solely on this review.
 - **Next acceptance slice:** inspect `legacyStockWritesEnabled` implementation and all relevant server call sites, then add an explicit regression asserting operator HTTP stock requests never call v1 and remain 423 outside the synthetic fixture. Verify CI at the new SHA, assess isolated main ancestry and no-deploy guard before any merge.
 - **Pending:** real supplier stock, staged migration/rollback, authenticated owner/customer/operator acceptance, tailoring, native Blender, devices, five testers, ten deliveries and owner approval. No production deployment or live mutation.
+
+## Operator v2 RPC contract regression — 2026-11-03
+
+- **Parent:** `97147eb25d396b1b4f66b0f1450e4be314d5d99e`; **test commit:** `90af5ea4b5bfd10c23ec2108dca432ad13063d90`.
+- **Affected gates:** T3/J1 stock integrity, T5/J5 operator boundary, T6/J6 regression. The synthetic authenticated HTTP fixture now reads the actual operator stock route and requires exactly the five approved v2 RPC call sites, rejecting any additional, duplicated, removed, or legacy RPC invocation. This complements its existing HTTP 423 write-hold and fake PostgREST assertions.
+- **Source inspection:** all five route RPC invocations matched the new allowlist at the test commit. **Full CI and Non-3D QA for this new head remain unverified at checkpoint creation**; do not treat this inspection as an executed Node/HTTP test.
+- **Remaining:** external legacy callers, staging migration approval, real supplier stock, customer/operator acceptance, tailor, native Blender, physical devices, five testers, ten deliveries and owner approval remain PENDING/BLOCKED. No main integration, deployment or live database mutation.
+- **Next slice:** check exact-head CI and Non-3D; investigate any failure, then assess isolated main intake only after dependency/guard verification.
