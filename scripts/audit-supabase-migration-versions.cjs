@@ -128,6 +128,36 @@ function inspectReserveOverride(paths, readSql) {
     hasStrictLengthGate: hasStrictLengthGate && !usesLossyIdentifierTruncation,
     usesLossyIdentifierTruncation };
 }
+// Prevent new migration files from evading the frozen-version inventory. An
+// unrelated new timestamp is allowed for development, but is NOT db-push proof.
+function validTimestampVersion(version) {
+  if (!/^\d{14}$/.test(version || "")) return false;
+  const y=Number(version.slice(0,4)), mo=Number(version.slice(4,6)),
+    day=Number(version.slice(6,8)), hh=Number(version.slice(8,10)),
+    mm=Number(version.slice(10,12)), ss=Number(version.slice(12,14));
+  const d=new Date(Date.UTC(y,mo-1,day,hh,mm,ss));
+  return d.getUTCFullYear()===y && d.getUTCMonth()+1===mo &&
+    d.getUTCDate()===day && d.getUTCHours()===hh &&
+    d.getUTCMinutes()===mm && d.getUTCSeconds()===ss;
+}
+function inspectNewMigrationSafety(paths, baseline, readSql) {
+  const existing=new Set(baseline);
+  const added=paths.filter(file => !existing.has(file)).sort();
+  const latestBaselineVersion=baseline.map(migrationVersion).filter(Boolean).sort().at(-1) || "";
+  const invalidTimestamps=added.filter(file => !validTimestampVersion(migrationVersion(file)));
+  const backdated=added.filter(file => {
+    const version=migrationVersion(file);
+    return !!version && version<=latestBaselineVersion;
+  });
+  const unsafeReserveOverrides=added.filter(file => {
+    const active=activeReserveBody(readSql(file));
+    return active!==null && !inspectReserveOverride([file],readSql).hasStrictLengthGate;
+  });
+  return {ok:invalidTimestamps.length===0 && backdated.length===0 &&
+    unsafeReserveOverrides.length===0,added,latestBaselineVersion,
+    invalidTimestamps,backdated,unsafeReserveOverrides};
+}
+
 function main(args = process.argv.slice(2)) {
   const opts = new Set(args);
   if (args.some(arg => !["--report", "--enforce-new", "--strict", "--verify-git-baseline"].includes(arg))) {
@@ -158,6 +188,8 @@ function main(args = process.argv.slice(2)) {
       throw Error("Migration baseline provenance or content digests are invalid");
     }
     result.baseline = checkAgainstBaseline(files, baseline);
+    result.newMigrationSafety = inspectNewMigrationSafety(files, baseline,
+      file => fs.readFileSync(path.join(root,file), "utf8"));
     result.contents = verifyHistoricalBlobs(baseline, baselineData.blobShaByPath,
       file => fs.readFileSync(path.join(root,file)));
     if (opts.has("--verify-git-baseline")) {
@@ -168,15 +200,16 @@ function main(args = process.argv.slice(2)) {
       }
       result.gitProvenance = verifyBaselineFromGit(baselineData, git.stdout);
     }
-    if (!result.baseline.ok || !result.contents.ok ||
+    if (!result.baseline.ok || !result.newMigrationSafety.ok || !result.contents.ok ||
        (opts.has("--verify-git-baseline") && !result.gitProvenance.ok)) {
       console.error(JSON.stringify(result, null, 2));
-      console.error("BLOCKED: new/renamed migration or unreviewed historical SQL content mutation detected.");
+      console.error("BLOCKED: migration version/date, new stock reserve override, or historical SQL integrity violated.");
       return 1;
     }
     console.log("PASS: no new ambiguous versions, historical path removals, or historical SQL content edits; NOT DEPLOY-SAFE.");
-    console.log(JSON.stringify({ baseline: result.baseline, contents: result.contents,
-      gitProvenance: result.gitProvenance || null, historicalCollisionGroups: report.duplicates.length,
+    console.log(JSON.stringify({ baseline: result.baseline, newMigrationSafety: result.newMigrationSafety,
+      contents: result.contents, gitProvenance: result.gitProvenance || null,
+      historicalCollisionGroups: report.duplicates.length,
       historicalNonstandardFiles: report.nonstandardVersions.length }));
     return 0;
   }
@@ -194,4 +227,5 @@ function main(args = process.argv.slice(2)) {
 if (require.main === module) process.exitCode = main();
 module.exports = { migrationVersion, collectMigrationPaths, inspectMigrations, checkAgainstBaseline,
   gitBlobSha, verifyHistoricalBlobs, parsePinnedMigrationTree,
-  verifyBaselineFromGit, inspectReserveOverride, main };
+  verifyBaselineFromGit, inspectReserveOverride, validTimestampVersion,
+  inspectNewMigrationSafety, main };
