@@ -87,3 +87,45 @@ test("createStyleDirectorLooks keeps selected trouser and versioned garment alig
   assert.equal(model.style.trouser, "Pleated Trouser");
   assert.ok(["preliminary", "needs_review"].includes(model.status));
 });
+
+test("actual Style Director avoids fabricating a paired model without both stock garments", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"),
+    import("@/lib/style-director-agent"),
+  ]);
+  const shirt = FABRIC_STOCK.find((fabric) => fabric.inStock && fabric.suitableFor.includes("shirt"));
+  const pant = FABRIC_STOCK.find((fabric) => fabric.inStock && fabric.suitableFor.includes("trouser"));
+  assert.ok(shirt && pant);
+  const shirtAnswers = {
+    occasion: "Travel" as const, mood: "Relaxed" as const, time: "Day" as const,
+    climate: "Hot" as const, garment: "shirt" as const,
+    colorDirection: "Surprise me" as const,
+  };
+  const pantAnswers = {
+    ...shirtAnswers, garment: "trouser" as const,
+  };
+  const missingPant = createStyleDirectorLooks(shirtAnswers, [shirt]);
+  assert.equal(missingPant.length, 1);
+  assert.equal(missingPant[0].realModel, undefined,
+    "missing matching trousers must not manufacture a real-model handoff");
+  assert.equal(missingPant[0].fabric.id, shirt.id);
+
+  const missingShirt = createStyleDirectorLooks(pantAnswers, [pant]);
+  assert.equal(missingShirt.length, 1);
+  assert.equal(missingShirt[0].realModel, undefined,
+    "missing matching shirts must not manufacture a real-model handoff");
+  assert.equal(missingShirt[0].fabric.id, pant.id);
+
+  const unavailablePant = { ...pant, inStock: false };
+  const shirtOnly = createStyleDirectorLooks(shirtAnswers, [shirt, unavailablePant]);
+  assert.equal(shirtOnly.length, 1);
+  assert.equal(shirtOnly[0].realModel, undefined,
+    "out-of-stock supporting fabric must not enter pair recommendations");
+
+  assert.deepEqual(createStyleDirectorLooks(shirtAnswers, [
+    { ...shirt, inStock: false }, pant,
+  ]), [], "out-of-stock hero shirting must not be recommended");
+  assert.deepEqual(createStyleDirectorLooks(pantAnswers, [
+    shirt, { ...pant, inStock: false },
+  ]), [], "out-of-stock hero suiting must not be recommended");
+});
