@@ -74,7 +74,7 @@ export function applyVerifiedPhysicalFabricEvidence(
     && physical.fiberContent.length<=220;
   return {
     ...fabric,
-    ...(patternScaleVerified ? {
+    ...(patternScaleVerified && fabric.patternScaleVerified!==true ? {
       patternScaleVerified:true,
       renderScale:{
         physicalScaleStatus:physicalScale as "declared_repeat"|"declared_swatch_width",

@@ -323,3 +323,22 @@ test("padded oversize supplier source and composition cannot bypass literal rece
   justBounded.verifiedPhysical.fiberContent=" ".repeat(210)+"100% linen";
   assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,justBounded).fiberContentVerified,true);
 });
+
+test("previously verified physical scale is not overwritten by later analyzer evidence",()=>{
+  const prior={
+    ...fabric,
+    patternScaleVerified:true,
+    renderScale:{physicalScaleStatus:"declared_repeat" as const,repeatMm:18,stripeWidthMm:4},
+  };
+  const later=intelligence("reviewed");
+  later.measuredEvidence.repeatMm=12;
+  later.measuredEvidence.stripeWidthMm=3;
+  const result=applyVerifiedPhysicalFabricEvidence(prior,later);
+  assert.equal(result.patternScaleVerified,true);
+  assert.deepEqual(result.renderScale,prior.renderScale,
+    "existing verified repeat and width remain authoritative");
+  const blank=applyVerifiedPhysicalFabricEvidence(fabric,later);
+  assert.equal(blank.patternScaleVerified,true);
+  assert.equal(blank.renderScale?.repeatMm,12,
+    "a still-unverified fabric may adopt correctly reviewed physical evidence");
+});
