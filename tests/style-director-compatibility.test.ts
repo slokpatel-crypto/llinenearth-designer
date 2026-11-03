@@ -893,3 +893,20 @@ test("photographic trouser rise, waistband and break must match versioned select
     "...styleDirectorPresentationIssues(best.style,styleSpec)",
   ), "real Style Director recommendations must evaluate the full photographic-to-versioned gate");
 });
+
+test("qualified negative pleat descriptions do not fabricate positive pleats", () => {
+  for (const label of [
+    "Flat-Front Trouser without any front pleats",
+    "Trouser with no visible side pleats",
+    "Trouser without any visible front pleats",
+    "Trouser with zero front pleats",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(label), "flat_front", label);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", label), [], label);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+      label, spec({}, { pleat: "flat_front" }).pant,
+    ), [], label);
+  }
+  // "No double pleats" does not rule out a single pleat; never infer flat front.
+  assert.equal(styleDirectorCandidateTrouserFront("Trouser with no double pleats"), "pleated");
+});
