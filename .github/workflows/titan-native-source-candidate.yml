@@ -18,6 +18,7 @@ on:
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
       - "scripts/blender/source-crotch-seam-winding.py"
       - "scripts/blender/source-crotch-bridge-flat-charts.py"
+      - "scripts/blender/source-trouser-provisional-uv.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -28,6 +29,7 @@ on:
       - "tests/crotch-connected-face-remesh-native.test.ts"
       - "tests/crotch-seam-winding-uv-native.test.ts"
       - "tests/crotch-bridge-flat-charts-native.test.ts"
+      - "tests/crotch-trouser-provisional-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -41,6 +43,7 @@ on:
       - "tests/python/test_native_candidate_preflight_summary.py"
       - "tests/python/test_source_crotch_seam_winding.py"
       - "tests/python/test_source_crotch_bridge_flat_charts.py"
+      - "tests/python/test_source_trouser_provisional_uv.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -59,6 +62,7 @@ on:
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
       - "scripts/blender/source-crotch-seam-winding.py"
       - "scripts/blender/source-crotch-bridge-flat-charts.py"
+      - "scripts/blender/source-trouser-provisional-uv.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -69,6 +73,7 @@ on:
       - "tests/crotch-connected-face-remesh-native.test.ts"
       - "tests/crotch-seam-winding-uv-native.test.ts"
       - "tests/crotch-bridge-flat-charts-native.test.ts"
+      - "tests/crotch-trouser-provisional-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -97,6 +102,7 @@ jobs:
           python3 tests/python/test_native_candidate_preflight_summary.py
           python3 tests/python/test_source_crotch_seam_winding.py
           python3 tests/python/test_source_crotch_bridge_flat_charts.py
+          python3 tests/python/test_source_trouser_provisional_uv.py
       - name: Fetch checksum-verified Blender 4.5.14
         shell: bash
         run: |
@@ -1039,6 +1045,57 @@ jobs:
                   assert chart["supplierFabricRepeatVerified"] is False
                   assert chart["tailorSeamAllowanceApproved"] is False
                   assert chart["productionApproved"] is False
+              source_uv=oriented["researchOnlyOriginalSourcePanelUvSurvey"]
+              assert source_uv["researchOnly"] is True
+              assert source_uv["actualOriginalSourceFaceCount"] == 2650
+              assert source_uv["actualOriginalSourceVertexCount"] > 0
+              assert source_uv["nativeOriginalSourceUvFaceCount"] == 2650
+              assert source_uv["nativeOriginalSourceUvLoopCount"] == source_uv["provisionalUvLoopCount"]
+              assert source_uv["nativeOriginalSourceUvLoopCount"] >= 7950
+              assert source_uv["nativeResearchUvLayerName"] == "TITAN_RESEARCH_UNVERIFIED_ORIGINAL_SOURCE_CYLINDER"
+              assert source_uv["originalSourceScannedBodyBVHPairsUnchanged"] >= 0
+              assert source_uv["openSourceEdgeCount"] == 132
+              assert source_uv["originalCutEdgeCount"] == 8
+              assert source_uv["uniqueSourceEdgeCount"] > 0
+              assert source_uv["sharedOriginalSourceEdgeCount"] > 0
+              assert source_uv["sharedOriginalSourceEdgeCount"] == (
+                  source_uv["displayUvContinuousSharedEdges"] +
+                  source_uv["displayUvDiscontinuousSharedEdges"]
+              )
+              assert type(source_uv["displayUvDiscontinuousSharedEdges"]) is int
+              assert type(source_uv["provisionalUvCollapsedFaceCount"]) is int
+              assert 0 <= source_uv["provisionalUvCollapsedFaceCount"] <= 2650
+              assert math.isfinite(source_uv["maximumDisplayUvEdgeStretchErrorMm"])
+              assert math.isfinite(source_uv["rmsDisplayUvEdgeStretchErrorMm"])
+              assert math.isfinite(source_uv["maxDisplayUvSeamGapMm"])
+              assert source_uv["maximumDisplayUvEdgeStretchErrorMm"] >= 0
+              assert source_uv["rmsDisplayUvEdgeStretchErrorMm"] >= 0
+              assert source_uv["maxDisplayUvSeamGapMm"] >= 0
+              assert math.isfinite(source_uv["minimumDisplayUvToOriginalFaceAreaRatio"])
+              assert math.isfinite(source_uv["maximumDisplayUvToOriginalFaceAreaRatio"])
+              assert 0 <= source_uv["minimumDisplayUvToOriginalFaceAreaRatio"] <= (
+                  source_uv["maximumDisplayUvToOriginalFaceAreaRatio"]
+              )
+              assert len(source_uv["actualOriginalCutEdgeUvEvidence"]) == 8
+              assert {tuple(row["originalSourceCutEdgeIndices"]) for row in
+                      source_uv["actualOriginalCutEdgeUvEvidence"]} == seam_cut_edges
+              for row in source_uv["actualOriginalCutEdgeUvEvidence"]:
+                  assert 0 <= row["actualOriginalOwningFace"] < 2650
+                  assert row["realOriginalSourceEdgeLengthMm"] > 0
+                  assert row["provisionalUVEdgeLengthMm"] >= 0
+                  assert row["geometricDisplayEdgeLengthErrorMm"] >= 0
+                  assert row["physicalFabricScaleApproved"] is False
+              assert source_uv["originalSourcePanelUVApproved"] is False
+              assert source_uv["sourceToBridgeUVContinuityVerified"] is False
+              assert source_uv["textureGrainDirectionVerified"] is False
+              assert source_uv["fabricGsmOrCompositionVerified"] is False
+              assert source_uv["measuredSupplierFabricRepeatMm"] is None
+              assert source_uv["physicalTextileScaleVerified"] is False
+              assert source_uv["sewnGarmentApproved"] is False
+              assert source_uv["productionApproved"] is False
+              assert source_uv["originalSourceUVFromGarmentProduction"] is False
+              assert source_uv["originalSourceStageUVProvenance"] == uv_stages
+              assert source_uv["displayProjection"].endswith("not garment unwrap")
               assert "does not establish" in flat["metricCaveat"]
               assert "never sufficient" in oriented["metricCaveat"]
           assert original["researchOnlyOriginalSeamWindingAndUVProvenance"] == (
@@ -1474,6 +1531,16 @@ jobs:
               "radial18TriangleContactedAreaMm2":radial["contactingBridgeAreaMm2"],
               "radialDisplacementMm":shifts,
               "originalCutSegmentBodyContacts":original["actualBodyContactByOriginalCutEdgePair"],
+              "provisionalActualSourceTrouserUvEvidence": {
+                  "uvLayerName":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourcePanelUvSurvey"]["nativeResearchUvLayerName"],
+                  "trueOriginalSourceFaces":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourcePanelUvSurvey"]["actualOriginalSourceFaceCount"],
+                  "nativeSourceUvLoops":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourcePanelUvSurvey"]["nativeOriginalSourceUvLoopCount"],
+                  "displaySeamDiscontinuities":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourcePanelUvSurvey"]["displayUvDiscontinuousSharedEdges"],
+                  "maxDisplayUvStretchErrorMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourcePanelUvSurvey"]["maximumDisplayUvEdgeStretchErrorMm"],
+                  "originalSourceUvApproved":False,
+                  "textileRepeatVerified":False,
+                  "productionApproved":False,
+              },
               "metricBridgeFlatChartEvidence": {
                   "geometryOnly":True,
                   "researchChartCount":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyGeometricFlatBridgeCharts"]["chartCount"],
