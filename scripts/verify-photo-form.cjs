@@ -66,6 +66,9 @@ async function run(){
     const fidelity=page.locator('[data-photo-construction-mismatch="true"]');
     await fidelity.waitFor();
     assert.match(await fidelity.textContent(),/shirt hem/i);
+    // A fixed-position contact bar can overlap lower explanations on narrow
+    // screens. The on-photo status must still disclose approximation upfront.
+    assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/CUTS APPROX\./);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`dark-untucked-${width}.png`)});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     summary.viewports.push({width,overflow:false,realCataloguePreview:true,tuckedAndUntuckedScreenshots:true});
