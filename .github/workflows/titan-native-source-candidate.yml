@@ -22,6 +22,7 @@ on:
       - "scripts/blender/source-trouser-quad-metric-uv.py"
       - "scripts/blender/source-trouser-dual-tree-uv.py"
       - "scripts/blender/source-trouser-uv-cut-network.py"
+      - "scripts/blender/source-trouser-max-retained-uv.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -36,6 +37,7 @@ on:
       - "tests/crotch-trouser-quad-metric-uv-native.test.ts"
       - "tests/crotch-trouser-dual-tree-uv-native.test.ts"
       - "tests/crotch-trouser-uv-cut-network-native.test.ts"
+      - "tests/crotch-trouser-max-retained-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -53,6 +55,7 @@ on:
       - "tests/python/test_source_trouser_quad_metric_uv.py"
       - "tests/python/test_source_trouser_dual_tree_uv.py"
       - "tests/python/test_source_trouser_uv_cut_network.py"
+      - "tests/python/test_source_trouser_max_retained_uv.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -75,6 +78,7 @@ on:
       - "scripts/blender/source-trouser-quad-metric-uv.py"
       - "scripts/blender/source-trouser-dual-tree-uv.py"
       - "scripts/blender/source-trouser-uv-cut-network.py"
+      - "scripts/blender/source-trouser-max-retained-uv.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -89,6 +93,7 @@ on:
       - "tests/crotch-trouser-quad-metric-uv-native.test.ts"
       - "tests/crotch-trouser-dual-tree-uv-native.test.ts"
       - "tests/crotch-trouser-uv-cut-network-native.test.ts"
+      - "tests/crotch-trouser-max-retained-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -121,6 +126,7 @@ jobs:
           python3 tests/python/test_source_trouser_quad_metric_uv.py
           python3 tests/python/test_source_trouser_dual_tree_uv.py
           python3 tests/python/test_source_trouser_uv_cut_network.py
+          python3 tests/python/test_source_trouser_max_retained_uv.py
       - name: Fetch checksum-verified Blender 4.5.14
         shell: bash
         run: |
@@ -1248,6 +1254,73 @@ jobs:
               assert cut_network["measuredSupplierTextileRepeatMm"] is None
               assert cut_network["productionApproved"] is False
               assert "NOT permission" not in cut_network["metricCaveat"]
+              weighted=oriented["researchOnlyOriginalSourceMaxRetainedUvEvidence"]
+              assert weighted["researchOnly"] is True
+              assert weighted["originalSourceQuadCount"] == 2650
+              assert weighted["originalSourceUvLoopCount"] == 10600
+              assert weighted["nativeResearchUvLoopCount"] == 10600
+              assert weighted["nativeResearchUvLayerName"] == "TITAN_RESEARCH_UNVERIFIED_MAXIMUM_RETAINED_SOURCE_EDGES"
+              assert weighted["dualGraphComponentCount"] == tree["dualGraphComponentCount"] == 3
+              assert weighted["sharedOriginalSourceEdgeCount"] == 5234
+              assert weighted["verifiedTreeConnectedSharedEdges"] == 2647
+              assert weighted["nonTreeCycleSharedEdges"] == 2587
+              assert weighted["verifiedTreeConnectedSharedEdges"] == (
+                  2650 - weighted["dualGraphComponentCount"]
+              )
+              assert weighted["maximumTreeEdgeUvJoinErrorMm"] <= 0.001
+              assert weighted["originalSourceStageUVProvenance"] == uv_stages
+              assert weighted["nativeOriginalBodyContactPairsUnchanged"] == (
+                  tree["nativeRealOriginalSourceBodyPairsUnchanged"]
+              ) == 29600
+              assert weighted["actualOriginalSourceUVTopology"].startswith("deterministic max-retained")
+              assert weighted["selectedForestSource"] == "explicit validated original-source shared edge list"
+              max_selection=weighted["maxRetainedOriginalSourceSelection"]
+              assert max_selection["researchOnly"] is True
+              assert max_selection["originalSourceQuadCount"] == 2650
+              assert max_selection["originalSourceSharedEdgeCount"] == 5234
+              assert max_selection["originalSourceComponentCount"] == 3
+              assert max_selection["actualOriginalCutEdgeCount"] == 8
+              assert max_selection["maximumRetainedTreeEdgeCount"] == 2647
+              assert max_selection["theoreticalNonTreeSourceEdgeCount"] == 2587
+              assert math.isfinite(max_selection["minimumOmittedOriginalSourceEdgeLengthMm"])
+              assert math.isfinite(max_selection["allRealSharedSourceEdgeLengthMm"])
+              assert max_selection["minimumOmittedOriginalSourceEdgeLengthMm"] >= 0
+              assert max_selection["allRealSharedSourceEdgeLengthMm"] > 0
+              assert max_selection["minimumOmittedOriginalSourceEdgeLengthMm"] <= (
+                  max_selection["allRealSharedSourceEdgeLengthMm"]
+              )
+              assert max_selection["actualCuttingLinesApproved"] is False
+              assert max_selection["overlapFreeUvApproved"] is False
+              assert max_selection["fabricScaleAndGrainApproved"] is False
+              assert max_selection["physicalCrotchFitApproved"] is False
+              assert max_selection["productionApproved"] is False
+              weighted_cut=weighted["actualSourceCutNetworkEvidence"]
+              assert weighted_cut["originalSharedSourceEdgeCount"] == 5234
+              assert weighted_cut["unclosedSharedUvCutCandidateEdges"] == (
+                  weighted["nonTreeCycleUnclosedUvEdges"]
+              )
+              assert weighted_cut["joinedSharedUvEdges"] + (
+                  weighted_cut["unclosedSharedUvCutCandidateEdges"]
+              ) == 5234
+              assert weighted_cut["realTailorCutLinesApproved"] is False
+              assert weighted_cut["productionApproved"] is False
+              assert weighted["baselineBfsSourceCutNetworkLengthMm"] == (
+                  cut_network["totalRealGeometryOfUvCutCandidatesMm"]
+              )
+              assert weighted["maxRetainedActualSourceCutNetworkLengthMm"] == (
+                  weighted_cut["totalRealGeometryOfUvCutCandidatesMm"]
+              )
+              assert abs(weighted["maxRetainedActualCutLengthChangeVsBfsMm"] -
+                         (weighted["maxRetainedActualSourceCutNetworkLengthMm"] -
+                          weighted["baselineBfsSourceCutNetworkLengthMm"])) <= 0.0001
+              if tree["nonTreeCycleEdgesWithinOneMicrometre"] == 0:
+                  assert weighted["maxRetainedActualCutLengthChangeVsBfsMm"] <= 0.001
+              assert weighted["localMetricTrianglesRemainUnscaled"] is True
+              assert weighted["sourcePanelsFullyStitchedInUV"] is False
+              assert weighted["physicalFabricScaleVerified"] is False
+              assert weighted["originalGarmentTexelScaleAndGrainApproved"] is False
+              assert weighted["physicalSewnCrotchPatternApproved"] is False
+              assert weighted["productionApproved"] is False
               assert "not sewn garment" in cut_network["metricCaveat"]
               assert "UNVERIFIED" in tree["metricCaveat"]
               assert "DIFFERENT UV island" in quads["metricCaveat"]
@@ -1687,6 +1760,19 @@ jobs:
               "radial18TriangleContactedAreaMm2":radial["contactingBridgeAreaMm2"],
               "radialDisplacementMm":shifts,
               "originalCutSegmentBodyContacts":original["actualBodyContactByOriginalCutEdgePair"],
+              "maxRetainedOriginalSourceUvExperiment": {
+                  "strategy":"maximum real 3D shared-edge spanning forest",
+                  "originalComponents":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["dualGraphComponentCount"],
+                  "retainedOriginalSharedEdges":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["verifiedTreeConnectedSharedEdges"],
+                  "unclosedOriginalUvCycleEdges":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["nonTreeCycleUnclosedUvEdges"],
+                  "theoreticalOmittedSourceEdgeLengthMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["maxRetainedOriginalSourceSelection"]["minimumOmittedOriginalSourceEdgeLengthMm"],
+                  "baselineCandidateCutLengthMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["baselineBfsSourceCutNetworkLengthMm"],
+                  "weightedCandidateCutLengthMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["maxRetainedActualSourceCutNetworkLengthMm"],
+                  "candidateChangeMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["maxRetainedActualCutLengthChangeVsBfsMm"],
+                  "maxRemainingUvGapMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["maximumNonTreeUvSeamGapMm"],
+                  "physicalCuttingOrFabricApproved":False,
+                  "productionApproved":False,
+              },
               "originalSourceUvCutNetworkEvidence": {
                   "unclosedActualSourceEdges":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceUvCutNetworkEvidence"]["unclosedSharedUvCutCandidateEdges"],
                   "totalOriginalSourceUvCutCandidateLengthMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceUvCutNetworkEvidence"]["totalRealGeometryOfUvCutCandidatesMm"],
