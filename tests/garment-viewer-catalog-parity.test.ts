@@ -12,5 +12,6 @@ test("GarmentViewer and customer Designer share the same active stock loader",()
   for(const token of ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability"]) {
     assert.match(shared,new RegExp(token));
   }
-  assert.match(shared,/filter\(\(fabric\)=>fabric\.inStock\)/);
+  assert.match(shared,/verifiedDesignerCatalogueStock\(liveStock\.stock,liveStock\.verifiedFabricIds,metadata\)/);
+  assert.doesNotMatch(shared,/liveStock\.stock\.filter\(\(fabric\)=>fabric\.inStock\)/);
 });
