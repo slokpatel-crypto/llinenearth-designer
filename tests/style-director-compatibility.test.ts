@@ -523,3 +523,30 @@ test("ambiguous candidate descriptions force an explicit recommendation review",
     "ambiguous names must affect final recommendation review status");
   assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'));
 });
+
+test("exact photographic collar IDs match versioned construction for ordinary collars", () => {
+  const ordinary = [
+    ["Spread Collar", "spread_collar"],
+    ["Point (Standard) Collar", "point_standard_collar"],
+    ["Button-Down Collar", "button_down_collar"],
+    ["Club Collar", "club_collar"],
+  ] as const;
+  for (const [label, id] of ordinary) {
+    const correct = spec({ collar: id });
+    assert.deepEqual(styleDirectorPresentationIssues(photo(label, "Tucked"), correct), [],
+      label + " must not be falsely flagged when canonical IDs match");
+    const mismatched = spec({ collar: id === "spread_collar"
+      ? "point_standard_collar" : "spread_collar" });
+    const previous = JSON.stringify(mismatched);
+    assert.deepEqual(styleDirectorPresentationIssues(photo(label, "Tucked"), mismatched)
+      .map(issue => issue.code), ["legacy_collar_mismatch"], label);
+    assert.equal(JSON.stringify(mismatched), previous,
+      "photo parity review must not rewrite saved construction IDs");
+  }
+  assert.deepEqual(styleDirectorPresentationIssues(
+    photo("Spread Collar", "Tucked"), spec({collar:"cuban_camp_collar"}),
+  ).map(issue => issue.code), ["legacy_collar_mismatch", "unverified_camp_photo"]);
+  assert.deepEqual(styleDirectorPresentationIssues(
+    photo("Point (Standard) Collar", "Tucked"), spec({collar:"cutaway_collar"}),
+  ).map(issue => issue.code), ["legacy_collar_mismatch", "unverified_cutaway_photo"]);
+});
