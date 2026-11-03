@@ -45,3 +45,8 @@ $$;
 
 revoke all on function public.fabric_stock_record_v2(text,text,numeric,text,text,text) from public,anon,authenticated;
 grant execute on function public.fabric_stock_record_v2(text,text,numeric,text,text,text) to service_role;
+
+-- Retire the provenance-free v1 manual writer. Existing rows are untouched.
+-- Historical v1 grants service_role EXECUTE; leaving it callable permits
+-- stock writes without checker/source evidence and without the shared fabric lock.
+revoke execute on function public.fabric_stock_record(text,text,numeric,text) from service_role;
