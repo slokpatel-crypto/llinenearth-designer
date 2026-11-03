@@ -575,3 +575,6 @@ Share-link recipients must not be able to disable a link using the bearer URL al
 
 **Decision:** on an unavailable/malformed customer-session response, hide previously loaded private account data and erase unfinished bearer recovery inputs; provide explicit retry rather than silently retaining the old owner's data. Reject empty, undecodable and duplicated signed customer cookies even while the temporary legacy auth bridge is enabled; allow legacy authentication only when the signed-cookie name is **absent**. Synthetic HTTP and Chromium tests prove these boundaries without live customer accounts. Keep draft PR and deployment hold until exact-head CI, staging migrations and trusted-edge verification are complete.
 
+## 2026-11-03 — Bound and sanitize legacy customer access bearers
+
+**Decision:** while the opt-in signed-only migration is not enabled, the temporary legacy access-cookie bridge must validate the bearer string before constructing an upstream `Authorization` header. Allow only nonempty URL-safe ASCII bearer characters and a 4096-character cap; reject malformed/oversized input without a provider call, preserving a private no-store unauthenticated response. Negative unit and real synthetic HTTP tests enforce this. The compatibility path is still disabled when customer session revocation is required; no live credentials or user data are used.
