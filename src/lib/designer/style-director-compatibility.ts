@@ -28,9 +28,11 @@ export function styleDirectorCandidateCollar(
   legacyChoices: readonly string[],
 ): { legacy: string | null; versioned: "cuban_camp_collar" | "mandarin_band_collar" | "cutaway_collar" } | null {
   const camp = /\b(?:camp|cuban)(?:[- ]collar)?\b/i.test(candidateShirt);
-  const band = !camp && /\b(?:band|mandarin)(?:[- ]collar)?\b/i.test(candidateShirt);
-  const cutaway = !camp && !band && /\bcutaway(?:[- ]collar)?\b/i.test(candidateShirt);
-  if (!camp && !band && !cutaway) return null;
+  const band = /\b(?:band|mandarin)(?:[- ]collar)?\b/i.test(candidateShirt);
+  const cutaway = /\bcutaway(?:[- ]collar)?\b/i.test(candidateShirt);
+  // Conflicting named collar families are ambiguous, not permission to pick
+  // the first match and silently rewrite a proposed construction ID.
+  if (Number(camp) + Number(band) + Number(cutaway) !== 1) return null;
   const matcher = camp ? /\b(?:camp|cuban)\b/i : band ? /\b(?:band|mandarin)\b/i : /\bcutaway\b/i;
   return {
     legacy: legacyChoices.find((label) => matcher.test(label)) ?? null,
