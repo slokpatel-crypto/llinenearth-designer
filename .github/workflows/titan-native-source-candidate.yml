@@ -19,6 +19,7 @@ on:
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
       - "tests/crotch-source-edge-reprojection-native.test.ts"
+      - "tests/crotch-connected-source-nine-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -49,6 +50,7 @@ on:
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
       - "tests/crotch-source-edge-reprojection-native.test.ts"
+      - "tests/crotch-connected-source-nine-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -1066,6 +1068,60 @@ jobs:
           ]
           assert source_offset["jointSampledZeroBVHAndSevenMmCandidateLabels"] == expected_joint
           assert source_offset["jointSampledTargetObserved"] is bool(expected_joint)
+          connected=targeted["researchOnlyConnectedSourceNineMmTrial"]
+          assert connected["researchOnly"] is True
+          assert connected["offsetMm"] == 9
+          assert connected["changesProductionGeometry"] is False
+          assert connected["productionApproved"] is False
+          assert connected["physicalFitApproved"] is False
+          assert connected["sewnGarmentApproved"] is False
+          assert connected["originalOpenBoundaryEdgeCount"] == offset["openSourceBoundaryEdgesAfterBridge"] == 126
+          adjacent=set(connected["originalSourceAdjacentFaceIndices"])
+          bridge=set(connected["originalTargetBridgeFaceIndices"])
+          assert len(adjacent) > 0 and len(bridge) == 2
+          assert all(type(i) is int and i >= 0 for i in adjacent|bridge)
+          assert len(adjacent&bridge) == 0
+          src_control=connected["control"]
+          src_nine=connected["positiveNineMm"]
+          assert src_control["triangleOrPolygonCount"] == src_nine["triangleOrPolygonCount"]
+          assert src_control["triangleOrPolygonCount"] > len(bridge)
+          assert src_control["originalSourceAdjacentFaceCount"] == len(adjacent)
+          assert src_nine["originalSourceAdjacentFaceCount"] == len(adjacent)
+          assert src_control["originalVertexMovementMaxMm"] == 0
+          assert src_control["originalSourceCoordinatesChanged"] is False
+          assert 0 < src_nine["originalVertexMovementMaxMm"] <= 25
+          assert src_nine["originalSourceCoordinatesChanged"] is True
+          assert 0 <= connected["sourceAdjacentFaceNormalFlipsAfterNineMm"] <= len(adjacent)
+          for record in (src_control, src_nine):
+              assert record["productionApproved"] is False
+              assert len(record["sourceEdgeReadings"]) == 2
+              assert record["sourceEdgeReadingsUnderSevenMm"] == sum(
+                  row["underSevenMm"] for row in record["sourceEdgeReadings"]
+              )
+              for row in record["sourceEdgeReadings"]:
+                  assert tuple(sorted(row["originalSourceCutEdge"])) in expected_cut_edges
+                  assert len(row["sampledDistancesMm"]) == 7
+                  assert all(math.isfinite(d) and d >= 0 for d in row["sampledDistancesMm"])
+                  assert row["minimumDistanceMm"] == min(row["sampledDistancesMm"])
+                  assert row["underSevenMm"] == sum(d < 7 for d in row["sampledDistancesMm"])
+              assert type(record["wholeSourceBodyBVHPairs"]) is int
+              assert record["wholeSourceBodyBVHPairs"] >= 0
+              for item in ("adjacentOriginalSourceBodyBVHPairs","targetBridgeBodyBVHPairs"):
+                  assert type(record[item]) is int
+                  assert 0 <= record[item] <= record["wholeSourceBodyBVHPairs"]
+              for item in ("adjacentOriginalSourceContactedAreaMm2","targetBridgeContactedAreaMm2"):
+                  assert math.isfinite(record[item]) and record[item] >= 0
+          assert src_control["sourceEdgeReadingsUnderSevenMm"] == 14
+          assert src_nine["sourceEdgeReadingsUnderSevenMm"] == 0
+          assert connected["localAdjacentSourceBodyCollisionImprovementObserved"] is (
+              src_nine["adjacentOriginalSourceBodyBVHPairs"] <
+              src_control["adjacentOriginalSourceBodyBVHPairs"]
+          )
+          assert connected["localBridgeBodyCollisionImprovementObserved"] is (
+              src_nine["targetBridgeBodyBVHPairs"] <
+              src_control["targetBridgeBodyBVHPairs"]
+          )
+          assert "not continuous" in connected["metricCaveat"]
           assert all(row["productionApproved"] is False for row in source_variants.values())
           assert "No continuous" in source_offset["metricCaveat"]
           assert "zero rays does not prove clearance" in fixed["rayTestCaveat"]
@@ -1115,6 +1171,7 @@ jobs:
               "targetedWorstSourcePair":targeted["targetOriginalCutEdgePair"],
               "fixedBoundaryBodyRayEvidence":targeted["fixedBridgeBoundaryBodyRayEvidence"],
               "sourceCutEdgeReprojectionTrial":targeted["researchOnlySourceCutEdgeReprojectionTrial"],
+              "connectedSourceNineMmTrial":targeted["researchOnlyConnectedSourceNineMmTrial"],
               "positiveNormalOffsetSweep":source_offset["positiveNormalOffsetSweepMm"],
               "jointSampledTargetObserved":source_offset["jointSampledTargetObserved"],
               "targetedEqualTopologyVariants":variants,

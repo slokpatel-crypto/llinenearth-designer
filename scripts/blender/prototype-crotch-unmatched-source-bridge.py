@@ -571,6 +571,185 @@ def trial_source_cut_edge_reprojection(vertices, boundary, source_cut_edges,
     }
 
 
+
+def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
+                                        target_start, target_faces, source_cut_edges,
+                                        body_tree, research, geom_ops, seam_ops):
+    """Move real cut vertices in COPIES of adjacent source-leg faces and bridge.
+
+    This is a full source-shell topology comparison, NOT a sewn/closed cloth
+    model: original panel normals, UVs, sewing margins and cloth thickness are
+    NOT reconstructed. The original exported 6 garments cannot be modified.
+    """
+    boundary, patch_open = ordered_triangle_patch_boundary(target_faces)
+    source = {tuple(sorted(edge)) for edge in source_cut_edges}
+    if not source.issubset(patch_open) or len(source) != 2:
+        raise RuntimeError("Connected trial source segments do not match source cut boundary.")
+    faces = [tuple(face) for face in base_faces] + [tuple(face) for face in bridge_faces]
+    if not base_faces or not bridge_faces or not (0 <= target_start <
+                                                   len(bridge_faces)):
+        raise RuntimeError("No actual original source faces for connected nine-mm comparison.")
+    if target_start + len(target_faces) > len(bridge_faces):
+        raise RuntimeError("Cannot locate target bridge faces in original source topology.")
+    source_indices = set(boundary)
+    affected_source_faces = {
+        i for i, face in enumerate(base_faces)
+        if any(vertex in source_indices for vertex in face)
+    }
+    if not affected_source_faces:
+        raise RuntimeError("Selected source-seam vertices have no adjacent original trouser faces.")
+    target_bridge_faces = set(range(
+        len(base_faces) + target_start, len(base_faces) + target_start + len(target_faces)
+    ))
+    original_open, incidence = seam_ops["edge_topology"](faces)
+    if any(n > 2 for n in incidence.values()):
+        raise RuntimeError("Original joined source mesh is nonmanifold before 9mm trial.")
+    nearest = {}
+    for index in boundary:
+        point, normal, polygon, distance = body_tree.find_nearest(vertices[index])
+        if (point is None or normal is None or polygon is None or distance is None
+                or not math.isfinite(distance) or normal.length <= 1e-9):
+            raise RuntimeError("No actual scanned-body surface for original seam source vertex.")
+        nearest[index] = (point.copy(), normal.normalized())
+
+    def make(label, signed_offset_mm):
+        points = [point.copy() for point in vertices]
+        movements = []
+        if signed_offset_mm:
+            for index in boundary:
+                nearest_point, direction = nearest[index]
+                initial = points[index].copy()
+                points[index] = nearest_point + direction * (signed_offset_mm / 1000.0)
+                move_mm = (points[index] - initial).length * 1000.0
+                if (not math.isfinite(move_mm) or move_mm > 25.0):
+                    raise RuntimeError("Connected trial source vertex moved outside research bound.")
+                movements.append(move_mm)
+        name = "TITAN_RESEARCH_ConnectedCrotchSource_" + label
+        if bpy.data.objects.get(name) is not None:
+            raise RuntimeError("Connected original source research object already exists.")
+        mesh = bpy.data.meshes.new(name + "Mesh")
+        mesh.from_pydata(points, [], faces)
+        mesh.update(calc_edges=True)
+        if len(mesh.polygons) != len(faces):
+            raise RuntimeError("Source-connected research faces were lost.")
+        degenerate = sum(not math.isfinite(p.area) or p.area <= 1e-12
+                         for p in mesh.polygons)
+        if degenerate:
+            raise RuntimeError("Connected research source trial has degenerate faces.")
+        obj = bpy.data.objects.new(name, mesh)
+        obj.hide_render = True
+        for key in ("productionApproved","physicalFitApproved","sewnGarmentApproved"):
+            obj[key] = False
+        obj["candidateOnly"] = True
+        research.objects.link(obj)
+        if bpy.data.collections[EXPORT].objects.get(name) is not None:
+            raise RuntimeError("Connected source research contaminated production export.")
+        measured = geom_ops["world_geometry"](obj)
+        if len(measured["areas"]) != len(faces):
+            raise RuntimeError("Original body collision face IDs cannot be attributed safely.")
+        pairs = body_tree.overlap(geom_ops["real_tree"](measured))
+        affected_contact_faces = {
+            source_face for body_face, source_face in pairs
+            if source_face in affected_source_faces
+        }
+        bridge_contact_faces = {
+            source_face for body_face, source_face in pairs
+            if source_face in target_bridge_faces
+        }
+        source_contact_area = sum(
+            measured["areas"][i] for i in affected_contact_faces
+        ) * 1e6
+        bridge_contact_area = sum(
+            measured["areas"][i] for i in bridge_contact_faces
+        ) * 1e6
+        for value in (source_contact_area, bridge_contact_area):
+            if not math.isfinite(value) or value < 0:
+                raise RuntimeError("Connected source contact area not physical.")
+        edge_distances = []
+        for edge in source_cut_edges:
+            a, b = edge
+            values = []
+            for fraction in (0.125,0.25,0.375,0.5,0.625,0.75,0.875):
+                loc = points[a] + (points[b] - points[a]) * fraction
+                _closest, _normal, _face, measured_distance = body_tree.find_nearest(loc)
+                if measured_distance is None or not math.isfinite(measured_distance):
+                    raise RuntimeError("Unknown connected real source edge body distance.")
+                values.append(round(measured_distance * 1000.0, 5))
+            edge_distances.append({
+                "originalSourceCutEdge": list(edge),
+                "sampledDistancesMm": values,
+                "minimumDistanceMm": min(values),
+                "underSevenMm": sum(d < 7.0 for d in values),
+            })
+        return {
+            "object": obj,
+            "mesh": mesh,
+            "report": {
+                "triangleOrPolygonCount": len(mesh.polygons),
+                "originalSourceAdjacentFaceCount": len(affected_source_faces),
+                "wholeSourceBodyBVHPairs": len(pairs),
+                "adjacentOriginalSourceBodyBVHPairs": sum(
+                    target in affected_source_faces for _body, target in pairs
+                ),
+                "targetBridgeBodyBVHPairs": sum(
+                    target in target_bridge_faces for _body, target in pairs
+                ),
+                "adjacentOriginalSourceContactedAreaMm2": round(source_contact_area, 4),
+                "targetBridgeContactedAreaMm2": round(bridge_contact_area, 4),
+                "sourceEdgeReadings": edge_distances,
+                "sourceEdgeReadingsUnderSevenMm": sum(
+                    row["underSevenMm"] for row in edge_distances
+                ),
+                "originalVertexMovementMaxMm": (
+                    round(max(movements), 5) if movements else 0.0
+                ),
+                "originalSourceCoordinatesChanged": signed_offset_mm != 0,
+                "productionApproved": False,
+            },
+        }
+
+    control = make("UnchangedControl", 0.0)
+    moved = make("Positive9Mm", 9.0)
+    original_normals = control["mesh"].polygons
+    displaced_normals = moved["mesh"].polygons
+    changed_winding = sum(
+        original_normals[index].normal.dot(displaced_normals[index].normal) <= 0
+        for index in affected_source_faces
+    )
+    if control["report"]["triangleOrPolygonCount"] != moved["report"]["triangleOrPolygonCount"]:
+        raise RuntimeError("Connected source faces are not equal topology.")
+    if control["report"]["originalSourceAdjacentFaceCount"] != moved["report"]["originalSourceAdjacentFaceCount"]:
+        raise RuntimeError("Original adjacent source regions no longer match.")
+    return {
+        "researchOnly": True,
+        "offsetMm": 9.0,
+        "originalSourceAdjacentFaceIndices": sorted(affected_source_faces),
+        "originalTargetBridgeFaceIndices": sorted(target_bridge_faces),
+        "originalOpenBoundaryEdgeCount": len(original_open),
+        "control": control["report"],
+        "positiveNineMm": moved["report"],
+        "sourceAdjacentFaceNormalFlipsAfterNineMm": changed_winding,
+        "localAdjacentSourceBodyCollisionImprovementObserved": (
+            moved["report"]["adjacentOriginalSourceBodyBVHPairs"] <
+            control["report"]["adjacentOriginalSourceBodyBVHPairs"]
+        ),
+        "localBridgeBodyCollisionImprovementObserved": (
+            moved["report"]["targetBridgeBodyBVHPairs"] <
+            control["report"]["targetBridgeBodyBVHPairs"]
+        ),
+        "metricCaveat": (
+            "Measured connected research source-shell topology, not continuous "
+            "tailor-approved sewn trouser. Original face UVs, 1.6mm cloth, "
+            "real source inner stitching allowances, cut/garment identity "
+            "and original six-panel preflight remain unapproved."
+        ),
+        "changesProductionGeometry": False,
+        "productionApproved": False,
+        "physicalFitApproved": False,
+        "sewnGarmentApproved": False,
+    }
+
+
 def trial_targeted_seam_reroute(vertices, target_faces, body_tree, research, geom_ops, offset_mm, source_cut_edges):
     """Measure both signs of the real body normal on only the worst source seam.
 
@@ -861,6 +1040,14 @@ def main():
             (tuple(worst["leftEdge"]), tuple(worst["rightEdge"])),
         )
         targeted_reroute_trial["targetOriginalCutEdgePair"] = worst
+        targeted_reroute_trial["researchOnlyConnectedSourceNineMmTrial"] = (
+            trial_connected_source_edge_nine_mm(
+                merged_verts, base_faces, bridge_faces, face_start,
+                bridge_faces[face_start:face_start + worst["bridgeTriangles"]],
+                (tuple(worst["leftEdge"]), tuple(worst["rightEdge"])),
+                body_tree, research, geom_ops, seam_ops,
+            )
+        )
     # If the trial is worse, preserve that number. Never auto-promote geometry.
     # These may legitimately be nonzero: always report, NEVER suppress as accepted fit.
     report={
