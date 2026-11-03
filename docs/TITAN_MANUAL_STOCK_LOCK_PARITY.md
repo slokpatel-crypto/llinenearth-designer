@@ -1,0 +1,11 @@
+# TITAN manual-stock lock parity — 2026-11-03
+
+- **Parent main:** `fd2f29771a24ae888719d64504a0b1fb3595ffb1`. Independent intake branch `titan-manual-stock-lock-parity-20261103`, not stacked onto the documentation-only PR #875.
+- **Affected criteria:** T3/J1 physical stock integrity; T5/J5 privileged operator write safety; T6/J6 disposable database verification.
+- **Observed defect:** `fabric_stock_record_v2` used advisory key `hashtext(fabric_id)`, whereas reserve/consume use `hashtext('stock-fabric:'||fabric_id)`. Consequently manual adjustment-out and reservation/consumption were not serialized on the same fabric lock, permitting stale availability reads and overcommit.
+- **Code fix:** forward source-only migration replaces the manual record RPC with the same signature and logic except its advisory key now matches reservation/consume. No real stock quantities or existing ledger rows are changed by this migration.
+- **Regression:** `scripts/test-manual-stock-lock-parity.sh` uses two independent disposable PostgreSQL sessions: one holds the reservation fabric advisory lock, the other must time out attempting manual receipt, then successfully retry after release. Synthetic receipt is rolled back; zero rows must persist. CI loads migration and runs this test.
+- **Commits:** migration `1802943acdf4db23955254c15f3ed0f362735d23`; concurrency test `5dc7ab29f26abe7432a96f740e47d7b9774cfd14`; CI integration `d176a853a264425753653af9f292d0ef57a19b66`. Matching-head CI and Non-3D **PENDING** until observed.
+- **Remaining risks:** legacy v1 stock RPC uses the old lock namespace and must remain disabled/unreachable in operator flows; stock quantity rounding, manual evidence length and live migration staging/rollback need separate review. No claim of physical stock verification.
+- **BLOCKED/PENDING:** supplier evidence, approved staging migration, authenticated operator/customer testing, tailor approval, native Blender geometry/UV, physical devices, five testers, ten deliveries, owner signoff. No deploy, live mutation, paid AI or main merge.
+- **Next slice:** inspect matching-head native PostgreSQL job and Non-3D results, repair any failure without weakening assertions, audit v1 RPC reachability and physical evidence, then recheck live main ancestry and `vercel.json` deployment guard before any isolated integration.
