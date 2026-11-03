@@ -491,7 +491,8 @@ test("non-enumerable audit claims are rejected rather than erased by JSON serial
   const event={...accepted.audit[0]};
   Object.defineProperty(event,"paymentApproved",{value:true,enumerable:false});
   assert.throws(()=>replayOrderLifecycle(id,revision,hash,[event]),/record property/);
-  const live={...event};
+  const live={...accepted.audit[0]};
+  Object.defineProperty(live,"paymentApproved",{value:true,enumerable:false});
   assert.throws(()=>applyOrderLifecycleEvent(base(),live),/record property/);
   const snapshot={...accepted};
   Object.defineProperty(snapshot,"operatorOverride",{value:true,enumerable:false});
