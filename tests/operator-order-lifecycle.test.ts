@@ -505,3 +505,37 @@ test("non-enumerable audit claims are rejected rather than erased by JSON serial
   assert.throws(()=>step(toQc(),"approve_qc",{qc:{...qc(),checks:hiddenChecks}}),/record property/);
   assert.equal(replayOrderLifecycle(id,revision,hash,accepted.audit).status,"accepted");
 });
+
+
+test("audit history arrays reject hidden fields, getters, symbols, holes and inherited data",()=>{
+  const accepted=step(base(),"accept");
+  const valid=[...accepted.audit];
+  assert.equal(replayOrderLifecycle(id,revision,hash,valid).status,"accepted");
+  assert.equal(replayOrderLifecycle(id,revision,hash,[]).status,"created");
+
+  const extra=[...valid] as unknown[] & {paymentApproved?:boolean};
+  extra.paymentApproved=true;
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,extra),/audit array property/);
+  const hidden=[...valid];
+  Object.defineProperty(hidden,"verifiedByOperator",{value:true,enumerable:false});
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,hidden),/audit array property/);
+  const symbol=[...valid] as unknown[] & {[key:symbol]:unknown};
+  symbol[Symbol("override")]=true;
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,symbol),/audit array property/);
+
+  const accessor=[...valid];
+  Object.defineProperty(accessor,"0",{
+    enumerable:true,configurable:true,get(){throw Error("audit getter must not execute");},
+  });
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,accessor),/audit array property/);
+  const sparse=[...valid];
+  delete sparse[0];
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,sparse),/sparse order audit/);
+  const inherited=Object.setPrototypeOf([...valid],Object.create(Array.prototype));
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,inherited),/audit array prototype/);
+
+  const snapshot=JSON.parse(JSON.stringify(accepted));
+  snapshot.audit=hidden;
+  assert.throws(()=>restoreOrderLifecycleSnapshot(snapshot),/audit array property/);
+  assert.equal(restoreOrderLifecycleSnapshot(JSON.parse(JSON.stringify(accepted))).status,"accepted");
+});
