@@ -112,3 +112,11 @@ The existing persisted production order contract in `src/lib/designer/production
 - Added a focused negative regression test for three forged live-event claims and a valid acceptance control.
 - Source/test commit `51e5c38da518bb1613d8fdb9913fc2063f4a6273`. **Exact-head CI and Non-3D QA must be checked; no passing claim until verified.** Previous head `4f8a618c` passed both workflows.
 - Main `fd2f2977` was 11 commits ahead of branch merge base at inspection; operator paths were isolated. Next: verify exact-head workflows, coordinate SQL-state and authenticated transactional integration with central owner. Do not merge or deploy.
+
+
+## Live destination-claim validation — 2026-11-03
+
+- A live event previously could include a fabricated `to` destination that the reducer silently ignored. Now any supplied `to` must exactly match the computed permitted transition, including recovery and QC paths; omitting `to` remains valid for unapplied input events. Applied stored audit replay still requires an explicit matching `to`.
+- Added regression cases for forged, null, undefined and valid live destination claims, including recovery. Preserved the existing `Tampered audit destination` diagnostic used by replay tests.
+- Prior branch head `10a7d1011006b45f1375faacd8fa9b0bca5d0496` passed CI #41598682561 and Non-3D QA #41598682398. **These checks predate this change**. The new exact head must pass both workflows before being called verified; no local tests were run in this connector session.
+- Compared against main `fd2f29771a24ae888719d64504a0b1fb3595ffb1`: only the three isolated operator files differ on this branch. Next: check new exact-head CI, coordinate SQL state mapping and authenticated transactional persistence with central integration. No merge, deployment, production data access or model changes.
