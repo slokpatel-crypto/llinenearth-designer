@@ -50,6 +50,24 @@ Source report actual genuine connected geometry:
 
 New bounded native trial extends the identical face/edge topology comparison to **7, 9 and 11mm** projected original-body face centroids, validates genuine nearest original-body polygon and all six centroid movements <=25mm, identical untouched original-source and bridge contact counts, original boundary preservation, and independent flipped-face reports. No presumed benefit, UV, cloth drape or final fit.
 
+## Verified native +7/+9/+11 mm centroid reconstruction sweep
+
+Official [pinned Blender source run 41691544928](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/41691544928), exact code head `a7b1875de9e06a74d3f3a90319ca386ce0d167cf`, **success as research/rejection evidence** after the reporting variable bug and stale static-test assertion were fixed.
+
+| Equal research source-face topology | Original centroid control | Actual body-guided centroid +7mm | +9mm | +11mm |
+|---|---:|---:|---:|---:|
+| Body BVH pairs on 24 rebuilt genuine original source faces | **79** | 73 | 69 | 69 |
+| Contacted actual original source-face area (mm²) | **3,470.9054** | **3,757.8055** | **3,943.5968** | **4,162.9391** |
+| Contacted rebuilt original triangles | 13 | 13 | 13 | 13 |
+| Untouched original source/body pairs | 29,555 | 29,555 | 29,555 | 29,555 |
+| Research bridge/body pairs | 1 | 1 | 1 | 1 |
+| Original source inner boundary edges | **126** | 126 | 126 | 126 |
+| Reversed reconstructed original-source triangle normals | — | 0 | 0 | 0 |
+
+All variants preserve 14/14 native sampled original source cut-edge distances ≥7mm. Equal topology is **2,674 total research faces** each; exactly 24 new research faces replace six original source polygons. No unmodified original source face movement or UV/fabric claims.
+
+**Definitive rejection:** All three body-guided centre projections increase actual original-body-contacted fabric surface compared with the same-topology control. Lower BVH counts do NOT override worsened area or the untouched shell's enormous global body contacts. None is fit-ready. Further arbitrary center offsets should not be promoted. Next scope: genuine sewn trouser crotch topology/pattern and physical fit, UV/grain, thickness, measured full six-panel source, four-angle photo, and tailor verification.
+
 ## Acceptance and next steps
 
 - [x] Native real-source matched-region old approach measured worse than unmodified source, confirmed no production fit
@@ -58,7 +76,7 @@ New bounded native trial extends the identical face/edge topology comparison to 
 - [x] Exact-head native assertions and Node structural invariants added
 - [x] Official first native source geometry report measured, confirmed +9mm reduces pair count but increases area; corresponding workflow reporting bug fixed
 - [x] Added +7/+11mm equal-face-topology native geometry candidates, with independent physical readouts (new run still pending)
-- [ ] Pass new exact-head Blender source experiment and record +7/+9/+11mm measured original-body contact count, contacted area and face normal reversals
+- [x] Official +7/+9/+11mm native geometry sweep passed as rejection evidence; all three worsened body-contacted area relative to matched control
 - [ ] Pass exact-head Full CI and Non-3D QA as well as Native collision and rejected-source workflow checks
 - [ ] Design real manufacturing-sewn original crotch cut seams, physical trouser body clearance, UV/grain/physical fabric thickness and drape, identity/photo four-angle QA, independent tailor approval
 - [ ] Resolve ten existing production preflight blockers; no PR merge or production deploy until approved
