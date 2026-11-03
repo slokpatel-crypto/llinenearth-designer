@@ -17,6 +17,17 @@ export function styleDirectorIntelligenceTrustWeight(
   return 0.28;
 }
 
+const candidateCollarFamilies = (name: string) => ({
+  camp: /\b(?:camp|cuban)(?:[- ]collar)?\b/i.test(name),
+  band: /\b(?:band|mandarin)(?:[- ]collar)?\b/i.test(name),
+  cutaway: /\bcutaway(?:[- ]collar)?\b/i.test(name),
+});
+
+const candidateSleeveLengths = (name: string) => ({
+  short: /\b(?:short|half)[ -]?sleeved?\b/i.test(name),
+  long: /\b(?:long|full)[ -]?sleeved?\b/i.test(name),
+});
+
 /**
  * One deterministic interpretation of named camp/band shirt candidates for
  * both the photographic legacy selector and the versioned construction.
@@ -27,9 +38,7 @@ export function styleDirectorCandidateCollar(
   candidateShirt: string,
   legacyChoices: readonly string[],
 ): { legacy: string | null; versioned: "cuban_camp_collar" | "mandarin_band_collar" | "cutaway_collar" } | null {
-  const camp = /\b(?:camp|cuban)(?:[- ]collar)?\b/i.test(candidateShirt);
-  const band = /\b(?:band|mandarin)(?:[- ]collar)?\b/i.test(candidateShirt);
-  const cutaway = /\bcutaway(?:[- ]collar)?\b/i.test(candidateShirt);
+  const { camp, band, cutaway } = candidateCollarFamilies(candidateShirt);
   // Conflicting named collar families are ambiguous, not permission to pick
   // the first match and silently rewrite a proposed construction ID.
   if (Number(camp) + Number(band) + Number(cutaway) !== 1) return null;
@@ -48,8 +57,7 @@ export function styleDirectorCandidateCollar(
 export function styleDirectorCandidateSleeve(
   candidateShirt: string,
 ): { sleeve: "half_sleeve"; cuff: "open_short_hem_cuff" } | null {
-  const shortSleeve = /\b(?:short|half)[ -]?sleeved?\b/i.test(candidateShirt);
-  const longSleeve = /\b(?:long|full)[ -]?sleeved?\b/i.test(candidateShirt);
+  const { short: shortSleeve, long: longSleeve } = candidateSleeveLengths(candidateShirt);
   // Contradictory sleeve descriptions cannot safely select a construction.
   // Retain the existing default rather than silently interpreting one half.
   return shortSleeve && !longSleeve
@@ -61,9 +69,34 @@ export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "band_collar_construction" | "short_sleeve_double_cuff" |
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_type_hem_mismatch" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
-    "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo";
+    "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
+    "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve";
   explanation: string;
 };
+
+/**
+ * Conflicting proposed garment names must reach recommendation review.
+ * A null resolver alone could otherwise leave default full-sleeve construction
+ * looking acceptable despite explicitly contradictory instructions.
+ */
+export function styleDirectorCandidateWordingIssues(candidateShirt: string): DirectorConstructionIssue[] {
+  const issues: DirectorConstructionIssue[] = [];
+  const { camp, band, cutaway } = candidateCollarFamilies(candidateShirt);
+  if (Number(camp) + Number(band) + Number(cutaway) > 1) {
+    issues.push({
+      code: "ambiguous_candidate_collar",
+      explanation: "This proposed shirt names conflicting collar families; confirm one construction before approving the recommendation.",
+    });
+  }
+  const sleeves = candidateSleeveLengths(candidateShirt);
+  if (sleeves.short && sleeves.long) {
+    issues.push({
+      code: "ambiguous_candidate_sleeve",
+      explanation: "This proposed shirt names both short and long sleeves; confirm one sleeve construction before approving the recommendation.",
+    });
+  }
+  return issues;
+}
 
 /**
  * Non-destructive compatibility checks on versioned construction IDs.
