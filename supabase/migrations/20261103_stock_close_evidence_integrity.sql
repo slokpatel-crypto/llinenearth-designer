@@ -72,7 +72,9 @@ declare
   v_physical numeric:=0;
 begin
   if p_actual_metres is null or p_actual_metres<=0 or p_actual_metres>100
-    or p_actual_metres<>round(p_actual_metres,3) then raise exception 'invalid actual usage'; end if;
+    or p_actual_metres<>round(p_actual_metres,3) then
+    raise exception 'invalid actual usage' using errcode='22023';
+  end if;
   -- Prevent distinct named checkers or cloth-usage documents from aliasing.
   if length(trim(coalesce(p_checked_by,'')))>120
     or length(trim(coalesce(p_source_reference,'')))>240 then
