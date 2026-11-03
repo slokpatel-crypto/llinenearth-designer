@@ -402,8 +402,14 @@ export function applyOrderLifecycleEventWithVersionFence(
   rejectUnknownFields(event, APPLIED_EVENT_FIELDS, "order event");
   const eventId = identifier(event.eventId, "event ID");
   if (event.orderId !== state.orderId) throw new Error("Order identity mismatch.");
-  if (state.audit.some(previous => previous.eventId === eventId)) {
-    // The idempotent reducer proves every field matches the existing audit.
+  const original = state.audit.find(previous => previous.eventId === eventId);
+  if (original) {
+    // A matching event body is not enough: its original write fence must also
+    // match the exact predecessor in the immutable audit. Otherwise a guessed
+    // or unrelated version can be used to acknowledge a completed operation.
+    if (fence.sequence !== original.sequence - 1 ||
+        fence.lastEventId !== original.previousEventId)
+      throw new Error("Order event retry version fence does not match its original predecessor.");
     return applyOrderLifecycleEventIdempotently(state, event);
   }
   if (fence.sequence !== state.sequence || fence.lastEventId !== state.lastEventId)
