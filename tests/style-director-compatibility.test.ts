@@ -550,3 +550,36 @@ test("exact photographic collar IDs match versioned construction for ordinary co
     photo("Point (Standard) Collar", "Tucked"), spec({collar:"cutaway_collar"}),
   ).map(issue => issue.code), ["legacy_collar_mismatch", "unverified_cutaway_photo"]);
 });
+
+test("photographic trouser selection and versioned trouser type must agree", () => {
+  const examples = [
+    ["Formal Trouser (Flat-front)", "formal_flat_front"],
+    ["Pleated Trouser", "pleated_trouser"],
+    ["Wide-leg / Relaxed Drape Trouser", "wide_leg_relaxed_drape"],
+  ] as const;
+  for (const [label, id] of examples) {
+    assert.ok(optionsFor("pant.type").some(option => option.id === id &&
+      option.legacySelectable !== false && option.legacyLabel === label),
+      "use only actual selectable legacy trouser options");
+    const photographic = { ...photo("Spread Collar", "Tucked"), trouser: label };
+    const valid = spec({}, {type:id});
+    assert.deepEqual(styleDirectorPresentationIssues(photographic, valid), [],
+      label + " must match its canonical versioned trouser ID");
+    const mismatched = spec({}, {type:id === "formal_flat_front"
+      ? "pleated_trouser" : "formal_flat_front"});
+    const original = JSON.stringify(mismatched);
+    assert.deepEqual(styleDirectorPresentationIssues(photographic, mismatched)
+      .map(issue => issue.code), ["legacy_trouser_mismatch"], label);
+    assert.equal(JSON.stringify(mismatched), original,
+      "review must not rewrite a saved trouser specification");
+  }
+  assert.deepEqual(styleDirectorPresentationIssues({
+    ...photo("Spread Collar", "Tucked"), trouser: "Not a catalogue trouser",
+  }, spec()).map(issue => issue.code), ["legacy_trouser_mismatch"],
+  "unsupported photographic trouser labels cannot silently pass parity review");
+  assert.deepEqual(styleDirectorPresentationIssues(photo("Spread Collar", "Tucked"), spec()), [],
+    "older isolated shirt-only callers remain nonmutating and supported");
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("styleDirectorPresentationIssues(best.style,styleSpec)"),
+    "full Style Director recommendation must run trouser/photo parity");
+});
