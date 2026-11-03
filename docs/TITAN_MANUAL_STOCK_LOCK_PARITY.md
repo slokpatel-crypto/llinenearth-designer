@@ -9,3 +9,11 @@
 - **Remaining risks:** legacy v1 stock RPC uses the old lock namespace and must remain disabled/unreachable in operator flows; stock quantity rounding, manual evidence length and live migration staging/rollback need separate review. No claim of physical stock verification.
 - **BLOCKED/PENDING:** supplier evidence, approved staging migration, authenticated operator/customer testing, tailor approval, native Blender geometry/UV, physical devices, five testers, ten deliveries, owner signoff. No deploy, live mutation, paid AI or main merge.
 - **Next slice:** inspect matching-head native PostgreSQL job and Non-3D results, repair any failure without weakening assertions, audit v1 RPC reachability and physical evidence, then recheck live main ancestry and `vercel.json` deployment guard before any isolated integration.
+
+## Follow-up — exact lock identity regression (2026-11-03)
+
+- **Parent SHA:** `909767ce239c8838a94e6ba47e1c76ed133e5359`; **test fix SHA:** `50f190dc7058b577f9f99c465e08deae1bd778cb`.
+- **Affected criterion:** T3/J1 and T6/J6 concurrency proof. Earlier lock acquisition polling accepted *any* granted advisory lock from any other PostgreSQL session. This could falsely signal readiness and cause a flaky timeout assertion when unrelated sessions held advisory locks. Polling now matches the exact single-integer advisory key `hashtext('stock-fabric:'||fabric)` using PostgreSQL `pg_locks.classid=0`, `objid=hashtext(...)::oid`, `objsubid=1` and a different backend PID.
+- **Evidence:** Prior head `909767ce239c8838a94e6ba47e1c76ed133e5359` passed Full CI run `41580556051` and Non-3D run `41580556095`. These results do **not** certify the new head. New-head disposable PostgreSQL and matching-head CI remain **PENDING** until observed.
+- **Blockers:** legacy v1 RPC reachability, real staging migration/rollback, real stock/tailor/customer/operator/native/device evidence all remain unverified. No main merge or deployment.
+- **Next slice:** check exact-head CI for this fix; if green, audit v1 stock RPC grants and compare branch against latest main before considering a guarded isolated merge.
