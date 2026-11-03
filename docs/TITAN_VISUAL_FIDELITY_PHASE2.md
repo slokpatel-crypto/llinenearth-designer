@@ -89,3 +89,31 @@ claims of new real-world photographs or tailor acceptance.
   390/768/1440 widths.
 - **Fresh exact-head CI required** after selector fix and new Chromium guard;
   preceding green test steps do not certify the new commit.
+
+## November 3 — printed-caption contamination in photo fabrics
+- Visual review of the 1440px photographic Studio artifact showed faint
+  horizontal letter-like contamination on the dark "Black - Jute Feel" shirt.
+  Checked the actual source images `public/fabrics/plain-60-07.webp`,
+  `plain-60-01.webp`, `plain-60-09.webp`, and `plain-60-12.webp`:
+  the supplier/reference images themselves contain printed fabric names.
+- Source of contamination: `scripts/build-fabric-render-assets.mjs`
+  previously sampled a central-square crop from **18% through at most 50%**
+  of source image height. Text near the middle of source images could leak
+  into the generated tiles as a false woven band.
+- New pure `photoFabricCaptionSafeCrop` preserves the existing square crop
+  size and horizontal alignment but moves its top edge to **4%**, keeping the
+  entire crop inside the upper **38%** of the image. It rejects malformed
+  source dimensions. The generator now uses this helper and declares
+  `fabric-tile-v3-caption-safe` so its output can be distinguished from
+  older renders. This is a **visual photographic sampling decision**, not a
+  physical-repeat or vendor colour verification.
+- New dedicated tests cover portrait/wide dimensions, deterministic
+  coordinates, malformed dimensions, script wiring and preservation of
+  approximate-vs-measured physical scale classification.
+- The other independently running Fabric Intelligence branch does not
+  modify this generator or new test/helper paths at this checkpoint.
+- **Evidence gate:** inspect regenerated black and green studio textures for
+  printed-name remnants in the actual 390/768/1440 Chromium artifact.
+  Re-run all exact-head CI jobs; old green proof remains evidence only for
+  the old head. No customer-facing production or tailors' physical
+  acceptance is asserted.
