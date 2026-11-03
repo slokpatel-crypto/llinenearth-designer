@@ -321,3 +321,23 @@ test("reason evidence is permitted only for cancellation, QC rejection and recov
     "persisted audit replay must reject extra reason evidence on an ordinary transition");
   assert.equal(step(base(),"cancel",{reason:"Customer requested cancellation"}).status,"cancelled");
 });
+
+test("stored audit replay rejects unknown evidence fields rather than silently dropping them",()=>{
+  const accepted=step(base(),"accept");
+  const first=accepted.audit[0];
+  for(const injected of [
+    {...first, operatorApproved:true},
+    {...first, customerPaymentConfirmed:"unverified"},
+    {...first, qcOverride:{passed:true}},
+  ]){
+    assert.throws(()=>replayOrderLifecycle(id,revision,hash,[injected]),
+      /Unexpected stored audit field/,
+      "unknown persisted claims must not be silently erased by canonical replay");
+    const serialized=JSON.parse(JSON.stringify(accepted));
+    serialized.audit[0]=injected;
+    assert.throws(()=>restoreOrderLifecycleSnapshot(serialized),/Unexpected stored audit field/);
+  }
+  assert.equal(replayOrderLifecycle(id,revision,hash,accepted.audit).status,"accepted");
+  assert.equal(step(restoreOrderLifecycleSnapshot(JSON.parse(JSON.stringify(accepted))),
+    "start_cutting").status,"cutting");
+});
