@@ -17,8 +17,8 @@ function migrationVersion(file) {
 function migrationPathsFromEntries(entries) {
   const ambiguous = entries.filter(entry =>
     entry.isSymbolicLink() || entry.isDirectory() ||
-    (!entry.isFile() && /\\.sql$/i.test(entry.name)) ||
-    (entry.isFile() && /\\.sql$/i.test(entry.name) && !entry.name.endsWith(".sql")));
+    (!entry.isFile() && /\.sql$/i.test(entry.name)) ||
+    (entry.isFile() && /\.sql$/i.test(entry.name) && !entry.name.endsWith(".sql")));
   if (ambiguous.length > 0) {
     throw Error("Ambiguous migration entry (symlink, nested directory or SQL filename case): " +
       ambiguous.map(entry => entry.name).sort().join(", "));
