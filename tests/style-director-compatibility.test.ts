@@ -679,3 +679,39 @@ test("trouser-front intent is shared by photo and versioned selectors", () => {
     agent.includes('trouserFront==="flat_front"'),
     "neither recipe may regress to treating non-pleated as positive pleats");
 });
+
+
+test("photographic shirt construction details match exact selectable versioned options", () => {
+  const cases = [
+    { photo: "cuff", group: "shirt.cuff", id: "cuff", code: "legacy_cuff_mismatch" },
+    { photo: "placket", group: "shirt.placket", id: "placket", code: "legacy_placket_mismatch" },
+    { photo: "shirtFit", group: "shirt.fit", id: "fit", code: "legacy_shirt_fit_mismatch" },
+  ] as const;
+  for (const entry of cases) {
+    const selectable = optionsFor(entry.group)
+      .filter(option => option.legacySelectable !== false && Boolean(option.legacyLabel || option.label));
+    assert.ok(selectable.length >= 2, entry.group + " needs two real selectable options");
+    const [first, second] = selectable;
+    const legacyLabel = first.legacyLabel || first.label;
+    const photographic = { ...photo("Spread Collar", "Tucked"), [entry.photo]: legacyLabel };
+    const matching = spec({ [entry.id]: first.id });
+    assert.deepEqual(styleDirectorPresentationIssues(photographic, matching), [],
+      entry.group + " matching photographic and versioned IDs must not be flagged");
+    const mismatched = spec({ [entry.id]: second.id });
+    const before = JSON.stringify(mismatched);
+    assert.deepEqual(styleDirectorPresentationIssues(photographic, mismatched)
+      .map(issue => issue.code), [entry.code],
+      entry.group + " must not silently certify a different construction ID");
+    assert.equal(JSON.stringify(mismatched), before, "no locked design rewrite");
+    const unknown = { ...photographic, [entry.photo]: "Not a selectable photo option" };
+    assert.deepEqual(styleDirectorPresentationIssues(unknown, matching)
+      .map(issue => issue.code), [entry.code],
+      entry.group + " unsupported photo label requires review");
+  }
+  const shirtOnly = photo("Spread Collar", "Tucked");
+  assert.deepEqual(styleDirectorPresentationIssues(shirtOnly, spec()), [],
+    "existing shirt-only pure callers without extra photo details stay compatible");
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("...styleDirectorPresentationIssues(best.style,styleSpec)"),
+    "real recommendation must evaluate the complete photo style and versioned spec");
+});
