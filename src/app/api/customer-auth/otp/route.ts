@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { normalizeCustomerEmail, requestCustomerOtp } from "@/lib/customer-auth";
 import { secureJsonRequestError, readSecureJsonObject, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
-import { distributedOtpRateAllowed } from "@/lib/customer-otp-rate";
+import { distributedOtpRateAllowed,localOtpRateAllowed } from "@/lib/customer-otp-rate";
 
 export const runtime="nodejs";
 
@@ -35,6 +35,8 @@ export async function POST(request:Request){
     const body=await readSecureJsonObject(request,MAX_OTP_REQUEST_BYTES);
     const email=normalizeCustomerEmail(body.email);
     if(!email) return privateJson({error:"Enter a valid email address."},400);
+    if(!localOtpRateAllowed(email))
+      return privateJson({error:"Too many sign-in requests. Try again later."},429);
     // Opt-in shared atomic rate limit prevents rotating proxy/IP headers from
     // bypassing a per-email budget across serverless instances.
     if(!await distributedOtpRateAllowed(email))

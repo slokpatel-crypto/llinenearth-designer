@@ -1,7 +1,24 @@
 import "server-only";
+import {randomBytes} from "node:crypto";
 import {getSupabaseAdminConfig,supabaseAdminHeaders} from "@/lib/supabase-admin";
 import {readBoundedJsonResponse} from "@/lib/designer/bounded-json-response";
-import {otpRateSubjectHash,requireOtpRateAck} from "@/lib/customer-otp-rate-contract";
+import {consumeLocalOtpBudget,otpRateSubjectHash,requireOtpRateAck,
+  type LocalOtpWindow} from "@/lib/customer-otp-rate-contract";
+
+const localState=(globalThis as typeof globalThis & {
+  __linenOtpFallback?:{secret:string;windows:Map<string,LocalOtpWindow>};
+}).__linenOtpFallback ||= {
+  secret:randomBytes(32).toString("hex"),
+  windows:new Map<string,LocalOtpWindow>(),
+};
+
+/** A best-effort same-process fallback only: production must still enable
+ * the distributed database budget and enforce trusted-edge anti-abuse. */
+export function localOtpRateAllowed(email:string,purpose:"request"|"verify"="request"){
+  return consumeLocalOtpBudget(localState.windows,
+    otpRateSubjectHash(email,localState.secret,purpose),Date.now());
+}
+
 
 export function distributedOtpRateRequired(){
   return process.env.LINEN_CUSTOMER_OTP_DISTRIBUTED_REQUIRED==="1";

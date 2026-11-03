@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { secureJsonRequestError, readSecureJsonObject, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
 import { customerSessionBearerAllowed, customerSessionRevocationRequired } from "@/lib/customer-session-revocation";
-import { distributedOtpRateAllowed } from "@/lib/customer-otp-rate";
+import { distributedOtpRateAllowed,localOtpRateAllowed } from "@/lib/customer-otp-rate";
 import { validCustomerSessionIdentityId } from "@/lib/customer-session-token";
 import {
   CUSTOMER_ACCESS_COOKIE,
@@ -31,6 +31,11 @@ export async function POST(request:Request){
     if(!email||token.length<6||token.length>12) {
       return privateJson({error:"Enter the email and code you received."},400);
     }
+
+    // In-process recipient budget also protects the transition period before
+    // the distributed migration is enabled, independent of untrusted IPs.
+    if(!localOtpRateAllowed(email,"verify"))
+      return privateJson({error:"Too many code attempts. Try again later."},429);
 
     // A separate shared email budget limits OTP guessing across instances.
     // A broken throttle store must not allow unlimited verification attempts.
