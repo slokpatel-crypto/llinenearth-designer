@@ -141,3 +141,11 @@ The existing persisted production order contract in `src/lib/designer/production
 - Added regression cases for live inputs, stored replay and a valid transition. This is synthetic validation only, not authentication or physical evidence.
 - Prior head `11de729e` passed CI #41621555354 and Non-3D QA #41621555223. Those runs predate this change; **new exact-head CI is pending**. No local full-repository test claim.
 - Next: verify new exact-head checks, reconcile main and coordinate authenticated transactional persistence, SQL compatibility and physical QC receipts with central integration. No production writes, merges or deployment.
+
+## 2026-11-03 — hidden control and separator integrity
+
+- Expanded the existing audit text rejection set to cover C1 controls U+0080–U+009F, soft hyphen U+00AD, combining grapheme joiner U+034F, Arabic letter mark U+061C, Mongolian vowel separator U+180E, Unicode line/paragraph separators U+2028–U+2029, and remaining U+2061–U+2065 format controls. These characters can conceal differences in operator identities, evidence receipts, reasons or locked revision labels in logs and audit review.
+- Added focused live-event, cancellation, locked-revision and persisted-replay negative tests, plus a valid event control. The existing state machine, public types, and persisted schema are unchanged.
+- Prior exact head `a2bf62706bbeac7f498be4fd6f9c7ab36696044c` passed CI #41630028292 and Non-3D QA #41630028249. **Those runs predate this patch.** Source commit `0325bd059aa68e96ba1acc0427e9b50e3bba0d36`, test commit `54f9a028fa0f65202a4a4d433c1982c6989695a6`; obtain exact-head checks after this documentation commit before claiming verification. No local npm run is claimed.
+- Main `4dd8020abd83429449ff53ea5bb71b046394d86e` differs by 12 commits; the branch comparison lists only three isolated operator files. No overlap detected in main comparison. Preserve draft status and do not merge, deploy, modify shared SQL, or access production customer data.
+- **Next:** Verify exact-head CI and Non-3D QA, coordinate SQL-state mapping and authenticated transactional append-only persistence with central integration, and require independently verified physical QC and delivery evidence before production integration.
