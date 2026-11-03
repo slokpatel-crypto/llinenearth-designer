@@ -265,3 +265,28 @@ test("combined camp and short sleeve proposals retain both review gates and cano
   assert.ok(agent.includes("spec.shirt.cuff=namedSleeve.cuff"));
   assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'));
 });
+
+test("generated cutaway dress shirt preserves exact legacy and versioned collar IDs", () => {
+  // generateDesignerDirections emits Cutaway-Collar Dress Shirt for formal
+  // statement outfits; a default spread photo must not silently stand in.
+  const cutaway = styleDirectorCandidateCollar("Cutaway-Collar Dress Shirt",selectableCollars);
+  assert.deepEqual(cutaway,{legacy:"Cutaway Collar",versioned:"cutaway_collar"});
+  assert.ok(optionsFor("shirt.collar").some(option=>
+    option.id==="cutaway_collar" && option.renderSupport.livePreview==="approximate"));
+  const named=spec({type:"dress_shirt",collar:cutaway!.versioned,wear:"tucked"});
+  assert.deepEqual(styleDirectorConstructionIssues(named,"Formal"),[]);
+  assert.deepEqual(styleDirectorPresentationIssues(photo(cutaway!.legacy!,"Tucked"),named)
+    .map(issue=>issue.code),["unverified_cutaway_photo"],
+    "an approximate photographic cutaway is not approved construction evidence");
+  assert.deepEqual(styleDirectorPresentationIssues(photo("Spread Collar","Tucked"),named)
+    .map(issue=>issue.code),["legacy_collar_mismatch","unverified_cutaway_photo"]);
+  assert.deepEqual(styleDirectorPresentationIssues(photo("Cutaway Collar","Tucked"),spec())
+    .map(issue=>issue.code),["legacy_collar_mismatch"]);
+  const agent=readFileSync("src/lib/style-director-agent.ts","utf8");
+  assert.ok(agent.includes('namedCollar?.versioned === "cutaway_collar"'),
+    "candidate photographic mapping must select the real cutaway label");
+  assert.ok(agent.includes('spec.shirt.collar="cutaway_collar"'),
+    "candidate construction must retain the canonical cutaway ID");
+  assert.ok(agent.includes("styleDirectorPresentationIssues(best.style,styleSpec)"),
+    "unverified cutaway photo must affect the exposed recommendation status");
+});
