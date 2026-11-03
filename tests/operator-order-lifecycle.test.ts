@@ -434,3 +434,18 @@ test("audit text rejects invisible formatting in live events and replay",()=>{
   }
   assert.equal(step(base(),"accept").status,"accepted");
 });
+
+test("audit evidence rejects C1 controls, invisible soft hyphens and Unicode line separators",()=>{
+  const forbidden=["\u0085","\u009f","\u00ad","\u034f","\u061c","\u180e","\u2028","\u2029"];
+  for(const mark of forbidden){
+    assert.throws(()=>createOrderLifecycle(id,revision+mark,hash),/Invalid locked revision ID/);
+    assert.throws(()=>step(base(),"accept",{actor:"operator"+mark+"-001"}),/Invalid operator actor/);
+    assert.throws(()=>step(base(),"accept",{evidenceRef:"receipt-"+mark+"00000001"}),/Invalid external evidence reference/);
+    assert.throws(()=>step(base(),"cancel",{reason:"Customer"+mark+" approved cancellation"}),/Invalid reason/);
+    const accepted=step(base(),"accept");
+    assert.throws(()=>replayOrderLifecycle(id,revision,hash,
+      accepted.audit.map(event=>({...event,evidenceRef:"receipt-"+mark+"00000001"}))),
+      /Invalid external evidence reference/);
+  }
+  assert.equal(step(base(),"accept").status,"accepted");
+});
