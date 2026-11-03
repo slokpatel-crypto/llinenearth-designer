@@ -21,6 +21,7 @@ on:
       - "scripts/blender/source-trouser-provisional-uv.py"
       - "scripts/blender/source-trouser-quad-metric-uv.py"
       - "scripts/blender/source-trouser-dual-tree-uv.py"
+      - "scripts/blender/source-trouser-uv-cut-network.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -34,6 +35,7 @@ on:
       - "tests/crotch-trouser-provisional-uv-native.test.ts"
       - "tests/crotch-trouser-quad-metric-uv-native.test.ts"
       - "tests/crotch-trouser-dual-tree-uv-native.test.ts"
+      - "tests/crotch-trouser-uv-cut-network-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -50,6 +52,7 @@ on:
       - "tests/python/test_source_trouser_provisional_uv.py"
       - "tests/python/test_source_trouser_quad_metric_uv.py"
       - "tests/python/test_source_trouser_dual_tree_uv.py"
+      - "tests/python/test_source_trouser_uv_cut_network.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -71,6 +74,7 @@ on:
       - "scripts/blender/source-trouser-provisional-uv.py"
       - "scripts/blender/source-trouser-quad-metric-uv.py"
       - "scripts/blender/source-trouser-dual-tree-uv.py"
+      - "scripts/blender/source-trouser-uv-cut-network.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -84,6 +88,7 @@ on:
       - "tests/crotch-trouser-provisional-uv-native.test.ts"
       - "tests/crotch-trouser-quad-metric-uv-native.test.ts"
       - "tests/crotch-trouser-dual-tree-uv-native.test.ts"
+      - "tests/crotch-trouser-uv-cut-network-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -115,6 +120,7 @@ jobs:
           python3 tests/python/test_source_trouser_provisional_uv.py
           python3 tests/python/test_source_trouser_quad_metric_uv.py
           python3 tests/python/test_source_trouser_dual_tree_uv.py
+          python3 tests/python/test_source_trouser_uv_cut_network.py
       - name: Fetch checksum-verified Blender 4.5.14
         shell: bash
         run: |
@@ -1186,6 +1192,63 @@ jobs:
               assert tree["tailorSeamAllowanceApproved"] is False
               assert tree["physicalFabricScaleVerified"] is False
               assert tree["productionApproved"] is False
+              cut_network=oriented["researchOnlyOriginalSourceUvCutNetworkEvidence"]
+              assert cut_network["researchOnly"] is True
+              assert cut_network["actualOriginalSourceQuadCount"] == 2650
+              assert cut_network["originalSourceVertexCount"] == 2717
+              assert cut_network["originalSourceUvLoopCount"] == 10600
+              assert cut_network["originalSharedSourceEdgeCount"] == 5234
+              assert cut_network["originalOpenSourceBoundaryEdges"] == 132
+              assert cut_network["genuineCrotchCutEdgeCount"] == 8
+              assert cut_network["joinedSharedUvEdges"] == (
+                  tree["verifiedTreeConnectedSharedEdges"]+
+                  tree["nonTreeCycleEdgesWithinOneMicrometre"]
+              )
+              assert cut_network["unclosedSharedUvCutCandidateEdges"] == (
+                  tree["nonTreeCycleUnclosedUvEdges"]
+              )
+              assert cut_network["joinedSharedUvEdges"] + (
+                  cut_network["unclosedSharedUvCutCandidateEdges"]
+              ) == 5234
+              assert 0 <= cut_network["unclosedUvCutCandidateFraction"] <= 1
+              assert math.isfinite(cut_network["totalRealGeometryOfUvCutCandidatesMm"])
+              assert cut_network["totalRealGeometryOfUvCutCandidatesMm"] >= 0
+              assert math.isfinite(cut_network["allOriginalSourceBoundaryGeometryMm"])
+              assert cut_network["allOriginalSourceBoundaryGeometryMm"] > 0
+              assert cut_network["genuineOriginalCrotchCutEdgesGeometryMm"] > 0
+              assert abs(
+                  cut_network["maximumUnclosedUvEdgeGapMm"] -
+                  tree["maximumNonTreeUvSeamGapMm"]
+              ) <= 0.00001
+              assert sum(cut_network["uvCutCandidateDegreeHistogram"].values()) == (
+                  cut_network["uvCutCandidateSourceVertexCount"]
+              )
+              assert type(cut_network["uvCutCandidateGraphComponentCount"]) is int
+              assert 0 <= cut_network["uvCutCandidateGraphComponentCount"] <= 2717
+              assert cut_network["uvCutCandidateDegreeOneSourceVertices"] >= 0
+              assert cut_network["uvCutCandidateDegreeThreePlusSourceVertices"] >= 0
+              assert len(cut_network["uvCutCandidateGraphLargestComponents"]) <= 12
+              assert all(
+                  row["unclosedUvEdgeCount"] > 0 and row["originalSourceVertexCount"] > 0
+                  and type(row["touchesActualOriginalOpenBoundary"]) is bool
+                  for row in cut_network["uvCutCandidateGraphLargestComponents"]
+              )
+              assert len(cut_network["actualLargestGapUvCutEdges"]) <= 12
+              assert all(
+                  len(row["originalSourceEdgeVertexIndices"]) == 2
+                  and row["sourceRealEdgeLengthMm"] > 0
+                  and row["provisionalUvEndpointGapMm"] > 0.001
+                  for row in cut_network["actualLargestGapUvCutEdges"]
+              )
+              assert cut_network["seamCutTopologyApproved"] is False
+              assert cut_network["realTailorCutLinesApproved"] is False
+              assert cut_network["originalBodyFitApproved"] is False
+              assert cut_network["sourcePanelUVContinuityVerified"] is False
+              assert cut_network["fabricGrainAndRepeatVerified"] is False
+              assert cut_network["measuredSupplierTextileRepeatMm"] is None
+              assert cut_network["productionApproved"] is False
+              assert "NOT permission" not in cut_network["metricCaveat"]
+              assert "not sewn garment" in cut_network["metricCaveat"]
               assert "UNVERIFIED" in tree["metricCaveat"]
               assert "DIFFERENT UV island" in quads["metricCaveat"]
               assert source_uv["displayProjection"].endswith("not garment unwrap")
@@ -1624,6 +1687,15 @@ jobs:
               "radial18TriangleContactedAreaMm2":radial["contactingBridgeAreaMm2"],
               "radialDisplacementMm":shifts,
               "originalCutSegmentBodyContacts":original["actualBodyContactByOriginalCutEdgePair"],
+              "originalSourceUvCutNetworkEvidence": {
+                  "unclosedActualSourceEdges":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceUvCutNetworkEvidence"]["unclosedSharedUvCutCandidateEdges"],
+                  "totalOriginalSourceUvCutCandidateLengthMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceUvCutNetworkEvidence"]["totalRealGeometryOfUvCutCandidatesMm"],
+                  "branchingSourceVertices":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceUvCutNetworkEvidence"]["uvCutCandidateDegreeThreePlusSourceVertices"],
+                  "cutNetworkComponentCount":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceUvCutNetworkEvidence"]["uvCutCandidateGraphComponentCount"],
+                  "maximumUnclosedUvGapMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceUvCutNetworkEvidence"]["maximumUnclosedUvEdgeGapMm"],
+                  "realPhysicalCutLinesOrFabricApproved":False,
+                  "productionApproved":False,
+              },
               "originalSourceUvSpanningTreeEvidence": {
                   "originalQuads":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceDualTreeUvSurvey"]["originalSourceQuadCount"],
                   "actualResearchUvLoops":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceDualTreeUvSurvey"]["nativeOriginalSourceUvLoopCount"],
