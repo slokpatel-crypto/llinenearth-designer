@@ -43,3 +43,10 @@
 - **Compatibility:** upstream callers submitting unsupported precision or oversized evidence will now receive explicit errors rather than silently altered records. Verify operator callers and error handling before integration. Historical legacy v1 caller audit remains open.
 - **Blockers:** supplier stock, staging approval, authenticated operator/customer proof, tailor, native Blender, device/browser acceptance, five testers, ten deliveries and owner signoff remain PENDING. No main merge, live migration or deployment.
 - **Next:** inspect exact-head PostgreSQL and Non-3D runs, fix any failures, then complete operator RPC compatibility audit before guarded integration.
+
+## Matching-head CI verification — 2026-11-03
+
+- **Verified parent/head:** `0692fa4d29510a10ee3eea114fb85bdc3783c57e`; Full CI run `41630683911` **SUCCESS**, Non-3D QA run `41630683822` **SUCCESS**, both returned for this exact commit by GitHub Actions. The disposable PostgreSQL lock parity, legacy privilege and invalid physical-evidence regressions are included in the CI source at this SHA. This confirms the automated checks, not staging or production behavior.
+- **Affected criteria:** T3/J1 stock-write safety and T6/J6 disposable SQL regression have matching-head automated evidence. T5/J5 legacy operator compatibility remains **BLOCKED**: GitHub code search for `fabric_stock_record` and `fabric_stock_record_v2` returned `incomplete_results=true` and zero indexed hits, so it cannot establish absence of live or repository callers.
+- **Remaining blockers:** operator RPC caller/error-handling inspection, staged migration/rollback and real stock proof, authenticated customer/operator acceptance, tailoring, physical-device/browser QA, Blender native evidence, five testers, ten deliveries and owner signoff. No merge, deployment or live mutation authorized from this evidence alone.
+- **Next independent slice:** inspect actual operator API routes and RPC invocations using complete repository tree or checked-out source, add a caller-compatibility regression for v2 precision/evidence errors, then rerun matching-head checks before any isolated main intake.
