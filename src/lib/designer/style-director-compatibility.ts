@@ -101,7 +101,7 @@ export type DirectorConstructionIssue = {
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
     "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "legacy_trouser_mismatch" |
     "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch" |
-    "candidate_trouser_pleat_mismatch";
+    "candidate_trouser_pleat_mismatch" | "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
   explanation: string;
 };
 
@@ -299,7 +299,7 @@ export function styleDirectorConstructionIssues(
  * advanced collars may have intentionally approximate legacy previews.
  */
 export function styleDirectorPresentationIssues(
-  style: Pick<DesignerStyle, "collar" | "shirtWear"> & Partial<Pick<DesignerStyle, "trouser" | "cuff" | "placket" | "shirtFit">>,
+  style: Pick<DesignerStyle, "collar" | "shirtWear"> & Partial<Pick<DesignerStyle, "trouser" | "cuff" | "placket" | "shirtFit" | "rise" | "waistband" | "break">>,
   spec: Pick<StyleSpecV2, "shirt"> & Partial<Pick<StyleSpecV2, "pant">>,
 ): DirectorConstructionIssue[] {
   const issues: DirectorConstructionIssue[] = [];
@@ -373,14 +373,37 @@ export function styleDirectorPresentationIssues(
       });
     }
   }
-  if (style.trouser !== undefined && spec.pant !== undefined) {
-    const selectedTrouser = optionsFor("pant.type").find((option) =>
-      option.legacySelectable !== false && option.legacyLabel === style.trouser);
-    if (!selectedTrouser || selectedTrouser.id !== spec.pant.type) {
-      issues.push({
-        code: "legacy_trouser_mismatch",
-        explanation: "The photographic trouser type disagrees with the versioned trouser construction; verify the silhouette without changing the locked design.",
-      });
+  if (spec.pant !== undefined) {
+    if (style.trouser !== undefined) {
+      const selectedTrouser = optionsFor("pant.type").find((option) =>
+        option.legacySelectable !== false && (option.legacyLabel || option.label) === style.trouser);
+      if (!selectedTrouser || selectedTrouser.id !== spec.pant.type) {
+        issues.push({
+          code: "legacy_trouser_mismatch",
+          explanation: "The photographic trouser type disagrees with the versioned trouser construction; verify the silhouette without changing the locked design.",
+        });
+      }
+    }
+    // A correct trouser silhouette does not validate its rise, waistband or
+    // shoe break. Compare each displayed selector to its canonical saved ID;
+    // never change a locked production recipe to make the photo look valid.
+    const photoPantDetails = [
+      { key: "rise", group: "pant.rise", id: spec.pant.rise, code: "legacy_rise_mismatch" },
+      { key: "waistband", group: "pant.waistband", id: spec.pant.waistband, code: "legacy_waistband_mismatch" },
+      { key: "break", group: "pant.break", id: spec.pant.break, code: "legacy_break_mismatch" },
+    ] as const;
+    for (const detail of photoPantDetails) {
+      const photoLabel = style[detail.key];
+      // Older independent callers provide collar and wear only.
+      if (photoLabel === undefined) continue;
+      const selected = optionsFor(detail.group).find((option) =>
+        option.legacySelectable !== false && (option.legacyLabel || option.label) === photoLabel);
+      if (!selected || selected.id !== detail.id) {
+        issues.push({
+          code: detail.code,
+          explanation: `The photographic ${detail.key} choice disagrees with the versioned trouser construction; review the locked IDs before tailoring.`,
+        });
+      }
     }
   }
   if (spec.shirt.sleeve === "half_sleeve") {
