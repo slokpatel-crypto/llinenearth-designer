@@ -139,11 +139,26 @@ export function styleDirectorCandidateFrontConstructionIssues(
   pant: Pick<StyleSpecV2["pant"], "pleat">,
 ): DirectorConstructionIssue[] {
   const front = styleDirectorCandidateTrouserFront(candidateTrouser);
+  // A labelled double pleat is not equivalent to a generic single pleat.
+  // Read count from the canonical option's construction parameters instead
+  // of inferring it from the potentially stale photographed trouser label.
+  const positiveWording = candidateTrouser.replace(
+    /\b(?:non[- ]?pleated|no\s+(?:visible\s+)?pleats?|without\s+(?:any\s+|visible\s+)?pleats?)\b/gi, "",
+  );
+  const requestsDouble = /\b(?:double|two|2)[ -]?pleats?\b/i.test(positiveWording);
+  const requestsSingle = /\b(?:single|one|1)[ -]?pleats?\b/i.test(positiveWording);
+  const expectedCount = front === "pleated"
+    ? requestsDouble && !requestsSingle ? 2
+      : requestsSingle && !requestsDouble ? 1 : null
+    : null;
+  const declaredCount = optionsFor("pant.pleat").find(option => option.id === pant.pleat)?.parameters.pleatCount;
   if ((front === "pleated" && pant.pleat === "flat_front") ||
-      (front === "flat_front" && pant.pleat !== "flat_front")) {
+      (front === "flat_front" && pant.pleat !== "flat_front") ||
+      (expectedCount !== null && declaredCount !== expectedCount) ||
+      (front === "pleated" && requestsSingle && requestsDouble)) {
     return [{
       code: "candidate_trouser_pleat_mismatch",
-      explanation: "The proposed trouser front contradicts its versioned pleat construction; confirm the intended front before cutting without inventing a pleat.",
+      explanation: "The proposed trouser pleat count or front contradicts its versioned construction; confirm the intended pleats before cutting without inventing a pleat.",
     }];
   }
   return [];
