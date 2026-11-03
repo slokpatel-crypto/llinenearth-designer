@@ -27,9 +27,9 @@ export function styleDirectorCandidateCollar(
   candidateShirt: string,
   legacyChoices: readonly string[],
 ): { legacy: string | null; versioned: "cuban_camp_collar" | "mandarin_band_collar" | "cutaway_collar" } | null {
-  const camp = /camp|cuban/i.test(candidateShirt);
-  const band = !camp && /band|mandarin/i.test(candidateShirt);
-  const cutaway = !camp && !band && /cutaway/i.test(candidateShirt);
+  const camp = /\b(?:camp|cuban)(?:[- ]collar)?\b/i.test(candidateShirt);
+  const band = !camp && /\b(?:band|mandarin)(?:[- ]collar)?\b/i.test(candidateShirt);
+  const cutaway = !camp && !band && /\bcutaway(?:[- ]collar)?\b/i.test(candidateShirt);
   if (!camp && !band && !cutaway) return null;
   const matcher = camp ? /camp|cuban/i : band ? /band|mandarin/i : /cutaway/i;
   return {
@@ -147,9 +147,9 @@ export function styleDirectorPresentationIssues(
       explanation: "The photographic shirt-wear choice disagrees with the versioned construction; verify the intended tuck before proceeding.",
     });
   }
-  const legacyCollar = /camp|cuban/i.test(style.collar) ? "cuban_camp_collar"
-    : /band|mandarin/i.test(style.collar) ? "mandarin_band_collar"
-    : /cutaway/i.test(style.collar) ? "cutaway_collar" : null;
+  const legacyCollar = /\b(?:camp|cuban)(?:[- ]collar)?\b/i.test(style.collar) ? "cuban_camp_collar"
+    : /\b(?:band|mandarin)(?:[- ]collar)?\b/i.test(style.collar) ? "mandarin_band_collar"
+    : /\bcutaway(?:[- ]collar)?\b/i.test(style.collar) ? "cutaway_collar" : null;
   const versionedCollar = spec.shirt.collar;
   if (legacyCollar !== versionedCollar &&
       (legacyCollar !== null || ["cuban_camp_collar", "mandarin_band_collar", "cutaway_collar"].includes(versionedCollar))) {
@@ -196,7 +196,7 @@ export function styleDirectorWearForCandidate(
   candidateShirt: string,
   proposedWear: DesignerStyle["shirtWear"],
 ): DesignerStyle["shirtWear"] {
-  if (/camp|cuban/i.test(candidateShirt)) return "Untucked";
+  if (/\b(?:camp|cuban)(?:[- ]collar)?\b/i.test(candidateShirt)) return "Untucked";
   if (occasion === "Formal" || occasion === "Semi-Formal") return "Tucked";
   return proposedWear;
 }
