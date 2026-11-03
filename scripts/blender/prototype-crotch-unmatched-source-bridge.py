@@ -1360,6 +1360,78 @@ def main():
         for stage in source_stage_uv_provenance
     )
     seam_winding["researchOnlyGeometricFlatBridgeCharts"] = geometric_flat
+
+    # The actual original 2,650 trouser-source polygons still carry no source
+    # UV layers. Construct a SEPARATE surface-identical research UV witness,
+    # then measure every shared-edge UV jump and geometric UV distortion.
+    # This deliberately does NOT create verified cloth, grain or scale.
+    source_uv_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-trouser-provisional-uv.py")
+    ))
+    uv_survey = source_uv_ops["study_original_source_trouser_uv"](
+        merged_verts, base_faces, l_remaining + r_remaining_mapped
+    )
+    uv_faces = uv_survey["face_uv_loops"]
+    uv_report = uv_survey["report"]
+    source_uv_name = "TITAN_RESEARCH_OriginalTrouserPanelsProvisionalUVOnly"
+    if bpy.data.objects.get(source_uv_name) is not None:
+        raise RuntimeError("Source-panel research UV witness already exists.")
+    source_uv_mesh = bpy.data.meshes.new(source_uv_name + "Mesh")
+    source_uv_mesh.from_pydata(merged_verts, [], base_faces)
+    source_uv_mesh.update(calc_edges=True)
+    if (len(source_uv_mesh.polygons) != 2650
+            or sum(len(row) for row in uv_faces) != len(source_uv_mesh.loops)
+            or any(not math.isfinite(poly.area) or poly.area <= 1e-12
+                   for poly in source_uv_mesh.polygons)):
+        raise RuntimeError("Real original trouser UV witness lost original topology.")
+    source_uv_layer = source_uv_mesh.uv_layers.new(
+        name="TITAN_RESEARCH_UNVERIFIED_ORIGINAL_SOURCE_CYLINDER"
+    )
+    assigned = set()
+    for polygon, uv_row in zip(source_uv_mesh.polygons, uv_faces):
+        if len(polygon.loop_indices) != len(uv_row):
+            raise RuntimeError("Actual original source face lost UV loop provenance.")
+        for loop_index, coordinate in zip(polygon.loop_indices, uv_row):
+            if (loop_index in assigned or len(coordinate) != 2
+                    or not all(math.isfinite(v) for v in coordinate)):
+                raise RuntimeError("Invalid or duplicate original source UV research loop.")
+            source_uv_layer.data[loop_index].uv = coordinate
+            assigned.add(loop_index)
+    if (len(assigned) != len(source_uv_mesh.loops)
+            or len(source_uv_layer.data) != len(source_uv_mesh.loops)
+            or not all(all(math.isfinite(v) for v in uv.uv)
+                       for uv in source_uv_layer.data)):
+        raise RuntimeError("Provisional original trouser UV witness has missing loops.")
+    source_uv_obj = bpy.data.objects.new(source_uv_name, source_uv_mesh)
+    source_uv_obj.hide_render = True
+    source_uv_obj["candidateOnly"] = True
+    source_uv_obj["productionApproved"] = False
+    source_uv_obj["physicalFitApproved"] = False
+    source_uv_obj["sourcePanelUVApproved"] = False
+    source_uv_obj["physicalTextileScaleVerified"] = False
+    research.objects.link(source_uv_obj)
+    if export.objects.get(source_uv_name) is not None:
+        raise RuntimeError("Provisional source trouser UV object contaminated export.")
+
+    uv_geo = geom(source_uv_obj)
+    uv_body_pairs = body_tree.overlap(geom_ops["real_tree"](uv_geo))
+    unchanged_source_pairs = sum(
+        original_face_index < len(base_faces)
+        for _body_index, original_face_index in corrected_contacts
+    )
+    if len(uv_body_pairs) != unchanged_source_pairs:
+        raise RuntimeError("Adding provisional UV accidentally changed source/body contact.")
+    if (uv_report["openSourceEdgeCount"] != initial["afterWeldOpenEdges"]
+            or uv_report["originalCutEdgeCount"] != 8
+            or uv_report["actualOriginalSourceFaceCount"] != 2650):
+        raise RuntimeError("Source UV research must retain all genuine cut-edge topology.")
+    uv_report["nativeResearchUvLayerName"] = source_uv_layer.name
+    uv_report["nativeOriginalSourceUvFaceCount"] = len(source_uv_mesh.polygons)
+    uv_report["nativeOriginalSourceUvLoopCount"] = len(source_uv_layer.data)
+    uv_report["originalSourceScannedBodyBVHPairsUnchanged"] = len(uv_body_pairs)
+    uv_report["originalSourceUVFromGarmentProduction"] = False
+    uv_report["originalSourceStageUVProvenance"] = source_stage_uv_provenance
+    seam_winding["researchOnlyOriginalSourcePanelUvSurvey"] = uv_report
     clearance_trial = None
     targeted_reroute_trial = None
     if args.experimental_centroid_clearance_mm == 7.0:
