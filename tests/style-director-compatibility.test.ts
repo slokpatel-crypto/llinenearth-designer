@@ -440,3 +440,14 @@ test("conflicting named collar families fail closed rather than silently selecti
   assert.equal(styleDirectorCandidateCollar("Cuban Resort Shirt", selectableCollars)?.versioned, "cuban_camp_collar");
   assert.equal(styleDirectorCandidateCollar("Mandarin Band-Collar Shirt", selectableCollars)?.versioned, "mandarin_band_collar");
 });
+
+
+test("ambiguous collar names never force camp-collar wear without a resolved construction", () => {
+  for (const name of ["Cuban Band-Collar Shirt", "Camp Cutaway Shirt", "Mandarin Cuban Shirt"]) {
+    assert.equal(styleDirectorCandidateCollar(name, selectableCollars), null);
+    assert.equal(styleDirectorWearForCandidate("Casual", name, "Tucked"), "Tucked");
+    assert.equal(styleDirectorWearForCandidate("Formal", name, "Untucked"), "Tucked");
+  }
+  assert.equal(styleDirectorWearForCandidate("Casual", "Cuban Resort Shirt", "Tucked"), "Untucked");
+  assert.equal(styleDirectorWearForCandidate("Formal", "Mandarin Band-Collar Shirt", "Untucked"), "Tucked");
+});
