@@ -220,6 +220,10 @@ export function applyOrderLifecycleEvent(state: OrderLifecycleState, rawEvent: u
     heldFrom = null;
   }
   if (!to) throw new Error("Illegal order transition from " + state.status + " using " + action + ".");
+  // A supplied destination is an explicit claim, not ignorable metadata.
+  // Replayed applied events and live callers must agree with the computed transition.
+  if (Object.hasOwn(event, "to") && event.to !== to)
+    throw new Error("Claimed order destination does not match the permitted transition.");
   const reason = event.reason === undefined ? undefined : nonEmpty(event.reason, "reason", 3, 500);
   const reasonRequired = ["cancel", "reject_qc", "hold_for_recovery", "resume_recovery"].includes(action);
   if (reasonRequired && !reason)
