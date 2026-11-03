@@ -15,7 +15,9 @@ def _length(a, b):
     return math.hypot(a[0]-b[0], a[1]-b[1])
 
 
-def connect_original_source_uv_forest(original_faces, separate_face_uv, original_cut_edges):
+def connect_original_source_uv_forest(
+        original_faces, separate_face_uv, original_cut_edges,
+        preferred_tree_edges=None):
     if len(original_faces) != 2650 or len(separate_face_uv) != 2650:
         raise ValueError("Must use actual 2,650 original trouser-source faces/quad charts.")
     if len(original_cut_edges) != 8:
@@ -67,6 +69,49 @@ def connect_original_source_uv_forest(original_faces, separate_face_uv, original
         shared.append((edge, a, b))
     for neighbours in adjacent:
         neighbours.sort(key=lambda row: (row[0], row[1]))
+
+    # Optional maximum-retained-real-edge forest from an independent source
+    # geometry Kruskal selector. Validate it is an actual tree for EACH real
+    # original source component. It may not silently remove actual faces or
+    # fabricate a new connected source mesh.
+    expected_original_component_count = None
+    allowed_tree = None
+    if preferred_tree_edges is not None:
+        if not isinstance(preferred_tree_edges, (tuple, list, set, frozenset)):
+            raise ValueError("Real source UV tree selection must be an explicit edge collection.")
+        source_edge_set = {edge for edge, _, _ in shared}
+        proposed = []
+        for raw_edge in preferred_tree_edges:
+            if len(raw_edge) != 2:
+                raise ValueError("Selected original source UV tree edge is not a pair.")
+            u, v = (int(raw_edge[0]), int(raw_edge[1]))
+            if u >= v or u < 0 or (u, v) not in source_edge_set:
+                raise ValueError("Selected UV edge is not a true canonical shared source edge.")
+            proposed.append((u, v))
+        allowed_tree = set(proposed)
+        if len(allowed_tree) != len(proposed):
+            raise ValueError("Duplicated original source UV retained tree edges.")
+        component_seen = set()
+        expected_original_component_count = 0
+        for original_face in range(len(local)):
+            if original_face in component_seen:
+                continue
+            expected_original_component_count += 1
+            stack = [original_face]
+            component_seen.add(original_face)
+            while stack:
+                current_face = stack.pop()
+                for adjacent_face, _edge in adjacent[current_face]:
+                    if adjacent_face not in component_seen:
+                        component_seen.add(adjacent_face)
+                        stack.append(adjacent_face)
+        if len(allowed_tree) != len(local) - expected_original_component_count:
+            raise ValueError("Selected tree edges must preserve each true source component.")
+        adjacent = [
+            [(neighbour, edge) for neighbour, edge in neighbours
+             if edge in allowed_tree]
+            for neighbours in adjacent
+        ]
 
     placed = [None] * len(local)
     component = [-1] * len(local)
@@ -127,6 +172,9 @@ def connect_original_source_uv_forest(original_faces, separate_face_uv, original
 
     if any(row is None for row in placed) or sum(component_sizes) != len(local):
         raise ValueError("Original source dual-graph traversal lost actual faces.")
+    if (expected_original_component_count is not None
+            and len(component_sizes) != expected_original_component_count):
+        raise ValueError("Selected edges disconnected a real original source component.")
     uv_faces = [[placed[i][vertex] for vertex in face]
                 for i, face in enumerate(original_indices)]
     total_shared = len(shared)
@@ -182,7 +230,15 @@ def connect_original_source_uv_forest(original_faces, separate_face_uv, original
                 math.sqrt(cycle_square_gap_sum / cycle_count) if cycle_count else 0.0, 5
             ),
             "maximumTreeEdgeUvJoinErrorMm": round(max_tree_join_error_mm, 8),
-            "actualOriginalSourceUVTopology": "deterministic face-adjacency spanning forest",
+            "actualOriginalSourceUVTopology": (
+                "deterministic max-retained-real-edge spanning forest"
+                if preferred_tree_edges is not None
+                else "deterministic face-adjacency spanning forest"
+            ),
+            "selectedForestSource": (
+                "explicit validated original-source shared edge list"
+                if preferred_tree_edges is not None else "original face-index BFS"
+            ),
             "faceTreeParentsRecorded": sum(p >= 0 for p in parent_face),
             "localMetricTrianglesRemainUnscaled": True,
             "sourcePanelsFullyStitchedInUV": False,
