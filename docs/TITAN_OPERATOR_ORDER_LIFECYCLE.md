@@ -162,3 +162,11 @@ The existing persisted production order contract in `src/lib/designer/production
 - Added focused synthetic negative tests for inherited live/replayed events, accessor actors, symbol evidence, forged snapshot prototypes and accessor QC checks, plus valid replay.
 - Source commit `6ddf151d`; regression commit `6a3699f9`. **Exact-head CI remains pending after this checkpoint commit; no local npm checks are claimed.** Earlier `6014be8a` passed CI #41647107160 and Non-3D QA #41647107224, but those results do not cover this change.
 - Main comparison found no operator-file overlap (12 main-only commits at inspection). Remain draft/unmerged; do not deploy or modify production data. Next: verify new exact-head workflows, then coordinate authenticated transactional persistence, SQL state mapping and physical QC evidence.
+
+## 2026-11-03 — non-enumerable evidence integrity
+
+- Previous exact head `6b548a2b65ce4f2078fcdf5fbe293f8336a79fd9` passed CI #41656813695 and Non-3D QA #41656813851. These results do not verify the new patch.
+- Plain-record validation now also rejects non-enumerable own properties. Such fields can carry hidden payment, operator, QC or snapshot assertions that `Object.keys` and JSON serialization silently discard. Accessor and symbol rejection remain intact.
+- Added focused negative tests for hidden live/replayed event claims, snapshot claims, QC metadata and check claims; retained a valid replay control.
+- Source commit `ea34634b`, test commit `00571284`. Exact-head CI and Non-3D QA are **pending**; no local full-repository test run or physical inspection is claimed.
+- Current main `4dd8020a` has no overlap with the three operator-owned paths, but is 12 commits ahead of the merge base. Keep this PR draft and coordinate SQL state mapping, authenticated append-only persistence and physical QC proof with central integration. No merge, deploy or production data modifications.
