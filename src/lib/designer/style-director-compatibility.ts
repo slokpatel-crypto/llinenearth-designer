@@ -48,7 +48,11 @@ export function styleDirectorCandidateCollar(
 export function styleDirectorCandidateSleeve(
   candidateShirt: string,
 ): { sleeve: "half_sleeve"; cuff: "open_short_hem_cuff" } | null {
-  return /\b(?:short|half)[ -]?sleeved?\b/i.test(candidateShirt)
+  const shortSleeve = /\b(?:short|half)[ -]?sleeved?\b/i.test(candidateShirt);
+  const longSleeve = /\b(?:long|full)[ -]?sleeved?\b/i.test(candidateShirt);
+  // Contradictory sleeve descriptions cannot safely select a construction.
+  // Retain the existing default rather than silently interpreting one half.
+  return shortSleeve && !longSleeve
     ? { sleeve: "half_sleeve", cuff: "open_short_hem_cuff" }
     : null;
 }
