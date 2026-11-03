@@ -144,7 +144,8 @@ jobs:
             supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql \
             supabase/migrations/20261102_stock_reservation_key_payload_binding.sql \
             supabase/migrations/20261103_stock_reservation_provenance_gate.sql \
-            supabase/migrations/20261103_stock_reservation_identity_length_gate.sql; do
+            supabase/migrations/20261103_stock_reservation_identity_length_gate.sql \
+            supabase/migrations/20261103_stock_close_evidence_integrity.sql; do
             psql -v ON_ERROR_STOP=1 -f "$migration"
           done
       - name: Run actual SQL key replay, mismatch and rollback tests
@@ -154,6 +155,7 @@ jobs:
             cat supabase/tests/20261102_stock_reservation_key_payload_binding.sql
             cat supabase/tests/20261103_stock_reservation_provenance_gate.sql
             cat supabase/tests/20261103_stock_reservation_identity_length_gate.sql
+            cat supabase/tests/20261103_stock_close_evidence_integrity.sql
           } | psql -v ON_ERROR_STOP=1
       - name: Confirm native test synthetic data rolled back
         run: |
