@@ -236,7 +236,7 @@ export function styleDirectorWearForCandidate(
   candidateShirt: string,
   proposedWear: DesignerStyle["shirtWear"],
 ): DesignerStyle["shirtWear"] {
-  if (/\b(?:camp|cuban)(?:[- ]collar)?\b/i.test(candidateShirt)) return "Untucked";
+  // Ambiguous collar names must not force an untucked photo while the\n  // versioned collar resolver correctly declines to choose a construction.\n  if (styleDirectorCandidateCollar(candidateShirt, [])?.versioned === "cuban_camp_collar") return "Untucked";
   if (occasion === "Formal" || occasion === "Semi-Formal") return "Tucked";
   return proposedWear;
 }
