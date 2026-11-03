@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorCandidateCollar, styleDirectorCandidateSleeve, styleDirectorCandidateWordingIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorCandidateSleeve, styleDirectorCandidateTrouserFront, styleDirectorCandidateWordingIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -223,6 +223,7 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   const shirt = candidate.garments.shirt.toLowerCase();
   const trouser = candidate.garments.trouser.toLowerCase();
   const namedCollar = styleDirectorCandidateCollar(shirt, DESIGNER_STYLE_CHOICES.collar);
+  const trouserFront = styleDirectorCandidateTrouserFront(trouser);
 
   if (shirt.includes("spread")) {
     style.collar = pickStyleChoice("collar", /spread/i, style.collar);
@@ -244,10 +245,10 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   if (trouser.includes("wide")) {
     style.trouser = pickStyleChoice("trouser", /wide|relaxed drape/i, style.trouser);
     style.break = pickStyleChoice("break", /full break|no break/i, style.break);
-  } else if (trouser.includes("pleat")) {
+  } else if (trouserFront === "pleated") {
     style.trouser = pickStyleChoice("trouser", /pleated/i, style.trouser);
     style.break = pickStyleChoice("break", /slight break/i, style.break);
-  } else if (trouser.includes("flat-front") || trouser.includes("flat front")) {
+  } else if (trouserFront === "flat_front") {
     style.trouser = pickStyleChoice("trouser", /flat[- ]?front|formal trouser/i, style.trouser);
   } else if (trouser.includes("drawstring")) {
     style.waistband = pickStyleChoice("waistband", /drawstring|elastic/i, style.waistband);
@@ -269,6 +270,7 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   const trouser=String(candidate.garments.trouser||"").toLowerCase();
   const namedCollar=styleDirectorCandidateCollar(shirt,DESIGNER_STYLE_CHOICES.collar);
   const namedSleeve=styleDirectorCandidateSleeve(shirt);
+  const trouserFront=styleDirectorCandidateTrouserFront(trouser);
 
   if(namedCollar?.versioned==="cuban_camp_collar") {
     spec.shirt.type="camp_collar_resort";
@@ -297,8 +299,8 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   }
 
   if(/wide/.test(trouser)) spec.pant.type="wide_leg_relaxed_drape";
-  else if(/pleat/.test(trouser)) spec.pant.type="pleated_trouser";
-  else if(/flat[- ]?front/.test(trouser)) spec.pant.type="formal_flat_front";
+  else if(trouserFront==="pleated") spec.pant.type="pleated_trouser";
+  else if(trouserFront==="flat_front") spec.pant.type="formal_flat_front";
 
   return spec;
 }
