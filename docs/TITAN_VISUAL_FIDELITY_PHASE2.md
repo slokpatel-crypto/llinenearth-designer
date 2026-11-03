@@ -117,3 +117,22 @@ claims of new real-world photographs or tailor acceptance.
   Re-run all exact-head CI jobs; old green proof remains evidence only for
   the old head. No customer-facing production or tailors' physical
   acceptance is asserted.
+
+## November 3 — raw-swatch fallback parity follow-up
+
+- The generated-asset path was corrected at `3dcf077e`, but the client-side
+  `PhotoOutfitPreview.swatchTile` fallback for plain swatches still used a
+  centre-biased 22–44% source crop. This could reintroduce supplier printed
+  captions when generated fabric tiles are unavailable or fail to load.
+- The plain-fabric fallback now uses exactly the same pure
+  `photoFabricCaptionSafeCrop(image.width,image.height)` geometry as the
+  build-time generator. Direction-preserving striped tile cropping is unchanged.
+- Added regression assertions proving the fallback cannot silently revert to
+  the old `plain ? .22` crop. No stock/supplier data, photo-model identity,
+  physical-scale provenance, measurements or fabrication claims changed.
+- **Review gate:** rebuild actual generated tiles and inspect black, offwhite,
+  sky-blue and light-green source garments at 390/768/1440 widths. Verify
+  browser source-fallback behaviour alongside real path where possible.
+- New exact-head CI remains mandatory; no claim that preceding runs on
+  `3dcf077e` verify these additional fallback changes. Keep draft, do not
+  merge or deploy.
