@@ -61,6 +61,24 @@ export function photoConstructionMismatches(
   }
   if (!spec) return gaps;
 
+  // The Canvas compositor chooses its base photograph from the legacy style.
+  // Advanced v2 values must never silently borrow that photograph's exactness.
+  if (spec.shirt.wear !== (tucked ? "tucked" : "untucked")) {
+    add("shirt.wear", "shirt tuck", "The photographed tuck mode follows the live selection, not this saved versioned wear choice.");
+  }
+  if (spec.shirt.collarFinish !== style.collarFinish) {
+    add("shirt.collarFinish", "collar contrast", "The visible contrast cloth follows the live choice, not this saved versioned collar finish.");
+  }
+  if (spec.pant.type !== (photographedWide ? "wide_leg_relaxed_drape" : "pleated_trouser")) {
+    add("pant.type", "trouser silhouette", "The versioned trouser construction differs from the fixed source photograph.");
+  }
+  if (spec.pant.break !== (photographedWide ? "full_break" : "slight_break")) {
+    add("pant.break", "trouser break", "The versioned trouser break differs from the photographic hem length.");
+  }
+  if (spec.shirt.back !== "plain_back") {
+    add("shirt.back", "back shaping", "A front photograph cannot verify or show this selected rear construction.");
+  }
+
   if (spec.shirt.type !== "dress_shirt") {
     add("shirt.type", "shirt construction", "A different shirt type requires its own photograph.");
   }
