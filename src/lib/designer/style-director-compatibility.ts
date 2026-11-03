@@ -90,7 +90,8 @@ export type DirectorConstructionIssue = {
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
     "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "legacy_trouser_mismatch" |
-    "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch";
+    "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch" |
+    "candidate_trouser_pleat_mismatch";
   explanation: string;
 };
 
@@ -125,6 +126,27 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     });
   }
   return issues;
+}
+
+/**
+ * Candidate wording is an intent, not proof of a garment's front construction.
+ * A wide-leg option can legitimately retain its silhouette while silently
+ * dropping a requested pleat from the versioned spec. Require a review,
+ * rather than fabricating a single/double pleat the photo cannot show.
+ */
+export function styleDirectorCandidateFrontConstructionIssues(
+  candidateTrouser: string,
+  pant: Pick<StyleSpecV2["pant"], "pleat">,
+): DirectorConstructionIssue[] {
+  const front = styleDirectorCandidateTrouserFront(candidateTrouser);
+  if ((front === "pleated" && pant.pleat === "flat_front") ||
+      (front === "flat_front" && pant.pleat !== "flat_front")) {
+    return [{
+      code: "candidate_trouser_pleat_mismatch",
+      explanation: "The proposed trouser front contradicts its versioned pleat construction; confirm the intended front before cutting without inventing a pleat.",
+    }];
+  }
+  return [];
 }
 
 /**
