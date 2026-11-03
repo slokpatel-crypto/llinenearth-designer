@@ -99,7 +99,7 @@ function filenameHint(name: string) {
   const map: Array<[string[], string]> = [
     // Match the specific blend before the generic fibre, or linen-cotton
     // sample names silently become pure linen.
-    [["linencotton","linen-cotton","linen_cotton"],"Linen-Cotton"], [["linen"],"Linen"], [["poplin"],"Cotton Poplin"],
+    [["linencotton","cottonlinen","linen-cotton","cotton-linen","linen_cotton","cotton_linen","linen cotton","cotton linen"],"Linen-Cotton"], [["linen"],"Linen"], [["poplin"],"Cotton Poplin"],
     [["oxford"],"Oxford Cotton"], [["twill"],"Cotton Twill"], [["tr-wool","trwool","pvwool"],"TR-Wool / Poly-Viscose-Wool"],
     [["tr","polyviscose","poly-viscose","pv"],"TR / Poly-Viscose Suiting"], [["tropical"],"Tropical Wool"], [["hopsack"],"Hopsack Wool"],
     [["flannel"],"Wool Flannel"], [["seersucker"],"Cotton Seersucker"], [["denim","jean"],"Denim"], [["corduroy","cord"],"Corduroy"],

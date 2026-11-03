@@ -33,6 +33,14 @@ test("no overlength human or supplier receipt may be silently clipped into a dif
     assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,[field]:value}),null,field);
   }
   assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,reference:"R".repeat(220)})?.reference.length,220);
+  for(const [field,value] of [
+    ["reference"," ".repeat(221)+"Roll ABC"],
+    ["checkedBy"," ".repeat(121)+"Inspector"],
+    ["sourceUrl"," ".repeat(501)+"https://supplier.example/lot"],
+  ] as const){
+    assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,[field]:value}),null,
+      field+" must reject padded overlength literals");
+  }
 });
 
 test("JSON value coercion must not create supplier, roll or inspector proof",()=>{

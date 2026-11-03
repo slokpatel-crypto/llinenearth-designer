@@ -40,6 +40,20 @@ test("a protocol prefix alone is not an auditable HTTPS physical source",()=>{
   }));
 });
 
+test("padded physical receipts cannot bypass literal size limits at intake",()=>{
+  const measurement={verifiedGsm:145,verifiedPhysicalEvidenceNote:"Owner measured the physical roll."};
+  for(const [field,value] of [
+    ["verifiedFiberContent"," ".repeat(221)+"100% linen"],
+    ["verifiedPhysicalSourceUrl"," ".repeat(1801)+"https://supplier.example/lot"],
+    ["verifiedPhysicalEvidenceNote"," ".repeat(501)+"Owner measured the physical roll."],
+  ] as const){
+    assert.throws(()=>validateVerifiedPhysicalEvidence({...measurement,[field]:value}),/allowed length/i,field);
+  }
+  assert.doesNotThrow(()=>validateVerifiedPhysicalEvidence({
+    verifiedGsm:145,verifiedPhysicalEvidenceNote:"R".repeat(500),
+  }));
+});
+
 test("malformed JSON text fields cannot become supplier proof",()=>{
   const evidence={verifiedGsm:145,verifiedPhysicalEvidenceNote:"Supplier checked this lot in person."};
   assert.equal(hasVerifiedPhysicalEvidence({verifiedFiberContent:["100% linen"] as never}),false);

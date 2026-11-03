@@ -17,7 +17,8 @@ export type FabricPhysicalEvidenceProvenance={
 
 function clean(value:unknown,limit:number):string|null{
   // Do not coerce JSON arrays/objects or shorten a signed supplier reference.
-  if(typeof value!=="string") return null;
+  if(typeof value!=="string" || value.length>limit) return null;
+  // A bounded literal must not be shortened into a different supplier receipt.
   const normalized=value.replace(/\s+/g," ").trim();
   return normalized.length<=limit ? normalized : null;
 }

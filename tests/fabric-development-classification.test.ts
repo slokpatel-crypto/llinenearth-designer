@@ -7,7 +7,7 @@ function classify(fileName:string){
 }
 
 test("Linen-Cotton filename evidence outranks generic Linen, irrespective of common separators",()=>{
-  for(const name of ["linen-cotton-check.webp","LINEN_COTTON_solid.png","linencotton swatch.jpg"]){
+  for(const name of ["linen-cotton-check.webp","LINEN_COTTON_solid.png","linencotton swatch.jpg","cotton-linen-check.webp","COTTON_LINEN_solid.png","cottonlinen swatch.jpg","linen cotton sample.webp"]){
     const result=classify(name);
     assert.equal(result.alternatives[0]?.family,"Linen-Cotton",name);
     assert.equal(result.observations[0].basis,"development_visual_classifier");

@@ -38,6 +38,16 @@ export function validateVerifiedPhysicalEvidence(input:VerifiedPhysicalEvidenceI
       throw new Error(`Verified physical ${label} must be a text string.`);
     }
   }
+  // Check the original, unnormalized supplier literals before trim/collapse.
+  // Otherwise a padded receipt can exceed its API bound yet be accepted as
+  // a shorter, apparently valid physical source after normalization.
+  if([
+    [input.verifiedFiberContent,220],
+    [input.verifiedPhysicalSourceUrl,1800],
+    [input.verifiedPhysicalEvidenceNote,500],
+  ].some(([value,limit])=>typeof value==="string" && value.length>(limit as number))) {
+    throw new Error("Verified physical evidence exceeds the field's allowed length.");
+  }
   const fiberContent=(input.verifiedFiberContent??"").trim();
   const sourceUrl=(input.verifiedPhysicalSourceUrl??"").trim();
   const note=(input.verifiedPhysicalEvidenceNote??"").replace(/\s+/g," ").trim();
