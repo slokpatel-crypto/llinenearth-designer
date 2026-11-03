@@ -69,3 +69,23 @@ do not merge to main or deploy Vercel until checks and review pass.
 **Review caution:** GitHub CI must be checked on the final exact PR head after
 these commits. Any earlier green run applies only to its recorded SHA. No
 claims of new real-world photographs or tailor acceptance.
+
+## Nov 3 continued — real Chromium selector failure and fix
+- Exact prior head `095cdef0`: all source/unit/quality/eval/release/build gates
+  **passed**, and real `verify-photo-form.cjs` **passed** across 390/768/1440
+  for tucked, pleated and wide + both striped trouser legs and protected regions.
+- `Deep Engine — Non-3D QA` run **41682956453 FAILED** later at
+  `scripts/verify-photo-craft.cjs:59`. The existing direct-child locator
+  `.newDesignerPhoto>.newDesignerPhotoApproximation` became ambiguous because
+  the new truthful construction note reused that paragraph class. The
+  photographed model/pixel proof was not the failed assertion.
+- Fixed by placing the construction notice as an inline
+  `data-photo-construction-mismatch` span in the **existing singular** preview
+  disclaimer, keeping all real fabrication limits visible without changing
+  colour/geometry or weakening selectors.
+- Added a source regression assertion against duplicate preview-disclaimer
+  paragraphs and a real Chromium assertion that the untucked, selected
+  straight-hem cut discloses its mismatch with the photographed curved hem at
+  390/768/1440 widths.
+- **Fresh exact-head CI required** after selector fix and new Chromium guard;
+  preceding green test steps do not certify the new commit.
