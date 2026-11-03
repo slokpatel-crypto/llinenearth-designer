@@ -52,7 +52,7 @@ export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "band_collar_construction" | "short_sleeve_double_cuff" |
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
-    "camp_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo";
+    "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo";
   explanation: string;
 };
 
@@ -84,6 +84,12 @@ export function styleDirectorConstructionIssues(
     issues.push({
       code: "band_collar_construction",
       explanation: "The proposed band-collar shirt type has a different collar construction; confirm the canonical collar before cutting.",
+    });
+  }
+  if (shirt.collar === "mandarin_band_collar" && shirt.type !== "band_collar_shirt") {
+    issues.push({
+      code: "band_collar_type_mismatch",
+      explanation: "The selected Mandarin/Band collar is paired with a different shirt type; confirm the intended collar construction before cutting.",
     });
   }
   if (shirt.type === "camp_collar_resort" &&
