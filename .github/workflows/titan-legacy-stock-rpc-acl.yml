@@ -83,6 +83,10 @@ jobs:
           fi
           grep -q 'unsafe effective v1 EXECUTE: role service_role' /tmp/pre-retirement-acl.log
           test "$(psql -v ON_ERROR_STOP=1 -Atc 'select count(*) from private.fabric_stock_ledger')" = 0
+      - name: Apply manual stock/fabric lock-parity migration in the same database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103_manual_stock_fabric_lock_parity.sql
+      - name: Verify two-session manual/reservation lock parity before legacy retirement
+        run: bash scripts/test-manual-stock-lock-parity.sh
       - name: Apply permission-only retirement migration twice (idempotent)
         run: |
           set -euo pipefail
