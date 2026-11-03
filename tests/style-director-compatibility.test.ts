@@ -499,3 +499,27 @@ test("contradictory sleeve length descriptions do not select a half-sleeve const
     { sleeve: "half_sleeve", cuff: "open_short_hem_cuff" });
   assert.equal(styleDirectorCandidateSleeve("Full-Sleeve Shirt"), null);
 });
+
+test("ambiguous candidate descriptions force an explicit recommendation review", () => {
+  const cases: Array<[string, string[]]> = [
+    ["Cuban Band-Collar Shirt", ["ambiguous_candidate_collar"]],
+    ["Mandarin Cutaway Shirt", ["ambiguous_candidate_collar"]],
+    ["Half Sleeve Full Sleeve Shirt", ["ambiguous_candidate_sleeve"]],
+    ["Cuban Cutaway Short-Sleeve Full-Sleeve Shirt",
+      ["ambiguous_candidate_collar", "ambiguous_candidate_sleeve"]],
+  ];
+  for (const [name, expected] of cases) {
+    const first = styleDirectorCandidateWordingIssues(name);
+    assert.deepEqual(first.map(issue => issue.code), expected, name);
+    assert.deepEqual(first, styleDirectorCandidateWordingIssues(name), "review must be deterministic");
+  }
+  for (const name of [
+    "Cuban Resort Shirt", "Mandarin Band-Collar Shirt", "Cutaway-Collar Dress Shirt",
+    "Short-Sleeve Camp-Collar Shirt", "Full Sleeve Dress Shirt",
+    "Campus Office Shirt", "Bandwidth Print Shirt", "Sleevelet Shirt",
+  ]) assert.deepEqual(styleDirectorCandidateWordingIssues(name), [], name);
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("...styleDirectorCandidateWordingIssues(candidate.garments.shirt)"),
+    "ambiguous names must affect final recommendation review status");
+  assert.ok(agent.includes('status: constructionIssues.length ? "needs_review" : best.status'));
+});
