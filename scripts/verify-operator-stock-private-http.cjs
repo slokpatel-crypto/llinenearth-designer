@@ -7,7 +7,13 @@ const {join}=require("node:path");
 // Contract regression: the privileged HTTP boundary must never revive a
 // legacy stock RPC, even when the synthetic backend accepts new v2 calls.
 const stockRoute=readFileSync(join(process.cwd(),"src/app/api/operator/stock/route.ts"),"utf8");
-const invokedStockRpcs=[...stockRoute.matchAll(/rpc<[^>]+>\(\s*"([^"]+)"/g)].map(match=>match[1]);
+// Capture typed and untyped calls, with either quote style. An untyped
+// legacy RPC must not evade the privileged allowlist regression.
+const invokedStockRpcs=[...stockRoute.matchAll(/\\.rpc(?:<[^>]+>)?\\s*\\(\\s*(['"])([^'"]+)\\1/g)]
+  .map(match=>match[2]);
+const rpcCallCount=[...stockRoute.matchAll(/\\.rpc(?:<[^>]+>)?\\s*\\(/g)].length;
+assert.equal(invokedStockRpcs.length,rpcCallCount,
+  "operator stock RPC name must be a literal approved name; dynamic calls are prohibited");
 const approvedStockRpcs=new Set([
   "fabric_stock_snapshot_v2","fabric_stock_record_v2",
   "fabric_stock_reserve_v2","fabric_stock_release_v2",
