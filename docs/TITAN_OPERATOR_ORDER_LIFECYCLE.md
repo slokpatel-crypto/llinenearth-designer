@@ -186,3 +186,13 @@ The existing persisted production order contract in `src/lib/designer/production
 - An ordinary JSON-parsed array and runtime-frozen reducer audit remain supported. Replay and snapshot restoration use the same validator; a synthetic regression covers valid/empty audits, metadata, symbols, getters, holes, prototypes and snapshot corruption.
 - Source commits `326c626f` and `80ee35ac`; test commit `adcc88c7`. Matching-head CI and Non-3D QA after the documentation checkpoint are required before asserting repo-wide green. No local full-repository run is claimed.
 - The open draft remains an isolated pure lifecycle proposal, **not** an authenticated transactional store. Production enablement remains blocked on coordinated SQL status mapping, idempotent persisted writes, verified operator identity and physical QC/delivery evidence, cancellation/refund policy and independent approval. Do not merge or deploy.
+
+
+## 2026-11-03 — deterministic idempotent retry decision
+
+- Added `applyOrderLifecycleEventIdempotently` to the **isolated pure order lifecycle library**. On a new event ID it uses the existing validated reducer, enforcing exact next sequence and previous-event linkage. A repeated ID with the same complete canonical event data returns `already_applied` and the **unchanged frozen current snapshot**; no audit row or status is generated twice. An older exact retry remains acknowledged even after subsequent valid transitions, without rolling the order backward.
+- Reuse of the event ID with a different actor, action, sequence, previous event, stage, timestamp, evidence, destination, reason or QC receipt/checks is rejected. Unknown or non-plain fields remain blocked; callers may omit the derived `to` field on an unapplied/retried input, but may not supply a wrong destination. Snapshot trust checking runs **before** any retry acknowledgment.
+- Added focused synthetic regression tests for new transitions, exact retries, historical retries, malicious collision payloads, stale new IDs, QC modification, recovery, delivery and forged/unrestored snapshots.
+- Implementation commit `954af6c6`, regression commit `0f4ffb4d`. **Exact-head CI and independent Non-3D QA must complete before declaring this patch verified.** No local full-repository tests claimed.
+- This helper is **not** durable idempotency or concurrency safety. Production requires a centrally reviewed, authenticated database transaction with unique `(order_id, event_id)` constraints, atomic order-version compare-and-set, append-only events, physical evidence and actor verification, and explicit mapping to current SQL statuses. No schema, routes, auth, inventory, stock, measurement or UI files changed; no merge or Vercel deploy.
+
