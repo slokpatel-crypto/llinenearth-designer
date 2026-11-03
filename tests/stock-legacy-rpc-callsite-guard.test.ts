@@ -45,10 +45,17 @@ function operatorRpcTargets(source: string): string[] {
   const root = ts.createSourceFile("operator-stock-route.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const targets: string[] = [];
   const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "rpc") {
-      const arg = node.arguments[0];
-      assert.ok(arg && ts.isStringLiteral(arg), "Operator stock RPC target must be a literal audited name.");
-      targets.push(arg.text);
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const isRpc = (ts.isIdentifier(callee) && callee.text === "rpc") ||
+        (ts.isPropertyAccessExpression(callee) && callee.name.text === "rpc") ||
+        (ts.isElementAccessExpression(callee) && ts.isStringLiteral(callee.argumentExpression) &&
+          callee.argumentExpression.text === "rpc");
+      if (isRpc) {
+        const arg = node.arguments[0];
+        assert.ok(arg && ts.isStringLiteral(arg), "Operator stock RPC target must be a literal audited name.");
+        targets.push(arg.text);
+      }
     }
     ts.forEachChild(node, visit);
   };
@@ -81,4 +88,8 @@ test("operator RPC target guard cannot be spoofed with comments or dynamic argum
     rpc(stockRpcName);
   `), /literal audited name/);
   assert.throws(() => operatorRpcTargets('rpc(`fabric_stock_record_v2`);'), /literal audited name/);
+  assert.deepEqual(operatorRpcTargets('client.rpc("fabric_stock_snapshot_v2")'), ["fabric_stock_snapshot_v2"]);
+  assert.deepEqual(operatorRpcTargets('client["rpc"]("fabric_stock_snapshot_v2")'), ["fabric_stock_snapshot_v2"]);
+  assert.throws(() => operatorRpcTargets('client.rpc(assembledStockName)'), /literal audited name/);
+  assert.throws(() => operatorRpcTargets('client["rpc"](assembledStockName)'), /literal audited name/);
 });
