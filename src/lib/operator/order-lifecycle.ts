@@ -127,7 +127,7 @@ function record(value: unknown): Record<string, unknown> {
   const prototype = Object.getPrototypeOf(value);
   if (prototype !== Object.prototype && prototype !== null) throw new Error("Invalid lifecycle record prototype.");
   if (Reflect.ownKeys(value).some(key => typeof key !== "string" ||
-      !Object.hasOwn(Object.getOwnPropertyDescriptor(value, key) ?? {}, "value"))) {
+      (() => { const descriptor = Object.getOwnPropertyDescriptor(value, key); return !descriptor || !Object.hasOwn(descriptor, "value") || !descriptor.enumerable; })())) {
     throw new Error("Invalid lifecycle record property.");
   }
   return value as Record<string, unknown>;
