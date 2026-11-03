@@ -261,6 +261,8 @@ export function measurePattern(
   const axisKnown=orientation==="vertical" || orientation==="horizontal";
   const validMm=(value:unknown):value is number=>
     typeof value==="number" && Number.isFinite(value) && value>=.1 && value<=5000;
+  const sourceWidth=physical?.originalWidthPx;
+  const sourceHeight=physical?.originalHeightPx;
   if(detectedRepeat && axisKnown && validMm(physical?.repeatRealMm)){
     repeatMm=physical.repeatRealMm;
     physicalScaleStatus="declared_repeat";
@@ -274,10 +276,9 @@ export function measurePattern(
     // repeat measurement. Use the existing 400px capture-quality floor and
     // check the original height when supplied by the server. The height is
     // optional for backwards-compatible direct measurement callers.
-    && Number.isInteger(physical?.originalWidthPx)
-    && physical.originalWidthPx>=400
-    && (physical.originalHeightPx===undefined
-      || (Number.isInteger(physical.originalHeightPx) && physical.originalHeightPx>=400))
+    && typeof sourceWidth==="number" && Number.isInteger(sourceWidth) && sourceWidth>=400
+    && (sourceHeight===undefined
+      || (typeof sourceHeight==="number" && Number.isInteger(sourceHeight) && sourceHeight>=400))
   ) {
     // Swatch width calibrates the X axis only. Horizontal stripes repeat on Y
     // and grid motifs may have two different periods; neither is measurable
