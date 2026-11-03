@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createOrderLifecycle, applyOrderLifecycleEvent, replayOrderLifecycle, restoreOrderLifecycleSnapshot,
+  applyOrderLifecycleEventIdempotently,
   ORDER_QC_CHECKS, type OrderLifecycleAction, type OrderLifecycleState,
 } from "../src/lib/operator/order-lifecycle.ts";
 
@@ -538,4 +539,87 @@ test("audit history arrays reject hidden fields, getters, symbols, holes and inh
   snapshot.audit=hidden;
   assert.throws(()=>restoreOrderLifecycleSnapshot(snapshot),/audit array property/);
   assert.equal(restoreOrderLifecycleSnapshot(JSON.parse(JSON.stringify(accepted))).status,"accepted");
+});
+
+
+test("idempotent event retry returns the unchanged audited state without repeating side effects",()=>{
+  const first=step(base(),"accept");
+  const receipt=first.audit[0];
+  const fresh=applyOrderLifecycleEventIdempotently(base(),receipt);
+  assert.equal(fresh.outcome,"applied");
+  assert.deepEqual(fresh.state,first);
+  assert.equal(Object.isFrozen(fresh),true);
+  const repeated=applyOrderLifecycleEventIdempotently(fresh.state,receipt);
+  assert.equal(repeated.outcome,"already_applied");
+  assert.equal(repeated.state,fresh.state);
+  assert.equal(repeated.state.audit.length,1);
+
+  const withoutDestination=Object.fromEntries(Object.entries(receipt).filter(([key])=>key!=="to"));
+  const reused=applyOrderLifecycleEventIdempotently(repeated.state,withoutDestination);
+  assert.equal(reused.outcome,"already_applied");
+  assert.equal(reused.state,repeated.state);
+
+  const later=step(first,"start_cutting");
+  const historical=applyOrderLifecycleEventIdempotently(later,withoutDestination);
+  assert.equal(historical.outcome,"already_applied");
+  assert.equal(historical.state,later,"a historical retry must never roll back a later stage");
+  assert.equal(historical.state.audit.length,2);
+});
+
+test("same event ID with changed claims fails closed and new IDs still obey sequence fences",()=>{
+  const accepted=step(base(),"accept");
+  const old=accepted.audit[0];
+  const altered=[
+    {...old,actor:"another-operator"},
+    {...old,evidenceRef:"receipt-forged-0001"},
+    {...old,occurredAt:"2026-11-03T00:00:09.000Z"},
+    {...old,action:"start_cutting"},
+    {...old,sequence:2},
+    {...old,from:"cutting"},
+    {...old,previousEventId:"event-00000000"},
+    {...old,to:"delivered"},
+    {...old,reason:undefined},
+    {...old,qc:undefined},
+  ];
+  for(const forged of altered) {
+    assert.throws(()=>applyOrderLifecycleEventIdempotently(accepted,forged),
+      /Conflicting order event retry/,
+      "a duplicate ID must never silently accept changed evidence or sequence");
+  }
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(accepted,{...old,paid:true}),
+    /Unexpected order event field/);
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(accepted,{...old,orderId:"another-order-0001"}),
+    /Order identity mismatch/);
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(accepted,{
+    ...old,eventId:"different-event-00001",
+  }),/Stale or non-sequential order event/);
+  assert.equal(accepted.audit.length,1);
+});
+
+test("idempotent retries preserve QC, recovery and terminal-stage audit integrity",()=>{
+  const pending=toQc();
+  const signed=step(pending,"approve_qc",{qc:qc()});
+  const qcReceipt=signed.audit.at(-1);
+  assert.ok(qcReceipt);
+  assert.equal(applyOrderLifecycleEventIdempotently(signed,qcReceipt).outcome,"already_applied");
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(signed,{
+    ...qcReceipt,qc:{...qcReceipt.qc,checks:{...qcReceipt.qc?.checks,fabric_match:false}},
+  }),/Conflicting order event retry/);
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(signed,{
+    ...qcReceipt,qc:{...qcReceipt.qc,inspectionReference:"QC-FORGED-002"},
+  }),/Conflicting order event retry/);
+  const held=step(signed,"hold_for_recovery",{reason:"Machine inspection requires a hold"});
+  assert.equal(applyOrderLifecycleEventIdempotently(held,held.audit.at(-1)).outcome,"already_applied");
+  const restored=restoreOrderLifecycleSnapshot(JSON.parse(JSON.stringify(held)));
+  assert.equal(applyOrderLifecycleEventIdempotently(restored,held.audit.at(-1)).outcome,"already_applied");
+
+  const dispatched=step(signed,"dispatch");
+  const delivered=step(dispatched,"deliver");
+  const final=applyOrderLifecycleEventIdempotently(delivered,delivered.audit.at(-1));
+  assert.equal(final.outcome,"already_applied");
+  assert.equal(final.state,delivered);
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(
+    JSON.parse(JSON.stringify(delivered)),delivered.audit.at(-1)),/Untrusted lifecycle snapshot/);
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(
+    {...delivered},delivered.audit.at(-1)),/Untrusted lifecycle snapshot/);
 });
