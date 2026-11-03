@@ -78,10 +78,21 @@ test("pleated and flat-front trouser construction must match selected type", () 
 test("cropped hem cannot simultaneously claim a full shoe break", () => {
   assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
     type: "cropped_ankle", break: "full_break",
-  })).map(x=>x.code), ["cropped_full_break"]);
+  })).map(x=>x.code), ["cropped_type_hem_mismatch", "cropped_full_break"]);
   assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
     hem: "cropped_above_ankle_hem", break: "full_break",
   })).map(x=>x.code), ["cropped_full_break"]);
+});
+
+test("cropped trouser type must agree with its hem without rewriting locked IDs", () => {
+  const mismatch = spec({}, {type:"cropped_ankle",hem:"plain_hem",break:"slight_break"});
+  const original = JSON.stringify(mismatch);
+  assert.deepEqual(styleDirectorConstructionIssues(mismatch).map(issue=>issue.code),
+    ["cropped_type_hem_mismatch"]);
+  assert.equal(JSON.stringify(mismatch),original);
+  assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
+    type:"cropped_ankle",hem:"cropped_above_ankle_hem",break:"no_break",
+  })),[]);
 });
 
 test("construction review is deterministic and never mutates locked style IDs", () => {
