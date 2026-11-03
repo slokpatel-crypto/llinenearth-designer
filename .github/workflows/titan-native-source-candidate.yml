@@ -21,6 +21,7 @@ on:
       - "tests/crotch-source-edge-reprojection-native.test.ts"
       - "tests/crotch-connected-source-nine-native.test.ts"
       - "tests/crotch-source-ring-falloff-native.test.ts"
+      - "tests/crotch-local-body-normal-ring-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -53,6 +54,7 @@ on:
       - "tests/crotch-source-edge-reprojection-native.test.ts"
       - "tests/crotch-connected-source-nine-native.test.ts"
       - "tests/crotch-source-ring-falloff-native.test.ts"
+      - "tests/crotch-local-body-normal-ring-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -1129,8 +1131,16 @@ jobs:
           expected_ring_weights={
               "oneRingHalf":[0.5],
               "twoRing":[0.66,0.33],
+              "localBodyNormalOneRing7Mm":[],
+              "localBodyNormalTwoRings7And4Mm":[],
           }
-          assert set(falloffs) == set(expected_ring_weights)
+          expected_original_body_targets={
+              "oneRingHalf":[],
+              "twoRing":[],
+              "localBodyNormalOneRing7Mm":[7.0],
+              "localBodyNormalTwoRings7And4Mm":[7.0,4.0],
+          }
+          assert set(falloffs) == set(expected_ring_weights) == set(expected_original_body_targets)
           flip_counts=connected["falloffSourceAdjacentFaceNormalFlips"]
           all_flips=connected["falloffAllAlteredSourceFaceNormalFlips"]
           observed_less=connected["falloffReducedAdjacentBodyPairsObserved"]
@@ -1139,6 +1149,8 @@ jobs:
           assert src_nine["alteredOriginalSourceFaceCount"] == len(adjacent)
           for label, candidate in falloffs.items():
               assert candidate["ringFalloffWeights"] == expected_ring_weights[label]
+              assert candidate["ringOriginalBodyNormalTargetsMm"] == expected_original_body_targets[label]
+              assert not (candidate["ringFalloffWeights"] and candidate["ringOriginalBodyNormalTargetsMm"])
               assert candidate["triangleOrPolygonCount"] == src_nine["triangleOrPolygonCount"]
               assert candidate["originalSourceAdjacentFaceCount"] == len(adjacent)
               assert candidate["sourceEdgeReadingsUnderSevenMm"] == 0
@@ -1148,7 +1160,7 @@ jobs:
               assert 0 <= candidate["maxNeighborMotionMm"] <= 25
               assert candidate["movedNeighborVertexCountsByRing"]["1"] == rings["1"]
               assert candidate["movedNeighborVertexCountsByRing"]["2"] == (
-                  rings["2"] if label == "twoRing" else 0
+                  rings["2"] if label in {"twoRing","localBodyNormalTwoRings7And4Mm"} else 0
               )
               assert len(candidate["alteredOriginalSourceFaceIndices"]) == candidate["alteredOriginalSourceFaceCount"]
               assert len(set(candidate["alteredOriginalSourceFaceIndices"])) == candidate["alteredOriginalSourceFaceCount"]
@@ -1189,6 +1201,8 @@ jobs:
                   evidence["withRingFalloff"]["contactedOriginalSourceAreaMm2"]
                   < evidence["nineMmNoFalloff"]["contactedOriginalSourceAreaMm2"]
               )
+          assert connected["falloffSameOriginalFaceRegionContactEvidence"]["localBodyNormalOneRing7Mm"]
+          assert connected["falloffSameOriginalFaceRegionContactEvidence"]["localBodyNormalTwoRings7And4Mm"]
           assert "not continuous" in connected["metricCaveat"]
           assert all(row["productionApproved"] is False for row in source_variants.values())
           assert "No continuous" in source_offset["metricCaveat"]
@@ -1240,6 +1254,10 @@ jobs:
               "fixedBoundaryBodyRayEvidence":targeted["fixedBridgeBoundaryBodyRayEvidence"],
               "sourceCutEdgeReprojectionTrial":targeted["researchOnlySourceCutEdgeReprojectionTrial"],
               "connectedSourceNineMmTrial":targeted["researchOnlyConnectedSourceNineMmTrial"],
+              "localBodyNormalRingMetrics": {
+                  label:connected["falloffTrials"][label]
+                  for label in ("localBodyNormalOneRing7Mm","localBodyNormalTwoRings7And4Mm")
+              },
               "sourceFalloffAdjacentBodyPairs": {
                   label: row["adjacentOriginalSourceBodyBVHPairs"]
                   for label,row in connected["falloffTrials"].items()
