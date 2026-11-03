@@ -11,6 +11,27 @@ test("migration parser uses the timestamp version, not the whole filename", () =
   assert.equal(audit.migrationVersion("supabase/migrations/20261103_first.sql"), "20261103");
   assert.equal(audit.migrationVersion("supabase/migrations/not-a-version.sql"), null);
 });
+test("migration inventory rejects symlinks, nested directories and ambiguous SQL casing", () => {
+  const dirent=(name,kind)=>({
+    name,isFile:()=>kind==="file",isDirectory:()=>kind==="directory",
+    isSymbolicLink:()=>kind==="symlink"
+  });
+  const good=[
+    dirent("20261103170000_valid.sql","file"),
+    dirent(".gitkeep","file")
+  ];
+  assert.deepEqual(audit.migrationPathsFromEntries(good),
+    ["supabase/migrations/20261103170000_valid.sql"]);
+  for(const entry of [
+    dirent("20261103170000_hidden.sql","symlink"),
+    dirent("other-migrations","directory"),
+    dirent("20261103170000_hidden.SQL","file"),
+    dirent("20261103170000_hidden.sql","unknown")
+  ]) {
+    assert.throws(()=>audit.migrationPathsFromEntries([...good,entry]),
+      /Ambiguous migration entry/);
+  }
+});
 test("duplicate timestamp versions are detected even when filename suffixes differ", () => {
   const r = audit.inspectMigrations([
     "supabase/migrations/20261103080000_alpha.sql",
