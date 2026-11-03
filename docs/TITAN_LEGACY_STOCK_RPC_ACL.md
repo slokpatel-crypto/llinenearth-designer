@@ -17,6 +17,8 @@ The older routines use weaker evidence or locking semantics. The SQL retains the
 
 The independent `.github/workflows/titan-legacy-stock-rpc-acl.yml` starts only a disposable PostgreSQL 16 service with synthetic roles. It loads the existing v1/v2 schema and provenance/concurrency migrations, then applies the new retirement SQL and executes `supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql`. The SQL checks that all four v1 signatures remain defined but have no *effective* `EXECUTE` for `service_role`, `authenticated` or `anon` (which includes inherited `PUBLIC` privileges); the four privileged v2 write signatures must remain executable by `service_role` and inaccessible to the two customer roles. It also asserts no stock ledger rows were created.
 
+The disposable workflow includes a **red-before-green control**: it first runs the actual privilege-denial SQL against historical grants *without* the retirement migration and requires a failure identifying `service_role` access to v1. It then applies the retirement migration **twice** to assert safe repeatability and reruns the same SQL requiring success. This avoids accidentally accepting a test that always passes or an ACL change that breaks on replay.
+
 This proves an isolated migration ACL contract, not the permissions of the live Supabase database, not the correctness of externally deployed callers, and not verified physical inventory. Never run these synthetic role bootstrap commands on a live database.
 
 ## Compatibility, rollout and rollback gate
