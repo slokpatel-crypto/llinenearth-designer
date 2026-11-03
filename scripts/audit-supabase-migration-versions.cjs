@@ -91,15 +91,42 @@ function checkAgainstBaseline(paths, baseline) {
   return { ok: removed.length === 0 && invalidNew.length === 0 && conflictingNew.length === 0,
     removed, added, invalidNew, conflictingNew };
 }
+// This is a conservative text preflight only; a native replay must verify behavior.
+// Ignore SQL comments and inspect the active dollar-quoted CREATE FUNCTION body,
+// not documentation/comments elsewhere in the migration file.
+function activeReserveBody(sql) {
+  const uncommented = sql.replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/--[^\n]*/g, "");
+  const definitions = [...uncommented.matchAll(/\bcreate\s+or\s+replace\s+function\s+public\.fabric_stock_reserve_v2\s*\(/gi)];
+  if (!definitions.length) return null;
+  const last = uncommented.slice(definitions.at(-1).index);
+  const match = /\bas\s+(\$[a-zA-Z0-9_]*\$)([\s\S]*?)\1/i.exec(last);
+  return match ? match[2] : "";
+}
 function inspectReserveOverride(paths, readSql) {
-  const overrides = paths.filter(file => {
-    const sql = readSql(file);
-    return /create\s+or\s+replace\s+function\s+public\.fabric_stock_reserve_v2\s*\(/i.test(sql);
-  }).sort();
+  const bodies = new Map();
+  for (const file of paths) {
+    const body = activeReserveBody(readSql(file));
+    if (body !== null) bodies.set(file, body);
+  }
+  const overrides = [...bodies.keys()].sort();
   const finalFile = overrides.at(-1) || null;
-  const finalText = finalFile ? readSql(finalFile) : "";
-  const hasStrictLengthGate = /reservation identity or evidence exceeds supported length/.test(finalText);
-  return { overrides, filenameOrderLastDefinition: finalFile, hasStrictLengthGate };
+  const finalBody = finalFile ? bodies.get(finalFile) : "";
+  const gate = /\bif\s+length\(v_fabric\)\s*>\s*160\b([\s\S]{0,400}?)\braise\s+exception\s+'reservation identity or evidence exceeds supported length'/i.exec(finalBody);
+  const variables = [
+    ["v_fabric", "p_fabric_id", 160], ["v_key", "p_request_key", 180],
+    ["v_revision", "p_revision_id", 220], ["v_requester", "p_requested_by", 120],
+    ["v_source", "p_source_reference", 240]
+  ];
+  const hasStrictLengthGate = !!gate && variables.every(([v, input, max]) => {
+    const source = new RegExp("\\b" + v + "\\s+text\\s*:=\\s*trim\\s*\\(\\s*coalesce\\s*\\(\\s*" + input + "\\s*,", "i");
+    const checked = new RegExp("\\blength\\(" + v + "\\)\\s*>\\s*" + max + "\\b", "i");
+    return source.test(finalBody) && checked.test(gate[0]);
+  });
+  const usesLossyIdentifierTruncation = /\b(?:v_fabric|v_key|v_revision|v_requester|v_source)\s+text\s*:=\s*left\s*\(/i.test(finalBody);
+  return { overrides, filenameOrderLastDefinition: finalFile,
+    hasStrictLengthGate: hasStrictLengthGate && !usesLossyIdentifierTruncation,
+    usesLossyIdentifierTruncation };
 }
 function main(args = process.argv.slice(2)) {
   const opts = new Set(args);
