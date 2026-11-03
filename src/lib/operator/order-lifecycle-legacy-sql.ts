@@ -25,6 +25,8 @@ export type LegacySqlLifecycleReview = Readonly<{
   currentOperatorStage: OrderLifecycleState["status"];
   auditedEvents: number;
   allAuditTransitionsRepresentable: boolean;
+  incompatibleEventCount: number;
+  gaps: readonly LegacySqlLifecycleGap[];
   firstGap: LegacySqlLifecycleGap | null;
   productionWriteAuthorized: false;
   blocker: "sql_status_mapping_required" | "authenticated_transaction_required";
@@ -35,7 +37,7 @@ const LEGACY_STAGES = new Set<string>(Object.keys(ORDER_TRANSITIONS));
 /**
  * Inspect every recorded operator transition against the actual deployed SQL
  * state graph. This never returns authorization to write a production status.
- * The first incompatibility gives integration reviewers a precise reason.
+ * The first and every subsequent incompatibility give integration reviewers precise reasons.
  *
  * The reducer-created state must be trusted: do not inspect arbitrary caller
  * snapshots until restoreOrderLifecycleSnapshot verifies complete replay.
@@ -44,7 +46,7 @@ export function reviewOrderLifecycleLegacySqlCompatibility(
   state: OrderLifecycleState,
 ): LegacySqlLifecycleReview {
   orderLifecycleVersionFence(state); // Enforces reducer-owned/replayed snapshot.
-  let gap: LegacySqlLifecycleGap | null = null;
+  const gaps: LegacySqlLifecycleGap[] = [];
   for (const event of state.audit) {
     let reason: LegacySqlLifecycleGap["reason"] | null = null;
     if (!LEGACY_STAGES.has(event.from) || !LEGACY_STAGES.has(event.to)) {
@@ -55,23 +57,28 @@ export function reviewOrderLifecycleLegacySqlCompatibility(
       reason = "forbidden_legacy_transition";
     }
     if (reason) {
-      gap = Object.freeze({
+      gaps.push(Object.freeze({
         eventId: event.eventId, action: event.action,
         from: event.from, to: event.to, reason,
-      });
-      break;
+      }));
     }
   }
+  // Preserve audit order and report *every* gap. A first-gap-only review
+  // would hide later unrepresentable finishing, QC and dispatch requirements.
+  const frozenGaps = Object.freeze(gaps);
+  const firstGap = frozenGaps[0] ?? null;
   // A superficially identical transition (e.g. created -> cancelled) does not
   // prove operator identity, payment/refund policy or transactional persistence.
   return Object.freeze({
     orderId: state.orderId,
     currentOperatorStage: state.status,
     auditedEvents: state.audit.length,
-    allAuditTransitionsRepresentable: gap === null,
-    firstGap: gap,
+    allAuditTransitionsRepresentable: frozenGaps.length === 0,
+    incompatibleEventCount: frozenGaps.length,
+    gaps: frozenGaps,
+    firstGap,
     productionWriteAuthorized: false as const,
-    blocker: gap === null
+    blocker: frozenGaps.length === 0
       ? "authenticated_transaction_required" as const
       : "sql_status_mapping_required" as const,
   });

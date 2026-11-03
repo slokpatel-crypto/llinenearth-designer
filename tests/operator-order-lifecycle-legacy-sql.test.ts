@@ -42,6 +42,9 @@ test("read-only diagnostics fail closed even when labels happen to match legacy 
   assert.equal(empty.currentOperatorStage,"created");
   assert.equal(empty.auditedEvents,0);
   assert.equal(empty.firstGap,null);
+  assert.deepEqual(empty.gaps,[]);
+  assert.equal(empty.incompatibleEventCount,0);
+  assert.equal(Object.isFrozen(empty.gaps),true);
   assert.equal(empty.allAuditTransitionsRepresentable,true);
   assert.equal(empty.productionWriteAuthorized,false);
   assert.equal(empty.blocker,"authenticated_transaction_required");
@@ -51,6 +54,8 @@ test("read-only diagnostics fail closed even when labels happen to match legacy 
   const review=reviewOrderLifecycleLegacySqlCompatibility(cancelled);
   assert.equal(review.currentOperatorStage,"cancelled");
   assert.equal(review.firstGap,null);
+  assert.deepEqual(review.gaps,[]);
+  assert.equal(review.incompatibleEventCount,0);
   assert.equal(review.productionWriteAuthorized,false,
     "a transition shared by both graphs must never authorize a production write");
   assert.equal(review.blocker,"authenticated_transaction_required");
@@ -64,6 +69,9 @@ test("operator acceptance and subsequent cutting/finishing/QC/delivery require e
     from:"created",to:"accepted",reason:"unrepresented_status",
   });
   assert.equal(acceptanceReview.blocker,"sql_status_mapping_required");
+  assert.equal(acceptanceReview.incompatibleEventCount,1);
+  assert.deepEqual(acceptanceReview.gaps,[acceptanceReview.firstGap]);
+  assert.equal(Object.isFrozen(acceptanceReview.gaps),true);
   assert.equal(acceptanceReview.productionWriteAuthorized,false);
   assert.equal(Object.isFrozen(acceptanceReview.firstGap),true);
 
@@ -79,6 +87,13 @@ test("operator acceptance and subsequent cutting/finishing/QC/delivery require e
   assert.equal(review.auditedEvents,8);
   assert.deepEqual(review.firstGap,acceptanceReview.firstGap,
     "a final matching status must not erase unsupported intermediate history");
+  assert.equal(review.incompatibleEventCount,7);
+  assert.deepEqual(review.gaps.map(gap=>gap.action),[
+    "accept","start_cutting","start_finishing","submit_qc","approve_qc","dispatch","deliver",
+  ],"report every unsupported transition, including final dispatch/delivery stages");
+  assert.equal(review.gaps.every(gap=>gap.reason==="unrepresented_status"),true);
+  assert.equal(review.gaps.every(gap=>Object.isFrozen(gap)),true);
+  assert.equal(Object.isFrozen(review.gaps),true);
   assert.equal(review.productionWriteAuthorized,false);
 
   const restored=restoreOrderLifecycleSnapshot(JSON.parse(JSON.stringify(state)));
@@ -92,6 +107,8 @@ test("recovery/QC holds and forged snapshots cannot bypass compatibility review"
   assert.equal(review.currentOperatorStage,"recovery_pending");
   assert.equal(review.productionWriteAuthorized,false);
   assert.equal(review.firstGap?.reason,"unrepresented_status");
+  assert.equal(review.incompatibleEventCount,2);
+  assert.deepEqual(review.gaps.map(gap=>gap.action),["accept","hold_for_recovery"]);
 
   assert.throws(()=>reviewOrderLifecycleLegacySqlCompatibility({
     ...held,status:"ready" as never,
