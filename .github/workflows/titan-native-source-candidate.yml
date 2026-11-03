@@ -1233,12 +1233,17 @@ jobs:
               assert math.isfinite(entry["originalFaceCentroidNearestBodyMm"])
               assert entry["originalFaceCentroidNearestBodyMm"] >= 0
               assert 0 <= entry["projectedCentroidMoveMm"] <= 25
+              assert 0 <= entry["projectedCentroidMoveMm7"] <= 25
+              assert 0 <= entry["projectedCentroidMoveMm11"] <= 25
               assert type(entry["projectedOriginalBodyPolygonIndex"]) is int
               assert entry["projectedOriginalBodyPolygonIndex"] >= 0
           assert 0 < remesh["originalSourceCutVertexDisplacementMaxMm"] <= 25
           remesh_control=remesh["control"]
           remesh_candidate=remesh["bodyGuidedCentres9Mm"]
-          for remesh_row in (remesh_control,remesh_candidate):
+          remesh_sweep=remesh["equalTopologyBodyGuidedCentroidSweepMm"]
+          assert set(remesh_sweep) == {"7","9","11"}
+          assert remesh_sweep["9"] == remesh_candidate
+          for remesh_row in (remesh_control,*remesh_sweep.values()):
               assert remesh_row["productionApproved"] is False
               assert remesh_row["originalSourceFaceCount"] == 2650
               assert remesh_row["newSourceTrianglesFromSixFaces"] == len(original_faces)
@@ -1264,9 +1269,15 @@ jobs:
                   assert part["minimumMm"] == min(part["bodyDistancesMm"])
                   assert part["samplesUnderSevenMm"] == sum(v < 7 for v in part["bodyDistancesMm"])
               assert remesh_row["sourceEdgeSamplesUnderSevenMm"] == 0
-          assert remesh_control["allFaceCount"] == remesh_candidate["allFaceCount"]
-          assert remesh_control["untouchedOriginalSourceBodyPairs"] == remesh_candidate["untouchedOriginalSourceBodyPairs"]
-          assert remesh_control["researchBridgeBodyPairs"] == remesh_candidate["researchBridgeBodyPairs"]
+          for remesh_row in remesh_sweep.values():
+              assert remesh_control["allFaceCount"] == remesh_row["allFaceCount"]
+              assert remesh_control["untouchedOriginalSourceBodyPairs"] == remesh_row["untouchedOriginalSourceBodyPairs"]
+              assert remesh_control["researchBridgeBodyPairs"] == remesh_row["researchBridgeBodyPairs"]
+          remesh_flip_sweep=remesh["bodyGuidedSourceFaceNormalReversalsByOffsetMm"]
+          assert set(remesh_flip_sweep) == set(remesh_sweep)
+          assert remesh_flip_sweep["9"] == remesh["bodyGuidedSourceFaceNormalReversals"]
+          assert all(type(flips) is int and 0 <= flips <= len(original_faces)
+                     for flips in remesh_flip_sweep.values())
           assert 0 <= remesh["bodyGuidedSourceFaceNormalReversals"] <= len(original_faces)
           assert remesh["strictContactedOriginalSourceAreaImprovementObserved"] is (
               remesh_candidate["bodyContactedRemeshedOriginalAreaMm2"]
