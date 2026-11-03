@@ -59,3 +59,42 @@ end;
 $$;
 SQL
 echo "PASS: legacy provenance-free manual stock RPC is inaccessible to service_role/anon/authenticated"
+
+# Invalid physical facts must fail before any ledger write. Use synthetic inputs only.
+psql -v ON_ERROR_STOP=1 <<'SQL'
+do $test$
+declare
+  label text;
+  qty numeric;
+  fabric text;
+  note_text text;
+  checker text;
+  source_text text;
+begin
+  for label in select unnest(array['precision','fabric','note','checker','source']) loop
+    qty := case when label='precision' then 1.0004 else 1.000 end;
+    fabric := case when label='fabric' then repeat('F',161) else 'SYNTHETIC-TITAN-INVALID-INPUT' end;
+    note_text := case when label='note' then repeat('N',601) else 'synthetic' end;
+    checker := case when label='checker' then repeat('C',121) else 'Test checker' end;
+    source_text := case when label='source' then repeat('S',241) else 'Synthetic evidence' end;
+    begin
+      perform public.fabric_stock_record_v2(fabric,'receipt',qty,note_text,checker,source_text);
+      raise exception 'accepted invalid %', label;
+    exception when others then
+      if sqlerrm = format('accepted invalid %s',label) then raise; end if;
+      if (label='precision' and sqlerrm not like '%precision exceeds%')
+        or (label='fabric' and sqlerrm not like '%fabric id exceeds%')
+        or (label='note' and sqlerrm not like '%stock note exceeds%')
+        or (label='checker' and sqlerrm not like '%stock checker exceeds%')
+        or (label='source' and sqlerrm not like '%stock source reference exceeds%') then
+        raise exception 'unexpected rejection for %: %',label,sqlerrm;
+      end if;
+    end;
+  end loop;
+  if exists(select 1 from private.fabric_stock_ledger where fabric_id='SYNTHETIC-TITAN-INVALID-INPUT') then
+    raise exception 'invalid physical evidence created a stock ledger row';
+  end if;
+end;
+$test$;
+SQL
+echo "PASS: invalid precision and oversized physical evidence rejected without ledger writes"
