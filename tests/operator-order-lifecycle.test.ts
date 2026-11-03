@@ -466,3 +466,22 @@ test("live order transitions enforce the same audit cap as serialized replay",()
   assert.throws(()=>step(state,"resume_recovery",{reason:"Production resumed"}),
     /maximum event count/);
 });
+
+test("audit records reject inherited, accessor and symbol evidence before transition or replay",()=>{
+  const accepted=step(base(),"accept");
+  const event={...accepted.audit[0],eventId:"event-00000002",sequence:1};
+  const inherited=Object.create(event);
+  assert.throws(()=>applyOrderLifecycleEvent(base(),inherited),/record prototype/);
+  const accessor={...event};
+  Object.defineProperty(accessor,"actor",{enumerable:true,get(){throw Error("getter executed");}});
+  assert.throws(()=>applyOrderLifecycleEvent(base(),accessor),/record property/);
+  const symbol={...event,[Symbol("secret approval")]:true};
+  assert.throws(()=>applyOrderLifecycleEvent(base(),symbol),/record property/);
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,[inherited]),/record prototype/);
+  const snapshot=Object.create({...accepted});
+  assert.throws(()=>restoreOrderLifecycleSnapshot(snapshot),/record prototype/);
+  const forgedChecks={...qc().checks};
+  Object.defineProperty(forgedChecks,"recipe_match",{enumerable:true,get(){throw Error("QC getter executed");}});
+  assert.throws(()=>step(toQc(),"approve_qc",{qc:{...qc(),checks:forgedChecks}}),/record property/);
+  assert.equal(replayOrderLifecycle(id,revision,hash,accepted.audit).status,"accepted");
+});
