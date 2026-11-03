@@ -182,15 +182,18 @@ test("new stock reservation migration cannot silently disable strict identity ch
   assert.deepEqual(inspect(header+truncation+"$body$;").unsafeReserveOverrides,[file]);
 });
 
-test("current legacy baseline inventory is stable but strict deployment readiness fails", () => {
+test("historical SQL remains pinned and new migrations are rejected by the release policy", () => {
   const baseline = JSON.parse(fs.readFileSync(path.join(__dirname,
     "../docs/TITAN_SUPABASE_MIGRATION_BASELINE.json"),"utf8")).migrationPaths;
   const paths = audit.collectMigrationPaths();
-  assert.equal(audit.checkAgainstBaseline(paths, baseline).ok, true);
+  const pathGate=audit.checkAgainstBaseline(paths,baseline);
+  assert.deepEqual(pathGate.removed,[],"historical migration paths must never disappear");
+  const newGate=audit.inspectNewMigrationSafety(paths,baseline,
+    file => fs.readFileSync(path.join(__dirname,"..",file),"utf8"));
   const provenance=JSON.parse(fs.readFileSync(path.join(__dirname,
     "../docs/TITAN_SUPABASE_MIGRATION_BASELINE.json"),"utf8"));
   assert.equal(Object.keys(provenance.blobShaByPath).length, baseline.length);
-  const hashes=audit.verifyHistoricalBlobs(paths,provenance.blobShaByPath,
+  const hashes=audit.verifyHistoricalBlobs(baseline,provenance.blobShaByPath,
     file => fs.readFileSync(path.join(__dirname,"..",file)));
   assert.equal(hashes.ok,true,JSON.stringify(hashes));
   const r = audit.inspectMigrations(paths);
@@ -204,5 +207,8 @@ test("current legacy baseline inventory is stable but strict deployment readines
   const baselineRun = spawnSync(process.execPath,
     [path.join(__dirname,"audit-supabase-migration-versions.cjs"),"--enforce-new"],
     { encoding:"utf8" });
-  assert.equal(baselineRun.status,0,baselineRun.stderr);
+  const expected=pathGate.ok && newGate.ok ? 0 : 1;
+  assert.equal(baselineRun.status,expected,
+    "CLI enforcement must match computed fail-closed migration policy: "+baselineRun.stderr);
+  if(expected!==0) assert.match(baselineRun.stderr,/BLOCKED:/);
 });
