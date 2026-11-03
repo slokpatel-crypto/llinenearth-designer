@@ -102,6 +102,10 @@ test("customer photographic preview displays selected construction mismatch noti
   assert.match(source,/photoConstructionMismatches\(style,styleSpec\)/);
   assert.match(source,/data-photo-construction-mismatch/);
   assert.match(source,/not reconstructed in the fixed studio photograph/);
+  // Keep the existing photographic QA selector strict-mode safe: only one
+  // direct-child approximation paragraph; the fidelity warning nests inside.
+  assert.equal((source.match(/<p className="newDesignerPhotoApproximation">/g)||[]).length,1);
+  assert.doesNotMatch(source,/<p className="newDesignerPhotoApproximation" data-photo-construction-mismatch/);
 });
 
 test("versioned wear choice cannot silently borrow the legacy tucked photograph", () => {
