@@ -48,3 +48,8 @@
 - Retain historical records for operator review, but mark both forms of backfill `eligibleForAccuracy:false` in the in-memory label contract. Quantitative scoring excludes these records; actual explicit owner labels remain eligible, including older labels without the optional flag.
 - Tests reject artificial 100% from approved backfills, overcounting of corrected history and a newer synthetic duplicate eclipsing a valid owner label. No persisted schema migration or new source dependency; production score becomes `null` rather than a fake percentage when no independently labelled cases exist.
 - Physical GSM, weave, fibre certificates, repeat calibration and independent owner labels are still not supplied. Keep PR draft, no merge, no deployment.
+
+## 2026-11-03 — No-image classifier guard
+- Development classification must not default to a fictional Linen fabric and navy colour when no image visual signals exist.
+- Without image or material filename hints: zero alternatives, blank palette, unresolved material/colour and zero unsupported confidence. With a filename hint only: retain the known family as provisional confidence 0.3, **not** as an image measurement or physical fibre certificate.
+- Regression tests cover both cases. No vocabulary, customer model or stock changes; `FabricProfile` retains its existing structure, but clients must tolerate an empty alternatives/palette array where no evidence exists.

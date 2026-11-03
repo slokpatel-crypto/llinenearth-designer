@@ -111,7 +111,11 @@ function filenameHint(name: string) {
 function scoreFamilies(input: FabricAnalysisInput): FabricCandidate[] {
   const s = input.visualSignals;
   const hint = filenameHint(input.fileName);
-  if (!s) return [{ family: hint || "Linen", confidence: .52, evidence: [hint ? "Filename suggests this family." : "No visual signal data was available."] }];
+  // No pixels means no visual classification. A filename can suggest a family,
+  // but cannot supply weave, fibre percentages or calibrated confidence.
+  if (!s) return hint
+    ? [{family:hint,confidence:.3,evidence:["Filename-only material hint; no image measurements or physical certification."]}]
+    : [];
   const direction = Math.abs(s.horizontalStructure - s.verticalStructure);
   const dark = 1 - s.meanLightness;
   const smooth = 1 - s.texture;
@@ -175,27 +179,34 @@ export function analyzeFabricDevelopment(input: FabricAnalysisInput): FabricProf
   const alternatives = scoreFamilies(input);
   const top = alternatives[0];
   const s = input.visualSignals;
-  const dominantHex = s?.dominantHex || "#17243a";
-  const dominant = colorName(dominantHex);
+  const dominantHex = s?.dominantHex ?? null;
+  const dominant = dominantHex ? colorName(dominantHex) : "Unresolved";
   const pattern = patternFromSignals(s);
   const surface = surfaceFromSignals(s);
   const raw = [
-    ["Likely material family", top.family, top.confidence],
-    ["Dominant color", dominant, s ? .88 : .58],
-    ["Pattern structure", pattern, s ? Math.min(.86,.58 + s.contrast * .24 + Math.abs(s.horizontalStructure-s.verticalStructure)*.2) : .52],
-    ["Surface / weave", surface, s ? Math.min(.82,.54 + s.texture * .3) : .48],
-    ["Drape proxy", drapeProxy(s), s ? .56 : .38],
-    ["Visual texture index", s ? `${Math.round(s.texture*100)}/100` : "Not available", s ? .92 : .3],
+    ["Likely material family", top?.family ?? "Unresolved", top?.confidence ?? 0],
+    ["Dominant color", dominant, s ? .88 : 0],
+    ["Pattern structure", pattern, s ? Math.min(.86,.58 + s.contrast * .24 + Math.abs(s.horizontalStructure-s.verticalStructure)*.2) : 0],
+    ["Surface / weave", surface, s ? Math.min(.82,.54 + s.texture * .3) : 0],
+    ["Drape proxy", drapeProxy(s), s ? .56 : 0],
+    ["Visual texture index", s ? `${Math.round(s.texture*100)}/100` : "Not available", s ? .92 : 0],
   ] as const;
   return {
     id: `FAB-${Date.now()}`,
     source: "development_visual_classifier",
-    summary: `${top.family} is the strongest visual match (${Math.round(top.confidence*100)}%). The cloth reads as ${dominant.toLowerCase()} with ${pattern.toLowerCase()} and ${surface.toLowerCase()}.`,
+    summary: s
+      ? `${top.family} is the strongest visual match (${Math.round(top.confidence*100)}%). The cloth reads as ${dominant.toLowerCase()} with ${pattern.toLowerCase()} and ${surface.toLowerCase()}.`
+      : top
+        ? `Filename only suggests ${top.family}. Without image measurements, material, weave, colour and physical properties remain unverified.`
+        : "No image measurements or identifiable material hint. Fabric family, colour, weave and physical properties are unresolved.",
     observations: raw.map(([label,value,score]) => ({ label, value, confidence: score, confidenceLabel: confidenceLabel(score), basis: "development_visual_classifier" })),
-    palette: [dominantHex, adjustHex(dominantHex,-34), adjustHex(dominantHex,34), adjustHex(dominantHex,68)],
+    palette: dominantHex
+      ? [dominantHex, adjustHex(dominantHex,-34), adjustHex(dominantHex,34), adjustHex(dominantHex,68)]
+      : [],
     alternatives,
     visualSignals: s,
     cautions: [
+      ...(!s ? ["No image visual signals were supplied: filename hints are provisional and colour/texture have not been measured."] : []),
       "This V3 classifier reads color, contrast, texture and directional weave cues from the photo; it still cannot chemically prove fibre composition.",
       "Exact GSM/weight, stretch, fibre percentages and hand-feel need a label, supplier specification or physical confirmation.",
     ],
