@@ -213,7 +213,8 @@ test("named Cuban and camp candidate paths remain review-only across formal and 
 
 
 test("named short/half sleeves use existing construction IDs without inventing physical measurements", () => {
-  const names=["Short-Sleeve Shirt","Short Sleeve Camp-Collar Shirt","Half-Sleeve Band-Collar Shirt"];
+  const names=["Short-Sleeve Shirt","Short Sleeve Camp-Collar Shirt","Half-Sleeve Band-Collar Shirt",
+    "Short-Sleeved Resort Shirt","Half Sleeved Band-Collar Shirt"];
   for(const name of names){
     assert.deepEqual(styleDirectorCandidateSleeve(name),{
       sleeve:"half_sleeve",cuff:"open_short_hem_cuff",
@@ -221,6 +222,8 @@ test("named short/half sleeves use existing construction IDs without inventing p
   }
   assert.equal(styleDirectorCandidateSleeve("Spread-Collar Dress Shirt"),null);
   assert.equal(styleDirectorCandidateSleeve("Sleeveless Layer"),null);
+  assert.equal(styleDirectorCandidateSleeve("Short Sleevelet Print"),null);
+  assert.equal(styleDirectorCandidateSleeve("Half Sleevewear Shirt"),null);
   assert.ok(optionsFor("shirt.sleeve").some(option=>option.id==="half_sleeve"));
   assert.ok(optionsFor("shirt.cuff").some(option=>option.id==="open_short_hem_cuff"));
   const named=styleDirectorCandidateSleeve(names[0])!;
