@@ -251,6 +251,67 @@ async function run(){
       await page.screenshot({path:path.join(output,"account-session-outage-390.png"),fullPage:true});
       await context.close();
     }
+    // Cross-tab cookie rotation between initial session verification and
+    // private account reads must never render the other account's returned
+    // production or saved-design data under the earlier owner's name.
+    for(const scenario of ["owner-changed","private-history-503"]){
+      const context=await browser.newContext({viewport:{width:390,height:950}});
+      const page=await context.newPage();
+      const bob={id:"223e4567-e89b-12d3-a456-426614174000",email:"bob@example.test"};
+      const privateMarker="BOB-PRIVATE-ORDER-MUST-NOT-RENDER";
+      let sessionReads=0;
+      page.on("pageerror",error=>errors.push(scenario+": "+error.message));
+      page.on("console",message=>{
+        if(message.type()!=="error")return;
+        if(scenario==="private-history-503"&&message.text()===
+          "Failed to load resource: the server responded with a status of 503 (Service Unavailable)")
+          return;
+        errors.push(scenario+": "+message.text());
+      });
+      await context.route("**/api/**",async route=>{
+        const name=new URL(route.request().url()).pathname;
+        if(name==="/api/customer-auth/session"){
+          sessionReads++;
+          return route.fulfill({status:200,json:{customer:
+            scenario==="owner-changed"&&sessionReads>=2?bob:customer}});
+        }
+        if(name==="/api/designer/vault")
+          return route.fulfill({status:200,json:{designs:[{
+            vaultId:bob.id,revisionId:privateMarker,recipeHash:"b".repeat(64),
+            createdAt:"2026-11-03T00:00:00Z",expiresAt:"2027-01-01T00:00:00Z",
+          }]}});
+        if(name==="/api/measurements/vault")
+          return route.fulfill({status:200,json:{profiles:[]}});
+        if(name==="/api/customer-account/production"){
+          if(scenario==="private-history-503")
+            return route.fulfill({status:503,json:{error:"Synthetic unavailable history"}});
+          return route.fulfill({status:200,json:{
+            quotes:[],orders:[{order_id:bob.id,revision_id:privateMarker,
+              quote_id:null,status:"draft",created_at:"2026-11-03T00:00:00Z",
+              updated_at:"2026-11-03T00:00:00Z"}],orderEvents:[],outcomes:[],
+          }});
+        }
+        if(name==="/api/designer/share")
+          return route.fulfill({status:200,json:{shares:[]}});
+        return route.fulfill({status:200,json:{}});
+      });
+      await page.goto(origin+"/account",{waitUntil:"networkidle"});
+      await page.getByRole("button",{name:"Retry account session"}).waitFor();
+      assert.equal(await page.getByText(privateMarker).count(),0,
+        scenario+" must hide the privately loaded foreign owner records");
+      assert.equal(await page.getByText("No account-owned locked designs yet.").count(),0,
+        scenario+" must not claim an empty account after failing closed");
+      assert.equal(await page.getByText("alice@example.test").count(),0,
+        scenario+" must hide unverified owner identity");
+      assert.equal(await page.getByText("bob@example.test").count(),0,
+        scenario+" must not show a different owner's session or records");
+      assert.equal(sessionReads,scenario==="owner-changed"?2:1,
+        scenario+" must perform correct session-boundary calls");
+      proof.push({width:390,scenario,privateRecordsHidden:true,
+        secondSessionChecked:sessionReads===2});
+      await page.screenshot({path:path.join(output,"account-"+scenario+"-390.png"),fullPage:true});
+      await context.close();
+    }
     assert.deepEqual(errors,[],"No unexpected browser JS or console errors permitted");
     fs.writeFileSync(path.join(output,"summary.json"),JSON.stringify({browser:"Chromium",scope:"customer account shares",mockedBackends:true,physicalAcceptance:false,proof,errors},null,2));
     console.log("Customer share/account responsive Chromium PASS: 390, 768, 1440; 503 denial and cross-device revoke UX.");
