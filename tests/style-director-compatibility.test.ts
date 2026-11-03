@@ -469,3 +469,18 @@ test("conflicting photographic collar labels require review even when one matche
     spec({ type: "band_collar_shirt", collar: "mandarin_band_collar" }),
   ), [], "two aliases from the same collar family remain valid");
 });
+
+
+test("candidate photo selection skips ambiguous collar labels and preserves canonical IDs", () => {
+  const choices = ["Cuban Band Collar", "Camp Cutaway Collar", "Mandarin Cutaway Collar",
+    "Cuban / Camp Collar", "Mandarin / Band Collar", "Cutaway Collar"];
+  assert.deepEqual(styleDirectorCandidateCollar("Cuban Resort Shirt", choices),
+    { legacy: "Cuban / Camp Collar", versioned: "cuban_camp_collar" });
+  assert.deepEqual(styleDirectorCandidateCollar("Band-Collar Shirt", choices),
+    { legacy: "Mandarin / Band Collar", versioned: "mandarin_band_collar" });
+  assert.deepEqual(styleDirectorCandidateCollar("Cutaway-Collar Shirt", choices),
+    { legacy: "Cutaway Collar", versioned: "cutaway_collar" });
+  assert.deepEqual(styleDirectorCandidateCollar("Cuban Resort Shirt", choices.slice(0, 3)),
+    { legacy: null, versioned: "cuban_camp_collar" },
+    "ambiguous photo choices must not masquerade as verified legacy options");
+});
