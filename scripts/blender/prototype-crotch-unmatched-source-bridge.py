@@ -1493,6 +1493,71 @@ def main():
     qr["originalBodyBVHPairsStillUnchanged"] = len(quad_body_contacts)
     qr["originalSourceUvProvenance"] = source_stage_uv_provenance
     seam_winding["researchOnlyUnstitchedOriginalQuadMetricUvSurvey"] = qr
+
+    # Traverse the REAL original source face adjacency; rigid-align each quad
+    # metric island along a spanning forest. Validate unclosed non-tree loops
+    # instead of claiming that curved source cloth is now actually sewn.
+    tree_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-trouser-dual-tree-uv.py")
+    ))
+    tree_study = tree_ops["connect_original_source_uv_forest"](
+        base_faces, quad_evidence["face_uv_loops"],
+        l_remaining + r_remaining_mapped
+    )
+    tree_report = tree_study["report"]
+    tree_name = "TITAN_RESEARCH_OriginalTrouserDualTreeUVUnclosedCycles"
+    if bpy.data.objects.get(tree_name) is not None:
+        raise RuntimeError("Cannot replace the independent real source UV tree witness.")
+    tree_mesh = bpy.data.meshes.new(tree_name + "Mesh")
+    tree_mesh.from_pydata(merged_verts, [], base_faces)
+    tree_mesh.update(calc_edges=True)
+    if (len(tree_mesh.polygons) != 2650
+            or any(len(poly.loop_indices) != 4 for poly in tree_mesh.polygons)
+            or any(not math.isfinite(poly.area) or poly.area <= 1e-12
+                   for poly in tree_mesh.polygons)):
+        raise RuntimeError("Original trouser source UV tree lost genuine quad geometry.")
+    tree_layer = tree_mesh.uv_layers.new(
+        name="TITAN_RESEARCH_ONLY_METRIC_DUAL_TREE_NOT_SEWN"
+    )
+    tree_written = 0
+    for poly, coordinates in zip(tree_mesh.polygons, tree_study["face_uv_loops"]):
+        if len(coordinates) != 4 or len(poly.loop_indices) != 4:
+            raise RuntimeError("Research source UV tree lost an original face loop.")
+        for loop_id, uv in zip(poly.loop_indices, coordinates):
+            if len(uv) != 2 or not all(math.isfinite(v) for v in uv):
+                raise RuntimeError("Unclosed original UV dual-tree chart is nonfinite.")
+            tree_layer.data[loop_id].uv = uv
+            tree_written += 1
+    if (tree_written != len(tree_mesh.loops)
+            or len(tree_layer.data) != len(tree_mesh.loops)
+            or tree_written != tree_report["originalSourceUvLoopCount"]
+            or not all(all(math.isfinite(float(x)) for x in row.uv)
+                       for row in tree_layer.data)):
+        raise RuntimeError("Original face UV spanning tree has incomplete Blender loops.")
+    tree_obj = bpy.data.objects.new(tree_name, tree_mesh)
+    tree_obj.hide_render = True
+    tree_obj["candidateOnly"] = True
+    tree_obj["productionApproved"] = False
+    tree_obj["physicalFitApproved"] = False
+    tree_obj["sourceUvPhysicallyApproved"] = False
+    research.objects.link(tree_obj)
+    if export.objects.get(tree_name) is not None:
+        raise RuntimeError("Unapproved UV dual tree altered the original garment export.")
+    tree_geom = geom(tree_obj)
+    tree_body_pairs = body_tree.overlap(geom_ops["real_tree"](tree_geom))
+    if len(tree_body_pairs) != unchanged_source_pairs:
+        raise RuntimeError("Actual original source body intersections changed during UV tree.")
+    if (tree_report["originalSourceQuadCount"] != 2650
+            or tree_report["openSourceBoundaryEdgeCount"] != 132
+            or tree_report["sharedOriginalSourceEdgeCount"] !=
+               qr["sharedOriginalSourceEdgeCount"]
+            or tree_report["originalSourceCutEdgeCount"] != 8):
+        raise RuntimeError("Original source UV spanning forest changed real topology.")
+    tree_report["nativeOriginalSourceUvLoopCount"] = tree_written
+    tree_report["nativeOriginalSourceUvLayerName"] = tree_layer.name
+    tree_report["nativeRealOriginalSourceBodyPairsUnchanged"] = len(tree_body_pairs)
+    tree_report["originalSourceStageUvProvenance"] = source_stage_uv_provenance
+    seam_winding["researchOnlyOriginalSourceDualTreeUvSurvey"] = tree_report
     clearance_trial = None
     targeted_reroute_trial = None
     if args.experimental_centroid_clearance_mm == 7.0:
