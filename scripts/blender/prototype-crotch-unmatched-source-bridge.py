@@ -660,6 +660,15 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
                         raise RuntimeError("Source ring displacement is not finite.")
                     points[index] = vertices[index] + movement
                     neighbor_motion_by_ring[ring].append(movement.length * 1000.0)
+        moved_source_ids = set(source_indices) if signed_offset_mm else set()
+        moved_source_ids.update(
+            index for index, depth in source_rings.items()
+            if 0 < depth <= len(ring_weights) and ring_weights[depth - 1] > 0
+        )
+        altered_source_faces = [
+            i for i, face in enumerate(base_faces)
+            if any(vertex in moved_source_ids for vertex in face)
+        ]
         name = "TITAN_RESEARCH_ConnectedCrotchSource_" + label
         if bpy.data.objects.get(name) is not None:
             raise RuntimeError("Connected original source research object already exists.")
@@ -741,6 +750,8 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
                 ),
                 "originalSourceCoordinatesChanged": signed_offset_mm != 0,
                 "ringFalloffWeights": list(ring_weights),
+                "alteredOriginalSourceFaceIndices": altered_source_faces,
+                "alteredOriginalSourceFaceCount": len(altered_source_faces),
                 "movedNeighborVertexCountsByRing": {
                     str(ring): len(values) for ring, values in neighbor_motion_by_ring.items()
                 },
@@ -793,6 +804,13 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
                 original_normals[index].normal.dot(
                     trial["mesh"].polygons[index].normal
                 ) <= 0 for index in affected_source_faces
+            ) for label, trial in falloff_trials.items()
+        },
+        "falloffAllAlteredSourceFaceNormalFlips": {
+            label: sum(
+                original_normals[index].normal.dot(
+                    trial["mesh"].polygons[index].normal
+                ) <= 0 for index in trial["report"]["alteredOriginalSourceFaceIndices"]
             ) for label, trial in falloff_trials.items()
         },
         "falloffReducedAdjacentBodyPairsObserved": {
