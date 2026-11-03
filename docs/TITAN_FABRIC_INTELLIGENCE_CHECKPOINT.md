@@ -70,3 +70,8 @@
 - A 128x128 normalized analyzer frame can be an upscale of a tiny original. The width-only swatch ruler path now requires an original integer image width of at least 400 px, matching the existing source-quality floor. The server also passes the original image height and rejects width-only physical calibration when either source dimension is below 400 px.
 - Direct pure-library callers without source-height metadata remain compatible; if source height is provided it must pass the same minimum. The separately sourced real-repeat declaration path is kept distinct and is not automatically converted into a width-ruler calibration.
 - Regression tests cover tiny upscaled photographs, narrow and short originals, fractional pixel dimensions, 400px source boundary and separately declared repeats. This does not certify physical scale without the other required supplier / ruler review evidence.
+
+## 2026-11-03 — persisted adapter physical-record boundaries
+- The legacy v3/v4 profile adapter now rejects supplier fibre, HTTPS source and inspection-note **raw** literals exceeding their field bounds *before trim*, matching the physical intake and customer-projection checks. Whitespace-padded overlength evidence must not transform into acceptable shorter documentation.
+- Corrupt persisted `measured` and `imageQuality` arrays can no longer be cast to typed physical measurement objects; they normalize to `null`, without implying any measured fabric facts.
+- Targeted regression tests cover all three padded supplier fields, valid unrelated field preservation and array-shaped physical records. Existing v4 contract and physical provenance semantics unchanged; no schema migration.

@@ -136,3 +136,42 @@ test("render metadata only accepts literal booleans and valid pixel dimensions",
   assert.equal(max.renderAssets.tileHeightPx,1);
   assert.equal(max.renderAssets.repeatDetected,false);
 });
+
+test("raw padded physical supplier receipts are rejected before trimming",()=>{
+  const valid={
+    fiberContent:"60% linen / 40% cotton",
+    sourceUrl:"https://supplier.example/lot-100",
+    evidenceNote:"Inspection and composition documented by supplier.",
+  };
+  for(const [field,max] of [
+    ["fiberContent",220],
+    ["sourceUrl",1800],
+    ["evidenceNote",500],
+  ] as const){
+    const result=adaptFabricProfileToV4({
+      version:"fabric-analyzer-v4",
+      verifiedPhysical:{
+        ...valid,
+        [field]:" ".repeat(max)+valid[field],
+      },
+    });
+    assert.ok(result);
+    assert.equal(result.verifiedPhysical[field],null,field);
+    // Rejection is field-local; one oversized source must not silently erase
+    // distinct, previously documented physical data.
+    for(const keep of (["fiberContent","sourceUrl","evidenceNote"] as const).filter(k=>k!==field)){
+      assert.equal(result.verifiedPhysical[keep],valid[keep],keep);
+    }
+  }
+});
+
+test("persisted array-shaped measured data and image quality cannot masquerade as physical evidence",()=>{
+  const invalid=adaptFabricProfileToV4({
+    version:"fabric-analyzer-v4",
+    measured:[{pattern:{repeatMm:12}}],
+    imageQuality:[{score:100}],
+  });
+  assert.ok(invalid);
+  assert.equal(invalid.measured,null);
+  assert.equal(invalid.imageQuality,null);
+});

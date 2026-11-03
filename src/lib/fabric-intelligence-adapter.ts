@@ -119,6 +119,10 @@ function str(value:unknown,limit=180,rejectOverlength=false) {
   // must also retain its exact bounded value: never truncate an inspection
   // receipt, composition or URL into a different, apparently valid proof.
   if(typeof value!=="string") return "";
+  // Supplier/inspection evidence is a literal receipt, not a display field.
+  // Check its raw length before trimming; otherwise an oversized padded
+  // document or composition can be shortened into apparently valid proof.
+  if(rejectOverlength && value.length>limit) return "";
   const literal=value.trim();
   return rejectOverlength && literal.length>limit ? "" : literal.slice(0,limit);
 }
@@ -245,8 +249,10 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
         ? str(obj(root.verifiedPhysical).sourceUrl,1800,true)||null : null,
       evidenceNote:str(obj(root.verifiedPhysical).evidenceNote,500,true)||null,
     },
-    measured:root.measured && typeof root.measured==="object" ? root.measured as FabricMeasuredData : null,
-    imageQuality:root.imageQuality && typeof root.imageQuality==="object" ? root.imageQuality as FabricImageQuality : null,
+    measured:root.measured && typeof root.measured==="object" && !Array.isArray(root.measured)
+      ? root.measured as FabricMeasuredData : null,
+    imageQuality:root.imageQuality && typeof root.imageQuality==="object" && !Array.isArray(root.imageQuality)
+      ? root.imageQuality as FabricImageQuality : null,
     renderAssets:{
       tileUrl:str(obj(root.renderAssets).tileUrl,1800)||null,
       placeholderUrl:str(obj(root.renderAssets).placeholderUrl,1800)||null,
