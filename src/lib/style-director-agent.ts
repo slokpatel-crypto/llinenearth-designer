@@ -332,7 +332,7 @@ function buildRealModelSpec(
   if (!best) return undefined;
   const styleSpec=styleSpecForDirectorCandidate(candidate,best.style);
   const constructionIssues=[
-    ...styleDirectorCandidateWordingIssues(candidate.garments.shirt),
+    ...styleDirectorCandidateWordingIssues(candidate.garments.shirt, candidate.garments.trouser),
     ...styleDirectorConstructionIssues(styleSpec,occasion),
     ...styleDirectorPresentationIssues(best.style,styleSpec),
   ];
