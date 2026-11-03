@@ -303,3 +303,21 @@ test("sub-millisecond audit timestamp ambiguity is rejected before replay",()=>{
   serialized.audit[0].occurredAt="2026-11-03T00:00:00.123000Z";
   assert.throws(()=>restoreOrderLifecycleSnapshot(serialized),/Invalid event timestamp/);
 });
+
+
+test("reason evidence is permitted only for cancellation, QC rejection and recovery",()=>{
+  const ordinary = [
+    [base(), "accept"],
+    [progress("accept"), "start_cutting"],
+    [toQc(), "approve_qc"],
+  ] as const;
+  for (const [state, action] of ordinary) {
+    const extra = action === "approve_qc" ? {qc:qc(),reason:"Unrequested commentary"} : {reason:"Unrequested commentary"};
+    assert.throws(()=>step(state,action,extra),/Unexpected reason/);
+  }
+  const accepted=step(base(),"accept");
+  const forged=accepted.audit.map(event=>({...event,reason:"Retroactive explanation"}));
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,forged),/Unexpected reason/,
+    "persisted audit replay must reject extra reason evidence on an ordinary transition");
+  assert.equal(step(base(),"cancel",{reason:"Customer requested cancellation"}).status,"cancelled");
+});
