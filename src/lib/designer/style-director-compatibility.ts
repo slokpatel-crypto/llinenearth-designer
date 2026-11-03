@@ -66,6 +66,24 @@ export function styleDirectorCandidateSleeve(
     : null;
 }
 
+/**
+ * Interpret an untrusted candidate trouser label without turning negative
+ * instructions such as "without visible pleats" into positive pleat requests.
+ * Null means the label supplies no supported front construction instruction.
+ * Ambiguous means the author asked for incompatible front constructions.
+ */
+export function styleDirectorCandidateTrouserFront(
+  candidateTrouser: string,
+): "flat_front" | "pleated" | "ambiguous" | null {
+  const flatFront = /\bflat[- ]?front\b/i.test(candidateTrouser);
+  const positivePleat = /\bpleat(?:ed|s)?\b/i.test(
+    candidateTrouser.replace(/\b(?:non[- ]?pleated|no\s+(?:visible\s+)?pleats?|without\s+(?:any\s+|visible\s+)?pleats?)\b/gi, ""),
+  );
+  if (flatFront && positivePleat) return "ambiguous";
+  if (positivePleat) return "pleated";
+  return flatFront ? "flat_front" : null;
+}
+
 export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "band_collar_construction" | "short_sleeve_double_cuff" |
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_type_hem_mismatch" |
@@ -97,14 +115,10 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
       explanation: "This proposed shirt names both short and long sleeves; confirm one sleeve construction before approving the recommendation.",
     });
   }
-  // A tailored flat front and a positive pleat instruction are incompatible.
-  // Explicit negations (non-pleated / no pleats / without pleats) are flat-front
-  // descriptions, not competing construction requests.
-  const flatFront = /\bflat[- ]?front\b/i.test(candidateTrouser);
-  const positivePleat = /\bpleat(?:ed|s)?\b/i.test(
-    candidateTrouser.replace(/\b(?:non[- ]?pleated|no\s+(?:visible\s+)?pleats?|without\s+(?:any\s+|visible\s+)?pleats?)\b/gi, ""),
-  );
-  if (flatFront && positivePleat) {
+  // A single parser owns both candidate-review and construction selection.
+  // Without this, "flat-front non-pleated" could pass review but select a
+  // *pleated* photographic and versioned trouser via substring matching.
+  if (styleDirectorCandidateTrouserFront(candidateTrouser) === "ambiguous") {
     issues.push({
       code: "ambiguous_candidate_trouser_front",
       explanation: "This proposed trouser names both a flat front and positive pleats; confirm one front construction before approving the recommendation.",
