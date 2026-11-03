@@ -119,10 +119,27 @@ function isRecord(value:unknown):value is Record<string,unknown> {
 }
 function validatedImageQuality(value:unknown):FabricImageQuality|null {
   if(!isRecord(value)) return null;
-  // A string or array-coerced "100" must not unlock a high-confidence
-  // material match. Keep unknown and legacy incomplete evidence provisional.
-  if(typeof value.score!=="number" || !Number.isFinite(value.score)
-    || value.score<0 || value.score>100) return null;
+  // A saved "score: 100" by itself is not a measured image-quality record.
+  // The image pipeline provides these dimensions and diagnostics together.
+  // Preserve all complete historical records, but fail closed on partial or
+  // coerced JSON that could manufacture high-confidence Analyzer evidence.
+  const bounds={
+    score:[0,100],
+    widthPx:[1,32768],
+    heightPx:[1,32768],
+    blurVariance:[0,1_000_000_000],
+    glarePct:[0,100],
+    meanLuma:[0,255],
+    colorCast:[0,255],
+    borderCenterDelta:[0,450],
+  } as const;
+  for(const [key,[min,max]] of Object.entries(bounds)){
+    const n=value[key];
+    if(typeof n!=="number" || !Number.isFinite(n) || n<min || n>max) return null;
+  }
+  if(!Number.isSafeInteger(value.widthPx) || !Number.isSafeInteger(value.heightPx)) return null;
+  if(!Array.isArray(value.issues) || value.issues.length>30
+    || !value.issues.every((issue:unknown)=>typeof issue==="string" && issue.length<=80)) return null;
   return value as FabricImageQuality;
 }
 function validatedMeasuredData(value:unknown):FabricMeasuredData|null {
@@ -187,7 +204,7 @@ function enumValue<T extends string>(value:unknown,allowed:readonly T[],fallback
 
 export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|null {
   const root=obj(input);
-  if(!["fabric-analyzer-v3","fabric-analyzer-v4"].includes(String(root.version||""))) return null;
+  if(typeof root.version!=="string" || !["fabric-analyzer-v3","fabric-analyzer-v4"].includes(root.version)) return null;
   const observed=obj(root.observed);
   const inferred=obj(root.inferredStyle);
   const recommended=obj(inferred.recommendedConstruction);

@@ -220,7 +220,10 @@ test("classification enums and ordinal scores reject coerced JSON arrays and boo
 test("malformed nested measured objects fail closed instead of crashing downstream physical projection",()=>{
   const colour={hex:"#507050",deltaE:3.2};
   const pattern={orientation:"vertical",physicalScaleStatus:"declared_repeat",repeatMm:12,stripeWidthMm:3,contrastDeltaE:8};
-  const quality={score:88};
+  const quality={
+    score:88,issues:[],widthPx:1000,heightPx:900,
+    blurVariance:62,glarePct:2,meanLuma:120,colorCast:30,borderCenterDelta:5,
+  };
   const valid={colour,pattern,imageQuality:quality};
   const accepted=adaptFabricProfileToV4({version:"fabric-analyzer-v4",measured:valid,imageQuality:quality});
   assert.ok(accepted);
@@ -250,9 +253,46 @@ test("image quality requires a bounded literal numeric score to avoid fictional 
     assert.ok(result);
     assert.equal(result.imageQuality,null,String(invalid));
   }
+  const quality={
+    score:88,issues:["blur_soft"],widthPx:1280,heightPx:960,
+    blurVariance:42,glarePct:1.8,meanLuma:110,colorCast:25,borderCenterDelta:8,
+  };
   for(const score of [0,75,100]){
-    const result=adaptFabricProfileToV4({version:"fabric-analyzer-v4",imageQuality:{score}});
+    const result=adaptFabricProfileToV4({version:"fabric-analyzer-v4",imageQuality:{...quality,score}});
     assert.ok(result);
     assert.equal(result.imageQuality?.score,score);
+  }
+  // A score-only object is not evidence that any image was measured.
+  assert.equal(adaptFabricProfileToV4({
+    version:"fabric-analyzer-v4",imageQuality:{score:100},
+  })?.imageQuality,null);
+});
+
+test("quality diagnostics cannot be omitted, coerced or out of range",()=>{
+  const quality={
+    score:92,issues:[],widthPx:800,heightPx:800,
+    blurVariance:75,glarePct:0,meanLuma:120,colorCast:20,borderCenterDelta:8,
+  };
+  const badCases=[
+    {widthPx:"800"},{heightPx:[800]},{widthPx:1.5},{heightPx:0},
+    {blurVariance:null},{glarePct:101},{meanLuma:-1},{colorCast:Infinity},
+    {borderCenterDelta:"8"},{issues:"blur_soft"},{issues:["blur_soft",1]},
+    {issues:["x".repeat(81)]},{issues:[] as string[],score:101},
+  ];
+  for(const invalid of badCases){
+    const a=adaptFabricProfileToV4({version:"fabric-analyzer-v4",imageQuality:{...quality,...invalid}});
+    assert.ok(a);
+    assert.equal(a.imageQuality,null,JSON.stringify(invalid));
+  }
+  const valid=adaptFabricProfileToV4({version:"fabric-analyzer-v4",imageQuality:quality});
+  assert.deepEqual(valid?.imageQuality,quality);
+});
+
+test("an array version identifier cannot impersonate the v3 or v4 contract",()=>{
+  for(const version of [["fabric-analyzer-v4"],["fabric-analyzer-v3"],{},null,1,true]){
+    assert.equal(adaptFabricProfileToV4({version}),null,String(version));
+  }
+  for(const version of ["fabric-analyzer-v3","fabric-analyzer-v4"]){
+    assert.equal(adaptFabricProfileToV4({version})?.version,"fabric-analyzer-v4");
   }
 });

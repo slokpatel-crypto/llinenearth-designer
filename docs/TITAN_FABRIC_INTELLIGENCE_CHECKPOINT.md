@@ -86,3 +86,9 @@
 - Validation now rejects incomplete nested records, malformed image colour and deltaE, invalid orientation/scale status and nonnumeric pattern measurements. Invalid records become `measured:null`; valid independent verifiedPhysical evidence remains separate and unchanged.
 - Standalone image-quality evidence requires a finite literal numeric 0–100 score. Coerced `"100"`, `[100]`, booleans and out-of-range values cannot create apparent high-confidence visual evidence. Existing well-formed profiles remain usable; no schema migration.
 - Tests cover malformed nested objects, mixed good/bad visual readings, valid scores and rejected forged scores. This is shape validation, **not** independent proof of physical fibre/GSM/weave/repeat.
+
+## 2026-11-03 — complete quality diagnostics and literal profile version
+- The v3/v4 adapter now requires a complete source-image-quality diagnostic record before accepting a persisted quality score as measured evidence. A bare `{score:100}` previously passed adapter validation even though the actual evaluator always emits dimensions, quality issues, blur variance, glare %, mean luminance, channel spread and border-to-center delta. Every numeric field must be finite and within the physical capture domain; dimensions must be safe integers, and issues a bounded list of literal strings.
+- Invalid partial/forged quality records normalize to `null`, keeping fabric trust provisional rather than manufacturing an image quality or calibrated physical claim. Valid historical records emitted by `assessImageQuality` remain unchanged.
+- The analyzer profile version must be a literal v3/v4 string; arrays such as `["fabric-analyzer-v4"]` can no longer masquerade as a supported serialized contract. Added regressions for both boundaries.
+- No changes to stock/inventory/customer rendering, no schema migration, no physical certificate implied.
