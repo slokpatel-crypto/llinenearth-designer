@@ -17,3 +17,11 @@
 - **Evidence:** Prior head `909767ce239c8838a94e6ba47e1c76ed133e5359` passed Full CI run `41580556051` and Non-3D run `41580556095`. These results do **not** certify the new head. New-head disposable PostgreSQL and matching-head CI remain **PENDING** until observed.
 - **Blockers:** legacy v1 RPC reachability, real staging migration/rollback, real stock/tailor/customer/operator/native/device evidence all remain unverified. No main merge or deployment.
 - **Next slice:** check exact-head CI for this fix; if green, audit v1 stock RPC grants and compare branch against latest main before considering a guarded isolated merge.
+
+## Exact-head verification — 2026-11-03
+
+- **Verified head:** `46b4d5126111d878a34508e89522f40343abdbe9` (parent of this checkpoint-only commit). Full CI run `41586696592` **SUCCESS** and Non-3D QA run `41586696575` **SUCCESS**, both explicitly reporting that exact head SHA. The test includes the disposable two-session PostgreSQL lock regression; no live database used.
+- **Affected acceptance:** T3/J1 lock serialization regression and T6/J6 automated verification have matching-head green evidence at the verified head. This does not prove complete physical stock or customer/operator release readiness.
+- **Safety review:** inspected migration `20261103_manual_stock_fabric_lock_parity.sql`; v2 has `revoke all ... from public,anon,authenticated` and grants only `service_role`. It still rounds quantities and truncates text; these are separate integrity gaps. A GitHub code-search attempt for the legacy v1 RPC returned no indexed matches, which is **not proof** of absence or revoked EXECUTE privileges. Its definition/grants and deployment compatibility remain unverified. Do not merge until legacy entry points and dependency safety are audited.
+- **Current main observed:** `fd2f29771a24ae888719d64504a0b1fb3595ffb1`; `vercel.json` on this head has `git.deploymentEnabled=false`. No main update, deploy or migration in this run.
+- **Next 30–40-minute slice:** inspect all historical stock migration RPC definitions and grants, add a disposable PostgreSQL regression asserting legacy public/anon/authenticated stock writes cannot bypass the fabric lock, then re-run exact-head CI before considering isolated integration.
