@@ -443,6 +443,8 @@ test("conflicting named collar families fail closed rather than silently selecti
 
 
 test("ambiguous collar names never force camp-collar wear without a resolved construction", () => {
+  const source = readFileSync("src/lib/designer/style-director-compatibility.ts", "utf8");
+  assert.ok(!source.includes("while the\\n  // versioned"), "escaped newline must not comment out the wear resolver");
   for (const name of ["Cuban Band-Collar Shirt", "Camp Cutaway Shirt", "Mandarin Cuban Shirt"]) {
     assert.equal(styleDirectorCandidateCollar(name, selectableCollars), null);
     assert.equal(styleDirectorWearForCandidate("Casual", name, "Tucked"), "Tucked");
