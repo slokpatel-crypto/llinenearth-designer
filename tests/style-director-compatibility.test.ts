@@ -414,3 +414,20 @@ test("photographic collar label matching ignores incidental substrings", () => {
     { legacy: null, versioned: "cuban_camp_collar" },
     "missing supported photo label must fail closed rather than select a lookalike");
 });
+
+
+test("candidate sleeve type and construction share one strict resolver", () => {
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes('else if(namedSleeve) spec.shirt.type="short_sleeve_shirt"'));
+  assert.ok(agent.includes("const namedSleeve=styleDirectorCandidateSleeve(shirt)"));
+  assert.ok(!agent.includes('/(?:short|half)[- ]?sleeve/.test(shirt)'),
+    "shirt type must not use a looser substring matcher than sleeve construction");
+  for (const label of ["Short Sleeve Shirt", "Half-Sleeved Shirt", "Short-Sleeved Shirt"]) {
+    assert.deepEqual(styleDirectorCandidateSleeve(label),
+      { sleeve: "half_sleeve", cuff: "open_short_hem_cuff" });
+  }
+  for (const label of ["Short Sleevelet Shirt", "Half Sleevewear Shirt", "Short Sleeveless Shirt"]) {
+    assert.equal(styleDirectorCandidateSleeve(label), null,
+      "partial sleeve words must not create an incompatible versioned shirt type");
+  }
+});
