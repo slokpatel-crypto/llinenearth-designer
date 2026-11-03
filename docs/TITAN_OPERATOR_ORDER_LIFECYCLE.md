@@ -149,3 +149,9 @@ The existing persisted production order contract in `src/lib/designer/production
 - Prior exact head `a2bf62706bbeac7f498be4fd6f9c7ab36696044c` passed CI #41630028292 and Non-3D QA #41630028249. **Those runs predate this patch.** Source commit `0325bd059aa68e96ba1acc0427e9b50e3bba0d36`, test commit `54f9a028fa0f65202a4a4d433c1982c6989695a6`; obtain exact-head checks after this documentation commit before claiming verification. No local npm run is claimed.
 - Main `4dd8020abd83429449ff53ea5bb71b046394d86e` differs by 12 commits; the branch comparison lists only three isolated operator files. No overlap detected in main comparison. Preserve draft status and do not merge, deploy, modify shared SQL, or access production customer data.
 - **Next:** Verify exact-head CI and Non-3D QA, coordinate SQL-state mapping and authenticated transactional append-only persistence with central integration, and require independently verified physical QC and delivery evidence before production integration.
+
+## 2026-11-03 — live audit length parity
+
+- Closed a live/replay mismatch: persisted replay rejects more than 10,000 events, but previously a trusted live reducer could produce 10,001 events, making its own output impossible to restore. Live transitions now stop at 10,000 applied events, before reading the next untrusted event.
+- Added a synthetic 10,000-event acceptance/recovery-cycle regression checking the boundary, valid replay at the limit and rejection of event 10,001. This is not a production retention or archival policy; coordinate any long-lived audit partitioning with the authenticated persistence owner.
+- Prior exact head dfb90cb89e7d37f03d162e98e17358315414528b passed CI #41638215373 and Non-3D QA #41638215372. These checks predate this patch. New exact-head verification required. Main 4dd8020abd83429449ff53ea5bb71b046394d86e changes no operator-owned paths; no merge or deployment.
