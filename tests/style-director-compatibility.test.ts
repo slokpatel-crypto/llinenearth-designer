@@ -853,3 +853,43 @@ test("forward and reverse pleat intent must match the versioned tailoring direct
     assert.equal(JSON.stringify(versioned), before, "direction checks never change a locked design");
   }
 });
+
+
+test("photographic trouser rise, waistband and break must match versioned selection", () => {
+  const cases = [
+    { photo: "rise", group: "pant.rise", id: "rise", code: "legacy_rise_mismatch" },
+    { photo: "waistband", group: "pant.waistband", id: "waistband", code: "legacy_waistband_mismatch" },
+    { photo: "break", group: "pant.break", id: "break", code: "legacy_break_mismatch" },
+  ] as const;
+  for (const entry of cases) {
+    const options = optionsFor(entry.group).filter(
+      option => option.legacySelectable !== false && Boolean(option.legacyLabel || option.label),
+    );
+    assert.ok(options.length >= 2, entry.group + " requires distinct catalogued options");
+    const [first, second] = options;
+    const photoLabel = first.legacyLabel || first.label;
+    const photographic = { ...photo("Spread Collar", "Tucked"), [entry.photo]: photoLabel };
+    const matching = spec({}, { [entry.id]: first.id });
+    assert.deepEqual(styleDirectorPresentationIssues(photographic, matching), [],
+      entry.group + " matching photographic and saved option IDs are compatible");
+    const mismatched = spec({}, { [entry.id]: second.id });
+    const before = JSON.stringify(mismatched);
+    assert.deepEqual(
+      styleDirectorPresentationIssues(photographic, mismatched).map(issue => issue.code),
+      [entry.code], entry.group + " mismatched saved construction must require review",
+    );
+    assert.equal(JSON.stringify(mismatched), before, "review must not mutate locked pant details");
+    assert.deepEqual(
+      styleDirectorPresentationIssues(
+        { ...photographic, [entry.photo]: "Not a selectable pant option" }, matching,
+      ).map(issue => issue.code),
+      [entry.code], entry.group + " unknown photographic labels must fail closed",
+    );
+  }
+  assert.deepEqual(styleDirectorPresentationIssues(
+    photo("Spread Collar", "Tucked"), spec(),
+  ), [], "shirt-only existing callers may omit trouser-photo details");
+  assert.ok(readFileSync("src/lib/style-director-agent.ts", "utf8").includes(
+    "...styleDirectorPresentationIssues(best.style,styleSpec)",
+  ), "real Style Director recommendations must evaluate the full photographic-to-versioned gate");
+});
