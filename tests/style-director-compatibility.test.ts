@@ -315,7 +315,7 @@ test("band-collar shirt type cannot silently use a spread or camp collar", () =>
   assert.equal(JSON.stringify(mismatched),before,"review must not rewrite locked style IDs");
   assert.deepEqual(styleDirectorConstructionIssues(spec({
     type:"band_collar_shirt",collar:"cuban_camp_collar",wear:"tucked",
-  }),"Casual").map(issue=>issue.code),["band_collar_construction"]);
+  }),"Casual").map(issue=>issue.code),["camp_collar_type_mismatch","band_collar_construction"]);
   assert.deepEqual(styleDirectorConstructionIssues(spec({
     type:"band_collar_shirt",collar:"mandarin_band_collar",wear:"tucked",
   }),"Formal"),[]);
