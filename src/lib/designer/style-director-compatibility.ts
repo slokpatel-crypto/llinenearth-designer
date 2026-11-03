@@ -1,6 +1,7 @@
 import type { DesignerFabricIntelligence } from "../fabric-intelligence-types";
 import type { StyleSpecV2 } from "./style-spec-v2";
 import type { DesignerStyle, OccasionTier } from "./engine";
+import { optionsFor } from "./options/library.ts";
 
 /**
  * Styling confidence is not a physical-fabric approval. A rejected review
@@ -237,11 +238,19 @@ export function styleDirectorPresentationIssues(
     : campLabel ? "cuban_camp_collar"
     : bandLabel ? "mandarin_band_collar" : "cutaway_collar";
   const versionedCollar = spec.shirt.collar;
-  if (namedFamilies > 1 || (legacyCollar !== versionedCollar &&
+  // The real selectable option library is the authority for exact
+  // photographic label → versioned collar parity, not only named families.
+  // Keep family detection for malformed multi-family or unavailable labels.
+  const selectedPhotoOption = optionsFor("shirt.collar").find((option) =>
+    option.legacySelectable !== false && (option.legacyLabel || option.label) === style.collar);
+  const exactPhotoMismatch = selectedPhotoOption != null &&
+    selectedPhotoOption.id !== versionedCollar;
+  if (namedFamilies > 1 || exactPhotoMismatch || (!selectedPhotoOption &&
+      legacyCollar !== versionedCollar &&
       (legacyCollar !== null || ["cuban_camp_collar", "mandarin_band_collar", "cutaway_collar"].includes(versionedCollar)))) {
     issues.push({
       code: "legacy_collar_mismatch",
-      explanation: "The photographic collar choice disagrees with the versioned camp/band collar; review both without changing the locked IDs.",
+      explanation: "The photographic collar choice disagrees with the versioned collar construction; review both without changing the locked IDs.",
     });
   }
   if (versionedCollar === "cuban_camp_collar") {
