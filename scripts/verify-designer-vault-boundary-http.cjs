@@ -415,7 +415,34 @@ async function main(){
     assert.equal(seen.length,1);
     assert.equal(seen[0].path,"/auth/v1/otp");
 
+    // The distributed limiter is not enabled in this process. Verify that
+    // rotating untrusted forwarded IPs cannot bypass the local email budget.
+    for(let i=0;i<8;i++){
+      const allowed=await authPost("/api/customer-auth/otp",
+        {email:i%2?"Budget@Example.Com":"budget@example.com"});
+      assert.equal(allowed.status,200,"first eight distinct-IP sends per recipient pass");
+      assert.match(allowed.headers.get("cache-control")||"",/private.*no-store/);
+    }
     seen.length=0;
+    const ninthSend=await authPost("/api/customer-auth/otp",
+      {email:"budget@example.com"});
+    assert.equal(ninthSend.status,429,"ninth same-email send with a new IP must be denied");
+    assert.deepEqual(seen,[],"locally denied send never calls an upstream provider");
+
+    for(let i=0;i<8;i++){
+      const allowed=await authPost("/api/customer-auth/verify",
+        {email:"budget-verify@example.com",token:"123456"});
+      assert.equal(allowed.status,200,"first eight verification attempts pass");
+    }
+    seen.length=0;
+    const ninthVerify=await authPost("/api/customer-auth/verify",
+      {email:"budget-verify@example.com",token:"123456"});
+    assert.equal(ninthVerify.status,429,"ninth same-email verification with new IP must fail");
+    assert.equal(ninthVerify.headers.get("set-cookie"),null,
+      "denied code verification cannot mint a new signed session");
+    assert.match(ninthVerify.headers.get("cache-control")||"",/private.*no-store/);
+    assert.deepEqual(seen,[],"denied code verification cannot reach Supabase");
+
     seen.length=0;
     const forgedOwner=await authPost("/api/customer-auth/verify",
       {email:"invalid-owner@example.com",token:"123456"});
