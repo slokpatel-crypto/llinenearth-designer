@@ -79,6 +79,15 @@ const CANCELLABLE = new Set<OrderLifecycleStage>([
 const RECOVERABLE = new Set<OrderLifecycleStage>([
   "accepted", "cutting", "stitching", "finishing", "qc_pending", "qc_rework", "qc_approved",
 ]);
+// An arbitrary object can satisfy the TypeScript state shape at runtime. Only
+// states minted by this reducer (or reconstructed by verified audit replay)
+// may authorize the next transition. This is in-process provenance, NOT
+// database authentication or cross-request concurrency control.
+const TRUSTED_STATES = new WeakSet<OrderLifecycleState>();
+function trustState<T extends OrderLifecycleState>(state: T): T {
+  TRUSTED_STATES.add(state);
+  return state;
+}
 const STAGES = new Set<string>(ORDER_LIFECYCLE_STAGES);
 const ACTIONS = new Set<string>(ORDER_LIFECYCLE_ACTIONS);
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_-]{7,127}$/;
@@ -130,8 +139,8 @@ export function createOrderLifecycle(orderId: string, revisionId: string, recipe
   identifier(orderId, "order ID");
   nonEmpty(revisionId, "locked revision ID", 12, 200);
   if (!/^[a-f0-9]{64}$/.test(recipeHash)) throw new Error("Invalid locked recipe hash.");
-  return Object.freeze({ orderId, revisionId, recipeHash, status: "created", sequence: 0,
-    lastEventId: null, heldFrom: null, audit: Object.freeze([]) });
+  return trustState(Object.freeze({ orderId, revisionId, recipeHash, status: "created", sequence: 0,
+    lastEventId: null, heldFrom: null, audit: Object.freeze([]) }));
 }
 
 function validateQc(qc: unknown, state: OrderLifecycleState): OrderQcEvidence {
@@ -157,6 +166,9 @@ function validateQc(qc: unknown, state: OrderLifecycleState): OrderQcEvidence {
 
 /** Pure reducer: reject stale writes, illegal jumps, replay, chronology regressions and fabricated QC approvals. */
 export function applyOrderLifecycleEvent(state: OrderLifecycleState, rawEvent: unknown): OrderLifecycleState {
+  if (!state || typeof state !== "object" || !TRUSTED_STATES.has(state)) {
+    throw new Error("Untrusted lifecycle snapshot; restore audited history before applying events.");
+  }
   const event = record(rawEvent);
   const eventId = identifier(event.eventId, "event ID");
   if (event.orderId !== state.orderId) throw new Error("Order identity mismatch.");
@@ -205,8 +217,8 @@ export function applyOrderLifecycleEvent(state: OrderLifecycleState, rawEvent: u
   });
   // TypeScript readonly is compile-time only. Freeze the new snapshot and
   // nested QC record so downstream code cannot mutate accepted audit history.
-  return Object.freeze({ ...state, status: to, sequence: applied.sequence, lastEventId: eventId,
-    heldFrom, audit: Object.freeze([...state.audit, applied]) });
+  return trustState(Object.freeze({ ...state, status: to, sequence: applied.sequence, lastEventId: eventId,
+    heldFrom, audit: Object.freeze([...state.audit, applied]) }));
 }
 
 /** Replays the entire event history, refusing mismatched audit destinations. */
