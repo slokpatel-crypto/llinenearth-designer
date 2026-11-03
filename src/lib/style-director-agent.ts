@@ -268,6 +268,7 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   const shirt=String(candidate.garments.shirt||"").toLowerCase();
   const trouser=String(candidate.garments.trouser||"").toLowerCase();
   const namedCollar=styleDirectorCandidateCollar(shirt,DESIGNER_STYLE_CHOICES.collar);
+  const namedSleeve=styleDirectorCandidateSleeve(shirt);
 
   if(namedCollar?.versioned==="cuban_camp_collar") {
     spec.shirt.type="camp_collar_resort";
@@ -283,14 +284,13 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
     spec.shirt.collar="cutaway_collar";
   }
   else if(/overshirt/.test(shirt)) spec.shirt.type="overshirt";
-  else if(/(?:short|half)[- ]?sleeve/.test(shirt)) spec.shirt.type="short_sleeve_shirt";
+  else if(namedSleeve) spec.shirt.type="short_sleeve_shirt";
   else if(/oxford|button[- ]?down/.test(shirt)) spec.shirt.type="casual_shirt";
   else spec.shirt.type="dress_shirt";
 
   // A named half/short sleeve must survive the legacy-to-versioned bridge.
   // The legacy photo has no sleeve-length selector, so the pure presentation
   // gate marks this as review-only rather than claiming visual accuracy.
-  const namedSleeve=styleDirectorCandidateSleeve(shirt);
   if(namedSleeve){
     spec.shirt.sleeve=namedSleeve.sleeve;
     spec.shirt.cuff=namedSleeve.cuff;
