@@ -129,3 +129,8 @@ The existing persisted production order contract in `src/lib/designer/production
 - Added focused regression tests for live/replayed explicit-undefined fields and valid QC approval. Source commit `903bb1b4`; test commit `771fb594`. **New exact-head CI and Non-3D QA not yet verified.** No local npm suite claimed.
 - Main `fd2f2977` diverges by 11 commits after the operator merge-base; comparison showed no overlap with operator source, test or checkpoint paths. This remains a draft proposal without authenticated transactional persistence or physical QC verification.
 - Next: confirm exact-head workflows; coordinate SQL status mapping, authenticated append-only persistence, verified physical receipts and integration review. No main merge, Vercel deployment, production data, stock or shared routes modified.
+
+## Audit display-control hardening — 2026-11-03
+- Operator actor, revision ID, evidence reference and reason fields now reject Unicode bidirectional override/isolate controls (U+202A–U+202E and U+2066–U+2069), which can visually reorder audit claims in logs and reviews. The existing ASCII identifier restrictions remain unchanged.
+- Added synthetic regression coverage for live events, cancellation reasons and stored audit replay. This is a source-level checkpoint: exact-head CI is required before claiming a verified pass.
+- Production persistence, actor authentication, SQL status mapping and physical receipt verification remain separate central-integration gates. No shared scope was edited.
