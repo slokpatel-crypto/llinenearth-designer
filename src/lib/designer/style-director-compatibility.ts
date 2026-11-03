@@ -90,7 +90,7 @@ export type DirectorConstructionIssue = {
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
     "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "legacy_trouser_mismatch" |
-    "ambiguous_candidate_trouser_front";
+    "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch";
   explanation: string;
 };
 
@@ -244,7 +244,7 @@ export function styleDirectorConstructionIssues(
  * advanced collars may have intentionally approximate legacy previews.
  */
 export function styleDirectorPresentationIssues(
-  style: Pick<DesignerStyle, "collar" | "shirtWear"> & Partial<Pick<DesignerStyle, "trouser">>,
+  style: Pick<DesignerStyle, "collar" | "shirtWear"> & Partial<Pick<DesignerStyle, "trouser" | "cuff" | "placket" | "shirtFit">>,
   spec: Pick<StyleSpecV2, "shirt"> & Partial<Pick<StyleSpecV2, "pant">>,
 ): DirectorConstructionIssue[] {
   const issues: DirectorConstructionIssue[] = [];
@@ -297,6 +297,26 @@ export function styleDirectorPresentationIssues(
       code: "unverified_cutaway_photo",
       explanation: "The cutaway collar is a selectable construction, but its live preview is approximate; confirm the actual collar before production.",
     });
+  }
+  // Photo labels must not silently certify a different cuff, placket or fit.
+  // Use only the canonical selectable option library, not display heuristics.
+  const photoShirtDetails = [
+    { key: "cuff", group: "shirt.cuff", id: spec.shirt.cuff, code: "legacy_cuff_mismatch" },
+    { key: "placket", group: "shirt.placket", id: spec.shirt.placket, code: "legacy_placket_mismatch" },
+    { key: "shirtFit", group: "shirt.fit", id: spec.shirt.fit, code: "legacy_shirt_fit_mismatch" },
+  ] as const;
+  for (const detail of photoShirtDetails) {
+    const photoLabel = style[detail.key];
+    // Backwards compatibility: pure callers may provide only wear + collar.
+    if (photoLabel === undefined) continue;
+    const selected = optionsFor(detail.group).find((option) =>
+      option.legacySelectable !== false && (option.legacyLabel || option.label) === photoLabel);
+    if (!selected || selected.id !== detail.id) {
+      issues.push({
+        code: detail.code,
+        explanation: `The photographic ${detail.key} choice disagrees with the versioned shirt construction; review the locked IDs before tailoring.`,
+      });
+    }
   }
   if (style.trouser !== undefined && spec.pant !== undefined) {
     const selectedTrouser = optionsFor("pant.type").find((option) =>
