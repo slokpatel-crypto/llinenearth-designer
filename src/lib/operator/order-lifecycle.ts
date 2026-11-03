@@ -105,6 +105,17 @@ function identifier(value: unknown, name: string): string {
   if (!IDENTIFIER.test(text)) throw new Error("Invalid " + name + ".");
   return text;
 }
+// Persisted audits must not silently discard unexpected evidence fields during
+// canonical replay. The allowlist is versioned with the event contract.
+const APPLIED_EVENT_FIELDS = new Set([
+  "eventId", "orderId", "action", "from", "to", "sequence",
+  "previousEventId", "occurredAt", "actor", "evidenceRef", "reason", "qc",
+]);
+function rejectUnknownFields(value: Record<string, unknown>, allowed: ReadonlySet<string>, label: string): void {
+  if (Object.keys(value).some(key => !allowed.has(key)))
+    throw new Error("Unexpected " + label + " field.");
+}
+
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid lifecycle event.");
   return value as Record<string, unknown>;
@@ -231,6 +242,7 @@ export function replayOrderLifecycle(orderId: string, revisionId: string, recipe
   let state = createOrderLifecycle(orderId, revisionId, recipeHash);
   for (const raw of events) {
     const source = record(raw);
+    rejectUnknownFields(source, APPLIED_EVENT_FIELDS, "stored audit");
     state = applyOrderLifecycleEvent(state, source);
     // Stored applied events must explicitly carry the computed destination.
     // Missing/null/undefined `to` is tampering, not an unapplied event.
