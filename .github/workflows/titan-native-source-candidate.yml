@@ -20,6 +20,7 @@ on:
       - "scripts/blender/source-crotch-bridge-flat-charts.py"
       - "scripts/blender/source-trouser-provisional-uv.py"
       - "scripts/blender/source-trouser-quad-metric-uv.py"
+      - "scripts/blender/source-trouser-dual-tree-uv.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -32,6 +33,7 @@ on:
       - "tests/crotch-bridge-flat-charts-native.test.ts"
       - "tests/crotch-trouser-provisional-uv-native.test.ts"
       - "tests/crotch-trouser-quad-metric-uv-native.test.ts"
+      - "tests/crotch-trouser-dual-tree-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -47,6 +49,7 @@ on:
       - "tests/python/test_source_crotch_bridge_flat_charts.py"
       - "tests/python/test_source_trouser_provisional_uv.py"
       - "tests/python/test_source_trouser_quad_metric_uv.py"
+      - "tests/python/test_source_trouser_dual_tree_uv.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -67,6 +70,7 @@ on:
       - "scripts/blender/source-crotch-bridge-flat-charts.py"
       - "scripts/blender/source-trouser-provisional-uv.py"
       - "scripts/blender/source-trouser-quad-metric-uv.py"
+      - "scripts/blender/source-trouser-dual-tree-uv.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -79,6 +83,7 @@ on:
       - "tests/crotch-bridge-flat-charts-native.test.ts"
       - "tests/crotch-trouser-provisional-uv-native.test.ts"
       - "tests/crotch-trouser-quad-metric-uv-native.test.ts"
+      - "tests/crotch-trouser-dual-tree-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -109,6 +114,7 @@ jobs:
           python3 tests/python/test_source_crotch_bridge_flat_charts.py
           python3 tests/python/test_source_trouser_provisional_uv.py
           python3 tests/python/test_source_trouser_quad_metric_uv.py
+          python3 tests/python/test_source_trouser_dual_tree_uv.py
       - name: Fetch checksum-verified Blender 4.5.14
         shell: bash
         run: |
@@ -1141,6 +1147,46 @@ jobs:
               assert quads["supplierFabricRepeatMm"] is None
               assert quads["sourceUVFromProduction"] is False
               assert quads["productionApproved"] is False
+              tree=oriented["researchOnlyOriginalSourceDualTreeUvSurvey"]
+              assert tree["researchOnly"] is True
+              assert tree["originalSourceQuadCount"] == 2650
+              assert tree["originalSourceUvLoopCount"] == 10600
+              assert tree["nativeOriginalSourceUvLoopCount"] == 10600
+              assert tree["nativeOriginalSourceUvLayerName"] == "TITAN_RESEARCH_ONLY_METRIC_DUAL_TREE_NOT_SEWN"
+              assert tree["originalSourceCutEdgeCount"] == 8
+              assert tree["openSourceBoundaryEdgeCount"] == 132
+              assert tree["sharedOriginalSourceEdgeCount"] == quads["sharedOriginalSourceEdgeCount"]
+              assert 1 <= tree["dualGraphComponentCount"] <= 2650
+              assert len(tree["dualGraphComponentSourceFaceCounts"]) == tree["dualGraphComponentCount"]
+              assert sum(tree["dualGraphComponentSourceFaceCounts"]) == 2650
+              assert tree["verifiedTreeConnectedSharedEdges"] == 2650-tree["dualGraphComponentCount"]
+              assert tree["faceTreeParentsRecorded"] == tree["verifiedTreeConnectedSharedEdges"]
+              assert tree["verifiedTreeConnectedSharedEdges"] + tree["nonTreeCycleSharedEdges"] == (
+                  tree["sharedOriginalSourceEdgeCount"]
+              )
+              assert tree["nonTreeCycleEdgesWithinOneMicrometre"] + (
+                  tree["nonTreeCycleUnclosedUvEdges"]
+              ) == tree["nonTreeCycleSharedEdges"]
+              assert 0 <= tree["maximumTreeEdgeUvJoinErrorMm"] <= 0.001
+              assert math.isfinite(tree["maximumNonTreeUvSeamGapMm"])
+              assert math.isfinite(tree["rmsNonTreeUvSeamGapMm"])
+              assert 0 <= tree["rmsNonTreeUvSeamGapMm"] <= (
+                  tree["maximumNonTreeUvSeamGapMm"] + 0.0001
+              )
+              assert tree["nativeRealOriginalSourceBodyPairsUnchanged"] == (
+                  quads["originalBodyBVHPairsStillUnchanged"]
+              ) == source_uv["originalSourceScannedBodyBVHPairsUnchanged"]
+              assert tree["originalSourceStageUvProvenance"] == uv_stages
+              assert tree["localMetricTrianglesRemainUnscaled"] is True
+              assert tree["sourcePanelsFullyStitchedInUV"] is False
+              assert tree["cyclicSeamsHaveBeenPhysicallyClosed"] is False
+              assert tree["surfaceUvOverlapCertifiedAbsent"] is False
+              assert tree["realSourceToBridgeUvJoined"] is False
+              assert tree["measuredSupplierRepeatMm"] is None
+              assert tree["tailorSeamAllowanceApproved"] is False
+              assert tree["physicalFabricScaleVerified"] is False
+              assert tree["productionApproved"] is False
+              assert "UNVERIFIED" in tree["metricCaveat"]
               assert "DIFFERENT UV island" in quads["metricCaveat"]
               assert source_uv["displayProjection"].endswith("not garment unwrap")
               assert "does not establish" in flat["metricCaveat"]
@@ -1578,6 +1624,17 @@ jobs:
               "radial18TriangleContactedAreaMm2":radial["contactingBridgeAreaMm2"],
               "radialDisplacementMm":shifts,
               "originalCutSegmentBodyContacts":original["actualBodyContactByOriginalCutEdgePair"],
+              "originalSourceUvSpanningTreeEvidence": {
+                  "originalQuads":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceDualTreeUvSurvey"]["originalSourceQuadCount"],
+                  "actualResearchUvLoops":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceDualTreeUvSurvey"]["nativeOriginalSourceUvLoopCount"],
+                  "componentCount":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceDualTreeUvSurvey"]["dualGraphComponentCount"],
+                  "treeJoinedSourceEdges":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceDualTreeUvSurvey"]["verifiedTreeConnectedSharedEdges"],
+                  "nonTreeUnclosedSourceUvEdges":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceDualTreeUvSurvey"]["nonTreeCycleUnclosedUvEdges"],
+                  "maximumNonTreeUvSeamGapMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceDualTreeUvSurvey"]["maximumNonTreeUvSeamGapMm"],
+                  "originalBodyPairCountPreserved":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceDualTreeUvSurvey"]["nativeRealOriginalSourceBodyPairsUnchanged"],
+                  "fullSewnUvOrFabricScaleApproved":False,
+                  "productionApproved":False,
+              },
               "unstitchedOriginalSourceQuadMetricUvEvidence": {
                   "originalQuads":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyUnstitchedOriginalQuadMetricUvSurvey"]["actualOriginalSourceQuadCount"],
                   "actualUvLoops":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyUnstitchedOriginalQuadMetricUvSurvey"]["nativeUvLoopsAssigned"],
