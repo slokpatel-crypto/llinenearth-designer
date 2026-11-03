@@ -362,3 +362,15 @@ test("unknown QC and snapshot evidence claims are rejected during live approval 
   }
   assert.equal(restoreOrderLifecycleSnapshot(saved).status,"qc_approved");
 });
+
+
+test("live lifecycle inputs reject unknown operator, payment and QC claims",()=>{
+  for (const injected of [
+    {operatorApproved:true},
+    {customerPaymentConfirmed:"unverified"},
+    {qcOverride:{passed:true}},
+  ]) {
+    assert.throws(()=>step(base(),"accept",injected),/Unexpected order event field/);
+  }
+  assert.equal(step(base(),"accept").status,"accepted");
+});
