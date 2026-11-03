@@ -1558,6 +1558,26 @@ def main():
     tree_report["nativeRealOriginalSourceBodyPairsUnchanged"] = len(tree_body_pairs)
     tree_report["originalSourceStageUvProvenance"] = source_stage_uv_provenance
     seam_winding["researchOnlyOriginalSourceDualTreeUvSurvey"] = tree_report
+
+    # A real mesh UV-cut candidate is an unclosed shared face-loop edge, NOT
+    # permission to physically cut linen. Audit every such original-source
+    # edge in actual 3D geometry and identify branching candidate networks.
+    cut_audit_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-trouser-uv-cut-network.py")
+    ))
+    cut_audit = cut_audit_ops["audit_original_source_uv_cut_network"](
+        merged_verts, base_faces, tree_study["face_uv_loops"],
+        l_remaining + r_remaining_mapped, tree_report
+    )
+    if (cut_audit["originalSharedSourceEdgeCount"] !=
+            tree_report["sharedOriginalSourceEdgeCount"]
+            or cut_audit["unclosedSharedUvCutCandidateEdges"] !=
+            tree_report["nonTreeCycleUnclosedUvEdges"]
+            or cut_audit["originalOpenSourceBoundaryEdges"] != 132
+            or cut_audit["actualOriginalSourceQuadCount"] != 2650
+            or cut_audit["originalSourceUvLoopCount"] != tree_written):
+        raise RuntimeError("Original-source UV cut candidate lost real mesh edge provenance.")
+    seam_winding["researchOnlyOriginalSourceUvCutNetworkEvidence"] = cut_audit
     clearance_trial = None
     targeted_reroute_trial = None
     if args.experimental_centroid_clearance_mm == 7.0:
