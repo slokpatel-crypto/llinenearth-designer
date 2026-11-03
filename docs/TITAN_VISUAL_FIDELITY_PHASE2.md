@@ -162,3 +162,26 @@ claims of new real-world photographs or tailor acceptance.
 - **Next:** verify both fresh exact-head GitHub CI runs, including real
   390/768/1440 photographic checks; save/check artifacts before considering
   independent visual approval. Older failed/green runs do not certify the fix.
+
+## November 3 — expanded real-browser construction coverage
+
+- The previous exact head `47080752a4c32297023caf18469c3de0267d3317`
+  passed **both** full CI run `41689972498` and Studio/Non-3D QA run
+  `41689972183`, including original-source photo and craft QA.
+- Next acceptance gap: pure tests covered advanced `StyleSpecV2` mismatch
+  reporting, but the actual customer UI only tested the untucked shirt hem.
+- `scripts/verify-photo-form.cjs` now exercises *real* Studio controls at
+  **390/768/1440px**: expand Precision tailoring, select half sleeves and
+  double-forward trouser pleats; verify both selected values persist, the
+  photographic-mismatch notice reports **sleeve length** and **trouser
+  pleats**, there is no horizontal overflow, and save screenshot evidence at
+  each width.
+- The 1440px run additionally selects a Mandarin collar, French cuff and
+  hidden/fly-front placket through the customer's existing cut selectors.
+  Their unsupported photographic geometry must be disclosed, never silently
+  attributed to the unchanged original model; save a source screenshot.
+- Source test requires the real-browser harness to retain these UI cases.
+- No new garment geometry, photo/model replacement, added AI calls, physical
+  measurement assumptions, saved-design rewrites, stock/catalogue changes or
+  Vercel deployment. Run **new exact-head** source, browser, build and release
+  gates; keep the PR draft pending independent review.
