@@ -1091,11 +1091,7 @@ test("explicit do-not-use pleat instructions are not positive pleat requests", (
     "Do not use pleats",
     "Don't add pleats",
     "Never include pleating",
-    "Avoid using pleats",
   ]) {
-    // The last phrase is a separate grammatical form; until supported,
-    // avoid claiming it is parsed as a verified flat-front instruction.
-    if (wording === "Avoid using pleats") continue;
     assert.equal(styleDirectorCandidateTrouserFront(wording), "flat_front", wording);
     assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "flat_front" }), []);
   }
