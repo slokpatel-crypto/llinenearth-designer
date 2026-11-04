@@ -244,3 +244,25 @@ test("quoted and whitespace-qualified stock RPC definitions cannot evade the new
     }
   }
 });
+
+
+test("forward-only stock RPC repair restores strict identity and provenance after historical overrides", () => {
+  const paths = audit.collectMigrationPaths();
+  const repaired = "supabase/migrations/20261104134500_restore_stock_reservation_identity_gate.sql";
+  assert.ok(paths.includes(repaired), "repair migration must exist in the repository");
+  const readSql = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+  const override = audit.inspectReserveOverride(paths, readSql);
+  assert.equal(override.filenameOrderLastDefinition, repaired,
+    "a later migration must not silently restore lossy request-key truncation");
+  assert.equal(override.hasStrictLengthGate, true);
+  assert.equal(override.usesLossyIdentifierTruncation, false);
+  const sql = readSql(repaired);
+  assert.match(sql, /pg_advisory_xact_lock\(hashtext\('stock-request:'\|\|v_key\)\)/i);
+  assert.match(sql, /provenance_ready/i);
+  assert.match(sql, /revoke all on function public\.fabric_stock_reserve_v2/i);
+  assert.match(sql, /to service_role/i);
+  const baseline = JSON.parse(fs.readFileSync(path.join(__dirname,
+    "../docs/TITAN_SUPABASE_MIGRATION_BASELINE.json"), "utf8")).migrationPaths;
+  const gate = audit.inspectNewMigrationSafety(paths, baseline, readSql);
+  assert.equal(gate.ok, true, JSON.stringify(gate));
+});
