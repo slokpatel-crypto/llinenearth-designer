@@ -1034,3 +1034,17 @@ test("negated pleated adjective with an article cannot create a pleat request", 
   assert.equal(styleDirectorCandidateTrouserFront("Not Double Pleated Trouser"), null,
     "count-specific negation must not be promoted to flat-front");
 });
+
+
+test("avoid and never pleat wording is not a positive pleat request", () => {
+  for (const name of ["Avoid pleats trouser", "Never pleated trouser", "Avoid any visible pleating"]) {
+    assert.equal(styleDirectorCandidateTrouserFront(name), "flat_front", name);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(name, { pleat: "flat_front" }), [], name);
+  }
+  for (const name of ["Avoid double pleats, single pleat trouser", "Never double pleats, single pleat trouser"]) {
+    assert.equal(styleDirectorCandidateTrouserFront(name), "pleated", name);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(name, { pleat: "single_pleat_forward" }), [], name);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Avoid pleats, single pleat trouser"), "ambiguous");
+  assert.equal(styleDirectorCandidateTrouserFront("Double pleated trouser"), "pleated");
+});
