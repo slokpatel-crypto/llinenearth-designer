@@ -224,3 +224,23 @@ test("plain CREATE FUNCTION stock override is not invisible to migration safety"
   assert.equal(override.filenameOrderLastDefinition,file);
   assert.equal(override.hasStrictLengthGate,false);
 });
+
+test("quoted and whitespace-qualified stock RPC definitions cannot evade the new-migration gate", () => {
+  const baseline=["supabase/migrations/20261103_legacy.sql"];
+  const file="supabase/migrations/20261104123000_quoted_stock_override.sql";
+  const unsafe="(p_fabric_id text) RETURNS uuid LANGUAGE plpgsql AS $body$ BEGIN RETURN gen_random_uuid(); END; $body$;";
+  for (const qualifier of [
+    '"public"."fabric_stock_reserve_v2"',
+    'public."fabric_stock_reserve_v2"',
+    '"public".fabric_stock_reserve_v2',
+    '"public"  .  "fabric_stock_reserve_v2"'
+  ]) {
+    for (const create of ["CREATE FUNCTION", "CREATE OR REPLACE FUNCTION"]) {
+      const sql=create+" "+qualifier+unsafe;
+      const result=audit.inspectNewMigrationSafety([...baseline,file],baseline,()=>sql);
+      assert.deepEqual(result.unsafeReserveOverrides,[file],sql);
+      assert.equal(result.ok,false,sql);
+      assert.equal(audit.inspectReserveOverride([file],()=>sql).filenameOrderLastDefinition,file);
+    }
+  }
+});
