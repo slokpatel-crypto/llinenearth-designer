@@ -91,10 +91,10 @@ export function styleDirectorCandidateTrouserFront(
   // Negating a particular pleat count does not prohibit all pleats. In
   // particular, "no double pleats" must not become a positive pleat request.
   const unqualifiedPositiveWording = positiveWording.replace(
-    /\b(?:no|without|not)\s+(?:(?:any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(?:single|double|one|two|1|2)[ -]?pleat(?:ed|s)?\b/gi,
+    /\b(?:no|without|not)\s+(?:(?:any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(?:single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\b/gi,
     "",
   );
-  const positivePleat = /\bpleat(?:ed|s)?\b/i.test(unqualifiedPositiveWording);
+  const positivePleat = /\bpleat(?:ed|s|ing)?\b/i.test(unqualifiedPositiveWording);
   if ((flatFront || explicitlyNoPleats) && positivePleat) return "ambiguous";
   if (positivePleat) return "pleated";
   return flatFront || explicitlyNoPleats ? "flat_front" : null;
@@ -159,7 +159,7 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // Read count from the canonical option's construction parameters instead
   // of inferring it from the potentially stale photographed trouser label.
   const positiveWording = stripNegatedPleatWording(candidateTrouser).replace(
-    /\b(?:no|without|not)\s+(?:(?:any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(?:single|double|one|two|1|2)[ -]?pleat(?:ed|s)?\b/gi,
+    /\b(?:no|without|not)\s+(?:(?:any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(?:single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\b/gi,
     "",
   );
   const requestsDouble = /\b(?:double|two|2)[ -]?pleats?\b/i.test(positiveWording);
