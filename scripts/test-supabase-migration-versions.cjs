@@ -212,3 +212,15 @@ test("historical SQL remains pinned and new migrations are rejected by the relea
     "CLI enforcement must match computed fail-closed migration policy: "+baselineRun.stderr);
   if(expected!==0) assert.match(baselineRun.stderr,/BLOCKED:/);
 });
+
+test("plain CREATE FUNCTION stock override is not invisible to migration safety", () => {
+  const baseline=["supabase/migrations/20261103_legacy.sql"];
+  const file="supabase/migrations/20261104120000_stock_override.sql";
+  const sql="CREATE FUNCTION public.fabric_stock_reserve_v2(p_fabric_id text) RETURNS uuid LANGUAGE plpgsql AS $body$ BEGIN RETURN gen_random_uuid(); END; $body$;";
+  const result=audit.inspectNewMigrationSafety([...baseline,file],baseline,()=>sql);
+  assert.deepEqual(result.unsafeReserveOverrides,[file]);
+  assert.equal(result.ok,false);
+  const override=audit.inspectReserveOverride([file],()=>sql);
+  assert.equal(override.filenameOrderLastDefinition,file);
+  assert.equal(override.hasStrictLengthGate,false);
+});
