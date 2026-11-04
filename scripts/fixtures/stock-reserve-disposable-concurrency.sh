@@ -22,5 +22,5 @@ if [ "$sb" -eq 0 ]; then success_key=disposable-race-key-0002; fi
 original="$(cat "$tmp/$success_key.out")"
 replay="$(psql -X -v ON_ERROR_STOP=1 -Atc "select public.fabric_stock_reserve_v2('disposable-test-fabric',3.000,'disposable-locked-revision','$success_key','disposable-operator','disposable-evidence-001')")"
 [ -n "$original" ] && [ "$original" = "$replay" ] || { echo 'Concurrent winner replay was not idempotent' >&2; exit 1; }
-psql -X -v ON_ERROR_STOP=1 -Atc "select case when count(*)=1 and sum(quantity_metres)=3 then 'PASS' else (1/0)::text end from private.fabric_stock_ledger where request_key like 'disposable-race-key-%'" | grep -qx PASS
+psql -X -v ON_ERROR_STOP=1 -Atc "select (count(*)=1 and coalesce(sum(quantity_metres),0)=3)::text from private.fabric_stock_ledger where request_key like 'disposable-race-key-%'" | grep -qx true
 echo 'Disposable two-session contention: one winner, one rejected, idempotent replay, one ledger row.'
