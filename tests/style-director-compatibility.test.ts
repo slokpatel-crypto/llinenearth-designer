@@ -1221,3 +1221,12 @@ test("unknown pleat option cannot certify a named trouser front", () => {
     "Pleated Trouser", { pleat: "single_pleat_forward" },
   ), [], "a valid canonical pleat remains compatible");
 });
+
+test("pleats are to be avoided is a flat-front prohibition, not a positive pleat request", () => {
+  for (const wording of ["Pleats are to be avoided", "Pleating is to be avoided"]) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), "flat_front", wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, {pleat:"flat_front"}), []);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, {pleat:"single_pleat_forward"}).map(x=>x.code), ["candidate_trouser_pleat_mismatch"]);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Single pleat trouser"), "pleated");
+});
