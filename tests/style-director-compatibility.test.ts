@@ -936,7 +936,9 @@ test("negating a specific pleat count does not invent positive pleats or a flat 
 });
 
 test("negated pleat count cannot masquerade as a requested pleat count", () => {
-  const selected = spec({}, { pleat: "single_pleat" });
+  const selected = spec({}, { pleat: "single_pleat_forward" });
+  assert.ok(optionsFor("pant.pleat").some(option => option.id === selected.pant.pleat),
+    "the test must use a canonical pleat option with declared construction parameters");
   const label = "No double pleats, single pleat trouser";
   assert.equal(styleDirectorCandidateTrouserFront(label), "pleated");
   assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, selected.pant), [],
