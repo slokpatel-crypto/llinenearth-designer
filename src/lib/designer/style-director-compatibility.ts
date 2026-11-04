@@ -90,10 +90,10 @@ export function styleDirectorCandidateTrouserFront(
     /\bpleat(?:s|ing)?\s+(?:(?:are|is)\s+)?(?:(?:not\s+(?:allowed|permitted)|prohibited|forbidden|banned|disallowed)|(?:(?:should|must|shall)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included)|not\s+to\s+be\s+(?:used|added|included)|(?:must|should|(?:are|is)\s+to)\s+be\s+avoided|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted))\b/gi,
     "",
   );
-  const explicitlyNoPleats = positiveWording !== candidateTrouser;
+  // Optional pleat language describes a choice, not an instruction to cut pleats.\n  // Keep explicit positive instructions elsewhere in the same candidate intact.\n  const optionalNeutralWording = positiveWording.replace(\n    /\\bpleats?\\s+(?:(?:are|is)\\s+)?(?:optional|not\\s+(?:required|necessary|mandatory))\\b/gi,\n    "",\n  );\n  const explicitlyNoPleats = positiveWording !== candidateTrouser;
   // Negating a particular pleat count does not prohibit all pleats. In
   // particular, "no double pleats" must not become a positive pleat request.
-  const unqualifiedPositiveWording = positiveWording.replace(
+  const unqualifiedPositiveWording = optionalNeutralWording.replace(
     /\b(?:no|without|not|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:(?:a|an|any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(?:single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\b/gi,
     "",
   );
