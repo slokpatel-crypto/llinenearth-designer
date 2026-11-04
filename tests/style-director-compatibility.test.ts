@@ -1139,3 +1139,25 @@ test("postposed pleat prohibitions are flat-front intent, never positive pleat r
       ["candidate_trouser_pleat_mismatch"], candidate);
   }
 });
+
+
+test("explicit pleat bans never become positive construction requests", () => {
+  for (const wording of [
+    "Pleats are disallowed",
+    "Pleating is banned",
+    "Pleats should not be used",
+    "Pleats must not be added",
+    "Pleats aren't permitted",
+    "Pleating isn't allowed",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), "flat_front", wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+      wording, { pleat: "flat_front" },
+    ), [], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+      wording, { pleat: "single_pleat_forward" },
+    ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"], wording);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Single pleat trousers"), "pleated",
+    "positive pleat wording must still be interpreted as a request");
+});
