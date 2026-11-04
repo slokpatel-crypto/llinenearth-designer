@@ -1065,3 +1065,23 @@ test("imperative do-not-pleat instructions cannot become positive pleats", () =>
   assert.equal(styleDirectorCandidateTrouserFront("Do not double pleat trouser"), null);
   assert.equal(styleDirectorCandidateTrouserFront("Don't pleat, single pleat trouser"), "ambiguous");
 });
+
+test("imperative do-not with count-qualified pleats remains a negation", () => {
+  for (const label of [
+    "Do not double pleats trouser",
+    "Do not single pleats trouser",
+    "Do not any visible double pleats trouser",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(label), null, label);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, { pleat: "flat_front" }), [], label);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", label), [], label);
+  }
+  const positive = "Do not double pleats, single pleat trouser";
+  assert.equal(styleDirectorCandidateTrouserFront(positive), "pleated");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    positive, { pleat: "single_pleat_forward" },
+  ), []);
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    positive, { pleat: "double_pleat_forward" },
+  ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
+});
