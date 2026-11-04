@@ -17,3 +17,12 @@
 - The historical `docs/TITAN_RELEASE_CHECKLIST.md` and `docs/TITAN_RELEASE_CHECKPOINT.md` from release stack SHA `3652fb5db6e0f63b8be363edb964fed78f7aadf0` are absent from this isolated branch. Their T1–T6/J1–J6 criteria remain authoritative; do not mistake their absence for approval or overwrite the release stack.
 - Next independently verifiable slice: provision isolated ephemeral PostgreSQL in CI, apply dependency-complete ordered stock migration set, exercise two simultaneous reserve transactions and idempotent retry, capture workflow SHA and failing SQL if any. Do not execute on staging/production or merge to main without required proof.
 - No supplier stock, customer, tailor, device, native 3D, security or owner physical approvals were obtained. No live database writes, deployment, paid AI or main merge.
+
+## 2026-11-05 — J1 disposable PostgreSQL smoke implementation (draft PR #901)
+
+- Compatible base: PR #900 head `d9fb832ce8ffd453f9b13b4ea41ac212534d06e0`, with matching-head CI `41881039585`, Non-3D `41881038766`, migration inventory `41881038805` SUCCESS (parent only).
+- Isolated draft branch `work/titan-stock-reserve-disposable-pg-smoke-20261105`, PR #901, created from that exact parent. Fixture commit `437fd58461c3000b95678139d227295278e1186e`; SQL assertions commit `e57c1ea5137cabc5dfbd743f87c735046688b2fc`; workflow commit `019ff261fb88f022386858a4425324bc39ada9e9`.
+- J1/T3 acceptance slice: run forward-only RPC in PostgreSQL 16 disposable service and assert unchanged idempotent replay, mismatched replay rejection, oversized key rejection, unverified stock rejection and service-role-only EXECUTE. Test fixture deliberately uses synthetic disposable stock and is **not real stock evidence**.
+- Matching-head workflow results at `019ff261fb88f022386858a4425324bc39ada9e9`: none returned at checkpoint time. **Implementation committed, native execution NOT YET VERIFIED**. The workflow does not replay all historical migrations or test two independent concurrent sessions.
+- Next 30–40-minute slice: inspect exact-head PostgreSQL job logs, fix any real SQL failures, rerun and record successful evidence; then extend to two-session contention with separate connections. Historical duplicate/8-digit migration versions, staging reconciliation and all physical/customer/tailor/device/native/owner approvals remain BLOCKED/PENDING.
+- No main merge, live migration, stock mutation, production deployment or paid AI.
