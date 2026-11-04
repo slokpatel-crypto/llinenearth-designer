@@ -980,3 +980,26 @@ test("explicit not-pleated candidate wording remains flat-front intent", () => {
   assert.equal(styleDirectorCandidateTrouserFront("Not Pleated, Single Pleat Trouser"), "ambiguous");
   assert.equal(styleDirectorCandidateTrouserFront("Pleated Trouser"), "pleated");
 });
+
+test("negated pleated adjectives do not request an excluded pleat count", () => {
+  for (const label of [
+    "Not Double Pleated Trouser",
+    "No Single Pleated Trouser",
+    "Without any visible double-pleated front",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(label), null, label);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+      label, { pleat: "flat_front" },
+    ), [], label);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront(
+    "Not Double Pleated, Single Pleat Trouser",
+  ), "pleated");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    "Not Double Pleated, Single Pleat Trouser",
+    { pleat: "single_pleat_forward" },
+  ), []);
+  assert.equal(styleDirectorCandidateTrouserFront(
+    "Flat Front, Double Pleated Trouser",
+  ), "ambiguous");
+});
