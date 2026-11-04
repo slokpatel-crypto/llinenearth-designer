@@ -1127,3 +1127,15 @@ test("article-qualified negative pleat counts never become positive construction
     { pleat: "single_pleat_forward" },
   ), []);
 });
+
+
+test("postposed pleat prohibitions are flat-front intent, never positive pleat requests", () => {
+  for (const candidate of ["Pleats prohibited", "Pleats are not allowed", "Pleating forbidden", "Pleats not permitted"]) {
+    // The parser must not convert an explicit prohibition into a pleated construction.
+    assert.equal(styleDirectorCandidateTrouserFront(candidate), "flat_front", candidate);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("", candidate), [], candidate);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(candidate, {pleat:"flat_front"}), [], candidate);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(candidate, {pleat:"single_pleat_forward"}).map(x=>x.code),
+      ["candidate_trouser_pleat_mismatch"], candidate);
+  }
+});
