@@ -1189,3 +1189,20 @@ test("cannot-be-used pleat prohibitions stay flat-front and fail closed against 
     "a later positive instruction must not override an explicit prohibition",
   );
 });
+
+
+test("passive pleat prohibitions remain flat-front instructions", () => {
+  for (const wording of [
+    "Pleats are not to be used",
+    "Pleating is not to be added",
+    "Pleats must be avoided",
+    "Pleats should be avoided",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), "flat_front", wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "flat_front" }), [], wording);
+    assert.ok(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "single_pleat_forward" })
+      .some(issue => issue.code === "candidate_trouser_pleat_mismatch"), wording);
+    assert.equal(styleDirectorCandidateTrouserFront(wording + ", single pleat trouser"), "ambiguous", wording);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Single pleat trouser"), "pleated");
+});
