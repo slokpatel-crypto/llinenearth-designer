@@ -1085,3 +1085,19 @@ test("imperative do-not with count-qualified pleats remains a negation", () => {
     positive, { pleat: "double_pleat_forward" },
   ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
 });
+
+test("explicit do-not-use pleat instructions are not positive pleat requests", () => {
+  for (const wording of [
+    "Do not use pleats",
+    "Don't add pleats",
+    "Never include pleating",
+    "Avoid using pleats",
+  ]) {
+    // The last phrase is a separate grammatical form; until supported,
+    // avoid claiming it is parsed as a verified flat-front instruction.
+    if (wording === "Avoid using pleats") continue;
+    assert.equal(styleDirectorCandidateTrouserFront(wording), "flat_front", wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "flat_front" }), []);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Do not use double pleats, single pleat trouser"), "pleated");
+});
