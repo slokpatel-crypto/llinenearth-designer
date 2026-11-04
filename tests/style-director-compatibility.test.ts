@@ -1097,3 +1097,14 @@ test("explicit do-not-use pleat instructions are not positive pleat requests", (
   }
   assert.equal(styleDirectorCandidateTrouserFront("Do not use double pleats, single pleat trouser"), "pleated");
 });
+
+test("article-qualified negative pleats remain flat-front without losing positive alternatives", () => {
+  for (const label of ["Without a pleat trouser", "No a pleat trouser", "Avoid a visible pleat trouser"]) {
+    assert.equal(styleDirectorCandidateTrouserFront(label), "flat_front", label);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, { pleat: "flat_front" }), []);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, { pleat: "single_pleat_forward" })
+      .map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Without a pleat, single pleat trouser"), "ambiguous");
+  assert.equal(styleDirectorCandidateTrouserFront("A single pleat trouser"), "pleated");
+});
