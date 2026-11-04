@@ -1230,3 +1230,19 @@ test("pleats are to be avoided is a flat-front prohibition, not a positive pleat
   }
   assert.equal(styleDirectorCandidateTrouserFront("Single pleat trouser"), "pleated");
 });
+
+test("never-be-used pleat instructions require flat-front without changing canonical selections", () => {
+  for (const wording of [
+    "Pleats should never be used",
+    "Pleating must never be added",
+    "Pleats should never be included",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), "flat_front", wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "flat_front" }), [], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+      wording, { pleat: "single_pleat_forward" },
+    ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"], wording);
+    assert.equal(styleDirectorCandidateTrouserFront(wording + ", single pleat trouser"), "ambiguous", wording);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Single pleat trouser"), "pleated");
+});
