@@ -423,6 +423,192 @@ def measure_fixed_bridge_boundary_body_rays(vertices, boundary, source_cut_edges
     }
 
 
+
+def trial_source_cut_edge_reprojection(vertices, boundary, source_cut_edges,
+                                       body_tree, research, geom_ops, offset_mm):
+    """Move actual cut-edge vertices in separate, UNSAVED four-face trial patches.
+
+    These are not original-body/source garment mesh edits. Because the seam edge
+    coordinates change, joining surrounding leg geometry and real cloth contact
+    remains unresolved. Both normal signs are sampled; neither is assumed outward.
+    """
+    if offset_mm != 7.0:
+        raise RuntimeError("Research source-edge reprojection requires exactly 7mm.")
+    source = {tuple(sorted(edge)) for edge in source_cut_edges}
+    perimeter = {
+        tuple(sorted((boundary[i], boundary[(i + 1) % 4])))
+        for i in range(4)
+    }
+    if len(source) != 2 or len(perimeter) != 4 or not source.issubset(perimeter):
+        raise RuntimeError("Cannot relocate edge without two real source segments.")
+    if len(boundary) != 4 or len(set(boundary)) != 4:
+        raise RuntimeError("Real source cut-edge patch is not one four-vertex cycle.")
+
+    controls = {vertex: vertices[vertex].copy() for vertex in boundary}
+    nearest = {}
+    for index, point in controls.items():
+        closest, normal, polygon, distance = body_tree.find_nearest(point)
+        if (closest is None or normal is None or polygon is None or distance is None
+                or not math.isfinite(distance) or distance < 0
+                or normal.length <= 1e-9
+                or not all(math.isfinite(v) for v in (*closest, *normal))):
+            raise RuntimeError("Original boundary vertex has no finite body-normal evidence.")
+        nearest[index] = (closest.copy(), normal.normalized())
+
+    def measure(label, signed_offset_mm):
+        points = [v.copy() for v in vertices]
+        displacements = []
+        for index in boundary:
+            if signed_offset_mm != 0:
+                original = points[index].copy()
+                closest, unit_normal = nearest[index]
+                points[index] = closest + unit_normal * (signed_offset_mm / 1000.0)
+                delta_mm = (points[index] - original).length * 1000.0
+                if not math.isfinite(delta_mm) or delta_mm > 25:
+                    raise RuntimeError("Research cut-edge movement exceeded bounded 25mm trial.")
+                displacements.append(delta_mm)
+        middle = sum((points[i] for i in boundary), points[boundary[0]].copy() * 0.0) / 4.0
+        mid_index = len(points)
+        points.append(middle)
+        faces = [
+            (boundary[i], boundary[(i + 1) % 4], mid_index)
+            for i in range(4)
+        ]
+        outside, owners = topology_of_triangles(faces)
+        if (set(outside) != perimeter or any(n > 2 for n in owners.values())):
+            raise RuntimeError("Research source boundary offset changed quad topology.")
+        name = "TITAN_RESEARCH_SourceCutEdgeReproject_" + label
+        if bpy.data.objects.get(name) is not None:
+            raise RuntimeError("Source-edge reprojection would overwrite Blender evidence.")
+        mesh = bpy.data.meshes.new(name + "Mesh")
+        mesh.from_pydata(points, [], faces)
+        mesh.update(calc_edges=True)
+        degenerate = sum(not math.isfinite(p.area) or p.area <= 1e-12
+                         for p in mesh.polygons)
+        if degenerate or len(mesh.polygons) != 4:
+            raise RuntimeError("Research source-edge movement generated degenerate faces.")
+        obj = bpy.data.objects.new(name, mesh)
+        obj.hide_render = True
+        obj["candidateOnly"] = True
+        obj["productionApproved"] = False
+        obj["physicalFitApproved"] = False
+        obj["sewnGarmentApproved"] = False
+        research.objects.link(obj)
+        if bpy.data.collections[EXPORT].objects.get(name) is not None:
+            raise RuntimeError("Source cut-edge trial entered original production export.")
+        measured = geom_ops["world_geometry"](obj)
+        overlaps = body_tree.overlap(geom_ops["real_tree"](measured))
+        touched = {face for _original_body_face, face in overlaps}
+        total = sum(measured["areas"]) * 1e6
+        touched_area = sum(measured["areas"][i] for i in touched) * 1e6
+        if (not math.isfinite(total) or total <= 0
+                or not math.isfinite(touched_area) or touched_area < 0
+                or touched_area > total + 1e-5):
+            raise RuntimeError("Actual source-edge reprojection body BVH area invalid.")
+        samples = []
+        for edge in source_cut_edges:
+            a, b = edge
+            distance = (points[a] - points[b]).length * 1000.0
+            if not math.isfinite(distance) or distance <= 0:
+                raise RuntimeError("Source cut edge collapsed in non-export trial.")
+            readings = []
+            for fraction in (0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875):
+                sample = points[a] + (points[b] - points[a]) * fraction
+                closest, normal, original_body_polygon, nearest_distance = body_tree.find_nearest(sample)
+                if (closest is None or original_body_polygon is None
+                        or nearest_distance is None
+                        or not math.isfinite(nearest_distance) or nearest_distance < 0):
+                    raise RuntimeError("Moved source cut edge has no finite body proximity evidence.")
+                readings.append(round(nearest_distance * 1000.0, 5))
+            samples.append({
+                "originalSourceCutEdgeVertexIndices": list(edge),
+                "researchEdgeLengthMm": round(distance, 4),
+                "sampledNearestOriginalBodyDistanceMm": readings,
+                "sampledMinimumOriginalBodyDistanceMm": min(readings),
+                "samplesBelowResearchSevenMm": sum(d < 7.0 for d in readings),
+            })
+        return {
+            "triangles": len(mesh.polygons),
+            "bodyBVHPairs": len(overlaps),
+            "contactingTriangleCount": len(touched),
+            "totalBridgeAreaMm2": round(total, 4),
+            "contactingBridgeAreaMm2": round(touched_area, 4),
+            "contactingBridgeAreaFraction": round(touched_area / total, 7),
+            "maxSourceVertexDisplacementMm": round(max(displacements), 5) if signed_offset_mm else 0.0,
+            "minSourceVertexDisplacementMm": round(min(displacements), 5) if signed_offset_mm else 0.0,
+            "sourceCutBoundaryCoordinatesChanged": signed_offset_mm != 0,
+            "signedBodyNormalOffsetMm": signed_offset_mm,
+            "originalSourceEdgeMeasurements": samples,
+            "sourceEdgeSamplesBelowSevenMm": sum(
+                entry["samplesBelowResearchSevenMm"] for entry in samples
+            ),
+            "degenerateFaces": degenerate,
+            "nonManifoldEdges": sum(n > 2 for n in owners.values()),
+            "productionApproved": False,
+        }
+
+    original = measure("unchangedControl", 0.0)
+    positive = measure("positiveBodyNormal", offset_mm)
+    negative = measure("negativeBodyNormal", -offset_mm)
+    # Positive 7mm had zero native body intersections but all 14 cut-edge
+    # samples remained within 7mm. Try 9/11mm without presuming fit.
+    # Keep exact original control topology and original source identity.
+    positive_nine = measure("positiveBodyNormal9Mm", 9.0)
+    positive_eleven = measure("positiveBodyNormal11Mm", 11.0)
+    variants = {
+        "unchangedControl": original,
+        "positiveBodyNormal": positive,
+        "negativeBodyNormal": negative,
+        "positiveBodyNormal9Mm": positive_nine,
+        "positiveBodyNormal11Mm": positive_eleven,
+    }
+    joint_sampled_candidates = [
+        label for label in ("positiveBodyNormal", "positiveBodyNormal9Mm", "positiveBodyNormal11Mm")
+        if (variants[label]["bodyBVHPairs"] == 0
+            and variants[label]["sourceEdgeSamplesBelowSevenMm"] == 0
+            and variants[label]["degenerateFaces"] == 0
+            and variants[label]["nonManifoldEdges"] == 0)
+    ]
+    best = min(("positiveBodyNormal", "negativeBodyNormal"), key=lambda label: (
+        variants[label]["sourceEdgeSamplesBelowSevenMm"],
+        variants[label]["contactingBridgeAreaMm2"],
+        variants[label]["bodyBVHPairs"],
+        label,
+    ))
+    return {
+        "researchOnly": True,
+        "testedNormalOffsetMm": offset_mm,
+        "sourceBoundaryVertexIndices": list(boundary),
+        "sourceCutEdgeVertexPairs": [list(edge) for edge in source_cut_edges],
+        "equalTopologyVariants": variants,
+        "positiveNormalOffsetSweepMm": [7.0, 9.0, 11.0],
+        "jointSampledZeroBVHAndSevenMmCandidateLabels": joint_sampled_candidates,
+        "jointSampledTargetObserved": bool(joint_sampled_candidates),
+        "lowestSampledCutEdgeContactCandidate": best,
+        "strictOriginalBodyPairImprovementObserved": (
+            variants[best]["bodyBVHPairs"] < original["bodyBVHPairs"]
+        ),
+        "strictOriginalBodyContactAreaImprovementObserved": (
+            variants[best]["contactingBridgeAreaMm2"] < original["contactingBridgeAreaMm2"]
+        ),
+        "strictSampledSevenMmImprovementObserved": (
+            variants[best]["sourceEdgeSamplesBelowSevenMm"]
+            < original["sourceEdgeSamplesBelowSevenMm"]
+        ),
+        "metricCaveat": (
+            "This signed-normal 7/9/11mm research sweep moves ONLY a separate local "
+            "four-face research patch's original cut-edge vertices. No continuous "
+            "seam attachment to adjacent leg cloth, fitted full garment, UV, "
+            "fabric thickness, safe normal orientation, sewing allowance or "
+            "production acceptance is established. Sampled distances are unsigned."
+        ),
+        "changesProductionGeometry": False,
+        "productionApproved": False,
+        "physicalFitApproved": False,
+        "sewnGarmentApproved": False,
+    }
+
+
 def trial_targeted_seam_reroute(vertices, target_faces, body_tree, research, geom_ops, offset_mm, source_cut_edges):
     """Measure both signs of the real body normal on only the worst source seam.
 
@@ -435,6 +621,9 @@ def trial_targeted_seam_reroute(vertices, target_faces, body_tree, research, geo
     boundary, original_boundary = ordered_triangle_patch_boundary(target_faces)
     fixed_boundary_ray_evidence = measure_fixed_bridge_boundary_body_rays(
         vertices, boundary, source_cut_edges, body_tree
+    )
+    source_edge_reprojection = trial_source_cut_edge_reprojection(
+        vertices, boundary, source_cut_edges, body_tree, research, geom_ops, offset_mm
     )
     centre = sum((vertices[i] for i in boundary), vertices[boundary[0]].copy() * 0.0) / 4.0
     closest, normal, body_polygon, distance = body_tree.find_nearest(centre)
@@ -514,6 +703,7 @@ def trial_targeted_seam_reroute(vertices, target_faces, body_tree, research, geo
         "targetSourceBoundaryVertices": boundary,
         "preservedBoundaryEdgeCount": len(original_boundary),
         "fixedBridgeBoundaryBodyRayEvidence": fixed_boundary_ray_evidence,
+        "researchOnlySourceCutEdgeReprojectionTrial": source_edge_reprojection,
         "nearestBodyPolygonIndex": int(body_polygon),
         "originalCentreNearestBodyDistanceMm": round(distance * 1000.0, 4),
         "equalTopologyVariants": measured,

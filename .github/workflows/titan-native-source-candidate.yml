@@ -18,6 +18,7 @@ on:
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
+      - "tests/crotch-source-edge-reprojection-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -47,6 +48,7 @@ on:
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
+      - "tests/crotch-source-edge-reprojection-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -1013,6 +1015,86 @@ jobs:
               fixed["sourceEdgesProvenContinuouslyUnderResearchSevenMm"] == len(source_rows)
           )
           assert fixed["productionApproved"] is False
+          source_offset=targeted["researchOnlySourceCutEdgeReprojectionTrial"]
+          assert source_offset["researchOnly"] is True
+          assert source_offset["testedNormalOffsetMm"] == 7
+          assert source_offset["sourceBoundaryVertexIndices"] == targeted["targetSourceBoundaryVertices"]
+          assert {tuple(sorted(edge)) for edge in source_offset["sourceCutEdgeVertexPairs"]} == expected_cut_edges
+          assert source_offset["changesProductionGeometry"] is False
+          assert source_offset["productionApproved"] is False
+          assert source_offset["physicalFitApproved"] is False
+          assert source_offset["sewnGarmentApproved"] is False
+          source_variants=source_offset["equalTopologyVariants"]
+          expected_offsets={
+              "unchangedControl":0.0,
+              "positiveBodyNormal":7.0,
+              "negativeBodyNormal":-7.0,
+              "positiveBodyNormal9Mm":9.0,
+              "positiveBodyNormal11Mm":11.0,
+          }
+          assert set(source_variants) == set(expected_offsets)
+          assert source_offset["positiveNormalOffsetSweepMm"] == [7.0,9.0,11.0]
+          for name,row in source_variants.items():
+              assert row["signedBodyNormalOffsetMm"] == expected_offsets[name]
+              assert row["triangles"] == 4
+              assert row["degenerateFaces"] == row["nonManifoldEdges"] == 0
+              assert row["productionApproved"] is False
+              assert row["sourceCutBoundaryCoordinatesChanged"] is (name != "unchangedControl")
+              assert row["minSourceVertexDisplacementMm"] >= 0
+              assert row["minSourceVertexDisplacementMm"] <= row["maxSourceVertexDisplacementMm"] <= 25
+              if name == "unchangedControl":
+                  assert row["maxSourceVertexDisplacementMm"] == 0
+              else:
+                  assert row["maxSourceVertexDisplacementMm"] > 0
+              assert type(row["bodyBVHPairs"]) is int and row["bodyBVHPairs"] >= 0
+              assert type(row["contactingTriangleCount"]) is int
+              assert 0 <= row["contactingTriangleCount"] <= 4
+              assert math.isfinite(row["totalBridgeAreaMm2"]) and row["totalBridgeAreaMm2"] > 0
+              assert math.isfinite(row["contactingBridgeAreaMm2"])
+              assert 0 <= row["contactingBridgeAreaMm2"] <= row["totalBridgeAreaMm2"] + 0.0001
+              assert 0 <= row["contactingBridgeAreaFraction"] <= 1
+              edge_rows=row["originalSourceEdgeMeasurements"]
+              assert len(edge_rows) == 2
+              assert {tuple(sorted(entry["originalSourceCutEdgeVertexIndices"]))
+                      for entry in edge_rows} == expected_cut_edges
+              assert row["sourceEdgeSamplesBelowSevenMm"] == sum(
+                  entry["samplesBelowResearchSevenMm"] for entry in edge_rows
+              )
+              assert 0 <= row["sourceEdgeSamplesBelowSevenMm"] <= 14
+              for entry in edge_rows:
+                  assert math.isfinite(entry["researchEdgeLengthMm"]) and entry["researchEdgeLengthMm"] > 0
+                  readings=entry["sampledNearestOriginalBodyDistanceMm"]
+                  assert len(readings) == 7
+                  assert all(math.isfinite(d) and d >= 0 for d in readings)
+                  assert entry["sampledMinimumOriginalBodyDistanceMm"] == min(readings)
+                  assert entry["samplesBelowResearchSevenMm"] == sum(d < 7 for d in readings)
+          source_control=source_variants["unchangedControl"]
+          assert source_control["sourceEdgeSamplesBelowSevenMm"] == 14
+          assert source_offset["lowestSampledCutEdgeContactCandidate"] in {
+              "positiveBodyNormal","negativeBodyNormal"
+          }
+          best=source_variants[source_offset["lowestSampledCutEdgeContactCandidate"]]
+          assert source_offset["strictOriginalBodyPairImprovementObserved"] is (
+              best["bodyBVHPairs"] < source_control["bodyBVHPairs"]
+          )
+          assert source_offset["strictOriginalBodyContactAreaImprovementObserved"] is (
+              best["contactingBridgeAreaMm2"] < source_control["contactingBridgeAreaMm2"]
+          )
+          assert source_offset["strictSampledSevenMmImprovementObserved"] is (
+              best["sourceEdgeSamplesBelowSevenMm"] < source_control["sourceEdgeSamplesBelowSevenMm"]
+          )
+          swept=["positiveBodyNormal","positiveBodyNormal9Mm","positiveBodyNormal11Mm"]
+          expected_joint=[
+              label for label in swept if (
+                  source_variants[label]["bodyBVHPairs"] == 0
+                  and source_variants[label]["sourceEdgeSamplesBelowSevenMm"] == 0
+                  and source_variants[label]["degenerateFaces"] == 0
+                  and source_variants[label]["nonManifoldEdges"] == 0)
+          ]
+          assert source_offset["jointSampledZeroBVHAndSevenMmCandidateLabels"] == expected_joint
+          assert source_offset["jointSampledTargetObserved"] is bool(expected_joint)
+          assert all(row["productionApproved"] is False for row in source_variants.values())
+          assert "No continuous" in source_offset["metricCaveat"]
           assert "zero rays does not prove clearance" in fixed["rayTestCaveat"]
           assert "1-Lipschitz distance" in fixed["rayTestCaveat"]
           assert "does not prove inside/outside" in fixed["rayTestCaveat"]
@@ -1060,6 +1142,9 @@ jobs:
               "reducedBodyPairs":trial["strictBodyCollisionImprovementObserved"],
               "targetedWorstSourcePair":targeted["targetOriginalCutEdgePair"],
               "fixedBoundaryBodyRayEvidence":targeted["fixedBridgeBoundaryBodyRayEvidence"],
+              "sourceCutEdgeReprojectionTrial":targeted["researchOnlySourceCutEdgeReprojectionTrial"],
+              "positiveNormalOffsetSweep":source_offset["positiveNormalOffsetSweepMm"],
+              "jointSampledTargetObserved":source_offset["jointSampledTargetObserved"],
               "targetedEqualTopologyVariants":variants,
               "targetedLowestContactAreaDirection":targeted["lowestContactAreaDirection"],
               "targetedContactAreaImprovementObserved":targeted["strictContactAreaImprovementObserved"],
