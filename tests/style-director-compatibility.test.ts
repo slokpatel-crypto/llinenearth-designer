@@ -1270,3 +1270,21 @@ test("unknown saved trouser pleat IDs require review without changing the locked
   assert.ok(!styleDirectorConstructionIssues(spec({}, { type: "pleated_trouser", pleat: "single_pleat_forward" }))
     .some(issue => issue.code === "unknown_trouser_pleat_option"));
 });
+
+test("optional pleat language is neutral rather than a positive construction request", () => {
+  for (const wording of [
+    "Pleats optional",
+    "Pleats are optional",
+    "Pleats are not required",
+    "Pleating is not mandatory",
+    "Pleat not necessary",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), null, wording);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", wording), [], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "flat_front" }), [], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "single_pleat_forward" }), [], wording);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Pleats optional, single pleat requested"), "pleated");
+  assert.equal(styleDirectorCandidateTrouserFront("Pleats optional, flat-front trouser"), "flat_front");
+  assert.equal(styleDirectorCandidateTrouserFront("Pleats forbidden"), "flat_front");
+});
