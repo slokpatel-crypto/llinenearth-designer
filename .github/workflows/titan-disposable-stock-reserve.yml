@@ -1,0 +1,44 @@
+name: TITAN disposable PostgreSQL stock RPC smoke
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/fixtures/stock-reserve-disposable-*.sql'
+      - '.github/workflows/titan-disposable-stock-reserve.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  disposable-stock-rpc:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: disposable-only
+          POSTGRES_DB: titan_disposable
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d titan_disposable"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: disposable-only
+      PGDATABASE: titan_disposable
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Apply disposable fixture, final forward-only function, and assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/fixtures/stock-reserve-disposable-postgres.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20261104134500_restore_stock_reservation_identity_gate.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/fixtures/stock-reserve-disposable-assertions.sql
+      - name: Explicit limitation
+        run: echo "This verifies one forward RPC against a disposable schema; NOT full historical migration replay, two-session contention, or staging approval."
