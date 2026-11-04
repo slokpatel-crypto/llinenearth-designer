@@ -3,7 +3,7 @@ on:
   pull_request:
     paths:
       - 'supabase/migrations/**'
-      - 'scripts/fixtures/stock-reserve-disposable-*.sql'
+      - 'scripts/fixtures/stock-reserve-disposable-*'
       - '.github/workflows/titan-disposable-stock-reserve.yml'
   workflow_dispatch:
 permissions:
@@ -40,5 +40,5 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f scripts/fixtures/stock-reserve-disposable-postgres.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20261104134500_restore_stock_reservation_identity_gate.sql
           psql -X -v ON_ERROR_STOP=1 -f scripts/fixtures/stock-reserve-disposable-assertions.sql
-      - name: Explicit limitation
-        run: echo "This verifies one forward RPC against a disposable schema; NOT full historical migration replay, two-session contention, or staging approval."
+      - name: Verify two independent concurrent reservation sessions\n        shell: bash\n        run: bash scripts/fixtures/stock-reserve-disposable-concurrency.sh\n      - name: Explicit limitation
+        run: echo "This verifies one forward RPC against a disposable schema; NOT full historical migration replay or staging approval; contention uses synthetic stock."
