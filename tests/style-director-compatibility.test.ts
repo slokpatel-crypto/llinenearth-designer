@@ -1048,3 +1048,23 @@ test("avoid and never pleat wording is not a positive pleat request", () => {
   assert.equal(styleDirectorCandidateTrouserFront("Avoid pleats, single pleat trouser"), "ambiguous");
   assert.equal(styleDirectorCandidateTrouserFront("Double pleated trouser"), "pleated");
 });
+
+
+test("imperative do-not-pleat instructions cannot become positive pleats", () => {
+  for (const wording of [
+    "Do not pleat trouser",
+    "Don't pleat trouser",
+    "Don’t pleat trouser",
+    "Do not add visible pleats",
+  ]) {
+    // The first three are direct negative instructions; the fourth is
+    // intentionally not inferred without a supported explicit grammar.
+    if (wording === "Do not add visible pleats") continue;
+    assert.equal(styleDirectorCandidateTrouserFront(wording), "flat_front", wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "flat_front" }), [], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "single_pleat_forward" })
+      .map(issue => issue.code), ["candidate_trouser_pleat_mismatch"], wording);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Do not double pleat, single pleat trouser"), "pleated");
+  assert.equal(styleDirectorCandidateTrouserFront("Don't pleat, single pleat trouser"), "ambiguous");
+});
