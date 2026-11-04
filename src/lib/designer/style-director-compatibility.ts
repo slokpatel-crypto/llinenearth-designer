@@ -77,7 +77,7 @@ export function styleDirectorCandidateSleeve(
 // disagree about "No Pleats" or misread "Non-Pleated" as positive pleats.
 function stripNegatedPleatWording(candidateTrouser: string) {
   return candidateTrouser.replace(
-    /\b(?:non[- ]?pleated|unpleated|pleat[- ]?free|pleatless|not\s+pleated|(?:no|without|zero)\s+(?:(?:any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}pleats?)\b/gi,
+    /\b(?:non[- ]?pleated|unpleated|pleat[- ]?free|pleatless|not\s+pleated|(?:no|without|zero)\s+(?:(?:any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(?:pleats?|pleating))\b/gi,
     "",
   );
 }
