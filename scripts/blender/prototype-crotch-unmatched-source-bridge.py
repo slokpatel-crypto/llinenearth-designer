@@ -306,11 +306,13 @@ def measure_fixed_bridge_boundary_body_rays(vertices, boundary, source_cut_edges
             start + direction * trim, direction, length - 2.0 * trim
         )
         # A ray misses parallel/tangent/nearby surfaces. Independently sample
-        # seven strict interior positions on this FIXED original edge, using
-        # the same measured scanned-body BVH. These are sampled unsigned
-        # nearest distances, not a continuous clearance certificate.
+        # seven strict interior positions plus both endpoints on this FIXED
+        # edge using the same measured scanned-body BVH. Distance to a closed
+        # surface is 1-Lipschitz, so adjacent samples give a conservative
+        # continuous upper bound for every point in the straight interval.
         nearest_samples = []
-        for fraction in (0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875):
+        proof_fractions = (0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0)
+        for fraction in proof_fractions:
             sample = start + delta * fraction
             closest_sample, normal_sample, polygon_sample, distance_sample = body_tree.find_nearest(sample)
             if (closest_sample is None or normal_sample is None
@@ -319,10 +321,32 @@ def measure_fixed_bridge_boundary_body_rays(vertices, boundary, source_cut_edges
                 raise RuntimeError("Original edge has unknown scanned-body proximity.")
             nearest_samples.append({
                 "edgeFraction": fraction,
-                "nearestBodyDistanceMm": round(distance_sample * 1000.0, 5),
+                # Round upward: proof inputs must never understate measured distance.
+                "nearestBodyDistanceMm": math.ceil(
+                    distance_sample * 1000.0 * 100000.0
+                ) / 100000.0,
                 "nearestBodyPolygonIndex": int(polygon_sample),
             })
-        sampled_distances = [v["nearestBodyDistanceMm"] for v in nearest_samples]
+        interior_samples = nearest_samples[1:-1]
+        sampled_distances = [v["nearestBodyDistanceMm"] for v in interior_samples]
+        interval_upper_bounds = []
+        for left, right in zip(nearest_samples, nearest_samples[1:]):
+            interval_length_mm = (right["edgeFraction"] - left["edgeFraction"]) * length * 1000.0
+            left_distance = left["nearestBodyDistanceMm"]
+            right_distance = right["nearestBodyDistanceMm"]
+            if abs(left_distance - right_distance) > interval_length_mm + 0.0001:
+                raise RuntimeError("Nearest-body samples violate the distance Lipschitz bound.")
+            raw_upper_bound = (left_distance + right_distance + interval_length_mm) / 2.0
+            # Round upward so serialized evidence never understates the bound.
+            upper_bound = math.ceil(raw_upper_bound * 100000.0) / 100000.0
+            interval_upper_bounds.append({
+                "startFraction": left["edgeFraction"],
+                "endFraction": right["edgeFraction"],
+                "conservativeDistanceUpperBoundMm": upper_bound,
+            })
+        continuous_upper_bound = max(
+            row["conservativeDistanceUpperBoundMm"] for row in interval_upper_bounds
+        )
         hit = location is not None
         if hit:
             if (polygon_index is None or hit_distance is None
@@ -336,7 +360,11 @@ def measure_fixed_bridge_boundary_body_rays(vertices, boundary, source_cut_edges
                          if tuple(sorted((a, b))) in original_cut_edges
                          else "experimentalConnector"),
             "edgeLengthMm": round(length * 1000.0, 4),
-            "sampledNearestBodyDistances": nearest_samples,
+            "sampledNearestBodyDistances": interior_samples,
+            "clearanceProofSamplesIncludingEndpoints": nearest_samples,
+            "clearanceProofIntervalUpperBounds": interval_upper_bounds,
+            "continuousDistanceUpperBoundMm": continuous_upper_bound,
+            "continuousWholeEdgeUnderResearchSevenMm": continuous_upper_bound < 7.0,
             "sampledMinimumBodyDistanceMm": min(sampled_distances),
             "sampledMaximumBodyDistanceMm": max(sampled_distances),
             "sampledInteriorPointsUnderResearchSevenMm": sum(
@@ -362,23 +390,33 @@ def measure_fixed_bridge_boundary_body_rays(vertices, boundary, source_cut_edges
     source_under_seven = sum(
         row["sampledInteriorPointsUnderResearchSevenMm"] for row in source_rows
     )
+    source_edges_continuously_under_seven = sum(
+        row["continuousWholeEdgeUnderResearchSevenMm"] for row in source_rows
+    )
     return {
         "boundaryEdgeCount": len(results),
         "originalSourceCutEdgeCount": 2,
         "experimentalConnectorCount": 2,
         "originalSourceCutEdgeInteriorRayHits": source_hits,
         "perBoundaryEdgeNearestBodySampleCount": 7,
+        "perBoundaryEdgeClearanceProofSampleCount": 9,
         "originalSourceEdgeSamplesUnderResearchSevenMm": source_under_seven,
         "sourceFixedBoundaryFailsSampledResearchSevenMm": source_under_seven > 0,
+        "sourceEdgesProvenContinuouslyUnderResearchSevenMm": source_edges_continuously_under_seven,
+        "allFixedSourceEdgesContinuouslyUnderResearchSevenMm": (
+            source_edges_continuously_under_seven == len(source_rows)
+        ),
         "experimentalConnectorInteriorRayHits": connector_hits,
         "boundaryEdges": results,
         "originalSourceCutEdgeHitMakesFixedBoundaryClearanceImpossible": source_hits > 0,
         "rayTestCaveat": (
             "Ray tests only strict segment-interior intersections against original body "
             "triangles; zero rays does not prove clearance, tangency, garment fit, "
-            "actual sewing allowance or physical approval. Seven strict-interior "
-            "unsigned nearest samples per edge test bounded local proximity, but "
-            "do not certify continuous boundary clearance. Experimental connectors "
+            "actual sewing allowance or physical approval. Endpoint plus seven "
+            "strict-interior unsigned nearest samples use the 1-Lipschitz distance "
+            "property only to prove a conservative continuous upper bound on each "
+            "straight fixed edge; this does not prove inside/outside, valid clearance, "
+            "cloth thickness, fit, or an acceptable replacement seam. Experimental connectors "
             "are not real source cut edges."
         ),
         "productionApproved": False,

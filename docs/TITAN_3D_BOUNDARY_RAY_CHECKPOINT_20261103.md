@@ -28,6 +28,8 @@ Report the original segment identity, edge kind, length, original-body hit flag 
 
 The same locked original-body BVH additionally supplies **seven nearest-surface samples on each boundary edge**, at interior fractions 1/8 through 7/8. Report finite per-edge sampled minimum/maximum unsigned body distance, nearest original-body triangle IDs and the number of original source-edge sample points below the **research-only 7 mm** clearance threshold. A single below-threshold original edge sample demonstrates that preserving that exact edge cannot achieve a 7 mm separation everywhere, but no collection of seven samples proves continuous clearance. These are not UV, texture, garment thickness, body-inside/outside or tailor-fit certificates.
 
+The follow-on also samples both endpoints and applies the 1-Lipschitz property of distance to a closed surface. For each adjacent pair it records `(left distance + right distance + interval length) / 2`, rounded upward, as a conservative continuous upper bound for the straight interval. If every interval bound is below 7 mm, that proves the entire fixed source edge stays within 7 mm of the locked body surface and therefore cannot be retained by a 7 mm-clearance construction. It does **not** classify points as inside/outside, establish cloth clearance, invent a replacement seam, or approve fit.
+
 If a real original cut edge has a strict interior hit, moving only the patch interior centroid cannot remove that intersection while preserving the edge unchanged. If no hit is found, **do not infer clearance**: a ray may miss tangencies, close parallel contact, cloth thickness, inter-leg intersections and the other physical fit blockers. The synthetic connector rays are never treated as approved original seam evidence.
 
 ## Acceptance conditions
@@ -35,6 +37,7 @@ If a real original cut edge has a strict interior hit, moving only the patch int
 - [x] New isolated non-export diagnostic and exact original cut-edge provenance check implemented.
 - [x] Native workflow assertions and regression guard added (not equivalent to a passing run).
 - [x] Seven-point original-body proximity sampling added to the same bounded diagnosis, with explicit uncertain-continuity caveat.
+- [x] Endpoint-inclusive Lipschitz upper-bound evidence added to turn the sampled fixed-edge rejection into a measurable continuous pass/fail test.
 - [ ] New exact-head **native Blender** workflow successfully executes the original CC0 body ray tests and uploads truthful numbers.
 - [ ] Exact-head CI, non-3D QA, Blender collision and independent source jobs pass; review all relevant logs.
 - [ ] Independent physical source pattern reconstruction, zero-intersection preflight, UV grain/scale, sewing allowances, four-angle visual proof, true textile supplier values and tailor fit approval remain **unmet**.
