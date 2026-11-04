@@ -945,3 +945,26 @@ test("negated pleat count cannot masquerade as a requested pleat count", () => {
     "No single pleats, double pleat trouser", selected.pant,
   ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
 });
+
+
+test("negated directional pleat counts do not become requested construction", () => {
+  for (const label of [
+    "No front-facing double pleats",
+    "Without any side-facing single pleat",
+    "No visible front-facing two pleats",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(label), null, label);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", label), [], label);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, { pleat: "flat_front" }), [], label);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront(
+    "No front-facing double pleats, single pleat trouser",
+  ), "pleated");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    "No front-facing double pleats, single pleat trouser",
+    { pleat: "single_pleat_forward" },
+  ), []);
+  assert.equal(styleDirectorCandidateTrouserFront(
+    "Flat-front trouser with front-facing double pleats",
+  ), "ambiguous");
+});
