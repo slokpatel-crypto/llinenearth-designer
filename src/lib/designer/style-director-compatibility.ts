@@ -87,7 +87,7 @@ export function styleDirectorCandidateTrouserFront(
 ): "flat_front" | "pleated" | "ambiguous" | null {
   const flatFront = /\bflat[- ]?front\b/i.test(candidateTrouser);
   const positiveWording = stripNegatedPleatWording(candidateTrouser).replace(
-    /\bpleats?\s+(?:are\s+)?(?:not\s+(?:allowed|permitted)|prohibited|forbidden)\b/gi,
+    /\bpleat(?:s|ing)?\s+(?:are\s+|is\s+)?(?:not\s+(?:allowed|permitted)|prohibited|forbidden)\b/gi,
     "",
   );
   const explicitlyNoPleats = positiveWording !== candidateTrouser;
