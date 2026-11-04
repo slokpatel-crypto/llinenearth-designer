@@ -40,5 +40,8 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f scripts/fixtures/stock-reserve-disposable-postgres.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20261104134500_restore_stock_reservation_identity_gate.sql
           psql -X -v ON_ERROR_STOP=1 -f scripts/fixtures/stock-reserve-disposable-assertions.sql
-      - name: Verify two independent concurrent reservation sessions\n        shell: bash\n        run: bash scripts/fixtures/stock-reserve-disposable-concurrency.sh\n      - name: Explicit limitation
+      - name: Verify two independent concurrent reservation sessions
+        shell: bash
+        run: bash scripts/fixtures/stock-reserve-disposable-concurrency.sh
+      - name: Explicit limitation
         run: echo "This verifies one forward RPC against a disposable schema; NOT full historical migration replay or staging approval; contention uses synthetic stock."
