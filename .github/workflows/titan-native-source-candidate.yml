@@ -17,6 +17,7 @@ on:
       - "scripts/blender/prototype-crotch-source-seam-weld.py"
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
+      - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -45,6 +46,7 @@ on:
       - "scripts/blender/prototype-crotch-source-seam-weld.py"
       - "scripts/blender/prototype-crotch-unmatched-source-bridge.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
+      - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -933,6 +935,87 @@ jobs:
           targeted=offset["researchOnlyTargetedSeamRerouteTrial"]
           assert targeted["testedOffsetMm"] == 7.0
           assert targeted["preservedBoundaryEdgeCount"] == 4
+          fixed=targeted["fixedBridgeBoundaryBodyRayEvidence"]
+          assert fixed["boundaryEdgeCount"] == len(fixed["boundaryEdges"]) == 4
+          assert fixed["originalSourceCutEdgeCount"] == fixed["experimentalConnectorCount"] == 2
+          source_rows=[row for row in fixed["boundaryEdges"] if row["edgeKind"] == "originalSourceCutEdge"]
+          connector_rows=[row for row in fixed["boundaryEdges"] if row["edgeKind"] == "experimentalConnector"]
+          assert len(source_rows) == len(connector_rows) == 2
+          assert fixed["perBoundaryEdgeNearestBodySampleCount"] == 7
+          assert fixed["perBoundaryEdgeClearanceProofSampleCount"] == 9
+          assert fixed["originalSourceEdgeSamplesUnderResearchSevenMm"] == sum(
+              row["sampledInteriorPointsUnderResearchSevenMm"] for row in source_rows
+          )
+          assert fixed["sourceFixedBoundaryFailsSampledResearchSevenMm"] is (
+              fixed["originalSourceEdgeSamplesUnderResearchSevenMm"] > 0
+          )
+          expected_cut_edges={tuple(sorted(pair)) for pair in (
+              targeted["targetOriginalCutEdgePair"]["leftEdge"],
+              targeted["targetOriginalCutEdgePair"]["rightEdge"],
+          )}
+          assert {tuple(sorted(row["boundaryVertexIndices"])) for row in source_rows} == expected_cut_edges
+          for row in fixed["boundaryEdges"]:
+              assert len(set(row["boundaryVertexIndices"])) == 2
+              assert math.isfinite(row["edgeLengthMm"]) and row["edgeLengthMm"] > 0
+              samples=row["sampledNearestBodyDistances"]
+              assert len(samples) == fixed["perBoundaryEdgeNearestBodySampleCount"]
+              assert [v["edgeFraction"] for v in samples] == [
+                  0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875
+              ]
+              measured=[v["nearestBodyDistanceMm"] for v in samples]
+              assert all(math.isfinite(d) and d >= 0 for d in measured)
+              assert all(type(v["nearestBodyPolygonIndex"]) is int and
+                         v["nearestBodyPolygonIndex"] >= 0 for v in samples)
+              assert row["sampledMinimumBodyDistanceMm"] == min(measured)
+              assert row["sampledMaximumBodyDistanceMm"] == max(measured)
+              assert row["sampledInteriorPointsUnderResearchSevenMm"] == sum(d < 7 for d in measured)
+              proof_samples=row["clearanceProofSamplesIncludingEndpoints"]
+              assert len(proof_samples) == fixed["perBoundaryEdgeClearanceProofSampleCount"]
+              assert [v["edgeFraction"] for v in proof_samples] == [
+                  0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0
+              ]
+              intervals=row["clearanceProofIntervalUpperBounds"]
+              assert len(intervals) == len(proof_samples) - 1
+              for interval,left,right in zip(intervals,proof_samples,proof_samples[1:]):
+                  assert interval["startFraction"] == left["edgeFraction"]
+                  assert interval["endFraction"] == right["edgeFraction"]
+                  assert math.isfinite(interval["conservativeDistanceUpperBoundMm"])
+                  assert interval["conservativeDistanceUpperBoundMm"] >= max(
+                      left["nearestBodyDistanceMm"], right["nearestBodyDistanceMm"]
+                  )
+              assert row["continuousDistanceUpperBoundMm"] == max(
+                  v["conservativeDistanceUpperBoundMm"] for v in intervals
+              )
+              assert row["continuousWholeEdgeUnderResearchSevenMm"] is (
+                  row["continuousDistanceUpperBoundMm"] < 7.0
+              )
+              assert type(row["strictInteriorRayHit"]) is bool
+              if row["strictInteriorRayHit"]:
+                  assert type(row["bodyPolygonIndex"]) is int and row["bodyPolygonIndex"] >= 0
+                  assert math.isfinite(row["firstHitDistanceFromEdgeStartMm"])
+                  assert 0 < row["firstHitDistanceFromEdgeStartMm"] < row["edgeLengthMm"]
+              else:
+                  assert row["bodyPolygonIndex"] is None
+                  assert row["firstHitDistanceFromEdgeStartMm"] is None
+          assert fixed["originalSourceCutEdgeInteriorRayHits"] == sum(
+              row["strictInteriorRayHit"] for row in source_rows
+          )
+          assert fixed["experimentalConnectorInteriorRayHits"] == sum(
+              row["strictInteriorRayHit"] for row in connector_rows
+          )
+          assert fixed["originalSourceCutEdgeHitMakesFixedBoundaryClearanceImpossible"] is (
+              fixed["originalSourceCutEdgeInteriorRayHits"] > 0
+          )
+          assert fixed["sourceEdgesProvenContinuouslyUnderResearchSevenMm"] == sum(
+              row["continuousWholeEdgeUnderResearchSevenMm"] for row in source_rows
+          )
+          assert fixed["allFixedSourceEdgesContinuouslyUnderResearchSevenMm"] is (
+              fixed["sourceEdgesProvenContinuouslyUnderResearchSevenMm"] == len(source_rows)
+          )
+          assert fixed["productionApproved"] is False
+          assert "zero rays does not prove clearance" in fixed["rayTestCaveat"]
+          assert "1-Lipschitz distance" in fixed["rayTestCaveat"]
+          assert "does not prove inside/outside" in fixed["rayTestCaveat"]
           assert len(targeted["targetSourceBoundaryVertices"]) == 4
           assert len(set(targeted["targetSourceBoundaryVertices"])) == 4
           assert targeted["targetOriginalCutEdgePair"]["originalBodyBVHPairs"] == 17
@@ -976,6 +1059,7 @@ jobs:
               "preservedCutBoundaryEdges":trial["preservedCutEdgeBoundaryCount"],
               "reducedBodyPairs":trial["strictBodyCollisionImprovementObserved"],
               "targetedWorstSourcePair":targeted["targetOriginalCutEdgePair"],
+              "fixedBoundaryBodyRayEvidence":targeted["fixedBridgeBoundaryBodyRayEvidence"],
               "targetedEqualTopologyVariants":variants,
               "targetedLowestContactAreaDirection":targeted["lowestContactAreaDirection"],
               "targetedContactAreaImprovementObserved":targeted["strictContactAreaImprovementObserved"],

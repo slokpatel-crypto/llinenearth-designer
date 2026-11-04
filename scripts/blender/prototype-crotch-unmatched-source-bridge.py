@@ -269,7 +269,161 @@ def ordered_triangle_patch_boundary(faces):
     return cycle, {tuple(sorted(edge)) for edge in open_edges}
 
 
-def trial_targeted_seam_reroute(vertices, target_faces, body_tree, research, geom_ops, offset_mm):
+
+def measure_fixed_bridge_boundary_body_rays(vertices, boundary, source_cut_edges, body_tree):
+    """Intersect immutable research-patch boundary edges with the ORIGINAL body.
+
+    Ray hits on unchanged source cut edges cannot be removed by moving only
+    interior fan centroids. Connector edges were invented by this experiment
+    and MUST NOT be presented as approved original sewing lines. Ray misses
+    do not demonstrate a valid clearance (tangency/near-contact unmeasured).
+    """
+    if len(boundary) != 4 or len(set(boundary)) != 4:
+        raise RuntimeError("Expected four unique actual bridge boundary vertices.")
+    patch_edges = {
+        tuple(sorted((boundary[i], boundary[(i + 1) % 4])))
+        for i in range(4)
+    }
+    original_cut_edges = {tuple(sorted(edge)) for edge in source_cut_edges}
+    if len(patch_edges) != 4 or len(original_cut_edges) != 2:
+        raise RuntimeError("Must distinguish two real cut edges from two research connectors.")
+    if not original_cut_edges.issubset(patch_edges):
+        raise RuntimeError("Original cut edges do not match the actual research patch boundary.")
+    results = []
+    for i in range(4):
+        a, b = boundary[i], boundary[(i + 1) % 4]
+        start, end = vertices[a], vertices[b]
+        delta = end - start
+        length = delta.length
+        if (not math.isfinite(length) or length <= 1e-8
+                or not all(math.isfinite(v) for v in (*start, *end))):
+            raise RuntimeError("Actual source boundary segment is nonfinite or degenerate.")
+        direction = delta.normalized()
+        # Exclude the end-point 0.01mm interval: report only genuine interior
+        # ray/triangle hits, not surface contact at a shared source vertex.
+        trim = min(1e-5, length / 4.0)
+        location, normal, polygon_index, hit_distance = body_tree.ray_cast(
+            start + direction * trim, direction, length - 2.0 * trim
+        )
+        # A ray misses parallel/tangent/nearby surfaces. Independently sample
+        # seven strict interior positions plus both endpoints on this FIXED
+        # edge using the same measured scanned-body BVH. Distance to a closed
+        # surface is 1-Lipschitz, so adjacent samples give a conservative
+        # continuous upper bound for every point in the straight interval.
+        nearest_samples = []
+        proof_fractions = (0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0)
+        for fraction in proof_fractions:
+            sample = start + delta * fraction
+            closest_sample, normal_sample, polygon_sample, distance_sample = body_tree.find_nearest(sample)
+            if (closest_sample is None or normal_sample is None
+                    or polygon_sample is None or distance_sample is None
+                    or not math.isfinite(distance_sample) or distance_sample < 0):
+                raise RuntimeError("Original edge has unknown scanned-body proximity.")
+            nearest_samples.append({
+                "edgeFraction": fraction,
+                # Round upward: proof inputs must never understate measured distance.
+                "nearestBodyDistanceMm": math.ceil(
+                    distance_sample * 1000.0 * 100000.0
+                ) / 100000.0,
+                "nearestBodyPolygonIndex": int(polygon_sample),
+            })
+        interior_samples = nearest_samples[1:-1]
+        sampled_distances = [v["nearestBodyDistanceMm"] for v in interior_samples]
+        interval_upper_bounds = []
+        for left, right in zip(nearest_samples, nearest_samples[1:]):
+            interval_length_mm = (right["edgeFraction"] - left["edgeFraction"]) * length * 1000.0
+            left_distance = left["nearestBodyDistanceMm"]
+            right_distance = right["nearestBodyDistanceMm"]
+            if abs(left_distance - right_distance) > interval_length_mm + 0.0001:
+                raise RuntimeError("Nearest-body samples violate the distance Lipschitz bound.")
+            raw_upper_bound = (left_distance + right_distance + interval_length_mm) / 2.0
+            # Round upward so serialized evidence never understates the bound.
+            upper_bound = math.ceil(raw_upper_bound * 100000.0) / 100000.0
+            interval_upper_bounds.append({
+                "startFraction": left["edgeFraction"],
+                "endFraction": right["edgeFraction"],
+                "conservativeDistanceUpperBoundMm": upper_bound,
+            })
+        continuous_upper_bound = max(
+            row["conservativeDistanceUpperBoundMm"] for row in interval_upper_bounds
+        )
+        hit = location is not None
+        if hit:
+            if (polygon_index is None or hit_distance is None
+                    or not math.isfinite(hit_distance)
+                    or hit_distance < 0 or hit_distance > length - 2.0 * trim + 1e-7
+                    or not all(math.isfinite(v) for v in location)):
+                raise RuntimeError("Original scanned-body boundary ray hit is invalid.")
+        results.append({
+            "boundaryVertexIndices": [a, b],
+            "edgeKind": ("originalSourceCutEdge"
+                         if tuple(sorted((a, b))) in original_cut_edges
+                         else "experimentalConnector"),
+            "edgeLengthMm": round(length * 1000.0, 4),
+            "sampledNearestBodyDistances": interior_samples,
+            "clearanceProofSamplesIncludingEndpoints": nearest_samples,
+            "clearanceProofIntervalUpperBounds": interval_upper_bounds,
+            "continuousDistanceUpperBoundMm": continuous_upper_bound,
+            "continuousWholeEdgeUnderResearchSevenMm": continuous_upper_bound < 7.0,
+            "sampledMinimumBodyDistanceMm": min(sampled_distances),
+            "sampledMaximumBodyDistanceMm": max(sampled_distances),
+            "sampledInteriorPointsUnderResearchSevenMm": sum(
+                distance < 7.0 for distance in sampled_distances
+            ),
+            "strictInteriorRayHit": hit,
+            "bodyPolygonIndex": int(polygon_index) if hit else None,
+            "firstHitDistanceFromEdgeStartMm": (
+                round((trim + hit_distance) * 1000.0, 4) if hit else None
+            ),
+        })
+    source_hits = sum(
+        row["strictInteriorRayHit"] for row in results
+        if row["edgeKind"] == "originalSourceCutEdge"
+    )
+    connector_hits = sum(
+        row["strictInteriorRayHit"] for row in results
+        if row["edgeKind"] == "experimentalConnector"
+    )
+    if sum(row["edgeKind"] == "originalSourceCutEdge" for row in results) != 2:
+        raise RuntimeError("Lost one of the two real source cut boundary segments.")
+    source_rows = [row for row in results if row["edgeKind"] == "originalSourceCutEdge"]
+    source_under_seven = sum(
+        row["sampledInteriorPointsUnderResearchSevenMm"] for row in source_rows
+    )
+    source_edges_continuously_under_seven = sum(
+        row["continuousWholeEdgeUnderResearchSevenMm"] for row in source_rows
+    )
+    return {
+        "boundaryEdgeCount": len(results),
+        "originalSourceCutEdgeCount": 2,
+        "experimentalConnectorCount": 2,
+        "originalSourceCutEdgeInteriorRayHits": source_hits,
+        "perBoundaryEdgeNearestBodySampleCount": 7,
+        "perBoundaryEdgeClearanceProofSampleCount": 9,
+        "originalSourceEdgeSamplesUnderResearchSevenMm": source_under_seven,
+        "sourceFixedBoundaryFailsSampledResearchSevenMm": source_under_seven > 0,
+        "sourceEdgesProvenContinuouslyUnderResearchSevenMm": source_edges_continuously_under_seven,
+        "allFixedSourceEdgesContinuouslyUnderResearchSevenMm": (
+            source_edges_continuously_under_seven == len(source_rows)
+        ),
+        "experimentalConnectorInteriorRayHits": connector_hits,
+        "boundaryEdges": results,
+        "originalSourceCutEdgeHitMakesFixedBoundaryClearanceImpossible": source_hits > 0,
+        "rayTestCaveat": (
+            "Ray tests only strict segment-interior intersections against original body "
+            "triangles; zero rays does not prove clearance, tangency, garment fit, "
+            "actual sewing allowance or physical approval. Endpoint plus seven "
+            "strict-interior unsigned nearest samples use the 1-Lipschitz distance "
+            "property only to prove a conservative continuous upper bound on each "
+            "straight fixed edge; this does not prove inside/outside, valid clearance, "
+            "cloth thickness, fit, or an acceptable replacement seam. Experimental connectors "
+            "are not real source cut edges."
+        ),
+        "productionApproved": False,
+    }
+
+
+def trial_targeted_seam_reroute(vertices, target_faces, body_tree, research, geom_ops, offset_mm, source_cut_edges):
     """Measure both signs of the real body normal on only the worst source seam.
 
     Body-normal orientation is not trusted. Positive and negative candidates
@@ -279,6 +433,9 @@ def trial_targeted_seam_reroute(vertices, target_faces, body_tree, research, geo
     if offset_mm != 7.0:
         raise RuntimeError("Only the measured 7mm targeted seam trial is supported.")
     boundary, original_boundary = ordered_triangle_patch_boundary(target_faces)
+    fixed_boundary_ray_evidence = measure_fixed_bridge_boundary_body_rays(
+        vertices, boundary, source_cut_edges, body_tree
+    )
     centre = sum((vertices[i] for i in boundary), vertices[boundary[0]].copy() * 0.0) / 4.0
     closest, normal, body_polygon, distance = body_tree.find_nearest(centre)
     if (closest is None or normal is None or body_polygon is None or distance is None
@@ -356,6 +513,7 @@ def trial_targeted_seam_reroute(vertices, target_faces, body_tree, research, geo
         "testedOffsetMm": offset_mm,
         "targetSourceBoundaryVertices": boundary,
         "preservedBoundaryEdgeCount": len(original_boundary),
+        "fixedBridgeBoundaryBodyRayEvidence": fixed_boundary_ray_evidence,
         "nearestBodyPolygonIndex": int(body_polygon),
         "originalCentreNearestBodyDistanceMm": round(distance * 1000.0, 4),
         "equalTopologyVariants": measured,
@@ -548,6 +706,7 @@ def main():
             research,
             geom_ops,
             args.experimental_centroid_clearance_mm,
+            (tuple(worst["leftEdge"]), tuple(worst["rightEdge"])),
         )
         targeted_reroute_trial["targetOriginalCutEdgePair"] = worst
     # If the trial is worse, preserve that number. Never auto-promote geometry.
