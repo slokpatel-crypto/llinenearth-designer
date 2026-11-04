@@ -180,7 +180,7 @@ export function styleDirectorCandidateFrontConstructionIssues(
   const expectedDirection = requestsForward !== requestsReverse
     ? requestsForward ? "forward" : "reverse" : null;
   const declaredDirection = pleatOption?.parameters.pleatDirection;
-  if ((front === "pleated" && pant.pleat === "flat_front") ||
+  // Unknown/stale option IDs cannot certify construction even when the\n  // candidate merely says "pleated" without specifying count or direction.\n  if ((front !== null && front !== "ambiguous" && !pleatOption) ||\n      (front === "pleated" && pant.pleat === "flat_front") ||
       (front === "flat_front" && pant.pleat !== "flat_front") ||
       (expectedCount !== null && declaredCount !== expectedCount) ||
       (front === "pleated" && requestsSingle && requestsDouble) ||
