@@ -1161,3 +1161,31 @@ test("explicit pleat bans never become positive construction requests", () => {
   assert.equal(styleDirectorCandidateTrouserFront("Single pleat trousers"), "pleated",
     "positive pleat wording must still be interpreted as a request");
 });
+
+
+test("cannot-be-used pleat prohibitions stay flat-front and fail closed against pleated specs", () => {
+  for (const label of [
+    "Pleats cannot be used",
+    "Pleating can't be added",
+    "Pleats can’t be included",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(label), "flat_front", label);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", label), [], label);
+    assert.deepEqual(
+      styleDirectorCandidateFrontConstructionIssues(label, { pleat: "single_pleat_forward" })
+        .map(issue => issue.code),
+      ["candidate_trouser_pleat_mismatch"],
+      label,
+    );
+    assert.deepEqual(
+      styleDirectorCandidateFrontConstructionIssues(label, { pleat: "flat_front" }),
+      [],
+      label,
+    );
+  }
+  assert.equal(
+    styleDirectorCandidateTrouserFront("Pleats cannot be used but add a single pleat"),
+    "ambiguous",
+    "a later positive instruction must not override an explicit prohibition",
+  );
+});
