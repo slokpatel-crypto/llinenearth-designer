@@ -1257,3 +1257,16 @@ test("shall-not pleat instructions fail closed without rewriting selected constr
   }
   assert.equal(styleDirectorCandidateTrouserFront("Single pleat requested"), "pleated");
 });
+
+test("unknown saved trouser pleat IDs require review without changing the locked design", () => {
+  for (const type of ["pleated_trouser", "formal_flat_front", "cropped_ankle"]) {
+    const selected = spec({}, { type, pleat: "obsolete_pleat_id", break: "no_break", hem: "cropped_above_ankle_hem" });
+    const before = JSON.stringify(selected);
+    const issues = styleDirectorConstructionIssues(selected).map(issue => issue.code);
+    assert.ok(issues.includes("unknown_trouser_pleat_option"), type);
+    assert.deepEqual(styleDirectorConstructionIssues(selected).map(issue => issue.code), issues);
+    assert.equal(JSON.stringify(selected), before);
+  }
+  assert.ok(!styleDirectorConstructionIssues(spec({}, { type: "pleated_trouser", pleat: "single_pleat_forward" }))
+    .some(issue => issue.code === "unknown_trouser_pleat_option"));
+});
