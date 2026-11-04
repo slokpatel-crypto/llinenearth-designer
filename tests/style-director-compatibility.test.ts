@@ -1206,3 +1206,18 @@ test("passive pleat prohibitions remain flat-front instructions", () => {
   }
   assert.equal(styleDirectorCandidateTrouserFront("Single pleat trouser"), "pleated");
 });
+
+
+test("unknown pleat option cannot certify a named trouser front", () => {
+  for (const label of ["Pleated Trouser", "Flat-Front Trouser", "Single Pleat Trouser"]) {
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+      label, { pleat: "retired_pleat_option" as never },
+    ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"], label);
+  }
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    "Wide-Leg Trouser", { pleat: "retired_pleat_option" as never },
+  ), [], "an unspecified front must not imply verified pleat construction");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    "Pleated Trouser", { pleat: "single_pleat_forward" },
+  ), [], "a valid canonical pleat remains compatible");
+});
