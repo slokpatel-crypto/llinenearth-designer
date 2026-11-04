@@ -110,7 +110,7 @@ export type DirectorConstructionIssue = {
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
     "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "legacy_trouser_mismatch" |
     "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch" |
-    "candidate_trouser_pleat_mismatch" | "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
+    "candidate_trouser_pleat_mismatch" | "unknown_trouser_pleat_option" | "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
   explanation: string;
 };
 
@@ -263,6 +263,14 @@ export function styleDirectorConstructionIssues(
     issues.push({
       code: "full_sleeve_open_hem_cuff",
       explanation: "An open short-sleeve hem is paired with a non-short sleeve; confirm the sleeve finish.",
+    });
+  }
+  // A stale or fabricated pleat ID must not pass construction review merely
+  // because it differs from flat_front. Keep the saved ID unchanged.
+  if (!optionsFor("pant.pleat").some(option => option.id === pant.pleat)) {
+    issues.push({
+      code: "unknown_trouser_pleat_option",
+      explanation: "The selected trouser pleat ID is not in the versioned option catalogue; confirm its construction before production.",
     });
   }
   if (pant.type === "pleated_trouser" && pant.pleat === "flat_front") {
