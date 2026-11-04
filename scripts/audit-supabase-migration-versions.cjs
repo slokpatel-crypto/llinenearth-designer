@@ -106,7 +106,7 @@ function checkAgainstBaseline(paths, baseline) {
 function activeReserveBody(sql) {
   const uncommented = sql.replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/--[^\n]*/g, "");
-  const definitions = [...uncommented.matchAll(/\bcreate\s+(?:or\s+replace\s+)?function\s+public\.fabric_stock_reserve_v2\s*\(/gi)];
+  const definitions = [...uncommented.matchAll(/\bcreate\s+(?:or\s+replace\s+)?function\s+(?:public|"public")\s*\.\s*(?:fabric_stock_reserve_v2|"fabric_stock_reserve_v2")\s*\(/gi)];
   if (!definitions.length) return null;
   const last = uncommented.slice(definitions.at(-1).index);
   const match = /\bas\s+(\$[a-zA-Z0-9_]*\$)([\s\S]*?)\1/i.exec(last);
