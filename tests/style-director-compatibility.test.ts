@@ -1108,3 +1108,22 @@ test("article-qualified negative pleats remain flat-front without losing positiv
   assert.equal(styleDirectorCandidateTrouserFront("Without a pleat, single pleat trouser"), "ambiguous");
   assert.equal(styleDirectorCandidateTrouserFront("A single pleat trouser"), "pleated");
 });
+
+
+test("article-qualified negative pleat counts never become positive construction", () => {
+  for (const label of [
+    "Trouser without a single pleat",
+    "Trouser without any single pleat",
+    "Trouser without a double pleat",
+    "Trouser with no a single pleat",
+  ]) {
+    assert.notEqual(styleDirectorCandidateTrouserFront(label), "pleated", label);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", label), [], label);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, { pleat: "flat_front" }), [], label);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Without a double pleat, single pleat trouser"), "pleated");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    "Without a double pleat, single pleat trouser",
+    { pleat: "single_pleat_forward" },
+  ), []);
+});
