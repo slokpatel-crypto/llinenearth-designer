@@ -968,3 +968,13 @@ test("negated directional pleat counts do not become requested construction", ()
     "Flat-front trouser with front-facing double pleats",
   ), "ambiguous");
 });
+
+
+test("explicit not-pleated candidate wording remains flat-front intent", () => {
+  for (const label of ["Not Pleated Trouser", "Flat Front Not Pleated Trouser"]) {
+    assert.equal(styleDirectorCandidateTrouserFront(label), "flat_front");
+    assert.deepEqual(styleDirectorCandidateWordingIssues("", label), []);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Not Pleated, Single Pleat Trouser"), "ambiguous");
+  assert.equal(styleDirectorCandidateTrouserFront("Pleated Trouser"), "pleated");
+});
