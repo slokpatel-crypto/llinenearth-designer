@@ -1021,3 +1021,16 @@ test("negated pleating wording is flat-front intent, not a positive pleat reques
   assert.equal(styleDirectorCandidateTrouserFront("No double pleating trouser"), null,
     "negating a specific pleat count is not permission to claim flat-front construction");
 });
+
+test("negated pleated adjective with an article cannot create a pleat request", () => {
+  for (const label of ["Not a Pleated Trouser", "Flat Front, Not a Pleated Trouser"]) {
+    assert.equal(styleDirectorCandidateTrouserFront(label), "flat_front", label);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("", label), [], label);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, { pleat: "flat_front" }), [], label);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(label, { pleat: "single_pleat_forward" })
+      .map(issue => issue.code), ["candidate_trouser_pleat_mismatch"], label);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Not a Pleated Trouser, Single Pleat Requested"), "ambiguous");
+  assert.equal(styleDirectorCandidateTrouserFront("Not Double Pleated Trouser"), null,
+    "count-specific negation must not be promoted to flat-front");
+});
