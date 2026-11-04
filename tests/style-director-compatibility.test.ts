@@ -1246,3 +1246,14 @@ test("never-be-used pleat instructions require flat-front without changing canon
   }
   assert.equal(styleDirectorCandidateTrouserFront("Single pleat trouser"), "pleated");
 });
+
+test("shall-not pleat instructions fail closed without rewriting selected construction", () => {
+  for (const phrase of ["Pleats shall not be used", "Pleating shall never be added"]) {
+    assert.equal(styleDirectorCandidateTrouserFront(phrase), "flat_front");
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(phrase, { pleat: "flat_front" }), []);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(phrase, { pleat: "single_pleat_forward" }).map(issue => issue.code),
+      ["candidate_trouser_pleat_mismatch"]);
+    assert.equal(styleDirectorCandidateTrouserFront(phrase + " with single pleat"), "ambiguous");
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Single pleat requested"), "pleated");
+});
