@@ -113,3 +113,10 @@
 - The schema is **candidate-only**: its value fingerprint and reviewer metadata are *not cryptographic signatures*. An integration must pass approvals from an authenticated, separately controlled review ledger rather than supplier-provided JSON. Neither data nor tests invent real certificates or reviewer signoff.
 - Before this checkpoint's documentation commit: initial code commits `6651e72a0e50cf2085b778b8bc806071973de75f` and `2ca4d783adf7a441b8227b66cfb13327240c533f`. Full exact-head GitHub CI and Non-3D QA must be checked after the final checkpoint commit; do not transfer prior `029180d` green results to these changes.
 - Remaining blockers: no independent real roll/swatch GSM, fibre composition, weave, Lea/yarn, width, calibrated warp/weft repeat and grain photographs; no approved owner-label benchmark or authenticated reviewer ledger integration. Keep **DRAFT / UNMERGED / NO VERCEL DEPLOYMENT**.
+
+### 2026-11-05 follow-up — cross-base approval replay blocked
+
+- Each candidate physical claim now requires an exact `baseId`; this identity is included in the canonical claim snapshot reviewed by the independent approval ledger.
+- The pure family resolver rejects claims for any other base even when variant/lot IDs, supplier receipt and review payload otherwise match. Added negative regression covering both unchanged receipt replay and altered claim identity.
+- Code commits `73d6fc018bb8af418af2b532f9e8b46582fe9cdf` and `50861c2918bbab097e086576c5019505865350a8`. Latest exact-head full CI and Non-3D QA must re-run after this checkpoint update; earlier `585c9ec` runs are not sufficient.
+- Scope remains pure fabric library, dedicated tests and checkpoint documentation only. No physical evidence, authenticated review infrastructure, merge or deployment inferred.
