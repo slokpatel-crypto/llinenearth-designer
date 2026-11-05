@@ -1,0 +1,27 @@
+name: TITAN read-only staging manifest reconciliation
+on:
+  pull_request:
+    paths:
+      - 'scripts/reconcile_migration_manifest.py'
+      - 'scripts/test_reconcile_migration_manifest.py'
+      - 'scripts/report_migration_history.py'
+      - '.github/workflows/titan-staging-manifest.yml'
+  workflow_dispatch:
+jobs:
+  synthetic-staging-manifest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify synthetic staging manifest mismatch rejection
+        run: python -m unittest scripts.test_reconcile_migration_manifest -v
+      - name: Verify missing staging evidence fails closed
+        run: |
+          if python scripts/reconcile_migration_manifest.py /tmp/titan-staging-manifest-not-provided.json; then
+            echo "ERROR: missing staging manifest was accepted"
+            exit 1
+          fi
