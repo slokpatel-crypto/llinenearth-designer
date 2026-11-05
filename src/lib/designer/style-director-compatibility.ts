@@ -188,8 +188,14 @@ export function styleDirectorCandidateFrontConstructionIssues(
   const declaredCount = pleatOption?.parameters.pleatCount;
   // The option catalogue also distinguishes forward/reverse pleat direction.
   // Do not silently substitute one for the other in tailoring instructions.
-  const requestsForward = front === "pleated" && /\bforward\b/i.test(positiveWording);
-  const requestsReverse = front === "pleated" && /\breverse\b/i.test(positiveWording);
+  // A prohibited direction is not a requested direction. Preserve positive
+  // direction instructions elsewhere (e.g. "no reverse pleats; forward pleats").
+  const directionWording = positiveWording.replace(
+    /\b(?:no|without|avoid|never|do\s+not|don[\x27’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:forward|reverse)[ -]?pleats?\b/gi,
+    "",
+  );
+  const requestsForward = front === "pleated" && /\bforward\b/i.test(directionWording);
+  const requestsReverse = front === "pleated" && /\breverse\b/i.test(directionWording);
   const expectedDirection = requestsForward !== requestsReverse
     ? requestsForward ? "forward" : "reverse" : null;
   const declaredDirection = pleatOption?.parameters.pleatDirection;
