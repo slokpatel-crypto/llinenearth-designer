@@ -129,3 +129,24 @@ test("actual Style Director avoids fabricating a paired model without both stock
     shirt, { ...pant, inStock: false },
   ]), [], "out-of-stock hero suiting must not be recommended");
 });
+
+
+test("Style Director returns no fabricated recommendations for an empty or unavailable catalogue", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"),
+    import("@/lib/style-director-agent"),
+  ]);
+  const answers = {
+    occasion: "Travel" as const, mood: "Relaxed" as const,
+    time: "Day" as const, climate: "Hot" as const,
+    garment: "shirt" as const, colorDirection: "Surprise me" as const,
+  };
+  assert.deepEqual(createStyleDirectorLooks(answers, []), [],
+    "an empty catalogue must not fall back to default production stock");
+  const unavailable = FABRIC_STOCK.map(fabric => ({ ...fabric, inStock: false }));
+  const before = JSON.stringify(unavailable);
+  assert.deepEqual(createStyleDirectorLooks(answers, unavailable), [],
+    "unavailable fabrics must never produce a recommended look");
+  assert.equal(JSON.stringify(unavailable), before,
+    "a rejected catalogue must remain unchanged");
+});
