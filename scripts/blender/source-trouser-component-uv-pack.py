@@ -45,14 +45,17 @@ def pack_original_source_uv_face_components(
                 raise ValueError("Research source UV component has inverted triangle.")
         normalized.append(uv)
         for i in range(4):
-            edge = tuple(sorted((face[i], face[(i + 1) % 4])))
-            owner[edge].append(face_id)
+            a, b = face[i], face[(i + 1) % 4]
+            edge = (min(a, b), max(a, b))
+            owner[edge].append((face_id, (a, b) == edge))
     if any(len(rows) > 2 for rows in owner.values()):
         raise ValueError("Nonmanifold original source shared edge in UV packing.")
     adjacency = [[] for _ in normalized]
     for owners in owner.values():
         if len(owners) == 2:
-            a, b = owners
+            (a, winding_a), (b, winding_b) = owners
+            if winding_a == winding_b:
+                raise ValueError("Original source face adjacency has inconsistent seam winding.")
             adjacency[a].append(b)
             adjacency[b].append(a)
     for neighbors in adjacency:
