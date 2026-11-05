@@ -19,6 +19,9 @@ test("original scanned-source UV overlap audit preserves bounded and non-product
     '"completeGarmentUvOverlapFreeApproved": False',
     '"physicalSourceFitApproved": False',
     '"productionApproved": False',
+    "def compare_original_source_uv_overlap_evidence(",
+    '"candidateWorsenedRealUvInteriorOverlap": (delta > 0) if both_complete else None',
+    '"bothFullResearchUvScansComplete": both_complete',
   ])assert.ok(pure.includes(key),key);
   for(const key of [
     'Path(__file__).with_name("source-trouser-uv-overlap-audit.py")',
@@ -27,6 +30,7 @@ test("original scanned-source UV overlap audit preserves bounded and non-product
     '"researchOnlyOriginalSourceUvOverlapEvidence"] = weighted_overlap',
     '"researchOnlyOriginalSourceUvOverlapEvidence"] = branch_overlap',
     '"completeGarmentUvOverlapFreeApproved"',
+    '"researchOnlyOriginalSourceUvOverlapComparison"] = uv_overlap_ops[',
   ])assert.ok(driver.includes(key),key);
   for(const key of [
     'python3 tests/python/test_source_trouser_uv_overlap.py',
@@ -34,6 +38,8 @@ test("original scanned-source UV overlap audit preserves bounded and non-product
     'branch["researchOnlyOriginalSourceUvOverlapEvidence"]',
     'overlap["auditTruncated"]',
     'assert overlap["productionApproved"] is False',
+    'comparison=branch["researchOnlyOriginalSourceUvOverlapComparison"]',
+    'assert comparison["candidateWorsenedRealUvInteriorOverlap"] is True',
   ])assert.ok(workflow.includes(key),key);
   for(const key of [
     'assert baseline["observedInteriorOverlapTrianglePairsLowerBound"] == 0',
@@ -41,6 +47,8 @@ test("original scanned-source UV overlap audit preserves bounded and non-product
     'assert bounded["auditTruncated"] is True',
     'assert bounded["canClaimNoInteriorOverlapInThisUvLayout"] is False',
     "rejects(faces, inverted)",
+    'assert unknown["candidateOverlapTrianglePairDelta"] is None',
+    "reject_comparison(baseline, forged)",
   ])assert.ok(fixture.includes(key),key);
   for(const key of [
     '"scripts/blender/source-trouser-uv-overlap-audit.py"',
