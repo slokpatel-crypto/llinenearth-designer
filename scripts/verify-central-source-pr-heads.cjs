@@ -67,6 +67,78 @@ async function verifyLiveSourceHeads(manifest, repository, getJson) {
   return { prCount: sources.length, changedFileEntries: files };
 }
 
+// The source-file manifest also defines the expected *complete* central PR
+// intake. Detect an added integration file not covered by a pinned blob before
+// accepting the central branch. This queries only read-only GitHub PR metadata.
+async function verifyCentralIntake(manifest, repository, getJson) {
+  assert.match(repository, /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, "Expected owner/repo");
+  assert.ok(shaPattern.test(manifest.central_base_commit), "Invalid central integration head");
+  assert.ok(Array.isArray(manifest.source_prs) &&
+    Array.isArray(manifest.selective_source_imports), "Missing source inventories");
+  assert.ok(manifest.central_only_files && !Array.isArray(manifest.central_only_files) &&
+    typeof manifest.central_only_files === "object", "Missing central-only inventory");
+  const exceptions = manifest.intentionally_combined;
+  assert.ok(exceptions && !Array.isArray(exceptions) && typeof exceptions === "object",
+    "Missing reviewed workflow exceptions");
+
+  const expected = new Map();
+  for (const source of [...manifest.source_prs, ...manifest.selective_source_imports]) {
+    for (const [path, sourceSha] of Object.entries(source.files)) {
+      const blob = Object.hasOwn(exceptions, path)
+        ? exceptions[path].integrated_blob_sha : sourceSha;
+      assert.ok(shaPattern.test(blob), "Invalid integrated blob SHA: " + path);
+      if (expected.has(path)) {
+        assert.equal(expected.get(path), blob,
+          "Conflicting central source file without reviewed workflow reconciliation: " + path);
+      } else expected.set(path, blob);
+    }
+  }
+  for (const [path, blob] of Object.entries(manifest.central_only_files)) {
+    assert.ok(!expected.has(path), "Central-only path overlaps worker import: " + path);
+    assert.ok(shaPattern.test(blob), "Invalid central-only integrated blob: " + path);
+    expected.set(path, blob);
+  }
+  for (const path of Object.keys(exceptions)) {
+    assert.ok(expected.has(path), "Orphan central workflow exception: " + path);
+  }
+
+  const prefix = "/repos/" + repository + "/pulls/881";
+  const central = await getJson(prefix);
+  assert.ok(central && central.state === "open" && central.draft === true,
+    "Central PR #881 must remain open and draft");
+  assert.equal(central.head?.sha, manifest.central_base_commit,
+    "Central PR #881 head changed; review and repin complete intake");
+  assert.equal(central.head?.repo?.full_name, repository,
+    "Central PR #881 must originate from this repository");
+  assert.equal(central.base?.ref, "main",
+    "Central PR #881 must target main without an unreviewed rebase");
+
+  const actual = new Map();
+  let page = 1;
+  while (true) {
+    assert.ok(page <= 50, "Central PR file pagination exceeded limit");
+    const batch = await getJson(prefix + "/files?per_page=100&page=" + page);
+    assert.ok(Array.isArray(batch) && batch.length <= 100,
+      "Malformed central PR changed-file response");
+    for (const item of batch) {
+      assert.ok(item && typeof item.filename === "string" &&
+        shaPattern.test(item.sha || ""), "Malformed central PR file metadata");
+      assert.ok(!actual.has(item.filename),
+        "Duplicate central PR changed-file path: " + item.filename);
+      actual.set(item.filename, item.sha);
+    }
+    if (batch.length < 100) break;
+    page++;
+  }
+  assert.equal(actual.size, expected.size,
+    "Central PR #881 file count changed; unreviewed addition or removal");
+  for (const [path, sha] of expected) {
+    assert.equal(actual.get(path), sha,
+      "Central PR #881 omitted or changed reviewed file: " + path);
+  }
+  return { changedFiles: expected.size, commit: manifest.central_base_commit };
+}
+
 async function selfTest() {
   const a = "a".repeat(40), b = "b".repeat(40), c = "c".repeat(40);
   const fixture = { source_prs: [{ pr: 11, head: a,
