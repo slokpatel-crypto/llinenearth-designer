@@ -212,6 +212,12 @@ test("locked construction version and measurement provenance must agree with exp
   legacyClaim.garmentSpec.source.styleSchemaVersion=2;
   assert.throws(()=>buildProductionHandoff(legacyClaim),/option schema provenance/);
 
+  const historicLegacy=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam],false);
+  (historicLegacy.garmentSpec.source as unknown as Record<string,unknown>).styleSchemaVersion=undefined;
+  const legacyPacket=buildProductionHandoff(historicLegacy);
+  assert.equal(legacyPacket.status,"review_required");
+  assert.ok(legacyPacket.unresolved.some(x=>x.includes("StyleSpec v2")));
+
   const noMeasurementVersion=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
   noMeasurementVersion.garmentSpec.source.measurementProfileVersion=null;
   const packet=buildProductionHandoff(noMeasurementVersion);
