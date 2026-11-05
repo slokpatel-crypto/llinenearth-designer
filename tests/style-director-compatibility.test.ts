@@ -1369,3 +1369,18 @@ test("mandatory pleat omission means flat-front, unlike optional omission", () =
   assert.equal(styleDirectorCandidateTrouserFront("Pleats may be omitted"), null);
   assert.equal(styleDirectorCandidateTrouserFront("Single pleat requested"), "pleated");
 });
+
+test("optional counted pleats do not force construction or silently change locked fronts", () => {
+  for (const wording of [
+    "Double pleats may be added",
+    "Single pleats can be included",
+    "Two pleats could be omitted",
+    "One pleat is optional",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), null, wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "flat_front" }), [], wording);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", wording), [], wording);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Double pleats required"), "pleated");
+  assert.equal(styleDirectorCandidateTrouserFront("Flat-front with double pleats required"), "ambiguous");
+});
