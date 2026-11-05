@@ -1426,3 +1426,15 @@ test("negative pleat direction constraints reject only the forbidden direction",
     );
   }
 });
+
+test("postposed pleat-direction bans reject only forbidden canonical construction", () => {
+  for (const [wording, allowed, forbidden] of [
+    ["Reverse pleats prohibited; pleated trousers", "single_pleat_forward", "single_pleat_reverse"],
+    ["Forward pleats are forbidden; single pleat trousers", "single_pleat_reverse", "single_pleat_forward"],
+    ["Reverse pleats not permitted; forward pleats required", "single_pleat_forward", "single_pleat_reverse"],
+  ] as const) {
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: allowed }), [], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: forbidden })
+      .map(issue => issue.code), ["candidate_trouser_pleat_mismatch"], wording);
+  }
+});
