@@ -207,3 +207,25 @@ test("unavailable supporting trouser is never selected when a stocked alternativ
   assert.equal(looks[0].realModel.shirtId, shirt.id);
   assert.equal(JSON.stringify(catalogue), before, "ranking must not mutate the catalogue");
 });
+
+
+test("unavailable supporting shirt is never selected when a stocked alternative exists", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const pant = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("trouser"));
+  const shirts = FABRIC_STOCK.filter(f => f.inStock && f.suitableFor.includes("shirt"));
+  assert.ok(pant && shirts.length >= 2);
+  const catalogue = [{ ...shirts[0], inStock: false }, shirts[1], pant];
+  const before = JSON.stringify(catalogue);
+  const looks = createStyleDirectorLooks({
+    occasion: "Work", mood: "Sharp", time: "Day",
+    climate: "Indoor", garment: "trouser", colorDirection: "Surprise me",
+  }, catalogue);
+  assert.equal(looks.length, 1);
+  assert.ok(looks[0].realModel, "an available supporting shirt should enable a model handoff");
+  assert.equal(looks[0].realModel.shirtId, shirts[1].id,
+    "the unavailable supporting shirt must never be used in a real-model recommendation");
+  assert.equal(looks[0].realModel.pantId, pant.id);
+  assert.equal(JSON.stringify(catalogue), before, "ranking must not mutate the catalogue");
+});
