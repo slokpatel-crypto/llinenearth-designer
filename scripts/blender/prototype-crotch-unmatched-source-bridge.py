@@ -1672,6 +1672,46 @@ def main():
         weighted_cut["totalRealGeometryOfUvCutCandidatesMm"] -
         cut_audit["totalRealGeometryOfUvCutCandidatesMm"], 5
     )
+    # Third, BOUNDED research-only face-tree selection: one exact edge
+    # exchange may sacrifice source-edge retention to avoid cut junction arms.
+    # This evaluates authentic original source quads with measured coordinates,
+    # not new 3D garments, a claimed UV unwrap, or a real tailor cut network.
+    branch_candidate = weighted_ops["select_original_source_branch_aware_uv_trial"](
+        merged_verts, base_faces, l_remaining + r_remaining_mapped,
+        branch_penalty_mm=100.0, max_candidate_edges=48,
+    )
+    branch_uv = tree_ops["connect_original_source_uv_forest"](
+        base_faces, quad_evidence["face_uv_loops"],
+        l_remaining + r_remaining_mapped,
+        preferred_tree_edges=branch_candidate["retainedOriginalSourceEdges"],
+    )
+    branch_audit = cut_audit_ops["audit_original_source_uv_cut_network"](
+        merged_verts, base_faces, branch_uv["face_uv_loops"],
+        l_remaining + r_remaining_mapped, branch_uv["report"],
+    )
+    branch_report = branch_candidate["report"]
+    if (branch_report["originalSourceQuadCount"] != 2650
+            or branch_report["originalSourceSharedEdgeCount"] != 5234
+            or branch_report["originalSourceComponentCount"] !=
+               tree_report["dualGraphComponentCount"]
+            or branch_report["retainedOriginalSourceTreeEdges"] != 2647
+            or branch_uv["report"]["verifiedTreeConnectedSharedEdges"] != 2647
+            or branch_audit["originalOpenSourceBoundaryEdges"] != 132
+            or branch_audit["unclosedSharedUvCutCandidateEdges"] !=
+               branch_uv["report"]["nonTreeCycleUnclosedUvEdges"]
+            or branch_report["candidateResearchObjectiveMm"] >
+               branch_report["baselineResearchObjectiveMm"] + 0.00002):
+        raise RuntimeError("Bounded original source UV research lost native provenance.")
+    branch_report["actualSourceUvCutNetworkEvidence"] = branch_audit
+    branch_report["actualRealSourceUvTreeEvidence"] = branch_uv["report"]
+    branch_report["actualSourceGeometryUnchanged"] = True
+    branch_report["nativeBodyContactsInvariantFromUnchangedSource"] = unchanged_source_pairs
+    branch_report["newSourceObjectSavedOrExported"] = False
+    branch_report["actualUvClosureMeasured"] = True
+    branch_report["overlapFreeUvApproved"] = False
+    branch_report["physicalSewnCrotchPatternApproved"] = False
+    seam_winding["researchOnlyBranchAwareSourceUvEvidence"] = branch_report
+
     weighted_report["originalGarmentTexelScaleAndGrainApproved"] = False
     weighted_report["physicalSewnCrotchPatternApproved"] = False
     seam_winding["researchOnlyOriginalSourceMaxRetainedUvEvidence"] = weighted_report
