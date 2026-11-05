@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import hashlib
 from collections import defaultdict
 from pathlib import Path
 import re
@@ -17,7 +18,7 @@ MIGRATION = re.compile(r"^(?P<version>(?:[0-9]{8}|[0-9]{14}))_(?P<label>[A-Za-z0
 
 def report(directory: Path) -> dict:
     findings = {"directory": str(directory), "legacy": [], "modern": [],
-                "malformed": [], "collisions": [], "missing": False}
+                "malformed": [], "collisions": [], "missing": False, "fingerprints": []}
     if not directory.is_dir():
         findings["missing"] = True
         return findings
@@ -32,6 +33,8 @@ def report(directory: Path) -> dict:
         version = match.group("version")
         findings["legacy" if len(version) == 8 else "modern"].append(path.name)
         versions[version].append(path.name)
+        findings["fingerprints"].append({"file": path.name, "version": version,
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
     findings["collisions"] = [
         {"version": version, "files": names}
         for version, names in sorted(versions.items()) if len(names) > 1
