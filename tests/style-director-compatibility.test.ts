@@ -1288,3 +1288,18 @@ test("optional pleat language is neutral rather than a positive construction req
   assert.equal(styleDirectorCandidateTrouserFront("Pleats optional, flat-front trouser"), "flat_front");
   assert.equal(styleDirectorCandidateTrouserFront("Pleats forbidden"), "flat_front");
 });
+
+test("permissive pleat wording does not mandate pleated construction", () => {
+  for (const wording of [
+    "Pleats may be added",
+    "Pleating can be used",
+    "Pleats could be included",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), null, wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "flat_front" }), [], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "single_pleat_forward" }), [], wording);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Pleats may be added, flat-front trouser"), "flat_front");
+  assert.equal(styleDirectorCandidateTrouserFront("Pleats may be added, single pleat requested"), "pleated");
+  assert.equal(styleDirectorCandidateTrouserFront("Pleats must be added"), "pleated");
+});
