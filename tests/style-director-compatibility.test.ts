@@ -1438,3 +1438,43 @@ test("postposed pleat-direction bans reject only forbidden canonical constructio
       .map(issue => issue.code), ["candidate_trouser_pleat_mismatch"], wording);
   }
 });
+
+
+test("direction-only bans do not imply any trouser front but still constrain locked pleat IDs", () => {
+  for (const [wording, allowed, forbidden] of [
+    ["Reverse pleats prohibited", "single_pleat_forward", "single_pleat_reverse"],
+    ["Forward pleats are forbidden", "single_pleat_reverse", "single_pleat_forward"],
+    ["Reverse pleats not permitted", "double_pleat_forward", "double_pleat_reverse"],
+    ["No reverse pleats", "single_pleat_forward", "single_pleat_reverse"],
+    ["Avoid forward pleats", "single_pleat_reverse", "single_pleat_forward"],
+    ["Do not use reverse pleats", "double_pleat_forward", "double_pleat_reverse"],
+  ] as const) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), null, wording);
+    const original = { pleat: forbidden };
+    const before = JSON.stringify(original);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "flat_front" }), [], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: allowed }), [], wording);
+    assert.deepEqual(
+      styleDirectorCandidateFrontConstructionIssues(wording, original).map(issue => issue.code),
+      ["candidate_trouser_pleat_mismatch"],
+      wording,
+    );
+    assert.equal(JSON.stringify(original), before, "review cannot mutate locked options");
+  }
+});
+
+test("direction-specific pleat bans do not masquerade as blanket prohibitions", () => {
+  assert.equal(styleDirectorCandidateTrouserFront(
+    "Reverse pleats prohibited; pleated trousers",
+  ), "pleated");
+  assert.equal(styleDirectorCandidateTrouserFront(
+    "Avoid reverse pleats; forward pleats required",
+  ), "pleated");
+  assert.equal(styleDirectorCandidateTrouserFront(
+    "Reverse pleats prohibited; no pleats permitted",
+  ), "flat_front");
+  assert.equal(styleDirectorCandidateTrouserFront(
+    "Reverse pleats prohibited; flat-front trousers",
+  ), "flat_front");
+  assert.equal(styleDirectorCandidateTrouserFront("Pleats prohibited"), "flat_front");
+});
