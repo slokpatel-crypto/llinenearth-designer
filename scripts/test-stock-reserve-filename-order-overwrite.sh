@@ -116,6 +116,43 @@ begin
       raise exception 'mismatched idempotency payload unexpectedly accepted';
     exception when sqlstate '22023' then null;
     end;
+    -- Same idempotency key with a different locked revision must not reuse
+    -- the original reservation, even though the metre amount is unchanged.
+    begin
+      perform public.fabric_stock_reserve_v2(
+        'SYNTHETIC-TITAN-ORDER-PROBE', 1.000, 'locked-revision-0002',
+        'SYNTHETIC-FORWARD-REPLAY-0001', 'Synthetic stock checker',
+        'Synthetic physical receipt');
+      raise exception 'changed locked revision unexpectedly accepted';
+    exception when sqlstate '22023' then null;
+    end;
+    -- Supplier/cutting source evidence is part of replay identity.
+    begin
+      perform public.fabric_stock_reserve_v2(
+        'SYNTHETIC-TITAN-ORDER-PROBE', 1.000, 'locked-revision-0001',
+        'SYNTHETIC-FORWARD-REPLAY-0001', 'Synthetic stock checker',
+        'Different synthetic evidence');
+      raise exception 'changed physical evidence unexpectedly accepted';
+    exception when sqlstate '22023' then null;
+    end;
+    -- A known request key used for a *different fabric* must not alias.
+    begin
+      perform public.fabric_stock_reserve_v2(
+        'SYNTHETIC-DIFFERENT-FABRIC', 1.000, 'locked-revision-0001',
+        'SYNTHETIC-FORWARD-REPLAY-0001', 'Synthetic stock checker',
+        'Synthetic physical receipt');
+      raise exception 'cross-fabric replay key unexpectedly accepted';
+    exception when sqlstate '22023' then null;
+    end;
+    -- A brand-new key cannot reserve physically unverified cloth.
+    begin
+      perform public.fabric_stock_reserve_v2(
+        'SYNTHETIC-UNVERIFIED-CLOTH', 1.000, 'locked-revision-0001',
+        'SYNTHETIC-FORWARD-UNVERIFIED-0002', 'Synthetic stock checker',
+        'Synthetic physical receipt');
+      raise exception 'unverified physical stock unexpectedly reserved';
+    exception when sqlstate '22023' then null;
+    end;
   end replay_probe;
 end $probe$;
 -- service_role correctly has no SELECT on private ledger. Perform this single
