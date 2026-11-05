@@ -116,3 +116,157 @@ def select_original_source_max_retained_uv_tree(points, original_faces, original
             "productionApproved": False,
         },
     }
+
+
+def select_original_source_branch_aware_uv_trial(
+        points, original_faces, original_cut_edges,
+        branch_penalty_mm=100.0, max_candidate_edges=48):
+    """One bounded, deterministic face-tree exchange on REAL source edges.
+
+    The research objective is omitted original 3D edge length plus a *virtual*
+    mm penalty per excess cut-network edge at source vertices of degree >= 3.
+    This is not an actual flattened UV measurement or a textile cut plan.
+    """
+    from collections import deque
+
+    if (isinstance(branch_penalty_mm, bool)
+            or not isinstance(branch_penalty_mm, (int, float))
+            or not math.isfinite(branch_penalty_mm)
+            or branch_penalty_mm <= 0):
+        raise ValueError("Branch penalty must be finite positive research weight.")
+    if (type(max_candidate_edges) is not int or
+            not 1 <= max_candidate_edges <= 64):
+        raise ValueError("Research source-edge candidate bound must be 1..64.")
+
+    baseline = select_original_source_max_retained_uv_tree(
+        points, original_faces, original_cut_edges)
+    retained = {tuple(e) for e in baseline["retainedOriginalSourceEdges"]}
+    # Source points and topology have already passed the original-source
+    # selector's strict quads, cut ownership, winding and finite checks.
+    owners = defaultdict(list)
+    for face_id, face in enumerate(original_faces):
+        for i in range(4):
+            edge = tuple(sorted((face[i], face[(i + 1) % 4])))
+            owners[edge].append(face_id)
+    shared = {
+        edge: (pair[0], pair[1], math.dist(points[edge[0]], points[edge[1]]) * 1000.0)
+        for edge, pair in owners.items() if len(pair) == 2
+    }
+    if len(shared) != baseline["report"]["originalSourceSharedEdgeCount"] or not retained <= shared.keys():
+        raise ValueError("Original source face adjacency changed during branch-aware research.")
+    omitted = set(shared) - retained
+    degree = defaultdict(int)
+    for a, b in omitted:
+        degree[a] += 1
+        degree[b] += 1
+
+    def excess(d):
+        return max(0, d - 2)
+
+    def diagnostics(cut_edges):
+        cuts = defaultdict(int)
+        for a, b in cut_edges:
+            cuts[a] += 1
+            cuts[b] += 1
+        length = sum(shared[edge][2] for edge in cut_edges)
+        junctions = sum(d >= 3 for d in cuts.values())
+        excess_arms = sum(excess(d) for d in cuts.values())
+        return length, junctions, excess_arms, length + branch_penalty_mm * excess_arms
+
+    before = diagnostics(omitted)
+    tree_adj = [[] for _ in original_faces]
+    for edge in retained:
+        a, b, _ = shared[edge]
+        tree_adj[a].append((b, edge))
+        tree_adj[b].append((a, edge))
+    for row in tree_adj:
+        row.sort()
+
+    # Prioritize real omitted edges incident to existing branched source
+    # vertices. Evaluate at most 48 candidates; no hidden stochastic search.
+    ranked = sorted(
+        omitted,
+        key=lambda e: (
+            -(excess(degree[e[0]]) + excess(degree[e[1]])),
+            -shared[e][2], e
+        ),
+    )[:max_candidate_edges]
+    best = None
+    for added in ranked:
+        start, target, add_mm = shared[added]
+        queue = deque([start])
+        predecessor = {start: None}
+        while queue and target not in predecessor:
+            current = queue.popleft()
+            for neighbour, edge in tree_adj[current]:
+                if neighbour not in predecessor:
+                    predecessor[neighbour] = (current, edge)
+                    queue.append(neighbour)
+        if target not in predecessor:
+            raise ValueError("Retained forest disconnected actual original neighboring faces.")
+        at = target
+        while at != start:
+            prev, removed = predecessor[at]
+            rem_mm = shared[removed][2]
+            touch = set(added + removed)
+            change = {v: 0 for v in touch}
+            for v in added:
+                change[v] -= 1
+            for v in removed:
+                change[v] += 1
+            excess_change = sum(
+                excess(degree[v] + change[v]) - excess(degree[v])
+                for v in touch
+            )
+            delta = rem_mm - add_mm + branch_penalty_mm * excess_change
+            candidate = (round(delta, 9), added, removed)
+            if delta < -1e-7 and (best is None or candidate < best):
+                best = candidate
+            at = prev
+    proposed = set(retained)
+    if best is not None:
+        _delta, add, remove = best
+        proposed.remove(remove)
+        proposed.add(add)
+    proposed_cuts = set(shared) - proposed
+    after = diagnostics(proposed_cuts)
+    if (len(proposed) != len(retained) or
+            after[3] > before[3] + 1e-6 or
+            (best is None and proposed != retained)):
+        raise ValueError("Bounded source-edge exchange violated its baseline research objective.")
+    return {
+        "retainedOriginalSourceEdges": [list(e) for e in sorted(proposed)],
+        "report": {
+            "researchOnly": True,
+            "strategy": "bounded single face-tree exchange with source cut junction surrogate",
+            "branchPenaltyResearchWeightMm": branch_penalty_mm,
+            "candidateEdgeCap": max_candidate_edges,
+            "evaluatedOmittedOriginalEdges": len(ranked),
+            "originalSourceQuadCount": len(original_faces),
+            "originalSourceSharedEdgeCount": len(shared),
+            "originalSourceComponentCount": baseline["report"]["originalSourceComponentCount"],
+            "retainedOriginalSourceTreeEdges": len(proposed),
+            "swapPerformed": best is not None,
+            "addedOriginalSharedEdge": list(best[1]) if best else None,
+            "removedOriginalSharedEdge": list(best[2]) if best else None,
+            "baselineOmittedRealEdgeLengthMm": round(before[0], 5),
+            "candidateOmittedRealEdgeLengthMm": round(after[0], 5),
+            "baselineCutBranchingSourceVertices": before[1],
+            "candidateCutBranchingSourceVertices": after[1],
+            "baselineExcessBranchArms": before[2],
+            "candidateExcessBranchArms": after[2],
+            "baselineResearchObjectiveMm": round(before[3], 5),
+            "candidateResearchObjectiveMm": round(after[3], 5),
+            "metricCaveat": (
+                "Branch penalty is a chosen virtual research weight, not "
+                "measured seam allowance or manufacturing cost. Face-tree "
+                "exchange has NO proven actual UV closure, overlap, grain, "
+                "physical cloth clearance or tailor cutting validity."
+            ),
+            "actualUvClosureMeasured": False,
+            "physicalFabricScaleApproved": False,
+            "sourceBodyFitApproved": False,
+            "tailorSeamsApproved": False,
+            "productionApproved": False,
+        },
+    }
