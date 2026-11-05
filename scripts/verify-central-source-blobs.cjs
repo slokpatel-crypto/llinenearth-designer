@@ -13,7 +13,7 @@ const shaPattern = /^[a-f0-9]{40}$/;
 function gitBlobSha(bytes) {
   const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
   return createHash("sha1")
-    .update(Buffer.from("blob " + buffer.length + "\\0"))
+    .update(Buffer.from("blob " + buffer.length + "\0"))
     .update(buffer).digest("hex");
 }
 
@@ -39,7 +39,7 @@ function verifySnapshot(manifest, readSha) {
       "Source changed-file manifest missing: #" + source.pr);
     for (const [path, sha] of Object.entries(source.files)) {
       assert.ok(path && !path.startsWith("/") && !path.split("/").includes("..") &&
-        !path.includes("\\\\"), "Unsafe manifest path: " + path);
+        !path.includes("\\"), "Unsafe manifest path: " + path);
       assert.ok(shaPattern.test(sha), "Invalid source blob: " + path);
       const previous = seen.get(path);
       if (previous && previous !== sha && !Object.hasOwn(exceptions, path)) {
@@ -51,7 +51,7 @@ function verifySnapshot(manifest, readSha) {
 
   for (const [path, exception] of Object.entries(exceptions)) {
     assert.ok(seen.has(path), "Orphan combined-workflow exception: " + path);
-    assert.ok(/^\\.github\\/workflows\\/[^/]+\\.ya?ml$/.test(path),
+    assert.ok(/^\.github\/workflows\/[^/]+\.ya?ml$/.test(path),
       "Only explicitly merged GitHub Actions workflows can have exceptions: " + path);
     assert.ok(exception && shaPattern.test(exception.integrated_blob_sha),
       "Missing integrated blob SHA: " + path);
@@ -71,14 +71,14 @@ function verifySnapshot(manifest, readSha) {
       errors.push(path + ": cannot read file (" + error.message + ")");
     }
   }
-  if (errors.length) throw Error("Integrated source blob mismatch:\\n" + errors.join("\\n"));
+  if (errors.length) throw Error("Integrated source blob mismatch:\n" + errors.join("\n"));
   return { sourcePrs: sourceIds.size, uniquePaths: seen.size,
     combinedWorkflowExceptions: Object.keys(exceptions).length };
 }
 
 function selfTest() {
   const a = "a".repeat(40), b = "b".repeat(40), c = "c".repeat(40);
-  assert.equal(gitBlobSha(Buffer.from("hello\\n")), "ce013625030ba8dba906f756967f9e9ca394464a");
+  assert.equal(gitBlobSha(Buffer.from("hello\n")), "ce013625030ba8dba906f756967f9e9ca394464a");
   const sample = { schema_version: 1, central_base_commit: a,
     source_prs: [
       { pr: 10, head: a, files: { "src/a.ts": a, ".github/workflows/test.yml": a } },
@@ -103,7 +103,7 @@ function selfTest() {
   assert.throws(() => verifySnapshot(badSource, lookup), /Invalid source blob/);
   assert.throws(() => verifySnapshot(sample, () => { throw Error("missing"); }),
     /cannot read file/);
-  process.stdout.write("PASS: central blob parity self-tests reject tampering, conflicts and missing files\\n");
+  process.stdout.write("PASS: central blob parity self-tests reject tampering, conflicts and missing files\n");
 }
 
 if (process.argv.includes("--self-test")) {
@@ -114,5 +114,5 @@ if (process.argv.includes("--self-test")) {
     path => gitBlobSha(readFileSync(join(process.cwd(), path))));
   process.stdout.write("PASS: " + result.sourcePrs + " pinned worker PRs, " +
     result.uniquePaths + " source paths, " + result.combinedWorkflowExceptions +
-    " approved merged-workflow exceptions; no unreviewed source drift\\n");
+    " approved merged-workflow exceptions; no unreviewed source drift\n");
 }
