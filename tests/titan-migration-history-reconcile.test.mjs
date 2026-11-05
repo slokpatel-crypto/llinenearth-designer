@@ -18,7 +18,7 @@ import { join } from 'node:path';
 
 test('real repository migration collisions remain blocked without authenticated staging identity', () => {
   const directory = join(process.cwd(), 'supabase', 'migrations');
-  const filenames = readdirSync(directory).filter(name => /^\\d{8,20}_.+\\.sql$/.test(name));
+  const filenames = readdirSync(directory).filter(name => /^\d{8,20}_.+\.sql$/.test(name));
   assert.ok(filenames.length > 0, 'Expected repository migration SQL files');
   const rows = filenames.map(filename => ({
     version: filename.split('_', 1)[0],
