@@ -191,7 +191,10 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // A prohibited direction is not a requested direction. Preserve positive
   // direction instructions elsewhere (e.g. "no reverse pleats; forward pleats").
   const directionWording = positiveWording.replace(
-    /\b(?:no|without|avoid|never|do\s+not|don[\x27’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:forward|reverse)[ -]?pleats?\b/gi,
+    /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:forward|reverse)[ -]?pleats?\b/gi,
+    "",
+  ).replace(
+    /\b(?:forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted))\b/gi,
     "",
   );
   const requestsForward = front === "pleated" && /\bforward\b/i.test(directionWording);
@@ -204,6 +207,10 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // "avoid reverse pleats" as a blanket ban on all pleated construction.
   const prohibitsForward = /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?forward[ -]?pleats?\b/i.test(candidateTrouser);
   const prohibitsReverse = /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?reverse[ -]?pleats?\b/i.test(candidateTrouser);
+  // Direction prohibitions can follow the noun as well as precede it.
+  const prohibitedDirections = [...candidateTrouser.matchAll(
+    /\b(forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted))\b/gi,
+  )].map(match => match[1].toLowerCase());
   // Unknown/stale option IDs cannot certify construction even when the
   // candidate merely says "pleated" without specifying count or direction.
   if ((front !== null && front !== "ambiguous" && !pleatOption) ||
@@ -213,8 +220,8 @@ export function styleDirectorCandidateFrontConstructionIssues(
       (front === "pleated" && requestsSingle && requestsDouble) ||
       (front === "pleated" && requestsForward && requestsReverse) ||
       (expectedDirection !== null && declaredDirection !== expectedDirection) ||
-      (front === "pleated" && declaredDirection === "forward" && prohibitsForward) ||
-      (front === "pleated" && declaredDirection === "reverse" && prohibitsReverse)) {
+      (front === "pleated" && declaredDirection === "forward" && (prohibitsForward || prohibitedDirections.includes("forward"))) ||
+      (front === "pleated" && declaredDirection === "reverse" && (prohibitsReverse || prohibitedDirections.includes("reverse")))) {
     return [{
       code: "candidate_trouser_pleat_mismatch",
       explanation: "The proposed trouser front, pleat count or direction contradicts its versioned construction; confirm the intended pleats before cutting without inventing a pleat.",
