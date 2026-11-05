@@ -1,0 +1,35 @@
+"""Pure tests for migration version preflight; synthetic files only."""
+import tempfile
+import unittest
+from pathlib import Path
+from scripts.check_migration_versions import inspect_migrations
+
+class MigrationPreflightTests(unittest.TestCase):
+    def test_unique_versions_pass(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            (p / "20261101000000_first.sql").touch()
+            (p / "20261102000000_second.sql").touch()
+            self.assertEqual(inspect_migrations(p), [])
+
+    def test_duplicate_versions_block(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            (p / "20261101000000_first.sql").touch()
+            (p / "20261101000000_second.sql").touch()
+            self.assertIn("duplicate migration version", "\n".join(inspect_migrations(p)))
+
+    def test_malformed_filename_blocks(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            (p / "not_timestamped.sql").touch()
+            self.assertIn("invalid migration filename", "\n".join(inspect_migrations(p)))
+
+    def test_missing_or_empty_directory_blocks(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            self.assertTrue(inspect_migrations(p / "missing"))
+            self.assertTrue(inspect_migrations(p))
+
+if __name__ == "__main__":
+    unittest.main()
