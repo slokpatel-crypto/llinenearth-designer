@@ -94,7 +94,7 @@ export function styleDirectorCandidateTrouserFront(
       "",
     )
     .replace(
-      /\b(?:forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted))\b/gi,
+      /\b(?:forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted)|(?:(?:must|should|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included)|not\s+to\s+be\s+(?:used|added|included)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted))\b/gi,
       "",
     );
   const flatFront = /\bflat[- ]?front\b/i.test(frontWording);
@@ -206,7 +206,7 @@ export function styleDirectorCandidateFrontConstructionIssues(
     /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:forward|reverse)[ -]?pleats?\b/gi,
     "",
   ).replace(
-    /\b(?:forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted))\b/gi,
+    /\b(?:forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted)|(?:(?:must|should|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included)|not\s+to\s+be\s+(?:used|added|included)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted))\b/gi,
     "",
   );
   const requestsForward = front === "pleated" && /\bforward\b/i.test(directionWording);
@@ -221,7 +221,7 @@ export function styleDirectorCandidateFrontConstructionIssues(
   const prohibitsReverse = /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?reverse[ -]?pleats?\b/i.test(candidateTrouser);
   // Direction prohibitions can follow the noun as well as precede it.
   const prohibitedDirections = [...candidateTrouser.matchAll(
-    /\b(forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted))\b/gi,
+    /\b(forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted)|(?:(?:must|should|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included)|not\s+to\s+be\s+(?:used|added|included)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted))\b/gi,
   )].map(match => match[1].toLowerCase());
   // A direction-only ban also requires a known canonical pleat ID:
   // with a stale/unknown ID we cannot verify which direction was locked.
