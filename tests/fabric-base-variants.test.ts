@@ -110,6 +110,45 @@ test("typed composition, weave and yarn counts need separate supported claims",(
   ])assert.equal(snapshotFabricPhysicalClaim(invalid),null);
 });
 
+test("malformed duplicates cannot vanish and leave a valid approved claim ID unchallenged",()=>{
+  const malformed={...base,value:"160"};
+  const otherBase={...base,baseId:"unrelated-base"};
+  for(const pair of [[base,malformed],[malformed,base],[base,otherBase],[otherBase,base]]){
+    const result=run(pair,[approval(base)]);
+    for(const v of result.variants){
+      assert.equal(v.physical.gsm.value,null);
+      assert.ok(v.issues.some(issue=>issue.includes("duplicate claim ID")));
+    }
+  }
+});
+
+test("reviewed composition and yarn-count projections cannot mutate after approval",()=>{
+  const composition={...base,claimId:"reviewed-composition",field:"composition",resolution:undefined,
+    value:[{fiber:"linen",percent:60},{fiber:"cotton",percent:40}]};
+  const yarn={...base,claimId:"reviewed-yarn",field:"yarnCount",resolution:undefined,
+    value:{system:"lea",count:60,resolution:1}};
+  const result=run([composition,yarn],[approval(composition),approval(yarn)]);
+  const fabric=result.variants[0];
+  const fibers=fabric.physical.composition.value as {fiber:string;percent:number}[];
+  const thread=fabric.physical.yarnCount.value as {system:string;count:number;resolution:number};
+  assert.deepEqual(fibers,[{fiber:"linen",percent:60},{fiber:"cotton",percent:40}]);
+  assert.equal(thread.count,60);
+  assert.notStrictEqual(fibers,composition.value);
+  assert.notStrictEqual(fibers[0],composition.value[0]);
+  assert.notStrictEqual(thread,yarn.value);
+  composition.value[0].percent=100;
+  yarn.value.count=40;
+  assert.equal(fibers[0].percent,60);
+  assert.equal(thread.count,60);
+  assert.equal(Object.isFrozen(fibers),true);
+  assert.equal(Object.isFrozen(fibers[0]),true);
+  assert.equal(Object.isFrozen(thread),true);
+  assert.equal(Object.isFrozen(fabric.physical),true);
+  assert.equal(Object.isFrozen(fabric.physical.composition),true);
+  assert.equal(Object.isFrozen(fabric.identity),true);
+  assert.equal(Object.isFrozen(result.variants),true);
+});
+
 test("pixel-to-mm axes require correct photo hash, original dimensions and compatible repeat",()=>{
   const repeat={claimId:"repeat-x",baseId:"linen-60-base",field:"repeatXmm",value:10,resolution:.1,origin:"measured",source:lab,
     scope:{kind:"variant",variantId:"stripe",lotId:"roll-12"},
