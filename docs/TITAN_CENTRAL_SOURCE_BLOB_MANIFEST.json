@@ -91,5 +91,15 @@
       "integrated_blob_sha": "174ba68bde86bf2969239d3e207b238632ff6428",
       "reason": "Central cross-domain customer-role and stock forward-repair native PostgreSQL verification."
     }
-  }
+  },
+  "selective_source_imports": [
+    {
+      "pr": 900,
+      "head": "d9fb832ce8ffd453f9b13b4ea41ac212534d06e0",
+      "files": {
+        "supabase/migrations/20261104134500_restore_stock_reservation_identity_gate.sql": "4595329c0c456f0317375bff5430588553684988"
+      },
+      "reason": "Only the forward-only strict stock reservation SQL from source draft #900 is imported. Its other changed checkpoint/preflight files were not imported; do not infer their acceptance or a deployable migration history."
+    }
+  ]
 }
