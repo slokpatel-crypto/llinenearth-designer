@@ -82,6 +82,14 @@ export function auditHandoffFitProvenance(source: HandoffFitProvenance): Handoff
       || source.easeTableVersion.length > 120) {
     errors.push("Fit/ease table version must be a nonempty bounded identifier.");
   }
+  // A lock proves that a customer selected this calibration identifier. It
+  // does not carry the owner/tailor approval record or measured garment cases.
+  // Even a self-consistent "approved" claim remains human-review-only until
+  // its referenced approval is checked independently against real evidence.
+  if (source.fitConstructionVersion === "fit-construction-calibrated-2"
+      && source.easeSource === "approved_house_calibration") {
+    missing.push("Claimed approved house ease calibration is not authenticated by the locked recipe; confirm its approval record and measured-garment evidence with the tailor before production.");
+  }
   return { errors, missing };
 }
 
