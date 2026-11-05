@@ -130,7 +130,12 @@ test("customer photographic preview displays selected construction mismatch noti
   const photoStage=source.indexOf('    <div className={`newDesignerPhotoStage',previewStart);
   const notice=source.indexOf('data-photo-construction-mismatch="true"',previewStart);
   assert.ok(previewStart>=0 && notice>previewStart && notice<photoStage);
-  assert.match(source,/className="newDesignerPhotoConstructionNotice" data-photo-construction-mismatch="true" role="status"/);
+  assert.match(source,/<div className="newDesignerPhotoConstructionNotice" data-photo-construction-mismatch="true" role="status"/);
+  assert.doesNotMatch(source,/<p className="newDesignerPhotoConstructionNotice"/);
+  const introEnd=source.indexOf('    </div>',previewStart);
+  assert.ok(notice>introEnd,"contact-safe notice must be outside compact intro's hidden-paragraph CSS");
+  const stylesheet=readFileSync("src/app/designer-studio/designer-light.css","utf8");
+  assert.match(stylesheet,/\.newDesignerPhotoIntroCompact p\{display:none!important\}/);
   assert.equal((source.match(/data-photo-construction-mismatch="true"/g)||[]).length,1);
   assert.equal((source.match(/<p className="newDesignerPhotoApproximation">/g)||[]).length,1);
   assert.doesNotMatch(source,/<p className="newDesignerPhotoApproximation" data-photo-construction-mismatch/);

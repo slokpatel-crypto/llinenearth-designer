@@ -1731,10 +1731,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     <div className="newDesignerPhotoIntro newDesignerPhotoIntroCompact">
       <span>LIVE PREVIEW</span>
       <h2 id="designerPhotoTitle">Your look.</h2>
-      {!showCreativeAi && constructionMismatches.length>0 && <p className="newDesignerPhotoConstructionNotice" data-photo-construction-mismatch="true" role="status" style={{margin:"10px 0 0",padding:"9px 12px",borderLeft:"3px solid #a65d43",background:"#faf6f0",color:"#514538",fontSize:"12px",lineHeight:1.5}}>
-        <strong>Photographic construction limits</strong> · {constructionMismatches.map((gap)=>gap.label).join(", ")} not reconstructed in the fixed studio photograph. Your selected construction remains in the saved design specification.
-      </p>}
     </div>
+    {!showCreativeAi && constructionMismatches.length>0 && <div className="newDesignerPhotoConstructionNotice" data-photo-construction-mismatch="true" role="status" style={{margin:"10px 20px 12px",padding:"9px 12px",borderLeft:"3px solid #a65d43",background:"#faf6f0",color:"#514538",fontSize:"12px",lineHeight:1.5}}>
+      <strong>Photographic construction limits</strong> · {constructionMismatches.map((gap)=>gap.label).join(", ")} not reconstructed in the fixed studio photograph. Your selected construction remains in the saved design specification.
+    </div>}
     <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-ready={ready?"true":"false"}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
       {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image)} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal ${photorealView} view of ${shirt.name} with ${pant.name}`} />}

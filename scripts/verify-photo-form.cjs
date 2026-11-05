@@ -106,7 +106,7 @@ async function run(){
     // The fixed contact dock used to cover the construction explanation at the
     // bottom of the photographic card. Its full text must now be visible above
     // the source image, without requiring a customer to dodge fixed controls.
-    const notice=page.locator('.newDesignerPhotoIntro [data-photo-construction-mismatch="true"]');
+    const notice=page.locator('.newDesignerPhoto > [data-photo-construction-mismatch="true"]');
     assert.equal(await notice.count(),1);
     await notice.scrollIntoViewIfNeeded();
     const noticeBox=await notice.boundingBox();
