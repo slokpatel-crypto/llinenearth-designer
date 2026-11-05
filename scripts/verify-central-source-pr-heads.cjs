@@ -8,6 +8,10 @@ const { join } = require("node:path");
 
 const manifestFile = "docs/TITAN_CENTRAL_SOURCE_BLOB_MANIFEST.json";
 const shaPattern = /^[0-9a-f]{40}$/;
+// Pinned from the independently inspected main branch at integration intake.
+// A new main commit must trigger review/rebase and an explicit re-pin; a
+// passing source-blob snapshot alone cannot certify a moved release base.
+const APPROVED_MAIN_SHA = "4dd8020abd83429449ff53ea5bb71b046394d86e";
 
 async function verifyLiveSourceHeads(manifest, repository, getJson) {
   assert.match(repository, /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, "Expected GitHub owner/repo");
@@ -112,6 +116,8 @@ async function verifyCentralIntake(manifest, repository, getJson) {
     "Central PR #881 must originate from this repository");
   assert.equal(central.base?.ref, "main",
     "Central PR #881 must target main without an unreviewed rebase");
+  assert.equal(central.base?.sha, APPROVED_MAIN_SHA,
+    "Central PR #881 main SHA moved; review integration and repin approved main");
 
   const actual = new Map();
   let page = 1;
@@ -205,7 +211,7 @@ async function selfTest() {
     if (path.endsWith("/pulls/881")) return {
       state: "open", draft: true,
       head: { sha: a, repo: { full_name: "sample/repository" } },
-      base: { ref: "main" }
+      base: { ref: "main", sha: APPROVED_MAIN_SHA }
     };
     if (path.includes("/pulls/881/files?")) return [
       { filename: "src/example.ts", sha: b },
@@ -235,6 +241,10 @@ async function selfTest() {
     async path => path.endsWith("/pulls/881")
       ? {...await centralGet(path), draft: false} : centralGet(path)),
     /must remain open and draft/);
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.endsWith("/pulls/881")
+      ? {...await centralGet(path), base: { ref: "main", sha: a }} : centralGet(path)),
+    /main SHA moved/);
   await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
     async path => path.endsWith("/pulls/881")
       ? {...await centralGet(path), head: { sha: a, repo: { full_name: "other/fork" } }}
