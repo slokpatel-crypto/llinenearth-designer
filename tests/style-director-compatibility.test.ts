@@ -1701,3 +1701,22 @@ test("postposed count-specific bans cannot become a positive pleat request", () 
       positiveOrOptional);
   }
 });
+
+test("unknown photographic collar labels fail closed without rewriting versioned construction", () => {
+  const locked = spec({ collar: "spread_collar", wear: "tucked" });
+  const before = JSON.stringify(locked);
+  for (const label of ["Retired Collar Label", "", "Camp / Band Hybrid"]) {
+    const issues = styleDirectorPresentationIssues({
+      collar: label as DesignerStyle["collar"], shirtWear: "Tucked",
+    }, locked);
+    assert.ok(issues.some(issue => issue.code === "legacy_collar_mismatch"), label);
+    assert.equal(JSON.stringify(locked), before, "locked construction must not change");
+  }
+  const supported = optionsFor("shirt.collar").find(option =>
+    option.id === "spread_collar" && option.legacySelectable !== false);
+  assert.ok(supported, "canonical spread collar must remain selectable");
+  assert.equal(styleDirectorPresentationIssues({
+    collar: (supported.legacyLabel || supported.label) as DesignerStyle["collar"],
+    shirtWear: "Tucked",
+  }, locked).some(issue => issue.code === "legacy_collar_mismatch"), false);
+});
