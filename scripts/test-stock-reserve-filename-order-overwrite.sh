@@ -63,10 +63,10 @@ end $probe$;
 rollback;
 SQL
 
-# Return test instance to intended curated state, including the final strict
-# body. Re-test rejection after restoration. This is only local test replay.
+# Replay the actual forward-only 14-digit-timestamp repair from PR #900
+# after the unsafe historical same-version override. Never run against live DB.
 psql -v ON_ERROR_STOP=1 -f \
-  supabase/migrations/20261103_stock_reservation_identity_length_gate.sql
+  supabase/migrations/20261104134500_restore_stock_reservation_identity_gate.sql
 
 psql -v ON_ERROR_STOP=1 <<'SQL'
 begin;
@@ -85,6 +85,42 @@ begin
     rejected := true;
   end;
   if not rejected then raise exception 'strict reserve gate not restored'; end if;
+
+  -- Use synthetic evidenced stock to verify that the *actual forward repair*
+  -- preserves idempotency and exact request-payload binding, not only length.
+  perform public.fabric_stock_record_v2(
+    'SYNTHETIC-TITAN-ORDER-PROBE', 'receipt', 2.000,
+    'synthetic receipt for forward repair test',
+    'Synthetic stock checker', 'Synthetic physical receipt');
+  <<replay_probe>>
+  declare
+    original uuid;
+    replayed uuid;
+    reserve_rows integer;
+  begin
+    original := public.fabric_stock_reserve_v2(
+      'SYNTHETIC-TITAN-ORDER-PROBE', 1.000, 'locked-revision-0001',
+      'SYNTHETIC-FORWARD-REPLAY-0001', 'Synthetic stock checker',
+      'Synthetic physical receipt');
+    replayed := public.fabric_stock_reserve_v2(
+      'SYNTHETIC-TITAN-ORDER-PROBE', 1.000, 'locked-revision-0001',
+      'SYNTHETIC-FORWARD-REPLAY-0001', 'Synthetic stock checker',
+      'Synthetic physical receipt');
+    if original is null or original is distinct from replayed then
+      raise exception 'forward repair lost exact idempotent replay identity';
+    end if;
+    select count(*) into reserve_rows from private.fabric_stock_ledger
+      where request_key='SYNTHETIC-FORWARD-REPLAY-0001';
+    if reserve_rows<>1 then raise exception 'forward repair inserted duplicate reservation'; end if;
+    begin
+      perform public.fabric_stock_reserve_v2(
+        'SYNTHETIC-TITAN-ORDER-PROBE', 1.125, 'locked-revision-0001',
+        'SYNTHETIC-FORWARD-REPLAY-0001', 'Synthetic stock checker',
+        'Synthetic physical receipt');
+      raise exception 'mismatched idempotency payload unexpectedly accepted';
+    exception when sqlstate '22023' then null;
+    end;
+  end replay_probe;
 end $probe$;
 reset role;
 rollback;
@@ -93,4 +129,4 @@ select case when (select count(*) from private.fabric_stock_ledger) = 0
 SQL
 
 test "$(psql -v ON_ERROR_STOP=1 -Atc 'select count(*) from private.fabric_stock_ledger')" = 0
-echo 'PASS: filename-order overwrite admits truncated key, replayed strict gate restores rejection; zero rows'
+echo 'PASS: historical override admits truncated key; forward-only repair restores strict rejection, replay binding and zero synthetic rows'
