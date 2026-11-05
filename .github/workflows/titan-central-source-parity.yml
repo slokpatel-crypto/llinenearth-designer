@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   source-parity:
@@ -26,3 +27,10 @@ jobs:
           node scripts/verify-central-source-blobs.cjs --self-test
       - name: Compare all integrated source file Git blob SHA-1 identities
         run: node scripts/verify-central-source-blobs.cjs
+      - name: Verify all source PRs are still at approved heads and blob identities
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --check scripts/verify-central-source-pr-heads.cjs
+          node scripts/verify-central-source-pr-heads.cjs --self-test
+          node scripts/verify-central-source-pr-heads.cjs
