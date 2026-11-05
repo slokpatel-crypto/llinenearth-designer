@@ -191,15 +191,16 @@ async function selfTest() {
     async path => path.endsWith("/pulls/11")
       ? { state: "open", head: { sha: b } } : get(path)), /head changed/);
   await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
-    async path => path.endsWith("/pulls/11")
-      ? get(path) : [{ filename: "src/example.ts", sha: b }]), /file list changed/);
+    async path => path.includes("/pulls/11/files?")
+      ? [{ filename: "src/example.ts", sha: b }] : get(path)), /file list changed/);
   await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
-    async path => path.endsWith("/pulls/11")
-      ? get(path) : [{ filename: "src/example.ts", sha: c },
-                    { filename: "tests/example.test.ts", sha: c }]), /changed or removed/);
+    async path => path.includes("/pulls/11/files?")
+      ? [{ filename: "src/example.ts", sha: c },
+        { filename: "tests/example.test.ts", sha: c }] : get(path)), /changed or removed/);
   await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
-    async path => path.endsWith("/pulls/11") ? get(path) :
-      [{ filename: "src/example.ts", sha: b }, { filename: "src/example.ts", sha: b }]),
+    async path => path.includes("/pulls/11/files?")
+      ? [{ filename: "src/example.ts", sha: b },
+        { filename: "src/example.ts", sha: b }] : get(path)),
     /Duplicate GitHub source PR filename/);
   await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
     async path => path.endsWith("/pulls/11")
