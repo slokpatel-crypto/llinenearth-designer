@@ -202,3 +202,20 @@ test("contradictory trouser seam order and rise fail closed in both outputs",()=
     assert.throws(()=>buildTailorTechPackHtml(packet),/Unsafe tailor tech pack measurements/);
   }
 });
+
+test("locked construction version and measurement provenance must agree with exported choices",()=>{
+  const mismatch=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  mismatch.garmentSpec.source.styleSchemaVersion=null;
+  assert.throws(()=>buildProductionHandoff(mismatch),/option schema provenance/);
+
+  const legacyClaim=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam],false);
+  legacyClaim.garmentSpec.source.styleSchemaVersion=2;
+  assert.throws(()=>buildProductionHandoff(legacyClaim),/option schema provenance/);
+
+  const noMeasurementVersion=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  noMeasurementVersion.garmentSpec.source.measurementProfileVersion=null;
+  const packet=buildProductionHandoff(noMeasurementVersion);
+  assert.equal(packet.status,"review_required");
+  assert.ok(packet.unresolved.some(x=>x.includes("versioned measurement profile")));
+  assert.match(buildTailorTechPackHtml(packet),/versioned measurement profile is not recorded/);
+});
