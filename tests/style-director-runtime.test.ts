@@ -150,3 +150,20 @@ test("Style Director returns no fabricated recommendations for an empty or unava
   assert.equal(JSON.stringify(unavailable), before,
     "a rejected catalogue must remain unchanged");
 });
+
+test("unavailable hero fabric cannot enter a mixed catalogue recommendation", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const shirts = FABRIC_STOCK.filter(f => f.inStock && f.suitableFor.includes("shirt"));
+  assert.ok(shirts.length >= 2, "requires distinct shirting fixtures");
+  const catalogue = [{ ...shirts[0], inStock: false }, shirts[1]];
+  const before = JSON.stringify(catalogue);
+  const looks = createStyleDirectorLooks({
+    occasion: "Travel", mood: "Relaxed", time: "Day",
+    climate: "Hot", garment: "shirt", colorDirection: "Surprise me",
+  }, catalogue);
+  assert.equal(looks.length, 1);
+  assert.equal(looks[0].fabric.id, shirts[1].id);
+  assert.equal(JSON.stringify(catalogue), before);
+});
