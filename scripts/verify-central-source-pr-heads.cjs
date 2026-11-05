@@ -13,8 +13,15 @@ async function verifyLiveSourceHeads(manifest, repository, getJson) {
   assert.match(repository, /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, "Expected GitHub owner/repo");
   assert.ok(Array.isArray(manifest.source_prs) && manifest.source_prs.length > 0,
     "Expected pinned source PRs");
+  const selective = manifest.selective_source_imports;
+  assert.ok(Array.isArray(selective), "Expected selective source import inventory");
+  const sources = [...manifest.source_prs.map(source => ({...source, selective: false})),
+    ...selective.map(source => ({...source, selective: true}))];
+  const observedPrs = new Set();
   let files = 0;
-  for (const source of manifest.source_prs) {
+  for (const source of sources) {
+    assert.ok(!observedPrs.has(source.pr), "Duplicate source or selective import PR");
+    observedPrs.add(source.pr);
     assert.ok(Number.isInteger(source.pr) && source.pr > 0, "Invalid PR number");
     assert.ok(shaPattern.test(source.head), "Invalid pinned PR head");
     assert.ok(source.files && !Array.isArray(source.files) &&
@@ -43,16 +50,21 @@ async function verifyLiveSourceHeads(manifest, repository, getJson) {
       page++;
     }
     const pinnedFiles = Object.entries(source.files);
-    assert.equal(actual.size, pinnedFiles.length,
-      "Source PR #" + source.pr + " file list changed; audit/review before integration");
+    if (!source.selective) {
+      assert.equal(actual.size, pinnedFiles.length,
+        "Source PR #" + source.pr + " file list changed; audit/review before integration");
+    } else {
+      assert.ok(typeof source.reason === "string" && source.reason.length >= 80,
+        "Partial source intake requires explicit reason and exclusions");
+    }
     for (const [path, sha] of pinnedFiles) {
       assert.ok(shaPattern.test(sha), "Malformed pinned source blob");
       assert.equal(actual.get(path), sha,
         "Source PR #" + source.pr + " changed or removed " + path);
     }
-    files += actual.size;
+    files += pinnedFiles.length;
   }
-  return { prCount: manifest.source_prs.length, changedFileEntries: files };
+  return { prCount: sources.length, changedFileEntries: files };
 }
 
 async function selfTest() {
