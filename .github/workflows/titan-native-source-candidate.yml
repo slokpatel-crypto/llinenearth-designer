@@ -1413,6 +1413,23 @@ jobs:
                       assert faces[0] != faces[1]
                       assert math.isfinite(witness["actualUvInteriorOverlapAreaMm2"])
                       assert witness["actualUvInteriorOverlapAreaMm2"] > 0
+              comparison=branch["researchOnlyOriginalSourceUvOverlapComparison"]
+              assert comparison["researchOnly"] is True
+              assert comparison["bothFullResearchUvScansComplete"] is True
+              assert comparison["baselineObservedTriangleOverlapPairs"] > 0
+              assert comparison["candidateObservedTriangleOverlapPairs"] > 0
+              assert comparison["candidateOverlapTrianglePairDelta"] == (
+                  comparison["candidateObservedTriangleOverlapPairs"] -
+                  comparison["baselineObservedTriangleOverlapPairs"]
+              )
+              assert comparison["candidateOverlapTrianglePairDelta"] > 0
+              assert comparison["candidateWorsenedRealUvInteriorOverlap"] is True
+              assert comparison["candidateImprovedRealUvInteriorOverlap"] is False
+              assert comparison["bothOriginalResearchUvLayoutsOverlapFree"] is False
+              assert comparison["completeGarmentUvApproved"] is False
+              assert comparison["realCuttingOrSeamApproved"] is False
+              assert comparison["bodyGarmentClearanceApproved"] is False
+              assert comparison["productionApproved"] is False
               assert branch["productionApproved"] is False
               assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
               assert branch_uv["dualGraphComponentCount"] == 3
