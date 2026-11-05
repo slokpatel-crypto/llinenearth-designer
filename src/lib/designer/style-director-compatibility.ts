@@ -93,7 +93,7 @@ export function styleDirectorCandidateTrouserFront(
   // Optional pleat language describes a choice, not an instruction to cut pleats.
   // Keep explicit positive instructions elsewhere in the same candidate intact.
   const optionalNeutralWording = positiveWording.replace(
-    /\b(?:pleats?|pleating)\s+(?:(?:are|is)\s+)?(?:optional|not\s+(?:required|necessary|mandatory)|(?:need\s+not|(?:do|does)\s+not\s+need\s+to)\s+be\s+(?:used|added|included)|(?:may|can|could)\s+be\s+(?:used|added|included|omitted))\b/gi,
+    /\b(?:pleats?|pleating)\s+(?:(?:are|is)\s+)?(?:optional|unnecessary|not\s+(?:required|necessary|mandatory|needed)|(?:need\s+not|(?:do|does)\s+not\s+need\s+to)\s+be\s+(?:used|added|included)|(?:may|can|could)\s+be\s+(?:used|added|included|omitted))\b/gi,
     "",
   );
   const explicitlyNoPleats = positiveWording !== candidateTrouser;
