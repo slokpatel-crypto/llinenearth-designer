@@ -268,3 +268,25 @@ test("garment-ineligible supporting fabrics never become model pairings", async 
   assert.equal(JSON.stringify(shirtCatalogue), beforeShirt);
   assert.equal(JSON.stringify(trouserCatalogue), beforeTrouser);
 });
+
+test("Style Director caps recommendations at three eligible fabrics without mutating ranking inputs", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const shirts = FABRIC_STOCK.filter(f => f.inStock && f.suitableFor.includes("shirt"));
+  assert.ok(shirts.length >= 4, "requires four independently catalogued shirting fixtures");
+  const catalogue = [shirts[0], shirts[1], shirts[2], shirts[3]];
+  const before = JSON.stringify(catalogue);
+  const looks = createStyleDirectorLooks({
+    occasion: "Travel", mood: "Relaxed", time: "Day",
+    climate: "Hot", garment: "shirt", colorDirection: "Surprise me",
+  }, catalogue);
+  assert.equal(looks.length, 3, "recommendation limit must not grow with catalogue size");
+  assert.equal(new Set(looks.map(look => look.fabric.id)).size, 3,
+    "each recommendation must reference a distinct real fabric");
+  for (const look of looks) {
+    assert.ok(catalogue.some(f => f.id === look.fabric.id),
+      "all recommended fabrics must be sourced from the supplied catalogue");
+  }
+  assert.equal(JSON.stringify(catalogue), before, "ranking must not reorder or mutate input");
+});
