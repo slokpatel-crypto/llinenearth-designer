@@ -117,7 +117,15 @@ async function verifyCentralIntake(manifest, repository, getJson) {
   assert.equal(central.base?.ref, "main",
     "Central PR #881 must target main without an unreviewed rebase");
   assert.equal(central.base?.sha, APPROVED_MAIN_SHA,
-    "Central PR #881 main SHA moved; review integration and repin approved main");
+    "Central PR #881 recorded base SHA moved; review integration and repin approved main");
+  // GitHub PR base.sha may lag behind the actual branch tip, especially on
+  // older open PRs. Query the branch directly before treating this intake as
+  // current; a stale PR base snapshot must never bypass re-review.
+  const liveMain = await getJson("/repos/" + repository + "/branches/main");
+  assert.ok(shaPattern.test(liveMain?.commit?.sha || ""),
+    "Cannot independently verify the live main branch commit");
+  assert.equal(liveMain.commit.sha, APPROVED_MAIN_SHA,
+    "Live main SHA moved; review integration and repin the approved base");
 
   const actual = new Map();
   let page = 1;
@@ -208,6 +216,7 @@ async function selfTest() {
     intentionally_combined: {}
   };
   const centralGet = async path => {
+    if (path.endsWith("/branches/main")) return { commit: { sha: APPROVED_MAIN_SHA } };
     if (path.endsWith("/pulls/881")) return {
       state: "open", draft: true,
       head: { sha: a, repo: { full_name: "sample/repository" } },
@@ -244,7 +253,16 @@ async function selfTest() {
   await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
     async path => path.endsWith("/pulls/881")
       ? {...await centralGet(path), base: { ref: "main", sha: a }} : centralGet(path)),
-    /main SHA moved/);
+    /recorded base SHA moved/);
+  // A PR base snapshot can stay pinned even as the live branch advances.
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.endsWith("/branches/main")
+      ? { commit: { sha: b } } : centralGet(path)),
+    /Live main SHA moved/);
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.endsWith("/branches/main")
+      ? { commit: {} } : centralGet(path)),
+    /Cannot independently verify the live main branch commit/);
   await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
     async path => path.endsWith("/pulls/881")
       ? {...await centralGet(path), head: { sha: a, repo: { full_name: "other/fork" } }}
