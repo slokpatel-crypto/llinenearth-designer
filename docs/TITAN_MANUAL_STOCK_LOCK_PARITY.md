@@ -66,3 +66,38 @@
 - **Source inspection:** all five route RPC invocations matched the new allowlist at the test commit. **Full CI and Non-3D QA for this new head remain unverified at checkpoint creation**; do not treat this inspection as an executed Node/HTTP test.
 - **Remaining:** external legacy callers, staging migration approval, real supplier stock, customer/operator acceptance, tailor, native Blender, physical devices, five testers, ten deliveries and owner approval remain PENDING/BLOCKED. No main integration, deployment or live database mutation.
 - **Next slice:** check exact-head CI and Non-3D; investigate any failure, then assess isolated main intake only after dependency/guard verification.
+
+
+## Exact-head operator RPC regression verification — 2026-11-03
+
+- **Verified parent SHA:** `228d8d8c86dd8983e5dbc25d4a569f4b0e585676`; Full CI `41657962514` **SUCCESS**, Non-3D QA `41657962553` **SUCCESS**, both returned by GitHub for the exact parent SHA. The newly added operator RPC allowlist regression is therefore included in these workflows. This documentation update requires its own matching-head check; do not attribute parent checks to the new commit.
+- **Source inspection:** `src/app/api/operator/stock/route.ts` calls only v2 stock RPCs (`fabric_stock_snapshot_v2`, `fabric_stock_record_v2`, `fabric_stock_reserve_v2`, `fabric_stock_release_v2`, `fabric_stock_consume_reservation_v2`). POST returns HTTP 423 before privileged write selection unless the existing synthetic-test gate is enabled. No live authenticated HTTP test was performed in this review.
+- **Repository-wide code search limitation:** GitHub code search for `fabric_stock_record` returned zero results with `incomplete_results=true`, which is not evidence of zero external callers. External RPC callers and staging compatibility remain unverified.
+- **Main ancestry and deployment:** observed main `4dd8020abd83429449ff53ea5bb71b046394d86e`; GitHub compare `main...228d8d8c86dd8983e5dbc25d4a569f4b0e585676` reports **diverged**, 17 ahead and 1 behind. Live main `vercel.json` still contains `git.deploymentEnabled=false`. No direct merge of this branch is authorized without dependency-complete isolated intake and matching-head checks.
+- **Acceptance:** T3/J1 concurrency and legacy permission regression; T5/J5 operator v2 allowlist; T6/J6 exact-head CI/Non-3D automated checks verified at parent SHA only. Physical supplier stock, real customer/operator acceptance, tailor, devices, native Blender, five testers, ten deliveries and owner signoff remain **PENDING/BLOCKED**.
+- **Next 30–40-minute slice:** audit stock HTTP test fixture for a negative assertion that a retired v1 RPC can never be invoked by any operator action; if missing, add and run regression. Reconcile newest main and PR ancestry before an isolated guarded intake. No deploy, live migration or physical stock mutation.
+
+## Operator RPC parser bypass regression — 2026-11-03
+
+- **Parent:** `0a2019a232cc85ce79e7e304c6b0a1b66ea6d1d6`; **test commit:** `31e3bb860e33945094d9f80296d95b7fccfaeb37`.
+- **Affected gates:** T5/J5 privileged operator RPC boundary and T6/J6 regression. The previous static allowlist recognized only typed `rpc<T>("literal")` calls. An untyped `rpc("fabric_stock_record")`, single-quoted literal, or dynamically named RPC could escape enumeration and leave the allowlist apparently unchanged.
+- **Fix:** enumerate typed/untyped, single/double-quoted literal RPC calls, count all RPC call expressions independently, and fail when a dynamic/nonliteral call cannot be accounted for. Existing five-v2-only allowlist and no-duplicate checks remain enforced. Synthetic fixture only; no production stock access.
+- **Verification:** parent `0a2019a232cc85ce79e7e304c6b0a1b66ea6d1d6` Full CI `41668152404` and Non-3D `41668152463` both SUCCESS. These do **not** certify the new test SHA or this checkpoint SHA. New matching-head CI/Non-3D and actual HTTP execution remain PENDING until observed.
+- **Remaining blockers:** external legacy RPC clients, staged migration/rollback approval, real supplier inventory, authenticated operator/customer acceptance, tailor, Blender, physical devices, five testers, ten deliveries and owner approval. Do not merge stacked draft into main or deploy.
+- **Next slice:** verify exact-head CI and built-Next synthetic HTTP suite; if green, inspect live main ancestry and isolate dependency-complete intake only with the no-deploy guard.
+
+## CI regex syntax correction — 2026-11-03
+
+- **Parent:** `14d8043acc2e5f3a663900d4cef4d816d08a1aaa`; **fix commit:** `67cf712398da36ccf87442fee1a8f4098baca2bd`.
+- **Observed exact-head evidence at parent:** Full CI run `41678750579` **FAILURE** in build job `126067030536` at `node scripts/verify-operator-stock-private-http.cjs`: JavaScript `SyntaxError: Invalid regular expression: Unterminated group`. The newly added allowlist regex used doubled backslashes in JavaScript regex literals. Disposable PostgreSQL job passed. Non-3D QA `41678750486` **SUCCESS** at the same parent SHA.
+- **Correction:** normalize escapes in the two `stockRoute.matchAll` regex literals to recognize literal `.rpc`, optional generic type, whitespace and opening parenthesis. The allowlist assertions are preserved. This is a source fix, not proof of passing built-Next HTTP verification.
+- **Affected criteria:** T5/J5 operator RPC allowlist and T6/J6 CI regression. **Matching-head Full CI, Non-3D and built-Next synthetic HTTP at fix SHA remain PENDING** until GitHub results are observed. No main merge, deployment, live migration or stock mutation.
+- **Next slice:** check exact-head workflow results for the checkpoint commit; if failing, inspect logs and fix. If green, reconcile current main and isolated dependency-complete intake. External clients, real inventory, staging, customer/operator acceptance, tailor, native Blender, devices, five testers, ten deliveries and owner signoff remain BLOCKED/PENDING.
+
+## 2026-11-04 — operator RPC allowlist CI failure repair
+
+- **Observed previous head:** `e84f75ad8d61af1c8f13ed52c5a8887b2e75ac54`; Full CI `41688230621` **FAILURE** at synthetic private stock HTTP verification; Non-3D `41688230619` **SUCCESS**. Full CI's disposable PostgreSQL stock reservation job **SUCCESS**; npm quality, tests, engine, preview-performance, release check and build all succeeded before the HTTP step.
+- **Cause:** static audit scanned for `.rpc(...)` calls, but the actual operator route uses a local `await rpc<T>(...)` helper. It falsely returned zero callsites against five expected v2 names; not evidence of a real stock API failure.
+- **Parent/result commits:** `e84f75ad8d61af1c8f13ed52c5a8887b2e75ac54` → `4163945a15616260be5c822874b2b12a08f8b1fa` → `4f859ccdf51f985b88d37168a9efda292c8b7418`. Corrected the audit to count and validate literal names in awaited local helper calls, including typed/untyped forms; corrected regex escaping in second commit. A small isolated Node regex fixture confirmed matching both typed example calls, **not** full repo verification.
+- **Criteria:** T5/J5 privileged stock RPC source-call allowlist and T6/J6 HTTP/CI regression. **New-head Full CI/Non-3D pending**, no acceptance claimed until matching SHA green.
+- **Next slice:** inspect exact-head workflows, repair any failure, then reconcile #876 with current main and the independent #879/#880/#881 security migrations and the known Supabase migration-version collisions before any intake. Real stock, staged migration approval, external caller inventory, authenticated operator/customer tests, tailor, native Blender, physical devices, five testers, ten deliveries and owner signoff remain **PENDING/BLOCKED**. No main merge, deploy or live database write.
