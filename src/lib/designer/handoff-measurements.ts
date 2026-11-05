@@ -12,9 +12,11 @@ export type HandoffMeasurementAudit = {
 
 type TargetGroup = { shirt: readonly FinishedTarget[]; trouser: readonly FinishedTarget[] };
 
+// A complete review packet needs garment-length landmarks as well as girths.
+// Their presence does NOT prove the readings or authorise cutting.
 const ESSENTIAL_TARGETS = {
-  shirt: ["Finished shirt chest"],
-  trouser: ["Finished trouser waist", "Finished trouser seat"],
+  shirt: ["Finished shirt chest", "Shoulder-width anchor", "Sleeve-length anchor"],
+  trouser: ["Finished trouser waist", "Finished trouser seat", "Inseam anchor", "Outseam anchor"],
 } as const;
 
 const finite = (value: unknown): value is number =>
@@ -31,6 +33,7 @@ export function auditHandoffMeasurements(groups: TargetGroup): HandoffMeasuremen
       continue;
     }
     const seen = new Set<string>();
+    const byLabel = new Map<string, FinishedTarget>();
     for (const [index, value] of targets.entries()) {
       const name = `${garment} target #${index + 1}`;
       if (!value || typeof value !== "object") {
@@ -42,6 +45,7 @@ export function auditHandoffMeasurements(groups: TargetGroup): HandoffMeasuremen
       const key = label.toLowerCase();
       if (key && seen.has(key)) errors.push(`${garment}: duplicate measurement label "${label}".`);
       seen.add(key);
+      if (key && !byLabel.has(key)) byLabel.set(key, value);
 
       if (!finite(value.bodyCm) || value.bodyCm <= 0 || value.bodyCm > 350) {
         errors.push(`${name}: body reading must be a finite, positive centimetre value within the supported input range.`);
@@ -77,6 +81,20 @@ export function auditHandoffMeasurements(groups: TargetGroup): HandoffMeasuremen
             || Math.abs(value.bodyCm - finished.max) > 0.11)) {
           errors.push(`${name}: direct anchor differs from its recorded centimetre value.`);
         }
+      }
+    }
+
+    // Compare only like-for-like, recorded centimetre length landmarks.
+    // These are logical ordering constraints, not fabricated body proportions.
+    if (garment === "trouser") {
+      const inseam = byLabel.get("inseam anchor")?.bodyCm;
+      const outseam = byLabel.get("outseam anchor")?.bodyCm;
+      const frontRise = byLabel.get("front-rise anchor")?.bodyCm;
+      if (finite(inseam) && finite(outseam) && outseam <= inseam) {
+        errors.push("trouser: outseam must be longer than inseam; verify landmarks and centimetre units.");
+      }
+      if (finite(frontRise) && finite(outseam) && frontRise >= outseam) {
+        errors.push("trouser: front rise must be shorter than outseam; verify landmarks and centimetre units.");
       }
     }
 
