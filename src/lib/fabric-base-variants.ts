@@ -1,6 +1,7 @@
 import { normalizeFabricPhysicalEvidenceProvenance } from "./fabric-physical-provenance.ts";
 import type { FabricPhysicalEvidenceProvenance } from "./fabric-physical-provenance.ts";
 import { colorFamilies } from "./vocab/colors.ts";
+import { patternFamilies } from "./vocab/patterns.ts";
 
 /** Pure, lot-scoped candidate resolution. An authenticated external review ledger is required. */
 export const FABRIC_BASE_FIELDS=["gsm","widthMm","composition","weave","yarnCount"] as const;
@@ -28,7 +29,6 @@ export type FabricVariantResolution={
 };
 const fields:readonly string[]=[...FABRIC_BASE_FIELDS,...FABRIC_VARIANT_FIELDS];
 const origins=["measured","supplier_declared","estimated","unknown"];
-const patterns=["solid","stripe","check","dot","botanical","floral","geometric","paisley","abstract","melange","textured","other"];
 const weaves=["plain","twill","satin","basket","dobby","jacquard","other"];
 const grains=["warp","weft","bias"];
 const id=(v:unknown):v is string=>typeof v==="string"&&/^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/.test(v);
@@ -121,7 +121,7 @@ function normalizeVariant(v:unknown):FabricVariantIdentity|null {
   if(!obj(v)||!keys(v,["variantId","lotId","colorFamily","patternFamily","photoId","photoSha256"])
     ||!id(v.variantId)||!id(v.lotId)||!id(v.photoId)||!hash(v.photoSha256)
     ||typeof v.colorFamily!=="string"||!colorFamilies.some(c=>c.id===v.colorFamily)
-    ||typeof v.patternFamily!=="string"||!patterns.includes(v.patternFamily))return null;
+    ||typeof v.patternFamily!=="string"||!patternFamilies.some(p=>p.id===v.patternFamily))return null;
   return {variantId:v.variantId,lotId:v.lotId,colorFamily:v.colorFamily,
     patternFamily:v.patternFamily,photoId:v.photoId,photoSha256:v.photoSha256};
 }
