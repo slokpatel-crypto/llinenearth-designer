@@ -63,6 +63,15 @@ function validValue(field:FabricPhysicalField,value:unknown,resolution:unknown):
   return Math.abs(sum-100)<1e-7;
 }
 
+/** Do not let caller-owned JSON mutate a reviewed nested value after the snapshot check. */
+function copyClaimValue(value:FabricClaimValue):FabricClaimValue {
+  if(Array.isArray(value))return value.map(part=>Object.freeze({fiber:part.fiber,percent:part.percent}));
+  if(value!==null&&typeof value==="object"){
+    return Object.freeze({system:value.system,count:value.count,resolution:value.resolution});
+  }
+  return value;
+}
+
 function normalizeClaim(raw:unknown):FabricPhysicalClaim|null {
   if(!obj(raw)||!keys(raw,["claimId","baseId","field","value","origin","resolution","scope","source","calibration"])
     ||!id(raw.claimId)||!id(raw.baseId)||typeof raw.field!=="string"||!fields.includes(raw.field)
@@ -108,7 +117,7 @@ function normalizeClaim(raw:unknown):FabricPhysicalClaim|null {
     calibration={photoSha256:c.photoSha256,widthPx:c.widthPx,heightPx:c.heightPx,
       axis:c.axis as "x"|"y",repeatPx:c.repeatPx,pixelsPerMm:c.pixelsPerMm};
   }
-  return {claimId:raw.claimId,baseId:raw.baseId,field,value:raw.value as FabricClaimValue,origin,
+  return {claimId:raw.claimId,baseId:raw.baseId,field,value:copyClaimValue(raw.value as FabricClaimValue),origin,
     ...(raw.resolution===undefined?{}:{resolution:raw.resolution as number}),
     scope,...(source?{source}:{}),...(calibration?{calibration}:{})};
 }
@@ -151,6 +160,13 @@ export function resolveFabricBaseVariants(input:{baseId:unknown;variants:unknown
     variants.push({identity,physical:Object.fromEntries(fields.map(f=>[f,empty()])) as Record<FabricPhysicalField,ResolvedFabricClaim>,
       calibratedAxes:{x:null,y:null},issues:[]});
   }
+  // Even a malformed or foreign-base claimant must not be able to shadow an
+  // approved ID and then disappear during validation. Reject every duplicate.
+  const seenClaimIds=new Set<string>(),duplicateClaimIds=new Set<string>();
+  for(const raw of input.claims)if(obj(raw)&&id(raw.claimId)){
+    if(seenClaimIds.has(raw.claimId))duplicateClaimIds.add(raw.claimId);
+    seenClaimIds.add(raw.claimId);
+  }
   const byId=new Map<string,FabricPhysicalClaim[]>();
   for(const raw of input.claims){
     const c=normalizeClaim(raw);
@@ -172,7 +188,9 @@ export function resolveFabricBaseVariants(input:{baseId:unknown;variants:unknown
     if(own.length>1||base.length>1){variant.issues.push(field+": ambiguous competing claims");continue;}
     const c=own[0]??base[0];
     if(!c)continue;
-    if(byId.get(c.claimId)?.length!==1){variant.issues.push(field+": duplicate claim ID");continue;}
+    if(duplicateClaimIds.has(c.claimId)||byId.get(c.claimId)?.length!==1){
+      variant.issues.push(field+": duplicate claim ID");continue;
+    }
     const rows=reviews.get(c.claimId)??[],row=rows[0];
     let approval:ResolvedFabricClaim["approval"]="missing";
     if(rows.length>1)approval="stale";
@@ -194,5 +212,21 @@ export function resolveFabricBaseVariants(input:{baseId:unknown;variants:unknown
     variant.physical[field]={value:usable?c.value:null,origin:c.origin,approval,usable,claimId:c.claimId};
     if(usable&&c.calibration)variant.calibratedAxes[c.calibration.axis]=c.calibration.pixelsPerMm;
   }
+  // Return detached, immutable approval projections rather than mutable aliases.
+  // This is a defense against accidental post-review mutation, not authentication.
+  for(const variant of variants){
+    for(const field of fields as FabricPhysicalField[]){
+      const value=variant.physical[field].value;
+      if(Array.isArray(value))Object.freeze(value);
+      Object.freeze(variant.physical[field]);
+    }
+    Object.freeze(variant.identity);
+    Object.freeze(variant.physical);
+    Object.freeze(variant.calibratedAxes);
+    Object.freeze(variant.issues);
+    Object.freeze(variant);
+  }
+  Object.freeze(variants);
+  Object.freeze(issues);
   return {baseId:input.baseId,variants,issues};
 }
