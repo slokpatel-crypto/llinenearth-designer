@@ -140,6 +140,66 @@ for name in ("flat", "curved"):
     actual = cut(source, originals, joined["face_uv_loops"],
                  cuts, joined["report"])
     assert actual["productionApproved"] is False
+    baseline_connected = join(
+        originals, previous[name + "_metric"]["face_uv_loops"], cuts,
+        preferred_tree_edges=[list(edge) for edge in sorted(baseline_edges)],
+    )
+    baseline_audit = cut(
+        source, originals, baseline_connected["face_uv_loops"], cuts,
+        baseline_connected["report"],
+    )
+    comparator = runpy.run_path(str(
+        scripts / "source-trouser-max-retained-uv.py"
+    ))["compare_measured_original_source_uv_research_candidates"]
+    verdict = comparator(
+        baseline_audit, actual, baseline_connected["report"], joined["report"]
+    )
+    assert verdict == comparator(
+        baseline_audit, actual, baseline_connected["report"], joined["report"]
+    ), "Real original-source UV metrics were compared nondeterministically"
+    assert verdict["researchOnly"] is True
+    assert verdict["nativeSourceTopologyPreserved"] is True
+    assert verdict["productionApproved"] is False
+    assert verdict["uvOverlapCertifiedAbsent"] is False
+    equal_verdict = comparator(
+        baseline_audit, baseline_audit, baseline_connected["report"],
+        baseline_connected["report"],
+    )
+    assert equal_verdict["measuredResearchParetoImprovement"] is False
+    assert equal_verdict["measuredTradeoffObserved"] is False
+
+# Strict negative and fabricated-metric rejection on validated real source data.
+def reject_comparison(base_cut, trial_cut, base_tree, trial_tree):
+    try:
+        comparator(base_cut, trial_cut, base_tree, trial_tree)
+    except (ValueError, KeyError, TypeError):
+        return
+    raise AssertionError("Forged or mismatched original native source UV comparison accepted")
+
+for forged_name, forged_value in (
+    ("productionApproved", True),
+    ("realTailorCutLinesApproved", True),
+    ("sourcePanelUVContinuityVerified", True),
+    ("totalRealGeometryOfUvCutCandidatesMm", math.nan),
+    ("maximumUnclosedUvEdgeGapMm", math.inf),
+    ("uvCutCandidateDegreeThreePlusSourceVertices", -1),
+    ("originalSharedSourceEdgeCount", 99999),
+):
+    forgery = dict(actual)
+    forgery[forged_name] = forged_value
+    reject_comparison(baseline_audit, forgery,
+                      baseline_connected["report"], joined["report"])
+for forged_name, forged_value in (
+    ("productionApproved", True),
+    ("sourcePanelsFullyStitchedInUV", True),
+    ("surfaceUvOverlapCertifiedAbsent", True),
+    ("rmsNonTreeUvSeamGapMm", math.nan),
+    ("verifiedTreeConnectedSharedEdges", 999),
+):
+    forgery = dict(joined["report"])
+    forgery[forged_name] = forged_value
+    reject_comparison(baseline_audit, actual,
+                      baseline_connected["report"], forgery)
 
 for bad_weight in (-2, 0, math.nan, math.inf, True, "100"):
     try:
