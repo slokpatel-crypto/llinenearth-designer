@@ -12,7 +12,7 @@ const shaPattern = /^[a-f0-9]{40}$/;
 // A manifest that silently omits one source PR/file would otherwise pass the
 // remaining file checks. A separately reviewed pinned Git blob identity makes
 // changes to the entire claimed source intake fail closed, including removals.
-const PINNED_MANIFEST_BLOB = "f2f463b58e08da99ecc4610ac4f5a6da7c3485cc";
+const PINNED_MANIFEST_BLOB = "1a73d6cf62d4208995d805150e7bd524faff59fa";
 
 function gitBlobSha(bytes) {
   const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
@@ -83,6 +83,22 @@ function verifySnapshot(manifest, readSha) {
     }
   }
 
+  // Central-only regression scripts/checkpoint have no external worker PR.
+  // They must be byte-pinned separately; otherwise the combined integration
+  // tests could be weakened while all imported-worker blobs still match.
+  const centralOnly = manifest.central_only_files;
+  assert.ok(centralOnly && typeof centralOnly === "object" &&
+    !Array.isArray(centralOnly) && Object.keys(centralOnly).length > 0,
+    "Central-only integration file inventory is required");
+  for (const [path, sha] of Object.entries(centralOnly)) {
+    assert.ok(path && !path.startsWith("/") && !path.split("/").includes("..") &&
+      !path.includes("\\"), "Unsafe central-only file path: " + path);
+    assert.ok(shaPattern.test(sha), "Invalid central-only file blob: " + path);
+    assert.ok(!seen.has(path) && !Object.hasOwn(exceptions, path),
+      "Central-only file overlaps imported source path or workflow: " + path);
+    seen.set(path, sha);
+  }
+
   for (const [path, exception] of Object.entries(exceptions)) {
     assert.ok(seen.has(path), "Orphan combined-workflow exception: " + path);
     assert.ok(/^\.github\/workflows\/[^/]+\.ya?ml$/.test(path),
@@ -119,12 +135,14 @@ function selfTest() {
       { pr: 11, head: b, files: { ".github/workflows/test.yml": b } }
     ],
     selective_source_imports: [],
+    central_only_files: { "docs/central.md": b },
     intentionally_combined: { ".github/workflows/test.yml": {
       integrated_blob_sha: c, reason: "Explicitly reconciled independent source jobs" } }
   };
-  const lookup = path => path === "src/a.ts" ? a : c;
+  const lookup = path => path === "src/a.ts" ? a :
+    path === "docs/central.md" ? b : c;
   assert.deepEqual(verifySnapshot(sample, lookup),
-    { sourcePrs: 2, uniquePaths: 2, combinedWorkflowExceptions: 1 });
+    { sourcePrs: 2, uniquePaths: 3, combinedWorkflowExceptions: 1 });
   assert.throws(() => verifySnapshot(sample, () => b), /Integrated source blob mismatch/);
   const noException = structuredClone(sample);
   noException.intentionally_combined = {};
@@ -138,6 +156,22 @@ function selfTest() {
   assert.throws(() => verifySnapshot(badSource, lookup), /Invalid source blob/);
   assert.throws(() => verifySnapshot(sample, () => { throw Error("missing"); }),
     /cannot read file/);
+  const centralTamper = structuredClone(sample);
+  assert.throws(() => verifySnapshot(centralTamper,
+    path => path === "docs/central.md" ? c : lookup(path)),
+    /docs\/central\.md: expected/);
+  const centralOverlap = structuredClone(sample);
+  centralOverlap.central_only_files["src/a.ts"] = b;
+  assert.throws(() => verifySnapshot(centralOverlap, lookup),
+    /Central-only file overlaps imported/);
+  const centralInvalid = structuredClone(sample);
+  centralInvalid.central_only_files["docs/central.md"] = "bad";
+  assert.throws(() => verifySnapshot(centralInvalid, lookup),
+    /Invalid central-only file blob/);
+  const centralMissing = structuredClone(sample);
+  centralMissing.central_only_files = {};
+  assert.throws(() => verifySnapshot(centralMissing, lookup),
+    /Central-only integration file inventory is required/);
   const pinnedBytes = readFileSync(join(process.cwd(), manifestFile));
   verifyPinnedManifest(pinnedBytes);
   assert.throws(() => verifyPinnedManifest(Buffer.concat([pinnedBytes, Buffer.from(" ")])),
