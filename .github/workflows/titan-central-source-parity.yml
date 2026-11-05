@@ -46,3 +46,10 @@ jobs:
           node --check scripts/verify-central-source-pr-heads.cjs
           node scripts/verify-central-source-pr-heads.cjs --self-test
           node scripts/verify-central-source-pr-heads.cjs
+      - name: Verify independent worker PR file scope boundaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --check scripts/verify-central-worker-isolation.cjs
+          node scripts/verify-central-worker-isolation.cjs --self-test
+          node scripts/verify-central-worker-isolation.cjs
