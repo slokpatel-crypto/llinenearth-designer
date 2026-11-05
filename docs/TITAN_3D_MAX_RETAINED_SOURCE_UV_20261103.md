@@ -184,3 +184,23 @@ New scoped commits: \`11c92df1\` pure comparator, \`169ba149\` adversarial fixtu
 - Implementation commits: \`099d7a9a\` pure original-source component pack; \`e2120d9e\` Python geometry fixtures and negatives; \`cd802236\` native source driver seam/overlap comparisons; \`88b4d48c\` pinned workflow; \`6165b9fd\` Node guard. Native original-source measurements on those commits remain **unverified until exact-head workflow completes**. Do not invent overlap reduction before native evidence.
 
 **Research gate:** reduce 2D cross-component intersections with no changed original mesh, cut-network length, seam closure, face triangles or physical flags. Inspect exact-head pinned Blender source evidence before recording numeric improvement. This is a step toward geometry-only UV research, **not** a source garment production pattern. **NO MERGE / NO VERCEL DEPLOY / NO SOURCE EXPORT OR PHYSICAL CUT APPROVAL.**
+
+## 2026-11-05 verified component-packing measurement — real improvement, still unapproved
+
+Source: official checksum-pinned original-source Blender 4.5.14 workflow [#42023534600](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/42023534600), **SUCCESS** at tested code head `6165b9fdb6dc1920ff68b2f349dd9a99dee2b355`. Both bounded 2D original-source triangle scans completed, with **no truncation**.
+
+| Original-source research UV result | Unpacked | Rigid component-packed | Improvement |
+|---|---:|---:|---:|
+| Weighted tree overlapping triangle pairs | 10,238 | **6,957** | **3,281 fewer** |
+| Branch-aware one-swap overlapping triangle pairs | 10,409 | **7,128** | **3,281 fewer** |
+| Original 3D face-graph source components | [1,220, 715, 715] | [1,220, 715, 715] | unchanged |
+| Triangle edge distortion caused by UV packing | n/a | **0 mm** | never stretched |
+| Physical tailor/fabric/source-body fit or production approved | false | false | unchanged |
+
+Both tree variants remove exactly **3,281 cross-component 2D UV triangle-pair overlaps**, solely by moving *whole* disconnected authentic source-face-graph UV components into separate 2D bounding boxes. Their rigid trial transforms are **research UV coordinates, not real garment/cutting dimensions**. The chosen numerical 5mm component display separation must **not** be treated as supplier repeat, fabric width, grain, seam allowance, minimum cloth spacing, or production consumption.
+
+**Still invalid for real manufacturing:** 6,957 weighted and 7,128 branch-aware *remaining* positive-area overlap pairs; 2,585 original-source unclosed cyclic UV seams, unchanged original crotch collision research, 29,600 original source/body BVH pairs, ten hard production preflight blockers, absent verified fabric calibration and tailor approval. No source-body 3D geometry changed; no GLB/UV production export or original `linen-earth-studio-model-v1` photo replacement. No claim of overlap-free/strain-free fully sewn trouser panels.
+
+Research code proof: `source-trouser-component-uv-pack.py` computes true original face-graph connected components; dedicated planar two-component artificial test validates reversible rigid translation and error handling; native Blender compares actual independently reconstructed overlap counts **and** re-audits unchanged UV cut network/gaps. Follow-up commits `4ce59db2`, `270295e7`, `2e00f31b` additionally reject contradictory shared-edge winding and test that rejection. The measured complete source result above is certified only at its **tested code head**; later heads (including this documentation-only commit) require their own exact-head native source, collision, full CI and Non-3D checks.
+
+**Next acceptance item:** Reduce **within-component** original source UV overlap without disguising cyclic seam disconnection, metric strain, true cloth grain or actual body collision. Retain current component-packing improvement as a **research-only witness**, not a promoted production pattern. Draft PR #897 remains open; **no merge, Vercel deployment, source export or physical fit approval**.
