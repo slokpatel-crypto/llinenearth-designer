@@ -1728,6 +1728,13 @@ def main():
                 or source_uv_overlap["productionApproved"]):
             raise RuntimeError("Research UV interior overlap audit lost source/approval truth.")
     weighted_report["researchOnlyOriginalSourceUvOverlapEvidence"] = weighted_overlap
+    branch_report["researchOnlyOriginalSourceUvOverlapComparison"] = uv_overlap_ops[
+        "compare_original_source_uv_overlap_evidence"
+    ](weighted_overlap, branch_overlap)
+    overlap_comparison = branch_report["researchOnlyOriginalSourceUvOverlapComparison"]
+    if (overlap_comparison["completeGarmentUvApproved"]
+            or overlap_comparison["productionApproved"]):
+        raise RuntimeError("Unapproved source UV overlap comparison claimed production fit.")
     branch_report["researchOnlyOriginalSourceUvOverlapEvidence"] = branch_overlap
     branch_report["actualSourceUvCutNetworkEvidence"] = branch_audit
     branch_report["actualRealSourceUvTreeEvidence"] = branch_uv["report"]
