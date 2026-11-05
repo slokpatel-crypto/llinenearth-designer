@@ -118,6 +118,7 @@ function selfTest() {
       { pr: 10, head: a, files: { "src/a.ts": a, ".github/workflows/test.yml": a } },
       { pr: 11, head: b, files: { ".github/workflows/test.yml": b } }
     ],
+    selective_source_imports: [],
     intentionally_combined: { ".github/workflows/test.yml": {
       integrated_blob_sha: c, reason: "Explicitly reconciled independent source jobs" } }
   };
