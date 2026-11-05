@@ -1,6 +1,8 @@
 import type { ProductionHandoff } from "@/lib/designer/production-handoff";
 import type { LockedDesignRevision } from "./design-lock.ts";
 import { verifyProductionHandoff } from "./production-handoff.ts";
+import type { LockedDesignRevision } from "./design-lock.ts";
+import { verifyProductionHandoff } from "./production-handoff.ts";
 import { auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
@@ -279,6 +281,24 @@ export async function buildVerifiedTailorTechPackHtml(
 ): Promise<string> {
   if (!await verifyProductionHandoff(handoff, revision)) {
     throw new Error("Unsafe tailor tech pack export: the packet does not match its verified locked design revision.");
+  }
+  return buildTailorTechPackHtml(handoff);
+}
+
+/**
+ * Trust boundary for an externally exported tailor tech pack. The legacy
+ * synchronous HTML formatter is presentation-only: a caller must separately
+ * verify the locked recipe before asserting that a packet is authoritative.
+ *
+ * Verification proves byte-level recipe/handoff consistency, not physical
+ * measurements, seam allowances, pattern fitness or cutting approval.
+ */
+export async function buildVerifiedTailorTechPackHtml(
+  handoff:ProductionHandoff,
+  revision:LockedDesignRevision,
+):Promise<string>{
+  if(!await verifyProductionHandoff(handoff,revision)){
+    throw new Error("Tailor tech pack export rejected: handoff does not match the verified locked design revision.");
   }
   return buildTailorTechPackHtml(handoff);
 }
