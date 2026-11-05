@@ -130,6 +130,19 @@ async function verifyCentralIntake(manifest, repository, getJson) {
     "Central PR #881 head changed; review and repin complete intake");
   assert.equal(central.head?.repo?.full_name, repository,
     "Central PR #881 must originate from this repository");
+  // PR metadata can be stale even when its recorded head SHA is pinned.
+  // Confirm the live central integration branch itself has not advanced.
+  const centralRef = central.head?.ref;
+  assert.ok(typeof centralRef === "string" &&
+    /^[A-Za-z0-9._/-]+$/.test(centralRef) && !centralRef.includes("..") &&
+    !centralRef.includes("//") && !centralRef.startsWith("/") &&
+    !centralRef.endsWith("/"),
+    "Central PR #881 has an unsafe or missing head ref");
+  const centralTip = await getJson("/repos/" + repository + "/git/ref/heads/" + centralRef);
+  assert.equal(centralTip?.ref, "refs/heads/" + centralRef,
+    "Central PR #881 returned a mismatched live branch ref");
+  assert.equal(centralTip?.object?.sha, manifest.central_base_commit,
+    "Central PR #881 live branch tip moved; review and repin intake");
   assert.equal(central.base?.ref, "main",
     "Central PR #881 must target main without an unreviewed rebase");
   assert.equal(central.base?.sha, APPROVED_MAIN_SHA,
@@ -260,9 +273,12 @@ async function selfTest() {
   };
   const centralGet = async path => {
     if (path.endsWith("/branches/main")) return { commit: { sha: APPROVED_MAIN_SHA } };
+    if (path.endsWith("/git/ref/heads/central-integration"))
+      return { ref: "refs/heads/central-integration", object: { sha: a } };
     if (path.endsWith("/pulls/881")) return {
       state: "open", draft: true,
-      head: { sha: a, repo: { full_name: "sample/repository" } },
+      head: { sha: a, ref: "central-integration",
+        repo: { full_name: "sample/repository" } },
       base: { ref: "main", sha: APPROVED_MAIN_SHA }
     };
     if (path.includes("/pulls/881/files?")) return [
@@ -293,6 +309,19 @@ async function selfTest() {
     async path => path.endsWith("/pulls/881")
       ? {...await centralGet(path), draft: false} : centralGet(path)),
     /must remain open and draft/);
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.endsWith("/git/ref/heads/central-integration")
+      ? { ref: "refs/heads/central-integration", object: { sha: b } } : centralGet(path)),
+    /live branch tip moved/);
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.endsWith("/git/ref/heads/central-integration")
+      ? { ref: "refs/heads/unreviewed", object: { sha: a } } : centralGet(path)),
+    /mismatched live branch ref/);
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.endsWith("/pulls/881")
+      ? {...await centralGet(path), head: { sha: a, ref: "../unsafe",
+        repo: { full_name: "sample/repository" } }} : centralGet(path)),
+    /unsafe or missing head ref/);
   await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
     async path => path.endsWith("/pulls/881")
       ? {...await centralGet(path), base: { ref: "main", sha: a }} : centralGet(path)),
