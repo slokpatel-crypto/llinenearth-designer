@@ -22,6 +22,14 @@ test("maximum real original source edge forest compares cuts without inventing f
     '"productionApproved": False',
   ])assert.ok(selector.includes(v),v);
   for(const v of [
+    "def select_original_source_branch_aware_uv_trial(",
+    "branch_penalty_mm=100.0, max_candidate_edges=48",
+    "predecessor = {start: None}",
+    '"candidateResearchObjectiveMm": round(after[3], 5)',
+    '"actualUvClosureMeasured": False',
+    '"tailorSeamsApproved": False',
+  ])assert.ok(selector.includes(v),v);
+  for(const v of [
     "preferred_tree_edges=None):",
     "expected_original_component_count = None",
     "allowed_tree = None",
@@ -41,6 +49,9 @@ test("maximum real original source edge forest compares cuts without inventing f
     "len(weighted_body) != unchanged_source_pairs",
     '"researchOnlyOriginalSourceMaxRetainedUvEvidence"] = weighted_report',
     '"maxRetainedActualCutLengthChangeVsBfsMm"] = round(',
+    '"researchOnlyBranchAwareSourceUvEvidence"] = branch_report',
+    '"actualSourceUvCutNetworkEvidence"] = branch_audit',
+    '"nativeBodyContactsInvariantFromUnchangedSource"] = unchanged_source_pairs',
   ])assert.ok(blender.includes(v),v);
   for(const v of [
     '"scripts/blender/source-trouser-max-retained-uv.py"',
