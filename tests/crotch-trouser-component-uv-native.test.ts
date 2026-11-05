@@ -13,6 +13,7 @@ test("true original-source UV disconnected-component pack never becomes sewn clo
     "originalSourceFaceGraphComponentCount",
     "components = []",
     "queue = deque([root])",
+    "Original source face adjacency has inconsistent seam winding.",
     "packed[face_id] = [",
     '"maximumOriginalTriangleEdgeChangeMm": round(max_change, 9)',
     '"sourceGeometryAndVertexIDsUnchanged": True',
@@ -50,6 +51,7 @@ test("true original-source UV disconnected-component pack never becomes sewn clo
     'assert summary["productionApproved"] is False',
     'reject(faces, inverted)',
     'reject(nonmanifold, loops)',
+    'reject(contradictory_winding, loops)',
   ])assert.ok(fixture.includes(marker),marker);
   for(const marker of [
     '"scripts/blender/source-trouser-component-uv-pack.py"',
