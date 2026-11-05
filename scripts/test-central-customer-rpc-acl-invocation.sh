@@ -53,18 +53,29 @@ do $probe$
 declare
   owner_id uuid := '123e4567-e89b-12d3-a456-426614174000'::uuid;
 begin
+  -- Each side-effecting RPC is evaluated as a distinct SQL statement,
+  -- never as an optimizer-reorderable OR chain.
   if public.customer_session_is_revoked(repeat('a',64)) is distinct from false
-     or public.customer_session_revoke(repeat('a',64)) is distinct from true
-     or public.customer_session_is_revoked(repeat('a',64)) is distinct from true
-     or public.customer_otp_rate_consume(repeat('c',64)) is distinct from true
-     or public.designer_share_register(repeat('d',64),repeat('e',64),
-                                      now()+interval '1 day',owner_id) is distinct from true
-     or (select count(*) from public.designer_share_list_owned(owner_id)) <> 1
-     or public.designer_share_is_revoked(repeat('d',64)) is distinct from false
-     or public.designer_share_revoke_owned(repeat('d',64),owner_id) is distinct from true
-     or public.designer_share_revoke(repeat('d',64),repeat('e',64)) is distinct from true
-     or public.designer_share_is_revoked(repeat('d',64)) is distinct from true
-  then raise exception 'service_role customer RPC sequence failed'; end if;
+    then raise exception 'new bearer unexpectedly revoked'; end if;
+  if public.customer_session_revoke(repeat('a',64)) is distinct from true
+    then raise exception 'session revoke failed'; end if;
+  if public.customer_session_is_revoked(repeat('a',64)) is distinct from true
+    then raise exception 'revoke lookup failed'; end if;
+  if public.customer_otp_rate_consume(repeat('c',64)) is distinct from true
+    then raise exception 'OTP consume failed'; end if;
+  if public.designer_share_register(repeat('d',64),repeat('e',64),
+            now()+interval '1 day',owner_id) is distinct from true
+    then raise exception 'share register failed'; end if;
+  if (select count(*) from public.designer_share_list_owned(owner_id)) <> 1
+    then raise exception 'owned share list failed'; end if;
+  if public.designer_share_is_revoked(repeat('d',64)) is distinct from false
+    then raise exception 'fresh share unexpectedly revoked'; end if;
+  if public.designer_share_revoke_owned(repeat('d',64),owner_id) is distinct from true
+    then raise exception 'owned share revoke failed'; end if;
+  if public.designer_share_revoke(repeat('d',64),repeat('e',64)) is distinct from true
+    then raise exception 'repeated capability revoke failed'; end if;
+  if public.designer_share_is_revoked(repeat('d',64)) is distinct from true
+    then raise exception 'share revoke lookup failed'; end if;
 end $probe$;
 reset role;
 select 'PASS';
