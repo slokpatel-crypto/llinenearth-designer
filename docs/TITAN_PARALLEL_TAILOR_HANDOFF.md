@@ -57,5 +57,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [x] Added synthetic negative filename regression cases in dedicated handoff tests. This does not replace verified SHA256 recipe/handoff export.
 - [ ] Exact-head CI required for this filename hardening; no claimed pass from earlier commits. Signed physical tailor and cutting approval remain unavailable.
 
+## Unresolved source decision review-gate continuation (2026-11-05)
+- [x] Independently audited `buildProductionHandoff` and the legacy `buildTailorTechPackHtml` against canonical `buildCanonicalGarmentSpec` readiness semantics. Confirmed a locked `ready_for_tailor_review` status can coexist with source `unresolved` notes, and a manually inconsistent status can coexist with review/warning construction checks.
+- [x] Fail-closed handoff status if any original or derived unresolved note remains or any construction check severity is `review` or `warning`. All original records remain in the reconstructable packet; they are never auto-cleared or approved.
+- [x] Printable review-only HTML now uses the same pending-note and construction-check gates instead of accepting a stale ready flag. The verified asynchronous export still checks SHA256-locked recipe integrity.
+- [x] Added three synthetic regressions: unresolved source decisions, open construction checks despite ready source status, and tampered printable review-badge protection.
+- [ ] Verify exact-head Full CI, Non-3D browser QA and disposable PostgreSQL jobs before marking these specific changes verified. No synthetic evidence can substitute for a physical sample or human cutting authorisation.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
