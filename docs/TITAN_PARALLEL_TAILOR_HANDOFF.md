@@ -34,7 +34,9 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [x] Audit the known fit-construction landmark identities and enforce the required body-plus-ease versus anchor semantics, preserving unknown legacy labels for human review.
 - [x] Reject contradictory, partial, or fabricated fit/ease version-and-source combinations at JSON handoff and printable tech pack boundaries.
 - [x] Added negative regression fixtures for swapped labels, missing source data, forged approved-source claims and locked StyleSpec/schema drift.
-- [ ] Run new exact-head CI and record results; earlier passes are not transferable to this follow-up.
+- [x] CI #42018326569 and Non-3D #42018326584 exposed a real regression in verified packet export: forged `generatedAt` earlier than the immutable revision's `lockedAt` was accepted. Tests reported `true !== false` at handoff-measurement-integrity test 389. PostgreSQL job passed, but both workflows failed unit gates.
+- [x] Added lock-before-export chronological verification to `buildVerifiedProductionHandoff` and `verifyProductionHandoff`; new regression tests reject pre-lock timestamps and explicitly document that `generatedAt` is not cryptographically signed and later timestamps cannot be authenticated from a recipe hash alone.
+- [ ] Run new exact-head CI and record results following the chronology fix; earlier passes are not transferable to this follow-up.
 - Test measurements (100/84/102 cm etc.) are synthetic. Neither physical model measurements nor a real tailor approval exists; cutting remains prohibited.
 
 ## Cryptographically verified printable export continuation
