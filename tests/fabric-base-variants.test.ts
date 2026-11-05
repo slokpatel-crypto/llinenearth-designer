@@ -134,5 +134,6 @@ test("malformed or duplicate identities and competing approvals fail closed",()=
   assert.equal(run([base],[approval(base),approval(base)]).variants[0].physical.gsm.value,null);
   assert.equal(run([base],[approval(base)],[ivory,ivory]).variants.length,0);
   assert.equal(run([base],[approval(base)],[{...ivory,colorFamily:["white_family"]}]).variants.length,0);
+  assert.equal(run([base],[approval(base)],[{...ivory,patternFamily:"pinstripe"}]).variants.length,0);
   assert.equal(run([base],[approval(base)],[{...ivory,photoSha256:"bad"}]).variants.length,0);
 });
