@@ -168,6 +168,10 @@ test("printable tech pack preserves locked ease source and complete block instru
   assert.match(html,/BLOCK-SHOULDER-SLOPING/);
   assert.match(html,/Verify shoulder slope at fitting/);
   assert.match(html,/NOT REQUESTED/);
+  assert.match(html,/Seam allowances for shirt and trouser pattern pieces approved/);
+  assert.match(html,/Shrinkage and finished-garment tolerances signed/);
+  assert.match(html,/Body landmarks, centimetre units and conversion checked/);
+  assert.match(html,/PENDING HUMAN ACCEPTANCE/);
 });
 
 test("incomplete mandatory length landmarks never imply tailor review readiness",()=>{
