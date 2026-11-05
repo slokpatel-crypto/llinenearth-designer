@@ -424,7 +424,10 @@ export function styleDirectorPresentationIssues(
     option.legacySelectable !== false && (option.legacyLabel || option.label) === style.collar);
   const exactPhotoMismatch = selectedPhotoOption != null &&
     selectedPhotoOption.id !== versionedCollar;
-  if (namedFamilies > 1 || exactPhotoMismatch || (!selectedPhotoOption &&
+  // Unknown legacy labels cannot certify photographic parity, even for an
+  // ordinary collar. Do not infer a valid selection from an unrecognised name.
+  const unknownPhotoCollar = selectedPhotoOption == null;
+  if (unknownPhotoCollar || namedFamilies > 1 || exactPhotoMismatch || (!selectedPhotoOption &&
       legacyCollar !== versionedCollar &&
       (legacyCollar !== null || ["cuban_camp_collar", "mandarin_band_collar", "cutaway_collar"].includes(versionedCollar)))) {
     issues.push({
