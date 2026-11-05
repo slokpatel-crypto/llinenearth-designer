@@ -82,6 +82,13 @@ async function verifyLiveSourceHeads(manifest, repository, getJson) {
       assert.equal(actual.get(path), sha,
         "Source PR #" + source.pr + " changed or removed " + path);
     }
+    // The branch can change while paginated file metadata is being read.
+    // Pin both sides of the scan instead of accepting a mixed-time snapshot.
+    const tipAfterFiles = await getJson("/repos/" + repository + "/git/ref/heads/" + ref);
+    assert.equal(tipAfterFiles?.ref, "refs/heads/" + ref,
+      "Source PR #" + source.pr + " live ref changed during file scan");
+    assert.equal(tipAfterFiles?.object?.sha, source.head,
+      "Source PR #" + source.pr + " branch moved during file scan");
     files += pinnedFiles.length;
   }
   return { prCount: sources.length, changedFileEntries: files };
@@ -179,6 +186,17 @@ async function verifyCentralIntake(manifest, repository, getJson) {
     assert.equal(actual.get(path), sha,
       "Central PR #881 omitted or changed reviewed file: " + path);
   }
+  // Close the scan window: the central branch or main could advance after
+  // their initial reads but before the last changed-file page completes.
+  const centralTipAfterFiles = await getJson(
+    "/repos/" + repository + "/git/ref/heads/" + centralRef);
+  assert.equal(centralTipAfterFiles?.ref, "refs/heads/" + centralRef,
+    "Central PR #881 live ref changed during file scan");
+  assert.equal(centralTipAfterFiles?.object?.sha, manifest.central_base_commit,
+    "Central PR #881 branch moved during file scan");
+  const mainAfterFiles = await getJson("/repos/" + repository + "/branches/main");
+  assert.equal(mainAfterFiles?.commit?.sha, APPROVED_MAIN_SHA,
+    "Live main moved during central file scan");
   return { changedFiles: expected.size, commit: manifest.central_base_commit };
 }
 
@@ -236,6 +254,13 @@ async function selfTest() {
       ? { ...await get(path), head: { sha: a, ref: "../unsafe",
         repo: { full_name: "sample/repository" } } } : get(path)),
     /unsafe or missing branch ref/);
+  // Return the pinned head initially, then move the branch after file listing.
+  let sourceRefReads = 0;
+  await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
+    async path => path.endsWith("/git/ref/heads/source-11")
+      ? { ref: "refs/heads/source-11",
+        object: { sha: ++sourceRefReads === 1 ? a : b } } : get(path)),
+    /branch moved during file scan/);
   const subset = { ...fixture, selective_source_imports: [
     { pr: 12, head: a, files: { "src/only-imported.sql": b },
       reason: "Only this migration SQL is integrated. The source PR tests, scripts, and documentation remain excluded pending review." }
@@ -339,6 +364,17 @@ async function selfTest() {
     async path => path.endsWith("/pulls/881")
       ? {...await centralGet(path), head: { sha: a, repo: { full_name: "other/fork" } }}
       : centralGet(path)), /must originate from this repository/);
+  let centralRefReads = 0;
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.endsWith("/git/ref/heads/central-integration")
+      ? { ref: "refs/heads/central-integration",
+        object: { sha: ++centralRefReads === 1 ? a : b } } : centralGet(path)),
+    /branch moved during file scan/);
+  let mainReads = 0;
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.endsWith("/branches/main")
+      ? { commit: { sha: ++mainReads === 1 ? APPROVED_MAIN_SHA : b } }
+      : centralGet(path)), /Live main moved during central file scan/);
   process.stdout.write("PASS: live-source guard rejects changed heads, missing, rewritten or duplicate files and closed PRs\n");
 }
 
