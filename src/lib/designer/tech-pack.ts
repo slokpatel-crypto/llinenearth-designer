@@ -100,7 +100,7 @@ footer{margin-top:14px;padding-top:10px;border-top:1px solid #cfd3d6;color:#6872
   <div>
     <div class="badge">${esc(displayStatus.replaceAll("_"," "))}</div>
     <div class="muted" style="margin-top:8px">Recipe ${esc(handoff.recipeHash.slice(0,16).toUpperCase())}</div>
-    <div class="muted">Generated ${esc(handoff.generatedAt)}</div>
+    <div class="muted">Generated ${esc(handoff.generatedAt)} · export metadata (not lock-signed)</div>
   </div>
 </header>
 

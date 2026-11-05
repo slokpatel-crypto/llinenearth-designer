@@ -41,8 +41,8 @@ Work only in measurement audit, existing production handoff and printable tailor
 
 ## Cryptographically verified printable export continuation
 - [x] Introduced additive `buildVerifiedTailorTechPackHtml` export boundary, requiring `verifyProductionHandoff` against the exact locked SHA256 garment recipe before generating trusted printable HTML.
-- [x] Added synthetic SHA256 round-trip and negative cases for forged fabric names, cut options, targets, fit calibration version, packet status, generated timestamps and tampered locked revisions.
-- [ ] Confirm new exact-head CI for this continuation before claiming these tests pass. Legacy sync HTML builder remains for review-only display; production export callers should use the verified async boundary.
+- [x] Added synthetic SHA256 round-trip and negative cases for forged fabric names, cut options, targets, fit calibration version, packet status, invalid or pre-lock generated timestamps and tampered locked revisions. Chronological consistency does not make a timestamp cryptographically signed; the HTML explicitly says "export metadata (not lock-signed)".
+- [ ] Confirm new exact-head CI for this continuation before claiming these tests pass. Head `4c92b21d51de13d1b559573d2a4c14c0abca40c4` failed CI `42018326569`: 872/873 tests passed, but an earlier generatedAt mutation expectation was wrong. Concurrent follow-up added explicit pre-lock timestamp rejection and a regression allowing valid later timestamps. Revalidate the final branch SHA before marking this fixed. Legacy sync HTML builder remains for review-only display; production export callers should use the verified async boundary.
 - These checks certify software integrity only. No physical measurement, fabric fact, seam tolerance, approved cutting pattern or human signoff is inferred.
 
 ## Resume
