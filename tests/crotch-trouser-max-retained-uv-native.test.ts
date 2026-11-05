@@ -28,6 +28,10 @@ test("maximum real original source edge forest compares cuts without inventing f
     '"candidateResearchObjectiveMm": round(after[3], 5)',
     '"actualUvClosureMeasured": False',
     '"tailorSeamsApproved": False',
+    "def compare_measured_original_source_uv_research_candidates(",
+    '"measuredResearchParetoImprovement": improvement',
+    '"measuredTradeoffObserved": (',
+    '"sewnTextileCutLinesApproved": False',
   ])assert.ok(selector.includes(v),v);
   for(const v of [
     "preferred_tree_edges=None):",
@@ -52,6 +56,7 @@ test("maximum real original source edge forest compares cuts without inventing f
     '"researchOnlyBranchAwareSourceUvEvidence"] = branch_report',
     '"actualSourceUvCutNetworkEvidence"] = branch_audit',
     '"nativeBodyContactsInvariantFromUnchangedSource"] = unchanged_source_pairs',
+    '"independentMeasuredUvParetoComparison"] = weighted_ops[',
   ])assert.ok(blender.includes(v),v);
   for(const v of [
     '"scripts/blender/source-trouser-max-retained-uv.py"',
@@ -62,6 +67,9 @@ test("maximum real original source edge forest compares cuts without inventing f
     'max_selection["maximumRetainedTreeEdgeCount"] == 2647',
     'weighted["physicalSewnCrotchPatternApproved"] is False',
     '"maxRetainedOriginalSourceUvExperiment": {',
+    'pareto=branch["independentMeasuredUvParetoComparison"]',
+    'assert pareto["measuredResearchParetoImprovement"] is False',
+    'assert pareto["measuredTradeoffObserved"] is True',
   ])assert.ok(workflow.includes(v),v);
   for(const v of [
     '"scripts/blender/source-trouser-max-retained-uv.py"',
@@ -69,6 +77,8 @@ test("maximum real original source edge forest compares cuts without inventing f
   ])assert.equal(workflow.split(v).length-1,2,"Original source native workflow PR and push must trigger");
   assert.ok(fixture.includes("assert result == select(points, original_faces, original_cut_edges)"));
   assert.ok(fixture.includes("reject_tree(good + [good[0]])"));
+  assert.ok(fixture.includes("reject_comparison(baseline_audit, forgery,"));
+  assert.ok(fixture.includes("assert equal_verdict[\"measuredResearchParetoImprovement\"] is False"));
   assert.ok(!selector.includes("bpy.ops."),"Selector must be pure and side-effect free");
   assert.ok(!blender.includes("save_as_mainfile"),"Original garment mesh must never be saved");
 });
