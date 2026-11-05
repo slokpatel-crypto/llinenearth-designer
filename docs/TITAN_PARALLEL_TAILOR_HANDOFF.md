@@ -45,5 +45,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Confirm new exact-head CI for this continuation before claiming these tests pass. Head `4c92b21d51de13d1b559573d2a4c14c0abca40c4` failed CI `42018326569`: 872/873 tests passed, but an earlier generatedAt mutation expectation was wrong. Concurrent follow-up added explicit pre-lock timestamp rejection and a regression allowing valid later timestamps. Revalidate the final branch SHA before marking this fixed. Legacy sync HTML builder remains for review-only display; production export callers should use the verified async boundary.
 - These checks certify software integrity only. No physical measurement, fabric fact, seam tolerance, approved cutting pattern or human signoff is inferred.
 
+## Claimed ease approval authenticity continuation (2026-11-05)
+- [x] Identified an independent source-trust gap: a correct `fit-construction-calibrated-2` + `approved_house_calibration` pair and arbitrary bounded calibration version can be copied from user-controlled locked recipe without external human approval evidence.
+- [x] New pure measurement provenance audit adds an explicit outstanding human review item for such self-consistent claims. This downgrades handoff to `review_required`, never inventing a signed ease model, measured body or actual fit approval.
+- [x] Added dedicated synthetic regression for matching approved-looking source/version tuple and unsigned printable review output.
+- [ ] Confirm new exact-head Full CI, Non-3D, PostgreSQL, browser after changes; older results must not be transferred. Review integration and approval evidence remain blockers.
+- Production cutting approval remains prohibited pending physically verified measurements, final garment tolerances, approved block/pattern and actual tailor signoff.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
