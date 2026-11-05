@@ -103,8 +103,29 @@ async function run(){
     await ready(page);
     assert.equal(await actualPhotoPixelHash(page),beforeSpecOnlyPixels,
       "button material must not repaint photographic buttons as if new geometry existed");
+    // The fixed contact dock used to cover the construction explanation at the
+    // bottom of the photographic card. Its full text must now be visible above
+    // the source image, without requiring a customer to dodge fixed controls.
+    const notice=page.locator('.newDesignerPhotoIntro [data-photo-construction-mismatch="true"]');
+    assert.equal(await notice.count(),1);
+    await notice.scrollIntoViewIfNeeded();
+    const noticeBox=await notice.boundingBox();
+    const contactDock=page.locator(".floatingContactDock");
+    const dockBox=await contactDock.boundingBox();
+    assert.ok(noticeBox && noticeBox.width>0 && noticeBox.height>0,"construction notice must be visible");
+    const viewport=page.viewportSize();
+    assert.ok(viewport && noticeBox.y>=0 && noticeBox.y+noticeBox.height<=viewport.height,
+      "construction notice must fit vertically within the visible viewport");
+    if(dockBox){
+      const overlap=noticeBox.x<dockBox.x+dockBox.width && noticeBox.x+noticeBox.width>dockBox.x
+        && noticeBox.y<dockBox.y+dockBox.height && noticeBox.y+noticeBox.height>dockBox.y;
+      assert.equal(overlap,false,"fixed contact dock must not obscure construction notice");
+    }
+    assert.match(await notice.textContent(),/button material/);
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`construction-notice-readable-${width}.png`)});
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`button-material-disclosed-${width}.png`)});
     summary.viewports[summary.viewports.length-1].buttonMaterialDisclosed=true;
+    summary.viewports[summary.viewports.length-1].constructionNoticeUnobstructed=true;
     if(width===1440) {
       // Legacy controls also must not claim that unphotographed collar,
       // cuff or placket geometry has appeared in the trusted source image.

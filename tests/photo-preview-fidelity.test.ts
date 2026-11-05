@@ -124,8 +124,14 @@ test("customer photographic preview displays selected construction mismatch noti
   assert.match(source,/data-photo-construction-mismatch/);
   assert.match(source,/not reconstructed in the fixed studio photograph/);
   assert.match(source,/FRONT \/ STUDIO MODEL · CUTS APPROX\./);
-  // Keep the existing photographic QA selector strict-mode safe: only one
-  // direct-child approximation paragraph; the fidelity warning nests inside.
+  // Construction details must be legible above the photo, away from the
+  // fixed contact dock; preserve exactly one independent status for screen readers.
+  const previewStart=source.lastIndexOf('return <section className="newDesignerPhoto"');
+  const photoStage=source.indexOf('    <div className={`newDesignerPhotoStage',previewStart);
+  const notice=source.indexOf('data-photo-construction-mismatch="true"',previewStart);
+  assert.ok(previewStart>=0 && notice>previewStart && notice<photoStage);
+  assert.match(source,/className="newDesignerPhotoConstructionNotice" data-photo-construction-mismatch="true" role="status"/);
+  assert.equal((source.match(/data-photo-construction-mismatch="true"/g)||[]).length,1);
   assert.equal((source.match(/<p className="newDesignerPhotoApproximation">/g)||[]).length,1);
   assert.doesNotMatch(source,/<p className="newDesignerPhotoApproximation" data-photo-construction-mismatch/);
 });
@@ -181,6 +187,9 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/selectOption\("Mother-of-Pearl"\)/);
   assert.match(script,/button-material-disclosed-/);
   assert.match(script,/buttonMaterialDisclosed=true/);
+  assert.match(script,/construction-notice-readable-/);
+  assert.match(script,/constructionNoticeUnobstructed=true/);
+  assert.match(script,/floatingContactDock/);
   assert.match(script,/wide-source-compared-/);
   assert.match(script,/wideSourceComparisonVerified=true/);
   assert.match(script,/name:"Trouser shape",exact:true/);
