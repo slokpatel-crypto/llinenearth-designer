@@ -158,6 +158,12 @@ export async function buildVerifiedProductionHandoff(
 ):Promise<ProductionHandoff> {
   if(!await verifyLockedDesignRevision(revision))
     throw new Error("Locked design hash no longer matches the exact garment and tailoring recipe.");
+  // A handoff cannot predate its locked source. This ordering check does not
+  // authenticate its displayed generation time; only recipe fields are SHA256-locked.
+  const lockedTime=new Date(revision.lockedAt).getTime();
+  const issuedTime=new Date(generatedAt).getTime();
+  if(!Number.isFinite(lockedTime)||!Number.isFinite(issuedTime)||issuedTime<lockedTime)
+    throw new Error("Verified tailor handoff cannot be generated before its source design was locked.");
   return buildProductionHandoff(revision,generatedAt);
 }
 
@@ -166,6 +172,9 @@ export async function verifyProductionHandoff(
   revision:LockedDesignRevision,
 ):Promise<boolean> {
   if(!await verifyLockedDesignRevision(revision)) return false;
+  const lockedTime=new Date(revision.lockedAt).getTime();
+  const issuedTime=new Date(handoff.generatedAt).getTime();
+  if(!Number.isFinite(lockedTime)||!Number.isFinite(issuedTime)||issuedTime<lockedTime) return false;
   if(handoff.version!==PRODUCTION_HANDOFF_VERSION
      ||handoff.recipeHash!==revision.recipeHash
      ||handoff.designRevisionId!==revision.revisionId) return false;
