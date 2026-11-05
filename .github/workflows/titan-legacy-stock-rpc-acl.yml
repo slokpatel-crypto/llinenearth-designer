@@ -9,6 +9,7 @@ on:
       - 'supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql'
       - 'scripts/test-legacy-stock-rpc-acl-invocation.sh'
       - 'scripts/test-stock-reserve-filename-order-overwrite.sh'
+      - 'supabase/migrations/20261104134500_restore_stock_reservation_identity_gate.sql'
       - '.github/workflows/titan-legacy-stock-rpc-acl.yml'
   workflow_dispatch:
 
@@ -130,7 +131,7 @@ jobs:
             and (select count(*) from private.customer_otp_rate_windows)=0
           then 'PASS' else 'FAIL' end;
           SQL
-      - name: Reproduce filename-order stock identity truncation and restore strict gate
+      - name: Reproduce historical identity truncation and verify forward-only repair
         run: bash scripts/test-stock-reserve-filename-order-overwrite.sh
       - name: Verify legacy v1 ACL still denied after function-order replay
         run: |
