@@ -10,7 +10,7 @@ export type FabricEvidenceOrigin="measured"|"supplier_declared"|"estimated"|"unk
 export type FabricClaimValue=number|string|null|{system:string;count:number;resolution:number}|{fiber:string;percent:number}[];
 export type FabricVariantIdentity={variantId:string;lotId:string;colorFamily:string;patternFamily:string;photoId:string;photoSha256:string};
 export type FabricPhysicalClaim={
-  claimId:string;field:FabricPhysicalField;value:FabricClaimValue;origin:FabricEvidenceOrigin;
+  claimId:string;baseId:string;field:FabricPhysicalField;value:FabricClaimValue;origin:FabricEvidenceOrigin;
   resolution?:number;
   scope:{kind:"base";covers:{variantId:string;lotId:string}[]}|{kind:"variant";variantId:string;lotId:string};
   source?:FabricPhysicalEvidenceProvenance;
@@ -64,8 +64,8 @@ function validValue(field:FabricPhysicalField,value:unknown,resolution:unknown):
 }
 
 function normalizeClaim(raw:unknown):FabricPhysicalClaim|null {
-  if(!obj(raw)||!keys(raw,["claimId","field","value","origin","resolution","scope","source","calibration"])
-    ||!id(raw.claimId)||typeof raw.field!=="string"||!fields.includes(raw.field)
+  if(!obj(raw)||!keys(raw,["claimId","baseId","field","value","origin","resolution","scope","source","calibration"])
+    ||!id(raw.claimId)||!id(raw.baseId)||typeof raw.field!=="string"||!fields.includes(raw.field)
     ||typeof raw.origin!=="string"||!origins.includes(raw.origin)||!obj(raw.scope))return null;
   const field=raw.field as FabricPhysicalField,origin=raw.origin as FabricEvidenceOrigin;
   if(!keys(raw.scope,["kind","covers","variantId","lotId"]))return null;
@@ -108,7 +108,7 @@ function normalizeClaim(raw:unknown):FabricPhysicalClaim|null {
     calibration={photoSha256:c.photoSha256,widthPx:c.widthPx,heightPx:c.heightPx,
       axis:c.axis as "x"|"y",repeatPx:c.repeatPx,pixelsPerMm:c.pixelsPerMm};
   }
-  return {claimId:raw.claimId,field,value:raw.value as FabricClaimValue,origin,
+  return {claimId:raw.claimId,baseId:raw.baseId,field,value:raw.value as FabricClaimValue,origin,
     ...(raw.resolution===undefined?{}:{resolution:raw.resolution as number}),
     scope,...(source?{source}:{}),...(calibration?{calibration}:{})};
 }
@@ -154,7 +154,7 @@ export function resolveFabricBaseVariants(input:{baseId:unknown;variants:unknown
   const byId=new Map<string,FabricPhysicalClaim[]>();
   for(const raw of input.claims){
     const c=normalizeClaim(raw);
-    if(!c){issues.push("invalid physical claim rejected");continue;}
+    if(!c||c.baseId!==input.baseId){issues.push("invalid or foreign-base physical claim rejected");continue;}
     byId.set(c.claimId,[...(byId.get(c.claimId)??[]),c]);
   }
   const reviews=new Map<string,unknown[]>();
