@@ -324,3 +324,22 @@ test("verified tech-pack export rejects subtle valid-looking edits and forged so
   forgedRevision.garmentSpec.shirt.fit="Fabricated fit";
   await assert.rejects(buildVerifiedTailorTechPackHtml(packet,forgedRevision),/Unsafe tailor tech pack export/);
 });
+
+test("verified export rejects pre-lock timestamps but never calls generation time a signed fact",async()=>{
+  const fixture=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  const locked=await lockGarmentSpec(fixture.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
+  await assert.rejects(
+    buildVerifiedProductionHandoff(locked,"2026-11-05T10:59:59.000Z"),
+    /cannot be generated before/,
+  );
+  const packet=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  const before=structuredClone(packet);
+  before.generatedAt="2026-11-05T10:59:59.000Z";
+  assert.equal(await verifyProductionHandoff(before,locked),false);
+  await assert.rejects(buildVerifiedTailorTechPackHtml(before,locked),/Unsafe tailor tech pack export/);
+  // No signature covers generatedAt. Chronological consistency is not timestamp
+  // authenticity; verified export asserts locked recipe integrity only.
+  const later=structuredClone(packet);
+  later.generatedAt="2026-11-05T11:02:00.000Z";
+  assert.equal(await verifyProductionHandoff(later,locked),true);
+});
