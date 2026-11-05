@@ -370,3 +370,50 @@ test("tech-pack download filename is deterministic and rejects traversal or ambi
     assert.throws(()=>techPackFilename(forged),/Unsafe tailor tech pack filename/);
   }
 });
+
+test("unresolved locked design decisions cannot claim tailor-review readiness",()=>{
+  const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  revision.garmentSpec.unresolved=["Customer must approve the exact waistband construction."];
+  assert.equal(revision.garmentSpec.status,"ready_for_tailor_review");
+  const packet=buildProductionHandoff(revision);
+  assert.equal(packet.status,"review_required");
+  assert.ok(packet.unresolved.includes("Customer must approve the exact waistband construction."));
+  const html=buildTailorTechPackHtml(packet);
+  assert.match(html,/review required/);
+  assert.match(html,/Customer must approve the exact waistband construction/);
+  assert.match(html,/NO CUTTING AUTHORISATION/);
+});
+
+test("open construction checks fail closed even when the source incorrectly claims ready",()=>{
+  for(const severity of ["review","warning"] as const){
+    const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+    revision.garmentSpec.constructionChecks=[{
+      id:"SYNTHETIC-CONSTRUCTION-ISSUE",
+      severity,
+      message:"Inspect the garment block before tailoring.",
+    }];
+    const packet=buildProductionHandoff(revision);
+    assert.equal(packet.status,"review_required",severity);
+    assert.match(buildTailorTechPackHtml(packet),/review required/);
+  }
+});
+
+test("the legacy printable formatter never displays ready after unresolved-note or check tampering",()=>{
+  const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  const original=buildProductionHandoff(revision);
+  assert.equal(original.status,"ready_for_tailor_review");
+
+  const withNote=structuredClone(original);
+  withNote.unresolved.push("Tailor must inspect a new unresolved customer fit decision.");
+  assert.match(buildTailorTechPackHtml(withNote),/review required/);
+  assert.match(buildTailorTechPackHtml(withNote),/new unresolved customer fit decision/);
+
+  const withReview=structuredClone(original);
+  withReview.construction.checks.push({
+    id:"SYNTHETIC-REVIEW",
+    severity:"review",
+    message:"Physical balance correction remains open.",
+  });
+  assert.match(buildTailorTechPackHtml(withReview),/review required/);
+  assert.match(buildTailorTechPackHtml(withReview),/NO CUTTING AUTHORISATION/);
+});
