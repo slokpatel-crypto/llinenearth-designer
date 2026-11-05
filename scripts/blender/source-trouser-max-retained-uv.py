@@ -270,3 +270,115 @@ def select_original_source_branch_aware_uv_trial(
             "productionApproved": False,
         },
     }
+
+
+def compare_measured_original_source_uv_research_candidates(
+        baseline_cut, candidate_cut, baseline_tree, candidate_tree):
+    """Independently compare ACTUAL diagnostic UV metrics, never fit approval.
+
+    A virtual graph-penalty reduction does not count as a source UV improvement
+    if measured cut length, real vertex branching, worst gap or RMS UV gap
+    worsens. This evaluates native reports; it cannot certify 2D chart overlap,
+    fabric, tailor lines, cloth-body separation, or export readiness.
+    """
+    def require_real_cut(report):
+        required_ints = (
+            "actualOriginalSourceQuadCount", "originalSharedSourceEdgeCount",
+            "originalOpenSourceBoundaryEdges", "genuineCrotchCutEdgeCount",
+            "unclosedSharedUvCutCandidateEdges",
+            "uvCutCandidateDegreeThreePlusSourceVertices",
+        )
+        required_mm = (
+            "totalRealGeometryOfUvCutCandidatesMm",
+            "maximumUnclosedUvEdgeGapMm",
+        )
+        if (report.get("researchOnly") is not True
+                or report.get("productionApproved") is not False
+                or report.get("realTailorCutLinesApproved") is not False
+                or report.get("sourcePanelUVContinuityVerified") is not False):
+            raise ValueError("A source UV cut report falsely claims real fabric approval.")
+        for key in required_ints:
+            if type(report.get(key)) is not int or report[key] < 0:
+                raise ValueError("Invalid actual original-source UV topology metric: " + key)
+        for key in required_mm:
+            v = report.get(key)
+            if (isinstance(v, bool) or not isinstance(v, (int, float))
+                    or not math.isfinite(v) or v < 0):
+                raise ValueError("Invalid measured source UV geometry: " + key)
+        if (report["originalSharedSourceEdgeCount"] <
+                report["unclosedSharedUvCutCandidateEdges"]):
+            raise ValueError("Unclosed source edges exceed genuine shared source edges.")
+
+    def require_real_tree(report):
+        if (report.get("researchOnly") is not True
+                or report.get("productionApproved") is not False
+                or report.get("sourcePanelsFullyStitchedInUV") is not False
+                or report.get("surfaceUvOverlapCertifiedAbsent") is not False):
+            raise ValueError("Forged UV tree closure or production certificate.")
+        for key in ("dualGraphComponentCount", "verifiedTreeConnectedSharedEdges",
+                    "nonTreeCycleUnclosedUvEdges", "sharedOriginalSourceEdgeCount"):
+            if type(report.get(key)) is not int or report[key] < 0:
+                raise ValueError("Invalid real UV tree topology metric: " + key)
+        for key in ("maximumNonTreeUvSeamGapMm", "rmsNonTreeUvSeamGapMm"):
+            v = report.get(key)
+            if (isinstance(v, bool) or not isinstance(v, (int, float))
+                    or not math.isfinite(v) or v < 0):
+                raise ValueError("Unknown measured native 2D UV gap: " + key)
+
+    for item in (baseline_cut, candidate_cut):
+        require_real_cut(item)
+    for item in (baseline_tree, candidate_tree):
+        require_real_tree(item)
+    for key in ("actualOriginalSourceQuadCount", "originalSharedSourceEdgeCount",
+                "originalOpenSourceBoundaryEdges", "genuineCrotchCutEdgeCount"):
+        if baseline_cut[key] != candidate_cut[key]:
+            raise ValueError("Measured UV alternative changed original source topology.")
+    for key in ("dualGraphComponentCount", "verifiedTreeConnectedSharedEdges",
+                "sharedOriginalSourceEdgeCount"):
+        if baseline_tree[key] != candidate_tree[key]:
+            raise ValueError("Research UV alternative changed native face-tree provenance.")
+    for cut, tree in ((baseline_cut, baseline_tree), (candidate_cut, candidate_tree)):
+        if (cut["originalSharedSourceEdgeCount"] != tree["sharedOriginalSourceEdgeCount"]
+                or cut["unclosedSharedUvCutCandidateEdges"] != tree["nonTreeCycleUnclosedUvEdges"]):
+            raise ValueError("Native original-source cut report disagrees with its UV tree.")
+
+    metrics = (
+        ("cutCandidateMeshLengthMm", baseline_cut, candidate_cut,
+         "totalRealGeometryOfUvCutCandidatesMm"),
+        ("branchJunctions", baseline_cut, candidate_cut,
+         "uvCutCandidateDegreeThreePlusSourceVertices"),
+        ("maxUnclosedUvGapMm", baseline_cut, candidate_cut,
+         "maximumUnclosedUvEdgeGapMm"),
+        ("rmsUnclosedUvGapMm", baseline_tree, candidate_tree,
+         "rmsNonTreeUvSeamGapMm"),
+        ("unclosedUvSeamCount", baseline_cut, candidate_cut,
+         "unclosedSharedUvCutCandidateEdges"),
+    )
+    deltas = {
+        name: round(float(trial[field]) - float(control[field]), 5)
+        for name, control, trial, field in metrics
+    }
+    tolerance = 0.00002
+    no_worsening = all(value <= tolerance for value in deltas.values())
+    strict_improvement = any(value < -tolerance for value in deltas.values())
+    improvement = no_worsening and strict_improvement
+    return {
+        "researchOnly": True,
+        "nativeSourceTopologyPreserved": True,
+        "measuredSourceUvDeltasVsWeighted": deltas,
+        "measuredResearchParetoImprovement": improvement,
+        "measuredTradeoffObserved": (
+            any(value > tolerance for value in deltas.values())
+            and any(value < -tolerance for value in deltas.values())
+        ),
+        "comparatorMetrics": list(deltas),
+        "physicalBodyFitApproved": False,
+        "uvOverlapCertifiedAbsent": False,
+        "sewnTextileCutLinesApproved": False,
+        "productionApproved": False,
+        "metricCaveat": (
+            "Even Pareto-improving research geometry alone cannot certify "
+            "actual UV overlap, sewn seams, body/cloth clearance, grain, "
+            "textile dimensions or manufacturer approval."
+        ),
+    }
