@@ -1319,6 +1319,42 @@ jobs:
               assert weighted["sourcePanelsFullyStitchedInUV"] is False
               assert weighted["physicalFabricScaleVerified"] is False
               assert weighted["originalGarmentTexelScaleAndGrainApproved"] is False
+              # Exact original scanned source: bounded research objective,
+              # independently reconstructed 2D face-loop UV and topology only.
+              branch=oriented["researchOnlyBranchAwareSourceUvEvidence"]
+              assert branch["researchOnly"] is True
+              assert branch["originalSourceQuadCount"] == 2650
+              assert branch["originalSourceSharedEdgeCount"] == 5234
+              assert branch["originalSourceComponentCount"] == 3
+              assert branch["retainedOriginalSourceTreeEdges"] == 2647
+              assert branch["branchPenaltyResearchWeightMm"] == 100.0
+              assert branch["candidateEdgeCap"] == 48
+              assert branch["evaluatedOmittedOriginalEdges"] == 48
+              assert branch["candidateResearchObjectiveMm"] <= (
+                  branch["baselineResearchObjectiveMm"] + 0.00002
+              )
+              assert branch["actualSourceGeometryUnchanged"] is True
+              assert branch["nativeBodyContactsInvariantFromUnchangedSource"] == 29600
+              assert branch["newSourceObjectSavedOrExported"] is False
+              assert branch["actualUvClosureMeasured"] is True
+              assert branch["overlapFreeUvApproved"] is False
+              assert branch["physicalSewnCrotchPatternApproved"] is False
+              assert branch["physicalFabricScaleApproved"] is False
+              assert branch["sourceBodyFitApproved"] is False
+              assert branch["tailorSeamsApproved"] is False
+              assert branch["productionApproved"] is False
+              branch_uv=branch["actualRealSourceUvTreeEvidence"]
+              branch_cut=branch["actualSourceUvCutNetworkEvidence"]
+              assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
+              assert branch_uv["dualGraphComponentCount"] == 3
+              assert branch_uv["maximumTreeEdgeUvJoinErrorMm"] <= 0.001
+              assert branch_cut["originalSharedSourceEdgeCount"] == 5234
+              assert branch_cut["originalOpenSourceBoundaryEdges"] == 132
+              assert branch_cut["unclosedSharedUvCutCandidateEdges"] == (
+                  branch_uv["nonTreeCycleUnclosedUvEdges"]
+              )
+              assert branch_cut["realTailorCutLinesApproved"] is False
+              assert branch_cut["productionApproved"] is False
               assert weighted["physicalSewnCrotchPatternApproved"] is False
               assert weighted["productionApproved"] is False
               assert "not sewn garment" in cut_network["metricCaveat"]
