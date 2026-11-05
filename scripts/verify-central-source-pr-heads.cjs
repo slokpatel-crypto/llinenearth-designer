@@ -36,6 +36,22 @@ async function verifyLiveSourceHeads(manifest, repository, getJson) {
       "Source PR #" + source.pr + " is no longer open");
     assert.equal(detail.head && detail.head.sha, source.head,
       "Source PR #" + source.pr + " head changed; audit and repin from reviewed source");
+    // A PR's head SHA may lag behind its mutable branch. Check the actual
+    // source ref independently before accepting its pinned file inventory.
+    assert.equal(detail.head?.repo?.full_name, repository,
+      "Source PR #" + source.pr + " must originate from the reviewed repository");
+    assert.equal(detail.base?.repo?.full_name, repository,
+      "Source PR #" + source.pr + " must target the reviewed repository");
+    const ref = detail.head?.ref;
+    assert.ok(typeof ref === "string" && /^[A-Za-z0-9._/-]+$/.test(ref) &&
+      !ref.includes("..") && !ref.includes("//") &&
+      !ref.startsWith("/") && !ref.endsWith("/"),
+      "Source PR #" + source.pr + " has an unsafe or missing branch ref");
+    const tip = await getJson("/repos/" + repository + "/git/ref/heads/" + ref);
+    assert.equal(tip?.ref, "refs/heads/" + ref,
+      "Source PR #" + source.pr + " returned a mismatched live branch ref");
+    assert.equal(tip?.object?.sha, source.head,
+      "Source PR #" + source.pr + " live branch tip moved; review and repin");
     const actual = new Map();
     let page = 1;
     while (true) {
@@ -159,7 +175,11 @@ async function selfTest() {
     files: { "src/example.ts": b, "tests/example.test.ts": c } }],
     selective_source_imports: [] };
   const get = async path => {
-    if (path.endsWith("/pulls/11")) return { state: "open", head: { sha: a } };
+    if (path.endsWith("/pulls/11")) return { state: "open",
+      head: { sha: a, ref: "source-11", repo: { full_name: "sample/repository" } },
+      base: { repo: { full_name: "sample/repository" } } };
+    if (path.endsWith("/git/ref/heads/source-11"))
+      return { ref: "refs/heads/source-11", object: { sha: a } };
     if (path.includes("/pulls/11/files?"))
       return [{ filename: "src/example.ts", sha: b },
         { filename: "tests/example.test.ts", sha: c }];
@@ -184,12 +204,34 @@ async function selfTest() {
   await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
     async path => path.endsWith("/pulls/11")
       ? { state: "closed", head: { sha: a } } : get(path)), /no longer open/);
+  await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
+    async path => path.endsWith("/git/ref/heads/source-11")
+      ? { ref: "refs/heads/source-11", object: { sha: b } } : get(path)),
+    /live branch tip moved/);
+  await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
+    async path => path.endsWith("/git/ref/heads/source-11")
+      ? { ref: "refs/heads/wrong", object: { sha: a } } : get(path)),
+    /mismatched live branch ref/);
+  await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
+    async path => path.endsWith("/pulls/11")
+      ? { ...await get(path), head: { sha: a, ref: "source-11",
+        repo: { full_name: "foreign/fork" } } } : get(path)),
+    /must originate from the reviewed repository/);
+  await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
+    async path => path.endsWith("/pulls/11")
+      ? { ...await get(path), head: { sha: a, ref: "../unsafe",
+        repo: { full_name: "sample/repository" } } } : get(path)),
+    /unsafe or missing branch ref/);
   const subset = { ...fixture, selective_source_imports: [
     { pr: 12, head: a, files: { "src/only-imported.sql": b },
       reason: "Only this migration SQL is integrated. The source PR tests, scripts, and documentation remain excluded pending review." }
   ] };
   const partialGet = async path => {
-    if (path.endsWith("/pulls/12")) return { state: "open", head: { sha: a } };
+    if (path.endsWith("/pulls/12")) return { state: "open",
+      head: { sha: a, ref: "work/source-12", repo: { full_name: "sample/repository" } },
+      base: { repo: { full_name: "sample/repository" } } };
+    if (path.endsWith("/git/ref/heads/work/source-12"))
+      return { ref: "refs/heads/work/source-12", object: { sha: a } };
     if (path.includes("/pulls/12/files?")) return [
       { filename: "src/only-imported.sql", sha: b },
       { filename: "docs/not-imported.md", sha: c }
