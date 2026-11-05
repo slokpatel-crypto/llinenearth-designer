@@ -19,6 +19,13 @@ const seat: FinishedTarget = {
   finishedCm:{min:106,max:108},basis:"body_plus_ease",
 };
 
+// Synthetic fixture measurements only; never actual model evidence.
+
+const shoulder:FinishedTarget={label:"Shoulder-width anchor",bodyCm:46,finishedCm:{min:46,max:46},basis:"recorded_anchor"};
+const sleeve:FinishedTarget={label:"Sleeve-length anchor",bodyCm:62,finishedCm:{min:62,max:62},basis:"recorded_anchor"};
+const inseam:FinishedTarget={label:"Inseam anchor",bodyCm:78,finishedCm:{min:78,max:78},basis:"customer_desired"};
+const outseam:FinishedTarget={label:"Outseam anchor",bodyCm:104,finishedCm:{min:104,max:104},basis:"customer_desired"};
+
 function createRevision(shirt:FinishedTarget[],trouser:FinishedTarget[],exactCut=true):LockedDesignRevision {
   return {
     version:"linen-earth-design-lock-v1",
@@ -62,9 +69,9 @@ function createRevision(shirt:FinishedTarget[],trouser:FinishedTarget[],exactCut
 }
 
 test("consistent centimetre body/ease/finished ranges remain exportable",()=>{
-  const report=auditHandoffMeasurements({shirt:[chest],trouser:[waist,seat]});
+  const report=auditHandoffMeasurements({shirt:[chest,shoulder,sleeve],trouser:[waist,seat,inseam,outseam]});
   assert.deepEqual(report,{errors:[],missing:[]});
-  const packet=buildProductionHandoff(createRevision([chest],[waist,seat]),"2026-11-02T11:00:00Z");
+  const packet=buildProductionHandoff(createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]),"2026-11-02T11:00:00Z");
   assert.equal(packet.status,"ready_for_tailor_review");
   assert.equal(packet.construction.shirt.finishedTargets[0].finishedCm.min,110);
   assert.equal(packet.production.clothEstimate.shirtMetres,null);
