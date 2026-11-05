@@ -167,3 +167,21 @@ test("unavailable hero fabric cannot enter a mixed catalogue recommendation", as
   assert.equal(looks[0].fabric.id, shirts[1].id);
   assert.equal(JSON.stringify(catalogue), before);
 });
+
+
+test("unavailable trouser cannot enter a mixed trouser catalogue recommendation", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const trousers = FABRIC_STOCK.filter(f => f.inStock && f.suitableFor.includes("trouser"));
+  assert.ok(trousers.length >= 2, "requires distinct trouser fixtures");
+  const catalogue = [{ ...trousers[0], inStock: false }, trousers[1]];
+  const before = JSON.stringify(catalogue);
+  const looks = createStyleDirectorLooks({
+    occasion: "Work", mood: "Sharp", time: "Day",
+    climate: "Indoor", garment: "trouser", colorDirection: "Surprise me",
+  }, catalogue);
+  assert.equal(looks.length, 1);
+  assert.equal(looks[0].fabric.id, trousers[1].id);
+  assert.equal(JSON.stringify(catalogue), before);
+});
