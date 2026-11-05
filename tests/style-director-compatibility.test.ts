@@ -1384,3 +1384,15 @@ test("optional counted pleats do not force construction or silently change locke
   assert.equal(styleDirectorCandidateTrouserFront("Double pleats required"), "pleated");
   assert.equal(styleDirectorCandidateTrouserFront("Flat-front with double pleats required"), "ambiguous");
 });
+
+test("optional pleat count does not override an explicit single-pleat construction", () => {
+  const wording = "Double pleats may be added; single pleat required";
+  const single = { pleat: "single_pleat_forward" } as StyleSpecV2["pant"];
+  const double = { pleat: "double_pleat_forward" } as StyleSpecV2["pant"];
+  const original = JSON.stringify(single);
+  assert.equal(styleDirectorCandidateTrouserFront(wording), "pleated");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, single), []);
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, double)
+    .map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
+  assert.equal(JSON.stringify(single), original, "review must preserve locked IDs");
+});
