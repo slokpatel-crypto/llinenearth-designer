@@ -334,7 +334,8 @@ test("incidental collar substrings never rewrite a named candidate or photograph
     assert.equal(styleDirectorWearForCandidate("Casual", candidate, "Tucked"), "Tucked", candidate);
   }
   for (const collar of ["Campus Collar", "Bandwidth Collar", "Mandarinette Collar", "Cutawayish Collar"]) {
-    assert.deepEqual(styleDirectorPresentationIssues(photo(collar, "Tucked"), spec()), [], collar);
+    assert.deepEqual(styleDirectorPresentationIssues(photo(collar, "Tucked"), spec()).map(issue => issue.code),
+      ["legacy_collar_mismatch"], collar);
   }
   assert.equal(styleDirectorCandidateCollar("Cuban-Collar Shirt", selectableCollars)?.versioned, "cuban_camp_collar");
   assert.equal(styleDirectorCandidateCollar("Band Collar Shirt", selectableCollars)?.versioned, "mandarin_band_collar");
