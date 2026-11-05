@@ -94,5 +94,8 @@ reject(invalid_faces, loops)
 nonmanifold = list(faces)
 nonmanifold[10] = nonmanifold[0]
 reject(nonmanifold, loops)
+contradictory_winding = list(faces)
+contradictory_winding[1] = tuple(reversed(faces[1]))
+reject(contradictory_winding, loops)
 
 print("TITAN_ORIGINAL_SOURCE_COMPONENT_UV_PACK_PURE_PASS")
