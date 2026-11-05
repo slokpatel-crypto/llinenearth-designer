@@ -1356,3 +1356,16 @@ test("may-not pleat wording is a prohibition, not a positive pleat", () => {
     assert.equal(styleDirectorCandidateTrouserFront("Single pleat; " + phrase), "ambiguous");
   }
 });
+
+test("mandatory pleat omission means flat-front, unlike optional omission", () => {
+  for (const wording of ["Pleats should be omitted", "Pleating must be omitted", "Pleats shall be omitted"]) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), "flat_front", wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "flat_front" }), [], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+      wording, { pleat: "single_pleat_forward" },
+    ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"], wording);
+    assert.equal(styleDirectorCandidateTrouserFront(wording + "; single pleat requested"), "ambiguous", wording);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Pleats may be omitted"), null);
+  assert.equal(styleDirectorCandidateTrouserFront("Single pleat requested"), "pleated");
+});
