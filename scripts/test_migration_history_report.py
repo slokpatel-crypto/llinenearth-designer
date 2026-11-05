@@ -23,8 +23,15 @@ class MigrationHistoryReportTests(unittest.TestCase):
             (p / "20261031_first.sql").touch()
             (p / "20261031_second.sql").touch()
             result = report(p)
-            self.assertEqual(result["collisions"], [{"version": "20261031",
-                "files": ["20261031_first.sql", "20261031_second.sql"]}])
+            self.assertEqual(len(result["collisions"]), 1)
+            collision = result["collisions"][0]
+            self.assertEqual(collision["version"], "20261031")
+            self.assertEqual(collision["files"], ["20261031_first.sql", "20261031_second.sql"])
+            self.assertTrue(collision["sql_content_identical"])
+            self.assertEqual(collision["fingerprints"], [
+                {"file": name, "sha256": hashlib.sha256(b"").hexdigest()}
+                for name in collision["files"]
+            ])
 
     def test_modern_collision_is_visible(self):
         with tempfile.TemporaryDirectory() as d:
