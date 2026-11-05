@@ -78,7 +78,7 @@ export function buildProductionHandoff(
   if (spec.styleSpec && !validateStyleSpecV2(spec.styleSpec)) {
     throw new Error("Unsafe tailor handoff construction: unrecognised versioned style option.");
   }
-  if (spec.source.styleSchemaVersion !== (spec.styleSpec?.styleSchemaVersion ?? null)) {
+  if ((spec.source.styleSchemaVersion ?? null) !== (spec.styleSpec?.styleSchemaVersion ?? null)) {
     throw new Error("Unsafe tailor handoff construction: locked option schema provenance does not match the selected cut.");
   }
   const measurementSourceNote=spec.source.measurementProfileVersion===1 ? [] : [
