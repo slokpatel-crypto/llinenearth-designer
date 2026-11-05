@@ -1562,3 +1562,46 @@ test("modal postposed pleat-direction bans preserve allowable options", () => {
     "Reverse pleats must be used", { pleat: "single_pleat_forward" },
   ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
 });
+
+
+test("postposed pleat avoidance constrains direction without requiring pleats", () => {
+  for (const [ban, allowed, forbidden] of [
+    ["Reverse pleats should be avoided", "single_pleat_forward", "single_pleat_reverse"],
+    ["Forward pleats must be avoided", "single_pleat_reverse", "single_pleat_forward"],
+    ["Reverse pleats shall be avoided", "double_pleat_forward", "double_pleat_reverse"],
+    ["Forward pleats are to be avoided", "double_pleat_reverse", "double_pleat_forward"],
+    ["Reverse pleats to be avoided", "single_pleat_forward", "single_pleat_reverse"],
+  ] as const) {
+    assert.equal(styleDirectorCandidateTrouserFront(ban), null, ban);
+    assert.equal(styleDirectorCandidateTrouserFront(ban + "; pleated trousers"), "pleated", ban);
+    const locked = { pleat: forbidden };
+    const original = JSON.stringify(locked);
+    for (const wording of [ban, ban + "; pleated trousers"]) {
+      assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: allowed }), [], wording);
+      assert.deepEqual(
+        styleDirectorCandidateFrontConstructionIssues(wording, locked).map(issue => issue.code),
+        ["candidate_trouser_pleat_mismatch"],
+        wording,
+      );
+      assert.equal(JSON.stringify(locked), original, "review must preserve locked construction");
+    }
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(ban, { pleat: "flat_front" }), []);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(ban, {
+      pleat: "obsolete_direction_id" as StyleSpecV2["pant"]["pleat"],
+    }).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
+  }
+  for (const allowed of [
+    "Reverse pleats should be used",
+    "Reverse pleats may be added",
+    "Forward pleats are optional",
+  ]) {
+    assert.notEqual(styleDirectorCandidateTrouserFront(allowed), "flat_front", allowed);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Pleats should be avoided"), "flat_front",
+    "unqualified avoidance still prohibits all front pleats");
+  assert.deepEqual(
+    styleDirectorCandidateFrontConstructionIssues("Pleats should be avoided", { pleat: "single_pleat_forward" })
+      .map(issue => issue.code),
+    ["candidate_trouser_pleat_mismatch"],
+  );
+});
