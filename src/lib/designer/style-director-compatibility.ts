@@ -82,6 +82,12 @@ function stripNegatedPleatWording(candidateTrouser: string) {
   );
 }
 
+
+// A postposed prohibition of a particular pleat count does not prohibit all
+// pleats. Reuse this exact matcher for candidate-front intent, counted
+// requirement parsing and verification of a versioned locked pleat ID.
+const postposedCountPleatBan = /\b(single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted)|(?:(?:must|should|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included)|not\s+to\s+be\s+(?:used|added|included)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted)|(?:must|should|shall|(?:are|is)\s+to|to)\s+be\s+avoided)\b/gi;
+
 export function styleDirectorCandidateTrouserFront(
   candidateTrouser: string,
 ): "flat_front" | "pleated" | "ambiguous" | null {
@@ -89,6 +95,7 @@ export function styleDirectorCandidateTrouserFront(
   // Interpret front intent without it, but retain the original candidate
   // for the directional conflict checks against the locked option ID.
   const frontWording = candidateTrouser
+    .replace(postposedCountPleatBan, "")
     .replace(
       /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:forward|reverse)[ -]?pleats?\b/gi,
       "",
@@ -179,7 +186,9 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // A labelled double pleat is not equivalent to a generic single pleat.
   // Read count from the canonical option's construction parameters instead
   // of inferring it from the potentially stale photographed trouser label.
-  const positiveWording = stripNegatedPleatWording(candidateTrouser).replace(
+  const positiveWording = stripNegatedPleatWording(candidateTrouser)
+    .replace(postposedCountPleatBan, "")
+    .replace(
     /\b(?:no|without|not|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:(?:a|an|any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(?:single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\b/gi,
     "",
   );
@@ -201,9 +210,12 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // A ban on a specific count is not a blanket no-pleat instruction.
   // Preserve an allowed single/double/flat-front choice, but never silently
   // approve the forbidden canonical count (or an ID whose count is unknown).
-  const prohibitedCountLabels = [...candidateTrouser.matchAll(
-    /\b(?:no|without|not|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:(?:a|an|any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\b/gi,
-  )].map(match => match[1].toLowerCase());
+  const prohibitedCountLabels = [
+    ...[...candidateTrouser.matchAll(
+      /\b(?:no|without|not|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:(?:a|an|any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\b/gi,
+    )].map(match => match[1].toLowerCase()),
+    ...[...candidateTrouser.matchAll(postposedCountPleatBan)].map(match => match[1].toLowerCase()),
+  ];
   const prohibitsSingleCount = prohibitedCountLabels.some(value => ["single", "one", "1"].includes(value));
   const prohibitsDoubleCount = prohibitedCountLabels.some(value => ["double", "two", "2"].includes(value));
   const hasCountBan = prohibitsSingleCount || prohibitsDoubleCount;
