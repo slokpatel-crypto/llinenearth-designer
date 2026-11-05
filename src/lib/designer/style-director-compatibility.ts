@@ -171,8 +171,15 @@ export function styleDirectorCandidateFrontConstructionIssues(
     /\b(?:no|without|not|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:(?:a|an|any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(?:single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\b/gi,
     "",
   );
-  const requestsDouble = /\b(?:double|two|2)[ -]?pleats?\b/i.test(positiveWording);
-  const requestsSingle = /\b(?:single|one|1)[ -]?pleats?\b/i.test(positiveWording);
+  // Optional counts do not constrain a separately requested pleat.
+  // Reuse the candidate-front neutralisation so "double pleats may be
+  // added; single pleat required" checks only the mandatory single pleat.
+  const requiredWording = positiveWording.replace(
+    /\b(?:(?:single|double|one|two|1|2)[ -]?)?(?:pleats?|pleating)\s+(?:(?:are|is)\s+)?(?:optional|unnecessary|not\s+(?:required|necessary|mandatory|needed)|(?:need\s+not|(?:do|does)\s+not\s+need\s+to)\s+be\s+(?:used|added|included)|(?:may|can|could)\s+be\s+(?:used|added|included|omitted))\b/gi,
+    "",
+  );
+  const requestsDouble = /\b(?:double|two|2)[ -]?pleats?\b/i.test(requiredWording);
+  const requestsSingle = /\b(?:single|one|1)[ -]?pleats?\b/i.test(requiredWording);
   const expectedCount = front === "pleated"
     ? requestsDouble && !requestsSingle ? 2
       : requestsSingle && !requestsDouble ? 1 : null
