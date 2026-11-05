@@ -42,6 +42,16 @@ async function verifyLiveSourceHeads(manifest, repository, getJson) {
       "Source PR #" + source.pr + " must originate from the reviewed repository");
     assert.equal(detail.base?.repo?.full_name, repository,
       "Source PR #" + source.pr + " must target the reviewed repository");
+    assert.ok(typeof source.base_ref === "string" &&
+      /^[A-Za-z0-9._/-]+$/.test(source.base_ref) &&
+      !source.base_ref.includes("..") && !source.base_ref.includes("//"),
+      "Source PR #" + source.pr + " missing or unsafe reviewed base ref");
+    assert.ok(shaPattern.test(source.base_sha || ""),
+      "Source PR #" + source.pr + " missing or invalid reviewed base SHA");
+    assert.equal(detail.base?.ref, source.base_ref,
+      "Source PR #" + source.pr + " base retargeted; review dependencies and repin");
+    assert.equal(detail.base?.sha, source.base_sha,
+      "Source PR #" + source.pr + " base SHA changed; review dependencies and repin");
     const ref = detail.head?.ref;
     assert.ok(typeof ref === "string" && /^[A-Za-z0-9._/-]+$/.test(ref) &&
       !ref.includes("..") && !ref.includes("//") &&
@@ -203,12 +213,13 @@ async function verifyCentralIntake(manifest, repository, getJson) {
 async function selfTest() {
   const a = "a".repeat(40), b = "b".repeat(40), c = "c".repeat(40);
   const fixture = { source_prs: [{ pr: 11, head: a,
+    base_ref: "main", base_sha: b,
     files: { "src/example.ts": b, "tests/example.test.ts": c } }],
     selective_source_imports: [] };
   const get = async path => {
     if (path.endsWith("/pulls/11")) return { state: "open",
       head: { sha: a, ref: "source-11", repo: { full_name: "sample/repository" } },
-      base: { repo: { full_name: "sample/repository" } } };
+      base: { ref: "main", sha: b, repo: { full_name: "sample/repository" } } };
     if (path.endsWith("/git/ref/heads/source-11"))
       return { ref: "refs/heads/source-11", object: { sha: a } };
     if (path.includes("/pulls/11/files?"))
@@ -261,14 +272,26 @@ async function selfTest() {
       ? { ref: "refs/heads/source-11",
         object: { sha: ++sourceRefReads === 1 ? a : b } } : get(path)),
     /branch moved during file scan/);
+  await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
+    async path => path.endsWith("/pulls/11")
+      ? { ...await get(path), base: { ref: "other", sha: b,
+        repo: { full_name: "sample/repository" } } } : get(path)),
+    /base retargeted/);
+  await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
+    async path => path.endsWith("/pulls/11")
+      ? { ...await get(path), base: { ref: "main", sha: c,
+        repo: { full_name: "sample/repository" } } } : get(path)),
+    /base SHA changed/);
   const subset = { ...fixture, selective_source_imports: [
-    { pr: 12, head: a, files: { "src/only-imported.sql": b },
+    { pr: 12, head: a, base_ref: "work/reviewed-parent", base_sha: c,
+      files: { "src/only-imported.sql": b },
       reason: "Only this migration SQL is integrated. The source PR tests, scripts, and documentation remain excluded pending review." }
   ] };
   const partialGet = async path => {
     if (path.endsWith("/pulls/12")) return { state: "open",
       head: { sha: a, ref: "work/source-12", repo: { full_name: "sample/repository" } },
-      base: { repo: { full_name: "sample/repository" } } };
+      base: { ref: "work/reviewed-parent", sha: c,
+        repo: { full_name: "sample/repository" } } };
     if (path.endsWith("/git/ref/heads/work/source-12"))
       return { ref: "refs/heads/work/source-12", object: { sha: a } };
     if (path.includes("/pulls/12/files?")) return [
@@ -279,6 +302,16 @@ async function selfTest() {
   };
   assert.deepEqual(await verifyLiveSourceHeads(subset, "sample/repository", partialGet),
     { prCount: 2, changedFileEntries: 3 });
+  await assert.rejects(() => verifyLiveSourceHeads(subset, "sample/repository",
+    async path => path.endsWith("/pulls/12")
+      ? { ...await partialGet(path), base: { ref: "main", sha: c,
+        repo: { full_name: "sample/repository" } } } : partialGet(path)),
+    /base retargeted/);
+  await assert.rejects(() => verifyLiveSourceHeads(subset, "sample/repository",
+    async path => path.endsWith("/pulls/12")
+      ? { ...await partialGet(path), base: { ref: "work/reviewed-parent", sha: b,
+        repo: { full_name: "sample/repository" } } } : partialGet(path)),
+    /base SHA changed/);
   await assert.rejects(() => verifyLiveSourceHeads(subset, "sample/repository",
     async path => path.includes("/pulls/12/files?")
       ? [{filename: "docs/not-imported.md", sha: c}] : partialGet(path)), /changed or removed/);
