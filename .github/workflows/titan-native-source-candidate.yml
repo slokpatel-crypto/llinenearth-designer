@@ -1342,6 +1342,8 @@ jobs:
               assert branch["physicalFabricScaleApproved"] is False
               assert branch["sourceBodyFitApproved"] is False
               assert branch["tailorSeamsApproved"] is False
+              branch_uv=branch["actualRealSourceUvTreeEvidence"]
+              branch_cut=branch["actualSourceUvCutNetworkEvidence"]
               pareto=branch["independentMeasuredUvParetoComparison"]
               assert pareto["researchOnly"] is True
               assert pareto["nativeSourceTopologyPreserved"] is True
@@ -1368,8 +1370,6 @@ jobs:
               assert delta["cutCandidateMeshLengthMm"] > 0
               assert delta["rmsUnclosedUvGapMm"] > 0
               assert branch["productionApproved"] is False
-              branch_uv=branch["actualRealSourceUvTreeEvidence"]
-              branch_cut=branch["actualSourceUvCutNetworkEvidence"]
               assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
               assert branch_uv["dualGraphComponentCount"] == 3
               assert branch_uv["maximumTreeEdgeUvJoinErrorMm"] <= 0.001
