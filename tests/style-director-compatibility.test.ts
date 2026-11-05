@@ -1319,3 +1319,15 @@ test("need-not pleat language is optional, not a mandatory pleated front", () =>
   assert.equal(styleDirectorCandidateTrouserFront("Pleats need not be added, flat-front trouser"), "flat_front");
   assert.equal(styleDirectorCandidateTrouserFront("Pleats must be added"), "pleated");
 });
+
+
+test("permissive omission of pleats is not a mandatory flat or pleated construction", () => {
+  for (const wording of ["Pleats may be omitted", "Pleating can be omitted", "Pleats could be omitted"]) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), null, wording);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", wording), [], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "flat_front" }), [], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "single_pleat_forward" }), [], wording);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Pleats may be omitted, single pleat requested"), "pleated");
+  assert.equal(styleDirectorCandidateTrouserFront("Pleats may be omitted, flat-front trouser"), "flat_front");
+});
