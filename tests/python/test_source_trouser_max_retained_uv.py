@@ -102,4 +102,58 @@ reject_source(bad_points,faces,cuts)
 bad_faces = list(faces)
 bad_faces[0] = (0,0,1,2)
 reject_source(points,bad_faces,cuts)
+
+trial = runpy.run_path(str(
+    scripts / "source-trouser-max-retained-uv.py"
+))["select_original_source_branch_aware_uv_trial"]
+
+for name in ("flat", "curved"):
+    source = previous[name + "_points"]
+    originals = previous["faces"]
+    cuts = previous["cuts"]
+    baseline_edges = {
+        tuple(x) for x in select(source, originals, cuts)["retainedOriginalSourceEdges"]
+    }
+    proposal = trial(source, originals, cuts)
+    assert proposal == trial(source, originals, cuts)
+    report = proposal["report"]
+    next_edges = {tuple(x) for x in proposal["retainedOriginalSourceEdges"]}
+    assert len(next_edges) == len(baseline_edges) == 2649
+    assert report["originalSourceSharedEdgeCount"] == (53*49+50*52)
+    assert report["originalSourceComponentCount"] == 1
+    assert report["evaluatedOmittedOriginalEdges"] == 48
+    assert report["candidateResearchObjectiveMm"] <= report["baselineResearchObjectiveMm"] + 0.00002
+    assert report["productionApproved"] is False
+    assert report["actualUvClosureMeasured"] is False
+    if report["swapPerformed"]:
+        assert len(next_edges - baseline_edges) == 1
+        assert len(baseline_edges - next_edges) == 1
+        assert tuple(report["addedOriginalSharedEdge"]) in next_edges
+        assert tuple(report["removedOriginalSharedEdge"]) not in next_edges
+    else:
+        assert next_edges == baseline_edges
+    joined = join(
+        originals, previous[name + "_metric"]["face_uv_loops"], cuts,
+        preferred_tree_edges=proposal["retainedOriginalSourceEdges"],
+    )
+    assert joined["report"]["verifiedTreeConnectedSharedEdges"] == 2649
+    actual = cut(source, originals, joined["face_uv_loops"],
+                 cuts, joined["report"])
+    assert actual["productionApproved"] is False
+
+for bad_weight in (-2, 0, math.nan, math.inf, True, "100"):
+    try:
+        trial(points, faces, cuts, branch_penalty_mm=bad_weight)
+    except (ValueError, TypeError):
+        pass
+    else:
+        raise AssertionError("Invalid branch penalty was accepted")
+for bad_cap in (-1, 0, 65, 2.5, True, "48"):
+    try:
+        trial(points, faces, cuts, max_candidate_edges=bad_cap)
+    except (ValueError, TypeError):
+        pass
+    else:
+        raise AssertionError("Invalid bounded-search candidate cap was accepted")
+
 print("TITAN_ORIGINAL_SOURCE_MAX_RETAINED_EDGE_UV_PURE_PASS")
