@@ -12,7 +12,7 @@ const shaPattern = /^[a-f0-9]{40}$/;
 // A manifest that silently omits one source PR/file would otherwise pass the
 // remaining file checks. A separately reviewed pinned Git blob identity makes
 // changes to the entire claimed source intake fail closed, including removals.
-const PINNED_MANIFEST_BLOB = "1a73d6cf62d4208995d805150e7bd524faff59fa";
+const PINNED_MANIFEST_BLOB = "ac93b8ce5bc7d166085eee7a0b67065165ff435a";
 
 function gitBlobSha(bytes) {
   const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
@@ -24,6 +24,16 @@ function gitBlobSha(bytes) {
 function verifyPinnedManifest(bytes) {
   assert.equal(gitBlobSha(bytes), PINNED_MANIFEST_BLOB,
     "Central source manifest changed: review all source PR files and explicitly repin");
+}
+
+function verifySourceBase(source) {
+  assert.ok(typeof source.base_ref === "string" &&
+    /^[A-Za-z0-9._/-]+$/.test(source.base_ref) &&
+    !source.base_ref.includes("..") && !source.base_ref.includes("//") &&
+    !source.base_ref.startsWith("/") && !source.base_ref.endsWith("/"),
+    "Missing or unsafe reviewed PR base ref: #" + source.pr);
+  assert.ok(shaPattern.test(source.base_sha || ""),
+    "Missing or invalid reviewed PR base SHA: #" + source.pr);
 }
 
 function verifySnapshot(manifest, readSha) {
@@ -43,6 +53,7 @@ function verifySnapshot(manifest, readSha) {
     assert.ok(!sourceIds.has(source.pr), "Duplicate source PR");
     sourceIds.add(source.pr);
     assert.ok(shaPattern.test(source.head), "Invalid source commit: #" + source.pr);
+    verifySourceBase(source);
     assert.ok(source.files && typeof source.files === "object" &&
       !Array.isArray(source.files) && Object.keys(source.files).length,
       "Source changed-file manifest missing: #" + source.pr);
@@ -68,6 +79,7 @@ function verifySnapshot(manifest, readSha) {
       !sourceIds.has(source.pr), "Invalid or duplicate selective import PR");
     sourceIds.add(source.pr);
     assert.ok(shaPattern.test(source.head), "Invalid selective source head");
+    verifySourceBase(source);
     assert.ok(typeof source.reason === "string" && source.reason.length >= 80,
       "Selective source import must explain excluded source PR files");
     assert.ok(source.files && typeof source.files === "object" &&
@@ -131,8 +143,10 @@ function selfTest() {
   assert.equal(gitBlobSha(Buffer.from("hello\n")), "ce013625030ba8dba906f756967f9e9ca394464a");
   const sample = { schema_version: 1, central_base_commit: a,
     source_prs: [
-      { pr: 10, head: a, files: { "src/a.ts": a, ".github/workflows/test.yml": a } },
-      { pr: 11, head: b, files: { ".github/workflows/test.yml": b } }
+      { pr: 10, head: a, base_ref: "main", base_sha: a,
+        files: { "src/a.ts": a, ".github/workflows/test.yml": a } },
+      { pr: 11, head: b, base_ref: "main", base_sha: a,
+        files: { ".github/workflows/test.yml": b } }
     ],
     selective_source_imports: [],
     central_only_files: { "docs/central.md": b },
@@ -144,6 +158,12 @@ function selfTest() {
   assert.deepEqual(verifySnapshot(sample, lookup),
     { sourcePrs: 2, uniquePaths: 3, combinedWorkflowExceptions: 1 });
   assert.throws(() => verifySnapshot(sample, () => b), /Integrated source blob mismatch/);
+  const retargeted = structuredClone(sample);
+  retargeted.source_prs[0].base_ref = "../unsafe";
+  assert.throws(() => verifySnapshot(retargeted, lookup), /unsafe reviewed PR base ref/);
+  const missingBase = structuredClone(sample);
+  delete missingBase.source_prs[0].base_sha;
+  assert.throws(() => verifySnapshot(missingBase, lookup), /invalid reviewed PR base SHA/);
   const noException = structuredClone(sample);
   noException.intentionally_combined = {};
   assert.throws(() => verifySnapshot(noException, lookup), /Conflicting source blobs/);
