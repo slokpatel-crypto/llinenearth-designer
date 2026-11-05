@@ -133,9 +133,39 @@ jobs:
           SQL
       - name: Reproduce historical identity truncation and verify forward-only repair
         run: bash scripts/test-stock-reserve-filename-order-overwrite.sh
-      - name: Verify legacy v1 ACL still denied after function-order replay
+      - name: Verify final forward-repair ACL and repeated SQL application
         run: |
           set -euo pipefail
+          # Repeat the exact same forward migration against this disposable DB.
+          # The final public v2 RPC must retain its signature, ACL and strict
+          # identity guard. Never interpret this as staging rollout approval.
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261104134500_restore_stock_reservation_identity_gate.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261104134500_restore_stock_reservation_identity_gate.sql
           psql -v ON_ERROR_STOP=1 -At -f supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql \
             | grep -q 'PASS: all four v1 stock mutators denied'
           bash scripts/test-legacy-stock-rpc-acl-invocation.sh
+          # The owner of the synthetic fixture verifies no stock was written.
+          test "$(psql -v ON_ERROR_STOP=1 -Atc 'select count(*) from private.fabric_stock_ledger')" = 0
+          # The repaired RPC must still reject an oversized identity under the
+          # actual service_role after repeated CREATE OR REPLACE and GRANT.
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          set role service_role;
+          do $probe$
+          declare rejected boolean := false;
+          begin
+            begin
+              perform public.fabric_stock_reserve_v2(
+                'SYNTHETIC-TITAN-ORDER-PROBE', 1.000, 'locked-revision-0001',
+                repeat('k',181), 'Synthetic stock checker', 'Synthetic physical receipt');
+            exception when sqlstate '22023' then
+              if sqlerrm not like '%reservation identity or evidence exceeds supported length%' then
+                raise exception 'wrong rejection after duplicate forward repair: %',sqlerrm;
+              end if;
+              rejected := true;
+            end;
+            if not rejected then raise exception 'duplicate forward repair lost strict key guard'; end if;
+          end $probe$;
+          reset role;
+          rollback;
+          SQL
