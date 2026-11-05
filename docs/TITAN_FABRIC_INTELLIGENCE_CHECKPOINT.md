@@ -120,3 +120,8 @@
 - The pure family resolver rejects claims for any other base even when variant/lot IDs, supplier receipt and review payload otherwise match. Added negative regression covering both unchanged receipt replay and altered claim identity.
 - Code commits `73d6fc018bb8af418af2b532f9e8b46582fe9cdf` and `50861c2918bbab097e086576c5019505865350a8`. Latest exact-head full CI and Non-3D QA must re-run after this checkpoint update; earlier `585c9ec` runs are not sufficient.
 - Scope remains pure fabric library, dedicated tests and checkpoint documentation only. No physical evidence, authenticated review infrastructure, merge or deployment inferred.
+
+### 2026-11-05 — canonical pattern-family IDs
+
+- Variant colour IDs resolve against `colorFamilies` and variant print/pattern IDs now resolve against the existing `patternFamilies` shared vocabulary. Aliases like `pinstripe` cannot impersonate the canonical `stripe` ID in a versioned variant record.
+- Source and regression commits `503733ca4479da80efc6079ba701313901b0eea9` and `91c7059d83ee11aa3ab03f66fd77eb5aba40912c`; new exact-head CI is required after this documentation commit. Existing typed saved-design, catalogue, preview and stock APIs are unchanged; this new pure candidate resolver is opt-in only.
