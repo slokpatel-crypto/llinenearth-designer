@@ -12,7 +12,7 @@ const shaPattern = /^[a-f0-9]{40}$/;
 // A manifest that silently omits one source PR/file would otherwise pass the
 // remaining file checks. A separately reviewed pinned Git blob identity makes
 // changes to the entire claimed source intake fail closed, including removals.
-const PINNED_MANIFEST_BLOB = "c11668178929a49c1c1ee623b1745d7e5bcdfa3d";
+const PINNED_MANIFEST_BLOB = "f2f463b58e08da99ecc4610ac4f5a6da7c3485cc";
 
 function gitBlobSha(bytes) {
   const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
@@ -55,6 +55,31 @@ function verifySnapshot(manifest, readSha) {
         throw Error("Conflicting source blobs without reviewed exception: " + path);
       }
       if (!previous) seen.set(path, sha);
+    }
+  }
+
+  // Selective imports must never be presented as a complete worker intake.
+  // Their reviewed SQL paths are covered by the same Git blob verification,
+  // while the live-head check validates them against the actual source PR.
+  const selective = manifest.selective_source_imports;
+  assert.ok(Array.isArray(selective), "Selective source import inventory is required");
+  for (const source of selective) {
+    assert.ok(Number.isInteger(source.pr) && source.pr > 0 &&
+      !sourceIds.has(source.pr), "Invalid or duplicate selective import PR");
+    sourceIds.add(source.pr);
+    assert.ok(shaPattern.test(source.head), "Invalid selective source head");
+    assert.ok(typeof source.reason === "string" && source.reason.length >= 80,
+      "Selective source import must explain excluded source PR files");
+    assert.ok(source.files && typeof source.files === "object" &&
+      !Array.isArray(source.files) && Object.keys(source.files).length > 0,
+      "Selective source import files missing");
+    for (const [path, sha] of Object.entries(source.files)) {
+      assert.ok(path && !path.startsWith("/") && !path.split("/").includes("..") &&
+        !path.includes("\\"), "Unsafe selective import path: " + path);
+      assert.ok(shaPattern.test(sha), "Invalid selective source blob: " + path);
+      assert.ok(!seen.has(path) && !Object.hasOwn(exceptions, path),
+        "Selective import overlaps fully imported path or workflow exception: " + path);
+      seen.set(path, sha);
     }
   }
 
