@@ -24,6 +24,7 @@ on:
       - "scripts/blender/source-trouser-uv-cut-network.py"
       - "scripts/blender/source-trouser-max-retained-uv.py"
       - "scripts/blender/source-trouser-uv-overlap-audit.py"
+      - "scripts/blender/source-trouser-component-uv-pack.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -40,6 +41,7 @@ on:
       - "tests/crotch-trouser-uv-cut-network-native.test.ts"
       - "tests/crotch-trouser-max-retained-uv-native.test.ts"
       - "tests/crotch-trouser-uv-overlap-native.test.ts"
+      - "tests/crotch-trouser-component-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -59,6 +61,7 @@ on:
       - "tests/python/test_source_trouser_uv_cut_network.py"
       - "tests/python/test_source_trouser_max_retained_uv.py"
       - "tests/python/test_source_trouser_uv_overlap.py"
+      - "tests/python/test_source_trouser_component_uv_pack.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -83,6 +86,7 @@ on:
       - "scripts/blender/source-trouser-uv-cut-network.py"
       - "scripts/blender/source-trouser-max-retained-uv.py"
       - "scripts/blender/source-trouser-uv-overlap-audit.py"
+      - "scripts/blender/source-trouser-component-uv-pack.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -99,6 +103,7 @@ on:
       - "tests/crotch-trouser-uv-cut-network-native.test.ts"
       - "tests/crotch-trouser-max-retained-uv-native.test.ts"
       - "tests/crotch-trouser-uv-overlap-native.test.ts"
+      - "tests/crotch-trouser-component-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -133,6 +138,7 @@ jobs:
           python3 tests/python/test_source_trouser_uv_cut_network.py
           python3 tests/python/test_source_trouser_max_retained_uv.py
           python3 tests/python/test_source_trouser_uv_overlap.py
+          python3 tests/python/test_source_trouser_component_uv_pack.py
       - name: Fetch checksum-verified Blender 4.5.14
         shell: bash
         run: |
@@ -1430,6 +1436,47 @@ jobs:
               assert comparison["realCuttingOrSeamApproved"] is False
               assert comparison["bodyGarmentClearanceApproved"] is False
               assert comparison["productionApproved"] is False
+              # Research-only rigid XY separation of genuine original face
+              # graph components: physical garment vertices remain unchanged.
+              for source_report in (weighted, branch):
+                  packed=source_report["researchOnlyRigidSourceUvComponentPackingEvidence"]
+                  assert packed["researchOnly"] is True
+                  assert packed["unclosedSourceUvSeamCountUnchanged"] is True
+                  assert packed["originalSourceSeamGapUnchanged"] is True
+                  assert packed["sourceMeshAndBodyBVHUnchanged"] is True
+                  assert packed["sourceUvExportOrSavePerformed"] is False
+                  assert packed["realFabricScaleOrRepeatApproved"] is False
+                  assert packed["tailorCutAndFitApproved"] is False
+                  assert packed["productionApproved"] is False
+                  pack_report=packed["packing"]
+                  assert pack_report["originalSourceQuadCount"] == 2650
+                  assert pack_report["originalSourceUvLoopCount"] == 10600
+                  assert pack_report["originalSourceFaceGraphComponentCount"] == 3
+                  assert pack_report["originalSourceComponentFaceCounts"] == [1220,715,715]
+                  assert pack_report["sourceGeometryAndVertexIDsUnchanged"] is True
+                  assert pack_report["originalSourceUvTreeUnchanged"] is True
+                  assert pack_report["maximumOriginalTriangleEdgeChangeMm"] <= 0.000001
+                  assert pack_report["sourcePanelsOverlapFreeApproved"] is False
+                  assert pack_report["realTailorSeamsApproved"] is False
+                  assert pack_report["productionApproved"] is False
+                  assert len(pack_report["components"]) == 3
+                  for a,b in zip(pack_report["components"],pack_report["components"][1:]):
+                      assert (b["packedResearchUvBoundingBoxMm"][0] >=
+                              a["packedResearchUvBoundingBoxMm"][2] + 4.9999)
+                  after=packed["packedResearchUvOverlap"]
+                  comparison=packed["sourceOverlapBeforeVsPacked"]
+                  assert after["researchOnly"] is True
+                  assert after["actualTrianglesInspected"] <= 5300
+                  assert after["completeGarmentUvOverlapFreeApproved"] is False
+                  assert after["productionApproved"] is False
+                  assert comparison["researchOnly"] is True
+                  assert comparison["completeGarmentUvApproved"] is False
+                  assert comparison["productionApproved"] is False
+                  if comparison["bothFullResearchUvScansComplete"]:
+                      assert comparison["candidateOverlapTrianglePairDelta"] <= 0
+                      assert comparison["candidateWorsenedRealUvInteriorOverlap"] is False
+                  else:
+                      assert comparison["candidateOverlapTrianglePairDelta"] is None
               assert branch["productionApproved"] is False
               assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
               assert branch_uv["dualGraphComponentCount"] == 3
