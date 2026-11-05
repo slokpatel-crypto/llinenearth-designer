@@ -1,0 +1,28 @@
+name: TITAN Central Source Blob Parity
+
+# Runs on the integration-gate draft branch only; source worker PRs are
+# intentionally independent and must not inherit this pinned snapshot gate.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-parity:
+    name: Verify pinned source Git blobs and reviewed workflow reconciliations
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'titan-central-source-parity-gate-20261105'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Parse verifier and exercise negative controls
+        run: |
+          node --check scripts/verify-central-source-blobs.cjs
+          node scripts/verify-central-source-blobs.cjs --self-test
+      - name: Compare all integrated source file Git blob SHA-1 identities
+        run: node scripts/verify-central-source-blobs.cjs
