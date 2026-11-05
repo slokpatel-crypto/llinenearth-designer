@@ -170,8 +170,7 @@ async function selfTest() {
   await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
     async path => path.endsWith("/pulls/861")
       ? { ...await get(path),
-        head: { sha: ++reads === 1 ? a : b,
-          repo: { full_name: "sample/repo" } } } : get(path)),
+        head: { ...(await get(path)).head, sha: ++reads === 1 ? a : b } } : get(path)),
     /changed head during ownership scan/);
   await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
     async path => path.includes("/pulls/897/files?")
