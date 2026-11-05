@@ -55,6 +55,48 @@ def _intersection_area(a, b):
     return area
 
 
+def _original_face_graph_components(original_faces):
+    """Return deterministic component IDs from genuine shared source edges."""
+    owners = defaultdict(list)
+    for face_id, raw_face in enumerate(original_faces):
+        face = tuple(raw_face)
+        if (len(face) != 4 or len(set(face)) != 4
+                or any(type(index) is not int or index < 0 for index in face)):
+            raise ValueError("Invalid genuine original-source face indices for UV audit.")
+        for i in range(4):
+            owners[tuple(sorted((face[i], face[(i + 1) % 4])))].append(face_id)
+    if any(len(rows) > 2 for rows in owners.values()):
+        raise ValueError("Nonmanifold genuine source edge in UV overlap audit.")
+    adjacency = [[] for _ in original_faces]
+    for rows in owners.values():
+        if len(rows) == 2:
+            a, b = rows
+            adjacency[a].append(b)
+            adjacency[b].append(a)
+    for row in adjacency:
+        row.sort()
+    component_ids = [-1] * len(original_faces)
+    groups = []
+    for root in range(len(original_faces)):
+        if component_ids[root] >= 0:
+            continue
+        component_id = len(groups)
+        pending = [root]
+        component_ids[root] = component_id
+        group = []
+        while pending:
+            face_id = pending.pop()
+            group.append(face_id)
+            for neighbor in reversed(adjacency[face_id]):
+                if component_ids[neighbor] < 0:
+                    component_ids[neighbor] = component_id
+                    pending.append(neighbor)
+        groups.append(sorted(group))
+    if sum(len(group) for group in groups) != len(original_faces):
+        raise ValueError("Original source UV component attribution lost faces.")
+    return component_ids, groups
+
+
 def audit_original_source_uv_triangle_overlaps(
         original_faces, face_uv_loops, max_pair_tests=100000):
     """Observe strict interior intersections without fabric/manufacturing claims.
@@ -66,6 +108,8 @@ def audit_original_source_uv_triangle_overlaps(
         raise ValueError("Require all 2650 original trouser-source UV quads.")
     if type(max_pair_tests) is not int or not 1 <= max_pair_tests <= 250000:
         raise ValueError("Bounded original source overlap search requires 1..250000 tests.")
+
+    component_ids, component_groups = _original_face_graph_components(original_faces)
 
     cell = 0.1  # numerical broadphase only, NOT textile repeat or seam allowance
     buckets = defaultdict(list)
@@ -79,6 +123,14 @@ def audit_original_source_uv_triangle_overlaps(
     sampled_area_mm2 = 0.0
     largest_mm2 = 0.0
     truncated = False
+    component_triangle_pairs = [0] * len(component_groups)
+    component_face_pairs = [set() for _ in component_groups]
+    component_area_mm2 = [0.0] * len(component_groups)
+    component_largest_mm2 = [0.0] * len(component_groups)
+    cross_component_triangle_pairs = 0
+    cross_component_face_pairs = set()
+    cross_component_area_mm2 = 0.0
+    cross_component_largest_mm2 = 0.0
 
     for face_id, (face, raw_uv) in enumerate(zip(original_faces, face_uv_loops)):
         face = tuple(face)
@@ -133,11 +185,28 @@ def audit_original_source_uv_triangle_overlaps(
                 area = _intersection_area(previous_tri, tri)
                 if area > 1e-12:
                     area_mm2 = area * 1e6
+                    face_pair = tuple(sorted((previous_face, face_id)))
                     overlapping += 1
-                    overlapped_faces.add(tuple(sorted((previous_face, face_id))))
+                    overlapped_faces.add(face_pair)
                     sampled_area_mm2 += area_mm2
                     if area_mm2 > largest_mm2:
                         largest_mm2 = area_mm2
+                    previous_component = component_ids[previous_face]
+                    current_component = component_ids[face_id]
+                    if previous_component == current_component:
+                        component_triangle_pairs[current_component] += 1
+                        component_face_pairs[current_component].add(face_pair)
+                        component_area_mm2[current_component] += area_mm2
+                        component_largest_mm2[current_component] = max(
+                            component_largest_mm2[current_component], area_mm2
+                        )
+                    else:
+                        cross_component_triangle_pairs += 1
+                        cross_component_face_pairs.add(face_pair)
+                        cross_component_area_mm2 += area_mm2
+                        cross_component_largest_mm2 = max(
+                            cross_component_largest_mm2, area_mm2
+                        )
                     if len(overlap_witnesses) < 12:
                         overlap_witnesses.append({
                             "originalSourceFaceIds": [previous_face, face_id],
@@ -156,6 +225,19 @@ def audit_original_source_uv_triangle_overlaps(
 
     if not truncated and len(triangles) != 5300:
         raise ValueError("Research UV overlap scan did not consume 5300 source triangles.")
+    component_breakdown = [{
+        "componentId": component_id,
+        "rootOriginalSourceFaceId": min(group),
+        "originalSourceFaceCount": len(group),
+        "observedInteriorOverlapTrianglePairsLowerBound": component_triangle_pairs[component_id],
+        "observedDistinctSourceFacePairsLowerBound": len(component_face_pairs[component_id]),
+        "observedTriangleOverlapAreaSumLowerBoundMm2": round(
+            component_area_mm2[component_id], 5
+        ),
+        "largestObservedTriangleInteriorOverlapAreaMm2": round(
+            component_largest_mm2[component_id], 5
+        ),
+    } for component_id, group in enumerate(component_groups)]
     return {
         "researchOnly": True,
         "expectedOriginalSourceQuadCount": 2650,
@@ -167,6 +249,17 @@ def audit_original_source_uv_triangle_overlaps(
         "observedDistinctSourceFacePairsLowerBound": len(overlapped_faces),
         "observedTriangleOverlapAreaSumLowerBoundMm2": round(sampled_area_mm2, 5),
         "largestObservedTriangleInteriorOverlapAreaMm2": round(largest_mm2, 5),
+        "originalSourceFaceGraphComponentCount": len(component_groups),
+        "originalSourceComponentFaceCounts": [len(group) for group in component_groups],
+        "withinComponentOverlapBreakdown": component_breakdown,
+        "crossComponentInteriorOverlapTrianglePairsLowerBound": cross_component_triangle_pairs,
+        "crossComponentDistinctSourceFacePairsLowerBound": len(cross_component_face_pairs),
+        "crossComponentTriangleOverlapAreaSumLowerBoundMm2": round(
+            cross_component_area_mm2, 5
+        ),
+        "crossComponentLargestObservedTriangleInteriorOverlapAreaMm2": round(
+            cross_component_largest_mm2, 5
+        ),
         "firstSourceFaceTriangleOverlapWitnesses": overlap_witnesses,
         "auditTruncated": truncated,
         "canClaimNoInteriorOverlapInThisUvLayout": not truncated and overlapping == 0,

@@ -18,6 +18,11 @@ assert baseline["expectedOriginalSourceQuadCount"] == 2650
 assert baseline["narrowphaseTrianglePairCheckCap"] == 100000
 assert baseline["auditTruncated"] is False
 assert baseline["observedInteriorOverlapTrianglePairsLowerBound"] == 0
+assert baseline["originalSourceFaceGraphComponentCount"] == 1
+assert baseline["originalSourceComponentFaceCounts"] == [2650]
+assert baseline["crossComponentInteriorOverlapTrianglePairsLowerBound"] == 0
+assert sum(row["observedInteriorOverlapTrianglePairsLowerBound"]
+           for row in baseline["withinComponentOverlapBreakdown"]) == 0
 assert baseline["canClaimNoInteriorOverlapInThisUvLayout"] is True
 assert baseline["completeGarmentUvOverlapFreeApproved"] is False
 assert baseline["productionApproved"] is False
@@ -34,6 +39,10 @@ assert overlap["observedDistinctSourceFacePairsLowerBound"] > 0
 assert overlap["observedTriangleOverlapAreaSumLowerBoundMm2"] > 0
 assert overlap["largestObservedTriangleInteriorOverlapAreaMm2"] > 0
 assert overlap["firstSourceFaceTriangleOverlapWitnesses"]
+assert sum(row["observedInteriorOverlapTrianglePairsLowerBound"]
+           for row in overlap["withinComponentOverlapBreakdown"]) == (
+               overlap["observedInteriorOverlapTrianglePairsLowerBound"])
+assert overlap["crossComponentInteriorOverlapTrianglePairsLowerBound"] == 0
 assert overlap["canClaimNoInteriorOverlapInThisUvLayout"] is False
 assert overlap["completeGarmentUvOverlapFreeApproved"] is False
 
@@ -43,6 +52,33 @@ assert bounded["auditTruncated"] is True
 assert bounded["narrowphaseTrianglePairsChecked"] == 1
 assert bounded["canClaimNoInteriorOverlapInThisUvLayout"] is False
 assert bounded["completeGarmentUvOverlapFreeApproved"] is False
+
+# Split the genuine grid-derived source graph in two, then stack the second
+# component over the first. Attribution must distinguish cross-component
+# collisions from defects internal to a genuine source component.
+second_half_start = 53 * 25
+split_faces = list(faces[:second_half_start]) + [
+    tuple(index + 100000 for index in face)
+    for face in faces[second_half_start:]
+]
+cross_stacked = [list(row) for row in islands]
+for face_id in range(second_half_start, len(cross_stacked)):
+    cross_stacked[face_id] = [
+        (x, y - 0.25) for x, y in cross_stacked[face_id]
+    ]
+cross = audit(split_faces, cross_stacked)
+assert cross["auditTruncated"] is False
+assert cross["originalSourceFaceGraphComponentCount"] == 2
+assert cross["originalSourceComponentFaceCounts"] == [1325, 1325]
+assert cross["crossComponentInteriorOverlapTrianglePairsLowerBound"] > 0
+assert cross["crossComponentDistinctSourceFacePairsLowerBound"] > 0
+assert cross["crossComponentTriangleOverlapAreaSumLowerBoundMm2"] > 0
+assert cross["crossComponentLargestObservedTriangleInteriorOverlapAreaMm2"] > 0
+assert cross["observedInteriorOverlapTrianglePairsLowerBound"] == (
+    cross["crossComponentInteriorOverlapTrianglePairsLowerBound"]
+    + sum(row["observedInteriorOverlapTrianglePairsLowerBound"]
+          for row in cross["withinComponentOverlapBreakdown"])
+)
 
 def rejects(face_data, uv_data, cap=100000):
     try:
@@ -69,6 +105,9 @@ rejects(faces, inverted)
 bad_faces = list(faces)
 bad_faces[0] = (0, 0, 1, 2)
 rejects(bad_faces, islands)
+nonmanifold = list(faces)
+nonmanifold[10] = nonmanifold[0]
+rejects(nonmanifold, islands)
 
 
 compare = runpy.run_path(str(

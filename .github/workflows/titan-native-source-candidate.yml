@@ -1397,6 +1397,27 @@ jobs:
                   assert overlap["observedDistinctSourceFacePairsLowerBound"] >= 0
                   assert overlap["observedTriangleOverlapAreaSumLowerBoundMm2"] >= 0
                   assert overlap["largestObservedTriangleInteriorOverlapAreaMm2"] >= 0
+                  assert overlap["originalSourceFaceGraphComponentCount"] == 3
+                  assert overlap["originalSourceComponentFaceCounts"] == [1220,715,715]
+                  component_rows=overlap["withinComponentOverlapBreakdown"]
+                  assert len(component_rows) == 3
+                  assert [row["componentId"] for row in component_rows] == [0,1,2]
+                  assert [row["originalSourceFaceCount"] for row in component_rows] == [1220,715,715]
+                  assert sum(row["observedInteriorOverlapTrianglePairsLowerBound"]
+                             for row in component_rows) + overlap[
+                      "crossComponentInteriorOverlapTrianglePairsLowerBound"
+                  ] == overlap["observedInteriorOverlapTrianglePairsLowerBound"]
+                  assert sum(row["observedDistinctSourceFacePairsLowerBound"]
+                             for row in component_rows) + overlap[
+                      "crossComponentDistinctSourceFacePairsLowerBound"
+                  ] == overlap["observedDistinctSourceFacePairsLowerBound"]
+                  assert all(row["observedTriangleOverlapAreaSumLowerBoundMm2"] >= 0
+                             and row["largestObservedTriangleInteriorOverlapAreaMm2"] >= 0
+                             for row in component_rows)
+                  assert overlap["crossComponentTriangleOverlapAreaSumLowerBoundMm2"] >= 0
+                  assert overlap[
+                      "crossComponentLargestObservedTriangleInteriorOverlapAreaMm2"
+                  ] >= 0
                   assert overlap["originalProductionSourceUvApproved"] is False
                   assert overlap["completeGarmentUvOverlapFreeApproved"] is False
                   assert overlap["realTailorCuttingApproved"] is False
@@ -1469,6 +1490,15 @@ jobs:
                   assert after["actualTrianglesInspected"] <= 5300
                   assert after["completeGarmentUvOverlapFreeApproved"] is False
                   assert after["productionApproved"] is False
+                  assert after["originalSourceFaceGraphComponentCount"] == 3
+                  assert after["originalSourceComponentFaceCounts"] == [1220,715,715]
+                  assert after["crossComponentInteriorOverlapTrianglePairsLowerBound"] == 0
+                  assert after["crossComponentDistinctSourceFacePairsLowerBound"] == 0
+                  assert after["crossComponentTriangleOverlapAreaSumLowerBoundMm2"] == 0
+                  assert sum(row["observedInteriorOverlapTrianglePairsLowerBound"]
+                             for row in after["withinComponentOverlapBreakdown"]) == after[
+                      "observedInteriorOverlapTrianglePairsLowerBound"
+                  ]
                   assert comparison["researchOnly"] is True
                   assert comparison["completeGarmentUvApproved"] is False
                   assert comparison["productionApproved"] is False
