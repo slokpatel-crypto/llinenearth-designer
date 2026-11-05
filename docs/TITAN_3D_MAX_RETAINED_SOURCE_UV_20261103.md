@@ -141,3 +141,30 @@ New scoped source-only research adds \`scripts/blender/source-trouser-uv-overlap
 - No original \`LinenEarthExport\`, garment source coordinates, scanned body, canonical photo/model \`linen-earth-studio-model-v1\`, production UV layer, fabric fact or deployed code is modified. The audit remains **research-only** and does not invent real tailoring instructions.
 
 **Current staged commits:** \`70ae54d8\` pure intersection diagnostic, \`6718c07c\` Python geometry/adversarial tests, \`86b91d88\` original-source Blender driver wiring, \`6eddd57f\` pinned official workflow, \`31ab9bb1\` Node safeguards. Native measurements and exact-head full CI must be inspected before any assertion about overlap count or comparative result. All physical/fit/textile/six-garment production approvals remain false. **No merge, no GLB promotion, no Vercel deploy.**
+
+
+## 2026-11-05 verified source UV interior overlap results — both physically rejected
+
+Official checksum-pinned Blender 4.5.14 original-source native diagnostic workflow [#42018980430](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/42018980430) **SUCCESS** at tested code head \`31ab9bb161fb6c09409825846656d6570fb099b6\`. The complete original geometry-only source audit examined **all 5,300 source UV triangles** for both the weighted Kruskal UV tree and the 48-candidate one-edge branch-penalty tree; neither scan hit its **100,000 candidate-test cap**, so observed exact 2D source-triangle pair counts are complete under this implemented strict-area tolerance. These are **UV reconstruction research numbers**, not source garment physics or textile consumption.
+
+| Real original-source reconstructed 2D UV metric | Weighted tree | One-swap branch-aware trial |
+|---|---:|---:|
+| 2D source UV triangles audited | 5,300 | 5,300 |
+| Narrow-phase candidate triangle pairs tested | 26,896 | 27,158 |
+| Positive-area UV triangle-overlap pairs observed | **10,238** | **10,409** |
+| Distinct overlapping original source-face pairs | **4,164** | **4,237** |
+| Sum of clipped triangle-pair overlap area (mm²) | **127,276.94499** | **129,183.99200** |
+| Largest single observed triangle-pair overlap area (mm²) | 416.77621 | 416.77621 |
+| Audit truncated | **false** | **false** |
+| No-overlap claim for this research UV layout | **false** | **false** |
+| Production garment/fabric/tailor/UV approved | **false** | **false** |
+
+**Observed branch trial regression:** +171 overlapping triangle pairs, +73 distinct overlapping source-face pairs, +1,907.04701 mm² in summed pairwise clipped overlap area. Sums can double-count the same 2D space under layered triangles, and must **not** be advertised as textile wastage, required cutting fabric, fit dimensions or body-contact area. Even complete coverage of these research loops cannot certify production UVs, sewing, physical repeat/grain or cloth drape. Earlier weighted-tree/BFS comparison remains separate.
+
+### Machine-checked rejection
+
+\`compare_original_source_uv_overlap_evidence\` explicitly validates original-source face/triangle counts, finite integer metrics, complete-vs-truncated scan state and false physical approvals. It returns a comparable overlap delta **only when both scans completed**; otherwise \`candidateOverlapTrianglePairDelta=null\` and worsening/improvement/overlap-free conclusions remain \`null\`. Research driver carries this result alongside the source native Pareto verdict. Python tests reject forged production flags, fabricated completion, invalid source counts and negative overlap numbers. Node and pinned native workflow assertions fail closed if the *pinned original model* unexpectedly reports a clean UV layout or the worsened trial is mislabeled as improved.
+
+New scoped commits: \`11c92df1\` pure comparator, \`169ba149\` adversarial fixtures, \`e2aa4448\` original-source Blender report wiring, \`34016c59\` pinned native failure gate, \`ef1cd846\` Node regression. The earlier original source/audit code \`31ab9bb1\` verified the above actual metrics. Later commits must pass their own exact-head source QA, CI and Non-3D; old native results do not certify later heads.
+
+**Next research goal:** actually reconstruct a connected, non-self-overlapping **original source** UV topology with low seam length, no masked distortion, true seam ownership and source collision clearance. Current 2,585 unclosed tree seams, ten production preflight hard blockers, 20 experimental bridge/body intersections, original 29,600 source/body BVH pairs and lack of physical textile/tailor evidence persist. Do not replace original production UV/GLB/model or claim worn fit. **No merge, Vercel deploy or production approval.**
