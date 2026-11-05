@@ -1410,3 +1410,19 @@ test("negated pleat direction does not conflict with an explicitly selected dire
     "Forward pleats and reverse pleats required", { pleat: "single_pleat_forward" },
   ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
 });
+
+test("negative pleat direction constraints reject only the forbidden direction", () => {
+  for (const [wording, permitted, forbidden] of [
+    ["Avoid reverse pleats; pleated trousers", "single_pleat_forward", "single_pleat_reverse"],
+    ["No forward pleats; pleated trousers", "single_pleat_reverse", "single_pleat_forward"],
+    ["Without reverse pleats; single pleat requested", "single_pleat_forward", "single_pleat_reverse"],
+  ] as const) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), "pleated", wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, { pleat: permitted }), [], wording);
+    assert.deepEqual(
+      styleDirectorCandidateFrontConstructionIssues(wording, { pleat: forbidden }).map(issue => issue.code),
+      ["candidate_trouser_pleat_mismatch"],
+      wording,
+    );
+  }
+});
