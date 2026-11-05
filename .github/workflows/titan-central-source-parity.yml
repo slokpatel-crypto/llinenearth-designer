@@ -1,7 +1,8 @@
 name: TITAN Central Source Blob Parity
 
-# Runs on the integration-gate draft branch only; source worker PRs are
-# intentionally independent and must not inherit this pinned snapshot gate.
+# Runs on central integration PR branches, including after this stacked
+# gate is incorporated into #881. Source worker branches remain independent
+# and must not be forced to pass the pinned central intake snapshot.
 on:
   pull_request:
   workflow_dispatch:
@@ -13,7 +14,7 @@ permissions:
 jobs:
   source-parity:
     name: Verify pinned source Git blobs and reviewed workflow reconciliations
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'titan-central-source-parity-gate-20261105'
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'titan-central-')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
