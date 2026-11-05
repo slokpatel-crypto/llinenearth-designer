@@ -10,30 +10,76 @@ export function applyVerifiedPhysicalFabricEvidence(
   fabric:DesignerFabric,
   intelligence:DesignerFabricIntelligence|undefined,
 ):DesignerFabric {
-  if(!intelligence || intelligence.trust!=="reviewed") return fabric;
-  const physicalScale=intelligence.measuredEvidence.patternPhysicalScale;
+  // Persisted review status is authoritative: a previously reviewed profile
+  // may later be rejected or reverted to pending review. Trust metadata alone
+  // cannot override that decision or certify customer-facing physical facts.
+  if(!intelligence || intelligence.trust!=="reviewed"
+    || (intelligence.reviewStatus!=="approved" && intelligence.reviewStatus!=="corrected")) return fabric;
+  // Legacy/corrupt persisted profiles may carry reviewed trust but omit their
+  // nested evidence. An approval must never cause a customer-facing 500 or
+  // upgrade physical facts without the original measurement and source objects.
+  const measured=intelligence.measuredEvidence;
+  const physical=intelligence.verifiedPhysical;
+  if(!measured || typeof measured!=="object" || Array.isArray(measured)
+    || !physical || typeof physical!=="object" || Array.isArray(physical)) return fabric;
+  const physicalScale=measured.patternPhysicalScale;
   const provenance=intelligence.fieldProvenance||{};
-  const auditablePhysicalSource=Boolean(
-    String(intelligence.verifiedPhysical.sourceUrl||"").trim()
-    || String(intelligence.verifiedPhysical.evidenceNote||"").trim().length>=8
-  );
-  const physicalSource=(field:string)=>auditablePhysicalSource&&["declared","reviewed"].includes(String(provenance[field]||""));
+  // Values may come from persisted JSON even when TypeScript declares them as
+  // strings. Do not coerce arrays/objects into supplier notes or HTTPS links.
+  const sourceTextValid=(physical.sourceUrl==null || (typeof physical.sourceUrl==="string" && physical.sourceUrl.length<=1800))
+    && (physical.evidenceNote==null || (typeof physical.evidenceNote==="string" && physical.evidenceNote.length<=500));
+  const sourceUrl=typeof physical.sourceUrl==="string" ? physical.sourceUrl.trim() : "";
+  const evidenceNote=typeof physical.evidenceNote==="string" ? physical.evidenceNote.trim() : "";
+  let validSourceUrl=sourceTextValid && sourceUrl.length<=1800 && evidenceNote.length<=500 && !sourceUrl;
+  if(sourceUrl) {
+    try {
+      const parsed=new URL(sourceUrl);
+      validSourceUrl=sourceTextValid && sourceUrl.length<=1800 && evidenceNote.length<=500
+        && parsed.protocol==="https:" && Boolean(parsed.hostname);
+    } catch { validSourceUrl=false; }
+  }
+  // An approved profile is not itself a physical measurement. Field-level
+  // declaration/review AND a traceable source are both required.
+  const auditablePhysicalSource=validSourceUrl && Boolean(sourceUrl || evidenceNote.length>=8);
+  const physicalSource=(field:string)=>auditablePhysicalSource
+    && (provenance[field]==="declared" || provenance[field]==="reviewed");
+  const validMm=(value:unknown)=>typeof value==="number" && Number.isFinite(value)
+    && value>=.1 && value<=5000;
+  const repeatMm=measured.repeatMm;
+  const stripeWidthMm=measured.stripeWidthMm;
+  const orientation=measured.patternOrientation;
+  // A width-only swatch calibrates X-axis period, therefore vertical stripes
+  // only. An externally declared repeat may use X or Y, but still requires an
+  // observed stripe direction. Older incomplete profiles remain unverified.
+  const calibratedAxis=(physicalScale==="declared_swatch_width" && orientation==="vertical")
+    || (physicalScale==="declared_repeat" && (orientation==="vertical" || orientation==="horizontal"));
   const patternScaleVerified=Boolean(
-    physicalScale
-    && physicalScale!=="unknown"
+    calibratedAxis
+    && validMm(repeatMm)
+    && (stripeWidthMm===null || (validMm(stripeWidthMm) && stripeWidthMm!<=repeatMm!))
     && physicalSource("measured.pattern.physicalScale")
   );
-  const gsmVerified=physicalSource("verifiedPhysical.gsm");
-  const drapeVerified=physicalSource("verifiedPhysical.drape");
-  const fiberVerified=physicalSource("verifiedPhysical.fiberContent");
+  const gsmVerified=physicalSource("verifiedPhysical.gsm")
+    && typeof physical.gsm==="number" && Number.isFinite(physical.gsm)
+    && physical.gsm>=20 && physical.gsm<=1000;
+  const drapeVerified=physicalSource("verifiedPhysical.drape")
+    && typeof physical.drape==="string"
+    && ["Fluid","Balanced","Structured"].includes(physical.drape);
+  // Recheck the full literal at the customer-facing boundary, not just in the
+  // v4 adapter. Older persisted JSON or another caller may bypass normalization.
+  // Never truncate supplier-certified composition into a different claim.
+  const fiberVerified=physicalSource("verifiedPhysical.fiberContent")
+    && typeof physical.fiberContent==="string"
+    && physical.fiberContent.trim().length>0
+    && physical.fiberContent.length<=220;
   return {
     ...fabric,
-    ...(patternScaleVerified ? {
+    ...(patternScaleVerified && fabric.patternScaleVerified!==true ? {
       patternScaleVerified:true,
       renderScale:{
         physicalScaleStatus:physicalScale as "declared_repeat"|"declared_swatch_width",
-        repeatMm:intelligence.measuredEvidence.repeatMm,
-        stripeWidthMm:intelligence.measuredEvidence.stripeWidthMm,
+        repeatMm,
+        stripeWidthMm,
       },
     } : {}),
     ...(fabric.weightGsm===null && intelligence.verifiedPhysical.gsm!=null && gsmVerified
@@ -42,7 +88,7 @@ export function applyVerifiedPhysicalFabricEvidence(
     ...(fabric.drape===null && intelligence.verifiedPhysical.drape && drapeVerified
       ? {drape:intelligence.verifiedPhysical.drape}
       : {}),
-    ...(intelligence.verifiedPhysical.fiberContent && fiberVerified
+    ...(fabric.fiberContentVerified!==true && intelligence.verifiedPhysical.fiberContent && fiberVerified
       ? {
         fiberContent:intelligence.verifiedPhysical.fiberContent,
         fiberContentVerified:true,

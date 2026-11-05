@@ -129,3 +129,216 @@ test("reviewed physical claims are applied independently by field provenance",()
   assert.equal(result.fiberContent,null);
   assert.equal(result.patternScaleVerified,undefined);
 });
+
+test("missing or inconsistent physical repeat never upgrades customer scale",()=>{
+  for(const [repeatMm,stripeWidthMm] of [
+    [null,null],[0,null],[-3,null],[Infinity,null],[10,11],[10,NaN],
+  ] as const) {
+    const reviewed=intelligence("reviewed");
+    reviewed.measuredEvidence.repeatMm=repeatMm;
+    reviewed.measuredEvidence.stripeWidthMm=stripeWidthMm;
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    assert.equal(result.patternScaleVerified,undefined);
+    assert.equal(result.renderScale?.physicalScaleStatus,"unknown");
+  }
+});
+
+test("invalid physical evidence URL and unproven physical facts fail closed",()=>{
+  for(const sourceUrl of ["javascript:alert(1)","http://example.com/spec","https://"]) {
+    const reviewed=intelligence("reviewed");
+    reviewed.verifiedPhysical.sourceUrl=sourceUrl;
+    reviewed.verifiedPhysical.evidenceNote=null;
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    assert.equal(result.patternScaleVerified,undefined);
+    assert.equal(result.weightGsm,null);
+    assert.equal(result.drape,null);
+    assert.equal(result.fiberContent,null);
+  }
+});
+
+test("invalid GSM, drape or fibre values cannot turn into verified physical facts",()=>{
+  const reviewed=intelligence("reviewed");
+  reviewed.verifiedPhysical.gsm=Infinity;
+  reviewed.verifiedPhysical.drape="Rigid" as never;
+  reviewed.verifiedPhysical.fiberContent="   ";
+  const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+  assert.equal(result.weightGsm,null);
+  assert.equal(result.drape,null);
+  assert.equal(result.fiberContent,null);
+  assert.equal(result.fiberContentVerified,undefined);
+});
+
+test("previously verified fibre content is not overwritten by later analysis",()=>{
+  const prior={...fabric,fiberContent:"100% verified cotton",fiberContentVerified:true};
+  const result=applyVerifiedPhysicalFabricEvidence(prior,intelligence("reviewed"));
+  assert.equal(result.fiberContent,"100% verified cotton");
+  assert.equal(result.fiberContentVerified,true);
+});
+
+test("persisted JSON cannot coerce provenance or supplier source into reviewed physical claims",()=>{
+  for(const field of ["measured.pattern.physicalScale","verifiedPhysical.gsm","verifiedPhysical.drape","verifiedPhysical.fiberContent"] as const){
+    const reviewed=intelligence("reviewed");
+    reviewed.fieldProvenance={...reviewed.fieldProvenance,[field]:["declared"] as never};
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    if(field==="measured.pattern.physicalScale") assert.equal(result.patternScaleVerified,undefined);
+    if(field==="verifiedPhysical.gsm") assert.equal(result.weightGsm,null);
+    if(field==="verifiedPhysical.drape") assert.equal(result.drape,null);
+    if(field==="verifiedPhysical.fiberContent") assert.equal(result.fiberContentVerified,undefined);
+  }
+  for(const [field,value] of [
+    ["sourceUrl",["https://supplier.example/roll"]],
+    ["evidenceNote",["Inspector measured physical roll"]],
+    ["sourceUrl",{url:"https://supplier.example/roll"}],
+    ["evidenceNote",{text:"Inspector measured physical roll"}],
+  ] as const){
+    const reviewed=intelligence("reviewed");
+    reviewed.verifiedPhysical={...reviewed.verifiedPhysical,sourceUrl:null,evidenceNote:"Inspector recorded physical roll", [field]:value as never};
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    assert.equal(result.patternScaleVerified,undefined,field);
+    assert.equal(result.weightGsm,null,field);
+    assert.equal(result.drape,null,field);
+    assert.equal(result.fiberContentVerified,undefined,field);
+  }
+  for(const [field,value] of [
+    ["sourceUrl","https://supplier.example/"+"a".repeat(1800)],
+    ["evidenceNote","e".repeat(501)],
+  ] as const){
+    const reviewed=intelligence("reviewed");
+    reviewed.verifiedPhysical={...reviewed.verifiedPhysical,[field]:value};
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    assert.equal(result.patternScaleVerified,undefined,field);
+    assert.equal(result.weightGsm,null,field);
+  }
+  const wrongDrape=intelligence("reviewed");
+  wrongDrape.verifiedPhysical.drape=["Balanced"] as never;
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,wrongDrape).drape,null);
+});
+
+test("customer scale certification rejects unsupported axis even with reviewed supplier numbers",()=>{
+  for(const physicalScale of ["declared_repeat","declared_swatch_width"] as const){
+    for(const patternOrientation of ["none","uncertain","grid",null] as const){
+      const reviewed=intelligence("reviewed");
+      reviewed.measuredEvidence.patternPhysicalScale=physicalScale;
+      reviewed.measuredEvidence.patternOrientation=patternOrientation;
+      const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+      assert.equal(result.patternScaleVerified,undefined,`${physicalScale} / ${patternOrientation}`);
+    }
+  }
+  for(const patternOrientation of ["horizontal","grid","uncertain"] as const){
+    const reviewed=intelligence("reviewed");
+    reviewed.measuredEvidence.patternPhysicalScale="declared_swatch_width";
+    reviewed.measuredEvidence.patternOrientation=patternOrientation;
+    assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,reviewed).patternScaleVerified,undefined,patternOrientation);
+  }
+  const horizontal=intelligence("reviewed");
+  horizontal.measuredEvidence.patternOrientation="horizontal";
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,horizontal).patternScaleVerified,true);
+  const validSwatch=intelligence("reviewed");
+  validSwatch.measuredEvidence.patternPhysicalScale="declared_swatch_width";
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,validSwatch).patternScaleVerified,true);
+});
+
+test("rejected or pending review cannot promote customer fabric claims even with stale reviewed trust",()=>{
+  for(const reviewStatus of ["rejected","unreviewed"] as const){
+    const stale=intelligence("reviewed");
+    stale.reviewStatus=reviewStatus;
+    const output=applyVerifiedPhysicalFabricEvidence(fabric,stale);
+    assert.equal(output.patternScaleVerified,undefined,reviewStatus);
+    assert.equal(output.renderScale?.physicalScaleStatus,"unknown",reviewStatus);
+    assert.equal(output.weightGsm,null,reviewStatus);
+    assert.equal(output.drape,null,reviewStatus);
+    assert.equal(output.fiberContentVerified,undefined,reviewStatus);
+  }
+  const corrected=intelligence("reviewed");
+  corrected.reviewStatus="corrected";
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,corrected).patternScaleVerified,true);
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,corrected).fiberContentVerified,true);
+  const missing=intelligence("reviewed");
+  (missing as unknown as Record<string,unknown>).reviewStatus=undefined;
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,missing).patternScaleVerified,undefined);
+});
+
+test("overlong persisted fibre claims never gain verified status while exact-limit evidence remains valid",()=>{
+  const previous={...fabric,weightGsm:null,drape:null};
+  for(const value of ["L".repeat(221), " ".repeat(5)+"L".repeat(221)+" ".repeat(2)]){
+    const reviewed=intelligence("reviewed");
+    reviewed.verifiedPhysical.fiberContent=value;
+    const output=applyVerifiedPhysicalFabricEvidence(previous,reviewed);
+    assert.equal(output.fiberContent,null,"overlong composition is not certified");
+    assert.equal(output.fiberContentVerified,undefined);
+    assert.equal(output.weightGsm,145,"independent genuine GSM field remains eligible");
+    assert.equal(output.drape,"Balanced","independent genuine drape field remains eligible");
+  }
+  const limit=intelligence("reviewed");
+  limit.verifiedPhysical.fiberContent="L".repeat(220);
+  const accepted=applyVerifiedPhysicalFabricEvidence(previous,limit);
+  assert.equal(accepted.fiberContent,"L".repeat(220));
+  assert.equal(accepted.fiberContentVerified,true);
+});
+
+test("legacy approved profiles without nested evidence fail closed without throwing",()=>{
+  const valid=intelligence("reviewed");
+  for(const [field,value] of [
+    ["measuredEvidence",undefined],
+    ["measuredEvidence",null],
+    ["measuredEvidence",[]],
+    ["measuredEvidence",["declared_repeat"]],
+    ["verifiedPhysical",undefined],
+    ["verifiedPhysical",null],
+    ["verifiedPhysical",[]],
+    ["verifiedPhysical",["source"]],
+  ] as const){
+    const record={...valid,[field]:value} as unknown as DesignerFabricIntelligence;
+    assert.doesNotThrow(()=>applyVerifiedPhysicalFabricEvidence(fabric,record),field);
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,record);
+    assert.deepEqual(result,fabric,field);
+  }
+  const intact=applyVerifiedPhysicalFabricEvidence(fabric,valid);
+  assert.equal(intact.patternScaleVerified,true);
+  assert.equal(intact.fiberContentVerified,true);
+});
+
+test("padded oversize supplier source and composition cannot bypass literal receipt limits",()=>{
+  const padded=[
+    ["fiberContent"," ".repeat(221)+"100% linen"],
+    ["sourceUrl"," ".repeat(1801)+"https://supplier.example/lot"],
+    ["evidenceNote"," ".repeat(501)+"Measured physical roll last week."],
+  ] as const;
+  for(const [key,value] of padded){
+    const reviewed=intelligence("reviewed");
+    reviewed.verifiedPhysical={...reviewed.verifiedPhysical,[key]:value};
+    const output=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    if(key==="fiberContent"){
+      assert.equal(output.fiberContentVerified,undefined);
+      assert.equal(output.fiberContent,null);
+      assert.equal(output.weightGsm,145,"independent bounded GSM still eligible");
+    } else {
+      assert.equal(output.patternScaleVerified,undefined, key);
+      assert.equal(output.weightGsm,null, key);
+      assert.equal(output.drape,null, key);
+      assert.equal(output.fiberContentVerified,undefined, key);
+    }
+  }
+  const justBounded=intelligence("reviewed");
+  justBounded.verifiedPhysical.fiberContent=" ".repeat(210)+"100% linen";
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,justBounded).fiberContentVerified,true);
+});
+
+test("previously verified physical scale is not overwritten by later analyzer evidence",()=>{
+  const prior={
+    ...fabric,
+    patternScaleVerified:true,
+    renderScale:{physicalScaleStatus:"declared_repeat" as const,repeatMm:18,stripeWidthMm:4},
+  };
+  const later=intelligence("reviewed");
+  later.measuredEvidence.repeatMm=12;
+  later.measuredEvidence.stripeWidthMm=3;
+  const result=applyVerifiedPhysicalFabricEvidence(prior,later);
+  assert.equal(result.patternScaleVerified,true);
+  assert.deepEqual(result.renderScale,prior.renderScale,
+    "existing verified repeat and width remain authoritative");
+  const blank=applyVerifiedPhysicalFabricEvidence(fabric,later);
+  assert.equal(blank.patternScaleVerified,true);
+  assert.equal(blank.renderScale?.repeatMm,12,
+    "a still-unverified fabric may adopt correctly reviewed physical evidence");
+});

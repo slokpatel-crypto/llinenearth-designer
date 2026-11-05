@@ -66,3 +66,39 @@ test("saturated fabric colour is not misclassified as an illumination colour cas
   assert(!quality.issues.includes("strong_color_cast"));
 });
 
+test("width-only calibration cannot claim mm for horizontal stripes",()=>{
+  const width=128,height=128;
+  const gray=new Uint8Array(width*height);
+  for(let y=0;y<height;y++) for(let x=0;x<width;x++) gray[y*width+x]=(y%16<8)?40:220;
+  const result=measurePattern(gray,width,height,[],{swatchRealWidthMm:256,originalWidthPx:512});
+  assert.equal(result.orientation,"horizontal");
+  assert.equal(result.repeatPeriodPx,16);
+  assert.equal(result.repeatMm,null);
+  assert.equal(result.physicalScaleStatus,"unknown");
+  const repeatDeclared=measurePattern(gray,width,height,[],{repeatRealMm:22});
+  assert.equal(repeatDeclared.repeatMm,22);
+  assert.equal(repeatDeclared.physicalScaleStatus,"declared_repeat");
+});
+
+test("unresolved pixel repeat cannot become physically calibrated from a declared number",()=>{
+  const flat=new Uint8Array(128*128).fill(120);
+  for(const physical of [{repeatRealMm:18},{swatchRealWidthMm:250,originalWidthPx:500}]) {
+    const result=measurePattern(flat,128,128,[],physical);
+    assert.equal(result.repeatPeriodPx,null);
+    assert.equal(result.repeatMm,null);
+    assert.equal(result.physicalScaleStatus,"unknown");
+  }
+});
+
+test("nonfinite and implausible mm inputs cannot produce a verified fabric scale",()=>{
+  const width=128,height=128;
+  const gray=new Uint8Array(width*height);
+  for(let y=0;y<height;y++) for(let x=0;x<width;x++) gray[y*width+x]=(x%16<8)?40:220;
+  for(const repeatRealMm of [Number.NaN,Infinity,-8,0,6000,.01]) {
+    const result=measurePattern(gray,width,height,[],{repeatRealMm});
+    assert.equal(result.physicalScaleStatus,"unknown");
+    assert.equal(result.repeatMm,null);
+  }
+  const invalidWidth=measurePattern(gray,width,height,[],{swatchRealWidthMm:Infinity,originalWidthPx:512});
+  assert.equal(invalidWidth.physicalScaleStatus,"unknown");
+});

@@ -114,24 +114,98 @@ export type FabricAnalyzerProfileV4 = {
 function obj(value:unknown):Record<string,unknown> {
   return value && typeof value==="object" && !Array.isArray(value) ? value as Record<string,unknown> : {};
 }
-function str(value:unknown,limit=180) {
-  return String(value??"").trim().slice(0,limit);
+function isRecord(value:unknown):value is Record<string,unknown> {
+  return value!==null && typeof value==="object" && !Array.isArray(value);
+}
+function validatedImageQuality(value:unknown):FabricImageQuality|null {
+  if(!isRecord(value)) return null;
+  // A saved "score: 100" by itself is not a measured image-quality record.
+  // The image pipeline provides these dimensions and diagnostics together.
+  // Preserve all complete historical records, but fail closed on partial or
+  // coerced JSON that could manufacture high-confidence Analyzer evidence.
+  const bounds={
+    score:[0,100],
+    widthPx:[1,32768],
+    heightPx:[1,32768],
+    blurVariance:[0,1_000_000_000],
+    glarePct:[0,100],
+    meanLuma:[0,255],
+    colorCast:[0,255],
+    borderCenterDelta:[0,450],
+  } as const;
+  for(const [key,[min,max]] of Object.entries(bounds)){
+    const n=value[key];
+    if(typeof n!=="number" || !Number.isFinite(n) || n<min || n>max) return null;
+  }
+  if(typeof value.widthPx!=="number" || typeof value.heightPx!=="number"
+    || !Number.isSafeInteger(value.widthPx) || !Number.isSafeInteger(value.heightPx)) return null;
+  if(!Array.isArray(value.issues) || value.issues.length>30
+    || !value.issues.every((issue:unknown)=>typeof issue==="string" && issue.length<=80)) return null;
+  return value as FabricImageQuality;
+}
+function validatedMeasuredData(value:unknown):FabricMeasuredData|null {
+  if(!isRecord(value) || !isRecord(value.colour)
+    || !isRecord(value.pattern) || !validatedImageQuality(value.imageQuality)) return null;
+  const colour=value.colour;
+  const pattern=value.pattern;
+  // The downstream projection reads these nested fields without structural
+  // checks. Do not promote a malformed blob to a typed measured swatch.
+  if(typeof colour.hex!=="string" || !/^#[0-9a-f]{6}$/i.test(colour.hex)
+    || typeof colour.deltaE!=="number" || !Number.isFinite(colour.deltaE)
+    || colour.deltaE<0) return null;
+  if(typeof pattern.orientation!=="string"
+    || !["none","vertical","horizontal","grid","uncertain"].includes(pattern.orientation)
+    || typeof pattern.physicalScaleStatus!=="string"
+    || !["unknown","declared_repeat","declared_swatch_width"].includes(pattern.physicalScaleStatus)) return null;
+  for(const key of ["repeatMm","stripeWidthMm","contrastDeltaE"] as const) {
+    const val=pattern[key];
+    if(val!==null && val!==undefined &&
+      (typeof val!=="number" || !Number.isFinite(val) || val<0)) return null;
+  }
+  return value as FabricMeasuredData;
+}
+function str(value:unknown,limit=180,rejectOverlength=false) {
+  // Untrusted profile values must remain literal strings. Supplier evidence
+  // must also retain its exact bounded value: never truncate an inspection
+  // receipt, composition or URL into a different, apparently valid proof.
+  if(typeof value!=="string") return "";
+  // Supplier/inspection evidence is a literal receipt, not a display field.
+  // Check its raw length before trimming; otherwise an oversized padded
+  // document or composition can be shortened into apparently valid proof.
+  if(rejectOverlength && value.length>limit) return "";
+  const literal=value.trim();
+  return rejectOverlength && literal.length>limit ? "" : literal.slice(0,limit);
 }
 function arr(value:unknown,limit=12) {
   return Array.isArray(value) ? value.map((item)=>str(item)).filter(Boolean).slice(0,limit) : [];
 }
 function num(value:unknown,min:number,max:number,fallback:number) {
-  const n=Number(value);
-  return Number.isFinite(n) ? Math.max(min,Math.min(max,n)) : fallback;
+  // Persisted JSON has no TypeScript runtime contract: strings, arrays and
+  // booleans must not be cast into apparent Analyzer confidence. An invalid
+  // out-of-range number is unknown, not perfect confidence after clamping.
+  return typeof value==="number" && Number.isFinite(value)
+    && value>=min && value<=max ? value : fallback;
+}
+function ordinal(value:unknown,fallback:1|2|3|4|5):1|2|3|4|5 {
+  return typeof value==="number" && Number.isInteger(value)
+    && value>=1 && value<=5 ? value as 1|2|3|4|5 : fallback;
+}
+
+function tilePixelDimension(value:unknown):number|null {
+  // Render metadata comes from persisted JSON, not trusted image metadata.
+  // Blank strings, arrays, booleans, negative or fractional values are not pixels.
+  return typeof value==="number" && Number.isSafeInteger(value)
+    && value>0 && value<=32768 ? value : null;
 }
 function enumValue<T extends string>(value:unknown,allowed:readonly T[],fallback:T):T {
-  const raw=String(value??"");
-  return (allowed as readonly string[]).includes(raw) ? raw as T : fallback;
+  // String(["stripe"]) === "stripe", but an array is not a classifier label.
+  return typeof value==="string" && (allowed as readonly string[]).includes(value)
+    ? value as T : fallback;
 }
 
 export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|null {
   const root=obj(input);
-  if(!["fabric-analyzer-v3","fabric-analyzer-v4"].includes(String(root.version||""))) return null;
+  if(typeof root.version!=="string" || !["fabric-analyzer-v3","fabric-analyzer-v4"].includes(root.version)) return null;
   const observed=obj(root.observed);
   const inferred=obj(root.inferredStyle);
   const recommended=obj(inferred.recommendedConstruction);
@@ -174,8 +248,8 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
     },
     inferredStyle:{
       personality:arr(inferred.personality,8),
-      formality:Math.round(num(inferred.formality,1,5,3)) as 1|2|3|4|5,
-      statementLevel:Math.round(num(inferred.statementLevel,1,5,2)) as 1|2|3|4|5,
+      formality:ordinal(inferred.formality,3),
+      statementLevel:ordinal(inferred.statementLevel,2),
       bestGarments:garments.values,
       bestOccasions:occasionIds.values,
       climateVisualFit:climate.values,
@@ -212,9 +286,11 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
       gsm:typeof obj(root.verifiedPhysical).gsm === "number" && Number.isFinite(obj(root.verifiedPhysical).gsm)
         && Number(obj(root.verifiedPhysical).gsm) >= 20 && Number(obj(root.verifiedPhysical).gsm) <= 1000
         ? Number(obj(root.verifiedPhysical).gsm) : null,
-      drape:["Fluid","Balanced","Structured"].includes(String(obj(root.verifiedPhysical).drape))
-        ? String(obj(root.verifiedPhysical).drape) as "Fluid"|"Balanced"|"Structured" : null,
-      fiberContent:str(obj(root.verifiedPhysical).fiberContent,220)||null,
+      drape:typeof obj(root.verifiedPhysical).drape==="string"
+        && ["Fluid","Balanced","Structured"].includes(obj(root.verifiedPhysical).drape as string)
+        ? obj(root.verifiedPhysical).drape as "Fluid"|"Balanced"|"Structured" : null,
+      fiberContent:typeof obj(root.verifiedPhysical).fiberContent==="string"
+        ? str(obj(root.verifiedPhysical).fiberContent,220,true)||null : null,
       structure:typeof obj(root.verifiedPhysical).structure === "number" && Number.isFinite(obj(root.verifiedPhysical).structure)
         && Number(obj(root.verifiedPhysical).structure) >= 0 && Number(obj(root.verifiedPhysical).structure) <= 1
         ? Number(obj(root.verifiedPhysical).structure) : null,
@@ -227,17 +303,18 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
       stretch:typeof obj(root.verifiedPhysical).stretch === "number" && Number.isFinite(obj(root.verifiedPhysical).stretch)
         && Number(obj(root.verifiedPhysical).stretch) >= 0 && Number(obj(root.verifiedPhysical).stretch) <= 1
         ? Number(obj(root.verifiedPhysical).stretch) : null,
-      sourceUrl:str(obj(root.verifiedPhysical).sourceUrl,1800)||null,
-      evidenceNote:str(obj(root.verifiedPhysical).evidenceNote,500)||null,
+      sourceUrl:typeof obj(root.verifiedPhysical).sourceUrl==="string"
+        ? str(obj(root.verifiedPhysical).sourceUrl,1800,true)||null : null,
+      evidenceNote:str(obj(root.verifiedPhysical).evidenceNote,500,true)||null,
     },
-    measured:root.measured && typeof root.measured==="object" ? root.measured as FabricMeasuredData : null,
-    imageQuality:root.imageQuality && typeof root.imageQuality==="object" ? root.imageQuality as FabricImageQuality : null,
+    measured:validatedMeasuredData(root.measured),
+    imageQuality:validatedImageQuality(root.imageQuality),
     renderAssets:{
       tileUrl:str(obj(root.renderAssets).tileUrl,1800)||null,
       placeholderUrl:str(obj(root.renderAssets).placeholderUrl,1800)||null,
-      tileWidthPx:Number.isFinite(Number(obj(root.renderAssets).tileWidthPx))?Number(obj(root.renderAssets).tileWidthPx):null,
-      tileHeightPx:Number.isFinite(Number(obj(root.renderAssets).tileHeightPx))?Number(obj(root.renderAssets).tileHeightPx):null,
-      repeatDetected:Boolean(obj(root.renderAssets).repeatDetected),
+      tileWidthPx:tilePixelDimension(obj(root.renderAssets).tileWidthPx),
+      tileHeightPx:tilePixelDimension(obj(root.renderAssets).tileHeightPx),
+      repeatDetected:obj(root.renderAssets).repeatDetected===true,
       renderAssetVersion:str(obj(root.renderAssets).renderAssetVersion,80)||null,
       scaleApproximate:obj(root.renderAssets).scaleApproximate!==false,
     },
@@ -250,7 +327,8 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
       : [],
     provenanceByField:Object.fromEntries(
       Object.entries(obj(root.provenanceByField))
-        .filter(([,value])=>["measured","modelJudged","declared","reviewed"].includes(String(value)))
+        .filter(([,value])=>typeof value==="string"
+          && ["measured","modelJudged","declared","reviewed"].includes(value))
         .map(([key,value])=>[key,String(value) as FabricFieldProvenance]),
     ),
     reviewNeeded:[...new Set([...(Array.isArray(root.reviewNeeded)?arr(root.reviewNeeded,30):[]),...reviewNeeded])],
