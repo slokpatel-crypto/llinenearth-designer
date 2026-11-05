@@ -229,3 +229,42 @@ test("unavailable supporting shirt is never selected when a stocked alternative 
   assert.equal(looks[0].realModel.pantId, pant.id);
   assert.equal(JSON.stringify(catalogue), before, "ranking must not mutate the catalogue");
 });
+
+test("garment-ineligible supporting fabrics never become model pairings", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const shirt = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("shirt"));
+  const pant = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("trouser"));
+  assert.ok(shirt && pant);
+  const shirtOnly = { ...shirt, suitableFor: ["shirt"] as typeof shirt.suitableFor };
+  const pantOnly = { ...pant, suitableFor: ["trouser"] as typeof pant.suitableFor };
+  const shirtAnswers = {
+    occasion: "Travel" as const, mood: "Relaxed" as const, time: "Day" as const,
+    climate: "Hot" as const, garment: "shirt" as const,
+    colorDirection: "Surprise me" as const,
+  };
+  const trouserAnswers = {
+    ...shirtAnswers, garment: "trouser" as const,
+  };
+  const unsuitablePant = { ...pantOnly, suitableFor: ["shirt"] as typeof pant.suitableFor };
+  const unsuitableShirt = { ...shirtOnly, suitableFor: ["trouser"] as typeof shirt.suitableFor };
+  const shirtCatalogue = [shirtOnly, unsuitablePant];
+  const trouserCatalogue = [unsuitableShirt, pantOnly];
+  const beforeShirt = JSON.stringify(shirtCatalogue);
+  const beforeTrouser = JSON.stringify(trouserCatalogue);
+  const shirtLooks = createStyleDirectorLooks(shirtAnswers, shirtCatalogue);
+  const trouserLooks = createStyleDirectorLooks(trouserAnswers, trouserCatalogue);
+  assert.equal(shirtLooks.length, 2, "both shirt-eligible entries remain candidate fabrics");
+  for (const look of shirtLooks) {
+    assert.equal(look.realModel, undefined,
+      "a catalogue without trouser-eligible fabric cannot supply a trouser handoff");
+  }
+  assert.equal(trouserLooks.length, 2, "both trouser-eligible entries remain candidate fabrics");
+  for (const look of trouserLooks) {
+    assert.equal(look.realModel, undefined,
+      "a catalogue without shirt-eligible fabric cannot supply a shirt handoff");
+  }
+  assert.equal(JSON.stringify(shirtCatalogue), beforeShirt);
+  assert.equal(JSON.stringify(trouserCatalogue), beforeTrouser);
+});
