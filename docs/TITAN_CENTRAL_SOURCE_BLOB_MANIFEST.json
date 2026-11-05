@@ -101,5 +101,10 @@
       },
       "reason": "Only the forward-only strict stock reservation SQL from source draft #900 is imported. Its other changed checkpoint/preflight files were not imported; do not infer their acceptance or a deployable migration history."
     }
-  ]
+  ],
+  "central_only_files": {
+    "docs/TITAN_CENTRAL_STOCK_SECURITY_INTEGRATION.md": "d6c345749e60630d5849c60f4f0e8fa253d00898",
+    "scripts/test-central-customer-rpc-acl-invocation.sh": "9d6eb66544e8c14ce4dcf55000d794ca9614ba3b",
+    "scripts/test-stock-reserve-filename-order-overwrite.sh": "cd1fd99e7ab255df08409c7778c52dfc05f771bc"
+  }
 }
