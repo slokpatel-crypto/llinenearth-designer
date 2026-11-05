@@ -5,6 +5,7 @@ on:
       - 'supabase/migrations/**'
       - 'scripts/report_migration_history.py'
       - 'scripts/test_migration_history_report.py'
+      - 'scripts/test_migration_collision_evidence.py'
       - '.github/workflows/titan-migration-history-report.yml'
   workflow_dispatch:
 permissions:
@@ -15,6 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test synthetic inventory reporting
-        run: python3 -m unittest scripts.test_migration_history_report -v
+        run: python3 -m unittest scripts.test_migration_history_report scripts.test_migration_collision_evidence -v
       - name: Print read-only inventory and fail closed for unresolved history
         run: python3 scripts/report_migration_history.py supabase/migrations
