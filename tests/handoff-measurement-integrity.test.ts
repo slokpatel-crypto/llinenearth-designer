@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { auditHandoffMeasurements } from "../src/lib/designer/handoff-measurements.ts";
 import { buildProductionHandoff, buildVerifiedProductionHandoff, verifyProductionHandoff } from "../src/lib/designer/production-handoff.ts";
 import { lockGarmentSpec } from "../src/lib/designer/design-lock.ts";
-import { buildTailorTechPackHtml, buildVerifiedTailorTechPackHtml } from "../src/lib/designer/tech-pack.ts";
+import { buildTailorTechPackHtml, buildVerifiedTailorTechPackHtml, techPackFilename } from "../src/lib/designer/tech-pack.ts";
 import type { FinishedTarget } from "../src/lib/designer/fit-construction.ts";
 import type { LockedDesignRevision } from "../src/lib/designer/design-lock.ts";
 
@@ -357,4 +357,16 @@ test("internally consistent approved ease label remains review-only without exte
   assert.match(html,/Claimed approved house ease calibration is not authenticated/);
   assert.match(html,/review required/);
   assert.match(html,/NO CUTTING AUTHORISATION/);
+});
+
+test("tech-pack download filename is deterministic and rejects traversal or ambiguous revision IDs",()=>{
+  const packet=buildProductionHandoff(createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]));
+  assert.equal(techPackFilename(packet),"linen-earth-tech-pack-le-lock-20261102-000000000000.html");
+  for(const id of [
+    "", " ", "../other", "a/../other", "folder/lock", "C:\\temp",
+    "A%2fB", "A.B", "A\nB", "A\u0000B", "A\u202eB", "x".repeat(121),
+  ]) {
+    const forged={...packet,designRevisionId:id};
+    assert.throws(()=>techPackFilename(forged),/Unsafe tailor tech pack filename/);
+  }
 });

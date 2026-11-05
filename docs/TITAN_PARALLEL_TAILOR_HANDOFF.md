@@ -52,5 +52,10 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Confirm new exact-head Full CI, Non-3D, PostgreSQL, browser after changes; older results must not be transferred. Review integration and approval evidence remain blockers.
 - Production cutting approval remains prohibited pending physically verified measurements, final garment tolerances, approved block/pattern and actual tailor signoff.
 
+## Safe download filename continuation (2026-11-05)
+- [x] Hardened `techPackFilename` to reject traversal, path separators, controls, encoded punctuation, bidi/Unicode tricks and overlong revision IDs rather than generating ambiguous download paths. Canonical locked revision IDs retain the exact prior filename.
+- [x] Added synthetic negative filename regression cases in dedicated handoff tests. This does not replace verified SHA256 recipe/handoff export.
+- [ ] Exact-head CI required for this filename hardening; no claimed pass from earlier commits. Signed physical tailor and cutting approval remain unavailable.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.

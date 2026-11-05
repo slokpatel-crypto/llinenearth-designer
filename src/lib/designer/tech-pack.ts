@@ -283,6 +283,16 @@ export async function buildVerifiedTailorTechPackHtml(
   return buildTailorTechPackHtml(handoff);
 }
 
+/**
+ * A revision identifier may arrive from an untrusted stored handoff.
+ * Reject filesystem separators, traversal, controls and ambiguous Unicode
+ * rather than silently rewriting identity. This does not authenticate the ID;
+ * production exports must still verify the locked design revision.
+ */
 export function techPackFilename(handoff:ProductionHandoff){
-  return `linen-earth-tech-pack-${handoff.designRevisionId.toLowerCase()}.html`;
+  const id=handoff?.designRevisionId;
+  if(typeof id!=="string" || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$/.test(id)){
+    throw new Error("Unsafe tailor tech pack filename: invalid design revision identifier.");
+  }
+  return `linen-earth-tech-pack-${id.toLowerCase()}.html`;
 }
