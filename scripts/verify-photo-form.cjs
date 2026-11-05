@@ -94,12 +94,23 @@ async function run(){
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`advanced-construction-disclosed-${width}.png`)});
     summary.viewports[summary.viewports.length-1].advancedConstructionDisclosed=true;
     summary.viewports[summary.viewports.length-1].specOnlyPhotoPixelsUnchanged=true;
+    // Changing selected buttons is specification-only, never photo reconstruction.
+    const cutDrawer=page.locator("details.newDesignerTechnicalDrawer").filter({has:page.locator("summary",{hasText:"More cut options"})});
+    if(!(await cutDrawer.evaluate(element=>element.open)))await cutDrawer.locator("summary").click();
+    await page.getByRole("combobox",{name:"Button material",exact:true}).selectOption("Mother-of-Pearl");
+    await page.waitForFunction(()=>document.querySelector('[data-photo-construction-mismatch="true"]')?.textContent?.includes("button material"));
+    assert.equal(await page.getByRole("combobox",{name:"Button material",exact:true}).inputValue(),"Mother-of-Pearl");
+    await ready(page);
+    assert.equal(await actualPhotoPixelHash(page),beforeSpecOnlyPixels,
+      "button material must not repaint photographic buttons as if new geometry existed");
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`button-material-disclosed-${width}.png`)});
+    summary.viewports[summary.viewports.length-1].buttonMaterialDisclosed=true;
     if(width===1440) {
       // Legacy controls also must not claim that unphotographed collar,
       // cuff or placket geometry has appeared in the trusted source image.
       await page.getByRole("combobox",{name:"Shirt collar",exact:true}).selectOption("Mandarin / Band Collar");
       await page.waitForFunction(()=>document.querySelector('[data-photo-construction-mismatch="true"]')?.textContent?.includes("collar shape"));
-      await page.locator("details.newDesignerTechnicalDrawer").filter({has:page.locator("summary", {hasText:"More cut options"})}).locator("summary").click();
+      if(!(await cutDrawer.evaluate(element=>element.open)))await cutDrawer.locator("summary").click();
       await page.getByRole("combobox",{name:"Shirt cuff",exact:true}).selectOption("French / Double Cuff");
       await page.getByRole("combobox",{name:"Shirt placket",exact:true}).selectOption("Hidden / Fly-front");
       await page.waitForFunction(()=> {

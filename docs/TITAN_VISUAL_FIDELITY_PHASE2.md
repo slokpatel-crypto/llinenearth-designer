@@ -236,3 +236,10 @@ claims of new real-world photographs or tailor acceptance.
   requires **fresh exact-head** source/unit/CI/photographic browser validation.
   The preceding green head alone cannot approve this UI change.
 - Remains a draft PR; do not merge, deploy or claim physical tailoring signoff.
+
+## November 5 — button material and tucked construction preview truth
+
+- Original photographed buttons are not reconstructed by canvas. A legacy `Mother-of-Pearl` selection or v2-only `corozo` option now yields `shirt.button` as a specification-only mismatch; the saved spec and original pixels do not change.
+- Alternative tucked `shirt_length_regular` and `straight_flat_hem` options are explicitly disclosed as unreconstructed behind the waistband, not claimed as photographed shape.
+- Added positive/negative unit regressions and Chromium customer-control selection, fixed-photo pixel invariance and screenshot capture at **390/768/1440px**. No new source images, generated model, physical measurement or paid render calls.
+- Prior head `3b72a93fb1636a2dc0f08e37e4368ecddc22acf9` had green full CI #41699895439 and Studio QA #41699895143. These older runs **do not verify the new commit**; exact-head CI/browser artifacts and screenshot review are required. Keep the PR draft; no merge/deploy.

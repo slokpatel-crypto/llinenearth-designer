@@ -40,6 +40,11 @@ export function photoConstructionMismatches(
       (spec && spec.shirt.placket !== "standard_visible_placket")) {
     add("shirt.placket", "placket", "The visible stitched placket is not rebuilt for hidden or alternative constructions.");
   }
+  // Button materials belong in the locked spec, not the fixed source photograph.
+  if (style.button !== "Plastic / Resin" ||
+      (spec && spec.shirt.button !== "plastic_resin")) {
+    add("shirt.button", "button material", "The original photographed buttons remain unchanged; the selected material is specification-only.");
+  }
   if (style.shirtFit !== "Regular / Classic Fit" ||
       (spec && spec.shirt.fit !== "regular_classic_fit")) {
     add("shirt.fit", "shirt fit", "The photographed shirt keeps its regular silhouette.");
@@ -90,6 +95,12 @@ export function photoConstructionMismatches(
   }
   if (!tucked && spec.shirt.hem !== "curved_shirttail") {
     add("shirt.hem", "shirt hem", "The untucked photograph has a curved shirttail, even when the saved construction requests a straight or vented hem.");
+  }
+  if (tucked && spec.shirt.length !== "shirt_length_tuck") {
+    add("shirt.length", "shirt length", "The tucked source does not reconstruct or verify an alternative shirt length hidden by the waistband.");
+  }
+  if (tucked && spec.shirt.hem !== "curved_shirttail") {
+    add("shirt.hem", "shirt hem", "The tucked source does not reconstruct or verify an alternative hem hidden by the waistband.");
   }
   if (!tucked && spec.shirt.length !== "shirt_length_regular") {
     add("shirt.length", "shirt length", "The photographed shirt length is not re-cut.");

@@ -91,6 +91,27 @@ test("advanced flat front, rise and waistband cannot be claimed from tucked phot
   assert.deepEqual(fields(baseStyle,spec),["pant.pleat","pant.rise","pant.waistband"]);
 });
 
+test("button material selections are specification-only on the original photographed model", () => {
+  const style:DesignerStyle={...baseStyle,button:"Mother-of-Pearl"};
+  const spec:StyleSpecV2={...baseSpec,shirt:{...baseSpec.shirt,button:"mother_of_pearl"},legacy:style};
+  const snapshot=JSON.stringify(spec);
+  const rows=photoConstructionMismatches(style,spec);
+  assert.ok(rows.some(row=>row.field==="shirt.button" && /specification-only/.test(row.reason)));
+  assert.equal(rows.filter(row=>row.field==="shirt.button").length,1);
+  assert.ok(fields(baseStyle,{...baseSpec,shirt:{...baseSpec.shirt,button:"corozo"}}).includes("shirt.button"));
+  assert.ok(!fields(baseStyle,baseSpec).includes("shirt.button"));
+  assert.equal(JSON.stringify(spec),snapshot);
+});
+
+test("hidden tucked shirt length and hem variations are never described as rebuilt geometry", () => {
+  const spec:StyleSpecV2={...baseSpec,shirt:{...baseSpec.shirt,length:"shirt_length_regular",hem:"straight_flat_hem"}};
+  const rows=photoConstructionMismatches(baseStyle,spec);
+  assert.ok(rows.some(row=>row.field==="shirt.length" && /hidden by the waistband/.test(row.reason)));
+  assert.ok(rows.some(row=>row.field==="shirt.hem" && /hidden by the waistband/.test(row.reason)));
+  assert.ok(!fields(baseStyle,baseSpec).includes("shirt.length"));
+  assert.ok(!fields(baseStyle,baseSpec).includes("shirt.hem"));
+});
+
 test("mismatch reporting is stable and never changes versioned garment data", () => {
   const snapshot=JSON.stringify(baseSpec);
   assert.deepEqual(photoConstructionMismatches(baseStyle,baseSpec),photoConstructionMismatches(baseStyle,baseSpec));
@@ -147,5 +168,9 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/CUTS APPROX/);
   assert.match(script,/actualPhotoPixelHash\(page\)/);
   assert.match(script,/specOnlyPhotoPixelsUnchanged=true/);
+  assert.match(script,/name:"Button material",exact:true/);
+  assert.match(script,/selectOption\("Mother-of-Pearl"\)/);
+  assert.match(script,/button-material-disclosed-/);
+  assert.match(script,/buttonMaterialDisclosed=true/);
   assert.match(script,/advanced spec-only sleeve\/pleat options must not repaint/);
 });
