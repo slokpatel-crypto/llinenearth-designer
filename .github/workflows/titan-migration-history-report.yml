@@ -18,4 +18,29 @@ jobs:
       - name: Test synthetic inventory reporting
         run: python3 -m unittest scripts.test_migration_history_report scripts.test_migration_collision_evidence -v
       - name: Print read-only inventory and fail closed for unresolved history
-        run: python3 scripts/report_migration_history.py supabase/migrations
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 scripts/report_migration_history.py supabase/migrations | tee migration-history-inventory.json
+      - name: Validate captured inventory JSON even when history blocks release
+        if: always()
+        run: |
+          test -s migration-history-inventory.json
+          python3 -m json.tool migration-history-inventory.json > /dev/null
+          python3 - <<'PY'
+          import json
+          with open('migration-history-inventory.json', encoding='utf-8') as source:
+              inventory = json.load(source)
+          assert isinstance(inventory.get('collisions'), list)
+          assert isinstance(inventory.get('fingerprints'), list)
+          assert all('version' in item and 'files' in item and 'fingerprints' in item
+                     for item in inventory['collisions'])
+          PY
+      - name: Preserve read-only collision evidence for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-history-inventory
+          path: migration-history-inventory.json
+          if-no-files-found: error
+          retention-days: 14
