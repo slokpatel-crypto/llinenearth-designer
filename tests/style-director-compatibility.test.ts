@@ -1650,3 +1650,54 @@ test("count-specific pleat prohibitions enforce canonical selections without ban
     "Double pleats required", { pleat: "double_pleat_forward" },
   ), [], "positive double-pleat requirements remain valid");
 });
+
+
+test("postposed count-specific bans cannot become a positive pleat request", () => {
+  for (const [wording, allowed, banned] of [
+    ["Double pleats prohibited", "single_pleat_forward", "double_pleat_forward"],
+    ["Single pleats are forbidden", "double_pleat_reverse", "single_pleat_reverse"],
+    ["Two pleats must not be used", "single_pleat_reverse", "double_pleat_reverse"],
+    ["One pleat should be avoided", "double_pleat_forward", "single_pleat_forward"],
+    ["Double pleats aren't permitted", "single_pleat_forward", "double_pleat_forward"],
+    ["Single pleats should never be added", "double_pleat_reverse", "single_pleat_reverse"],
+    ["1 pleat to be avoided", "double_pleat_forward", "single_pleat_forward"],
+    ["Double pleats may not be included", "single_pleat_reverse", "double_pleat_reverse"],
+  ] as const) {
+    for (const candidate of [wording, wording + "; pleated trousers"]) {
+      assert.equal(styleDirectorCandidateTrouserFront(candidate),
+        candidate === wording ? null : "pleated", candidate);
+      assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", candidate), [], candidate);
+      assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(candidate, { pleat: allowed }), [], candidate);
+      assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(candidate, { pleat: "flat_front" })
+        .map(issue => issue.code),
+        candidate === wording ? [] : ["candidate_trouser_pleat_mismatch"], candidate);
+      const locked = { pleat: banned };
+      const before = JSON.stringify(locked);
+      assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(candidate, locked).map(issue => issue.code),
+        ["candidate_trouser_pleat_mismatch"], candidate);
+      assert.equal(JSON.stringify(locked), before, "the locked option must not be changed");
+      assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(candidate, {
+        pleat: "unknown_count_id" as StyleSpecV2["pant"]["pleat"],
+      }).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"], candidate);
+    }
+  }
+  assert.equal(styleDirectorCandidateTrouserFront(
+    "Double pleats prohibited; single pleat required",
+  ), "pleated");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    "Double pleats prohibited; single pleat required", { pleat: "single_pleat_forward" },
+  ), []);
+  for (const pleat of ["flat_front", "single_pleat_forward", "double_pleat_reverse"] as const) {
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+      "Double pleats prohibited; double pleats required", { pleat },
+    ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
+  }
+  assert.equal(styleDirectorCandidateTrouserFront("Double pleats prohibited; Pleats prohibited"),
+    "flat_front", "a general prohibition is still mandatory flat-front intent");
+  for (const positiveOrOptional of [
+    "Double pleats required", "Single pleats should be used", "Double pleats may be added",
+  ]) {
+    assert.notEqual(styleDirectorCandidateTrouserFront(positiveOrOptional), "flat_front",
+      positiveOrOptional);
+  }
+});
