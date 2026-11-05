@@ -60,7 +60,13 @@ export function buildTailorTechPackHtml(handoff:ProductionHandoff){
     "Exact StyleSpec v2 garment construction is absent; tailor must verify legacy options.",
   ];
   const outstanding=[...new Set([...handoff.unresolved,...audit.missing,...fitAudit.missing,...missingConstruction])];
+  const openConstructionChecks=handoff.construction.checks.some(
+    (check)=>check.severity==="review"||check.severity==="warning",
+  );
+  // Unverified preview-only HTML must not display a ready badge if any
+  // original or newly detected issues remain unresolved.
   const displayStatus=handoff.status==="ready_for_tailor_review"
+    && !outstanding.length && !openConstructionChecks
     && !audit.missing.length && !fitAudit.missing.length && !missingConstruction.length
     ? handoff.status : "review_required";
   const title=`Linen Earth · Tailor Tech Pack · ${handoff.designRevisionId}`;
