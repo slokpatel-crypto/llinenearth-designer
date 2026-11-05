@@ -7,7 +7,7 @@ const ivory={variantId:"ivory",lotId:"roll-11",colorFamily:"white_family",patter
 const stripe={variantId:"stripe",lotId:"roll-12",colorFamily:"blue_family",patternFamily:"stripe",photoId:"stripe-img",photoSha256:shaB};
 const source={sourceType:"supplier_document",reference:"batch E 2026 140",checkedBy:"Owner Inspector",evidenceDate:"2026-11-02"};
 const lab={sourceType:"lab_report",reference:"lab report E 2026 140",checkedBy:"Lab Inspector",evidenceDate:"2026-11-02"};
-const base={claimId:"base-gsm",field:"gsm",value:160,resolution:1,origin:"supplier_declared",source,
+const base={claimId:"base-gsm",baseId:"linen-60-base",field:"gsm",value:160,resolution:1,origin:"supplier_declared",source,
   scope:{kind:"base",covers:[{variantId:"ivory",lotId:"roll-11"},{variantId:"stripe",lotId:"roll-12"}]}};
 const approval=(claim:unknown)=>({claimId:(claim as {claimId:string}).claimId,
   snapshot:snapshotFabricPhysicalClaim(claim),status:"approved",reviewedBy:"Independent Reviewer"});
@@ -31,6 +31,16 @@ test("a new fabric lot, unlisted variant or unapproved scope cannot inherit clai
   assert.equal(run([base],[approval(base)],[ivory,{...stripe,lotId:"roll-13"}]).variants[1].physical.gsm.value,null);
   assert.equal(run([base],[approval(base)],[{...stripe,variantId:"other"}]).variants[0].physical.gsm.value,null);
   assert.equal(run([base],[]).variants[0].physical.gsm.value,null);
+});
+
+test("an approval for one base fabric cannot be replayed against a second base identity",()=>{
+  const copied={...base,baseId:"other-fabric-base"};
+  assert.notEqual(snapshotFabricPhysicalClaim(copied),snapshotFabricPhysicalClaim(base));
+  assert.equal(run([copied],[approval(copied)]).variants[0].physical.gsm.value,null);
+  assert.equal(run([copied],[approval(copied)]).variants[1].physical.gsm.value,null);
+  assert.equal(run([copied],[approval(copied)]).issues.some(x=>x.includes("foreign-base")),true);
+  const altered={...base,baseId:"linen-60-base"};
+  assert.equal(run([altered],[approval(copied)]).variants[0].physical.gsm.value,null);
 });
 
 test("approval is invalid after changing value, supplier receipt or covered lots",()=>{
