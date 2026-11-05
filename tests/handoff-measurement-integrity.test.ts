@@ -169,3 +169,32 @@ test("printable tech pack preserves locked ease source and complete block instru
   assert.match(html,/Verify shoulder slope at fitting/);
   assert.match(html,/NOT REQUESTED/);
 });
+
+test("incomplete mandatory length landmarks never imply tailor review readiness",()=>{
+  const report=auditHandoffMeasurements({shirt:[chest],trouser:[waist,seat]});
+  assert.deepEqual(report.errors,[]);
+  for(const label of ["Shoulder-width anchor","Sleeve-length anchor","Inseam anchor","Outseam anchor"])
+    assert.ok(report.missing.some(note=>note.includes(label)),label);
+  const packet=buildProductionHandoff(createRevision([chest],[waist,seat]));
+  assert.equal(packet.status,"review_required");
+  assert.equal(packet.construction.shirt.finishedTargets.length,1);
+  assert.equal(packet.construction.trouser.finishedTargets.length,2);
+  assert.match(buildTailorTechPackHtml(packet),/Outseam anchor is not recorded/);
+});
+
+test("contradictory trouser seam order and rise fail closed in both outputs",()=>{
+  const badOutseam:FinishedTarget={...outseam,bodyCm:75,finishedCm:{min:75,max:75}};
+  const frontRise:FinishedTarget={label:"Front-rise anchor",bodyCm:106,finishedCm:{min:106,max:106},basis:"recorded_anchor"};
+  const cases=[
+    {trouser:[waist,seat,inseam,badOutseam],fragment:"outseam must be longer"},
+    {trouser:[waist,seat,inseam,outseam,frontRise],fragment:"front rise must be shorter"},
+  ];
+  for(const item of cases){
+    const report=auditHandoffMeasurements({shirt:[chest,shoulder,sleeve],trouser:item.trouser});
+    assert.ok(report.errors.some(x=>x.includes(item.fragment)),item.fragment);
+    assert.throws(()=>buildProductionHandoff(createRevision([chest,shoulder,sleeve],item.trouser)),/Unsafe tailor handoff measurements/);
+    const packet=buildProductionHandoff(createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]));
+    packet.construction.trouser.finishedTargets=item.trouser;
+    assert.throws(()=>buildTailorTechPackHtml(packet),/Unsafe tailor tech pack measurements/);
+  }
+});
