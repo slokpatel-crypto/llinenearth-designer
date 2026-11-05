@@ -96,7 +96,6 @@ begin
   declare
     original uuid;
     replayed uuid;
-    reserve_rows integer;
   begin
     original := public.fabric_stock_reserve_v2(
       'SYNTHETIC-TITAN-ORDER-PROBE', 1.000, 'locked-revision-0001',
@@ -109,9 +108,6 @@ begin
     if original is null or original is distinct from replayed then
       raise exception 'forward repair lost exact idempotent replay identity';
     end if;
-    select count(*) into reserve_rows from private.fabric_stock_ledger
-      where request_key='SYNTHETIC-FORWARD-REPLAY-0001';
-    if reserve_rows<>1 then raise exception 'forward repair inserted duplicate reservation'; end if;
     begin
       perform public.fabric_stock_reserve_v2(
         'SYNTHETIC-TITAN-ORDER-PROBE', 1.125, 'locked-revision-0001',
@@ -122,7 +118,16 @@ begin
     end;
   end replay_probe;
 end $probe$;
+-- service_role correctly has no SELECT on private ledger. Perform this single
+-- synthetic row-count assertion after RESET ROLE, in the same transaction.
 reset role;
+do $verify$
+begin
+  if (select count(*) from private.fabric_stock_ledger
+      where request_key='SYNTHETIC-FORWARD-REPLAY-0001')<>1 then
+    raise exception 'forward repair inserted duplicate reservation';
+  end if;
+end $verify$;
 rollback;
 select case when (select count(*) from private.fabric_stock_ledger) = 0
   then 'PASS' else 'FAIL' end as zero_persisted_synthetic_rows;
