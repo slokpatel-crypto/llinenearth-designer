@@ -152,6 +152,15 @@ test("rear construction stays explicitly unverified in the fixed front photograp
   assert.match(rows[0].reason,/front photograph cannot verify/i);
 });
 
+test("original Compare switches to the actual selected photographic template, not a default pleated image", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(source,/showOriginal && <img className="newDesignerPhotoOriginal" src=\{template\.src\}/);
+  assert.doesNotMatch(source,/newDesignerPhotoOriginal" src=\{tucked \? template\.src : DESIGNER_PHOTO_TEMPLATES\.pleated\.src\}/);
+  assert.match(source,/SOURCE \/ WIDE TROUSER PHOTO/);
+  assert.match(source,/data-photo-source-comparison="wide"/);
+  assert.match(source,/shirt in the instant preview comes from the separate pleated studio photograph/);
+});
+
 test("photographic browser harness verifies actual customer advanced-cut and legacy controls at responsive widths", () => {
   const script=readFileSync("scripts/verify-photo-form.cjs","utf8");
   assert.match(script,/name:"Sleeve length",exact:true/);
@@ -172,5 +181,8 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/selectOption\("Mother-of-Pearl"\)/);
   assert.match(script,/button-material-disclosed-/);
   assert.match(script,/buttonMaterialDisclosed=true/);
+  assert.match(script,/wide-source-compared-/);
+  assert.match(script,/wideSourceComparisonVerified=true/);
+  assert.match(script,/name:"Trouser shape",exact:true/);
   assert.match(script,/advanced spec-only sleeve\/pleat options must not repaint/);
 });

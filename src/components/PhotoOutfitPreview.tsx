@@ -1735,7 +1735,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-ready={ready?"true":"false"}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
       {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image)} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal ${photorealView} view of ${shirt.name} with ${pant.name}`} />}
-      {showOriginal && <img className="newDesignerPhotoOriginal" src={tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src} alt="Original photographed model template for comparison" />}
+      {showOriginal && <img className="newDesignerPhotoOriginal" src={template.src} alt={templateId==="wide"
+        ? "Original wide-trouser studio photograph. The instant-preview shirt uses the separate pleated studio source photograph."
+        : "Original photographed studio model template for comparison"} />}
       {showBoundaries && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay">
         {tucked ? <>
           <path d={PHOTO_TUCKED_SHIRT_BODY_CLIP} className="shirtBoundary" />
@@ -1749,7 +1751,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
           <path d={template.trouserPath} className="trouserBoundary" />
         </>}
       </svg>}
-      <span className="newDesignerPhotoTag">{showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : constructionMismatches.length > 0 ? "FRONT / STUDIO MODEL · CUTS APPROX." : "FRONT / STUDIO MODEL"}</span>
+      <span className="newDesignerPhotoTag">{showOriginal ? (templateId==="wide" ? "SOURCE / WIDE TROUSER PHOTO" : "SOURCE / STUDIO PHOTO") : showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : constructionMismatches.length > 0 ? "FRONT / STUDIO MODEL · CUTS APPROX." : "FRONT / STUDIO MODEL"}</span>
       {error && <span className="newDesignerPhotoError" role="alert">Preview could not load. Check the local fabric images.</span>}
       {!ready && !error && <span className="newDesignerPhotoLoading">Preparing your look…</span>}
     </div>
@@ -1766,7 +1768,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         <button type="button" onClick={download} disabled={!ready}>{showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</button>
       </div>
     </div>
-    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {previewScaleVerified ? "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design. {constructionMismatches.length>0 && <span data-photo-construction-mismatch="true"><strong>Photographic construction limits</strong> · {constructionMismatches.map((gap)=>gap.label).join(", ")} not reconstructed in the fixed studio photograph. Your selected construction remains in the saved design specification.</span>}</p>}
+    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {showOriginal && templateId==="wide" && <span data-photo-source-comparison="wide">Compare shows the original wide-trouser photograph; the shirt in the instant preview comes from the separate pleated studio photograph. </span>} {previewScaleVerified ? "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design. {constructionMismatches.length>0 && <span data-photo-construction-mismatch="true"><strong>Photographic construction limits</strong> · {constructionMismatches.map((gap)=>gap.label).join(", ")} not reconstructed in the fixed studio photograph. Your selected construction remains in the saved design specification.</span>}</p>}
     {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}
     {creativeAi?.cached && <p className="newDesignerPhotoCache">Cached final render reused · no new FASHN generation was needed.</p>}
     {creativeAi && !creativeDirection && <p className="newDesignerPhotoLock"><strong>MODEL IDENTITY LOCKED</strong> · {LINEN_EARTH_MODEL_IDENTITY_ID} stays identical across Front / 3/4 / Side / Back; only camera angle and hidden garment surfaces may change.</p>}

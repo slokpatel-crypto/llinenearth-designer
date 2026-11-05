@@ -238,6 +238,24 @@ async function run(){
       }
       await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");await ready(page);await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,"real-untucked.png")});
     }
+    // Customer Compare must display the photographed wide trouser SOURCE,
+    // not an unrelated pleated/straight-leg source image. The source note
+    // makes clear that the shirt is composed from the pleated studio photo.
+    await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");
+    await page.getByRole("combobox",{name:"Trouser shape",exact:true}).selectOption("Wide-leg / Relaxed Drape Trouser");
+    await ready(page);
+    await page.getByRole("button",{name:"Compare",exact:true}).click();
+    const original=page.locator(".newDesignerPhotoOriginal");
+    await original.waitFor();
+    assert.equal(new URL(await original.getAttribute("src"),base).pathname,"/designer/studio-wide.webp");
+    assert.match(await original.getAttribute("alt"),/separate pleated studio source photograph/);
+    assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/SOURCE \/ WIDE TROUSER PHOTO/);
+    assert.match(await page.locator('[data-photo-source-comparison="wide"]').textContent(),/shirt in the instant preview comes from the separate pleated studio photograph/);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`wide-source-compared-${width}.png`)});
+    summary.viewports[summary.viewports.length-1].wideSourceComparisonVerified=true;
+    await page.getByRole("button",{name:"Show design",exact:true}).click();
+    assert.equal(await original.count(),0);
     await context.close();
   }
   assert.equal(summary.paidCalls,0);assert.deepEqual(summary.errors,[]);fs.writeFileSync(path.join(out,"summary.json"),JSON.stringify(summary,null,2));console.log(`Photo form passed: ${summary.viewports.length} widths, ${summary.forms.length} photographed cuts, striped shirt and both trouser legs, stronger folds and no protected-region/waist leaks.`);
