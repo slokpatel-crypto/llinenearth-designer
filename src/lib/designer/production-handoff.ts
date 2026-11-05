@@ -69,18 +69,26 @@ export function buildProductionHandoff(
   if (spec.styleSpec && !validateStyleSpecV2(spec.styleSpec)) {
     throw new Error("Unsafe tailor handoff construction: unrecognised versioned style option.");
   }
+  if (spec.source.styleSchemaVersion !== (spec.styleSpec?.styleSchemaVersion ?? null)) {
+    throw new Error("Unsafe tailor handoff construction: locked option schema provenance does not match the selected cut.");
+  }
+  const measurementSourceNote=spec.source.measurementProfileVersion===1 ? [] : [
+    "A versioned measurement profile is not recorded; reconstruct and verify the measurement units and landmarks before tailor review.",
+  ];
   const legacyConstructionNote=spec.styleSpec ? [] : [
     "Versioned StyleSpec v2 cut IDs are missing; confirm the exact legacy shirt and trouser construction before production.",
   ];
   const unresolved=[...new Set([
     ...spec.unresolved,
     ...measurementAudit.missing,
+    ...measurementSourceNote,
     ...legacyConstructionNote,
   ])];
   const ready=spec.status==="ready_for_tailor_review"
     && spec.readiness.tailoring!=="insufficient_measurements"
     && spec.readiness.materialVerification==="verified"
     && measurementAudit.missing.length===0
+    && measurementSourceNote.length===0
     && legacyConstructionNote.length===0;
   return {
     version:PRODUCTION_HANDOFF_VERSION,
