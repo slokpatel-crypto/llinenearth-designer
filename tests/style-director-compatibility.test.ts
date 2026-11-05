@@ -1513,3 +1513,52 @@ test("unknown locked pleat direction cannot satisfy a candidate direction prohib
     "an unspecified front or direction cannot certify a stale ID, but adds no new candidate constraint",
   );
 });
+
+
+test("modal postposed pleat-direction bans preserve allowable options", () => {
+  for (const [ban, allowed, forbidden] of [
+    ["Reverse pleats must not be used", "single_pleat_forward", "single_pleat_reverse"],
+    ["Forward pleats should never be added", "double_pleat_reverse", "double_pleat_forward"],
+    ["Reverse pleats cannot be included", "double_pleat_forward", "double_pleat_reverse"],
+    ["Forward pleats can't be used", "single_pleat_reverse", "single_pleat_forward"],
+    ["Reverse pleats are not to be used", "single_pleat_forward", "single_pleat_reverse"],
+    ["Forward pleats aren't permitted", "double_pleat_reverse", "double_pleat_forward"],
+    ["Reverse pleats may not be used", "single_pleat_forward", "single_pleat_reverse"],
+  ] as const) {
+    for (const wording of [ban, ban + "; pleated trousers"]) {
+      assert.equal(styleDirectorCandidateTrouserFront(wording),
+        wording === ban ? null : "pleated", wording);
+      const locked = { pleat: forbidden };
+      const before = JSON.stringify(locked);
+      assert.deepEqual(
+        styleDirectorCandidateFrontConstructionIssues(wording, { pleat: allowed }),
+        [],
+        wording,
+      );
+      assert.deepEqual(
+        styleDirectorCandidateFrontConstructionIssues(wording, locked).map(issue => issue.code),
+        ["candidate_trouser_pleat_mismatch"],
+        wording,
+      );
+      assert.equal(JSON.stringify(locked), before, "review may not change locked IDs");
+    }
+    assert.deepEqual(
+      styleDirectorCandidateFrontConstructionIssues(ban, { pleat: "flat_front" }),
+      [],
+      ban,
+    );
+    assert.deepEqual(
+      styleDirectorCandidateFrontConstructionIssues(ban, {
+        pleat: "retired_pleat_direction" as StyleSpecV2["pant"]["pleat"],
+      }).map(issue => issue.code),
+      ["candidate_trouser_pleat_mismatch"],
+      ban,
+    );
+  }
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    "Reverse pleats must be used", { pleat: "single_pleat_reverse" },
+  ), [], "positive construction remains acceptable");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    "Reverse pleats must be used", { pleat: "single_pleat_forward" },
+  ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
+});
