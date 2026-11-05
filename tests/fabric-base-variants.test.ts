@@ -111,9 +111,13 @@ test("typed composition, weave and yarn counts need separate supported claims",(
 });
 
 test("pixel-to-mm axes require correct photo hash, original dimensions and compatible repeat",()=>{
-  const repeat={claimId:"repeat-x",field:"repeatXmm",value:10,resolution:.1,origin:"measured",source:lab,
+  const repeat={claimId:"repeat-x",baseId:"linen-60-base",field:"repeatXmm",value:10,resolution:.1,origin:"measured",source:lab,
     scope:{kind:"variant",variantId:"stripe",lotId:"roll-12"},
     calibration:{photoSha256:shaB,widthPx:800,heightPx:900,axis:"x",repeatPx:80,pixelsPerMm:8}};
+  const unbound={...repeat,baseId:undefined};
+  assert.equal(snapshotFabricPhysicalClaim(unbound),null,
+    "unscoped image calibration is not an approved physical specification");
+  assert.equal(run([unbound],[approval(unbound)]).variants[1].physical.repeatXmm.value,null);
   const r=run([repeat],[approval(repeat)]);
   assert.equal(r.variants[1].physical.repeatXmm.value,10);
   assert.equal(r.variants[1].calibratedAxes.x,8);
