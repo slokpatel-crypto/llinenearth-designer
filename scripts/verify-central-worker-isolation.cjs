@@ -11,6 +11,18 @@ const CENTRAL_PR = 881;
 const WORKER_PRS = Object.freeze([861, 862, 868, 869, 886, 897]);
 const shaPattern = /^[0-9a-f]{40}$/;
 
+async function checkLiveWorkerRef(repository, number, ref, sha, getJson) {
+  assert.ok(typeof ref === "string" && /^[A-Za-z0-9._/-]+$/.test(ref) &&
+    !ref.includes("..") && !ref.includes("//") &&
+    !ref.startsWith("/") && !ref.endsWith("/"),
+    "Worker isolation PR #" + number + " has unsafe or missing live ref");
+  const live = await getJson("/repos/" + repository + "/git/ref/heads/" + ref);
+  assert.equal(live?.ref, "refs/heads/" + ref,
+    "Worker isolation PR #" + number + " returned mismatched live ref");
+  assert.equal(live?.object?.sha, sha,
+    "Worker isolation PR #" + number + " live head moved; re-audit changed files");
+}
+
 async function scanPr(repository, number, getJson) {
   const prefix = "/repos/" + repository + "/pulls/" + number;
   const detail = await getJson(prefix);
@@ -18,6 +30,8 @@ async function scanPr(repository, number, getJson) {
     detail?.base?.repo?.full_name === repository &&
     shaPattern.test(detail?.head?.sha || ""),
     "Integration ownership PR #" + number + " unavailable, closed, foreign or malformed");
+  const ref = detail.head?.ref;
+  await checkLiveWorkerRef(repository, number, ref, detail.head.sha, getJson);
   const paths = new Set();
   for (let page = 1; page <= 50; page++) {
     const files = await getJson(prefix + "/files?per_page=100&page=" + page);
@@ -51,11 +65,17 @@ async function scanPr(repository, number, getJson) {
   const after = await getJson(prefix);
   assert.equal(after?.head?.sha, detail.head.sha,
     "PR #" + number + " changed head during ownership scan");
+  assert.equal(after?.head?.ref, ref,
+    "PR #" + number + " changed branch during ownership scan");
+  assert.equal(after?.head?.repo?.full_name, repository,
+    "PR #" + number + " changed head repository during ownership scan");
   assert.equal(after?.base?.ref, detail.base.ref,
     "PR #" + number + " retargeted during ownership scan");
   assert.equal(after?.base?.sha, detail.base.sha,
     "PR #" + number + " base changed during ownership scan");
-  return { number, head: detail.head.sha, paths };
+  await checkLiveWorkerRef(repository, number, ref, detail.head.sha, getJson);
+  return { number, head: detail.head.sha, ref,
+    baseRef: detail.base.ref, baseSha: detail.base.sha, paths };
 }
 
 async function verifyWorkerIsolation(manifest, repository, getJson) {
@@ -78,6 +98,25 @@ async function verifyWorkerIsolation(manifest, repository, getJson) {
       owners.set(path, pr.number);
     }
   }
+  // Recheck every PR and live branch after the complete multi-PR scan.
+  // This reduces false acceptance from an earlier worker moving while later
+  // PRs are examined. GitHub has no atomic cross-PR snapshot here.
+  for (const scan of scans) {
+    const detail = await getJson("/repos/" + repository + "/pulls/" + scan.number);
+    assert.ok(detail?.state === "open" &&
+      detail?.head?.repo?.full_name === repository &&
+      detail?.base?.repo?.full_name === repository,
+      "Worker isolation PR #" + scan.number + " status or repository changed");
+    assert.equal(detail.head?.sha, scan.head,
+      "Worker isolation PR #" + scan.number + " head moved after cross-PR scan");
+    assert.equal(detail.head?.ref, scan.ref,
+      "Worker isolation PR #" + scan.number + " ref moved after cross-PR scan");
+    assert.equal(detail.base?.ref, scan.baseRef,
+      "Worker isolation PR #" + scan.number + " retargeted after cross-PR scan");
+    assert.equal(detail.base?.sha, scan.baseSha,
+      "Worker isolation PR #" + scan.number + " base moved after cross-PR scan");
+    await checkLiveWorkerRef(repository, scan.number, scan.ref, scan.head, getJson);
+  }
   return { checkedPrs: scans.length, workers: WORKER_PRS.length,
     uniquePaths: owners.size, centralHead: scans[0].head };
 }
@@ -95,13 +134,17 @@ async function selfTest() {
     [897, [{ filename: "scripts/3d.py" }]]
   ]);
   const get = async path => {
+    const refMatch = path.match(/\/git\/ref\/heads\/worker-(\d+)$/);
+    if (refMatch) return { ref: "refs/heads/worker-" + refMatch[1],
+      object: { sha: a } };
     const m = path.match(/\/pulls\/(\d+)(\/files\?.*)?$/);
     assert.ok(m, "Unexpected synthetic read: " + path);
     const id = Number(m[1]);
     assert.ok(files.has(id), "Unexpected synthetic PR #" + id);
     if (m[2]) return files.get(id);
     return { state: "open",
-      head: { sha: a, repo: { full_name: "sample/repo" } },
+      head: { sha: a, ref: "worker-" + id,
+        repo: { full_name: "sample/repo" } },
       base: { ref: "main", sha: b, repo: { full_name: "sample/repo" } } };
   };
   assert.deepEqual(await verifyWorkerIsolation(sample, "sample/repo", get),
@@ -134,7 +177,23 @@ async function selfTest() {
     async path => path.includes("/pulls/897/files?")
       ? [{ filename: "../unsafe.ts" }] : get(path)),
     /Unsafe changed-file path/);
-  process.stdout.write("PASS: worker isolation rejects central, pairwise, rename, stale, closed and unsafe PR paths\n");
+  // A PR snapshot may look unchanged while the live branch has advanced.
+  await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
+    async path => path.endsWith("/git/ref/heads/worker-861")
+      ? { ref: "refs/heads/worker-861", object: { sha: b } } : get(path)),
+    /live head moved; re-audit/);
+  // Even if the first two live reads pass, the final cross-PR fence must fail.
+  let liveReads = 0;
+  await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
+    async path => path.endsWith("/git/ref/heads/worker-861")
+      ? { ref: "refs/heads/worker-861",
+        object: { sha: ++liveReads <= 2 ? a : b } } : get(path)),
+    /live head moved; re-audit/);
+  await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
+    async path => path.endsWith("/git/ref/heads/worker-868")
+      ? { ref: "refs/heads/worker-869", object: { sha: a } } : get(path)),
+    /mismatched live ref/);
+  process.stdout.write("PASS: worker isolation rejects central, pairwise, rename, stale, closed, unsafe and moving live PR paths\n");
 }
 
 async function main() {
