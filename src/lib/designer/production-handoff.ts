@@ -94,9 +94,18 @@ export function buildProductionHandoff(
     ...measurementSourceNote,
     ...legacyConstructionNote,
   ])];
+  // Even a recipe carrying a "ready" flag is not review-ready while it
+  // contains unresolved design decisions or open construction review findings.
+  // Preserve those notes verbatim for the tailor instead of silently
+  // promoting a partly specified garment to a completed review packet.
+  const constructionReviewOpen=spec.constructionChecks.some(
+    (check)=>check.severity==="review"||check.severity==="warning",
+  );
   const ready=spec.status==="ready_for_tailor_review"
     && spec.readiness.tailoring!=="insufficient_measurements"
     && spec.readiness.materialVerification==="verified"
+    && unresolved.length===0
+    && !constructionReviewOpen
     && measurementAudit.missing.length===0
     && fitAudit.missing.length===0
     && measurementSourceNote.length===0
