@@ -210,6 +210,65 @@ async function verifyCentralIntake(manifest, repository, getJson) {
   return { changedFiles: expected.size, commit: manifest.central_base_commit };
 }
 
+// Final cross-scan fence: an early worker can advance while later workers
+// and the central PR are audited. Re-read the live heads and base relationships
+// at the end. This is bounded read-only evidence, not an atomic merge lock.
+async function verifyFinalIntakeFence(manifest, repository, getJson) {
+  assert.match(repository, /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/);
+  const prefix = "/repos/" + repository;
+  const sources = [...manifest.source_prs, ...manifest.selective_source_imports];
+  for (const source of sources) {
+    const detail = await getJson(prefix + "/pulls/" + source.pr);
+    assert.equal(detail?.state, "open",
+      "Final fence: source PR #" + source.pr + " no longer open");
+    assert.equal(detail.head?.sha, source.head,
+      "Final fence: source PR #" + source.pr + " head moved after scan");
+    assert.equal(detail.head?.repo?.full_name, repository,
+      "Final fence: source PR #" + source.pr + " head repository moved");
+    assert.equal(detail.base?.repo?.full_name, repository,
+      "Final fence: source PR #" + source.pr + " base repository moved");
+    assert.equal(detail.base?.ref, source.base_ref,
+      "Final fence: source PR #" + source.pr + " retargeted after scan");
+    assert.equal(detail.base?.sha, source.base_sha,
+      "Final fence: source PR #" + source.pr + " base SHA moved after scan");
+    const ref = detail.head?.ref;
+    assert.ok(typeof ref === "string" && /^[A-Za-z0-9._/-]+$/.test(ref) &&
+      !ref.includes("..") && !ref.includes("//") &&
+      !ref.startsWith("/") && !ref.endsWith("/"),
+      "Final fence: source PR #" + source.pr + " has unsafe ref");
+    const tip = await getJson(prefix + "/git/ref/heads/" + ref);
+    assert.equal(tip?.ref, "refs/heads/" + ref,
+      "Final fence: source PR #" + source.pr + " ref mismatched");
+    assert.equal(tip?.object?.sha, source.head,
+      "Final fence: source PR #" + source.pr + " branch moved after scan");
+  }
+  const central = await getJson(prefix + "/pulls/881");
+  assert.ok(central?.state === "open" && central?.draft === true,
+    "Final fence: central PR #881 no longer open and draft");
+  assert.equal(central.head?.sha, manifest.central_base_commit,
+    "Final fence: central PR #881 head moved after scan");
+  assert.equal(central.head?.repo?.full_name, repository,
+    "Final fence: central PR #881 head repository moved");
+  assert.equal(central.base?.ref, "main",
+    "Final fence: central PR #881 retargeted after scan");
+  assert.equal(central.base?.sha, APPROVED_MAIN_SHA,
+    "Final fence: central PR #881 base SHA moved after scan");
+  const ref = central.head?.ref;
+  assert.ok(typeof ref === "string" && /^[A-Za-z0-9._/-]+$/.test(ref) &&
+    !ref.includes("..") && !ref.includes("//") &&
+    !ref.startsWith("/") && !ref.endsWith("/"),
+    "Final fence: central PR #881 has unsafe ref");
+  const tip = await getJson(prefix + "/git/ref/heads/" + ref);
+  assert.equal(tip?.ref, "refs/heads/" + ref,
+    "Final fence: central PR #881 ref mismatched");
+  assert.equal(tip?.object?.sha, manifest.central_base_commit,
+    "Final fence: central PR #881 branch moved after scan");
+  const main = await getJson(prefix + "/branches/main");
+  assert.equal(main?.commit?.sha, APPROVED_MAIN_SHA,
+    "Final fence: main moved after source/central scan");
+  return { sourcePrs: sources.length, main: APPROVED_MAIN_SHA };
+}
+
 async function selfTest() {
   const a = "a".repeat(40), b = "b".repeat(40), c = "c".repeat(40);
   const fixture = { source_prs: [{ pr: 11, head: a,
@@ -408,6 +467,31 @@ async function selfTest() {
     async path => path.endsWith("/branches/main")
       ? { commit: { sha: ++mainReads === 1 ? APPROVED_MAIN_SHA : b } }
       : centralGet(path)), /Live main moved during central file scan/);
+  const finalGet = async path =>
+    path.endsWith("/pulls/881") || path.endsWith("/branches/main") ||
+    path.endsWith("/git/ref/heads/central-integration")
+      ? centralGet(path) : partialGet(path);
+  const finalManifest = { ...centralManifest,
+    selective_source_imports: subset.selective_source_imports };
+  assert.deepEqual(await verifyFinalIntakeFence(finalManifest, "sample/repository", finalGet),
+    { sourcePrs: 2, main: APPROVED_MAIN_SHA });
+  await assert.rejects(() => verifyFinalIntakeFence(finalManifest, "sample/repository",
+    async path => path.endsWith("/git/ref/heads/source-11")
+      ? { ref: "refs/heads/source-11", object: { sha: b } } : finalGet(path)),
+    /source PR #11 branch moved after scan/);
+  await assert.rejects(() => verifyFinalIntakeFence(finalManifest, "sample/repository",
+    async path => path.endsWith("/pulls/12")
+      ? { ...await finalGet(path),
+        base: { ref: "new-base", sha: c, repo: { full_name: "sample/repository" } } }
+      : finalGet(path)), /source PR #12 retargeted after scan/);
+  await assert.rejects(() => verifyFinalIntakeFence(finalManifest, "sample/repository",
+    async path => path.endsWith("/git/ref/heads/central-integration")
+      ? { ref: "refs/heads/central-integration", object: { sha: b } }
+      : finalGet(path)), /central PR #881 branch moved after scan/);
+  await assert.rejects(() => verifyFinalIntakeFence(finalManifest, "sample/repository",
+    async path => path.endsWith("/branches/main")
+      ? { commit: { sha: b } } : finalGet(path)),
+    /main moved after source\/central scan/);
   process.stdout.write("PASS: live-source guard rejects changed heads, missing, rewritten or duplicate files and closed PRs\n");
 }
 
@@ -431,10 +515,14 @@ async function main() {
   const manifest = JSON.parse(readFileSync(join(process.cwd(), manifestFile), "utf8"));
   const result = await verifyLiveSourceHeads(manifest, repository, getJson);
   const central = await verifyCentralIntake(manifest, repository, getJson);
+  const fence = await verifyFinalIntakeFence(manifest, repository, getJson);
+  assert.equal(fence.sourcePrs, result.prCount, "Final source count drift");
   process.stdout.write("PASS: " + result.prCount + " live source PR heads and " +
     result.changedFileEntries + " changed-file blob identities match reviewed snapshot\n");
   process.stdout.write("PASS: central PR #881 has exactly " + central.changedFiles +
     " reviewed files at " + central.commit + "; no untracked integration paths\n");
+  process.stdout.write("PASS: final cross-scan worker/central/main refs pinned at " +
+    fence.main + "\n");
 }
 
 main().catch(error => { process.stderr.write(String(error.message) + "\n"); process.exitCode = 1; });
