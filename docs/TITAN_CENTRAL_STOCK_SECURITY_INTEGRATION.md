@@ -19,3 +19,11 @@ For all changed paths except `.github/workflows/ci.yml`, this branch imports the
 **Acceptance gate:** exact-head `CI / build`, `CI / Disposable PostgreSQL stock reservation invariants`, `CI / Disposable PostgreSQL customer security revocations`, `Deep Engine — Non-3D QA / studio`, and `TITAN Legacy Stock RPC ACL QA / Disposable PostgreSQL legacy stock RPC ACL` must all pass. Check actual jobs, not only summaries. No inherited green checks from individual PRs can substitute.
 
 This snapshot is not automatically updated when worker PR heads move. Reconcile and reverify any new changes, staging role/provenance and external legacy callers, independent reviews and GitHub main protection #878 before any owner-approved merge. Real inventory, tailor signoff, 3D model/UV and ten customer deliveries remain separate production gates. No live Supabase operation, no stock-writes unlock, no Vercel deploy.
+
+## Central continuation — 2026-11-05
+
+- Source PR #876 advanced from imported `228d8d8c86dd8983e5dbc25d4a569f4b0e585676` to `71e4ff5d5325…` (eight commits); compare identified drift in `scripts/verify-operator-stock-private-http.cjs` and its documentation only, not migration SQL or CI.
+- Central commit `49f20fa6573b7390e9a2a2cb21b068a375e77725` ported the exact stricter source test blob `3fd24895b9ccab9ed911ff44b6943c21d23caa1f`. All five privileged stock RPC call names must be static literals, including typed/untyped invocation forms; missing/dynamic calls fail closed. No production routes, SQL, or inventory values changed.
+- Independent workstream PR paths #861, #862, #868, #869, #886, #897 and #906 do not overlap PR #881 changed-file paths as inspected; shared runtime and database effects still require dedicated verification.
+- Stacked migration PR #906 had general CI success but an expected failing dedicated migration-history gate, preserving the historical collision as a release blocker. Staging-applied migration history and rollback must be independently validated; never bypass that gate.
+- Previously green central CI (`462ff55b…`) predates this stricter test. Do not attribute it to a newer SHA; require fresh exact-head CI and cross-database disposable PostgreSQL proof. No main merge, Vercel deployment, live database writes or physical/tailor claims.
