@@ -343,3 +343,18 @@ test("verified export rejects pre-lock timestamps but never calls generation tim
   later.generatedAt="2026-11-05T11:02:00.000Z";
   assert.equal(await verifyProductionHandoff(later,locked),true);
 });
+
+test("internally consistent approved ease label remains review-only without external approval evidence",()=>{
+  const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  revision.garmentSpec.source.fitConstructionVersion="fit-construction-calibrated-2";
+  revision.garmentSpec.source.fitEaseSource="approved_house_calibration";
+  revision.garmentSpec.source.fitEaseTableVersion="supplier-claimed-calibration-v2";
+  // A valid-looking locked provenance tuple is NOT a retrieved tailor approval.
+  const packet=buildProductionHandoff(revision);
+  assert.equal(packet.status,"review_required");
+  assert.ok(packet.unresolved.some(note=>note.includes("not authenticated by the locked recipe")));
+  const html=buildTailorTechPackHtml(packet);
+  assert.match(html,/Claimed approved house ease calibration is not authenticated/);
+  assert.match(html,/review required/);
+  assert.match(html,/NO CUTTING AUTHORISATION/);
+});
