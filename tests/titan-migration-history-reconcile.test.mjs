@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { reconcileMigrationHistory } from '../scripts/titan-reconcile-migration-history.mjs';
+const hash = x => createHash('sha256').update(x).digest('hex');
+const inventory = [{version:'20261001',filename:'20261001_a.sql',sha256:hash('a')},{version:'20261001',filename:'20261001_b.sql',sha256:hash('b')}];
+const evidence = {source:'authenticated-read-only-staging',project_id:'synthetic-project',collected_at:'2026-11-05T12:00:00Z',sql_identity_verified:true};
+test('version-only staging history cannot resolve distinct SQL collision',()=> {const r=reconcileMigrationHistory(inventory,[{version:'20261001'}]); assert.equal(r.blocked,1); assert.equal(r.results[0].reason,'MISSING_AUTHENTICATED_SQL_IDENTITY');});
+test('unattested hash remains blocked',()=> assert.equal(reconcileMigrationHistory(inventory,[{version:'20261001',sha256:hash('a')}]).blocked,1));
+test('claimed exact SQL identity remains review-required and never grants release',()=> {const r=reconcileMigrationHistory(inventory,[{version:'20261001',sha256:hash('b'),evidence}]);assert.equal(r.results[0].matched_filename,'20261001_b.sql');assert.equal(r.results[0].status,'REVIEW_REQUIRED');assert.equal(r.blocked,1);assert.equal(r.release_ready,false);});
+test('mismatched claimed hash blocks',()=> assert.equal(reconcileMigrationHistory(inventory,[{version:'20261001',sha256:hash('c'),evidence}]).results[0].reason,'NO_FINGERPRINT_MATCH'));
+test('missing staging version blocks collision',()=> assert.equal(reconcileMigrationHistory(inventory,[]).results[0].reason,'COLLISION_NOT_IN_STAGING_HISTORY'));
+test('duplicate staging versions rejected',()=> assert.throws(()=>reconcileMigrationHistory(inventory,[{version:'20261001'},{version:'20261001'}])));
+test('invalid inventory hash rejected',()=> assert.throws(()=>reconcileMigrationHistory([{...inventory[0],sha256:'fake'}],[])));
