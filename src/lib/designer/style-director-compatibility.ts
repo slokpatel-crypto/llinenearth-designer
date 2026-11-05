@@ -223,9 +223,12 @@ export function styleDirectorCandidateFrontConstructionIssues(
   const prohibitedDirections = [...candidateTrouser.matchAll(
     /\b(forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted))\b/gi,
   )].map(match => match[1].toLowerCase());
-  // Unknown/stale option IDs cannot certify construction even when the
-  // candidate merely says "pleated" without specifying count or direction.
-  if ((front !== null && front !== "ambiguous" && !pleatOption) ||
+  // A direction-only ban also requires a known canonical pleat ID:
+  // with a stale/unknown ID we cannot verify which direction was locked.
+  // Do not infer that an unknown selection is flat-front.
+  const hasDirectionBan = prohibitsForward || prohibitsReverse || prohibitedDirections.length > 0;
+  // Unknown/stale option IDs cannot certify named front or direction constraints.
+  if ((((front !== null && front !== "ambiguous") || hasDirectionBan) && !pleatOption) ||
       (front === "pleated" && pant.pleat === "flat_front") ||
       (front === "flat_front" && pant.pleat !== "flat_front") ||
       (expectedCount !== null && declaredCount !== expectedCount) ||
