@@ -198,6 +198,15 @@ export function styleDirectorCandidateFrontConstructionIssues(
     : null;
   const pleatOption = optionsFor("pant.pleat").find(option => option.id === pant.pleat);
   const declaredCount = pleatOption?.parameters.pleatCount;
+  // A ban on a specific count is not a blanket no-pleat instruction.
+  // Preserve an allowed single/double/flat-front choice, but never silently
+  // approve the forbidden canonical count (or an ID whose count is unknown).
+  const prohibitedCountLabels = [...candidateTrouser.matchAll(
+    /\b(?:no|without|not|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:(?:a|an|any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\b/gi,
+  )].map(match => match[1].toLowerCase());
+  const prohibitsSingleCount = prohibitedCountLabels.some(value => ["single", "one", "1"].includes(value));
+  const prohibitsDoubleCount = prohibitedCountLabels.some(value => ["double", "two", "2"].includes(value));
+  const hasCountBan = prohibitsSingleCount || prohibitsDoubleCount;
   // The option catalogue also distinguishes forward/reverse pleat direction.
   // Do not silently substitute one for the other in tailoring instructions.
   // A prohibited direction is not a requested direction. Preserve positive
@@ -228,7 +237,11 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // Do not infer that an unknown selection is flat-front.
   const hasDirectionBan = prohibitsForward || prohibitsReverse || prohibitedDirections.length > 0;
   // Unknown/stale option IDs cannot certify named front or direction constraints.
-  if ((((front !== null && front !== "ambiguous") || hasDirectionBan) && !pleatOption) ||
+  if ((((front !== null && front !== "ambiguous") || hasDirectionBan || hasCountBan) && !pleatOption) ||
+      (declaredCount === 1 && prohibitsSingleCount) ||
+      (declaredCount === 2 && prohibitsDoubleCount) ||
+      (requestsSingle && prohibitsSingleCount) ||
+      (requestsDouble && prohibitsDoubleCount) ||
       (front === "pleated" && pant.pleat === "flat_front") ||
       (front === "flat_front" && pant.pleat !== "flat_front") ||
       (expectedCount !== null && declaredCount !== expectedCount) ||
