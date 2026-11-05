@@ -1342,6 +1342,31 @@ jobs:
               assert branch["physicalFabricScaleApproved"] is False
               assert branch["sourceBodyFitApproved"] is False
               assert branch["tailorSeamsApproved"] is False
+              pareto=branch["independentMeasuredUvParetoComparison"]
+              assert pareto["researchOnly"] is True
+              assert pareto["nativeSourceTopologyPreserved"] is True
+              assert pareto["measuredResearchParetoImprovement"] is False
+              assert pareto["measuredTradeoffObserved"] is True
+              assert pareto["physicalBodyFitApproved"] is False
+              assert pareto["uvOverlapCertifiedAbsent"] is False
+              assert pareto["sewnTextileCutLinesApproved"] is False
+              assert pareto["productionApproved"] is False
+              delta=pareto["measuredSourceUvDeltasVsWeighted"]
+              assert delta["branchJunctions"] == (
+                  branch_cut["uvCutCandidateDegreeThreePlusSourceVertices"] -
+                  weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              assert delta["cutCandidateMeshLengthMm"] == round(
+                  branch_cut["totalRealGeometryOfUvCutCandidatesMm"] -
+                  weighted_cut["totalRealGeometryOfUvCutCandidatesMm"], 5
+              )
+              assert delta["rmsUnclosedUvGapMm"] == round(
+                  branch_uv["rmsNonTreeUvSeamGapMm"] -
+                  weighted["rmsNonTreeUvSeamGapMm"], 5
+              )
+              assert delta["branchJunctions"] < 0
+              assert delta["cutCandidateMeshLengthMm"] > 0
+              assert delta["rmsUnclosedUvGapMm"] > 0
               assert branch["productionApproved"] is False
               branch_uv=branch["actualRealSourceUvTreeEvidence"]
               branch_cut=branch["actualSourceUvCutNetworkEvidence"]
