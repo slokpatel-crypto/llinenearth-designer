@@ -114,7 +114,10 @@ begin
         'SYNTHETIC-FORWARD-REPLAY-0001', 'Synthetic stock checker',
         'Synthetic physical receipt');
       raise exception 'mismatched idempotency payload unexpectedly accepted';
-    exception when sqlstate '22023' then null;
+    exception when sqlstate '22023' then
+      if sqlerrm is distinct from 'reservation request key already belongs to different stock evidence' then
+        raise exception 'unexpected stock rejection for mismatched idempotency payload unexpectedly accepted: %', sqlerrm;
+      end if;
     end;
     -- Same idempotency key with a different locked revision must not reuse
     -- the original reservation, even though the metre amount is unchanged.
@@ -124,7 +127,10 @@ begin
         'SYNTHETIC-FORWARD-REPLAY-0001', 'Synthetic stock checker',
         'Synthetic physical receipt');
       raise exception 'changed locked revision unexpectedly accepted';
-    exception when sqlstate '22023' then null;
+    exception when sqlstate '22023' then
+      if sqlerrm is distinct from 'reservation request key already belongs to different stock evidence' then
+        raise exception 'unexpected stock rejection for changed locked revision unexpectedly accepted: %', sqlerrm;
+      end if;
     end;
     -- Supplier/cutting source evidence is part of replay identity.
     begin
@@ -133,7 +139,10 @@ begin
         'SYNTHETIC-FORWARD-REPLAY-0001', 'Synthetic stock checker',
         'Different synthetic evidence');
       raise exception 'changed physical evidence unexpectedly accepted';
-    exception when sqlstate '22023' then null;
+    exception when sqlstate '22023' then
+      if sqlerrm is distinct from 'reservation request key already belongs to different stock evidence' then
+        raise exception 'unexpected stock rejection for changed physical evidence unexpectedly accepted: %', sqlerrm;
+      end if;
     end;
     -- A known request key used for a *different fabric* must not alias.
     begin
@@ -142,7 +151,10 @@ begin
         'SYNTHETIC-FORWARD-REPLAY-0001', 'Synthetic stock checker',
         'Synthetic physical receipt');
       raise exception 'cross-fabric replay key unexpectedly accepted';
-    exception when sqlstate '22023' then null;
+    exception when sqlstate '22023' then
+      if sqlerrm is distinct from 'reservation request key already belongs to different stock evidence' then
+        raise exception 'unexpected stock rejection for cross-fabric replay key unexpectedly accepted: %', sqlerrm;
+      end if;
     end;
     -- A brand-new key cannot reserve physically unverified cloth.
     begin
@@ -151,7 +163,10 @@ begin
         'SYNTHETIC-FORWARD-UNVERIFIED-0002', 'Synthetic stock checker',
         'Synthetic physical receipt');
       raise exception 'unverified physical stock unexpectedly reserved';
-    exception when sqlstate '22023' then null;
+    exception when sqlstate '22023' then
+      if sqlerrm is distinct from 'reservation requires verified physical stock provenance' then
+        raise exception 'unexpected stock rejection for unverified physical stock unexpectedly reserved: %', sqlerrm;
+      end if;
     end;
   end replay_probe;
 end $probe$;
