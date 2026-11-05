@@ -97,6 +97,32 @@ On the **existing PR #897 branch**, changes are restricted to the original-sourc
 - Native original-source workflow now checks full 2,650-face/5,234-shared-edge/3-component/2,647-tree-edge provenance, 132 open original source edges, 29,600 unchanged source/body pair baseline, the non-worsening surrogate objective, actual reconstructed UV audit consistency, and every false physical/production flag.
 - Existing weighted tree and rejected 7/9/11 mm collision experiments remain untouched. New outcomes are unverified until official native Blender and exact-head CI finish. **Do not supply predicted numeric improvement as a measured finding.**
 
-**Scoped commits:** \`b530d426\` selector; \`ad959293\` Python fixtures; \`e3f408d5\` genuine source driver; \`a46ddcb2\` Node invariant guard; \`7e898981\` native workflow. The first changed-code head \`7e8989810cbb2df060e7d8fdee335590f6277762\` triggered Full CI #42015818336, source-rejection #42015818171, Non-3D #42015818071 and collision #42015818036; at checkpoint those were pending or in progress. They **do not** certify this subsequent documentation-only commit; inspect its own exact-head jobs after this checkpoint update.
+**Scoped commits:** `b530d426` selector; `ad959293` Python fixtures; `e3f408d5` genuine source driver; `a46ddcb2` Node invariant guard; `7e898981` native workflow. The first changed-code head `7e8989810cbb2df060e7d8fdee335590f6277762` triggered Full CI #42015818336, source-rejection #42015818171, Non-3D #42015818071 and collision #42015818036; at checkpoint those were pending or in progress. They **do not** certify this subsequent documentation-only commit; inspect its own exact-head jobs after this checkpoint update.
 
 **Next experiment / acceptance:** inspect exact-head native original-source JSON and CI logs; report measured branch/cut length and worst UV gap compared with both weighted and BFS, reject if branch count or actual UV overlap remains unacceptable. Then examine a true multiobjective low-strain unwrap with measured body clearance and supplier/tailor UV constraints. The original 20 bridge-body contacts, 29,600 unchanged source/body pairs, 132 source open edges and ten production preflight blockers remain as documented, with no production promotion. **NO MERGE / NO VERCEL DEPLOY.**
+
+
+## 2026-11-05 pinned native result: one-swap trade-off, NOT an improved pattern
+
+**Evidence:** Official exact-code original-source Blender 4.5.14 workflow [#42015981305](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/42015981305), at commit `8acdf589dd86b90c5e2cdf4378d69ee2a7e4141a`, completed **SUCCESS as diagnostic source rejection**. Real source has 2,650 quads, 2,717 original vertices, 5,234 shared edges, three source-face components, 132 actual source open boundary edges, 29,600 unchanged original source/body BVH pairs. Existing ten six-production-garment physical preflight blockers and twenty experimental bridge/body collisions are *not repaired*.
+
+| Measured actual original source UV | Weighted tree | One-swap branch-aware trial | Correct interpretation |
+|---|---:|---:|---|
+| Retained source UV tree edges | 2647 | 2647 | Real source topology preserved |
+| Unclosed source UV cycle seams | 2585 | 2585 | No new seam closure |
+| Candidate cut-network branch junctions | 323 | **322** | One fewer branched original vertex |
+| Candidate cut-network source mesh length | 32491.00439 mm | **32491.07090 mm** | Worse by +0.06651 mm |
+| Maximum UV seam gap | 1072.40848 mm | 1072.40848 mm | No improvement |
+| RMS source UV seam gap | 102.53023 mm | **102.74000 mm** | Worse by +0.20977 mm |
+| UV cut-network components | 40 | 40 | No improvement |
+| Physical sewn model/fabric/fit approved | false | false | Never inferred |
+
+The bounded 48-candidate one-edge exchange selected authentic shared edge **[143,582]** for retention and removed **[124,462]**. Its virtual score fell from 72,310.14494 to 72,110.21144 using a *chosen unverified* 100-mm-per-excess-branch-arm penalty. That single derived score improvement does **not** demonstrate real sewing, UV grain, cloth fit or reduced measured UV damage. Actual measured multi-metric Pareto comparison is **rejected** because edge length and RMS gap worsened. The pinned Blender workflow passed evidence checks, not production approval.
+
+### Source-truth hardening applied after measurement
+
+- Pure `compare_measured_original_source_uv_research_candidates` measures independent actual length/junction/gap/seam-count differences from native original source reports, rejects nonfinite metrics, inconsistent original source topology, forged physical or production flags, and false UV-overlap certificates. No claim of overlap-free UV is made.
+- Native source Blender captures `independentMeasuredUvParetoComparison` separately from the virtual research objective; official source workflow asserts **no measured Pareto improvement and an actual trade-off** on the unchanged pinned original mesh. Dedicated Python negative fixture tests and Node script-invariant guards added.
+- Commits: `ef9ec00d`, `9f1adc02`, `9ae49ccc`, `80c0f541`, `b2ffa7d9`. At the time of this checkpoint, exact-code commit `b2ffa7d91ee81163f9570f733c739b6da9a0f1d0` has native Blender collision QA **SUCCESS** #42017066601; source-candidate #42017066460, Full CI #42017066664 and Non-3D #42017066611 still in progress. These checks **do not certify this following checkpoint-only commit**. Verify newest head separately before research acceptance.
+
+**Remaining native acceptance item:** actual low-strain/overlap-controlled UV geometry tied to verified source panels and a truly sewn, collision-cleared crotch with legitimate thickness, fabric grain/repeat and tailor signoff. New code cannot auto-approve original research or export to `LinenEarthExport`. Preserve canonical `linen-earth-studio-model-v1` and the original photo. **Draft. No merge, no deploy, no physical approval.**
