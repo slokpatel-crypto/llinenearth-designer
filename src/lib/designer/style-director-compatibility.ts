@@ -232,8 +232,8 @@ export function styleDirectorCandidateFrontConstructionIssues(
       (front === "pleated" && requestsSingle && requestsDouble) ||
       (front === "pleated" && requestsForward && requestsReverse) ||
       (expectedDirection !== null && declaredDirection !== expectedDirection) ||
-      (front === "pleated" && declaredDirection === "forward" && (prohibitsForward || prohibitedDirections.includes("forward"))) ||
-      (front === "pleated" && declaredDirection === "reverse" && (prohibitsReverse || prohibitedDirections.includes("reverse")))) {
+      (declaredDirection === "forward" && (prohibitsForward || prohibitedDirections.includes("forward"))) ||
+      (declaredDirection === "reverse" && (prohibitsReverse || prohibitedDirections.includes("reverse")))) {
     return [{
       code: "candidate_trouser_pleat_mismatch",
       explanation: "The proposed trouser front, pleat count or direction contradicts its versioned construction; confirm the intended pleats before cutting without inventing a pleat.",
