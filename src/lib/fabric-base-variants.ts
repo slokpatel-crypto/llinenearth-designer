@@ -211,7 +211,7 @@ export function resolveFabricBaseVariants(input:{baseId:unknown;variants:unknown
     // A correct-looking JSON approval is not independent authorization.
     // No injected trusted verifier => fail closed, even for exact snapshots.
     // The verifier must independently consult an authenticated review ledger.
-    if(approval==="approved"){
+    if(approval==="approved" && obj(row)){
       let authenticated=false;
       if(typeof input.verifyApproval==="function"){
         try{
