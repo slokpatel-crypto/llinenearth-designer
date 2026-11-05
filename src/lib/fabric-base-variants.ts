@@ -18,9 +18,15 @@ export type FabricPhysicalClaim={
   calibration?:{photoSha256:string;widthPx:number;heightPx:number;axis:"x"|"y";repeatPx:number;pixelsPerMm:number};
 };
 export type FabricClaimApproval={claimId:string;snapshot:string;status:"approved"|"rejected"|"pending";reviewedBy:string};
+/**
+ * Inject only from a trusted server-side review ledger that independently
+ * authenticates the reviewer and validates this precise canonical snapshot.
+ * Never pass a verifier built from request-body approval data.
+ */
+export type FabricApprovalVerifier=(approved:Readonly<FabricClaimApproval>)=>boolean;
 export type ResolvedFabricClaim={
   value:FabricClaimValue;origin:FabricEvidenceOrigin;
-  approval:"approved"|"rejected"|"pending"|"stale"|"missing";usable:boolean;claimId:string|null;
+  approval:"approved"|"rejected"|"pending"|"stale"|"missing"|"untrusted";usable:boolean;claimId:string|null;
 };
 export type FabricVariantResolution={
   identity:FabricVariantIdentity;
@@ -140,7 +146,8 @@ const empty=():ResolvedFabricClaim=>({value:null,origin:"unknown",approval:"miss
  * A source receipt and matching review are traceability gates, NOT cryptographic
  * authentication or proof of a real swatch. Unknown/estimated claims never go live.
  */
-export function resolveFabricBaseVariants(input:{baseId:unknown;variants:unknown;claims:unknown;approvals:unknown}):
+export function resolveFabricBaseVariants(input:{baseId:unknown;variants:unknown;claims:unknown;approvals:unknown;
+  verifyApproval?:FabricApprovalVerifier}):
   {baseId:string|null;variants:FabricVariantResolution[];issues:string[]} {
   if(!id(input.baseId))return {baseId:null,variants:[],issues:["invalid base fabric identity"]};
   if(!Array.isArray(input.variants)||!Array.isArray(input.claims)||!Array.isArray(input.approvals)
@@ -201,6 +208,29 @@ export function resolveFabricBaseVariants(input:{baseId:unknown;variants:unknown
       &&["approved","pending","rejected"].includes(row.status as string))
       approval=row.status as ResolvedFabricClaim["approval"];
     else if(rows.length)approval="stale";
+    // A correct-looking JSON approval is not independent authorization.
+    // No injected trusted verifier => fail closed, even for exact snapshots.
+    // The verifier must independently consult an authenticated review ledger.
+    if(approval==="approved"){
+      let authenticated=false;
+      if(typeof input.verifyApproval==="function"){
+        try{
+          const review=Object.freeze({
+            claimId:c.claimId,
+            snapshot:row.snapshot as string,
+            status:"approved" as const,
+            reviewedBy:row.reviewedBy as string,
+          });
+          authenticated=input.verifyApproval(review)===true;
+        }catch{
+          authenticated=false;
+        }
+      }
+      if(!authenticated){
+        approval="untrusted";
+        variant.issues.push(field+": no independently authenticated reviewer approval");
+      }
+    }
     const mismatch=!!c.calibration&&c.calibration.photoSha256!==variant.identity.photoSha256;
     if(mismatch)variant.issues.push(field+": incompatible photo calibration");
     const conflict=own.length===1&&base.length===1
