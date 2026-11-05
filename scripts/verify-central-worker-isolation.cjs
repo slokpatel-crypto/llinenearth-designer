@@ -11,6 +11,47 @@ const CENTRAL_PR = 881;
 const WORKER_PRS = Object.freeze([861, 862, 868, 869, 886, 897]);
 const shaPattern = /^[0-9a-f]{40}$/;
 
+// Dedicated software/research boundaries. A disjoint path is not automatically
+// owned by its PR: new files outside the assigned module still need explicit
+// central review. Scope patterns are intentionally narrower than src/ or tests/.
+const WORKER_PATH_RULES = Object.freeze({
+  861: [
+    /^docs\/TITAN_(?:PARALLEL_TAILOR_HANDOFF|MEASUREMENT_[A-Z0-9_]+)\.md$/,
+    /^src\/lib\/designer\/(?:handoff-|production-handoff|tech-pack)[a-z0-9-]*\.ts$/,
+    /^tests\/(?:handoff-|production-handoff|tech-pack)[a-z0-9-]*\.test\.ts$/
+  ],
+  862: [
+    /^docs\/TITAN_FABRIC_[A-Z0-9_]+\.md$/,
+    /^src\/lib\/(?:fabric-[a-z0-9-]+|physical-evidence-provenance)\.ts$/,
+    /^tests\/(?:fabric-[a-z0-9-]+|phase10-(?:analyzer-ground-truth-scorecard|measurement|physical-evidence-provenance))\.test\.ts$/
+  ],
+  868: [
+    /^src\/lib\/designer\/style-director-[a-z0-9-]+\.ts$/,
+    /^src\/lib\/style-director-[a-z0-9-]+\.ts$/,
+    /^tests\/style-director-[a-z0-9-]+\.test\.ts$/,
+    /^tests\/helpers\/style-director-[a-z0-9-]+\.mjs$/
+  ],
+  869: [
+    /^docs\/TITAN_OPERATOR_ORDER_LIFECYCLE(?:_[A-Z0-9_]+)?\.md$/,
+    /^src\/lib\/operator\/order-lifecycle[a-z0-9-]*\.ts$/,
+    /^tests\/operator-order-lifecycle[a-z0-9-]*\.test\.ts$/
+  ],
+  886: [
+    /^docs\/TITAN_VISUAL_FIDELITY_PHASE[0-9]+\.md$/,
+    /^scripts\/(?:build-fabric-render-assets\.mjs|verify-photo-form\.cjs|photo-[a-z0-9-]+\.cjs)$/,
+    /^src\/components\/PhotoOutfitPreview\.tsx$/,
+    /^src\/lib\/designer\/photo-[a-z0-9-]+\.ts$/,
+    /^tests\/photo-[a-z0-9-]+\.test\.ts$/
+  ],
+  897: [
+    /^docs\/TITAN_3D_[A-Z0-9_]+\.md$/,
+    /^\.github\/workflows\/titan-native-source-candidate\.yml$/,
+    /^scripts\/blender\/[a-z0-9-]+\.py$/,
+    /^tests\/crotch-trouser-[a-z0-9-]+-native\.test\.ts$/,
+    /^tests\/python\/test_source_trouser_[a-z0-9_]+\.py$/
+  ]
+});
+
 async function checkLiveWorkerRef(repository, number, ref, sha, getJson) {
   assert.ok(typeof ref === "string" && /^[A-Za-z0-9._/-]+$/.test(ref) &&
     !ref.includes("..") && !ref.includes("//") &&
@@ -98,6 +139,18 @@ async function verifyWorkerIsolation(manifest, repository, getJson) {
       owners.set(path, pr.number);
     }
   }
+  // Path ownership is stronger than collision-freedom. A worker editing
+  // another module is out of scope even if no other open PR touches it.
+  for (const pr of scans) {
+    if (pr.number === CENTRAL_PR) continue;
+    const allowed = WORKER_PATH_RULES[pr.number];
+    assert.ok(Array.isArray(allowed) && allowed.length > 0,
+      "Unreviewed worker scope owner: PR #" + pr.number);
+    for (const path of pr.paths) {
+      assert.ok(allowed.some(rule => rule.test(path)),
+        "Out-of-scope worker file in PR #" + pr.number + ": " + path);
+    }
+  }
   // Recheck every PR and live branch after the complete multi-PR scan.
   // This reduces false acceptance from an earlier worker moving while later
   // PRs are examined. GitHub has no atomic cross-PR snapshot here.
@@ -126,12 +179,12 @@ async function selfTest() {
   const sample = { central_base_commit: a };
   const files = new Map([
     [CENTRAL_PR, [{ filename: "src/central.ts" }]],
-    [861, [{ filename: "src/measurements.ts" }]],
-    [862, [{ filename: "src/fabric.ts" }]],
-    [868, [{ filename: "src/style.ts" }]],
-    [869, [{ filename: "src/operator.ts" }]],
-    [886, [{ filename: "src/photo.ts" }]],
-    [897, [{ filename: "scripts/3d.py" }]]
+    [861, [{ filename: "src/lib/designer/tech-pack.ts" }]],
+    [862, [{ filename: "src/lib/fabric-analysis.ts" }]],
+    [868, [{ filename: "src/lib/style-director-agent.ts" }]],
+    [869, [{ filename: "src/lib/operator/order-lifecycle.ts" }]],
+    [886, [{ filename: "src/components/PhotoOutfitPreview.tsx" }]],
+    [897, [{ filename: "scripts/blender/source-trouser-max-retained-uv.py" }]]
   ]);
   const get = async path => {
     const refMatch = path.match(/\/git\/ref\/heads\/worker-(\d+)$/);
@@ -155,11 +208,11 @@ async function selfTest() {
     /Cross-workstream file ownership conflict/);
   await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
     async path => path.includes("/pulls/868/files?")
-      ? [{ filename: "src/fabric.ts" }] : get(path)),
+      ? [{ filename: "src/lib/fabric-analysis.ts" }] : get(path)),
     /Cross-workstream file ownership conflict/);
   await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
     async path => path.includes("/pulls/886/files?")
-      ? [{ filename: "src/photo.ts", status: "renamed",
+      ? [{ filename: "src/components/PhotoOutfitPreview.tsx", status: "renamed",
         previous_filename: "src/central.ts" }] : get(path)),
     /Cross-workstream file ownership conflict/);
   await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
@@ -176,6 +229,18 @@ async function selfTest() {
     async path => path.includes("/pulls/897/files?")
       ? [{ filename: "../unsafe.ts" }] : get(path)),
     /Unsafe changed-file path/);
+  await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
+    async path => path.includes("/pulls/868/files?")
+      ? [{ filename: "src/lib/inventory/stock-ledger.ts" }] : get(path)),
+    /Out-of-scope worker file in PR #868/);
+  await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
+    async path => path.includes("/pulls/886/files?")
+      ? [{ filename: "src/components/DesignerModule.tsx" }] : get(path)),
+    /Out-of-scope worker file in PR #886/);
+  await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
+    async path => path.includes("/pulls/897/files?")
+      ? [{ filename: "public/approved-production-model.glb" }] : get(path)),
+    /Out-of-scope worker file in PR #897/);
   // A PR snapshot may look unchanged while the live branch has advanced.
   await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
     async path => path.endsWith("/git/ref/heads/worker-861")
