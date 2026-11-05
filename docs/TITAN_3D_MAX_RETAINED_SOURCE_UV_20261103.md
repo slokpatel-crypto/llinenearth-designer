@@ -82,3 +82,21 @@ The longest weighted remaining UV gap is still **1,072.40848 mm**, and 2,585 fac
 - [ ] Resolve original ten six-piece mesh hard production preflight failures
 
 **No production merge/deploy. No physical approval. No fabric fact invented.**
+
+
+## 2026-11-05 follow-up: bounded junction-aware source UV candidate
+
+**Research experiment only; no production geometry, UV or fabric approval.**
+The original maximum-length tree demonstrably reduced unclosed UV candidate length but raised cut-network branching from 134 (BFS) to 323. A practical manufacturer pattern cannot be inferred from length minimization. The next controlled research question is whether a **single deterministic original shared-edge swap** yields a better *chosen* combined geometry-branch surrogate, and what its independently measured original 2D UV gaps actually do.
+
+On the **existing PR #897 branch**, changes are restricted to the original-source Blender graph selector, existing research Blender driver, dedicated Python/Node regression tests, official pinned native-source workflow and this checkpoint:
+
+- Added a bounded candidate search (maximum 48 real omitted original shared edges) that considers one forest-tree edge exchange at a time. Scoring is actual source 3D omitted-edge length in mm **plus a specified virtual 100-mm-per-excess-branch-arm research penalty**. This penalty is *NOT measured seam allowance, fabric waste, labour cost, physical dimension or tailoring proof*. Parent face connectivity, 2,650 actual quads, original cuts and source coordinates are preserved.
+- Candidate selection is deterministic and fail-closed on bad weights, bounds, malformed original mesh and disconnection. A swap is accepted only if the research surrogate strictly improves; it may retain the original tree unchanged. It does **not** claim to optimize actual UV closure or real-world garment quality.
+- The real native Blender driver passes original source vertices/faces to the selector, reconstructs 2D diagnostic UV loops against the same original quads and audits actual UV gap, 3D original candidate edge lengths, branch vertices and source boundary IDs. It does **not** save or export any new garment or UV source, alter the original locked scanned body or alter existing rejected experiments.
+- Native original-source workflow now checks full 2,650-face/5,234-shared-edge/3-component/2,647-tree-edge provenance, 132 open original source edges, 29,600 unchanged source/body pair baseline, the non-worsening surrogate objective, actual reconstructed UV audit consistency, and every false physical/production flag.
+- Existing weighted tree and rejected 7/9/11 mm collision experiments remain untouched. New outcomes are unverified until official native Blender and exact-head CI finish. **Do not supply predicted numeric improvement as a measured finding.**
+
+**Scoped commits:** \`b530d426\` selector; \`ad959293\` Python fixtures; \`e3f408d5\` genuine source driver; \`a46ddcb2\` Node invariant guard; \`7e898981\` native workflow. The first changed-code head \`7e8989810cbb2df060e7d8fdee335590f6277762\` triggered Full CI #42015818336, source-rejection #42015818171, Non-3D #42015818071 and collision #42015818036; at checkpoint those were pending or in progress. They **do not** certify this subsequent documentation-only commit; inspect its own exact-head jobs after this checkpoint update.
+
+**Next experiment / acceptance:** inspect exact-head native original-source JSON and CI logs; report measured branch/cut length and worst UV gap compared with both weighted and BFS, reject if branch count or actual UV overlap remains unacceptable. Then examine a true multiobjective low-strain unwrap with measured body clearance and supplier/tailor UV constraints. The original 20 bridge-body contacts, 29,600 unchanged source/body pairs, 132 source open edges and ten production preflight blockers remain as documented, with no production promotion. **NO MERGE / NO VERCEL DEPLOY.**
