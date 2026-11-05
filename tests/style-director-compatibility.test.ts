@@ -1344,3 +1344,15 @@ test("unnecessary pleat wording is optional, preserving both construction choice
   assert.equal(styleDirectorCandidateTrouserFront("Pleats are not needed, flat-front trouser"), "flat_front");
   assert.equal(styleDirectorCandidateTrouserFront("Pleats must be added"), "pleated");
 });
+
+
+test("may-not pleat wording is a prohibition, not a positive pleat", () => {
+  for (const phrase of ["Pleats may not be added", "Pleating may never be used", "Pleats may not be included"]) {
+    assert.equal(styleDirectorCandidateTrouserFront(phrase), "flat_front", phrase);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(phrase, { pleat: "flat_front" }), [], phrase);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(phrase, { pleat: "single_pleat_forward" }).map(x => x.code),
+      ["candidate_trouser_pleat_mismatch"], phrase);
+    assert.equal(styleDirectorCandidateTrouserFront("Flat-front; " + phrase), "flat_front");
+    assert.equal(styleDirectorCandidateTrouserFront("Single pleat; " + phrase), "ambiguous");
+  }
+});
