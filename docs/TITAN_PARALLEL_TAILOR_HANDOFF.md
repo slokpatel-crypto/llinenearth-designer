@@ -37,5 +37,11 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Run new exact-head CI and record results; earlier passes are not transferable to this follow-up.
 - Test measurements (100/84/102 cm etc.) are synthetic. Neither physical model measurements nor a real tailor approval exists; cutting remains prohibited.
 
+## Cryptographically verified printable export continuation
+- [x] Introduced additive `buildVerifiedTailorTechPackHtml` export boundary, requiring `verifyProductionHandoff` against the exact locked SHA256 garment recipe before generating trusted printable HTML.
+- [x] Added synthetic SHA256 round-trip and negative cases for forged fabric names, cut options, targets, fit calibration version, packet status, generated timestamps and tampered locked revisions.
+- [ ] Confirm new exact-head CI for this continuation before claiming these tests pass. Legacy sync HTML builder remains for review-only display; production export callers should use the verified async boundary.
+- These checks certify software integrity only. No physical measurement, fabric fact, seam tolerance, approved cutting pattern or human signoff is inferred.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.

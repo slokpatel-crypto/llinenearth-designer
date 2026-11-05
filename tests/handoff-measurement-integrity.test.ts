@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { auditHandoffMeasurements } from "../src/lib/designer/handoff-measurements.ts";
-import { buildProductionHandoff } from "../src/lib/designer/production-handoff.ts";
-import { buildTailorTechPackHtml } from "../src/lib/designer/tech-pack.ts";
+import { buildProductionHandoff, buildVerifiedProductionHandoff, verifyProductionHandoff } from "../src/lib/designer/production-handoff.ts";
+import { lockGarmentSpec } from "../src/lib/designer/design-lock.ts";
+import { buildTailorTechPackHtml, buildVerifiedTailorTechPackHtml } from "../src/lib/designer/tech-pack.ts";
 import type { FinishedTarget } from "../src/lib/designer/fit-construction.ts";
 import type { LockedDesignRevision } from "../src/lib/designer/design-lock.ts";
 
@@ -286,4 +287,40 @@ test("provisional ease, sample dimensions and physical cutting approval remain s
   assert.ok(packet.caveats.some(value=>value.includes("provisional house defaults")));
   assert.ok(packet.caveats.some(value=>value.includes("No verified physical model/body measurements")));
   assert.match(buildTailorTechPackHtml(packet),/NO CUTTING AUTHORISATION/);
+});
+
+test("cryptographically locked synthetic design exports a reconstructable unsigned tech pack",async()=>{
+  const fixture=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  const locked=await lockGarmentSpec(fixture.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
+  const handoff=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(await verifyProductionHandoff(handoff,locked),true);
+  const html=await buildVerifiedTailorTechPackHtml(handoff,locked);
+  assert.match(html,/NO CUTTING AUTHORISATION/);
+  assert.ok(html.includes(locked.revisionId));
+  assert.ok(html.includes(locked.recipeHash.slice(0,16).toUpperCase()));
+  assert.ok(html.includes("Finished shirt chest"));
+  assert.ok(html.includes("Inseam anchor"));
+});
+
+test("verified tech-pack export rejects subtle valid-looking edits and forged source revision",async()=>{
+  const fixture=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  const locked=await lockGarmentSpec(fixture.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
+  const packet=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  const cases=[
+    (p:typeof packet)=>{p.fabrics.shirt.name="Forged fabric";},
+    (p:typeof packet)=>{p.construction.shirt.collar="Forged construction";},
+    (p:typeof packet)=>{p.construction.shirt.finishedTargets[0].label="Fabricated chest";},
+    (p:typeof packet)=>{p.construction.fitProvenance.easeTableVersion="fabricated-version";},
+    (p:typeof packet)=>{p.status="review_required";},
+    (p:typeof packet)=>{p.generatedAt="2026-11-04T00:00:00.000Z";},
+  ];
+  for(const tamper of cases) {
+    const forged=structuredClone(packet);
+    tamper(forged);
+    assert.equal(await verifyProductionHandoff(forged,locked),false);
+    await assert.rejects(buildVerifiedTailorTechPackHtml(forged,locked),/Unsafe tailor tech pack export/);
+  }
+  const forgedRevision=structuredClone(locked);
+  forgedRevision.garmentSpec.shirt.fit="Fabricated fit";
+  await assert.rejects(buildVerifiedTailorTechPackHtml(packet,forgedRevision),/Unsafe tailor tech pack export/);
 });

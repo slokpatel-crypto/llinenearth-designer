@@ -1,4 +1,6 @@
 import type { ProductionHandoff } from "@/lib/designer/production-handoff";
+import type { LockedDesignRevision } from "./design-lock.ts";
+import { verifyProductionHandoff } from "./production-handoff.ts";
 import { auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
@@ -262,6 +264,23 @@ This document is generated from an immutable Linen Earth design revision. It is 
 </footer>
 </body>
 </html>`;
+}
+
+/**
+ * Trusted print/export boundary. The legacy synchronous HTML builder remains
+ * available for explicitly unverified, review-only packets. Export flows must
+ * use this async variant so all displayed measurements, material identities,
+ * locked cut IDs and unresolved items match the original SHA256 design lock.
+ * This check does NOT grant physical cutting authorization.
+ */
+export async function buildVerifiedTailorTechPackHtml(
+  handoff: ProductionHandoff,
+  revision: LockedDesignRevision,
+): Promise<string> {
+  if (!await verifyProductionHandoff(handoff, revision)) {
+    throw new Error("Unsafe tailor tech pack export: the packet does not match its verified locked design revision.");
+  }
+  return buildTailorTechPackHtml(handoff);
 }
 
 export function techPackFilename(handoff:ProductionHandoff){
