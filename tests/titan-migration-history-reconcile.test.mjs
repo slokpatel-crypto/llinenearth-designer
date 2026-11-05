@@ -12,3 +12,29 @@ test('mismatched claimed hash blocks',()=> assert.equal(reconcileMigrationHistor
 test('missing staging version blocks collision',()=> assert.equal(reconcileMigrationHistory(inventory,[]).results[0].reason,'COLLISION_NOT_IN_STAGING_HISTORY'));
 test('duplicate staging versions rejected',()=> assert.throws(()=>reconcileMigrationHistory(inventory,[{version:'20261001'},{version:'20261001'}])));
 test('invalid inventory hash rejected',()=> assert.throws(()=>reconcileMigrationHistory([{...inventory[0],sha256:'fake'}],[])));
+
+import { readdirSync, readFileSync as readSqlFile } from 'node:fs';
+import { join } from 'node:path';
+
+test('real repository migration collisions remain blocked without authenticated staging identity', () => {
+  const directory = join(process.cwd(), 'supabase', 'migrations');
+  const filenames = readdirSync(directory).filter(name => /^\\d{8,20}_.+\\.sql$/.test(name));
+  assert.ok(filenames.length > 0, 'Expected repository migration SQL files');
+  const rows = filenames.map(filename => ({
+    version: filename.split('_', 1)[0],
+    filename,
+    sha256: createHash('sha256').update(readSqlFile(join(directory, filename))).digest('hex'),
+  }));
+  const groups = new Map();
+  for (const row of rows) groups.set(row.version, (groups.get(row.version) ?? 0) + 1);
+  const collisions = [...groups].filter(([, count]) => count > 1);
+  assert.ok(collisions.length > 0, 'Expected unresolved real migration version collisions');
+  const report = reconcileMigrationHistory(rows, []);
+  assert.equal(report.release_ready, false);
+  assert.equal(report.blocked, collisions.length);
+  assert.deepEqual(
+    new Set(report.results.map(row => row.version)),
+    new Set(collisions.map(([version]) => version)),
+  );
+  assert.ok(report.results.every(row => row.status === 'BLOCKED' && row.reason === 'COLLISION_NOT_IN_STAGING_HISTORY'));
+});
