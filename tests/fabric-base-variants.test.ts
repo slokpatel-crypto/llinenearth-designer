@@ -11,8 +11,13 @@ const base={claimId:"base-gsm",baseId:"linen-60-base",field:"gsm",value:160,reso
   scope:{kind:"base",covers:[{variantId:"ivory",lotId:"roll-11"},{variantId:"stripe",lotId:"roll-12"}]}};
 const approval=(claim:unknown)=>({claimId:(claim as {claimId:string}).claimId,
   snapshot:snapshotFabricPhysicalClaim(claim),status:"approved",reviewedBy:"Independent Reviewer"});
+// Test-only stub representing an external, trusted review ledger; never use
+// this permissive fixture stub to authorize live supplier or customer data.
+const trustedFixtureReviewer=(review:{reviewedBy:string})=>
+  review.reviewedBy==="Independent Reviewer";
 const run=(claims:unknown[],approvals:unknown[],variants:unknown[]=[ivory,stripe])=>
-  resolveFabricBaseVariants({baseId:"linen-60-base",variants,claims,approvals});
+  resolveFabricBaseVariants({baseId:"linen-60-base",variants,claims,approvals,
+    verifyApproval:trustedFixtureReviewer});
 
 test("one reviewed base fabric can cover two explicit lots while identities remain separate",()=>{
   const r=run([base],[approval(base)]);
@@ -53,6 +58,24 @@ test("approval is invalid after changing value, supplier receipt or covered lots
     assert.equal(result.variants[0].physical.gsm.value,null);
     assert.equal(result.variants[0].physical.gsm.approval,"stale");
   }
+});
+
+test("untrusted approval JSON cannot certify material facts without independent review authority",()=>{
+  const input={baseId:"linen-60-base",variants:[ivory,stripe],
+    claims:[base],approvals:[approval(base)]};
+  const missing=resolveFabricBaseVariants(input);
+  assert.equal(missing.variants[0].physical.gsm.value,null);
+  assert.equal(missing.variants[0].physical.gsm.approval,"untrusted");
+  assert.ok(missing.variants[0].issues.some(x=>x.includes("independently authenticated")));
+  assert.equal(missing.variants[1].physical.gsm.value,null);
+  const denied=resolveFabricBaseVariants({...input,verifyApproval:()=>false});
+  assert.equal(denied.variants[0].physical.gsm.value,null);
+  const thrown=resolveFabricBaseVariants({...input,verifyApproval:()=>{throw new Error("ledger offline");}});
+  assert.equal(thrown.variants[0].physical.gsm.value,null);
+  const forgedAsync=resolveFabricBaseVariants({...input,verifyApproval:()=>Promise.resolve(true) as never});
+  assert.equal(forgedAsync.variants[0].physical.gsm.value,null);
+  assert.equal(resolveFabricBaseVariants({...input,verifyApproval:trustedFixtureReviewer})
+    .variants[0].physical.gsm.value,160);
 });
 
 test("malformed approvals, rejected review, forged precision and estimated facts never certify physical claims",()=>{
