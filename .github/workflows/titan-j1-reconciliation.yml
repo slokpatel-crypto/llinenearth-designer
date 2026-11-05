@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/titan-reconcile-migration-history.mjs'
-      - 'tests/titan-reconcile-migration-history.test.mjs'
+      - 'tests/titan-migration-history-reconcile.test.mjs'
       - '.github/workflows/titan-j1-reconciliation.yml'
   workflow_dispatch:
 
@@ -21,4 +21,4 @@ jobs:
         with:
           node-version: '22'
       - name: Verify synthetic migration reconciliation invariants
-        run: node --test tests/titan-reconcile-migration-history.test.mjs
+        run: node --test tests/titan-migration-history-reconcile.test.mjs
