@@ -1736,6 +1736,59 @@ def main():
             or overlap_comparison["productionApproved"]):
         raise RuntimeError("Unapproved source UV overlap comparison claimed production fit.")
     branch_report["researchOnlyOriginalSourceUvOverlapEvidence"] = branch_overlap
+    # The actual source has three DISCONNECTED face-graph components.
+    # Their research UV charts must not collide merely because the separate
+    # rigid-tree layouts all started at the origin. Translation does not
+    # stretch a source face or solve INTERNAL/production pattern overlaps.
+    component_pack_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-trouser-component-uv-pack.py")
+    ))
+    rigid_pack = component_pack_ops["pack_original_source_uv_face_components"]
+    overlap_compare = uv_overlap_ops["compare_original_source_uv_overlap_evidence"]
+    for state, unshifted, unshifted_overlap, initial_cut, tree_state in (
+        (weighted_report, weighted_uv, weighted_overlap, weighted_cut, weighted_uv),
+        (branch_report, branch_uv, branch_overlap, branch_audit, branch_uv),
+    ):
+        packed = rigid_pack(base_faces, unshifted["face_uv_loops"])
+        packed_summary = packed["report"]
+        if (packed_summary["originalSourceFaceGraphComponentCount"] != 3
+                or packed_summary["originalSourceComponentFaceCounts"] !=
+                   tree_state["report"]["dualGraphComponentSourceFaceCounts"]
+                or packed_summary["maximumOriginalTriangleEdgeChangeMm"] > 0.000001
+                or not packed_summary["sourceGeometryAndVertexIDsUnchanged"]
+                or packed_summary["sourcePanelsOverlapFreeApproved"]
+                or packed_summary["productionApproved"]):
+            raise RuntimeError("Research source-component UV translation lost original geometry.")
+        packed_overlap = uv_overlap_audit(base_faces, packed["face_uv_loops"])
+        packed_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+            merged_verts, base_faces, packed["face_uv_loops"],
+            l_remaining + r_remaining_mapped, tree_state["report"],
+        )
+        if (packed_cut["unclosedSharedUvCutCandidateEdges"] !=
+                initial_cut["unclosedSharedUvCutCandidateEdges"]
+                or abs(packed_cut["totalRealGeometryOfUvCutCandidatesMm"] -
+                       initial_cut["totalRealGeometryOfUvCutCandidatesMm"]) > 0.0001
+                or abs(packed_cut["maximumUnclosedUvEdgeGapMm"] -
+                       initial_cut["maximumUnclosedUvEdgeGapMm"]) > 0.0001
+                or packed_cut["productionApproved"]):
+            raise RuntimeError("Rigid disconnected-source UV pack changed actual seam damage.")
+        comparison = overlap_compare(unshifted_overlap, packed_overlap)
+        if (comparison["bothFullResearchUvScansComplete"]
+                and comparison["candidateOverlapTrianglePairDelta"] > 0):
+            raise RuntimeError("Research UV component packing increased measured overlaps.")
+        state["researchOnlyRigidSourceUvComponentPackingEvidence"] = {
+            "researchOnly": True,
+            "packing": packed_summary,
+            "packedResearchUvOverlap": packed_overlap,
+            "sourceOverlapBeforeVsPacked": comparison,
+            "unclosedSourceUvSeamCountUnchanged": True,
+            "originalSourceSeamGapUnchanged": True,
+            "sourceMeshAndBodyBVHUnchanged": True,
+            "sourceUvExportOrSavePerformed": False,
+            "realFabricScaleOrRepeatApproved": False,
+            "tailorCutAndFitApproved": False,
+            "productionApproved": False,
+        }
     branch_report["actualSourceUvCutNetworkEvidence"] = branch_audit
     branch_report["actualRealSourceUvTreeEvidence"] = branch_uv["report"]
     branch_report["actualSourceGeometryUnchanged"] = True
