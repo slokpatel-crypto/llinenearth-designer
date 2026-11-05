@@ -194,6 +194,51 @@ async function selfTest() {
   duplicate.selective_source_imports[0].pr = 11;
   await assert.rejects(() => verifyLiveSourceHeads(duplicate, "sample/repository", partialGet),
     /Duplicate source or selective import PR/);
+  const centralManifest = {
+    central_base_commit: a,
+    source_prs: fixture.source_prs,
+    selective_source_imports: [],
+    central_only_files: { "docs/central.md": b },
+    intentionally_combined: {}
+  };
+  const centralGet = async path => {
+    if (path.endsWith("/pulls/881")) return {
+      state: "open", draft: true,
+      head: { sha: a, repo: { full_name: "sample/repository" } },
+      base: { ref: "main" }
+    };
+    if (path.includes("/pulls/881/files?")) return [
+      { filename: "src/example.ts", sha: b },
+      { filename: "tests/example.test.ts", sha: c },
+      { filename: "docs/central.md", sha: b }
+    ];
+    throw Error("Unexpected synthetic central PR query " + path);
+  };
+  assert.deepEqual(await verifyCentralIntake(centralManifest, "sample/repository", centralGet),
+    { changedFiles: 3, commit: a });
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.includes("/pulls/881/files?")
+      ? [...await centralGet(path), { filename: "scripts/unreviewed.sh", sha: b }]
+      : centralGet(path)), /file count changed/);
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.includes("/pulls/881/files?")
+      ? (await centralGet(path)).slice(0, 2) : centralGet(path)), /file count changed/);
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.includes("/pulls/881/files?")
+      ? (await centralGet(path)).map(item => item.filename === "docs/central.md"
+        ? {...item, sha: c} : item) : centralGet(path)), /omitted or changed reviewed file/);
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.endsWith("/pulls/881")
+      ? {...await centralGet(path), head: { sha: b, repo: { full_name: "sample/repository" } }}
+      : centralGet(path)), /head changed/);
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.endsWith("/pulls/881")
+      ? {...await centralGet(path), draft: false} : centralGet(path)),
+    /must remain open and draft/);
+  await assert.rejects(() => verifyCentralIntake(centralManifest, "sample/repository",
+    async path => path.endsWith("/pulls/881")
+      ? {...await centralGet(path), head: { sha: a, repo: { full_name: "other/fork" } }}
+      : centralGet(path)), /must originate from this repository/);
   process.stdout.write("PASS: live-source guard rejects changed heads, missing, rewritten or duplicate files and closed PRs\n");
 }
 
@@ -216,8 +261,11 @@ async function main() {
   };
   const manifest = JSON.parse(readFileSync(join(process.cwd(), manifestFile), "utf8"));
   const result = await verifyLiveSourceHeads(manifest, repository, getJson);
+  const central = await verifyCentralIntake(manifest, repository, getJson);
   process.stdout.write("PASS: " + result.prCount + " live source PR heads and " +
     result.changedFileEntries + " changed-file blob identities match reviewed snapshot\n");
+  process.stdout.write("PASS: central PR #881 has exactly " + central.changedFiles +
+    " reviewed files at " + central.commit + "; no untracked integration paths\n");
 }
 
 main().catch(error => { process.stderr.write(String(error.message) + "\n"); process.exitCode = 1; });
