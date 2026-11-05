@@ -1396,3 +1396,17 @@ test("optional pleat count does not override an explicit single-pleat constructi
     .map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
   assert.equal(JSON.stringify(single), original, "review must preserve locked IDs");
 });
+
+test("negated pleat direction does not conflict with an explicitly selected direction", () => {
+  const wording = "Avoid reverse pleats; forward pleats required";
+  assert.equal(styleDirectorCandidateTrouserFront(wording), "pleated");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    wording, { pleat: "single_pleat_forward" },
+  ), []);
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    wording, { pleat: "single_pleat_reverse" },
+  ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(
+    "Forward pleats and reverse pleats required", { pleat: "single_pleat_forward" },
+  ).map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
+});
