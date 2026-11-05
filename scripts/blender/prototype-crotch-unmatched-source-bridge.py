@@ -1702,6 +1702,14 @@ def main():
             or branch_report["candidateResearchObjectiveMm"] >
                branch_report["baselineResearchObjectiveMm"] + 0.00002):
         raise RuntimeError("Bounded original source UV research lost native provenance.")
+    branch_report["independentMeasuredUvParetoComparison"] = weighted_ops[
+        "compare_measured_original_source_uv_research_candidates"
+    ](weighted_cut, branch_audit, weighted_report, branch_uv["report"])
+    if (branch_report["independentMeasuredUvParetoComparison"]["productionApproved"]
+            or not branch_report["independentMeasuredUvParetoComparison"][
+                "nativeSourceTopologyPreserved"
+            ]):
+        raise RuntimeError("Research UV comparison falsely certified a sewn garment.")
     branch_report["actualSourceUvCutNetworkEvidence"] = branch_audit
     branch_report["actualRealSourceUvTreeEvidence"] = branch_uv["report"]
     branch_report["actualSourceGeometryUnchanged"] = True
