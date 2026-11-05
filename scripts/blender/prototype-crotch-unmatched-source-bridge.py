@@ -1710,6 +1710,25 @@ def main():
                 "nativeSourceTopologyPreserved"
             ]):
         raise RuntimeError("Research UV comparison falsely certified a sewn garment.")
+    # Genuine 2D source UV triangle interior overlaps, never physical cloth.
+    # Bounded searches explicitly report incomplete coverage; both strategies
+    # are compared on the SAME original 2650 source faces without mutation.
+    uv_overlap_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-trouser-uv-overlap-audit.py")
+    ))
+    uv_overlap_audit = uv_overlap_ops["audit_original_source_uv_triangle_overlaps"]
+    weighted_overlap = uv_overlap_audit(base_faces, weighted_uv["face_uv_loops"])
+    branch_overlap = uv_overlap_audit(base_faces, branch_uv["face_uv_loops"])
+    for source_uv_overlap in (weighted_overlap, branch_overlap):
+        if (source_uv_overlap["expectedOriginalSourceQuadCount"] != 2650
+                or source_uv_overlap["expectedTriangleCount"] != 5300
+                or source_uv_overlap["completeGarmentUvOverlapFreeApproved"]
+                or source_uv_overlap["physicalSourceFitApproved"]
+                or source_uv_overlap["realTailorCuttingApproved"]
+                or source_uv_overlap["productionApproved"]):
+            raise RuntimeError("Research UV interior overlap audit lost source/approval truth.")
+    weighted_report["researchOnlyOriginalSourceUvOverlapEvidence"] = weighted_overlap
+    branch_report["researchOnlyOriginalSourceUvOverlapEvidence"] = branch_overlap
     branch_report["actualSourceUvCutNetworkEvidence"] = branch_audit
     branch_report["actualRealSourceUvTreeEvidence"] = branch_uv["report"]
     branch_report["actualSourceGeometryUnchanged"] = True
