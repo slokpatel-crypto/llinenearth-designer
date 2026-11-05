@@ -23,6 +23,7 @@ on:
       - "scripts/blender/source-trouser-dual-tree-uv.py"
       - "scripts/blender/source-trouser-uv-cut-network.py"
       - "scripts/blender/source-trouser-max-retained-uv.py"
+      - "scripts/blender/source-trouser-uv-overlap-audit.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -38,6 +39,7 @@ on:
       - "tests/crotch-trouser-dual-tree-uv-native.test.ts"
       - "tests/crotch-trouser-uv-cut-network-native.test.ts"
       - "tests/crotch-trouser-max-retained-uv-native.test.ts"
+      - "tests/crotch-trouser-uv-overlap-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -56,6 +58,7 @@ on:
       - "tests/python/test_source_trouser_dual_tree_uv.py"
       - "tests/python/test_source_trouser_uv_cut_network.py"
       - "tests/python/test_source_trouser_max_retained_uv.py"
+      - "tests/python/test_source_trouser_uv_overlap.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -79,6 +82,7 @@ on:
       - "scripts/blender/source-trouser-dual-tree-uv.py"
       - "scripts/blender/source-trouser-uv-cut-network.py"
       - "scripts/blender/source-trouser-max-retained-uv.py"
+      - "scripts/blender/source-trouser-uv-overlap-audit.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -94,6 +98,7 @@ on:
       - "tests/crotch-trouser-dual-tree-uv-native.test.ts"
       - "tests/crotch-trouser-uv-cut-network-native.test.ts"
       - "tests/crotch-trouser-max-retained-uv-native.test.ts"
+      - "tests/crotch-trouser-uv-overlap-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -127,6 +132,7 @@ jobs:
           python3 tests/python/test_source_trouser_dual_tree_uv.py
           python3 tests/python/test_source_trouser_uv_cut_network.py
           python3 tests/python/test_source_trouser_max_retained_uv.py
+          python3 tests/python/test_source_trouser_uv_overlap.py
       - name: Fetch checksum-verified Blender 4.5.14
         shell: bash
         run: |
@@ -1369,6 +1375,44 @@ jobs:
               assert delta["branchJunctions"] < 0
               assert delta["cutCandidateMeshLengthMm"] > 0
               assert delta["rmsUnclosedUvGapMm"] > 0
+              # Actual 2D triangle interiors from the unchanged 2,650-face
+              # scanned-source UV loops; never claim sewn panels or fabrication.
+              for overlap in (
+                  weighted["researchOnlyOriginalSourceUvOverlapEvidence"],
+                  branch["researchOnlyOriginalSourceUvOverlapEvidence"],
+              ):
+                  assert overlap["researchOnly"] is True
+                  assert overlap["expectedOriginalSourceQuadCount"] == 2650
+                  assert overlap["expectedTriangleCount"] == 5300
+                  assert overlap["narrowphaseTrianglePairCheckCap"] == 100000
+                  assert 0 < overlap["actualTrianglesInspected"] <= 5300
+                  assert 0 <= overlap["narrowphaseTrianglePairsChecked"] <= 100000
+                  assert overlap["observedInteriorOverlapTrianglePairsLowerBound"] >= 0
+                  assert overlap["observedDistinctSourceFacePairsLowerBound"] >= 0
+                  assert overlap["observedTriangleOverlapAreaSumLowerBoundMm2"] >= 0
+                  assert overlap["largestObservedTriangleInteriorOverlapAreaMm2"] >= 0
+                  assert overlap["originalProductionSourceUvApproved"] is False
+                  assert overlap["completeGarmentUvOverlapFreeApproved"] is False
+                  assert overlap["realTailorCuttingApproved"] is False
+                  assert overlap["physicalSourceFitApproved"] is False
+                  assert overlap["physicalFabricRepeatVerified"] is False
+                  assert overlap["productionApproved"] is False
+                  assert len(overlap["firstSourceFaceTriangleOverlapWitnesses"]) <= 12
+                  assert overlap["observedInteriorOverlapTrianglePairsLowerBound"] >= len(
+                      overlap["firstSourceFaceTriangleOverlapWitnesses"]
+                  )
+                  if overlap["auditTruncated"]:
+                      assert overlap["canClaimNoInteriorOverlapInThisUvLayout"] is False
+                  else:
+                      assert overlap["actualTrianglesInspected"] == 5300
+                  for witness in overlap["firstSourceFaceTriangleOverlapWitnesses"]:
+                      faces=witness["originalSourceFaceIds"]
+                      assert len(faces) == 2 and all(
+                          type(index) is int and 0 <= index < 2650 for index in faces
+                      )
+                      assert faces[0] != faces[1]
+                      assert math.isfinite(witness["actualUvInteriorOverlapAreaMm2"])
+                      assert witness["actualUvInteriorOverlapAreaMm2"] > 0
               assert branch["productionApproved"] is False
               assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
               assert branch_uv["dualGraphComponentCount"] == 3
