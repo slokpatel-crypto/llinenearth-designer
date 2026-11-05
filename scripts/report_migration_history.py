@@ -35,8 +35,11 @@ def report(directory: Path) -> dict:
         versions[version].append(path.name)
         findings["fingerprints"].append({"file": path.name, "version": version,
             "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
+    digest_by_file = {entry["file"]: entry["sha256"] for entry in findings["fingerprints"]}
     findings["collisions"] = [
-        {"version": version, "files": names}
+        {"version": version, "files": names,
+         "sql_content_identical": len({digest_by_file[name] for name in names}) == 1,
+         "fingerprints": [{"file": name, "sha256": digest_by_file[name]} for name in names]}
         for version, names in sorted(versions.items()) if len(names) > 1
     ]
     return findings
