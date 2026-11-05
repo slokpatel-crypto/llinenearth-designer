@@ -1478,3 +1478,38 @@ test("direction-specific pleat bans do not masquerade as blanket prohibitions", 
   ), "flat_front");
   assert.equal(styleDirectorCandidateTrouserFront("Pleats prohibited"), "flat_front");
 });
+
+
+test("unknown locked pleat direction cannot satisfy a candidate direction prohibition", () => {
+  for (const wording of [
+    "No forward pleats",
+    "Avoid reverse pleats",
+    "Forward pleats are forbidden",
+    "Reverse pleats not permitted",
+    "Do not use forward pleats",
+  ]) {
+    // Only a known canonical ID can demonstrate that the banned direction
+    // is not present. A stale ID is never converted into an invented option.
+    const locked = { pleat: "retired_pleat_direction" as StyleSpecV2["pant"]["pleat"] };
+    const before = JSON.stringify(locked);
+    assert.equal(styleDirectorCandidateTrouserFront(wording), null, wording);
+    assert.deepEqual(
+      styleDirectorCandidateFrontConstructionIssues(wording, locked).map(issue => issue.code),
+      ["candidate_trouser_pleat_mismatch"],
+      wording,
+    );
+    assert.equal(JSON.stringify(locked), before, "review must not rewrite locked data");
+    assert.deepEqual(
+      styleDirectorCandidateFrontConstructionIssues(wording, { pleat: "flat_front" }),
+      [],
+      wording,
+    );
+  }
+  assert.deepEqual(
+    styleDirectorCandidateFrontConstructionIssues(
+      "Wide-Leg Trouser", { pleat: "retired_pleat_direction" as StyleSpecV2["pant"]["pleat"] },
+    ),
+    [],
+    "an unspecified front or direction cannot certify a stale ID, but adds no new candidate constraint",
+  );
+});
