@@ -70,4 +70,49 @@ bad_faces = list(faces)
 bad_faces[0] = (0, 0, 1, 2)
 rejects(bad_faces, islands)
 
+
+compare = runpy.run_path(str(
+    ROOT / "scripts/blender/source-trouser-uv-overlap-audit.py"
+))["compare_original_source_uv_overlap_evidence"]
+same = compare(baseline, baseline)
+assert same["bothFullResearchUvScansComplete"] is True
+assert same["candidateOverlapTrianglePairDelta"] == 0
+assert same["candidateWorsenedRealUvInteriorOverlap"] is False
+assert same["bothOriginalResearchUvLayoutsOverlapFree"] is True
+assert same["productionApproved"] is False
+worse = compare(baseline, overlap)
+assert worse["candidateOverlapTrianglePairDelta"] > 0
+assert worse["candidateWorsenedRealUvInteriorOverlap"] is True
+assert worse["candidateImprovedRealUvInteriorOverlap"] is False
+assert worse["bothOriginalResearchUvLayoutsOverlapFree"] is False
+assert worse["completeGarmentUvApproved"] is False
+unknown = compare(baseline, bounded)
+assert unknown["bothFullResearchUvScansComplete"] is False
+assert unknown["candidateOverlapTrianglePairDelta"] is None
+assert unknown["candidateWorsenedRealUvInteriorOverlap"] is None
+assert unknown["bothOriginalResearchUvLayoutsOverlapFree"] is None
+
+def reject_comparison(one, two):
+    try:
+        compare(one, two)
+    except (ValueError, TypeError, KeyError):
+        return
+    raise AssertionError("Forged native UV overlap comparison was accepted")
+for field, fake in (
+    ("expectedOriginalSourceQuadCount", 10),
+    ("actualTrianglesInspected", 13),
+    ("observedInteriorOverlapTrianglePairsLowerBound", -1),
+    ("completeGarmentUvOverlapFreeApproved", True),
+    ("physicalSourceFitApproved", True),
+    ("productionApproved", True),
+    ("auditTruncated", "unknown"),
+    ("canClaimNoInteriorOverlapInThisUvLayout", True),
+):
+    forged = dict(overlap)
+    forged[field] = fake
+    reject_comparison(baseline, forged)
+forged = dict(bounded)
+forged["canClaimNoInteriorOverlapInThisUvLayout"] = True
+reject_comparison(baseline, forged)
+
 print("TITAN_ORIGINAL_SOURCE_UV_INTERIOR_OVERLAP_AUDIT_PURE_PASS")
