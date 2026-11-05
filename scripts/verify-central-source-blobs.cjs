@@ -9,12 +9,21 @@ const { join } = require("node:path");
 
 const manifestFile = "docs/TITAN_CENTRAL_SOURCE_BLOB_MANIFEST.json";
 const shaPattern = /^[a-f0-9]{40}$/;
+// A manifest that silently omits one source PR/file would otherwise pass the
+// remaining file checks. A separately reviewed pinned Git blob identity makes
+// changes to the entire claimed source intake fail closed, including removals.
+const PINNED_MANIFEST_BLOB = "c11668178929a49c1c1ee623b1745d7e5bcdfa3d";
 
 function gitBlobSha(bytes) {
   const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
   return createHash("sha1")
     .update(Buffer.from("blob " + buffer.length + "\0"))
     .update(buffer).digest("hex");
+}
+
+function verifyPinnedManifest(bytes) {
+  assert.equal(gitBlobSha(bytes), PINNED_MANIFEST_BLOB,
+    "Central source manifest changed: review all source PR files and explicitly repin");
 }
 
 function verifySnapshot(manifest, readSha) {
@@ -103,13 +112,23 @@ function selfTest() {
   assert.throws(() => verifySnapshot(badSource, lookup), /Invalid source blob/);
   assert.throws(() => verifySnapshot(sample, () => { throw Error("missing"); }),
     /cannot read file/);
+  const pinnedBytes = readFileSync(join(process.cwd(), manifestFile));
+  verifyPinnedManifest(pinnedBytes);
+  assert.throws(() => verifyPinnedManifest(Buffer.concat([pinnedBytes, Buffer.from(" ")])),
+    /Central source manifest changed/);
+  const omittedSource = JSON.parse(pinnedBytes.toString("utf8"));
+  omittedSource.source_prs.pop();
+  assert.throws(() => verifyPinnedManifest(Buffer.from(JSON.stringify(omittedSource))),
+    /Central source manifest changed/);
   process.stdout.write("PASS: central blob parity self-tests reject tampering, conflicts and missing files\n");
 }
 
 if (process.argv.includes("--self-test")) {
   selfTest();
 } else {
-  const manifest = JSON.parse(readFileSync(join(process.cwd(), manifestFile), "utf8"));
+  const manifestBytes = readFileSync(join(process.cwd(), manifestFile));
+  verifyPinnedManifest(manifestBytes);
+  const manifest = JSON.parse(manifestBytes.toString("utf8"));
   const result = verifySnapshot(manifest,
     path => gitBlobSha(readFileSync(join(process.cwd(), path))));
   process.stdout.write("PASS: " + result.sourcePrs + " pinned worker PRs, " +
