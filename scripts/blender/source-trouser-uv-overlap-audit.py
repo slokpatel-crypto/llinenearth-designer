@@ -183,3 +183,62 @@ def audit_original_source_uv_triangle_overlaps(
             "No sewn closure, fabric grain, textile repeat or fit signoff."
         ),
     }
+
+
+def compare_original_source_uv_overlap_evidence(weighted, candidate):
+    """Fail closed on incomplete comparisons and misleading UV approval flags."""
+    for report in (weighted, candidate):
+        for field in ("expectedOriginalSourceQuadCount", "expectedTriangleCount",
+                      "actualTrianglesInspected", "narrowphaseTrianglePairsChecked",
+                      "observedInteriorOverlapTrianglePairsLowerBound",
+                      "observedDistinctSourceFacePairsLowerBound"):
+            if type(report.get(field)) is not int or report[field] < 0:
+                raise ValueError("Original UV overlap source metric is not a physical integer.")
+        if (report.get("researchOnly") is not True
+                or report["expectedOriginalSourceQuadCount"] != 2650
+                or report["expectedTriangleCount"] != 5300
+                or report["actualTrianglesInspected"] > 5300
+                or report.get("originalProductionSourceUvApproved") is not False
+                or report.get("completeGarmentUvOverlapFreeApproved") is not False
+                or report.get("physicalSourceFitApproved") is not False
+                or report.get("productionApproved") is not False):
+            raise ValueError("Original UV overlap report violates source/rejection provenance.")
+        if (type(report.get("auditTruncated")) is not bool
+                or type(report.get("canClaimNoInteriorOverlapInThisUvLayout")) is not bool):
+            raise ValueError("UV overlap evidence has an unknown completeness flag.")
+        if (report["auditTruncated"]
+                and report["canClaimNoInteriorOverlapInThisUvLayout"]):
+            raise ValueError("Incomplete UV search cannot prove no interior overlap.")
+        if (not report["auditTruncated"]
+                and report["actualTrianglesInspected"] != 5300):
+            raise ValueError("Complete original UV overlap evidence skipped source triangles.")
+        if (not report["auditTruncated"]
+                and report["canClaimNoInteriorOverlapInThisUvLayout"] !=
+                   (report["observedInteriorOverlapTrianglePairsLowerBound"] == 0)):
+            raise ValueError("Original UV overlap absence claim contradicts real evidence.")
+    both_complete = not weighted["auditTruncated"] and not candidate["auditTruncated"]
+    before = weighted["observedInteriorOverlapTrianglePairsLowerBound"]
+    after = candidate["observedInteriorOverlapTrianglePairsLowerBound"]
+    # Do not compare lower bounds as if they were complete original-source totals.
+    delta = after - before if both_complete else None
+    return {
+        "researchOnly": True,
+        "bothFullResearchUvScansComplete": both_complete,
+        "baselineObservedTriangleOverlapPairs": before,
+        "candidateObservedTriangleOverlapPairs": after,
+        "candidateOverlapTrianglePairDelta": delta,
+        "candidateWorsenedRealUvInteriorOverlap": (delta > 0) if both_complete else None,
+        "candidateImprovedRealUvInteriorOverlap": (delta < 0) if both_complete else None,
+        "bothOriginalResearchUvLayoutsOverlapFree": (
+            before == 0 and after == 0
+        ) if both_complete else None,
+        "completeGarmentUvApproved": False,
+        "realCuttingOrSeamApproved": False,
+        "bodyGarmentClearanceApproved": False,
+        "productionApproved": False,
+        "metricCaveat": (
+            "Only complete original-source 2D UV scans support actual overlap "
+            "comparison. Capped counts are LOWER BOUNDS and cannot be ranked. "
+            "Even a lower pair count is not a sewn or physical fabric design."
+        ),
+    }
