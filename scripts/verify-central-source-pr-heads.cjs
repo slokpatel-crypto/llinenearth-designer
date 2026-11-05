@@ -70,7 +70,8 @@ async function verifyLiveSourceHeads(manifest, repository, getJson) {
 async function selfTest() {
   const a = "a".repeat(40), b = "b".repeat(40), c = "c".repeat(40);
   const fixture = { source_prs: [{ pr: 11, head: a,
-    files: { "src/example.ts": b, "tests/example.test.ts": c } }] };
+    files: { "src/example.ts": b, "tests/example.test.ts": c } }],
+    selective_source_imports: [] };
   const get = async path => {
     if (path.endsWith("/pulls/11")) return { state: "open", head: { sha: a } };
     if (path.includes("/pulls/11/files?"))
@@ -97,6 +98,30 @@ async function selfTest() {
   await assert.rejects(() => verifyLiveSourceHeads(fixture, "sample/repository",
     async path => path.endsWith("/pulls/11")
       ? { state: "closed", head: { sha: a } } : get(path)), /no longer open/);
+  const subset = { ...fixture, selective_source_imports: [
+    { pr: 12, head: a, files: { "src/only-imported.sql": b },
+      reason: "Only this migration SQL is integrated. The source PR tests, scripts, and documentation remain excluded pending review." }
+  ] };
+  const partialGet = async path => {
+    if (path.endsWith("/pulls/12")) return { state: "open", head: { sha: a } };
+    if (path.includes("/pulls/12/files?")) return [
+      { filename: "src/only-imported.sql", sha: b },
+      { filename: "docs/not-imported.md", sha: c }
+    ];
+    return get(path);
+  };
+  assert.deepEqual(await verifyLiveSourceHeads(subset, "sample/repository", partialGet),
+    { prCount: 2, changedFileEntries: 3 });
+  await assert.rejects(() => verifyLiveSourceHeads(subset, "sample/repository",
+    async path => path.includes("/pulls/12/files?")
+      ? [{filename: "docs/not-imported.md", sha: c}] : partialGet(path)), /changed or removed/);
+  await assert.rejects(() => verifyLiveSourceHeads(subset, "sample/repository",
+    async path => path.endsWith("/pulls/12")
+      ? { state: "open", head: { sha: c } } : partialGet(path)), /head changed/);
+  const duplicate = structuredClone(subset);
+  duplicate.selective_source_imports[0].pr = 11;
+  await assert.rejects(() => verifyLiveSourceHeads(duplicate, "sample/repository", partialGet),
+    /Duplicate source or selective import PR/);
   process.stdout.write("PASS: live-source guard rejects changed heads, missing, rewritten or duplicate files and closed PRs\n");
 }
 
