@@ -199,6 +199,11 @@ export function styleDirectorCandidateFrontConstructionIssues(
   const expectedDirection = requestsForward !== requestsReverse
     ? requestsForward ? "forward" : "reverse" : null;
   const declaredDirection = pleatOption?.parameters.pleatDirection;
+  // A negative direction instruction constrains the selected pleat even
+  // when no alternative direction is explicitly requested. Do not treat
+  // "avoid reverse pleats" as a blanket ban on all pleated construction.
+  const prohibitsForward = /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?forward[ -]?pleats?\b/i.test(candidateTrouser);
+  const prohibitsReverse = /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?reverse[ -]?pleats?\b/i.test(candidateTrouser);
   // Unknown/stale option IDs cannot certify construction even when the
   // candidate merely says "pleated" without specifying count or direction.
   if ((front !== null && front !== "ambiguous" && !pleatOption) ||
@@ -207,7 +212,9 @@ export function styleDirectorCandidateFrontConstructionIssues(
       (expectedCount !== null && declaredCount !== expectedCount) ||
       (front === "pleated" && requestsSingle && requestsDouble) ||
       (front === "pleated" && requestsForward && requestsReverse) ||
-      (expectedDirection !== null && declaredDirection !== expectedDirection)) {
+      (expectedDirection !== null && declaredDirection !== expectedDirection) ||
+      (front === "pleated" && declaredDirection === "forward" && prohibitsForward) ||
+      (front === "pleated" && declaredDirection === "reverse" && prohibitsReverse)) {
     return [{
       code: "candidate_trouser_pleat_mismatch",
       explanation: "The proposed trouser front, pleat count or direction contradicts its versioned construction; confirm the intended pleats before cutting without inventing a pleat.",
