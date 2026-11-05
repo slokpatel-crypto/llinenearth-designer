@@ -1,5 +1,5 @@
 import type { ProductionHandoff } from "@/lib/designer/production-handoff";
-import { auditHandoffMeasurements } from "./handoff-measurements.ts";
+import { auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
 export const TECH_PACK_VERSION="linen-earth-tech-pack-v1" as const;
@@ -45,6 +45,10 @@ export function buildTailorTechPackHtml(handoff:ProductionHandoff){
   if(audit.errors.length) {
     throw new Error(`Unsafe tailor tech pack measurements: ${audit.errors.join(" ")}`);
   }
+  const fitAudit=auditHandoffFitProvenance(handoff.construction.fitProvenance);
+  if(fitAudit.errors.length) {
+    throw new Error(`Unsafe tailor tech pack fit provenance: ${fitAudit.errors.join(" ")}`);
+  }
   const originalStyleSpec=handoff.construction.styleSpec;
   const validStyleSpec=validateStyleSpecV2(originalStyleSpec) ? originalStyleSpec : null;
   const invalidConstruction=Boolean(originalStyleSpec) && !validStyleSpec;
@@ -53,9 +57,9 @@ export function buildTailorTechPackHtml(handoff:ProductionHandoff){
   ] : validStyleSpec ? [] : [
     "Exact StyleSpec v2 garment construction is absent; tailor must verify legacy options.",
   ];
-  const outstanding=[...new Set([...handoff.unresolved,...audit.missing,...missingConstruction])];
+  const outstanding=[...new Set([...handoff.unresolved,...audit.missing,...fitAudit.missing,...missingConstruction])];
   const displayStatus=handoff.status==="ready_for_tailor_review"
-    && !audit.missing.length && !missingConstruction.length
+    && !audit.missing.length && !fitAudit.missing.length && !missingConstruction.length
     ? handoff.status : "review_required";
   const title=`Linen Earth · Tailor Tech Pack · ${handoff.designRevisionId}`;
   return `<!doctype html>

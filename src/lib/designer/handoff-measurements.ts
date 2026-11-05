@@ -19,6 +19,72 @@ const ESSENTIAL_TARGETS = {
   trouser: ["Finished trouser waist", "Finished trouser seat", "Inseam anchor", "Outseam anchor"],
 } as const;
 
+/** Labels from fit-construction.ts. Keep the known physical landmark and
+ * calculation semantics intact; unknown legacy labels remain reviewable.
+ * This is a contract check, not an inferred body measurement or tolerance.
+ */
+const LANDMARK_BASIS = {
+  shirt: {
+    "finished collar circumference": "body_plus_ease",
+    "finished shirt chest": "body_plus_ease",
+    "finished shirt waist": "body_plus_ease",
+    "finished upper-arm circumference": "body_plus_ease",
+    "finished cuff circumference": "body_plus_ease",
+    "shoulder-width anchor": "recorded_anchor",
+    "sleeve-length anchor": "recorded_anchor",
+    "shirt-length anchor": "customer_desired",
+  },
+  trouser: {
+    "finished trouser waist": "body_plus_ease",
+    "finished trouser seat": "body_plus_ease",
+    "finished upper-thigh circumference": "body_plus_ease",
+    "finished knee circumference": "body_plus_ease",
+    "front-rise anchor": "recorded_anchor",
+    "inseam anchor": "customer_desired",
+    "outseam anchor": "customer_desired",
+    "hem circumference target": "customer_desired",
+  },
+} as const satisfies Record<"shirt" | "trouser", Record<string, FinishedTarget["basis"]>>;
+
+export type HandoffFitProvenance = {
+  fitConstructionVersion: unknown;
+  easeSource: unknown;
+  easeTableVersion: unknown;
+};
+
+/** Checks internal version/source coherence, not authenticity of an external
+ * calibration approval. Physical evidence is still required before cutting. */
+export function auditHandoffFitProvenance(source: HandoffFitProvenance): HandoffMeasurementAudit {
+  const errors: string[] = [];
+  const missing: string[] = [];
+  if (!source || typeof source !== "object") {
+    return { errors: ["Fit/ease provenance must be a record."], missing };
+  }
+  const fields = [source.fitConstructionVersion, source.easeSource, source.easeTableVersion];
+  if (fields.every((value) => value == null)) {
+    missing.push("Fit/ease source and calibration version are not recorded; tailor must confirm before production.");
+    return { errors, missing };
+  }
+  if (fields.some((value) => value == null)) {
+    errors.push("Fit/ease provenance is incomplete; version, source and table version must be recorded together.");
+    return { errors, missing };
+  }
+  const expectedSource = source.fitConstructionVersion === "fit-construction-provisional-1"
+    ? "provisional_house_defaults"
+    : source.fitConstructionVersion === "fit-construction-calibrated-2"
+      ? "approved_house_calibration"
+      : null;
+  if (!expectedSource || source.easeSource !== expectedSource) {
+    errors.push("Fit construction version conflicts with its declared ease source.");
+  }
+  if (typeof source.easeTableVersion !== "string"
+      || source.easeTableVersion.trim().length === 0
+      || source.easeTableVersion.length > 120) {
+    errors.push("Fit/ease table version must be a nonempty bounded identifier.");
+  }
+  return { errors, missing };
+}
+
 const finite = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 
@@ -43,6 +109,14 @@ export function auditHandoffMeasurements(groups: TargetGroup): HandoffMeasuremen
       const label = typeof value.label === "string" ? value.label.trim() : "";
       if (!label || label.length > 120) errors.push(`${name}: missing or excessive measurement label.`);
       const key = label.toLowerCase();
+      const expectedBasis = (LANDMARK_BASIS[garment] as Readonly<Record<string, FinishedTarget["basis"]>>)[key];
+      const otherGarment = garment === "shirt" ? "trouser" : "shirt";
+      if ((LANDMARK_BASIS[otherGarment] as Readonly<Record<string, FinishedTarget["basis"]>>)[key]) {
+        errors.push(`${name}: "${label}" is a ${otherGarment} landmark, not a ${garment} measurement.`);
+      }
+      if (expectedBasis && value.basis !== expectedBasis) {
+        errors.push(`${name}: "${label}" must retain ${expectedBasis} basis; received ${String(value.basis)}.`);
+      }
       if (key && seen.has(key)) errors.push(`${garment}: duplicate measurement label "${label}".`);
       seen.add(key);
       if (key && !byLabel.has(key)) byLabel.set(key, value);

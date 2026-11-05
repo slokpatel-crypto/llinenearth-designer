@@ -219,3 +219,65 @@ test("locked construction version and measurement provenance must agree with exp
   assert.ok(packet.unresolved.some(x=>x.includes("versioned measurement profile")));
   assert.match(buildTailorTechPackHtml(packet),/versioned measurement profile is not recorded/);
 });
+
+test("required circumference targets cannot masquerade as direct anchors without ease",()=>{
+  const cases=[
+    {shirt:[{...chest,basis:"recorded_anchor" as const,easeCm:undefined,finishedCm:{min:100,max:100}}],trouser:[waist,seat]},
+    {shirt:[chest],trouser:[{...waist,basis:"recorded_anchor" as const,easeCm:undefined,finishedCm:{min:84,max:84}},seat]},
+    {shirt:[chest],trouser:[waist,{...seat,basis:"customer_desired" as const,easeCm:undefined,finishedCm:{min:102,max:102}}]},
+  ];
+  for(const entry of cases){
+    const result=auditHandoffMeasurements(entry);
+    assert.match(result.errors.join(" "),/must retain body_plus_ease basis/);
+    assert.throws(()=>buildProductionHandoff(createRevision(entry.shirt,entry.trouser)),/Unsafe tailor handoff measurements/);
+  }
+});
+
+test("a known landmark cannot be reassigned to the wrong garment",()=>{
+  const report=auditHandoffMeasurements({
+    shirt:[chest,{label:"Inseam anchor",bodyCm:76,finishedCm:{min:76,max:76},basis:"customer_desired"}],
+    trouser:[waist,seat],
+  });
+  assert.match(report.errors.join(" "),/trouser landmark/);
+});
+
+test("fit/ease version and source mismatch fails closed in handoff and print",()=>{
+  const revision=createRevision([chest],[waist,seat]);
+  revision.garmentSpec.source.fitConstructionVersion="fit-construction-calibrated-2";
+  assert.throws(()=>buildProductionHandoff(revision),/Unsafe tailor handoff fit provenance/);
+
+  const packet=buildProductionHandoff(createRevision([chest],[waist,seat]));
+  packet.construction.fitProvenance.easeSource="approved_house_calibration";
+  assert.throws(()=>buildTailorTechPackHtml(packet),/Unsafe tailor tech pack fit provenance/);
+});
+
+test("missing fit provenance remains review-only and cannot impersonate an approved ease table",()=>{
+  const revision=createRevision([chest],[waist,seat]);
+  revision.garmentSpec.source.fitConstructionVersion=null;
+  revision.garmentSpec.source.fitEaseSource=null;
+  revision.garmentSpec.source.fitEaseTableVersion=null;
+  const packet=buildProductionHandoff(revision);
+  assert.equal(packet.status,"review_required");
+  assert.ok(packet.unresolved.some(item=>item.includes("Fit/ease source")));
+  assert.match(buildTailorTechPackHtml(packet),/Fit\/ease source and calibration version are not recorded/);
+
+  revision.garmentSpec.source.fitConstructionVersion="fit-construction-provisional-1";
+  assert.throws(()=>buildProductionHandoff(revision),/Unsafe tailor handoff fit provenance/);
+});
+
+test("locked StyleSpec v2 option contract must match the declared schema version",()=>{
+  const revision=createRevision([chest],[waist,seat]);
+  revision.garmentSpec.source.styleSchemaVersion=null;
+  assert.throws(()=>buildProductionHandoff(revision),/Unsafe tailor handoff construction/);
+
+  const legacy=createRevision([chest],[waist,seat],false);
+  legacy.garmentSpec.source.styleSchemaVersion=2;
+  assert.throws(()=>buildProductionHandoff(legacy),/Unsafe tailor handoff construction/);
+});
+
+test("provisional ease, sample dimensions and physical cutting approval remain separate",()=>{
+  const packet=buildProductionHandoff(createRevision([chest],[waist,seat]));
+  assert.ok(packet.caveats.some(value=>value.includes("provisional house defaults")));
+  assert.ok(packet.caveats.some(value=>value.includes("No verified physical model/body measurements")));
+  assert.match(buildTailorTechPackHtml(packet),/NO CUTTING AUTHORISATION/);
+});

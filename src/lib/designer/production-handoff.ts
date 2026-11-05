@@ -1,6 +1,6 @@
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
 import { verifyLockedDesignRevision } from "./design-lock.ts";
-import { auditHandoffMeasurements } from "./handoff-measurements.ts";
+import { auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
 export const PRODUCTION_HANDOFF_VERSION="linen-earth-production-handoff-v1" as const;
@@ -66,6 +66,15 @@ export function buildProductionHandoff(
   if(measurementAudit.errors.length) {
     throw new Error(`Unsafe tailor handoff measurements: ${measurementAudit.errors.join(" ")}`);
   }
+  const fitProvenance={
+    fitConstructionVersion:spec.source.fitConstructionVersion,
+    easeSource:spec.source.fitEaseSource,
+    easeTableVersion:spec.source.fitEaseTableVersion,
+  };
+  const fitAudit=auditHandoffFitProvenance(fitProvenance);
+  if(fitAudit.errors.length) {
+    throw new Error(`Unsafe tailor handoff fit provenance: ${fitAudit.errors.join(" ")}`);
+  }
   if (spec.styleSpec && !validateStyleSpecV2(spec.styleSpec)) {
     throw new Error("Unsafe tailor handoff construction: unrecognised versioned style option.");
   }
@@ -81,6 +90,7 @@ export function buildProductionHandoff(
   const unresolved=[...new Set([
     ...spec.unresolved,
     ...measurementAudit.missing,
+    ...fitAudit.missing,
     ...measurementSourceNote,
     ...legacyConstructionNote,
   ])];
@@ -88,6 +98,7 @@ export function buildProductionHandoff(
     && spec.readiness.tailoring!=="insufficient_measurements"
     && spec.readiness.materialVerification==="verified"
     && measurementAudit.missing.length===0
+    && fitAudit.missing.length===0
     && measurementSourceNote.length===0
     && legacyConstructionNote.length===0;
   return {
@@ -104,11 +115,7 @@ export function buildProductionHandoff(
       styleSpec:spec.styleSpec?JSON.parse(JSON.stringify(spec.styleSpec)):null,
       bodyProfile:spec.bodyProfile?JSON.parse(JSON.stringify(spec.bodyProfile)):null,
       context:{...spec.context},
-      fitProvenance:{
-        fitConstructionVersion:spec.source.fitConstructionVersion,
-        easeSource:spec.source.fitEaseSource,
-        easeTableVersion:spec.source.fitEaseTableVersion,
-      },
+      fitProvenance,
       ...(spec.creative?{creative:JSON.parse(JSON.stringify(spec.creative))}:{}),
       shirt:JSON.parse(JSON.stringify(spec.shirt)),
       trouser:JSON.parse(JSON.stringify(spec.trouser)),
@@ -129,6 +136,9 @@ export function buildProductionHandoff(
     caveats:[
       ...spec.caveats,
       "This handoff preserves the locked design recipe but is not a cutting pattern.",
+      "No verified physical model/body measurements or tailor sign-off are inferred from recorded targets, a measurement profile version, or a preview body profile.",
+      ...(fitProvenance.easeSource === "provisional_house_defaults"
+        ? ["Ease ranges use provisional house defaults; actual garment ease and fit need tailor confirmation."] : []),
       "Cloth estimate, stock reservation and price must come from validated production systems; they are never inferred here.",
     ],
   };
