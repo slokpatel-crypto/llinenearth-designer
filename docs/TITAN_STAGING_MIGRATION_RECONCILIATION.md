@@ -12,3 +12,9 @@ New commits:
 Acceptance: implementation committed; matching-head new workflow, Full CI and Non-3D results PENDING / not yet inspected. A successful synthetic test does not establish a real staging match. This comparison requires an independently exported trustworthy staging manifest with actual SQL digests; standard Supabase migration history often has versions without SQL bytes, so no fingerprint should be invented.
 
 Next 30–40-minute slice: inspect new exact-head CI, repair any workflow/test failures, obtain authorized staging migration history via read-only export, identify actual collisions and prove a disposable full historical replay before any integration. Keep physical stock, tailor, customer, device, Blender and owner gates PENDING.
+
+## 2026-11-05 — exact-head verification
+
+Verified branch head `f8c5cf91a8e9f1b5606947fe6a7b92a6f045ece2` (parent of this checkpoint-only commit). Full CI `41970802160` SUCCESS; Non-3D QA `41970802158` SUCCESS; synthetic staging manifest reconciliation `41970802184` SUCCESS. Read-only migration inventory `41970802177` FAILED CLOSED at step `Print read-only inventory and fail closed for unresolved history`. This is an expected unresolved production blocker, **not** a release pass. The synthetic manifest test does not establish staging provenance or database correctness.
+
+Affected gate: J1 migration history integrity — synthetic mismatch detection verified; real staging reconciliation BLOCKED. Next independently verifiable slice: obtain authorized read-only applied migration history and SQL evidence, reconcile duplicate legacy versions without renaming history, then run disposable full historical replay. No customer/stock/tailor/device/Blender/owner physical acceptance asserted. No main merge, Vercel deploy, live migrations or paid services.
