@@ -10,12 +10,16 @@ import { optionsFor } from "./options/library.ts";
 export function styleDirectorIntelligenceTrustWeight(
   value: Pick<DesignerFabricIntelligence, "trust" | "reviewStatus"> | null | undefined,
 ): number {
-  if (!value || value.reviewStatus === "rejected") return 0;
+  // Unrecognised, incomplete or rejected provenance must not influence
+  // ranking. A persisted object may predate the current closed vocabulary.
+  if (!value ||
+      !["unreviewed", "approved", "corrected", "rejected"].includes(value.reviewStatus) ||
+      !["reviewed", "high-confidence", "provisional"].includes(value.trust) ||
+      value.reviewStatus === "rejected") return 0;
   if (value.trust === "reviewed") {
     return value.reviewStatus === "approved" || value.reviewStatus === "corrected" ? 1 : 0.28;
   }
-  if (value.trust === "high-confidence") return 0.72;
-  return 0.28;
+  return value.trust === "high-confidence" ? 0.72 : 0.28;
 }
 
 const candidateCollarFamilies = (name: string) => ({
