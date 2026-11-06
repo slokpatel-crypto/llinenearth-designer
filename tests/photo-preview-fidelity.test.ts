@@ -254,7 +254,7 @@ test("source comparison cannot silently export or lock a different pictured desi
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.ok(source.includes('disabled={!ready || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal ? "Show design to save"'));
   assert.ok(source.includes('disabled={!ready || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>Lock final design'));
-  assert.ok(source.includes('disabled={!ready || creativeAiLoading || showOriginal}>{creativeAiLoading ? "Rendering…"'));
+  assert.ok(source.includes('disabled={!ready || creativeAiLoading || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>{creativeAiLoading ? "Rendering…"'));
 });
 
 test("Compare shows original-photo provenance above the canvas instead of selected-cut claims", () => {
