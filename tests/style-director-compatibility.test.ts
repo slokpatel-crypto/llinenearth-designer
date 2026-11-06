@@ -438,7 +438,12 @@ test("candidate sleeve type and construction share one strict resolver", () => {
 
 
 test("conflicting named collar families fail closed rather than silently selecting a construction", () => {
-  for (const name of ["Cuban Band-Collar Shirt", "Mandarin Cutaway Shirt", "Camp Cutaway Shirt", "Cuban Mandarin Cutaway Shirt"]) {
+  for (const name of [
+    "Cuban Band-Collar Shirt", "Mandarin Cutaway Shirt", "Camp Cutaway Shirt",
+    "Cuban Mandarin Cutaway Shirt", "Spread-Collar Camp-Collar Shirt",
+    "Button-Down Band-Collar Shirt", "Spread-Collar Cutaway-Collar Shirt",
+    "Button-Down Spread-Collar Shirt",
+  ]) {
     assert.equal(styleDirectorCandidateCollar(name, selectableCollars), null, name);
   }
   assert.equal(styleDirectorCandidateCollar("Cuban Resort Shirt", selectableCollars)?.versioned, "cuban_camp_collar");
@@ -507,6 +512,10 @@ test("ambiguous candidate descriptions force an explicit recommendation review",
   const cases: Array<[string, string[]]> = [
     ["Cuban Band-Collar Shirt", ["ambiguous_candidate_collar"]],
     ["Mandarin Cutaway Shirt", ["ambiguous_candidate_collar"]],
+    ["Spread-Collar Camp-Collar Shirt", ["ambiguous_candidate_collar"]],
+    ["Button-Down Band-Collar Shirt", ["ambiguous_candidate_collar"]],
+    ["Spread-Collar Cutaway-Collar Shirt", ["ambiguous_candidate_collar"]],
+    ["Button-Down Spread-Collar Shirt", ["ambiguous_candidate_collar"]],
     ["Half Sleeve Full Sleeve Shirt", ["ambiguous_candidate_sleeve"]],
     ["Cuban Cutaway Short-Sleeve Full-Sleeve Shirt",
       ["ambiguous_candidate_collar", "ambiguous_candidate_sleeve"]],
@@ -518,6 +527,7 @@ test("ambiguous candidate descriptions force an explicit recommendation review",
   }
   for (const name of [
     "Cuban Resort Shirt", "Mandarin Band-Collar Shirt", "Cutaway-Collar Dress Shirt",
+    "Spread-Collar Dress Shirt", "Oxford Button-Down Shirt",
     "Short-Sleeve Camp-Collar Shirt", "Full Sleeve Dress Shirt",
     "Campus Office Shirt", "Bandwidth Print Shirt", "Sleevelet Shirt",
   ]) assert.deepEqual(styleDirectorCandidateWordingIssues(name), [], name);
