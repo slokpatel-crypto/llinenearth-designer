@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateSleeve, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateSleeve, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -246,6 +246,7 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   const shirt = candidate.garments.shirt.toLowerCase();
   const trouser = candidate.garments.trouser.toLowerCase();
   const namedCollar = styleDirectorCandidateCollar(shirt, DESIGNER_STYLE_CHOICES.collar);
+  const specialCollar = styleDirectorCandidateSpecialCollar(shirt, DESIGNER_STYLE_CHOICES.collar);
   const ordinaryCollar = styleDirectorCandidateOrdinaryCollar(shirt);
   const trouserFront = styleDirectorCandidateTrouserFront(trouser);
 
@@ -264,6 +265,10 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
     // Keep the photographed label and canonical cutaway/band construction aligned.
     // Cutaway preview support is approximate and separately requires review.
     if (namedCollar.legacy) style.collar = namedCollar.legacy;
+  } else if (specialCollar?.legacy) {
+    // Only the real selectable legacy label may change the photographic
+    // selector. Specialty collars without a photo remain review-only.
+    style.collar = specialCollar.legacy;
   }
 
   if (trouser.includes("wide")) {
@@ -293,6 +298,7 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   const shirt=String(candidate.garments.shirt||"").toLowerCase();
   const trouser=String(candidate.garments.trouser||"").toLowerCase();
   const namedCollar=styleDirectorCandidateCollar(shirt,DESIGNER_STYLE_CHOICES.collar);
+  const specialCollar=styleDirectorCandidateSpecialCollar(shirt,DESIGNER_STYLE_CHOICES.collar);
   const namedSleeve=styleDirectorCandidateSleeve(shirt);
   const trouserFront=styleDirectorCandidateTrouserFront(trouser);
 
@@ -313,6 +319,11 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   else if(namedSleeve) spec.shirt.type="short_sleeve_shirt";
   else if(/\boxford\b/.test(shirt) || styleDirectorCandidateOrdinaryCollar(shirt)==="button_down") spec.shirt.type="casual_shirt";
   else spec.shirt.type="dress_shirt";
+
+  // Versioned construction is independent of available photographic options.
+  // The photo parity check keeps wing/tab/pin review-only if no real legacy
+  // label can show the exact selected construction.
+  if (specialCollar) spec.shirt.collar=specialCollar.versioned;
 
   // A named half/short sleeve must survive the legacy-to-versioned bridge.
   // The legacy photo has no sleeve-length selector, so the pure presentation
