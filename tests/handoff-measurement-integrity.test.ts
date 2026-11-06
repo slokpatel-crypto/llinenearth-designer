@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffMeasurements } from "../src/lib/designer/handoff-measurements.ts";
+import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffMeasurements } from "../src/lib/designer/handoff-measurements.ts";
 import { buildProductionHandoff, buildVerifiedProductionHandoff, verifyProductionHandoff } from "../src/lib/designer/production-handoff.ts";
 import { lockGarmentSpec } from "../src/lib/designer/design-lock.ts";
 import { buildTailorTechPackHtml, buildVerifiedTailorTechPackHtml, techPackFilename } from "../src/lib/designer/tech-pack.ts";
@@ -991,6 +991,86 @@ test("malformed construction checks cannot hide behind a ready status or verifie
     buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z"),
     /Unsafe tailor handoff construction checks/,
   );
+});
+
+test("creative visual QA and physical craft decisions cannot bypass tailor handoff review",async()=>{
+  const make=(reviewStatus:"pass"|"review"|null, evidence=true, semantic:"pass"|"review"="pass")=>{
+    const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+    revision.garmentSpec.creative={
+      conceptId:"SYNTHETIC-CREATIVE-REVIEW",
+      name:"Synthetic creative review only",
+      thesis:"No real garment or photographic evidence",
+      explorationClass:"experimental",
+      iteration:1,
+      researchUtilization:0,
+      treatments:[],
+      pattern:null,
+      research:[],
+      visualReview:reviewStatus===null?null:{
+        status:reviewStatus,heroVisibility:0,boundaryIntegrity:0,
+        protectedChange:0,evidenceAvailable:evidence,
+        semanticAvailable:true,semanticStatus:semantic,
+      },
+    } as NonNullable<typeof revision.garmentSpec.creative>;
+    return revision;
+  };
+  const noCreative=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  assert.deepEqual(auditHandoffCreativeReview(noCreative.garmentSpec.creative),{errors:[],missing:[]});
+  assert.equal(buildProductionHandoff(noCreative).status,"ready_for_tailor_review");
+
+  const internallyCoherent=make("pass");
+  // The "pass" fields are synthetic assertions in the recipe, not a
+  // physical fitting certificate or independent photo provenance.
+  assert.deepEqual(auditHandoffCreativeReview(internallyCoherent.garmentSpec.creative),{errors:[],missing:[]});
+  assert.equal(buildProductionHandoff(internallyCoherent).status,"ready_for_tailor_review");
+
+  for(const variant of [
+    make(null),make("review"),make("pass",false),make("pass",true,"review"),
+  ]) {
+    variant.garmentSpec.unresolved=[]; // simulate missing upstream warnings
+    const result=buildProductionHandoff(variant);
+    assert.equal(result.status,"review_required");
+    assert.ok(result.unresolved.some(item=>item.includes("Creative")));
+    const html=buildTailorTechPackHtml(result);
+    assert.match(html,/Unresolved before production/);
+    assert.match(html,/Creative/);
+    assert.match(html,/NO CUTTING AUTHORISATION/);
+  }
+
+  const craft=make("pass");
+  if(!craft.garmentSpec.creative) throw Error("Missing synthetic concept");
+  craft.garmentSpec.creative.craft={
+    version:"synthetic-craft-not-approved",checks:[],panels:[],decoration:{},
+  } as unknown as NonNullable<typeof craft.garmentSpec.creative.craft>;
+  const craftPacket=buildProductionHandoff(craft);
+  assert.equal(craftPacket.status,"review_required");
+  assert.ok(craftPacket.unresolved.some(item=>item.includes("independent pattern-maker")));
+  assert.match(buildTailorTechPackHtml(craftPacket),/independent pattern-maker/);
+
+  const tampered=buildProductionHandoff(make("pass"));
+  if(!tampered.construction.creative) throw Error("Missing printed creative");
+  tampered.construction.creative.visualReview=null;
+  assert.match(buildTailorTechPackHtml(tampered),/no recorded passing visual review/);
+  assert.match(buildTailorTechPackHtml(tampered),/review required/);
+
+  const invalid=make("pass");
+  if(!invalid.garmentSpec.creative) throw Error("Missing invalid concept");
+  invalid.garmentSpec.creative.visualReview={
+    status:"fabricated" as "pass",heroVisibility:0,boundaryIntegrity:0,
+    protectedChange:0,evidenceAvailable:true,semanticAvailable:true,semanticStatus:"pass",
+  };
+  assert.throws(()=>buildProductionHandoff(invalid),/Unsafe tailor handoff creative review/);
+
+  const signed=make(null);
+  const locked=await lockGarmentSpec(signed.garmentSpec,{
+    lockedAt:"2026-11-05T11:00:00.000Z",
+  });
+  const verified=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(await verifyProductionHandoff(verified,locked),true);
+  assert.equal(verified.status,"review_required");
+  const verifiedHtml=await buildVerifiedTailorTechPackHtml(verified,locked);
+  assert.match(verifiedHtml,/no recorded passing visual review/);
+  assert.match(verifiedHtml,/NO CUTTING AUTHORISATION/);
 });
 
 test("open construction findings are explicit unresolved instructions in every tech-pack path",async()=>{
