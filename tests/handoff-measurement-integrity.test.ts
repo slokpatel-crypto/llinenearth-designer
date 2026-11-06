@@ -993,6 +993,64 @@ test("malformed construction checks cannot hide behind a ready status or verifie
   );
 });
 
+test("open construction findings are explicit unresolved instructions in every tech-pack path",async()=>{
+  const shirt=[chest,shoulder,sleeve];
+  const trouser=[waist,seat,inseam,outseam];
+  const info=createRevision(shirt,trouser);
+  info.garmentSpec.constructionChecks=[{
+    id:"SYNTHETIC-FIT-INFO",severity:"info",
+    message:"No outstanding work for the synthetic test.",
+  }];
+  const infoPacket=buildProductionHandoff(info);
+  assert.equal(infoPacket.status,"ready_for_tailor_review");
+  assert.deepEqual(infoPacket.unresolved,[]);
+
+  for (const severity of ["review","warning"] as const) {
+    const revision=createRevision(shirt,trouser);
+    revision.garmentSpec.constructionChecks=[{
+      id:"SYNTHETIC-REVIEW-GATE",severity,
+      message:"Confirm armhole and shoulder block with the tailor.",
+    }];
+    // Simulate missing upstream unresolved list even when a blocking check
+    // remains in the exact locked recipe.
+    revision.garmentSpec.unresolved=[];
+    const packet=buildProductionHandoff(revision);
+    assert.equal(packet.status,"review_required",severity);
+    assert.ok(packet.unresolved.some(x=>x.includes("SYNTHETIC-REVIEW-GATE")
+      && x.includes("Confirm armhole and shoulder block")),severity);
+    const html=buildTailorTechPackHtml(packet);
+    assert.match(html,/Unresolved before production/);
+    assert.match(html,/Construction check SYNTHETIC-REVIEW-GATE/);
+    assert.match(html,/NO CUTTING AUTHORISATION/);
+  }
+
+  const stale=structuredClone(infoPacket);
+  stale.construction.checks=[{
+    id:"STALE-CHECK",severity:"warning",
+    message:"Review trouser balance before production.",
+  }];
+  const staleHtml=buildTailorTechPackHtml(stale);
+  assert.match(staleHtml,/Construction check STALE-CHECK/);
+  assert.match(staleHtml,/Review trouser balance before production/);
+  assert.match(staleHtml,/review required/);
+
+  const forgedSource=createRevision(shirt,trouser);
+  forgedSource.garmentSpec.constructionChecks=[{
+    id:"SIGNED-REVIEW",severity:"review",
+    message:"Confirm the physical sleeve pitch at fitting.",
+  }];
+  const locked=await lockGarmentSpec(forgedSource.garmentSpec,{
+    lockedAt:"2026-11-05T11:00:00.000Z",
+  });
+  const verified=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(await verifyProductionHandoff(verified,locked),true);
+  assert.equal(verified.status,"review_required");
+  assert.ok(verified.unresolved.some(x=>x.includes("SIGNED-REVIEW")));
+  const verifiedHtml=await buildVerifiedTailorTechPackHtml(verified,locked);
+  assert.match(verifiedHtml,/Construction check SIGNED-REVIEW/);
+  assert.match(verifiedHtml,/NO CUTTING AUTHORISATION/);
+});
+
 test("open construction checks fail closed even when the source incorrectly claims ready",()=>{
   for(const severity of ["review","warning"] as const){
     const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
