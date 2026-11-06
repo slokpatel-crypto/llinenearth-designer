@@ -1765,7 +1765,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
           <path d={template.trouserPath} className="trouserBoundary" />
         </>}
       </svg>}
-      <span className="newDesignerPhotoTag">{showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : showOriginal && ready ? (templateId==="wide" ? "SOURCE / WIDE TROUSER PHOTO" : "SOURCE / STUDIO PHOTO") : constructionMismatches.length > 0 ? "FRONT / STUDIO MODEL · CUTS APPROX." : "FRONT / STUDIO MODEL"}</span>
+      <span className="newDesignerPhotoTag">{error ? "PREVIEW UNAVAILABLE" : !ready ? "PREPARING SELECTED LOOK" : showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : showOriginal && ready ? (templateId==="wide" ? "SOURCE / WIDE TROUSER PHOTO" : "SOURCE / STUDIO PHOTO") : constructionMismatches.length > 0 ? "FRONT / STUDIO MODEL · CUTS APPROX." : "FRONT / STUDIO MODEL"}</span>
       {error && <span className="newDesignerPhotoError" role="alert">Preview could not load. Check the local fabric images.</span>}
       {!ready && !error && <span className="newDesignerPhotoLoading">Preparing your look…</span>}
     </div>
