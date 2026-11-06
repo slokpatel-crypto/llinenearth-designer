@@ -1735,7 +1735,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
 
   return <section className="newDesignerPhoto" aria-labelledby="designerPhotoTitle">
     <div className="newDesignerPhotoIntro newDesignerPhotoIntroCompact">
-      <span>LIVE PREVIEW</span>
+      <span>{showOriginal && ready && !showCreativeAi ? "SOURCE REFERENCE" : "LIVE PREVIEW"}</span>
       <h2 id="designerPhotoTitle">Your look.</h2>
     </div>
     {showOriginal && ready && !showCreativeAi && <div className="newDesignerPhotoConstructionNotice" data-photo-source-comparison={templateId==="wide"?"wide":"studio"} role="status" style={{margin:"10px 20px 12px",padding:"9px 12px",borderLeft:"3px solid #a65d43",background:"#faf6f0",color:"#514538",fontSize:"12px",lineHeight:1.5}}>
@@ -1770,8 +1770,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       {!ready && !error && <span className="newDesignerPhotoLoading">Preparing your look…</span>}
     </div>
     <div className="newDesignerPhotoSummary newDesignerPhotoSummaryCompact">
-      <div><span>SHIRT</span><strong>{shirt.name}</strong></div>
-      <div><span>TROUSER</span><strong>{pant.name}</strong></div>
+      <div><span>{showOriginal && !showCreativeAi ? "SELECTED SHIRT" : "SHIRT"}</span><strong>{shirt.name}</strong></div>
+      <div><span>{showOriginal && !showCreativeAi ? "SELECTED TROUSER" : "TROUSER"}</span><strong>{pant.name}</strong></div>
       <div className="newDesignerPhotoActions newDesignerPhotoActionsCompact">
         {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready || showOriginal}>Lock final design</button>}
         {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading || showOriginal}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</button>}
