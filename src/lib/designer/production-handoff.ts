@@ -213,13 +213,13 @@ export async function verifyProductionHandoff(
     if(!handoff || typeof handoff!=="object" || Array.isArray(handoff)
         || !revision || typeof revision!=="object" || Array.isArray(revision)) return false;
     if(!await verifyLockedDesignRevision(revision)) return false;
-  if(!hasCanonicalLockedRevisionIdentity(revision)) return false;
-  const lockedTime=new Date(revision.lockedAt).getTime();
-  const issuedTime=new Date(handoff.generatedAt).getTime();
-  if(!Number.isFinite(lockedTime)||!Number.isFinite(issuedTime)||issuedTime<lockedTime) return false;
-  if(handoff.version!==PRODUCTION_HANDOFF_VERSION
-     ||handoff.recipeHash!==revision.recipeHash
-     ||handoff.designRevisionId!==revision.revisionId) return false;
+    if(!hasCanonicalLockedRevisionIdentity(revision)) return false;
+    const lockedTime=new Date(revision.lockedAt).getTime();
+    const issuedTime=new Date(handoff.generatedAt).getTime();
+    if(!Number.isFinite(lockedTime)||!Number.isFinite(issuedTime)||issuedTime<lockedTime) return false;
+    if(handoff.version!==PRODUCTION_HANDOFF_VERSION
+       ||handoff.recipeHash!==revision.recipeHash
+       ||handoff.designRevisionId!==revision.revisionId) return false;
     const expected=buildProductionHandoff(revision,handoff.generatedAt);
     // Canonical comparisons do not rely on JS object insertion order and
     // include all 2D photo-vs-cut caveats, source and customer measurements.
