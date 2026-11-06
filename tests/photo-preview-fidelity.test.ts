@@ -295,7 +295,8 @@ test("preview status does not claim a rendered photograph while pending or faile
 
 test("source comparison caption never describes a raw photograph as the rendered garment", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.ok(source.includes('!showCreativeAi && ready && <p className="newDesignerPhotoApproximation" data-photo-caption={showOriginal?"source":"instant"}'));
+  assert.ok(source.includes('!showCreativeAi && ready && <p className="newDesignerPhotoApproximation" style={{fontSize:"12px"'));
+  assert.ok(source.includes('data-photo-caption={showOriginal?"source":"instant"}'));
   assert.ok(source.includes('<strong>Original source photograph</strong>'));
   assert.ok(source.includes('Unchanged studio reference, not the selected garment fabrics or construction.'));
   assert.ok(source.includes('Choose Show design to return to the selected look.'));
@@ -310,4 +311,17 @@ test("source reference header and selected-fabric labels are not mistaken for ph
   assert.ok(source.includes('showOriginal && !showCreativeAi ? "SELECTED SHIRT" : "SHIRT"'));
   assert.ok(source.includes('showOriginal && !showCreativeAi ? "SELECTED TROUSER" : "TROUSER"'));
   assert.ok(source.includes('Original source photo, not your selected design'));
+});
+
+test("physical scale and fit disclosure stays readable above the photographic stage", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const preview=source.lastIndexOf('return <section className="newDesignerPhoto"');
+  const caption=source.indexOf('data-photo-caption={showOriginal?"source":"instant"}',preview);
+  const stage=source.indexOf('    <div className={`newDesignerPhotoStage',preview);
+  const summary=source.indexOf('    <div className="newDesignerPhotoSummary',preview);
+  assert.ok(caption>preview && caption<stage && stage<summary,
+    "physical provenance must be explained before the image, not below a long photo");
+  assert.ok(source.includes('style={{fontSize:"12px",lineHeight:1.6'));
+  assert.ok(source.includes('overflowWrap:"anywhere"'));
+  assert.ok(source.includes("Fit and drape still require physical verification."));
 });
