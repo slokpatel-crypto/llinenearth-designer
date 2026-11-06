@@ -1771,8 +1771,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       {!ready && !error && <span className="newDesignerPhotoLoading">Preparing your look…</span>}
     </div>
     <div className="newDesignerPhotoSummary newDesignerPhotoSummaryCompact">
-      <div><span>{showOriginal && !showCreativeAi ? "SELECTED SHIRT" : "SHIRT"}</span><strong>{shirt.name}</strong></div>
-      <div><span>{showOriginal && !showCreativeAi ? "SELECTED TROUSER" : "TROUSER"}</span><strong>{pant.name}</strong></div>
+      <div><span><b style={{fontSize:"10px",fontWeight:650}}>{showOriginal && !showCreativeAi ? "SELECTED SHIRT" : "SHIRT"}</b></span><strong title={shirt.name} style={{whiteSpace:"normal",overflow:"visible",textOverflow:"clip"}}><b style={{fontSize:"13px",fontWeight:500,lineHeight:1.4,overflowWrap:"anywhere"}}>{shirt.name}</b></strong></div>
+      <div><span><b style={{fontSize:"10px",fontWeight:650}}>{showOriginal && !showCreativeAi ? "SELECTED TROUSER" : "TROUSER"}</b></span><strong title={pant.name} style={{whiteSpace:"normal",overflow:"visible",textOverflow:"clip"}}><b style={{fontSize:"13px",fontWeight:500,lineHeight:1.4,overflowWrap:"anywhere"}}>{pant.name}</b></strong></div>
       <div className="newDesignerPhotoActions newDesignerPhotoActionsCompact">
         {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready || showOriginal}>Lock final design</button>}
         {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading || showOriginal}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</button>}
