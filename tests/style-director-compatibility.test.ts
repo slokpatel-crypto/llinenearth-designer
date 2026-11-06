@@ -5,6 +5,7 @@ import {
   styleDirectorCandidateCollar,
   styleDirectorCandidateOrdinaryCollar,
   styleDirectorCandidateSleeve,
+  styleDirectorCandidateSleeveIssues,
   styleDirectorCandidateFrontConstructionIssues,
   styleDirectorCandidateTrouserFront,
   styleDirectorCandidateWordingIssues,
@@ -632,6 +633,52 @@ test("advanced collar photo matching excludes ordinary-collar conflicts without 
       legacy: null, versioned,
     }, "unsupported combined photo labels must not certify a locked collar");
   }
+});
+
+test("negated sleeve descriptions never select a prohibited construction", () => {
+  const negativeCases = [
+    ["No Short Sleeves", "full_sleeve", "half_sleeve"],
+    ["Without Half-Sleeved Shirt", "full_sleeve", "half_sleeve"],
+    ["Do Not Wear Short Sleeves", "full_sleeve", "half_sleeve"],
+    ["Avoid Short Sleeves", "full_sleeve", "half_sleeve"],
+    ["Short Sleeves Are Forbidden", "full_sleeve", "half_sleeve"],
+    ["Long Sleeves Not Allowed", "half_sleeve", "full_sleeve"],
+    ["Full Sleeves Must Not Be Worn", "half_sleeve", "full_sleeve"],
+    ["Never Full Sleeves", "half_sleeve", "full_sleeve"],
+  ] as const;
+  for (const [candidate, allowedSleeve, prohibitedSleeve] of negativeCases) {
+    assert.equal(styleDirectorCandidateSleeve(candidate), null,
+      "negative-only wording cannot create positive half-sleeve construction: " + candidate);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(candidate), [], candidate);
+    const allowed = spec({ sleeve: allowedSleeve });
+    const before = JSON.stringify(allowed);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, allowed.shirt), [], candidate);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, { sleeve: prohibitedSleeve })
+      .map(issue => issue.code), ["candidate_sleeve_mismatch"], candidate);
+    assert.equal(JSON.stringify(allowed), before, "sleeve review must not change locked options");
+  }
+  assert.deepEqual(styleDirectorCandidateSleeve("No Full Sleeves; Short Sleeves"),
+    { sleeve: "half_sleeve", cuff: "open_short_hem_cuff" },
+    "prohibiting long sleeves must not cancel an explicit short-sleeve request");
+  assert.deepEqual(styleDirectorCandidateSleeveIssues("No Full Sleeves; Short Sleeves",
+    { sleeve: "half_sleeve" }), []);
+  assert.deepEqual(styleDirectorCandidateSleeveIssues("No Short Sleeves; Long Sleeves",
+    { sleeve: "full_sleeve" }), []);
+  for (const contradiction of [
+    "No Short Sleeves; Short Sleeves Required",
+    "Full Sleeves Forbidden; Full Sleeves Requested",
+    "No Short Sleeves; No Long Sleeves",
+    "Short Sleeves and Long Sleeves",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateWordingIssues(contradiction).map(issue => issue.code),
+      ["ambiguous_candidate_sleeve"], contradiction);
+    assert.equal(styleDirectorCandidateSleeve(contradiction), null);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(contradiction, { sleeve: "full_sleeve" }), [],
+      "contradictions must be handled by the ambiguity gate without silently choosing a sleeve");
+  }
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("...styleDirectorCandidateSleeveIssues(candidate.garments.shirt, styleSpec.shirt)"),
+    "actual model recommendations must enforce sleeve prohibitions against versioned IDs");
 });
 
 test("contradictory sleeve length descriptions do not select a half-sleeve construction", () => {
