@@ -150,5 +150,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Verify latest matching-head full CI, non-3D, build, browser and DB checks before claiming completion.
 - [ ] Actual customer wrist/body readings, confirmed cuff sizing and ease, measured garment fitting, approved pattern/material and tailor signoff are still unavailable. No merge or deployment.
 
+## Pattern-block adjustment review integrity (2026-11-06)
+- [x] Inspected `block-strategy.ts` and `garment-spec.ts`: actual pattern block adjustments can carry `review`/`warning` findings, but the source's main `constructionChecks` status gate does not necessarily include them. A source flagged ready with an open adjustment could previously pass the handoff and unsigned tech-pack audits without an unresolved block note.
+- [x] New isolated `auditHandoffBlockAdjustments` requires a valid list of adjustment records with recognised garment, ID, area, severity and message. It preserves the exact review/warning instructions as human unresolved items; malformed/unknown severity fails closed. An info-only block does not lower software readiness.
+- [x] Both `buildProductionHandoff` and `buildTailorTechPackHtml` enforce this independent audit. Synthetic regression covers info, review, warning, stale printable packet, invalid severity, malformed adjustments and a SHA256-verified unsigned review-only packet. No invented physical block fit or cutting approval.
+- [ ] Record exact-head Full CI, Non-3D browser, quality, unit, engine, preview, release, build, and disposable DB checks. Older successful steps do not certify the new SHA.
+- [ ] Actual pattern and physical fit review, measured seam allowances and fabric, customer body measurements and tailor signoff remain external. Do not merge, deploy or approve cutting.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
