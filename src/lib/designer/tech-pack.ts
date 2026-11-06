@@ -1,7 +1,7 @@
 import type { ProductionHandoff } from "@/lib/designer/production-handoff";
 import type { LockedDesignRevision } from "./design-lock.ts";
 import { verifyProductionHandoff } from "./production-handoff.ts";
-import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
+import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffFitProvenance, auditHandoffHumanNotes, auditHandoffMeasurements } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
 export const TECH_PACK_VERSION="linen-earth-tech-pack-v1" as const;
@@ -38,6 +38,11 @@ function list(items:string[]){
 }
 
 function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSource:boolean){
+  const unresolvedAudit=auditHandoffHumanNotes(handoff.unresolved,"unresolved");
+  const caveatAudit=auditHandoffHumanNotes(handoff.caveats,"caveats");
+  if(unresolvedAudit.errors.length || caveatAudit.errors.length) {
+    throw new Error(`Unsafe tailor tech pack review notes: ${[...unresolvedAudit.errors,...caveatAudit.errors].join(" ")}`);
+  }
   const shirt=handoff.construction.shirt;
   const trouser=handoff.construction.trouser;
   const audit=auditHandoffMeasurements({
