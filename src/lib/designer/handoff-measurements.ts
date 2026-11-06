@@ -54,8 +54,9 @@ const LANDMARK_BASIS = {
  */
 export function auditHandoffConstructionChecks(input:unknown): HandoffMeasurementAudit {
   const errors:string[]=[];
+  const missing:string[]=[];
   if (!Array.isArray(input)) {
-    return { errors:["Construction checks must be an array."], missing:[] };
+    return { errors:["Construction checks must be an array."], missing };
   }
   for (const [index, item] of input.entries()) {
     const at=`Construction check #${index+1}`;
@@ -70,8 +71,17 @@ export function auditHandoffConstructionChecks(input:unknown): HandoffMeasuremen
       errors.push(`${at} must have a nonempty bounded message.`);
     if (check.severity!=="info" && check.severity!=="review" && check.severity!=="warning")
       errors.push(`${at} has an unrecognized severity.`);
+    // Even when status is review_required, the handoff's explicit
+    // "Unresolved before production" must not say "None recorded" while
+    // an open fit/construction check exists. Preserve its stable ID and
+    // original instruction, without treating that instruction as approval.
+    if ((check.severity==="review" || check.severity==="warning")
+        && typeof check.id==="string" && check.id.trim()
+        && typeof check.message==="string" && check.message.trim()) {
+      missing.push(`Construction check ${check.id}: ${check.message.trim()} — tailor must review before production.`);
+    }
   }
-  return { errors, missing:[] };
+  return { errors, missing };
 }
 
 /**
