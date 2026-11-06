@@ -121,3 +121,49 @@ test("negative, optional and mixed collar variant phrases never force a versione
   assert.equal(styleDirectorCandidateVariantCollar("Spread Collar Shirt"), null);
   assert.equal(styleDirectorCandidateVariantCollar("Button-Down Collar Shirt"), null);
 });
+
+test("specific variant prohibition leaves the ordinary collar in the same family available", () => {
+  for (const [ban, forbiddenId, ordinaryId] of [
+    ["No English Spread Collar", "english_spread_collar", "spread_collar"],
+    ["Avoid Soft Button-Down Collar", "soft_button_down", "button_down_collar"],
+    ["English Spread Collar is forbidden", "english_spread_collar", "spread_collar"],
+    ["Soft Button-Down Collar is prohibited", "soft_button_down", "button_down_collar"],
+  ] as const) {
+    const locked = { collar: ordinaryId };
+    const before = JSON.stringify(locked);
+    assert.deepEqual(issueCodes(ban, forbiddenId), ["candidate_collar_mismatch"], ban);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(ban, locked), [], ban);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(ban), [], ban);
+    assert.equal(JSON.stringify(locked), before, "variant prohibitions cannot rewrite an ordinary collar");
+  }
+});
+
+test("whole-family bans still exclude all variants; generic requests can coexist with variant bans", () => {
+  for (const [name, ordinaryId, variantId] of [
+    ["No Spread Collar", "spread_collar", "english_spread_collar"],
+    ["Without Button-Down Collar", "button_down_collar", "soft_button_down"],
+  ] as const) {
+    for (const id of [ordinaryId, variantId]) {
+      assert.deepEqual(issueCodes(name, id), ["candidate_collar_mismatch"], name + "/" + id);
+    }
+  }
+  for (const [name, ordinaryId, variantId] of [
+    ["No English Spread Collar; Spread Collar Shirt", "spread_collar", "english_spread_collar"],
+    ["Avoid Soft Button-Down Collar; Button-Down Collar Shirt", "button_down_collar", "soft_button_down"],
+  ] as const) {
+    assert.deepEqual(styleDirectorCandidateWordingIssues(name), [], name);
+    assert.deepEqual(issueCodes(name, ordinaryId), [], name);
+    assert.deepEqual(issueCodes(name, variantId), ["candidate_collar_mismatch"], name);
+    assert.equal(styleDirectorCandidateVariantCollar(name), null, name);
+    assert.deepEqual(issueCodes(name, ordinaryId), issueCodes(name, ordinaryId),
+      "rule output must be deterministic");
+  }
+  for (const name of [
+    "No Spread Collar; English Spread Collar Shirt",
+    "No Soft Button-Down Collar; Soft Button-Down Collar Shirt",
+  ]) {
+    assert.equal(styleDirectorCandidateVariantCollar(name), null, name);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(name).map(issue => issue.code),
+      ["ambiguous_candidate_collar"], name);
+  }
+});
