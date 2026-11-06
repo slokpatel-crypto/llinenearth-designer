@@ -360,3 +360,32 @@ test("unavailable duplicate IDs do not shadow eligible physical stock", async ()
   assert.equal(JSON.stringify(catalogue), before,
     "duplicate availability filtering must not mutate input");
 });
+
+test("garment-ineligible duplicate rows cannot shadow eligible fabric IDs", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const shirt = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("shirt"));
+  const pant = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("trouser"));
+  assert.ok(shirt && pant);
+  const catalogue = [
+    { ...shirt, suitableFor: ["trouser"] as typeof shirt.suitableFor },
+    { ...pant, suitableFor: ["shirt"] as typeof pant.suitableFor },
+    shirt,
+    pant,
+  ];
+  const before = JSON.stringify(catalogue);
+  const common = {
+    occasion: "Travel" as const, mood: "Relaxed" as const,
+    time: "Day" as const, climate: "Hot" as const,
+    colorDirection: "Surprise me" as const,
+  };
+  const shirtLooks = createStyleDirectorLooks({ ...common, garment: "shirt" }, catalogue);
+  const pantLooks = createStyleDirectorLooks({ ...common, garment: "trouser" }, catalogue);
+  assert.equal(shirtLooks.filter(look => look.fabric.id === shirt.id).length, 1,
+    "an unsuitable earlier row must not suppress eligible shirting");
+  assert.equal(pantLooks.filter(look => look.fabric.id === pant.id).length, 1,
+    "an unsuitable earlier row must not suppress eligible trouser fabric");
+  assert.equal(JSON.stringify(catalogue), before,
+    "garment eligibility and duplicate handling must preserve caller-owned data");
+});
