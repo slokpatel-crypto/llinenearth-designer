@@ -139,6 +139,7 @@ async function run(){
     assert.equal(await page.locator('[data-photo-construction-mismatch="true"]').count(),0);
     assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/SOURCE \/ STUDIO PHOTO/);
     assert.match(await page.locator(".newDesignerPhotoIntroCompact > span").textContent(),/SOURCE REFERENCE/);
+    assert.equal(await page.locator("#designerPhotoTitle").textContent(),"Studio source.");
     assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(1) > span").textContent(),/SELECTED SHIRT/);
     assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/SELECTED TROUSER/);
     const compareCaption=page.locator('[data-photo-caption="source"]');
@@ -153,6 +154,7 @@ async function run(){
     await page.getByRole("button",{name:"Show design",exact:true}).click();
     assert.equal(await initialSourceNote.count(),0);
     assert.match(await page.locator(".newDesignerPhotoIntroCompact > span").textContent(),/LIVE PREVIEW/);
+    assert.equal(await page.locator("#designerPhotoTitle").textContent(),"Your look.");
     assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(1) > span").textContent(),/^SHIRT$/);
     assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/^TROUSER$/);
     assert.match(await page.locator('[data-photo-caption="instant"]').textContent(),/Instant preview/);
@@ -428,6 +430,7 @@ async function run(){
     assert.match(await original.getAttribute("alt"),/separate pleated studio source photograph/);
     assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/SOURCE \/ WIDE TROUSER PHOTO/);
     assert.match(await page.locator(".newDesignerPhotoIntroCompact > span").textContent(),/SOURCE REFERENCE/);
+    assert.equal(await page.locator("#designerPhotoTitle").textContent(),"Studio source.");
     assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(1) > span").textContent(),/SELECTED SHIRT/);
     assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/SELECTED TROUSER/);
     const wideSourceNotice=page.locator('.newDesignerPhoto > [data-photo-source-comparison="wide"]');
@@ -450,6 +453,7 @@ async function run(){
     summary.viewports[summary.viewports.length-1].wideSourceComparisonVerified=true;
     summary.viewports[summary.viewports.length-1].sourceCaptionModeVerified=true;
     summary.viewports[summary.viewports.length-1].sourceHeaderAndFabricLabelsVerified=true;
+    summary.viewports[summary.viewports.length-1].sourceHeadingModeVerified=true;
     summary.viewports[summary.viewports.length-1].sourceCanvasAccessibilityIsolated=true;
     summary.viewports[summary.viewports.length-1].boundaryQaSourceIsolationVerified=true;
     summary.viewports[summary.viewports.length-1].boundaryQaZoomAligned=true;
