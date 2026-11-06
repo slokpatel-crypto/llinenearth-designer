@@ -365,6 +365,8 @@ async function run(){
     await original.waitFor();
     await page.locator("#designer-shirt").selectOption(unseen);
     await page.locator('.newDesignerPhotoStage[data-ready="false"]').waitFor();
+    assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/PREPARING SELECTED LOOK/,
+      "pending swatch must not retain the previous photographed-ready badge");
     assert.equal(await page.locator(".newDesignerPhotoStage.inspectFit").count(),0,
       "a new look must not inherit the previous garment's Zoom Fit crop");
     assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0,
@@ -386,6 +388,7 @@ async function run(){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     summary.viewports[summary.viewports.length-1].rapidFabricSwitchStable=true;
     summary.viewports[summary.viewports.length-1].newLookStartsFullView=true;
+    summary.viewports[summary.viewports.length-1].pendingPreviewStatusTruthful=true;
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`rapid-fabric-switch-settled-${width}.png`)});
     await context.close();
   }
