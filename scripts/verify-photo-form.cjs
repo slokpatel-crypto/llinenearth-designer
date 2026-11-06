@@ -121,7 +121,7 @@ async function run(){
     // complete card. Crop from the *actual full-card screenshot* and reject
     // empty evidence so a green DOM test cannot hide a broken screenshot.
     const photoCard=page.locator(".newDesignerPhoto");
-    const cardBounds=await photoCard.boundingBox(),summaryBounds=await fabricSummary.boundingBox();
+    const cardBounds=await photoCard.boundingBox(),summaryBounds=await fabricSummary.boundingBox(),actionRowBox=await page.locator(".newDesignerPhotoActionsCompact").boundingBox();
     assert.ok(cardBounds && summaryBounds && cardBounds.width>0 && cardBounds.height>0);
     const cardPng=await photoCard.screenshot({path:path.join(out,`dark-tucked-${width}.png`)});
     const cardMeta=await sharp(cardPng).metadata();
@@ -144,7 +144,6 @@ async function run(){
     }
     assert.ok(visibleInk>100,"fabric summary screenshot must actually contain legible text and controls");
     fs.writeFileSync(path.join(out,`fabric-summary-readable-${width}.png`),summaryPng);
-    const actionRowBox=await page.locator(".newDesignerPhotoActionsCompact").boundingBox();
     assert.ok(actionRowBox && actionRowBox.width>0 && actionRowBox.height>=44);
     const actionLeft=Math.max(0,Math.floor((actionRowBox.x-cardBounds.x)*scaleX));
     const actionTop=Math.max(0,Math.floor((actionRowBox.y-cardBounds.y)*scaleY));
