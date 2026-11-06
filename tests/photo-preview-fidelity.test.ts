@@ -299,3 +299,12 @@ test("source comparison caption never describes a raw photograph as the rendered
   assert.ok(source.includes('<strong>Instant preview</strong> · Studio model;'));
   assert.equal((source.match(/<p className="newDesignerPhotoApproximation"/g)||[]).length,1);
 });
+
+
+test("source reference header and selected-fabric labels are not mistaken for photographed clothes", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.ok(source.includes('showOriginal && ready && !showCreativeAi ? "SOURCE REFERENCE" : "LIVE PREVIEW"'));
+  assert.ok(source.includes('showOriginal && !showCreativeAi ? "SELECTED SHIRT" : "SHIRT"'));
+  assert.ok(source.includes('showOriginal && !showCreativeAi ? "SELECTED TROUSER" : "TROUSER"'));
+  assert.ok(source.includes('Original source photo, not your selected design'));
+});
