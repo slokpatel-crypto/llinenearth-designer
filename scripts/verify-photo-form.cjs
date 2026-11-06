@@ -283,6 +283,20 @@ async function run(){
     await page.getByRole("button",{name:"Boundary QA",exact:true}).click();
     assert.equal(await page.locator(".newDesignerBoundaryQa").count(),1,
       "boundary QA must annotate the live deterministic selected-design preview");
+    // Zoom Fit changes Canvas scale; the diagnostic outline must follow the
+    // exact same affine transform or the on-screen contours point at wrong seams.
+    await page.getByRole("button",{name:"Zoom fit",exact:true}).click();
+    await page.waitForTimeout(400);
+    const zoomTransforms=await page.locator(".newDesignerPhotoStage").evaluate(stage=>{
+      const photo=stage.querySelector("canvas"),boundary=stage.querySelector("svg.newDesignerBoundaryQa");
+      const c=getComputedStyle(photo),b=getComputedStyle(boundary);
+      return {canvas:c.transform,boundary:b.transform,canvasOrigin:c.transformOrigin,boundaryOrigin:b.transformOrigin};
+    });
+    assert.notEqual(zoomTransforms.canvas,"none");
+    assert.equal(zoomTransforms.boundary,zoomTransforms.canvas,"Zoom Fit outlines must follow photographed garment scale");
+    assert.equal(zoomTransforms.boundaryOrigin,zoomTransforms.canvasOrigin,"Zoom Fit origins must match source photo");
+    await page.getByRole("button",{name:"Full view",exact:true}).click();
+    await page.waitForTimeout(400);
     await page.getByRole("button",{name:"Compare",exact:true}).click();
     assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0,
       "source Compare must never inherit selected-preview garment boundary geometry");
@@ -315,6 +329,7 @@ async function run(){
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`wide-source-compared-${width}.png`)});
     summary.viewports[summary.viewports.length-1].wideSourceComparisonVerified=true;
     summary.viewports[summary.viewports.length-1].boundaryQaSourceIsolationVerified=true;
+    summary.viewports[summary.viewports.length-1].boundaryQaZoomAligned=true;
     await page.getByRole("button",{name:"Show design",exact:true}).click();
     assert.equal(await original.count(),0);
     assert.equal(await page.locator(".newDesignerBoundaryQa").count(),1,
