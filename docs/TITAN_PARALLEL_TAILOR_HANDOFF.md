@@ -129,5 +129,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Exact-head Full CI, Non-3D QA, build, browser and DB checks must be recorded before declaring final software verification. Earlier successful runs don't certify new code.
 - [ ] A matching version string proves only internal provenance coherence, not the validity of actual physical ease, approved fabric, pattern dimensions or human tailor signoff. Never merge or deploy or authorize cutting.
 
+## Final ease-range upper-bound parity (2026-11-06)
+- [x] Confirmed `normalizeHouseEaseCalibrationDraft` rejects calibrated ease ranges with `max > 80` cm, but previously the final `auditHandoffMeasurements` only rejected negative/reversed/nonfinite values and could accept coherent 81+ cm ranges.
+- [x] The dedicated measurement-export audit now enforces the same 80 cm maximum in addition to the existing non-negative/min-max checks. Invalid source ranges fail in both production handoff creation and independent unverified tech-pack rendering; no new physical fitting tolerances are asserted.
+- [x] Added synthetic-only regression for a coherent 81–82 cm but unsupported ease range, altered printable source, canonical positive control and a supported 79–80 cm boundary value. The 80 cm boundary is **software validation only**, not a recommendation for tailoring.
+- [ ] Confirm matching-head Full CI, non-3D, build, browser and DB gates before any software signoff. Prior green checks apply to prior commits only.
+- [ ] Actual body dimensions, garment samples, tailor-approved pattern, physical cloth calibration and human review still unavailable. No merge, deployment or cutting authorization.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
