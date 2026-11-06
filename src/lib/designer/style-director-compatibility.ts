@@ -674,6 +674,7 @@ export type DirectorConstructionIssue = {
     "candidate_cuff_mismatch" | "ambiguous_candidate_cuff" | "unverified_cuff_photo" |
     "candidate_shirt_fit_mismatch" | "ambiguous_candidate_shirt_fit" | "unverified_shirt_fit_photo" |
     "candidate_trouser_fit_mismatch" | "ambiguous_candidate_trouser_fit" | "unverified_trouser_fit_photo" |
+    "wide_leg_tapered_fit_mismatch" | "pleated_fit_flat_front_mismatch" |
     "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
   explanation: string;
 };
@@ -859,6 +860,35 @@ export function styleDirectorCandidateFrontConstructionIssues(
 }
 
 /**
+ * Only unambiguous cross-field trouser contradictions require review.
+ * Tapered leg fits cannot describe the same locked wide-leg drape, and the
+ * "Pleated Straight" fit cannot promise pleats alongside a flat-front ID.
+ * Other fit/type pairings remain possible, including wide-leg pleated
+ * trousers, loose flat-front trousers and tapered cropped silhouettes.
+ * Never infer physical circumferences or silently replace locked IDs.
+ */
+export function styleDirectorSilhouetteFitIssues(
+  pant: Pick<StyleSpecV2["pant"], "type" | "fit" | "pleat">,
+): DirectorConstructionIssue[] {
+  const issues: DirectorConstructionIssue[] = [];
+  if (pant.type === "wide_leg_relaxed_drape" &&
+      (pant.fit === "slim_tapered" || pant.fit === "regular_tapered" ||
+       pant.fit === "korean_tapered")) {
+    issues.push({
+      code: "wide_leg_tapered_fit_mismatch",
+      explanation: "The locked trouser claims a wide-leg drape but specifies a tapered fit; confirm the intended leg shape before tailoring.",
+    });
+  }
+  if (pant.fit === "pleated_straight" && pant.pleat === "flat_front") {
+    issues.push({
+      code: "pleated_fit_flat_front_mismatch",
+      explanation: "The locked trouser specifies a Pleated Straight fit with a flat-front pleat ID; confirm the actual front construction.",
+    });
+  }
+  return issues;
+}
+
+/**
  * Non-destructive compatibility checks on versioned construction IDs.
  * These are review signals, not tailor approval or automatic changes to a
  * customer's locked selection. No physical measurements are inferred.
@@ -970,6 +1000,7 @@ export function styleDirectorConstructionIssues(
       explanation: "The proposed flat-front trouser includes pleats; confirm the actual front construction.",
     });
   }
+  issues.push(...styleDirectorSilhouetteFitIssues(pant));
   if (pant.type === "cropped_ankle" && pant.hem !== "cropped_above_ankle_hem") {
     issues.push({
       code: "cropped_type_hem_mismatch",
