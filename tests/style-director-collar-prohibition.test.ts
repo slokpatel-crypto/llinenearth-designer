@@ -21,7 +21,9 @@ const issueCodes = (candidate: string, savedId: string) =>
 test("forbidden collar wording cannot silently select that photographed or versioned collar", () => {
   const cases = [
     ["No Camp-Collar Shirt", "cuban_camp_collar", "spread_collar"],
+    ["No Cuban / Camp Collar", "cuban_camp_collar", "spread_collar"],
     ["Without Mandarin Band Collar", "mandarin_band_collar", "spread_collar"],
+    ["Avoid Mandarin / Band Collar", "mandarin_band_collar", "spread_collar"],
     ["Avoid Spread-Collar Shirt", "spread_collar", "button_down_collar"],
     ["Club collar is forbidden", "club_collar", "spread_collar"],
     ["Tab collar not allowed", "tab_collar", "spread_collar"],
