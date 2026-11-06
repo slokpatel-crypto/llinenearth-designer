@@ -689,6 +689,43 @@ test("proposed explicit tucked and untucked intent is validated against locked I
     "worded tuck instructions must reach actual locked recommendation review");
 });
 
+test("negated shirt-tuck instructions cannot silently select the opposite wear", () => {
+  const cases = [
+    ["Not Tucked Shirt", "untucked"],
+    ["Never Tucked Shirt", "untucked"],
+    ["Avoid Tucked Shirt", "untucked"],
+    ["Do Not Tuck Shirt", "untucked"],
+    ["Don't Tuck Shirt", "untucked"],
+    ["No Tuck Shirt", "untucked"],
+    ["Not Untucked Shirt", "tucked"],
+    ["Avoid Untucked Shirt", "tucked"],
+    ["Not Tucked and Untucked Shirt", "untucked"],
+  ] as const;
+  for (const [name, desired] of cases) {
+    const proposed = styleDirectorWearForCandidate("Smart-Casual", name,
+      desired === "tucked" ? "Untucked" : "Tucked");
+    assert.equal(proposed.toLowerCase(), desired, name);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(name), [], name);
+    const selected = spec({ wear: desired });
+    const snapshot = JSON.stringify(selected);
+    assert.deepEqual(styleDirectorCandidateWearIssues(name, selected.shirt), [], name);
+    const opposite = desired === "tucked" ? "untucked" : "tucked";
+    assert.deepEqual(styleDirectorCandidateWearIssues(name, { wear: opposite })
+      .map(issue => issue.code), ["candidate_shirt_wear_mismatch"], name);
+    assert.equal(JSON.stringify(selected), snapshot, "negated wear parsing cannot rewrite saved IDs");
+  }
+  for (const phrase of [
+    "Not Tucked but Tucked Shirt",
+    "Do Not Tuck and Tucked Shirt",
+    "Not Untucked and Untucked Shirt",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateWordingIssues(phrase).map(issue => issue.code),
+      ["ambiguous_candidate_wear"], phrase);
+    assert.deepEqual(styleDirectorCandidateWearIssues(phrase, { wear: "tucked" }), [],
+      "mixed negated/affirmative requests need review rather than guessing a locked wear");
+  }
+});
+
 test("ambiguous candidate descriptions force an explicit recommendation review", () => {
   const cases: Array<[string, string[]]> = [
     ["Cuban Band-Collar Shirt", ["ambiguous_candidate_collar"]],
