@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorCandidateCollar, styleDirectorCandidateSleeve, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWordingIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorCandidateSleeve, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -358,6 +358,7 @@ function buildRealModelSpec(
   const styleSpec=styleSpecForDirectorCandidate(candidate,best.style);
   const constructionIssues=[
     ...styleDirectorCandidateWordingIssues(candidate.garments.shirt, candidate.garments.trouser),
+    ...styleDirectorCandidateWearIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidateFrontConstructionIssues(candidate.garments.trouser, styleSpec.pant),
     ...styleDirectorConstructionIssues(styleSpec,occasion),
     ...styleDirectorPresentationIssues(best.style,styleSpec),
