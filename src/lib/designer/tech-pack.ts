@@ -1,7 +1,7 @@
 import type { ProductionHandoff } from "@/lib/designer/production-handoff";
 import type { LockedDesignRevision } from "./design-lock.ts";
 import { verifyProductionHandoff } from "./production-handoff.ts";
-import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
+import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
 export const TECH_PACK_VERSION="linen-earth-tech-pack-v1" as const;
@@ -63,6 +63,10 @@ function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSourc
   ] : validStyleSpec ? [] : [
     "Exact StyleSpec v2 garment construction is absent; tailor must verify legacy options.",
   ];
+  const creativeAudit=auditHandoffCreativeReview(handoff.construction.creative);
+  if(creativeAudit.errors.length) {
+    throw new Error(`Unsafe tailor tech pack creative review: ${creativeAudit.errors.join(" ")}`);
+  }
   const blockAudit=auditHandoffBlockAdjustments(handoff.construction.blockStrategy);
   if(blockAudit.errors.length) {
     throw new Error(`Unsafe tailor tech pack block adjustments: ${blockAudit.errors.join(" ")}`);
@@ -72,7 +76,7 @@ function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSourc
     throw new Error(`Unsafe tailor tech pack construction checks: ${checkAudit.errors.join(" ")}`);
   }
   const outstanding=[...new Set([...handoff.unresolved,...audit.missing,...fitAudit.missing,
-    ...blockAudit.missing,...checkAudit.missing,...missingConstruction])];
+    ...blockAudit.missing,...checkAudit.missing,...creativeAudit.missing,...missingConstruction])];
 
   const openConstructionChecks=handoff.construction.checks.some(
     (check)=>check.severity==="review"||check.severity==="warning",
