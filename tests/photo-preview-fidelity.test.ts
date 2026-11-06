@@ -198,6 +198,8 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/wide-source-compared-/);
   assert.match(script,/wideSourceComparisonVerified=true/);
   assert.match(script,/boundaryQaSourceIsolationVerified=true/);
+  assert.match(script,/boundaryQaZoomAligned=true/);
+  assert.match(script,/Zoom Fit outlines must follow photographed garment scale/);
   assert.match(script,/source Compare must never inherit selected-preview garment boundary geometry/);
   assert.match(script,/Show design to save/);
   assert.match(script,/source Compare must not silently save/);
