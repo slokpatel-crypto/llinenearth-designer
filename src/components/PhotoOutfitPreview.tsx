@@ -1748,7 +1748,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       {showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal" src={template.src} alt={templateId==="wide"
         ? "Original wide-trouser studio photograph. The instant-preview shirt uses the separate pleated studio source photograph."
         : "Original photographed studio model template for comparison"} />}
-      {showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay">
+      {showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay" style={{transform:inspectFit?"scale(1.42)":"scale(1)",transformOrigin:"50% 35%",transition:"transform .28s ease"}}>
         {tucked ? <>
           <path d={PHOTO_TUCKED_SHIRT_BODY_CLIP} className="shirtBoundary" />
           <path d={PHOTO_TUCKED_LEFT_SLEEVE_CLIP} className="shirtBoundary" />
