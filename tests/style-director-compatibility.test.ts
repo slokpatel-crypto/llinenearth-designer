@@ -10,6 +10,7 @@ import {
   styleDirectorCandidateSleeveIssues,
   styleDirectorCandidateFrontConstructionIssues,
   styleDirectorCandidateTrouserFront,
+  styleDirectorCandidateWideLeg,
   styleDirectorCandidateWordingIssues,
   styleDirectorCandidateWearIssues,
   styleDirectorConstructionIssues,
@@ -678,6 +679,38 @@ test("unknown or contradictory collar wording must not infer a single locked col
   const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
   assert.ok(agent.includes("...styleDirectorCandidateCollarIssues(candidate.garments.shirt, styleSpec.shirt)"),
     "collar parity must affect real-model construction review and status");
+});
+
+test("only explicitly named wide-leg silhouettes select a wide trouser", () => {
+  for (const label of [
+    "Wide-Leg Trouser",
+    "Wide-leg / Relaxed Drape Trouser",
+    "Wide Legged Pants",
+    "Wide Fit Trousers",
+    "Wide-fit Pants",
+    "Wide Trousers",
+  ]) {
+    assert.equal(styleDirectorCandidateWideLeg(label), true, label);
+  }
+  for (const label of [
+    "Widespread Print Trouser",
+    "Wide Waistband Tailored Trouser",
+    "Wide Side Seam Trouser",
+    "Wide Stripe Trouser",
+    "Wider Leg Trouser",
+    "Wide-wale Corduroy Trouser",
+    "Standard Flat-Front Trouser",
+    "Single-Pleat Tailored Trouser",
+  ]) {
+    assert.equal(styleDirectorCandidateWideLeg(label), false, label);
+  }
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.equal(agent.split("styleDirectorCandidateWideLeg(trouser)").length-1, 2,
+    "photographic and versioned paths must agree on wide-leg intent");
+  assert.ok(!agent.includes('trouser.includes("wide")'),
+    "no substring-based photographic trouser silhouette selection");
+  assert.ok(!agent.includes('/wide/.test(trouser)'),
+    "no substring-based versioned trouser silhouette selection");
 });
 
 test("ordinary collar resolver rejects incidental words and contradictory constructions", () => {
