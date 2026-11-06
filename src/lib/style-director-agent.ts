@@ -102,12 +102,28 @@ function colorScore(fabric: FabricColorway, direction: StyleDirectorAnswers["col
   return /beige|taupe|cream|khakhi|brown|oak|sand|jute|saffron/.test(name) ? 38 : (r > b && g > b ? 10 : 0);
 }
 
+/**
+ * Scoring consumes analysis that may be stale or partly corrupt in storage.
+ * It is not a certificate for the physical fabric. A missing shape, invalid
+ * numerical rating or rejected/unknown review cannot rank a customer look.
+ */
+function usableStyleDirectorIntelligence(value: DesignerFabricIntelligence | null | undefined):
+  DesignerFabricIntelligence | null {
+  if (!value || styleDirectorIntelligenceTrustWeight(value) === 0) return null;
+  if (!Number.isInteger(value.formality) || value.formality < 1 || value.formality > 5 ||
+      !Number.isInteger(value.statementLevel) || value.statementLevel < 1 || value.statementLevel > 5 ||
+      !Array.isArray(value.bestGarments) || !Array.isArray(value.climateVisualFit) ||
+      !value.pairing || !Array.isArray(value.pairing.goodColorFamilies) ||
+      !Array.isArray(value.pairing.avoidColorFamilies)) return null;
+  return value;
+}
+
 function directorIntelligenceScore(
   a:StyleDirectorAnswers,
   fabric:FabricColorway,
   map?:Record<string,DesignerFabricIntelligence>|null,
 ) {
-  const intel=map?.[fabric.id];
+  const intel=usableStyleDirectorIntelligence(map?.[fabric.id]);
   if(!intel) return 0;
   const w=styleDirectorIntelligenceTrustWeight(intel);
   const targetFormality:Record<StyleDirectorAnswers["occasion"],number>={
@@ -151,8 +167,8 @@ function directorPairIntelligenceScore(
   occasion:OccasionTier,
   map?:Record<string,DesignerFabricIntelligence>|null,
 ) {
-  const shirt=map?.[shirtId];
-  const pant=map?.[pantId];
+  const shirt=usableStyleDirectorIntelligence(map?.[shirtId]);
+  const pant=usableStyleDirectorIntelligence(map?.[pantId]);
   if(!shirt && !pant) return 0;
   const target:Record<OccasionTier,number>={Casual:1.7,"Smart-Casual":2.7,"Semi-Formal":3.7,Formal:4.6};
   let score=0;
