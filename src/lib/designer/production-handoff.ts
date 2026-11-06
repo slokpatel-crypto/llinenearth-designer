@@ -155,6 +155,26 @@ export function buildProductionHandoff(
 
 
 /**
+ * A SHA256-verified garment recipe is insufficient if the exported lock
+ * identity was substituted. The lock creator derives the revision ID from
+ * its normalised timestamp and the recipe hash. Recheck this relationship
+ * at the trusted production boundary, while acknowledging that lockedAt and
+ * parentRevisionId are not independently signed by the recipe hash.
+ */
+function hasCanonicalLockedRevisionIdentity(revision:LockedDesignRevision):boolean {
+  if(typeof revision.lockedAt!=="string"
+      ||typeof revision.recipeHash!=="string"
+      ||typeof revision.revisionId!=="string"
+      ||!/^[0-9a-f]{64}$/.test(revision.recipeHash)) return false;
+  const stampTime=Date.parse(revision.lockedAt);
+  if(!Number.isFinite(stampTime)) return false;
+  const normalized=new Date(stampTime).toISOString();
+  if(revision.lockedAt!==normalized) return false;
+  const stamp=normalized.replace(/[-:.TZ]/g,"").slice(0,14);
+  return revision.revisionId===`LE-LOCK-${stamp}-${revision.recipeHash.slice(0,12).toUpperCase()}`;
+}
+
+/**
  * Customer design edits and revisions MUST be verified before a tailor packet
  * can be trusted. This check uses the original locked SHA256, then verifies
  * every material, full StyleSpec v2 option, measurement/ease target, and
@@ -167,6 +187,8 @@ export async function buildVerifiedProductionHandoff(
 ):Promise<ProductionHandoff> {
   if(!await verifyLockedDesignRevision(revision))
     throw new Error("Locked design hash no longer matches the exact garment and tailoring recipe.");
+  if(!hasCanonicalLockedRevisionIdentity(revision))
+    throw new Error("Verified tailor handoff requires a canonical locked revision ID, timestamp and recipe hash.");
   // A handoff cannot predate its locked source. This ordering check does not
   // authenticate its displayed generation time; only recipe fields are SHA256-locked.
   const lockedTime=new Date(revision.lockedAt).getTime();
@@ -181,6 +203,7 @@ export async function verifyProductionHandoff(
   revision:LockedDesignRevision,
 ):Promise<boolean> {
   if(!await verifyLockedDesignRevision(revision)) return false;
+  if(!hasCanonicalLockedRevisionIdentity(revision)) return false;
   const lockedTime=new Date(revision.lockedAt).getTime();
   const issuedTime=new Date(handoff.generatedAt).getTime();
   if(!Number.isFinite(lockedTime)||!Number.isFinite(issuedTime)||issuedTime<lockedTime) return false;
