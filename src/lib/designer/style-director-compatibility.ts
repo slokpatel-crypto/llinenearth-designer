@@ -132,6 +132,34 @@ export function styleDirectorCandidateCollar(
   };
 }
 
+/**
+ * A single named collar is a construction request, even when there is no
+ * matching legacy photographic selector. Do not silently keep an unrelated
+ * default collar on the locked design. Multiple family names are handled by
+ * the separate ambiguity gate, not by guessing precedence here.
+ */
+export function styleDirectorCandidateCollarIssues(
+  candidateShirt: string,
+  shirt: Pick<StyleSpecV2["shirt"], "collar">,
+): DirectorConstructionIssue[] {
+  const families = candidateCollarFamilies(candidateShirt);
+  if (Object.values(families).filter(Boolean).length !== 1) return [];
+  const accepted: readonly string[] = families.camp ? ["cuban_camp_collar"]
+    : families.band ? ["mandarin_band_collar"]
+    : families.cutaway ? ["cutaway_collar"]
+    : families.spread ? ["spread_collar", "english_spread_collar"]
+    : families.buttonDown ? ["button_down_collar", "soft_button_down"]
+    : families.point ? ["point_standard_collar"]
+    : families.club ? ["club_collar"]
+    : families.wing ? ["wing_collar"]
+    : families.tab ? ["tab_collar"]
+    : families.pin ? ["pin_collar"] : [];
+  return accepted.includes(shirt.collar) ? [] : [{
+    code: "candidate_collar_mismatch",
+    explanation: "The proposed shirt names a collar construction different from its locked versioned collar ID; confirm the collar before tailoring.",
+  }];
+}
+
 /** Candidate wording is not a measured sleeve length. Only an explicit
  * short-/half-sleeve request maps to the existing construction IDs. */
 /**
@@ -234,7 +262,7 @@ export type DirectorConstructionIssue = {
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_stacked_break" | "cropped_break_hem_mismatch" | "cropped_type_hem_mismatch" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
-    "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "candidate_sleeve_mismatch" | "ambiguous_candidate_wear" |
+    "ambiguous_candidate_collar" | "candidate_collar_mismatch" | "ambiguous_candidate_sleeve" | "candidate_sleeve_mismatch" | "ambiguous_candidate_wear" |
     "candidate_shirt_wear_mismatch" | "legacy_trouser_mismatch" |
     "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch" |
     "candidate_trouser_pleat_mismatch" | "unknown_trouser_pleat_option" | "unknown_versioned_option" |
