@@ -192,5 +192,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Confirm full exact-head CI, Non-3D, build/browser and DB gates before software signoff. Previously passing jobs are on older commits.
 - [ ] Genuine photographic QA, measurements, sample fitting, cloth lot/calibration, cutting pattern and human tailor acceptance remain external. No merge, deploy or cutting approval.
 
+## Tailoring and material source-readiness vocabulary (2026-11-06)
+- [x] Audited the original `CanonicalGarmentSpec.readiness` contract. Previously `buildProductionHandoff` treated **any** tailoring value except `insufficient_measurements` as acceptable, so forged/unrecognised values (or missing fields alongside claimed material verification) could be promoted by a stale `ready_for_tailor_review` source.
+- [x] The pure `auditHandoffProductionReadiness` now checks the supported tailoring states (`insufficient_measurements`, `tailor_review_required`) and material states (`verification_required`, `verified`). Missing legacy state becomes an explicit unresolved human review instruction; malformed/unknown states fail closed. A source marking insufficient measurements or unverified material stays reconstructable but review-required with an explicit blocker. Final handoff readiness now requires the **exact** known tailoring and material status values.
+- [x] Synthetic regressions cover allowed positive control, insufficient measurements, material verification pending, individually missing fields, a wholly missing readiness record, malformed state records, forged tailoring/material vocabulary, and a SHA256-verified review-only tech pack. A stored `verified` flag is only internal provenance and is never evidence of actual physical cloth.
+- [ ] Record exact-head full CI and Non-3D browser, quality, unit, engine, preview, release, build, and PostgreSQL checks; prior SHA results do not transfer.
+- [ ] Actual garment/body measurements, physical fabric and stock confirmation, sample fitting, signed cutting pattern/seam tolerances and tailor approval remain outstanding. No merge, deployment or cutting authorization.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
