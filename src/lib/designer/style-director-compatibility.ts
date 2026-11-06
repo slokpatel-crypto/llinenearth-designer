@@ -188,6 +188,77 @@ export function styleDirectorCandidateCollarIssues(
   }];
 }
 
+/**
+ * Resolve only explicitly named placket construction, not generic words such
+ * as "front" or "buttons". Positive, negative and optional instructions are
+ * kept separate: a forbidden placket must not become a selected placket.
+ */
+const candidatePlacketPatterns = [
+  { id: "standard_visible_placket", pattern: /\b(?:standard(?:[- ]visible(?:[- ]stitch)?)?[- ]placket|visible(?:[- ]stitched?)?[- ]placket)\b/gi },
+  { id: "hidden_fly_front", pattern: /\b(?:hidden(?:[- ]fly[- ]?front)?[- ]placket|fly[- ]?front(?:[- ]placket)?)\b/gi },
+  { id: "french_placket", pattern: /\bfrench[- ]placket\b/gi },
+  { id: "covered_placket", pattern: /\bcovered[- ]placket\b/gi },
+  { id: "contrast_placket", pattern: /\bcontrast[- ]placket\b/gi },
+] as const;
+
+type CandidatePlacketId = (typeof candidatePlacketPatterns)[number]["id"];
+
+export function styleDirectorCandidatePlacketIntent(candidateShirt: string): {
+  requested: CandidatePlacketId | null;
+  prohibited: CandidatePlacketId[];
+  ambiguous: boolean;
+} {
+  const requests = new Set<CandidatePlacketId>();
+  const prohibitions = new Set<CandidatePlacketId>();
+  for (const { id, pattern } of candidatePlacketPatterns) {
+    for (const hit of candidateShirt.matchAll(pattern)) {
+      const prefix = candidateShirt.slice(0, hit.index);
+      const suffix = candidateShirt.slice(hit.index + hit[0].length);
+      const forbidden = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(suffix);
+      const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
+        /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/i.test(suffix);
+      if (forbidden) prohibitions.add(id);
+      else if (!optional) requests.add(id);
+    }
+  }
+  return {
+    requested: requests.size === 1 ? [...requests][0] : null,
+    prohibited: [...prohibitions],
+    ambiguous: requests.size > 1 || [...requests].some(id => prohibitions.has(id)),
+  };
+}
+
+/** Map a single named placket to existing canonical IDs only. */
+export function styleDirectorCandidatePlacket(
+  candidateShirt: string, legacyChoices: readonly string[],
+): { versioned: CandidatePlacketId; legacy: string | null } | null {
+  const intent = styleDirectorCandidatePlacketIntent(candidateShirt);
+  if (intent.ambiguous || !intent.requested) return null;
+  const option = optionsFor("shirt.placket").find(entry => entry.id === intent.requested);
+  if (!option) return null;
+  const label = option.legacyLabel || option.label;
+  return {
+    versioned: intent.requested,
+    legacy: option.legacySelectable !== false && option.renderSupport.livePreview !== "none" &&
+      legacyChoices.includes(label) ? label : null,
+  };
+}
+
+/** A named or prohibited placket must agree with the saved versioned recipe. */
+export function styleDirectorCandidatePlacketIssues(
+  candidateShirt: string, shirt: Pick<StyleSpecV2["shirt"], "placket">,
+): DirectorConstructionIssue[] {
+  const intent = styleDirectorCandidatePlacketIntent(candidateShirt);
+  if (intent.ambiguous) return [];
+  const conflicts = (intent.requested !== null && shirt.placket !== intent.requested) ||
+    intent.prohibited.includes(shirt.placket as CandidatePlacketId);
+  return conflicts ? [{
+    code: "candidate_placket_mismatch",
+    explanation: "The requested or prohibited shirt placket conflicts with the locked versioned construction; confirm the front before tailoring.",
+  }] : [];
+}
+
 /** Candidate wording is not a measured sleeve length. Only an explicit
  * short-/half-sleeve request maps to the existing construction IDs. */
 /**
@@ -378,6 +449,7 @@ export type DirectorConstructionIssue = {
     "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch" |
     "candidate_trouser_pleat_mismatch" | "unknown_trouser_pleat_option" | "unknown_versioned_option" |
     "candidate_waistband_mismatch" | "ambiguous_candidate_waistband" | "candidate_wide_leg_mismatch" | "ambiguous_candidate_wide_leg" |
+    "candidate_placket_mismatch" | "ambiguous_candidate_placket" | "unverified_placket_photo" |
     "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
   explanation: string;
 };
@@ -394,6 +466,13 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     issues.push({
       code: "ambiguous_candidate_collar",
       explanation: "This proposed shirt names conflicting collar families; confirm one construction before approving the recommendation.",
+    });
+  }
+  const placket = styleDirectorCandidatePlacketIntent(candidateShirt);
+  if (placket.ambiguous) {
+    issues.push({
+      code: "ambiguous_candidate_placket",
+      explanation: "This proposed shirt gives conflicting placket constructions; choose a single front before approval.",
     });
   }
   const sleeves = candidateSleeveLengths(candidateShirt);
@@ -770,6 +849,16 @@ export function styleDirectorPresentationIssues(
     issues.push({
       code: "unverified_cutaway_photo",
       explanation: "The cutaway collar is a selectable construction, but its live preview is approximate; confirm the actual collar before production.",
+    });
+  }
+  // A matching text label cannot certify a non-renderable or contrast
+  // placket's photographic correctness or unverified accent-fabric truth.
+  const lockedPlacket = optionsFor("shirt.placket").find(option => option.id === spec.shirt.placket);
+  if (lockedPlacket && (lockedPlacket.renderSupport.livePreview === "none" ||
+      lockedPlacket.legacySelectable === false)) {
+    issues.push({
+      code: "unverified_placket_photo",
+      explanation: "This placket construction has no approved live photographic proof; contrast fabrics and production details still require operator review.",
     });
   }
   // Photo labels must not silently certify a different cuff, placket or fit.
