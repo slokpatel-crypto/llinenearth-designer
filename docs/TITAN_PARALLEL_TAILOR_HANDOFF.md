@@ -199,5 +199,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Record exact-head full CI and Non-3D browser, quality, unit, engine, preview, release, build, and PostgreSQL checks; prior SHA results do not transfer.
 - [ ] Actual garment/body measurements, physical fabric and stock confirmation, sample fitting, signed cutting pattern/seam tolerances and tailor approval remain outstanding. No merge, deployment or cutting authorization.
 
+## Human-readable unresolved and caveat note integrity (2026-11-06)
+- [x] Audited both final output boundaries: `buildProductionHandoff` spread `spec.unresolved` and `spec.caveats` without validating their collection and element shape; a forged string could spread into individual characters, while null or invalid values could throw raw errors or silently print misleading non-text review instructions. `buildTailorTechPackHtml` also consumed packet note collections without a specific integrity guard.
+- [x] Added the pure `auditHandoffHumanNotes` for both `unresolved` and `caveats` arrays. Every entry must be nonempty human-readable text with a bounded length and without non-printable controls. Missing, scalar or malformed collections fail closed with a clear `Unsafe tailor handoff review notes` / `Unsafe tailor tech pack review notes` error. Existing valid notes are preserved verbatim; this is not human signoff.
+- [x] Synthetic regression covers empty permitted arrays, valid human instructions, null/undefined/scalar/object/mixed/blank/oversized/control-character corruption at both production and printable boundaries, plus real SHA256-verified review-only roundtrip with both unresolved and caveat instructions intact. No real body values or approvals invented.
+- [ ] Exact-head quality, unit, engine, preview, release, build, database and browser checks must pass before software completion is claimed; previous green steps are older-head evidence.
+- [ ] Real physical customer measurements, tailor sample fitting, pattern and seam allowances, cloth stock/calibration and human approval remain outstanding. No merge, deployment or cutting authorization.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
