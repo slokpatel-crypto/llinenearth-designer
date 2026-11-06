@@ -79,5 +79,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Confirm exact-head Full CI, Non-3D, disposable PostgreSQL, build and browser test outcomes for the final branch head. Earlier successes are not evidence for this code.
 - [ ] Physical sample, finished garment length and balance, verified customer/model dimensions, signed seam allowances, tailor approval and actual cutting pattern remain unavailable. Do not merge or deploy.
 
+## Cross-field circumference review protection (2026-11-06)
+- [x] Inspected existing `reviewMeasurementConsistency`: it flags neck >= chest and differences greater than 75 cm between trouser waist/seat as **review**, never a declaration of invalid bodies. A hand-built locked spec with no upstream checks could previously bypass both flags and claim `ready_for_tailor_review` in handoff.
+- [x] The dedicated final `auditHandoffMeasurements` now independently rechecks both conditions against canonical recorded **bodyCm** targets. It returns explicit human review notes and does **not** reject safe review export or invent physical fit thresholds; the 75 cm discrepancy comes from the existing shared reviewer.
+- [x] Synthetic positive/negative regression covers valid controls, both discrepancies, source construction checks omitted, preserved original data, status downgrade and stale unsigned printable badge.
+- [ ] Require Full CI, Non-3D and browser checks matching the final branch SHA before claiming a pass. This checkpoint must never inherit green checks from an earlier SHA.
+- [ ] Actual tailor measurement/review, physical fitting, approved cutting pattern, signed tolerances and fabric evidence remain external. No cutting, merge or deploy.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
