@@ -99,7 +99,7 @@ function colorScore(fabric: FabricColorway, direction: StyleDirectorAnswers["col
   if (direction === "Light") return lightness > 155 ? 32 : 0;
   if (direction === "Dark") return lightness < 120 ? 32 : 0;
   if (direction === "Blue") return /blue|slate|chambray|sky|denim/.test(name) ? 38 : b > r + 10 ? 18 : 0;
-  return /beige|taupe|cream|khakhi|brown|oak|sand|jute|saffron/.test(name) ? 38 : (r > b && g > b ? 10 : 0);
+  return /beige|taupe|cream|khaki|khakhi|brown|oak|sand|jute|saffron/.test(name) ? 38 : (r > b && g > b ? 10 : 0);
 }
 
 /**
