@@ -180,6 +180,7 @@ test("new cropped legacy proposals retain consistent canonical type break and he
   const selectedHem = styleDirectorProposedCroppedHem(proposed.pant);
   assert.equal(selectedHem, "cropped_above_ankle_hem");
   assert.equal(JSON.stringify(proposed), before, "pure resolution must not edit a locked design");
+  assert.ok(selectedHem, "matching cropped selectors provide a non-null hem ID");
   const newlyProposed = spec({}, { ...proposed.pant, hem: selectedHem });
   assert.deepEqual(styleDirectorConstructionIssues(newlyProposed), [],
     "a newly proposed cropped type and above-ankle break must reconstruct a consistent hem");
