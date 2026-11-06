@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidatePocket, styleDirectorCandidatePocketIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateTrouserFit, styleDirectorCandidateTrouserFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateVariantCollar, styleDirectorCandidateSleeve, styleDirectorCandidateRollUpSleeveIntent, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorProposedCroppedHem, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidatePocket, styleDirectorCandidatePocketIssues, styleDirectorCandidateCollarFinish, styleDirectorCandidateCollarFinishIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateTrouserFit, styleDirectorCandidateTrouserFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateVariantCollar, styleDirectorCandidateSleeve, styleDirectorCandidateRollUpSleeveIntent, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorProposedCroppedHem, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -248,6 +248,7 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   const namedCollar = styleDirectorCandidateCollar(shirt, DESIGNER_STYLE_CHOICES.collar);
   const specialCollar = styleDirectorCandidateSpecialCollar(shirt, DESIGNER_STYLE_CHOICES.collar);
   const ordinaryCollar = styleDirectorCandidateOrdinaryCollar(shirt);
+  const namedFinish = styleDirectorCandidateCollarFinish(shirt);
   const namedPlacket = styleDirectorCandidatePlacket(shirt, DESIGNER_STYLE_CHOICES.placket);
   const namedCuff = styleDirectorCandidateCuff(shirt, DESIGNER_STYLE_CHOICES.cuff);
   const namedFit = styleDirectorCandidateShirtFit(shirt, DESIGNER_STYLE_CHOICES.shirtFit);
@@ -276,6 +277,7 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
 
   // Only available verified-style labels may update the legacy selector.
   // The real canonical placket is still saved even without a photo.
+  if (namedFinish) style.collarFinish = namedFinish;
   if (namedPlacket?.legacy) style.placket = namedPlacket.legacy;
   if (namedCuff?.legacy) style.cuff = namedCuff.legacy;
   if (namedFit?.legacy) style.shirtFit = namedFit.legacy;
@@ -323,6 +325,7 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   const specialCollar=styleDirectorCandidateSpecialCollar(shirt,DESIGNER_STYLE_CHOICES.collar);
   const namedSleeve=styleDirectorCandidateSleeve(shirt);
   const rollUpSleeve=styleDirectorCandidateRollUpSleeveIntent(shirt);
+  const namedFinish=styleDirectorCandidateCollarFinish(shirt);
   const namedPlacket=styleDirectorCandidatePlacket(shirt,DESIGNER_STYLE_CHOICES.placket);
   const namedPocket=styleDirectorCandidatePocket(shirt);
   const namedCuff=styleDirectorCandidateCuff(shirt,DESIGNER_STYLE_CHOICES.cuff);
@@ -358,6 +361,7 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   if(variantCollar) spec.shirt.collar=variantCollar;
   // A named placket construction must survive the legacy photo bridge,
   // including provisional French/covered fronts without live preview.
+  if (namedFinish) spec.shirt.collarFinish=namedFinish;
   if (namedPlacket) spec.shirt.placket=namedPlacket.versioned;
   // No photograph selector exists for pockets; keep the versioned request
   // and let presentation review explicitly flag the unverified pocket.
@@ -435,6 +439,7 @@ function buildRealModelSpec(
     ...styleDirectorCandidateWideLegIssues(candidate.garments.trouser, styleSpec.pant),
     ...styleDirectorCandidateTrouserFitIssues(candidate.garments.trouser, styleSpec.pant),
     ...styleDirectorCandidateCollarIssues(candidate.garments.shirt, styleSpec.shirt),
+    ...styleDirectorCandidateCollarFinishIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidatePlacketIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidatePocketIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidateCuffIssues(candidate.garments.shirt, styleSpec.shirt),
