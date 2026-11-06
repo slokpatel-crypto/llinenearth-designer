@@ -260,6 +260,81 @@ export function styleDirectorCandidatePlacketIssues(
   }] : [];
 }
 
+/**
+ * A cuff is selected from explicitly named construction, never from a generic
+ * "cuff" or "button" mention. The photographed selector is a separate
+ * contract; unsupported canonical cuffs remain review-only.
+ */
+const candidateCuffPatterns = [
+  { id: "french_double_cuff", pattern: /\b(?:french(?:\s*\/\s*double)?|double)[ -]cuffs?\b/gi },
+  { id: "barrel_cuff_2_button", pattern: /\b(?:barrel[- ]cuffs?[\s(]*2[- ]?buttons?\b\)?|2[- ]?buttons?[- ]barrel[- ]cuffs?\b)/gi },
+  { id: "barrel_cuff_1_button", pattern: /\b(?:barrel[- ]cuffs?[\s(]*1[- ]?buttons?\b\)?|1[- ]?buttons?[- ]barrel[- ]cuffs?\b)/gi },
+  { id: "convertible_cuff", pattern: /\bconvertible[- ]cuffs?\b/gi },
+  { id: "rounded_soft_cuff", pattern: /\b(?:rounded(?:\s*\/\s*soft)?|soft|rounded[- ]soft)[- ]cuffs?\b/gi },
+  { id: "cocktail_cuff", pattern: /\bcocktail[- ]cuffs?\b/gi },
+  { id: "angled_barrel_cuff", pattern: /\bangled[- ]barrel[- ]cuffs?\b/gi },
+  { id: "open_short_hem_cuff", pattern: /\b(?:open[- ]short[- ]sleeve[- ]hem|short[- ]sleeve[- ]open[- ]hem)\b/gi },
+] as const;
+
+type CandidateCuffId = (typeof candidateCuffPatterns)[number]["id"];
+
+export function styleDirectorCandidateCuffIntent(candidateShirt: string): {
+  requested: CandidateCuffId | null;
+  prohibited: CandidateCuffId[];
+  ambiguous: boolean;
+} {
+  const requested = new Set<CandidateCuffId>();
+  const prohibited = new Set<CandidateCuffId>();
+  for (const { id, pattern } of candidateCuffPatterns) {
+    for (const match of candidateShirt.matchAll(pattern)) {
+      const index = match.index ?? 0;
+      const prefix = candidateShirt.slice(0, index);
+      const suffix = candidateShirt.slice(index + match[0].length);
+      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(suffix);
+      const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
+        /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/i.test(suffix);
+      if (banned) prohibited.add(id);
+      else if (!optional) requested.add(id);
+    }
+  }
+  return {
+    requested: requested.size === 1 ? [...requested][0] : null,
+    prohibited: [...prohibited],
+    ambiguous: requested.size > 1 || [...requested].some(id => prohibited.has(id)),
+  };
+}
+
+/** Resolve an existing named cuff with a truthful optional photo selection. */
+export function styleDirectorCandidateCuff(
+  candidateShirt: string, legacyChoices: readonly string[],
+): { versioned: CandidateCuffId; legacy: string | null } | null {
+  const intent = styleDirectorCandidateCuffIntent(candidateShirt);
+  if (intent.ambiguous || !intent.requested) return null;
+  const option = optionsFor("shirt.cuff").find(entry => entry.id === intent.requested);
+  if (!option) return null;
+  const label = option.legacyLabel || option.label;
+  return {
+    versioned: intent.requested,
+    legacy: option.legacySelectable !== false &&
+      option.renderSupport.livePreview !== "none" && legacyChoices.includes(label) ? label : null,
+  };
+}
+
+/** Never certify a requested or prohibited cuff that conflicts with the lock. */
+export function styleDirectorCandidateCuffIssues(
+  candidateShirt: string, shirt: Pick<StyleSpecV2["shirt"], "cuff">,
+): DirectorConstructionIssue[] {
+  const intent = styleDirectorCandidateCuffIntent(candidateShirt);
+  if (intent.ambiguous) return [];
+  const wrongRequest = intent.requested !== null && shirt.cuff !== intent.requested;
+  const prohibitedSaved = intent.prohibited.includes(shirt.cuff as CandidateCuffId);
+  return wrongRequest || prohibitedSaved ? [{
+    code: "candidate_cuff_mismatch",
+    explanation: "The requested or prohibited cuff conflicts with the locked versioned cuff construction; confirm the cuff before cutting.",
+  }] : [];
+}
+
 /** Candidate wording is not a measured sleeve length. Only an explicit
  * short-/half-sleeve request maps to the existing construction IDs. */
 /**
@@ -451,6 +526,7 @@ export type DirectorConstructionIssue = {
     "candidate_trouser_pleat_mismatch" | "unknown_trouser_pleat_option" | "unknown_versioned_option" |
     "candidate_waistband_mismatch" | "ambiguous_candidate_waistband" | "candidate_wide_leg_mismatch" | "ambiguous_candidate_wide_leg" |
     "candidate_placket_mismatch" | "ambiguous_candidate_placket" | "unverified_placket_photo" |
+    "candidate_cuff_mismatch" | "ambiguous_candidate_cuff" | "unverified_cuff_photo" |
     "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
   explanation: string;
 };
@@ -467,6 +543,13 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     issues.push({
       code: "ambiguous_candidate_collar",
       explanation: "This proposed shirt names conflicting collar families; confirm one construction before approving the recommendation.",
+    });
+  }
+  const cuff = styleDirectorCandidateCuffIntent(candidateShirt);
+  if (cuff.ambiguous) {
+    issues.push({
+      code: "ambiguous_candidate_cuff",
+      explanation: "This proposed shirt names conflicting cuff constructions; confirm one cuff before production.",
     });
   }
   const placket = styleDirectorCandidatePlacketIntent(candidateShirt);
@@ -850,6 +933,18 @@ export function styleDirectorPresentationIssues(
     issues.push({
       code: "unverified_cutaway_photo",
       explanation: "The cutaway collar is a selectable construction, but its live preview is approximate; confirm the actual collar before production.",
+    });
+  }
+  // A matching label for a provisional cuff does not prove its live
+  // photographic construction. A short-sleeve open hem already has a
+  // dedicated preview warning and must not produce redundant review.
+  const lockedCuff = optionsFor("shirt.cuff").find(option => option.id === spec.shirt.cuff);
+  if (spec.shirt.cuff !== "open_short_hem_cuff" &&
+      lockedCuff && (lockedCuff.renderSupport.livePreview === "none" ||
+        lockedCuff.legacySelectable === false)) {
+    issues.push({
+      code: "unverified_cuff_photo",
+      explanation: "The selected cuff has no supported live photographic shape; its canonical construction needs a visual and tailor review.",
     });
   }
   // A matching text label cannot certify a non-renderable or contrast
