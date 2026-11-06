@@ -114,6 +114,32 @@ test("duplicate landmarks cannot silently overwrite a cutting instruction",()=>{
   assert.ok(report.errors.some(s=>s.includes("duplicate")));
 });
 
+test("unknown optional landmarks remain reconstructable but block review-ready handoff",()=>{
+  const custom:FinishedTarget={
+    label:"Custom neck drop",bodyCm:7,finishedCm:{min:7,max:7},basis:"recorded_anchor",
+  };
+  const knownShirt=[chest,shoulder,sleeve];
+  const knownTrouser=[waist,seat,inseam,outseam];
+  assert.deepEqual(auditHandoffMeasurements({shirt:knownShirt,trouser:knownTrouser}),{errors:[],missing:[]});
+  for (const location of ["shirt","trouser"] as const) {
+    const shirt=location==="shirt"?[...knownShirt,custom]:knownShirt;
+    const trouser=location==="trouser"?[...knownTrouser,custom]:knownTrouser;
+    const audit=auditHandoffMeasurements({shirt,trouser});
+    assert.deepEqual(audit.errors,[]);
+    assert.ok(audit.missing.some(note=>note.includes("Custom neck drop")
+      && note.includes("no recognised landmark definition")),location);
+    const packet=buildProductionHandoff(createRevision(shirt,trouser));
+    assert.equal(packet.status,"review_required",location);
+    assert.ok(packet.unresolved.some(note=>note.includes("Custom neck drop")),location);
+    assert.ok((location==="shirt"?packet.construction.shirt:packet.construction.trouser)
+      .finishedTargets.some(target=>target.label==="Custom neck drop"));
+    const html=buildTailorTechPackHtml(packet);
+    assert.match(html,/Custom neck drop/);
+    assert.match(html,/review required/);
+    assert.match(html,/NO CUTTING AUTHORISATION/);
+  }
+});
+
 test("the printable sheet independently rejects tampered target ranges",()=>{
   const packet=buildProductionHandoff(createRevision([chest],[waist,seat]));
   packet.construction.shirt.finishedTargets[0].finishedCm.min=1;
