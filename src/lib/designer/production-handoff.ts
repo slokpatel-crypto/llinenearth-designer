@@ -95,8 +95,24 @@ export function buildProductionHandoff(
   if(blockAudit.errors.length) {
     throw new Error(`Unsafe tailor handoff block adjustments: ${blockAudit.errors.join(" ")}`);
   }
+  // Source version is locked with the garment recipe, while the exported
+  // strategy contains just its reconstructable block choices. A version
+  // declaration without its corresponding block is a corrupt recipe.
+  // Conversely, preserve legacy blocks lacking a provenance version for
+  // inspection, but never treat those instructions as review-ready.
+  const blockSourceVersion=spec.source.blockStrategyVersion;
+  if(blockSourceVersion != null && blockSourceVersion !== "block-strategy-provisional-1") {
+    throw new Error("Unsafe tailor handoff block provenance: unsupported block strategy version.");
+  }
+  if(blockSourceVersion != null && spec.blockStrategy == null) {
+    throw new Error("Unsafe tailor handoff block provenance: versioned block strategy has no recorded block.");
+  }
+  const missingBlockProvenance=spec.blockStrategy != null && blockSourceVersion == null
+    ? ["Pattern-block strategy source version is not recorded; tailor must confirm the original block contract before production."]
+    : [];
   const unresolved=[...new Set([
     ...blockAudit.missing,
+    ...missingBlockProvenance,
     ...spec.unresolved,
     ...measurementAudit.missing,
     ...fitAudit.missing,
