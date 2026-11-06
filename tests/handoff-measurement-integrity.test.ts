@@ -993,6 +993,45 @@ test("malformed construction checks cannot hide behind a ready status or verifie
   );
 });
 
+test("locked visualization readiness cannot falsely elevate tailor review status",async()=>{
+  const build=()=>createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  const baseline=buildProductionHandoff(build());
+  assert.equal(baseline.status,"ready_for_tailor_review");
+  assert.deepEqual(baseline.unresolved,[]);
+
+  const needsReview=build();
+  needsReview.garmentSpec.status="ready_for_tailor_review"; // deliberately stale
+  needsReview.garmentSpec.readiness.visualization="visual_review_required";
+  const packet=buildProductionHandoff(needsReview);
+  assert.equal(packet.status,"review_required");
+  assert.ok(packet.unresolved.some(note=>note.includes("requires visual review")
+    && note.includes("exact selected garment construction")));
+  const html=buildTailorTechPackHtml(packet);
+  assert.match(html,/Locked design still requires visual review/);
+  assert.match(html,/NO CUTTING AUTHORISATION/);
+
+  // Historically incomplete readiness is reconstructable, never ready.
+  const missing=build();
+  (missing.garmentSpec.readiness as {visualization?:string}).visualization=undefined;
+  const older=buildProductionHandoff(missing);
+  assert.equal(older.status,"review_required");
+  assert.ok(older.unresolved.some(note=>note.includes("visualization readiness is not recorded")));
+
+  const invalid=build();
+  invalid.garmentSpec.readiness.visualization="fabricated_visual_state" as "visual_review_required";
+  assert.throws(()=>buildProductionHandoff(invalid),/Unsafe tailor handoff visualization readiness/);
+
+  const locked=await lockGarmentSpec(needsReview.garmentSpec,{
+    lockedAt:"2026-11-05T11:00:00.000Z",
+  });
+  const verified=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(await verifyProductionHandoff(verified,locked),true);
+  assert.equal(verified.status,"review_required");
+  const verifiedHtml=await buildVerifiedTailorTechPackHtml(verified,locked);
+  assert.match(verifiedHtml,/Locked design still requires visual review/);
+  assert.match(verifiedHtml,/NO CUTTING AUTHORISATION/);
+});
+
 test("creative visual QA and physical craft decisions cannot bypass tailor handoff review",async()=>{
   const make=(reviewStatus:"pass"|"review"|null, evidence=true, semantic:"pass"|"review"="pass")=>{
     const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
