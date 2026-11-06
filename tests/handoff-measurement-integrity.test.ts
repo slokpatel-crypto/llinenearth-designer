@@ -509,6 +509,45 @@ test("unverified review preview never claims lock-verified tailor readiness",asy
   assert.match(buildTailorTechPackHtml(unverified),/<div class="badge">review required<\/div>/);
 });
 
+test("verified exports fail closed on malformed stored handoffs and source locks",async()=>{
+  const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  const locked=await lockGarmentSpec(revision.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
+  const packet=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(await verifyProductionHandoff(packet,locked),true);
+  const html=await buildVerifiedTailorTechPackHtml(packet,locked);
+  // A reconstructable, unchanged source produces byte-identical exports.
+  assert.equal(await buildVerifiedTailorTechPackHtml(packet,locked),html);
+  assert.match(html,/NO CUTTING AUTHORISATION/);
+
+  const damagedPackets=[
+    null,undefined,{},[],{generatedAt:"2026-11-05T11:01:00.000Z"},
+    {...packet,generatedAt:null},
+    {...packet,construction:null},
+    {...packet,unresolved:null},
+  ];
+  for(const damaged of damagedPackets){
+    const candidate=damaged as unknown as typeof packet;
+    assert.equal(await verifyProductionHandoff(candidate,locked),false);
+    await assert.rejects(
+      buildVerifiedTailorTechPackHtml(candidate,locked),
+      /Unsafe tailor tech pack export/,
+    );
+  }
+
+  const damagedLocks=[
+    null,undefined,{},[],{...locked,garmentSpec:null},
+    {...locked,recipeHash:null},{...locked,lockedAt:null},
+  ];
+  for(const damaged of damagedLocks){
+    const candidate=damaged as unknown as typeof locked;
+    assert.equal(await verifyProductionHandoff(packet,candidate),false);
+    await assert.rejects(
+      buildVerifiedTailorTechPackHtml(packet,candidate),
+      /Unsafe tailor tech pack export/,
+    );
+  }
+});
+
 test("verified tech-pack export rejects subtle valid-looking edits and forged source revision",async()=>{
   const fixture=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
   const locked=await lockGarmentSpec(fixture.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
