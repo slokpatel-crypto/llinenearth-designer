@@ -1,7 +1,7 @@
 import type { ProductionHandoff } from "@/lib/designer/production-handoff";
 import type { LockedDesignRevision } from "./design-lock.ts";
 import { verifyProductionHandoff } from "./production-handoff.ts";
-import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffFitProvenance, auditHandoffHumanNotes, auditHandoffMeasurements } from "./handoff-measurements.ts";
+import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffFabricIdentity, auditHandoffFitProvenance, auditHandoffHumanNotes, auditHandoffMeasurements } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
 export const TECH_PACK_VERSION="linen-earth-tech-pack-v1" as const;
@@ -43,6 +43,10 @@ function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSourc
   if(unresolvedAudit.errors.length || caveatAudit.errors.length) {
     throw new Error(`Unsafe tailor tech pack review notes: ${[...unresolvedAudit.errors,...caveatAudit.errors].join(" ")}`);
   }
+  const fabricAudit=auditHandoffFabricIdentity(handoff.fabrics);
+  if(fabricAudit.errors.length) {
+    throw new Error(`Unsafe tailor tech pack fabric identity: ${fabricAudit.errors.join(" ")}`);
+  }
   const shirt=handoff.construction.shirt;
   const trouser=handoff.construction.trouser;
   const audit=auditHandoffMeasurements({
@@ -81,7 +85,8 @@ function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSourc
     throw new Error(`Unsafe tailor tech pack construction checks: ${checkAudit.errors.join(" ")}`);
   }
   const outstanding=[...new Set([...handoff.unresolved,...audit.missing,...fitAudit.missing,
-    ...blockAudit.missing,...checkAudit.missing,...creativeAudit.missing,...missingConstruction])];
+    ...blockAudit.missing,...checkAudit.missing,...creativeAudit.missing,
+    ...fabricAudit.missing,...missingConstruction])];
 
   const openConstructionChecks=handoff.construction.checks.some(
     (check)=>check.severity==="review"||check.severity==="warning",
