@@ -18,6 +18,12 @@ test("all provenance trust/review combinations have stable fail-closed weights",
       assert.equal(styleDirectorIntelligenceTrustWeight(input), weight, "replay must be stable");
     }
   }
+  // Missing and partial persisted intelligence must never be treated as reviewed.
+  for (const absent of [null, undefined, {}, { trust: "reviewed" }, { reviewStatus: "approved" }]) {
+    const input = absent as Parameters<typeof styleDirectorIntelligenceTrustWeight>[0];
+    assert.equal(styleDirectorIntelligenceTrustWeight(input), 0);
+    assert.equal(styleDirectorIntelligenceTrustWeight(input), 0, "missing provenance replay");
+  }
   for (const invalid of ["", "Reviewed", "APPROVED", "rejected ", "unknown", 0, false]) {
     const unknownTrust = { trust: invalid, reviewStatus: "approved" } as unknown as Parameters<typeof styleDirectorIntelligenceTrustWeight>[0];
     const unknownReview = { trust: "reviewed", reviewStatus: invalid } as unknown as Parameters<typeof styleDirectorIntelligenceTrustWeight>[0];
