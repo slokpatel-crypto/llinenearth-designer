@@ -1764,13 +1764,13 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <div><span>SHIRT</span><strong>{shirt.name}</strong></div>
       <div><span>TROUSER</span><strong>{pant.name}</strong></div>
       <div className="newDesignerPhotoActions newDesignerPhotoActionsCompact">
-        {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready}>Lock final design</button>}
-        {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</button>}
+        {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready || showOriginal}>Lock final design</button>}
+        {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading || showOriginal}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</button>}
         {!creativeAi && creativeDirection && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Render selected idea ✦"}</button>}
         {creativeAi && <button className="primary" type="button" onClick={()=>{setShowOriginal(false);setShowCreativeAi((value)=>!value);}}>{showCreativeAi ? "Instant preview" : (!creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") ? "Review photoreal" : "Photoreal render")}</button>}
         {!creativeAi && !creativeDirection && finalLocked && <button type="button" onClick={()=>setFinalLocked(false)} disabled={creativeAiLoading}>Unlock</button>}
         <button type="button" onClick={() => {setShowCreativeAi(false);setShowOriginal((value) => !value);}} disabled={!ready}>{showOriginal && !showCreativeAi ? "Show design" : "Compare"}</button>
-        <button type="button" onClick={download} disabled={!ready}>{showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</button>
+        <button type="button" onClick={download} disabled={!ready || showOriginal}>{showOriginal ? "Show design to save" : showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</button>
       </div>
     </div>
     {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {showOriginal && templateId==="wide" && <span data-photo-source-comparison="wide">Compare shows the original wide-trouser photograph; the shirt in the instant preview comes from the separate pleated studio photograph. </span>} {previewScaleVerified ? "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
