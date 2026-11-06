@@ -248,8 +248,8 @@ test("fabric changes cannot leave stale canvas or source-compare imagery visible
 
 test("source comparison cannot silently export or lock a different pictured design", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.ok(source.includes('disabled={!ready || showOriginal}>{showOriginal ? "Show design to save"'));
-  assert.ok(source.includes('disabled={!ready || showOriginal}>Lock final design'));
+  assert.ok(source.includes('disabled={!ready || showOriginal}><span style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal ? "Show design to save"'));
+  assert.ok(source.includes('disabled={!ready || showOriginal}><span style={PHOTO_ACTION_LABEL_STYLE}>Lock final design'));
   assert.ok(source.includes('disabled={!ready || creativeAiLoading || showOriginal}>{creativeAiLoading ? "Rendering…"'));
 });
 
@@ -394,4 +394,22 @@ test("live instant caption obtains scale truth from the dedicated material discl
   assert.ok(src.includes("visiblePanelFabric.patternType"));
   assert.ok(src.includes("{photoScaleNotice}. Fit and drape still require physical verification."));
   assert.ok(!src.includes('{previewScaleVerified ? "pattern scale uses reviewed physical evidence'));
+});
+
+
+test("compact photo actions have readable labels and 44px tap targets without global CSS changes", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
+  assert.ok(css.includes(".newDesignerPhotoActionsCompact button{border-radius:999px!important;padding:8px 10px!important;font-size:7px!important}"));
+  assert.ok(source.includes("const PHOTO_ACTION_BUTTON_STYLE={minHeight:44} as const;"));
+  assert.ok(source.includes('const PHOTO_ACTION_LABEL_STYLE={fontSize:"12px",lineHeight:1.4,fontWeight:500,display:"inline-block",overflowWrap:"anywhere"} as const;'));
+  const start=source.indexOf('<div className="newDesignerPhotoActions newDesignerPhotoActionsCompact">');
+  const end=source.indexOf("\n      </div>",start);
+  assert.ok(start>0 && end>start);
+  const markup=source.slice(start,end);
+  assert.equal((markup.match(/style=\{PHOTO_ACTION_BUTTON_STYLE\}/g)||[]).length,7);
+  assert.equal((markup.match(/<span style=\{PHOTO_ACTION_LABEL_STYLE\}>/g)||[]).length,7);
+  assert.ok(markup.includes("Compare"));
+  assert.ok(markup.includes("Show design"));
+  assert.ok(markup.includes("Save trusted preview"));
 });
