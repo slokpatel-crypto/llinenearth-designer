@@ -42,6 +42,13 @@ const candidateSleeveLengths = (name: string) => ({
   long: /\b(?:long|full)[ -]?sleeved?\b/i.test(name),
 });
 
+// Wear words are instructions, not evidence of physical tuck length. Using
+// word boundaries avoids treating 'untucked' as a second 'tucked' request.
+const candidateShirtWear = (name: string) => ({
+  tucked: /\btucked\b/i.test(name),
+  untucked: /\buntucked\b/i.test(name),
+});
+
 /**
  * One deterministic interpretation of named camp/band shirt candidates for
  * both the photographic legacy selector and the versioned construction.
@@ -150,7 +157,8 @@ export type DirectorConstructionIssue = {
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_type_hem_mismatch" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
-    "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "legacy_trouser_mismatch" |
+    "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "ambiguous_candidate_wear" |
+    "candidate_shirt_wear_mismatch" | "legacy_trouser_mismatch" |
     "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch" |
     "candidate_trouser_pleat_mismatch" | "unknown_trouser_pleat_option" | "unknown_versioned_option" |
     "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
@@ -176,6 +184,13 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     issues.push({
       code: "ambiguous_candidate_sleeve",
       explanation: "This proposed shirt names both short and long sleeves; confirm one sleeve construction before approving the recommendation.",
+    });
+  }
+  const wear = candidateShirtWear(candidateShirt);
+  if (wear.tucked && wear.untucked) {
+    issues.push({
+      code: "ambiguous_candidate_wear",
+      explanation: "This proposed shirt requests both tucked and untucked wear; confirm one construction before approving the recommendation.",
     });
   }
   // A single parser owns both candidate-review and construction selection.
@@ -563,14 +578,35 @@ export function styleDirectorPresentationIssues(
  * Camp-collar construction stays untucked even in formal prompts, where it
  * is separately marked needs_review rather than silently changed.
  */
+/**
+ * A candidate's explicit tuck preference must survive the deterministic
+ * photo-to-spec bridge. Contradictions remain review-only and never rewrite
+ * an already locked selection.
+ */
+export function styleDirectorCandidateWearIssues(
+  candidateShirt: string,
+  shirt: Pick<StyleSpecV2["shirt"], "wear">,
+): DirectorConstructionIssue[] {
+  const requested = candidateShirtWear(candidateShirt);
+  if (requested.tucked === requested.untucked) return [];
+  const expected = requested.tucked ? "tucked" : "untucked";
+  return shirt.wear === expected ? [] : [{
+    code: "candidate_shirt_wear_mismatch",
+    explanation: "The proposed shirt's explicit tucked/untucked wear conflicts with its versioned construction; confirm the locked tuck choice before tailoring.",
+  }];
+}
+
 export function styleDirectorWearForCandidate(
   occasion: OccasionTier,
   candidateShirt: string,
   proposedWear: DesignerStyle["shirtWear"],
 ): DesignerStyle["shirtWear"] {
-  // Ambiguous collar names must not force an untucked photo while the
-  // versioned collar resolver correctly declines to choose a construction.
+  // Camp-collar type remains untucked even if the candidate explicitly
+  // requests tucked wear; the pure mismatch gate marks that contradiction.
   if (styleDirectorCandidateCollar(candidateShirt, [])?.versioned === "cuban_camp_collar") return "Untucked";
+  const wear = candidateShirtWear(candidateShirt);
+  if (wear.tucked !== wear.untucked) return wear.tucked ? "Tucked" : "Untucked";
+  // Ambiguous phrases retain the previous occasion default but require review.
   if (occasion === "Formal" || occasion === "Semi-Formal") return "Tucked";
   return proposedWear;
 }
