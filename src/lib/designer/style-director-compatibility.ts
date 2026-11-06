@@ -471,7 +471,7 @@ const candidateShirtFitPatterns = [
   { id: "slim_fit", pattern: /\bslim[- ]fit\b/gi },
   { id: "regular_classic_fit", pattern: /\b(?:regular(?:\s*\/\s*classic)?|classic)[- ]fit\b/gi },
   { id: "relaxed_fit", pattern: /\brelaxed[- ]fit\b/gi },
-  { id: "boxy_oversized", pattern: /\b(?:boxy(?:[- ]oversized)?|oversized)[- ]fit\b/gi },
+  { id: "boxy_oversized", pattern: /\b(?:boxy\s*[/&-]\s*oversized|boxy(?:[- ]oversized)?|oversized)[- ]fit\b/gi },
   { id: "athletic_taper", pattern: /\bathletic[- ]taper[- ]fit\b/gi },
 ] as const;
 
