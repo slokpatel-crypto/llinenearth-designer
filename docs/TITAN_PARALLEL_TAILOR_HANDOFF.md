@@ -171,5 +171,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Match the **new head SHA** to the full CI, Non-3D, quality, unit, engine, release, build, browser and PostgreSQL gates before marking software checks green.
 - [ ] Physical body readings, actual sample/pattern alignment, real material checks, seam tolerances and tailor approval remain unavailable. No cutting authorization, merge or deploy.
 
+## Open construction checks in unresolved instructions (2026-11-06)
+- [x] Audited the final packet and HTML review decision: `constructionChecks` with `review`/`warning` correctly downgraded status, but the separate `unresolved` field and printable **Unresolved before production** section could still say `None recorded`, especially for stale/hand-authored locked recipes without upstream `spec.unresolved` notes.
+- [x] The existing pure `auditHandoffConstructionChecks` now emits explicit outstanding human review notes with original check IDs/messages for recognised `review`/`warning` severities. `info` does not create a blocker, unknown/malformed check still fails closed. Both `buildProductionHandoff` and independent `buildTailorTechPackHtml` combine these notes into unresolved items without weakening status checks.
+- [x] Added synthetic-only positive/negative regressions for normal `info`, both open severity classes, stale packet whose unresolved list was not refreshed, and a real SHA256-locked verified review-only tech-pack export. Physical approval is **never** inferred from any packet.
+- [ ] Record latest exact-head quality/unit/engine/preview/release/build/PostgreSQL/browser results. Earlier checks cannot certify a newer commit.
+- [ ] Real customer body measures, fabric facts, sample garment fitting, approved pattern and seam tolerances, human tailor acceptance and cutting permission remain external and unavailable. No merge/deploy.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
