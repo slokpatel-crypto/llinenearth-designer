@@ -338,6 +338,12 @@ async function run(){
     assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0);
     assert.equal(await page.getByRole("button",{name:"Save",exact:true}).isEnabled(),true,
       "returning to the actual selected design must restore its Save action");
+    // A changed design must reset the previous look's zoom and diagnostic
+    // seam overlay, rather than opening the next garment cropped.
+    await page.getByRole("button",{name:"Zoom fit",exact:true}).click();
+    await page.getByRole("button",{name:"Boundary QA",exact:true}).click();
+    assert.equal(await page.locator(".newDesignerPhotoStage.inspectFit").count(),1);
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),1);
     // Race two ACTUAL shirt selections against an uncached, delayed catalogue
     // image. The previous look and raw source image must never be displayed as
     // the newly selected fabric while that new tile is still pending.
@@ -354,6 +360,12 @@ async function run(){
     await original.waitFor();
     await page.locator("#designer-shirt").selectOption(unseen);
     await page.locator('.newDesignerPhotoStage[data-ready="false"]').waitFor();
+    assert.equal(await page.locator(".newDesignerPhotoStage.inspectFit").count(),0,
+      "a new look must not inherit the previous garment's Zoom Fit crop");
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0,
+      "newly selected garment must not inherit the prior diagnostic outlines");
+    assert.equal(await page.getByRole("button",{name:"Zoom fit",exact:true}).count(),1);
+    assert.equal(await page.getByRole("button",{name:"Boundary QA",exact:true}).count(),1);
     assert.equal(await page.locator(".newDesignerPhotoStage>canvas").evaluate(canvas=>getComputedStyle(canvas).visibility),"hidden",
       "old canvas must be hidden while the new fabric is pending");
     assert.equal(await original.count(),0,"source overlay from previous selection must close on fabric change");
@@ -368,6 +380,7 @@ async function run(){
     assert.equal(await page.locator("#designer-shirt").inputValue(),dark);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     summary.viewports[summary.viewports.length-1].rapidFabricSwitchStable=true;
+    summary.viewports[summary.viewports.length-1].newLookStartsFullView=true;
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`rapid-fabric-switch-settled-${width}.png`)});
     await context.close();
   }
