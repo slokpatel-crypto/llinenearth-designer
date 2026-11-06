@@ -204,6 +204,8 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/Show design to save/);
   assert.match(script,/source Compare must not silently save/);
   assert.match(script,/rapidFabricSwitchStable=true/);
+  assert.match(script,/newLookStartsFullView=true/);
+  assert.match(script,/new look must not inherit the previous garment\'s Zoom Fit crop/);
   assert.match(script,/old canvas must be hidden while the new fabric is pending/);
   assert.match(script,/name:"Trouser shape",exact:true/);
   assert.match(script,/advanced spec-only sleeve\/pleat options must not repaint/);
@@ -258,4 +260,13 @@ test("Zoom Fit uses the same scale and origin for the garment canvas and its QA 
   assert.match(css,/\.newDesignerPhotoStage\.inspectFit canvas[^\n]*transform:scale\(1\.42\)/);
   assert.ok(source.includes('style={{transform:inspectFit?"scale(1.42)":"scale(1)",transformOrigin:"50% 35%",transition:"transform .28s ease"}}'));
   assert.ok(source.includes('showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa"'));
+});
+
+test("a changed look does not keep a previous photo zoom or diagnostic garment seams", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const reset=source.slice(source.indexOf("useLayoutEffect(() => {"),source.indexOf("},[requestScope]);"));
+  assert.ok(reset.includes("setInspectFit(false);"),"new selected look must start in full-view mode");
+  assert.ok(reset.includes("setShowBoundaries(false);"),"new selected look must not inherit old seam QA");
+  assert.ok(reset.includes("setShowOriginal(false);"),"new selected look must not inherit source comparison");
+  assert.ok(reset.includes("setFinalLocked(false);"),"new selection must not retain old design lock");
 });
