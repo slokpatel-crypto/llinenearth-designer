@@ -197,6 +197,8 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/floatingContactDock/);
   assert.match(script,/wide-source-compared-/);
   assert.match(script,/wideSourceComparisonVerified=true/);
+  assert.match(script,/boundaryQaSourceIsolationVerified=true/);
+  assert.match(script,/source Compare must never inherit selected-preview garment boundary geometry/);
   assert.match(script,/Show design to save/);
   assert.match(script,/source Compare must not silently save/);
   assert.match(script,/rapidFabricSwitchStable=true/);
