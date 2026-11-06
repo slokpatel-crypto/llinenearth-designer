@@ -101,5 +101,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Verify the exact-head quality/unit/engine/preview/release/build/DB/browser checks before claiming a pass. Previous successful steps are not transferable between heads.
 - [ ] Independent integration review, physical measurements, sample fitting, actual pattern block, signed seam allowances and human tailor approval are still required. No cutting, merge or deployment.
 
+## Verified versus unsigned HTML readiness separation (2026-11-06)
+- [x] Audited the existing printable HTML builder: a caller of the synchronous `buildTailorTechPackHtml` could receive a `ready for tailor review` badge whenever the packet self-claimed ready and the final local audits saw no pending notes, even though its locked recipe was never checked.
+- [x] Introduced a private HTML rendering path with an explicit, internally sourced verified-lock flag. Legacy `buildTailorTechPackHtml` now **always** displays `review required` and `UNVERIFIED PACKET PREVIEW — lock not checked`, while retaining the original cut, measurements and caveats. Only async `buildVerifiedTailorTechPackHtml`, after `verifyProductionHandoff` has succeeded, can show a valid `ready for tailor review` badge and `LOCKED RECIPE VERIFIED` notice.
+- [x] Added a synthetic-only regression for legacy status spoofing, successful SHA256 lock round-trip, matching verified/unsigned badge behavior and explicit `NO CUTTING AUTHORISATION` in both render paths.
+- [ ] Verify Full CI, Non-3D, PostgreSQL, browser and build on the new exact-head SHA. Earlier successful quality/unit results do not certify this continuation.
+- [ ] Neither badge nor lock-verification wording establishes physical size accuracy, a signed lock timestamp, fit tolerance, pattern approval or human cutting authorisation. No merge or deploy.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
