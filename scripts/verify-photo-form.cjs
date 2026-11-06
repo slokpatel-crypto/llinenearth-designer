@@ -63,6 +63,25 @@ async function run(){
       "solid fabric preview must not claim physical repeat calibration");
     assert.doesNotMatch(await solidScaleNotice.textContent(),/reviewed physical evidence/,
       "solid fabric has no calibrated visual motif repeat to advertise");
+    // Make the actual warning readable in the customer's viewport before
+    // collecting screenshot evidence. Playwright element screenshots can
+    // include fixed contact controls if a partially visible warning sits
+    // underneath a dock; DOM text assertions alone miss this obstruction.
+    await solidScaleNotice.evaluate(node=>node.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"}));
+    const solidNoticeBox=await solidScaleNotice.boundingBox();
+    const solidViewport=page.viewportSize();
+    assert.ok(solidNoticeBox && solidViewport
+      && solidNoticeBox.y>=0 && solidNoticeBox.y+solidNoticeBox.height<=solidViewport.height,
+      "solid pattern-scale note must fit the customer viewport");
+    const solidDockBox=await page.locator(".floatingContactDock").boundingBox();
+    if(solidDockBox){
+      const dockCoversNote=solidNoticeBox.x<solidDockBox.x+solidDockBox.width
+        && solidNoticeBox.x+solidNoticeBox.width>solidDockBox.x
+        && solidNoticeBox.y<solidDockBox.y+solidDockBox.height
+        && solidNoticeBox.y+solidNoticeBox.height>solidDockBox.y;
+      assert.equal(dockCoversNote,false,
+        "solid pattern-scale note must not be covered by the floating contact dock in screenshot evidence");
+    }
     await solidScaleNotice.screenshot({path:path.join(out,`solid-fabric-scale-truthful-${width}.png`)});
     // The compact mobile CSS uses very small 6px/9px defaults for labels
     // and names. Test the actual visible nested type, not only source JSX.
@@ -156,6 +175,7 @@ async function run(){
     summary.viewports.push({width,overflow:false,realCataloguePreview:true,tuckedAndUntuckedScreenshots:true});
     summary.viewports[summary.viewports.length-1].fabricSummaryReadable=true;
     summary.viewports[summary.viewports.length-1].solidScaleClaimTruthful=true;
+    summary.viewports[summary.viewports.length-1].solidScaleNoteUnobstructed=true;
     // Exercise the ACTUAL customer controls, not just pure IDs. Advanced v2
     // sleeve/pleat specifications may be valid tailor instructions while the
     // original fixed photograph continues to show full sleeves/single pleats.
