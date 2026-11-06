@@ -1,0 +1,66 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  styleDirectorCandidateCollar,
+  styleDirectorCandidateOrdinaryCollar,
+  styleDirectorCandidateSpecialCollar,
+  styleDirectorCandidateCollarIssues,
+  styleDirectorCandidateWordingIssues,
+  styleDirectorWearForCandidate,
+} from "../src/lib/designer/style-director-compatibility.ts";
+import { optionsFor } from "../src/lib/designer/options/library.ts";
+
+const photographed = optionsFor("shirt.collar")
+  .filter(option => option.legacySelectable !== false)
+  .map(option => option.legacyLabel || option.label);
+
+const issueCodes = (candidate: string, savedId: string) =>
+  styleDirectorCandidateCollarIssues(candidate, { collar: savedId })
+    .map(issue => issue.code);
+
+test("forbidden collar wording cannot silently select that photographed or versioned collar", () => {
+  const cases = [
+    ["No Camp-Collar Shirt", "cuban_camp_collar", "spread_collar"],
+    ["Without Mandarin Band Collar", "mandarin_band_collar", "spread_collar"],
+    ["Avoid Spread-Collar Shirt", "spread_collar", "button_down_collar"],
+    ["Club collar is forbidden", "club_collar", "spread_collar"],
+    ["Tab collar not allowed", "tab_collar", "spread_collar"],
+  ] as const;
+  for (const [name, forbidden, accepted] of cases) {
+    assert.equal(styleDirectorCandidateCollar(name, photographed), null, name);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(name), null, name);
+    assert.equal(styleDirectorCandidateSpecialCollar(name, photographed), null, name);
+    assert.deepEqual(issueCodes(name, forbidden), ["candidate_collar_mismatch"], name);
+    assert.deepEqual(issueCodes(name, accepted), [], name);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(name), [], name);
+  }
+  assert.equal(styleDirectorWearForCandidate("Casual", "No Camp-Collar Shirt", "Tucked"),
+    "Tucked", "a forbidden camp collar must not force untucked wear");
+});
+
+test("requested alternative remains selectable while prohibited collar stays blocked", () => {
+  const wording = "No Camp Collar; Mandarin Band Collar Shirt";
+  assert.equal(styleDirectorCandidateCollar(wording, photographed)?.versioned, "mandarin_band_collar");
+  assert.deepEqual(issueCodes(wording, "mandarin_band_collar"), []);
+  assert.deepEqual(issueCodes(wording, "cuban_camp_collar"), ["candidate_collar_mismatch"]);
+  assert.deepEqual(styleDirectorCandidateWordingIssues(wording), []);
+});
+
+test("optional collar wording is not a required construction", () => {
+  for (const name of ["Optional Cutaway Collar Shirt", "Wing Collar is optional", "Club collar not required"]) {
+    assert.equal(styleDirectorCandidateCollar(name, photographed), null, name);
+    assert.equal(styleDirectorCandidateSpecialCollar(name, photographed), null, name);
+    assert.deepEqual(issueCodes(name, "spread_collar"), [], name);
+  }
+});
+
+test("requesting and forbidding same collar fails review without rewriting an ID", () => {
+  const name = "Camp Collar Shirt; no camp collar";
+  const saved = { collar: "cuban_camp_collar" };
+  const before = JSON.stringify(saved);
+  assert.equal(styleDirectorCandidateCollar(name, photographed), null);
+  assert.deepEqual(styleDirectorCandidateWordingIssues(name).map(issue => issue.code),
+    ["ambiguous_candidate_collar"]);
+  assert.deepEqual(styleDirectorCandidateCollarIssues(name, saved), []);
+  assert.equal(JSON.stringify(saved), before);
+});
