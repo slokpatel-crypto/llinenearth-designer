@@ -329,3 +329,11 @@ claims of new real-world photographs or tailor acceptance.
 - Dedicated source tests preserve the unique caption and enforce mode-specific wording. Real Chromium QA at 390/768/1440 checks both tucked/standard and wide original Compare, selected-design return, and no complete-image caption during a delayed uncached fabric selection. The harness records `sourceCaptionModeVerified`.
 - Only `src/components/PhotoOutfitPreview.tsx`, `tests/photo-preview-fidelity.test.ts`, `scripts/verify-photo-form.cjs` and this checkpoint have changed. Original `linen-earth-studio-model-v1`, all photographs, textile evidence, geometry, spec and inventory remain unchanged.
 - Require **new exact-head** npm quality/test/engine/preview-performance/release/build and CI/Studio QA browser screenshot review. PR #886 stays DRAFT; no merge/deploy or physical signoff.
+
+## November 6 continuation — source-mode header and selected fabric summary
+
+- The unchanged source-photo comparison continued to show the heading `LIVE PREVIEW` and the selected shirt and trouser names under generic `SHIRT` / `TROUSER` labels, which could imply that the original photographed garment was wearing the customer's chosen fabrics.
+- In `PhotoOutfitPreview`, when comparing a ready original source image, the header now says `SOURCE REFERENCE` and the names below it are explicitly labelled `SELECTED SHIRT` and `SELECTED TROUSER` (selection metadata, not proof of what is in the original photo). On returning to the actual selected deterministic preview or reviewed photoreal image, the familiar `LIVE PREVIEW` and `SHIRT` / `TROUSER` labels return.
+- The existing pre-photo provenance warning, source-only lower caption, source mode save guard, model photo and pattern calibration disclaimers remain unchanged. No alteration to source image, mask or wardrobe reconstruction.
+- Focused source contract tests and actual Chromium assertions check standard and wide source Compare, then the selected image, at each required 390/768/1440px. `sourceHeaderAndFabricLabelsVerified` is recorded in the browser summary.
+- Only `PhotoOutfitPreview.tsx`, dedicated photo fidelity tests, `verify-photo-form.cjs` and this checkpoint have changed. Run all six npm release checks and exact-head Full CI plus Studio QA; inspect new screenshot artifacts. PR #886 DRAFT, no merge/deploy or physical fit approval.
