@@ -56,6 +56,17 @@ async function run(){
     const dark=await page.locator("#designer-shirt option").evaluateAll(options=>options.find(o=>/Black - Jute Feel/.test(o.textContent))?.value);assert.ok(dark);
     await page.locator("#designer-shirt").selectOption(dark);await ready(page);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`dark-tucked-${width}.png`)});
+    // Source comparison must explain whose garment photograph is being shown
+    // before the photo, rather than presenting an unrendered design as source.
+    await page.getByRole("button",{name:"Compare",exact:true}).click();
+    const initialSourceNote=page.locator('.newDesignerPhoto > [data-photo-source-comparison="studio"]');
+    await initialSourceNote.waitFor();
+    assert.match(await initialSourceNote.textContent(),/original unchanged studio photograph/i);
+    assert.equal(await page.locator('[data-photo-construction-mismatch="true"]').count(),0);
+    assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/SOURCE \/ STUDIO PHOTO/);
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`studio-source-compared-${width}.png`)});
+    await page.getByRole("button",{name:"Show design",exact:true}).click();
+    assert.equal(await initialSourceNote.count(),0);
     // Real-photo screenshot gates at each required responsive width. No paid
     // rendering service or replacement model is involved.
     await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");
@@ -276,7 +287,20 @@ async function run(){
     assert.equal(new URL(await original.getAttribute("src"),base).pathname,"/designer/studio-wide.webp");
     assert.match(await original.getAttribute("alt"),/separate pleated studio source photograph/);
     assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/SOURCE \/ WIDE TROUSER PHOTO/);
-    assert.match(await page.locator('[data-photo-source-comparison="wide"]').textContent(),/shirt in the instant preview comes from the separate pleated studio photograph/);
+    const wideSourceNotice=page.locator('.newDesignerPhoto > [data-photo-source-comparison="wide"]');
+    assert.equal(await wideSourceNotice.count(),1);
+    assert.match(await wideSourceNotice.textContent(),/shirt in the instant preview comes from the separate pleated studio photograph/);
+    assert.equal(await page.locator('[data-photo-construction-mismatch="true"]').count(),0,
+      "original photo must not show the customer's selected cut warning as if it were reconstructed");
+    await wideSourceNotice.scrollIntoViewIfNeeded();
+    const sourceNoticeBox=await wideSourceNotice.boundingBox();
+    const sourceDockBox=await page.locator(".floatingContactDock").boundingBox();
+    assert.ok(sourceNoticeBox && sourceNoticeBox.width>0 && sourceNoticeBox.height>0);
+    if(sourceDockBox){
+      const collides=sourceNoticeBox.x<sourceDockBox.x+sourceDockBox.width && sourceNoticeBox.x+sourceNoticeBox.width>sourceDockBox.x
+        && sourceNoticeBox.y<sourceDockBox.y+sourceDockBox.height && sourceNoticeBox.y+sourceNoticeBox.height>sourceDockBox.y;
+      assert.equal(collides,false,"original wide source provenance must remain readable above photograph");
+    }
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`wide-source-compared-${width}.png`)});
     summary.viewports[summary.viewports.length-1].wideSourceComparisonVerified=true;
