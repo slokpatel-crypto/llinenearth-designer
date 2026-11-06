@@ -252,6 +252,57 @@ test("tucked shirt requires its own length anchor for handoff and printable read
   assert.match(staleHtml,/Shirt-length anchor is not recorded/);
 });
 
+test("high and extra-high trouser rises require a recorded front-rise anchor",()=>{
+  const standardShirt=[chest,shoulder,sleeve];
+  const standardTrouser=[waist,seat,inseam,outseam];
+  const frontRise:FinishedTarget={
+    label:"Front-rise anchor",bodyCm:28,finishedCm:{min:28,max:28},basis:"recorded_anchor",
+  };
+
+  assert.deepEqual(auditHandoffMeasurements(
+    {shirt:standardShirt,trouser:standardTrouser},{trouserRise:"mid_rise"},
+  ),{errors:[],missing:[]});
+  for(const rise of ["high_rise","extra_high_rise"]){
+    const missing=auditHandoffMeasurements(
+      {shirt:standardShirt,trouser:standardTrouser},{trouserRise:rise},
+    );
+    assert.deepEqual(missing.errors,[]);
+    assert.ok(missing.missing.some(note=>note.includes("Front-rise anchor")
+      && note.includes("high-rise construction")),rise);
+
+    const revision=createRevision(standardShirt,standardTrouser);
+    if(!revision.garmentSpec.styleSpec) throw Error("Missing synthetic exact cut");
+    revision.garmentSpec.styleSpec.pant.rise=rise;
+    revision.garmentSpec.trouser.rise="High Rise";
+    const packet=buildProductionHandoff(revision);
+    assert.equal(packet.status,"review_required",rise);
+    assert.ok(packet.unresolved.some(note=>note.includes("Front-rise anchor")),rise);
+    const html=buildTailorTechPackHtml(packet);
+    assert.match(html,/Front-rise anchor is not recorded/);
+    assert.match(html,/NO CUTTING AUTHORISATION/);
+
+    const complete=createRevision(standardShirt,[...standardTrouser,frontRise]);
+    if(!complete.garmentSpec.styleSpec) throw Error("Missing synthetic exact cut");
+    complete.garmentSpec.styleSpec.pant.rise=rise;
+    complete.garmentSpec.trouser.rise="High Rise";
+    const done=buildProductionHandoff(complete);
+    assert.equal(done.status,"ready_for_tailor_review",rise);
+    assert.deepEqual(done.unresolved,[]);
+    assert.ok(done.construction.trouser.finishedTargets.some(t=>t.label==="Front-rise anchor"));
+    const stale=structuredClone(done);
+    stale.construction.trouser.finishedTargets=stale.construction.trouser.finishedTargets
+      .filter(t=>t.label!=="Front-rise anchor");
+    assert.match(buildTailorTechPackHtml(stale),/Front-rise anchor is not recorded/);
+    assert.match(buildTailorTechPackHtml(stale),/review required/);
+  }
+
+  const legacy=createRevision(standardShirt,standardTrouser,false);
+  legacy.garmentSpec.trouser.rise="High Rise";
+  const legacyPacket=buildProductionHandoff(legacy);
+  assert.equal(legacyPacket.status,"review_required");
+  assert.ok(legacyPacket.unresolved.some(note=>note.includes("Front-rise anchor")));
+});
+
 test("cross-field circumference discrepancies stay review-only without relying on upstream checks",()=>{
   const neck:FinishedTarget={
     label:"Finished collar circumference",bodyCm:105,
