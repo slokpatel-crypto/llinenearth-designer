@@ -62,7 +62,10 @@ export function buildProductionHandoff(
   const measurementAudit=auditHandoffMeasurements({
     shirt:spec.shirt.finishedTargets,
     trouser:spec.trouser.finishedTargets,
-  }, { shirtWear:spec.styleSpec?.shirt.wear ?? spec.shirt.wear });
+  }, {
+    shirtWear:spec.styleSpec?.shirt.wear ?? spec.shirt.wear,
+    trouserRise:spec.styleSpec?.pant.rise ?? spec.trouser.rise,
+  });
   if(measurementAudit.errors.length) {
     throw new Error(`Unsafe tailor handoff measurements: ${measurementAudit.errors.join(" ")}`);
   }
