@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   styleDirectorCandidateCollar,
   styleDirectorCandidateOrdinaryCollar,
+  styleDirectorCandidateVariantCollar,
   styleDirectorCandidateSpecialCollar,
   styleDirectorCandidateCollarIssues,
   styleDirectorCandidateWordingIssues,
@@ -79,4 +81,43 @@ test("modified collar names remain affirmative when not forbidden", () => {
     assert.deepEqual(issueCodes(name, locked), [], name);
     assert.deepEqual(issueCodes(name, other), ["candidate_collar_mismatch"], name);
   }
+});
+
+test("named collar variants retain the precise canonical construction, not a generic relative", () => {
+  const cases = [
+    ["English Spread Collar Shirt", "english_spread_collar", "spread_collar"],
+    ["Soft Button-Down Collar Shirt", "soft_button_down", "button_down_collar"],
+  ] as const;
+  const agentSource = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agentSource.includes("const variantCollar=styleDirectorCandidateVariantCollar(shirt)"),
+    "Style Director candidate generation must inspect exact variant wording");
+  assert.ok(agentSource.includes("if(variantCollar) spec.shirt.collar=variantCollar"),
+    "Style Director new canonical proposals must retain exact variant IDs");
+  assert.ok(agentSource.includes("...styleDirectorPresentationIssues(best.style,styleSpec)"),
+    "unverified photographic variant choices must still block photo approval");
+  for (const [candidate, exactId, genericId] of cases) {
+    assert.equal(styleDirectorCandidateVariantCollar(candidate), exactId, candidate);
+    const selected = optionsFor("shirt.collar").find(option => option.id === exactId);
+    assert.ok(selected, "variant must exist in the shared canonical option library");
+    assert.equal(selected.renderSupport.livePreview, "none",
+      "matching a label cannot assert approved photo construction");
+    assert.deepEqual(issueCodes(candidate, exactId), [], candidate);
+    const locked = { collar: genericId };
+    const before = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(candidate, locked).map(x => x.code),
+      ["candidate_collar_mismatch"], candidate);
+    assert.equal(JSON.stringify(locked), before, "locked generic choice must not be rewritten");
+  }
+});
+
+test("negative, optional and mixed collar variant phrases never force a versioned variant", () => {
+  for (const wording of [
+    "No English Spread Collar", "Avoid Soft Button-Down Collar",
+    "English Spread Collar is optional", "Optional Soft Button-Down Collar",
+    "English Spread Collar Shirt with Camp Collar",
+  ]) {
+    assert.equal(styleDirectorCandidateVariantCollar(wording), null, wording);
+  }
+  assert.equal(styleDirectorCandidateVariantCollar("Spread Collar Shirt"), null);
+  assert.equal(styleDirectorCandidateVariantCollar("Button-Down Collar Shirt"), null);
 });
