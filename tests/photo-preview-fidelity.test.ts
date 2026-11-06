@@ -248,8 +248,8 @@ test("fabric changes cannot leave stale canvas or source-compare imagery visible
 
 test("source comparison cannot silently export or lock a different pictured design", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.ok(source.includes('disabled={!ready || showOriginal}><span style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal ? "Show design to save"'));
-  assert.ok(source.includes('disabled={!ready || showOriginal}><span style={PHOTO_ACTION_LABEL_STYLE}>Lock final design'));
+  assert.ok(source.includes('disabled={!ready || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal ? "Show design to save"'));
+  assert.ok(source.includes('disabled={!ready || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>Lock final design'));
   assert.ok(source.includes('disabled={!ready || creativeAiLoading || showOriginal}>{creativeAiLoading ? "Rendering…"'));
 });
 
@@ -408,7 +408,7 @@ test("compact photo actions have readable labels and 44px tap targets without gl
   assert.ok(start>0 && end>start);
   const markup=source.slice(start,end);
   assert.equal((markup.match(/style=\{PHOTO_ACTION_BUTTON_STYLE\}/g)||[]).length,7);
-  assert.equal((markup.match(/<span style=\{PHOTO_ACTION_LABEL_STYLE\}>/g)||[]).length,7);
+  assert.equal((markup.match(/<b style=\{PHOTO_ACTION_LABEL_STYLE\}>/g)||[]).length,7);
   assert.ok(markup.includes("Compare"));
   assert.ok(markup.includes("Show design"));
   assert.ok(markup.includes("Save trusted preview"));
