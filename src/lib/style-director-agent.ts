@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateSleeve, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateTrouserFit, styleDirectorCandidateTrouserFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateSleeve, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -325,6 +325,7 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   const namedPlacket=styleDirectorCandidatePlacket(shirt,DESIGNER_STYLE_CHOICES.placket);
   const namedCuff=styleDirectorCandidateCuff(shirt,DESIGNER_STYLE_CHOICES.cuff);
   const namedFit=styleDirectorCandidateShirtFit(shirt,DESIGNER_STYLE_CHOICES.shirtFit);
+  const namedTrouserFit=styleDirectorCandidateTrouserFit(trouser);
   const trouserFront=styleDirectorCandidateTrouserFront(trouser);
 
   if(namedCollar?.versioned==="cuban_camp_collar") {
@@ -371,6 +372,10 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   else if(trouserFront==="pleated") spec.pant.type="pleated_trouser";
   else if(trouserFront==="flat_front") spec.pant.type="formal_flat_front";
 
+  // Pant fit is not a photographed legacy style control: preserve an explicit
+  // canonical fit and let the pure review gate flag missing live geometry.
+  if(namedTrouserFit) spec.pant.fit=namedTrouserFit;
+
   return spec;
 }
 
@@ -406,6 +411,7 @@ function buildRealModelSpec(
     ...styleDirectorCandidateWordingIssues(candidate.garments.shirt, candidate.garments.trouser),
     ...styleDirectorCandidateWaistbandIssues(candidate.garments.trouser, styleSpec.pant),
     ...styleDirectorCandidateWideLegIssues(candidate.garments.trouser, styleSpec.pant),
+    ...styleDirectorCandidateTrouserFitIssues(candidate.garments.trouser, styleSpec.pant),
     ...styleDirectorCandidateCollarIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidatePlacketIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidateCuffIssues(candidate.garments.shirt, styleSpec.shirt),
