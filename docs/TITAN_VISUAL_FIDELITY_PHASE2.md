@@ -312,3 +312,11 @@ claims of new real-world photographs or tailor acceptance.
 - Added dedicated source tests and actual Chromium across 390/768/1440px: enable zoom and QA on a wide selected design, open Compare, switch to a different shirt with an uncached delayed image, verify zoom/QA reset and stale photo hidden, then return to the chosen look with stable pixels. Compare source must mark the covered selected canvas as aria-hidden and restore it when Show design is selected.
 - Only `PhotoOutfitPreview.tsx`, `tests/photo-preview-fidelity.test.ts`, `scripts/verify-photo-form.cjs`, and this checkpoint modified. Preserves `linen-earth-studio-model-v1`, source photos, physical material evidence, saved garment specs, masks, 3D and inventory.
 - Required release evidence: green exact-head Full CI and Studio QA, all six npm gates, 390/768/1440 Chromium screenshot outputs inspected. Do not credit earlier cancelled/nonmatching-head runs. Keep PR #886 DRAFT; no merge/deploy or physical acceptance.
+
+## November 6 continuation — live preview rendering status truth
+
+- The photo status badge previously claimed `FRONT / STUDIO MODEL` or `CUTS APPROX.` even when the newly selected fabric was still loading or its source image failed. The canvas was properly hidden, but the badge looked like successful visual proof of the selected garment.
+- `PhotoOutfitPreview` now shows `PREPARING SELECTED LOOK` until a matching committed Canvas is ready, `PREVIEW UNAVAILABLE` when the render fails, and source/cuts/photoreal tags only after the selected preview has loaded. Loading/error body messages and the original photo sources remain unchanged.
+- Added focused source regression for state ordering and actual 390/768/1440 browser assertions during uncached delayed fabric switching. Pending state cannot claim a completed photographed look, and previous pixels remain hidden.
+- Scoped changes exclusively to the PhotoOutfitPreview component, its regression tests, the photo-form Chromium QA and this checkpoint. The original model `linen-earth-studio-model-v1`, masks, physical fabric facts, signed off cuts, saved specs and 3D assets remain untouched.
+- Require fresh exact-head Full CI and Non-3D Studio QA, all six npm gates and screenshot artifact review before approval. Keep PR #886 DRAFT; no merge/deploy.
