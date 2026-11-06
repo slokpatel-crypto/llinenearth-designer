@@ -141,6 +141,60 @@ export function auditHandoffBlockAdjustments(input:unknown):HandoffMeasurementAu
   return {errors,missing};
 }
 
+/**
+ * A creative concept is not a validated cutting pattern. The canonical
+ * garment-spec builder requires visual-review evidence and separately keeps
+ * craft construction pending a human decision. Recheck those rules at the
+ * final handoff/print boundary even for stale or manually locked recipes.
+ *
+ * This validates recorded review provenance, not the photographs or craft.
+ */
+export function auditHandoffCreativeReview(input:unknown):HandoffMeasurementAudit {
+  const errors:string[]=[];
+  const missing:string[]=[];
+  if(input == null) return {errors,missing};
+  if(typeof input!=="object" || Array.isArray(input)) {
+    return {errors:["Creative review must be a record."],missing};
+  }
+  const creative=input as Record<string,unknown>;
+  if(creative.craft != null) {
+    if(typeof creative.craft!=="object" || Array.isArray(creative.craft)) {
+      errors.push("Creative craft construction must be a record.");
+    }
+    missing.push("Creative craft construction requires independent pattern-maker and tailor approval before production.");
+  }
+  const review=creative.visualReview;
+  if(review==null) {
+    missing.push("Creative concept has no recorded passing visual review; obtain verified visual evidence before production.");
+    return {errors,missing};
+  }
+  if(typeof review!=="object" || Array.isArray(review)) {
+    errors.push("Creative visual review must be a record.");
+    return {errors,missing};
+  }
+  const values=review as Record<string,unknown>;
+  if(values.status!=="pass") {
+    if(values.status!=="review") errors.push("Creative visual review has unrecognized status.");
+    missing.push("Creative concept has not passed visual review; complete the review before production.");
+  }
+  if(values.evidenceAvailable!==true) {
+    missing.push("Creative visual review evidence is missing or unavailable; verify the original preview before production.");
+  }
+  // A semantic review marked open by the canonical visual QA is not
+  // superseded by a superficially passing image status.
+  if(values.semanticAvailable===true && values.semanticStatus==="review") {
+    missing.push("Creative visual semantic review is still open; resolve it before production.");
+  }
+  if(values.semanticAvailable!==true && values.semanticAvailable!==false) {
+    missing.push("Creative visual semantic review availability is not recorded; tailor must confirm visual review provenance.");
+  }
+  if(values.semanticAvailable===true
+      && values.semanticStatus!=="pass" && values.semanticStatus!=="review") {
+    errors.push("Creative visual semantic review has unrecognized status.");
+  }
+  return {errors,missing};
+}
+
 export type HandoffFitProvenance = {
   fitConstructionVersion: unknown;
   easeSource: unknown;
