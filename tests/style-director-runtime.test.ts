@@ -457,7 +457,21 @@ test("repeated Style Director decisions are deterministic across garment roles a
     const answers = { ...shared, garment };
     const first = createStyleDirectorLooks(answers, catalogue);
     const second = createStyleDirectorLooks(answers, catalogue);
-    assert.deepEqual(second, first, "identical catalogue and answers must yield identical recommendations");
+    // Refinement creation timestamps are audit metadata, not garment decisions.
+    // Their millisecond value can legitimately change between identical calls.
+    // Compare all selected fabrics, canonical options, hashes and review outcomes.
+    const withoutCreationTime = (looks: typeof first) => looks.map(look => ({
+      ...look,
+      version: { ...look.version, createdAt: "<creation-time>" },
+    }));
+    for (const look of [...first, ...second]) {
+      assert.ok(Number.isFinite(Date.parse(look.version.createdAt)),
+        "version creation time must remain genuine, valid audit metadata");
+      assert.match(look.version.specHash || "", /^LE-[0-9A-F]{8}$/,
+        "deterministic version hash must remain available for reconstruction");
+    }
+    assert.deepEqual(withoutCreationTime(second), withoutCreationTime(first),
+      "identical catalogue and answers must yield identical versioned decisions");
     assert.equal(first.length, 1, "duplicate physical IDs must not multiply looks");
     assert.equal(first[0].realModel?.shirtId, shirt.id);
     assert.equal(first[0].realModel?.pantId, pant.id);
