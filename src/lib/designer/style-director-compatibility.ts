@@ -152,7 +152,8 @@ export type DirectorConstructionIssue = {
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
     "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "legacy_trouser_mismatch" |
     "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch" |
-    "candidate_trouser_pleat_mismatch" | "unknown_trouser_pleat_option" | "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
+    "candidate_trouser_pleat_mismatch" | "unknown_trouser_pleat_option" | "unknown_versioned_option" |
+    "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
   explanation: string;
 };
 
@@ -298,6 +299,30 @@ export function styleDirectorConstructionIssues(
 ): DirectorConstructionIssue[] {
   const issues: DirectorConstructionIssue[] = [];
   const { shirt, pant } = spec;
+  // Saved designs are reconstructed from canonical option IDs, not labels.
+  // These pure checks also accept partial isolated test fixtures: validate
+  // every supplied ID, but do not fabricate missing selections. The full
+  // locked-spec parser separately enforces the presence of every field.
+  const selectedOptions = [
+    ["shirt.type", shirt.type], ["shirt.collar", shirt.collar],
+    ["shirt.cuff", shirt.cuff], ["shirt.placket", shirt.placket],
+    ["shirt.pocket", shirt.pocket], ["shirt.sleeve", shirt.sleeve],
+    ["shirt.fit", shirt.fit], ["shirt.length", shirt.length],
+    ["shirt.hem", shirt.hem], ["shirt.back", shirt.back],
+    ["shirt.wear", shirt.wear], ["shirt.button", shirt.button],
+    ["pant.type", pant.type], ["pant.fit", pant.fit],
+    ["pant.rise", pant.rise], ["pant.waistband", pant.waistband],
+    ["pant.hem", pant.hem], ["pant.break", pant.break],
+  ] as const;
+  for (const [group, id] of selectedOptions) {
+    if (id === undefined) continue;
+    if (typeof id !== "string" || !optionsFor(group).some((option) => option.id === id)) {
+      issues.push({
+        code: "unknown_versioned_option",
+        explanation: `The saved ${group} selection does not match the versioned option catalogue; review its locked ID without substituting a display label.`,
+      });
+    }
+  }
   if (shirt.type === "camp_collar_resort" &&
       (shirt.wear !== "untucked" || shirt.collar !== "cuban_camp_collar")) {
     issues.push({
