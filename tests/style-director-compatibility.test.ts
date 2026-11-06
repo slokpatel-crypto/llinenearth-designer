@@ -5,6 +5,9 @@ import {
   styleDirectorCandidateCollar,
   styleDirectorCandidateSpecialCollar,
   styleDirectorCandidateCollarIssues,
+  styleDirectorCandidatePlacketIntent,
+  styleDirectorCandidatePlacket,
+  styleDirectorCandidatePlacketIssues,
   styleDirectorCandidateOrdinaryCollar,
   styleDirectorCandidateSleeve,
   styleDirectorCandidateSleeveIssues,
@@ -838,6 +841,87 @@ test("only explicitly named wide-leg silhouettes select a wide trouser", () => {
     "no substring-based photographic trouser silhouette selection");
   assert.ok(!agent.includes('/wide/.test(trouser)'),
     "no substring-based versioned trouser silhouette selection");
+});
+
+test("named shirt plackets resolve only canonical IDs and real selectable photos", () => {
+  const choices = optionsFor("shirt.placket")
+    .filter(option => option.legacySelectable !== false)
+    .map(option => option.legacyLabel || option.label);
+  const cases = [
+    ["Standard Placket Shirt", "standard_visible_placket", "Standard (visible stitch)"],
+    ["Visible-Stitch Placket Shirt", "standard_visible_placket", "Standard (visible stitch)"],
+    ["Hidden Placket Dress Shirt", "hidden_fly_front", "Hidden / Fly-front"],
+    ["Fly-Front Placket Shirt", "hidden_fly_front", "Hidden / Fly-front"],
+    ["French Placket Shirt", "french_placket", null],
+    ["Covered Placket Shirt", "covered_placket", null],
+    ["Contrast Placket Shirt", "contrast_placket", null],
+  ] as const;
+  for (const [name, versioned, legacy] of cases) {
+    assert.ok(optionsFor("shirt.placket").some(x => x.id === versioned), versioned);
+    assert.deepEqual(styleDirectorCandidatePlacket(name, choices), { versioned, legacy }, name);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(name), [], name);
+    const locked = spec({ placket: versioned });
+    const prior = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(name, locked.shirt), [], name);
+    const mismatchId = versioned === "standard_visible_placket" ? "hidden_fly_front" : "standard_visible_placket";
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(name, { placket: mismatchId })
+      .map(issue => issue.code), ["candidate_placket_mismatch"], name);
+    const photographic = { ...photo("Spread Collar", "Tucked"), ...(legacy ? { placket: legacy } : {}) };
+    const issues = styleDirectorPresentationIssues(photographic, locked).map(issue => issue.code);
+    if (legacy) assert.deepEqual(issues, [], "matching existing legacy plackets remain unchanged: " + name);
+    else assert.ok(issues.includes("unverified_placket_photo"),
+      "unavailable photographic constructions must remain review-only: " + name);
+    assert.equal(JSON.stringify(locked), prior, "placket check must not mutate locked specs");
+  }
+  assert.equal(styleDirectorCandidatePlacket("French Placket Shirt", [] )?.legacy, null);
+  assert.equal(styleDirectorCandidatePlacket("Hidden Placket Shirt", [] )?.legacy, null,
+    "missing legacy photo choice must not invent an option");
+  assert.deepEqual(styleDirectorCandidatePlacket("Invisible Button Front Shirt", choices), null,
+    "unverified construction synonyms must not silently choose a real placket");
+});
+
+test("negated, optional and conflicting shirt plackets require truthful selection", () => {
+  const cases = [
+    ["No French Placket", null, ["french_placket"], false],
+    ["Without Hidden Placket", null, ["hidden_fly_front"], false],
+    ["Do Not Use Covered Placket", null, ["covered_placket"], false],
+    ["Hidden Placket Not Allowed", null, ["hidden_fly_front"], false],
+    ["Optional French Placket", null, [], false],
+    ["French Placket Is Optional", null, [], false],
+    ["No French Placket; Hidden Placket", "hidden_fly_front", ["french_placket"], false],
+    ["French Placket; Covered Placket", null, [], true],
+    ["No French Placket; French Placket", "french_placket", ["french_placket"], true],
+    ["No Hidden Placket; Fly-Front Placket", "hidden_fly_front", ["hidden_fly_front"], true],
+  ] as const;
+  for (const [name, requested, prohibited, ambiguous] of cases) {
+    const intent = styleDirectorCandidatePlacketIntent(name);
+    assert.equal(intent.requested, requested, name);
+    assert.deepEqual(intent.prohibited, [...prohibited], name);
+    assert.equal(intent.ambiguous, ambiguous, name);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(name).map(issue => issue.code),
+      ambiguous ? ["ambiguous_candidate_placket"] : [], name);
+    const choices = optionsFor("shirt.placket").map(o => o.legacyLabel || o.label);
+    assert.equal(styleDirectorCandidatePlacket(name, choices) === null, requested === null || ambiguous, name);
+    if (ambiguous) {
+      assert.deepEqual(styleDirectorCandidatePlacketIssues(name, { placket: "french_placket" }), [],
+        "ambiguity gate must not guess a canonical construction");
+    } else if (prohibited.length) {
+      for (const forbidden of prohibited) {
+        assert.deepEqual(styleDirectorCandidatePlacketIssues(name, { placket: forbidden })
+          .map(issue => issue.code), ["candidate_placket_mismatch"], name);
+      }
+    }
+  }
+  for (const label of ["Standard Flat-Front Shirt", "French Cuff Shirt", "Covered Pocket Shirt"]) {
+    assert.deepEqual(styleDirectorCandidatePlacketIntent(label),
+      { requested: null, prohibited: [], ambiguous: false }, label);
+  }
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("const namedPlacket = styleDirectorCandidatePlacket(shirt, DESIGNER_STYLE_CHOICES.placket)"));
+  assert.ok(agent.includes("const namedPlacket=styleDirectorCandidatePlacket(shirt,DESIGNER_STYLE_CHOICES.placket)"));
+  assert.ok(agent.includes("if (namedPlacket) spec.shirt.placket=namedPlacket.versioned;"));
+  assert.ok(agent.includes("...styleDirectorCandidatePlacketIssues(candidate.garments.shirt, styleSpec.shirt)"),
+    "real recommendation review must validate intended placket against saved ID");
 });
 
 test("ordinary collar resolver rejects incidental words and contradictory constructions", () => {
