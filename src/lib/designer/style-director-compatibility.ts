@@ -61,10 +61,11 @@ export function styleDirectorCandidateCollar(
       Object.values(collarFamilies).filter(Boolean).length !== 1) return null;
   const matcher = camp ? /\b(?:camp|cuban)\b/i : band ? /\b(?:band|mandarin)\b/i : /\bcutaway\b/i;
   return {
+    // A photographed label mixing an advanced collar with an ordinary
+    // collar is no more trustworthy than an ambiguous candidate description.
+    // Resolve with the same family classifier for both directions.
     legacy: legacyChoices.find((label) => matcher.test(label) &&
-      Number(/\b(?:camp|cuban)\b/i.test(label)) +
-      Number(/\b(?:band|mandarin)\b/i.test(label)) +
-      Number(/\bcutaway\b/i.test(label)) === 1) ?? null,
+      Object.values(candidateCollarFamilies(label)).filter(Boolean).length === 1) ?? null,
     versioned: camp ? "cuban_camp_collar" : band ? "mandarin_band_collar" : "cutaway_collar",
   };
 }
