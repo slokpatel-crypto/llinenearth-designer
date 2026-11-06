@@ -1734,7 +1734,12 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <span>LIVE PREVIEW</span>
       <h2 id="designerPhotoTitle">Your look.</h2>
     </div>
-    {!showCreativeAi && constructionMismatches.length>0 && <div className="newDesignerPhotoConstructionNotice" data-photo-construction-mismatch="true" role="status" style={{margin:"10px 20px 12px",padding:"9px 12px",borderLeft:"3px solid #a65d43",background:"#faf6f0",color:"#514538",fontSize:"12px",lineHeight:1.5}}>
+    {showOriginal && ready && !showCreativeAi && <div className="newDesignerPhotoConstructionNotice" data-photo-source-comparison={templateId==="wide"?"wide":"studio"} role="status" style={{margin:"10px 20px 12px",padding:"9px 12px",borderLeft:"3px solid #a65d43",background:"#faf6f0",color:"#514538",fontSize:"12px",lineHeight:1.5}}>
+      <strong>Original source photo, not your selected design</strong> · {templateId==="wide"
+        ? "Compare shows the original wide-trouser photograph; the shirt in the instant preview comes from the separate pleated studio photograph."
+        : "Compare shows the original unchanged studio photograph."} Choose Show design to view your selected fabrics and cuts.
+    </div>}
+    {!showOriginal && !showCreativeAi && constructionMismatches.length>0 && <div className="newDesignerPhotoConstructionNotice" data-photo-construction-mismatch="true" role="status" style={{margin:"10px 20px 12px",padding:"9px 12px",borderLeft:"3px solid #a65d43",background:"#faf6f0",color:"#514538",fontSize:"12px",lineHeight:1.5}}>
       <strong>Photographic construction limits</strong> · {constructionMismatches.map((gap)=>gap.label).join(", ")} not reconstructed in the fixed studio photograph. Your selected construction remains in the saved design specification.
     </div>}
     <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-ready={ready?"true":"false"} aria-busy={!ready && !error}>
@@ -1773,7 +1778,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         <button type="button" onClick={download} disabled={!ready || showOriginal}>{showOriginal ? "Show design to save" : showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</button>
       </div>
     </div>
-    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {showOriginal && templateId==="wide" && <span data-photo-source-comparison="wide">Compare shows the original wide-trouser photograph; the shirt in the instant preview comes from the separate pleated studio photograph. </span>} {previewScaleVerified ? "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
+    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {previewScaleVerified ? "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
     {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}
     {creativeAi?.cached && <p className="newDesignerPhotoCache">Cached final render reused · no new FASHN generation was needed.</p>}
     {creativeAi && !creativeDirection && <p className="newDesignerPhotoLock"><strong>MODEL IDENTITY LOCKED</strong> · {LINEN_EARTH_MODEL_IDENTITY_ID} stays identical across Front / 3/4 / Side / Back; only camera angle and hidden garment surfaces may change.</p>}
