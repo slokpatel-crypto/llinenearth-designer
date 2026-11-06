@@ -46,6 +46,33 @@ const LANDMARK_BASIS = {
   },
 } as const satisfies Record<"shirt" | "trouser", Record<string, FinishedTarget["basis"]>>;
 
+/**
+ * Validate locked construction findings before they influence a production
+ * review status. Invalid severity values must not be interpreted as "info"
+ * or silently omitted from a printable review packet.
+ */
+export function auditHandoffConstructionChecks(input:unknown): HandoffMeasurementAudit {
+  const errors:string[]=[];
+  if (!Array.isArray(input)) {
+    return { errors:["Construction checks must be an array."], missing:[] };
+  }
+  for (const [index, item] of input.entries()) {
+    const at=`Construction check #${index+1}`;
+    if (!item || typeof item!=="object" || Array.isArray(item)) {
+      errors.push(`${at} must be a record.`);
+      continue;
+    }
+    const check=item as Record<string,unknown>;
+    if (typeof check.id!=="string" || !check.id.trim() || check.id.length>120)
+      errors.push(`${at} must have a nonempty bounded ID.`);
+    if (typeof check.message!=="string" || !check.message.trim() || check.message.length>2000)
+      errors.push(`${at} must have a nonempty bounded message.`);
+    if (check.severity!=="info" && check.severity!=="review" && check.severity!=="warning")
+      errors.push(`${at} has an unrecognized severity.`);
+  }
+  return { errors, missing:[] };
+}
+
 export type HandoffFitProvenance = {
   fitConstructionVersion: unknown;
   easeSource: unknown;
