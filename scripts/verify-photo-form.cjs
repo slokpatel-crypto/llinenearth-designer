@@ -303,6 +303,8 @@ async function run(){
     assert.equal(await page.getByRole("button",{name:"Hide boundaries",exact:true}).isDisabled(),true);
     const original=page.locator(".newDesignerPhotoOriginal");
     await original.waitFor();
+    assert.equal(await page.locator(".newDesignerPhotoStage>canvas").getAttribute("aria-hidden"),"true",
+      "the original photo, not the underneath selected canvas, must be announced in Compare");
     assert.equal(await page.getByRole("button",{name:"Show design to save",exact:true}).isDisabled(),true,
       "source Compare must not silently save a different selected-design canvas");
     const finalLock=page.getByRole("button",{name:"Lock final design",exact:true});
@@ -328,10 +330,13 @@ async function run(){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`wide-source-compared-${width}.png`)});
     summary.viewports[summary.viewports.length-1].wideSourceComparisonVerified=true;
+    summary.viewports[summary.viewports.length-1].sourceCanvasAccessibilityIsolated=true;
     summary.viewports[summary.viewports.length-1].boundaryQaSourceIsolationVerified=true;
     summary.viewports[summary.viewports.length-1].boundaryQaZoomAligned=true;
     await page.getByRole("button",{name:"Show design",exact:true}).click();
     assert.equal(await original.count(),0);
+    assert.equal(await page.locator(".newDesignerPhotoStage>canvas").getAttribute("aria-hidden"),"false",
+      "selected design canvas must be announced again when source Compare closes");
     assert.equal(await page.locator(".newDesignerBoundaryQa").count(),1,
       "returning from source Compare must restore the selected design's QA contours");
     await page.getByRole("button",{name:"Hide boundaries",exact:true}).click();
