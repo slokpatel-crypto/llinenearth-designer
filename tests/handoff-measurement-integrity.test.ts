@@ -109,6 +109,32 @@ test("an invalid, nonfinite, reversed or mismatched finished target fails closed
   }
 });
 
+test("negative ease is rejected consistently with the existing house ease contract",()=>{
+  const wrong={
+    ...chest,
+    easeCm:{min:-3,max:2},
+    finishedCm:{min:97,max:102},
+  };
+  const audit=auditHandoffMeasurements({
+    shirt:[wrong,shoulder,sleeve],
+    trouser:[waist,seat,inseam,outseam],
+  });
+  assert.ok(audit.errors.some(item=>item.includes("ease range is invalid")));
+  assert.throws(()=>buildProductionHandoff(createRevision(
+    [wrong,shoulder,sleeve],[waist,seat,inseam,outseam],
+  )),/Unsafe tailor handoff measurements/);
+
+  const clean=buildProductionHandoff(createRevision(
+    [chest,shoulder,sleeve],[waist,seat,inseam,outseam],
+  ));
+  const tampered=structuredClone(clean);
+  tampered.construction.shirt.finishedTargets[0]=wrong;
+  assert.throws(()=>buildTailorTechPackHtml(tampered),/Unsafe tailor tech pack measurements/);
+  assert.equal(buildProductionHandoff(createRevision(
+    [chest,shoulder,sleeve],[waist,seat,inseam,outseam],
+  )).status,"ready_for_tailor_review");
+});
+
 test("duplicate landmarks cannot silently overwrite a cutting instruction",()=>{
   const report=auditHandoffMeasurements({shirt:[chest,{...chest,label:" finished shirt chest "}],trouser:[waist,seat]});
   assert.ok(report.errors.some(s=>s.includes("duplicate")));
