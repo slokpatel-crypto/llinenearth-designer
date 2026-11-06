@@ -167,3 +167,47 @@ test("whole-family bans still exclude all variants; generic requests can coexist
       ["ambiguous_candidate_collar"], name);
   }
 });
+
+test("catalogue English Spread / British Collar alias preserves the exact versioned ID", () => {
+  const option = optionsFor("shirt.collar").find(entry => entry.id === "english_spread_collar");
+  assert.equal(option?.label, "English Spread / British Collar");
+  for (const name of [
+    "English Spread / British Collar",
+    "English Spread / British Collar Shirt",
+    "English Spread & British Collar Shirt",
+  ]) {
+    assert.equal(styleDirectorCandidateOrdinaryCollar(name), "spread", name);
+    assert.equal(styleDirectorCandidateVariantCollar(name), "english_spread_collar", name);
+    assert.deepEqual(issueCodes(name, "english_spread_collar"), [], name);
+    assert.deepEqual(issueCodes(name, "spread_collar"), ["candidate_collar_mismatch"], name);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(name), [], name);
+  }
+});
+
+test("English Spread / British Collar bans and optional language do not choose a different construction", () => {
+  for (const name of [
+    "No English Spread / British Collar",
+    "Avoid English Spread / British Collar",
+    "English Spread / British Collar is forbidden",
+  ]) {
+    const saved = { collar: "spread_collar" };
+    const before = JSON.stringify(saved);
+    assert.equal(styleDirectorCandidateVariantCollar(name), null, name);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(name, saved), [], name);
+    assert.deepEqual(issueCodes(name, "english_spread_collar"), ["candidate_collar_mismatch"], name);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(name), [], name);
+    assert.equal(JSON.stringify(saved), before);
+  }
+  for (const name of [
+    "Optional English Spread / British Collar",
+    "English Spread / British Collar is optional",
+  ]) {
+    assert.equal(styleDirectorCandidateVariantCollar(name), null, name);
+    assert.deepEqual(issueCodes(name, "spread_collar"), [], name);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(name), [], name);
+  }
+  const contradictory = "No English Spread / British Collar; English Spread / British Collar Shirt";
+  assert.equal(styleDirectorCandidateVariantCollar(contradictory), null);
+  assert.deepEqual(styleDirectorCandidateWordingIssues(contradictory).map(x => x.code),
+    ["ambiguous_candidate_collar"]);
+});
