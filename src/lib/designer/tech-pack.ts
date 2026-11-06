@@ -37,7 +37,7 @@ function list(items:string[]){
   return items.map((item)=>`<li>${esc(item)}</li>`).join("");
 }
 
-export function buildTailorTechPackHtml(handoff:ProductionHandoff){
+function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSource:boolean){
   const shirt=handoff.construction.shirt;
   const trouser=handoff.construction.trouser;
   const audit=auditHandoffMeasurements({
@@ -63,9 +63,10 @@ export function buildTailorTechPackHtml(handoff:ProductionHandoff){
   const openConstructionChecks=handoff.construction.checks.some(
     (check)=>check.severity==="review"||check.severity==="warning",
   );
-  // Unverified preview-only HTML must not display a ready badge if any
-  // original or newly detected issues remain unresolved.
-  const displayStatus=handoff.status==="ready_for_tailor_review"
+  // The synchronous preview has not verified the SHA256-locked recipe.
+  // It can show reconstruction details, but never elevate an untrusted
+  // ready flag into an authoritative tailor-review badge.
+  const displayStatus=verifiedLockedSource && handoff.status==="ready_for_tailor_review"
     && !outstanding.length && !openConstructionChecks
     && !audit.missing.length && !fitAudit.missing.length && !missingConstruction.length
     ? handoff.status : "review_required";
@@ -105,6 +106,9 @@ footer{margin-top:14px;padding-top:10px;border-top:1px solid #cfd3d6;color:#6872
   </div>
   <div>
     <div class="badge">${esc(displayStatus.replaceAll("_"," "))}</div>
+    <div class="muted">${verifiedLockedSource
+      ? "LOCKED RECIPE VERIFIED — no physical cutting approval"
+      : "UNVERIFIED PACKET PREVIEW — lock not checked"}</div>
     <div class="muted" style="margin-top:8px">Recipe ${esc(handoff.recipeHash.slice(0,16).toUpperCase())}</div>
     <div class="muted">Generated ${esc(handoff.generatedAt)} · export metadata (not lock-signed)</div>
   </div>
@@ -273,6 +277,14 @@ This document is generated from an immutable Linen Earth design revision. It is 
 }
 
 /**
+ * Legacy synchronous review preview. It can display useful construction
+ * information but must not claim that a lock or the packet was authenticated.
+ */
+export function buildTailorTechPackHtml(handoff:ProductionHandoff):string {
+  return renderTailorTechPackHtml(handoff,false);
+}
+
+/**
  * Trusted print/export boundary. The legacy synchronous HTML builder remains
  * available for explicitly unverified, review-only packets. Export flows must
  * use this async variant so all displayed measurements, material identities,
@@ -286,7 +298,7 @@ export async function buildVerifiedTailorTechPackHtml(
   if (!await verifyProductionHandoff(handoff, revision)) {
     throw new Error("Unsafe tailor tech pack export: the packet does not match its verified locked design revision.");
   }
-  return buildTailorTechPackHtml(handoff);
+  return renderTailorTechPackHtml(handoff,true);
 }
 
 /**
