@@ -194,7 +194,7 @@ export function styleDirectorCandidateCollarIssues(
  * kept separate: a forbidden placket must not become a selected placket.
  */
 const candidatePlacketPatterns = [
-  { id: "standard_visible_placket", pattern: /\b(?:standard(?:[- ]visible(?:[- ]stitch)?)?[- ]placket|visible(?:[- ]stitched?)?[- ]placket)\b/gi },
+  { id: "standard_visible_placket", pattern: /\b(?:standard(?:[- ]visible(?:[- ]stitch)?)?[- ]placket|visible(?:[- ]stitch(?:ed)?)?[- ]placket)\b/gi },
   { id: "hidden_fly_front", pattern: /\b(?:hidden(?:[- ]fly[- ]?front)?[- ]placket|fly[- ]?front(?:[- ]placket)?)\b/gi },
   { id: "french_placket", pattern: /\bfrench[- ]placket\b/gi },
   { id: "covered_placket", pattern: /\bcovered[- ]placket\b/gi },
@@ -212,8 +212,9 @@ export function styleDirectorCandidatePlacketIntent(candidateShirt: string): {
   const prohibitions = new Set<CandidatePlacketId>();
   for (const { id, pattern } of candidatePlacketPatterns) {
     for (const hit of candidateShirt.matchAll(pattern)) {
-      const prefix = candidateShirt.slice(0, hit.index);
-      const suffix = candidateShirt.slice(hit.index + hit[0].length);
+      const index = hit.index ?? 0;
+      const prefix = candidateShirt.slice(0, index);
+      const suffix = candidateShirt.slice(index + hit[0].length);
       const forbidden = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(suffix);
       const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
