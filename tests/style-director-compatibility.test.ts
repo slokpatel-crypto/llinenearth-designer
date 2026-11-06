@@ -14,6 +14,9 @@ import {
   styleDirectorCandidateShirtFitIntent,
   styleDirectorCandidateShirtFit,
   styleDirectorCandidateShirtFitIssues,
+  styleDirectorCandidateTrouserFitIntent,
+  styleDirectorCandidateTrouserFit,
+  styleDirectorCandidateTrouserFitIssues,
   styleDirectorCandidateOrdinaryCollar,
   styleDirectorCandidateSleeve,
   styleDirectorCandidateSleeveIssues,
@@ -813,6 +816,90 @@ test("wide-leg candidate intent is checked against immutable saved trouser types
     "final real-model recommendation status must include proposed wide-leg parity");
   assert.ok(agent.includes('styleDirectorCandidateWideLegIntent(trouser) === "prohibited"'),
     "legacy wide-leg default must be replaced when the candidate forbids it");
+});
+
+test("explicit trouser fits retain their real IDs while photo truth requires review", () => {
+  const cases = [
+    ["Slim Tapered Trouser", "slim_tapered"],
+    ["Straight Classic Trouser", "straight_classic"],
+    ["Regular Tapered Pants", "regular_tapered"],
+    ["Korean Straight Wide Trouser", "korean_straight_wide"],
+    ["Korean Tapered Pants", "korean_tapered"],
+    ["Baggy Wide Trouser", "baggy_wide"],
+    ["Wide-Leg Drape Trouser", "wide_leg_drape"],
+    ["Pleated Straight Trouser", "pleated_straight"],
+    ["Cargo Utility Pants", "cargo_utility"],
+    ["Jean-Cut Suiting Fit Trouser", "jean_cut_suiting_fit"],
+  ] as const;
+  for (const [name, id] of cases) {
+    const option = optionsFor("pant.fit").find(item => item.id === id);
+    assert.ok(option, id);
+    assert.equal(option.renderSupport.livePreview, "none",
+      "new fit geometry must not be mistaken for a verified live photo");
+    assert.equal(styleDirectorCandidateTrouserFit(name), id, name);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", name), [], name);
+    const saved = spec({}, { fit: id });
+    const before = JSON.stringify(saved);
+    assert.deepEqual(styleDirectorCandidateTrouserFitIssues(name, saved.pant)
+      .map(issue => issue.code), ["unverified_trouser_fit_photo"], name);
+    const other = id === "slim_tapered" ? "straight_classic" : "slim_tapered";
+    assert.deepEqual(styleDirectorCandidateTrouserFitIssues(name, { fit: other })
+      .map(issue => issue.code), ["candidate_trouser_fit_mismatch"], name);
+    assert.equal(JSON.stringify(saved), before, "fit review must not rewrite locked IDs");
+  }
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("const namedTrouserFit=styleDirectorCandidateTrouserFit(trouser)"));
+  assert.ok(agent.includes("if(namedTrouserFit) spec.pant.fit=namedTrouserFit"));
+  assert.ok(agent.includes("...styleDirectorCandidateTrouserFitIssues(candidate.garments.trouser, styleSpec.pant)"),
+    "all named fit requests must reach real-model review status");
+});
+
+test("negated optional and conflicting trouser fits cannot silently select a cut", () => {
+  const cases = [
+    ["No Slim Tapered Trouser", null, ["slim_tapered"], false],
+    ["Without Korean Tapered Pants", null, ["korean_tapered"], false],
+    ["Do Not Wear Baggy Wide", null, ["baggy_wide"], false],
+    ["Wide-Leg Drape Is Forbidden", null, ["wide_leg_drape"], false],
+    ["Optional Straight Classic", null, [], false],
+    ["Regular Tapered Is Optional", null, [], false],
+    ["No Slim Tapered; Regular Tapered", "regular_tapered", ["slim_tapered"], false],
+    ["No Korean Tapered; Korean Straight Wide", "korean_straight_wide", ["korean_tapered"], false],
+    ["Slim Tapered; Baggy Wide", null, [], true],
+    ["No Slim Tapered; Slim Tapered", "slim_tapered", ["slim_tapered"], true],
+    ["Korean Tapered; Korean Straight Wide", null, [], true],
+  ] as const;
+  for (const [name, request, banned, ambiguous] of cases) {
+    const intent = styleDirectorCandidateTrouserFitIntent(name);
+    assert.equal(intent.requested, request, name);
+    assert.deepEqual(intent.prohibited, [...banned], name);
+    assert.equal(intent.ambiguous, ambiguous, name);
+    assert.equal(styleDirectorCandidateTrouserFit(name), ambiguous ? null : request, name);
+    const wording = styleDirectorCandidateWordingIssues("Dress Shirt", name).map(x => x.code);
+    assert.deepEqual(wording,
+      ambiguous ? ["ambiguous_candidate_trouser_fit"] : [], name);
+    if (ambiguous) {
+      assert.deepEqual(styleDirectorCandidateTrouserFitIssues(name, { fit: "slim_tapered" }), [],
+        "mixed requirements must not be guessed");
+    } else {
+      for (const id of banned) {
+        assert.deepEqual(styleDirectorCandidateTrouserFitIssues(name, { fit: id }).map(x => x.code),
+          ["candidate_trouser_fit_mismatch"], name);
+      }
+    }
+  }
+  for (const name of [
+    "Slim Stripe Trouser", "Wide Waistband Trouser", "Korean Print Trouser",
+    "Cargo Pocket Trouser", "Jean-Cut Suiting Pattern Shirt", "Pleated Front Trouser",
+    "Relaxed Drape Fabric", "Regular Trouser",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateTrouserFitIntent(name),
+      { requested: null, prohibited: [], ambiguous: false },
+      "incidental words must not select a versioned pant.fit ID: " + name);
+  }
+  const unknown = styleDirectorCandidateTrouserFitIssues("Baggy Wide Trouser", { fit: "not_a_fit" });
+  assert.deepEqual(unknown.map(issue => issue.code), ["candidate_trouser_fit_mismatch"]);
+  assert.deepEqual(unknown, styleDirectorCandidateTrouserFitIssues("Baggy Wide Trouser", { fit: "not_a_fit" }),
+    "mismatch reports must be deterministic");
 });
 
 test("only explicitly named wide-leg silhouettes select a wide trouser", () => {
