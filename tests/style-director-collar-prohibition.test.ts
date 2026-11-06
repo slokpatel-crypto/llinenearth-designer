@@ -20,6 +20,9 @@ const issueCodes = (candidate: string, savedId: string) =>
 
 test("forbidden collar wording cannot silently select that photographed or versioned collar", () => {
   const cases = [
+    ["No English Spread Collar", "english_spread_collar", "button_down_collar"],
+    ["No Soft Button-Down Collar", "soft_button_down", "spread_collar"],
+    ["Without Point (Standard) Collar", "point_standard_collar", "spread_collar"],
     ["No Camp-Collar Shirt", "cuban_camp_collar", "spread_collar"],
     ["No Cuban / Camp Collar", "cuban_camp_collar", "spread_collar"],
     ["Without Mandarin Band Collar", "mandarin_band_collar", "spread_collar"],
@@ -65,4 +68,15 @@ test("requesting and forbidding same collar fails review without rewriting an ID
     ["ambiguous_candidate_collar"]);
   assert.deepEqual(styleDirectorCandidateCollarIssues(name, saved), []);
   assert.equal(JSON.stringify(saved), before);
+});
+
+test("modified collar names remain affirmative when not forbidden", () => {
+  for (const [name, locked, other] of [
+    ["English Spread Collar Shirt", "english_spread_collar", "cuban_camp_collar"],
+    ["Soft Button-Down Collar Shirt", "soft_button_down", "spread_collar"],
+    ["Point (Standard) Collar Shirt", "point_standard_collar", "spread_collar"],
+  ] as const) {
+    assert.deepEqual(issueCodes(name, locked), [], name);
+    assert.deepEqual(issueCodes(name, other), ["candidate_collar_mismatch"], name);
+  }
 });
