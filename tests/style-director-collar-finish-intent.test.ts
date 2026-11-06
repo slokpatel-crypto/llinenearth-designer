@@ -8,7 +8,6 @@ import {
   styleDirectorCandidateWordingIssues,
   styleDirectorPresentationIssues,
 } from "../src/lib/designer/style-director-compatibility.ts";
-import { DESIGNER_STYLE_CHOICES } from "../src/lib/designer/engine.ts";
 import type { StyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
 
 const issues = (candidate: string, collarFinish: string) =>
@@ -17,13 +16,15 @@ const wording = (candidate: string) =>
   styleDirectorCandidateWordingIssues(candidate).map(issue => issue.code);
 
 test("canonical named collar finishes preserve existing option labels without inventing cloth", () => {
+  const engineSource = readFileSync("src/lib/designer/engine.ts", "utf8");
+  assert.ok(engineSource.includes('collarFinish: ["Self-fabric", "White contrast collar", "White contrast collar + cuffs"]'),
+    "candidate construction choices must match the engine's existing closed vocabulary");
   for (const [candidate, expected] of [
     ["Self-fabric Collar Shirt", "Self-fabric"],
     ["White contrast collar Shirt", "White contrast collar"],
     ["White contrast collar + cuffs Shirt", "White contrast collar + cuffs"],
     ["White contrast collar and cuffs Shirt", "White contrast collar + cuffs"],
   ] as const) {
-    assert.ok(DESIGNER_STYLE_CHOICES.collarFinish.includes(expected), candidate);
     assert.deepEqual(styleDirectorCandidateCollarFinishIntent(candidate), {
       requested: expected, prohibited: [], ambiguous: false,
     }, candidate);
