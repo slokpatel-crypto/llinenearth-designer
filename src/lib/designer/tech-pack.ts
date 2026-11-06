@@ -67,12 +67,13 @@ function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSourc
   if(blockAudit.errors.length) {
     throw new Error(`Unsafe tailor tech pack block adjustments: ${blockAudit.errors.join(" ")}`);
   }
-  const outstanding=[...new Set([...handoff.unresolved,...audit.missing,...fitAudit.missing,
-    ...blockAudit.missing,...missingConstruction])];
   const checkAudit=auditHandoffConstructionChecks(handoff.construction.checks);
   if(checkAudit.errors.length) {
     throw new Error(`Unsafe tailor tech pack construction checks: ${checkAudit.errors.join(" ")}`);
   }
+  const outstanding=[...new Set([...handoff.unresolved,...audit.missing,...fitAudit.missing,
+    ...blockAudit.missing,...checkAudit.missing,...missingConstruction])];
+
   const openConstructionChecks=handoff.construction.checks.some(
     (check)=>check.severity==="review"||check.severity==="warning",
   );
