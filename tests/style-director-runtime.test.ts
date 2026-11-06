@@ -512,3 +512,40 @@ test("supporting garment selection remains stable when unavailable duplicates pr
   }
   assert.equal(JSON.stringify(catalogue), before, "input stock must remain unchanged");
 });
+
+
+test("malformed, unknown and rejected fabric intelligence cannot change garment recommendations", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const shirt = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("shirt"));
+  const pant = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("trouser") && f.id !== shirt?.id);
+  assert.ok(shirt && pant);
+  const stock = [shirt, pant];
+  const invalidIntelligence = {
+    // A rejected record must never dereference missing scores or pairing data.
+    [shirt.id]: { reviewStatus: "rejected", trust: "reviewed" },
+    // Approval alone cannot make a structurally malformed record usable.
+    [pant.id]: { reviewStatus: "approved", trust: "reviewed", formality: 5,
+      statementLevel: 5, bestGarments: null, climateVisualFit: null, pairing: null },
+  } as unknown as NonNullable<Parameters<typeof createStyleDirectorLooks>[2]>;
+  const before = JSON.stringify({ stock, invalidIntelligence });
+  const stable = (looks: ReturnType<typeof createStyleDirectorLooks>) =>
+    looks.map(look => ({
+      ...look, version: { ...look.version, createdAt: "<creation-time>" },
+    }));
+  for (const garment of ["shirt", "trouser"] as const) {
+    const answers = {
+      occasion: "Work" as const, mood: "Sharp" as const, time: "Day" as const,
+      climate: "Indoor" as const, colorDirection: "Surprise me" as const, garment,
+    };
+    const baseline = createStyleDirectorLooks(answers, stock);
+    const withInvalid = createStyleDirectorLooks(answers, stock, invalidIntelligence);
+    assert.deepEqual(stable(withInvalid), stable(baseline),
+      "untrusted and incomplete intelligence must not alter ranking or the locked design");
+    assert.equal(withInvalid[0]?.realModel?.shirtId, shirt.id);
+    assert.equal(withInvalid[0]?.realModel?.pantId, pant.id);
+  }
+  assert.equal(JSON.stringify({ stock, invalidIntelligence }), before,
+    "ignoring malformed evidence must preserve source inputs");
+});
