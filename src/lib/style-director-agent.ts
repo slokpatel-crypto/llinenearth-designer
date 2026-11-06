@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateTrouserFit, styleDirectorCandidateTrouserFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateSleeve, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateTrouserFit, styleDirectorCandidateTrouserFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateSleeve, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorProposedCroppedHem, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -375,6 +375,13 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   // Pant fit is not a photographed legacy style control: preserve an explicit
   // canonical fit and let the pure review gate flag missing live geometry.
   if(namedTrouserFit) spec.pant.fit=namedTrouserFit;
+
+  // The existing Smart-Casual legacy preset already names both a cropped
+  // trouser type and an above-ankle break. Its new versioned proposal must
+  // carry the matching hem ID instead of inheriting the generic plain hem.
+  // Do not apply this repair to a locked design or conflicting type/break.
+  const proposedCroppedHem=styleDirectorProposedCroppedHem(spec.pant);
+  if(proposedCroppedHem) spec.pant.hem=proposedCroppedHem;
 
   return spec;
 }
