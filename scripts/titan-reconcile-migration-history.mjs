@@ -29,7 +29,8 @@ export function reconcileMigrationHistory(inventory, staging) {
     const collectedAt = row.evidence?.collected_at;
     const collectedMs = typeof collectedAt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(collectedAt) ? Date.parse(collectedAt) : NaN;
     const nowMs = Date.now();
-    const fresh = Number.isFinite(collectedMs) && collectedMs <= nowMs && nowMs - collectedMs <= 24 * 60 * 60 * 1000;
+    const canonicalTimestamp = Number.isFinite(collectedMs) && new Date(collectedMs).toISOString() === collectedAt;
+    const fresh = canonicalTimestamp && collectedMs <= nowMs && nowMs - collectedMs <= 24 * 60 * 60 * 1000;
     const claimedEvidence = row.evidence?.source === 'authenticated-read-only-staging' && typeof row.evidence?.project_id === 'string' && /^[a-zA-Z0-9_-]{3,128}$/.test(row.evidence.project_id) && fresh && row.evidence?.sql_identity_verified === true;
     const hash = typeof row.sha256 === 'string' && hex64.test(row.sha256) ? row.sha256 : null;
     const matches = hash ? candidates.filter(c => c.sha256 === hash) : [];
