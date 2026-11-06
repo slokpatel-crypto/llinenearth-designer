@@ -224,6 +224,16 @@ export function styleDirectorCandidateSleeve(
 }
 
 /**
+ * Only a clearly named wide-leg / wide-fit trouser silhouette may change the
+ * canonical trouser type. Adjectives describing waistband, stitching or fabric
+ * ("wide waistband", "widespread print") must not silently choose wide-leg.
+ * This helper is used by both the photographed legacy and versioned pathways.
+ */
+export function styleDirectorCandidateWideLeg(candidateTrouser: string): boolean {
+  return /\bwide[- ]?leg(?:ged)?\b|\bwide[- ]?fit[- ]?(?:trousers?|pants?)\b|\bwide[- ]?(?:trousers?|pants?)\b/i.test(candidateTrouser);
+}
+
+/**
  * Interpret an untrusted candidate trouser label without turning negative
  * instructions such as "without visible pleats" into positive pleat requests.
  * Null means the label supplies no supported front construction instruction.
