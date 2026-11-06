@@ -96,8 +96,7 @@ test("named collar finish reaches proposed legacy and versioned specs, contrast 
   assert.ok(agent.includes("if (namedFinish) spec.shirt.collarFinish=namedFinish"));
   assert.ok(agent.includes("...styleDirectorCandidateCollarFinishIssues(candidate.garments.shirt, styleSpec.shirt)"));
   for (const collarFinish of ["White contrast collar", "White contrast collar + cuffs"] as const) {
-    const locked = ({ shirt: { collar: "spread_collar", wear: "tucked", collarFinish } }
-      as unknown) as Pick<StyleSpecV2, "shirt">;
+    const locked = { shirt: { collar: "spread_collar", wear: "tucked", collarFinish } } as unknown as Pick<StyleSpecV2, "shirt">;
     const before = JSON.stringify(locked);
     assert.deepEqual(styleDirectorPresentationIssues(
       { collar: "Spread Collar", shirtWear: "Tucked", collarFinish }, locked,
