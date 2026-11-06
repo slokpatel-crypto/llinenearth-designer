@@ -55,6 +55,15 @@ async function run(){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     const dark=await page.locator("#designer-shirt option").evaluateAll(options=>options.find(o=>/Black - Jute Feel/.test(o.textContent))?.value);assert.ok(dark);
     await page.locator("#designer-shirt").selectOption(dark);await ready(page);
+    // The catalogue's Black - Jute Feel shirt and plain Beige trousers have
+    // no recorded visible motif repeat. Verified-repeat language must not
+    // appear simply because Solid is marked scale-exempt in the compositor.
+    const solidScaleNotice=page.locator('[data-photo-caption="instant"]');
+    assert.match(await solidScaleNotice.textContent(),/no visible motif repeat is recorded for these solid selections/i,
+      "solid fabric preview must not claim physical repeat calibration");
+    assert.doesNotMatch(await solidScaleNotice.textContent(),/reviewed physical evidence/,
+      "solid fabric has no calibrated visual motif repeat to advertise");
+    await solidScaleNotice.screenshot({path:path.join(out,`solid-fabric-scale-truthful-${width}.png`)});
     // The compact mobile CSS uses very small 6px/9px defaults for labels
     // and names. Test the actual visible nested type, not only source JSX.
     const fabricSummary=page.locator(".newDesignerPhotoSummaryCompact");
@@ -146,6 +155,7 @@ async function run(){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     summary.viewports.push({width,overflow:false,realCataloguePreview:true,tuckedAndUntuckedScreenshots:true});
     summary.viewports[summary.viewports.length-1].fabricSummaryReadable=true;
+    summary.viewports[summary.viewports.length-1].solidScaleClaimTruthful=true;
     // Exercise the ACTUAL customer controls, not just pure IDs. Advanced v2
     // sleeve/pleat specifications may be valid tailor instructions while the
     // original fixed photograph continues to show full sleeves/single pleats.
