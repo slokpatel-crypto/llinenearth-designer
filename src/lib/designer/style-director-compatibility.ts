@@ -55,7 +55,7 @@ const collarFamilyIds: Record<CandidateCollarFamily, readonly string[]> = {
 /** Keep forbidden/optional collar phrases out of positive candidate selection. */
 function candidateCollarIntent(name: string): {
   requested: ReturnType<typeof candidateCollarFamilies>;
-  prohibited: CandidateCollarFamily[];
+  prohibited: string[];
   affirmative: string;
   ambiguous: boolean;
 } {
@@ -64,11 +64,20 @@ function candidateCollarIntent(name: string): {
   const suffixBan = new RegExp("\\b(" + token + ")\\s+(?:(?:is|are)\\s+)?(?:forbidden|prohibited|banned|not\\s+(?:allowed|permitted)|(?:must|should)\\s+not\\s+be\\s+(?:used|worn))\\b", "gi");
   const prefixOptional = new RegExp("\\b(?:optional|maybe)\\s+(" + token + ")\\b", "gi");
   const suffixOptional = new RegExp("\\b(" + token + ")\\s+(?:(?:is|are)\\s+)?(?:optional|not\\s+(?:required|needed|mandatory))\\b", "gi");
-  const prohibited = new Set<CandidateCollarFamily>();
+  // The prohibition is scoped to the actual versioned ID(s). "No English
+  // Spread" must not also forbid ordinary Spread, while "no Spread Collar"
+  // forbids the entire spread family. The same rule applies to Soft Button-Down.
+  const prohibited = new Set<string>();
   const recordBan = (_match: string, named: string): string => {
     const found = candidateCollarFamilies(named);
+    const variant = /\benglish[- ]+spread(?:[- ]collar)?\b/i.test(named)
+      ? "english_spread_collar"
+      : /\bsoft[- ]+button[- ]?down(?:[- ]collar)?\b/i.test(named)
+        ? "soft_button_down" : null;
     (Object.keys(found) as CandidateCollarFamily[]).forEach(family => {
-      if (found[family]) prohibited.add(family);
+      if (!found[family]) return;
+      if (variant) prohibited.add(variant);
+      else collarFamilyIds[family].forEach(id => prohibited.add(id));
     });
     return " ";
   };
@@ -76,11 +85,21 @@ function candidateCollarIntent(name: string): {
   positive = positive.replace(prefixOptional, " ").replace(suffixOptional, " ");
   const requested = candidateCollarFamilies(positive);
   const named = (Object.keys(requested) as CandidateCollarFamily[]).filter(family => requested[family]);
+  const exactRequested = /\benglish[- ]+spread[- ]collar\b/i.test(positive)
+    ? "english_spread_collar"
+    : /\bsoft[- ]+button[- ]?down[- ]collar\b/i.test(positive)
+      ? "soft_button_down" : null;
+  const possibleIds = named.length === 1
+    ? exactRequested ? [exactRequested] : collarFamilyIds[named[0]]
+    : [];
   return {
     requested,
     prohibited: [...prohibited],
     affirmative: positive,
-    ambiguous: named.length > 1 || named.some(family => prohibited.has(family)),
+    // A generic Spread request remains compatible with a separately banned
+    // English Spread variant, since the ordinary Spread ID is still allowed.
+    ambiguous: named.length > 1 || (possibleIds.length > 0 &&
+      possibleIds.every(id => prohibited.has(id))),
   };
 }
 
@@ -248,8 +267,7 @@ export function styleDirectorCandidateCollarIssues(
   const incorrectRequest = exactVariant !== null
     ? shirt.collar !== exactVariant
     : positiveFamily !== undefined && !collarFamilyIds[positiveFamily].includes(shirt.collar);
-  const forbiddenSaved = intent.prohibited.some(family =>
-    collarFamilyIds[family].includes(shirt.collar));
+  const forbiddenSaved = intent.prohibited.includes(shirt.collar);
   return !incorrectRequest && !forbiddenSaved ? [] : [{
     code: "candidate_collar_mismatch",
     explanation: "The proposed shirt names a collar construction different from its locked versioned collar ID; confirm the collar before tailoring.",
