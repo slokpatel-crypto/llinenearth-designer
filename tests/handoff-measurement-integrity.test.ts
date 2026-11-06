@@ -252,6 +252,73 @@ test("tucked shirt requires its own length anchor for handoff and printable read
   assert.match(staleHtml,/Shirt-length anchor is not recorded/);
 });
 
+test("French double cuffs require a wrist-based finished cuff circumference",async()=>{
+  const shirtTargets=[chest,shoulder,sleeve];
+  const trouserTargets=[waist,seat,inseam,outseam];
+  const wrist:FinishedTarget={
+    label:"Finished cuff circumference",
+    bodyCm:18,easeCm:{min:2.5,max:3.5},
+    finishedCm:{min:20.5,max:21.5},basis:"body_plus_ease",
+  };
+  assert.deepEqual(auditHandoffMeasurements({
+    shirt:shirtTargets,trouser:trouserTargets,
+  },{shirtCuff:"open_short_hem_cuff"}),{errors:[],missing:[]});
+
+  const makeFrench=(targets:FinishedTarget[])=>{
+    const revision=createRevision(targets,trouserTargets);
+    if(!revision.garmentSpec.styleSpec) throw Error("Missing synthetic exact cut");
+    revision.garmentSpec.styleSpec.shirt.cuff="french_double_cuff";
+    revision.garmentSpec.styleSpec.shirt.sleeve="full_sleeve";
+    revision.garmentSpec.styleSpec.legacy.cuff="French / Double Cuff";
+    revision.garmentSpec.shirt.cuff="French / Double Cuff";
+    return revision;
+  };
+  const audit=auditHandoffMeasurements({
+    shirt:shirtTargets,trouser:trouserTargets,
+  },{shirtCuff:"french_double_cuff"});
+  assert.deepEqual(audit.errors,[]);
+  assert.ok(audit.missing.some(note=>note.includes("Finished cuff circumference")
+    && note.includes("French/double cuff")));
+
+  const missing=buildProductionHandoff(makeFrench(shirtTargets));
+  assert.equal(missing.status,"review_required");
+  assert.ok(missing.unresolved.some(note=>note.includes("Finished cuff circumference")));
+  assert.match(buildTailorTechPackHtml(missing),/Finished cuff circumference is not recorded/);
+
+  const completeRevision=makeFrench([...shirtTargets,wrist]);
+  const complete=buildProductionHandoff(completeRevision);
+  assert.equal(complete.status,"ready_for_tailor_review");
+  assert.deepEqual(complete.unresolved,[]);
+  assert.ok(complete.construction.shirt.finishedTargets.some(
+    target=>target.label==="Finished cuff circumference",
+  ));
+
+  const stale=structuredClone(complete);
+  stale.construction.shirt.finishedTargets=stale.construction.shirt.finishedTargets.filter(
+    target=>target.label!=="Finished cuff circumference",
+  );
+  const staleHtml=buildTailorTechPackHtml(stale);
+  assert.match(staleHtml,/Finished cuff circumference is not recorded/);
+  assert.match(staleHtml,/review required/);
+  assert.match(staleHtml,/NO CUTTING AUTHORISATION/);
+
+  const legacy=createRevision(shirtTargets,trouserTargets,false);
+  legacy.garmentSpec.shirt.cuff="French / Double Cuff";
+  const historical=buildProductionHandoff(legacy);
+  assert.equal(historical.status,"review_required");
+  assert.ok(historical.unresolved.some(note=>note.includes("Finished cuff circumference")));
+
+  const locked=await lockGarmentSpec(makeFrench(shirtTargets).garmentSpec,{
+    lockedAt:"2026-11-05T11:00:00.000Z",
+  });
+  const verified=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(verified.status,"review_required");
+  assert.equal(await verifyProductionHandoff(verified,locked),true);
+  const html=await buildVerifiedTailorTechPackHtml(verified,locked);
+  assert.match(html,/Finished cuff circumference is not recorded/);
+  assert.match(html,/NO CUTTING AUTHORISATION/);
+});
+
 test("high and extra-high trouser rises require a recorded front-rise anchor",()=>{
   const standardShirt=[chest,shoulder,sleeve];
   const standardTrouser=[waist,seat,inseam,outseam];
