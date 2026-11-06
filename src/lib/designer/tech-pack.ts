@@ -43,7 +43,7 @@ export function buildTailorTechPackHtml(handoff:ProductionHandoff){
   const audit=auditHandoffMeasurements({
     shirt:shirt.finishedTargets,
     trouser:trouser.finishedTargets,
-  });
+  }, { shirtWear:handoff.construction.styleSpec?.shirt.wear ?? shirt.wear });
   if(audit.errors.length) {
     throw new Error(`Unsafe tailor tech pack measurements: ${audit.errors.join(" ")}`);
   }
