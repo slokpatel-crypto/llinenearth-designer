@@ -164,5 +164,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Exact-head Full CI, Non-3D, browser, build, PostgreSQL and release checks must be confirmed on the newest commit before software verification can be declared.
 - [ ] Source version coherence does not authenticate physical block geometry, model measurements, cloth, signed tolerances, fitting or human tailor approval. No cutting, merge or deployment.
 
+## Closed-vocabulary pattern block identifiers (2026-11-06)
+- [x] Checked the authoritative `block-strategy.ts` unions and the existing final handoff/print block-adjustment audits. Previously a version-matched block could carry unsupported `shirtBlock`, `trouserBlock`, `torsoShape` or `seatShape` strings and be printed as if they were supported construction selections.
+- [x] The pure `auditHandoffBlockAdjustments` now enforces the exact known four closed vocabularies for non-null block records. Unknown identifiers are integrity errors in handoff/print; the documented `unknown` placeholder retains its meaning but creates an explicit unresolved human block-confirmation note (rather than software review readiness).
+- [x] Synthetic regression covers valid block IDs, unknown placeholder review-only, an invalid ID in every one of the four fields at handoff and printable boundaries, and a real SHA256-verified review-only export. Does not infer any physical pattern geometry.
+- [ ] Match the **new head SHA** to the full CI, Non-3D, quality, unit, engine, release, build, browser and PostgreSQL gates before marking software checks green.
+- [ ] Physical body readings, actual sample/pattern alignment, real material checks, seam tolerances and tailor approval remain unavailable. No cutting authorization, merge or deploy.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
