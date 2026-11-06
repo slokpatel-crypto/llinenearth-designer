@@ -194,6 +194,9 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/buttonMaterialDisclosed=true/);
   assert.match(script,/construction-notice-readable-/);
   assert.match(script,/constructionNoticeUnobstructed=true/);
+  assert.match(script,/physicalDisclaimerUnobstructed=true/);
+  assert.match(script,/physical-disclosure-readable-/);
+  assert.match(script,/floating contact control must not obscure fabric-scale or fit caveat/);
   assert.match(script,/floatingContactDock/);
   assert.match(script,/wide-source-compared-/);
   assert.match(script,/wideSourceComparisonVerified=true/);
