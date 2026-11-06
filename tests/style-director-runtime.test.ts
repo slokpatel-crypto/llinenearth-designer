@@ -290,3 +290,22 @@ test("Style Director caps recommendations at three eligible fabrics without muta
   }
   assert.equal(JSON.stringify(catalogue), before, "ranking must not reorder or mutate input");
 });
+
+
+test("duplicate catalogue IDs cannot create duplicate Style Director looks", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const shirts = FABRIC_STOCK.filter(f => f.inStock && f.suitableFor.includes("shirt"));
+  assert.ok(shirts.length >= 2);
+  const catalogue = [shirts[0], { ...shirts[0] }, shirts[1]];
+  const before = JSON.stringify(catalogue);
+  const looks = createStyleDirectorLooks({
+    occasion: "Travel", mood: "Relaxed", time: "Day",
+    climate: "Hot", garment: "shirt", colorDirection: "Surprise me",
+  }, catalogue);
+  assert.equal(looks.length, 2, "one physical catalogue ID must yield at most one look");
+  assert.equal(new Set(looks.map(look => look.fabric.id)).size, looks.length);
+  assert.equal(new Set(looks.map(look => look.id)).size, looks.length);
+  assert.equal(JSON.stringify(catalogue), before);
+});
