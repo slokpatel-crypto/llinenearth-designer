@@ -8,6 +8,9 @@ import {
   styleDirectorCandidatePlacketIntent,
   styleDirectorCandidatePlacket,
   styleDirectorCandidatePlacketIssues,
+  styleDirectorCandidateCuffIntent,
+  styleDirectorCandidateCuff,
+  styleDirectorCandidateCuffIssues,
   styleDirectorCandidateOrdinaryCollar,
   styleDirectorCandidateSleeve,
   styleDirectorCandidateSleeveIssues,
@@ -922,6 +925,105 @@ test("negated, optional and conflicting shirt plackets require truthful selectio
   assert.ok(agent.includes("if (namedPlacket) spec.shirt.placket=namedPlacket.versioned;"));
   assert.ok(agent.includes("...styleDirectorCandidatePlacketIssues(candidate.garments.shirt, styleSpec.shirt)"),
     "real recommendation review must validate intended placket against saved ID");
+});
+
+test("explicit cuff descriptions map to existing versioned construction and honest legacy photos", () => {
+  const photoChoices = optionsFor("shirt.cuff")
+    .filter(option => option.legacySelectable !== false)
+    .map(option => option.legacyLabel || option.label);
+  const cases = [
+    ["French Cuff Shirt", "french_double_cuff", "French / Double Cuff"],
+    ["French / Double Cuff Shirt", "french_double_cuff", "French / Double Cuff"],
+    ["Double Cuff Shirt", "french_double_cuff", "French / Double Cuff"],
+    ["Barrel Cuff (1-button) Shirt", "barrel_cuff_1_button", "Barrel Cuff (1-button)"],
+    ["1-button Barrel Cuff Shirt", "barrel_cuff_1_button", "Barrel Cuff (1-button)"],
+    ["Barrel Cuff (2-button) Shirt", "barrel_cuff_2_button", "Barrel Cuff (2-button)"],
+    ["2-button Barrel Cuff Shirt", "barrel_cuff_2_button", "Barrel Cuff (2-button)"],
+    ["Convertible Cuff Shirt", "convertible_cuff", "Convertible Cuff"],
+    ["Rounded/Soft Cuff Shirt", "rounded_soft_cuff", "Rounded/Soft Cuff"],
+    ["Cocktail Cuff Shirt", "cocktail_cuff", null],
+    ["Angled Barrel Cuff Shirt", "angled_barrel_cuff", null],
+    ["Open Short-Sleeve Hem Shirt", "open_short_hem_cuff", null],
+  ] as const;
+  for (const [candidate, id, legacy] of cases) {
+    assert.ok(optionsFor("shirt.cuff").some(option => option.id === id), candidate);
+    assert.deepEqual(styleDirectorCandidateCuff(candidate, photoChoices),
+      { versioned: id, legacy }, candidate);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(candidate), [], candidate);
+    const locked = spec({ cuff: id, ...(id === "open_short_hem_cuff" ? { sleeve: "half_sleeve" } : {}) });
+    const snapshot = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidateCuffIssues(candidate, locked.shirt), [], candidate);
+    assert.deepEqual(styleDirectorCandidateCuffIssues(candidate, {
+      cuff: id === "barrel_cuff_1_button" ? "french_double_cuff" : "barrel_cuff_1_button",
+    }).map(issue => issue.code), ["candidate_cuff_mismatch"], candidate);
+    const presented = {
+      ...photo("Spread Collar", "Tucked"), ...(legacy ? { cuff: legacy } : {}),
+    };
+    const issues = styleDirectorPresentationIssues(presented, locked).map(issue => issue.code);
+    if (legacy) assert.deepEqual(issues, [], "supported cuff photo matches its ID: " + candidate);
+    else if (id === "open_short_hem_cuff") {
+      assert.ok(issues.includes("unverified_short_sleeve_photo"),
+        "open short-sleeve finish keeps its existing preview review: " + candidate);
+      assert.ok(!issues.includes("unverified_cuff_photo"),
+        "avoid duplicate short-sleeve photo warnings");
+    } else assert.ok(issues.includes("unverified_cuff_photo"),
+      "provisional cuff label cannot imply verified photographic shape: " + candidate);
+    assert.equal(JSON.stringify(locked), snapshot, "cuff review must preserve saved construction");
+  }
+  assert.deepEqual(styleDirectorCandidateCuff("Cocktail Cuff Shirt", []),
+    { versioned: "cocktail_cuff", legacy: null });
+  assert.deepEqual(styleDirectorCandidateCuff("Barrel Cuff (1-button) Shirt", []),
+    { versioned: "barrel_cuff_1_button", legacy: null },
+    "an unavailable photo choice must not invent a legacy label");
+});
+
+test("forbidden and contradictory named cuffs cannot silently change the locked cuff", () => {
+  const cases = [
+    ["No French Cuff", null, ["french_double_cuff"], false],
+    ["Without Cocktail Cuff", null, ["cocktail_cuff"], false],
+    ["Do Not Wear Convertible Cuff", null, ["convertible_cuff"], false],
+    ["Barrel Cuff (2-button) Forbidden", null, ["barrel_cuff_2_button"], false],
+    ["French Cuff Not Allowed", null, ["french_double_cuff"], false],
+    ["Optional French Cuff", null, [], false],
+    ["French Cuff Is Optional", null, [], false],
+    ["No French Cuff; Cocktail Cuff", "cocktail_cuff", ["french_double_cuff"], false],
+    ["French Cuff; Cocktail Cuff", null, [], true],
+    ["No French Cuff; French Cuff", "french_double_cuff", ["french_double_cuff"], true],
+    ["Barrel Cuff (1-button); Barrel Cuff (2-button)", null, [], true],
+  ] as const;
+  for (const [candidate, request, prohibited, ambiguous] of cases) {
+    const intent = styleDirectorCandidateCuffIntent(candidate);
+    assert.equal(intent.requested, request, candidate);
+    assert.deepEqual(intent.prohibited, [...prohibited], candidate);
+    assert.equal(intent.ambiguous, ambiguous, candidate);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(candidate).map(issue => issue.code),
+      ambiguous ? ["ambiguous_candidate_cuff"] : [], candidate);
+    const named = styleDirectorCandidateCuff(candidate, optionsFor("shirt.cuff").map(x => x.legacyLabel || x.label));
+    assert.equal(named === null, request === null || ambiguous, candidate);
+    if (ambiguous) {
+      assert.deepEqual(styleDirectorCandidateCuffIssues(candidate, { cuff: "french_double_cuff" }), [],
+        "contradictory wording is owned by the ambiguity gate");
+    } else {
+      for (const id of prohibited) {
+        assert.deepEqual(styleDirectorCandidateCuffIssues(candidate, { cuff: id })
+          .map(issue => issue.code), ["candidate_cuff_mismatch"], candidate);
+      }
+    }
+  }
+  for (const label of [
+    "French Placket Shirt", "Barrel Buttons Shirt", "Cocktail Evening Shirt",
+    "Single Button Cuff Shirt", "Double Button Cuff Shirt",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateCuffIntent(label),
+      { requested: null, prohibited: [], ambiguous: false }, label);
+  }
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("const namedCuff = styleDirectorCandidateCuff(shirt, DESIGNER_STYLE_CHOICES.cuff)"));
+  assert.ok(agent.includes("const namedCuff=styleDirectorCandidateCuff(shirt,DESIGNER_STYLE_CHOICES.cuff)"));
+  assert.ok(agent.includes("if (namedCuff?.legacy) style.cuff = namedCuff.legacy"));
+  assert.ok(agent.includes("if (namedCuff) spec.shirt.cuff=namedCuff.versioned"));
+  assert.ok(agent.includes("...styleDirectorCandidateCuffIssues(candidate.garments.shirt, styleSpec.shirt)"),
+    "real-model recommendation must review named cuff against the locked ID");
 });
 
 test("ordinary collar resolver rejects incidental words and contradictory constructions", () => {
