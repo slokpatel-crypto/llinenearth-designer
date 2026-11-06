@@ -378,16 +378,19 @@ export function createStyleDirectorLooks(
   intelligence?:Record<string,DesignerFabricIntelligence>|null,
 ):StyleDirectorLook[] {
   const context = contextFromAnswers(answers);
-  // A catalogue ID identifies one physical fabric, including in supporting pairings.
-  // Ignore repeated IDs rather than letting duplicate rows bias the pairing engine.
-  const pairedIds = new Set<string>();
-  const calibrated = stock.filter((fabric) => {
-    if (!fabric.inStock || pairedIds.has(fabric.id)) return false;
-    pairedIds.add(fabric.id);
-    return true;
-  }).map(designerFabricFromStock);
-  const calibratedShirts = calibrated.filter((fabric) => fabric.allowedGarments.includes("shirt"));
-  const calibratedPants = calibrated.filter((fabric) => fabric.allowedGarments.includes("pant"));
+  // Resolve duplicate catalogue IDs independently for each garment role.
+  // An earlier shirt-only row must not hide a later trouser-eligible row
+  // with the same ID (and vice versa). Never mutate the caller's catalogue.
+  const eligibleFor = (garment: "shirt" | "trouser") => {
+    const seen = new Set<string>();
+    return stock.filter((fabric) => {
+      if (!fabric.inStock || !fabric.suitableFor.includes(garment) || seen.has(fabric.id)) return false;
+      seen.add(fabric.id);
+      return true;
+    }).map(designerFabricFromStock);
+  };
+  const calibratedShirts = eligibleFor("shirt");
+  const calibratedPants = eligibleFor("trouser");
   return chooseFabrics(answers,stock,intelligence).map((fabric,index)=>{
     const brief: DesignerBrief = {
       fabric: {
