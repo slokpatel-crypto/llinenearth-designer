@@ -58,7 +58,7 @@ function candidateCollarIntent(name: string): {
   prohibited: CandidateCollarFamily[];
   ambiguous: boolean;
 } {
-  const token = "(?:camp|cuban|band|mandarin|cutaway|spread|button[- ]?down|point(?:[ -]?(?:standard|\\(standard\\)))?|club|wing|tab|pin)(?:[- ]collar)?";
+  const token = "(?:cuban(?:\\s*[/&-]\\s*|\\s+)camp|camp(?:\\s*[/&-]\\s*|\\s+)cuban|mandarin(?:\\s*[/&-]\\s*|\\s+)band|band(?:\\s*[/&-]\\s*|\\s+)mandarin|camp|cuban|band|mandarin|cutaway|spread|button[- ]?down|point(?:[ -]?(?:standard|\\\\(standard\\\\)))?|club|wing|tab|pin)(?:[- ]collar)?";
   const prefixBan = new RegExp("\\b(?:no|without|avoid|never|not|do\\s+not|don['’]?t)\\s+(?:(?:use|include|choose|wear|add|have|want)\\s+)?(?:(?:a|any|the)\\s+)?(" + token + ")\\b", "gi");
   const suffixBan = new RegExp("\\b(" + token + ")\\s+(?:(?:is|are)\\s+)?(?:forbidden|prohibited|banned|not\\s+(?:allowed|permitted)|(?:must|should)\\s+not\\s+be\\s+(?:used|worn))\\b", "gi");
   const prefixOptional = new RegExp("\\b(?:optional|maybe)\\s+(" + token + ")\\b", "gi");
