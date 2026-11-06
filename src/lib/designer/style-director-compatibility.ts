@@ -281,8 +281,8 @@ export function styleDirectorCandidateCollarIssues(
  * kept separate: a forbidden placket must not become a selected placket.
  */
 const candidatePlacketPatterns = [
-  { id: "standard_visible_placket", pattern: /\b(?:standard(?:[- ]visible(?:[- ]stitch)?)?[- ]placket|visible(?:[- ]stitch(?:ed)?)?[- ]placket)\b/gi },
-  { id: "hidden_fly_front", pattern: /\b(?:hidden(?:[- ]fly[- ]?front)?[- ]placket|fly[- ]?front(?:[- ]placket)?)\b/gi },
+  { id: "standard_visible_placket", pattern: /\b(?:standard(?:[- ]visible(?:[- ]stitch)?)?[- ]placket|visible(?:[- ]stitch(?:ed)?)?[- ]placket|standard\s*\(\s*visible[- ]stitch\s*\)(?:[- ]placket)?)(?=$|[^\w])/gi },
+  { id: "hidden_fly_front", pattern: /\b(?:hidden\s*[/&-]\s*fly[- ]?front(?:[- ]placket)?|hidden(?:[- ]fly[- ]?front)?[- ]placket|fly[- ]?front(?:[- ]placket)?)\b/gi },
   { id: "french_placket", pattern: /\bfrench[- ]placket\b/gi },
   { id: "covered_placket", pattern: /\bcovered[- ]placket\b/gi },
   { id: "contrast_placket", pattern: /\bcontrast[- ]placket\b/gi },
