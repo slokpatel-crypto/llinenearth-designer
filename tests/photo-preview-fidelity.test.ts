@@ -137,7 +137,7 @@ test("customer photographic preview displays selected construction mismatch noti
   const stylesheet=readFileSync("src/app/designer-studio/designer-light.css","utf8");
   assert.match(stylesheet,/\.newDesignerPhotoIntroCompact p\{display:none!important\}/);
   assert.equal((source.match(/data-photo-construction-mismatch="true"/g)||[]).length,1);
-  assert.equal((source.match(/<p className="newDesignerPhotoApproximation">/g)||[]).length,1);
+  assert.equal((source.match(/<p className="newDesignerPhotoApproximation"/g)||[]).length,1);
   assert.doesNotMatch(source,/<p className="newDesignerPhotoApproximation" data-photo-construction-mismatch/);
 });
 
@@ -285,4 +285,15 @@ test("preview status does not claim a rendered photograph while pending or faile
   assert.ok(source.includes('error ? "PREVIEW UNAVAILABLE" : !ready ? "PREPARING SELECTED LOOK"'));
   assert.ok(source.includes('aria-busy={!ready && !error}'));
   assert.ok(source.includes('style={{visibility:ready?"visible":"hidden"}}'));
+});
+
+
+test("source comparison caption never describes a raw photograph as the rendered garment", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.ok(source.includes('!showCreativeAi && ready && <p className="newDesignerPhotoApproximation" data-photo-caption={showOriginal?"source":"instant"}'));
+  assert.ok(source.includes('<strong>Original source photograph</strong>'));
+  assert.ok(source.includes('Unchanged studio reference, not the selected garment fabrics or construction.'));
+  assert.ok(source.includes('Choose Show design to return to the selected look.'));
+  assert.ok(source.includes('<strong>Instant preview</strong> · Studio model;'));
+  assert.equal((source.match(/<p className="newDesignerPhotoApproximation"/g)||[]).length,1);
 });
