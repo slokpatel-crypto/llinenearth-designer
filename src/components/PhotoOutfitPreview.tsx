@@ -1320,6 +1320,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   useLayoutEffect(() => {
     requestScope.activate();
     setReady(false);
+    // Every new design starts in its own full-frame customer view, not the
+    // previous look's cropped zoom or diagnostic seam overlay.
+    setInspectFit(false);
+    setShowBoundaries(false);
     // A source comparison from the previous selection must not mask the next look.
     setShowOriginal(false);
     setCreativeAi(null);
