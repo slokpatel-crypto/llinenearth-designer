@@ -110,7 +110,12 @@ export function buildProductionHandoff(
   const missingBlockProvenance=spec.blockStrategy != null && blockSourceVersion == null
     ? ["Pattern-block strategy source version is not recorded; tailor must confirm the original block contract before production."]
     : [];
+  const checkAudit=auditHandoffConstructionChecks(spec.constructionChecks);
+  if(checkAudit.errors.length) {
+    throw new Error(`Unsafe tailor handoff construction checks: ${checkAudit.errors.join(" ")}`);
+  }
   const unresolved=[...new Set([
+    ...checkAudit.missing,
     ...blockAudit.missing,
     ...missingBlockProvenance,
     ...spec.unresolved,
@@ -123,10 +128,6 @@ export function buildProductionHandoff(
   // contains unresolved design decisions or open construction review findings.
   // Preserve those notes verbatim for the tailor instead of silently
   // promoting a partly specified garment to a completed review packet.
-  const checkAudit=auditHandoffConstructionChecks(spec.constructionChecks);
-  if(checkAudit.errors.length) {
-    throw new Error(`Unsafe tailor handoff construction checks: ${checkAudit.errors.join(" ")}`);
-  }
   const constructionReviewOpen=spec.constructionChecks.some(
     (check)=>check.severity==="review"||check.severity==="warning",
   );
