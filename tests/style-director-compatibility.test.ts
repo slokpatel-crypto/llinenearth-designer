@@ -7,6 +7,7 @@ import {
   styleDirectorCandidateFrontConstructionIssues,
   styleDirectorCandidateTrouserFront,
   styleDirectorCandidateWordingIssues,
+  styleDirectorCandidateWearIssues,
   styleDirectorConstructionIssues,
   styleDirectorIntelligenceTrustWeight,
   styleDirectorPresentationIssues,
@@ -613,6 +614,48 @@ test("contradictory sleeve length descriptions do not select a half-sleeve const
   assert.deepEqual(styleDirectorCandidateSleeve("Short-Sleeve Resort Shirt"),
     { sleeve: "half_sleeve", cuff: "open_short_hem_cuff" });
   assert.equal(styleDirectorCandidateSleeve("Full-Sleeve Shirt"), null);
+});
+
+test("explicit candidate tuck intent controls wear without silently rewriting a camp collar", () => {
+  assert.equal(styleDirectorWearForCandidate("Formal", "Untucked Oxford Shirt", "Tucked"), "Untucked");
+  assert.equal(styleDirectorWearForCandidate("Casual", "Tucked Dress Shirt", "Untucked"), "Tucked");
+  assert.equal(styleDirectorWearForCandidate("Formal", "Tucked / Untucked Dress Shirt", "Untucked"), "Tucked",
+    "ambiguous wear retains the established occasion default and triggers review");
+  assert.equal(styleDirectorWearForCandidate("Casual", "Camp Collar Tucked Shirt", "Tucked"), "Untucked",
+    "camp resort construction cannot be silently changed to tucked wear");
+  assert.equal(styleDirectorWearForCandidate("Casual", "Untucked Oxford Shirt", "Tucked"), "Untucked",
+    "an untucked word must not accidentally count as a tucked word");
+});
+
+test("proposed explicit tucked and untucked intent is validated against locked IDs", () => {
+  for (const [candidate, lockedWear, expected] of [
+    ["Untucked Dress Shirt", "untucked", []],
+    ["Tucked Dress Shirt", "tucked", []],
+    ["Dress Shirt", "tucked", []],
+    ["Tuckable Dress Shirt", "untucked", []],
+    ["Untucked Dress Shirt", "tucked", ["candidate_shirt_wear_mismatch"]],
+    ["Tucked Dress Shirt", "untucked", ["candidate_shirt_wear_mismatch"]],
+    ["Camp Collar Tucked Shirt", "untucked", ["candidate_shirt_wear_mismatch"]],
+  ] as const) {
+    const locked = spec({ wear: lockedWear });
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorCandidateWearIssues(candidate, locked.shirt);
+    assert.deepEqual(issues.map(x => x.code), expected, candidate);
+    assert.deepEqual(issues, styleDirectorCandidateWearIssues(candidate, locked.shirt),
+      "wear validation must be deterministic");
+    assert.equal(JSON.stringify(locked), before, "candidate review may not rewrite locked wear");
+  }
+  for (const candidate of ["Tucked and Untucked Dress Shirt", "Untucked/Tucked Oxford Shirt"]) {
+    assert.deepEqual(styleDirectorCandidateWordingIssues(candidate).map(x => x.code),
+      ["ambiguous_candidate_wear"], candidate);
+    assert.deepEqual(styleDirectorCandidateWearIssues(candidate, { wear: "tucked" }), [],
+      "ambiguity must not guess which of two conflicting wear instructions wins");
+  }
+  assert.deepEqual(styleDirectorCandidateWordingIssues("Untucked Oxford Shirt"), []);
+  assert.deepEqual(styleDirectorCandidateWordingIssues("Tucked Dress Shirt"), []);
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("...styleDirectorCandidateWearIssues(candidate.garments.shirt, styleSpec.shirt)"),
+    "worded tuck instructions must reach actual locked recommendation review");
 });
 
 test("ambiguous candidate descriptions force an explicit recommendation review", () => {
