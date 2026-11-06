@@ -332,3 +332,31 @@ test("duplicate supporting catalogue IDs cannot change a selected physical fabri
   assert.equal(repeated[0].realModel?.styleSpec.styleSchemaVersion, 2);
   assert.equal(JSON.stringify(catalogue), before);
 });
+
+test("unavailable duplicate IDs do not shadow eligible physical stock", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const shirt = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("shirt"));
+  const pant = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("trouser"));
+  assert.ok(shirt && pant);
+  const catalogue = [
+    { ...shirt, inStock: false },
+    { ...pant, inStock: false },
+    shirt,
+    pant,
+  ];
+  const before = JSON.stringify(catalogue);
+  const looks = createStyleDirectorLooks({
+    occasion: "Travel", mood: "Relaxed", time: "Day",
+    climate: "Hot", garment: "shirt", colorDirection: "Surprise me",
+  }, catalogue);
+  assert.equal(looks.length, 1,
+    "an unavailable duplicate must not suppress the stocked hero");
+  assert.equal(looks[0].fabric.id, shirt.id);
+  assert.equal(looks[0].realModel?.shirtId, shirt.id);
+  assert.equal(looks[0].realModel?.pantId, pant.id,
+    "an unavailable duplicate must not suppress the stocked pairing");
+  assert.equal(JSON.stringify(catalogue), before,
+    "duplicate availability filtering must not mutate input");
+});
