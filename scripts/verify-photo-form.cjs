@@ -64,9 +64,15 @@ async function run(){
     assert.match(await initialSourceNote.textContent(),/original unchanged studio photograph/i);
     assert.equal(await page.locator('[data-photo-construction-mismatch="true"]').count(),0);
     assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/SOURCE \/ STUDIO PHOTO/);
+    const compareCaption=page.locator('[data-photo-caption="source"]');
+    assert.match(await compareCaption.textContent(),/Original source photograph/);
+    assert.doesNotMatch(await compareCaption.textContent(),/pattern scale uses reviewed physical evidence|pattern scale is still approximate/,
+      "source comparison cannot claim scale evidence for an unmodified source photograph");
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`studio-source-compared-${width}.png`)});
     await page.getByRole("button",{name:"Show design",exact:true}).click();
     assert.equal(await initialSourceNote.count(),0);
+    assert.match(await page.locator('[data-photo-caption="instant"]').textContent(),/Instant preview/);
+    assert.equal(await compareCaption.count(),0,"the source caption must close with Compare");
     // Real-photo screenshot gates at each required responsive width. No paid
     // rendering service or replacement model is involved.
     await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");
@@ -316,6 +322,7 @@ async function run(){
     const wideSourceNotice=page.locator('.newDesignerPhoto > [data-photo-source-comparison="wide"]');
     assert.equal(await wideSourceNotice.count(),1);
     assert.match(await wideSourceNotice.textContent(),/shirt in the instant preview comes from the separate pleated studio photograph/);
+    assert.match(await page.locator('[data-photo-caption="source"]').textContent(),/unchanged studio reference/i);
     assert.equal(await page.locator('[data-photo-construction-mismatch="true"]').count(),0,
       "original photo must not show the customer's selected cut warning as if it were reconstructed");
     await wideSourceNotice.scrollIntoViewIfNeeded();
@@ -330,11 +337,14 @@ async function run(){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`wide-source-compared-${width}.png`)});
     summary.viewports[summary.viewports.length-1].wideSourceComparisonVerified=true;
+    summary.viewports[summary.viewports.length-1].sourceCaptionModeVerified=true;
     summary.viewports[summary.viewports.length-1].sourceCanvasAccessibilityIsolated=true;
     summary.viewports[summary.viewports.length-1].boundaryQaSourceIsolationVerified=true;
     summary.viewports[summary.viewports.length-1].boundaryQaZoomAligned=true;
     await page.getByRole("button",{name:"Show design",exact:true}).click();
     assert.equal(await original.count(),0);
+    assert.equal(await page.locator('[data-photo-caption="source"]').count(),0);
+    assert.match(await page.locator('[data-photo-caption="instant"]').textContent(),/Instant preview/);
     assert.equal(await page.locator(".newDesignerPhotoStage>canvas").getAttribute("aria-hidden"),"false",
       "selected design canvas must be announced again when source Compare closes");
     assert.equal(await page.locator(".newDesignerBoundaryQa").count(),1,
@@ -367,6 +377,8 @@ async function run(){
     await page.locator('.newDesignerPhotoStage[data-ready="false"]').waitFor();
     assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/PREPARING SELECTED LOOK/,
       "pending swatch must not retain the previous photographed-ready badge");
+    assert.equal(await page.locator('[data-photo-caption]').count(),0,
+      "a still-loading garment must not present a completed image caption");
     assert.equal(await page.locator(".newDesignerPhotoStage.inspectFit").count(),0,
       "a new look must not inherit the previous garment's Zoom Fit crop");
     assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0,
@@ -378,6 +390,7 @@ async function run(){
     assert.equal(await original.count(),0,"source overlay from previous selection must close on fabric change");
     await page.locator("#designer-shirt").selectOption(dark);
     await ready(page);
+    assert.match(await page.locator('[data-photo-caption="instant"]').textContent(),/Instant preview/);
     assert.equal(await page.locator(".newDesignerPhotoStage>canvas").evaluate(canvas=>getComputedStyle(canvas).visibility),"visible");
     const settledHash=await actualPhotoPixelHash(page);
     await page.waitForTimeout(1000);
