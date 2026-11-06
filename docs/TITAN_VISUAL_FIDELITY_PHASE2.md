@@ -273,3 +273,11 @@ claims of new real-world photographs or tailor acceptance.
 - New source regressions and actual customer-control Chromium scenario at 390, 768, 1440px: delay an unseen fabric photo, select it with Compare open, immediately switch back, assert no old-canvas flash/source overlay, correct selected fabric, stable final pixels and no horizontal overflow.
 - Scope: `src/components/PhotoOutfitPreview.tsx`, `tests/photo-preview-fidelity.test.ts`, `scripts/verify-photo-form.cjs`, this checkpoint. Existing photographed model `linen-earth-studio-model-v1`, source photographs, crop/textile rules, spec, inventory, measurements and native 3D remain unchanged.
 - Browser regression is authored but not yet verified. Require new exact-head Full CI, Non-3D Studio QA, screenshot artifact inspection and all six npm release gates. Do not carry forward prior `6d27577` green results. DRAFT only, no merge/deploy or claimed physical approval.
+
+## November 6 continued — compare/export provenance truth
+
+- Confirmed a customer-visible mismatch: while a raw original photo was on-screen in Compare, Save could export the selected canvas, not the displayed image; a customer could also lock the design while looking at the source reference. Source comparison is for visual inspection only, not a design output.
+- `PhotoOutfitPreview` now disables Save, initial Lock final design and Final photoreal while Compare is active. The Save label says `Show design to save`; clicking `Show design` restores normal selected-design actions. No behaviour change to deterministic draw or approved photoreal export.
+- Add pure source contracts and real Chromium at 390/768/1440 to check disabled compare Save/lock, visible wide-trouser source provenance, and restored Save on return to the selected preview.
+- Preserve original `linen-earth-studio-model-v1`, image files, all physical-fabric uncertainties, saved specs, compositor masks and textile scaling. No other modules touched.
+- Full CI and Studio QA must be rechecked at exact new head after these commits; any previous pass belongs to its own commit only. Screenshots must be reviewed before merge; PR remains DRAFT and no deployment.
