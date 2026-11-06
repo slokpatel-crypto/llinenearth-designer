@@ -37,6 +37,20 @@ const candidateCollarFamilies = (name: string) => ({
   pin: /\bpin[- ]collar\b/i.test(name),
 });
 
+/**
+ * Only select an ordinary photographed collar when exactly one explicit
+ * collar family is named. This rejects "widespread", "button-downish" and
+ * contradictory mixed-collar labels instead of taking substring precedence.
+ * Oxford weave alone does not prove a button-down collar construction.
+ */
+export function styleDirectorCandidateOrdinaryCollar(
+  candidateShirt: string,
+): "spread" | "button_down" | null {
+  const families = candidateCollarFamilies(candidateShirt);
+  if (Object.values(families).filter(Boolean).length !== 1) return null;
+  return families.spread ? "spread" : families.buttonDown ? "button_down" : null;
+}
+
 const candidateSleeveLengths = (name: string) => ({
   short: /\b(?:short|half)[ -]?sleeved?\b/i.test(name),
   long: /\b(?:long|full)[ -]?sleeved?\b/i.test(name),
