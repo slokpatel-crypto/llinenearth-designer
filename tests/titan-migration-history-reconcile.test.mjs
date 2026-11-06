@@ -41,3 +41,23 @@ test('real repository migration collisions remain blocked without authenticated 
 
 test('missing singleton migration is blocked rather than silently omitted', () => { const r = reconcileMigrationHistory([{version:'20261104',filename:'20261104_single.sql',sha256:hash('single')}],[]); assert.equal(r.blocked,1); assert.equal(r.results[0].reason,'MIGRATION_NOT_IN_STAGING_HISTORY'); });
 test('empty inventory and staging cannot authorize release', () => { const r = reconcileMigrationHistory([],[]); assert.equal(r.release_ready,false); assert.equal(r.blocked,0); });
+
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+
+test('CLI fails closed with exit 2 for empty and unresolved evidence', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'titan-j1-cli-'));
+  try {
+    const inventoryPath = join(directory, 'inventory.json');
+    const stagingPath = join(directory, 'staging.json');
+    const script = join(process.cwd(), 'scripts', 'titan-reconcile-migration-history.mjs');
+    for (const [inventoryRows, stagingRows] of [[[], []], [inventory, []], [inventory, [{version:'20261001',sha256:hash('a'),evidence}]]]) {
+      writeFileSync(inventoryPath, JSON.stringify(inventoryRows));
+      writeFileSync(stagingPath, JSON.stringify(stagingRows));
+      const result = spawnSync(process.execPath, [script, inventoryPath, stagingPath], {encoding:'utf8'});
+      assert.equal(result.status, 2, result.stderr || result.stdout);
+      assert.equal(JSON.parse(result.stdout).release_ready, false);
+    }
+  } finally { rmSync(directory, {recursive:true,force:true}); }
+});
