@@ -1,6 +1,6 @@
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
 import { verifyLockedDesignRevision } from "./design-lock.ts";
-import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffFitProvenance, auditHandoffMeasurements, auditHandoffProductionReadiness } from "./handoff-measurements.ts";
+import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffFitProvenance, auditHandoffHumanNotes, auditHandoffMeasurements, auditHandoffProductionReadiness } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
 export const PRODUCTION_HANDOFF_VERSION="linen-earth-production-handoff-v1" as const;
@@ -59,6 +59,11 @@ export function buildProductionHandoff(
   generatedAt=new Date().toISOString(),
 ):ProductionHandoff {
   const spec=revision.garmentSpec;
+  const sourceUnresolvedAudit=auditHandoffHumanNotes(spec.unresolved,"unresolved");
+  const sourceCaveatAudit=auditHandoffHumanNotes(spec.caveats,"caveats");
+  if(sourceUnresolvedAudit.errors.length || sourceCaveatAudit.errors.length) {
+    throw new Error(`Unsafe tailor handoff review notes: ${[...sourceUnresolvedAudit.errors,...sourceCaveatAudit.errors].join(" ")}`);
+  }
   const measurementAudit=auditHandoffMeasurements({
     shirt:spec.shirt.finishedTargets,
     trouser:spec.trouser.finishedTargets,
