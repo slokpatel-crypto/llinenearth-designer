@@ -121,7 +121,7 @@ async function run(){
     // complete card. Crop from the *actual full-card screenshot* and reject
     // empty evidence so a green DOM test cannot hide a broken screenshot.
     const photoCard=page.locator(".newDesignerPhoto");
-    const cardBounds=await photoCard.boundingBox(),summaryBounds=await fabricSummary.boundingBox(),actionRowBox=await page.locator(".newDesignerPhotoActionsCompact").boundingBox();
+    const cardBounds=await photoCard.boundingBox(),summaryBounds=await fabricSummary.boundingBox();
     assert.ok(cardBounds && summaryBounds && cardBounds.width>0 && cardBounds.height>0);
     const cardPng=await photoCard.screenshot({path:path.join(out,`dark-tucked-${width}.png`)});
     const cardMeta=await sharp(cardPng).metadata();
@@ -144,19 +144,31 @@ async function run(){
     }
     assert.ok(visibleInk>100,"fabric summary screenshot must actually contain legible text and controls");
     fs.writeFileSync(path.join(out,`fabric-summary-readable-${width}.png`),summaryPng);
-    assert.ok(actionRowBox && actionRowBox.width>0 && actionRowBox.height>=44);
-    const actionLeft=Math.max(0,Math.floor((actionRowBox.x-cardBounds.x)*scaleX));
-    const actionTop=Math.max(0,Math.floor((actionRowBox.y-cardBounds.y)*scaleY));
-    const actionCrop={
-      left:actionLeft,top:actionTop,
-      width:Math.min(cardMeta.width-actionLeft,Math.ceil(actionRowBox.width*scaleX)),
-      height:Math.min(cardMeta.height-actionTop,Math.ceil(actionRowBox.height*scaleY)),
+    // Capture a true viewport crop of the reachable buttons rather than
+    // a full-card image whose fixed contact bar may overlap their saved pixels.
+    const actionRow=page.locator(".newDesignerPhotoActionsCompact");
+    await actionRow.evaluate(node=>node.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"}));
+    const actionRowBox=await actionRow.boundingBox();
+    const actionViewport=page.viewportSize();
+    assert.ok(actionRowBox && actionViewport && actionRowBox.width>0 && actionRowBox.height>=44
+      && actionRowBox.x>=0 && actionRowBox.y>=0
+      && actionRowBox.x+actionRowBox.width<=actionViewport.width
+      && actionRowBox.y+actionRowBox.height<=actionViewport.height,
+      "photo actions must fit inside the reachable viewport");
+    const contactBox=await page.locator(".floatingContactDock").boundingBox();
+    if(contactBox){
+      const overlaps=actionRowBox.x<contactBox.x+contactBox.width
+        && actionRowBox.x+actionRowBox.width>contactBox.x
+        && actionRowBox.y<contactBox.y+contactBox.height
+        && actionRowBox.y+actionRowBox.height>contactBox.y;
+      assert.equal(overlaps,false,"photo actions must be reachable without the floating contact dock covering them");
+    }
+    const actionClip={
+      x:Math.max(0,Math.floor(actionRowBox.x)),y:Math.max(0,Math.floor(actionRowBox.y)),
+      width:Math.min(actionViewport.width-Math.floor(actionRowBox.x),Math.ceil(actionRowBox.width)),
+      height:Math.min(actionViewport.height-Math.floor(actionRowBox.y),Math.ceil(actionRowBox.height)),
     };
-    assert.ok(actionCrop.width>0 && actionCrop.height>0 &&
-      actionCrop.left+actionCrop.width<=cardMeta.width && actionCrop.top+actionCrop.height<=cardMeta.height,
-      "compact buttons proof crop must remain inside the painted photographic card");
-    fs.writeFileSync(path.join(out,`compact-actions-readable-${width}.png`),
-      await sharp(cardPng).extract(actionCrop).png().toBuffer());
+    await page.screenshot({path:path.join(out,`compact-actions-readable-${width}.png`),clip:actionClip});
     // Source comparison must explain whose garment photograph is being shown
     // before the photo, rather than presenting an unrendered design as source.
     await page.getByRole("button",{name:"Compare",exact:true}).click();
