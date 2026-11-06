@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateTrouserFit, styleDirectorCandidateTrouserFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateSleeve, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorProposedCroppedHem, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateTrouserFit, styleDirectorCandidateTrouserFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateVariantCollar, styleDirectorCandidateSleeve, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorProposedCroppedHem, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -350,6 +350,10 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   // The photo parity check keeps wing/tab/pin review-only if no real legacy
   // label can show the exact selected construction.
   if (specialCollar) spec.shirt.collar=specialCollar.versioned;
+  // Preserve explicit English Spread or Soft Button-Down construction even
+  // when the legacy photograph only supports the generic family.
+  const variantCollar=styleDirectorCandidateVariantCollar(shirt);
+  if(variantCollar) spec.shirt.collar=variantCollar;
   // A named placket construction must survive the legacy photo bridge,
   // including provisional French/covered fronts without live preview.
   if (namedPlacket) spec.shirt.placket=namedPlacket.versioned;
