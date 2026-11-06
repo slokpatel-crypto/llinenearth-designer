@@ -166,6 +166,34 @@ const candidateSleeveLengths = (name: string) => {
   };
 };
 
+/**
+ * Roll-up Styled is an existing long-sleeve presentation construction, not
+ * an open short-sleeve hem. Parse positive, negative and optional instructions
+ * before selecting its canonical ID or reviewing a locked design.
+ */
+export function styleDirectorCandidateRollUpSleeveIntent(name: string): {
+  requested: boolean; prohibited: boolean; ambiguous: boolean;
+} {
+  let requested = false;
+  let prohibited = false;
+  for (const hit of name.matchAll(/\broll[- ]?up(?:[- ]styled|[- ]sleeves?)?\b/gi)) {
+    const prefix = name.slice(0, hit.index ?? 0);
+    const suffix = name.slice((hit.index ?? 0) + hit[0].length);
+    const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
+      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(suffix);
+    const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
+      /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/i.test(suffix);
+    if (banned) prohibited = true;
+    else if (!optional) requested = true;
+  }
+  const lengths = candidateSleeveLengths(name);
+  return {
+    requested, prohibited,
+    ambiguous: (requested && prohibited) ||
+      (requested && (lengths.short || lengths.bannedLong)),
+  };
+}
+
 // Wear words are instructions, not evidence of physical tuck length. A
 // negative instruction must not become a *positive* tuck merely because the
 // word "tucked" occurs in it. Remove recognized negations before looking for
@@ -507,13 +535,17 @@ export function styleDirectorCandidateSleeveIssues(
   shirt: Pick<StyleSpecV2["shirt"], "sleeve">,
 ): DirectorConstructionIssue[] {
   const intent = candidateSleeveLengths(candidateShirt);
+  const rollUp = styleDirectorCandidateRollUpSleeveIntent(candidateShirt);
   // Contradictory phrasing is already reported by the wording gate.
-  if ((intent.short && intent.long) || (intent.short && intent.bannedShort) ||
-      (intent.long && intent.bannedLong) || (intent.bannedShort && intent.bannedLong)) return [];
+  if (rollUp.ambiguous || (intent.short && intent.long) ||
+      (intent.short && intent.bannedShort) || (intent.long && intent.bannedLong) ||
+      (intent.bannedShort && intent.bannedLong)) return [];
   const invalid = (intent.short && shirt.sleeve !== "half_sleeve") ||
-    (intent.long && shirt.sleeve !== "full_sleeve") ||
+    (intent.long && !["full_sleeve", "roll_up_styled"].includes(shirt.sleeve)) ||
     (intent.bannedShort && shirt.sleeve === "half_sleeve") ||
-    (intent.bannedLong && shirt.sleeve !== "half_sleeve");
+    (intent.bannedLong && shirt.sleeve !== "half_sleeve") ||
+    (rollUp.requested && shirt.sleeve !== "roll_up_styled") ||
+    (rollUp.prohibited && shirt.sleeve === "roll_up_styled");
   return invalid ? [{
     code: "candidate_sleeve_mismatch",
     explanation: "The proposed shirt's requested or prohibited sleeve length conflicts with its versioned construction; confirm the sleeve before tailoring.",
@@ -751,7 +783,7 @@ export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "band_collar_construction" | "short_sleeve_double_cuff" |
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_stacked_break" | "cropped_break_hem_mismatch" | "cropped_type_hem_mismatch" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" | "unverified_special_collar_photo" |
-    "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
+    "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_roll_up_sleeve_photo" | "unverified_cutaway_photo" |
     "ambiguous_candidate_collar" | "candidate_collar_mismatch" | "ambiguous_candidate_sleeve" | "candidate_sleeve_mismatch" | "ambiguous_candidate_wear" |
     "candidate_shirt_wear_mismatch" | "legacy_trouser_mismatch" |
     "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch" |
@@ -803,7 +835,8 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     });
   }
   const sleeves = candidateSleeveLengths(candidateShirt);
-  if ((sleeves.short && sleeves.long) ||
+  const rollUp = styleDirectorCandidateRollUpSleeveIntent(candidateShirt);
+  if (rollUp.ambiguous || (sleeves.short && sleeves.long) ||
       (sleeves.short && sleeves.bannedShort) ||
       (sleeves.long && sleeves.bannedLong) ||
       (sleeves.bannedShort && sleeves.bannedLong)) {
@@ -1333,6 +1366,14 @@ export function styleDirectorPresentationIssues(
         });
       }
     }
+  }
+  if (spec.shirt.sleeve === "roll_up_styled") {
+    // A rolled full sleeve has its own canonical ID, but no corresponding
+    // legacy photographic selector. Styling intent is not visual evidence.
+    issues.push({
+      code: "unverified_roll_up_sleeve_photo",
+      explanation: "Roll-up Styled is saved as a distinct sleeve construction, but the current photographic preview cannot verify the rolled shape.",
+    });
   }
   if (spec.shirt.sleeve === "half_sleeve") {
     // DesignerStyle has no sleeve-length field. A versioned half sleeve can be
