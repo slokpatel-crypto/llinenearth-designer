@@ -215,7 +215,8 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/Studio source\./);
   assert.match(script,/SELECTED SHIRT/);
   assert.match(script,/SELECTED TROUSER/);
-  assert.match(script,/the source caption must close with Compare/);
+  assert.match(script,/source Compare contains exactly one source-warning panel/);
+  assert.match(script,/wide source comparison must show its single provenance banner/);
   assert.match(script,/sourceCanvasAccessibilityIsolated=true/);
   assert.match(script,/boundaryQaSourceIsolationVerified=true/);
   assert.match(script,/boundaryQaZoomAligned=true/);
@@ -307,15 +308,17 @@ test("preview status does not claim a rendered photograph while pending or faile
 });
 
 
-test("source comparison caption never describes a raw photograph as the rendered garment", () => {
+test("source comparison shows one provenance banner while the physical caveat belongs only to selected preview", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.ok(source.includes('!showCreativeAi && ready && <p className="newDesignerPhotoApproximation" style={{fontSize:"12px"'));
-  assert.ok(source.includes('data-photo-caption={showOriginal?"source":"instant"}'));
-  assert.ok(source.includes('<strong>Original source photograph</strong>'));
-  assert.ok(source.includes('Unchanged studio reference, not the selected garment fabrics or construction.'));
-  assert.ok(source.includes('Choose Show design to return to the selected look.'));
+  assert.ok(source.includes('showOriginal && ready && !showCreativeAi && <div className="newDesignerPhotoConstructionNotice"'));
+  assert.ok(source.includes('Original source photo, not your selected design'));
+  assert.ok(source.includes('Compare shows the original wide-trouser photograph;'));
+  assert.ok(source.includes('!showOriginal && !showCreativeAi && ready && <p className="newDesignerPhotoApproximation" style={{fontSize:"12px"'));
+  assert.ok(source.includes('data-photo-caption="instant"'));
+  assert.ok(!source.includes('data-photo-caption={showOriginal?"source":"instant"}'));
   assert.ok(source.includes('<strong>Instant preview</strong> · Studio model;'));
   assert.equal((source.match(/<p className="newDesignerPhotoApproximation"/g)||[]).length,1);
+  assert.equal((source.match(/data-photo-source-comparison=/g)||[]).length,1);
 });
 
 
@@ -331,7 +334,7 @@ test("source reference header and selected-fabric labels are not mistaken for ph
 test("physical scale and fit disclosure stays readable above the photographic stage", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   const preview=source.lastIndexOf('return <section className="newDesignerPhoto"');
-  const caption=source.indexOf('data-photo-caption={showOriginal?"source":"instant"}',preview);
+  const caption=source.indexOf('data-photo-caption="instant"',preview);
   const stage=source.indexOf('    <div className={`newDesignerPhotoStage',preview);
   const summary=source.indexOf('    <div className="newDesignerPhotoSummary',preview);
   assert.ok(caption>preview && caption<stage && stage<summary,
