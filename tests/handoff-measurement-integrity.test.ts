@@ -433,6 +433,32 @@ test("cryptographically locked synthetic design exports a reconstructable unsign
   assert.ok(html.includes("Inseam anchor"));
 });
 
+test("verified handoff rejects substituted lock identity even when the garment hash still matches",async()=>{
+  const synthetic=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  const locked=await lockGarmentSpec(synthetic.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
+  const issuedAt="2026-11-05T11:01:00.000Z";
+  const packet=await buildVerifiedProductionHandoff(locked,issuedAt);
+  assert.equal(await verifyProductionHandoff(packet,locked),true);
+  assert.match(await buildVerifiedTailorTechPackHtml(packet,locked),/NO CUTTING AUTHORISATION/);
+
+  const changes=[
+    (revision:LockedDesignRevision)=>{ revision.revisionId=revision.revisionId+"-REPLACED"; },
+    (revision:LockedDesignRevision)=>{ revision.lockedAt="2026-11-05T11:00:01.000Z"; },
+    (revision:LockedDesignRevision)=>{ revision.lockedAt="2026-11-05T11:00:00Z"; },
+  ];
+  for(const change of changes){
+    const forged=structuredClone(locked);
+    change(forged);
+    // Even though garmentSpec still hashes to the exact same SHA256,
+    // the tampered lock metadata no longer matches lockGarmentSpec output.
+    await assert.rejects(buildVerifiedProductionHandoff(forged,issuedAt),/canonical locked revision/);
+    assert.equal(await verifyProductionHandoff(packet,forged),false);
+    await assert.rejects(buildVerifiedTailorTechPackHtml(packet,forged),/Unsafe tailor tech pack export/);
+  }
+  // This check is only internal structural integrity, not proof that
+  // lockedAt or the parent revision ID has an external signed timestamp.
+});
+
 test("verified tech-pack export rejects subtle valid-looking edits and forged source revision",async()=>{
   const fixture=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
   const locked=await lockGarmentSpec(fixture.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
