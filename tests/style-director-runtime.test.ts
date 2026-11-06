@@ -578,3 +578,25 @@ test("duplicate eligible fabric rows cannot change recommendation ranking or loc
     "duplicate rows must not affect ranked physical fabrics or locked construction");
   assert.equal(JSON.stringify(catalogue), original, "selection must not mutate catalogue");
 });
+
+
+test("Earthy direction recognizes khaki as a named fabric colour without inventing fabric facts", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const base = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("shirt"));
+  assert.ok(base);
+  // Equal physical/catalogue properties isolate the named-colour ranking rule.
+  const neutral = { ...base, id: "test-earthy-neutral", colorName: "Silver" };
+  const khaki = { ...base, id: "test-earthy-khaki", colorName: "Khaki" };
+  const stock = [neutral, khaki];
+  const original = JSON.stringify(stock);
+  const looks = createStyleDirectorLooks({
+    occasion: "Everyday", mood: "Relaxed", time: "Day",
+    climate: "Mixed", garment: "shirt", colorDirection: "Earthy",
+  }, stock);
+  assert.equal(looks.length, 2);
+  assert.equal(looks[0].fabric.id, khaki.id,
+    "standard khaki spelling should outrank an otherwise identical neutral colour");
+  assert.equal(JSON.stringify(stock), original);
+});
