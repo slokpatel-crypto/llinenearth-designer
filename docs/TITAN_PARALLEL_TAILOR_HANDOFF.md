@@ -136,5 +136,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Confirm matching-head Full CI, non-3D, build, browser and DB gates before any software signoff. Prior green checks apply to prior commits only.
 - [ ] Actual body dimensions, garment samples, tailor-approved pattern, physical cloth calibration and human review still unavailable. No merge, deployment or cutting authorization.
 
+## Conditional high-rise front-rise landmark (2026-11-06)
+- [x] Audited locked `StyleSpecV2.pant.rise` and earlier `assessFitConstruction`: a high/extra-high-rise trouser cannot be reconstructed for physical fit review from waist/seat, inseam and outseam alone. A stale source with no upstream construction finding could otherwise claim ready status without any `Front-rise anchor`.
+- [x] Extended the dedicated `auditHandoffMeasurements` with optional `trouserRise`. It requires a separately recorded front-rise anchor only for `high_rise`, `extra_high_rise` or legacy `High Rise` designs. Production handoff and independent printable audit use the exact locked StyleSpec v2 ID first, with historic shorthand fallback.
+- [x] Synthetic regressions verify mid-rise compatibility, missing high/extra-high front rise yields unresolved review-only, a valid recorded front rise preserves software review readiness, stale printable packet loses its claim, and legacy High Rise stays review-required. This does not estimate a physical rise or grant cutting permission.
+- [ ] Require matching-head quality, unit, engine, preview, release, build, browser and disposable database checks before software signoff. Prior green workflow runs are not proof for this SHA.
+- [ ] Genuine customer/model measurements, garment sample fitting, real pattern and seam tolerances, material truth and signed tailor acceptance remain unavailable. No merge, deployment or cutting approval.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
