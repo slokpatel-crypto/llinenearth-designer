@@ -69,6 +69,10 @@ async function run(){
     assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/SELECTED TROUSER/);
     const compareCaption=page.locator('[data-photo-caption="source"]');
     assert.match(await compareCaption.textContent(),/Original source photograph/);
+    const sourceCaptionBox=await compareCaption.boundingBox();
+    const sourceStageBox=await page.locator(".newDesignerPhotoStage").boundingBox();
+    assert.ok(sourceCaptionBox && sourceStageBox && sourceCaptionBox.y+sourceCaptionBox.height<=sourceStageBox.y,
+      "source caption must remain above the original reference photo");
     assert.doesNotMatch(await compareCaption.textContent(),/pattern scale uses reviewed physical evidence|pattern scale is still approximate/,
       "source comparison cannot claim scale evidence for an unmodified source photograph");
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`studio-source-compared-${width}.png`)});
@@ -145,10 +149,31 @@ async function run(){
       assert.equal(overlap,false,"fixed contact dock must not obscure construction notice");
     }
     assert.match(await notice.textContent(),/button material/);
+    // Physical repeat and fit/drape caveats must be readable before the photo,
+    // not underneath the long card where the fixed contact dock obscures them.
+    const physicalDisclosure=page.locator('.newDesignerPhoto > [data-photo-caption="instant"]');
+    await physicalDisclosure.scrollIntoViewIfNeeded();
+    const physicalBounds=await physicalDisclosure.boundingBox();
+    const imageBounds=await page.locator(".newDesignerPhotoStage").boundingBox();
+    const fontPx=await physicalDisclosure.evaluate(node=>parseFloat(getComputedStyle(node).fontSize));
+    assert.ok(physicalBounds && imageBounds && physicalBounds.y+physicalBounds.height<=imageBounds.y,
+      "physical calibration and fit disclaimer must be positioned above the photograph");
+    assert.ok(fontPx>=12,"disclaimer text must be at least 12 CSS pixels");
+    assert.match(await physicalDisclosure.textContent(),/Fit and drape still require physical verification/);
+    const disclaimerDock=await contactDock.boundingBox();
+    if(disclaimerDock){
+      const overlaps=physicalBounds.x<disclaimerDock.x+disclaimerDock.width
+        && physicalBounds.x+physicalBounds.width>disclaimerDock.x
+        && physicalBounds.y<disclaimerDock.y+disclaimerDock.height
+        && physicalBounds.y+physicalBounds.height>disclaimerDock.y;
+      assert.equal(overlaps,false,"floating contact control must not obscure fabric-scale or fit caveat");
+    }
+    await physicalDisclosure.screenshot({path:path.join(out,`physical-disclosure-readable-${width}.png`)});
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`construction-notice-readable-${width}.png`)});
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`button-material-disclosed-${width}.png`)});
     summary.viewports[summary.viewports.length-1].buttonMaterialDisclosed=true;
     summary.viewports[summary.viewports.length-1].constructionNoticeUnobstructed=true;
+    summary.viewports[summary.viewports.length-1].physicalDisclaimerUnobstructed=true;
     if(width===1440) {
       // Legacy controls also must not claim that unphotographed collar,
       // cuff or placket geometry has appeared in the trusted source image.
