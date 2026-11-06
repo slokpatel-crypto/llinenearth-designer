@@ -28,7 +28,8 @@ const candidateCollarFamilies = (name: string) => ({
   cutaway: /\bcutaway(?:[- ]collar)?\b/i.test(name),
   // These ordinary collars have legacy photographic IDs. They still conflict
   // with a simultaneously named camp, band or cutaway construction.
-  spread: /\bspread[- ]collar\b/i.test(name),
+  spread: /\bspread[- ]collar\b/i.test(name) ||
+    /\benglish[- ]+spread\s*[/&-]\s*british[- ]collar\b/i.test(name),
   buttonDown: /\bbutton[- ]?down(?:[- ]collar)?\b/i.test(name),
   point: /\bpoint(?:[ -]?(?:standard|\(standard\)))?[- ]collar\b/i.test(name),
   club: /\bclub[- ]collar\b/i.test(name),
@@ -59,7 +60,7 @@ function candidateCollarIntent(name: string): {
   affirmative: string;
   ambiguous: boolean;
 } {
-  const token = String.raw`(?:cuban(?:\s*[/&-]\s*|\s+)camp|camp(?:\s*[/&-]\s*|\s+)cuban|mandarin(?:\s*[/&-]\s*|\s+)band|band(?:\s*[/&-]\s*|\s+)mandarin|camp|cuban|band|mandarin|cutaway|(?:english[- ]+)?spread|(?:soft[- ]+)?button[- ]?down|point(?:[ -]?(?:standard|\(standard\)))?|club|wing|tab|pin)(?:[- ]collar)?`;
+  const token = String.raw`(?:english[- ]+spread\s*[/&-]\s*british[- ]collar|cuban(?:\s*[/&-]\s*|\s+)camp|camp(?:\s*[/&-]\s*|\s+)cuban|mandarin(?:\s*[/&-]\s*|\s+)band|band(?:\s*[/&-]\s*|\s+)mandarin|camp|cuban|band|mandarin|cutaway|(?:english[- ]+)?spread|(?:soft[- ]+)?button[- ]?down|point(?:[ -]?(?:standard|\(standard\)))?|club|wing|tab|pin)(?:[- ]collar)?`;
   const prefixBan = new RegExp("\\b(?:no|without|avoid|never|not|do\\s+not|don['’]?t)\\s+(?:(?:use|include|choose|wear|add|have|want)\\s+)?(?:(?:a|any|the)\\s+)?(" + token + ")\\b", "gi");
   const suffixBan = new RegExp("\\b(" + token + ")\\s+(?:(?:is|are)\\s+)?(?:forbidden|prohibited|banned|not\\s+(?:allowed|permitted)|(?:must|should)\\s+not\\s+be\\s+(?:used|worn))\\b", "gi");
   const prefixOptional = new RegExp("\\b(?:optional|maybe)\\s+(" + token + ")\\b", "gi");
@@ -70,7 +71,7 @@ function candidateCollarIntent(name: string): {
   const prohibited = new Set<string>();
   const recordBan = (_match: string, named: string): string => {
     const found = candidateCollarFamilies(named);
-    const variant = /\benglish[- ]+spread(?:[- ]collar)?\b/i.test(named)
+    const variant = /\benglish[- ]+spread(?:[- ]collar|\s*[/&-]\s*british[- ]collar)?\b/i.test(named)
       ? "english_spread_collar"
       : /\bsoft[- ]+button[- ]?down(?:[- ]collar)?\b/i.test(named)
         ? "soft_button_down" : null;
@@ -85,7 +86,7 @@ function candidateCollarIntent(name: string): {
   positive = positive.replace(prefixOptional, " ").replace(suffixOptional, " ");
   const requested = candidateCollarFamilies(positive);
   const named = (Object.keys(requested) as CandidateCollarFamily[]).filter(family => requested[family]);
-  const exactRequested = /\benglish[- ]+spread[- ]collar\b/i.test(positive)
+  const exactRequested = /\benglish[- ]+spread(?:[- ]collar|\s*[/&-]\s*british[- ]collar)\b/i.test(positive)
     ? "english_spread_collar"
     : /\bsoft[- ]+button[- ]?down[- ]collar\b/i.test(positive)
       ? "soft_button_down" : null;
@@ -129,7 +130,7 @@ export function styleDirectorCandidateVariantCollar(
   const intent = candidateCollarIntent(candidateShirt);
   if (intent.ambiguous || Object.values(intent.requested).filter(Boolean).length !== 1) return null;
   const selected = intent.requested.spread &&
-    /\benglish[- ]+spread[- ]collar\b/i.test(intent.affirmative)
+    /\benglish[- ]+spread(?:[- ]collar|\s*[/&-]\s*british[- ]collar)\b/i.test(intent.affirmative)
     ? "english_spread_collar"
     : intent.requested.buttonDown &&
       /\bsoft[- ]+button[- ]?down[- ]collar\b/i.test(intent.affirmative)
