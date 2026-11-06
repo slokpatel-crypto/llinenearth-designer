@@ -1132,6 +1132,83 @@ test("locked visualization readiness cannot falsely elevate tailor review status
   assert.match(verifiedHtml,/NO CUTTING AUTHORISATION/);
 });
 
+test("malformed creative treatments and craft panels fail closed before printable export",async()=>{
+  const make=()=>{
+    const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+    revision.garmentSpec.creative={
+      conceptId:"SYNTHETIC-PRINT-REVIEW",
+      name:"Synthetic creative garment",
+      thesis:"Synthetic layout only; no measured proof",
+      explorationClass:"balanced",iteration:1,researchUtilization:0,
+      treatments:[{
+        id:"SYNTHETIC-TREATMENT",zone:"cuff",label:"Pattern test",
+        instruction:"Sample the decorative cuff finish.",
+        visualPurpose:"Sample visual contrast",intensity:10,buildability:"atelier",
+      }],
+      pattern:null,research:[],
+      visualReview:{
+        status:"pass",heroVisibility:0,boundaryIntegrity:0,protectedChange:0,
+        evidenceAvailable:true,semanticAvailable:true,semanticStatus:"pass",
+      },
+      craft:{
+        version:"synthetic-proposed-sample",checks:[],panels:[{
+          zone:"cuff",fabric:{id:"SYNTHETIC-LOT",name:"Synthetic fabric",source:"test only"},
+        }],decoration:null,
+      },
+    } as unknown as NonNullable<typeof revision.garmentSpec.creative>;
+    return revision;
+  };
+  const normal=make();
+  const packet=buildProductionHandoff(normal);
+  assert.equal(packet.status,"review_required");
+  assert.ok(packet.unresolved.some(s=>s.includes("independent pattern-maker")));
+  const html=buildTailorTechPackHtml(packet);
+  assert.match(html,/Synthetic creative garment/);
+  assert.match(html,/Sample the decorative cuff finish/);
+  assert.match(html,/SYNTHETIC-LOT/);
+  assert.match(html,/NO CUTTING AUTHORISATION/);
+
+  const invalid:(readonly [string,(c:Record<string,unknown>)=>void])[]=[
+    ["no treatments",(c)=>{c.treatments=null;}],
+    ["scalar treatments",(c)=>{c.treatments="not an array";}],
+    ["null treatment",(c)=>{c.treatments=[null];}],
+    ["incomplete treatment",(c)=>{c.treatments=[{zone:"cuff"}];}],
+    ["no craft panels",(c)=>{(c.craft as Record<string,unknown>).panels=null;}],
+    ["null craft panel",(c)=>{(c.craft as Record<string,unknown>).panels=[null];}],
+    ["missing craft fabric",(c)=>{(c.craft as Record<string,unknown>).panels=[{zone:"cuff",fabric:null}];}],
+    ["missing fabric source",(c)=>{(c.craft as Record<string,unknown>).panels=[{zone:"cuff",fabric:{id:"x",name:"Sample"}}];}],
+    ["missing craft version",(c)=>{(c.craft as Record<string,unknown>).version=null;}],
+    ["missing name",(c)=>{c.name=null;}],
+    ["missing thesis",(c)=>{c.thesis=0;}],
+  ];
+  for(const [label,corrupt] of invalid){
+    const source=make();
+    corrupt(source.garmentSpec.creative as unknown as Record<string,unknown>);
+    assert.ok(auditHandoffCreativeReview(source.garmentSpec.creative).errors.length,label);
+    assert.throws(()=>buildProductionHandoff(source),/Unsafe tailor handoff creative review/,label);
+
+    const altered=structuredClone(packet);
+    corrupt(altered.construction.creative as unknown as Record<string,unknown>);
+    assert.throws(()=>buildTailorTechPackHtml(altered),/Unsafe tailor tech pack creative review/,label);
+  }
+
+  const locked=await lockGarmentSpec(normal.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
+  const verified=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(await verifyProductionHandoff(verified,locked),true);
+  const trusted=await buildVerifiedTailorTechPackHtml(verified,locked);
+  assert.match(trusted,/SYNTHETIC-LOT/);
+  assert.match(trusted,/NO CUTTING AUTHORISATION/);
+
+  const malformedSource=make();
+  if(!malformedSource.garmentSpec.creative?.craft) throw Error("Missing synthetic craft");
+  malformedSource.garmentSpec.creative.craft.panels=null as unknown as typeof malformedSource.garmentSpec.creative.craft.panels;
+  const badLock=await lockGarmentSpec(malformedSource.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
+  await assert.rejects(
+    buildVerifiedProductionHandoff(badLock,"2026-11-05T11:01:00.000Z"),
+    /Unsafe tailor handoff creative review/,
+  );
+});
+
 test("creative visual QA and physical craft decisions cannot bypass tailor handoff review",async()=>{
   const make=(reviewStatus:"pass"|"review"|null, evidence=true, semantic:"pass"|"review"="pass")=>{
     const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
