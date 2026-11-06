@@ -56,6 +56,7 @@ const collarFamilyIds: Record<CandidateCollarFamily, readonly string[]> = {
 function candidateCollarIntent(name: string): {
   requested: ReturnType<typeof candidateCollarFamilies>;
   prohibited: CandidateCollarFamily[];
+  affirmative: string;
   ambiguous: boolean;
 } {
   const token = String.raw`(?:cuban(?:\s*[/&-]\s*|\s+)camp|camp(?:\s*[/&-]\s*|\s+)cuban|mandarin(?:\s*[/&-]\s*|\s+)band|band(?:\s*[/&-]\s*|\s+)mandarin|camp|cuban|band|mandarin|cutaway|(?:english[- ]+)?spread|(?:soft[- ]+)?button[- ]?down|point(?:[ -]?(?:standard|\(standard\)))?|club|wing|tab|pin)(?:[- ]collar)?`;
@@ -78,6 +79,7 @@ function candidateCollarIntent(name: string): {
   return {
     requested,
     prohibited: [...prohibited],
+    affirmative: positive,
     ambiguous: named.length > 1 || named.some(family => prohibited.has(family)),
   };
 }
@@ -95,6 +97,26 @@ export function styleDirectorCandidateOrdinaryCollar(
   const families = intent.requested;
   if (intent.ambiguous || Object.values(families).filter(Boolean).length !== 1) return null;
   return families.spread ? "spread" : families.buttonDown ? "button_down" : null;
+}
+
+/**
+ * Preserve explicitly named existing collar variants as canonical IDs.
+ * Their unapproved photographic shape must still pass through the separate
+ * preview parity gate; do not substitute generic photographed construction.
+ */
+export function styleDirectorCandidateVariantCollar(
+  candidateShirt: string,
+): "english_spread_collar" | "soft_button_down" | null {
+  const intent = candidateCollarIntent(candidateShirt);
+  if (intent.ambiguous || Object.values(intent.requested).filter(Boolean).length !== 1) return null;
+  const selected = intent.requested.spread &&
+    /\benglish[- ]+spread[- ]collar\b/i.test(intent.affirmative)
+    ? "english_spread_collar"
+    : intent.requested.buttonDown &&
+      /\bsoft[- ]+button[- ]?down[- ]collar\b/i.test(intent.affirmative)
+      ? "soft_button_down" : null;
+  return selected && optionsFor("shirt.collar").some(option => option.id === selected)
+    ? selected : null;
 }
 
 // A prohibition of a sleeve length is not a positive request for it.
@@ -222,8 +244,10 @@ export function styleDirectorCandidateCollarIssues(
   if (intent.ambiguous) return []; // The wording gate reports the contradiction.
   const positiveFamily = (Object.keys(intent.requested) as CandidateCollarFamily[])
     .find(family => intent.requested[family]);
-  const incorrectRequest = positiveFamily !== undefined &&
-    !collarFamilyIds[positiveFamily].includes(shirt.collar);
+  const exactVariant = styleDirectorCandidateVariantCollar(candidateShirt);
+  const incorrectRequest = exactVariant !== null
+    ? shirt.collar !== exactVariant
+    : positiveFamily !== undefined && !collarFamilyIds[positiveFamily].includes(shirt.collar);
   const forbiddenSaved = intent.prohibited.some(family =>
     collarFamilyIds[family].includes(shirt.collar));
   return !incorrectRequest && !forbiddenSaved ? [] : [{
