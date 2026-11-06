@@ -485,6 +485,30 @@ test("verified handoff rejects substituted lock identity even when the garment h
   // lockedAt or the parent revision ID has an external signed timestamp.
 });
 
+test("unverified review preview never claims lock-verified tailor readiness",async()=>{
+  const fixture=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  const rawPacket=buildProductionHandoff(fixture);
+  assert.equal(rawPacket.status,"ready_for_tailor_review");
+  const preview=buildTailorTechPackHtml(rawPacket);
+  assert.match(preview,/<div class="badge">review required<\/div>/);
+  assert.match(preview,/UNVERIFIED PACKET PREVIEW — lock not checked/);
+  assert.doesNotMatch(preview,/<div class="badge">ready for tailor review<\/div>/);
+  assert.match(preview,/NO CUTTING AUTHORISATION/);
+
+  const locked=await lockGarmentSpec(fixture.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
+  const verifiedPacket=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(await verifyProductionHandoff(verifiedPacket,locked),true);
+  const verifiedHtml=await buildVerifiedTailorTechPackHtml(verifiedPacket,locked);
+  assert.match(verifiedHtml,/<div class="badge">ready for tailor review<\/div>/);
+  assert.match(verifiedHtml,/LOCKED RECIPE VERIFIED — no physical cutting approval/);
+  assert.match(verifiedHtml,/NO CUTTING AUTHORISATION/);
+
+  // Neither a packet that claims ready nor an otherwise valid recipe can
+  // force a trusted badge through the unsigned formatter.
+  const unverified=structuredClone(verifiedPacket);
+  assert.match(buildTailorTechPackHtml(unverified),/<div class="badge">review required<\/div>/);
+});
+
 test("verified tech-pack export rejects subtle valid-looking edits and forged source revision",async()=>{
   const fixture=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
   const locked=await lockGarmentSpec(fixture.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
