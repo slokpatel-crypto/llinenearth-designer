@@ -25,6 +25,8 @@ test("largest original component one-cut UV trial stays measurable and rejected"
     'Path(__file__).with_name("source-trouser-component0-subtree-uv-trial.py")',
     'weighted_selection["retainedOriginalSourceEdges"]',
     'weighted_report["researchOnlyComponent0SubtreeUvTrial"]',
+    'subtree_tree_report["verifiedTreeConnectedSharedEdges"] -= 1',
+    'subtree_tree_report["nonTreeCycleUnclosedUvEdges"] += 1',
     'packed_weighted_cut["unclosedSharedUvCutCandidateEdges"] + 1',
     'subtree_summary["addedActualSourceCutEdgeLengthMm"]',
     '"sourceUvExportOrSavePerformed": False',

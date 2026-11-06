@@ -1807,9 +1807,16 @@ def main():
         weighted_selection["retainedOriginalSourceEdges"],
     )
     subtree_overlap = uv_overlap_audit(base_faces, subtree_trial["face_uv_loops"])
+    # The generic cut-network auditor intentionally checks its UV evidence
+    # against the supplied spanning-forest counts. This trial has opened one
+    # previously joined tree edge, so pass an explicit derived diagnostic
+    # report instead of falsely describing the candidate as the old forest.
+    subtree_tree_report = dict(weighted_uv["report"])
+    subtree_tree_report["verifiedTreeConnectedSharedEdges"] -= 1
+    subtree_tree_report["nonTreeCycleUnclosedUvEdges"] += 1
     subtree_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
         merged_verts, base_faces, subtree_trial["face_uv_loops"],
-        l_remaining + r_remaining_mapped, weighted_uv["report"],
+        l_remaining + r_remaining_mapped, subtree_tree_report,
     )
     subtree_summary = subtree_trial["report"]
     subtree_comparison = overlap_compare(packed_weighted_overlap, subtree_overlap)

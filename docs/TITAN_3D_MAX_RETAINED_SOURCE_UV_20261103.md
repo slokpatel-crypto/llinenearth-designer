@@ -225,6 +225,13 @@ collisions, physical cloth behavior and tailor approval stay hard rejected.
 Exact-head pinned Blender evidence is required before recording any numeric
 result. **Research only; no merge, export, deploy or physical approval.**
 
+First exact-head source run `42217686837` correctly failed before emitting a
+measurement: the existing cut-network auditor rejected candidate UV loops when
+they were paired with the unchanged 2,647-join baseline tree report. The fix
+now supplies a derived diagnostic report with 2,646 retained joins and one
+additional unclosed seam; it does not weaken the auditor or rewrite the
+baseline evidence. A fresh exact-head native run is mandatory.
+
 ## 2026-11-05 next bounded diagnostic — attribute remaining overlap by real source component
 
 The packed weighted layout still has 6,957 positive-area triangle overlaps and the branch-aware layout has 7,128. Before changing another UV tree, the overlap audit now derives component ownership only from genuine shared 3D source edges and reports, for every authentic source component, its face count, internal overlapping triangle/face pairs, pairwise area sum and largest observed overlap. Cross-component counts remain separate. Complete packed scans must report zero cross-component overlaps and reconcile every remaining overlap to exactly one component; capped scans remain lower bounds.
