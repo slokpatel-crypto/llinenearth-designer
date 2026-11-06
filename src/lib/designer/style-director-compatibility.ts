@@ -889,6 +889,19 @@ export function styleDirectorSilhouetteFitIssues(
 }
 
 /**
+ * Repair only the *newly proposed* legacy-to-versioned crop conversion when
+ * two independent, canonical legacy selections already agree on above-ankle
+ * construction. Never invoke this on an existing saved/locked design; a
+ * disagreeing type/break must remain reviewable rather than being rewritten.
+ */
+export function styleDirectorProposedCroppedHem(
+  pant: Pick<StyleSpecV2["pant"], "type" | "break">,
+): "cropped_above_ankle_hem" | null {
+  return pant.type === "cropped_ankle" && pant.break === "cropped_above_ankle"
+    ? "cropped_above_ankle_hem" : null;
+}
+
+/**
  * Non-destructive compatibility checks on versioned construction IDs.
  * These are review signals, not tailor approval or automatic changes to a
  * customer's locked selection. No physical measurements are inferred.
