@@ -309,3 +309,26 @@ test("duplicate catalogue IDs cannot create duplicate Style Director looks", asy
   assert.equal(new Set(looks.map(look => look.id)).size, looks.length);
   assert.equal(JSON.stringify(catalogue), before);
 });
+
+test("duplicate supporting catalogue IDs cannot change a selected physical fabric", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const shirt = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("shirt"));
+  const pant = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("trouser"));
+  assert.ok(shirt && pant);
+  const answers = {
+    occasion: "Travel" as const, mood: "Relaxed" as const, time: "Day" as const,
+    climate: "Hot" as const, garment: "shirt" as const,
+    colorDirection: "Surprise me" as const,
+  };
+  const baseline = createStyleDirectorLooks(answers, [shirt, pant]);
+  const catalogue = [shirt, pant, { ...pant }, { ...shirt }];
+  const before = JSON.stringify(catalogue);
+  const repeated = createStyleDirectorLooks(answers, catalogue);
+  assert.equal(repeated.length, 1);
+  assert.equal(repeated[0].realModel?.shirtId, baseline[0].realModel?.shirtId);
+  assert.equal(repeated[0].realModel?.pantId, baseline[0].realModel?.pantId);
+  assert.equal(repeated[0].realModel?.styleSpec.styleSchemaVersion, 2);
+  assert.equal(JSON.stringify(catalogue), before);
+});
