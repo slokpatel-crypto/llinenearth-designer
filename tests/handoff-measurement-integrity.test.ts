@@ -110,6 +110,37 @@ test("an invalid, nonfinite, reversed or mismatched finished target fails closed
   }
 });
 
+test("calibration upper bound also applies at the final handoff and printable boundaries",()=>{
+  // The calibration-table normalizer rejects ease above 80 cm. This is a
+  // software provenance limit, not a suggested physical garment allowance.
+  const unsupported:FinishedTarget={
+    ...chest,
+    easeCm:{min:81,max:82},finishedCm:{min:181,max:182},
+  };
+  const atLimit:FinishedTarget={
+    ...chest,
+    easeCm:{min:79,max:80},finishedCm:{min:179,max:180},
+  };
+  const trouser=[waist,seat,inseam,outseam];
+  const complete=[chest,shoulder,sleeve];
+  assert.deepEqual(auditHandoffMeasurements({shirt:complete,trouser}),{errors:[],missing:[]});
+  const audit=auditHandoffMeasurements({shirt:[unsupported,shoulder,sleeve],trouser});
+  assert.ok(audit.errors.some(message=>message.includes("ease range is invalid")));
+  assert.throws(()=>buildProductionHandoff(
+    createRevision([unsupported,shoulder,sleeve],trouser),
+  ),/Unsafe tailor handoff measurements/);
+  const unverified=buildProductionHandoff(createRevision(complete,trouser));
+  unverified.construction.shirt.finishedTargets[0]=unsupported;
+  assert.throws(()=>buildTailorTechPackHtml(unverified),/Unsafe tailor tech pack measurements/);
+
+  // The exact documented boundary remains a valid range for data-integrity
+  // checks; it does not confer any form of human fit or cutting signoff.
+  assert.deepEqual(
+    auditHandoffMeasurements({shirt:[atLimit,shoulder,sleeve],trouser}),
+    {errors:[],missing:[]},
+  );
+});
+
 test("negative ease is rejected consistently with the existing house ease contract",()=>{
   const wrong={
     ...chest,
