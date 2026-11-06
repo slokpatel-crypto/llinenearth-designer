@@ -11,6 +11,9 @@ import {
   styleDirectorCandidateCuffIntent,
   styleDirectorCandidateCuff,
   styleDirectorCandidateCuffIssues,
+  styleDirectorCandidateShirtFitIntent,
+  styleDirectorCandidateShirtFit,
+  styleDirectorCandidateShirtFitIssues,
   styleDirectorCandidateOrdinaryCollar,
   styleDirectorCandidateSleeve,
   styleDirectorCandidateSleeveIssues,
@@ -1024,6 +1027,91 @@ test("forbidden and contradictory named cuffs cannot silently change the locked 
   assert.ok(agent.includes("if (namedCuff) spec.shirt.cuff=namedCuff.versioned"));
   assert.ok(agent.includes("...styleDirectorCandidateCuffIssues(candidate.garments.shirt, styleSpec.shirt)"),
     "real-model recommendation must review named cuff against the locked ID");
+});
+
+test("named shirt fits resolve to real canonical IDs without fabric or body assumptions", () => {
+  const photoChoices = optionsFor("shirt.fit")
+    .filter(option => option.legacySelectable !== false)
+    .map(option => option.legacyLabel || option.label);
+  const cases = [
+    ["Slim-Fit Dress Shirt", "slim_fit", "Slim Fit"],
+    ["Regular Fit Shirt", "regular_classic_fit", "Regular / Classic Fit"],
+    ["Classic-Fit Shirt", "regular_classic_fit", "Regular / Classic Fit"],
+    ["Regular / Classic Fit Shirt", "regular_classic_fit", "Regular / Classic Fit"],
+    ["Relaxed Fit Shirt", "relaxed_fit", "Relaxed Fit"],
+    ["Boxy Fit Shirt", "boxy_oversized", null],
+    ["Boxy Oversized Fit Shirt", "boxy_oversized", null],
+    ["Oversized Fit Shirt", "boxy_oversized", null],
+    ["Athletic Taper Fit Shirt", "athletic_taper", null],
+  ] as const;
+  for (const [label, id, legacy] of cases) {
+    assert.ok(optionsFor("shirt.fit").some(option => option.id === id), id);
+    assert.deepEqual(styleDirectorCandidateShirtFit(label, photoChoices),
+      { versioned: id, legacy }, label);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(label), [], label);
+    const locked = spec({ fit: id });
+    const before = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidateShirtFitIssues(label, locked.shirt), [], label);
+    assert.deepEqual(styleDirectorCandidateShirtFitIssues(label, {
+      fit: id === "slim_fit" ? "regular_classic_fit" : "slim_fit",
+    }).map(issue => issue.code), ["candidate_shirt_fit_mismatch"], label);
+    const shown = { ...photo("Spread Collar", "Tucked"), ...(legacy ? { shirtFit: legacy } : {}) };
+    const issues = styleDirectorPresentationIssues(shown, locked).map(issue => issue.code);
+    if (legacy) assert.deepEqual(issues, [], "matching supported photo fit remains unchanged: " + label);
+    else assert.ok(issues.includes("unverified_shirt_fit_photo"),
+      "a provisional fit is not a photographic or physical fitting signoff: " + label);
+    assert.equal(JSON.stringify(locked), before, "never rewrite a saved fit to match a photo");
+  }
+  assert.deepEqual(styleDirectorCandidateShirtFit("Boxy Fit Shirt", []),
+    { versioned: "boxy_oversized", legacy: null });
+  assert.deepEqual(styleDirectorCandidateShirtFit("Slim Fit Shirt", []),
+    { versioned: "slim_fit", legacy: null }, "no invented selectable photo label");
+});
+
+test("negative optional and contradictory shirt-fit wording must fail closed", () => {
+  const cases = [
+    ["No Slim Fit", null, ["slim_fit"], false],
+    ["Without Slim-Fit Shirt", null, ["slim_fit"], false],
+    ["Avoid Athletic Taper Fit", null, ["athletic_taper"], false],
+    ["Do Not Wear Relaxed Fit Shirt", null, ["relaxed_fit"], false],
+    ["Boxy Fit Is Forbidden", null, ["boxy_oversized"], false],
+    ["Optional Slim Fit", null, [], false],
+    ["Relaxed Fit Is Optional", null, [], false],
+    ["No Slim Fit; Regular Fit", "regular_classic_fit", ["slim_fit"], false],
+    ["Slim Fit; Relaxed Fit", null, [], true],
+    ["No Slim Fit; Slim Fit", "slim_fit", ["slim_fit"], true],
+    ["Boxy Fit; Athletic Taper Fit", null, [], true],
+  ] as const;
+  for (const [label, requested, prohibited, ambiguous] of cases) {
+    const intent = styleDirectorCandidateShirtFitIntent(label);
+    assert.equal(intent.requested, requested, label);
+    assert.deepEqual(intent.prohibited, [...prohibited], label);
+    assert.equal(intent.ambiguous, ambiguous, label);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(label).map(issue => issue.code),
+      ambiguous ? ["ambiguous_candidate_shirt_fit"] : [], label);
+    const named = styleDirectorCandidateShirtFit(label,
+      optionsFor("shirt.fit").map(option => option.legacyLabel || option.label));
+    assert.equal(named === null, requested === null || ambiguous, label);
+    if (ambiguous) assert.deepEqual(
+      styleDirectorCandidateShirtFitIssues(label, { fit: "slim_fit" }), [],
+      "ambiguous fit wording is a separate review; never infer one fit");
+    else for (const id of prohibited) assert.deepEqual(
+      styleDirectorCandidateShirtFitIssues(label, { fit: id }).map(issue => issue.code),
+      ["candidate_shirt_fit_mismatch"], label);
+  }
+  for (const label of [
+    "Regular Shirt", "Relaxed Linen Texture Shirt", "Slim Stripe Shirt",
+    "Athletic Sleeve Shirt", "Oversized Print Shirt",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateShirtFitIntent(label),
+      { requested: null, prohibited: [], ambiguous: false }, label);
+  }
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("const namedFit = styleDirectorCandidateShirtFit(shirt, DESIGNER_STYLE_CHOICES.shirtFit)"));
+  assert.ok(agent.includes("const namedFit=styleDirectorCandidateShirtFit(shirt,DESIGNER_STYLE_CHOICES.shirtFit)"));
+  assert.ok(agent.includes("if (namedFit?.legacy) style.shirtFit = namedFit.legacy"));
+  assert.ok(agent.includes("if (namedFit) spec.shirt.fit=namedFit.versioned"));
+  assert.ok(agent.includes("...styleDirectorCandidateShirtFitIssues(candidate.garments.shirt, styleSpec.shirt)"));
 });
 
 test("ordinary collar resolver rejects incidental words and contradictory constructions", () => {
