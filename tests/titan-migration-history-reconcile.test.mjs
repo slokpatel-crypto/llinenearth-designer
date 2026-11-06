@@ -102,7 +102,7 @@ test('inventory filename must match version and remain a safe SQL basename', () 
 
 
 test('noncanonical timestamp cannot masquerade as valid provenance', () => {
-  const invalid = { ...evidence, collected_at: new Date(Date.now() - 60_000).toISOString().replace('.000Z', '.0000Z') };
+  const invalid = { ...evidence, collected_at: new Date(Date.now() - 60_000).toISOString().replace('Z', '0Z') };
   const report = reconcileMigrationHistory(inventory, [{version:'20261001',sha256:hash('a'),evidence:invalid}]);
   assert.equal(report.release_ready, false);
   assert.equal(report.results[0].status, 'BLOCKED');
