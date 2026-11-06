@@ -72,5 +72,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Verify exact-head CI after the new code/test and checkpoint commits. No local execution possible in this connector-only environment; prior green runs do not certify new code.
 - [ ] Independently verify the final exported packet and reconcile any new CI failures. No real measured body, model sample, calibrated fabric, pattern, or human signoff; cutting remains blocked.
 
+## Tucked-shirt length review boundary (2026-11-06)
+- [x] Reviewed locked StyleSpec v2 `shirt.wear` and fit-construction length semantics against current main. A complete chest/shoulder/sleeve review packet could previously claim `ready_for_tailor_review` for a **tucked** shirt without any `Shirt-length anchor`, if source construction checks had not flagged it.
+- [x] The pure measurement audit now accepts optional garment wear context and requires a recorded shirt-length anchor for tucked construction only. Both canonical production-handoff and independent legacy printable tech-pack audit use the exact locked StyleSpec v2 wear choice, falling back to the shorthand wear for historic records. This is a review-data presence gate, **not** a body-size estimate or approval.
+- [x] New synthetic-only regressions check untucked compatibility, tucked missing-anchor review downgrade, reconstructable known length permitting review-ready **software** status, and stale handoff printable badge downgrade. All printed packets still say **NO CUTTING AUTHORISATION**.
+- [ ] Confirm exact-head Full CI, Non-3D, disposable PostgreSQL, build and browser test outcomes for the final branch head. Earlier successes are not evidence for this code.
+- [ ] Physical sample, finished garment length and balance, verified customer/model dimensions, signed seam allowances, tailor approval and actual cutting pattern remain unavailable. Do not merge or deploy.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
