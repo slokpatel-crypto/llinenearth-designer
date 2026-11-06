@@ -85,6 +85,21 @@ export function buildProductionHandoff(
   if ((spec.source.styleSchemaVersion ?? null) !== (spec.styleSpec?.styleSchemaVersion ?? null)) {
     throw new Error("Unsafe tailor handoff construction: locked option schema provenance does not match the selected cut.");
   }
+  // A locked design can carry an unresolved visual review even if a stale
+  // or hand-authored source falsely claims "ready_for_tailor_review".
+  // Keep the original cut data reconstructable while requiring review of the
+  // difference between customer preview and the actual garment instructions.
+  const visualizationSource=spec.readiness?.visualization;
+  if(visualizationSource != null
+      && visualizationSource!=="supported_with_current_template"
+      && visualizationSource!=="visual_review_required") {
+    throw new Error("Unsafe tailor handoff visualization readiness: unrecognized review state.");
+  }
+  const missingVisualReview=visualizationSource==="visual_review_required"
+    ? ["Locked design still requires visual review; confirm the preview against the exact selected garment construction before production."]
+    : visualizationSource==null
+      ? ["Locked design visualization readiness is not recorded; tailor must confirm preview-to-cut consistency before production."]
+      : [];
   const measurementSourceNote=spec.source.measurementProfileVersion===1 ? [] : [
     "A versioned measurement profile is not recorded; reconstruct and verify the measurement units and landmarks before tailor review.",
   ];
@@ -121,6 +136,7 @@ export function buildProductionHandoff(
   const unresolved=[...new Set([
     ...checkAudit.missing,
     ...creativeAudit.missing,
+    ...missingVisualReview,
     ...blockAudit.missing,
     ...missingBlockProvenance,
     ...spec.unresolved,
