@@ -110,9 +110,20 @@ test("cropped ankle construction cannot claim half shoe break", () => {
     assert.ok(issues.includes("cropped_half_break"), JSON.stringify(pant));
     assert.equal(JSON.stringify(selected), before, "review must not rewrite selected IDs");
   }
-  assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
+  // Half-break is physically compatible with a full-length trouser but is
+  // NOT an approved canonical pant.break ID. Preserve both facts: no cropped
+  // construction conflict, and fail closed on the stale saved selection.
+  const ordinaryHalfBreak = spec({}, {
     type: "formal_flat_front", hem: "plain_hem", break: "half_break",
-  })), [], "ordinary full-length trousers may use half break");
+  });
+  const original = JSON.stringify(ordinaryHalfBreak);
+  assert.deepEqual(styleDirectorConstructionIssues(ordinaryHalfBreak).map(issue => issue.code),
+    ["unknown_versioned_option"],
+    "ordinary full-length half break needs ID review, not a false cropped-hem conflict");
+  assert.equal(JSON.stringify(ordinaryHalfBreak), original);
+  assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
+    type: "formal_flat_front", hem: "plain_hem", break: "slight_break",
+  })), [], "canonical slight break remains buildable for full-length trousers");
   assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
     type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "no_break",
   })), [], "compatible cropped trousers remain valid");
