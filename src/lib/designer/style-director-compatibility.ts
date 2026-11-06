@@ -243,12 +243,14 @@ export function styleDirectorCandidateDrawstringWaistband(
 ): "requested" | "prohibited" | "ambiguous" | null {
   const token = String.raw`draw[- ]?string`;
   const preBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have)\s+)?(?:a\s+)?${token}\b`, "gi");
-  const postBan = new RegExp(String.raw`\b${token}\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b`, "gi");
-  const optional = new RegExp(String.raw`\b${token}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|mandatory|needed))\b`, "gi");
+  const postBan = new RegExp(String.raw`\b${token}(?:[- ]?(?:free|less)|\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted)))\b`, "gi");
+  const optional = new RegExp(String.raw`\b${token}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|mandatory|needed|necessary))\b`, "gi");
+  const optionalPrefix = new RegExp(String.raw`\b(?:optional|unnecessary)\s+${token}\b`, "gi");
   let banned = false;
   let neutral = candidateTrouser.replace(preBan, () => { banned = true; return " "; });
   neutral = neutral.replace(postBan, () => { banned = true; return " "; });
-  neutral = neutral.replace(optional, " ");
+  neutral = neutral.replace(optional, " ").replace(optionalPrefix, " ");
+  if (/\bwith\s+(?:or\s+)?without\s+draw[- ]?string\b/i.test(candidateTrouser)) return "ambiguous";
   const requested = /\bdraw[- ]?string\b/i.test(neutral);
   if (requested && banned) return "ambiguous";
   return requested ? "requested" : banned ? "prohibited" : null;
