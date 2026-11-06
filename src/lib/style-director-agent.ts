@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateSleeve, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateSleeve, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -289,6 +289,14 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
     }
   }
 
+  // An explicit wide-leg prohibition must not keep a casual preset's
+  // wide silhouette, including when a requested drawstring used it as a
+  // fallback. Use an existing selectable ordinary trouser, not a new ID.
+  if (styleDirectorCandidateWideLegIntent(trouser) === "prohibited" &&
+      /\bwide[- ]?leg\b/i.test(style.trouser)) {
+    style.trouser = pickStyleChoice("trouser", /formal trouser.*flat[- ]?front/i, style.trouser);
+  }
+
   if (occasion === "Formal" || occasion === "Semi-Formal") {
     style.rise = pickStyleChoice("rise", /mid rise|high rise/i, style.rise);
   }
@@ -376,6 +384,7 @@ function buildRealModelSpec(
   const constructionIssues=[
     ...styleDirectorCandidateWordingIssues(candidate.garments.shirt, candidate.garments.trouser),
     ...styleDirectorCandidateWaistbandIssues(candidate.garments.trouser, styleSpec.pant),
+    ...styleDirectorCandidateWideLegIssues(candidate.garments.trouser, styleSpec.pant),
     ...styleDirectorCandidateCollarIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidateSleeveIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidateWearIssues(candidate.garments.shirt, styleSpec.shirt),
