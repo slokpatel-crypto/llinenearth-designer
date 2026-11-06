@@ -194,7 +194,14 @@ function chooseFabrics(
   stock:FabricColorway[]=FABRIC_STOCK,
   intelligence?:Record<string,DesignerFabricIntelligence>|null,
 ) {
-  const eligible=stock.filter((f)=>f.inStock&&f.suitableFor.includes(a.garment));
+  // Duplicate catalogue IDs cannot represent independently reconstructable looks.
+  // Keep the first eligible record for each ID without modifying caller-owned stock.
+  const seenIds=new Set<string>();
+  const eligible=stock.filter((f)=>{
+    if(!f.inStock||!f.suitableFor.includes(a.garment)||seenIds.has(f.id)) return false;
+    seenIds.add(f.id);
+    return true;
+  });
   return [...eligible].sort((x,y)=>rankFabric(a,y,intelligence)-rankFabric(a,x,intelligence)).slice(0,3);
 }
 
