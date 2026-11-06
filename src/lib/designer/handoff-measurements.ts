@@ -189,9 +189,12 @@ export function auditHandoffMeasurements(
       }
       const ease = value.easeCm;
       if (ease !== undefined) {
-        // House and calibrated ease tables require non-negative ranges.
-        // Negative ease cannot be introduced solely via a locked recipe.
-        if (!finite(ease?.min) || !finite(ease?.max) || ease.min < 0 || ease.min > ease.max) {
+        // The house/calibration contract requires non-negative ranges and
+        // the calibration normalizer caps the upper bound at 80 cm. Enforce
+        // that same recorded software range at the final export boundary;
+        // this is not a claim that 80 cm is an approved physical fit.
+        if (!finite(ease?.min) || !finite(ease?.max)
+            || ease.min < 0 || ease.max > 80 || ease.min > ease.max) {
           errors.push(`${name}: ease range is invalid or reversed.`);
         } else if (finite(value.bodyCm) && finished && finite(finished.min) && finite(finished.max)
           && (Math.abs((value.bodyCm + ease.min) - finished.min) > 0.21
