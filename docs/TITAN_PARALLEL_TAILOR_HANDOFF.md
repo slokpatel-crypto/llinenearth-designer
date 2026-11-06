@@ -122,5 +122,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Confirm Full CI, Non-3D, build, browser and disposable database checks **matching the final head SHA**. Prior green steps are not sufficient.
 - [ ] No new human pattern or timestamp signing authority is asserted. Physical customer measurements, sample fit, approved pattern and tolerances, real cloth evidence and tailor signoff remain unavailable. No cutting, merge or deployment.
 
+## Provisional ease version provenance consistency (2026-11-06)
+- [x] Verified `assessFitConstruction` obtains provisional source ranges from the single pinned `HOUSE_EASE_TABLE_VERSION` in `house-ease.ts`. The final handoff audit previously allowed arbitrary nonempty provisional table version identifiers, even though that source/version pair did not identify the actual deterministic ranges.
+- [x] Final `auditHandoffFitProvenance` now compares the declared provisional table ID against the canonical constant. A mismatch stays **reconstructable and review-required**, with a specific unresolved original-range confirmation; legacy records are not silently relabeled, discarded or promoted to approved.
+- [x] Existing synthetic fixtures now reference the canonical house constant; new regression covers current-source review-ready software status, older mismatched version review downgrade, independent HTML audit of stale provenance, and SHA256-verified handoff/export that preserves the original mismatch and prints **NO CUTTING AUTHORISATION**.
+- [ ] Exact-head Full CI, Non-3D QA, build, browser and DB checks must be recorded before declaring final software verification. Earlier successful runs don't certify new code.
+- [ ] A matching version string proves only internal provenance coherence, not the validity of actual physical ease, approved fabric, pattern dimensions or human tailor signoff. Never merge or deploy or authorize cutting.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
