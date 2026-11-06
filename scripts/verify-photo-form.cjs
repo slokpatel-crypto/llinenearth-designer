@@ -147,6 +147,12 @@ async function run(){
     // Capture a true viewport crop of the reachable buttons rather than
     // a full-card image whose fixed contact bar may overlap their saved pixels.
     const actionRow=page.locator(".newDesignerPhotoActionsCompact");
+    // Desktop's sticky right column is taller than a 1000px viewport.
+    // It must release that stickiness so the real Lock/Compare/Save row
+    // can be scrolled into view; never hide the defect by relaxing bounds.
+    const rightPanelPosition=await page.locator(".newDesignerRight").evaluate(node=>getComputedStyle(node).position);
+    if(width===1440)assert.equal(rightPanelPosition,"static",
+      "short desktop viewport must unstick its tall photographic action panel");
     await actionRow.evaluate(node=>node.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"}));
     const actionRowBox=await actionRow.boundingBox();
     const actionViewport=page.viewportSize();
@@ -154,7 +160,7 @@ async function run(){
       && actionRowBox.x>=0 && actionRowBox.y>=0
       && actionRowBox.x+actionRowBox.width<=actionViewport.width
       && actionRowBox.y+actionRowBox.height<=actionViewport.height,
-      "photo actions must fit inside the reachable viewport");
+      `photo actions must fit inside the reachable viewport: ${JSON.stringify({width,actionRowBox,actionViewport,rightPanelPosition})}`);
     const contactBox=await page.locator(".floatingContactDock").boundingBox();
     if(contactBox){
       const overlaps=actionRowBox.x<contactBox.x+contactBox.width
@@ -217,6 +223,7 @@ async function run(){
     summary.viewports.push({width,overflow:false,realCataloguePreview:true,tuckedAndUntuckedScreenshots:true});
     summary.viewports[summary.viewports.length-1].fabricSummaryReadable=true;
     summary.viewports[summary.viewports.length-1].compactActionsReadable=true;
+    summary.viewports[summary.viewports.length-1].tallDesktopActionRowReachable=true;
     summary.viewports[summary.viewports.length-1].solidScaleClaimTruthful=true;
     summary.viewports[summary.viewports.length-1].solidScaleNoteUnobstructed=true;
     // Exercise the ACTUAL customer controls, not just pure IDs. Advanced v2
