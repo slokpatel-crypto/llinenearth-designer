@@ -277,6 +277,37 @@ async function run(){
     summary.viewports[summary.viewports.length-1].wideSourceComparisonVerified=true;
     await page.getByRole("button",{name:"Show design",exact:true}).click();
     assert.equal(await original.count(),0);
+    // Race two ACTUAL shirt selections against an uncached, delayed catalogue
+    // image. The previous look and raw source image must never be displayed as
+    // the newly selected fabric while that new tile is still pending.
+    const unseen=await page.locator("#designer-shirt option").evaluateAll(options=>
+      options.filter(option=>option.value && option.value!==document.querySelector("#designer-shirt")?.value).map(option=>option.value).at(-1));
+    assert.ok(unseen && unseen!==dark,"need a distinct customer fabric for rapid-switch QA");
+    let delayedImageRequests=0;
+    await page.route("**/*.webp",async route=>{
+      delayedImageRequests++;
+      await new Promise(resolve=>setTimeout(resolve,850));
+      await route.continue();
+    });
+    await page.getByRole("button",{name:"Compare",exact:true}).click();
+    await original.waitFor();
+    await page.locator("#designer-shirt").selectOption(unseen);
+    await page.locator('.newDesignerPhotoStage[data-ready="false"]').waitFor();
+    assert.equal(await page.locator(".newDesignerPhotoStage>canvas").evaluate(canvas=>getComputedStyle(canvas).visibility),"hidden",
+      "old canvas must be hidden while the new fabric is pending");
+    assert.equal(await original.count(),0,"source overlay from previous selection must close on fabric change");
+    await page.locator("#designer-shirt").selectOption(dark);
+    await ready(page);
+    assert.equal(await page.locator(".newDesignerPhotoStage>canvas").evaluate(canvas=>getComputedStyle(canvas).visibility),"visible");
+    const settledHash=await actualPhotoPixelHash(page);
+    await page.waitForTimeout(1000);
+    assert.equal(await actualPhotoPixelHash(page),settledHash,
+      "late image loading from an abandoned fabric must not overwrite the last selected look");
+    assert.ok(delayedImageRequests>0,"the browser must exercise a real delayed fabric-image request");
+    assert.equal(await page.locator("#designer-shirt").inputValue(),dark);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+    summary.viewports[summary.viewports.length-1].rapidFabricSwitchStable=true;
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`rapid-fabric-switch-settled-${width}.png`)});
     await context.close();
   }
   assert.equal(summary.paidCalls,0);assert.deepEqual(summary.errors,[]);fs.writeFileSync(path.join(out,"summary.json"),JSON.stringify(summary,null,2));console.log(`Photo form passed: ${summary.viewports.length} widths, ${summary.forms.length} photographed cuts, striped shirt and both trouser legs, stronger folds and no protected-region/waist leaks.`);
