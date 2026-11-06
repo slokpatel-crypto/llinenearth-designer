@@ -445,6 +445,77 @@ export function styleDirectorCandidateSleeve(
 }
 
 /**
+ * Explicit pant fit is a distinct, versioned construction dimension from the
+ * silhouette/type, pleat count, and waistband. A named fit does not establish
+ * physical body measurements or a faithful photographic trouser shape.
+ */
+const candidateTrouserFitPatterns = [
+  { id: "slim_tapered", pattern: /\bslim[- ]tapered(?:[- ]fit)?\b/gi },
+  { id: "straight_classic", pattern: /\bstraight[- ]classic(?:[- ]fit)?\b/gi },
+  { id: "regular_tapered", pattern: /\bregular[- ]tapered(?:[- ]fit)?\b/gi },
+  { id: "korean_straight_wide", pattern: /\bkorean[- ]straight[- ]wide(?:[- ]fit)?\b/gi },
+  { id: "korean_tapered", pattern: /\bkorean[- ]tapered(?:[- ]fit)?\b/gi },
+  { id: "baggy_wide", pattern: /\bbaggy[- ]wide(?:[- ]fit)?\b/gi },
+  { id: "wide_leg_drape", pattern: /\bwide[- ]leg[- ]drape(?:[- ]fit)?\b/gi },
+  { id: "pleated_straight", pattern: /\bpleated[- ]straight(?:[- ]fit)?\b/gi },
+  { id: "cargo_utility", pattern: /\bcargo[- ]utility(?:[- ]fit)?\b/gi },
+  { id: "jean_cut_suiting_fit", pattern: /\bjean[- ]cut[- ]suiting[- ]fit\b/gi },
+] as const;
+type CandidateTrouserFitId = (typeof candidateTrouserFitPatterns)[number]["id"];
+
+export function styleDirectorCandidateTrouserFitIntent(candidateTrouser: string): {
+  requested: CandidateTrouserFitId | null;
+  prohibited: CandidateTrouserFitId[];
+  ambiguous: boolean;
+} {
+  const requested = new Set<CandidateTrouserFitId>();
+  const prohibited = new Set<CandidateTrouserFitId>();
+  for (const { id, pattern } of candidateTrouserFitPatterns) {
+    for (const match of candidateTrouser.matchAll(pattern)) {
+      const index = match.index ?? 0;
+      const prefix = candidateTrouser.slice(0, index);
+      const suffix = candidateTrouser.slice(index + match[0].length);
+      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(suffix);
+      const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
+        /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/i.test(suffix);
+      if (banned) prohibited.add(id);
+      else if (!optional) requested.add(id);
+    }
+  }
+  return {
+    requested: requested.size === 1 ? [...requested][0] : null,
+    prohibited: [...prohibited],
+    ambiguous: requested.size > 1 || [...requested].some(id => prohibited.has(id)),
+  };
+}
+
+export function styleDirectorCandidateTrouserFit(candidateTrouser: string): CandidateTrouserFitId | null {
+  const intent = styleDirectorCandidateTrouserFitIntent(candidateTrouser);
+  return intent.ambiguous ? null : intent.requested;
+}
+
+/** Require a human photographic review; pant.fit has no legacy style selector. */
+export function styleDirectorCandidateTrouserFitIssues(
+  candidateTrouser: string,
+  pant: Pick<StyleSpecV2["pant"], "fit">,
+): DirectorConstructionIssue[] {
+  const intent = styleDirectorCandidateTrouserFitIntent(candidateTrouser);
+  if (intent.ambiguous) return [];
+  const mismatch = (intent.requested !== null && pant.fit !== intent.requested) ||
+    intent.prohibited.includes(pant.fit as CandidateTrouserFitId);
+  if (mismatch) return [{
+    code: "candidate_trouser_fit_mismatch",
+    explanation: "The requested or prohibited trouser fit conflicts with the locked versioned fit ID; confirm the construction before tailoring.",
+  }];
+  const selected = intent.requested && optionsFor("pant.fit").find(option => option.id === intent.requested);
+  return selected?.renderSupport.livePreview === "none" ? [{
+    code: "unverified_trouser_fit_photo",
+    explanation: "The selected trouser fit is recorded by its canonical ID, but its live photographic geometry is not verified; confirm with a tailor.",
+  }] : [];
+}
+
+/**
  * Width intent is independent of waistband, fabric stripes and pleat count.
  * Remove explicit bans / optional choices before treating wide-leg wording as
  * a positive instruction. Conflicting requests must receive review rather
@@ -602,6 +673,7 @@ export type DirectorConstructionIssue = {
     "candidate_placket_mismatch" | "ambiguous_candidate_placket" | "unverified_placket_photo" |
     "candidate_cuff_mismatch" | "ambiguous_candidate_cuff" | "unverified_cuff_photo" |
     "candidate_shirt_fit_mismatch" | "ambiguous_candidate_shirt_fit" | "unverified_shirt_fit_photo" |
+    "candidate_trouser_fit_mismatch" | "ambiguous_candidate_trouser_fit" | "unverified_trouser_fit_photo" |
     "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
   explanation: string;
 };
@@ -665,6 +737,12 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     issues.push({
       code: "ambiguous_candidate_trouser_front",
       explanation: "This proposed trouser names both a flat front and positive pleats; confirm one front construction before approving the recommendation.",
+    });
+  }
+  if (styleDirectorCandidateTrouserFitIntent(candidateTrouser).ambiguous) {
+    issues.push({
+      code: "ambiguous_candidate_trouser_fit",
+      explanation: "This proposed trouser names conflicting fit constructions; select one fit before cutting.",
     });
   }
   if (styleDirectorCandidateDrawstringWaistband(candidateTrouser) === "ambiguous") {
