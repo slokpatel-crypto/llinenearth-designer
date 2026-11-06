@@ -133,6 +133,33 @@ export function styleDirectorCandidateCollar(
 }
 
 /**
+ * Resolve explicitly named classic and specialty collars into real existing
+ * versioned IDs. Only allow a photographic selection when that same option is
+ * selectable in the legacy style contract. Wing/tab/pin photos must not be
+ * invented: a null legacy value makes presentation parity require review.
+ */
+export function styleDirectorCandidateSpecialCollar(
+  candidateShirt: string,
+  legacyChoices: readonly string[],
+): { versioned: "point_standard_collar" | "club_collar" | "wing_collar" | "tab_collar" | "pin_collar"; legacy: string | null } | null {
+  const families = candidateCollarFamilies(candidateShirt);
+  if (Object.values(families).filter(Boolean).length !== 1) return null;
+  const id = families.point ? "point_standard_collar"
+    : families.club ? "club_collar"
+    : families.wing ? "wing_collar"
+    : families.tab ? "tab_collar"
+    : families.pin ? "pin_collar" : null;
+  if (!id) return null;
+  const option = optionsFor("shirt.collar").find((entry) => entry.id === id);
+  if (!option) return null;
+  const label = option.legacyLabel || option.label;
+  return {
+    versioned: id,
+    legacy: option.legacySelectable !== false && legacyChoices.includes(label) ? label : null,
+  };
+}
+
+/**
  * A single named collar is a construction request, even when there is no
  * matching legacy photographic selector. Do not silently keep an unrelated
  * default collar on the locked design. Multiple family names are handled by
