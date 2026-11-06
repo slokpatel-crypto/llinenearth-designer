@@ -1,4 +1,5 @@
 import type { FinishedTarget } from "./fit-construction.ts";
+import { HOUSE_EASE_TABLE_VERSION } from "./house-ease.ts";
 
 /**
  * Fail closed on corrupt or self-contradictory garment targets at the final
@@ -108,6 +109,16 @@ export function auditHandoffFitProvenance(source: HandoffFitProvenance): Handoff
       || source.easeTableVersion.trim().length === 0
       || source.easeTableVersion.length > 120) {
     errors.push("Fit/ease table version must be a nonempty bounded identifier.");
+  }
+  // Provisional ranges always originate from one pinned house ease table.
+  // Keep older locked versions reconstructable, but treat a different or
+  // unrecognized version as an unresolved provenance discrepancy rather
+  // than silently claiming that the current default ranges were used.
+  if (source.fitConstructionVersion === "fit-construction-provisional-1"
+      && source.easeSource === "provisional_house_defaults"
+      && typeof source.easeTableVersion === "string"
+      && source.easeTableVersion !== HOUSE_EASE_TABLE_VERSION) {
+    missing.push(`Provisional house ease table version ${JSON.stringify(source.easeTableVersion)} does not match ${HOUSE_EASE_TABLE_VERSION}; tailor must verify the original range contract before production.`);
   }
   // A lock proves that a customer selected this calibration identifier. It
   // does not carry the owner/tailor approval record or measured garment cases.
