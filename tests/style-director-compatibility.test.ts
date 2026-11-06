@@ -771,8 +771,10 @@ test("only explicitly named wide-leg silhouettes select a wide trouser", () => {
     assert.equal(styleDirectorCandidateWideLeg(label), false, label);
   }
   const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
-  assert.equal(agent.split("styleDirectorCandidateWideLeg(trouser)").length-1, 2,
-    "photographic and versioned paths must agree on wide-leg intent");
+  assert.equal(agent.split("styleDirectorCandidateWideLeg(trouser)").length-1, 3,
+    "photographic and versioned paths plus independent drawstring guard must share wide-leg intent");
+  assert.ok(agent.includes('if (!styleDirectorCandidateWideLeg(trouser) && trouserFront === null)'),
+    "drawstring should only supply a fallback silhouette without overriding named wide-leg or front intent");
   assert.ok(!agent.includes('trouser.includes("wide")'),
     "no substring-based photographic trouser silhouette selection");
   assert.ok(!agent.includes('/wide/.test(trouser)'),
