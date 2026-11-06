@@ -45,6 +45,7 @@ function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSourc
     trouser:trouser.finishedTargets,
   }, {
     shirtWear:handoff.construction.styleSpec?.shirt.wear ?? shirt.wear,
+    shirtCuff:handoff.construction.styleSpec?.shirt.cuff ?? shirt.cuff,
     trouserRise:handoff.construction.styleSpec?.pant.rise ?? trouser.rise,
   });
   if(audit.errors.length) {
