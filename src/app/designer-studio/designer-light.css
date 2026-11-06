@@ -469,6 +469,12 @@
 .newDesignerDraftActions .newDesignerAction{min-height:44px!important}
 
 .newDesignerRight{position:sticky;top:16px}
+/* The photo/action panel can exceed a short desktop viewport. A sticky tall
+   sidebar pins the action row below the screen even after scrollIntoView.
+   Let that customer panel scroll normally on short desktop viewports. */
+@media (min-width:1181px) and (max-height:1200px){
+  .newDesignerRight:has(.newDesignerPhotoActionsCompact){position:static}
+}
 .newDesignerModelHandoffCompact,.newDesignerCreativeHandoffCompact{padding:10px 12px!important;margin-bottom:8px!important}
 .newDesignerModelHandoffCompact p,.newDesignerCreativeHandoffCompact p,.newDesignerCreativeHandoffCompact small{display:none!important}
 .newDesignerCreativeHandoffCompact>div{margin-top:7px!important}
