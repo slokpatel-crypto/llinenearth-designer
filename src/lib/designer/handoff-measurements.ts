@@ -74,6 +74,46 @@ export function auditHandoffConstructionChecks(input:unknown): HandoffMeasuremen
   return { errors, missing:[] };
 }
 
+/**
+ * Pattern-block guidance may contain outstanding shape, armhole, seat or
+ * balance decisions even when an upstream construction-check list is empty.
+ * Keep the exact recorded adjustment in the review packet, never reinterpret
+ * a "review"/"warning" adjustment as a signed cutting instruction.
+ */
+export function auditHandoffBlockAdjustments(input:unknown):HandoffMeasurementAudit {
+  const errors:string[]=[];
+  const missing:string[]=[];
+  if(input==null) return {errors,missing};
+  if(typeof input!=="object" || Array.isArray(input)
+      || !Array.isArray((input as {adjustments?:unknown}).adjustments)) {
+    return {errors:["Block strategy must contain an adjustments array."],missing};
+  }
+  const adjustments=(input as {adjustments:unknown[]}).adjustments;
+  for(const [index,item] of adjustments.entries()){
+    const at=`Block adjustment #${index+1}`;
+    if(!item || typeof item!=="object" || Array.isArray(item)){
+      errors.push(`${at} must be a record.`);
+      continue;
+    }
+    const adjustment=item as Record<string,unknown>;
+    if(typeof adjustment.id!=="string" || !adjustment.id.trim() || adjustment.id.length>120)
+      errors.push(`${at} must have a nonempty bounded ID.`);
+    if(adjustment.garment!=="shirt" && adjustment.garment!=="trouser")
+      errors.push(`${at} must identify shirt or trouser.`);
+    if(typeof adjustment.area!=="string" || !adjustment.area.trim() || adjustment.area.length>160)
+      errors.push(`${at} must have a nonempty bounded pattern area.`);
+    if(typeof adjustment.message!=="string" || !adjustment.message.trim() || adjustment.message.length>2000)
+      errors.push(`${at} must have a nonempty bounded message.`);
+    if(adjustment.severity!=="info" && adjustment.severity!=="review" && adjustment.severity!=="warning")
+      errors.push(`${at} has an unrecognized severity.`);
+    if((adjustment.severity==="review" || adjustment.severity==="warning")
+       && typeof adjustment.message==="string" && adjustment.message.trim()) {
+      missing.push(`Block adjustment ${String(adjustment.id)} (${String(adjustment.garment)} / ${String(adjustment.area)}): ${adjustment.message.trim()} — tailor must review before production.`);
+    }
+  }
+  return {errors,missing};
+}
+
 export type HandoffFitProvenance = {
   fitConstructionVersion: unknown;
   easeSource: unknown;
