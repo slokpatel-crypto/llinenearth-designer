@@ -230,6 +230,29 @@ export function auditHandoffProductionReadiness(input:unknown):HandoffMeasuremen
   return {errors,missing};
 }
 
+/**
+ * Human review instructions must be reconstructable text, not a missing
+ * collection, a scalar string spread character-by-character, or opaque data.
+ * Applies equally to unresolved decisions and accompanying source caveats.
+ * This is packet integrity only; a recorded note is not a signoff.
+ */
+export function auditHandoffHumanNotes(
+  input:unknown,
+  kind:"unresolved"|"caveats",
+):HandoffMeasurementAudit {
+  const errors:string[]=[];
+  if(!Array.isArray(input)) {
+    return {errors:[`Tailor handoff ${kind} must be an array of review-note strings.`],missing:[]};
+  }
+  for(const [index,value] of input.entries()){
+    if(typeof value!=="string" || !value.trim() || value.length>4000
+        || /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value)) {
+      errors.push(`Tailor handoff ${kind} note #${index+1} must be nonempty bounded printable text.`);
+    }
+  }
+  return {errors,missing:[]};
+}
+
 export type HandoffFitProvenance = {
   fitConstructionVersion: unknown;
   easeSource: unknown;
