@@ -143,5 +143,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Require matching-head quality, unit, engine, preview, release, build, browser and disposable database checks before software signoff. Prior green workflow runs are not proof for this SHA.
 - [ ] Genuine customer/model measurements, garment sample fitting, real pattern and seam tolerances, material truth and signed tailor acceptance remain unavailable. No merge, deployment or cutting approval.
 
+## French/double-cuff wrist measurement gate (2026-11-06)
+- [x] Reviewed existing `assessFitConstruction` and the actual option IDs. French/double-cuff construction requires a wrist reading, but a stale locked spec with no upstream warning could previously be declared review-ready without `Finished cuff circumference`.
+- [x] Extended the final measurement audit's optional construction context with `shirtCuff`. A locked `french_double_cuff` ID (or legacy `French / Double Cuff`) now requires an explicit finished-cuff target derived from a recorded wrist and an actual recorded ease range. Handoff and independent HTML audits use the locked StyleSpec v2 cuff ID first, with historic shorthand fallback; no wrist value is inferred.
+- [x] Added synthetic-only regression for unaffected open short-sleeve hems, missing French-cuff wrist target, preserved recorded cuff target, stale printable packet, legacy missing wrist, and verified SHA256-locked review-only export with a missing target. Both print paths retain **NO CUTTING AUTHORISATION**.
+- [ ] Verify latest matching-head full CI, non-3D, build, browser and DB checks before claiming completion.
+- [ ] Actual customer wrist/body readings, confirmed cuff sizing and ease, measured garment fitting, approved pattern/material and tailor signoff are still unavailable. No merge or deployment.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
