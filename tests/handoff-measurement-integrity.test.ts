@@ -140,6 +140,60 @@ test("unknown optional landmarks remain reconstructable but block review-ready h
   }
 });
 
+test("tucked shirt requires its own length anchor for handoff and printable readiness",()=>{
+  const standardShirt=[chest,shoulder,sleeve];
+  const standardTrouser=[waist,seat,inseam,outseam];
+  const shirtLength:FinishedTarget={
+    label:"Shirt-length anchor",bodyCm:76,finishedCm:{min:76,max:76},basis:"customer_desired",
+  };
+  assert.deepEqual(
+    auditHandoffMeasurements({shirt:standardShirt,trouser:standardTrouser},{shirtWear:"untucked"}),
+    {errors:[],missing:[]},
+  );
+  const missing=auditHandoffMeasurements(
+    {shirt:standardShirt,trouser:standardTrouser},{shirtWear:"tucked"},
+  );
+  assert.deepEqual(missing.errors,[]);
+  assert.ok(missing.missing.some(item=>item.includes("Shirt-length anchor")
+    && item.includes("tucked construction")));
+
+  const tucked=createRevision(standardShirt,standardTrouser);
+  if(!tucked.garmentSpec.styleSpec) throw Error("Synthetic exact cut is absent");
+  tucked.garmentSpec.styleSpec.shirt.wear="tucked";
+  tucked.garmentSpec.styleSpec.shirt.length="shirt_length_tuck";
+  tucked.garmentSpec.shirt.wear="Tucked";
+  // Even though this synthetic legacy source claims ready, a tucked pattern
+  // with no measured length anchor is only an unsigned review packet.
+  const review=buildProductionHandoff(tucked);
+  assert.equal(review.status,"review_required");
+  assert.ok(review.unresolved.some(item=>item.includes("Shirt-length anchor")));
+  const reviewHtml=buildTailorTechPackHtml(review);
+  assert.match(reviewHtml,/Shirt-length anchor is not recorded/);
+  assert.match(reviewHtml,/NO CUTTING AUTHORISATION/);
+
+  const complete=createRevision([...standardShirt,shirtLength],standardTrouser);
+  if(!complete.garmentSpec.styleSpec) throw Error("Synthetic exact cut is absent");
+  complete.garmentSpec.styleSpec.shirt.wear="tucked";
+  complete.garmentSpec.styleSpec.shirt.length="shirt_length_tuck";
+  complete.garmentSpec.shirt.wear="Tucked";
+  const packet=buildProductionHandoff(complete);
+  assert.equal(packet.status,"ready_for_tailor_review");
+  assert.deepEqual(packet.unresolved,[]);
+  const html=buildTailorTechPackHtml(packet);
+  assert.match(html,/Shirt-length anchor/);
+  assert.match(html,/NO CUTTING AUTHORISATION/);
+
+  // The legacy unsigned formatter re-audits instead of trusting a stale
+  // status claim when a previously recorded length is subsequently removed.
+  const stale=structuredClone(packet);
+  stale.construction.shirt.finishedTargets=
+    stale.construction.shirt.finishedTargets.filter(item=>item.label!=="Shirt-length anchor");
+  assert.equal(stale.status,"ready_for_tailor_review");
+  const staleHtml=buildTailorTechPackHtml(stale);
+  assert.match(staleHtml,/review required/);
+  assert.match(staleHtml,/Shirt-length anchor is not recorded/);
+});
+
 test("the printable sheet independently rejects tampered target ranges",()=>{
   const packet=buildProductionHandoff(createRevision([chest],[waist,seat]));
   packet.construction.shirt.finishedTargets[0].finishedCm.min=1;
