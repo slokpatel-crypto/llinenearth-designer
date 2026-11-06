@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateSleeve, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateSleeve, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -250,6 +250,7 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   const ordinaryCollar = styleDirectorCandidateOrdinaryCollar(shirt);
   const namedPlacket = styleDirectorCandidatePlacket(shirt, DESIGNER_STYLE_CHOICES.placket);
   const namedCuff = styleDirectorCandidateCuff(shirt, DESIGNER_STYLE_CHOICES.cuff);
+  const namedFit = styleDirectorCandidateShirtFit(shirt, DESIGNER_STYLE_CHOICES.shirtFit);
   const trouserFront = styleDirectorCandidateTrouserFront(trouser);
 
   if (ordinaryCollar === "spread") {
@@ -277,6 +278,7 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   // The real canonical placket is still saved even without a photo.
   if (namedPlacket?.legacy) style.placket = namedPlacket.legacy;
   if (namedCuff?.legacy) style.cuff = namedCuff.legacy;
+  if (namedFit?.legacy) style.shirtFit = namedFit.legacy;
 
   if (styleDirectorCandidateWideLeg(trouser)) {
     style.trouser = pickStyleChoice("trouser", /wide|relaxed drape/i, style.trouser);
@@ -322,6 +324,7 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   const namedSleeve=styleDirectorCandidateSleeve(shirt);
   const namedPlacket=styleDirectorCandidatePlacket(shirt,DESIGNER_STYLE_CHOICES.placket);
   const namedCuff=styleDirectorCandidateCuff(shirt,DESIGNER_STYLE_CHOICES.cuff);
+  const namedFit=styleDirectorCandidateShirtFit(shirt,DESIGNER_STYLE_CHOICES.shirtFit);
   const trouserFront=styleDirectorCandidateTrouserFront(trouser);
 
   if(namedCollar?.versioned==="cuban_camp_collar") {
@@ -360,6 +363,9 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   // Explicit cuff intent must survive the photo bridge, even if the
   // resulting short-sleeve/cuff combination requires construction review.
   if (namedCuff) spec.shirt.cuff=namedCuff.versioned;
+  // An explicit fit ID is retained even when the photographed preset cannot
+  // represent the selected body shape. Presentation review remains mandatory.
+  if (namedFit) spec.shirt.fit=namedFit.versioned;
 
   if(styleDirectorCandidateWideLeg(trouser)) spec.pant.type="wide_leg_relaxed_drape";
   else if(trouserFront==="pleated") spec.pant.type="pleated_trouser";
@@ -403,6 +409,7 @@ function buildRealModelSpec(
     ...styleDirectorCandidateCollarIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidatePlacketIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidateCuffIssues(candidate.garments.shirt, styleSpec.shirt),
+    ...styleDirectorCandidateShirtFitIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidateSleeveIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidateWearIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidateFrontConstructionIssues(candidate.garments.trouser, styleSpec.pant),
