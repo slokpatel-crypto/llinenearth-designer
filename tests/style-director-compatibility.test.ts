@@ -509,6 +509,33 @@ test("candidate photo selection skips ambiguous collar labels and preserves cano
 });
 
 
+test("advanced collar photo matching excludes ordinary-collar conflicts without changing versioned IDs", () => {
+  const ambiguousChoices = [
+    "Cuban Point Collar", "Band Club Collar", "Cutaway Wing Collar",
+    "Camp / Pin Collar", "Mandarin Tab Collar",
+    "Cuban / Camp Collar", "Mandarin / Band Collar", "Cutaway Collar",
+  ];
+  assert.deepEqual(styleDirectorCandidateCollar("Cuban Resort Shirt", ambiguousChoices), {
+    legacy: "Cuban / Camp Collar", versioned: "cuban_camp_collar",
+  });
+  assert.deepEqual(styleDirectorCandidateCollar("Band-Collar Shirt", ambiguousChoices), {
+    legacy: "Mandarin / Band Collar", versioned: "mandarin_band_collar",
+  });
+  assert.deepEqual(styleDirectorCandidateCollar("Cutaway-Collar Shirt", ambiguousChoices), {
+    legacy: "Cutaway Collar", versioned: "cutaway_collar",
+  });
+  const onlyAmbiguous = ambiguousChoices.slice(0, 5);
+  for (const [candidate, versioned] of [
+    ["Cuban Resort Shirt", "cuban_camp_collar"],
+    ["Band-Collar Shirt", "mandarin_band_collar"],
+    ["Cutaway-Collar Shirt", "cutaway_collar"],
+  ] as const) {
+    assert.deepEqual(styleDirectorCandidateCollar(candidate, onlyAmbiguous), {
+      legacy: null, versioned,
+    }, "unsupported combined photo labels must not certify a locked collar");
+  }
+});
+
 test("contradictory sleeve length descriptions do not select a half-sleeve construction", () => {
   for (const label of [
     "Short-Sleeve Long-Sleeve Shirt",
