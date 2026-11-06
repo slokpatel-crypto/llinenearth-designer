@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   styleDirectorCandidateCollar,
+  styleDirectorCandidateOrdinaryCollar,
   styleDirectorCandidateSleeve,
   styleDirectorCandidateFrontConstructionIssues,
   styleDirectorCandidateTrouserFront,
@@ -514,6 +515,36 @@ test("candidate sleeve type and construction share one strict resolver", () => {
   }
 });
 
+
+test("ordinary collar resolver rejects incidental words and contradictory constructions", () => {
+  const yes = [
+    ["Spread-Collar Dress Shirt", "spread"],
+    ["Spread Collar Shirt", "spread"],
+    ["Oxford Button-Down Shirt", "button_down"],
+    ["Button Down Casual Shirt", "button_down"],
+  ] as const;
+  for (const [name, expected] of yes) {
+    assert.equal(styleDirectorCandidateOrdinaryCollar(name), expected, name);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(name), [], name);
+  }
+  for (const name of [
+    "Widespread Print Shirt", "Widespread Collar Shirt",
+    "Button-Downish Shirt", "Oxford Shirt", "Buttoned Shirt",
+    "Spread-Collar Button-Down Shirt", "Cuban Spread-Collar Shirt",
+    "Point Collar Spread-Collar Shirt", "Button-Down Band-Collar Shirt",
+    "Camp-Collar Resort Shirt", "Cutaway-Collar Dress Shirt",
+  ]) {
+    assert.equal(styleDirectorCandidateOrdinaryCollar(name), null, name);
+  }
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("const ordinaryCollar = styleDirectorCandidateOrdinaryCollar(shirt)"));
+  assert.ok(agent.includes('if (ordinaryCollar === "spread")'));
+  assert.ok(agent.includes('else if (ordinaryCollar === "button_down")'));
+  assert.ok(!agent.includes('shirt.includes("spread")'),
+    "ordinary collars must never be inferred from substring matches");
+  assert.ok(!agent.includes('shirt.includes("button-down")'),
+    "button-down construction requires explicit whole-word intent");
+});
 
 test("conflicting named collar families fail closed rather than silently selecting a construction", () => {
   for (const name of [
