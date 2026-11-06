@@ -154,10 +154,22 @@ const candidateSleeveLengths = (name: string) => {
     /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|include|choose|wear|add|have)\s+)?(?:(?:a|any)\s+)?((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\b/gi,
     (_match, word: string) => ban(word),
   );
-  const affirmative = withoutPrefixedBans.replace(
+  const withoutSuffixBans = withoutPrefixedBans.replace(
     /\b((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted)|(?:must|should)\s+not\s+be\s+(?:used|worn))\b/gi,
     (_match, word: string) => ban(word),
   );
+  // A sleeve described as optional is not an instruction to cut that
+  // length. Remove optional phrases only AFTER bans so prohibited lengths
+  // cannot be accidentally reinterpreted as choices.
+  const affirmative = withoutSuffixBans
+    .replace(
+      /\b(?:optional|maybe)\s+(?:a\s+)?(?:short|half|long|full)[ -]?sleeve(?:s|d)?\b/gi,
+      " ",
+    )
+    .replace(
+      /\b(?:short|half|long|full)[ -]?sleeve(?:s|d)?\s+(?:(?:are|is)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/gi,
+      " ",
+    );
   return {
     short: /\b(?:short|half)[ -]?sleeve(?:s|d)?\b/i.test(affirmative),
     long: /\b(?:long|full)[ -]?sleeve(?:s|d)?\b/i.test(affirmative),
