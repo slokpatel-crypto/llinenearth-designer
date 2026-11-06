@@ -1320,6 +1320,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   useLayoutEffect(() => {
     requestScope.activate();
     setReady(false);
+    // A source comparison from the previous selection must not mask the next look.
+    setShowOriginal(false);
     setCreativeAi(null);
     setCreativeAiLoading(false);
     setCreativeAiError("");
@@ -1735,10 +1737,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     {!showCreativeAi && constructionMismatches.length>0 && <div className="newDesignerPhotoConstructionNotice" data-photo-construction-mismatch="true" role="status" style={{margin:"10px 20px 12px",padding:"9px 12px",borderLeft:"3px solid #a65d43",background:"#faf6f0",color:"#514538",fontSize:"12px",lineHeight:1.5}}>
       <strong>Photographic construction limits</strong> · {constructionMismatches.map((gap)=>gap.label).join(", ")} not reconstructed in the fixed studio photograph. Your selected construction remains in the saved design specification.
     </div>}
-    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-ready={ready?"true":"false"}>
-      <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
+    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-ready={ready?"true":"false"} aria-busy={!ready && !error}>
+      <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} style={{visibility:ready?"visible":"hidden"}} />
       {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image)} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal ${photorealView} view of ${shirt.name} with ${pant.name}`} />}
-      {showOriginal && <img className="newDesignerPhotoOriginal" src={template.src} alt={templateId==="wide"
+      {showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal" src={template.src} alt={templateId==="wide"
         ? "Original wide-trouser studio photograph. The instant-preview shirt uses the separate pleated studio source photograph."
         : "Original photographed studio model template for comparison"} />}
       {showBoundaries && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay">
@@ -1754,7 +1756,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
           <path d={template.trouserPath} className="trouserBoundary" />
         </>}
       </svg>}
-      <span className="newDesignerPhotoTag">{showOriginal ? (templateId==="wide" ? "SOURCE / WIDE TROUSER PHOTO" : "SOURCE / STUDIO PHOTO") : showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : constructionMismatches.length > 0 ? "FRONT / STUDIO MODEL · CUTS APPROX." : "FRONT / STUDIO MODEL"}</span>
+      <span className="newDesignerPhotoTag">{showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : showOriginal && ready ? (templateId==="wide" ? "SOURCE / WIDE TROUSER PHOTO" : "SOURCE / STUDIO PHOTO") : constructionMismatches.length > 0 ? "FRONT / STUDIO MODEL · CUTS APPROX." : "FRONT / STUDIO MODEL"}</span>
       {error && <span className="newDesignerPhotoError" role="alert">Preview could not load. Check the local fabric images.</span>}
       {!ready && !error && <span className="newDesignerPhotoLoading">Preparing your look…</span>}
     </div>
@@ -1765,9 +1767,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready}>Lock final design</button>}
         {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</button>}
         {!creativeAi && creativeDirection && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Render selected idea ✦"}</button>}
-        {creativeAi && <button className="primary" type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant preview" : (!creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") ? "Review photoreal" : "Photoreal render")}</button>}
+        {creativeAi && <button className="primary" type="button" onClick={()=>{setShowOriginal(false);setShowCreativeAi((value)=>!value);}}>{showCreativeAi ? "Instant preview" : (!creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") ? "Review photoreal" : "Photoreal render")}</button>}
         {!creativeAi && !creativeDirection && finalLocked && <button type="button" onClick={()=>setFinalLocked(false)} disabled={creativeAiLoading}>Unlock</button>}
-        <button type="button" onClick={() => setShowOriginal((value) => !value)} disabled={!ready}>{showOriginal ? "Show design" : "Compare"}</button>
+        <button type="button" onClick={() => {setShowCreativeAi(false);setShowOriginal((value) => !value);}} disabled={!ready}>{showOriginal && !showCreativeAi ? "Show design" : "Compare"}</button>
         <button type="button" onClick={download} disabled={!ready}>{showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</button>
       </div>
     </div>
