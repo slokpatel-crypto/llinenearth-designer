@@ -178,5 +178,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Record latest exact-head quality/unit/engine/preview/release/build/PostgreSQL/browser results. Earlier checks cannot certify a newer commit.
 - [ ] Real customer body measures, fabric facts, sample garment fitting, approved pattern and seam tolerances, human tailor acceptance and cutting permission remain external and unavailable. No merge/deploy.
 
+## Creative visual-review and craft safeguards at tailor export (2026-11-06)
+- [x] Reviewed `buildCanonicalGarmentSpec`: any creative direction lacking recorded passing visual evidence, with open semantic review, or with a craft construction requires further human review. Final `buildProductionHandoff` and HTML print previously relied on the upstream `status`/`unresolved` fields and could accept a stale, self-asserted ready recipe even where a creative review was absent or craft was present.
+- [x] Added a pure `auditHandoffCreativeReview` that keeps absent/failed photographic review, unavailable visual evidence, unrecorded/open semantic review and any proposed craft construction explicitly **review-required**. Malformed review status or craft type is rejected. Both the handoff builder and independent printable tech-pack audit enforce this; no creative-engine or rendering code changed.
+- [x] Synthetic tests cover no-creative and internally coherent passing-source controls; missing/failed visual review, absent evidence, open semantic review, present unapproved craft, stale printable packet, invalid review state, and a SHA256-verified review-only export. Synthetic passing flags demonstrate internal data consistency **only**, not external image-evidence authenticity or physical garment approval.
+- [ ] Latest exact-head quality, unit, engine, preview, release, build, PostgreSQL and browser CI evidence still required; results of older commits cannot substitute.
+- [ ] Real visual evidence, physical body and garment fitting, fabric data, signed pattern/seam tolerances and tailor acceptance are unavailable. Do not merge, deploy or grant cutting authorization.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
