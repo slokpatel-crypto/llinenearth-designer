@@ -94,5 +94,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] This check establishes **internal metadata consistency**, not cryptographic authenticity of `lockedAt` or `parentRevisionId`, which are not covered by the current recipe hash. No claim of independent signed timestamp, operator approval, material verification or cutting authorization.
 - [ ] Physical sample/measurements, approved seam tolerances and pattern identity, human tailor acceptance remain external; no merge or deploy.
 
+## Non-negative ease contract check (2026-11-06)
+- [x] Read canonical `house-ease.ts` (`validEaseRange`) and `ease-calibration.ts` provenance: official provisional/calibrated house ease ranges have non-negative minima. The isolated handoff boundary previously accepted a mathematically coherent `easeCm.min<0` if the resulting finished garment bounds were still positive.
+- [x] Final `auditHandoffMeasurements` now rejects negative ease minima as an integrity error at both handoff creation and independent tech-pack rendering; canonical positive ranges are unchanged. This validates the locked software range contract, not a physical fit tolerance or body-shape assumption.
+- [x] Added synthetic regression for coherent negative ease at handoff, mutated printable packet and a standard positive-ease control. No real body or model measurements inferred.
+- [ ] Verify the exact-head quality/unit/engine/preview/release/build/DB/browser checks before claiming a pass. Previous successful steps are not transferable between heads.
+- [ ] Independent integration review, physical measurements, sample fitting, actual pattern block, signed seam allowances and human tailor approval are still required. No cutting, merge or deployment.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
