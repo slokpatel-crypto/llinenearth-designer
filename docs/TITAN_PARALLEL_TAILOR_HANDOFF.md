@@ -86,5 +86,13 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Require Full CI, Non-3D and browser checks matching the final branch SHA before claiming a pass. This checkpoint must never inherit green checks from an earlier SHA.
 - [ ] Actual tailor measurement/review, physical fitting, approved cutting pattern, signed tolerances and fabric evidence remain external. No cutting, merge or deploy.
 
+## Locked revision identity integrity continuation (2026-11-06)
+- [x] Audited `design-lock.ts` and verified handoff: recipe SHA256 verifies garmentSpec but its `revisionId` and `lockedAt` were not checked against the deterministic lock generation format. A tampered metadata-only revision could previously be accepted by a handoff builder despite valid recipe hash.
+- [x] Added a scoped, pure final-boundary check that `lockedAt` is the exact normalized ISO timestamp and `revisionId` matches `LE-LOCK-<timestamp>-<12-digit uppercase recipe SHA256 prefix>`. Both `buildVerifiedProductionHandoff` and `verifyProductionHandoff` now enforce it; legacy unverified synchronous preview output remains unchanged.
+- [x] New synthetic regression covers genuine `lockGarmentSpec` positive verified export, substituted revision ID, changed lock timestamp and equivalent-but-noncanonical timestamp, verifying rejection both before trusted handoff and at SHA256-verified printable tech-pack export.
+- [ ] Exact-head Full CI, Non-3D, build, browser and DB evidence still required. Tests are not claimed to have passed before the workflow reports success.
+- [ ] This check establishes **internal metadata consistency**, not cryptographic authenticity of `lockedAt` or `parentRevisionId`, which are not covered by the current recipe hash. No claim of independent signed timestamp, operator approval, material verification or cutting authorization.
+- [ ] Physical sample/measurements, approved seam tolerances and pattern identity, human tailor acceptance remain external; no merge or deploy.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
