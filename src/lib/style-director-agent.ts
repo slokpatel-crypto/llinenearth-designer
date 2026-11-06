@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorCandidateCollar, styleDirectorCandidateSleeve, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateSleeve, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -246,12 +246,13 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   const shirt = candidate.garments.shirt.toLowerCase();
   const trouser = candidate.garments.trouser.toLowerCase();
   const namedCollar = styleDirectorCandidateCollar(shirt, DESIGNER_STYLE_CHOICES.collar);
+  const ordinaryCollar = styleDirectorCandidateOrdinaryCollar(shirt);
   const trouserFront = styleDirectorCandidateTrouserFront(trouser);
 
-  if (shirt.includes("spread")) {
+  if (ordinaryCollar === "spread") {
     style.collar = pickStyleChoice("collar", /spread/i, style.collar);
     style.shirtWear = "Tucked";
-  } else if (shirt.includes("button-down") || shirt.includes("oxford")) {
+  } else if (ordinaryCollar === "button_down") {
     style.collar = pickStyleChoice("collar", /button[- ]?down/i, style.collar);
     style.shirtWear = occasion === "Formal" || occasion === "Semi-Formal" ? "Tucked" : "Untucked";
   } else if (namedCollar?.versioned === "cuban_camp_collar") {
@@ -310,7 +311,7 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   }
   else if(/overshirt/.test(shirt)) spec.shirt.type="overshirt";
   else if(namedSleeve) spec.shirt.type="short_sleeve_shirt";
-  else if(/oxford|button[- ]?down/.test(shirt)) spec.shirt.type="casual_shirt";
+  else if(/\boxford\b/.test(shirt) || styleDirectorCandidateOrdinaryCollar(shirt)==="button_down") spec.shirt.type="casual_shirt";
   else spec.shirt.type="dress_shirt";
 
   // A named half/short sleeve must survive the legacy-to-versioned bridge.
