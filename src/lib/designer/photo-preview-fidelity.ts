@@ -1,6 +1,26 @@
 import type { DesignerStyle } from "./engine.ts";
 import type { StyleSpecV2 } from "./style-spec-v2.ts";
 
+/**
+ * A Solid catalogue classification is not physical proof of reviewed textile
+ * repeat scale. Only describe measured calibration where a visible motif is
+ * actually selected and all visible repeat calibrations are verified.
+ */
+export function photoPatternScaleDisclosure(
+  patternTypes: readonly string[],
+  allVisibleRepeatsVerified: boolean,
+  unverifiedFabricNames: readonly string[],
+): string {
+  const hasPatternRepeat = patternTypes.some((type) => type.trim().toLowerCase() !== "solid");
+  if (!hasPatternRepeat) {
+    return "no visible motif repeat is recorded for these solid selections";
+  }
+  if (allVisibleRepeatsVerified) {
+    return "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists";
+  }
+  return "pattern scale is still approximate for " + unverifiedFabricNames.join(" / ");
+}
+
 export type PhotoConstructionMismatch = {
   field: string;
   label: string;
