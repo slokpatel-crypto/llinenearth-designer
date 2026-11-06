@@ -346,3 +346,14 @@ test("selected fabric labels and complete names stay legible on compact preview"
   assert.ok(source.includes("title={pant.name}"));
   assert.ok(source.includes('whiteSpace:"normal",overflow:"visible",textOverflow:"clip"'));
 });
+
+
+test("responsive fabric evidence comes from painted full-card screenshot, never an empty element capture", () => {
+  const script=readFileSync("scripts/verify-photo-form.cjs","utf8");
+  assert.match(script,/const cardPng=await photoCard\.screenshot/);
+  assert.match(script,/sharp\(cardPng\)\.extract\(clip\)/);
+  assert.match(script,/const \{data:pixels,info:pixelsInfo\}/);
+  assert.match(script,/visibleInk>100/);
+  assert.match(script,/fabric summary screenshot must actually contain legible text and controls/);
+  assert.doesNotMatch(script,/await fabricSummary\.screenshot\(/);
+});
