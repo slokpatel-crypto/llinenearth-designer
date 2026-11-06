@@ -11,6 +11,8 @@ import {
   styleDirectorCandidateFrontConstructionIssues,
   styleDirectorCandidateTrouserFront,
   styleDirectorCandidateWideLeg,
+  styleDirectorCandidateWideLegIntent,
+  styleDirectorCandidateWideLegIssues,
   styleDirectorCandidateDrawstringWaistband,
   styleDirectorCandidateWaistbandIssues,
   styleDirectorCandidateWordingIssues,
@@ -745,6 +747,63 @@ test("drawstring intent is checked against immutable canonical waistband selecti
     "real-model needs_review status must include locked drawstring parity");
   assert.ok(!agent.includes('trouser.includes("drawstring")'),
     "substring-only drawstring selection bypasses negative wording");
+});
+
+test("negated and optional wide-leg labels cannot select an unwanted silhouette", () => {
+  const cases = [
+    ["Wide-Leg Trouser", "requested"],
+    ["Wide-Leg / Relaxed Drape Trouser", "requested"],
+    ["Wide Fit Trousers", "requested"],
+    ["Wide Pants", "requested"],
+    ["No Wide-Leg Trouser", "prohibited"],
+    ["Without Wide-Leg Pants", "prohibited"],
+    ["Do Not Wear Wide-Leg Trousers", "prohibited"],
+    ["Avoid Wide Fit Trousers", "prohibited"],
+    ["Wide-Leg Pants Are Not Allowed", "prohibited"],
+    ["Wide-leg Is Forbidden", "prohibited"],
+    ["Optional Wide-Leg Trouser", null],
+    ["Wide-Leg Pants Optional", null],
+    ["Widespread Print Trouser", null],
+    ["Wide Waistband Tailored Trouser", null],
+    ["Wide-wale Corduroy Trouser", null],
+    ["No Wide-Leg; Wide-Leg Trouser", "ambiguous"],
+    ["No Wide-Leg Pants; Wide Fit Trousers", "ambiguous"],
+    ["Wide-Leg Not Allowed; Wide-Leg Requested", "ambiguous"],
+  ] as const;
+  for (const [name, expected] of cases) {
+    assert.equal(styleDirectorCandidateWideLegIntent(name), expected, name);
+    assert.equal(styleDirectorCandidateWideLeg(name), expected === "requested", name);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("Dress Shirt", name).map(i => i.code),
+      expected === "ambiguous" ? ["ambiguous_candidate_wide_leg"] : [], name);
+  }
+});
+
+test("wide-leg candidate intent is checked against immutable saved trouser types", () => {
+  const cases = [
+    ["Wide Leg Trousers", "wide_leg_relaxed_drape", "formal_flat_front"],
+    ["No Wide-Leg Pants", "formal_flat_front", "wide_leg_relaxed_drape"],
+    ["Wide-Leg Trousers Not Allowed", "pleated_trouser", "wide_leg_relaxed_drape"],
+  ] as const;
+  for (const [candidate, valid, invalid] of cases) {
+    const locked = spec({}, { type: valid });
+    const snapshot = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(candidate, locked.pant), []);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(candidate, { type: invalid })
+      .map(i => i.code), ["candidate_wide_leg_mismatch"], candidate);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(candidate, { type: invalid }),
+      styleDirectorCandidateWideLegIssues(candidate, { type: invalid }),
+      "validation must be deterministic");
+    assert.equal(JSON.stringify(locked), snapshot, "review cannot change saved IDs");
+  }
+  for (const candidate of ["Wide-Leg Optional", "No Wide-Leg; Wide-Leg"]) {
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(candidate,
+      { type: "wide_leg_relaxed_drape" }), [], "optional or contradictory wording does not choose a locked ID");
+  }
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("...styleDirectorCandidateWideLegIssues(candidate.garments.trouser, styleSpec.pant)"),
+    "final real-model recommendation status must include proposed wide-leg parity");
+  assert.ok(agent.includes('styleDirectorCandidateWideLegIntent(trouser) === "prohibited"'),
+    "legacy wide-leg default must be replaced when the candidate forbids it");
 });
 
 test("only explicitly named wide-leg silhouettes select a wide trouser", () => {
