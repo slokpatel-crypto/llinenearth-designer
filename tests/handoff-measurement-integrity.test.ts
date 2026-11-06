@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffMeasurements } from "../src/lib/designer/handoff-measurements.ts";
+import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffMeasurements, auditHandoffProductionReadiness } from "../src/lib/designer/handoff-measurements.ts";
 import { buildProductionHandoff, buildVerifiedProductionHandoff, verifyProductionHandoff } from "../src/lib/designer/production-handoff.ts";
 import { lockGarmentSpec } from "../src/lib/designer/design-lock.ts";
 import { buildTailorTechPackHtml, buildVerifiedTailorTechPackHtml, techPackFilename } from "../src/lib/designer/tech-pack.ts";
@@ -991,6 +991,61 @@ test("malformed construction checks cannot hide behind a ready status or verifie
     buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z"),
     /Unsafe tailor handoff construction checks/,
   );
+});
+
+test("source tailoring and material readiness must use recognised states",async()=>{
+  const complete=()=>createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  const baseline=complete();
+  assert.deepEqual(auditHandoffProductionReadiness(baseline.garmentSpec.readiness),
+    {errors:[],missing:[]});
+  assert.equal(buildProductionHandoff(baseline).status,"ready_for_tailor_review");
+
+  const insufficient=complete();
+  insufficient.garmentSpec.readiness.tailoring="insufficient_measurements";
+  const incompletePacket=buildProductionHandoff(insufficient);
+  assert.equal(incompletePacket.status,"review_required");
+  assert.ok(incompletePacket.unresolved.some(n=>n.includes("insufficient measurements")));
+  assert.match(buildTailorTechPackHtml(incompletePacket),/insufficient measurements/);
+
+  const materialPending=complete();
+  materialPending.garmentSpec.readiness.materialVerification="verification_required";
+  const pendingPacket=buildProductionHandoff(materialPending);
+  assert.equal(pendingPacket.status,"review_required");
+  assert.ok(pendingPacket.unresolved.some(n=>n.includes("material source requires verification")));
+  assert.match(buildTailorTechPackHtml(pendingPacket),/material source requires verification/);
+
+  const missingFields=complete();
+  missingFields.garmentSpec.readiness.tailoring=undefined as unknown as "tailor_review_required";
+  missingFields.garmentSpec.readiness.materialVerification=undefined as unknown as "verified";
+  const historical=buildProductionHandoff(missingFields);
+  assert.equal(historical.status,"review_required");
+  assert.ok(historical.unresolved.some(n=>n.includes("tailoring readiness is not recorded")));
+  assert.ok(historical.unresolved.some(n=>n.includes("material verification readiness is not recorded")));
+
+  const missingAll=complete();
+  missingAll.garmentSpec.readiness=null as unknown as typeof missingAll.garmentSpec.readiness;
+  const missingPacket=buildProductionHandoff(missingAll);
+  assert.equal(missingPacket.status,"review_required");
+  assert.ok(missingPacket.unresolved.some(n=>n.includes("tailoring and material readiness states are not recorded")));
+
+  const malformed=complete();
+  malformed.garmentSpec.readiness="ready" as unknown as typeof malformed.garmentSpec.readiness;
+  assert.throws(()=>buildProductionHandoff(malformed),/Unsafe tailor handoff readiness/);
+
+  for(const field of ["tailoring","materialVerification"] as const){
+    const forged=complete();
+    (forged.garmentSpec.readiness as unknown as Record<string,unknown>)[field]="made-up-approved";
+    assert.throws(()=>buildProductionHandoff(forged),/Unsafe tailor handoff readiness/);
+  }
+
+  const locked=await lockGarmentSpec(materialPending.garmentSpec,{
+    lockedAt:"2026-11-05T11:00:00.000Z",
+  });
+  const verified=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(await verifyProductionHandoff(verified,locked),true);
+  assert.equal(verified.status,"review_required");
+  assert.match(await buildVerifiedTailorTechPackHtml(verified,locked),
+    /material source requires verification/);
 });
 
 test("locked visualization readiness cannot falsely elevate tailor review status",async()=>{
