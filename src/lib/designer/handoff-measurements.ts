@@ -195,6 +195,41 @@ export function auditHandoffCreativeReview(input:unknown):HandoffMeasurementAudi
   return {errors,missing};
 }
 
+/**
+ * The canonical source has separate tailoring/material readiness states.
+ * Validate these at the final export boundary rather than interpreting any
+ * value except "insufficient_measurements" as proof of sufficient data.
+ * "verified" is the source's recorded claim, not independently checked
+ * physical fabric or tailor approval.
+ */
+export function auditHandoffProductionReadiness(input:unknown):HandoffMeasurementAudit {
+  const errors:string[]=[];
+  const missing:string[]=[];
+  if(input == null) {
+    missing.push("Locked tailoring and material readiness states are not recorded; confirm the source decisions before production.");
+    return {errors,missing};
+  }
+  if(typeof input!=="object" || Array.isArray(input)) {
+    return {errors:["Locked production readiness must be a record."],missing};
+  }
+  const source=input as Record<string,unknown>;
+  if(source.tailoring == null) {
+    missing.push("Locked tailoring readiness is not recorded; confirm body and finished-garment measurements before production.");
+  } else if(source.tailoring==="insufficient_measurements") {
+    missing.push("Locked tailoring source reports insufficient measurements; complete and verify the missing landmarks before production.");
+  } else if(source.tailoring!=="tailor_review_required") {
+    errors.push("Locked tailoring readiness has an unrecognized state.");
+  }
+  if(source.materialVerification == null) {
+    missing.push("Locked material verification readiness is not recorded; check fabric and stock evidence before production.");
+  } else if(source.materialVerification==="verification_required") {
+    missing.push("Locked material source requires verification; confirm real fabric and stock evidence before production.");
+  } else if(source.materialVerification!=="verified") {
+    errors.push("Locked material verification readiness has an unrecognized state.");
+  }
+  return {errors,missing};
+}
+
 export type HandoffFitProvenance = {
   fitConstructionVersion: unknown;
   easeSource: unknown;
