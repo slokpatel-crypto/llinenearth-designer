@@ -50,3 +50,24 @@ test("inherited provenance cannot impersonate a reviewed fabric record", () => {
   assert.equal(styleDirectorIntelligenceTrustWeight(own), 1,
     "valid own provenance must retain its ranking weight");
 });
+
+test("computed provenance cannot fabricate approval or execute scoring getters", () => {
+  let accesses = 0;
+  const forged = Object.create(null);
+  Object.defineProperties(forged, {
+    trust: { enumerable: true, get() { accesses++; return "reviewed"; } },
+    reviewStatus: { enumerable: true, get() { accesses++; return "approved"; } },
+  });
+  const mixed = Object.defineProperty({ trust: "reviewed" }, "reviewStatus", {
+    enumerable: true, get() { throw new Error("untrusted accessor executed"); },
+  });
+  for (const record of [forged, mixed]) {
+    const input = record as Parameters<typeof styleDirectorIntelligenceTrustWeight>[0];
+    assert.equal(styleDirectorIntelligenceTrustWeight(input), 0);
+    assert.equal(styleDirectorIntelligenceTrustWeight(input), 0, "deterministic replay");
+  }
+  assert.equal(accesses, 0, "untrusted provenance getters must never run");
+  const ownData = Object.assign(Object.create(null), { trust: "reviewed", reviewStatus: "approved" });
+  assert.equal(styleDirectorIntelligenceTrustWeight(ownData), 1,
+    "valid own data on a null-prototype record must remain supported");
+});
