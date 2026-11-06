@@ -600,3 +600,29 @@ test("Earthy direction recognizes khaki as a named fabric colour without inventi
     "standard khaki spelling should outrank an otherwise identical neutral colour");
   assert.equal(JSON.stringify(stock), original);
 });
+
+
+test("Earthy direction retains legacy khakhi spelling compatibility across repeated decisions", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const base = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("shirt"));
+  assert.ok(base, "requires a stocked shirting fixture");
+  const neutral = { ...base, id: "test-earthy-alias-neutral", colorName: "Silver" };
+  const legacy = { ...base, id: "test-earthy-alias-legacy", colorName: "Khakhi" };
+  const catalogue = [neutral, legacy];
+  const before = JSON.stringify(catalogue);
+  const answers = {
+    occasion: "Everyday" as const, mood: "Relaxed" as const,
+    time: "Day" as const, climate: "Mixed" as const,
+    garment: "shirt" as const, colorDirection: "Earthy" as const,
+  };
+  const first = createStyleDirectorLooks(answers, catalogue);
+  const second = createStyleDirectorLooks(answers, catalogue);
+  assert.equal(first.length, 2);
+  assert.equal(first[0].fabric.id, legacy.id,
+    "previously supported supplier spelling must still receive Earthy preference");
+  assert.deepEqual(second.map(look => look.fabric.id), first.map(look => look.fabric.id),
+    "ranking must remain deterministic without relying on version timestamps");
+  assert.equal(JSON.stringify(catalogue), before, "catalogue must remain immutable");
+});
