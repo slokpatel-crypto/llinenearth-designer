@@ -73,3 +73,18 @@ test("cropped hem proposal rejects incompatible or malformed trouser type IDs", 
     assert.equal(JSON.stringify(pant), original, "saved IDs must remain unchanged");
   }
 });
+
+
+test("cropped proposal accepts an exact canonical pair without depending on object prototype", () => {
+  const pant = Object.assign(Object.create(null) as Record<string, unknown>, {
+    type: "cropped_ankle",
+    break: "cropped_above_ankle",
+    hem: "plain_hem",
+  });
+  Object.freeze(pant);
+  const before = Object.entries(pant);
+  const input = pant as Parameters<typeof styleDirectorProposedCroppedHem>[0];
+  assert.equal(styleDirectorProposedCroppedHem(input), "cropped_above_ankle_hem");
+  assert.equal(styleDirectorProposedCroppedHem(input), "cropped_above_ankle_hem");
+  assert.deepEqual(Object.entries(pant), before, "pure proposal must preserve locked fields");
+});
