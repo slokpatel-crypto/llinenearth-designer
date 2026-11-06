@@ -56,12 +56,31 @@ const candidateSleeveLengths = (name: string) => ({
   long: /\b(?:long|full)[ -]?sleeved?\b/i.test(name),
 });
 
-// Wear words are instructions, not evidence of physical tuck length. Using
-// word boundaries avoids treating 'untucked' as a second 'tucked' request.
-const candidateShirtWear = (name: string) => ({
-  tucked: /\btucked\b/i.test(name),
-  untucked: /\buntucked\b/i.test(name),
-});
+// Wear words are instructions, not evidence of physical tuck length. A
+// negative instruction must not become a *positive* tuck merely because the
+// word "tucked" occurs in it. Remove recognized negations before looking for
+// affirmative wear words; conflicting remaining intents still require review.
+const candidateShirtWear = (name: string) => {
+  let remaining = name;
+  let tuckedFromNegation = false;
+  let untuckedFromNegation = false;
+  remaining = remaining.replace(/\b(?:not|never|avoid)\s+(?:being\s+)?untucked\b/gi, () => {
+    tuckedFromNegation = true;
+    return " ";
+  });
+  remaining = remaining.replace(/\b(?:not|never|avoid)\s+(?:being\s+)?tucked\b/gi, () => {
+    untuckedFromNegation = true;
+    return " ";
+  });
+  remaining = remaining.replace(/\b(?:do\s+not|don['’]?t|never|avoid|no)\s+(?:(?:the|any)\s+)?tuck(?:ing)?\b/gi, () => {
+    untuckedFromNegation = true;
+    return " ";
+  });
+  return {
+    tucked: tuckedFromNegation || /\btucked\b/i.test(remaining),
+    untucked: untuckedFromNegation || /\buntucked\b/i.test(remaining),
+  };
+};
 
 /**
  * One deterministic interpretation of named camp/band shirt candidates for
