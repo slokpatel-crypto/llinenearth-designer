@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { reconcileMigrationHistory } from '../scripts/titan-reconcile-migration-history.mjs';
 const hash = x => createHash('sha256').update(x).digest('hex');
 const inventory = [{version:'20261001',filename:'20261001_a.sql',sha256:hash('a')},{version:'20261001',filename:'20261001_b.sql',sha256:hash('b')}];
-const evidence = {source:'authenticated-read-only-staging',project_id:'synthetic-project',collected_at:'2026-11-05T12:00:00Z',sql_identity_verified:true};
+const evidence = {source:'authenticated-read-only-staging',project_id:'synthetic-project',collected_at:new Date(Date.now() - 60_000).toISOString(),sql_identity_verified:true};
 test('version-only staging history cannot resolve distinct SQL collision',()=> {const r=reconcileMigrationHistory(inventory,[{version:'20261001'}]); assert.equal(r.blocked,1); assert.equal(r.results[0].reason,'MISSING_AUTHENTICATED_SQL_IDENTITY');});
 test('unattested hash remains blocked',()=> assert.equal(reconcileMigrationHistory(inventory,[{version:'20261001',sha256:hash('a')}]).blocked,1));
 test('claimed exact SQL identity remains review-required and never grants release',()=> {const r=reconcileMigrationHistory(inventory,[{version:'20261001',sha256:hash('b'),evidence}]);assert.equal(r.results[0].matched_filename,'20261001_b.sql');assert.equal(r.results[0].status,'REVIEW_REQUIRED');assert.equal(r.blocked,1);assert.equal(r.release_ready,false);});
