@@ -41,3 +41,19 @@ test("matching cropped proposal is a suggestion, never a locked-design mutation"
     type: "formal_flat_front", break: "cropped_above_ankle",
   }), null);
 });
+
+test("cropped hem proposal fails closed for missing or unrecognized break IDs", () => {
+  for (const shoeBreak of [undefined, null, "", "cropped_above_ankle ", "full_break", "stacked_break", "unknown"]) {
+    const pant = Object.freeze({
+      type: "cropped_ankle",
+      break: shoeBreak,
+      hem: "plain_hem",
+    });
+    const snapshot = JSON.stringify(pant);
+    const input = pant as unknown as Parameters<typeof styleDirectorProposedCroppedHem>[0];
+    assert.equal(styleDirectorProposedCroppedHem(input), null,
+      "an invalid or incompatible break must not authorize a cropped hem");
+    assert.equal(styleDirectorProposedCroppedHem(input), null, "replay must be stable");
+    assert.equal(JSON.stringify(pant), snapshot, "proposal must not mutate the saved pant");
+  }
+});
