@@ -165,7 +165,7 @@ test("rear construction stays explicitly unverified in the fixed front photograp
 
 test("original Compare switches to the actual selected photographic template, not a default pleated image", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.match(source,/showOriginal && <img className="newDesignerPhotoOriginal" src=\{template\.src\}/);
+  assert.match(source,/showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal" src=\{template\.src\}/);
   assert.doesNotMatch(source,/newDesignerPhotoOriginal" src=\{tucked \? template\.src : DESIGNER_PHOTO_TEMPLATES\.pleated\.src\}/);
   assert.match(source,/SOURCE \/ WIDE TROUSER PHOTO/);
   assert.match(source,/data-photo-source-comparison="wide"/);
@@ -199,4 +199,17 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/wideSourceComparisonVerified=true/);
   assert.match(script,/name:"Trouser shape",exact:true/);
   assert.match(script,/advanced spec-only sleeve\/pleat options must not repaint/);
+});
+
+test("fabric changes cannot leave stale canvas or source-compare imagery visible", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  // The previous look is not shown under the next look's loading state.
+  assert.match(source,/aria-busy=\\{!ready && !error\\}/);
+  assert.match(source,/style=\\{\\{visibility:ready\\?"visible":"hidden"\\}\\}/);
+  assert.match(source,/setReady\\(false\\);\\s*\\/\\/ A source comparison from the previous selection[\\s\\S]*?setShowOriginal\\(false\\);/);
+  assert.match(source,/showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal"/);
+  // SOURCE and PHOTOREAL are mutually exclusive views, including their tag.
+  assert.match(source,/showCreativeAi && creativeAi \\? \\x60\\$\\{photorealView\\.toUpperCase\\(\\)\\} \\/ PHOTOREAL\\x60 : showOriginal && ready/);
+  assert.match(source,/onClick=\\{\\(\\)=>\\{setShowOriginal\\(false\\);setShowCreativeAi\\(\\(value\\)=>!value\\);\\}\\}/);
+  assert.match(source,/onClick=\\{\\(\\) => \\{setShowCreativeAi\\(false\\);setShowOriginal\\(\\(value\\) => !value\\);\\}\\}/);
 });
