@@ -1748,7 +1748,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       {showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal" src={template.src} alt={templateId==="wide"
         ? "Original wide-trouser studio photograph. The instant-preview shirt uses the separate pleated studio source photograph."
         : "Original photographed studio model template for comparison"} />}
-      {showBoundaries && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay">
+      {showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay">
         {tucked ? <>
           <path d={PHOTO_TUCKED_SHIRT_BODY_CLIP} className="shirtBoundary" />
           <path d={PHOTO_TUCKED_LEFT_SLEEVE_CLIP} className="shirtBoundary" />
@@ -1829,7 +1829,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <summary>Preview tools</summary>
       <div>
         <button type="button" onClick={() => setInspectFit((value) => !value)} disabled={!ready}>{inspectFit ? "Full view" : "Zoom fit"}</button>
-        <button type="button" onClick={() => setShowBoundaries((value) => !value)} disabled={!ready} aria-pressed={showBoundaries}>{showBoundaries ? "Hide boundaries" : "Boundary QA"}</button>
+        <button type="button" onClick={() => setShowBoundaries((value) => !value)} disabled={!ready || showOriginal || showCreativeAi} aria-pressed={showBoundaries && !showOriginal && !showCreativeAi}>{showBoundaries ? "Hide boundaries" : "Boundary QA"}</button>
       </div>
     </details>
     {creativeDirection && <div className="newDesignerPhotoCreative newDesignerPhotoCreativeCompact">
