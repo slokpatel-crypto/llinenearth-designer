@@ -175,9 +175,28 @@ export function auditHandoffMeasurements(
       }
     }
 
+    // Recheck conservative cross-body contradictions at the export boundary.
+    // The upstream measurement-consistency review may be absent from a
+    // hand-built or stale locked recipe. These are review flags, not claims
+    // about medical normality or a physical pattern's approved fit.
+    if (garment === "shirt") {
+      const neck = byLabel.get("finished collar circumference")?.bodyCm;
+      const chest = byLabel.get("finished shirt chest")?.bodyCm;
+      if (finite(neck) && finite(chest) && neck >= chest) {
+        missing.push("shirt: recorded neck circumference is not smaller than chest; tailor must recheck both body landmarks before fit review.");
+      }
+    }
+
     // Compare only like-for-like, recorded centimetre length landmarks.
     // These are logical ordering constraints, not fabricated body proportions.
     if (garment === "trouser") {
+      const waist = byLabel.get("finished trouser waist")?.bodyCm;
+      const seat = byLabel.get("finished trouser seat")?.bodyCm;
+      if (finite(waist) && finite(seat) && Math.abs(seat - waist) > 75) {
+        // Use the same conservative review threshold as the existing
+        // measurement-consistency module; do not call it an impossible body.
+        missing.push("trouser: recorded waist and seat differ by over 75 cm; tailor must reconfirm both body landmarks before fit review.");
+      }
       const inseam = byLabel.get("inseam anchor")?.bodyCm;
       const outseam = byLabel.get("outseam anchor")?.bodyCm;
       const frontRise = byLabel.get("front-rise anchor")?.bodyCm;
