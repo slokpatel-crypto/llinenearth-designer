@@ -44,9 +44,10 @@ export function styleDirectorCandidateCollar(
   legacyChoices: readonly string[],
 ): { legacy: string | null; versioned: "cuban_camp_collar" | "mandarin_band_collar" | "cutaway_collar" } | null {
   const { camp, band, cutaway, spread, buttonDown } = candidateCollarFamilies(candidateShirt);
-  // A named ordinary collar conflicting with an advanced collar is ambiguous
-  // too. Never select a versioned construction from only half the request.
-  if (Number(camp) + Number(band) + Number(cutaway) + Number(spread) + Number(buttonDown) !== 1) return null;
+  // Only a single advanced collar has a versioned resolver here. Ordinary
+  // spread/button-down candidates use the existing legacy path; mixtures
+  // require review rather than a silently chosen advanced construction.
+  if (Number(camp) + Number(band) + Number(cutaway) !== 1 || spread || buttonDown) return null;
   const matcher = camp ? /\b(?:camp|cuban)\b/i : band ? /\b(?:band|mandarin)\b/i : /\bcutaway\b/i;
   return {
     legacy: legacyChoices.find((label) => matcher.test(label) &&
