@@ -185,5 +185,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Latest exact-head quality, unit, engine, preview, release, build, PostgreSQL and browser CI evidence still required; results of older commits cannot substitute.
 - [ ] Real visual evidence, physical body and garment fitting, fabric data, signed pattern/seam tolerances and tailor acceptance are unavailable. Do not merge, deploy or grant cutting authorization.
 
+## Locked visualization readiness review gate (2026-11-06)
+- [x] Audited `buildCanonicalGarmentSpec`: `readiness.visualization` records pending customer-preview QA independently of `spec.status`. A stale/hand-authored locked source could claim tailor-review readiness while `visual_review_required` remained, because the final handoff looked only at tailoring and material flags.
+- [x] The handoff now explicitly preserves `visual_review_required` as an unresolved preview-to-cut confirmation, preserves legacy missing visualization readiness for review (rather than inventing a pass), and fails closed on unknown readiness identifiers. The exact StyleSpec, measurements and materials remain reconstructable. Independent tech-pack export already prints and respects the canonical unresolved list.
+- [x] Synthetic-only regression covers ordinary supported preview, a deliberately stale ready source with pending visual QA, historic absent visual readiness, forged readiness ID, and SHA256-verified packet/HTML that remains review-only. This does **not** authenticate a physical garment or original photo.
+- [ ] Confirm full exact-head CI, Non-3D, build/browser and DB gates before software signoff. Previously passing jobs are on older commits.
+- [ ] Genuine photographic QA, measurements, sample fitting, cloth lot/calibration, cutting pattern and human tailor acceptance remain external. No merge, deploy or cutting approval.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
