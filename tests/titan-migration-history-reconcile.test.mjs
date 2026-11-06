@@ -31,10 +31,13 @@ test('real repository migration collisions remain blocked without authenticated 
   assert.ok(collisions.length > 0, 'Expected unresolved real migration version collisions');
   const report = reconcileMigrationHistory(rows, []);
   assert.equal(report.release_ready, false);
-  assert.equal(report.blocked, collisions.length);
+  assert.equal(report.blocked, groups.size);
   assert.deepEqual(
     new Set(report.results.map(row => row.version)),
-    new Set(collisions.map(([version]) => version)),
+    new Set(groups.keys()),
   );
-  assert.ok(report.results.every(row => row.status === 'BLOCKED' && row.reason === 'COLLISION_NOT_IN_STAGING_HISTORY'));
+  assert.ok(report.results.every(row => row.status === 'BLOCKED' && ['COLLISION_NOT_IN_STAGING_HISTORY', 'MIGRATION_NOT_IN_STAGING_HISTORY'].includes(row.reason)));
 });
+
+test('missing singleton migration is blocked rather than silently omitted', () => { const r = reconcileMigrationHistory([{version:'20261104',filename:'20261104_single.sql',sha256:hash('single')}],[]); assert.equal(r.blocked,1); assert.equal(r.results[0].reason,'MIGRATION_NOT_IN_STAGING_HISTORY'); });
+test('empty inventory and staging cannot authorize release', () => { const r = reconcileMigrationHistory([],[]); assert.equal(r.release_ready,false); assert.equal(r.blocked,0); });
