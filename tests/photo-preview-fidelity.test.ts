@@ -211,6 +211,8 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/wideSourceComparisonVerified=true/);
   assert.match(script,/sourceCaptionModeVerified=true/);
   assert.match(script,/sourceHeaderAndFabricLabelsVerified=true/);
+  assert.match(script,/sourceHeadingModeVerified=true/);
+  assert.match(script,/Studio source\./);
   assert.match(script,/SELECTED SHIRT/);
   assert.match(script,/SELECTED TROUSER/);
   assert.match(script,/the source caption must close with Compare/);
@@ -320,6 +322,7 @@ test("source comparison caption never describes a raw photograph as the rendered
 test("source reference header and selected-fabric labels are not mistaken for photographed clothes", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.ok(source.includes('showOriginal && ready && !showCreativeAi ? "SOURCE REFERENCE" : "LIVE PREVIEW"'));
+  assert.ok(source.includes('<h2 id="designerPhotoTitle">{showOriginal && ready && !showCreativeAi ? "Studio source." : "Your look."}</h2>'));
   assert.ok(source.includes('showOriginal && !showCreativeAi ? "SELECTED SHIRT" : "SHIRT"'));
   assert.ok(source.includes('showOriginal && !showCreativeAi ? "SELECTED TROUSER" : "TROUSER"'));
   assert.ok(source.includes('Original source photo, not your selected design'));
