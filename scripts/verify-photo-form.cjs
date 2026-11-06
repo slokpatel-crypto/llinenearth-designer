@@ -64,6 +64,9 @@ async function run(){
     assert.match(await initialSourceNote.textContent(),/original unchanged studio photograph/i);
     assert.equal(await page.locator('[data-photo-construction-mismatch="true"]').count(),0);
     assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/SOURCE \/ STUDIO PHOTO/);
+    assert.match(await page.locator(".newDesignerPhotoIntroCompact > span").textContent(),/SOURCE REFERENCE/);
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(1) > span").textContent(),/SELECTED SHIRT/);
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/SELECTED TROUSER/);
     const compareCaption=page.locator('[data-photo-caption="source"]');
     assert.match(await compareCaption.textContent(),/Original source photograph/);
     assert.doesNotMatch(await compareCaption.textContent(),/pattern scale uses reviewed physical evidence|pattern scale is still approximate/,
@@ -71,6 +74,9 @@ async function run(){
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`studio-source-compared-${width}.png`)});
     await page.getByRole("button",{name:"Show design",exact:true}).click();
     assert.equal(await initialSourceNote.count(),0);
+    assert.match(await page.locator(".newDesignerPhotoIntroCompact > span").textContent(),/LIVE PREVIEW/);
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(1) > span").textContent(),/^SHIRT$/);
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/^TROUSER$/);
     assert.match(await page.locator('[data-photo-caption="instant"]').textContent(),/Instant preview/);
     assert.equal(await compareCaption.count(),0,"the source caption must close with Compare");
     // Real-photo screenshot gates at each required responsive width. No paid
@@ -319,6 +325,9 @@ async function run(){
     assert.equal(new URL(await original.getAttribute("src"),base).pathname,"/designer/studio-wide.webp");
     assert.match(await original.getAttribute("alt"),/separate pleated studio source photograph/);
     assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/SOURCE \/ WIDE TROUSER PHOTO/);
+    assert.match(await page.locator(".newDesignerPhotoIntroCompact > span").textContent(),/SOURCE REFERENCE/);
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(1) > span").textContent(),/SELECTED SHIRT/);
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/SELECTED TROUSER/);
     const wideSourceNotice=page.locator('.newDesignerPhoto > [data-photo-source-comparison="wide"]');
     assert.equal(await wideSourceNotice.count(),1);
     assert.match(await wideSourceNotice.textContent(),/shirt in the instant preview comes from the separate pleated studio photograph/);
@@ -338,6 +347,7 @@ async function run(){
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`wide-source-compared-${width}.png`)});
     summary.viewports[summary.viewports.length-1].wideSourceComparisonVerified=true;
     summary.viewports[summary.viewports.length-1].sourceCaptionModeVerified=true;
+    summary.viewports[summary.viewports.length-1].sourceHeaderAndFabricLabelsVerified=true;
     summary.viewports[summary.viewports.length-1].sourceCanvasAccessibilityIsolated=true;
     summary.viewports[summary.viewports.length-1].boundaryQaSourceIsolationVerified=true;
     summary.viewports[summary.viewports.length-1].boundaryQaZoomAligned=true;
