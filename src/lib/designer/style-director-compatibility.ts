@@ -463,6 +463,69 @@ export function styleDirectorCandidatePocketIssues(
 }
 
 /**
+ * Collar finish is an existing versioned construction field, separate from
+ * collar shape. The white contrast choices also require genuine second-fabric
+ * evidence; the label alone is never production approval.
+ */
+const candidateFinishChoices = [
+  "Self-fabric", "White contrast collar", "White contrast collar + cuffs",
+] as const;
+type CandidateCollarFinish = (typeof candidateFinishChoices)[number];
+
+export function styleDirectorCandidateCollarFinishIntent(candidateShirt: string): {
+  requested: CandidateCollarFinish | null;
+  prohibited: CandidateCollarFinish[];
+  ambiguous: boolean;
+} {
+  const requested = new Set<CandidateCollarFinish>();
+  const prohibited = new Set<CandidateCollarFinish>();
+  for (const hit of candidateShirt.matchAll(/\b(?:white[- ]contrast[- ]collar(?:\s*(?:\+|and)\s*cuffs)?|self[- ]fabric)\b/gi)) {
+    const token = hit[0];
+    const start = hit.index ?? 0;
+    const before = candidateShirt.slice(0, start);
+    const after = candidateShirt.slice(start + token.length);
+    const exact: CandidateCollarFinish = /^self[- ]fabric$/i.test(token)
+      ? "Self-fabric"
+      : /(?:\+|and)\s*cuffs$/i.test(token)
+        ? "White contrast collar + cuffs" : "White contrast collar";
+    const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
+      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(after);
+    const optional = /\b(?:optional|maybe)\s+$/i.test(before) ||
+      /^\s+(?:(?:is|are)\s+)?(?:optional|not\s+(?:required|needed|mandatory))\b/i.test(after);
+    // A prohibition of any white contrast collar also forbids a white
+    // contrast collar + cuffs, but banning the combination alone leaves the
+    // simpler collar-only treatment available.
+    if (banned) {
+      prohibited.add(exact);
+      if (exact === "White contrast collar") prohibited.add("White contrast collar + cuffs");
+    } else if (!optional) requested.add(exact);
+  }
+  return {
+    requested: requested.size === 1 ? [...requested][0] : null,
+    prohibited: [...prohibited],
+    ambiguous: requested.size > 1 || [...requested].some(option => prohibited.has(option)),
+  };
+}
+
+export function styleDirectorCandidateCollarFinish(candidateShirt: string): CandidateCollarFinish | null {
+  const intent = styleDirectorCandidateCollarFinishIntent(candidateShirt);
+  return intent.ambiguous ? null : intent.requested;
+}
+
+export function styleDirectorCandidateCollarFinishIssues(
+  candidateShirt: string,
+  shirt: Pick<StyleSpecV2["shirt"], "collarFinish">,
+): DirectorConstructionIssue[] {
+  const intent = styleDirectorCandidateCollarFinishIntent(candidateShirt);
+  if (intent.ambiguous) return [];
+  return (intent.requested !== null && intent.requested !== shirt.collarFinish) ||
+    intent.prohibited.includes(shirt.collarFinish as CandidateCollarFinish) ? [{
+      code: "candidate_collar_finish_mismatch",
+      explanation: "The specified collar/contrast finish conflicts with the locked shirt details; verify the separate fabric and cuff placement before cutting.",
+    }] : [];
+}
+
+/**
  * A cuff is selected from explicitly named construction, never from a generic
  * "cuff" or "button" mention. The photographed selector is a separate
  * contract; unsupported canonical cuffs remain review-only.
@@ -879,6 +942,7 @@ export type DirectorConstructionIssue = {
     "candidate_placket_mismatch" | "ambiguous_candidate_placket" | "unverified_placket_photo" |
     "candidate_cuff_mismatch" | "ambiguous_candidate_cuff" | "unverified_cuff_photo" |
     "candidate_pocket_mismatch" | "ambiguous_candidate_pocket" | "unverified_pocket_photo" |
+    "candidate_collar_finish_mismatch" | "ambiguous_candidate_collar_finish" | "unverified_contrast_finish_photo" |
     "candidate_shirt_fit_mismatch" | "ambiguous_candidate_shirt_fit" | "unverified_shirt_fit_photo" |
     "candidate_trouser_fit_mismatch" | "ambiguous_candidate_trouser_fit" | "unverified_trouser_fit_photo" |
     "wide_leg_tapered_fit_mismatch" | "pleated_fit_flat_front_mismatch" |
@@ -899,6 +963,12 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     issues.push({
       code: "ambiguous_candidate_collar",
       explanation: "This proposed shirt names conflicting collar families; confirm one construction before approving the recommendation.",
+    });
+  }
+  if (styleDirectorCandidateCollarFinishIntent(candidateShirt).ambiguous) {
+    issues.push({
+      code: "ambiguous_candidate_collar_finish",
+      explanation: "This shirt names incompatible collar/contrast finishes; confirm the exact construction and separate cloth before cutting.",
     });
   }
   const fit = styleDirectorCandidateShirtFitIntent(candidateShirt);
@@ -1406,6 +1476,15 @@ export function styleDirectorPresentationIssues(
     issues.push({
       code: "unverified_shirt_fit_photo",
       explanation: "This canonical shirt fit lacks a supported live photographic shape; confirm fit and measured ease with a tailor.",
+    });
+  }
+  // A white contrast label does not certify a physical second cloth or an
+  // accurately rendered collar/cuff replacement. It remains review-only.
+  if (spec.shirt.collarFinish === "White contrast collar" ||
+      spec.shirt.collarFinish === "White contrast collar + cuffs") {
+    issues.push({
+      code: "unverified_contrast_finish_photo",
+      explanation: "The white contrast collar/cuff treatment needs actual cloth verification and photographic confirmation before approval.",
     });
   }
   // DesignerStyle has no pocket selector; named patch/flap construction
