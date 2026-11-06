@@ -87,7 +87,7 @@ async function run(){
     // and names. Test the actual visible nested type, not only source JSX.
     const compactButtons=await page.locator(".newDesignerPhotoActionsCompact button").evaluateAll(buttons=>
       buttons.map(button=>{
-        const label=button.querySelector("span");
+        const label=button.querySelector("b");
         if(!label)throw Error("Compact action needs a visible readable label");
         const rect=button.getBoundingClientRect();
         return {name:label.textContent?.trim(),labelPx:parseFloat(getComputedStyle(label).fontSize),
