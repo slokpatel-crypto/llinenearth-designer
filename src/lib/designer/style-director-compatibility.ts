@@ -224,13 +224,44 @@ export function styleDirectorCandidateSleeve(
 }
 
 /**
- * Only a clearly named wide-leg / wide-fit trouser silhouette may change the
- * canonical trouser type. Adjectives describing waistband, stitching or fabric
- * ("wide waistband", "widespread print") must not silently choose wide-leg.
- * This helper is used by both the photographed legacy and versioned pathways.
+ * Width intent is independent of waistband, fabric stripes and pleat count.
+ * Remove explicit bans / optional choices before treating wide-leg wording as
+ * a positive instruction. Conflicting requests must receive review rather
+ * than silently taking the first mention.
  */
+export function styleDirectorCandidateWideLegIntent(
+  candidateTrouser: string,
+): "requested" | "prohibited" | "ambiguous" | null {
+  const width = String.raw`(?:wide[- ]?leg(?:ged)?|wide[- ]?fit[- ]?(?:trousers?|pants?)|wide[- ]?(?:trousers?|pants?))`;
+  const beforeBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|add|have|want)\s+)?(?:(?:a|any)\s+)?${width}\b`, "gi");
+  const afterBan = new RegExp(String.raw`\b${width}\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b`, "gi");
+  const optional = new RegExp(String.raw`\b(?:optional\s+${width}|${width}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)))\b`, "gi");
+  let prohibited = false;
+  let remaining = candidateTrouser.replace(beforeBan, () => { prohibited = true; return " "; });
+  remaining = remaining.replace(afterBan, () => { prohibited = true; return " "; });
+  remaining = remaining.replace(optional, " ");
+  const requested = new RegExp(String.raw`\b${width}\b`, "i").test(remaining);
+  if (requested && prohibited) return "ambiguous";
+  return requested ? "requested" : prohibited ? "prohibited" : null;
+}
+
+/** A positive wide-leg instruction shared by the photo and saved-spec paths. */
 export function styleDirectorCandidateWideLeg(candidateTrouser: string): boolean {
-  return /\bwide[- ]?leg(?:ged)?\b|\bwide[- ]?fit[- ]?(?:trousers?|pants?)\b|\bwide[- ]?(?:trousers?|pants?)\b/i.test(candidateTrouser);
+  return styleDirectorCandidateWideLegIntent(candidateTrouser) === "requested";
+}
+
+/** Compare explicit wide-leg requests / prohibitions with locked trouser IDs. */
+export function styleDirectorCandidateWideLegIssues(
+  candidateTrouser: string,
+  pant: Pick<StyleSpecV2["pant"], "type">,
+): DirectorConstructionIssue[] {
+  const intent = styleDirectorCandidateWideLegIntent(candidateTrouser);
+  if (intent === null || intent === "ambiguous") return [];
+  const isWideLeg = pant.type === "wide_leg_relaxed_drape";
+  return (intent === "requested") === isWideLeg ? [] : [{
+    code: "candidate_wide_leg_mismatch",
+    explanation: "The named wide-leg silhouette request or prohibition conflicts with the saved versioned trouser type; confirm the cut before tailoring.",
+  }];
 }
 
 /**
@@ -346,7 +377,7 @@ export type DirectorConstructionIssue = {
     "candidate_shirt_wear_mismatch" | "legacy_trouser_mismatch" |
     "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch" |
     "candidate_trouser_pleat_mismatch" | "unknown_trouser_pleat_option" | "unknown_versioned_option" |
-    "candidate_waistband_mismatch" | "ambiguous_candidate_waistband" |
+    "candidate_waistband_mismatch" | "ambiguous_candidate_waistband" | "candidate_wide_leg_mismatch" | "ambiguous_candidate_wide_leg" |
     "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
   explanation: string;
 };
@@ -395,6 +426,12 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     issues.push({
       code: "ambiguous_candidate_waistband",
       explanation: "The proposed trouser both requests and forbids a drawstring waistband; confirm a single construction before approving.",
+    });
+  }
+  if (styleDirectorCandidateWideLegIntent(candidateTrouser) === "ambiguous") {
+    issues.push({
+      code: "ambiguous_candidate_wide_leg",
+      explanation: "The proposed trouser both requests and prohibits a wide-leg silhouette; confirm the cut before approving.",
     });
   }
   return issues;
