@@ -40,6 +40,8 @@ const WIDTH = 1024;
 const HEIGHT = 1536;
 const LOCKED_PREVIEW_MIME="image/webp";
 const LOCKED_PREVIEW_QUALITY=.96;
+const PHOTO_ACTION_BUTTON_STYLE={minHeight:44} as const;
+const PHOTO_ACTION_LABEL_STYLE={fontSize:"12px",lineHeight:1.4,fontWeight:500,display:"inline-block",overflowWrap:"anywhere"} as const;
 
 function serializeLockedPreview(canvas:HTMLCanvasElement) {
   // Keep fine weave/stripe detail for the final-render handoff. Modern browsers
@@ -1775,13 +1777,13 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <div><span><b style={{fontSize:"10px",fontWeight:650}}>{showOriginal && !showCreativeAi ? "SELECTED SHIRT" : "SHIRT"}</b></span><strong title={shirt.name} style={{whiteSpace:"normal",overflow:"visible",textOverflow:"clip"}}><b style={{fontSize:"13px",fontWeight:500,lineHeight:1.4,overflowWrap:"anywhere"}}>{shirt.name}</b></strong></div>
       <div><span><b style={{fontSize:"10px",fontWeight:650}}>{showOriginal && !showCreativeAi ? "SELECTED TROUSER" : "TROUSER"}</b></span><strong title={pant.name} style={{whiteSpace:"normal",overflow:"visible",textOverflow:"clip"}}><b style={{fontSize:"13px",fontWeight:500,lineHeight:1.4,overflowWrap:"anywhere"}}>{pant.name}</b></strong></div>
       <div className="newDesignerPhotoActions newDesignerPhotoActionsCompact">
-        {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready || showOriginal}>Lock final design</button>}
-        {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading || showOriginal}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</button>}
-        {!creativeAi && creativeDirection && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Render selected idea ✦"}</button>}
-        {creativeAi && <button className="primary" type="button" onClick={()=>{setShowOriginal(false);setShowCreativeAi((value)=>!value);}}>{showCreativeAi ? "Instant preview" : (!creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") ? "Review photoreal" : "Photoreal render")}</button>}
-        {!creativeAi && !creativeDirection && finalLocked && <button type="button" onClick={()=>setFinalLocked(false)} disabled={creativeAiLoading}>Unlock</button>}
-        <button type="button" onClick={() => {setShowCreativeAi(false);setShowOriginal((value) => !value);}} disabled={!ready}>{showOriginal && !showCreativeAi ? "Show design" : "Compare"}</button>
-        <button type="button" onClick={download} disabled={!ready || showOriginal}>{showOriginal ? "Show design to save" : showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</button>
+        {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready || showOriginal}><span style={PHOTO_ACTION_LABEL_STYLE}>Lock final design</span></button>}
+        {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading || showOriginal}><span style={PHOTO_ACTION_LABEL_STYLE}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</span></button>}
+        {!creativeAi && creativeDirection && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}><span style={PHOTO_ACTION_LABEL_STYLE}>{creativeAiLoading ? "Rendering…" : "Render selected idea ✦"}</span></button>}
+        {creativeAi && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>{setShowOriginal(false);setShowCreativeAi((value)=>!value);}}><span style={PHOTO_ACTION_LABEL_STYLE}>{showCreativeAi ? "Instant preview" : (!creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") ? "Review photoreal" : "Photoreal render")}</span></button>}
+        {!creativeAi && !creativeDirection && finalLocked && <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>setFinalLocked(false)} disabled={creativeAiLoading}><span style={PHOTO_ACTION_LABEL_STYLE}>Unlock</span></button>}
+        <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={() => {setShowCreativeAi(false);setShowOriginal((value) => !value);}} disabled={!ready}><span style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal && !showCreativeAi ? "Show design" : "Compare"}</span></button>
+        <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={download} disabled={!ready || showOriginal}><span style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal ? "Show design to save" : showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</span></button>
       </div>
     </div>
     {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}
