@@ -231,7 +231,7 @@ export function styleDirectorCandidateTrouserFront(
 
 export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "band_collar_construction" | "short_sleeve_double_cuff" |
-    "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_type_hem_mismatch" |
+    "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_stacked_break" | "cropped_break_hem_mismatch" | "cropped_type_hem_mismatch" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
     "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "candidate_sleeve_mismatch" | "ambiguous_candidate_wear" |
@@ -520,6 +520,24 @@ export function styleDirectorConstructionIssues(
     issues.push({
       code: "cropped_slight_break",
       explanation: "An above-ankle cropped hem cannot form a slight shoe break; confirm the intended length before cutting.",
+    });
+  }
+  // Stacking needs sufficient length to rest and fold over footwear; a
+  // cropped above-ankle hem cannot deliver that construction simultaneously.
+  if ((pant.type === "cropped_ankle" || pant.hem === "cropped_above_ankle_hem") &&
+      pant.break === "stacked_break") {
+    issues.push({
+      code: "cropped_stacked_break",
+      explanation: "A cropped above-ankle trouser cannot also stack over footwear; confirm the requested finished hem and break before cutting.",
+    });
+  }
+  // The photographed 'cropped above-ankle' break is a length claim. Matching
+  // it to a non-cropped construction without any supporting length evidence
+  // would misstate a customer's locked trouser specification.
+  if (pant.break === "cropped_above_ankle" && pant.hem !== "cropped_above_ankle_hem") {
+    issues.push({
+      code: "cropped_break_hem_mismatch",
+      explanation: "The selected cropped above-ankle break conflicts with the saved non-cropped hem; confirm the versioned length choices.",
     });
   }
   return issues;
