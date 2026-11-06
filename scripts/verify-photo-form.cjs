@@ -85,6 +85,20 @@ async function run(){
     await solidScaleNotice.screenshot({path:path.join(out,`solid-fabric-scale-truthful-${width}.png`)});
     // The compact mobile CSS uses very small 6px/9px defaults for labels
     // and names. Test the actual visible nested type, not only source JSX.
+    const compactButtons=await page.locator(".newDesignerPhotoActionsCompact button").evaluateAll(buttons=>
+      buttons.map(button=>{
+        const label=button.querySelector("span");
+        if(!label)throw Error("Compact action needs a visible readable label");
+        const rect=button.getBoundingClientRect();
+        return {name:label.textContent?.trim(),labelPx:parseFloat(getComputedStyle(label).fontSize),
+          height:rect.height,width:rect.width};
+      }));
+    assert.ok(compactButtons.length>=3,"selected preview needs its primary, Compare and Save controls");
+    for(const control of compactButtons){
+      assert.ok(control.name && control.labelPx>=12,"selected preview action text must be at least 12px");
+      assert.ok(control.height>=44 && control.width>=44,
+        "selected preview controls must provide at least 44px touch targets");
+    }
     const fabricSummary=page.locator(".newDesignerPhotoSummaryCompact");
     const fabricType=await fabricSummary.evaluate(root=>
       [...root.querySelectorAll(":scope > div:not(.newDesignerPhotoActions)")].slice(0,2).map(item=>{
@@ -130,6 +144,20 @@ async function run(){
     }
     assert.ok(visibleInk>100,"fabric summary screenshot must actually contain legible text and controls");
     fs.writeFileSync(path.join(out,`fabric-summary-readable-${width}.png`),summaryPng);
+    const actionRowBox=await page.locator(".newDesignerPhotoActionsCompact").boundingBox();
+    assert.ok(actionRowBox && actionRowBox.width>0 && actionRowBox.height>=44);
+    const actionLeft=Math.max(0,Math.floor((actionRowBox.x-cardBounds.x)*scaleX));
+    const actionTop=Math.max(0,Math.floor((actionRowBox.y-cardBounds.y)*scaleY));
+    const actionCrop={
+      left:actionLeft,top:actionTop,
+      width:Math.min(cardMeta.width-actionLeft,Math.ceil(actionRowBox.width*scaleX)),
+      height:Math.min(cardMeta.height-actionTop,Math.ceil(actionRowBox.height*scaleY)),
+    };
+    assert.ok(actionCrop.width>0 && actionCrop.height>0 &&
+      actionCrop.left+actionCrop.width<=cardMeta.width && actionCrop.top+actionCrop.height<=cardMeta.height,
+      "compact buttons proof crop must remain inside the painted photographic card");
+    fs.writeFileSync(path.join(out,`compact-actions-readable-${width}.png`),
+      await sharp(cardPng).extract(actionCrop).png().toBuffer());
     // Source comparison must explain whose garment photograph is being shown
     // before the photo, rather than presenting an unrendered design as source.
     await page.getByRole("button",{name:"Compare",exact:true}).click();
@@ -177,6 +205,7 @@ async function run(){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     summary.viewports.push({width,overflow:false,realCataloguePreview:true,tuckedAndUntuckedScreenshots:true});
     summary.viewports[summary.viewports.length-1].fabricSummaryReadable=true;
+    summary.viewports[summary.viewports.length-1].compactActionsReadable=true;
     summary.viewports[summary.viewports.length-1].solidScaleClaimTruthful=true;
     summary.viewports[summary.viewports.length-1].solidScaleNoteUnobstructed=true;
     // Exercise the ACTUAL customer controls, not just pure IDs. Advanced v2
