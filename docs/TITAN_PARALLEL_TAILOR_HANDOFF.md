@@ -157,5 +157,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Record exact-head Full CI, Non-3D browser, quality, unit, engine, preview, release, build, and disposable DB checks. Older successful steps do not certify the new SHA.
 - [ ] Actual pattern and physical fit review, measured seam allowances and fabric, customer body measurements and tailor signoff remain external. Do not merge, deploy or approve cutting.
 
+## Locked pattern-block source version consistency (2026-11-06)
+- [x] Checked the canonical garment source contract: `source.blockStrategyVersion` is a separate locked property from `blockStrategy` (whose detailed block choices have no duplicated version field). The tailor-handoff builder previously accepted a declared source version with no block or a recorded block with missing source provenance.
+- [x] Production handoff now rejects unknown block source versions and versioned-but-absent blocks as contradictory locked recipes. A legacy block with a missing version is preserved byte-for-byte for reconstruction but receives an explicit unresolved human provenance review rather than a software review-ready status. Records with neither block nor version remain valid legacy review inputs, and the valid `block-strategy-provisional-1` pair retains its earlier behavior.
+- [x] Updated the synthetic block-adjustment positive fixture to use the actual version identifier. Added positive/negative regression for matching block/version, missing version with preserved block, version declared without block, unsupported version and verified review-only export from a legacy source. This changes no stored packet schema; the authenticated handoff builder applies the locked source gate.
+- [ ] Exact-head Full CI, Non-3D, browser, build, PostgreSQL and release checks must be confirmed on the newest commit before software verification can be declared.
+- [ ] Source version coherence does not authenticate physical block geometry, model measurements, cloth, signed tolerances, fitting or human tailor approval. No cutting, merge or deployment.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
