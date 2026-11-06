@@ -460,6 +460,48 @@ test("unknown advanced cut ID is never passed off as an exact reconstructable ta
   assert.match(html,/NO CUTTING AUTHORISATION/);
 });
 
+test("closed pattern-block identifiers are checked before handoff or printing",async()=>{
+  const makeBlock=()=>{
+    const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+    revision.garmentSpec.source.blockStrategyVersion="block-strategy-provisional-1";
+    revision.garmentSpec.blockStrategy={
+      shirtBlock:"balanced-shirt",trouserBlock:"clean-upper-block",
+      torsoShape:"balanced",seatShape:"balanced",adjustments:[],
+    };
+    return revision;
+  };
+  const valid=makeBlock();
+  assert.equal(buildProductionHandoff(valid).status,"ready_for_tailor_review");
+  const unknown=makeBlock();
+  if(!unknown.garmentSpec.blockStrategy) throw Error("Missing synthetic block");
+  unknown.garmentSpec.blockStrategy.shirtBlock="unknown";
+  const review=buildProductionHandoff(unknown);
+  assert.equal(review.status,"review_required");
+  assert.ok(review.unresolved.some(note=>note.includes("shirtBlock is unknown")));
+  assert.match(buildTailorTechPackHtml(review),/shirtBlock is unknown/);
+  assert.match(buildTailorTechPackHtml(review),/NO CUTTING AUTHORISATION/);
+
+  for(const field of ["shirtBlock","trouserBlock","torsoShape","seatShape"] as const){
+    const malformed=makeBlock();
+    if(!malformed.garmentSpec.blockStrategy) throw Error("Missing synthetic block");
+    malformed.garmentSpec.blockStrategy[field]="nonexistent-block" as never;
+    assert.ok(auditHandoffBlockAdjustments(malformed.garmentSpec.blockStrategy).errors
+      .some(error=>error.includes(field)));
+    assert.throws(()=>buildProductionHandoff(malformed),/Unsafe tailor handoff block adjustments/);
+
+    const stale=buildProductionHandoff(makeBlock());
+    if(!stale.construction.blockStrategy) throw Error("Missing exported block");
+    stale.construction.blockStrategy[field]="nonexistent-block" as never;
+    assert.throws(()=>buildTailorTechPackHtml(stale),/Unsafe tailor tech pack block adjustments/);
+  }
+
+  const locked=await lockGarmentSpec(unknown.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
+  const verified=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(verified.status,"review_required");
+  assert.equal(await verifyProductionHandoff(verified,locked),true);
+  assert.match(await buildVerifiedTailorTechPackHtml(verified,locked),/shirtBlock is unknown/);
+});
+
 test("open pattern-block adjustments never silently become ready or approved cutting instructions",async()=>{
   const make=(severity:"info"|"review"|"warning")=>{
     const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
