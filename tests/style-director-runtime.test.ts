@@ -549,3 +549,32 @@ test("malformed, unknown and rejected fabric intelligence cannot change garment 
   assert.equal(JSON.stringify({ stock, invalidIntelligence }), before,
     "ignoring malformed evidence must preserve source inputs");
 });
+
+
+test("duplicate eligible fabric rows cannot change recommendation ranking or locked pairing IDs", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const shirts = FABRIC_STOCK.filter(f => f.inStock && f.suitableFor.includes("shirt"));
+  const pant = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("trouser"));
+  assert.ok(shirts.length >= 2 && pant, "requires real stocked catalogue fixtures");
+  const answers = {
+    occasion: "Travel" as const, mood: "Relaxed" as const,
+    time: "Day" as const, climate: "Hot" as const,
+    garment: "shirt" as const, colorDirection: "Surprise me" as const,
+  };
+  const baseline = createStyleDirectorLooks(answers, [shirts[0], shirts[1], pant]);
+  const catalogue = [shirts[0], shirts[1], pant, { ...shirts[0] }, { ...pant }];
+  const original = JSON.stringify(catalogue);
+  const repeated = createStyleDirectorLooks(answers, catalogue);
+  const decisions = (looks: typeof baseline) => looks.map(look => ({
+    fabricId: look.fabric.id,
+    shirtId: look.realModel?.shirtId,
+    pantId: look.realModel?.pantId,
+    styleSpec: look.realModel?.styleSpec,
+    specHash: look.version.specHash,
+  }));
+  assert.deepEqual(decisions(repeated), decisions(baseline),
+    "duplicate rows must not affect ranked physical fabrics or locked construction");
+  assert.equal(JSON.stringify(catalogue), original, "selection must not mutate catalogue");
+});
