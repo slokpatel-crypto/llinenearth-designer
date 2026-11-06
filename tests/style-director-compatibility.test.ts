@@ -141,6 +141,61 @@ test("construction review is deterministic and never mutates locked style IDs", 
   assert.equal(a.length,3);
 });
 
+test("every canonical locked Style Director option ID is recognised in its own group", () => {
+  const groups = [
+    ["shirt", "type", "shirt.type"], ["shirt", "collar", "shirt.collar"],
+    ["shirt", "cuff", "shirt.cuff"], ["shirt", "placket", "shirt.placket"],
+    ["shirt", "pocket", "shirt.pocket"], ["shirt", "sleeve", "shirt.sleeve"],
+    ["shirt", "fit", "shirt.fit"], ["shirt", "length", "shirt.length"],
+    ["shirt", "hem", "shirt.hem"], ["shirt", "back", "shirt.back"],
+    ["shirt", "wear", "shirt.wear"], ["shirt", "button", "shirt.button"],
+    ["pant", "type", "pant.type"], ["pant", "fit", "pant.fit"],
+    ["pant", "rise", "pant.rise"], ["pant", "waistband", "pant.waistband"],
+    ["pant", "hem", "pant.hem"], ["pant", "break", "pant.break"],
+  ] as const;
+  for (const [garment, field, group] of groups) {
+    const options = optionsFor(group);
+    assert.ok(options.length > 0, group + " must have a canonical option list");
+    for (const option of options) {
+      const selected = garment === "shirt"
+        ? spec({ [field]: option.id })
+        : spec({}, { [field]: option.id });
+      const original = JSON.stringify(selected);
+      assert.ok(!styleDirectorConstructionIssues(selected).some(issue =>
+        issue.code === "unknown_versioned_option"), group + "/" + option.id);
+      assert.equal(JSON.stringify(selected), original, "validation must preserve locked IDs");
+    }
+  }
+});
+
+test("stale and cross-group locked option IDs require review without silent substitutions", () => {
+  const cases = [
+    ["shirt", "type", "obsolete_shirt_type"],
+    ["shirt", "collar", "unknown_collar"],
+    ["shirt", "cuff", "standard_visible_placket"],
+    ["shirt", "placket", "french_double_cuff"],
+    ["shirt", "sleeve", "retired_sleeve"],
+    ["shirt", "wear", "shirt_length_regular"],
+    ["shirt", "fit", "obsolete_shirt_fit"],
+    ["pant", "type", "spread_collar"],
+    ["pant", "rise", "shirt_length_regular"],
+    ["pant", "waistband", "obsolete_waistband"],
+    ["pant", "break", "barrel_cuff_1_button"],
+  ] as const;
+  for (const [garment, field, invalid] of cases) {
+    const selected = garment === "shirt"
+      ? spec({ [field]: invalid })
+      : spec({}, { [field]: invalid });
+    const original = JSON.stringify(selected);
+    const issues = styleDirectorConstructionIssues(selected);
+    assert.equal(issues.filter(issue => issue.code === "unknown_versioned_option").length, 1,
+      garment + "/" + field + "/" + invalid);
+    assert.deepEqual(issues, styleDirectorConstructionIssues(selected),
+      "review signals must be deterministic");
+    assert.equal(JSON.stringify(selected), original, "a saved recipe must never be silently rewritten");
+  }
+});
+
 test("Style Director applies review gates and preserves real versioned camp/band collar IDs", () => {
   const agent=readFileSync("src/lib/style-director-agent.ts","utf8");
   assert.ok(agent.includes("styleDirectorIntelligenceTrustWeight(intel)"));
