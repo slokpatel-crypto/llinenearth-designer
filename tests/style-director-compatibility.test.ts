@@ -11,6 +11,8 @@ import {
   styleDirectorCandidateFrontConstructionIssues,
   styleDirectorCandidateTrouserFront,
   styleDirectorCandidateWideLeg,
+  styleDirectorCandidateDrawstringWaistband,
+  styleDirectorCandidateWaistbandIssues,
   styleDirectorCandidateWordingIssues,
   styleDirectorCandidateWearIssues,
   styleDirectorConstructionIssues,
@@ -679,6 +681,70 @@ test("unknown or contradictory collar wording must not infer a single locked col
   const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
   assert.ok(agent.includes("...styleDirectorCandidateCollarIssues(candidate.garments.shirt, styleSpec.shirt)"),
     "collar parity must affect real-model construction review and status");
+});
+
+test("drawstring waistband instructions remain independent of trouser silhouette and pleat count", () => {
+  const cases = [
+    ["Tailored Drawstring Trouser", "requested"],
+    ["Single-Pleat Drawstring Trouser", "requested"],
+    ["Flat-Front Draw-String Trouser", "requested"],
+    ["Wide-Leg Drawstring Pants", "requested"],
+    ["Drawstring Waistband", "requested"],
+    ["No Drawstring Trouser", "prohibited"],
+    ["Without Draw-string Pants", "prohibited"],
+    ["Do Not Use Drawstring", "prohibited"],
+    ["Avoid Drawstring", "prohibited"],
+    ["Drawstring Is Forbidden", "prohibited"],
+    ["Drawstring-Free Trouser", "prohibited"],
+    ["Drawstringless Pants", "prohibited"],
+    ["Drawstring Is Optional", null],
+    ["Optional Drawstring Trouser", null],
+    ["Drawstring Not Necessary", null],
+    ["Pleated Trouser", null],
+    ["Drawstringlike Stripe Trouser", null],
+    ["No Drawstring; Drawstring Waistband", "ambiguous"],
+    ["Drawstring Forbidden; Drawstring Requested", "ambiguous"],
+    ["With or Without Drawstring", "ambiguous"],
+  ] as const;
+  for (const [label, expected] of cases) {
+    assert.equal(styleDirectorCandidateDrawstringWaistband(label), expected, label);
+    const issues = styleDirectorCandidateWordingIssues("Dress Shirt", label).map(issue => issue.code);
+    assert.deepEqual(issues, expected === "ambiguous" ? ["ambiguous_candidate_waistband"] : [],
+      "do not approve contradictory waistband instructions: " + label);
+  }
+});
+
+test("drawstring intent is checked against immutable canonical waistband selections", () => {
+  assert.ok(optionsFor("pant.waistband").some(option => option.id === "drawstring_elastic"));
+  assert.ok(optionsFor("pant.waistband").some(option => option.id === "belt_loops"));
+  for (const [label, goodId, wrongId] of [
+    ["Drawstring Pleated Trouser", "drawstring_elastic", "belt_loops"],
+    ["Flat-Front Drawstring Trouser", "drawstring_elastic", "side_adjuster_tabs"],
+    ["No Drawstring Trouser", "belt_loops", "drawstring_elastic"],
+    ["Without Drawstring Pleated Trouser", "side_adjuster_tabs", "drawstring_elastic"],
+  ] as const) {
+    const saved = spec({}, { waistband: goodId });
+    const before = JSON.stringify(saved);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(label, saved.pant), [], label);
+    const bad = styleDirectorCandidateWaistbandIssues(label, { waistband: wrongId });
+    assert.deepEqual(bad.map(issue => issue.code), ["candidate_waistband_mismatch"], label);
+    assert.deepEqual(bad, styleDirectorCandidateWaistbandIssues(label, { waistband: wrongId }),
+      "issue order and explanations must be deterministic");
+    assert.equal(JSON.stringify(saved), before, "review cannot rewrite saved waistband IDs");
+  }
+  for (const label of [
+    "Drawstring Optional", "Optional Drawstring", "No Drawstring; Drawstring Waistband",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(label, { waistband: "belt_loops" }), [],
+      "uncommitted or contradictory labels must not invent a single waistband intent");
+  }
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes('if (styleDirectorCandidateDrawstringWaistband(trouser) === "requested")'),
+    "actual Style Director candidate resolver must use shared waistband intent");
+  assert.ok(agent.includes("...styleDirectorCandidateWaistbandIssues(candidate.garments.trouser, styleSpec.pant)"),
+    "real-model needs_review status must include locked drawstring parity");
+  assert.ok(!agent.includes('trouser.includes("drawstring")'),
+    "substring-only drawstring selection bypasses negative wording");
 });
 
 test("only explicitly named wide-leg silhouettes select a wide trouser", () => {
