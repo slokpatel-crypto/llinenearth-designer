@@ -136,7 +136,7 @@ const finite = (value: unknown): value is number =>
 
 export function auditHandoffMeasurements(
   groups: TargetGroup,
-  options: { shirtWear?: string | null } = {},
+  options: { shirtWear?: string | null; trouserRise?: string | null } = {},
 ): HandoffMeasurementAudit {
   const errors: string[] = [];
   const missing: string[] = [];
@@ -263,6 +263,15 @@ export function auditHandoffMeasurements(
         && (options.shirtWear === "tucked" || options.shirtWear === "Tucked")
         && !seen.has("shirt-length anchor")) {
       missing.push("shirt: Shirt-length anchor is not recorded for the selected tucked construction; tailor must confirm the length before production.");
+    }
+    // High and extra-high rises cannot be reconstructed from waist/seat,
+    // inseam and outseam alone. Require a separately recorded front-rise
+    // landmark for tailor review; never synthesize a physical rise value.
+    if (garment === "trouser"
+        && (options.trouserRise === "high_rise" || options.trouserRise === "extra_high_rise"
+          || options.trouserRise === "High Rise")
+        && !seen.has("front-rise anchor")) {
+      missing.push("trouser: Front-rise anchor is not recorded for the selected high-rise construction; tailor must measure and confirm the rise before production.");
     }
   }
   return { errors, missing };
