@@ -195,6 +195,10 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/construction-notice-readable-/);
   assert.match(script,/constructionNoticeUnobstructed=true/);
   assert.match(script,/fabricSummaryReadable=true/);
+  assert.match(script,/compactActionsReadable=true/);
+  assert.match(script,/compact-actions-readable-/);
+  assert.match(script,/photo actions must be reachable without the floating contact dock covering them/);
+  assert.match(script,/selected preview controls must provide at least 44px touch targets/);
   assert.match(script,/solidScaleClaimTruthful=true/);
   assert.match(script,/solidScaleNoteUnobstructed=true/);
   assert.match(script,/solid pattern-scale note must fit the customer viewport/);
