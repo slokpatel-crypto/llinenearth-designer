@@ -61,3 +61,24 @@ test('CLI fails closed with exit 2 for empty and unresolved evidence', () => {
     }
   } finally { rmSync(directory, {recursive:true,force:true}); }
 });
+
+test('stale, future, malformed and forged provenance never reaches review-required', () => {
+  const valid = { ...evidence, collected_at: new Date(Date.now() - 60_000).toISOString() };
+  const bad = [
+    { ...valid, collected_at: new Date(Date.now() - 48 * 60 * 60_000).toISOString() },
+    { ...valid, collected_at: new Date(Date.now() + 60 * 60_000).toISOString() },
+    { ...valid, collected_at: '2026-11-05' },
+    { ...valid, project_id: '../fake' },
+    { ...valid, source: 'self-attested' },
+    { ...valid, sql_identity_verified: 'true' },
+    { ...valid, project_id: '' },
+  ];
+  for (const claimed of bad) {
+    const result = reconcileMigrationHistory(inventory, [{version:'20261001',sha256:hash('a'),evidence:claimed}]);
+    assert.equal(result.results[0].status, 'BLOCKED', JSON.stringify(claimed));
+    assert.equal(result.release_ready, false);
+  }
+  const review = reconcileMigrationHistory(inventory, [{version:'20261001',sha256:hash('a'),evidence:valid}]);
+  assert.equal(review.results[0].status, 'REVIEW_REQUIRED');
+  assert.equal(review.release_ready, false);
+});
