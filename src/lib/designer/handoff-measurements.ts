@@ -151,7 +151,9 @@ export function auditHandoffMeasurements(
       }
       const ease = value.easeCm;
       if (ease !== undefined) {
-        if (!finite(ease?.min) || !finite(ease?.max) || ease.min > ease.max) {
+        // House and calibrated ease tables require non-negative ranges.
+        // Negative ease cannot be introduced solely via a locked recipe.
+        if (!finite(ease?.min) || !finite(ease?.max) || ease.min < 0 || ease.min > ease.max) {
           errors.push(`${name}: ease range is invalid or reversed.`);
         } else if (finite(value.bodyCm) && finished && finite(finished.min) && finite(finished.max)
           && (Math.abs((value.bodyCm + ease.min) - finished.min) > 0.21
