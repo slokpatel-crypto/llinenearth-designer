@@ -197,6 +197,8 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/floatingContactDock/);
   assert.match(script,/wide-source-compared-/);
   assert.match(script,/wideSourceComparisonVerified=true/);
+  assert.match(script,/Show design to save/);
+  assert.match(script,/source Compare must not silently save/);
   assert.match(script,/rapidFabricSwitchStable=true/);
   assert.match(script,/old canvas must be hidden while the new fabric is pending/);
   assert.match(script,/name:"Trouser shape",exact:true/);
@@ -214,4 +216,11 @@ test("fabric changes cannot leave stale canvas or source-compare imagery visible
   assert.ok(source.includes('showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : showOriginal && ready'));
   assert.ok(source.includes('onClick={()=>{setShowOriginal(false);setShowCreativeAi((value)=>!value);}}'));
   assert.ok(source.includes('onClick={() => {setShowCreativeAi(false);setShowOriginal((value) => !value);}}'));
+});
+
+test("source comparison cannot silently export or lock a different pictured design", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.ok(source.includes('disabled={!ready || showOriginal}>{showOriginal ? "Show design to save"'));
+  assert.ok(source.includes('disabled={!ready || showOriginal}>Lock final design'));
+  assert.ok(source.includes('disabled={!ready || creativeAiLoading || showOriginal}>{creativeAiLoading ? "Rendering…"'));
 });
