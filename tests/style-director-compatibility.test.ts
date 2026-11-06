@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   styleDirectorCandidateCollar,
+  styleDirectorCandidateSpecialCollar,
   styleDirectorCandidateCollarIssues,
   styleDirectorCandidateOrdinaryCollar,
   styleDirectorCandidateSleeve,
@@ -566,6 +567,69 @@ test("candidate sleeve type and construction share one strict resolver", () => {
   }
 });
 
+
+test("special named collars select canonical IDs but do not invent photographic support", () => {
+  const cases = [
+    ["Point (Standard) Collar Shirt", "point_standard_collar", "Point (Standard) Collar"],
+    ["Club Collar Shirt", "club_collar", "Club Collar"],
+    ["Wing Collar Dress Shirt", "wing_collar", null],
+    ["Tab Collar Shirt", "tab_collar", null],
+    ["Pin Collar Shirt", "pin_collar", null],
+  ] as const;
+  for (const [name, versioned, legacy] of cases) {
+    assert.ok(optionsFor("shirt.collar").some((option) => option.id === versioned), versioned);
+    assert.deepEqual(styleDirectorCandidateSpecialCollar(name, selectableCollars),
+      { versioned, legacy }, name);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(name, { collar: versioned }), [],
+      "the matching locked construction must not be falsely flagged: " + name);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(name), [], name);
+    const photoLabel = legacy || "Point (Standard) Collar";
+    const locked = spec({ collar: versioned });
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorPresentationIssues(photo(photoLabel, "Tucked"), locked)
+      .map((issue) => issue.code);
+    if (legacy) {
+      assert.deepEqual(issues, [], "an existing selectable photo ID must agree with the locked ID");
+    } else {
+      assert.ok(issues.includes("unverified_special_collar_photo"),
+        "a missing approved photo must be flagged even with correct construction: " + name);
+      assert.ok(issues.includes("legacy_collar_mismatch"),
+        "fallback photos must not certify another locked collar: " + name);
+    }
+    assert.equal(JSON.stringify(locked), before, "presentation review must not rewrite locked ID");
+  }
+  for (const noUniqueFamily of [
+    "Dress Shirt", "Oxford Shirt", "Campus Collar Shirt",
+    "Point Collar Club Collar Shirt", "Wing Collar Band-Collar Shirt",
+  ]) {
+    assert.equal(styleDirectorCandidateSpecialCollar(noUniqueFamily, selectableCollars), null,
+      "no inference on unknown or contradictory names: " + noUniqueFamily);
+  }
+  assert.deepEqual(styleDirectorCandidateSpecialCollar("Club Collar Shirt", []),
+    { versioned: "club_collar", legacy: null },
+    "a missing photo choice must not block canonical construction or invent a photographic label");
+  assert.deepEqual(styleDirectorCandidateSpecialCollar("Tab Collar Shirt", ["Tab Collar"]),
+    { versioned: "tab_collar", legacy: null },
+    "a text-only legacy choice is not proof of the missing real photographic shape");
+});
+
+test("matching labels without live preview cannot certify tab or pin collar accuracy", () => {
+  for (const id of ["tab_collar", "pin_collar"] as const) {
+    const label = optionsFor("shirt.collar").find((option) => option.id === id)?.label;
+    assert.ok(label);
+    const locked = spec({ collar: id });
+    const before = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorPresentationIssues(photo(label, "Tucked"), locked)
+      .map((issue) => issue.code), ["unverified_special_collar_photo"],
+      "matching a label is not evidence of a photographed garment shape: " + id);
+    assert.equal(JSON.stringify(locked), before);
+  }
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("const specialCollar = styleDirectorCandidateSpecialCollar(shirt, DESIGNER_STYLE_CHOICES.collar)"));
+  assert.ok(agent.includes("if (specialCollar) spec.shirt.collar=specialCollar.versioned;"));
+  assert.ok(agent.includes("else if (specialCollar?.legacy)"),
+    "photo selection must be guarded by an actual compatible legacy choice");
+});
 
 test("single named collar family must match the locked versioned construction", () => {
   const cases: Array<[string, string[]]> = [
