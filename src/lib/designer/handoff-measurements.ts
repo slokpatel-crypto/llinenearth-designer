@@ -295,6 +295,56 @@ export function auditHandoffHumanNotes(
   return {errors,missing:[]};
 }
 
+/**
+ * A fabric name or catalogue readiness claim cannot substitute for a stable
+ * fabric identity. Preserve an incomplete description for human review, but
+ * fail closed if the actual fabric record is missing its ID/name. The source
+ * fact count is an internal metadata-coverage indicator, not inspected cloth.
+ *
+ * The printable packet intentionally omits the source count; its unresolved
+ * notes carry any source-level discrepancy and verified exports compare the
+ * packet with the exact locked recipe.
+ */
+export function auditHandoffFabricIdentity(input:unknown):HandoffMeasurementAudit {
+  const errors:string[]=[];
+  const missing:string[]=[];
+  if(!input || typeof input!=="object" || Array.isArray(input)) {
+    return {errors:["Tailor handoff fabrics must be a record."],missing};
+  }
+  const record=input as Record<string,unknown>;
+  for(const garment of ["shirt","trouser"] as const) {
+    const raw=record[garment];
+    if(!raw || typeof raw!=="object" || Array.isArray(raw)) {
+      errors.push(`${garment}: fabric identity must be a record.`);
+      continue;
+    }
+    const fabric=raw as Record<string,unknown>;
+    for(const field of ["id","name"] as const) {
+      const value=fabric[field];
+      if(typeof value!=="string" || !value.trim() || value.length>(field==="id"?160:240)) {
+        errors.push(`${garment}: fabric ${field} must be a nonempty bounded identifier.`);
+      }
+    }
+    for(const field of ["line","source"] as const) {
+      const value=fabric[field];
+      if(typeof value!=="string" || !value.trim() || value.length>240) {
+        missing.push(`${garment}: fabric ${field} is not recorded; confirm the supplier and actual fabric selection before production.`);
+      }
+    }
+    // Canonical source tracks coverage of eight material evidence fields.
+    // Fewer than eight is an open source-data review, not proof of bad cloth.
+    if("verifiedMaterialFacts" in fabric) {
+      const facts=fabric.verifiedMaterialFacts;
+      if(typeof facts!=="number" || !Number.isInteger(facts) || facts<0 || facts>8) {
+        errors.push(`${garment}: material fact coverage count is invalid.`);
+      } else if(facts<8) {
+        missing.push(`${garment}: material source records only ${facts} of 8 expected facts; operator must reconcile the original evidence before production.`);
+      }
+    }
+  }
+  return {errors,missing};
+}
+
 export type HandoffFitProvenance = {
   fitConstructionVersion: unknown;
   easeSource: unknown;
