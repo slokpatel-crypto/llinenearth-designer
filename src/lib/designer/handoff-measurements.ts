@@ -119,8 +119,14 @@ export function auditHandoffMeasurements(groups: TargetGroup): HandoffMeasuremen
       const key = label.toLowerCase();
       const expectedBasis = (LANDMARK_BASIS[garment] as Readonly<Record<string, FinishedTarget["basis"]>>)[key];
       const otherGarment = garment === "shirt" ? "trouser" : "shirt";
-      if ((LANDMARK_BASIS[otherGarment] as Readonly<Record<string, FinishedTarget["basis"]>>)[key]) {
+      const otherBasis = (LANDMARK_BASIS[otherGarment] as Readonly<Record<string, FinishedTarget["basis"]>>)[key];
+      if (otherBasis) {
         errors.push(`${name}: "${label}" is a ${otherGarment} landmark, not a ${garment} measurement.`);
+      } else if (key && !expectedBasis) {
+        // Custom/legacy labels may be retained for reconstruction, but their
+        // units and measurement method are not defined by this versioned
+        // physical contract. Never silently mark such a packet review-ready.
+        missing.push(`${garment}: "${label}" has no recognised landmark definition; tailor must confirm its centimetre units, measuring method and construction basis before production.`);
       }
       if (expectedBasis && value.basis !== expectedBasis) {
         errors.push(`${name}: "${label}" must retain ${expectedBasis} basis; received ${String(value.basis)}.`);
