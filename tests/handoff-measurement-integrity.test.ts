@@ -463,6 +463,7 @@ test("unknown advanced cut ID is never passed off as an exact reconstructable ta
 test("open pattern-block adjustments never silently become ready or approved cutting instructions",async()=>{
   const make=(severity:"info"|"review"|"warning")=>{
     const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+    revision.garmentSpec.source.blockStrategyVersion="block-strategy-provisional-1";
     revision.garmentSpec.blockStrategy={
       shirtBlock:"shaped-shirt",trouserBlock:"clean-upper-block",
       torsoShape:"balanced",seatShape:"balanced",
@@ -513,6 +514,45 @@ test("open pattern-block adjustments never silently become ready or approved cut
   assert.match(verifiedHtml,/BLOCK-SYNTHETIC-FIT/);
   assert.match(verifiedHtml,/review required/);
   assert.match(verifiedHtml,/NO CUTTING AUTHORISATION/);
+});
+
+test("locked block provenance cannot contradict its pattern strategy",async()=>{
+  const shirt=[chest,shoulder,sleeve];
+  const trouser=[waist,seat,inseam,outseam];
+  const sample=createRevision(shirt,trouser);
+  sample.garmentSpec.blockStrategy={
+    shirtBlock:"balanced-shirt",trouserBlock:"clean-upper-block",
+    torsoShape:"balanced",seatShape:"balanced",adjustments:[],
+  };
+  // Old source records may carry a block without a version. Preserve all
+  // recorded construction details while withholding review-ready status.
+  const legacy=buildProductionHandoff(sample);
+  assert.equal(legacy.status,"review_required");
+  assert.ok(legacy.unresolved.some(note=>note.includes("source version is not recorded")));
+  assert.equal(legacy.construction.blockStrategy?.shirtBlock,"balanced-shirt");
+  assert.match(buildTailorTechPackHtml(legacy),/source version is not recorded/);
+  assert.match(buildTailorTechPackHtml(legacy),/NO CUTTING AUTHORISATION/);
+
+  sample.garmentSpec.source.blockStrategyVersion="block-strategy-provisional-1";
+  const current=buildProductionHandoff(sample);
+  assert.equal(current.status,"ready_for_tailor_review");
+  assert.deepEqual(current.unresolved,[]);
+
+  const missing=structuredClone(sample);
+  missing.garmentSpec.blockStrategy=null;
+  assert.throws(()=>buildProductionHandoff(missing),/Unsafe tailor handoff block provenance/);
+  const unsupported=structuredClone(sample);
+  unsupported.garmentSpec.source.blockStrategyVersion="made-up-version" as
+    typeof unsupported.garmentSpec.source.blockStrategyVersion;
+  assert.throws(()=>buildProductionHandoff(unsupported),/Unsafe tailor handoff block provenance/);
+
+  const unsigned=await lockGarmentSpec(legacy.garmentSpec,{
+    lockedAt:"2026-11-05T11:00:00.000Z",
+  });
+  const packet=await buildVerifiedProductionHandoff(unsigned,"2026-11-05T11:01:00.000Z");
+  assert.equal(packet.status,"review_required");
+  assert.equal(await verifyProductionHandoff(packet,unsigned),true);
+  assert.match(await buildVerifiedTailorTechPackHtml(packet,unsigned),/source version is not recorded/);
 });
 
 test("printable tech pack preserves locked ease source and complete block instructions",()=>{
