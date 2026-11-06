@@ -414,3 +414,28 @@ test("a shirt-only duplicate cannot shadow a later trouser-eligible row in suppo
     "the earlier shirt-only duplicate must not hide the eligible supporting trouser");
   assert.equal(JSON.stringify(catalogue), before);
 });
+
+
+test("a trouser-only duplicate cannot shadow a later shirt-eligible row in supporting pairings", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const pant = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("trouser"));
+  const shirt = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("shirt") && f.id !== pant?.id);
+  assert.ok(shirt && pant);
+  const catalogue = [
+    pant,
+    { ...shirt, suitableFor: ["trouser"] as typeof shirt.suitableFor },
+    shirt,
+  ];
+  const before = JSON.stringify(catalogue);
+  const looks = createStyleDirectorLooks({
+    occasion: "Work", mood: "Sharp", time: "Day",
+    climate: "Indoor", garment: "trouser", colorDirection: "Surprise me",
+  }, catalogue);
+  const selected = looks.find(look => look.fabric.id === pant.id);
+  assert.ok(selected, "original eligible trouser remains recommendable");
+  assert.equal(selected.realModel?.shirtId, shirt.id,
+    "the earlier trouser-only duplicate must not hide the eligible supporting shirt");
+  assert.equal(JSON.stringify(catalogue), before);
+});
