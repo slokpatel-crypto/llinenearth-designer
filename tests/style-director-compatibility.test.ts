@@ -49,6 +49,17 @@ test("rejected or unreviewed intelligence cannot masquerade as physically review
   assert.equal(trust("unreviewed", "high-confidence"), 0.72);
   assert.equal(trust("approved", "provisional"), 0.28);
   assert.equal(styleDirectorIntelligenceTrustWeight(undefined), 0);
+  // Stale or forged closed-vocabulary values must have zero scoring influence.
+  for (const corrupted of [
+    { reviewStatus: "approved", trust: "unknown" },
+    { reviewStatus: "unknown", trust: "reviewed" },
+    { reviewStatus: "approved" },
+    { trust: "reviewed" },
+    {},
+  ]) {
+    assert.equal(styleDirectorIntelligenceTrustWeight(
+      corrupted as Parameters<typeof styleDirectorIntelligenceTrustWeight>[0]), 0);
+  }
 });
 
 test("camp-collar type requires matching open collar and untucked wear", () => {
