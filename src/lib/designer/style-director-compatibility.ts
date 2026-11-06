@@ -394,6 +394,75 @@ export function styleDirectorCandidatePlacketIssues(
 }
 
 /**
+ * The existing style schema supports no pocket, patch and flap pockets but
+ * the legacy photographic selector has no pocket field. Resolve explicit
+ * candidate instructions to canonical IDs without claiming a rendered pocket.
+ * An unqualified "pocket" is deliberately not a construction choice.
+ */
+const candidatePocketPatterns = [
+  { id: "single_patch_pocket", pattern: /\b(?:single[- ]patch|patch)[- ]pockets?\b/gi },
+  { id: "flap_pocket", pattern: /\bflap[- ]pockets?\b/gi },
+] as const;
+
+type CandidatePocketId = "no_pocket" | (typeof candidatePocketPatterns)[number]["id"];
+
+export function styleDirectorCandidatePocketIntent(candidateShirt: string): {
+  requested: CandidatePocketId | null;
+  prohibited: CandidatePocketId[];
+  ambiguous: boolean;
+} {
+  const requested = new Set<CandidatePocketId>();
+  const prohibited = new Set<CandidatePocketId>();
+  const optionalBefore = (prefix: string) => /\b(?:optional|maybe)\s+$/i.test(prefix);
+  const optionalAfter = (suffix: string) => /^\s+(?:(?:is|are)\s+)?(?:optional|not\s+(?:required|needed|mandatory))\b/i.test(suffix);
+  // "No Pocket" states the *absence* of the pocket. It is not a
+  // prohibition of the versioned no_pocket ID.
+  for (const hit of candidateShirt.matchAll(/\b(?:no|without)\s+(?:(?:a|any|the)\s+)?pockets?\b|\bpocketless\b/gi)) {
+    const start = hit.index ?? 0;
+    const before = candidateShirt.slice(0, start);
+    const after = candidateShirt.slice(start + hit[0].length);
+    if (!optionalBefore(before) && !optionalAfter(after)) requested.add("no_pocket");
+  }
+  for (const { id, pattern } of candidatePocketPatterns) {
+    for (const hit of candidateShirt.matchAll(pattern)) {
+      const start = hit.index ?? 0;
+      const before = candidateShirt.slice(0, start);
+      const after = candidateShirt.slice(start + hit[0].length);
+      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(after);
+      if (banned) prohibited.add(id);
+      else if (!optionalBefore(before) && !optionalAfter(after)) requested.add(id);
+    }
+  }
+  return {
+    requested: requested.size === 1 ? [...requested][0] : null,
+    prohibited: [...prohibited],
+    ambiguous: requested.size > 1 || [...requested].some(id => prohibited.has(id)),
+  };
+}
+
+export function styleDirectorCandidatePocket(candidateShirt: string): CandidatePocketId | null {
+  const intent = styleDirectorCandidatePocketIntent(candidateShirt);
+  return intent.ambiguous || !intent.requested ||
+    !optionsFor("shirt.pocket").some(option => option.id === intent.requested)
+    ? null : intent.requested;
+}
+
+export function styleDirectorCandidatePocketIssues(
+  candidateShirt: string,
+  shirt: Pick<StyleSpecV2["shirt"], "pocket">,
+): DirectorConstructionIssue[] {
+  const intent = styleDirectorCandidatePocketIntent(candidateShirt);
+  if (intent.ambiguous) return [];
+  const wrongRequest = intent.requested !== null && shirt.pocket !== intent.requested;
+  const bannedChoice = intent.prohibited.includes(shirt.pocket as CandidatePocketId);
+  return wrongRequest || bannedChoice ? [{
+    code: "candidate_pocket_mismatch",
+    explanation: "The explicit pocket request or exclusion conflicts with the versioned locked shirt pocket construction; confirm the pocket before cutting.",
+  }] : [];
+}
+
+/**
  * A cuff is selected from explicitly named construction, never from a generic
  * "cuff" or "button" mention. The photographed selector is a separate
  * contract; unsupported canonical cuffs remain review-only.
@@ -809,6 +878,7 @@ export type DirectorConstructionIssue = {
     "candidate_waistband_mismatch" | "ambiguous_candidate_waistband" | "candidate_wide_leg_mismatch" | "ambiguous_candidate_wide_leg" |
     "candidate_placket_mismatch" | "ambiguous_candidate_placket" | "unverified_placket_photo" |
     "candidate_cuff_mismatch" | "ambiguous_candidate_cuff" | "unverified_cuff_photo" |
+    "candidate_pocket_mismatch" | "ambiguous_candidate_pocket" | "unverified_pocket_photo" |
     "candidate_shirt_fit_mismatch" | "ambiguous_candidate_shirt_fit" | "unverified_shirt_fit_photo" |
     "candidate_trouser_fit_mismatch" | "ambiguous_candidate_trouser_fit" | "unverified_trouser_fit_photo" |
     "wide_leg_tapered_fit_mismatch" | "pleated_fit_flat_front_mismatch" |
@@ -850,6 +920,12 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     issues.push({
       code: "ambiguous_candidate_placket",
       explanation: "This proposed shirt gives conflicting placket constructions; choose a single front before approval.",
+    });
+  }
+  if (styleDirectorCandidatePocketIntent(candidateShirt).ambiguous) {
+    issues.push({
+      code: "ambiguous_candidate_pocket",
+      explanation: "This proposed shirt requests incompatible pocket constructions; confirm no pocket, a patch pocket or a flap pocket before cutting.",
     });
   }
   const sleeves = candidateSleeveLengths(candidateShirt);
@@ -1330,6 +1406,15 @@ export function styleDirectorPresentationIssues(
     issues.push({
       code: "unverified_shirt_fit_photo",
       explanation: "This canonical shirt fit lacks a supported live photographic shape; confirm fit and measured ease with a tailor.",
+    });
+  }
+  // DesignerStyle has no pocket selector; named patch/flap construction
+  // remains a real locked spec but is never asserted to appear in the photo.
+  const pocketOption = optionsFor("shirt.pocket").find(option => option.id === spec.shirt.pocket);
+  if (spec.shirt.pocket !== "no_pocket" && pocketOption) {
+    issues.push({
+      code: "unverified_pocket_photo",
+      explanation: "The versioned shirt includes a patch or flap pocket, but the live photographic style cannot verify pocket placement or construction.",
     });
   }
   // Photo labels must not silently certify a different cuff, placket or fit.
