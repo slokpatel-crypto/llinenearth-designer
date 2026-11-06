@@ -226,6 +226,12 @@ const candidateShirtWear = (name: string) => {
     untuckedFromNegation = true;
     return " ";
   });
+  // An optional wear treatment is not a mandatory instruction to tuck or
+  // untuck. Neutralize both prefix and suffix forms only after genuine
+  // prohibitions have been consumed, keeping unrelated affirmative choices.
+  remaining = remaining
+    .replace(/\b(?:optional|maybe)\s+(?:a\s+)?(?:tucked|untucked)\b/gi, " ")
+    .replace(/\b(?:tucked|untucked)\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/gi, " ");
   return {
     tucked: tuckedFromNegation || /\btucked\b/i.test(remaining),
     untucked: untuckedFromNegation || /\buntucked\b/i.test(remaining),
