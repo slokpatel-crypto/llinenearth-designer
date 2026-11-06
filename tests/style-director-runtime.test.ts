@@ -389,3 +389,28 @@ test("garment-ineligible duplicate rows cannot shadow eligible fabric IDs", asyn
   assert.equal(JSON.stringify(catalogue), before,
     "garment eligibility and duplicate handling must preserve caller-owned data");
 });
+
+
+test("a shirt-only duplicate cannot shadow a later trouser-eligible row in supporting pairings", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const shirt = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("shirt"));
+  const pant = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("trouser") && f.id !== shirt?.id);
+  assert.ok(shirt && pant);
+  const catalogue = [
+    shirt,
+    { ...pant, suitableFor: ["shirt"] as typeof pant.suitableFor },
+    pant,
+  ];
+  const before = JSON.stringify(catalogue);
+  const looks = createStyleDirectorLooks({
+    occasion: "Travel", mood: "Relaxed", time: "Day",
+    climate: "Hot", garment: "shirt", colorDirection: "Surprise me",
+  }, catalogue);
+  const selected = looks.find(look => look.fabric.id === shirt.id);
+  assert.ok(selected, "original eligible shirt remains recommendable");
+  assert.equal(selected.realModel?.pantId, pant.id,
+    "the earlier shirt-only duplicate must not hide the eligible supporting trouser");
+  assert.equal(JSON.stringify(catalogue), before);
+});
