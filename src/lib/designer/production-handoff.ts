@@ -1,6 +1,6 @@
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
 import { verifyLockedDesignRevision } from "./design-lock.ts";
-import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
+import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
 export const PRODUCTION_HANDOFF_VERSION="linen-earth-production-handoff-v1" as const;
@@ -91,6 +91,10 @@ export function buildProductionHandoff(
   const legacyConstructionNote=spec.styleSpec ? [] : [
     "Versioned StyleSpec v2 cut IDs are missing; confirm the exact legacy shirt and trouser construction before production.",
   ];
+  const creativeAudit=auditHandoffCreativeReview(spec.creative);
+  if(creativeAudit.errors.length) {
+    throw new Error(`Unsafe tailor handoff creative review: ${creativeAudit.errors.join(" ")}`);
+  }
   const blockAudit=auditHandoffBlockAdjustments(spec.blockStrategy);
   if(blockAudit.errors.length) {
     throw new Error(`Unsafe tailor handoff block adjustments: ${blockAudit.errors.join(" ")}`);
@@ -116,6 +120,7 @@ export function buildProductionHandoff(
   }
   const unresolved=[...new Set([
     ...checkAudit.missing,
+    ...creativeAudit.missing,
     ...blockAudit.missing,
     ...missingBlockProvenance,
     ...spec.unresolved,
