@@ -194,6 +194,9 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/buttonMaterialDisclosed=true/);
   assert.match(script,/construction-notice-readable-/);
   assert.match(script,/constructionNoticeUnobstructed=true/);
+  assert.match(script,/fabricSummaryReadable=true/);
+  assert.match(script,/fabric-summary-readable-/);
+  assert.match(script,/selected fabric text must wrap instead of clipping/);
   assert.match(script,/physicalDisclaimerUnobstructed=true/);
   assert.match(script,/physical-disclosure-readable-/);
   assert.match(script,/floating contact control must not obscure fabric-scale or fit caveat/);
@@ -327,4 +330,19 @@ test("physical scale and fit disclosure stays readable above the photographic st
   assert.ok(source.includes('style={{fontSize:"12px",lineHeight:1.6'));
   assert.ok(source.includes('overflowWrap:"anywhere"'));
   assert.ok(source.includes("Fit and drape still require physical verification."));
+});
+
+
+test("selected fabric labels and complete names stay legible on compact preview", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
+  assert.match(css,/\.newDesignerPhotoSummaryCompact span\{font-size:6px!important\}/);
+  assert.match(css,/\.newDesignerPhotoSummaryCompact strong\{font-size:9px!important/);
+  // Child type overrides the intentionally tiny inherited compact defaults,
+  // without changing shared stylesheet rules or the named garment selections.
+  assert.equal((source.match(/style=\{\{fontSize:"10px",fontWeight:650\}\}/g)||[]).length,2);
+  assert.equal((source.match(/style=\{\{fontSize:"13px",fontWeight:500,lineHeight:1\.4,overflowWrap:"anywhere"\}\}/g)||[]).length,2);
+  assert.ok(source.includes("title={shirt.name}"));
+  assert.ok(source.includes("title={pant.name}"));
+  assert.ok(source.includes('whiteSpace:"normal",overflow:"visible",textOverflow:"clip"'));
 });
