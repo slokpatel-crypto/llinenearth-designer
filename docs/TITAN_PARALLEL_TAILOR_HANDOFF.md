@@ -115,5 +115,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Confirm Full CI, Non-3D, DB, browser, build and exact-head tests for the final SHA. Older passing workflow steps do not transfer to new head.
 - [ ] Independent integration review, verified real measurements, physical fit approval, pattern/allowance signoff and material evidence still outstanding; cutting, merge and deployment remain blocked.
 
+## Stored-packet verification failure contract (2026-11-06)
+- [x] Audited the SHA256 trust boundary in `verifyProductionHandoff`: malformed external/stored payloads and null/partial lock objects could previously throw before reaching its existing `try/catch`. As a result the trusted export could leak a raw runtime failure instead of its standard unsafe-export rejection.
+- [x] The verifier now wraps input-shape checks, locked recipe verification, revision metadata consistency, generation-time ordering and full canonical reconstruction in one fail-closed catch. Malformed input returns `false`; `buildVerifiedTailorTechPackHtml` consistently rejects with `Unsafe tailor tech pack export`. Valid verified exports preserve the exact same data and status.
+- [x] Added synthetic-only regression for genuine SHA256 lock and byte-identical repeat HTML, null/undefined/empty/partial/tampered packets, missing construction or unresolved collection, null/undefined/empty/partial lock records and corrupted lock timestamp/hash.
+- [ ] Confirm Full CI, Non-3D, build, browser and disposable database checks **matching the final head SHA**. Prior green steps are not sufficient.
+- [ ] No new human pattern or timestamp signing authority is asserted. Physical customer measurements, sample fit, approved pattern and tolerances, real cloth evidence and tailor signoff remain unavailable. No cutting, merge or deployment.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
