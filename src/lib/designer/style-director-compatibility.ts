@@ -335,6 +335,80 @@ export function styleDirectorCandidateCuffIssues(
   }] : [];
 }
 
+/**
+ * Explicit shirt fit labels map to existing, versioned constructions. Keep fit
+ * independent from sleeve, cuff, colour and fabric drape. The name is a
+ * request, NOT evidence of measured body ease or a verified photograph.
+ */
+const candidateShirtFitPatterns = [
+  { id: "slim_fit", pattern: /\bslim[- ]fit\b/gi },
+  { id: "regular_classic_fit", pattern: /\b(?:regular(?:\s*\/\s*classic)?|classic)[- ]fit\b/gi },
+  { id: "relaxed_fit", pattern: /\brelaxed[- ]fit\b/gi },
+  { id: "boxy_oversized", pattern: /\b(?:boxy(?:[- ]oversized)?|oversized)[- ]fit\b/gi },
+  { id: "athletic_taper", pattern: /\bathletic[- ]taper[- ]fit\b/gi },
+] as const;
+
+type CandidateShirtFitId = (typeof candidateShirtFitPatterns)[number]["id"];
+
+export function styleDirectorCandidateShirtFitIntent(candidateShirt: string): {
+  requested: CandidateShirtFitId | null;
+  prohibited: CandidateShirtFitId[];
+  ambiguous: boolean;
+} {
+  const requested = new Set<CandidateShirtFitId>();
+  const prohibited = new Set<CandidateShirtFitId>();
+  for (const { id, pattern } of candidateShirtFitPatterns) {
+    for (const match of candidateShirt.matchAll(pattern)) {
+      const index = match.index ?? 0;
+      const before = candidateShirt.slice(0, index);
+      const after = candidateShirt.slice(index + match[0].length);
+      const ban = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(after);
+      const optional = /\b(?:optional|maybe)\s+$/i.test(before) ||
+        /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/i.test(after);
+      if (ban) prohibited.add(id);
+      else if (!optional) requested.add(id);
+    }
+  }
+  return {
+    requested: requested.size === 1 ? [...requested][0] : null,
+    prohibited: [...prohibited],
+    ambiguous: requested.size > 1 || [...requested].some(id => prohibited.has(id)),
+  };
+}
+
+export function styleDirectorCandidateShirtFit(
+  candidateShirt: string,
+  legacyChoices: readonly string[],
+): { versioned: CandidateShirtFitId; legacy: string | null } | null {
+  const intent = styleDirectorCandidateShirtFitIntent(candidateShirt);
+  if (intent.ambiguous || !intent.requested) return null;
+  const option = optionsFor("shirt.fit").find(entry => entry.id === intent.requested);
+  if (!option) return null;
+  const label = option.legacyLabel || option.label;
+  return {
+    versioned: intent.requested,
+    legacy: option.legacySelectable !== false &&
+      option.renderSupport.livePreview !== "none" && legacyChoices.includes(label) ? label : null,
+  };
+}
+
+export function styleDirectorCandidateShirtFitIssues(
+  candidateShirt: string,
+  shirt: Pick<StyleSpecV2["shirt"], "fit">,
+): DirectorConstructionIssue[] {
+  const intent = styleDirectorCandidateShirtFitIntent(candidateShirt);
+  if (intent.ambiguous) return [];
+  if ((intent.requested !== null && shirt.fit !== intent.requested) ||
+    intent.prohibited.includes(shirt.fit as CandidateShirtFitId)) {
+    return [{
+      code: "candidate_shirt_fit_mismatch",
+      explanation: "The named shirt fit request or prohibition conflicts with the saved fit option; confirm the construction without inferring body ease.",
+    }];
+  }
+  return [];
+}
+
 /** Candidate wording is not a measured sleeve length. Only an explicit
  * short-/half-sleeve request maps to the existing construction IDs. */
 /**
@@ -527,6 +601,7 @@ export type DirectorConstructionIssue = {
     "candidate_waistband_mismatch" | "ambiguous_candidate_waistband" | "candidate_wide_leg_mismatch" | "ambiguous_candidate_wide_leg" |
     "candidate_placket_mismatch" | "ambiguous_candidate_placket" | "unverified_placket_photo" |
     "candidate_cuff_mismatch" | "ambiguous_candidate_cuff" | "unverified_cuff_photo" |
+    "candidate_shirt_fit_mismatch" | "ambiguous_candidate_shirt_fit" | "unverified_shirt_fit_photo" |
     "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
   explanation: string;
 };
@@ -543,6 +618,13 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     issues.push({
       code: "ambiguous_candidate_collar",
       explanation: "This proposed shirt names conflicting collar families; confirm one construction before approving the recommendation.",
+    });
+  }
+  const fit = styleDirectorCandidateShirtFitIntent(candidateShirt);
+  if (fit.ambiguous) {
+    issues.push({
+      code: "ambiguous_candidate_shirt_fit",
+      explanation: "This proposed shirt requests incompatible fits; select one canonical fit before production.",
     });
   }
   const cuff = styleDirectorCandidateCuffIntent(candidateShirt);
@@ -955,6 +1037,17 @@ export function styleDirectorPresentationIssues(
     issues.push({
       code: "unverified_placket_photo",
       explanation: "This placket construction has no approved live photographic proof; contrast fabrics and production details still require operator review.",
+    });
+  }
+  // The reference has an approximate fit selector; newer body-fit IDs
+  // without a live preview must remain review-only, even when a photo's
+  // default fit label looks similar. No physical ease is inferred here.
+  const lockedFit = optionsFor("shirt.fit").find(option => option.id === spec.shirt.fit);
+  if (lockedFit && (lockedFit.renderSupport.livePreview === "none" ||
+      lockedFit.legacySelectable === false)) {
+    issues.push({
+      code: "unverified_shirt_fit_photo",
+      explanation: "This canonical shirt fit lacks a supported live photographic shape; confirm fit and measured ease with a tailor.",
     });
   }
   // Photo labels must not silently certify a different cuff, placket or fit.
