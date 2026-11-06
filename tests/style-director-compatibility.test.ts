@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   styleDirectorCandidateCollar,
+  styleDirectorCandidateCollarIssues,
   styleDirectorCandidateOrdinaryCollar,
   styleDirectorCandidateSleeve,
   styleDirectorCandidateSleeveIssues,
@@ -565,6 +566,55 @@ test("candidate sleeve type and construction share one strict resolver", () => {
   }
 });
 
+
+test("single named collar family must match the locked versioned construction", () => {
+  const cases: Array<[string, string[]]> = [
+    ["Cuban Camp Collar Shirt", ["cuban_camp_collar"]],
+    ["Mandarin Band-Collar Shirt", ["mandarin_band_collar"]],
+    ["Cutaway-Collar Dress Shirt", ["cutaway_collar"]],
+    ["Spread-Collar Dress Shirt", ["spread_collar", "english_spread_collar"]],
+    ["Oxford Button-Down Shirt", ["button_down_collar", "soft_button_down"]],
+    ["Point (Standard) Collar Shirt", ["point_standard_collar"]],
+    ["Club Collar Shirt", ["club_collar"]],
+    ["Wing Collar Shirt", ["wing_collar"]],
+    ["Tab Collar Shirt", ["tab_collar"]],
+    ["Pin Collar Shirt", ["pin_collar"]],
+  ];
+  for (const [name, matching] of cases) {
+    for (const id of matching) {
+      assert.ok(optionsFor("shirt.collar").some(option => option.id === id), id);
+      const locked = spec({ collar: id });
+      const before = JSON.stringify(locked);
+      assert.deepEqual(styleDirectorCandidateCollarIssues(name, locked.shirt), [], name + "/" + id);
+      assert.equal(JSON.stringify(locked), before, "collar parity may not mutate the locked option");
+    }
+    const differentId = optionsFor("shirt.collar").find(option => !matching.includes(option.id))?.id;
+    assert.ok(differentId);
+    const locked = spec({ collar: differentId });
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorCandidateCollarIssues(name, locked.shirt);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_collar_mismatch"], name);
+    assert.deepEqual(issues, styleDirectorCandidateCollarIssues(name, locked.shirt),
+      "mismatch review must be deterministic");
+    assert.equal(JSON.stringify(locked), before, "mismatch must not rewrite a saved construction");
+  }
+});
+
+test("unknown or contradictory collar wording must not infer a single locked collar", () => {
+  for (const label of [
+    "Oxford Shirt", "Campus Shirt", "Widespread Print Shirt",
+    "Button-Downish Shirt", "Dress Shirt",
+    "Point Collar Club Collar Shirt", "Camp-Collar Spread-Collar Shirt",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateCollarIssues(label, { collar: "spread_collar" }),
+      [], "unknown or mixed collar wording must not guess an expected ID: " + label);
+  }
+  assert.deepEqual(styleDirectorCandidateWordingIssues("Point Collar Club Collar Shirt")
+    .map(issue => issue.code), ["ambiguous_candidate_collar"]);
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("...styleDirectorCandidateCollarIssues(candidate.garments.shirt, styleSpec.shirt)"),
+    "collar parity must affect real-model construction review and status");
+});
 
 test("ordinary collar resolver rejects incidental words and contradictory constructions", () => {
   const yes = [
