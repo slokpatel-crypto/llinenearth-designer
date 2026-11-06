@@ -82,3 +82,11 @@ test('stale, future, malformed and forged provenance never reaches review-requir
   assert.equal(review.results[0].status, 'REVIEW_REQUIRED');
   assert.equal(review.release_ready, false);
 });
+
+test('unexpected staging-only version is explicitly blocked even with claimed matching provenance', () => {
+  const report = reconcileMigrationHistory(inventory, [{version:'20261106000000',sha256:hash('a'),evidence}]);
+  assert.equal(report.release_ready, false);
+  assert.equal(report.results.find(row => row.version === '20261106000000').reason, 'UNEXPECTED_STAGING_VERSION');
+  assert.equal(report.results.find(row => row.version === '20261001').reason, 'COLLISION_NOT_IN_STAGING_HISTORY');
+  assert.equal(report.blocked, 2);
+});
