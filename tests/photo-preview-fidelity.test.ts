@@ -248,3 +248,12 @@ test("boundary QA belongs only to the ready deterministic garment canvas", () =>
   // be advertised as validated photoreal geometry or source-photo contours.
   assert.ok(source.includes('Garment boundary QA overlay'));
 });
+
+
+test("Zoom Fit uses the same scale and origin for the garment canvas and its QA contours", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
+  assert.match(css,/\.newDesignerPhotoStage\.inspectFit canvas[^\n]*transform:scale\(1\.42\)/);
+  assert.ok(source.includes('style={{transform:inspectFit?"scale(1.42)":"scale(1)",transformOrigin:"50% 35%",transition:"transform .28s ease"}}'));
+  assert.ok(source.includes('showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa"'));
+});
