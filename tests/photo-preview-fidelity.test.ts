@@ -168,7 +168,7 @@ test("original Compare switches to the actual selected photographic template, no
   assert.match(source,/showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal" src=\{template\.src\}/);
   assert.doesNotMatch(source,/newDesignerPhotoOriginal" src=\{tucked \? template\.src : DESIGNER_PHOTO_TEMPLATES\.pleated\.src\}/);
   assert.match(source,/SOURCE \/ WIDE TROUSER PHOTO/);
-  assert.match(source,/data-photo-source-comparison="wide"/);
+  assert.match(source,/data-photo-source-comparison=\{templateId==="wide"\?"wide":"studio"\}/);
   assert.match(source,/shirt in the instant preview comes from the separate pleated studio photograph/);
 });
 
@@ -223,4 +223,16 @@ test("source comparison cannot silently export or lock a different pictured desi
   assert.ok(source.includes('disabled={!ready || showOriginal}>{showOriginal ? "Show design to save"'));
   assert.ok(source.includes('disabled={!ready || showOriginal}>Lock final design'));
   assert.ok(source.includes('disabled={!ready || creativeAiLoading || showOriginal}>{creativeAiLoading ? "Rendering…"'));
+});
+
+test("Compare shows original-photo provenance above the canvas instead of selected-cut claims", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const start=source.lastIndexOf('return <section className="newDesignerPhoto"');
+  const stage=source.indexOf('    <div className={`newDesignerPhotoStage',start);
+  const sourceBanner=source.indexOf('data-photo-source-comparison={templateId==="wide"?"wide":"studio"}',start);
+  assert.ok(sourceBanner>start && sourceBanner<stage,"source provenance belongs above displayed source image");
+  assert.ok(source.includes('Original source photo, not your selected design'));
+  assert.ok(source.includes('!showOriginal && !showCreativeAi && constructionMismatches.length>0'));
+  assert.equal((source.match(/data-photo-source-comparison=/g)||[]).length,1);
+  assert.ok(source.includes('Choose Show design to view your selected fabrics and cuts.'));
 });
