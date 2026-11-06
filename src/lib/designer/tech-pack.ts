@@ -1,7 +1,7 @@
 import type { ProductionHandoff } from "@/lib/designer/production-handoff";
 import type { LockedDesignRevision } from "./design-lock.ts";
 import { verifyProductionHandoff } from "./production-handoff.ts";
-import { auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
+import { auditHandoffConstructionChecks, auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
 export const TECH_PACK_VERSION="linen-earth-tech-pack-v1" as const;
@@ -60,6 +60,10 @@ function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSourc
     "Exact StyleSpec v2 garment construction is absent; tailor must verify legacy options.",
   ];
   const outstanding=[...new Set([...handoff.unresolved,...audit.missing,...fitAudit.missing,...missingConstruction])];
+  const checkAudit=auditHandoffConstructionChecks(handoff.construction.checks);
+  if(checkAudit.errors.length) {
+    throw new Error(`Unsafe tailor tech pack construction checks: ${checkAudit.errors.join(" ")}`);
+  }
   const openConstructionChecks=handoff.construction.checks.some(
     (check)=>check.severity==="review"||check.severity==="warning",
   );
