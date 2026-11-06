@@ -35,6 +35,7 @@ if (process.argv[1] && import.meta.url === new URL('file://' + process.argv[1]).
     if (process.argv.length !== 4) throw new Error('Usage: node scripts/titan-reconcile-migration-history.mjs inventory.json staging.json');
     const report = reconcileMigrationHistory(JSON.parse(readFileSync(process.argv[2], 'utf8')), JSON.parse(readFileSync(process.argv[3], 'utf8')));
     console.log(JSON.stringify(report, null, 2));
-    // A comparison report never authorizes release, including empty inputs.\n    process.exitCode = report.release_ready === true && report.blocked === 0 ? 0 : 2;
+    // A comparison report never authorizes release, including empty inputs.
+    process.exitCode = report.release_ready === true && report.blocked === 0 ? 0 : 2;
   } catch (error) { console.error(String(error.message)); process.exitCode = 2; }
 }
