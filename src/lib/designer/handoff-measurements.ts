@@ -157,9 +157,51 @@ export function auditHandoffCreativeReview(input:unknown):HandoffMeasurementAudi
     return {errors:["Creative review must be a record."],missing};
   }
   const creative=input as Record<string,unknown>;
+  // The print renderer reads these fields directly. Validate shape before
+  // treating a historical or externally saved creative recipe as printable:
+  // a valid design hash alone does not make malformed nested records safe.
+  for(const name of ["name","thesis"] as const) {
+    if(typeof creative[name]!=="string" || !creative[name].trim()
+        || creative[name].length>4000) {
+      errors.push(`Creative ${name} must be nonempty bounded text.`);
+    }
+  }
+  if(!Array.isArray(creative.treatments)) {
+    errors.push("Creative treatments must be an array.");
+  } else {
+    for(const [index,item] of creative.treatments.entries()) {
+      const record=item && typeof item==="object" && !Array.isArray(item)
+        ? item as Record<string,unknown> : null;
+      if(!record || typeof record.zone!=="string" || !record.zone.trim()
+          || typeof record.instruction!=="string" || !record.instruction.trim()) {
+        errors.push(`Creative treatment #${index+1} requires a zone and instruction.`);
+      }
+    }
+  }
   if(creative.craft != null) {
     if(typeof creative.craft!=="object" || Array.isArray(creative.craft)) {
       errors.push("Creative craft construction must be a record.");
+    } else {
+      const craft=creative.craft as Record<string,unknown>;
+      if(typeof craft.version!=="string" || !craft.version.trim()) {
+        errors.push("Creative craft version must be recorded.");
+      }
+      if(!Array.isArray(craft.panels)) {
+        errors.push("Creative craft panels must be an array.");
+      } else {
+        for(const [index,item] of craft.panels.entries()) {
+          const panel=item && typeof item==="object" && !Array.isArray(item)
+            ? item as Record<string,unknown> : null;
+          const fabric=panel?.fabric && typeof panel.fabric==="object"
+              && !Array.isArray(panel.fabric)
+            ? panel.fabric as Record<string,unknown> : null;
+          if(!panel || typeof panel.zone!=="string" || !panel.zone.trim()
+              || !fabric || ["id","name","source"].some(
+                key=>typeof fabric[key]!=="string" || !(fabric[key] as string).trim())) {
+            errors.push(`Creative craft panel #${index+1} requires a zone and recorded fabric ID, name and source.`);
+          }
+        }
+      }
     }
     missing.push("Creative craft construction requires independent pattern-maker and tailor approval before production.");
   }
