@@ -88,7 +88,24 @@ export function auditHandoffBlockAdjustments(input:unknown):HandoffMeasurementAu
       || !Array.isArray((input as {adjustments?:unknown}).adjustments)) {
     return {errors:["Block strategy must contain an adjustments array."],missing};
   }
-  const adjustments=(input as {adjustments:unknown[]}).adjustments;
+  const block=input as Record<string,unknown>;
+  // These are the exact closed identifiers in block-strategy.ts, not freeform
+  // display names. Even a correctly hashed recipe must not present an
+  // unrecognized cut block as a reconstructable pattern selection.
+  const validBlocks:Record<string,readonly string[]>={
+    shirtBlock:["unknown","balanced-shirt","shaped-shirt","straight-shirt","mobility-shirt"],
+    trouserBlock:["unknown","clean-upper-block","roomy-seat-block","pleated-upper-block","relaxed-drape-block","flat-seat-cleanup"],
+    torsoShape:["unknown","tapered","balanced","straight"],
+    seatShape:["unknown","pronounced","balanced","flat"],
+  };
+  for(const [field,ids] of Object.entries(validBlocks)){
+    const id=block[field];
+    if(typeof id!=="string" || !ids.includes(id))
+      errors.push(`Block strategy has unrecognized ${field} identifier.`);
+    else if(id==="unknown")
+      missing.push(`Block strategy ${field} is unknown; tailor must confirm the physical block and shape before production.`);
+  }
+  const adjustments=block.adjustments as unknown[];
   for(const [index,item] of adjustments.entries()){
     const at=`Block adjustment #${index+1}`;
     if(!item || typeof item!=="object" || Array.isArray(item)){
