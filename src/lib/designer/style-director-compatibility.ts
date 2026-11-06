@@ -13,6 +13,8 @@ export function styleDirectorIntelligenceTrustWeight(
   // Unrecognised, incomplete or rejected provenance must not influence
   // ranking. A persisted object may predate the current closed vocabulary.
   if (!value ||
+      !Object.prototype.hasOwnProperty.call(value, "trust") ||
+      !Object.prototype.hasOwnProperty.call(value, "reviewStatus") ||
       !["unreviewed", "approved", "corrected", "rejected"].includes(value.reviewStatus) ||
       !["reviewed", "high-confidence", "provisional"].includes(value.trust) ||
       value.reviewStatus === "rejected") return 0;
