@@ -268,6 +268,11 @@ async function run(){
     await page.getByRole("button",{name:"Compare",exact:true}).click();
     const original=page.locator(".newDesignerPhotoOriginal");
     await original.waitFor();
+    assert.equal(await page.getByRole("button",{name:"Show design to save",exact:true}).isDisabled(),true,
+      "source Compare must not silently save a different selected-design canvas");
+    const finalLock=page.getByRole("button",{name:"Lock final design",exact:true});
+    if(await finalLock.count())assert.equal(await finalLock.isDisabled(),true,
+      "source comparison must be closed before locking the selected design");
     assert.equal(new URL(await original.getAttribute("src"),base).pathname,"/designer/studio-wide.webp");
     assert.match(await original.getAttribute("alt"),/separate pleated studio source photograph/);
     assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/SOURCE \/ WIDE TROUSER PHOTO/);
@@ -277,6 +282,8 @@ async function run(){
     summary.viewports[summary.viewports.length-1].wideSourceComparisonVerified=true;
     await page.getByRole("button",{name:"Show design",exact:true}).click();
     assert.equal(await original.count(),0);
+    assert.equal(await page.getByRole("button",{name:"Save",exact:true}).isEnabled(),true,
+      "returning to the actual selected design must restore its Save action");
     // Race two ACTUAL shirt selections against an uncached, delayed catalogue
     // image. The previous look and raw source image must never be displayed as
     // the newly selected fabric while that new tile is still pending.
