@@ -142,13 +142,13 @@ async function run(){
     assert.equal(await page.locator("#designerPhotoTitle").textContent(),"Studio source.");
     assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(1) > span").textContent(),/SELECTED SHIRT/);
     assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/SELECTED TROUSER/);
-    const compareCaption=page.locator('[data-photo-caption="source"]');
-    assert.match(await compareCaption.textContent(),/Original source photograph/);
-    const sourceCaptionBox=await compareCaption.boundingBox();
+    assert.equal(await page.locator('[data-photo-caption]').count(),0,
+      "source Compare contains exactly one source-warning panel, not a duplicate caption");
+    const sourceBannerBox=await initialSourceNote.boundingBox();
     const sourceStageBox=await page.locator(".newDesignerPhotoStage").boundingBox();
-    assert.ok(sourceCaptionBox && sourceStageBox && sourceCaptionBox.y+sourceCaptionBox.height<=sourceStageBox.y,
-      "source caption must remain above the original reference photo");
-    assert.doesNotMatch(await compareCaption.textContent(),/pattern scale uses reviewed physical evidence|pattern scale is still approximate/,
+    assert.ok(sourceBannerBox && sourceStageBox && sourceBannerBox.y+sourceBannerBox.height<=sourceStageBox.y,
+      "source provenance banner must stay above the original reference photo");
+    assert.doesNotMatch(await initialSourceNote.textContent(),/pattern scale uses reviewed physical evidence|pattern scale is still approximate/,
       "source comparison cannot claim scale evidence for an unmodified source photograph");
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`studio-source-compared-${width}.png`)});
     await page.getByRole("button",{name:"Show design",exact:true}).click();
@@ -158,7 +158,8 @@ async function run(){
     assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(1) > span").textContent(),/^SHIRT$/);
     assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/^TROUSER$/);
     assert.match(await page.locator('[data-photo-caption="instant"]').textContent(),/Instant preview/);
-    assert.equal(await compareCaption.count(),0,"the source caption must close with Compare");
+    assert.equal(await page.locator('[data-photo-caption="source"]').count(),0,
+      "source Compare must not leave a duplicate caption when returning to the selected design");
     // Real-photo screenshot gates at each required responsive width. No paid
     // rendering service or replacement model is involved.
     await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");
@@ -436,7 +437,8 @@ async function run(){
     const wideSourceNotice=page.locator('.newDesignerPhoto > [data-photo-source-comparison="wide"]');
     assert.equal(await wideSourceNotice.count(),1);
     assert.match(await wideSourceNotice.textContent(),/shirt in the instant preview comes from the separate pleated studio photograph/);
-    assert.match(await page.locator('[data-photo-caption="source"]').textContent(),/unchanged studio reference/i);
+    assert.equal(await page.locator('[data-photo-caption]').count(),0,
+      "wide source comparison must show its single provenance banner without a duplicate caption");
     assert.equal(await page.locator('[data-photo-construction-mismatch="true"]').count(),0,
       "original photo must not show the customer's selected cut warning as if it were reconstructed");
     await wideSourceNotice.scrollIntoViewIfNeeded();
