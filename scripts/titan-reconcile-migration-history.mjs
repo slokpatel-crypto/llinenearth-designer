@@ -8,7 +8,17 @@ export function reconcileMigrationHistory(inventory, staging) {
   if (!Array.isArray(inventory) || !Array.isArray(staging)) throw new Error('Both inputs must be arrays');
   const byVersion = new Map();
   for (const row of inventory) {
-    if (!row || typeof row.version !== 'string' || !version.test(row.version) || typeof row.filename !== 'string' || !row.filename.endsWith('.sql') || typeof row.sha256 !== 'string' || !hex64.test(row.sha256)) throw new Error('Invalid inventory row');
+    if (!row || typeof row.version !== 'string' || !version.test(row.version) || typeof row.filename !== 'string' || !new RegExp(`^${row.version}_[A-Za-z0-9][A-Za-z0-9_-]*\\.sqlimport { readFileSync } from 'node:fs';
+
+const hex64 = /^[a-f0-9]{64}$/;
+const version = /^[0-9]{8,20}$/;
+
+/** Compare claimed staging evidence to repository SQL identities without authorizing release. */
+export function reconcileMigrationHistory(inventory, staging) {
+  if (!Array.isArray(inventory) || !Array.isArray(staging)) throw new Error('Both inputs must be arrays');
+  const byVersion = new Map();
+  for (const row of inventory) {
+    if (!row || typeof row.version !== 'string' || !version.test(row.version) || ).test(row.filename) || typeof row.sha256 !== 'string' || !hex64.test(row.sha256)) throw new Error('Invalid inventory row');
     const rows = byVersion.get(row.version) ?? [];
     if (rows.some(r => r.filename === row.filename)) throw new Error('Duplicate inventory filename');
     rows.push(row); byVersion.set(row.version, rows);
