@@ -197,6 +197,8 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/floatingContactDock/);
   assert.match(script,/wide-source-compared-/);
   assert.match(script,/wideSourceComparisonVerified=true/);
+  assert.match(script,/rapidFabricSwitchStable=true/);
+  assert.match(script,/old canvas must be hidden while the new fabric is pending/);
   assert.match(script,/name:"Trouser shape",exact:true/);
   assert.match(script,/advanced spec-only sleeve\/pleat options must not repaint/);
 });
