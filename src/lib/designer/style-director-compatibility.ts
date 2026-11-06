@@ -526,6 +526,79 @@ export function styleDirectorCandidateCollarFinishIssues(
 }
 
 /**
+ * A shirt's button material is a separate versioned garment option from the
+ * barrel-cuff button count or metal piping. Only a named material establishes
+ * intent; neither a generic "buttons" nor an unrelated "contrast" does.
+ */
+const candidateButtonPatterns = [
+  { id: "mother_of_pearl", pattern: /\bmother[- ]of[- ]pearl(?:[- ]buttons?)?\b/gi },
+  { id: "corozo", pattern: /\bcorozo(?:\s*\(\s*vegetable\s+ivory\s*\))?(?:[- ]buttons?)?\b/gi },
+  { id: "horn", pattern: /\bhorn[- ]buttons?\b/gi },
+  { id: "plastic_resin", pattern: /\b(?:plastic\s*[/&-]\s*resin(?:[- ]buttons?)?|(?:plastic|resin)[- ]buttons?)\b/gi },
+  { id: "metal_contrast", pattern: /\b(?:metal\s*[/&-]\s*contrast(?:[- ]buttons?)?|metal[- ]buttons?)\b/gi },
+] as const;
+
+type CandidateButtonId = (typeof candidateButtonPatterns)[number]["id"];
+
+export function styleDirectorCandidateButtonIntent(candidateShirt: string): {
+  requested: CandidateButtonId | null;
+  prohibited: CandidateButtonId[];
+  ambiguous: boolean;
+} {
+  const requested = new Set<CandidateButtonId>();
+  const prohibited = new Set<CandidateButtonId>();
+  for (const { id, pattern } of candidateButtonPatterns) {
+    for (const match of candidateShirt.matchAll(pattern)) {
+      const start = match.index ?? 0;
+      const prefix = candidateShirt.slice(0, start);
+      const suffix = candidateShirt.slice(start + match[0].length);
+      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(suffix);
+      const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
+        /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/i.test(suffix);
+      if (banned) prohibited.add(id);
+      else if (!optional) requested.add(id);
+    }
+  }
+  return {
+    requested: requested.size === 1 ? [...requested][0] : null,
+    prohibited: [...prohibited],
+    ambiguous: requested.size > 1 || [...requested].some(id => prohibited.has(id)),
+  };
+}
+
+export function styleDirectorCandidateButton(
+  candidateShirt: string,
+  legacyChoices: readonly string[],
+): { versioned: CandidateButtonId; legacy: string | null } | null {
+  const intent = styleDirectorCandidateButtonIntent(candidateShirt);
+  if (intent.ambiguous || !intent.requested) return null;
+  const option = optionsFor("shirt.button").find(entry => entry.id === intent.requested);
+  if (!option) return null;
+  const label = option.legacyLabel || option.label;
+  return {
+    versioned: intent.requested,
+    legacy: option.legacySelectable !== false &&
+      option.renderSupport.livePreview !== "none" &&
+      legacyChoices.includes(label) ? label : null,
+  };
+}
+
+export function styleDirectorCandidateButtonIssues(
+  candidateShirt: string,
+  shirt: Pick<StyleSpecV2["shirt"], "button">,
+): DirectorConstructionIssue[] {
+  const intent = styleDirectorCandidateButtonIntent(candidateShirt);
+  if (intent.ambiguous) return [];
+  const invalid = (intent.requested !== null && shirt.button !== intent.requested) ||
+    intent.prohibited.includes(shirt.button as CandidateButtonId);
+  return invalid ? [{
+    code: "candidate_button_mismatch",
+    explanation: "The requested or prohibited button material conflicts with the locked shirt's versioned button choice; confirm the actual button stock before cutting.",
+  }] : [];
+}
+
+/**
  * A cuff is selected from explicitly named construction, never from a generic
  * "cuff" or "button" mention. The photographed selector is a separate
  * contract; unsupported canonical cuffs remain review-only.
@@ -943,6 +1016,7 @@ export type DirectorConstructionIssue = {
     "candidate_cuff_mismatch" | "ambiguous_candidate_cuff" | "unverified_cuff_photo" |
     "candidate_pocket_mismatch" | "ambiguous_candidate_pocket" | "unverified_pocket_photo" |
     "candidate_collar_finish_mismatch" | "ambiguous_candidate_collar_finish" | "unverified_contrast_finish_photo" |
+    "candidate_button_mismatch" | "ambiguous_candidate_button" | "legacy_button_mismatch" |
     "candidate_shirt_fit_mismatch" | "ambiguous_candidate_shirt_fit" | "unverified_shirt_fit_photo" |
     "candidate_trouser_fit_mismatch" | "ambiguous_candidate_trouser_fit" | "unverified_trouser_fit_photo" |
     "wide_leg_tapered_fit_mismatch" | "pleated_fit_flat_front_mismatch" |
@@ -976,6 +1050,12 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     issues.push({
       code: "ambiguous_candidate_shirt_fit",
       explanation: "This proposed shirt requests incompatible fits; select one canonical fit before production.",
+    });
+  }
+  if (styleDirectorCandidateButtonIntent(candidateShirt).ambiguous) {
+    issues.push({
+      code: "ambiguous_candidate_button",
+      explanation: "This shirt requests incompatible button materials; select one confirmed material before approving the design.",
     });
   }
   const cuff = styleDirectorCandidateCuffIntent(candidateShirt);
@@ -1375,7 +1455,7 @@ export function styleDirectorConstructionIssues(
  * advanced collars may have intentionally approximate legacy previews.
  */
 export function styleDirectorPresentationIssues(
-  style: Pick<DesignerStyle, "collar" | "shirtWear"> & Partial<Pick<DesignerStyle, "trouser" | "cuff" | "placket" | "shirtFit" | "rise" | "waistband" | "break">>,
+  style: Pick<DesignerStyle, "collar" | "shirtWear"> & Partial<Pick<DesignerStyle, "trouser" | "cuff" | "placket" | "shirtFit" | "button" | "rise" | "waistband" | "break">>,
   spec: Pick<StyleSpecV2, "shirt"> & Partial<Pick<StyleSpecV2, "pant">>,
 ): DirectorConstructionIssue[] {
   const issues: DirectorConstructionIssue[] = [];
@@ -1502,6 +1582,7 @@ export function styleDirectorPresentationIssues(
     { key: "cuff", group: "shirt.cuff", id: spec.shirt.cuff, code: "legacy_cuff_mismatch" },
     { key: "placket", group: "shirt.placket", id: spec.shirt.placket, code: "legacy_placket_mismatch" },
     { key: "shirtFit", group: "shirt.fit", id: spec.shirt.fit, code: "legacy_shirt_fit_mismatch" },
+    { key: "button", group: "shirt.button", id: spec.shirt.button, code: "legacy_button_mismatch" },
   ] as const;
   for (const detail of photoShirtDetails) {
     const photoLabel = style[detail.key];
