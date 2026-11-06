@@ -51,10 +51,32 @@ export function styleDirectorCandidateOrdinaryCollar(
   return families.spread ? "spread" : families.buttonDown ? "button_down" : null;
 }
 
-const candidateSleeveLengths = (name: string) => ({
-  short: /\b(?:short|half)[ -]?sleeved?\b/i.test(name),
-  long: /\b(?:long|full)[ -]?sleeved?\b/i.test(name),
-});
+// A prohibition of a sleeve length is not a positive request for it.
+// Keep both positive and negative intent so contradictions and locked-ID
+// mismatches can be reviewed without inventing a replacement construction.
+const candidateSleeveLengths = (name: string) => {
+  let bannedShort = false;
+  let bannedLong = false;
+  const ban = (word: string) => {
+    if (/^(?:short|half)/i.test(word)) bannedShort = true;
+    else bannedLong = true;
+    return " ";
+  };
+  const withoutPrefixedBans = name.replace(
+    /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|include|choose|wear|add|have)\s+)?(?:(?:a|any)\s+)?((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\b/gi,
+    (_match, word: string) => ban(word),
+  );
+  const affirmative = withoutPrefixedBans.replace(
+    /\b((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted)|(?:must|should)\s+not\s+be\s+(?:used|worn))\b/gi,
+    (_match, word: string) => ban(word),
+  );
+  return {
+    short: /\b(?:short|half)[ -]?sleeve(?:s|d)?\b/i.test(affirmative),
+    long: /\b(?:long|full)[ -]?sleeve(?:s|d)?\b/i.test(affirmative),
+    bannedShort,
+    bannedLong,
+  };
+};
 
 // Wear words are instructions, not evidence of physical tuck length. A
 // negative instruction must not become a *positive* tuck merely because the
@@ -112,13 +134,35 @@ export function styleDirectorCandidateCollar(
 
 /** Candidate wording is not a measured sleeve length. Only an explicit
  * short-/half-sleeve request maps to the existing construction IDs. */
+/**
+ * Detect a requested or prohibited sleeve length that does not agree with the
+ * canonical proposed garment. Do not alter a locked ID or infer an arm length.
+ */
+export function styleDirectorCandidateSleeveIssues(
+  candidateShirt: string,
+  shirt: Pick<StyleSpecV2["shirt"], "sleeve">,
+): DirectorConstructionIssue[] {
+  const intent = candidateSleeveLengths(candidateShirt);
+  // Contradictory phrasing is already reported by the wording gate.
+  if ((intent.short && intent.long) || (intent.short && intent.bannedShort) ||
+      (intent.long && intent.bannedLong) || (intent.bannedShort && intent.bannedLong)) return [];
+  const invalid = (intent.short && shirt.sleeve !== "half_sleeve") ||
+    (intent.long && shirt.sleeve !== "full_sleeve") ||
+    (intent.bannedShort && shirt.sleeve === "half_sleeve") ||
+    (intent.bannedLong && shirt.sleeve !== "half_sleeve");
+  return invalid ? [{
+    code: "candidate_sleeve_mismatch",
+    explanation: "The proposed shirt's requested or prohibited sleeve length conflicts with its versioned construction; confirm the sleeve before tailoring.",
+  }] : [];
+}
+
 export function styleDirectorCandidateSleeve(
   candidateShirt: string,
 ): { sleeve: "half_sleeve"; cuff: "open_short_hem_cuff" } | null {
-  const { short: shortSleeve, long: longSleeve } = candidateSleeveLengths(candidateShirt);
+  const { short: shortSleeve, long: longSleeve, bannedShort, bannedLong } = candidateSleeveLengths(candidateShirt);
   // Contradictory sleeve descriptions cannot safely select a construction.
   // Retain the existing default rather than silently interpreting one half.
-  return shortSleeve && !longSleeve
+  return shortSleeve && !longSleeve && !bannedShort && !bannedLong
     ? { sleeve: "half_sleeve", cuff: "open_short_hem_cuff" }
     : null;
 }
@@ -190,7 +234,7 @@ export type DirectorConstructionIssue = {
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_type_hem_mismatch" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
-    "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "ambiguous_candidate_wear" |
+    "ambiguous_candidate_collar" | "ambiguous_candidate_sleeve" | "candidate_sleeve_mismatch" | "ambiguous_candidate_wear" |
     "candidate_shirt_wear_mismatch" | "legacy_trouser_mismatch" |
     "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch" |
     "candidate_trouser_pleat_mismatch" | "unknown_trouser_pleat_option" | "unknown_versioned_option" |
@@ -213,7 +257,10 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     });
   }
   const sleeves = candidateSleeveLengths(candidateShirt);
-  if (sleeves.short && sleeves.long) {
+  if ((sleeves.short && sleeves.long) ||
+      (sleeves.short && sleeves.bannedShort) ||
+      (sleeves.long && sleeves.bannedLong) ||
+      (sleeves.bannedShort && sleeves.bannedLong)) {
     issues.push({
       code: "ambiguous_candidate_sleeve",
       explanation: "This proposed shirt names both short and long sleeves; confirm one sleeve construction before approving the recommendation.",
