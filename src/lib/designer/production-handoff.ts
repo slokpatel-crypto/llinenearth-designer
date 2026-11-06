@@ -64,6 +64,7 @@ export function buildProductionHandoff(
     trouser:spec.trouser.finishedTargets,
   }, {
     shirtWear:spec.styleSpec?.shirt.wear ?? spec.shirt.wear,
+    shirtCuff:spec.styleSpec?.shirt.cuff ?? spec.shirt.cuff,
     trouserRise:spec.styleSpec?.pant.rise ?? spec.trouser.rise,
   });
   if(measurementAudit.errors.length) {
