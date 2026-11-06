@@ -236,3 +236,13 @@ test("Compare shows original-photo provenance above the canvas instead of select
   assert.equal((source.match(/data-photo-source-comparison=/g)||[]).length,1);
   assert.ok(source.includes('Choose Show design to view your selected fabrics and cuts.'));
 });
+
+
+test("boundary QA belongs only to the ready deterministic garment canvas", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.ok(source.includes('showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa"'));
+  assert.ok(source.includes('disabled={!ready || showOriginal || showCreativeAi} aria-pressed={showBoundaries && !showOriginal && !showCreativeAi}'));
+  // Boundary outlines are derived from original garment masks and must never
+  // be advertised as validated photoreal geometry or source-photo contours.
+  assert.ok(source.includes('Garment boundary QA overlay'));
+});
