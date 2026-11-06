@@ -64,5 +64,13 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [x] Added three synthetic regressions: unresolved source decisions, open construction checks despite ready source status, and tampered printable review-badge protection.
 - [ ] Verify exact-head Full CI, Non-3D browser QA and disposable PostgreSQL jobs before marking these specific changes verified. No synthetic evidence can substitute for a physical sample or human cutting authorisation.
 
+## Unknown optional landmark review gate (2026-11-06)
+- [x] Revalidated isolated branch against main `4dd8020abd83429449ff53ea5bb71b046394d86e`: the five scoped paths were the only PR changes and branch was not behind main. Branch head `a2895a1090e43e483a73038def1115ae16396a5d` had matching completed successful Full CI #42023363586 and Non-3D #42023363578 (including their respective jobs), before this continuation.
+- [x] An extra valid-looking target with an unrecognised landmark label was previously accepted alongside all required target anchors with no outstanding review note. This could make a custom, method-undefined measurement look tailor-review-ready.
+- [x] Dedicated measurement audit now preserves the custom legacy target for reconstruction but adds explicit unresolved human landmark/unit/basis review. A cross-garment known landmark still fails as an error; canonical recognised labels are unaffected.
+- [x] New synthetic-only test covers unknown additional shirt and trouser labels, positive canonical controls, status downgrade, preserved target data, unsigned review-only HTML and no cutting authorisation.
+- [ ] Verify exact-head CI after the new code/test and checkpoint commits. No local execution possible in this connector-only environment; prior green runs do not certify new code.
+- [ ] Independently verify the final exported packet and reconcile any new CI failures. No real measured body, model sample, calibrated fabric, pattern, or human signoff; cutting remains blocked.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
