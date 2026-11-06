@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateTrouserFit, styleDirectorCandidateTrouserFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateVariantCollar, styleDirectorCandidateSleeve, styleDirectorCandidateRollUpSleeveIntent, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorProposedCroppedHem, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
+import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidatePocket, styleDirectorCandidatePocketIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateTrouserFit, styleDirectorCandidateTrouserFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateVariantCollar, styleDirectorCandidateSleeve, styleDirectorCandidateRollUpSleeveIntent, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorProposedCroppedHem, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -324,6 +324,7 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   const namedSleeve=styleDirectorCandidateSleeve(shirt);
   const rollUpSleeve=styleDirectorCandidateRollUpSleeveIntent(shirt);
   const namedPlacket=styleDirectorCandidatePlacket(shirt,DESIGNER_STYLE_CHOICES.placket);
+  const namedPocket=styleDirectorCandidatePocket(shirt);
   const namedCuff=styleDirectorCandidateCuff(shirt,DESIGNER_STYLE_CHOICES.cuff);
   const namedFit=styleDirectorCandidateShirtFit(shirt,DESIGNER_STYLE_CHOICES.shirtFit);
   const namedTrouserFit=styleDirectorCandidateTrouserFit(trouser);
@@ -358,6 +359,9 @@ function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerS
   // A named placket construction must survive the legacy photo bridge,
   // including provisional French/covered fronts without live preview.
   if (namedPlacket) spec.shirt.placket=namedPlacket.versioned;
+  // No photograph selector exists for pockets; keep the versioned request
+  // and let presentation review explicitly flag the unverified pocket.
+  if (namedPocket) spec.shirt.pocket=namedPocket;
 
   // A named half/short sleeve must survive the legacy-to-versioned bridge.
   // The legacy photo has no sleeve-length selector, so the pure presentation
@@ -432,6 +436,7 @@ function buildRealModelSpec(
     ...styleDirectorCandidateTrouserFitIssues(candidate.garments.trouser, styleSpec.pant),
     ...styleDirectorCandidateCollarIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidatePlacketIssues(candidate.garments.shirt, styleSpec.shirt),
+    ...styleDirectorCandidatePocketIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidateCuffIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidateShirtFitIssues(candidate.garments.shirt, styleSpec.shirt),
     ...styleDirectorCandidateSleeveIssues(candidate.garments.shirt, styleSpec.shirt),
