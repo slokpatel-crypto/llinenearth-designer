@@ -206,7 +206,13 @@ export async function verifyProductionHandoff(
   handoff:ProductionHandoff,
   revision:LockedDesignRevision,
 ):Promise<boolean> {
-  if(!await verifyLockedDesignRevision(revision)) return false;
+  // Stored or external packets can be null, partially hydrated, or forged.
+  // Treat all malformed payloads as failed verification, not runtime errors
+  // that bypass the trusted export's uniform "Unsafe" rejection contract.
+  try {
+    if(!handoff || typeof handoff!=="object" || Array.isArray(handoff)
+        || !revision || typeof revision!=="object" || Array.isArray(revision)) return false;
+    if(!await verifyLockedDesignRevision(revision)) return false;
   if(!hasCanonicalLockedRevisionIdentity(revision)) return false;
   const lockedTime=new Date(revision.lockedAt).getTime();
   const issuedTime=new Date(handoff.generatedAt).getTime();
@@ -214,7 +220,6 @@ export async function verifyProductionHandoff(
   if(handoff.version!==PRODUCTION_HANDOFF_VERSION
      ||handoff.recipeHash!==revision.recipeHash
      ||handoff.designRevisionId!==revision.revisionId) return false;
-  try {
     const expected=buildProductionHandoff(revision,handoff.generatedAt);
     // Canonical comparisons do not rely on JS object insertion order and
     // include all 2D photo-vs-cut caveats, source and customer measurements.
