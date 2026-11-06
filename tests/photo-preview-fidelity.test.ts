@@ -196,6 +196,8 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/constructionNoticeUnobstructed=true/);
   assert.match(script,/fabricSummaryReadable=true/);
   assert.match(script,/compactActionsReadable=true/);
+  assert.match(script,/tallDesktopActionRowReachable=true/);
+  assert.match(script,/short desktop viewport must unstick its tall photographic action panel/);
   assert.match(script,/compact-actions-readable-/);
   assert.match(script,/photo actions must be reachable without the floating contact dock covering them/);
   assert.match(script,/selected preview controls must provide at least 44px touch targets/);
@@ -401,10 +403,13 @@ test("live instant caption obtains scale truth from the dedicated material discl
 });
 
 
-test("compact photo actions have readable labels and 44px tap targets without global CSS changes", () => {
+test("compact photo actions are legible and scroll-reachable on short desktop screens", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
   assert.ok(css.includes(".newDesignerPhotoActionsCompact button{border-radius:999px!important;padding:8px 10px!important;font-size:7px!important}"));
+  assert.ok(css.includes(".newDesignerRight{position:sticky;top:16px}"));
+  assert.match(css, /@media \(min-width:1181px\) and \(max-height:1200px\)\{[\s\S]*?\.newDesignerRight:has\(\.newDesignerPhotoActionsCompact\)\{position:static\}/);
+
   assert.ok(source.includes("const PHOTO_ACTION_BUTTON_STYLE={minHeight:44} as const;"));
   assert.ok(source.includes('const PHOTO_ACTION_LABEL_STYLE={fontSize:"12px",lineHeight:1.4,fontWeight:500,display:"inline-block",overflowWrap:"anywhere"} as const;'));
   const start=source.indexOf('<div className="newDesignerPhotoActions newDesignerPhotoActionsCompact">');
