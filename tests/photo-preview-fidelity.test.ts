@@ -203,13 +203,13 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
 
 test("fabric changes cannot leave stale canvas or source-compare imagery visible", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  // The previous look is not shown under the next look's loading state.
-  assert.match(source,/aria-busy=\\{!ready && !error\\}/);
-  assert.match(source,/style=\\{\\{visibility:ready\\?"visible":"hidden"\\}\\}/);
-  assert.match(source,/setReady\\(false\\);\\s*\\/\\/ A source comparison from the previous selection[\\s\\S]*?setShowOriginal\\(false\\);/);
-  assert.match(source,/showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal"/);
-  // SOURCE and PHOTOREAL are mutually exclusive views, including their tag.
-  assert.match(source,/showCreativeAi && creativeAi \\? \\x60\\$\\{photorealView\\.toUpperCase\\(\\)\\} \\/ PHOTOREAL\\x60 : showOriginal && ready/);
-  assert.match(source,/onClick=\\{\\(\\)=>\\{setShowOriginal\\(false\\);setShowCreativeAi\\(\\(value\\)=>!value\\);\\}\\}/);
-  assert.match(source,/onClick=\\{\\(\\) => \\{setShowCreativeAi\\(false\\);setShowOriginal\\(\\(value\\) => !value\\);\\}\\}/);
+  // Loading another fabric must not show the previous finished canvas.
+  assert.ok(source.includes('aria-busy={!ready && !error}'));
+  assert.ok(source.includes('style={{visibility:ready?"visible":"hidden"}}'));
+  assert.ok(source.includes('setShowOriginal(false);\n    setCreativeAi(null);'));
+  assert.ok(source.includes('showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal"'));
+  // The source comparison and reviewed photoreal image cannot overlay each other.
+  assert.ok(source.includes('showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : showOriginal && ready'));
+  assert.ok(source.includes('onClick={()=>{setShowOriginal(false);setShowCreativeAi((value)=>!value);}}'));
+  assert.ok(source.includes('onClick={() => {setShowCreativeAi(false);setShowOriginal((value) => !value);}}'));
 });
