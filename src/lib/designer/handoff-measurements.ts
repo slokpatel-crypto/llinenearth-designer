@@ -136,7 +136,7 @@ const finite = (value: unknown): value is number =>
 
 export function auditHandoffMeasurements(
   groups: TargetGroup,
-  options: { shirtWear?: string | null; trouserRise?: string | null } = {},
+  options: { shirtWear?: string | null; trouserRise?: string | null; shirtCuff?: string | null } = {},
 ): HandoffMeasurementAudit {
   const errors: string[] = [];
   const missing: string[] = [];
@@ -263,6 +263,15 @@ export function auditHandoffMeasurements(
         && (options.shirtWear === "tucked" || options.shirtWear === "Tucked")
         && !seen.has("shirt-length anchor")) {
       missing.push("shirt: Shirt-length anchor is not recorded for the selected tucked construction; tailor must confirm the length before production.");
+    }
+    // A French / double cuff requires a separately recorded wrist anchor
+    // to determine the cuff circumference. The locked construction ID takes
+    // precedence over preview shorthand, and no wrist value is inferred.
+    if (garment === "shirt"
+        && (options.shirtCuff === "french_double_cuff"
+          || options.shirtCuff === "French / Double Cuff")
+        && !seen.has("finished cuff circumference")) {
+      missing.push("shirt: Finished cuff circumference is not recorded for the selected French/double cuff; tailor must measure and confirm the wrist before production.");
     }
     // High and extra-high rises cannot be reconstructed from waist/seat,
     // inseam and outseam alone. Require a separately recorded front-rise
