@@ -132,6 +132,55 @@ test("cropped ankle construction cannot claim half shoe break", () => {
   })), [], "compatible cropped trousers remain valid");
 });
 
+test("cropped trouser construction cannot claim stacked footwear break", () => {
+  const cases = [
+    [{ type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "stacked_break" },
+      ["cropped_stacked_break"]],
+    [{ type: "formal_flat_front", hem: "cropped_above_ankle_hem", break: "stacked_break" },
+      ["cropped_stacked_break"]],
+    [{ type: "cropped_ankle", hem: "plain_hem", break: "stacked_break" },
+      ["cropped_type_hem_mismatch", "cropped_stacked_break"]],
+  ] as const;
+  for (const [pant, expected] of cases) {
+    const locked = spec({}, pant);
+    const before = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorConstructionIssues(locked).map(issue => issue.code),
+      expected, JSON.stringify(pant));
+    assert.deepEqual(styleDirectorConstructionIssues(locked).map(issue => issue.code),
+      expected, "review signals must remain deterministic");
+    assert.equal(JSON.stringify(locked), before, "no automatic rewrite of locked trouser breaks");
+  }
+  assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
+    type: "formal_flat_front", hem: "plain_hem", break: "stacked_break",
+  })), [], "a full-length silhouette may request stacking without invented length measurements");
+  assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
+    type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "no_break",
+  })), [], "a genuinely cropped option remains valid with no footwear break");
+});
+
+test("cropped above-ankle break must agree with its saved hem construction", () => {
+  for (const pant of [
+    { type: "formal_flat_front", hem: "plain_hem", break: "cropped_above_ankle" },
+    { type: "formal_flat_front", hem: "cuffed_turn_up", break: "cropped_above_ankle" },
+    { type: "cropped_ankle", hem: "plain_hem", break: "cropped_above_ankle" },
+  ]) {
+    const locked = spec({}, pant);
+    const before = JSON.stringify(locked);
+    const codes = styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const expected = pant.type === "cropped_ankle"
+      ? ["cropped_type_hem_mismatch", "cropped_break_hem_mismatch"]
+      : ["cropped_break_hem_mismatch"];
+    assert.deepEqual(codes, expected, JSON.stringify(pant));
+    assert.equal(JSON.stringify(locked), before, "hem/break review cannot mutate canonical IDs");
+  }
+  assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
+    type: "formal_flat_front", hem: "cropped_above_ankle_hem", break: "cropped_above_ankle",
+  })), [], "other trouser types can be hemmed above the ankle when the two IDs agree");
+  assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
+    type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "cropped_above_ankle",
+  })), [], "complete cropped type/hem/break ID agreement must not require false review");
+});
+
 test("cropped trouser type must agree with its hem without rewriting locked IDs", () => {
   const mismatch = spec({}, {type:"cropped_ankle",hem:"plain_hem",break:"slight_break"});
   const original = JSON.stringify(mismatch);
