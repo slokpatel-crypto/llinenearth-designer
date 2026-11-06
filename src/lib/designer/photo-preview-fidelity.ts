@@ -10,13 +10,14 @@ export function photoPatternScaleDisclosure(
   patternTypes: readonly string[],
   allVisibleRepeatsVerified: boolean,
   unverifiedFabricNames: readonly string[],
+  verifiedRepeatCaption: string,
 ): string {
   const hasPatternRepeat = patternTypes.some((type) => type.trim().toLowerCase() !== "solid");
   if (!hasPatternRepeat) {
     return "no visible motif repeat is recorded for these solid selections";
   }
   if (allVisibleRepeatsVerified) {
-    return "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists";
+    return verifiedRepeatCaption;
   }
   return "pattern scale is still approximate for " + unverifiedFabricNames.join(" / ");
 }
