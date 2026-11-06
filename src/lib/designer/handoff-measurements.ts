@@ -96,7 +96,10 @@ export function auditHandoffFitProvenance(source: HandoffFitProvenance): Handoff
 const finite = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 
-export function auditHandoffMeasurements(groups: TargetGroup): HandoffMeasurementAudit {
+export function auditHandoffMeasurements(
+  groups: TargetGroup,
+  options: { shirtWear?: string | null } = {},
+): HandoffMeasurementAudit {
   const errors: string[] = [];
   const missing: string[] = [];
 
@@ -190,6 +193,14 @@ export function auditHandoffMeasurements(groups: TargetGroup): HandoffMeasuremen
       if (!seen.has(label.toLowerCase())) {
         missing.push(`${garment}: ${label} is not recorded; tailor must measure and confirm it before production.`);
       }
+    }
+    // A tucked shirt needs a length landmark for pattern review. Do not infer
+    // it from the pictured model, nominal cut length, or fit defaults.
+    // This is a context-dependent presence gate, not a physical fit approval.
+    if (garment === "shirt"
+        && (options.shirtWear === "tucked" || options.shirtWear === "Tucked")
+        && !seen.has("shirt-length anchor")) {
+      missing.push("shirt: Shirt-length anchor is not recorded for the selected tucked construction; tailor must confirm the length before production.");
     }
   }
   return { errors, missing };
