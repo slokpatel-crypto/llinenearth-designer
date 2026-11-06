@@ -378,7 +378,14 @@ export function createStyleDirectorLooks(
   intelligence?:Record<string,DesignerFabricIntelligence>|null,
 ):StyleDirectorLook[] {
   const context = contextFromAnswers(answers);
-  const calibrated = stock.filter((fabric) => fabric.inStock).map(designerFabricFromStock);
+  // A catalogue ID identifies one physical fabric, including in supporting pairings.
+  // Ignore repeated IDs rather than letting duplicate rows bias the pairing engine.
+  const pairedIds = new Set<string>();
+  const calibrated = stock.filter((fabric) => {
+    if (!fabric.inStock || pairedIds.has(fabric.id)) return false;
+    pairedIds.add(fabric.id);
+    return true;
+  }).map(designerFabricFromStock);
   const calibratedShirts = calibrated.filter((fabric) => fabric.allowedGarments.includes("shirt"));
   const calibratedPants = calibrated.filter((fabric) => fabric.allowedGarments.includes("pant"));
   return chooseFabrics(answers,stock,intelligence).map((fabric,index)=>{
