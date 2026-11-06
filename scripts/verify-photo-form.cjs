@@ -1,6 +1,6 @@
 // Actual exported compositors, real photographs and Chromium Canvas. The old
 // release is the baseline; uniform colour controls isolate shape from weave.
-const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),Module=require("node:module"),ts=require("typescript"),{execFileSync}=require("node:child_process");
+const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),Module=require("node:module"),ts=require("typescript"),sharp=require("sharp"),{execFileSync}=require("node:child_process");
 const BASE="5126ebb6f82179b7fe25106e71f234248af3a677",component="src/components/PhotoOutfitPreview.tsx";
 function bundle(revision){
   const modules=new Map();
@@ -74,8 +74,34 @@ async function run(){
       assert.equal(item.untruncated,true,"selected fabric text must wrap instead of clipping");
       assert.equal(item.fullName,item.displayedName,"visible names must match their full selected-fabric title");
     }
-    await fabricSummary.screenshot({path:path.join(out,`fabric-summary-readable-${width}.png`)});
-    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`dark-tucked-${width}.png`)});
+    // A Chromium element screenshot intermittently returned an all-white
+    // 1440px summary while the same garment names were visibly painted in the
+    // complete card. Crop from the *actual full-card screenshot* and reject
+    // empty evidence so a green DOM test cannot hide a broken screenshot.
+    const photoCard=page.locator(".newDesignerPhoto");
+    const cardBounds=await photoCard.boundingBox(),summaryBounds=await fabricSummary.boundingBox();
+    assert.ok(cardBounds && summaryBounds && cardBounds.width>0 && cardBounds.height>0);
+    const cardPng=await photoCard.screenshot({path:path.join(out,`dark-tucked-${width}.png`)});
+    const cardMeta=await sharp(cardPng).metadata();
+    const scaleX=cardMeta.width/cardBounds.width,scaleY=cardMeta.height/cardBounds.height;
+    const left=Math.max(0,Math.floor((summaryBounds.x-cardBounds.x)*scaleX));
+    const top=Math.max(0,Math.floor((summaryBounds.y-cardBounds.y)*scaleY));
+    const clip={
+      left,top,
+      width:Math.min(cardMeta.width-left,Math.ceil(summaryBounds.width*scaleX)),
+      height:Math.min(cardMeta.height-top,Math.ceil(summaryBounds.height*scaleY)),
+    };
+    assert.ok(clip.width>0 && clip.height>0 &&
+      left+clip.width<=cardMeta.width && top+clip.height<=cardMeta.height,
+      "fabric summary crop must stay inside photographed-card evidence");
+    const summaryPng=await sharp(cardPng).extract(clip).png().toBuffer();
+    const {data:pixels,info:pixelsInfo}=await sharp(summaryPng).removeAlpha().raw().toBuffer({resolveWithObject:true});
+    let visibleInk=0;
+    for(let i=0;i<pixels.length;i+=pixelsInfo.channels){
+      if(pixels[i]<235 || pixels[i+1]<235 || pixels[i+2]<235)visibleInk++;
+    }
+    assert.ok(visibleInk>100,"fabric summary screenshot must actually contain legible text and controls");
+    fs.writeFileSync(path.join(out,`fabric-summary-readable-${width}.png`),summaryPng);
     // Source comparison must explain whose garment photograph is being shown
     // before the photo, rather than presenting an unrendered design as source.
     await page.getByRole("button",{name:"Compare",exact:true}).click();
