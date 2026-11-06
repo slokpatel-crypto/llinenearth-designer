@@ -1000,7 +1000,7 @@ test("creative visual QA and physical craft decisions cannot bypass tailor hando
       conceptId:"SYNTHETIC-CREATIVE-REVIEW",
       name:"Synthetic creative review only",
       thesis:"No real garment or photographic evidence",
-      explorationClass:"experimental",
+      explorationClass:"balanced",
       iteration:1,
       researchUtilization:0,
       treatments:[],
