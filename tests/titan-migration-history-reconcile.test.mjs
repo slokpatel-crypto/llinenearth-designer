@@ -90,3 +90,12 @@ test('unexpected staging-only version is explicitly blocked even with claimed ma
   assert.equal(report.results.find(row => row.version === '20261001').reason, 'COLLISION_NOT_IN_STAGING_HISTORY');
   assert.equal(report.blocked, 2);
 });
+
+
+test('inventory filename must match version and remain a safe SQL basename', () => {
+  const invalid = ['20261002_a.sql', '../20261001_a.sql', '20261001_../a.sql', '20261001_a.SQL', '20261001_.sql', '20261001_a/b.sql'];
+  for (const filename of invalid) {
+    assert.throws(() => reconcileMigrationHistory([{...inventory[0], filename}], []), /Invalid inventory row/, filename);
+  }
+  assert.equal(reconcileMigrationHistory(inventory, []).release_ready, false);
+});
