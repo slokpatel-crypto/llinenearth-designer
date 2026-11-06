@@ -99,3 +99,12 @@ test('inventory filename must match version and remain a safe SQL basename', () 
   }
   assert.equal(reconcileMigrationHistory(inventory, []).release_ready, false);
 });
+
+
+test('calendar-normalized staging timestamp cannot masquerade as valid provenance', () => {
+  const invalid = { ...evidence, collected_at: '2026-02-30T12:00:00.000Z' };
+  const report = reconcileMigrationHistory(inventory, [{version:'20261001',sha256:hash('a'),evidence:invalid}]);
+  assert.equal(report.release_ready, false);
+  assert.equal(report.results[0].status, 'BLOCKED');
+  assert.equal(report.results[0].reason, 'MISSING_AUTHENTICATED_SQL_IDENTITY');
+});
