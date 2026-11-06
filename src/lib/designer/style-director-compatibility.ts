@@ -30,6 +30,11 @@ const candidateCollarFamilies = (name: string) => ({
   // with a simultaneously named camp, band or cutaway construction.
   spread: /\bspread[- ]collar\b/i.test(name),
   buttonDown: /\bbutton[- ]?down(?:[- ]collar)?\b/i.test(name),
+  point: /\bpoint(?:[ -]?(?:standard|\(standard\)))?[- ]collar\b/i.test(name),
+  club: /\bclub[- ]collar\b/i.test(name),
+  wing: /\bwing[- ]collar\b/i.test(name),
+  tab: /\btab[- ]collar\b/i.test(name),
+  pin: /\bpin[- ]collar\b/i.test(name),
 });
 
 const candidateSleeveLengths = (name: string) => ({
@@ -47,11 +52,13 @@ export function styleDirectorCandidateCollar(
   candidateShirt: string,
   legacyChoices: readonly string[],
 ): { legacy: string | null; versioned: "cuban_camp_collar" | "mandarin_band_collar" | "cutaway_collar" } | null {
-  const { camp, band, cutaway, spread, buttonDown } = candidateCollarFamilies(candidateShirt);
-  // Only a single advanced collar has a versioned resolver here. Ordinary
-  // spread/button-down candidates use the existing legacy path; mixtures
-  // require review rather than a silently chosen advanced construction.
-  if (Number(camp) + Number(band) + Number(cutaway) !== 1 || spread || buttonDown) return null;
+  const collarFamilies = candidateCollarFamilies(candidateShirt);
+  const { camp, band, cutaway } = collarFamilies;
+  // Resolve only a single advanced collar. Named ordinary collars retain
+  // their existing legacy path, and mixed requests cannot silently choose
+  // one construction just because it matches a recognised advanced ID.
+  if (Number(camp) + Number(band) + Number(cutaway) !== 1 ||
+      Object.values(collarFamilies).filter(Boolean).length !== 1) return null;
   const matcher = camp ? /\b(?:camp|cuban)\b/i : band ? /\b(?:band|mandarin)\b/i : /\bcutaway\b/i;
   return {
     legacy: legacyChoices.find((label) => matcher.test(label) &&
@@ -155,8 +162,8 @@ export type DirectorConstructionIssue = {
  */
 export function styleDirectorCandidateWordingIssues(candidateShirt: string, candidateTrouser = ""): DirectorConstructionIssue[] {
   const issues: DirectorConstructionIssue[] = [];
-  const { camp, band, cutaway, spread, buttonDown } = candidateCollarFamilies(candidateShirt);
-  if (Number(camp) + Number(band) + Number(cutaway) + Number(spread) + Number(buttonDown) > 1) {
+  const collarFamilies = candidateCollarFamilies(candidateShirt);
+  if (Object.values(collarFamilies).filter(Boolean).length > 1) {
     issues.push({
       code: "ambiguous_candidate_collar",
       explanation: "This proposed shirt names conflicting collar families; confirm one construction before approving the recommendation.",
