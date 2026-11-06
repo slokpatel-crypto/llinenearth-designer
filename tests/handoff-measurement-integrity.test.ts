@@ -194,6 +194,57 @@ test("tucked shirt requires its own length anchor for handoff and printable read
   assert.match(staleHtml,/Shirt-length anchor is not recorded/);
 });
 
+test("cross-field circumference discrepancies stay review-only without relying on upstream checks",()=>{
+  const neck:FinishedTarget={
+    label:"Finished collar circumference",bodyCm:105,
+    easeCm:{min:2,max:4},finishedCm:{min:107,max:109},basis:"body_plus_ease",
+  };
+  const oversizedSeat:FinishedTarget={
+    ...seat,bodyCm:180,finishedCm:{min:184,max:186},
+  };
+  const standardShirt=[chest,shoulder,sleeve];
+  const standardTrouser=[waist,seat,inseam,outseam];
+
+  // Good synthetic data remains eligible for software-only tailor review.
+  assert.deepEqual(auditHandoffMeasurements({
+    shirt:standardShirt,trouser:standardTrouser,
+  }),{errors:[],missing:[]});
+
+  const cases=[
+    {
+      shirt:[...standardShirt,neck],
+      trouser:standardTrouser,
+      fragment:"neck circumference is not smaller than chest",
+    },
+    {
+      shirt:standardShirt,
+      trouser:[waist,oversizedSeat,inseam,outseam],
+      fragment:"waist and seat differ by over 75 cm",
+    },
+  ];
+  for(const {shirt,trouser,fragment} of cases){
+    const audit=auditHandoffMeasurements({shirt,trouser});
+    assert.deepEqual(audit.errors,[]);
+    assert.ok(audit.missing.some(s=>s.includes(fragment)),fragment);
+    const revision=createRevision(shirt,trouser);
+    // A source status or previous check set is not physical evidence.
+    assert.deepEqual(revision.garmentSpec.constructionChecks,[]);
+    const packet=buildProductionHandoff(revision);
+    assert.equal(packet.status,"review_required");
+    assert.ok(packet.unresolved.some(s=>s.includes(fragment)));
+    const html=buildTailorTechPackHtml(packet);
+    assert.match(html,/review required/);
+    assert.match(html,/NO CUTTING AUTHORISATION/);
+  }
+
+  const complete=buildProductionHandoff(createRevision(standardShirt,standardTrouser));
+  const stale=structuredClone(complete);
+  stale.construction.shirt.finishedTargets.push(neck);
+  assert.equal(stale.status,"ready_for_tailor_review");
+  assert.match(buildTailorTechPackHtml(stale),/review required/);
+  assert.match(buildTailorTechPackHtml(stale),/neck circumference is not smaller than chest/);
+});
+
 test("the printable sheet independently rejects tampered target ranges",()=>{
   const packet=buildProductionHandoff(createRevision([chest],[waist,seat]));
   packet.construction.shirt.finishedTargets[0].finishedCm.min=1;
