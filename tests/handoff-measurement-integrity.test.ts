@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffMeasurements, auditHandoffProductionReadiness } from "../src/lib/designer/handoff-measurements.ts";
+import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffHumanNotes, auditHandoffMeasurements, auditHandoffProductionReadiness } from "../src/lib/designer/handoff-measurements.ts";
 import { buildProductionHandoff, buildVerifiedProductionHandoff, verifyProductionHandoff } from "../src/lib/designer/production-handoff.ts";
 import { lockGarmentSpec } from "../src/lib/designer/design-lock.ts";
 import { buildTailorTechPackHtml, buildVerifiedTailorTechPackHtml, techPackFilename } from "../src/lib/designer/tech-pack.ts";
@@ -937,6 +937,51 @@ test("tech-pack download filename is deterministic and rejects traversal or ambi
     const forged={...packet,designRevisionId:id};
     assert.throws(()=>techPackFilename(forged),/Unsafe tailor tech pack filename/);
   }
+});
+
+test("unresolved decisions and caveats must remain bounded human-readable note arrays",async()=>{
+  const make=()=>createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  assert.deepEqual(auditHandoffHumanNotes([],"unresolved"),{errors:[],missing:[]});
+  assert.deepEqual(auditHandoffHumanNotes(["Human sample verification pending."],"caveats"),
+    {errors:[],missing:[]});
+  const original=buildProductionHandoff(make());
+  assert.equal(original.status,"ready_for_tailor_review");
+  assert.deepEqual(original.unresolved,[]);
+  assert.match(buildTailorTechPackHtml(original),/NO CUTTING AUTHORISATION/);
+
+  const malformed:unknown[]=[null,undefined,"unreviewed",{},[null],[""],
+    ["  "],["valid",12],["x".repeat(4001)],["bad"+String.fromCharCode(0)+"text"]];
+  for(const value of malformed){
+    assert.ok(auditHandoffHumanNotes(value,"unresolved").errors.length);
+    assert.ok(auditHandoffHumanNotes(value,"caveats").errors.length);
+    for(const field of ["unresolved","caveats"] as const){
+      const revision=make();
+      (revision.garmentSpec as unknown as Record<string,unknown>)[field]=value;
+      assert.throws(()=>buildProductionHandoff(revision),/Unsafe tailor handoff review notes/);
+
+      const stale=structuredClone(original);
+      (stale as unknown as Record<string,unknown>)[field]=value;
+      assert.throws(()=>buildTailorTechPackHtml(stale),/Unsafe tailor tech pack review notes/);
+    }
+  }
+  const revision=make();
+  revision.garmentSpec.unresolved=["Customer confirmation of hem construction is still pending."];
+  revision.garmentSpec.caveats=["Physical sample and pattern signoff are outstanding."];
+  const packet=buildProductionHandoff(revision);
+  assert.equal(packet.status,"review_required");
+  const html=buildTailorTechPackHtml(packet);
+  assert.match(html,/Customer confirmation of hem construction is still pending/);
+  assert.match(html,/Physical sample and pattern signoff are outstanding/);
+
+  const locked=await lockGarmentSpec(revision.garmentSpec,{
+    lockedAt:"2026-11-05T11:00:00.000Z",
+  });
+  const verified=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(await verifyProductionHandoff(verified,locked),true);
+  assert.equal(verified.status,"review_required");
+  const verifiedHtml=await buildVerifiedTailorTechPackHtml(verified,locked);
+  assert.match(verifiedHtml,/Customer confirmation of hem construction is still pending/);
+  assert.match(verifiedHtml,/NO CUTTING AUTHORISATION/);
 });
 
 test("unresolved locked design decisions cannot claim tailor-review readiness",()=>{
