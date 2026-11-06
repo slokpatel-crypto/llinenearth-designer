@@ -206,6 +206,7 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/source Compare must not silently save/);
   assert.match(script,/rapidFabricSwitchStable=true/);
   assert.match(script,/newLookStartsFullView=true/);
+  assert.match(script,/pendingPreviewStatusTruthful=true/);
   assert.match(script,/new look must not inherit the previous garment\'s Zoom Fit crop/);
   assert.match(script,/old canvas must be hidden while the new fabric is pending/);
   assert.match(script,/name:"Trouser shape",exact:true/);
@@ -277,4 +278,11 @@ test("the underlying deterministic image is not announced when a source/photorea
   assert.ok(source.includes('aria-hidden={!ready || showOriginal || showCreativeAi}'));
   assert.ok(source.includes('role="img" aria-hidden={!ready || showOriginal || showCreativeAi}'));
   assert.ok(source.includes('showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal"'));
+});
+
+test("preview status does not claim a rendered photograph while pending or failed", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.ok(source.includes('error ? "PREVIEW UNAVAILABLE" : !ready ? "PREPARING SELECTED LOOK"'));
+  assert.ok(source.includes('aria-busy={!ready && !error}'));
+  assert.ok(source.includes('style={{visibility:ready?"visible":"hidden"}}'));
 });
