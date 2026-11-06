@@ -265,3 +265,11 @@ claims of new real-world photographs or tailor acceptance.
 - Fixed the **actual visibility defect**, not the test: the sole `role=status` construction-limits notice now renders as a standalone `div` directly inside `.newDesignerPhoto`, immediately below the compact intro and *above the photograph*. The banner retains the actual selected unsupported construction labels, original model identity and no new physical claims.
 - Strengthened unit regression to verify it is a non-paragraph, outside the compact intro's CSS hiding rule, and browser regression now selects the direct-child warning. Its bounding-rectangle non-overlap test against `.floatingContactDock` still runs at 390/768/1440px, with screenshots. No global CSS, contact widget, image asset, compositor, masks, stock, measurements, or renderer physics were changed.
 - Fresh exact-head CI/browser screenshots required after this corrective commit. Do not claim the prior failed head passed or merge/deploy.
+
+## November 6 — customer preview state / rapid fabric switching
+
+- `PhotoOutfitPreview` now hides the old canvas while another fabric image is pending (`ready=false`) and marks the stage busy. A failed new render must not leave an old outfit visibly posing as the new design.
+- A design signature change closes any previous `Compare` source photo. Source comparison now requires a ready instant preview, and photoreal versus source controls explicitly switch modes, preventing source images from covering a photoreal render.
+- New source regressions and actual customer-control Chromium scenario at 390, 768, 1440px: delay an unseen fabric photo, select it with Compare open, immediately switch back, assert no old-canvas flash/source overlay, correct selected fabric, stable final pixels and no horizontal overflow.
+- Scope: `src/components/PhotoOutfitPreview.tsx`, `tests/photo-preview-fidelity.test.ts`, `scripts/verify-photo-form.cjs`, this checkpoint. Existing photographed model `linen-earth-studio-model-v1`, source photographs, crop/textile rules, spec, inventory, measurements and native 3D remain unchanged.
+- Browser regression is authored but not yet verified. Require new exact-head Full CI, Non-3D Studio QA, screenshot artifact inspection and all six npm release gates. Do not carry forward prior `6d27577` green results. DRAFT only, no merge/deploy or claimed physical approval.
