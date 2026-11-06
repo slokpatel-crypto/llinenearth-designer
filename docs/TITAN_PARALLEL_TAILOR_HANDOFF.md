@@ -108,5 +108,12 @@ Work only in measurement audit, existing production handoff and printable tailor
 - [ ] Verify Full CI, Non-3D, PostgreSQL, browser and build on the new exact-head SHA. Earlier successful quality/unit results do not certify this continuation.
 - [ ] Neither badge nor lock-verification wording establishes physical size accuracy, a signed lock timestamp, fit tolerance, pattern approval or human cutting authorisation. No merge or deploy.
 
+## Malformed construction check review gate (2026-11-06)
+- [x] Inspected construction review semantics at both locked handoff and printable tech-pack boundaries. Previously only `review` and `warning` severities blocked readiness; invalid or unrecognized severities could be ignored, even when a caller's locked recipe claimed review-ready status.
+- [x] Added a pure final-boundary construction check audit that requires an array of valid records, nonempty bounded ID/message and exactly the known `info`, `review`, `warning` severity vocabulary. Malformed checks now fail closed in both `buildProductionHandoff` and the independent tech-pack rendering boundary. No new physical readiness claims were added.
+- [x] Synthetic-only regression covers valid `info`, invalid severity, blank ID/message, null records/missing collection, post-handoff tampered printable checks and a SHA256-locked malformed recipe. No measurements from the original model have been invented.
+- [ ] Confirm Full CI, Non-3D, DB, browser, build and exact-head tests for the final SHA. Older passing workflow steps do not transfer to new head.
+- [ ] Independent integration review, verified real measurements, physical fit approval, pattern/allowance signoff and material evidence still outstanding; cutting, merge and deployment remain blocked.
+
 ## Resume
 On each `continue`, inspect latest main, branch SHA and PR checks; address the first unfinished acceptance item with real code or recorded evidence. Keep draft until all relevant checks pass. Do not merge/deploy without revalidating main and physical evidence. No approval or measured physical value is inferred here.
