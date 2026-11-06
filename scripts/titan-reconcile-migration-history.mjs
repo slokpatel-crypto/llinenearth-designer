@@ -19,7 +19,13 @@ export function reconcileMigrationHistory(inventory, staging) {
     if (!row || typeof row.version !== 'string' || !version.test(row.version) || seen.has(row.version)) throw new Error('Invalid or repeated staging version');
     seen.add(row.version);
     const candidates = byVersion.get(row.version) ?? [];
-    const claimedEvidence = row.evidence?.source === 'authenticated-read-only-staging' && typeof row.evidence?.project_id === 'string' && row.evidence.project_id.length > 0 && typeof row.evidence?.collected_at === 'string' && !Number.isNaN(Date.parse(row.evidence.collected_at)) && row.evidence?.sql_identity_verified === true;
+    // A self-attested JSON object is never authentication. Reject malformed, stale,
+    // or future-dated provenance before even marking a match for manual review.
+    const collectedAt = row.evidence?.collected_at;
+    const collectedMs = typeof collectedAt === 'string' && /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$/.test(collectedAt) ? Date.parse(collectedAt) : NaN;
+    const nowMs = Date.now();
+    const fresh = Number.isFinite(collectedMs) && collectedMs <= nowMs && nowMs - collectedMs <= 24 * 60 * 60 * 1000;
+    const claimedEvidence = row.evidence?.source === 'authenticated-read-only-staging' && typeof row.evidence?.project_id === 'string' && /^[a-zA-Z0-9_-]{3,128}$/.test(row.evidence.project_id) && fresh && row.evidence?.sql_identity_verified === true;
     const hash = typeof row.sha256 === 'string' && hex64.test(row.sha256) ? row.sha256 : null;
     const matches = hash ? candidates.filter(c => c.sha256 === hash) : [];
     // Evidence fields are untrusted input: a claimed match still requires independent review.
