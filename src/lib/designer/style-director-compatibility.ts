@@ -761,7 +761,8 @@ export type DirectorConstructionIssue = {
     "candidate_shirt_fit_mismatch" | "ambiguous_candidate_shirt_fit" | "unverified_shirt_fit_photo" |
     "candidate_trouser_fit_mismatch" | "ambiguous_candidate_trouser_fit" | "unverified_trouser_fit_photo" |
     "wide_leg_tapered_fit_mismatch" | "pleated_fit_flat_front_mismatch" |
-    "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
+    "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch" |
+    "unknown_collar_finish" | "short_sleeve_contrast_cuff_finish";
   explanation: string;
 };
 
@@ -1052,6 +1053,27 @@ export function styleDirectorConstructionIssues(
     issues.push({
       code: "formal_camp_collar",
       explanation: "An open, untucked camp-collar shirt needs an explicit formality review for this occasion; no tailor approval is implied.",
+    });
+  }
+  // The collar/contrast finish is an independent construction field rather
+  // than a normal option-group ID. Review unknown historical/forged values
+  // without modifying an existing locked design.
+  if (shirt.collarFinish !== undefined &&
+      !["Self-fabric", "White contrast collar", "White contrast collar + cuffs"].includes(shirt.collarFinish)) {
+    issues.push({
+      code: "unknown_collar_finish",
+      explanation: "The saved collar/contrast finish is not part of the supported construction vocabulary; confirm the requested material placement.",
+    });
+  }
+  // The open short-sleeve hem is not a separate cuff construction. A
+  // documented white collar + cuffs finish cannot be certified when the
+  // locked sleeve explicitly ends in that open hem. Review, never silently
+  // substitute a cuff or an unverified contrast fabric.
+  if (shirt.sleeve === "half_sleeve" && shirt.cuff === "open_short_hem_cuff" &&
+      shirt.collarFinish === "White contrast collar + cuffs") {
+    issues.push({
+      code: "short_sleeve_contrast_cuff_finish",
+      explanation: "A short-sleeve open hem cannot certify the selected white contrast cuff finish; confirm the actual sleeve-end construction and fabric before cutting.",
     });
   }
   if (shirt.sleeve === "half_sleeve" && shirt.cuff === "french_double_cuff") {
