@@ -26,7 +26,7 @@ export function reconcileMigrationHistory(inventory, staging) {
     const status = claimedEvidence && matches.length === 1 ? 'REVIEW_REQUIRED' : 'BLOCKED';
     results.push({version: row.version, status, candidate_count: candidates.length, matched_filename: status === 'REVIEW_REQUIRED' ? matches[0].filename : null, reason: status === 'REVIEW_REQUIRED' ? 'INDEPENDENT_REVIEW_REQUIRED' : !claimedEvidence ? 'MISSING_AUTHENTICATED_SQL_IDENTITY' : !hash ? 'MISSING_SQL_FINGERPRINT' : matches.length === 0 ? 'NO_FINGERPRINT_MATCH' : 'AMBIGUOUS_FINGERPRINT'});
   }
-  for (const [v, candidates] of byVersion) if (candidates.length > 1 && !seen.has(v)) results.push({version:v,status:'BLOCKED',candidate_count:candidates.length,matched_filename:null,reason:'COLLISION_NOT_IN_STAGING_HISTORY'});
+  for (const [v, candidates] of byVersion) if (!seen.has(v)) results.push({version:v,status:'BLOCKED',candidate_count:candidates.length,matched_filename:null,reason:candidates.length > 1 ? 'COLLISION_NOT_IN_STAGING_HISTORY' : 'MIGRATION_NOT_IN_STAGING_HISTORY'});
   return {release_ready:false, results, blocked:results.length, note:'Input attestation fields are claims, not independently authenticated proof. No migration deployment approval is possible from this report.'};
 }
 
@@ -35,6 +35,6 @@ if (process.argv[1] && import.meta.url === new URL('file://' + process.argv[1]).
     if (process.argv.length !== 4) throw new Error('Usage: node scripts/titan-reconcile-migration-history.mjs inventory.json staging.json');
     const report = reconcileMigrationHistory(JSON.parse(readFileSync(process.argv[2], 'utf8')), JSON.parse(readFileSync(process.argv[3], 'utf8')));
     console.log(JSON.stringify(report, null, 2));
-    process.exitCode = report.blocked ? 2 : 0;
+    // A comparison report never authorizes release, including empty inputs.\n    process.exitCode = report.release_ready === true && report.blocked === 0 ? 0 : 2;
   } catch (error) { console.error(String(error.message)); process.exitCode = 2; }
 }
