@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditHandoffMeasurements } from "../src/lib/designer/handoff-measurements.ts";
+import { auditHandoffConstructionChecks, auditHandoffMeasurements } from "../src/lib/designer/handoff-measurements.ts";
 import { buildProductionHandoff, buildVerifiedProductionHandoff, verifyProductionHandoff } from "../src/lib/designer/production-handoff.ts";
 import { lockGarmentSpec } from "../src/lib/designer/design-lock.ts";
 import { buildTailorTechPackHtml, buildVerifiedTailorTechPackHtml, techPackFilename } from "../src/lib/designer/tech-pack.ts";
@@ -589,6 +589,47 @@ test("unresolved locked design decisions cannot claim tailor-review readiness",(
   assert.match(html,/review required/);
   assert.match(html,/Customer must approve the exact waistband construction/);
   assert.match(html,/NO CUTTING AUTHORISATION/);
+});
+
+test("malformed construction checks cannot hide behind a ready status or verified lock",async()=>{
+  const shirt=[chest,shoulder,sleeve];
+  const trousers=[waist,seat,inseam,outseam];
+  const info={id:"SYNTHETIC-INFO",severity:"info" as const,message:"No open issue in this synthetic case."};
+  assert.deepEqual(auditHandoffConstructionChecks([info]),{errors:[],missing:[]});
+  const good=createRevision(shirt,trousers);
+  good.garmentSpec.constructionChecks=[info];
+  assert.equal(buildProductionHandoff(good).status,"ready_for_tailor_review");
+
+  for(const bad of [
+    {id:"SYNTHETIC-UNKNOWN",severity:"critical",message:"Must not be ignored."},
+    {id:" ",severity:"info",message:"Missing check identity."},
+    {id:"SYNTHETIC-BLANK",severity:"review",message:" "},
+    null,
+  ]){
+    const typedBad=bad as unknown as typeof good.garmentSpec.constructionChecks[number];
+    const malformed=createRevision(shirt,trousers);
+    malformed.garmentSpec.constructionChecks=[typedBad];
+    assert.ok(auditHandoffConstructionChecks([bad]).errors.length>0);
+    assert.throws(()=>buildProductionHandoff(malformed),/Unsafe tailor handoff construction checks/);
+    const packet=buildProductionHandoff(createRevision(shirt,trousers));
+    packet.construction.checks=[typedBad];
+    assert.throws(()=>buildTailorTechPackHtml(packet),/Unsafe tailor tech pack construction checks/);
+  }
+  const absent=createRevision(shirt,trousers);
+  absent.garmentSpec.constructionChecks=null as unknown as typeof absent.garmentSpec.constructionChecks;
+  assert.throws(()=>buildProductionHandoff(absent),/Unsafe tailor handoff construction checks/);
+
+  // The signed recipe hash alone cannot turn an unknown check severity into
+  // an acceptable manufacturing instruction or trusted printable export.
+  const malicious=createRevision(shirt,trousers);
+  malicious.garmentSpec.constructionChecks=[{
+    id:"SYNTHETIC-UNKNOWN",severity:"critical" as "info",message:"Escalate to the tailor.",
+  }];
+  const locked=await lockGarmentSpec(malicious.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
+  await assert.rejects(
+    buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z"),
+    /Unsafe tailor handoff construction checks/,
+  );
 });
 
 test("open construction checks fail closed even when the source incorrectly claims ready",()=>{
