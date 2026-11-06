@@ -31,6 +31,7 @@ import {
   styleDirectorCandidateWearIssues,
   styleDirectorConstructionIssues,
   styleDirectorSilhouetteFitIssues,
+  styleDirectorProposedCroppedHem,
   styleDirectorIntelligenceTrustWeight,
   styleDirectorPresentationIssues,
   styleDirectorWearForCandidate,
@@ -168,6 +169,46 @@ test("Pleated Straight fit needs an actual front-pleat ID, not an assumed one", 
   assert.deepEqual(styleDirectorSilhouetteFitIssues(spec({}, {
     type: "unrecognised_type", fit: "unrecognised_fit", pleat: "flat_front",
   }).pant), [], "unknown IDs are reviewed by the existing catalog gate, not guessed");
+});
+
+test("new cropped legacy proposals retain consistent canonical type break and hem IDs", () => {
+  const proposed = spec({}, {type: "cropped_ankle", break: "cropped_above_ankle"});
+  const before = JSON.stringify(proposed);
+  assert.deepEqual(styleDirectorConstructionIssues(proposed).map(issue => issue.code),
+    ["cropped_type_hem_mismatch", "cropped_break_hem_mismatch"],
+    "the existing legacy conversion has a plain hem despite matching cropped selectors");
+  const selectedHem = styleDirectorProposedCroppedHem(proposed.pant);
+  assert.equal(selectedHem, "cropped_above_ankle_hem");
+  assert.equal(JSON.stringify(proposed), before, "pure resolution must not edit a locked design");
+  const newlyProposed = spec({}, { ...proposed.pant, hem: selectedHem });
+  assert.deepEqual(styleDirectorConstructionIssues(newlyProposed), [],
+    "a newly proposed cropped type and above-ankle break must reconstruct a consistent hem");
+  assert.equal(JSON.stringify(proposed), before, "existing locked ID remains unchanged");
+  const agent = readFileSync("src/lib/style-director-agent.ts", "utf8");
+  assert.ok(agent.includes("const proposedCroppedHem=styleDirectorProposedCroppedHem(spec.pant)"));
+  assert.ok(agent.includes("if(proposedCroppedHem) spec.pant.hem=proposedCroppedHem"));
+});
+
+test("cropped proposal hem inference never conceals contradictory length selections", () => {
+  const cases = [
+    {type: "cropped_ankle", break: "no_break"},
+    {type: "cropped_ankle", break: "full_break"},
+    {type: "cropped_ankle", break: "slight_break"},
+    {type: "formal_flat_front", break: "cropped_above_ankle"},
+    {type: "pleated_trouser", break: "cropped_above_ankle"},
+    {type: "wide_leg_relaxed_drape", break: "full_break"},
+    {type: "unknown_type", break: "cropped_above_ankle"},
+    {type: "cropped_ankle", break: "unknown_break"},
+  ] as const;
+  for (const fields of cases) {
+    const locked = spec({}, fields);
+    const snapshot = JSON.stringify(locked);
+    assert.equal(styleDirectorProposedCroppedHem(locked.pant), null, JSON.stringify(fields));
+    assert.equal(JSON.stringify(locked), snapshot, "unverified combinations must not be rewritten");
+  }
+  assert.equal(styleDirectorProposedCroppedHem({
+    type: "cropped_ankle", break: "cropped_above_ankle",
+  }), "cropped_above_ankle_hem", "canonical parity is deterministic");
 });
 
 test("cropped hem cannot simultaneously claim a full shoe break", () => {
