@@ -1280,7 +1280,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     ...(pantPatternScaleVerified?[]:[pant.name]),
     ...(panelPatternScaleVerified||!visiblePanelFabric?[]:[visiblePanelFabric.name]),
   ])];
-  const photoScaleNotice=photoPatternScaleDisclosure([shirt.patternType,pant.patternType,...(visiblePanelFabric?[visiblePanelFabric.patternType]:[])],previewScaleVerified,approximateScaleItems);
+  const photoScaleNotice=photoPatternScaleDisclosure([shirt.patternType,pant.patternType,...(visiblePanelFabric?[visiblePanelFabric.patternType]:[])],previewScaleVerified,approximateScaleItems,"pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists");
   const renderSignature=JSON.stringify({
     shirt:shirt.id,
     pant:pant.id,
