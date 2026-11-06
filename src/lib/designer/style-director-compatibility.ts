@@ -155,7 +155,8 @@ export function styleDirectorCandidateSpecialCollar(
   const label = option.legacyLabel || option.label;
   return {
     versioned: id,
-    legacy: option.legacySelectable !== false && legacyChoices.includes(label) ? label : null,
+    legacy: option.legacySelectable !== false &&
+      option.renderSupport.livePreview !== "none" && legacyChoices.includes(label) ? label : null,
   };
 }
 
@@ -287,7 +288,7 @@ export function styleDirectorCandidateTrouserFront(
 export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "band_collar_construction" | "short_sleeve_double_cuff" |
     "pleated_front_missing_pleat" | "flat_front_has_pleat" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_stacked_break" | "cropped_break_hem_mismatch" | "cropped_type_hem_mismatch" |
-    "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" |
+    "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" | "unverified_special_collar_photo" |
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_cutaway_photo" |
     "ambiguous_candidate_collar" | "candidate_collar_mismatch" | "ambiguous_candidate_sleeve" | "candidate_sleeve_mismatch" | "ambiguous_candidate_wear" |
     "candidate_shirt_wear_mismatch" | "legacy_trouser_mismatch" |
@@ -652,6 +653,19 @@ export function styleDirectorPresentationIssues(
     issues.push({
       code: "unverified_camp_photo",
       explanation: "The Cuban/Camp collar is selectable but has no verified live photographic rendering; confirm the preview against the intended construction.",
+    });
+  }
+  // A legacy-selectable text label is not proof that the deterministic
+  // photographic compositor supports its actual collar geometry. Specialty
+  // collars without a live preview, or intentionally non-legacy wing collars,
+  // must remain review-only even when a label matches the saved ID.
+  const versionedCollarOption = optionsFor("shirt.collar").find(option => option.id === versionedCollar);
+  if (versionedCollar !== "cuban_camp_collar" &&
+      (versionedCollarOption?.renderSupport.livePreview === "none" ||
+       versionedCollarOption?.legacySelectable === false)) {
+    issues.push({
+      code: "unverified_special_collar_photo",
+      explanation: "This versioned collar has no approved corresponding live photographic selector; its label must not be treated as a verified shape.",
     });
   }
   if (versionedCollar === "cutaway_collar") {
