@@ -12,16 +12,18 @@ export function styleDirectorIntelligenceTrustWeight(
 ): number {
   // Unrecognised, incomplete or rejected provenance must not influence
   // ranking. A persisted object may predate the current closed vocabulary.
-  if (!value ||
-      !Object.prototype.hasOwnProperty.call(value, "trust") ||
-      !Object.prototype.hasOwnProperty.call(value, "reviewStatus") ||
-      !["unreviewed", "approved", "corrected", "rejected"].includes(value.reviewStatus) ||
-      !["reviewed", "high-confidence", "provisional"].includes(value.trust) ||
-      value.reviewStatus === "rejected") return 0;
-  if (value.trust === "reviewed") {
-    return value.reviewStatus === "approved" || value.reviewStatus === "corrected" ? 1 : 0.28;
+  // Persisted provenance must be plain data, not inherited or computed
+  // accessors that can fabricate an approval (or throw during scoring).
+  const trust = value && Object.getOwnPropertyDescriptor(value, "trust");
+  const review = value && Object.getOwnPropertyDescriptor(value, "reviewStatus");
+  if (!trust || !review || !("value" in trust) || !("value" in review) ||
+      !["unreviewed", "approved", "corrected", "rejected"].includes(review.value) ||
+      !["reviewed", "high-confidence", "provisional"].includes(trust.value) ||
+      review.value === "rejected") return 0;
+  if (trust.value === "reviewed") {
+    return review.value === "approved" || review.value === "corrected" ? 1 : 0.28;
   }
-  return value.trust === "high-confidence" ? 0.72 : 0.28;
+  return trust.value === "high-confidence" ? 0.72 : 0.28;
 }
 
 const candidateCollarFamilies = (name: string) => ({
