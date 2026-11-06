@@ -234,6 +234,46 @@ export function styleDirectorCandidateWideLeg(candidateTrouser: string): boolean
 }
 
 /**
+ * A drawstring waistband request is independent of silhouette and pleat count.
+ * Negated or explicitly optional wording is not a positive manufacturing
+ * instruction. Persisted IDs must be compared separately, never rewritten.
+ */
+export function styleDirectorCandidateDrawstringWaistband(
+  candidateTrouser: string,
+): "requested" | "prohibited" | "ambiguous" | null {
+  const token = String.raw`draw[- ]?string`;
+  const preBan = new RegExp(String.raw`\\b(?:no|without|avoid|never|not|do\\s+not|don['’]?t)\\s+(?:(?:use|add|include|choose|wear|have)\\s+)?(?:a\\s+)?${token}\\b`, "gi");
+  const postBan = new RegExp(String.raw`\\b${token}\\s+(?:(?:is|are)\\s+)?(?:forbidden|prohibited|banned|not\\s+(?:allowed|permitted))\\b`, "gi");
+  const optional = new RegExp(String.raw`\\b${token}\\s+(?:(?:is|are)\\s+)?(?:optional|unnecessary|not\\s+(?:required|mandatory|needed))\\b`, "gi");
+  let banned = false;
+  let neutral = candidateTrouser.replace(preBan, () => { banned = true; return " "; });
+  neutral = neutral.replace(postBan, () => { banned = true; return " "; });
+  neutral = neutral.replace(optional, " ");
+  const requested = /\\bdraw[- ]?string\\b/i.test(neutral);
+  if (requested && banned) return "ambiguous";
+  return requested ? "requested" : banned ? "prohibited" : null;
+}
+
+/**
+ * A requested drawstring must match the canonical waistband independently of
+ * the trouser front (flat/pleated) or width. A prohibition must not silently
+ * approve a drawstring. An ambiguous request gets its own wording review.
+ */
+export function styleDirectorCandidateWaistbandIssues(
+  candidateTrouser: string,
+  pant: Pick<StyleSpecV2["pant"], "waistband">,
+): DirectorConstructionIssue[] {
+  const intent = styleDirectorCandidateDrawstringWaistband(candidateTrouser);
+  if (intent === null || intent === "ambiguous") return [];
+  const isDrawstring = pant.waistband === "drawstring_elastic";
+  if ((intent === "requested" && isDrawstring) || (intent === "prohibited" && !isDrawstring)) return [];
+  return [{
+    code: "candidate_waistband_mismatch",
+    explanation: "The proposed drawstring request or prohibition conflicts with the saved waistband option; confirm the locked construction before tailoring.",
+  }];
+}
+
+/**
  * Interpret an untrusted candidate trouser label without turning negative
  * instructions such as "without visible pleats" into positive pleat requests.
  * Null means the label supplies no supported front construction instruction.
@@ -304,6 +344,7 @@ export type DirectorConstructionIssue = {
     "candidate_shirt_wear_mismatch" | "legacy_trouser_mismatch" |
     "ambiguous_candidate_trouser_front" | "legacy_cuff_mismatch" | "legacy_placket_mismatch" | "legacy_shirt_fit_mismatch" |
     "candidate_trouser_pleat_mismatch" | "unknown_trouser_pleat_option" | "unknown_versioned_option" |
+    "candidate_waistband_mismatch" | "ambiguous_candidate_waistband" |
     "legacy_rise_mismatch" | "legacy_waistband_mismatch" | "legacy_break_mismatch";
   explanation: string;
 };
@@ -346,6 +387,12 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
     issues.push({
       code: "ambiguous_candidate_trouser_front",
       explanation: "This proposed trouser names both a flat front and positive pleats; confirm one front construction before approving the recommendation.",
+    });
+  }
+  if (styleDirectorCandidateDrawstringWaistband(candidateTrouser) === "ambiguous") {
+    issues.push({
+      code: "ambiguous_candidate_waistband",
+      explanation: "The proposed trouser both requests and forbids a drawstring waistband; confirm a single construction before approving.",
     });
   }
   return issues;
