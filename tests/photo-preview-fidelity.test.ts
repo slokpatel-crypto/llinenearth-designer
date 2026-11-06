@@ -197,6 +197,7 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/floatingContactDock/);
   assert.match(script,/wide-source-compared-/);
   assert.match(script,/wideSourceComparisonVerified=true/);
+  assert.match(script,/sourceCanvasAccessibilityIsolated=true/);
   assert.match(script,/boundaryQaSourceIsolationVerified=true/);
   assert.match(script,/boundaryQaZoomAligned=true/);
   assert.match(script,/Zoom Fit outlines must follow photographed garment scale/);
@@ -269,4 +270,11 @@ test("a changed look does not keep a previous photo zoom or diagnostic garment s
   assert.ok(reset.includes("setShowBoundaries(false);"),"new selected look must not inherit old seam QA");
   assert.ok(reset.includes("setShowOriginal(false);"),"new selected look must not inherit source comparison");
   assert.ok(reset.includes("setFinalLocked(false);"),"new selection must not retain old design lock");
+});
+
+test("the underlying deterministic image is not announced when a source/photoreal view is displayed", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.ok(source.includes('aria-hidden={!ready || showOriginal || showCreativeAi}'));
+  assert.ok(source.includes('role="img" aria-hidden={!ready || showOriginal || showCreativeAi}'));
+  assert.ok(source.includes('showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal"'));
 });
