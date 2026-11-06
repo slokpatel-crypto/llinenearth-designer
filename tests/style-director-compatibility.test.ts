@@ -30,6 +30,7 @@ import {
   styleDirectorCandidateWordingIssues,
   styleDirectorCandidateWearIssues,
   styleDirectorConstructionIssues,
+  styleDirectorSilhouetteFitIssues,
   styleDirectorIntelligenceTrustWeight,
   styleDirectorPresentationIssues,
   styleDirectorWearForCandidate,
@@ -109,6 +110,64 @@ test("pleated and flat-front trouser construction must match selected type", () 
   assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
     type: "pleated_trouser", pleat: "single_pleat_forward",
   })), []);
+});
+
+test("wide-leg silhouettes cannot silently keep explicitly tapered fit IDs", () => {
+  const tapered = ["slim_tapered", "regular_tapered", "korean_tapered"] as const;
+  for (const fit of tapered) {
+    assert.ok(optionsFor("pant.fit").some(option => option.id === fit), fit);
+    const locked = spec({}, { type: "wide_leg_relaxed_drape", fit, pleat: "flat_front" });
+    const original = JSON.stringify(locked);
+    const result = styleDirectorSilhouetteFitIssues(locked.pant);
+    assert.deepEqual(result.map(issue => issue.code),
+      ["wide_leg_tapered_fit_mismatch"], fit);
+    assert.deepEqual(styleDirectorConstructionIssues(locked), result,
+      "locked design must pass the same pure compatibility review");
+    assert.deepEqual(styleDirectorSilhouetteFitIssues(locked.pant), result,
+      "review must be deterministic");
+    assert.equal(JSON.stringify(locked), original, "cannot silently rewrite locked leg shape");
+  }
+  for (const fit of ["wide_leg_drape", "baggy_wide", "korean_straight_wide"] as const) {
+    assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
+      type: "wide_leg_relaxed_drape", fit, pleat: "flat_front",
+    })), [], "valid wide-leg fit cannot be rejected: " + fit);
+  }
+  assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
+    type: "wide_leg_relaxed_drape", fit: "wide_leg_drape", pleat: "single_pleat_reverse",
+  })), [], "wide-leg trousers may legitimately have front pleats");
+  for (const fit of tapered) {
+    assert.deepEqual(styleDirectorSilhouetteFitIssues(spec({}, {
+      type: "cropped_ankle", fit, pleat: "flat_front",
+    }).pant), [], "cropped length does not imply a wide fit: " + fit);
+  }
+});
+
+test("Pleated Straight fit needs an actual front-pleat ID, not an assumed one", () => {
+  for (const type of ["formal_flat_front", "wide_leg_relaxed_drape", "pleated_trouser"] as const) {
+    const locked = spec({}, { type, fit: "pleated_straight", pleat: "flat_front" });
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorSilhouetteFitIssues(locked.pant);
+    assert.deepEqual(issues.map(x => x.code),
+      ["pleated_fit_flat_front_mismatch"], type);
+    assert.ok(styleDirectorConstructionIssues(locked).some(x =>
+      x.code === "pleated_fit_flat_front_mismatch"), type);
+    assert.equal(JSON.stringify(locked), before, "review cannot write a fabricated front pleat");
+  }
+  for (const pleat of [
+    "single_pleat_forward", "single_pleat_reverse",
+    "double_pleat_forward", "double_pleat_reverse",
+  ] as const) {
+    assert.ok(optionsFor("pant.pleat").some(option => option.id === pleat));
+    assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
+      type: "pleated_trouser", fit: "pleated_straight", pleat,
+    })), [], "existing pleat counts and directions remain compatible: " + pleat);
+  }
+  assert.deepEqual(styleDirectorSilhouetteFitIssues(spec({}, {
+    type: "formal_flat_front", fit: "straight_classic", pleat: "flat_front",
+  }).pant), [], "ordinary flat-front fit remains valid");
+  assert.deepEqual(styleDirectorSilhouetteFitIssues(spec({}, {
+    type: "unrecognised_type", fit: "unrecognised_fit", pleat: "flat_front",
+  }).pant), [], "unknown IDs are reviewed by the existing catalog gate, not guessed");
 });
 
 test("cropped hem cannot simultaneously claim a full shoe break", () => {
