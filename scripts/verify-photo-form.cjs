@@ -55,6 +55,26 @@ async function run(){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     const dark=await page.locator("#designer-shirt option").evaluateAll(options=>options.find(o=>/Black - Jute Feel/.test(o.textContent))?.value);assert.ok(dark);
     await page.locator("#designer-shirt").selectOption(dark);await ready(page);
+    // The compact mobile CSS uses very small 6px/9px defaults for labels
+    // and names. Test the actual visible nested type, not only source JSX.
+    const fabricSummary=page.locator(".newDesignerPhotoSummaryCompact");
+    const fabricType=await fabricSummary.evaluate(root=>
+      [...root.querySelectorAll(":scope > div:not(.newDesignerPhotoActions)")].slice(0,2).map(item=>{
+        const label=item.querySelector("span b"),name=item.querySelector("strong b");
+        const fullName=item.querySelector("strong");
+        if(!label || !name || !fullName)throw Error("Fabric summary missing visible text");
+        return {labelPx:parseFloat(getComputedStyle(label).fontSize),
+          namePx:parseFloat(getComputedStyle(name).fontSize),
+          untruncated:item.scrollWidth<=item.clientWidth+1,
+          fullName:fullName.title,displayedName:name.textContent};
+      }));
+    assert.equal(fabricType.length,2);
+    for(const item of fabricType){
+      assert.ok(item.labelPx>=10 && item.namePx>=12,"mobile selected fabric names must be readable");
+      assert.equal(item.untruncated,true,"selected fabric text must wrap instead of clipping");
+      assert.equal(item.fullName,item.displayedName,"visible names must match their full selected-fabric title");
+    }
+    await fabricSummary.screenshot({path:path.join(out,`fabric-summary-readable-${width}.png`)});
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`dark-tucked-${width}.png`)});
     // Source comparison must explain whose garment photograph is being shown
     // before the photo, rather than presenting an unrendered design as source.
@@ -99,6 +119,7 @@ async function run(){
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`dark-untucked-${width}.png`)});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     summary.viewports.push({width,overflow:false,realCataloguePreview:true,tuckedAndUntuckedScreenshots:true});
+    summary.viewports[summary.viewports.length-1].fabricSummaryReadable=true;
     // Exercise the ACTUAL customer controls, not just pure IDs. Advanced v2
     // sleeve/pleat specifications may be valid tailor instructions while the
     // original fixed photograph continues to show full sleeves/single pleats.
