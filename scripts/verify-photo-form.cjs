@@ -276,7 +276,17 @@ async function run(){
     await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");
     await page.getByRole("combobox",{name:"Trouser shape",exact:true}).selectOption("Wide-leg / Relaxed Drape Trouser");
     await ready(page);
+    // These contours annotate only the deterministic Canvas garment masks.
+    // They must never be overlaid on a raw source photograph or final photoreal.
+    const previewTools=page.locator("details.newDesignerPreviewTools");
+    if(!(await previewTools.evaluate(element=>element.open)))await previewTools.locator("summary").click();
+    await page.getByRole("button",{name:"Boundary QA",exact:true}).click();
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),1,
+      "boundary QA must annotate the live deterministic selected-design preview");
     await page.getByRole("button",{name:"Compare",exact:true}).click();
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0,
+      "source Compare must never inherit selected-preview garment boundary geometry");
+    assert.equal(await page.getByRole("button",{name:"Hide boundaries",exact:true}).isDisabled(),true);
     const original=page.locator(".newDesignerPhotoOriginal");
     await original.waitFor();
     assert.equal(await page.getByRole("button",{name:"Show design to save",exact:true}).isDisabled(),true,
@@ -304,8 +314,13 @@ async function run(){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`wide-source-compared-${width}.png`)});
     summary.viewports[summary.viewports.length-1].wideSourceComparisonVerified=true;
+    summary.viewports[summary.viewports.length-1].boundaryQaSourceIsolationVerified=true;
     await page.getByRole("button",{name:"Show design",exact:true}).click();
     assert.equal(await original.count(),0);
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),1,
+      "returning from source Compare must restore the selected design's QA contours");
+    await page.getByRole("button",{name:"Hide boundaries",exact:true}).click();
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0);
     assert.equal(await page.getByRole("button",{name:"Save",exact:true}).isEnabled(),true,
       "returning to the actual selected design must restore its Save action");
     // Race two ACTUAL shirt selections against an uncached, delayed catalogue
