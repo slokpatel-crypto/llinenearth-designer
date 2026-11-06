@@ -37,6 +37,51 @@ const candidateCollarFamilies = (name: string) => ({
   pin: /\bpin[- ]collar\b/i.test(name),
 });
 
+type CandidateCollarFamily = keyof ReturnType<typeof candidateCollarFamilies>;
+
+const collarFamilyIds: Record<CandidateCollarFamily, readonly string[]> = {
+  camp: ["cuban_camp_collar"],
+  band: ["mandarin_band_collar"],
+  cutaway: ["cutaway_collar"],
+  spread: ["spread_collar", "english_spread_collar"],
+  buttonDown: ["button_down_collar", "soft_button_down"],
+  point: ["point_standard_collar"],
+  club: ["club_collar"],
+  wing: ["wing_collar"],
+  tab: ["tab_collar"],
+  pin: ["pin_collar"],
+};
+
+/** Keep forbidden/optional collar phrases out of positive candidate selection. */
+function candidateCollarIntent(name: string): {
+  requested: ReturnType<typeof candidateCollarFamilies>;
+  prohibited: CandidateCollarFamily[];
+  ambiguous: boolean;
+} {
+  const token = "(?:camp|cuban|band|mandarin|cutaway|spread|button[- ]?down|point(?:[ -]?(?:standard|\\(standard\\)))?|club|wing|tab|pin)(?:[- ]collar)?";
+  const prefixBan = new RegExp("\\b(?:no|without|avoid|never|not|do\\s+not|don['’]?t)\\s+(?:(?:use|include|choose|wear|add|have|want)\\s+)?(?:(?:a|any|the)\\s+)?(" + token + ")\\b", "gi");
+  const suffixBan = new RegExp("\\b(" + token + ")\\s+(?:(?:is|are)\\s+)?(?:forbidden|prohibited|banned|not\\s+(?:allowed|permitted)|(?:must|should)\\s+not\\s+be\\s+(?:used|worn))\\b", "gi");
+  const prefixOptional = new RegExp("\\b(?:optional|maybe)\\s+(" + token + ")\\b", "gi");
+  const suffixOptional = new RegExp("\\b(" + token + ")\\s+(?:(?:is|are)\\s+)?(?:optional|not\\s+(?:required|needed|mandatory))\\b", "gi");
+  const prohibited = new Set<CandidateCollarFamily>();
+  const recordBan = (_match: string, named: string): string => {
+    const found = candidateCollarFamilies(named);
+    (Object.keys(found) as CandidateCollarFamily[]).forEach(family => {
+      if (found[family]) prohibited.add(family);
+    });
+    return " ";
+  };
+  let positive = name.replace(prefixBan, recordBan).replace(suffixBan, recordBan);
+  positive = positive.replace(prefixOptional, " ").replace(suffixOptional, " ");
+  const requested = candidateCollarFamilies(positive);
+  const named = (Object.keys(requested) as CandidateCollarFamily[]).filter(family => requested[family]);
+  return {
+    requested,
+    prohibited: [...prohibited],
+    ambiguous: named.length > 1 || named.some(family => prohibited.has(family)),
+  };
+}
+
 /**
  * Only select an ordinary photographed collar when exactly one explicit
  * collar family is named. This rejects "widespread", "button-downish" and
@@ -46,8 +91,9 @@ const candidateCollarFamilies = (name: string) => ({
 export function styleDirectorCandidateOrdinaryCollar(
   candidateShirt: string,
 ): "spread" | "button_down" | null {
-  const families = candidateCollarFamilies(candidateShirt);
-  if (Object.values(families).filter(Boolean).length !== 1) return null;
+  const intent = candidateCollarIntent(candidateShirt);
+  const families = intent.requested;
+  if (intent.ambiguous || Object.values(families).filter(Boolean).length !== 1) return null;
   return families.spread ? "spread" : families.buttonDown ? "button_down" : null;
 }
 
@@ -114,12 +160,13 @@ export function styleDirectorCandidateCollar(
   candidateShirt: string,
   legacyChoices: readonly string[],
 ): { legacy: string | null; versioned: "cuban_camp_collar" | "mandarin_band_collar" | "cutaway_collar" } | null {
-  const collarFamilies = candidateCollarFamilies(candidateShirt);
+  const intent = candidateCollarIntent(candidateShirt);
+  const collarFamilies = intent.requested;
   const { camp, band, cutaway } = collarFamilies;
   // Resolve only a single advanced collar. Named ordinary collars retain
   // their existing legacy path, and mixed requests cannot silently choose
   // one construction just because it matches a recognised advanced ID.
-  if (Number(camp) + Number(band) + Number(cutaway) !== 1 ||
+  if (intent.ambiguous || Number(camp) + Number(band) + Number(cutaway) !== 1 ||
       Object.values(collarFamilies).filter(Boolean).length !== 1) return null;
   const matcher = camp ? /\b(?:camp|cuban)\b/i : band ? /\b(?:band|mandarin)\b/i : /\bcutaway\b/i;
   return {
@@ -142,8 +189,9 @@ export function styleDirectorCandidateSpecialCollar(
   candidateShirt: string,
   legacyChoices: readonly string[],
 ): { versioned: "point_standard_collar" | "club_collar" | "wing_collar" | "tab_collar" | "pin_collar"; legacy: string | null } | null {
-  const families = candidateCollarFamilies(candidateShirt);
-  if (Object.values(families).filter(Boolean).length !== 1) return null;
+  const intent = candidateCollarIntent(candidateShirt);
+  const families = intent.requested;
+  if (intent.ambiguous || Object.values(families).filter(Boolean).length !== 1) return null;
   const id = families.point ? "point_standard_collar"
     : families.club ? "club_collar"
     : families.wing ? "wing_collar"
@@ -170,19 +218,15 @@ export function styleDirectorCandidateCollarIssues(
   candidateShirt: string,
   shirt: Pick<StyleSpecV2["shirt"], "collar">,
 ): DirectorConstructionIssue[] {
-  const families = candidateCollarFamilies(candidateShirt);
-  if (Object.values(families).filter(Boolean).length !== 1) return [];
-  const accepted: readonly string[] = families.camp ? ["cuban_camp_collar"]
-    : families.band ? ["mandarin_band_collar"]
-    : families.cutaway ? ["cutaway_collar"]
-    : families.spread ? ["spread_collar", "english_spread_collar"]
-    : families.buttonDown ? ["button_down_collar", "soft_button_down"]
-    : families.point ? ["point_standard_collar"]
-    : families.club ? ["club_collar"]
-    : families.wing ? ["wing_collar"]
-    : families.tab ? ["tab_collar"]
-    : families.pin ? ["pin_collar"] : [];
-  return accepted.includes(shirt.collar) ? [] : [{
+  const intent = candidateCollarIntent(candidateShirt);
+  if (intent.ambiguous) return []; // The wording gate reports the contradiction.
+  const positiveFamily = (Object.keys(intent.requested) as CandidateCollarFamily[])
+    .find(family => intent.requested[family]);
+  const incorrectRequest = positiveFamily !== undefined &&
+    !collarFamilyIds[positiveFamily].includes(shirt.collar);
+  const forbiddenSaved = intent.prohibited.some(family =>
+    collarFamilyIds[family].includes(shirt.collar));
+  return !incorrectRequest && !forbiddenSaved ? [] : [{
     code: "candidate_collar_mismatch",
     explanation: "The proposed shirt names a collar construction different from its locked versioned collar ID; confirm the collar before tailoring.",
   }];
@@ -686,8 +730,8 @@ export type DirectorConstructionIssue = {
  */
 export function styleDirectorCandidateWordingIssues(candidateShirt: string, candidateTrouser = ""): DirectorConstructionIssue[] {
   const issues: DirectorConstructionIssue[] = [];
-  const collarFamilies = candidateCollarFamilies(candidateShirt);
-  if (Object.values(collarFamilies).filter(Boolean).length > 1) {
+  const collarIntent = candidateCollarIntent(candidateShirt);
+  if (collarIntent.ambiguous) {
     issues.push({
       code: "ambiguous_candidate_collar",
       explanation: "This proposed shirt names conflicting collar families; confirm one construction before approving the recommendation.",
