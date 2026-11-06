@@ -22,6 +22,10 @@ const candidateCollarFamilies = (name: string) => ({
   camp: /\b(?:camp|cuban)(?:[- ]collar)?\b/i.test(name),
   band: /\b(?:band|mandarin)(?:[- ]collar)?\b/i.test(name),
   cutaway: /\bcutaway(?:[- ]collar)?\b/i.test(name),
+  // These ordinary collars have legacy photographic IDs. They still conflict
+  // with a simultaneously named camp, band or cutaway construction.
+  spread: /\bspread[- ]collar\b/i.test(name),
+  buttonDown: /\bbutton[- ]?down(?:[- ]collar)?\b/i.test(name),
 });
 
 const candidateSleeveLengths = (name: string) => ({
@@ -39,10 +43,10 @@ export function styleDirectorCandidateCollar(
   candidateShirt: string,
   legacyChoices: readonly string[],
 ): { legacy: string | null; versioned: "cuban_camp_collar" | "mandarin_band_collar" | "cutaway_collar" } | null {
-  const { camp, band, cutaway } = candidateCollarFamilies(candidateShirt);
-  // Conflicting named collar families are ambiguous, not permission to pick
-  // the first match and silently rewrite a proposed construction ID.
-  if (Number(camp) + Number(band) + Number(cutaway) !== 1) return null;
+  const { camp, band, cutaway, spread, buttonDown } = candidateCollarFamilies(candidateShirt);
+  // A named ordinary collar conflicting with an advanced collar is ambiguous
+  // too. Never select a versioned construction from only half the request.
+  if (Number(camp) + Number(band) + Number(cutaway) + Number(spread) + Number(buttonDown) !== 1) return null;
   const matcher = camp ? /\b(?:camp|cuban)\b/i : band ? /\b(?:band|mandarin)\b/i : /\bcutaway\b/i;
   return {
     legacy: legacyChoices.find((label) => matcher.test(label) &&
@@ -146,8 +150,8 @@ export type DirectorConstructionIssue = {
  */
 export function styleDirectorCandidateWordingIssues(candidateShirt: string, candidateTrouser = ""): DirectorConstructionIssue[] {
   const issues: DirectorConstructionIssue[] = [];
-  const { camp, band, cutaway } = candidateCollarFamilies(candidateShirt);
-  if (Number(camp) + Number(band) + Number(cutaway) > 1) {
+  const { camp, band, cutaway, spread, buttonDown } = candidateCollarFamilies(candidateShirt);
+  if (Number(camp) + Number(band) + Number(cutaway) + Number(spread) + Number(buttonDown) > 1) {
     issues.push({
       code: "ambiguous_candidate_collar",
       explanation: "This proposed shirt names conflicting collar families; confirm one construction before approving the recommendation.",
