@@ -526,7 +526,8 @@ test("locked block provenance cannot contradict its pattern strategy",async()=>{
   };
   // Old source records may carry a block without a version. Preserve all
   // recorded construction details while withholding review-ready status.
-  const legacy=buildProductionHandoff(sample);
+  const legacySource=structuredClone(sample);
+  const legacy=buildProductionHandoff(legacySource);
   assert.equal(legacy.status,"review_required");
   assert.ok(legacy.unresolved.some(note=>note.includes("source version is not recorded")));
   assert.equal(legacy.construction.blockStrategy?.shirtBlock,"balanced-shirt");
@@ -546,7 +547,7 @@ test("locked block provenance cannot contradict its pattern strategy",async()=>{
     typeof unsupported.garmentSpec.source.blockStrategyVersion;
   assert.throws(()=>buildProductionHandoff(unsupported),/Unsafe tailor handoff block provenance/);
 
-  const unsigned=await lockGarmentSpec(legacy.garmentSpec,{
+  const unsigned=await lockGarmentSpec(legacySource.garmentSpec,{
     lockedAt:"2026-11-05T11:00:00.000Z",
   });
   const packet=await buildVerifiedProductionHandoff(unsigned,"2026-11-05T11:01:00.000Z");
