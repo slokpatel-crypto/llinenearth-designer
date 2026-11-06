@@ -1,6 +1,6 @@
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
 import { verifyLockedDesignRevision } from "./design-lock.ts";
-import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
+import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffFitProvenance, auditHandoffMeasurements, auditHandoffProductionReadiness } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
 export const PRODUCTION_HANDOFF_VERSION="linen-earth-production-handoff-v1" as const;
@@ -100,6 +100,10 @@ export function buildProductionHandoff(
     : visualizationSource==null
       ? ["Locked design visualization readiness is not recorded; tailor must confirm preview-to-cut consistency before production."]
       : [];
+  const readinessAudit=auditHandoffProductionReadiness(spec.readiness);
+  if(readinessAudit.errors.length) {
+    throw new Error(`Unsafe tailor handoff readiness: ${readinessAudit.errors.join(" ")}`);
+  }
   const measurementSourceNote=spec.source.measurementProfileVersion===1 ? [] : [
     "A versioned measurement profile is not recorded; reconstruct and verify the measurement units and landmarks before tailor review.",
   ];
@@ -137,6 +141,7 @@ export function buildProductionHandoff(
     ...checkAudit.missing,
     ...creativeAudit.missing,
     ...missingVisualReview,
+    ...readinessAudit.missing,
     ...blockAudit.missing,
     ...missingBlockProvenance,
     ...spec.unresolved,
@@ -153,8 +158,8 @@ export function buildProductionHandoff(
     (check)=>check.severity==="review"||check.severity==="warning",
   );
   const ready=spec.status==="ready_for_tailor_review"
-    && spec.readiness.tailoring!=="insufficient_measurements"
-    && spec.readiness.materialVerification==="verified"
+    && spec.readiness?.tailoring==="tailor_review_required"
+    && spec.readiness?.materialVerification==="verified"
     && unresolved.length===0
     && !constructionReviewOpen
     && measurementAudit.missing.length===0
