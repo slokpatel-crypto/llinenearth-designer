@@ -57,3 +57,19 @@ test("cropped hem proposal fails closed for missing or unrecognized break IDs", 
     assert.equal(JSON.stringify(pant), snapshot, "proposal must not mutate the saved pant");
   }
 });
+
+test("cropped hem proposal rejects incompatible or malformed trouser type IDs", () => {
+  for (const type of [undefined, null, "", "cropped_ankle ", "formal_flat_front", "unknown"]) {
+    const pant = Object.freeze({
+      type,
+      break: "cropped_above_ankle",
+      hem: "plain_hem",
+    });
+    const original = JSON.stringify(pant);
+    const input = pant as unknown as Parameters<typeof styleDirectorProposedCroppedHem>[0];
+    assert.equal(styleDirectorProposedCroppedHem(input), null,
+      "a matching break cannot authorize a cropped hem for another trouser type");
+    assert.equal(styleDirectorProposedCroppedHem(input), null, "replay must be stable");
+    assert.equal(JSON.stringify(pant), original, "saved IDs must remain unchanged");
+  }
+});
