@@ -439,3 +439,29 @@ test("a trouser-only duplicate cannot shadow a later shirt-eligible row in suppo
     "the earlier trouser-only duplicate must not hide the eligible supporting shirt");
   assert.equal(JSON.stringify(catalogue), before);
 });
+
+test("repeated Style Director decisions are deterministic across garment roles and preserve caller data", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const shirt = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("shirt"));
+  const pant = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("trouser") && f.id !== shirt?.id);
+  assert.ok(shirt && pant);
+  const catalogue = [shirt, pant, { ...shirt }, { ...pant }];
+  const before = JSON.stringify(catalogue);
+  const shared = {
+    occasion: "Work" as const, mood: "Sharp" as const, time: "Day" as const,
+    climate: "Indoor" as const, colorDirection: "Surprise me" as const,
+  };
+  for (const garment of ["shirt", "trouser"] as const) {
+    const answers = { ...shared, garment };
+    const first = createStyleDirectorLooks(answers, catalogue);
+    const second = createStyleDirectorLooks(answers, catalogue);
+    assert.deepEqual(second, first, "identical catalogue and answers must yield identical recommendations");
+    assert.equal(first.length, 1, "duplicate physical IDs must not multiply looks");
+    assert.equal(first[0].realModel?.shirtId, shirt.id);
+    assert.equal(first[0].realModel?.pantId, pant.id);
+    assert.equal(first[0].realModel?.styleSpec.styleSchemaVersion, 2);
+  }
+  assert.equal(JSON.stringify(catalogue), before, "repeated decisions must never mutate catalogue inputs");
+});
