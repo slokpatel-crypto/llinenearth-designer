@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditHandoffConstructionChecks, auditHandoffMeasurements } from "../src/lib/designer/handoff-measurements.ts";
+import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffMeasurements } from "../src/lib/designer/handoff-measurements.ts";
 import { buildProductionHandoff, buildVerifiedProductionHandoff, verifyProductionHandoff } from "../src/lib/designer/production-handoff.ts";
 import { lockGarmentSpec } from "../src/lib/designer/design-lock.ts";
 import { buildTailorTechPackHtml, buildVerifiedTailorTechPackHtml, techPackFilename } from "../src/lib/designer/tech-pack.ts";
@@ -458,6 +458,61 @@ test("unknown advanced cut ID is never passed off as an exact reconstructable ta
   assert.match(html,/nonexistent_shape/);
   assert.match(html,/review required/);
   assert.match(html,/NO CUTTING AUTHORISATION/);
+});
+
+test("open pattern-block adjustments never silently become ready or approved cutting instructions",async()=>{
+  const make=(severity:"info"|"review"|"warning")=>{
+    const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+    revision.garmentSpec.blockStrategy={
+      shirtBlock:"shaped-shirt",trouserBlock:"clean-upper-block",
+      torsoShape:"balanced",seatShape:"balanced",
+      adjustments:[{id:"BLOCK-SYNTHETIC-FIT",garment:"shirt",area:"shoulder/armhole",
+        severity,message:"Verify shoulder balance on physical sample."}],
+    };
+    return revision;
+  };
+
+  const info=buildProductionHandoff(make("info"));
+  assert.equal(info.status,"ready_for_tailor_review");
+  assert.deepEqual(info.unresolved,[]);
+  for(const severity of ["review","warning"] as const){
+    const revision=make(severity);
+    const packet=buildProductionHandoff(revision);
+    assert.equal(packet.status,"review_required",severity);
+    assert.ok(packet.unresolved.some(x=>x.includes("BLOCK-SYNTHETIC-FIT")
+      && x.includes("Verify shoulder balance")),severity);
+    const html=buildTailorTechPackHtml(packet);
+    assert.match(html,/BLOCK-SYNTHETIC-FIT/);
+    assert.match(html,/Verify shoulder balance on physical sample/);
+    assert.match(html,/NO CUTTING AUTHORISATION/);
+  }
+  const stale=structuredClone(info);
+  if(!stale.construction.blockStrategy) throw Error("Missing sample block strategy");
+  stale.construction.blockStrategy.adjustments[0].severity="review";
+  const legacyHtml=buildTailorTechPackHtml(stale);
+  assert.match(legacyHtml,/Block adjustment BLOCK-SYNTHETIC-FIT/);
+  assert.match(legacyHtml,/review required/);
+
+  const unknown=make("info");
+  if(!unknown.garmentSpec.blockStrategy) throw Error("Missing sample block strategy");
+  unknown.garmentSpec.blockStrategy.adjustments[0].severity="critical" as "info";
+  assert.ok(auditHandoffBlockAdjustments(unknown.garmentSpec.blockStrategy).errors.length);
+  assert.throws(()=>buildProductionHandoff(unknown),/Unsafe tailor handoff block adjustments/);
+  const corrupted=structuredClone(info);
+  if(!corrupted.construction.blockStrategy) throw Error("Missing sample block strategy");
+  corrupted.construction.blockStrategy.adjustments=null as unknown as typeof corrupted.construction.blockStrategy.adjustments;
+  assert.throws(()=>buildTailorTechPackHtml(corrupted),/Unsafe tailor tech pack block adjustments/);
+
+  const locked=await lockGarmentSpec(make("review").garmentSpec,{
+    lockedAt:"2026-11-05T11:00:00.000Z",
+  });
+  const packet=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(packet.status,"review_required");
+  assert.equal(await verifyProductionHandoff(packet,locked),true);
+  const verifiedHtml=await buildVerifiedTailorTechPackHtml(packet,locked);
+  assert.match(verifiedHtml,/BLOCK-SYNTHETIC-FIT/);
+  assert.match(verifiedHtml,/review required/);
+  assert.match(verifiedHtml,/NO CUTTING AUTHORISATION/);
 });
 
 test("printable tech pack preserves locked ease source and complete block instructions",()=>{
