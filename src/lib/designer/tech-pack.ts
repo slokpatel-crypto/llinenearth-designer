@@ -43,7 +43,10 @@ function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSourc
   const audit=auditHandoffMeasurements({
     shirt:shirt.finishedTargets,
     trouser:trouser.finishedTargets,
-  }, { shirtWear:handoff.construction.styleSpec?.shirt.wear ?? shirt.wear });
+  }, {
+    shirtWear:handoff.construction.styleSpec?.shirt.wear ?? shirt.wear,
+    trouserRise:handoff.construction.styleSpec?.pant.rise ?? trouser.rise,
+  });
   if(audit.errors.length) {
     throw new Error(`Unsafe tailor tech pack measurements: ${audit.errors.join(" ")}`);
   }
