@@ -162,7 +162,7 @@ export function styleDirectorCandidateSleeve(
   const { short: shortSleeve, long: longSleeve, bannedShort, bannedLong } = candidateSleeveLengths(candidateShirt);
   // Contradictory sleeve descriptions cannot safely select a construction.
   // Retain the existing default rather than silently interpreting one half.
-  return shortSleeve && !longSleeve && !bannedShort && !bannedLong
+  return shortSleeve && !longSleeve && !bannedShort
     ? { sleeve: "half_sleeve", cuff: "open_short_hem_cuff" }
     : null;
 }
