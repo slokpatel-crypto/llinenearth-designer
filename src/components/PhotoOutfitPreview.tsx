@@ -1737,7 +1737,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   return <section className="newDesignerPhoto" aria-labelledby="designerPhotoTitle">
     <div className="newDesignerPhotoIntro newDesignerPhotoIntroCompact">
       <span>{showOriginal && ready && !showCreativeAi ? "SOURCE REFERENCE" : "LIVE PREVIEW"}</span>
-      <h2 id="designerPhotoTitle">Your look.</h2>
+      <h2 id="designerPhotoTitle">{showOriginal && ready && !showCreativeAi ? "Studio source." : "Your look."}</h2>
     </div>
     {showOriginal && ready && !showCreativeAi && <div className="newDesignerPhotoConstructionNotice" data-photo-source-comparison={templateId==="wide"?"wide":"studio"} role="status" style={{margin:"10px 20px 12px",padding:"9px 12px",borderLeft:"3px solid #a65d43",background:"#faf6f0",color:"#514538",fontSize:"12px",lineHeight:1.5}}>
       <strong>Original source photo, not your selected design</strong> · {templateId==="wide"
