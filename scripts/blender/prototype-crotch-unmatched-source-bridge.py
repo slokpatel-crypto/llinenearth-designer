@@ -1745,6 +1745,9 @@ def main():
     ))
     rigid_pack = component_pack_ops["pack_original_source_uv_face_components"]
     overlap_compare = uv_overlap_ops["compare_original_source_uv_overlap_evidence"]
+    packed_weighted = None
+    packed_weighted_overlap = None
+    packed_weighted_cut = None
     for state, unshifted, unshifted_overlap, initial_cut, tree_state in (
         (weighted_report, weighted_uv, weighted_overlap, weighted_cut, weighted_uv),
         (branch_report, branch_uv, branch_overlap, branch_audit, branch_uv),
@@ -1789,6 +1792,52 @@ def main():
             "tailorCutAndFitApproved": False,
             "productionApproved": False,
         }
+        if state is weighted_report:
+            packed_weighted = packed
+            packed_weighted_overlap = packed_overlap
+            packed_weighted_cut = packed_cut
+    # One bounded genuine source-tree cut on authentic component 0. Only the
+    # smaller resulting face subtree moves in research UV space; source 3D,
+    # garment assets, Blender scenes and exports remain untouched.
+    subtree_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-trouser-component0-subtree-uv-trial.py")
+    ))
+    subtree_trial = subtree_ops["trial_component0_balanced_subtree_uv_pack"](
+        merged_verts, base_faces, packed_weighted["face_uv_loops"],
+        weighted_selection["retainedOriginalSourceEdges"],
+    )
+    subtree_overlap = uv_overlap_audit(base_faces, subtree_trial["face_uv_loops"])
+    subtree_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+        merged_verts, base_faces, subtree_trial["face_uv_loops"],
+        l_remaining + r_remaining_mapped, weighted_uv["report"],
+    )
+    subtree_summary = subtree_trial["report"]
+    subtree_comparison = overlap_compare(packed_weighted_overlap, subtree_overlap)
+    if (subtree_summary["targetComponentId"] != 0
+            or subtree_summary["targetComponentOriginalSourceFaceCount"] != 1220
+            or subtree_summary["newUnclosedSourceUvSeamCount"] != 1
+            or subtree_summary["maximumOriginalTriangleEdgeChangeMm"] > 0.000001
+            or subtree_cut["unclosedSharedUvCutCandidateEdges"] !=
+               packed_weighted_cut["unclosedSharedUvCutCandidateEdges"] + 1
+            or abs((subtree_cut["totalRealGeometryOfUvCutCandidatesMm"] -
+                    packed_weighted_cut["totalRealGeometryOfUvCutCandidatesMm"]) -
+                   subtree_summary["addedActualSourceCutEdgeLengthMm"]) > 0.0001
+            or subtree_summary["productionApproved"]
+            or subtree_cut["productionApproved"]
+            or subtree_comparison["productionApproved"]):
+        raise RuntimeError("Component-0 subtree UV trial lost source or rejection truth.")
+    weighted_report["researchOnlyComponent0SubtreeUvTrial"] = {
+        "researchOnly": True,
+        "trial": subtree_summary,
+        "candidateResearchUvOverlap": subtree_overlap,
+        "packedBaselineVsCandidateOverlap": subtree_comparison,
+        "packedBaselineUvCutNetwork": packed_weighted_cut,
+        "candidateUvCutNetwork": subtree_cut,
+        "sourceMeshAndBodyBVHUnchanged": True,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricAndTailorApproval": False,
+        "productionApproved": False,
+    }
     branch_report["actualSourceUvCutNetworkEvidence"] = branch_audit
     branch_report["actualRealSourceUvTreeEvidence"] = branch_uv["report"]
     branch_report["actualSourceGeometryUnchanged"] = True

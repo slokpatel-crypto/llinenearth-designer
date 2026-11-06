@@ -205,6 +205,26 @@ Research code proof: `source-trouser-component-uv-pack.py` computes true origina
 
 **Next acceptance item:** Reduce **within-component** original source UV overlap without disguising cyclic seam disconnection, metric strain, true cloth grain or actual body collision. Retain current component-packing improvement as a **research-only witness**, not a promoted production pattern. Draft PR #897 remains open; **no merge, Vercel deployment, source export or physical fit approval**.
 
+## 2026-11-06 bounded component-0 one-cut subtree trial
+
+The next isolated experiment opens exactly one genuine retained UV-tree edge
+inside the measured 1,220-face source component 0. The deterministic selection
+maximizes the smaller side of that tree cut (bounded at 610 faces), then rigidly
+translates only that smaller subtree beyond the packed research layout. The
+official native run must report the removed original vertex edge, its actual 3D
+source length, moved/stationary face counts, overlap delta, and exactly one new
+unclosed UV seam. Triangle edge length may not change by more than 0.000001mm.
+
+This tests whether one balanced chart split removes more measured internal UV
+intersection than the exact source-edge cut length it exposes. It does not call
+the resulting subtrees tailor panels, select physical seam allowance, infer
+fabric width/repeat/grain, change any source/body geometry, save a Blender
+scene, export a GLB, or alter `linen-earth-studio-model-v1`. A lower overlap
+count is not sufficient for production: the remaining cyclic seams, body
+collisions, physical cloth behavior and tailor approval stay hard rejected.
+Exact-head pinned Blender evidence is required before recording any numeric
+result. **Research only; no merge, export, deploy or physical approval.**
+
 ## 2026-11-05 next bounded diagnostic — attribute remaining overlap by real source component
 
 The packed weighted layout still has 6,957 positive-area triangle overlaps and the branch-aware layout has 7,128. Before changing another UV tree, the overlap audit now derives component ownership only from genuine shared 3D source edges and reports, for every authentic source component, its face count, internal overlapping triangle/face pairs, pairwise area sum and largest observed overlap. Cross-component counts remain separate. Complete packed scans must report zero cross-component overlaps and reconcile every remaining overlap to exactly one component; capped scans remain lower bounds.

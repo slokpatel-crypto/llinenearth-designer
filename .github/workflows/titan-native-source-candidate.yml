@@ -25,6 +25,7 @@ on:
       - "scripts/blender/source-trouser-max-retained-uv.py"
       - "scripts/blender/source-trouser-uv-overlap-audit.py"
       - "scripts/blender/source-trouser-component-uv-pack.py"
+      - "scripts/blender/source-trouser-component0-subtree-uv-trial.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -42,6 +43,7 @@ on:
       - "tests/crotch-trouser-max-retained-uv-native.test.ts"
       - "tests/crotch-trouser-uv-overlap-native.test.ts"
       - "tests/crotch-trouser-component-uv-native.test.ts"
+      - "tests/crotch-trouser-component0-subtree-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -62,6 +64,7 @@ on:
       - "tests/python/test_source_trouser_max_retained_uv.py"
       - "tests/python/test_source_trouser_uv_overlap.py"
       - "tests/python/test_source_trouser_component_uv_pack.py"
+      - "tests/python/test_source_trouser_component0_subtree_uv.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -87,6 +90,7 @@ on:
       - "scripts/blender/source-trouser-max-retained-uv.py"
       - "scripts/blender/source-trouser-uv-overlap-audit.py"
       - "scripts/blender/source-trouser-component-uv-pack.py"
+      - "scripts/blender/source-trouser-component0-subtree-uv-trial.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -104,6 +108,8 @@ on:
       - "tests/crotch-trouser-max-retained-uv-native.test.ts"
       - "tests/crotch-trouser-uv-overlap-native.test.ts"
       - "tests/crotch-trouser-component-uv-native.test.ts"
+      - "tests/crotch-trouser-component0-subtree-uv-native.test.ts"
+      - "tests/python/test_source_trouser_component0_subtree_uv.py"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -139,6 +145,7 @@ jobs:
           python3 tests/python/test_source_trouser_max_retained_uv.py
           python3 tests/python/test_source_trouser_uv_overlap.py
           python3 tests/python/test_source_trouser_component_uv_pack.py
+          python3 tests/python/test_source_trouser_component0_subtree_uv.py
       - name: Fetch checksum-verified Blender 4.5.14
         shell: bash
         run: |
@@ -1507,6 +1514,51 @@ jobs:
                       assert comparison["candidateWorsenedRealUvInteriorOverlap"] is False
                   else:
                       assert comparison["candidateOverlapTrianglePairDelta"] is None
+              subtree=weighted["researchOnlyComponent0SubtreeUvTrial"]
+              assert subtree["researchOnly"] is True
+              assert subtree["sourceMeshAndBodyBVHUnchanged"] is True
+              assert subtree["sourceUvExportOrSavePerformed"] is False
+              assert subtree["physicalFabricAndTailorApproval"] is False
+              assert subtree["productionApproved"] is False
+              trial=subtree["trial"]
+              assert trial["targetComponentId"] == 0
+              assert trial["targetComponentOriginalSourceFaceCount"] == 1220
+              assert trial["movedOriginalSourceFaceCount"] > 0
+              assert trial["movedOriginalSourceFaceCount"] <= 610
+              assert trial["movedOriginalSourceFaceCount"] + trial[
+                  "stationaryComponent0FaceCount"
+              ] == 1220
+              assert len(trial["removedRetainedOriginalSourceEdge"]) == 2
+              assert trial["addedActualSourceCutEdgeLengthMm"] > 0
+              assert trial["retainedSourceUvTreeJoinCountBefore"] == 2647
+              assert trial["retainedSourceUvTreeJoinCountAfter"] == 2646
+              assert trial["newUnclosedSourceUvSeamCount"] == 1
+              assert trial["maximumOriginalTriangleEdgeChangeMm"] <= 0.000001
+              assert trial["sourceGeometryAndVertexIDsUnchanged"] is True
+              assert trial["realTailorCutApproved"] is False
+              assert trial["physicalBodyFitApproved"] is False
+              assert trial["productionApproved"] is False
+              baseline_cut=subtree["packedBaselineUvCutNetwork"]
+              candidate_cut=subtree["candidateUvCutNetwork"]
+              assert candidate_cut["unclosedSharedUvCutCandidateEdges"] == (
+                  baseline_cut["unclosedSharedUvCutCandidateEdges"] + 1
+              )
+              assert abs((candidate_cut["totalRealGeometryOfUvCutCandidatesMm"] -
+                          baseline_cut["totalRealGeometryOfUvCutCandidatesMm"]) -
+                         trial["addedActualSourceCutEdgeLengthMm"]) <= 0.0001
+              candidate_overlap=subtree["candidateResearchUvOverlap"]
+              subtree_comparison=subtree["packedBaselineVsCandidateOverlap"]
+              assert candidate_overlap["actualTrianglesInspected"] == 5300
+              assert candidate_overlap["auditTruncated"] is False
+              assert candidate_overlap["completeGarmentUvOverlapFreeApproved"] is False
+              assert candidate_overlap["productionApproved"] is False
+              assert subtree_comparison["bothFullResearchUvScansComplete"] is True
+              assert subtree_comparison["candidateOverlapTrianglePairDelta"] == (
+                  subtree_comparison["candidateObservedTriangleOverlapPairs"] -
+                  subtree_comparison["baselineObservedTriangleOverlapPairs"]
+              )
+              assert subtree_comparison["completeGarmentUvApproved"] is False
+              assert subtree_comparison["productionApproved"] is False
               assert branch["productionApproved"] is False
               assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
               assert branch_uv["dualGraphComponentCount"] == 3
