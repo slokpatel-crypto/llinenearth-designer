@@ -1,6 +1,6 @@
 // Actual exported compositors, real photographs and Chromium Canvas. The old
 // release is the baseline; uniform colour controls isolate shape from weave.
-const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),Module=require("node:module"),ts=require("typescript"),{execFileSync}=require("node:child_process");
+const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),Module=require("node:module"),ts=require("typescript"),sharp=require("sharp"),{execFileSync}=require("node:child_process");
 const BASE="5126ebb6f82179b7fe25106e71f234248af3a677",component="src/components/PhotoOutfitPreview.tsx";
 function bundle(revision){
   const modules=new Map();
@@ -29,6 +29,22 @@ const runtime=process.env.LINEN_BROWSER_QA_RUNTIME;if(!runtime)throw Error("Set 
 const {chromium}=Module.createRequire(path.join(runtime,"package.json"))("playwright"),base=process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000",out=path.resolve("artifacts/preview-lifecycle/photo-form");
 const summary={baseline:BASE,browser:"Chromium",physicalAcceptance:false,paidCalls:0,viewports:[],forms:[],errors:[]};let browser,activePage;
 async function ready(page){await page.locator('.newDesignerPhotoStage[data-ready="true"]').waitFor();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.locator('.newDesignerPhotoStage[data-ready="true"]').waitFor();}
+async function actualPhotoPixelHash(page) {
+  return page.locator(".newDesignerPhotoStage>canvas").evaluate(canvas=>{
+    const context=canvas.getContext("2d");
+    if(!context)throw Error("Studio 2D canvas unavailable");
+    const bytes=context.getImageData(0,0,canvas.width,canvas.height).data;
+    // Fixed sample stride and two channels. Detect changed pixels without
+    // shipping the whole image over Playwright transport.
+    let hash=2166136261;
+    for(let i=0;i<bytes.length;i+=16){
+      hash=Math.imul(hash^bytes[i],16777619)>>>0;
+      hash=Math.imul(hash^bytes[i+1],16777619)>>>0;
+      hash=Math.imul(hash^bytes[i+2],16777619)>>>0;
+    }
+    return hash;
+  });
+}
 async function run(){
   fs.mkdirSync(out,{recursive:true});browser=await chromium.launch({headless:true});
   for(const width of [390,768,1440]){
@@ -39,14 +55,267 @@ async function run(){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     const dark=await page.locator("#designer-shirt option").evaluateAll(options=>options.find(o=>/Black - Jute Feel/.test(o.textContent))?.value);assert.ok(dark);
     await page.locator("#designer-shirt").selectOption(dark);await ready(page);
-    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`dark-tucked-${width}.png`)});
+    // The catalogue's Black - Jute Feel shirt and plain Beige trousers have
+    // no recorded visible motif repeat. Verified-repeat language must not
+    // appear simply because Solid is marked scale-exempt in the compositor.
+    const solidScaleNotice=page.locator('[data-photo-caption="instant"]');
+    assert.match(await solidScaleNotice.textContent(),/no visible motif repeat is recorded for these solid selections/i,
+      "solid fabric preview must not claim physical repeat calibration");
+    assert.doesNotMatch(await solidScaleNotice.textContent(),/reviewed physical evidence/,
+      "solid fabric has no calibrated visual motif repeat to advertise");
+    // Make the actual warning readable in the customer's viewport before
+    // collecting screenshot evidence. Playwright element screenshots can
+    // include fixed contact controls if a partially visible warning sits
+    // underneath a dock; DOM text assertions alone miss this obstruction.
+    await solidScaleNotice.evaluate(node=>node.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"}));
+    const solidNoticeBox=await solidScaleNotice.boundingBox();
+    const solidViewport=page.viewportSize();
+    assert.ok(solidNoticeBox && solidViewport
+      && solidNoticeBox.y>=0 && solidNoticeBox.y+solidNoticeBox.height<=solidViewport.height,
+      "solid pattern-scale note must fit the customer viewport");
+    const solidDockBox=await page.locator(".floatingContactDock").boundingBox();
+    if(solidDockBox){
+      const dockCoversNote=solidNoticeBox.x<solidDockBox.x+solidDockBox.width
+        && solidNoticeBox.x+solidNoticeBox.width>solidDockBox.x
+        && solidNoticeBox.y<solidDockBox.y+solidDockBox.height
+        && solidNoticeBox.y+solidNoticeBox.height>solidDockBox.y;
+      assert.equal(dockCoversNote,false,
+        "solid pattern-scale note must not be covered by the floating contact dock in screenshot evidence");
+    }
+    await solidScaleNotice.screenshot({path:path.join(out,`solid-fabric-scale-truthful-${width}.png`)});
+    // The compact mobile CSS uses very small 6px/9px defaults for labels
+    // and names. Test the actual visible nested type, not only source JSX.
+    const compactButtons=await page.locator(".newDesignerPhotoActionsCompact button").evaluateAll(buttons=>
+      buttons.map(button=>{
+        const label=button.querySelector("b");
+        if(!label)throw Error("Compact action needs a visible readable label");
+        const rect=button.getBoundingClientRect();
+        return {name:label.textContent?.trim(),labelPx:parseFloat(getComputedStyle(label).fontSize),
+          height:rect.height,width:rect.width};
+      }));
+    assert.ok(compactButtons.length>=3,"selected preview needs its primary, Compare and Save controls");
+    for(const control of compactButtons){
+      assert.ok(control.name && control.labelPx>=12,"selected preview action text must be at least 12px");
+      assert.ok(control.height>=44 && control.width>=44,
+        "selected preview controls must provide at least 44px touch targets");
+    }
+    const fabricSummary=page.locator(".newDesignerPhotoSummaryCompact");
+    const fabricType=await fabricSummary.evaluate(root=>
+      [...root.querySelectorAll(":scope > div:not(.newDesignerPhotoActions)")].slice(0,2).map(item=>{
+        const label=item.querySelector("span b"),name=item.querySelector("strong b");
+        const fullName=item.querySelector("strong");
+        if(!label || !name || !fullName)throw Error("Fabric summary missing visible text");
+        return {labelPx:parseFloat(getComputedStyle(label).fontSize),
+          namePx:parseFloat(getComputedStyle(name).fontSize),
+          untruncated:item.scrollWidth<=item.clientWidth+1,
+          fullName:fullName.title,displayedName:name.textContent};
+      }));
+    assert.equal(fabricType.length,2);
+    for(const item of fabricType){
+      assert.ok(item.labelPx>=10 && item.namePx>=12,"mobile selected fabric names must be readable");
+      assert.equal(item.untruncated,true,"selected fabric text must wrap instead of clipping");
+      assert.equal(item.fullName,item.displayedName,"visible names must match their full selected-fabric title");
+    }
+    // A Chromium element screenshot intermittently returned an all-white
+    // 1440px summary while the same garment names were visibly painted in the
+    // complete card. Crop from the *actual full-card screenshot* and reject
+    // empty evidence so a green DOM test cannot hide a broken screenshot.
+    const photoCard=page.locator(".newDesignerPhoto");
+    const cardBounds=await photoCard.boundingBox(),summaryBounds=await fabricSummary.boundingBox();
+    assert.ok(cardBounds && summaryBounds && cardBounds.width>0 && cardBounds.height>0);
+    const cardPng=await photoCard.screenshot({path:path.join(out,`dark-tucked-${width}.png`)});
+    const cardMeta=await sharp(cardPng).metadata();
+    const scaleX=cardMeta.width/cardBounds.width,scaleY=cardMeta.height/cardBounds.height;
+    const left=Math.max(0,Math.floor((summaryBounds.x-cardBounds.x)*scaleX));
+    const top=Math.max(0,Math.floor((summaryBounds.y-cardBounds.y)*scaleY));
+    const clip={
+      left,top,
+      width:Math.min(cardMeta.width-left,Math.ceil(summaryBounds.width*scaleX)),
+      height:Math.min(cardMeta.height-top,Math.ceil(summaryBounds.height*scaleY)),
+    };
+    assert.ok(clip.width>0 && clip.height>0 &&
+      left+clip.width<=cardMeta.width && top+clip.height<=cardMeta.height,
+      "fabric summary crop must stay inside photographed-card evidence");
+    const summaryPng=await sharp(cardPng).extract(clip).png().toBuffer();
+    const {data:pixels,info:pixelsInfo}=await sharp(summaryPng).removeAlpha().raw().toBuffer({resolveWithObject:true});
+    let visibleInk=0;
+    for(let i=0;i<pixels.length;i+=pixelsInfo.channels){
+      if(pixels[i]<235 || pixels[i+1]<235 || pixels[i+2]<235)visibleInk++;
+    }
+    assert.ok(visibleInk>100,"fabric summary screenshot must actually contain legible text and controls");
+    fs.writeFileSync(path.join(out,`fabric-summary-readable-${width}.png`),summaryPng);
+    // Capture a true viewport crop of the reachable buttons rather than
+    // a full-card image whose fixed contact bar may overlap their saved pixels.
+    const actionRow=page.locator(".newDesignerPhotoActionsCompact");
+    // Desktop's sticky right column is taller than a 1000px viewport.
+    // It must release that stickiness so the real Lock/Compare/Save row
+    // can be scrolled into view; never hide the defect by relaxing bounds.
+    const rightPanelPosition=await page.locator(".newDesignerRight").evaluate(node=>getComputedStyle(node).position);
+    if(width===1440)assert.equal(rightPanelPosition,"static",
+      "short desktop viewport must unstick its tall photographic action panel");
+    await actionRow.evaluate(node=>node.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"}));
+    const actionRowBox=await actionRow.boundingBox();
+    const actionViewport=page.viewportSize();
+    assert.ok(actionRowBox && actionViewport && actionRowBox.width>0 && actionRowBox.height>=44
+      && actionRowBox.x>=0 && actionRowBox.y>=0
+      && actionRowBox.x+actionRowBox.width<=actionViewport.width
+      && actionRowBox.y+actionRowBox.height<=actionViewport.height,
+      `photo actions must fit inside the reachable viewport: ${JSON.stringify({width,actionRowBox,actionViewport,rightPanelPosition})}`);
+    const contactBox=await page.locator(".floatingContactDock").boundingBox();
+    if(contactBox){
+      const overlaps=actionRowBox.x<contactBox.x+contactBox.width
+        && actionRowBox.x+actionRowBox.width>contactBox.x
+        && actionRowBox.y<contactBox.y+contactBox.height
+        && actionRowBox.y+actionRowBox.height>contactBox.y;
+      assert.equal(overlaps,false,"photo actions must be reachable without the floating contact dock covering them");
+    }
+    const actionClip={
+      x:Math.max(0,Math.floor(actionRowBox.x)),y:Math.max(0,Math.floor(actionRowBox.y)),
+      width:Math.min(actionViewport.width-Math.floor(actionRowBox.x),Math.ceil(actionRowBox.width)),
+      height:Math.min(actionViewport.height-Math.floor(actionRowBox.y),Math.ceil(actionRowBox.height)),
+    };
+    await page.screenshot({path:path.join(out,`compact-actions-readable-${width}.png`),clip:actionClip});
+    // Source comparison must explain whose garment photograph is being shown
+    // before the photo, rather than presenting an unrendered design as source.
+    await page.getByRole("button",{name:"Compare",exact:true}).click();
+    const initialSourceNote=page.locator('.newDesignerPhoto > [data-photo-source-comparison="studio"]');
+    await initialSourceNote.waitFor();
+    assert.match(await initialSourceNote.textContent(),/original unchanged studio photograph/i);
+    assert.equal(await page.locator('[data-photo-construction-mismatch="true"]').count(),0);
+    assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/SOURCE \/ STUDIO PHOTO/);
+    assert.match(await page.locator(".newDesignerPhotoIntroCompact > span").textContent(),/SOURCE REFERENCE/);
+    assert.equal(await page.locator("#designerPhotoTitle").textContent(),"Studio source.");
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(1) > span").textContent(),/SELECTED SHIRT/);
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/SELECTED TROUSER/);
+    assert.equal(await page.locator('[data-photo-caption]').count(),0,
+      "source Compare contains exactly one source-warning panel, not a duplicate caption");
+    const sourceBannerBox=await initialSourceNote.boundingBox();
+    const sourceStageBox=await page.locator(".newDesignerPhotoStage").boundingBox();
+    assert.ok(sourceBannerBox && sourceStageBox && sourceBannerBox.y+sourceBannerBox.height<=sourceStageBox.y,
+      "source provenance banner must stay above the original reference photo");
+    assert.doesNotMatch(await initialSourceNote.textContent(),/pattern scale uses reviewed physical evidence|pattern scale is still approximate/,
+      "source comparison cannot claim scale evidence for an unmodified source photograph");
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`studio-source-compared-${width}.png`)});
+    await page.getByRole("button",{name:"Show design",exact:true}).click();
+    assert.equal(await initialSourceNote.count(),0);
+    assert.match(await page.locator(".newDesignerPhotoIntroCompact > span").textContent(),/LIVE PREVIEW/);
+    assert.equal(await page.locator("#designerPhotoTitle").textContent(),"Your look.");
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(1) > span").textContent(),/^SHIRT$/);
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/^TROUSER$/);
+    assert.match(await page.locator('[data-photo-caption="instant"]').textContent(),/Instant preview/);
+    assert.equal(await page.locator('[data-photo-caption="source"]').count(),0,
+      "source Compare must not leave a duplicate caption when returning to the selected design");
     // Real-photo screenshot gates at each required responsive width. No paid
     // rendering service or replacement model is involved.
     await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");
     await ready(page);
+    // The source untucked photograph has a curved shirttail, whereas the
+    // selected versioned shirt can request a straight hem. Never claim a photo
+    // reconstruction that did not happen; verify the warning in real Chromium.
+    const fidelity=page.locator('[data-photo-construction-mismatch="true"]');
+    await fidelity.waitFor();
+    assert.match(await fidelity.textContent(),/shirt hem/i);
+    // A fixed-position contact bar can overlap lower explanations on narrow
+    // screens. The on-photo status must still disclose approximation upfront.
+    assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/CUTS APPROX\./);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`dark-untucked-${width}.png`)});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     summary.viewports.push({width,overflow:false,realCataloguePreview:true,tuckedAndUntuckedScreenshots:true});
+    summary.viewports[summary.viewports.length-1].fabricSummaryReadable=true;
+    summary.viewports[summary.viewports.length-1].compactActionsReadable=true;
+    summary.viewports[summary.viewports.length-1].tallDesktopActionRowReachable=true;
+    summary.viewports[summary.viewports.length-1].solidScaleClaimTruthful=true;
+    summary.viewports[summary.viewports.length-1].solidScaleNoteUnobstructed=true;
+    // Exercise the ACTUAL customer controls, not just pure IDs. Advanced v2
+    // sleeve/pleat specifications may be valid tailor instructions while the
+    // original fixed photograph continues to show full sleeves/single pleats.
+    const beforeSpecOnlyPixels=await actualPhotoPixelHash(page);
+    const precision=page.locator("details.newDesignerPrecisionCut");
+    await precision.locator("summary").click();
+    await page.getByRole("combobox",{name:"Sleeve length",exact:true}).selectOption("half_sleeve");
+    await page.waitForFunction(()=>document.querySelector('[data-photo-construction-mismatch="true"]')?.textContent?.includes("sleeve length"));
+    await page.getByRole("combobox",{name:"Trouser pleats",exact:true}).selectOption("double_pleat_forward");
+    await page.waitForFunction(()=>document.querySelector('[data-photo-construction-mismatch="true"]')?.textContent?.includes("trouser pleats"));
+    const advancedNote=await fidelity.textContent();
+    assert.match(advancedNote,/sleeve length/i);
+    assert.match(advancedNote,/trouser pleats/i);
+    assert.equal(await page.getByRole("combobox",{name:"Sleeve length",exact:true}).inputValue(),"half_sleeve");
+    assert.equal(await page.getByRole("combobox",{name:"Trouser pleats",exact:true}).inputValue(),"double_pleat_forward");
+    await ready(page);
+    assert.equal(await actualPhotoPixelHash(page),beforeSpecOnlyPixels,
+      "advanced spec-only sleeve/pleat options must not repaint the fixed real photo as if new geometry existed");
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`advanced-construction-disclosed-${width}.png`)});
+    summary.viewports[summary.viewports.length-1].advancedConstructionDisclosed=true;
+    summary.viewports[summary.viewports.length-1].specOnlyPhotoPixelsUnchanged=true;
+    // Changing selected buttons is specification-only, never photo reconstruction.
+    const cutDrawer=page.locator("details.newDesignerTechnicalDrawer").filter({has:page.locator("summary",{hasText:"More cut options"})});
+    if(!(await cutDrawer.evaluate(element=>element.open)))await cutDrawer.locator("summary").click();
+    await page.getByRole("combobox",{name:"Button material",exact:true}).selectOption("Mother-of-Pearl");
+    await page.waitForFunction(()=>document.querySelector('[data-photo-construction-mismatch="true"]')?.textContent?.includes("button material"));
+    assert.equal(await page.getByRole("combobox",{name:"Button material",exact:true}).inputValue(),"Mother-of-Pearl");
+    await ready(page);
+    assert.equal(await actualPhotoPixelHash(page),beforeSpecOnlyPixels,
+      "button material must not repaint photographic buttons as if new geometry existed");
+    // The fixed contact dock used to cover the construction explanation at the
+    // bottom of the photographic card. Its full text must now be visible above
+    // the source image, without requiring a customer to dodge fixed controls.
+    const notice=page.locator('.newDesignerPhoto > [data-photo-construction-mismatch="true"]');
+    assert.equal(await notice.count(),1);
+    await notice.scrollIntoViewIfNeeded();
+    const noticeBox=await notice.boundingBox();
+    const contactDock=page.locator(".floatingContactDock");
+    const dockBox=await contactDock.boundingBox();
+    assert.ok(noticeBox && noticeBox.width>0 && noticeBox.height>0,"construction notice must be visible");
+    const viewport=page.viewportSize();
+    assert.ok(viewport && noticeBox.y>=0 && noticeBox.y+noticeBox.height<=viewport.height,
+      "construction notice must fit vertically within the visible viewport");
+    if(dockBox){
+      const overlap=noticeBox.x<dockBox.x+dockBox.width && noticeBox.x+noticeBox.width>dockBox.x
+        && noticeBox.y<dockBox.y+dockBox.height && noticeBox.y+noticeBox.height>dockBox.y;
+      assert.equal(overlap,false,"fixed contact dock must not obscure construction notice");
+    }
+    assert.match(await notice.textContent(),/button material/);
+    // Physical repeat and fit/drape caveats must be readable before the photo,
+    // not underneath the long card where the fixed contact dock obscures them.
+    const physicalDisclosure=page.locator('.newDesignerPhoto > [data-photo-caption="instant"]');
+    await physicalDisclosure.scrollIntoViewIfNeeded();
+    const physicalBounds=await physicalDisclosure.boundingBox();
+    const imageBounds=await page.locator(".newDesignerPhotoStage").boundingBox();
+    const fontPx=await physicalDisclosure.evaluate(node=>parseFloat(getComputedStyle(node).fontSize));
+    assert.ok(physicalBounds && imageBounds && physicalBounds.y+physicalBounds.height<=imageBounds.y,
+      "physical calibration and fit disclaimer must be positioned above the photograph");
+    assert.ok(fontPx>=12,"disclaimer text must be at least 12 CSS pixels");
+    assert.match(await physicalDisclosure.textContent(),/Fit and drape still require physical verification/);
+    const disclaimerDock=await contactDock.boundingBox();
+    if(disclaimerDock){
+      const overlaps=physicalBounds.x<disclaimerDock.x+disclaimerDock.width
+        && physicalBounds.x+physicalBounds.width>disclaimerDock.x
+        && physicalBounds.y<disclaimerDock.y+disclaimerDock.height
+        && physicalBounds.y+physicalBounds.height>disclaimerDock.y;
+      assert.equal(overlaps,false,"floating contact control must not obscure fabric-scale or fit caveat");
+    }
+    await physicalDisclosure.screenshot({path:path.join(out,`physical-disclosure-readable-${width}.png`)});
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`construction-notice-readable-${width}.png`)});
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`button-material-disclosed-${width}.png`)});
+    summary.viewports[summary.viewports.length-1].buttonMaterialDisclosed=true;
+    summary.viewports[summary.viewports.length-1].constructionNoticeUnobstructed=true;
+    summary.viewports[summary.viewports.length-1].physicalDisclaimerUnobstructed=true;
+    if(width===1440) {
+      // Legacy controls also must not claim that unphotographed collar,
+      // cuff or placket geometry has appeared in the trusted source image.
+      await page.getByRole("combobox",{name:"Shirt collar",exact:true}).selectOption("Mandarin / Band Collar");
+      await page.waitForFunction(()=>document.querySelector('[data-photo-construction-mismatch="true"]')?.textContent?.includes("collar shape"));
+      if(!(await cutDrawer.evaluate(element=>element.open)))await cutDrawer.locator("summary").click();
+      await page.getByRole("combobox",{name:"Shirt cuff",exact:true}).selectOption("French / Double Cuff");
+      await page.getByRole("combobox",{name:"Shirt placket",exact:true}).selectOption("Hidden / Fly-front");
+      await page.waitForFunction(()=> {
+        const text=document.querySelector('[data-photo-construction-mismatch="true"]')?.textContent||"";
+        return text.includes("collar shape") && text.includes("cuff shape") && text.includes("placket");
+      });
+      await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,"collar-cuff-placket-disclosed-1440.png")});
+      summary.viewports[summary.viewports.length-1].collarCuffPlacketDisclosed=true;
+    }
     if(width===1440){
       await page.addScriptTag({content:`window.__photoFormBefore=${beforeBundle};window.__photoFormAfter=${afterBundle};`});
       summary.forms=await page.evaluate(async()=>{
@@ -165,6 +434,140 @@ async function run(){
       }
       await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");await ready(page);await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,"real-untucked.png")});
     }
+    // Customer Compare must display the photographed wide trouser SOURCE,
+    // not an unrelated pleated/straight-leg source image. The source note
+    // makes clear that the shirt is composed from the pleated studio photo.
+    await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");
+    await page.getByRole("combobox",{name:"Trouser shape",exact:true}).selectOption("Wide-leg / Relaxed Drape Trouser");
+    await ready(page);
+    // These contours annotate only the deterministic Canvas garment masks.
+    // They must never be overlaid on a raw source photograph or final photoreal.
+    const previewTools=page.locator("details.newDesignerPreviewTools");
+    if(!(await previewTools.evaluate(element=>element.open)))await previewTools.locator("summary").click();
+    await page.getByRole("button",{name:"Boundary QA",exact:true}).click();
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),1,
+      "boundary QA must annotate the live deterministic selected-design preview");
+    // Zoom Fit changes Canvas scale; the diagnostic outline must follow the
+    // exact same affine transform or the on-screen contours point at wrong seams.
+    await page.getByRole("button",{name:"Zoom fit",exact:true}).click();
+    await page.waitForTimeout(400);
+    const zoomTransforms=await page.locator(".newDesignerPhotoStage").evaluate(stage=>{
+      const photo=stage.querySelector("canvas"),boundary=stage.querySelector("svg.newDesignerBoundaryQa");
+      const c=getComputedStyle(photo),b=getComputedStyle(boundary);
+      return {canvas:c.transform,boundary:b.transform,canvasOrigin:c.transformOrigin,boundaryOrigin:b.transformOrigin};
+    });
+    assert.notEqual(zoomTransforms.canvas,"none");
+    assert.equal(zoomTransforms.boundary,zoomTransforms.canvas,"Zoom Fit outlines must follow photographed garment scale");
+    assert.equal(zoomTransforms.boundaryOrigin,zoomTransforms.canvasOrigin,"Zoom Fit origins must match source photo");
+    await page.getByRole("button",{name:"Full view",exact:true}).click();
+    await page.waitForTimeout(400);
+    await page.getByRole("button",{name:"Compare",exact:true}).click();
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0,
+      "source Compare must never inherit selected-preview garment boundary geometry");
+    assert.equal(await page.getByRole("button",{name:"Hide boundaries",exact:true}).isDisabled(),true);
+    const original=page.locator(".newDesignerPhotoOriginal");
+    await original.waitFor();
+    assert.equal(await page.locator(".newDesignerPhotoStage>canvas").getAttribute("aria-hidden"),"true",
+      "the original photo, not the underneath selected canvas, must be announced in Compare");
+    assert.equal(await page.getByRole("button",{name:"Show design to save",exact:true}).isDisabled(),true,
+      "source Compare must not silently save a different selected-design canvas");
+    const finalLock=page.getByRole("button",{name:"Lock final design",exact:true});
+    if(await finalLock.count())assert.equal(await finalLock.isDisabled(),true,
+      "source comparison must be closed before locking the selected design");
+    assert.equal(new URL(await original.getAttribute("src"),base).pathname,"/designer/studio-wide.webp");
+    assert.match(await original.getAttribute("alt"),/separate pleated studio source photograph/);
+    assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/SOURCE \/ WIDE TROUSER PHOTO/);
+    assert.match(await page.locator(".newDesignerPhotoIntroCompact > span").textContent(),/SOURCE REFERENCE/);
+    assert.equal(await page.locator("#designerPhotoTitle").textContent(),"Studio source.");
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(1) > span").textContent(),/SELECTED SHIRT/);
+    assert.match(await page.locator(".newDesignerPhotoSummaryCompact > div:nth-child(2) > span").textContent(),/SELECTED TROUSER/);
+    const wideSourceNotice=page.locator('.newDesignerPhoto > [data-photo-source-comparison="wide"]');
+    assert.equal(await wideSourceNotice.count(),1);
+    assert.match(await wideSourceNotice.textContent(),/shirt in the instant preview comes from the separate pleated studio photograph/);
+    assert.equal(await page.locator('[data-photo-caption]').count(),0,
+      "wide source comparison must show its single provenance banner without a duplicate caption");
+    assert.equal(await page.locator('[data-photo-construction-mismatch="true"]').count(),0,
+      "original photo must not show the customer's selected cut warning as if it were reconstructed");
+    await wideSourceNotice.scrollIntoViewIfNeeded();
+    const sourceNoticeBox=await wideSourceNotice.boundingBox();
+    const sourceDockBox=await page.locator(".floatingContactDock").boundingBox();
+    assert.ok(sourceNoticeBox && sourceNoticeBox.width>0 && sourceNoticeBox.height>0);
+    if(sourceDockBox){
+      const collides=sourceNoticeBox.x<sourceDockBox.x+sourceDockBox.width && sourceNoticeBox.x+sourceNoticeBox.width>sourceDockBox.x
+        && sourceNoticeBox.y<sourceDockBox.y+sourceDockBox.height && sourceNoticeBox.y+sourceNoticeBox.height>sourceDockBox.y;
+      assert.equal(collides,false,"original wide source provenance must remain readable above photograph");
+    }
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`wide-source-compared-${width}.png`)});
+    summary.viewports[summary.viewports.length-1].wideSourceComparisonVerified=true;
+    summary.viewports[summary.viewports.length-1].sourceCaptionModeVerified=true;
+    summary.viewports[summary.viewports.length-1].sourceHeaderAndFabricLabelsVerified=true;
+    summary.viewports[summary.viewports.length-1].sourceHeadingModeVerified=true;
+    summary.viewports[summary.viewports.length-1].sourceCanvasAccessibilityIsolated=true;
+    summary.viewports[summary.viewports.length-1].boundaryQaSourceIsolationVerified=true;
+    summary.viewports[summary.viewports.length-1].boundaryQaZoomAligned=true;
+    await page.getByRole("button",{name:"Show design",exact:true}).click();
+    assert.equal(await original.count(),0);
+    assert.equal(await page.locator('[data-photo-caption="source"]').count(),0);
+    assert.match(await page.locator('[data-photo-caption="instant"]').textContent(),/Instant preview/);
+    assert.equal(await page.locator(".newDesignerPhotoStage>canvas").getAttribute("aria-hidden"),"false",
+      "selected design canvas must be announced again when source Compare closes");
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),1,
+      "returning from source Compare must restore the selected design's QA contours");
+    await page.getByRole("button",{name:"Hide boundaries",exact:true}).click();
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0);
+    assert.equal(await page.getByRole("button",{name:"Save",exact:true}).isEnabled(),true,
+      "returning to the actual selected design must restore its Save action");
+    // A changed design must reset the previous look's zoom and diagnostic
+    // seam overlay, rather than opening the next garment cropped.
+    await page.getByRole("button",{name:"Zoom fit",exact:true}).click();
+    await page.getByRole("button",{name:"Boundary QA",exact:true}).click();
+    assert.equal(await page.locator(".newDesignerPhotoStage.inspectFit").count(),1);
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),1);
+    // Race two ACTUAL shirt selections against an uncached, delayed catalogue
+    // image. The previous look and raw source image must never be displayed as
+    // the newly selected fabric while that new tile is still pending.
+    const unseen=await page.locator("#designer-shirt option").evaluateAll(options=>
+      options.filter(option=>option.value && option.value!==document.querySelector("#designer-shirt")?.value).map(option=>option.value).at(-1));
+    assert.ok(unseen && unseen!==dark,"need a distinct customer fabric for rapid-switch QA");
+    let delayedImageRequests=0;
+    await page.route("**/*.webp",async route=>{
+      delayedImageRequests++;
+      await new Promise(resolve=>setTimeout(resolve,850));
+      await route.continue();
+    });
+    await page.getByRole("button",{name:"Compare",exact:true}).click();
+    await original.waitFor();
+    await page.locator("#designer-shirt").selectOption(unseen);
+    await page.locator('.newDesignerPhotoStage[data-ready="false"]').waitFor();
+    assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/PREPARING SELECTED LOOK/,
+      "pending swatch must not retain the previous photographed-ready badge");
+    assert.equal(await page.locator('[data-photo-caption]').count(),0,
+      "a still-loading garment must not present a completed image caption");
+    assert.equal(await page.locator(".newDesignerPhotoStage.inspectFit").count(),0,
+      "a new look must not inherit the previous garment's Zoom Fit crop");
+    assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0,
+      "newly selected garment must not inherit the prior diagnostic outlines");
+    assert.equal(await page.getByRole("button",{name:"Zoom fit",exact:true}).count(),1);
+    assert.equal(await page.getByRole("button",{name:"Boundary QA",exact:true}).count(),1);
+    assert.equal(await page.locator(".newDesignerPhotoStage>canvas").evaluate(canvas=>getComputedStyle(canvas).visibility),"hidden",
+      "old canvas must be hidden while the new fabric is pending");
+    assert.equal(await original.count(),0,"source overlay from previous selection must close on fabric change");
+    await page.locator("#designer-shirt").selectOption(dark);
+    await ready(page);
+    assert.match(await page.locator('[data-photo-caption="instant"]').textContent(),/Instant preview/);
+    assert.equal(await page.locator(".newDesignerPhotoStage>canvas").evaluate(canvas=>getComputedStyle(canvas).visibility),"visible");
+    const settledHash=await actualPhotoPixelHash(page);
+    await page.waitForTimeout(1000);
+    assert.equal(await actualPhotoPixelHash(page),settledHash,
+      "late image loading from an abandoned fabric must not overwrite the last selected look");
+    assert.ok(delayedImageRequests>0,"the browser must exercise a real delayed fabric-image request");
+    assert.equal(await page.locator("#designer-shirt").inputValue(),dark);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+    summary.viewports[summary.viewports.length-1].rapidFabricSwitchStable=true;
+    summary.viewports[summary.viewports.length-1].newLookStartsFullView=true;
+    summary.viewports[summary.viewports.length-1].pendingPreviewStatusTruthful=true;
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`rapid-fabric-switch-settled-${width}.png`)});
     await context.close();
   }
   assert.equal(summary.paidCalls,0);assert.deepEqual(summary.errors,[]);fs.writeFileSync(path.join(out,"summary.json"),JSON.stringify(summary,null,2));console.log(`Photo form passed: ${summary.viewports.length} widths, ${summary.forms.length} photographed cuts, striped shirt and both trouser legs, stronger folds and no protected-region/waist leaks.`);

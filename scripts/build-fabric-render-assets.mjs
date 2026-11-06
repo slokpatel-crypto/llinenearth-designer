@@ -3,6 +3,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { measuredPalette, measurePattern } from "../src/lib/fabric-measurement-core.ts";
 import { FABRIC_STOCK } from "../src/lib/fabric-stock.ts";
+import { photoFabricCaptionSafeCrop } from "../src/lib/designer/photo-fabric-caption-crop.ts";
 
 // Catalogue photos include folds, selvage and sometimes printed captions. The
 // crop deliberately uses only the upper central cloth field. Mirroring gives
@@ -10,7 +11,7 @@ import { FABRIC_STOCK } from "../src/lib/fabric-stock.ts";
 const sourceDir=path.resolve("public/fabrics");
 const outputDir=path.resolve("public/fabric-tiles");
 const declaredScalePath=path.resolve("scripts/fabric-scales.json");
-const version="fabric-tile-v2";
+const version="fabric-tile-v3-caption-safe";
 
 let declared={};
 try { declared=JSON.parse(await fs.readFile(declaredScalePath,"utf8")); }
@@ -26,10 +27,7 @@ for(const file of files) {
   const info=await image.metadata();
   const width=info.width||0,height=info.height||0;
   if(width<150||height<150) throw new Error(`Swatch too small: ${file}`);
-  const cropWidth=Math.min(Math.round(width*.58),Math.round(height*.32));
-  const cropHeight=cropWidth;
-  const left=Math.max(0,Math.round((width-cropWidth)/2));
-  const top=Math.max(0,Math.round(height*.18));
+  const {left,top,width:cropWidth,height:cropHeight}=photoFabricCaptionSafeCrop(width,height);
   let crop=await image.extract({left,top,width:cropWidth,height:cropHeight})
     .resize(128,128).removeAlpha().png().toBuffer();
   const cataloguePattern=(catalogue.get(file)?.pattern||"").toLowerCase();
