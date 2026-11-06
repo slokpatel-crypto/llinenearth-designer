@@ -1,6 +1,6 @@
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
 import { verifyLockedDesignRevision } from "./design-lock.ts";
-import { auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
+import { auditHandoffConstructionChecks, auditHandoffFitProvenance, auditHandoffMeasurements } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
 export const PRODUCTION_HANDOFF_VERSION="linen-earth-production-handoff-v1" as const;
@@ -98,6 +98,10 @@ export function buildProductionHandoff(
   // contains unresolved design decisions or open construction review findings.
   // Preserve those notes verbatim for the tailor instead of silently
   // promoting a partly specified garment to a completed review packet.
+  const checkAudit=auditHandoffConstructionChecks(spec.constructionChecks);
+  if(checkAudit.errors.length) {
+    throw new Error(`Unsafe tailor handoff construction checks: ${checkAudit.errors.join(" ")}`);
+  }
   const constructionReviewOpen=spec.constructionChecks.some(
     (check)=>check.severity==="review"||check.severity==="warning",
   );
