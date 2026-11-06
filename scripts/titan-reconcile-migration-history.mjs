@@ -19,6 +19,11 @@ export function reconcileMigrationHistory(inventory, staging) {
     if (!row || typeof row.version !== 'string' || !version.test(row.version) || seen.has(row.version)) throw new Error('Invalid or repeated staging version');
     seen.add(row.version);
     const candidates = byVersion.get(row.version) ?? [];
+    // A staging-only version cannot be reconciled to a repository SQL identity.
+    if (candidates.length === 0) {
+      results.push({version:row.version,status:'BLOCKED',candidate_count:0,matched_filename:null,reason:'UNEXPECTED_STAGING_VERSION'});
+      continue;
+    }
     // A self-attested JSON object is never authentication. Reject malformed, stale,
     // or future-dated provenance before even marking a match for manual review.
     const collectedAt = row.evidence?.collected_at;
