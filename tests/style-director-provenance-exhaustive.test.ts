@@ -31,3 +31,22 @@ test("all provenance trust/review combinations have stable fail-closed weights",
     assert.equal(styleDirectorIntelligenceTrustWeight(unknownReview), 0);
   }
 });
+
+test("inherited provenance cannot impersonate a reviewed fabric record", () => {
+  const inheritedBoth = Object.create({ trust: "reviewed", reviewStatus: "approved" });
+  const inheritedTrust = Object.assign(Object.create({ trust: "reviewed" }), {
+    reviewStatus: "approved",
+  });
+  const inheritedReview = Object.assign(Object.create({ reviewStatus: "approved" }), {
+    trust: "reviewed",
+  });
+  for (const record of [inheritedBoth, inheritedTrust, inheritedReview]) {
+    Object.freeze(record);
+    const input = record as Parameters<typeof styleDirectorIntelligenceTrustWeight>[0];
+    assert.equal(styleDirectorIntelligenceTrustWeight(input), 0);
+    assert.equal(styleDirectorIntelligenceTrustWeight(input), 0, "deterministic replay");
+  }
+  const own = Object.freeze({ trust: "reviewed", reviewStatus: "approved" });
+  assert.equal(styleDirectorIntelligenceTrustWeight(own), 1,
+    "valid own provenance must retain its ranking weight");
+});
