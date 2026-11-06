@@ -362,23 +362,25 @@ test("responsive fabric evidence comes from painted full-card screenshot, never 
 
 
 test("solid catalogue selections do not impersonate physical motif calibration", () => {
-  assert.equal(photoPatternScaleDisclosure(["Solid","solid"],true,[]),
+  const approved = "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists";
+  assert.equal(photoPatternScaleDisclosure(["Solid","solid"],true,[],approved),
     "no visible motif repeat is recorded for these solid selections");
-  assert.equal(photoPatternScaleDisclosure(["Solid","Solid"],false,[]),
+  assert.equal(photoPatternScaleDisclosure(["Solid","Solid"],false,[],approved),
     "no visible motif repeat is recorded for these solid selections");
-  assert.match(photoPatternScaleDisclosure(["Solid","Pin Stripe"],false,["striped trouser"]),
+  assert.match(photoPatternScaleDisclosure(["Solid","Pin Stripe"],false,["striped trouser"],approved),
     /pattern scale is still approximate for striped trouser/);
-  assert.match(photoPatternScaleDisclosure(["Solid","Pin Stripe"],true,[]),
-    /reviewed physical evidence plus accepted studio calibration/);
-  assert.match(photoPatternScaleDisclosure(["Solid","Solid","Windowpane Check"],false,["contrast panel"]),
+  assert.equal(photoPatternScaleDisclosure(["Solid","Pin Stripe"],true,[],approved),approved);
+  assert.match(photoPatternScaleDisclosure(["Solid","Solid","Windowpane Check"],false,["contrast panel"],approved),
     /pattern scale is still approximate for contrast panel/);
-  assert.match(photoPatternScaleDisclosure(["Solid",""],false,["missing classification"]),
+  assert.match(photoPatternScaleDisclosure(["Solid",""],false,["missing classification"],approved),
     /pattern scale is still approximate for missing classification/);
 });
 
 test("live instant caption obtains scale truth from the dedicated material disclosure", () => {
   const src=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.ok(src.includes("const photoScaleNotice=photoPatternScaleDisclosure("));
+  assert.ok(src.includes('"pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists"'));
+  assert.ok(src.includes("previewScaleVerified,approximateScaleItems"));
   assert.ok(src.includes("visiblePanelFabric.patternType"));
   assert.ok(src.includes("{photoScaleNotice}. Fit and drape still require physical verification."));
   assert.ok(!src.includes('{previewScaleVerified ? "pattern scale uses reviewed physical evidence'));
