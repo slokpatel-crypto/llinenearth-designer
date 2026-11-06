@@ -5,6 +5,7 @@ import { buildProductionHandoff, buildVerifiedProductionHandoff, verifyProductio
 import { lockGarmentSpec } from "../src/lib/designer/design-lock.ts";
 import { buildTailorTechPackHtml, buildVerifiedTailorTechPackHtml, techPackFilename } from "../src/lib/designer/tech-pack.ts";
 import type { FinishedTarget } from "../src/lib/designer/fit-construction.ts";
+import { HOUSE_EASE_TABLE_VERSION } from "../src/lib/designer/house-ease.ts";
 import type { LockedDesignRevision } from "../src/lib/designer/design-lock.ts";
 
 const chest: FinishedTarget = {
@@ -38,7 +39,7 @@ function createRevision(shirt:FinishedTarget[],trouser:FinishedTarget[],exactCut
       version:"linen-earth-garment-spec-v1",
       status:"ready_for_tailor_review",
       source:{designerRuleSetVersion:"v3",fitConstructionVersion:"fit-construction-provisional-1",
-        fitEaseSource:"provisional_house_defaults",fitEaseTableVersion:"house-v1",
+        fitEaseSource:"provisional_house_defaults",fitEaseTableVersion:HOUSE_EASE_TABLE_VERSION,
         measurementProfileVersion:1,blockStrategyVersion:null,styleSchemaVersion:exactCut?2:null},
       styleSpec:exactCut?{
         styleSchemaVersion:2,
@@ -322,7 +323,7 @@ test("printable tech pack preserves locked ease source and complete block instru
   const html=buildTailorTechPackHtml(packet);
   assert.match(html,/Ease provenance/);
   assert.match(html,/provisional_house_defaults/);
-  assert.match(html,/house-v1/);
+  assert.ok(html.includes(HOUSE_EASE_TABLE_VERSION));
   assert.match(html,/BLOCK-SHOULDER-SLOPING/);
   assert.match(html,/Verify shoulder slope at fitting/);
   assert.match(html,/NOT REQUESTED/);
@@ -413,6 +414,40 @@ test("fit/ease version and source mismatch fails closed in handoff and print",()
   const packet=buildProductionHandoff(createRevision([chest],[waist,seat]));
   packet.construction.fitProvenance.easeSource="approved_house_calibration";
   assert.throws(()=>buildTailorTechPackHtml(packet),/Unsafe tailor tech pack fit provenance/);
+});
+
+test("unexpected provisional ease table versions remain reconstructable but block review readiness",async()=>{
+  const baseline=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  const current=buildProductionHandoff(baseline);
+  assert.equal(current.status,"ready_for_tailor_review");
+  assert.equal(current.construction.fitProvenance.easeTableVersion,HOUSE_EASE_TABLE_VERSION);
+
+  const legacy=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  legacy.garmentSpec.source.fitEaseTableVersion="legacy-unverified-house-v0";
+  const packet=buildProductionHandoff(legacy);
+  assert.equal(packet.status,"review_required");
+  assert.ok(packet.unresolved.some(note=>note.includes("does not match")
+    && note.includes(HOUSE_EASE_TABLE_VERSION)));
+  assert.equal(packet.construction.fitProvenance.easeTableVersion,"legacy-unverified-house-v0");
+  const preview=buildTailorTechPackHtml(packet);
+  assert.match(preview,/legacy-unverified-house-v0/);
+  assert.match(preview,/review required/);
+  assert.match(preview,/NO CUTTING AUTHORISATION/);
+
+  const tampered=structuredClone(current);
+  tampered.construction.fitProvenance.easeTableVersion="legacy-unverified-house-v0";
+  const staleHtml=buildTailorTechPackHtml(tampered);
+  assert.match(staleHtml,/review required/);
+  assert.match(staleHtml,/legacy-unverified-house-v0/);
+
+  const locked=await lockGarmentSpec(legacy.garmentSpec,{lockedAt:"2026-11-05T11:00:00.000Z"});
+  const signed=await buildVerifiedProductionHandoff(locked,"2026-11-05T11:01:00.000Z");
+  assert.equal(signed.status,"review_required");
+  assert.equal(await verifyProductionHandoff(signed,locked),true);
+  const verifiedHtml=await buildVerifiedTailorTechPackHtml(signed,locked);
+  assert.match(verifiedHtml,/legacy-unverified-house-v0/);
+  assert.match(verifiedHtml,/review required/);
+  assert.match(verifiedHtml,/NO CUTTING AUTHORISATION/);
 });
 
 test("missing fit provenance remains review-only and cannot impersonate an approved ease table",()=>{
