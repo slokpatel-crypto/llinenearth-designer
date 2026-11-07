@@ -42,7 +42,7 @@ After capturing both read-only snapshots, run the offline, fail-closed verifier:
 node tests/stock-acl-snapshot-evidence.mjs stock-acl-before.tsv stock-acl-after.tsv
 ```
 
-It checks every expected signature and role in **both** 32-row files, rejects missing/extra/duplicated keys, missing roles/functions, unexpected v1 permissions, and any v2 permission drift. It accepts an already-revoked staging baseline but still requires all v1 grants denied afterward. Its 18 synthetic fixture cases run in the independent GitHub workflow. The verifier cannot authenticate the origin of saved snapshot files; retain database identity, timestamp and reviewer evidence separately. A passing offline comparison is **not approval** to apply the migration.
+It checks every expected signature and role in **both** 32-row files, rejects missing/extra/duplicated keys, missing roles/functions, unexpected v1 permissions, and any v2 permission drift. It accepts an already-revoked staging baseline but still requires all v1 grants denied afterward. Its 19 synthetic fixture cases run in the independent GitHub workflow. The verifier cannot authenticate the origin of saved snapshot files; retain database identity, timestamp and reviewer evidence separately. A passing offline comparison is **not approval** to apply the migration.
 
 The independent CI workflow proves that the same read-only query detects synthetic `service_role` v1 privileges *before* revocation and their absence *after*, without connecting to any shared database. This does not replace an actual staging capture, security sign-off or integration/version reconciliation.
 
