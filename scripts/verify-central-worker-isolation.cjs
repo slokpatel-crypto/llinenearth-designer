@@ -40,6 +40,8 @@ const WORKER_PATH_RULES = Object.freeze({
     /^docs\/TITAN_VISUAL_FIDELITY_PHASE[0-9]+\.md$/,
     /^scripts\/(?:build-fabric-render-assets\.mjs|verify-photo-form\.cjs|photo-[a-z0-9-]+\.cjs)$/,
     /^src\/components\/PhotoOutfitPreview\.tsx$/,
+    // Narrow, reviewed Studio action-panel responsive fix from visual PR #886.
+    /^src\/app\/designer-studio\/designer-light\.css$/,
     /^src\/lib\/designer\/photo-[a-z0-9-]+\.ts$/,
     /^tests\/photo-[a-z0-9-]+\.test\.ts$/
   ],
@@ -183,7 +185,8 @@ async function selfTest() {
     [862, [{ filename: "src/lib/fabric-analysis.ts" }]],
     [868, [{ filename: "src/lib/style-director-agent.ts" }]],
     [869, [{ filename: "src/lib/operator/order-lifecycle.ts" }]],
-    [886, [{ filename: "src/components/PhotoOutfitPreview.tsx" }]],
+    [886, [{ filename: "src/components/PhotoOutfitPreview.tsx" },
+      { filename: "src/app/designer-studio/designer-light.css" }]],
     [897, [{ filename: "scripts/blender/source-trouser-max-retained-uv.py" }]]
   ]);
   const get = async path => {
@@ -201,7 +204,7 @@ async function selfTest() {
       base: { ref: "main", sha: b, repo: { full_name: "sample/repo" } } };
   };
   assert.deepEqual(await verifyWorkerIsolation(sample, "sample/repo", get),
-    { checkedPrs: 7, workers: 6, uniquePaths: 7, centralHead: a });
+    { checkedPrs: 7, workers: 6, uniquePaths: 8, centralHead: a });
   await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
     async path => path.includes("/pulls/868/files?")
       ? [{ filename: "src/central.ts" }] : get(path)),
@@ -236,6 +239,10 @@ async function selfTest() {
   await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
     async path => path.includes("/pulls/886/files?")
       ? [{ filename: "src/components/DesignerModule.tsx" }] : get(path)),
+    /Out-of-scope worker file in PR #886/);
+  await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
+    async path => path.includes("/pulls/886/files?")
+      ? [{ filename: "src/app/designer-studio/global.css" }] : get(path)),
     /Out-of-scope worker file in PR #886/);
   await assert.rejects(() => verifyWorkerIsolation(sample, "sample/repo",
     async path => path.includes("/pulls/897/files?")
