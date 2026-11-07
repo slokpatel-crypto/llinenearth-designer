@@ -1511,8 +1511,9 @@ test("proposed explicit tucked and untucked intent is validated against locked I
   for (const candidate of ["Tucked and Untucked Dress Shirt", "Untucked/Tucked Oxford Shirt"]) {
     assert.deepEqual(styleDirectorCandidateWordingIssues(candidate).map(x => x.code),
       ["ambiguous_candidate_wear"], candidate);
-    assert.deepEqual(styleDirectorCandidateWearIssues(candidate, { wear: "tucked" }), [],
-      "ambiguity must not guess which of two conflicting wear instructions wins");
+    assert.deepEqual(styleDirectorCandidateWearIssues(candidate, { wear: "tucked" }).map(x => x.code),
+      ["candidate_shirt_wear_mismatch"],
+      "conflicting construction instructions must block tailoring approval");
   }
   assert.deepEqual(styleDirectorCandidateWordingIssues("Untucked Oxford Shirt"), []);
   assert.deepEqual(styleDirectorCandidateWordingIssues("Tucked Dress Shirt"), []);
@@ -1553,8 +1554,9 @@ test("negated shirt-tuck instructions cannot silently select the opposite wear",
   ]) {
     assert.deepEqual(styleDirectorCandidateWordingIssues(phrase).map(issue => issue.code),
       ["ambiguous_candidate_wear"], phrase);
-    assert.deepEqual(styleDirectorCandidateWearIssues(phrase, { wear: "tucked" }), [],
-      "mixed negated/affirmative requests need review rather than guessing a locked wear");
+    assert.deepEqual(styleDirectorCandidateWearIssues(phrase, { wear: "tucked" }).map(x => x.code),
+      ["candidate_shirt_wear_mismatch"],
+      "mixed negated/affirmative requests must block tailoring approval");
   }
 });
 
