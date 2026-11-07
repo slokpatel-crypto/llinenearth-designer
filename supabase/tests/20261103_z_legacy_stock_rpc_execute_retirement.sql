@@ -19,6 +19,19 @@ declare
     'public.fabric_stock_consume_reservation_v2(uuid,numeric,text,text,text)'
   ];
 begin
+  -- Overloaded functions are separately addressable RPCs and might retain an
+  -- inherited PUBLIC or service_role grant. Do not approve a migration that
+  -- checks one signature while leaving another of the same name unreviewed.
+  foreach signature in array legacy_signatures || v2_signatures loop
+    if (select count(*)
+        from pg_catalog.pg_proc p
+        join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public'
+          and p.proname = split_part(split_part(signature, '(', 1), '.', 2)) <> 1 then
+      raise exception 'unexpected public stock RPC overload for %', signature;
+    end if;
+  end loop;
+
   foreach signature in array legacy_signatures loop
     if to_regprocedure(signature) is null then
       raise exception 'historical v1 signature disappeared (schema compatibility): %', signature;

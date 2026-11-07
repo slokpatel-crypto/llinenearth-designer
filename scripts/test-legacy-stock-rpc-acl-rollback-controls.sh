@@ -39,5 +39,11 @@ assert_catches_tamper "service_role v2 EXECUTE revoked" \
 assert_catches_tamper "authenticated granted v2 EXECUTE" \
   "grant execute on function public.fabric_stock_release_v2(uuid,text,text,text) to authenticated" \
   "unprivileged role authenticated can execute v2 stock RPC"
+assert_catches_tamper "unreviewed legacy public overload" \
+  "create function public.fabric_stock_record(p_extra integer) returns integer language sql as 'select 1'" \
+  "unexpected public stock RPC overload for public.fabric_stock_record(text,text,numeric,text)"
+assert_catches_tamper "unreviewed v2 public overload" \
+  "create function public.fabric_stock_reserve_v2(p_extra integer) returns integer language sql as 'select 1'" \
+  "unexpected public stock RPC overload for public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)"
 test "$(psql -X -v ON_ERROR_STOP=1 -Atc 'select count(*) from private.fabric_stock_ledger')" = 0
-echo "PASS: three real SQL ACL tamper regressions rejected and transactions rolled back"
+echo "PASS: five real SQL ACL tamper/overload regressions rejected and transactions rolled back"
