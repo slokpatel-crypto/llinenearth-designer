@@ -1734,7 +1734,10 @@ export function styleDirectorCandidateWearIssues(
   const requested = candidateShirtWear(candidateShirt);
   if (requested.tucked === requested.untucked) return [];
   const expected = requested.tucked ? "tucked" : "untucked";
-  return shirt.wear === expected ? [] : [{
+  const lockedWear = styleDirectorLockedOptionValue(shirt, "wear");
+  // A stale, inherited or unreadable saved wear field cannot certify
+  // the explicit tucked/untucked cutting instruction.
+  return lockedWear === expected ? [] : [{
     code: "candidate_shirt_wear_mismatch",
     explanation: "The proposed shirt's explicit tucked/untucked wear conflicts with its versioned construction; confirm the locked tuck choice before tailoring.",
   }];
