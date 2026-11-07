@@ -7,10 +7,11 @@ on:
     paths:
       - 'supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql'
       - 'supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql'
+      - 'supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql'
       - 'scripts/test-legacy-stock-rpc-acl-invocation.sh'
       - 'scripts/audit-retired-stock-rpc-callers.mjs'
       - 'src/**'
-      - 'desktop/src/**'
+      - 'desktop/**'
       - 'scripts/**'
       - '.github/workflows/titan-legacy-stock-rpc-acl.yml'
   workflow_dispatch:
@@ -75,6 +76,14 @@ jobs:
             supabase/migrations/20261103_stock_close_evidence_integrity.sql; do
             psql -v ON_ERROR_STOP=1 -f "$migration"
           done
+      - name: Capture read-only pre-retirement ACL snapshot
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -At -F '|' \
+            -f supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql \
+            > /tmp/stock-acl-before.tsv
+          grep -Fqx 'v1|public.fabric_stock_record(text,text,numeric,text)|service_role|EXECUTE' /tmp/stock-acl-before.tsv
+          grep -Fqx 'v2|public.fabric_stock_record_v2(text,text,numeric,text,text,text)|service_role|EXECUTE' /tmp/stock-acl-before.tsv
       - name: Prove ACL regression catches the original unsafe historical grants
         run: |
           set -euo pipefail
@@ -101,5 +110,18 @@ jobs:
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql | tee /tmp/stock-acl-test.log
           grep -q 'PASS: all four v1 stock mutators denied' /tmp/stock-acl-test.log
+      - name: Capture read-only post-retirement ACL snapshot
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -At -F '|' \
+            -f supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql \
+            > /tmp/stock-acl-after.tsv
+          grep -Fqx 'v1|public.fabric_stock_record(text,text,numeric,text)|service_role|NO_EXECUTE' /tmp/stock-acl-after.tsv
+          grep -Fqx 'v1|public.fabric_stock_reserve(text,numeric,text,text)|service_role|NO_EXECUTE' /tmp/stock-acl-after.tsv
+          grep -Fqx 'v1|public.fabric_stock_release(uuid,text)|service_role|NO_EXECUTE' /tmp/stock-acl-after.tsv
+          grep -Fqx 'v1|public.fabric_stock_consume_reservation(uuid,numeric,text)|service_role|NO_EXECUTE' /tmp/stock-acl-after.tsv
+          grep -Fqx 'v2|public.fabric_stock_record_v2(text,text,numeric,text,text,text)|service_role|EXECUTE' /tmp/stock-acl-after.tsv
+          grep -Fqx 'v2|public.fabric_stock_record_v2(text,text,numeric,text,text,text)|authenticated|NO_EXECUTE' /tmp/stock-acl-after.tsv
+          test "$(wc -l < /tmp/stock-acl-after.tsv)" -eq 32
       - name: Execute retired v1 calls as service_role; positive v2 call rolls back
         run: bash scripts/test-legacy-stock-rpc-acl-invocation.sh

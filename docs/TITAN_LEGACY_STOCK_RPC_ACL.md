@@ -23,6 +23,21 @@ A separate disposable-shell regression, `scripts/test-legacy-stock-rpc-acl-invoc
 
 This proves an isolated migration ACL contract, not the permissions of the live Supabase database, not the correctness of externally deployed callers, and not verified physical inventory. Never run these synthetic role bootstrap commands on a live database.
 
+## Read-only staging permission snapshot (not yet executed on staging)
+
+A separate inspection query `supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql` reads the **exact four historical v1 and four authorized v2 function signatures** across `PUBLIC`, `anon`, `authenticated` and `service_role`. It reports 32 rows with effective `EXECUTE` status, `NO_EXECUTE`, `MISSING_ROLE` or `MISSING_FUNCTION`. For `PUBLIC`, it examines default/explicit function ACLs; for roles it uses PostgreSQL's effective privilege check, including inherited `PUBLIC`. The SQL **only SELECTs** and cannot retire grants or approve a deployment by itself.
+
+On a controlled, separately authorized staging connection with a configured **read-only** PostgreSQL service entry, capture the snapshots before and after an independently approved migration, for example:
+
+```bash
+PGSERVICE=titan-staging-readonly psql -X -v ON_ERROR_STOP=1 -At -F '|' -f supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql > stock-acl-before.tsv
+# After the separately approved migration, repeat into stock-acl-after.tsv.
+```
+
+Never include database credentials in committed artifacts. A successful query alone is not a pass: verify all four v1 methods become `NO_EXECUTE` for `PUBLIC`, `anon`, `authenticated` and `service_role`, that service_role retains all four v2 `EXECUTE` rights, and that `anon` and `authenticated` cannot execute v2. Missing roles/functions and unexpected grants **block** approval. Archive both captures with the exact target database identity, migration fingerprint, timestamp, reviewers, and independent server/integration caller inventory; redact sensitive connection details. Do not use the synthetic test bootstrap against staging or production.
+
+The independent CI workflow proves that the same read-only query detects synthetic `service_role` v1 privileges *before* revocation and their absence *after*, without connecting to any shared database. This does not replace an actual staging capture, security sign-off or integration/version reconciliation.
+
 ## Compatibility, rollout and rollback gate
 
 **Before migration on any staging/production database:** independently enumerate server, job, external integration and operator RPC callers; verify they use the v2 counterparts with genuine checker/source-reference evidence. Confirm signed-off staging ACL snapshots before and after migration, and run negative `service_role` v1 permission tests, positive authorized v2 tests, and concurrency/replay tests against an isolated staging dataset. Keep operator stock writes held while those checks are incomplete. Obtain human security/stock review, retention and operational rollback approval.
