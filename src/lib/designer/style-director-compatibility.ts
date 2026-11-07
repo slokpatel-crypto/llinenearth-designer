@@ -902,7 +902,13 @@ export function styleDirectorCandidateWideLegIssues(
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidateWideLegIntent(candidateTrouser);
   if (intent === null || intent === "ambiguous") return [];
-  const isWideLeg = styleDirectorLockedOptionValue(pant, "type") === "wide_leg_relaxed_drape";
+  const lockedType = styleDirectorLockedOptionValue(pant, "type");
+  // An absent or accessor-backed ID cannot prove compliance with a ban.
+  if (typeof lockedType !== "string" || !optionsFor("pant.type").some(option => option.id === lockedType)) return [{
+    code: "candidate_wide_leg_mismatch",
+    explanation: "The saved trouser type is missing or unrecognised; verify the locked silhouette before tailoring.",
+  }];
+  const isWideLeg = lockedType === "wide_leg_relaxed_drape";
   return (intent === "requested") === isWideLeg ? [] : [{
     code: "candidate_wide_leg_mismatch",
     explanation: "The named wide-leg silhouette request or prohibition conflicts with the saved versioned trouser type; confirm the cut before tailoring.",
@@ -943,7 +949,13 @@ export function styleDirectorCandidateWaistbandIssues(
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidateDrawstringWaistband(candidateTrouser);
   if (intent === null || intent === "ambiguous") return [];
-  const isDrawstring = styleDirectorLockedOptionValue(pant, "waistband") === "drawstring_elastic";
+  const lockedWaistband = styleDirectorLockedOptionValue(pant, "waistband");
+  // A missing, inherited or unsupported ID cannot satisfy a prohibition.
+  if (typeof lockedWaistband !== "string" || !optionsFor("pant.waistband").some(option => option.id === lockedWaistband)) return [{
+    code: "candidate_waistband_mismatch",
+    explanation: "The saved waistband is missing or unrecognised; verify its construction before tailoring.",
+  }];
+  const isDrawstring = lockedWaistband === "drawstring_elastic";
   if ((intent === "requested" && isDrawstring) || (intent === "prohibited" && !isDrawstring)) return [];
   return [{
     code: "candidate_waistband_mismatch",
