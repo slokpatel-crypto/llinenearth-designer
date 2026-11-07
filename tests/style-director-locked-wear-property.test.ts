@@ -38,3 +38,23 @@ test("optional tuck phrasing never reads or mutates a locked wear getter", () =>
     assert.deepEqual(styleDirectorCandidateWearIssues(wording, accessor), [], wording);
   }
 });
+
+test("optional wear wording cannot mask a separate mandatory construction instruction", () => {
+  const unsafe = Object.defineProperty({}, "wear", {
+    enumerable: true,
+    get() { throw new Error("saved accessor must never execute"); },
+  });
+  for (const [wording, required] of [
+    ["with or without tucked, but untucked shirt", "untucked"],
+    ["with or without untucked, but tucked shirt", "tucked"],
+  ] as const) {
+    const mismatched = Object.freeze({ wear: required === "tucked" ? "untucked" : "tucked" });
+    const matched = Object.freeze({ wear: required });
+    assert.deepEqual(styleDirectorCandidateWearIssues(wording, matched), [], wording);
+    for (const saved of [mismatched, unsafe, Object.create({ wear: required })]) {
+      const issues = styleDirectorCandidateWearIssues(wording, saved);
+      assert.deepEqual(issues.map(issue => issue.code), ["candidate_shirt_wear_mismatch"], wording);
+      assert.deepEqual(styleDirectorCandidateWearIssues(wording, saved), issues);
+    }
+  }
+});
