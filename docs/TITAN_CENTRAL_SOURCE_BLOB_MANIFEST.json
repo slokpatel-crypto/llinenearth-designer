@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "source_snapshot": "2026-11-07",
+  "central_base_commit": "ad07a1a15ff4923ac4b589f37bc9c5bbf17ea2f7",
+  "source_prs": [
+    {
+      "pr": 863,
+      "head": "714e06876147536af1b4696609690774f989e288",
+      "files": {
+        ".env.example": "ae73c707c5013fb43ee2655ae40f001aa142a5a3",
+        ".github/workflows/ci.yml": "a38fe92c7ef268141aa023f1e9e195e729ea790e",
+        "DECISIONS.md": "804e9134958226886a39eca956a647061d3fbabb",
+        "docs/TITAN_CUSTOMER_SECURITY_CHECKPOINT.md": "9d28569ee92e251392079e36c93487761b0f3a38",
+        "next.config.ts": "b7d80fcfc62e80f2227655bf38eebb10757cb594",
+        "scripts/verify-customer-account-share-responsive.cjs": "651e0c335702eee302ec895ff4573af3ca862d63",
+        "scripts/verify-designer-vault-boundary-http.cjs": "a701fa1eaf718c76988635f1be127542d73c8f9a",
+        "src/app/account/page.tsx": "4d6e7e97e4c64209251a08263b07089b03051935",
+        "src/app/api/customer-account/production/route.ts": "49d87979ef060200027a2908ddf398f9d0955303",
+        "src/app/api/customer-auth/logout/route.ts": "b7edcfe2c6a6ff7e53ba5ce501562ab09870e0c1",
+        "src/app/api/customer-auth/otp/route.ts": "3f511034453b11cfb1c6bd2585a910a26c704ef5",
+        "src/app/api/customer-auth/session/route.ts": "6337d65cc9ad0d560bf548afce6f731b9a15661a",
+        "src/app/api/customer-auth/verify/route.ts": "1b0c8df5ff601c962b4c3986f787bc2b5101afbe",
+        "src/app/api/designer/share/route.ts": "9980da5cc79ded778dd16aeee7535d2810df9e2e",
+        "src/app/api/designer/vault/route.ts": "d95d3ae021fb90824e1648400476d61d9a0242c3",
+        "src/app/share/[token]/page.tsx": "29b8731e1063d1294d87eb8fb6caa92fe28f15bf",
+        "src/components/DesignerModule.tsx": "98b28ed6bdc0d4319fb7fdea0ac195194e727d96",
+        "src/lib/customer-auth-legacy-token.ts": "a29f52732bc1dcf4e74aebbe9e734aafe7323b46",
+        "src/lib/customer-auth.ts": "dbb85c56cf096ff2f60c5fb3d89988c18c2e59ef",
+        "src/lib/customer-otp-rate-contract.ts": "13a443f0b55aa0ca47e297583428e724f7373432",
+        "src/lib/customer-otp-rate.ts": "12ff34acf4a5b97dcb13d1e53aed37ef2f27b9d4",
+        "src/lib/customer-session-revocation-contract.ts": "b084dc7f9c4be37e5502191f3e8016c3caed79fa",
+        "src/lib/customer-session-revocation.ts": "de534e6c0332b72bf283eaac4f75c4090e66d40e",
+        "src/lib/customer-session-token.ts": "8e2e2c595db3036073cc58cca5b4ee846f1dfea1",
+        "src/lib/designer/customer-production-rpc-contract.ts": "ef4e6377591e48517b3959e381c0efbc178d82e2",
+        "src/lib/designer/design-share-revocation-contract.ts": "50fad8d1484f86d0d8721ce906984f1ae4f334fe",
+        "src/lib/designer/design-share-revocation.ts": "c3dba095947e3cebe561b0cf820693f7273367c0",
+        "src/lib/designer/design-share.ts": "990dafcebac2da3fd5d09df0bd7e9c9022a660d7",
+        "supabase/migrations/20261103_customer_otp_distributed_rate.sql": "858e7ac27f0a8331359baac4548a3f44b7aaa07f",
+        "supabase/migrations/20261103_customer_session_revocation.sql": "321bbc3102345485f9f3e9e3b74b776458432443",
+        "supabase/migrations/20261103_design_share_revocation.sql": "e15c388a488e7483d52d767f7bbcbda6f4ff0d27",
+        "supabase/tests/20261103_customer_otp_distributed_rate.sql": "4d6f13ffa1f11fe6977c97523f9c92e1b7feea8b",
+        "supabase/tests/20261103_customer_session_revocation.sql": "77181ce75a2f1b57d5ba0415ebbcd636febfa5fc",
+        "supabase/tests/20261103_design_share_revocation.sql": "41b69beb44625e77db155215b4bac4dc69f78c27",
+        "tests/customer-account-isolation.test.ts": "47d1ca9fef140bcbbed188fa66a6d233164aca0b",
+        "tests/customer-auth.test.ts": "6e8591403abbcc69732d7ee0fdd7be252b3f8c5c",
+        "tests/customer-otp-distributed-rate.test.ts": "266ef5c2c6cdd146cfd55c6f8298fa60e19de84f",
+        "tests/customer-production-rpc-contract.test.ts": "a527fd8c7cb0d9c328e10da71605d56789e20c7a",
+        "tests/customer-security-request-boundary.test.ts": "bfc1ae9366cca6c711bba25da86598aca5f1a991",
+        "tests/customer-session-revocation.test.ts": "be1173d2e2ef202a1a34a26999c0545400e789bb",
+        "tests/customer-session.test.ts": "45c29ff2568b720df3f261b08494311f1785d621",
+        "tests/design-share-revocation.test.ts": "c8bb89d822179e7dbb13d7c271aa8ec2218783fd",
+        "tests/design-share.test.ts": "aafe659af94729f4962eae83facd925802fbaa55"
+      },
+      "base_ref": "main",
+      "base_sha": "fd2f29771a24ae888719d64504a0b1fb3595ffb1"
+    },
+    {
+      "pr": 876,
+      "head": "71e4ff5d5325044ccb2d11ce8db6b0c8bfe7d934",
+      "files": {
+        ".github/workflows/ci.yml": "54d87b25be5ea93ce7ee1484ac0d3874b1f437c0",
+        "docs/TITAN_MANUAL_STOCK_LOCK_PARITY.md": "dd3df00fe79109d371102852b09bd6a6e8c4a038",
+        "scripts/test-manual-stock-lock-parity.sh": "f51a762f76c0baf2b861ca33c656223ce0e46d03",
+        "scripts/verify-operator-stock-private-http.cjs": "3fd24895b9ccab9ed911ff44b6943c21d23caa1f",
+        "supabase/migrations/20261103_manual_stock_fabric_lock_parity.sql": "82d38e19d60f21bbb1273d45a5599610f9fe573f"
+      },
+      "base_ref": "main",
+      "base_sha": "fd2f29771a24ae888719d64504a0b1fb3595ffb1"
+    },
+    {
+      "pr": 879,
+      "head": "b30aa0856c98f31dd472d8633be3ac160ac6bbbe",
+      "files": {
+        "tests/stock-legacy-rpc-callsite-guard.test.ts": "4160cb5303d776c4b8d89048b98fd20d47929837"
+      },
+      "base_ref": "main",
+      "base_sha": "4dd8020abd83429449ff53ea5bb71b046394d86e"
+    },
+    {
+      "pr": 880,
+      "head": "6730aba8198018b57db70eda1cadf9dbc41d5dc3",
+      "files": {
+        ".github/workflows/titan-legacy-stock-rpc-acl.yml": "d0fbbffe50f0de1e6158a6e75fe256e597c1fb86",
+        "docs/TITAN_LEGACY_STOCK_RPC_ACL.md": "da6fb35acee991637bece7d18d4fd425b996d144",
+        "scripts/assert-disposable-stock-acl-db.sh": "67ac1ab74f855cf6f3523f3cdb3cdd4d7a7e579d",
+        "scripts/audit-retired-stock-rpc-callers.mjs": "f71e2d6b3501805585e8f6c055db7dda4dbb0bac",
+        "scripts/test-disposable-stock-acl-db-guard.sh": "bcf5c551291cac56c9bb2aec318475caf7a90d4a",
+        "scripts/test-draft-legacy-stock-migration-version.mjs": "cbebda4531291dc7e35f624fff91d78dc814b7d8",
+        "scripts/test-legacy-stock-rpc-acl-invocation.sh": "81faf0214770955ea627642474d8a73f24306094",
+        "scripts/test-legacy-stock-rpc-acl-rollback-controls.sh": "f6aa0458efc2661219296c1aa5e91633702e4f57",
+        "scripts/test-retired-stock-rpc-caller-audit.mjs": "532e733606eff0f34e58ff9178654825bb85b5f9",
+        "scripts/verify-draft-legacy-stock-migration-version.mjs": "8a80a67debad30132b6b378b53801dbb44c653e1",
+        "supabase/migrations/20261107093030_legacy_stock_rpc_execute_retirement.sql": "7f2fa3de616dfe8a40fb5e4ca8de578aec49c958",
+        "supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql": "75d63a864c50877b4fb4aeb6fac77c5eb5abddf7",
+        "supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql": "ef30499733c92203b6333906f28b6edf39ffc757",
+        "tests/stock-acl-snapshot-evidence.mjs": "e0a700a9185e0a4e75463a4d3dc19fa2fa3ff9fe",
+        "tests/stock-acl-snapshot-evidence.test.mjs": "7aeabf1598c3e1b34c00b0eab5ed0280064f5efd"
+      },
+      "base_ref": "main",
+      "base_sha": "4dd8020abd83429449ff53ea5bb71b046394d86e"
+    }
+  ],
+  "intentionally_combined": {
+    ".github/workflows/ci.yml": {
+      "integrated_blob_sha": "f01c9d4e6a06504e21542d942ebde174cf9a3ec5",
+      "reason": "Explicit combination of customer-auth security and stock reservation gates."
+    }
+  },
+  "selective_source_imports": [
+    {
+      "pr": 900,
+      "head": "d9fb832ce8ffd453f9b13b4ea41ac212534d06e0",
+      "files": {
+        "supabase/migrations/20261104134500_restore_stock_reservation_identity_gate.sql": "4595329c0c456f0317375bff5430588553684988"
+      },
+      "reason": "Only the forward-only strict stock reservation SQL from source draft #900 is imported. Its other changed checkpoint/preflight files were not imported; do not infer their acceptance or a deployable migration history.",
+      "base_ref": "work/titan-migration-quoted-rpc-preflight-20261104",
+      "base_sha": "2701de2536f32e0d948c03d079886cdc21956801"
+    }
+  ],
+  "central_only_files": {
+    "docs/TITAN_CENTRAL_STOCK_SECURITY_INTEGRATION.md": "d6c345749e60630d5849c60f4f0e8fa253d00898",
+    "scripts/test-central-customer-rpc-acl-invocation.sh": "9d6eb66544e8c14ce4dcf55000d794ca9614ba3b",
+    "scripts/test-stock-reserve-filename-order-overwrite.sh": "cd1fd99e7ab255df08409c7778c52dfc05f771bc"
+  }
+}

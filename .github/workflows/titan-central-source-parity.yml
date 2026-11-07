@@ -1,0 +1,55 @@
+name: TITAN Central Source Blob Parity
+
+# Runs on central integration PR branches, including after this stacked
+# gate is incorporated into #881. Source worker branches remain independent
+# and must not be forced to pass the pinned central intake snapshot.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  source-parity:
+    name: Verify pinned source Git blobs and reviewed workflow reconciliations
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'titan-central-'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # PR events otherwise check out a synthetic pull/merge commit.
+          # Bind this parity evidence to the immutable source PR head.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Prove checked-out commit equals approved event head
+        env:
+          EXPECTED_HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node scripts/verify-central-checkout-head.cjs --self-test
+          node scripts/verify-central-checkout-head.cjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Parse verifier and exercise negative controls
+        run: |
+          node --check scripts/verify-central-source-blobs.cjs
+          node scripts/verify-central-source-blobs.cjs --self-test
+      - name: Compare all integrated source file Git blob SHA-1 identities
+        run: node scripts/verify-central-source-blobs.cjs
+      - name: Verify all source PRs are still at approved heads and blob identities
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --check scripts/verify-central-source-pr-heads.cjs
+          node scripts/verify-central-source-pr-heads.cjs --self-test
+          node scripts/verify-central-source-pr-heads.cjs
+      - name: Verify independent worker PR file scope boundaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --check scripts/verify-central-worker-isolation.cjs
+          node scripts/verify-central-worker-isolation.cjs --self-test
+          node scripts/verify-central-worker-isolation.cjs
