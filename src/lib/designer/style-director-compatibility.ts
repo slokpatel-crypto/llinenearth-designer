@@ -930,7 +930,7 @@ export function styleDirectorCandidateDrawstringWaistband(
   const preBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have)\s+)?(?:a\s+)?${token}\b`, "gi");
   const postBan = new RegExp(String.raw`\b${token}(?:[- ]?(?:free|less)|\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted)))\b`, "gi");
   const optional = new RegExp(String.raw`\b${token}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|mandatory|needed|necessary))\b`, "gi");
-  const optionalPrefix = new RegExp(String.raw`\b(?:optional|unnecessary)\s+${token}\b`, "gi");
+  const optionalPrefix = new RegExp(String.raw`\b(?:optional|maybe|unnecessary)\s+${token}\b`, "gi");
   let banned = false;
   let neutral = candidateTrouser.replace(preBan, () => { banned = true; return " "; });
   neutral = neutral.replace(postBan, () => { banned = true; return " "; });
