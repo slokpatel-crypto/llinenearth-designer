@@ -873,7 +873,7 @@ export function styleDirectorCandidateWideLegIntent(
   const width = String.raw`(?:wide[- ]?leg(?:ged)?(?:[- ]?(?:trousers?|pants?))?|wide[- ]?fit[- ]?(?:trousers?|pants?)|wide[- ]?(?:trousers?|pants?))`;
   const beforeBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|add|have|want)\s+)?(?:(?:a|any)\s+)?${width}\b`, "gi");
   const afterBan = new RegExp(String.raw`\b${width}\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b`, "gi");
-  const optional = new RegExp(String.raw`\b(?:(?:optional|maybe|possibly)\s+${width}|${width}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|maybe))\b`, "gi");
+  const optional = new RegExp(String.raw`\b(?:(?:optional|maybe|possibly|perhaps)\s+${width}|${width}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|maybe|possibly|perhaps))\b`, "gi");
   let prohibited = false;
   let remaining = candidateTrouser.replace(beforeBan, () => { prohibited = true; return " "; });
   remaining = remaining.replace(afterBan, () => { prohibited = true; return " "; });
@@ -929,8 +929,8 @@ export function styleDirectorCandidateDrawstringWaistband(
   const token = String.raw`draw[- ]?string`;
   const preBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have)\s+)?(?:a\s+)?${token}\b`, "gi");
   const postBan = new RegExp(String.raw`\b${token}(?:[- ]?(?:free|less)|\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted)))\b`, "gi");
-  const optional = new RegExp(String.raw`\b${token}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|mandatory|needed|necessary))\b`, "gi");
-  const optionalPrefix = new RegExp(String.raw`\b(?:optional|maybe|unnecessary)\s+${token}\b`, "gi");
+  const optional = new RegExp(String.raw`\b${token}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|mandatory|needed|necessary)|maybe|possibly|perhaps)\b`, "gi");
+  const optionalPrefix = new RegExp(String.raw`\b(?:optional|maybe|possibly|perhaps|unnecessary)\s+${token}\b`, "gi");
   let banned = false;
   let neutral = candidateTrouser.replace(preBan, () => { banned = true; return " "; });
   neutral = neutral.replace(postBan, () => { banned = true; return " "; });
