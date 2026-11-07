@@ -8,6 +8,10 @@ on:
       - 'supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql'
       - 'supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql'
       - 'scripts/test-legacy-stock-rpc-acl-invocation.sh'
+      - 'scripts/audit-retired-stock-rpc-callers.mjs'
+      - 'src/**'
+      - 'desktop/src/**'
+      - 'scripts/**'
       - '.github/workflows/titan-legacy-stock-rpc-acl.yml'
   workflow_dispatch:
 
@@ -41,6 +45,8 @@ jobs:
       PGDATABASE: titan_synthetic
     steps:
       - uses: actions/checkout@v4
+      - name: Audit tracked source for retired stock RPC callers
+        run: node scripts/audit-retired-stock-rpc-callers.mjs
       - name: Install disposable PostgreSQL client
         run: |
           if ! command -v psql >/dev/null 2>&1; then
