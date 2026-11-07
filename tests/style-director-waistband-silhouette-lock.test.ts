@@ -335,3 +335,30 @@ test("unwanted wide-leg silhouettes remain prohibitions without changing locked 
   assert.equal(wide.type, "wide_leg_relaxed_drape");
   assert.equal(ordinary.type, "formal_flat_front");
 });
+
+test("hostile or revoked locked trouser option objects fail closed without throwing", () => {
+  const throwing = new Proxy({}, {
+    getOwnPropertyDescriptor() { throw new Error("untrusted object trap"); },
+  });
+  const revocable = Proxy.revocable({}, {});
+  revocable.revoke();
+  const unsafe = [throwing, revocable.proxy];
+  for (const [wording, check, code] of [
+    ["wide-leg trousers", styleDirectorCandidateWideLegIssues, "candidate_wide_leg_mismatch"],
+    ["no wide-leg trousers", styleDirectorCandidateWideLegIssues, "candidate_wide_leg_mismatch"],
+    ["drawstring trousers", styleDirectorCandidateWaistbandIssues, "candidate_waistband_mismatch"],
+    ["without any drawstring", styleDirectorCandidateWaistbandIssues, "candidate_waistband_mismatch"],
+  ] as const) {
+    for (const locked of unsafe) {
+      const issues = check(wording, locked as never);
+      assert.equal(issues.length, 1, wording);
+      assert.equal(issues[0].code, code, wording);
+      assert.deepEqual(check(wording, locked as never), issues, "deterministic fail-closed review");
+    }
+  }
+  const valid = Object.freeze({ type: "wide_leg_relaxed_drape", waistband: "drawstring_elastic" });
+  assert.deepEqual(styleDirectorCandidateWideLegIssues("wide-leg trousers", valid), []);
+  assert.deepEqual(styleDirectorCandidateWaistbandIssues("drawstring trousers", valid), []);
+  assert.equal(valid.type, "wide_leg_relaxed_drape");
+  assert.equal(valid.waistband, "drawstring_elastic");
+});
