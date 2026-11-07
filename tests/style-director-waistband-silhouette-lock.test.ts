@@ -66,6 +66,9 @@ test("ambiguous and optional trouser wording cannot silently authorize a locked 
   const cases = [
     { wording: "wide-leg trousers and no wide-leg trousers", wide: "ambiguous", waist: null },
     { wording: "optional wide-leg trousers", wide: null, waist: null },
+    { wording: "with or without wide-leg trousers", wide: "ambiguous", waist: null },
+    { wording: "with or without wide-leg pants", wide: "ambiguous", waist: null },
+    { wording: "with without wide-leg trousers", wide: "ambiguous", waist: null },
     { wording: "drawstring and no drawstring", wide: null, waist: "ambiguous" },
     { wording: "with or without drawstring", wide: null, waist: "ambiguous" },
     { wording: "drawstring optional", wide: null, waist: null },
