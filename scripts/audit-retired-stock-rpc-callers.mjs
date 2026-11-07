@@ -44,7 +44,8 @@ for (const path of files) {
   });
   const folded = foldedStaticStrings(lines.join('\n'));
   for (const name of retired) {
-    if (folded.includes(name) && !lines.some(line => new RegExp('\\b' + name + '\\b').test(line))) {
+    if (new RegExp('\\b' + name + '\\b').test(folded) &&
+        !lines.some(line => new RegExp('\\b' + name + '\\b').test(line))) {
       console.error(`BLOCKED: ${path}: statically concatenated retired RPC ${name}`);
       matches++;
     }
