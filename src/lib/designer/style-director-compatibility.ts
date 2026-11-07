@@ -233,6 +233,9 @@ const candidateShirtWear = (name: string) => {
   // untuck. Neutralize both prefix and suffix forms only after genuine
   // prohibitions have been consumed, keeping unrelated affirmative choices.
   remaining = remaining
+    // "With or without" explicitly permits either treatment; it cannot
+    // authorize changing a locked cutting/wear instruction.
+    .replace(/\bwith\s+or\s+without\s+(?:being\s+)?(?:tucked|untucked)\b/gi, " ")
     .replace(/\b(?:optional|maybe)\s+(?:a\s+)?(?:tucked|untucked)\b/gi, " ")
     .replace(/\b(?:tucked|untucked)\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/gi, " ");
   return {
