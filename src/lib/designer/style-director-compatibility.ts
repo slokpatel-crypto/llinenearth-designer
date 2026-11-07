@@ -894,8 +894,14 @@ export function styleDirectorCandidateWideLeg(candidateTrouser: string): boolean
 /** Only persisted own data IDs may authorize a locked construction. */
 function styleDirectorLockedOptionValue(value: unknown, key: string): unknown {
   if (value === null || typeof value !== "object") return undefined;
-  const descriptor = Object.getOwnPropertyDescriptor(value, key);
-  return descriptor && "value" in descriptor ? descriptor.value : undefined;
+  // Revoked/hostile proxies may throw while exposing an own property.
+  // Treat an unreadable locked selection as unverified, never as approval.
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor && "value" in descriptor ? descriptor.value : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Compare explicit wide-leg requests / prohibitions with locked trouser IDs. */
