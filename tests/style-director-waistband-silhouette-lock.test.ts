@@ -300,3 +300,38 @@ test("unwanted drawstring wording cannot be mistaken for an affirmative selectio
   assert.equal(plain.waistband, "belt_loops");
   assert.equal(drawstring.waistband, "drawstring_elastic");
 });
+
+test("unwanted wide-leg silhouettes remain prohibitions without changing locked designs", () => {
+  const wide = Object.freeze({ type: "wide_leg_relaxed_drape", waistband: "belt_loops" });
+  const ordinary = Object.freeze({ type: "formal_flat_front", waistband: "belt_loops" });
+  const negatives = [
+    "wide-leg trousers are not wanted",
+    "wide-leg trousers not wanted",
+    "wide-legged pants unwanted",
+    "wide-fit trousers are not wanted",
+    "do not want any wide-leg pants",
+    "wide-leg trousers not wanted, drawstring perhaps",
+  ];
+  for (const wording of negatives) {
+    assert.equal(styleDirectorCandidateWideLegIntent(wording), "prohibited", wording);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(wording, ordinary), [], wording);
+    const issues = styleDirectorCandidateWideLegIssues(wording, wide);
+    assert.equal(issues.length, 1, wording);
+    assert.equal(issues[0].code, "candidate_wide_leg_mismatch", wording);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(wording, wide), issues);
+  }
+  for (const wording of [
+    "wide-leg pants are not wanted, but choose wide-leg trousers",
+    "wide-leg trousers unwanted and wide-leg trousers",
+  ]) {
+    assert.equal(styleDirectorCandidateWideLegIntent(wording), "ambiguous", wording);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(wording, wide), [], wording);
+  }
+  assert.equal(styleDirectorCandidateWideLegIntent("wide-leg trousers"), "requested");
+  assert.deepEqual(styleDirectorCandidateWideLegIssues("wide-leg trousers", wide), []);
+  assert.equal(styleDirectorCandidateWideLegIntent("perhaps wide-leg trousers"), null);
+  assert.equal(styleDirectorCandidateDrawstringWaistband(
+    "wide-leg trousers are not wanted, drawstring trousers"), "requested");
+  assert.equal(wide.type, "wide_leg_relaxed_drape");
+  assert.equal(ordinary.type, "formal_flat_front");
+});
