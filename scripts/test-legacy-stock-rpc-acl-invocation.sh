@@ -32,19 +32,47 @@ for role in anon authenticated service_role; do
     "public.fabric_stock_consume_reservation('00000000-0000-4000-8000-000000000001'::uuid,1.000,'synthetic')"
 done
 
-# Positive control: a valid provenance-bearing v2 receipt is still permitted
-# with service_role. Both the receipt and its transaction must roll back.
+# Positive controls: exercise the full authorized v2 lifecycle using only
+# synthetic stock. The entire sequence rolls back, including its receipt.
 psql -v ON_ERROR_STOP=1 -At <<'SQL' | grep -qx PASS
 begin;
 set role service_role;
-select case when public.fabric_stock_record_v2(
-  'SYNTHETIC-TITAN-ACL-PROBE', 'receipt', 1.000, 'synthetic',
-  'Synthetic stock checker', 'Synthetic physical receipt'
-) is not null then 'PASS' else 'FAIL' end;
+do $probe$
+declare
+  consumed_id uuid;
+  released_id uuid;
+begin
+  perform public.fabric_stock_record_v2(
+    'SYNTHETIC-TITAN-ACL-PROBE', 'receipt', 3.000, 'synthetic',
+    'Synthetic stock checker', 'Synthetic physical receipt'
+  );
+  consumed_id := public.fabric_stock_reserve_v2(
+    'SYNTHETIC-TITAN-ACL-PROBE', 1.000,
+    'synthetic-locked-revision-0001', 'synthetic-request-consume-0001',
+    'Synthetic checker', 'Synthetic reservation evidence'
+  );
+  if consumed_id is null or not public.fabric_stock_consume_reservation_v2(
+    consumed_id, 1.000, 'synthetic', 'Synthetic checker', 'Synthetic usage evidence'
+  ) then
+    raise exception 'authorized v2 consume path failed';
+  end if;
+  released_id := public.fabric_stock_reserve_v2(
+    'SYNTHETIC-TITAN-ACL-PROBE', 1.000,
+    'synthetic-locked-revision-0002', 'synthetic-request-release-0002',
+    'Synthetic checker', 'Synthetic reservation evidence'
+  );
+  if released_id is null or not public.fabric_stock_release_v2(
+    released_id, 'synthetic', 'Synthetic checker', 'Synthetic release evidence'
+  ) then
+    raise exception 'authorized v2 release path failed';
+  end if;
+end;
+$probe$;
 rollback;
+select 'PASS';
 SQL
 psql -v ON_ERROR_STOP=1 -Atc \
   "select count(*) from private.fabric_stock_ledger where fabric_id='SYNTHETIC-TITAN-ACL-PROBE'" \
   | grep -qx 0
 
-echo "PASS: four v1 RPCs rejected for anon, authenticated and service_role; valid v2 receipt rolled back"
+echo "PASS: four v1 RPCs denied for three roles; all four authorized v2 lifecycle methods exercised and rolled back"
