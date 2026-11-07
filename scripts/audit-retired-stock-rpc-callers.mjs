@@ -11,7 +11,8 @@ const retired = [
   'fabric_stock_release',
   'fabric_stock_consume_reservation',
 ];
-const roots = ['src/', 'desktop/src/', 'scripts/'];
+// Include both desktop frontend and native Tauri/Rust backend, not only desktop/src.
+const roots = ['src/', 'desktop/', 'scripts/'];
 const sourceExtensions = /\.(?:[cm]?[jt]sx?|py|sh|sql|rs)$/i;
 const files = execFileSync('git', ['ls-files', '-z', '--', ...roots], {encoding:'utf8'})
   .split('\0').filter(Boolean)
