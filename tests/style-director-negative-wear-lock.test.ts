@@ -8,9 +8,13 @@ test("negative wear instructions enforce the opposite locked option", () => {
   for (const [wording, allowed, rejected] of [
     ["never tucked", "untucked", "tucked"],
     ["without being tucked", "untucked", "tucked"],
+    ["do not be being tucked", "untucked", "tucked"],
+    ["do not be being untucked", "tucked", "untucked"],
     ["do not tuck", "untucked", "tucked"],
     ["never untucked", "tucked", "untucked"],
     ["without being untucked", "tucked", "untucked"],
+    ["with or without being tucked, but do not be being untucked", "tucked", "untucked"],
+    ["with or without being untucked, but do not be being tucked", "untucked", "tucked"],
   ] as const) {
     assert.deepEqual(styleDirectorCandidateWearIssues(wording, Object.freeze({ wear: allowed })), [], wording);
     const issues = styleDirectorCandidateWearIssues(wording, Object.freeze({ wear: rejected }));
