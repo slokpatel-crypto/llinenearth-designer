@@ -529,9 +529,12 @@ export function styleDirectorCandidateCollarFinishIssues(
   shirt: Pick<StyleSpecV2["shirt"], "collarFinish">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidateCollarFinishIntent(candidateShirt);
-  if (intent.ambiguous) return [];
-  return (intent.requested !== null && intent.requested !== shirt.collarFinish) ||
-    intent.prohibited.includes(shirt.collarFinish as CandidateCollarFinish) ? [{
+  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  const lockedFinish = styleDirectorLockedOptionValue(shirt, "collarFinish");
+  // Unknown, inherited and unreadable values cannot prove an explicit finish.
+  const trusted = candidateFinishChoices.some(option => option === lockedFinish);
+  return !trusted || (intent.requested !== null && intent.requested !== lockedFinish) ||
+    intent.prohibited.includes(lockedFinish as CandidateCollarFinish) ? [{
       code: "candidate_collar_finish_mismatch",
       explanation: "The specified collar/contrast finish conflicts with the locked shirt details; verify the separate fabric and cuff placement before cutting.",
     }] : [];
@@ -601,9 +604,14 @@ export function styleDirectorCandidateButtonIssues(
   shirt: Pick<StyleSpecV2["shirt"], "button">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidateButtonIntent(candidateShirt);
-  if (intent.ambiguous) return [];
-  const invalid = (intent.requested !== null && shirt.button !== intent.requested) ||
-    intent.prohibited.includes(shirt.button as CandidateButtonId);
+  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  const lockedButton = styleDirectorLockedOptionValue(shirt, "button");
+  // A negative instruction cannot approve a stale or unreadable material ID.
+  const trusted = typeof lockedButton === "string" &&
+    optionsFor("shirt.button").some(option => option.id === lockedButton);
+  const invalid = !trusted ||
+    (intent.requested !== null && lockedButton !== intent.requested) ||
+    intent.prohibited.includes(lockedButton as CandidateButtonId);
   return invalid ? [{
     code: "candidate_button_mismatch",
     explanation: "The requested or prohibited button material conflicts with the locked shirt's versioned button choice; confirm the actual button stock before cutting.",
@@ -676,9 +684,13 @@ export function styleDirectorCandidateCuffIssues(
   candidateShirt: string, shirt: Pick<StyleSpecV2["shirt"], "cuff">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidateCuffIntent(candidateShirt);
-  if (intent.ambiguous) return [];
-  const wrongRequest = intent.requested !== null && shirt.cuff !== intent.requested;
-  const prohibitedSaved = intent.prohibited.includes(shirt.cuff as CandidateCuffId);
+  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  const lockedCuff = styleDirectorLockedOptionValue(shirt, "cuff");
+  // Only a canonical own-data cuff ID can satisfy an explicit instruction.
+  const trusted = typeof lockedCuff === "string" &&
+    optionsFor("shirt.cuff").some(option => option.id === lockedCuff);
+  const wrongRequest = !trusted || (intent.requested !== null && lockedCuff !== intent.requested);
+  const prohibitedSaved = intent.prohibited.includes(lockedCuff as CandidateCuffId);
   return wrongRequest || prohibitedSaved ? [{
     code: "candidate_cuff_mismatch",
     explanation: "The requested or prohibited cuff conflicts with the locked versioned cuff construction; confirm the cuff before cutting.",
