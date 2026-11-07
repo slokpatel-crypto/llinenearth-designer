@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "source_snapshot": "2026-11-05",
-  "central_base_commit": "6ad2e3c95257f50ab716d0b1273fb604a86ad765",
+  "source_snapshot": "2026-11-07",
+  "central_base_commit": "3a307f467848e812cc5146d929df0b611110b8dd",
   "source_prs": [
     {
       "pr": 863,
@@ -78,13 +78,21 @@
     },
     {
       "pr": 880,
-      "head": "d980b0a369894f8ec485a56e42939db3d350ff25",
+      "head": "ac7f212bcd5ca78b19f348887a751a7fd6a2c2c7",
       "files": {
-        ".github/workflows/titan-legacy-stock-rpc-acl.yml": "327d1b2ad3640e641ad7d0ea428078e47a358cd6",
-        "docs/TITAN_LEGACY_STOCK_RPC_ACL.md": "8e73fea543c0f0594da9ff88dac3cfae2fb1418f",
-        "scripts/test-legacy-stock-rpc-acl-invocation.sh": "5bf967f3bbfef153c4fa2f75cca1e7ee7b9321b8",
-        "supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql": "7f2fa3de616dfe8a40fb5e4ca8de578aec49c958",
-        "supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql": "052cb8fa1f16f21e0b51c3209a0083ea94069d2d"
+        ".github/workflows/titan-legacy-stock-rpc-acl.yml": "a157375bf9981b97604f25fffd8b8f4a4dd106c4",
+        "docs/TITAN_LEGACY_STOCK_RPC_ACL.md": "41cceb9287e61a0ca32995104e061eaf9af4b073",
+        "scripts/audit-retired-stock-rpc-callers.mjs": "f71e2d6b3501805585e8f6c055db7dda4dbb0bac",
+        "scripts/test-draft-legacy-stock-migration-version.mjs": "cbebda4531291dc7e35f624fff91d78dc814b7d8",
+        "scripts/test-legacy-stock-rpc-acl-invocation.sh": "02dd75a457440f0bcef439a72d25f24297e690ce",
+        "scripts/test-legacy-stock-rpc-acl-rollback-controls.sh": "945f43edddab5e535f2b586ba5126b403cf1f096",
+        "scripts/test-retired-stock-rpc-caller-audit.mjs": "532e733606eff0f34e58ff9178654825bb85b5f9",
+        "scripts/verify-draft-legacy-stock-migration-version.mjs": "8a80a67debad30132b6b378b53801dbb44c653e1",
+        "supabase/migrations/20261107093030_legacy_stock_rpc_execute_retirement.sql": "7f2fa3de616dfe8a40fb5e4ca8de578aec49c958",
+        "supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql": "75d63a864c50877b4fb4aeb6fac77c5eb5abddf7",
+        "supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql": "ef30499733c92203b6333906f28b6edf39ffc757",
+        "tests/stock-acl-snapshot-evidence.mjs": "e0a700a9185e0a4e75463a4d3dc19fa2fa3ff9fe",
+        "tests/stock-acl-snapshot-evidence.test.mjs": "7aeabf1598c3e1b34c00b0eab5ed0280064f5efd"
       },
       "base_ref": "main",
       "base_sha": "4dd8020abd83429449ff53ea5bb71b046394d86e"
@@ -94,10 +102,6 @@
     ".github/workflows/ci.yml": {
       "integrated_blob_sha": "f01c9d4e6a06504e21542d942ebde174cf9a3ec5",
       "reason": "Explicit combination of customer-auth security and stock reservation gates."
-    },
-    ".github/workflows/titan-legacy-stock-rpc-acl.yml": {
-      "integrated_blob_sha": "174ba68bde86bf2969239d3e207b238632ff6428",
-      "reason": "Central cross-domain customer-role and stock forward-repair native PostgreSQL verification."
     }
   },
   "selective_source_imports": [
