@@ -1559,6 +1559,59 @@ jobs:
               )
               assert subtree_comparison["completeGarmentUvApproved"] is False
               assert subtree_comparison["productionApproved"] is False
+              survey=weighted["researchOnlyComponent0CappedTreeCutSurvey"]
+              assert survey["researchOnly"] is True
+              assert survey["evaluatedCandidateCount"] == 24
+              assert survey["candidateRankZeroRealEdgeLengthBudgetMm"] == (
+                  trial["addedActualSourceCutEdgeLengthMm"]
+              )
+              assert survey["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert survey["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              rows=survey["candidateResults"]
+              assert [row["candidateRank"] for row in rows] == list(range(24))
+              assert len({tuple(row["removedRetainedOriginalSourceEdge"])
+                          for row in rows}) == 24
+              assert survey["strictEligibleCandidateCount"] == sum(
+                  row["strictResearchEligible"] for row in rows
+              )
+              assert survey["noStrictCandidateObserved"] is (
+                  survey["strictEligibleCandidateCount"] == 0
+              )
+              for row in rows:
+                  assert row["baselineOverlapTrianglePairs"] == 6957
+                  assert row["candidateOverlapTrianglePairs"] > 0
+                  assert row["overlapTrianglePairDelta"] == (
+                      row["candidateOverlapTrianglePairs"] -
+                      row["baselineOverlapTrianglePairs"]
+                  )
+                  assert row["candidateUnclosedSharedUvSeams"] == 2586
+                  assert row["exactlyOneNewUnclosedUvSeam"] is True
+                  assert row["measuredAddedCutNetworkLengthMm"] == (
+                      row["addedActualSourceCutEdgeLengthMm"]
+                  )
+                  assert row["physicalPatternApproved"] is False
+                  assert row["productionApproved"] is False
+                  assert row["strictResearchEligible"] is (
+                      row["completeOverlapImprovement"] and
+                      row["withinRankZeroRealEdgeLengthBudget"] and
+                      row["noMaximumUvGapRegression"] and
+                      row["noBranchJunctionRegression"] and
+                      row["exactlyOneNewUnclosedUvSeam"]
+                  )
+              selected=survey["strictSelectedCandidate"]
+              if selected is None:
+                  assert survey["strictEligibleCandidateCount"] == 0
+              else:
+                  assert selected["strictResearchEligible"] is True
+                  assert selected in rows
+              assert survey["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert survey["sourceUvExportOrSavePerformed"] is False
+              assert survey["physicalFabricTailorOrFitApproved"] is False
+              assert survey["productionApproved"] is False
               assert branch["productionApproved"] is False
               assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
               assert branch_uv["dualGraphComponentCount"] == 3

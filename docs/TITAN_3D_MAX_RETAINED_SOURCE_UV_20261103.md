@@ -232,6 +232,24 @@ now supplies a derived diagnostic report with 2,646 retained joins and one
 additional unclosed seam; it does not weaken the auditor or rewrite the
 baseline evidence. A fresh exact-head native run is mandatory.
 
+## 2026-11-07 capped component-0 tree-cut survey
+
+The balanced 610/610 split reduced 230 overlap pairs but worsened maximum UV
+gap, cut length and branch count. The next bounded survey therefore evaluates
+the first **24** deterministic most-balanced genuine component-0 retained-tree
+cuts against the same packed weighted baseline. Every candidate receives a
+complete 5,300-triangle overlap audit and an independently reconstructed
+source cut-network report.
+
+A candidate is only research-eligible when all five checks pass: overlap count
+strictly falls; exactly one new seam opens; its real edge is no longer than the
+33.40768mm rank-0 comparison budget; maximum UV gap does not exceed the
+baseline; and cut-network branch junctions do not increase. These are bounded
+software comparison rules, not tailor tolerances or physical pattern approval.
+If no candidate passes, the result must explicitly remain `null` rather than
+selecting the least-bad cut. Source geometry, body BVH, production UV, saved
+scene, GLB, model identity and physical approval flags remain unchanged.
+
 ## 2026-11-05 next bounded diagnostic — attribute remaining overlap by real source component
 
 The packed weighted layout still has 6,957 positive-area triangle overlaps and the branch-aware layout has 7,128. Before changing another UV tree, the overlap audit now derives component ownership only from genuine shared 3D source edges and reports, for every authentic source component, its face count, internal overlapping triangle/face pairs, pairwise area sum and largest observed overlap. Cross-component counts remain separate. Complete packed scans must report zero cross-component overlaps and reconcile every remaining overlap to exactly one component; capped scans remain lower bounds.

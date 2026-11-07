@@ -1845,6 +1845,129 @@ def main():
         "physicalFabricAndTailorApproval": False,
         "productionApproved": False,
     }
+    # Evaluate a bounded set of the most balanced genuine component-0 tree
+    # cuts. A candidate is only research-eligible if it reduces complete-scan
+    # overlap without exceeding the rank-0 real edge-length budget, baseline
+    # maximum seam gap, or baseline branching. These are comparison bounds,
+    # never physical pattern tolerances.
+    bounded_rows = []
+
+    def bounded_row(rank, trial_report, overlap_report, cut_report, comparison):
+        overlap_delta = comparison["candidateOverlapTrianglePairDelta"]
+        added_length = round(
+            cut_report["totalRealGeometryOfUvCutCandidatesMm"] -
+            packed_weighted_cut["totalRealGeometryOfUvCutCandidatesMm"], 5
+        )
+        max_gap_delta = round(
+            cut_report["maximumUnclosedUvEdgeGapMm"] -
+            packed_weighted_cut["maximumUnclosedUvEdgeGapMm"], 5
+        )
+        branch_delta = (
+            cut_report["uvCutCandidateDegreeThreePlusSourceVertices"] -
+            packed_weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+        )
+        complete_improvement = (
+            comparison["bothFullResearchUvScansComplete"] and
+            overlap_delta is not None and overlap_delta < 0
+        )
+        within_edge_budget = (
+            trial_report["addedActualSourceCutEdgeLengthMm"] <=
+            subtree_summary["addedActualSourceCutEdgeLengthMm"] + 0.00001
+        )
+        no_max_gap_regression = max_gap_delta <= 0.00001
+        no_branch_regression = branch_delta <= 0
+        exact_one_new_seam = (
+            cut_report["unclosedSharedUvCutCandidateEdges"] ==
+            packed_weighted_cut["unclosedSharedUvCutCandidateEdges"] + 1
+        )
+        return {
+            "candidateRank": rank,
+            "removedRetainedOriginalSourceEdge":
+                trial_report["removedRetainedOriginalSourceEdge"],
+            "movedOriginalSourceFaceCount":
+                trial_report["movedOriginalSourceFaceCount"],
+            "addedActualSourceCutEdgeLengthMm":
+                trial_report["addedActualSourceCutEdgeLengthMm"],
+            "baselineOverlapTrianglePairs":
+                comparison["baselineObservedTriangleOverlapPairs"],
+            "candidateOverlapTrianglePairs":
+                comparison["candidateObservedTriangleOverlapPairs"],
+            "overlapTrianglePairDelta": overlap_delta,
+            "candidateMaximumUnclosedUvEdgeGapMm":
+                cut_report["maximumUnclosedUvEdgeGapMm"],
+            "maximumUnclosedUvEdgeGapDeltaMm": max_gap_delta,
+            "candidateBranchJunctions":
+                cut_report["uvCutCandidateDegreeThreePlusSourceVertices"],
+            "branchJunctionDelta": branch_delta,
+            "candidateUnclosedSharedUvSeams":
+                cut_report["unclosedSharedUvCutCandidateEdges"],
+            "candidateTotalCutNetworkLengthMm":
+                cut_report["totalRealGeometryOfUvCutCandidatesMm"],
+            "measuredAddedCutNetworkLengthMm": added_length,
+            "completeOverlapImprovement": complete_improvement,
+            "withinRankZeroRealEdgeLengthBudget": within_edge_budget,
+            "noMaximumUvGapRegression": no_max_gap_regression,
+            "noBranchJunctionRegression": no_branch_regression,
+            "exactlyOneNewUnclosedUvSeam": exact_one_new_seam,
+            "strictResearchEligible": (
+                complete_improvement and within_edge_budget and
+                no_max_gap_regression and no_branch_regression and
+                exact_one_new_seam
+            ),
+            "physicalPatternApproved": False,
+            "productionApproved": False,
+        }
+
+    bounded_rows.append(bounded_row(
+        0, subtree_summary, subtree_overlap, subtree_cut, subtree_comparison
+    ))
+    for candidate_rank in range(1, 24):
+        candidate_trial = subtree_ops[
+            "trial_component0_balanced_subtree_uv_pack"
+        ](
+            merged_verts, base_faces, packed_weighted["face_uv_loops"],
+            weighted_selection["retainedOriginalSourceEdges"],
+            candidate_rank=candidate_rank,
+        )
+        candidate_overlap = uv_overlap_audit(
+            base_faces, candidate_trial["face_uv_loops"]
+        )
+        candidate_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+            merged_verts, base_faces, candidate_trial["face_uv_loops"],
+            l_remaining + r_remaining_mapped, subtree_tree_report,
+        )
+        candidate_comparison = overlap_compare(
+            packed_weighted_overlap, candidate_overlap
+        )
+        bounded_rows.append(bounded_row(
+            candidate_rank, candidate_trial["report"], candidate_overlap,
+            candidate_cut, candidate_comparison,
+        ))
+    eligible_rows = [row for row in bounded_rows if row["strictResearchEligible"]]
+    selected_row = min(eligible_rows, key=lambda row: (
+        row["overlapTrianglePairDelta"],
+        row["addedActualSourceCutEdgeLengthMm"],
+        row["candidateRank"],
+    )) if eligible_rows else None
+    weighted_report["researchOnlyComponent0CappedTreeCutSurvey"] = {
+        "researchOnly": True,
+        "candidateSelection": "first 24 deterministic most-balanced genuine tree cuts",
+        "evaluatedCandidateCount": len(bounded_rows),
+        "candidateRankZeroRealEdgeLengthBudgetMm":
+            subtree_summary["addedActualSourceCutEdgeLengthMm"],
+        "baselineMaximumUnclosedUvEdgeGapMm":
+            packed_weighted_cut["maximumUnclosedUvEdgeGapMm"],
+        "baselineBranchJunctions":
+            packed_weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"],
+        "candidateResults": bounded_rows,
+        "strictEligibleCandidateCount": len(eligible_rows),
+        "strictSelectedCandidate": selected_row,
+        "noStrictCandidateObserved": not eligible_rows,
+        "sourceGeometryAndBodyBVHUnchanged": True,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricTailorOrFitApproved": False,
+        "productionApproved": False,
+    }
     branch_report["actualSourceUvCutNetworkEvidence"] = branch_audit
     branch_report["actualRealSourceUvTreeEvidence"] = branch_uv["report"]
     branch_report["actualSourceGeometryUnchanged"] = True

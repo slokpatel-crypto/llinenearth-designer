@@ -68,6 +68,8 @@ assert baseline == trial(points, faces, loops, retained)
 report = baseline["report"]
 assert report["targetComponentId"] == 0
 assert report["targetComponentOriginalSourceFaceCount"] == 1220
+assert report["candidateRankWithinBalancedTreeCuts"] == 0
+assert report["boundedCandidateRankLimit"] == 48
 assert 1 <= report["movedOriginalSourceFaceCount"] <= 610
 assert (report["movedOriginalSourceFaceCount"]
         + report["stationaryComponent0FaceCount"] == 1220)
@@ -81,6 +83,15 @@ assert report["realTailorCutApproved"] is False
 assert report["physicalBodyFitApproved"] is False
 assert report["productionApproved"] is False
 assert points == original_points and faces == original_faces and loops == original_loops
+
+ranked = [trial(points, faces, loops, retained, candidate_rank=rank)
+          for rank in range(4)]
+assert [row["report"]["candidateRankWithinBalancedTreeCuts"]
+        for row in ranked] == [0, 1, 2, 3]
+assert len({tuple(row["report"]["removedRetainedOriginalSourceEdge"])
+            for row in ranked}) == 4
+assert all(row["report"]["movedOriginalSourceFaceCount"] <= 610
+           for row in ranked)
 
 # Stack the deterministically selected subtree over stationary component-0
 # faces, then prove the same one-cut trial removes cross-subtree intersections.
@@ -99,9 +110,10 @@ assert after["observedInteriorOverlapTrianglePairsLowerBound"] == 0
 
 
 def reject(source_points=points, source_faces=faces, source_uv=loops,
-           source_retained=retained, gap=5.0):
+           source_retained=retained, gap=5.0, candidate_rank=0):
     try:
-        trial(source_points, source_faces, source_uv, source_retained, gap)
+        trial(source_points, source_faces, source_uv, source_retained, gap,
+              candidate_rank)
     except (ValueError, TypeError, IndexError):
         return
     raise AssertionError("Component-0 UV trial accepted forged source evidence")
@@ -113,6 +125,8 @@ reject(source_retained=retained[:-1])
 reject(source_retained=retained[:-1] + [retained[0]])
 for gap in (0, -1, 101, math.nan, math.inf, True, "5"):
     reject(gap=gap)
+for rank in (-1, 48, 1.0, True, "1"):
+    reject(candidate_rank=rank)
 bad_points = list(points)
 bad_points[0] = (math.nan, 0, 0)
 reject(source_points=bad_points)

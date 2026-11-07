@@ -12,7 +12,7 @@ import math
 
 def trial_component0_balanced_subtree_uv_pack(
         points, original_faces, face_uv_loops, retained_source_tree_edges,
-        display_gap_mm=5.0):
+        display_gap_mm=5.0, candidate_rank=0):
     if (len(original_faces) != 2650 or len(face_uv_loops) != 2650
             or len(retained_source_tree_edges) != 2647 or not points):
         raise ValueError("Component-0 UV trial requires the complete original source forest.")
@@ -21,6 +21,8 @@ def trial_component0_balanced_subtree_uv_pack(
             or not math.isfinite(display_gap_mm)
             or not 0 < display_gap_mm <= 100):
         raise ValueError("Component-0 UV trial gap must be finite and in (0,100]mm.")
+    if type(candidate_rank) is not int or not 0 <= candidate_rank < 48:
+        raise ValueError("Component-0 UV trial candidate rank must be in [0,48).")
     vertices = []
     for raw in points:
         point = tuple(float(value) for value in raw)
@@ -130,7 +132,10 @@ def trial_component0_balanced_subtree_uv_pack(
         candidates.append((-len(moved), parent_edge[child], min(moved), moved))
     if not candidates:
         raise ValueError("Component-0 UV tree has no genuine retained edge to test.")
-    _negative_size, cut_edge, _minimum_face, moved = min(candidates)
+    candidates.sort(key=lambda row: (row[0], row[1], row[2]))
+    if candidate_rank >= len(candidates):
+        raise ValueError("Component-0 UV trial candidate rank exceeds genuine tree edges.")
+    _negative_size, cut_edge, _minimum_face, moved = candidates[candidate_rank]
     moved = set(moved)
 
     all_points = [point for row in normalized_uv for point in row]
@@ -169,6 +174,8 @@ def trial_component0_balanced_subtree_uv_pack(
             "targetComponentId": 0,
             "targetComponentOriginalSourceFaceCount": 1220,
             "selectionRule": "largest smaller side of one retained component-0 tree edge",
+            "candidateRankWithinBalancedTreeCuts": candidate_rank,
+            "boundedCandidateRankLimit": 48,
             "removedRetainedOriginalSourceEdge": list(cut_edge),
             "addedActualSourceCutEdgeLengthMm": round(edge_length_mm, 5),
             "movedOriginalSourceFaceCount": len(moved),
