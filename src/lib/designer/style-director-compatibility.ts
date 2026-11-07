@@ -879,7 +879,10 @@ export function styleDirectorCandidateWideLegIntent(
   remaining = remaining.replace(afterBan, () => { prohibited = true; return " "; });
   remaining = remaining.replace(optional, " ");
   const requested = new RegExp(String.raw`\b${width}\b`, "i").test(remaining);
-  if (requested && prohibited) return "ambiguous";
+  // "With or without" explicitly leaves the silhouette undecided. It must
+  // not be treated as a prohibition merely because "without" is present.
+  const alternative = new RegExp(String.raw`\bwith\s+(?:or\s+)?without\s+${width}\b`, "i").test(candidateTrouser);
+  if (alternative || (requested && prohibited)) return "ambiguous";
   return requested ? "requested" : prohibited ? "prohibited" : null;
 }
 
