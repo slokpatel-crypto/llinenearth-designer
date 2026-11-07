@@ -233,3 +233,36 @@ test("tentative trouser options remain neutral while firm construction instructi
     assert.equal(JSON.stringify(locked), unchanged, "never rewrite locked construction");
   }
 });
+
+test("quantified drawstring exclusions never become affirmative waistband instructions", () => {
+  const withDrawstring = Object.freeze({ waistband: "drawstring_elastic" });
+  const withoutDrawstring = Object.freeze({ waistband: "belt_loops" });
+  const negative = [
+    "without any drawstring",
+    "without the drawstring",
+    "avoid any draw-string",
+    "never use any drawstring",
+    "do not include the drawstring",
+    "no drawstring",
+  ];
+  for (const wording of negative) {
+    assert.equal(styleDirectorCandidateDrawstringWaistband(wording), "prohibited", wording);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(wording, withoutDrawstring), [], wording);
+    const first = styleDirectorCandidateWaistbandIssues(wording, withDrawstring);
+    assert.equal(first.length, 1, wording);
+    assert.equal(first[0].code, "candidate_waistband_mismatch", wording);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(wording, withDrawstring), first);
+  }
+  const contradictory = [
+    "without any drawstring, but drawstring is required",
+    "avoid the draw-string and use a drawstring",
+    "drawstring trousers; without any drawstring",
+  ];
+  for (const wording of contradictory) {
+    assert.equal(styleDirectorCandidateDrawstringWaistband(wording), "ambiguous", wording);
+  }
+  assert.equal(styleDirectorCandidateDrawstringWaistband("drawstring trousers"), "requested");
+  assert.deepEqual(styleDirectorCandidateWaistbandIssues("drawstring trousers", withDrawstring), []);
+  assert.equal(withDrawstring.waistband, "drawstring_elastic");
+  assert.equal(withoutDrawstring.waistband, "belt_loops");
+});
