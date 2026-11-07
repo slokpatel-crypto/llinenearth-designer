@@ -8,6 +8,8 @@ on:
       - 'supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql'
       - 'supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql'
       - 'supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql'
+      - 'tests/stock-acl-snapshot-evidence.mjs'
+      - 'tests/stock-acl-snapshot-evidence.test.mjs'
       - 'scripts/test-legacy-stock-rpc-acl-invocation.sh'
       - 'scripts/audit-retired-stock-rpc-callers.mjs'
       - 'src/**'
@@ -50,6 +52,8 @@ jobs:
         run: node scripts/audit-retired-stock-rpc-callers.mjs
       - name: Prove retired RPC audit positive and negative fixtures
         run: node scripts/test-retired-stock-rpc-caller-audit.mjs
+      - name: Prove offline ACL snapshot verifier rejects synthetic evidence defects
+        run: node --test tests/stock-acl-snapshot-evidence.test.mjs
       - name: Install disposable PostgreSQL client
         run: |
           if ! command -v psql >/dev/null 2>&1; then
@@ -123,5 +127,7 @@ jobs:
           grep -Fqx 'v2|public.fabric_stock_record_v2(text,text,numeric,text,text,text)|service_role|EXECUTE' /tmp/stock-acl-after.tsv
           grep -Fqx 'v2|public.fabric_stock_record_v2(text,text,numeric,text,text,text)|authenticated|NO_EXECUTE' /tmp/stock-acl-after.tsv
           test "$(wc -l < /tmp/stock-acl-after.tsv)" -eq 32
+      - name: Verify complete 32-row before/after ACL contract (fail closed)
+        run: node tests/stock-acl-snapshot-evidence.mjs /tmp/stock-acl-before.tsv /tmp/stock-acl-after.tsv
       - name: Execute retired v1 calls as service_role; positive v2 call rolls back
         run: bash scripts/test-legacy-stock-rpc-acl-invocation.sh

@@ -36,6 +36,14 @@ PGSERVICE=titan-staging-readonly psql -X -v ON_ERROR_STOP=1 -At -F '|' -f supaba
 
 Never include database credentials in committed artifacts. A successful query alone is not a pass: verify all four v1 methods become `NO_EXECUTE` for `PUBLIC`, `anon`, `authenticated` and `service_role`, that service_role retains all four v2 `EXECUTE` rights, and that `anon` and `authenticated` cannot execute v2. Missing roles/functions and unexpected grants **block** approval. Archive both captures with the exact target database identity, migration fingerprint, timestamp, reviewers, and independent server/integration caller inventory; redact sensitive connection details. Do not use the synthetic test bootstrap against staging or production.
 
+After capturing both read-only snapshots, run the offline, fail-closed verifier:
+
+```bash
+node tests/stock-acl-snapshot-evidence.mjs stock-acl-before.tsv stock-acl-after.tsv
+```
+
+It checks every expected signature and role in **both** 32-row files, rejects missing/extra/duplicated keys, missing roles/functions, unexpected v1 permissions, and any v2 permission drift. It accepts an already-revoked staging baseline but still requires all v1 grants denied afterward. Its 18 synthetic fixture cases run in the independent GitHub workflow. The verifier cannot authenticate the origin of saved snapshot files; retain database identity, timestamp and reviewer evidence separately. A passing offline comparison is **not approval** to apply the migration.
+
 The independent CI workflow proves that the same read-only query detects synthetic `service_role` v1 privileges *before* revocation and their absence *after*, without connecting to any shared database. This does not replace an actual staging capture, security sign-off or integration/version reconciliation.
 
 ## Compatibility, rollout and rollback gate
