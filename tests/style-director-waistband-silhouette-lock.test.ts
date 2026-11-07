@@ -86,3 +86,24 @@ test("ambiguous and optional trouser wording cannot silently authorize a locked 
     assert.equal(JSON.stringify(saved), snapshot, "locked IDs must remain immutable");
   }
 });
+
+test("inherited and accessor trouser IDs cannot authorize locked construction", () => {
+  for (const [field, wording, check] of [
+    ["type", "wide-leg trousers", styleDirectorCandidateWideLegIssues],
+    ["waistband", "drawstring trousers", styleDirectorCandidateWaistbandIssues],
+  ] as const) {
+    const canonical = field === "type" ? "wide_leg_relaxed_drape" : "drawstring_elastic";
+    const inherited = Object.create({ [field]: canonical });
+    const getter = Object.defineProperty({}, field, {
+      enumerable: true,
+      get() { throw new Error("untrusted accessor must not run"); },
+    });
+    for (const value of [inherited, getter, Object.freeze({})]) {
+      const first = check(wording, value);
+      assert.equal(first.length, 1, `${field}: missing own data property must mismatch`);
+      assert.deepEqual(check(wording, value), first, "deterministic replay");
+    }
+    const safe = Object.freeze(Object.assign(Object.create(null), { [field]: canonical }));
+    assert.deepEqual(check(wording, safe), [], "canonical own data property remains valid");
+  }
+});
