@@ -1613,6 +1613,66 @@ jobs:
               assert survey["sourceUvExportOrSavePerformed"] is False
               assert survey["physicalFabricTailorOrFitApproved"] is False
               assert survey["productionApproved"] is False
+              two_cut=weighted["researchOnlyComponent0CappedTwoCutSurvey"]
+              assert two_cut["researchOnly"] is True
+              assert two_cut["sourceOneCutRanks"] == [0,2,6,15,18]
+              assert two_cut["evaluatedCandidatePairCount"] == 10
+              assert two_cut["doubleRankZeroRealEdgeLengthBudgetMm"] == round(
+                  2 * trial["addedActualSourceCutEdgeLengthMm"], 5
+              )
+              assert two_cut["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert two_cut["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              pair_rows=two_cut["candidateResults"]
+              expected_pairs=[[left,right]
+                              for index,left in enumerate([0,2,6,15,18])
+                              for right in [0,2,6,15,18][index+1:]]
+              assert [row["candidateRanks"] for row in pair_rows] == expected_pairs
+              assert two_cut["strictEligibleCandidateCount"] == sum(
+                  row["strictResearchEligible"] for row in pair_rows
+              )
+              assert two_cut["noStrictCandidateObserved"] is (
+                  two_cut["strictEligibleCandidateCount"] == 0
+              )
+              for row in pair_rows:
+                  assert len(row["removedRetainedOriginalSourceEdges"]) == 2
+                  assert len({tuple(edge) for edge in
+                              row["removedRetainedOriginalSourceEdges"]}) == 2
+                  assert row["baselineOverlapTrianglePairs"] == 6957
+                  assert row["candidateOverlapTrianglePairs"] > 0
+                  assert row["overlapTrianglePairDelta"] == (
+                      row["candidateOverlapTrianglePairs"] -
+                      row["baselineOverlapTrianglePairs"]
+                  )
+                  assert row["candidateUnclosedSharedUvSeams"] == 2587
+                  assert row["exactlyTwoNewUnclosedUvSeams"] is True
+                  assert abs(
+                      row["measuredAddedCutNetworkLengthMm"] -
+                      row["addedActualSourceCutEdgeLengthMm"]
+                  ) <= 0.0001
+                  assert row["withinDoubleRankZeroRealEdgeLengthBudget"] is True
+                  assert row["physicalPatternApproved"] is False
+                  assert row["productionApproved"] is False
+                  assert row["strictResearchEligible"] is (
+                      row["completeOverlapImprovement"] and
+                      row["withinDoubleRankZeroRealEdgeLengthBudget"] and
+                      row["noMaximumUvGapRegression"] and
+                      row["noBranchJunctionRegression"] and
+                      row["exactlyTwoNewUnclosedUvSeams"]
+                  )
+              two_cut_selected=two_cut["strictSelectedCandidate"]
+              if two_cut_selected is None:
+                  assert two_cut["strictEligibleCandidateCount"] == 0
+              else:
+                  assert two_cut_selected["strictResearchEligible"] is True
+                  assert two_cut_selected in pair_rows
+              assert two_cut["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert two_cut["sourceUvExportOrSavePerformed"] is False
+              assert two_cut["physicalFabricTailorOrFitApproved"] is False
+              assert two_cut["productionApproved"] is False
               assert branch["productionApproved"] is False
               assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
               assert branch_uv["dualGraphComponentCount"] == 3

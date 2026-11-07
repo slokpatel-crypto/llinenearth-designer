@@ -1,8 +1,9 @@
-"""One-cut UV subtree repack on the genuine largest source component.
+"""Bounded UV subtree repacks on the genuine largest source component.
 
 Research only: this removes one retained face-tree join, rigidly translates the
 smaller resulting subtree, and reports the real 3D source-edge length exposed.
-It never changes source vertices/faces or approves a sewn cutting pattern.
+The two-cut trial composes two distinct ranked rigid repacks without changing
+source vertices/faces or approving a sewn cutting pattern.
 """
 from __future__ import annotations
 
@@ -198,6 +199,87 @@ def trial_component0_balanced_subtree_uv_pack(
                 "subtree rigidly translated in research UV space. The numerical gap is "
                 "not seam allowance or fabric width. Internal overlaps, all other cyclic "
                 "seams, cloth grain, body fit and tailoring remain UNVERIFIED."
+            ),
+        },
+    }
+
+
+def trial_component0_ranked_two_cut_uv_pack(
+        points, original_faces, face_uv_loops, retained_source_tree_edges,
+        candidate_ranks, display_gap_mm=5.0):
+    if (not isinstance(candidate_ranks, (list, tuple))
+            or len(candidate_ranks) != 2
+            or any(type(rank) is not int or not 0 <= rank < 48
+                   for rank in candidate_ranks)
+            or candidate_ranks[0] >= candidate_ranks[1]):
+        raise ValueError(
+            "Component-0 two-cut trial requires two increasing distinct ranks."
+        )
+    first = trial_component0_balanced_subtree_uv_pack(
+        points, original_faces, face_uv_loops, retained_source_tree_edges,
+        display_gap_mm=display_gap_mm, candidate_rank=candidate_ranks[0],
+    )
+    second = trial_component0_balanced_subtree_uv_pack(
+        points, original_faces, first["face_uv_loops"], retained_source_tree_edges,
+        display_gap_mm=display_gap_mm, candidate_rank=candidate_ranks[1],
+    )
+    first_report, second_report = first["report"], second["report"]
+    removed_edges = [
+        first_report["removedRetainedOriginalSourceEdge"],
+        second_report["removedRetainedOriginalSourceEdge"],
+    ]
+    if len({tuple(edge) for edge in removed_edges}) != 2:
+        raise ValueError("Component-0 two-cut trial selected a duplicated source edge.")
+    max_change_mm = 0.0
+    for before, after in zip(face_uv_loops, second["face_uv_loops"]):
+        for left, right in ((0, 1), (1, 2), (2, 3), (3, 0), (0, 2)):
+            max_change_mm = max(max_change_mm, abs(
+                math.dist(before[left], before[right])
+                - math.dist(after[left], after[right])
+            ) * 1000.0)
+    if max_change_mm > 0.000001:
+        raise ValueError("Rigid two-cut subtree repack stretched original UV triangles.")
+    added_length_mm = sum(
+        report["addedActualSourceCutEdgeLengthMm"]
+        for report in (first_report, second_report)
+    )
+    return {
+        "face_uv_loops": second["face_uv_loops"],
+        "report": {
+            "researchOnly": True,
+            "originalSourceQuadCount": 2650,
+            "targetComponentId": 0,
+            "targetComponentOriginalSourceFaceCount": 1220,
+            "selectionRule": (
+                "compose two increasing distinct ranks from deterministic "
+                "balanced component-0 retained-tree cuts"
+            ),
+            "candidateRanksWithinBalancedTreeCuts": list(candidate_ranks),
+            "removedRetainedOriginalSourceEdges": removed_edges,
+            "addedActualSourceCutEdgeLengthMm": round(added_length_mm, 5),
+            "movedOriginalSourceFaceCounts": [
+                first_report["movedOriginalSourceFaceCount"],
+                second_report["movedOriginalSourceFaceCount"],
+            ],
+            "rigidResearchUvTranslationsMm": [
+                first_report["rigidResearchUvTranslationMm"],
+                second_report["rigidResearchUvTranslationMm"],
+            ],
+            "maximumOriginalTriangleEdgeChangeMm": round(max_change_mm, 9),
+            "retainedSourceUvTreeJoinCountBefore": 2647,
+            "retainedSourceUvTreeJoinCountAfter": 2645,
+            "newUnclosedSourceUvSeamCount": 2,
+            "sourceGeometryAndVertexIDsUnchanged": True,
+            "sourceUvExportOrSavePerformed": False,
+            "physicalTextileWidthRepeatOrGrainKnown": False,
+            "realTailorCutApproved": False,
+            "physicalBodyFitApproved": False,
+            "productionApproved": False,
+            "metricCaveat": (
+                "Two genuine retained source face-tree edges were opened by "
+                "sequential rigid research-UV translations. Their numerical "
+                "gaps are not seam allowances or fabric width; physical grain, "
+                "body fit, overlap-free charts and tailoring remain UNVERIFIED."
             ),
         },
     }

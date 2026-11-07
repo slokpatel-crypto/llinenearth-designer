@@ -5,9 +5,11 @@ import math
 import runpy
 
 ROOT = Path(__file__).resolve().parents[2]
-trial = runpy.run_path(str(
+trial_ops = runpy.run_path(str(
     ROOT / "scripts/blender/source-trouser-component0-subtree-uv-trial.py"
-))["trial_component0_balanced_subtree_uv_pack"]
+))
+trial = trial_ops["trial_component0_balanced_subtree_uv_pack"]
+two_cut_trial = trial_ops["trial_component0_ranked_two_cut_uv_pack"]
 audit = runpy.run_path(str(
     ROOT / "scripts/blender/source-trouser-uv-overlap-audit.py"
 ))["audit_original_source_uv_triangle_overlaps"]
@@ -93,6 +95,23 @@ assert len({tuple(row["report"]["removedRetainedOriginalSourceEdge"])
 assert all(row["report"]["movedOriginalSourceFaceCount"] <= 610
            for row in ranked)
 
+two_cut = two_cut_trial(points, faces, loops, retained, [0, 2])
+assert two_cut == two_cut_trial(points, faces, loops, retained, (0, 2))
+two_report = two_cut["report"]
+assert two_report["candidateRanksWithinBalancedTreeCuts"] == [0, 2]
+assert len(two_report["removedRetainedOriginalSourceEdges"]) == 2
+assert len({tuple(edge) for edge in
+            two_report["removedRetainedOriginalSourceEdges"]}) == 2
+assert two_report["addedActualSourceCutEdgeLengthMm"] > 0
+assert two_report["maximumOriginalTriangleEdgeChangeMm"] <= .000001
+assert two_report["retainedSourceUvTreeJoinCountAfter"] == 2645
+assert two_report["newUnclosedSourceUvSeamCount"] == 2
+assert two_report["sourceGeometryAndVertexIDsUnchanged"] is True
+assert two_report["sourceUvExportOrSavePerformed"] is False
+assert two_report["realTailorCutApproved"] is False
+assert two_report["productionApproved"] is False
+assert points == original_points and faces == original_faces and loops == original_loops
+
 # Stack the deterministically selected subtree over stationary component-0
 # faces, then prove the same one-cut trial removes cross-subtree intersections.
 moved = [index for index, (before, after) in enumerate(zip(loops, baseline["face_uv_loops"]))
@@ -127,6 +146,19 @@ for gap in (0, -1, 101, math.nan, math.inf, True, "5"):
     reject(gap=gap)
 for rank in (-1, 48, 1.0, True, "1"):
     reject(candidate_rank=rank)
+
+
+def reject_two(ranks):
+    try:
+        two_cut_trial(points, faces, loops, retained, ranks)
+    except (ValueError, TypeError, IndexError):
+        return
+    raise AssertionError("Component-0 two-cut trial accepted forged ranks")
+
+
+for ranks in (None, [], [0], [0, 1, 2], [0, 0], [2, 0],
+              [-1, 2], [0, 48], [0, 1.0], [False, 1], "0,1"):
+    reject_two(ranks)
 bad_points = list(points)
 bad_points[0] = (math.nan, 0, 0)
 reject(source_points=bad_points)

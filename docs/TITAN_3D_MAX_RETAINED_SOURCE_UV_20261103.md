@@ -83,6 +83,26 @@ The longest weighted remaining UV gap is still **1,072.40848 mm**, and 2,585 fac
 
 **No production merge/deploy. No physical approval. No fabric fact invented.**
 
+## 2026-11-07 bounded two-cut compensation survey
+
+The complete 24-candidate one-cut scan found only ranks **0, 2, 6, 15 and
+18** within the rank-zero 33.40768mm real source-edge comparison budget. This
+follow-up evaluates all **10 unique pairs** from exactly that measured set.
+Each pair sequentially opens two distinct genuine retained component-0 tree
+edges and applies only rigid UV translations; original 3D vertices, faces,
+body BVH evidence, source assets and exports remain unchanged.
+
+A pair is research-eligible only if a complete overlap scan strictly improves
+the 6,957-pair baseline, exactly two new UV seams are measured, combined added
+real source-edge length is at most **66.81536mm**, maximum UV gap does not
+exceed the 1,072.40848mm baseline, and cut-network branch junctions do not
+exceed 323. A least-bad result is never selected: if no pair passes every
+condition, `strictSelectedCandidate` remains null. These are comparison bounds,
+not physical seam allowance, fabric width, grain, fit or tailor approval.
+
+Native Blender results and exact-head CI must be recorded before interpreting
+the survey. No candidate is saved, exported, merged or deployed automatically.
+
 
 ## 2026-11-05 follow-up: bounded junction-aware source UV candidate
 
