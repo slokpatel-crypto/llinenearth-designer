@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/assert-disposable-stock-acl-db.sh"
 # Disposable PostgreSQL ONLY. Invoke each retired RPC as the real service_role
 # rather than relying exclusively on has_function_privilege metadata.
 assert_denied() {
