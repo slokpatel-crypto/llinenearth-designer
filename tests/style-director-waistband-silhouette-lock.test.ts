@@ -362,3 +362,49 @@ test("hostile or revoked locked trouser option objects fail closed without throw
   assert.equal(valid.type, "wide_leg_relaxed_drape");
   assert.equal(valid.waistband, "drawstring_elastic");
 });
+
+test("postposed construction prohibitions respect locked wide-leg and drawstring IDs", () => {
+  const wide = Object.freeze({ type: "wide_leg_relaxed_drape", waistband: "belt_loops" });
+  const standard = Object.freeze({ type: "formal_flat_front", waistband: "belt_loops" });
+  const drawstring = Object.freeze({ type: "formal_flat_front", waistband: "drawstring_elastic" });
+  const wideBans = [
+    "wide-leg trousers should be avoided",
+    "wide-leg trousers must not be worn",
+    "wide-leg trousers are to be avoided",
+    "wide-leg trousers are not to be worn",
+    "wide-leg pants should not be chosen",
+  ];
+  const drawstringBans = [
+    "drawstring should be avoided",
+    "drawstring must not be used",
+    "drawstring is to be avoided",
+    "drawstring not to be included",
+    "drawstring is not to be used",
+  ];
+  for (const wording of wideBans) {
+    assert.equal(styleDirectorCandidateWideLegIntent(wording), "prohibited", wording);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(wording, standard), [], wording);
+    const issues = styleDirectorCandidateWideLegIssues(wording, wide);
+    assert.equal(issues.length, 1, wording);
+    assert.equal(issues[0].code, "candidate_wide_leg_mismatch", wording);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(wording, wide), issues);
+  }
+  for (const wording of drawstringBans) {
+    assert.equal(styleDirectorCandidateDrawstringWaistband(wording), "prohibited", wording);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(wording, standard), [], wording);
+    const issues = styleDirectorCandidateWaistbandIssues(wording, drawstring);
+    assert.equal(issues.length, 1, wording);
+    assert.equal(issues[0].code, "candidate_waistband_mismatch", wording);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(wording, drawstring), issues);
+  }
+  assert.equal(styleDirectorCandidateWideLegIntent(
+    "wide-leg trousers should be avoided; wide-leg pants required"), "ambiguous");
+  assert.equal(styleDirectorCandidateDrawstringWaistband(
+    "drawstring should be avoided, but drawstring is required"), "ambiguous");
+  // Positive "to be" statements are not bans.
+  assert.equal(styleDirectorCandidateWideLegIntent("wide-leg trousers to be worn"), "requested");
+  assert.equal(styleDirectorCandidateDrawstringWaistband("drawstring to be included"), "requested");
+  assert.equal(wide.type, "wide_leg_relaxed_drape");
+  assert.equal(standard.waistband, "belt_loops");
+  assert.equal(drawstring.waistband, "drawstring_elastic");
+});
