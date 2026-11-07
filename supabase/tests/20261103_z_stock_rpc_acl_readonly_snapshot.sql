@@ -2,7 +2,7 @@
 -- connection; this SQL contains no mutation, DDL, GRANT, or SET ROLE.
 -- Output: lifecycle | exact signature | role | effective EXECUTE.
 -- Capture before AND after retirement, compare and obtain human sign-off.
--- MISSING_FUNCTION and MISSING_ROLE are evidence gaps, never automatic passes.
+-- MISSING_FUNCTION, MISSING_ROLE and UNREVIEWED_OVERLOAD block approval.
 WITH rpc_signatures(lifecycle, signature) AS (
   VALUES
     ('v1', 'public.fabric_stock_record(text,text,numeric,text)'),
@@ -24,6 +24,16 @@ resolved AS (
 SELECT f.lifecycle, f.signature, r.role_name,
   CASE
     WHEN f.function_oid IS NULL THEN 'MISSING_FUNCTION'
+    -- An overloaded RPC can have a distinct grant from the reviewed signature.
+    -- Surface an explicit blocker without changing the expected 32-row output.
+    WHEN EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_proc p
+      JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public'
+        AND p.proname = split_part(split_part(f.signature, '(', 1), '.', 2)
+        AND p.oid <> f.function_oid::oid
+    ) THEN 'UNREVIEWED_OVERLOAD'
     WHEN r.role_name = 'PUBLIC' THEN
       CASE WHEN EXISTS (
         SELECT 1
