@@ -52,6 +52,8 @@ The independent CI workflow proves that the same read-only query detects synthet
 
 ## Draft retirement migration filename safety
 
+The security gate also pins the reviewed permission-only SQL Git blob SHA-1 (`7f2fa3de616dfe8a40fb5e4ca8de578aec49c958`). It compares **every byte** of the draft migration and fails if permissions, function bodies, transaction structure or even whitespace are changed without an explicit review and pin update. This is a deliberate content integrity gate, not a cryptographic attestation of staging SQL. The migration directory audit also rejects symlinks, nested directories and uppercase-case SQL suffixes rather than silently omitting them. Sixteen dedicated fixtures guard version and content checks; they do **not** certify historical Supabase migration history.
+
 The ACL workflow now triggers for **any** modification under `supabase/migrations/**`, not only its previously named SQL file. A standalone static naming guard `scripts/verify-draft-legacy-stock-migration-version.mjs` and 11 fixtures `scripts/test-draft-legacy-stock-migration-version.mjs` require a single retirement migration with a calendar-valid, unique 14-digit Supabase timestamp; reject the obsolete duplicate 8-digit draft path, a second file with the same version, or an accidentally backdated replacement. It allows pre-existing migration collision groups only because this guard is **not** the independent full-history migration auditor (#883); those historical collisions are still blockers for CLI deployment and must not be waived.
 
 ## Compatibility, rollout and rollback gate

@@ -1,12 +1,35 @@
 #!/usr/bin/env node
 // Static, source-only guard for this unmerged legacy stock RPC retirement migration.
 // This is NOT a certificate that historical Supabase migration versions can deploy.
-import {readdirSync} from 'node:fs';
+import {readdirSync,readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const migrationDir = fileURLToPath(new URL('../supabase/migrations/', import.meta.url));
-const expectedSuffix = '_legacy_stock_rpc_execute_retirement.sql';
+// Pin the reviewed SQL bytes, not just its filename: any intentional change
+// must update this digest in a separately reviewed security commit.
+export const REVIEWED_SQL_BLOB_SHA = '7f2fa3de616dfe8a40fb5e4ca8de578aec49c958';
+export function gitBlobDigest(bytes) {
+  const payload = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+  return createHash('sha1').update('blob ' + payload.length + '\0').update(payload).digest('hex');
+}
+export function verifyReviewedSql(bytes) {
+  const digest = gitBlobDigest(bytes);
+  if (digest !== REVIEWED_SQL_BLOB_SHA) throw Error('reviewed stock retirement SQL changed: ' + digest);
+  return digest;
+}
+// Fail closed if the directory hides SQL variants or symlinks.
+export function listMigrationFiles(entries) {
+  for (const entry of entries) {
+    if (entry.isSymbolicLink() || entry.isDirectory() ||
+        (!entry.isFile() && /\.sql$/i.test(entry.name)) ||
+        (entry.isFile() && /\.sql$/i.test(entry.name) && !entry.name.endsWith('.sql'))) {
+      throw Error('unexpected migration entry (symlink, directory or SQL filename case): ' + entry.name);
+    }
+  }
+  return entries.filter(entry => entry.isFile() && entry.name.endsWith('.sql')).map(entry => entry.name);
+}
 const exactMigration = /^([0-9]{14})_legacy_stock_rpc_execute_retirement\.sql$/;
 const namedMigration = /^([0-9]+)_[A-Za-z0-9_-]+\.sql$/;
 
@@ -55,10 +78,9 @@ export function checkRetirementMigrationNames(fileNames) {
 if (process.argv[1] && fileURLToPath(import.meta.url) ===
     (await import('node:path')).resolve(process.argv[1])) {
   try {
-    const files = readdirSync(migrationDir,{withFileTypes:true})
-      .filter(entry => entry.isFile() && entry.name.endsWith('.sql'))
-      .map(entry => entry.name);
+    const files = listMigrationFiles(readdirSync(migrationDir,{withFileTypes:true}));
     const result = checkRetirementMigrationNames(files);
+    verifyReviewedSql(readFileSync(join(migrationDir,result.file)));
     console.log('PASS: exactly one unique, calendar-valid 14-digit draft legacy stock RPC retirement migration: ' +
       result.file);
     console.log('LIMIT: historical duplicate migrations and remote applied history remain unverified');
