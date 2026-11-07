@@ -49,7 +49,12 @@ test("largest original component one-cut UV trial stays measurable and rejected"
     'weighted["researchOnlyComponent0CappedTreeCutSurvey"]',
     'assert survey["evaluatedCandidateCount"] == 24',
     'assert row["candidateUnclosedSharedUvSeams"] == 2586',
+    'row["measuredAddedCutNetworkLengthMm"] -',
+    ') <= 0.0001',
   ])assert.ok(workflow.includes(marker),marker);
+  assert.ok(!workflow.includes(
+    'assert row["measuredAddedCutNetworkLengthMm"] == ('
+  ),"independently rounded lengths must not use exact float equality");
   for(const marker of [
     'assert report["targetComponentOriginalSourceFaceCount"] == 1220',
     'assert report["addedActualSourceCutEdgeLengthMm"] > 0',

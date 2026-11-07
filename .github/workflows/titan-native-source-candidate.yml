@@ -1590,9 +1590,10 @@ jobs:
                   )
                   assert row["candidateUnclosedSharedUvSeams"] == 2586
                   assert row["exactlyOneNewUnclosedUvSeam"] is True
-                  assert row["measuredAddedCutNetworkLengthMm"] == (
+                  assert abs(
+                      row["measuredAddedCutNetworkLengthMm"] -
                       row["addedActualSourceCutEdgeLengthMm"]
-                  )
+                  ) <= 0.0001
                   assert row["physicalPatternApproved"] is False
                   assert row["productionApproved"] is False
                   assert row["strictResearchEligible"] is (
