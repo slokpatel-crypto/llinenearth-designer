@@ -44,6 +44,8 @@ node tests/stock-acl-snapshot-evidence.mjs stock-acl-before.tsv stock-acl-after.
 
 It checks every expected signature and role in **both** 32-row files, rejects missing/extra/duplicated keys, missing roles/functions, unexpected v1 permissions, and any v2 permission drift. It accepts an already-revoked staging baseline but still requires all v1 grants denied afterward. Its 19 synthetic fixture cases run in the independent GitHub workflow. The verifier cannot authenticate the origin of saved snapshot files; retain database identity, timestamp and reviewer evidence separately. A passing offline comparison is **not approval** to apply the migration.
 
+The disposable workflow also runs `scripts/test-legacy-stock-rpc-acl-rollback-controls.sh`: three deliberately unsafe, transaction-scoped changes (restoring a v1 PUBLIC grant, revoking a v2 service-role grant, and granting v2 to an unprivileged role) must each be rejected by the **actual** permission-test SQL. Each failed transaction is rolled back automatically; the original SQL gate must subsequently pass again. The controls enforce `PGDATABASE=titan_synthetic` and must **never** be invoked with staging or production credentials.
+
 The independent CI workflow proves that the same read-only query detects synthetic `service_role` v1 privileges *before* revocation and their absence *after*, without connecting to any shared database. This does not replace an actual staging capture, security sign-off or integration/version reconciliation.
 
 ## Compatibility, rollout and rollback gate

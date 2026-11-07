@@ -11,6 +11,7 @@ on:
       - 'tests/stock-acl-snapshot-evidence.mjs'
       - 'tests/stock-acl-snapshot-evidence.test.mjs'
       - 'scripts/test-legacy-stock-rpc-acl-invocation.sh'
+      - 'scripts/test-legacy-stock-rpc-acl-rollback-controls.sh'
       - 'scripts/audit-retired-stock-rpc-callers.mjs'
       - 'src/**'
       - 'desktop/**'
@@ -129,5 +130,9 @@ jobs:
           test "$(wc -l < /tmp/stock-acl-after.tsv)" -eq 32
       - name: Verify complete 32-row before/after ACL contract (fail closed)
         run: node tests/stock-acl-snapshot-evidence.mjs /tmp/stock-acl-before.tsv /tmp/stock-acl-after.tsv
+      - name: Prove real SQL gate catches temporary unauthorized permission changes
+        run: |
+          bash -n scripts/test-legacy-stock-rpc-acl-rollback-controls.sh
+          bash scripts/test-legacy-stock-rpc-acl-rollback-controls.sh
       - name: Execute retired v1 calls as service_role; positive v2 call rolls back
         run: bash scripts/test-legacy-stock-rpc-acl-invocation.sh
