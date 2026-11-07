@@ -760,9 +760,13 @@ export function styleDirectorCandidateShirtFitIssues(
   shirt: Pick<StyleSpecV2["shirt"], "fit">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidateShirtFitIntent(candidateShirt);
-  if (intent.ambiguous) return [];
-  if ((intent.requested !== null && shirt.fit !== intent.requested) ||
-    intent.prohibited.includes(shirt.fit as CandidateShirtFitId)) {
+  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  const lockedFit = styleDirectorLockedOptionValue(shirt, "fit");
+  // Only canonical own-data IDs can meet positive or negative fit instructions.
+  const trusted = typeof lockedFit === "string" &&
+    optionsFor("shirt.fit").some(option => option.id === lockedFit);
+  if (!trusted || (intent.requested !== null && lockedFit !== intent.requested) ||
+    intent.prohibited.includes(lockedFit as CandidateShirtFitId)) {
     return [{
       code: "candidate_shirt_fit_mismatch",
       explanation: "The named shirt fit request or prohibition conflicts with the saved fit option; confirm the construction without inferring body ease.",
@@ -867,9 +871,12 @@ export function styleDirectorCandidateTrouserFitIssues(
   pant: Pick<StyleSpecV2["pant"], "fit">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidateTrouserFitIntent(candidateTrouser);
-  if (intent.ambiguous) return [];
-  const mismatch = (intent.requested !== null && pant.fit !== intent.requested) ||
-    intent.prohibited.includes(pant.fit as CandidateTrouserFitId);
+  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  const lockedFit = styleDirectorLockedOptionValue(pant, "fit");
+  const trusted = typeof lockedFit === "string" &&
+    optionsFor("pant.fit").some(option => option.id === lockedFit);
+  const mismatch = !trusted || (intent.requested !== null && lockedFit !== intent.requested) ||
+    intent.prohibited.includes(lockedFit as CandidateTrouserFitId);
   if (mismatch) return [{
     code: "candidate_trouser_fit_mismatch",
     explanation: "The requested or prohibited trouser fit conflicts with the locked versioned fit ID; confirm the construction before tailoring.",
