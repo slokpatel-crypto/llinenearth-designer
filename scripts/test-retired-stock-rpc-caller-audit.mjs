@@ -13,6 +13,12 @@ const cases = [
   ['retired caller', 'src/active.ts', 'client.rpc("fabric_stock_reserve", payload);', false],
   ['historical migration assertion', 'scripts/release-readiness.mjs',
     'requireTokens("supabase/migrations/legacy.sql", ["fabric_stock_record"]);', true],
+  ['same-line active RPC after historical assertion', 'scripts/release-readiness.mjs',
+    'requireTokens("supabase/migrations/legacy.sql", ["fabric_stock_record"]); client.rpc("fabric_stock_record", payload);', false],
+  ['folded v1 RPC beside historical assertion', 'scripts/release-readiness.mjs',
+    'requireTokens("supabase/migrations/legacy.sql", ["fabric_stock_reserve"]);\nclient.rpc("fabric_stock_" + "reserve", payload);', false],
+  ['v2 RPC beside historical assertion stays valid', 'scripts/release-readiness.mjs',
+    'requireTokens("supabase/migrations/legacy.sql", ["fabric_stock_reserve"]);\nclient.rpc("fabric_stock_reserve_v2", payload);', true],
   ['active call in release gate', 'scripts/release-readiness.mjs',
     'client.rpc("fabric_stock_release", payload);', false],
   ['legacy name in desktop source', 'desktop/src/stock.ts',
@@ -54,7 +60,7 @@ try {
     execFileSync('git', ['rm', '-q', '--cached', '--', file], {cwd: root});
     rmSync(full);
   }
-  console.log('PASS: fourteen disposable tracked-source stock RPC audit fixtures');
+  console.log('PASS: seventeen disposable tracked-source stock RPC audit fixtures');
 } finally {
   rmSync(root, {recursive: true, force: true});
 }
