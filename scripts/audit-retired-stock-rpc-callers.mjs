@@ -22,6 +22,9 @@ let matches = 0;
 for (const path of files) {
   const lines = readFileSync(path, 'utf8').split(/\r?\n/);
   lines.forEach((line, index) => {
+    // Release gate assertions inspect historical migration text; they are not RPC invocations.
+    // Exempt only that exact declarative assertion, never the entire release-gate file.
+    if (/^\s*requireTokens\(["']supabase\/migrations\//.test(line)) return;
     for (const name of retired) {
       if (new RegExp('\\b' + name + '\\b').test(line)) {
         console.error(`BLOCKED: ${path}:${index + 1}: retired RPC ${name}`);
