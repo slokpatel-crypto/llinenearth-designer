@@ -17,6 +17,16 @@ const cases = [
     'client.rpc("fabric_stock_release", payload);', false],
   ['legacy name in desktop source', 'desktop/src/stock.ts',
     'const method = "fabric_stock_consume_reservation";', false],
+  ['v2 RPC names remain valid', 'src/v2.ts',
+    'const names = ["fabric_stock_record_v2", "fabric_stock_reserve_v2", "fabric_stock_release_v2", "fabric_stock_consume_reservation_v2"];', true],
+  ['statically concatenated v2 remains valid', 'src/v2-static.ts',
+    'client.rpc("fabric_stock_" + "reserve_v2", payload);', true],
+  ['statically concatenated retired v1 blocked', 'src/v1-static.ts',
+    'client.rpc("fabric_stock_" + "reserve", payload);', false],
+  ['multiline concatenated retired v1 blocked', 'desktop/src/v1-multiline.ts',
+    'const method = "fabric_stock_" +\n "release";', false],
+  ['longer identifier not v1', 'src/identifier.ts',
+    'const key = "prefix_fabric_stock_reserve";', true],
 ];
 try {
   execFileSync('git', ['init', '-q'], {cwd: root});
@@ -36,7 +46,7 @@ try {
     execFileSync('git', ['rm', '-q', '--cached', '--', file], {cwd: root});
     rmSync(full);
   }
-  console.log('PASS: five disposable tracked-source stock RPC audit fixtures');
+  console.log('PASS: ten disposable tracked-source stock RPC audit fixtures');
 } finally {
   rmSync(root, {recursive: true, force: true});
 }
