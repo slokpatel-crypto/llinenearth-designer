@@ -61,3 +61,28 @@ test("combined trouser construction instructions validate silhouette and waistba
     assert.equal(JSON.stringify(locked), before, "locked garment options must not change");
   }
 });
+
+test("ambiguous and optional trouser wording cannot silently authorize a locked construction", () => {
+  const cases = [
+    { wording: "wide-leg trousers and no wide-leg trousers", wide: "ambiguous", waist: null },
+    { wording: "optional wide-leg trousers", wide: null, waist: null },
+    { wording: "drawstring and no drawstring", wide: null, waist: "ambiguous" },
+    { wording: "with or without drawstring", wide: null, waist: "ambiguous" },
+    { wording: "drawstring optional", wide: null, waist: null },
+    { wording: "no wide-leg trousers with drawstring", wide: "prohibited", waist: "requested" },
+  ] as const;
+  const saved = Object.freeze({ type: "wide_leg_relaxed_drape", waistband: "drawstring_elastic" });
+  const snapshot = JSON.stringify(saved);
+  for (const { wording, wide, waist } of cases) {
+    assert.equal(styleDirectorCandidateWideLegIntent(wording), wide, wording);
+    assert.equal(styleDirectorCandidateDrawstringWaistband(wording), waist, wording);
+    const wideIssues = styleDirectorCandidateWideLegIssues(wording, saved);
+    const waistIssues = styleDirectorCandidateWaistbandIssues(wording, saved);
+    assert.equal(wideIssues.some(issue => issue.code === "candidate_wide_leg_mismatch"),
+      wide === "prohibited", wording);
+    assert.deepEqual(waistIssues, [], wording);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(wording, saved), wideIssues);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(wording, saved), waistIssues);
+    assert.equal(JSON.stringify(saved), snapshot, "locked IDs must remain immutable");
+  }
+});
