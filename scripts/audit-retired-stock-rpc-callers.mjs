@@ -19,6 +19,10 @@ const files = execFileSync('git', ['ls-files', '-z', '--', ...roots], {encoding:
   .filter(path => !/(?:^|\/)(?:test|tests|__tests__)(?:\/|-|\.)/.test(path))
   .filter(path => !path.startsWith('scripts/audit-retired-stock-rpc-callers.'));
 function foldedStaticStrings(source) {
+  // Normalize only literal template strings; interpolated templates cannot be
+  // resolved statically. This also catches mixed quote/template concatenation.
+  source = source.replace(/`((?:\\.|[^`\\])*)`/g, (literal, body) =>
+    body.includes('${') ? literal : JSON.stringify(body));
   // Detect statically concatenated quoted RPC names, including across lines.
   const quoted = /(['"])([^'"\\]*(?:\\.[^'"\\]*)*)\1\s*\+\s*(['"])([^'"\\]*(?:\\.[^'"\\]*)*)\3/g;
   let previous;
