@@ -5,7 +5,7 @@ name: TITAN Legacy Stock RPC ACL QA
 on:
   pull_request:
     paths:
-      - 'supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql'
+      - 'supabase/migrations/20261107093030_legacy_stock_rpc_execute_retirement.sql'
       - 'supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql'
       - 'supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql'
       - 'tests/stock-acl-snapshot-evidence.mjs'
@@ -108,8 +108,8 @@ jobs:
       - name: Apply permission-only retirement migration twice (idempotent)
         run: |
           set -euo pipefail
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107093030_legacy_stock_rpc_execute_retirement.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107093030_legacy_stock_rpc_execute_retirement.sql
       - name: Verify effective ACL, unchanged v2 grants and zero stock rows
         run: |
           set -euo pipefail

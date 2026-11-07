@@ -4,14 +4,14 @@
 
 Branch: `titan-central-retire-legacy-stock-execute-20261103` from `main=4dd8020abd83429449ff53ea5bb71b046394d86e`. This is **independent** of draft manual-lock parity PR #876 and caller-guard PR #879. Do not merge independently of stock compatibility review.
 
-The forward SQL migration `supabase/migrations/20261103_z_legacy_stock_rpc_execute_retirement.sql` withdraws `EXECUTE` on all four historical `public` v1 stock mutators from `PUBLIC`, `anon`, `authenticated`, and `service_role`:
+The forward SQL migration `supabase/migrations/20261107093030_legacy_stock_rpc_execute_retirement.sql` withdraws `EXECUTE` on all four historical `public` v1 stock mutators from `PUBLIC`, `anon`, `authenticated`, and `service_role`:
 
 - `fabric_stock_record(text,text,numeric,text)`
 - `fabric_stock_reserve(text,numeric,text,text)`
 - `fabric_stock_release(uuid,text)`
 - `fabric_stock_consume_reservation(uuid,numeric,text)`
 
-The older routines use weaker evidence or locking semantics. The SQL retains their definitions for historical schema compatibility, changes no rows, changes no function bodies and grants no new permissions. Existing v2 functions and grants are intentionally unchanged. The new migration sorts after the other current 2026-11-03 stock migrations, including PR #876's proposed `20261103_manual_stock_fabric_lock_parity.sql` when reconciled.
+The former eight-digit date-prefixed retirement file name (`20261103_z_legacy_stock_rpc_execute_retirement.sql`) duplicated the historical `20261103` migration version. This **unmerged draft-only** addition now uses a unique, calendar-valid 14-digit version. No existing historical migration or remote applied history was renamed. Before integration, reconcile the current staging applied-version history, stacked integration draft #881 and pinned source-manifest draft #907 with the renamed file and latest code. This fix does **not** resolve the pre-existing historical version collisions or final-reservation function-order issue (#882, #883, #909).\n\nThe older routines use weaker evidence or locking semantics. The SQL retains their definitions for historical schema compatibility, changes no rows, changes no function bodies and grants no new permissions. Existing v2 functions and grants are intentionally unchanged. The new migration sorts after the other current 2026-11-03 stock migrations, including PR #876's proposed `20261103_manual_stock_fabric_lock_parity.sql` when reconciled.
 
 ## Exact acceptance and evidence boundary
 
