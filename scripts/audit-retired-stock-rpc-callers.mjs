@@ -34,11 +34,12 @@ function foldedStaticStrings(source) {
 }
 let matches = 0;
 for (const path of files) {
-  const lines = readFileSync(path, 'utf8').split(/\r?\n/);
+  // Permit only standalone declarations about historical migration content.
+  // A live RPC call appended to an assertion, or on a nearby line, is audited.
+  const lines = readFileSync(path, 'utf8').split(/\r?\n/).map(line =>
+    /^\s*requireTokens\(["']supabase\/migrations\/[^"']+["'],\s*\[[^\]]*\]\);\s*$/.test(line)
+      ? '' : line);
   lines.forEach((line, index) => {
-    // Release gate assertions inspect historical migration text; they are not RPC invocations.
-    // Exempt only that exact declarative assertion, never the entire release-gate file.
-    if (/^\s*requireTokens\(["']supabase\/migrations\//.test(line)) return;
     for (const name of retired) {
       if (new RegExp('\\b' + name + '\\b').test(line)) {
         console.error(`BLOCKED: ${path}:${index + 1}: retired RPC ${name}`);
@@ -46,12 +47,15 @@ for (const path of files) {
       }
     }
   });
-  const folded = foldedStaticStrings(lines.join('\n'));
+  const source = lines.join('\n');
+  const folded = foldedStaticStrings(source);
   for (const name of retired) {
-    if (new RegExp('\\b' + name + '\\b').test(folded) &&
-        !lines.some(line => new RegExp('\\b' + name + '\\b').test(line))) {
-      console.error(`BLOCKED: ${path}: statically concatenated retired RPC ${name}`);
-      matches++;
+    const exact = new RegExp('\\b' + name + '\\b', 'g');
+    const literalCount = [...source.matchAll(exact)].length;
+    const foldedCount = [...folded.matchAll(exact)].length;
+    if (foldedCount > literalCount) {
+      console.error(`BLOCKED: ${path}: ${foldedCount - literalCount} statically concatenated retired RPC ${name}`);
+      matches += foldedCount - literalCount;
     }
   }
 }
