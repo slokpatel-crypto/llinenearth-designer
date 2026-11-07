@@ -266,3 +266,37 @@ test("quantified drawstring exclusions never become affirmative waistband instru
   assert.equal(withDrawstring.waistband, "drawstring_elastic");
   assert.equal(withoutDrawstring.waistband, "belt_loops");
 });
+
+test("unwanted drawstring wording cannot be mistaken for an affirmative selection", () => {
+  const plain = Object.freeze({ waistband: "belt_loops" });
+  const drawstring = Object.freeze({ waistband: "drawstring_elastic" });
+  const negatives = [
+    "I don't want any drawstring",
+    "I don’t want a draw-string",
+    "do not want the drawstring",
+    "never want drawstring",
+    "drawstring is not wanted",
+    "draw-string not wanted",
+    "drawstring not wanted; perhaps drawstring",
+  ];
+  for (const wording of negatives) {
+    assert.equal(styleDirectorCandidateDrawstringWaistband(wording), "prohibited", wording);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(wording, plain), [], wording);
+    const issues = styleDirectorCandidateWaistbandIssues(wording, drawstring);
+    assert.equal(issues.length, 1, wording);
+    assert.equal(issues[0].code, "candidate_waistband_mismatch", wording);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(wording, drawstring), issues, wording);
+  }
+  const conflicts = [
+    "I don't want any drawstring, but drawstring is required",
+    "drawstring not wanted; add drawstring",
+    "drawstring is not wanted, but drawstring trousers",
+  ];
+  for (const wording of conflicts) {
+    assert.equal(styleDirectorCandidateDrawstringWaistband(wording), "ambiguous", wording);
+  }
+  assert.equal(styleDirectorCandidateDrawstringWaistband("drawstring is wanted"), "requested");
+  assert.deepEqual(styleDirectorCandidateWaistbandIssues("drawstring is wanted", drawstring), []);
+  assert.equal(plain.waistband, "belt_loops");
+  assert.equal(drawstring.waistband, "drawstring_elastic");
+});
