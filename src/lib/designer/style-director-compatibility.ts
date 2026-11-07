@@ -219,11 +219,11 @@ const candidateShirtWear = (name: string) => {
   let remaining = name.replace(/\bwith\s+or\s+without\s+(?:being\s+)?(?:tucked|untucked)\b/gi, " ");
   let tuckedFromNegation = false;
   let untuckedFromNegation = false;
-  remaining = remaining.replace(/\b(?:no|without|not|never|avoid)\s+(?:being\s+)?untucked\b/gi, () => {
+  remaining = remaining.replace(/\b(?:no|without|not|never|avoid|do\s+not|don['’]?t)\s+(?:(?:be|being)\s+)?untucked\b/gi, () => {
     tuckedFromNegation = true;
     return " ";
   });
-  remaining = remaining.replace(/\b(?:no|without|not|never|avoid)\s+(?:being\s+)?tucked\b/gi, () => {
+  remaining = remaining.replace(/\b(?:no|without|not|never|avoid|do\s+not|don['’]?t)\s+(?:(?:be|being)\s+)?tucked\b/gi, () => {
     untuckedFromNegation = true;
     return " ";
   });
