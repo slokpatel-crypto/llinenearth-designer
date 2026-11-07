@@ -59,7 +59,8 @@ test("a negated wear direction plus its opposite affirmative stays review-only",
     assert.deepEqual(wording(name), ["ambiguous_candidate_wear"], name);
     const locked = { wear: "tucked" as const };
     const before = JSON.stringify(locked);
-    assert.deepEqual(styleDirectorCandidateWearIssues(name, locked), [], name);
+    assert.deepEqual(styleDirectorCandidateWearIssues(name, locked).map(x => x.code),
+      ["candidate_shirt_wear_mismatch"], name);
     assert.equal(JSON.stringify(locked), before, "review cannot rewrite locked wear");
   }
 });
