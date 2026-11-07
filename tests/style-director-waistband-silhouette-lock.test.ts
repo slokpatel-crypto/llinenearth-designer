@@ -154,3 +154,18 @@ test("optional waistband wording does not mask an independent silhouette prohibi
     assert.equal(saved.waistband, "belt_loops");
   }
 });
+
+test("maybe drawstring remains optional without hiding an independent affirmative request", () => {
+  const saved = Object.freeze({ type: "formal_flat_front", waistband: "belt_loops" });
+  for (const wording of [
+    "maybe drawstring",
+    "maybe draw-string",
+    "no wide-leg trousers and maybe drawstring",
+  ]) {
+    assert.equal(styleDirectorCandidateDrawstringWaistband(wording), null, wording);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(wording, saved), [], wording);
+  }
+  assert.equal(styleDirectorCandidateDrawstringWaistband("drawstring trousers"), "requested");
+  assert.equal(styleDirectorCandidateDrawstringWaistband("no drawstring"), "prohibited");
+  assert.equal(saved.waistband, "belt_loops");
+});
