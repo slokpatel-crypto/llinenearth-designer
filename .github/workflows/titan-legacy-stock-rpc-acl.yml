@@ -1,0 +1,153 @@
+name: TITAN Legacy Stock RPC ACL QA
+
+# Independent native-database verification of retiring provenance-free v1 RPCs.
+# This workflow does not deploy or access the production Supabase project.
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql'
+      - 'supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql'
+      - 'tests/stock-acl-snapshot-evidence.mjs'
+      - 'tests/stock-acl-snapshot-evidence.test.mjs'
+      - 'scripts/test-legacy-stock-rpc-acl-invocation.sh'
+      - 'scripts/test-legacy-stock-rpc-acl-rollback-controls.sh'
+      - 'scripts/audit-retired-stock-rpc-callers.mjs'
+      - 'src/**'
+      - 'desktop/**'
+      - 'scripts/**'
+      - '.github/workflows/titan-legacy-stock-rpc-acl.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-stock-rpc-acl:
+    name: Disposable PostgreSQL legacy stock RPC ACL
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: titan_synthetic
+          POSTGRES_USER: titan
+          POSTGRES_PASSWORD: synthetic_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U titan -d titan_synthetic"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: titan
+      PGPASSWORD: synthetic_only
+      PGDATABASE: titan_synthetic
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce unique 14-digit draft retirement migration version
+        run: |
+          node --test scripts/test-draft-legacy-stock-migration-version.mjs
+          node scripts/verify-draft-legacy-stock-migration-version.mjs
+      - name: Audit tracked source for retired stock RPC callers
+        run: node scripts/audit-retired-stock-rpc-callers.mjs
+      - name: Prove retired RPC audit positive and negative fixtures
+        run: node scripts/test-retired-stock-rpc-caller-audit.mjs
+      - name: Prove offline ACL snapshot verifier rejects synthetic evidence defects
+        run: node --test tests/stock-acl-snapshot-evidence.test.mjs
+      - name: Install disposable PostgreSQL client
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Bootstrap synthetic stock migrations and historical grants
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin;
+          create extension if not exists pgcrypto;
+          SQL
+          # This marker ties the *connected* disposable DB to this exact CI run.
+          psql -X -v ON_ERROR_STOP=1 -v ci_run_id="${GITHUB_RUN_ID}" <<'SQL'
+          create schema titan_ci_guard;
+          create table titan_ci_guard.run_marker(run_id text primary key);
+          insert into titan_ci_guard.run_marker(run_id) values (:'ci_run_id');
+          SQL
+          for migration in \
+            supabase/migrations/20261001_fabric_stock_ledger.sql \
+            supabase/migrations/20261028_fabric_stock_provenance.sql \
+            supabase/migrations/20261029_stock_reservation_provenance.sql \
+            supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql \
+            supabase/migrations/20261102_stock_reservation_key_payload_binding.sql \
+            supabase/migrations/20261103_stock_reservation_provenance_gate.sql \
+            supabase/migrations/20261103_stock_reservation_identity_length_gate.sql \
+            supabase/migrations/20261103_stock_close_evidence_integrity.sql; do
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Prove disposable DB identity and reject unsafe SQL targets
+        run: |
+          bash -n scripts/assert-disposable-stock-acl-db.sh
+          bash -n scripts/test-disposable-stock-acl-db-guard.sh
+          bash scripts/test-disposable-stock-acl-db-guard.sh
+      - name: Capture read-only pre-retirement ACL snapshot
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -At -F '|' \
+            -f supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql \
+            > /tmp/stock-acl-before.tsv
+          grep -Fqx 'v1|public.fabric_stock_record(text,text,numeric,text)|service_role|EXECUTE' /tmp/stock-acl-before.tsv
+          grep -Fqx 'v2|public.fabric_stock_record_v2(text,text,numeric,text,text,text)|service_role|EXECUTE' /tmp/stock-acl-before.tsv
+      - name: Prove ACL regression catches the original unsafe historical grants
+        run: |
+          set -euo pipefail
+          # The existing historical migration intentionally grants service_role all
+          # four v1 mutators. Without retirement, the real negative test MUST fail.
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql \
+            > /tmp/pre-retirement-acl.log 2>&1
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo 'FAIL: v1 ACL regression passed before retirement (vacuous test)'
+            exit 1
+          fi
+          grep -q 'unsafe effective v1 EXECUTE: role service_role' /tmp/pre-retirement-acl.log
+          test "$(psql -v ON_ERROR_STOP=1 -Atc 'select count(*) from private.fabric_stock_ledger')" = 0
+      - name: Apply permission-only retirement migration twice (idempotent)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107093030_legacy_stock_rpc_execute_retirement.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107093030_legacy_stock_rpc_execute_retirement.sql
+      - name: Verify effective ACL, unchanged v2 grants and zero stock rows
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql | tee /tmp/stock-acl-test.log
+          grep -q 'PASS: all four v1 stock mutators denied' /tmp/stock-acl-test.log
+      - name: Capture read-only post-retirement ACL snapshot
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -At -F '|' \
+            -f supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql \
+            > /tmp/stock-acl-after.tsv
+          grep -Fqx 'v1|public.fabric_stock_record(text,text,numeric,text)|service_role|NO_EXECUTE' /tmp/stock-acl-after.tsv
+          grep -Fqx 'v1|public.fabric_stock_reserve(text,numeric,text,text)|service_role|NO_EXECUTE' /tmp/stock-acl-after.tsv
+          grep -Fqx 'v1|public.fabric_stock_release(uuid,text)|service_role|NO_EXECUTE' /tmp/stock-acl-after.tsv
+          grep -Fqx 'v1|public.fabric_stock_consume_reservation(uuid,numeric,text)|service_role|NO_EXECUTE' /tmp/stock-acl-after.tsv
+          grep -Fqx 'v2|public.fabric_stock_record_v2(text,text,numeric,text,text,text)|service_role|EXECUTE' /tmp/stock-acl-after.tsv
+          grep -Fqx 'v2|public.fabric_stock_record_v2(text,text,numeric,text,text,text)|authenticated|NO_EXECUTE' /tmp/stock-acl-after.tsv
+          test "$(wc -l < /tmp/stock-acl-after.tsv)" -eq 32
+      - name: Verify complete 32-row before/after ACL contract (fail closed)
+        run: node tests/stock-acl-snapshot-evidence.mjs /tmp/stock-acl-before.tsv /tmp/stock-acl-after.tsv
+      - name: Prove real SQL gate catches temporary unauthorized permission changes
+        run: |
+          bash -n scripts/test-legacy-stock-rpc-acl-rollback-controls.sh
+          bash scripts/test-legacy-stock-rpc-acl-rollback-controls.sh
+      - name: Execute retired v1 calls as service_role; positive v2 call rolls back
+        run: bash scripts/test-legacy-stock-rpc-acl-invocation.sh
