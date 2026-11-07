@@ -1266,7 +1266,13 @@ export function styleDirectorSilhouetteFitIssues(
 export function styleDirectorProposedCroppedHem(
   pant: Pick<StyleSpecV2["pant"], "type" | "break">,
 ): "cropped_above_ankle_hem" | null {
-  return pant.type === "cropped_ankle" && pant.break === "cropped_above_ankle"
+  // A saved candidate may contain inherited or accessor-backed fields.
+  // Only own data properties can authorize a construction suggestion.
+  if (!pant || typeof pant !== "object") return null;
+  const type = Object.getOwnPropertyDescriptor(pant, "type");
+  const shoeBreak = Object.getOwnPropertyDescriptor(pant, "break");
+  return type && shoeBreak && "value" in type && "value" in shoeBreak &&
+    type.value === "cropped_ankle" && shoeBreak.value === "cropped_above_ankle"
     ? "cropped_above_ankle_hem" : null;
 }
 
