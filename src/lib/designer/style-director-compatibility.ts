@@ -313,12 +313,17 @@ export function styleDirectorCandidateCollarIssues(
   if (intent.ambiguous) return []; // The wording gate reports the contradiction.
   const positiveFamily = (Object.keys(intent.requested) as CandidateCollarFamily[])
     .find(family => intent.requested[family]);
+  if (positiveFamily === undefined && intent.prohibited.length === 0) return [];
+  const lockedCollar = styleDirectorLockedOptionValue(shirt, "collar");
+  // A missing, inherited, stale or unreadable ID cannot prove a ban was obeyed.
+  const trusted = typeof lockedCollar === "string" &&
+    optionsFor("shirt.collar").some(option => option.id === lockedCollar);
   const exactVariant = styleDirectorCandidateVariantCollar(candidateShirt);
   const incorrectRequest = exactVariant !== null
-    ? shirt.collar !== exactVariant
-    : positiveFamily !== undefined && !collarFamilyIds[positiveFamily].includes(shirt.collar);
-  const forbiddenSaved = intent.prohibited.includes(shirt.collar);
-  return !incorrectRequest && !forbiddenSaved ? [] : [{
+    ? lockedCollar !== exactVariant
+    : positiveFamily !== undefined && !collarFamilyIds[positiveFamily].includes(lockedCollar as string);
+  const forbiddenSaved = intent.prohibited.includes(lockedCollar as string);
+  return trusted && !incorrectRequest && !forbiddenSaved ? [] : [{
     code: "candidate_collar_mismatch",
     explanation: "The proposed shirt names a collar construction different from its locked versioned collar ID; confirm the collar before tailoring.",
   }];
