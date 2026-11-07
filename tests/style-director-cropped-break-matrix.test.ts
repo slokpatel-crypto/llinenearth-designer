@@ -88,3 +88,23 @@ test("cropped proposal accepts an exact canonical pair without depending on obje
   assert.equal(styleDirectorProposedCroppedHem(input), "cropped_above_ankle_hem");
   assert.deepEqual(Object.entries(pant), before, "pure proposal must preserve locked fields");
 });
+
+test("cropped hem authorization requires own plain data fields", () => {
+  const inherited = Object.create({ type: "cropped_ankle", break: "cropped_above_ankle" });
+  assert.equal(styleDirectorProposedCroppedHem(inherited), null);
+  let getterCalls = 0;
+  const forged = Object.create(null);
+  Object.defineProperty(forged, "type", {
+    enumerable: true,
+    get() { getterCalls++; throw new Error("untrusted accessor"); },
+  });
+  Object.defineProperty(forged, "break", {
+    enumerable: true, value: "cropped_above_ankle",
+  });
+  assert.equal(styleDirectorProposedCroppedHem(forged), null);
+  assert.equal(getterCalls, 0, "never execute candidate accessors");
+  const mixed = Object.create({ break: "cropped_above_ankle" });
+  mixed.type = "cropped_ankle";
+  assert.equal(styleDirectorProposedCroppedHem(mixed), null);
+  assert.equal(styleDirectorProposedCroppedHem(null as unknown as Parameters<typeof styleDirectorProposedCroppedHem>[0]), null);
+});
