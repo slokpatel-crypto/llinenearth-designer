@@ -881,7 +881,7 @@ export function styleDirectorCandidateWideLegIntent(
   const requested = new RegExp(String.raw`\b${width}\b`, "i").test(remaining);
   // "With or without" explicitly leaves the silhouette undecided. It must
   // not be treated as a prohibition merely because "without" is present.
-  const alternative = new RegExp(String.raw`\bwith\s+(?:or\s+)?without\s+${width}\b`, "i").test(candidateTrouser);
+  const alternative = new RegExp(String.raw`\bwith\s+(?:or\s+)?without\s+(?:(?:a|any)\s+)?${width}\b`, "i").test(candidateTrouser);
   if (alternative || (requested && prohibited)) return "ambiguous";
   return requested ? "requested" : prohibited ? "prohibited" : null;
 }
@@ -935,7 +935,7 @@ export function styleDirectorCandidateDrawstringWaistband(
   let neutral = candidateTrouser.replace(preBan, () => { banned = true; return " "; });
   neutral = neutral.replace(postBan, () => { banned = true; return " "; });
   neutral = neutral.replace(optional, " ").replace(optionalPrefix, " ");
-  if (/\bwith\s+(?:or\s+)?without\s+draw[- ]?string\b/i.test(candidateTrouser)) return "ambiguous";
+  if (/\bwith\s+(?:or\s+)?without\s+(?:(?:a|any)\s+)?draw[- ]?string\b/i.test(candidateTrouser)) return "ambiguous";
   const requested = /\bdraw[- ]?string\b/i.test(neutral);
   if (requested && banned) return "ambiguous";
   return requested ? "requested" : banned ? "prohibited" : null;
