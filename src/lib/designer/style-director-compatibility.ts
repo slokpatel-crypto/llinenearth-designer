@@ -796,12 +796,20 @@ export function styleDirectorCandidateSleeveIssues(
   if (rollUp.ambiguous || (intent.short && intent.long) ||
       (intent.short && intent.bannedShort) || (intent.long && intent.bannedLong) ||
       (intent.bannedShort && intent.bannedLong)) return [];
-  const invalid = (intent.short && shirt.sleeve !== "half_sleeve") ||
-    (intent.long && !["full_sleeve", "roll_up_styled"].includes(shirt.sleeve)) ||
-    (intent.bannedShort && shirt.sleeve === "half_sleeve") ||
-    (intent.bannedLong && shirt.sleeve !== "half_sleeve") ||
-    (rollUp.requested && shirt.sleeve !== "roll_up_styled") ||
-    (rollUp.prohibited && shirt.sleeve === "roll_up_styled");
+  if (!(intent.short || intent.long || intent.bannedShort || intent.bannedLong ||
+      rollUp.requested || rollUp.prohibited)) return [];
+  // Prohibitions must never approve a missing, inherited, stale or unreadable
+  // sleeve ID simply because it differs from the disallowed construction.
+  const lockedSleeve = styleDirectorLockedOptionValue(shirt, "sleeve");
+  const trusted = typeof lockedSleeve === "string" &&
+    optionsFor("shirt.sleeve").some(option => option.id === lockedSleeve);
+  const invalid = !trusted ||
+    (intent.short && lockedSleeve !== "half_sleeve") ||
+    (intent.long && !["full_sleeve", "roll_up_styled"].includes(lockedSleeve as string)) ||
+    (intent.bannedShort && lockedSleeve === "half_sleeve") ||
+    (intent.bannedLong && lockedSleeve !== "half_sleeve") ||
+    (rollUp.requested && lockedSleeve !== "roll_up_styled") ||
+    (rollUp.prohibited && lockedSleeve === "roll_up_styled");
   return invalid ? [{
     code: "candidate_sleeve_mismatch",
     explanation: "The proposed shirt's requested or prohibited sleeve length conflicts with its versioned construction; confirm the sleeve before tailoring.",
