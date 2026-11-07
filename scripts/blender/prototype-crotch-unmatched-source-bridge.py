@@ -1578,6 +1578,548 @@ def main():
             or cut_audit["originalSourceUvLoopCount"] != tree_written):
         raise RuntimeError("Original-source UV cut candidate lost real mesh edge provenance.")
     seam_winding["researchOnlyOriginalSourceUvCutNetworkEvidence"] = cut_audit
+
+    # A SECOND actual original-body UV reconstruction experiment chooses the
+    # shared-source edges to preserve by maximum REAL 3D edge length. This
+    # minimizes theoretical omitted tree edges, but cycle closure, fabric
+    # pattern, physical cut paths, overlap and garment fit remain UNAPPROVED.
+    weighted_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-trouser-max-retained-uv.py")
+    ))
+    weighted_selection = weighted_ops["select_original_source_max_retained_uv_tree"](
+        merged_verts, base_faces, l_remaining + r_remaining_mapped
+    )
+    weighted_uv = tree_ops["connect_original_source_uv_forest"](
+        base_faces, quad_evidence["face_uv_loops"],
+        l_remaining + r_remaining_mapped,
+        preferred_tree_edges=weighted_selection["retainedOriginalSourceEdges"],
+    )
+    weighted_report = weighted_uv["report"]
+    weighted_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+        merged_verts, base_faces, weighted_uv["face_uv_loops"],
+        l_remaining + r_remaining_mapped, weighted_report
+    )
+    weighted_object_name = "TITAN_RESEARCH_OriginalTrouserMaximumRetainedUvOnly"
+    if bpy.data.objects.get(weighted_object_name) is not None:
+        raise RuntimeError("Cannot overwrite an actual independent source max-tree UV trial.")
+    weighted_mesh = bpy.data.meshes.new(weighted_object_name + "Mesh")
+    weighted_mesh.from_pydata(merged_verts, [], base_faces)
+    weighted_mesh.update(calc_edges=True)
+    if (len(weighted_mesh.polygons) != 2650 or any(
+            len(poly.loop_indices) != 4 or
+            not math.isfinite(poly.area) or poly.area <= 1e-12
+            for poly in weighted_mesh.polygons)):
+        raise RuntimeError("True original source max-tree UV mesh has invalid topology.")
+    weighted_layer = weighted_mesh.uv_layers.new(
+        name="TITAN_RESEARCH_UNVERIFIED_MAXIMUM_RETAINED_SOURCE_EDGES"
+    )
+    written_max = 0
+    for face, uv_row in zip(weighted_mesh.polygons, weighted_uv["face_uv_loops"]):
+        if len(uv_row) != 4 or len(face.loop_indices) != 4:
+            raise RuntimeError("Actual source max-tree UV lost original four-corner face.")
+        for loop_id, coordinate in zip(face.loop_indices, uv_row):
+            if len(coordinate) != 2 or not all(math.isfinite(v) for v in coordinate):
+                raise RuntimeError("Actual original source maximum-tree UV is not finite.")
+            weighted_layer.data[loop_id].uv = coordinate
+            written_max += 1
+    if (written_max != 10600 or len(weighted_layer.data) != 10600
+            or not all(all(math.isfinite(float(v)) for v in row.uv)
+                       for row in weighted_layer.data)):
+        raise RuntimeError("Native source weighted UV has incomplete original face loops.")
+    weighted_obj = bpy.data.objects.new(weighted_object_name, weighted_mesh)
+    weighted_obj.hide_render = True
+    weighted_obj["candidateOnly"] = True
+    weighted_obj["sourceUvPhysicallyApproved"] = False
+    weighted_obj["productionApproved"] = False
+    research.objects.link(weighted_obj)
+    if export.objects.get(weighted_object_name) is not None:
+        raise RuntimeError("Unapproved weighted original source UV changed garment export.")
+    weighted_geom = geom(weighted_obj)
+    weighted_body = body_tree.overlap(geom_ops["real_tree"](weighted_geom))
+    if len(weighted_body) != unchanged_source_pairs:
+        raise RuntimeError("UV max-tree changed true original source-body contact count.")
+    original_max_report = weighted_selection["report"]
+    if (original_max_report["originalSourceSharedEdgeCount"] != 5234
+            or original_max_report["originalSourceComponentCount"] !=
+               tree_report["dualGraphComponentCount"]
+            or original_max_report["maximumRetainedTreeEdgeCount"] !=
+               weighted_report["verifiedTreeConnectedSharedEdges"]
+            or weighted_cut["originalOpenSourceBoundaryEdges"] != 132
+            or weighted_cut["unclosedSharedUvCutCandidateEdges"] !=
+               weighted_report["nonTreeCycleUnclosedUvEdges"]):
+        raise RuntimeError("Original max-tree UV changed actual cut-edge provenance.")
+    # Baseline native actual original source had ZERO naturally closed cycles.
+    # The max-weight tree minimizes total omitted 3D edge length. If all old
+    # baseline non-tree edges are unclosed, the ACTUAL weighted seam candidate
+    # total cannot exceed the measured old candidate total (within rounding).
+    if tree_report["nonTreeCycleEdgesWithinOneMicrometre"] == 0 and (
+            weighted_cut["totalRealGeometryOfUvCutCandidatesMm"] >
+            cut_audit["totalRealGeometryOfUvCutCandidatesMm"] + 0.001):
+        raise RuntimeError("Real source max-retained tree increased omitted UV cut length.")
+    weighted_report["nativeResearchUvLoopCount"] = written_max
+    weighted_report["nativeResearchUvLayerName"] = weighted_layer.name
+    weighted_report["nativeOriginalBodyContactPairsUnchanged"] = len(weighted_body)
+    weighted_report["originalSourceStageUVProvenance"] = source_stage_uv_provenance
+    weighted_report["maxRetainedOriginalSourceSelection"] = original_max_report
+    weighted_report["actualSourceCutNetworkEvidence"] = weighted_cut
+    weighted_report["baselineBfsSourceCutNetworkLengthMm"] = (
+        cut_audit["totalRealGeometryOfUvCutCandidatesMm"]
+    )
+    weighted_report["maxRetainedActualSourceCutNetworkLengthMm"] = (
+        weighted_cut["totalRealGeometryOfUvCutCandidatesMm"]
+    )
+    weighted_report["maxRetainedActualCutLengthChangeVsBfsMm"] = round(
+        weighted_cut["totalRealGeometryOfUvCutCandidatesMm"] -
+        cut_audit["totalRealGeometryOfUvCutCandidatesMm"], 5
+    )
+    # Third, BOUNDED research-only face-tree selection: one exact edge
+    # exchange may sacrifice source-edge retention to avoid cut junction arms.
+    # This evaluates authentic original source quads with measured coordinates,
+    # not new 3D garments, a claimed UV unwrap, or a real tailor cut network.
+    branch_candidate = weighted_ops["select_original_source_branch_aware_uv_trial"](
+        merged_verts, base_faces, l_remaining + r_remaining_mapped,
+        branch_penalty_mm=100.0, max_candidate_edges=48,
+    )
+    branch_uv = tree_ops["connect_original_source_uv_forest"](
+        base_faces, quad_evidence["face_uv_loops"],
+        l_remaining + r_remaining_mapped,
+        preferred_tree_edges=branch_candidate["retainedOriginalSourceEdges"],
+    )
+    branch_audit = cut_audit_ops["audit_original_source_uv_cut_network"](
+        merged_verts, base_faces, branch_uv["face_uv_loops"],
+        l_remaining + r_remaining_mapped, branch_uv["report"],
+    )
+    branch_report = branch_candidate["report"]
+    if (branch_report["originalSourceQuadCount"] != 2650
+            or branch_report["originalSourceSharedEdgeCount"] != 5234
+            or branch_report["originalSourceComponentCount"] !=
+               tree_report["dualGraphComponentCount"]
+            or branch_report["retainedOriginalSourceTreeEdges"] != 2647
+            or branch_uv["report"]["verifiedTreeConnectedSharedEdges"] != 2647
+            or branch_audit["originalOpenSourceBoundaryEdges"] != 132
+            or branch_audit["unclosedSharedUvCutCandidateEdges"] !=
+               branch_uv["report"]["nonTreeCycleUnclosedUvEdges"]
+            or branch_report["candidateResearchObjectiveMm"] >
+               branch_report["baselineResearchObjectiveMm"] + 0.00002):
+        raise RuntimeError("Bounded original source UV research lost native provenance.")
+    branch_report["independentMeasuredUvParetoComparison"] = weighted_ops[
+        "compare_measured_original_source_uv_research_candidates"
+    ](weighted_cut, branch_audit, weighted_report, branch_uv["report"])
+    if (branch_report["independentMeasuredUvParetoComparison"]["productionApproved"]
+            or not branch_report["independentMeasuredUvParetoComparison"][
+                "nativeSourceTopologyPreserved"
+            ]):
+        raise RuntimeError("Research UV comparison falsely certified a sewn garment.")
+    # Genuine 2D source UV triangle interior overlaps, never physical cloth.
+    # Bounded searches explicitly report incomplete coverage; both strategies
+    # are compared on the SAME original 2650 source faces without mutation.
+    uv_overlap_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-trouser-uv-overlap-audit.py")
+    ))
+    uv_overlap_audit = uv_overlap_ops["audit_original_source_uv_triangle_overlaps"]
+    weighted_overlap = uv_overlap_audit(base_faces, weighted_uv["face_uv_loops"])
+    branch_overlap = uv_overlap_audit(base_faces, branch_uv["face_uv_loops"])
+    for source_uv_overlap in (weighted_overlap, branch_overlap):
+        if (source_uv_overlap["expectedOriginalSourceQuadCount"] != 2650
+                or source_uv_overlap["expectedTriangleCount"] != 5300
+                or source_uv_overlap["completeGarmentUvOverlapFreeApproved"]
+                or source_uv_overlap["physicalSourceFitApproved"]
+                or source_uv_overlap["realTailorCuttingApproved"]
+                or source_uv_overlap["productionApproved"]):
+            raise RuntimeError("Research UV interior overlap audit lost source/approval truth.")
+    weighted_report["researchOnlyOriginalSourceUvOverlapEvidence"] = weighted_overlap
+    branch_report["researchOnlyOriginalSourceUvOverlapComparison"] = uv_overlap_ops[
+        "compare_original_source_uv_overlap_evidence"
+    ](weighted_overlap, branch_overlap)
+    overlap_comparison = branch_report["researchOnlyOriginalSourceUvOverlapComparison"]
+    if (overlap_comparison["completeGarmentUvApproved"]
+            or overlap_comparison["productionApproved"]):
+        raise RuntimeError("Unapproved source UV overlap comparison claimed production fit.")
+    branch_report["researchOnlyOriginalSourceUvOverlapEvidence"] = branch_overlap
+    # The actual source has three DISCONNECTED face-graph components.
+    # Their research UV charts must not collide merely because the separate
+    # rigid-tree layouts all started at the origin. Translation does not
+    # stretch a source face or solve INTERNAL/production pattern overlaps.
+    component_pack_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-trouser-component-uv-pack.py")
+    ))
+    rigid_pack = component_pack_ops["pack_original_source_uv_face_components"]
+    overlap_compare = uv_overlap_ops["compare_original_source_uv_overlap_evidence"]
+    packed_weighted = None
+    packed_weighted_overlap = None
+    packed_weighted_cut = None
+    for state, unshifted, unshifted_overlap, initial_cut, tree_state in (
+        (weighted_report, weighted_uv, weighted_overlap, weighted_cut, weighted_uv),
+        (branch_report, branch_uv, branch_overlap, branch_audit, branch_uv),
+    ):
+        packed = rigid_pack(base_faces, unshifted["face_uv_loops"])
+        packed_summary = packed["report"]
+        if (packed_summary["originalSourceFaceGraphComponentCount"] != 3
+                or packed_summary["originalSourceComponentFaceCounts"] !=
+                   tree_state["report"]["dualGraphComponentSourceFaceCounts"]
+                or packed_summary["maximumOriginalTriangleEdgeChangeMm"] > 0.000001
+                or not packed_summary["sourceGeometryAndVertexIDsUnchanged"]
+                or packed_summary["sourcePanelsOverlapFreeApproved"]
+                or packed_summary["productionApproved"]):
+            raise RuntimeError("Research source-component UV translation lost original geometry.")
+        packed_overlap = uv_overlap_audit(base_faces, packed["face_uv_loops"])
+        packed_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+            merged_verts, base_faces, packed["face_uv_loops"],
+            l_remaining + r_remaining_mapped, tree_state["report"],
+        )
+        if (packed_cut["unclosedSharedUvCutCandidateEdges"] !=
+                initial_cut["unclosedSharedUvCutCandidateEdges"]
+                or abs(packed_cut["totalRealGeometryOfUvCutCandidatesMm"] -
+                       initial_cut["totalRealGeometryOfUvCutCandidatesMm"]) > 0.0001
+                or abs(packed_cut["maximumUnclosedUvEdgeGapMm"] -
+                       initial_cut["maximumUnclosedUvEdgeGapMm"]) > 0.0001
+                or packed_cut["productionApproved"]):
+            raise RuntimeError("Rigid disconnected-source UV pack changed actual seam damage.")
+        comparison = overlap_compare(unshifted_overlap, packed_overlap)
+        if (comparison["bothFullResearchUvScansComplete"]
+                and comparison["candidateOverlapTrianglePairDelta"] > 0):
+            raise RuntimeError("Research UV component packing increased measured overlaps.")
+        state["researchOnlyRigidSourceUvComponentPackingEvidence"] = {
+            "researchOnly": True,
+            "packing": packed_summary,
+            "packedResearchUvOverlap": packed_overlap,
+            "sourceOverlapBeforeVsPacked": comparison,
+            "unclosedSourceUvSeamCountUnchanged": True,
+            "originalSourceSeamGapUnchanged": True,
+            "sourceMeshAndBodyBVHUnchanged": True,
+            "sourceUvExportOrSavePerformed": False,
+            "realFabricScaleOrRepeatApproved": False,
+            "tailorCutAndFitApproved": False,
+            "productionApproved": False,
+        }
+        if state is weighted_report:
+            packed_weighted = packed
+            packed_weighted_overlap = packed_overlap
+            packed_weighted_cut = packed_cut
+    # One bounded genuine source-tree cut on authentic component 0. Only the
+    # smaller resulting face subtree moves in research UV space; source 3D,
+    # garment assets, Blender scenes and exports remain untouched.
+    subtree_ops = runpy.run_path(str(
+        Path(__file__).with_name("source-trouser-component0-subtree-uv-trial.py")
+    ))
+    subtree_trial = subtree_ops["trial_component0_balanced_subtree_uv_pack"](
+        merged_verts, base_faces, packed_weighted["face_uv_loops"],
+        weighted_selection["retainedOriginalSourceEdges"],
+    )
+    subtree_overlap = uv_overlap_audit(base_faces, subtree_trial["face_uv_loops"])
+    # The generic cut-network auditor intentionally checks its UV evidence
+    # against the supplied spanning-forest counts. This trial has opened one
+    # previously joined tree edge, so pass an explicit derived diagnostic
+    # report instead of falsely describing the candidate as the old forest.
+    subtree_tree_report = dict(weighted_uv["report"])
+    subtree_tree_report["verifiedTreeConnectedSharedEdges"] -= 1
+    subtree_tree_report["nonTreeCycleUnclosedUvEdges"] += 1
+    subtree_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+        merged_verts, base_faces, subtree_trial["face_uv_loops"],
+        l_remaining + r_remaining_mapped, subtree_tree_report,
+    )
+    subtree_summary = subtree_trial["report"]
+    subtree_comparison = overlap_compare(packed_weighted_overlap, subtree_overlap)
+    if (subtree_summary["targetComponentId"] != 0
+            or subtree_summary["targetComponentOriginalSourceFaceCount"] != 1220
+            or subtree_summary["newUnclosedSourceUvSeamCount"] != 1
+            or subtree_summary["maximumOriginalTriangleEdgeChangeMm"] > 0.000001
+            or subtree_cut["unclosedSharedUvCutCandidateEdges"] !=
+               packed_weighted_cut["unclosedSharedUvCutCandidateEdges"] + 1
+            or abs((subtree_cut["totalRealGeometryOfUvCutCandidatesMm"] -
+                    packed_weighted_cut["totalRealGeometryOfUvCutCandidatesMm"]) -
+                   subtree_summary["addedActualSourceCutEdgeLengthMm"]) > 0.0001
+            or subtree_summary["productionApproved"]
+            or subtree_cut["productionApproved"]
+            or subtree_comparison["productionApproved"]):
+        raise RuntimeError("Component-0 subtree UV trial lost source or rejection truth.")
+    weighted_report["researchOnlyComponent0SubtreeUvTrial"] = {
+        "researchOnly": True,
+        "trial": subtree_summary,
+        "candidateResearchUvOverlap": subtree_overlap,
+        "packedBaselineVsCandidateOverlap": subtree_comparison,
+        "packedBaselineUvCutNetwork": packed_weighted_cut,
+        "candidateUvCutNetwork": subtree_cut,
+        "sourceMeshAndBodyBVHUnchanged": True,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricAndTailorApproval": False,
+        "productionApproved": False,
+    }
+    # Evaluate a bounded set of the most balanced genuine component-0 tree
+    # cuts. A candidate is only research-eligible if it reduces complete-scan
+    # overlap without exceeding the rank-0 real edge-length budget, baseline
+    # maximum seam gap, or baseline branching. These are comparison bounds,
+    # never physical pattern tolerances.
+    bounded_rows = []
+
+    def bounded_row(rank, trial_report, overlap_report, cut_report, comparison):
+        overlap_delta = comparison["candidateOverlapTrianglePairDelta"]
+        added_length = round(
+            cut_report["totalRealGeometryOfUvCutCandidatesMm"] -
+            packed_weighted_cut["totalRealGeometryOfUvCutCandidatesMm"], 5
+        )
+        max_gap_delta = round(
+            cut_report["maximumUnclosedUvEdgeGapMm"] -
+            packed_weighted_cut["maximumUnclosedUvEdgeGapMm"], 5
+        )
+        branch_delta = (
+            cut_report["uvCutCandidateDegreeThreePlusSourceVertices"] -
+            packed_weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+        )
+        complete_improvement = (
+            comparison["bothFullResearchUvScansComplete"] and
+            overlap_delta is not None and overlap_delta < 0
+        )
+        within_edge_budget = (
+            trial_report["addedActualSourceCutEdgeLengthMm"] <=
+            subtree_summary["addedActualSourceCutEdgeLengthMm"] + 0.00001
+        )
+        no_max_gap_regression = max_gap_delta <= 0.00001
+        no_branch_regression = branch_delta <= 0
+        exact_one_new_seam = (
+            cut_report["unclosedSharedUvCutCandidateEdges"] ==
+            packed_weighted_cut["unclosedSharedUvCutCandidateEdges"] + 1
+        )
+        return {
+            "candidateRank": rank,
+            "removedRetainedOriginalSourceEdge":
+                trial_report["removedRetainedOriginalSourceEdge"],
+            "movedOriginalSourceFaceCount":
+                trial_report["movedOriginalSourceFaceCount"],
+            "addedActualSourceCutEdgeLengthMm":
+                trial_report["addedActualSourceCutEdgeLengthMm"],
+            "baselineOverlapTrianglePairs":
+                comparison["baselineObservedTriangleOverlapPairs"],
+            "candidateOverlapTrianglePairs":
+                comparison["candidateObservedTriangleOverlapPairs"],
+            "overlapTrianglePairDelta": overlap_delta,
+            "candidateMaximumUnclosedUvEdgeGapMm":
+                cut_report["maximumUnclosedUvEdgeGapMm"],
+            "maximumUnclosedUvEdgeGapDeltaMm": max_gap_delta,
+            "candidateBranchJunctions":
+                cut_report["uvCutCandidateDegreeThreePlusSourceVertices"],
+            "branchJunctionDelta": branch_delta,
+            "candidateUnclosedSharedUvSeams":
+                cut_report["unclosedSharedUvCutCandidateEdges"],
+            "candidateTotalCutNetworkLengthMm":
+                cut_report["totalRealGeometryOfUvCutCandidatesMm"],
+            "measuredAddedCutNetworkLengthMm": added_length,
+            "completeOverlapImprovement": complete_improvement,
+            "withinRankZeroRealEdgeLengthBudget": within_edge_budget,
+            "noMaximumUvGapRegression": no_max_gap_regression,
+            "noBranchJunctionRegression": no_branch_regression,
+            "exactlyOneNewUnclosedUvSeam": exact_one_new_seam,
+            "strictResearchEligible": (
+                complete_improvement and within_edge_budget and
+                no_max_gap_regression and no_branch_regression and
+                exact_one_new_seam
+            ),
+            "physicalPatternApproved": False,
+            "productionApproved": False,
+        }
+
+    bounded_rows.append(bounded_row(
+        0, subtree_summary, subtree_overlap, subtree_cut, subtree_comparison
+    ))
+    for candidate_rank in range(1, 24):
+        candidate_trial = subtree_ops[
+            "trial_component0_balanced_subtree_uv_pack"
+        ](
+            merged_verts, base_faces, packed_weighted["face_uv_loops"],
+            weighted_selection["retainedOriginalSourceEdges"],
+            candidate_rank=candidate_rank,
+        )
+        candidate_overlap = uv_overlap_audit(
+            base_faces, candidate_trial["face_uv_loops"]
+        )
+        candidate_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+            merged_verts, base_faces, candidate_trial["face_uv_loops"],
+            l_remaining + r_remaining_mapped, subtree_tree_report,
+        )
+        candidate_comparison = overlap_compare(
+            packed_weighted_overlap, candidate_overlap
+        )
+        bounded_rows.append(bounded_row(
+            candidate_rank, candidate_trial["report"], candidate_overlap,
+            candidate_cut, candidate_comparison,
+        ))
+    eligible_rows = [row for row in bounded_rows if row["strictResearchEligible"]]
+    selected_row = min(eligible_rows, key=lambda row: (
+        row["overlapTrianglePairDelta"],
+        row["addedActualSourceCutEdgeLengthMm"],
+        row["candidateRank"],
+    )) if eligible_rows else None
+    weighted_report["researchOnlyComponent0CappedTreeCutSurvey"] = {
+        "researchOnly": True,
+        "candidateSelection": "first 24 deterministic most-balanced genuine tree cuts",
+        "evaluatedCandidateCount": len(bounded_rows),
+        "candidateRankZeroRealEdgeLengthBudgetMm":
+            subtree_summary["addedActualSourceCutEdgeLengthMm"],
+        "baselineMaximumUnclosedUvEdgeGapMm":
+            packed_weighted_cut["maximumUnclosedUvEdgeGapMm"],
+        "baselineBranchJunctions":
+            packed_weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"],
+        "candidateResults": bounded_rows,
+        "strictEligibleCandidateCount": len(eligible_rows),
+        "strictSelectedCandidate": selected_row,
+        "noStrictCandidateObserved": not eligible_rows,
+        "sourceGeometryAndBodyBVHUnchanged": True,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricTailorOrFitApproved": False,
+        "productionApproved": False,
+    }
+    # The one-cut survey identified exactly which bounded ranks fit its real
+    # source-edge budget. Evaluate every unique pair from that measured set.
+    # Two sequential rigid subtree moves are still research UV only; a pair
+    # must pass the original baseline maximum-gap and branching bounds rather
+    # than merely reducing triangle overlaps.
+    budget_ranks = [
+        row["candidateRank"] for row in bounded_rows
+        if row["withinRankZeroRealEdgeLengthBudget"]
+    ]
+    two_cut_pairs = [
+        (left, right)
+        for index, left in enumerate(budget_ranks)
+        for right in budget_ranks[index + 1:]
+    ]
+    if len(budget_ranks) != 5 or len(two_cut_pairs) != 10:
+        raise RuntimeError("Component-0 two-cut survey lost its measured bounded set.")
+    two_cut_tree_report = dict(weighted_uv["report"])
+    two_cut_tree_report["verifiedTreeConnectedSharedEdges"] -= 2
+    two_cut_tree_report["nonTreeCycleUnclosedUvEdges"] += 2
+    two_cut_rows = []
+    for candidate_ranks in two_cut_pairs:
+        candidate_trial = subtree_ops[
+            "trial_component0_ranked_two_cut_uv_pack"
+        ](
+            merged_verts, base_faces, packed_weighted["face_uv_loops"],
+            weighted_selection["retainedOriginalSourceEdges"],
+            candidate_ranks=candidate_ranks,
+        )
+        candidate_overlap = uv_overlap_audit(
+            base_faces, candidate_trial["face_uv_loops"]
+        )
+        candidate_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+            merged_verts, base_faces, candidate_trial["face_uv_loops"],
+            l_remaining + r_remaining_mapped, two_cut_tree_report,
+        )
+        candidate_comparison = overlap_compare(
+            packed_weighted_overlap, candidate_overlap
+        )
+        trial_report = candidate_trial["report"]
+        overlap_delta = candidate_comparison["candidateOverlapTrianglePairDelta"]
+        added_length = round(
+            candidate_cut["totalRealGeometryOfUvCutCandidatesMm"] -
+            packed_weighted_cut["totalRealGeometryOfUvCutCandidatesMm"], 5
+        )
+        max_gap_delta = round(
+            candidate_cut["maximumUnclosedUvEdgeGapMm"] -
+            packed_weighted_cut["maximumUnclosedUvEdgeGapMm"], 5
+        )
+        branch_delta = (
+            candidate_cut["uvCutCandidateDegreeThreePlusSourceVertices"] -
+            packed_weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+        )
+        complete_improvement = (
+            candidate_comparison["bothFullResearchUvScansComplete"] and
+            overlap_delta is not None and overlap_delta < 0
+        )
+        within_double_budget = (
+            trial_report["addedActualSourceCutEdgeLengthMm"] <=
+            2 * subtree_summary["addedActualSourceCutEdgeLengthMm"] + 0.00001
+        )
+        no_max_gap_regression = max_gap_delta <= 0.00001
+        no_branch_regression = branch_delta <= 0
+        exact_two_new_seams = (
+            candidate_cut["unclosedSharedUvCutCandidateEdges"] ==
+            packed_weighted_cut["unclosedSharedUvCutCandidateEdges"] + 2
+        )
+        if (abs(added_length -
+                trial_report["addedActualSourceCutEdgeLengthMm"]) > 0.0001
+                or not exact_two_new_seams):
+            raise RuntimeError("Component-0 two-cut UV audit lost real cut truth.")
+        two_cut_rows.append({
+            "candidateRanks": list(candidate_ranks),
+            "removedRetainedOriginalSourceEdges":
+                trial_report["removedRetainedOriginalSourceEdges"],
+            "movedOriginalSourceFaceCounts":
+                trial_report["movedOriginalSourceFaceCounts"],
+            "addedActualSourceCutEdgeLengthMm":
+                trial_report["addedActualSourceCutEdgeLengthMm"],
+            "baselineOverlapTrianglePairs":
+                candidate_comparison["baselineObservedTriangleOverlapPairs"],
+            "candidateOverlapTrianglePairs":
+                candidate_comparison["candidateObservedTriangleOverlapPairs"],
+            "overlapTrianglePairDelta": overlap_delta,
+            "candidateMaximumUnclosedUvEdgeGapMm":
+                candidate_cut["maximumUnclosedUvEdgeGapMm"],
+            "maximumUnclosedUvEdgeGapDeltaMm": max_gap_delta,
+            "candidateBranchJunctions":
+                candidate_cut["uvCutCandidateDegreeThreePlusSourceVertices"],
+            "branchJunctionDelta": branch_delta,
+            "candidateUnclosedSharedUvSeams":
+                candidate_cut["unclosedSharedUvCutCandidateEdges"],
+            "candidateTotalCutNetworkLengthMm":
+                candidate_cut["totalRealGeometryOfUvCutCandidatesMm"],
+            "measuredAddedCutNetworkLengthMm": added_length,
+            "completeOverlapImprovement": complete_improvement,
+            "withinDoubleRankZeroRealEdgeLengthBudget": within_double_budget,
+            "noMaximumUvGapRegression": no_max_gap_regression,
+            "noBranchJunctionRegression": no_branch_regression,
+            "exactlyTwoNewUnclosedUvSeams": exact_two_new_seams,
+            "strictResearchEligible": (
+                complete_improvement and within_double_budget and
+                no_max_gap_regression and no_branch_regression and
+                exact_two_new_seams
+            ),
+            "physicalPatternApproved": False,
+            "productionApproved": False,
+        })
+    two_cut_eligible = [
+        row for row in two_cut_rows if row["strictResearchEligible"]
+    ]
+    two_cut_selected = min(two_cut_eligible, key=lambda row: (
+        row["overlapTrianglePairDelta"],
+        row["addedActualSourceCutEdgeLengthMm"],
+        row["candidateRanks"],
+    )) if two_cut_eligible else None
+    weighted_report["researchOnlyComponent0CappedTwoCutSurvey"] = {
+        "researchOnly": True,
+        "candidateSelection": (
+            "all 10 unique pairs from the five one-cut ranks within the "
+            "rank-zero real source-edge-length budget"
+        ),
+        "sourceOneCutRanks": budget_ranks,
+        "evaluatedCandidatePairCount": len(two_cut_rows),
+        "doubleRankZeroRealEdgeLengthBudgetMm": round(
+            2 * subtree_summary["addedActualSourceCutEdgeLengthMm"], 5
+        ),
+        "baselineMaximumUnclosedUvEdgeGapMm":
+            packed_weighted_cut["maximumUnclosedUvEdgeGapMm"],
+        "baselineBranchJunctions":
+            packed_weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"],
+        "candidateResults": two_cut_rows,
+        "strictEligibleCandidateCount": len(two_cut_eligible),
+        "strictSelectedCandidate": two_cut_selected,
+        "noStrictCandidateObserved": not two_cut_eligible,
+        "sourceGeometryAndBodyBVHUnchanged": True,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricTailorOrFitApproved": False,
+        "productionApproved": False,
+    }
+    branch_report["actualSourceUvCutNetworkEvidence"] = branch_audit
+    branch_report["actualRealSourceUvTreeEvidence"] = branch_uv["report"]
+    branch_report["actualSourceGeometryUnchanged"] = True
+    branch_report["nativeBodyContactsInvariantFromUnchangedSource"] = unchanged_source_pairs
+    branch_report["newSourceObjectSavedOrExported"] = False
+    branch_report["actualUvClosureMeasured"] = True
+    branch_report["overlapFreeUvApproved"] = False
+    branch_report["physicalSewnCrotchPatternApproved"] = False
+    seam_winding["researchOnlyBranchAwareSourceUvEvidence"] = branch_report
+
+    weighted_report["originalGarmentTexelScaleAndGrainApproved"] = False
+    weighted_report["physicalSewnCrotchPatternApproved"] = False
+    seam_winding["researchOnlyOriginalSourceMaxRetainedUvEvidence"] = weighted_report
     clearance_trial = None
     targeted_reroute_trial = None
     if args.experimental_centroid_clearance_mm == 7.0:
