@@ -169,3 +169,37 @@ test("maybe drawstring remains optional without hiding an independent affirmativ
   assert.equal(styleDirectorCandidateDrawstringWaistband("no drawstring"), "prohibited");
   assert.equal(saved.waistband, "belt_loops");
 });
+
+test("tentative wide-leg wording stays optional without masking independent firm instructions", () => {
+  const locked = Object.freeze({ type: "formal_flat_front", waistband: "belt_loops" });
+  const tentative = [
+    "maybe wide-leg trousers",
+    "possibly wide-leg pants",
+    "maybe wide-fit trousers",
+    "wide-leg trousers maybe",
+    "maybe wide-legged trousers",
+  ];
+  for (const wording of tentative) {
+    assert.equal(styleDirectorCandidateWideLegIntent(wording), null, wording);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(wording, locked), [], wording);
+  }
+  const checks = [
+    { wording: "wide-leg trousers", expected: "requested" },
+    { wording: "maybe wide-leg trousers, but wide-leg pants required", expected: "requested" },
+    { wording: "maybe wide-leg trousers; no wide-leg pants", expected: "prohibited" },
+    { wording: "no wide-leg trousers, possibly wide-leg pants", expected: "prohibited" },
+    { wording: "maybe wide-leg trousers with drawstring trousers", expected: null },
+  ] as const;
+  for (const { wording, expected } of checks) {
+    assert.equal(styleDirectorCandidateWideLegIntent(wording), expected, wording);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(wording, locked),
+      expected === "requested" ? [{
+        code: "candidate_wide_leg_mismatch",
+        explanation: "The named wide-leg silhouette request or prohibition conflicts with the saved versioned trouser type; confirm the cut before tailoring.",
+      }] : [], wording);
+  }
+  assert.equal(styleDirectorCandidateDrawstringWaistband(
+    "maybe wide-leg trousers with drawstring trousers"), "requested");
+  assert.equal(locked.type, "formal_flat_front", "locked type unchanged");
+  assert.equal(locked.waistband, "belt_loops", "locked waistband unchanged");
+});
