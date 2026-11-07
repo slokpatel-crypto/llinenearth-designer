@@ -18,6 +18,16 @@ const files = execFileSync('git', ['ls-files', '-z', '--', ...roots], {encoding:
   .filter(path => sourceExtensions.test(path))
   .filter(path => !/(?:^|\/)(?:test|tests|__tests__)(?:\/|-|\.)/.test(path))
   .filter(path => !path.startsWith('scripts/audit-retired-stock-rpc-callers.'));
+function foldedStaticStrings(source) {
+  // Detect statically concatenated quoted RPC names, including across lines.
+  const quoted = /(['"])([^'"\\]*(?:\\.[^'"\\]*)*)\1\s*\+\s*(['"])([^'"\\]*(?:\\.[^'"\\]*)*)\3/g;
+  let previous;
+  do {
+    previous = source;
+    source = source.replace(quoted, (_match, _q1, left, _q2, right) => JSON.stringify(left + right));
+  } while (source !== previous);
+  return source;
+}
 let matches = 0;
 for (const path of files) {
   const lines = readFileSync(path, 'utf8').split(/\r?\n/);
@@ -32,6 +42,13 @@ for (const path of files) {
       }
     }
   });
+  const folded = foldedStaticStrings(lines.join('\n'));
+  for (const name of retired) {
+    if (folded.includes(name) && !lines.some(line => new RegExp('\\b' + name + '\\b').test(line))) {
+      console.error(`BLOCKED: ${path}: statically concatenated retired RPC ${name}`);
+      matches++;
+    }
+  }
 }
 if (!files.length) {
   console.error('BLOCKED: no tracked application source files inspected');
