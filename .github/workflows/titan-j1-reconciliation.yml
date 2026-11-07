@@ -1,0 +1,24 @@
+name: TITAN J1 migration reconciliation regressions
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/titan-reconcile-migration-history.mjs'
+      - 'tests/titan-migration-history-reconcile.test.mjs'
+      - '.github/workflows/titan-j1-reconciliation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fail-closed-reconciliation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify synthetic migration reconciliation invariants
+        run: node --test tests/titan-migration-history-reconcile.test.mjs
