@@ -103,6 +103,39 @@ not physical seam allowance, fabric width, grain, fit or tailor approval.
 Native Blender results and exact-head CI must be recorded before interpreting
 the survey. No candidate is saved, exported, merged or deployed automatically.
 
+### Pinned native result: no compensating pair passed
+
+Official Blender 4.5.14 source workflow
+[#42371539640](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/42371539640)
+completed successfully on exact code commit
+`dfdeab18f6469254015820983e6a4bfa82055cad`. It evaluated all 10 pairs with
+complete 5,300-triangle overlap scans. Every pair reduced observed overlap
+pairs, by **223 to 342**, and every pair stayed within the 66.81536mm combined
+edge-length budget. Nevertheless **0/10** passed the hard comparison contract:
+
+| Native two-cut result | Measured value |
+|---|---:|
+| Baseline overlap pairs | 6,957 |
+| Candidate overlap-pair range | 6,615–6,734 |
+| Baseline maximum UV gap | 1,072.40848mm |
+| Candidate maximum UV-gap range | **2,025.45830–3,187.69328mm** |
+| Baseline branch junctions | 323 |
+| Candidate branch-junction range | **324–327** |
+| Strictly eligible candidates | **0** |
+
+Ranks `[0,18]` produced the largest overlap reduction, 6,957 to 6,615, but
+raised maximum gap to 3,024.44334mm and branch junctions to 324. Ranks
+`[15,18]` had the least maximum-gap damage, but still raised it to
+2,025.45830mm and raised branch junctions to 325 while reducing overlaps by
+259. `strictSelectedCandidate` is therefore null; no least-bad pair is
+promoted. Sequential outside packing of more balanced subtrees is rejected as
+a path to UV continuity. A next bounded experiment must constrain rigid
+placement by the original maximum-gap envelope instead of adding more cuts.
+
+This is diagnostic rejection evidence only. Original source geometry/body
+contacts, the canonical Real Model Designer identity, production assets and
+all physical/tailor approval gates remain unchanged and false.
+
 
 ## 2026-11-05 follow-up: bounded junction-aware source UV candidate
 
