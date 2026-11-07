@@ -57,7 +57,7 @@ test("trouser fit constraints do not approve missing or accessor-backed locked I
       assert.deepEqual(styleDirectorCandidateTrouserFitIssues(wording, locked as never), issues);
     }
   }
-  assert.deepEqual(styleDirectorCandidateTrouserFitIssues("perhaps slim tapered", null as never), [],
+  assert.deepEqual(styleDirectorCandidateTrouserFitIssues("maybe slim tapered", null as never), [],
     "unqualified speculative prose must not select a fit");
   assert.equal(slim.fit, "slim_tapered");
   assert.equal(straight.fit, "straight_classic");
