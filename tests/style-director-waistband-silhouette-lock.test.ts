@@ -203,3 +203,33 @@ test("tentative wide-leg wording stays optional without masking independent firm
   assert.equal(locked.type, "formal_flat_front", "locked type unchanged");
   assert.equal(locked.waistband, "belt_loops", "locked waistband unchanged");
 });
+
+test("tentative trouser options remain neutral while firm construction instructions survive", () => {
+  const locked = Object.freeze({ type: "formal_flat_front", waistband: "belt_loops" });
+  const unchanged = JSON.stringify(locked);
+  const cases = [
+    { wording: "perhaps wide-leg trousers and possibly drawstring", wide: null, waist: null },
+    { wording: "wide-leg pants perhaps, drawstring maybe", wide: null, waist: null },
+    { wording: "wide-fit trousers possibly, drawstring perhaps", wide: null, waist: null },
+    { wording: "maybe wide-legged trousers, perhaps draw-string", wide: null, waist: null },
+    { wording: "no wide-leg trousers; perhaps drawstring", wide: "prohibited", waist: null },
+    { wording: "possibly wide-leg pants; no drawstring", wide: null, waist: "prohibited" },
+    { wording: "perhaps wide-leg trousers; wide-leg pants required", wide: "requested", waist: null },
+    { wording: "drawstring maybe; drawstring required", wide: null, waist: "requested" },
+    { wording: "perhaps wide-leg trousers; wide-leg pants; no wide-leg pants", wide: "ambiguous", waist: null },
+    { wording: "possibly drawstring; drawstring; no drawstring", wide: null, waist: "ambiguous" },
+  ] as const;
+  for (const { wording, wide, waist } of cases) {
+    assert.equal(styleDirectorCandidateWideLegIntent(wording), wide, wording);
+    assert.equal(styleDirectorCandidateDrawstringWaistband(wording), waist, wording);
+    assert.equal(styleDirectorCandidateWideLegIssues(wording, locked)
+      .some(issue => issue.code === "candidate_wide_leg_mismatch"), wide === "requested", wording);
+    assert.equal(styleDirectorCandidateWaistbandIssues(wording, locked)
+      .some(issue => issue.code === "candidate_waistband_mismatch"), waist === "requested", wording);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(wording, locked),
+      styleDirectorCandidateWideLegIssues(wording, locked), "deterministic silhouette review");
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(wording, locked),
+      styleDirectorCandidateWaistbandIssues(wording, locked), "deterministic waistband review");
+    assert.equal(JSON.stringify(locked), unchanged, "never rewrite locked construction");
+  }
+});
