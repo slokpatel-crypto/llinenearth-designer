@@ -873,7 +873,7 @@ export function styleDirectorCandidateWideLegIntent(
   const width = String.raw`(?:wide[- ]?leg(?:ged)?(?:[- ]?(?:trousers?|pants?))?|wide[- ]?fit[- ]?(?:trousers?|pants?)|wide[- ]?(?:trousers?|pants?))`;
   const beforeBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|add|have|want)\s+)?(?:(?:a|any)\s+)?${width}\b`, "gi");
   const afterBan = new RegExp(String.raw`\b${width}\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b`, "gi");
-  const optional = new RegExp(String.raw`\b(?:optional\s+${width}|${width}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)))\b`, "gi");
+  const optional = new RegExp(String.raw`\b(?:(?:optional|maybe|possibly)\s+${width}|${width}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|maybe))\b`, "gi");
   let prohibited = false;
   let remaining = candidateTrouser.replace(beforeBan, () => { prohibited = true; return " "; });
   remaining = remaining.replace(afterBan, () => { prohibited = true; return " "; });
