@@ -67,7 +67,8 @@ test("two mandatory wear instructions still require review without rewriting the
     assert.deepEqual(wordingIssues(label), ["ambiguous_candidate_wear"], label);
     const locked = { wear: "tucked" as const };
     const before = JSON.stringify(locked);
-    assert.deepEqual(styleDirectorCandidateWearIssues(label, locked), [], label);
+    assert.deepEqual(styleDirectorCandidateWearIssues(label, locked).map(x => x.code),
+      ["candidate_shirt_wear_mismatch"], label);
     assert.equal(JSON.stringify(locked), before);
   }
 });
