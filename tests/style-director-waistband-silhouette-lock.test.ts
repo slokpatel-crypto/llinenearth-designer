@@ -26,7 +26,7 @@ test("wide-leg request and exclusion respect the locked trouser silhouette", () 
 
 test("drawstring instructions cannot silently override the saved waistband", () => {
   const drawstring = Object.freeze({ waistband: "drawstring_elastic" });
-  const standard = Object.freeze({ waistband: "standard_belt_loops" });
+  const standard = Object.freeze({ waistband: "belt_loops" });
   assert.equal(styleDirectorCandidateDrawstringWaistband("drawstring trousers"), "requested");
   assert.equal(styleDirectorCandidateDrawstringWaistband("no drawstring"), "prohibited");
   assert.deepEqual(styleDirectorCandidateWaistbandIssues("drawstring trousers", drawstring), []);
@@ -44,9 +44,9 @@ test("combined trouser construction instructions validate silhouette and waistba
   const cases = [
     { name: "wide-leg trousers with drawstring", pant: { type: "wide_leg_relaxed_drape", waistband: "drawstring_elastic" }, wide: false, waist: false },
     { name: "wide-leg trousers with drawstring", pant: { type: "formal_flat_front", waistband: "drawstring_elastic" }, wide: true, waist: false },
-    { name: "wide-leg trousers with drawstring", pant: { type: "wide_leg_relaxed_drape", waistband: "standard_belt_loops" }, wide: false, waist: true },
-    { name: "wide-leg trousers with drawstring", pant: { type: "formal_flat_front", waistband: "standard_belt_loops" }, wide: true, waist: true },
-    { name: "no wide-leg trousers and no drawstring", pant: { type: "formal_flat_front", waistband: "standard_belt_loops" }, wide: false, waist: false },
+    { name: "wide-leg trousers with drawstring", pant: { type: "wide_leg_relaxed_drape", waistband: "belt_loops" }, wide: false, waist: true },
+    { name: "wide-leg trousers with drawstring", pant: { type: "formal_flat_front", waistband: "belt_loops" }, wide: true, waist: true },
+    { name: "no wide-leg trousers and no drawstring", pant: { type: "formal_flat_front", waistband: "belt_loops" }, wide: false, waist: false },
     { name: "no wide-leg trousers and no drawstring", pant: { type: "wide_leg_relaxed_drape", waistband: "drawstring_elastic" }, wide: true, waist: true },
   ] as const;
   for (const { name, pant, wide, waist } of cases) {
@@ -111,7 +111,7 @@ test("inherited and accessor trouser IDs cannot authorize locked construction", 
 test("prohibited trouser constructions fail closed on missing or unrecognised saved IDs", () => {
   const cases = [
     { field: "type", wording: "no wide-leg trousers", check: styleDirectorCandidateWideLegIssues, code: "candidate_wide_leg_mismatch", valid: "formal_flat_front" },
-    { field: "waistband", wording: "no drawstring", check: styleDirectorCandidateWaistbandIssues, code: "candidate_waistband_mismatch", valid: "standard_belt_loops" },
+    { field: "waistband", wording: "no drawstring", check: styleDirectorCandidateWaistbandIssues, code: "candidate_waistband_mismatch", valid: "belt_loops" },
   ] as const;
   for (const { field, wording, check, code, valid } of cases) {
     const inherited = Object.create({ [field]: valid });
