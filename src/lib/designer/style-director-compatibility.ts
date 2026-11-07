@@ -387,9 +387,14 @@ export function styleDirectorCandidatePlacketIssues(
   candidateShirt: string, shirt: Pick<StyleSpecV2["shirt"], "placket">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidatePlacketIntent(candidateShirt);
-  if (intent.ambiguous) return [];
-  const conflicts = (intent.requested !== null && shirt.placket !== intent.requested) ||
-    intent.prohibited.includes(shirt.placket as CandidatePlacketId);
+  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  const lockedPlacket = styleDirectorLockedOptionValue(shirt, "placket");
+  // A missing, inherited, accessor or stale option cannot prove compliance.
+  const trusted = typeof lockedPlacket === "string" &&
+    optionsFor("shirt.placket").some(option => option.id === lockedPlacket);
+  const conflicts = !trusted ||
+    (intent.requested !== null && lockedPlacket !== intent.requested) ||
+    intent.prohibited.includes(lockedPlacket as CandidatePlacketId);
   return conflicts ? [{
     code: "candidate_placket_mismatch",
     explanation: "The requested or prohibited shirt placket conflicts with the locked versioned construction; confirm the front before tailoring.",
@@ -456,9 +461,13 @@ export function styleDirectorCandidatePocketIssues(
   shirt: Pick<StyleSpecV2["shirt"], "pocket">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidatePocketIntent(candidateShirt);
-  if (intent.ambiguous) return [];
-  const wrongRequest = intent.requested !== null && shirt.pocket !== intent.requested;
-  const bannedChoice = intent.prohibited.includes(shirt.pocket as CandidatePocketId);
+  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  const lockedPocket = styleDirectorLockedOptionValue(shirt, "pocket");
+  // A negative pocket request must not silently approve an unreadable ID.
+  const trusted = typeof lockedPocket === "string" &&
+    optionsFor("shirt.pocket").some(option => option.id === lockedPocket);
+  const wrongRequest = !trusted || (intent.requested !== null && lockedPocket !== intent.requested);
+  const bannedChoice = intent.prohibited.includes(lockedPocket as CandidatePocketId);
   return wrongRequest || bannedChoice ? [{
     code: "candidate_pocket_mismatch",
     explanation: "The explicit pocket request or exclusion conflicts with the versioned locked shirt pocket construction; confirm the pocket before cutting.",
