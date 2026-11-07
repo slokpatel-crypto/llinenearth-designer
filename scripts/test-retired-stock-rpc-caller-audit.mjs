@@ -25,6 +25,14 @@ const cases = [
     'client.rpc("fabric_stock_" + "reserve", payload);', false],
   ['multiline concatenated retired v1 blocked', 'desktop/src/v1-multiline.ts',
     'const method = "fabric_stock_" +\n "release";', false],
+  ['retired template concatenation', 'src/v1-template.ts',
+    'client.rpc(`fabric_stock_` + `release`, payload);', false],
+  ['mixed quote/template retired name', 'src/v1-mixed.ts',
+    'client.rpc("fabric_stock_" + `record`, payload);', false],
+  ['three-part retired template name', 'desktop/src/v1-3parts.ts',
+    'client.rpc(`fabric_stock_` + `consume_` + "reservation", payload);', false],
+  ['concatenated v2 template is valid', 'src/v2-template.ts',
+    'client.rpc(`fabric_stock_` + `reserve_v2`, payload);', true],
   ['longer identifier not v1', 'src/identifier.ts',
     'const key = "prefix_fabric_stock_reserve";', true],
 ];
@@ -46,7 +54,7 @@ try {
     execFileSync('git', ['rm', '-q', '--cached', '--', file], {cwd: root});
     rmSync(full);
   }
-  console.log('PASS: ten disposable tracked-source stock RPC audit fixtures');
+  console.log('PASS: fourteen disposable tracked-source stock RPC audit fixtures');
 } finally {
   rmSync(root, {recursive: true, force: true});
 }
