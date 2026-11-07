@@ -1746,7 +1746,13 @@ export function styleDirectorCandidateWearIssues(
   shirt: Pick<StyleSpecV2["shirt"], "wear">,
 ): DirectorConstructionIssue[] {
   const requested = candidateShirtWear(candidateShirt);
-  if (requested.tucked === requested.untucked) return [];
+  // Contradictory explicit wear instructions cannot certify either locked
+  // construction. Neutral/optional wording alone remains unconstrained.
+  if (requested.tucked && requested.untucked) return [{
+    code: "candidate_shirt_wear_mismatch",
+    explanation: "The proposed shirt contains conflicting tucked and untucked instructions; clarify the construction before tailoring.",
+  }];
+  if (!requested.tucked && !requested.untucked) return [];
   const expected = requested.tucked ? "tucked" : "untucked";
   const lockedWear = styleDirectorLockedOptionValue(shirt, "wear");
   // A stale, inherited or unreadable saved wear field cannot certify
