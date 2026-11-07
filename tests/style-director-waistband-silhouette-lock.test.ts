@@ -136,3 +136,21 @@ test("prohibited trouser constructions fail closed on missing or unrecognised sa
     assert.deepEqual(check(wording, canonical), [], "valid own canonical ID satisfies exclusion");
   }
 });
+
+test("optional waistband wording does not mask an independent silhouette prohibition", () => {
+  const saved = Object.freeze({ type: "wide_leg_relaxed_drape", waistband: "belt_loops" });
+  const cases = [
+    "no wide-leg trousers, drawstring optional",
+    "no wide-leg trousers; optional drawstring",
+    "no wide-leg trousers and maybe drawstring",
+  ];
+  for (const wording of cases) {
+    assert.equal(styleDirectorCandidateWideLegIntent(wording), "prohibited", wording);
+    assert.equal(styleDirectorCandidateDrawstringWaistband(wording), null, wording);
+    assert.equal(styleDirectorCandidateWideLegIssues(wording, saved)[0]?.code,
+      "candidate_wide_leg_mismatch", wording);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(wording, saved), [], wording);
+    assert.equal(saved.type, "wide_leg_relaxed_drape");
+    assert.equal(saved.waistband, "belt_loops");
+  }
+});
