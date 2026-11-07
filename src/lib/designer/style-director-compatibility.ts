@@ -227,7 +227,7 @@ const candidateShirtWear = (name: string) => {
     untuckedFromNegation = true;
     return " ";
   });
-  remaining = remaining.replace(/\b(?:do\s+not|don['’]?t|never|avoid|no|without)\s+(?:(?:the|any)\s+)?tuck(?:ing)?\b/gi, () => {
+  remaining = remaining.replace(/\b(?:(?:must|should|shall|do)\s+not|don['’]?t|never|avoid|no|without)\s+(?:(?:the|any)\s+)?tuck(?:ing)?\b/gi, () => {
     untuckedFromNegation = true;
     return " ";
   });
