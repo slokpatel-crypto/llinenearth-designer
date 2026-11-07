@@ -39,3 +39,25 @@ test("drawstring instructions cannot silently override the saved waistband", () 
     styleDirectorCandidateWaistbandIssues("no drawstring", standard));
   assert.equal(drawstring.waistband, "drawstring_elastic");
 });
+
+test("combined trouser construction instructions validate silhouette and waistband independently", () => {
+  const cases = [
+    { name: "wide-leg trousers with drawstring", pant: { type: "wide_leg_relaxed_drape", waistband: "drawstring_elastic" }, wide: false, waist: false },
+    { name: "wide-leg trousers with drawstring", pant: { type: "formal_flat_front", waistband: "drawstring_elastic" }, wide: true, waist: false },
+    { name: "wide-leg trousers with drawstring", pant: { type: "wide_leg_relaxed_drape", waistband: "standard_belt_loops" }, wide: false, waist: true },
+    { name: "wide-leg trousers with drawstring", pant: { type: "formal_flat_front", waistband: "standard_belt_loops" }, wide: true, waist: true },
+    { name: "no wide-leg trousers and no drawstring", pant: { type: "formal_flat_front", waistband: "standard_belt_loops" }, wide: false, waist: false },
+    { name: "no wide-leg trousers and no drawstring", pant: { type: "wide_leg_relaxed_drape", waistband: "drawstring_elastic" }, wide: true, waist: true },
+  ] as const;
+  for (const { name, pant, wide, waist } of cases) {
+    const locked = Object.freeze({ ...pant });
+    const before = JSON.stringify(locked);
+    const silhouette = styleDirectorCandidateWideLegIssues(name, locked);
+    const waistband = styleDirectorCandidateWaistbandIssues(name, locked);
+    assert.equal(silhouette.some(issue => issue.code === "candidate_wide_leg_mismatch"), wide, name);
+    assert.equal(waistband.some(issue => issue.code === "candidate_waistband_mismatch"), waist, name);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(name, locked), silhouette);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(name, locked), waistband);
+    assert.equal(JSON.stringify(locked), before, "locked garment options must not change");
+  }
+});
