@@ -61,17 +61,17 @@ SQL
     echo "$output" >&2
     exit 1
   fi
-  psql -X -v ON_ERROR_STOP=1 -At -F '|' \\
-    -f supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql \\
+  psql -X -v ON_ERROR_STOP=1 -At -F '|' \
+    -f supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql \
     | grep -Fqx "$clean"
 }
-assert_snapshot_flags_overload "legacy v1 overload" \\
-  "create function public.fabric_stock_record(p_extra integer) returns integer language sql as 'select 1'" \\
-  "v1|public.fabric_stock_record(text,text,numeric,text)|service_role|UNREVIEWED_OVERLOAD" \\
+assert_snapshot_flags_overload "legacy v1 overload" \
+  "create function public.fabric_stock_record(p_extra integer) returns integer language sql as 'select 1'" \
+  "v1|public.fabric_stock_record(text,text,numeric,text)|service_role|UNREVIEWED_OVERLOAD" \
   "v1|public.fabric_stock_record(text,text,numeric,text)|service_role|NO_EXECUTE"
-assert_snapshot_flags_overload "privileged v2 overload" \\
-  "create function public.fabric_stock_reserve_v2(p_extra integer) returns integer language sql as 'select 1'" \\
-  "v2|public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)|service_role|UNREVIEWED_OVERLOAD" \\
+assert_snapshot_flags_overload "privileged v2 overload" \
+  "create function public.fabric_stock_reserve_v2(p_extra integer) returns integer language sql as 'select 1'" \
+  "v2|public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)|service_role|UNREVIEWED_OVERLOAD" \
   "v2|public.fabric_stock_reserve_v2(text,numeric,text,text,text,text)|service_role|EXECUTE"
 echo "PASS: two read-only staging ACL overload snapshots detected unsafe variants and rolled back"
 test "$(psql -X -v ON_ERROR_STOP=1 -Atc 'select count(*) from private.fabric_stock_ledger')" = 0
