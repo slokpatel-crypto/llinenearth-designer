@@ -2790,3 +2790,60 @@ test("unknown photographic collar labels fail closed without rewriting versioned
     shirtWear: "Tucked",
   }, locked).some(issue => issue.code === "legacy_collar_mismatch"), false);
 });
+
+test("unreadable intelligence provenance cannot grant ranking trust or crash review", () => {
+  const unreadable = Object.defineProperty({}, "trust", {
+    get() { throw new Error("must not read a provenance getter"); },
+  });
+  Object.defineProperty(unreadable, "reviewStatus", {
+    get() { throw new Error("must not read a review getter"); },
+  });
+  const inherited = Object.create({ trust: "reviewed", reviewStatus: "approved" });
+  const trap = new Proxy({}, {
+    getOwnPropertyDescriptor() { throw new Error("untrusted descriptor trap"); },
+  });
+  const revoked = Proxy.revocable({}, {});
+  revoked.revoke();
+  for (const item of [unreadable, inherited, trap, revoked.proxy]) {
+    const result = styleDirectorIntelligenceTrustWeight(item as never);
+    assert.equal(result, 0, "unverified provenance has no scoring benefit");
+    assert.equal(styleDirectorIntelligenceTrustWeight(item as never), result,
+      "unreadable provenance must deterministically fail closed");
+  }
+  const valid = Object.freeze(Object.assign(Object.create(null), {
+    trust: "reviewed", reviewStatus: "approved",
+  }));
+  assert.equal(styleDirectorIntelligenceTrustWeight(valid), 1);
+  assert.equal(styleDirectorIntelligenceTrustWeight(Object.freeze({
+    trust: "high-confidence", reviewStatus: "rejected",
+  })), 0, "rejection remains authoritative");
+});
+
+test("cropped hem proposal fails closed on throwing or inherited selectors", () => {
+  const trap = new Proxy({}, {
+    getOwnPropertyDescriptor() { throw new Error("unreadable crop selector"); },
+  });
+  const revoked = Proxy.revocable({}, {});
+  revoked.revoke();
+  const getter = Object.defineProperties({}, {
+    type: { enumerable: true, get() { throw new Error("do not execute type getter"); } },
+    break: { enumerable: true, get() { throw new Error("do not execute break getter"); } },
+  });
+  const inherited = Object.create({
+    type: "cropped_ankle", break: "cropped_above_ankle",
+  });
+  const partial = Object.freeze({ type: "cropped_ankle" });
+  for (const pant of [trap, revoked.proxy, getter, inherited, partial, null]) {
+    assert.equal(styleDirectorProposedCroppedHem(pant as never), null,
+      "untrusted/missing canonical selectors cannot authorise cropped hem");
+    assert.equal(styleDirectorProposedCroppedHem(pant as never), null,
+      "repeated review must remain deterministic");
+  }
+  const canonical = Object.freeze(Object.assign(Object.create(null), {
+    type: "cropped_ankle", break: "cropped_above_ankle",
+  }));
+  assert.equal(styleDirectorProposedCroppedHem(canonical),
+    "cropped_above_ankle_hem", "valid own data keeps the approved proposal path");
+  assert.equal(canonical.type, "cropped_ankle");
+  assert.equal(canonical.break, "cropped_above_ankle");
+});
