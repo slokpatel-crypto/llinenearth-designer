@@ -3,10 +3,7 @@ set -euo pipefail
 # Disposable synthetic PostgreSQL only. NEVER run against shared/staging/live DB.
 # Exercise the real SQL permission gate under malicious temporary grants/revokes,
 # then prove that failed transactions left the original ACL unchanged.
-if [[ "${PGDATABASE:-}" != "titan_synthetic" ]]; then
-  echo "BLOCKED: mutation controls require disposable titan_synthetic database" >&2
-  exit 1
-fi
+source "$(dirname "${BASH_SOURCE[0]}")/assert-disposable-stock-acl-db.sh"
 assert_catches_tamper() {
   local label="$1" statement="$2" expected="$3" output status
   set +e

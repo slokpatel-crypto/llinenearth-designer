@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "source_snapshot": "2026-11-07",
-  "central_base_commit": "3a307f467848e812cc5146d929df0b611110b8dd",
+  "central_base_commit": "ad07a1a15ff4923ac4b589f37bc9c5bbf17ea2f7",
   "source_prs": [
     {
       "pr": 863,
@@ -78,14 +78,16 @@
     },
     {
       "pr": 880,
-      "head": "ac7f212bcd5ca78b19f348887a751a7fd6a2c2c7",
+      "head": "6730aba8198018b57db70eda1cadf9dbc41d5dc3",
       "files": {
-        ".github/workflows/titan-legacy-stock-rpc-acl.yml": "a157375bf9981b97604f25fffd8b8f4a4dd106c4",
-        "docs/TITAN_LEGACY_STOCK_RPC_ACL.md": "41cceb9287e61a0ca32995104e061eaf9af4b073",
+        ".github/workflows/titan-legacy-stock-rpc-acl.yml": "d0fbbffe50f0de1e6158a6e75fe256e597c1fb86",
+        "docs/TITAN_LEGACY_STOCK_RPC_ACL.md": "da6fb35acee991637bece7d18d4fd425b996d144",
+        "scripts/assert-disposable-stock-acl-db.sh": "67ac1ab74f855cf6f3523f3cdb3cdd4d7a7e579d",
         "scripts/audit-retired-stock-rpc-callers.mjs": "f71e2d6b3501805585e8f6c055db7dda4dbb0bac",
+        "scripts/test-disposable-stock-acl-db-guard.sh": "bcf5c551291cac56c9bb2aec318475caf7a90d4a",
         "scripts/test-draft-legacy-stock-migration-version.mjs": "cbebda4531291dc7e35f624fff91d78dc814b7d8",
-        "scripts/test-legacy-stock-rpc-acl-invocation.sh": "02dd75a457440f0bcef439a72d25f24297e690ce",
-        "scripts/test-legacy-stock-rpc-acl-rollback-controls.sh": "945f43edddab5e535f2b586ba5126b403cf1f096",
+        "scripts/test-legacy-stock-rpc-acl-invocation.sh": "81faf0214770955ea627642474d8a73f24306094",
+        "scripts/test-legacy-stock-rpc-acl-rollback-controls.sh": "f6aa0458efc2661219296c1aa5e91633702e4f57",
         "scripts/test-retired-stock-rpc-caller-audit.mjs": "532e733606eff0f34e58ff9178654825bb85b5f9",
         "scripts/verify-draft-legacy-stock-migration-version.mjs": "8a80a67debad30132b6b378b53801dbb44c653e1",
         "supabase/migrations/20261107093030_legacy_stock_rpc_execute_retirement.sql": "7f2fa3de616dfe8a40fb5e4ca8de578aec49c958",

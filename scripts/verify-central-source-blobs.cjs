@@ -12,7 +12,7 @@ const shaPattern = /^[a-f0-9]{40}$/;
 // A manifest that silently omits one source PR/file would otherwise pass the
 // remaining file checks. A separately reviewed pinned Git blob identity makes
 // changes to the entire claimed source intake fail closed, including removals.
-const PINNED_MANIFEST_BLOB = "7c5cbe1ec26dee9065daeac5597c17d8a27b8230";
+const PINNED_MANIFEST_BLOB = "7946fdb130196251c440cb63c419651b07a31b99";
 
 function gitBlobSha(bytes) {
   const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);

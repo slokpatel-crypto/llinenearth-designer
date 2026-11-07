@@ -74,6 +74,12 @@ jobs:
           create role service_role nologin;
           create extension if not exists pgcrypto;
           SQL
+          # This marker ties the *connected* disposable DB to this exact CI run.
+          psql -X -v ON_ERROR_STOP=1 -v ci_run_id="${GITHUB_RUN_ID}" <<'SQL'
+          create schema titan_ci_guard;
+          create table titan_ci_guard.run_marker(run_id text primary key);
+          insert into titan_ci_guard.run_marker(run_id) values (:'ci_run_id');
+          SQL
           for migration in \
             supabase/migrations/20261001_fabric_stock_ledger.sql \
             supabase/migrations/20261028_fabric_stock_provenance.sql \
@@ -85,6 +91,11 @@ jobs:
             supabase/migrations/20261103_stock_close_evidence_integrity.sql; do
             psql -v ON_ERROR_STOP=1 -f "$migration"
           done
+      - name: Prove disposable DB identity and reject unsafe SQL targets
+        run: |
+          bash -n scripts/assert-disposable-stock-acl-db.sh
+          bash -n scripts/test-disposable-stock-acl-db-guard.sh
+          bash scripts/test-disposable-stock-acl-db-guard.sh
       - name: Capture read-only pre-retirement ACL snapshot
         run: |
           set -euo pipefail
