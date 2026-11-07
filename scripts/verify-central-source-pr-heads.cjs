@@ -4,6 +4,8 @@
 // Complements the separately pinned snapshot and local on-disk blob checks.
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
+const { createHash } = require("node:crypto");
+const { execFileSync } = require("node:child_process");
 const { join } = require("node:path");
 
 const manifestFile = "docs/TITAN_CENTRAL_SOURCE_BLOB_MANIFEST.json";
@@ -208,6 +210,103 @@ async function verifyCentralIntake(manifest, repository, getJson) {
   assert.equal(mainAfterFiles?.commit?.sha, APPROVED_MAIN_SHA,
     "Live main moved during central file scan");
   return { changedFiles: expected.size, commit: manifest.central_base_commit };
+}
+
+// This gate is itself an unmerged, stacked PR. A perfect #881 source manifest
+// must not conceal an unreviewed file added to PR #907. Independently check the
+// PR's complete changed-file list and byte identities against this narrow list.
+const STACKED_PARITY_PR = 907;
+const STACKED_PARITY_REF = "titan-central-source-parity-gate-20261105";
+const STACKED_BASE_REF = "titan-central-stock-security-integration-20261103";
+const STACKED_FILES = Object.freeze([
+  ".github/workflows/titan-central-source-parity.yml",
+  "docs/TITAN_CENTRAL_SOURCE_BLOB_MANIFEST.json",
+  "scripts/verify-central-checkout-head.cjs",
+  "scripts/verify-central-source-blobs.cjs",
+  "scripts/verify-central-source-pr-heads.cjs",
+  "scripts/verify-central-worker-isolation.cjs"
+]);
+function gitBlobSha(bytes) {
+  const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+  return createHash("sha1").update("blob " + buf.length + "\0").update(buf).digest("hex");
+}
+async function verifyStackedParityIntake(manifest, repository, checkoutHead, getJson, readSha) {
+  assert.match(repository, /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/);
+  assert.ok(shaPattern.test(checkoutHead), "Invalid stacked PR checked-out head");
+  assert.ok(shaPattern.test(manifest.central_base_commit || ""),
+    "Missing reviewed stacked parent commit");
+  const base = "/repos/" + repository;
+  const endpoint = base + "/pulls/" + STACKED_PARITY_PR;
+  const pr = await getJson(endpoint);
+  assert.ok(pr?.state === "open" && pr?.draft === true,
+    "Stacked parity PR #907 must be open and draft");
+  assert.equal(pr.head?.repo?.full_name, repository,
+    "Stacked parity PR head must originate from reviewed repository");
+  assert.equal(pr.base?.repo?.full_name, repository,
+    "Stacked parity PR base must originate from reviewed repository");
+  assert.equal(pr.head?.ref, STACKED_PARITY_REF,
+    "Stacked parity PR branch retargeted");
+  assert.equal(pr.base?.ref, STACKED_BASE_REF,
+    "Stacked parity PR base branch retargeted");
+  assert.equal(pr.base?.sha, manifest.central_base_commit,
+    "Stacked parity PR parent commit moved; reconcile before passing");
+  assert.equal(pr.head?.sha, checkoutHead,
+    "Stacked parity PR head differs from verified runner checkout");
+  const headRef = base + "/git/ref/heads/" + STACKED_PARITY_REF;
+  const baseRef = base + "/git/ref/heads/" + STACKED_BASE_REF;
+  async function checkRefs() {
+    const [currentHead, currentBase] = await Promise.all([
+      getJson(headRef), getJson(baseRef)
+    ]);
+    assert.equal(currentHead?.ref, "refs/heads/" + STACKED_PARITY_REF,
+      "Stacked parity live ref name mismatched");
+    assert.equal(currentHead.object?.sha, checkoutHead,
+      "Stacked parity live branch moved during scan");
+    assert.equal(currentBase?.ref, "refs/heads/" + STACKED_BASE_REF,
+      "Stacked parity base live ref name mismatched");
+    assert.equal(currentBase.object?.sha, manifest.central_base_commit,
+      "Stacked parity parent moved during scan");
+  }
+  await checkRefs();
+  const files = new Map();
+  for (let page = 1; page <= 50; page++) {
+    const batch = await getJson(endpoint + "/files?per_page=100&page=" + page);
+    assert.ok(Array.isArray(batch) && batch.length <= 100,
+      "Malformed stacked parity file page");
+    for (const item of batch) {
+      assert.ok(item && typeof item.filename === "string" &&
+        shaPattern.test(item.sha || ""), "Malformed stacked parity file");
+      assert.ok(!files.has(item.filename), "Duplicate stacked parity file");
+      assert.equal(item.status, "added",
+        "Stacked parity PR must not modify, delete or rename parent-owned files");
+      assert.equal(item.previous_filename, undefined,
+        "Stacked parity PR rename is not independently reviewed");
+      files.set(item.filename, item.sha);
+    }
+    if (batch.length < 100) break;
+    assert.notEqual(page, 50, "Stacked parity file pagination exceeded limit");
+  }
+  assert.equal(files.size, STACKED_FILES.length,
+    "Stacked parity file count changed; unreviewed addition or removal");
+  for (const path of STACKED_FILES) {
+    assert.ok(files.has(path),
+      "Stacked parity PR missing reviewed verification file: " + path);
+    assert.equal(files.get(path), readSha(path),
+      "Stacked parity PR file bytes differ from checked-out source: " + path);
+  }
+  const again = await getJson(endpoint);
+  assert.equal(again?.state, "open", "Stacked parity PR closed during scan");
+  assert.equal(again.head?.sha, checkoutHead,
+    "Stacked parity PR head changed during file scan");
+  assert.equal(again.base?.sha, manifest.central_base_commit,
+    "Stacked parity PR parent changed during file scan");
+  assert.equal(again.head?.ref, STACKED_PARITY_REF,
+    "Stacked parity PR branch changed during file scan");
+  assert.equal(again.base?.ref, STACKED_BASE_REF,
+    "Stacked parity PR base retargeted during file scan");
+  await checkRefs();
+  return { head: checkoutHead, parent: manifest.central_base_commit,
+    files: files.size };
 }
 
 // Final cross-scan fence: an early worker can advance while later workers
@@ -492,6 +591,57 @@ async function selfTest() {
     async path => path.endsWith("/branches/main")
       ? { commit: { sha: b } } : finalGet(path)),
     /main moved after source\/central scan/);
+  const parityManifest = { central_base_commit: b };
+  const parityGet = async endpoint => {
+    if (endpoint.endsWith("/pulls/907")) return {
+      state: "open", draft: true,
+      head: { sha: a, ref: STACKED_PARITY_REF,
+        repo: { full_name: "sample/repository" } },
+      base: { sha: b, ref: STACKED_BASE_REF,
+        repo: { full_name: "sample/repository" } }
+    };
+    if (endpoint.endsWith("/git/ref/heads/" + STACKED_PARITY_REF))
+      return { ref: "refs/heads/" + STACKED_PARITY_REF, object: { sha: a } };
+    if (endpoint.endsWith("/git/ref/heads/" + STACKED_BASE_REF))
+      return { ref: "refs/heads/" + STACKED_BASE_REF, object: { sha: b } };
+    if (endpoint.includes("/pulls/907/files?"))
+      return STACKED_FILES.map(filename => ({ filename, sha: c, status: "added" }));
+    throw Error("Unexpected synthetic stacked PR API query: " + endpoint);
+  };
+  assert.deepEqual(await verifyStackedParityIntake(parityManifest, "sample/repository",
+    a, parityGet, () => c), { head: a, parent: b, files: 6 });
+  await assert.rejects(() => verifyStackedParityIntake(parityManifest, "sample/repository",
+    a, async endpoint => endpoint.includes("/pulls/907/files?")
+      ? [...await parityGet(endpoint), { filename:"src/app/api/unreviewed.ts",
+        sha:c,status:"added" }] : parityGet(endpoint), () => c),
+    /file count changed/);
+  await assert.rejects(() => verifyStackedParityIntake(parityManifest, "sample/repository",
+    a, async endpoint => endpoint.includes("/pulls/907/files?")
+      ? (await parityGet(endpoint)).slice(1) : parityGet(endpoint), () => c),
+    /file count changed/);
+  await assert.rejects(() => verifyStackedParityIntake(parityManifest, "sample/repository",
+    a, async endpoint => endpoint.includes("/pulls/907/files?")
+      ? (await parityGet(endpoint)).map((item,i) =>
+        i===0 ? { ...item, status:"modified" } : item) : parityGet(endpoint), () => c),
+    /must not modify, delete or rename/);
+  await assert.rejects(() => verifyStackedParityIntake(parityManifest, "sample/repository",
+    a, parityGet, path => path === STACKED_FILES[0] ? b : c),
+    /file bytes differ/);
+  await assert.rejects(() => verifyStackedParityIntake(parityManifest, "sample/repository",
+    b, parityGet, () => c), /head differs from verified runner checkout/);
+  await assert.rejects(() => verifyStackedParityIntake(parityManifest, "sample/repository",
+    a, async endpoint => endpoint.endsWith("/pulls/907")
+      ? { ...await parityGet(endpoint), base: { sha:c, ref:STACKED_BASE_REF,
+        repo:{ full_name:"sample/repository" } }} : parityGet(endpoint), () => c),
+    /parent commit moved/);
+  await assert.rejects(() => verifyStackedParityIntake(parityManifest, "sample/repository",
+    a, async endpoint => endpoint.endsWith("/git/ref/heads/" + STACKED_PARITY_REF)
+      ? { ref:"refs/heads/" + STACKED_PARITY_REF, object:{sha:c} }
+      : parityGet(endpoint), () => c), /live branch moved/);
+  await assert.rejects(() => verifyStackedParityIntake(parityManifest, "sample/repository",
+    a, async endpoint => endpoint.endsWith("/pulls/907")
+      ? { ...await parityGet(endpoint), draft:false } : parityGet(endpoint), () => c),
+    /must be open and draft/);
   process.stdout.write("PASS: live-source guard rejects changed heads, missing, rewritten or duplicate files and closed PRs\n");
 }
 
@@ -517,12 +667,22 @@ async function main() {
   const central = await verifyCentralIntake(manifest, repository, getJson);
   const fence = await verifyFinalIntakeFence(manifest, repository, getJson);
   assert.equal(fence.sourcePrs, result.prCount, "Final source count drift");
+  // Native checkout identity is checked independently by the first workflow
+  // step; compare its exact Git commit to the full stacked PR changed-file list.
+  const checkoutHead = execFileSync("git", ["rev-parse", "HEAD"],
+    { encoding: "utf8" }).trim();
+  const stacked = await verifyStackedParityIntake(manifest, repository,
+    checkoutHead, getJson,
+    path => gitBlobSha(readFileSync(join(process.cwd(), path))));
   process.stdout.write("PASS: " + result.prCount + " live source PR heads and " +
     result.changedFileEntries + " changed-file blob identities match reviewed snapshot\n");
   process.stdout.write("PASS: central PR #881 has exactly " + central.changedFiles +
     " reviewed files at " + central.commit + "; no untracked integration paths\n");
   process.stdout.write("PASS: final cross-scan worker/central/main refs pinned at " +
     fence.main + "\n");
+  process.stdout.write("PASS: stacked PR #907 has exactly " + stacked.files +
+    " reviewed verification files at " + stacked.head +
+    " on pinned parent " + stacked.parent + "\n");
 }
 
 main().catch(error => { process.stderr.write(String(error.message) + "\n"); process.exitCode = 1; });
