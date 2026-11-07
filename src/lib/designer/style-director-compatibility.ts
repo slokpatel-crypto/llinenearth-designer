@@ -14,16 +14,15 @@ export function styleDirectorIntelligenceTrustWeight(
   // ranking. A persisted object may predate the current closed vocabulary.
   // Persisted provenance must be plain data, not inherited or computed
   // accessors that can fabricate an approval (or throw during scoring).
-  const trust = value && Object.getOwnPropertyDescriptor(value, "trust");
-  const review = value && Object.getOwnPropertyDescriptor(value, "reviewStatus");
-  if (!trust || !review || !("value" in trust) || !("value" in review) ||
-      !["unreviewed", "approved", "corrected", "rejected"].includes(review.value) ||
-      !["reviewed", "high-confidence", "provisional"].includes(trust.value) ||
-      review.value === "rejected") return 0;
-  if (trust.value === "reviewed") {
-    return review.value === "approved" || review.value === "corrected" ? 1 : 0.28;
+  const trust = styleDirectorLockedOptionValue(value, "trust");
+  const review = styleDirectorLockedOptionValue(value, "reviewStatus");
+  if (!["unreviewed", "approved", "corrected", "rejected"].includes(review as string) ||
+      !["reviewed", "high-confidence", "provisional"].includes(trust as string) ||
+      review === "rejected") return 0;
+  if (trust === "reviewed") {
+    return review === "approved" || review === "corrected" ? 1 : 0.28;
   }
-  return trust.value === "high-confidence" ? 0.72 : 0.28;
+  return trust === "high-confidence" ? 0.72 : 0.28;
 }
 
 const candidateCollarFamilies = (name: string) => ({
@@ -1296,11 +1295,9 @@ export function styleDirectorProposedCroppedHem(
 ): "cropped_above_ankle_hem" | null {
   // A saved candidate may contain inherited or accessor-backed fields.
   // Only own data properties can authorize a construction suggestion.
-  if (!pant || typeof pant !== "object") return null;
-  const type = Object.getOwnPropertyDescriptor(pant, "type");
-  const shoeBreak = Object.getOwnPropertyDescriptor(pant, "break");
-  return type && shoeBreak && "value" in type && "value" in shoeBreak &&
-    type.value === "cropped_ankle" && shoeBreak.value === "cropped_above_ankle"
+  const type = styleDirectorLockedOptionValue(pant, "type");
+  const shoeBreak = styleDirectorLockedOptionValue(pant, "break");
+  return type === "cropped_ankle" && shoeBreak === "cropped_above_ankle"
     ? "cropped_above_ankle_hem" : null;
 }
 
