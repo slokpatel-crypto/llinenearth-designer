@@ -23,6 +23,10 @@ const cases = [
     'client.rpc("fabric_stock_release", payload);', false],
   ['legacy name in desktop source', 'desktop/src/stock.ts',
     'const method = "fabric_stock_consume_reservation";', false],
+  ['retired v1 in Tauri Rust backend', 'desktop/src-tauri/src/stock.rs',
+    'let rpc = "fabric_stock_record";', false],
+  ['v2 in Tauri Rust backend remains valid', 'desktop/src-tauri/src/stock-v2.rs',
+    'let rpc = "fabric_stock_record_v2";', true],
   ['v2 RPC names remain valid', 'src/v2.ts',
     'const names = ["fabric_stock_record_v2", "fabric_stock_reserve_v2", "fabric_stock_release_v2", "fabric_stock_consume_reservation_v2"];', true],
   ['statically concatenated v2 remains valid', 'src/v2-static.ts',
@@ -60,7 +64,7 @@ try {
     execFileSync('git', ['rm', '-q', '--cached', '--', file], {cwd: root});
     rmSync(full);
   }
-  console.log('PASS: seventeen disposable tracked-source stock RPC audit fixtures');
+  console.log('PASS: nineteen disposable tracked-source stock RPC audit fixtures');
 } finally {
   rmSync(root, {recursive: true, force: true});
 }
