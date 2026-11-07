@@ -888,6 +888,13 @@ export function styleDirectorCandidateWideLeg(candidateTrouser: string): boolean
   return styleDirectorCandidateWideLegIntent(candidateTrouser) === "requested";
 }
 
+/** Only persisted own data IDs may authorize a locked construction. */
+function styleDirectorLockedOptionValue(value: unknown, key: string): unknown {
+  if (value === null || typeof value !== "object") return undefined;
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  return descriptor && "value" in descriptor ? descriptor.value : undefined;
+}
+
 /** Compare explicit wide-leg requests / prohibitions with locked trouser IDs. */
 export function styleDirectorCandidateWideLegIssues(
   candidateTrouser: string,
@@ -895,7 +902,7 @@ export function styleDirectorCandidateWideLegIssues(
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidateWideLegIntent(candidateTrouser);
   if (intent === null || intent === "ambiguous") return [];
-  const isWideLeg = pant.type === "wide_leg_relaxed_drape";
+  const isWideLeg = styleDirectorLockedOptionValue(pant, "type") === "wide_leg_relaxed_drape";
   return (intent === "requested") === isWideLeg ? [] : [{
     code: "candidate_wide_leg_mismatch",
     explanation: "The named wide-leg silhouette request or prohibition conflicts with the saved versioned trouser type; confirm the cut before tailoring.",
@@ -936,7 +943,7 @@ export function styleDirectorCandidateWaistbandIssues(
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidateDrawstringWaistband(candidateTrouser);
   if (intent === null || intent === "ambiguous") return [];
-  const isDrawstring = pant.waistband === "drawstring_elastic";
+  const isDrawstring = styleDirectorLockedOptionValue(pant, "waistband") === "drawstring_elastic";
   if ((intent === "requested" && isDrawstring) || (intent === "prohibited" && !isDrawstring)) return [];
   return [{
     code: "candidate_waistband_mismatch",
