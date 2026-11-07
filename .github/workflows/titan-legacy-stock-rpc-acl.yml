@@ -5,7 +5,7 @@ name: TITAN Legacy Stock RPC ACL QA
 on:
   pull_request:
     paths:
-      - 'supabase/migrations/20261107093030_legacy_stock_rpc_execute_retirement.sql'
+      - 'supabase/migrations/**'
       - 'supabase/tests/20261103_z_legacy_stock_rpc_execute_retirement.sql'
       - 'supabase/tests/20261103_z_stock_rpc_acl_readonly_snapshot.sql'
       - 'tests/stock-acl-snapshot-evidence.mjs'
@@ -49,6 +49,10 @@ jobs:
       PGDATABASE: titan_synthetic
     steps:
       - uses: actions/checkout@v4
+      - name: Enforce unique 14-digit draft retirement migration version
+        run: |
+          node --test scripts/test-draft-legacy-stock-migration-version.mjs
+          node scripts/verify-draft-legacy-stock-migration-version.mjs
       - name: Audit tracked source for retired stock RPC callers
         run: node scripts/audit-retired-stock-rpc-callers.mjs
       - name: Prove retired RPC audit positive and negative fixtures

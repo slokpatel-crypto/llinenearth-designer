@@ -50,6 +50,10 @@ The disposable workflow also runs `scripts/test-legacy-stock-rpc-acl-rollback-co
 
 The independent CI workflow proves that the same read-only query detects synthetic `service_role` v1 privileges *before* revocation and their absence *after*, without connecting to any shared database. This does not replace an actual staging capture, security sign-off or integration/version reconciliation.
 
+## Draft retirement migration filename safety
+
+The ACL workflow now triggers for **any** modification under `supabase/migrations/**`, not only its previously named SQL file. A standalone static naming guard `scripts/verify-draft-legacy-stock-migration-version.mjs` and 11 fixtures `scripts/test-draft-legacy-stock-migration-version.mjs` require a single retirement migration with a calendar-valid, unique 14-digit Supabase timestamp; reject the obsolete duplicate 8-digit draft path, a second file with the same version, or an accidentally backdated replacement. It allows pre-existing migration collision groups only because this guard is **not** the independent full-history migration auditor (#883); those historical collisions are still blockers for CLI deployment and must not be waived.
+
 ## Compatibility, rollout and rollback gate
 
 **Before migration on any staging/production database:** independently enumerate server, job, external integration and operator RPC callers; verify they use the v2 counterparts with genuine checker/source-reference evidence. Confirm signed-off staging ACL snapshots before and after migration, and run negative `service_role` v1 permission tests, positive authorized v2 tests, and concurrency/replay tests against an isolated staging dataset. Keep operator stock writes held while those checks are incomplete. Obtain human security/stock review, retention and operational rollback approval.
