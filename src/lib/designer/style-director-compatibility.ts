@@ -1231,7 +1231,9 @@ export function styleDirectorCandidateFrontConstructionIssues(
     ? requestsDouble && !requestsSingle ? 2
       : requestsSingle && !requestsDouble ? 1 : null
     : null;
-  const pleatOption = optionsFor("pant.pleat").find(option => option.id === pant.pleat);
+  // An inherited or getter-backed pleat selection cannot certify a front, count, or direction.
+  const lockedPleat = styleDirectorLockedOptionValue(pant, "pleat");
+  const pleatOption = optionsFor("pant.pleat").find(option => option.id === lockedPleat);
   const declaredCount = pleatOption?.parameters.pleatCount;
   // A ban on a specific count is not a blanket no-pleat instruction.
   // Preserve an allowed single/double/flat-front choice, but never silently
@@ -1280,8 +1282,8 @@ export function styleDirectorCandidateFrontConstructionIssues(
       (declaredCount === 2 && prohibitsDoubleCount) ||
       (requestsSingle && prohibitsSingleCount) ||
       (requestsDouble && prohibitsDoubleCount) ||
-      (front === "pleated" && pant.pleat === "flat_front") ||
-      (front === "flat_front" && pant.pleat !== "flat_front") ||
+      (front === "pleated" && lockedPleat === "flat_front") ||
+      (front === "flat_front" && lockedPleat !== "flat_front") ||
       (expectedCount !== null && declaredCount !== expectedCount) ||
       (front === "pleated" && requestsSingle && requestsDouble) ||
       (front === "pleated" && requestsForward && requestsReverse) ||
