@@ -214,7 +214,9 @@ export function styleDirectorCandidateRollUpSleeveIntent(name: string): {
 // word "tucked" occurs in it. Remove recognized negations before looking for
 // affirmative wear words; conflicting remaining intents still require review.
 const candidateShirtWear = (name: string) => {
-  let remaining = name;
+  // Neutralize the whole optional phrase before parsing "without tucked" as
+  // a firm prohibition. Otherwise the inner "without" forces untucked wear.
+  let remaining = name.replace(/\bwith\s+or\s+without\s+(?:being\s+)?(?:tucked|untucked)\b/gi, " ");
   let tuckedFromNegation = false;
   let untuckedFromNegation = false;
   remaining = remaining.replace(/\b(?:no|without|not|never|avoid)\s+(?:being\s+)?untucked\b/gi, () => {
@@ -235,7 +237,6 @@ const candidateShirtWear = (name: string) => {
   remaining = remaining
     // "With or without" explicitly permits either treatment; it cannot
     // authorize changing a locked cutting/wear instruction.
-    .replace(/\bwith\s+or\s+without\s+(?:being\s+)?(?:tucked|untucked)\b/gi, " ")
     .replace(/\b(?:optional|maybe)\s+(?:a\s+)?(?:tucked|untucked)\b/gi, " ")
     .replace(/\b(?:tucked|untucked)\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/gi, " ");
   return {
