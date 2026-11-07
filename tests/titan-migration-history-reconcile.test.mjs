@@ -108,3 +108,17 @@ test('noncanonical timestamp cannot masquerade as valid provenance', () => {
   assert.equal(report.results[0].status, 'BLOCKED');
   assert.equal(report.results[0].reason, 'MISSING_AUTHENTICATED_SQL_IDENTITY');
 });
+
+
+test('identical SQL fingerprints across colliding filenames remain ambiguous and blocked', () => {
+  const identical = [
+    {version:'20261001',filename:'20261001_first.sql',sha256:hash('same SQL')},
+    {version:'20261001',filename:'20261001_second.sql',sha256:hash('same SQL')},
+  ];
+  const report = reconcileMigrationHistory(identical, [{version:'20261001',sha256:hash('same SQL'),evidence}]);
+  assert.equal(report.release_ready, false);
+  assert.equal(report.blocked, 1);
+  assert.equal(report.results[0].status, 'BLOCKED');
+  assert.equal(report.results[0].reason, 'AMBIGUOUS_FINGERPRINT');
+  assert.equal(report.results[0].matched_filename, null);
+});
