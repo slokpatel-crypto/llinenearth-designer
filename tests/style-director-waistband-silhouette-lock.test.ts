@@ -107,3 +107,25 @@ test("inherited and accessor trouser IDs cannot authorize locked construction", 
     assert.deepEqual(check(wording, safe), [], "canonical own data property remains valid");
   }
 });
+
+test("prohibited trouser constructions fail closed on missing or unrecognised saved IDs", () => {
+  const cases = [
+    { field: "type", wording: "no wide-leg trousers", check: styleDirectorCandidateWideLegIssues, code: "candidate_wide_leg_mismatch", valid: "formal_flat_front" },
+    { field: "waistband", wording: "no drawstring", check: styleDirectorCandidateWaistbandIssues, code: "candidate_waistband_mismatch", valid: "standard_belt_loops" },
+  ] as const;
+  for (const { field, wording, check, code, valid } of cases) {
+    const inherited = Object.create({ [field]: valid });
+    const getter = Object.defineProperty({}, field, {
+      get() { throw new Error("accessor must not execute"); },
+    });
+    const invalid = Object.freeze({ [field]: "unapproved_option" });
+    for (const saved of [Object.freeze({}), inherited, getter, invalid, null]) {
+      const issues = check(wording, saved as never);
+      assert.equal(issues.length, 1, `${field}: untrusted locked ID must require review`);
+      assert.equal(issues[0].code, code);
+      assert.deepEqual(check(wording, saved as never), issues, "deterministic replay");
+    }
+    const canonical = Object.freeze(Object.assign(Object.create(null), { [field]: valid }));
+    assert.deepEqual(check(wording, canonical), [], "valid own canonical ID satisfies exclusion");
+  }
+});
