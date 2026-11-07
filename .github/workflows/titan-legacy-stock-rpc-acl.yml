@@ -47,6 +47,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Audit tracked source for retired stock RPC callers
         run: node scripts/audit-retired-stock-rpc-callers.mjs
+      - name: Prove retired RPC audit positive and negative fixtures
+        run: node scripts/test-retired-stock-rpc-caller-audit.mjs
       - name: Install disposable PostgreSQL client
         run: |
           if ! command -v psql >/dev/null 2>&1; then
