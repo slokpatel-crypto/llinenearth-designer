@@ -37,10 +37,12 @@ test("firm tuck and untuck requests require canonical own-data wear", () => {
     }
   }
   for (const neutral of ["dress shirt", "maybe tucked", "optional untucked",
-    "tucked is optional", "untucked and tucked"]) {
+    "tucked is optional"]) {
     assert.deepEqual(styleDirectorCandidateWearIssues(neutral, null as never), [],
       "neutral or conflicting language is not an approval instruction: " + neutral);
   }
+  assert.deepEqual(styleDirectorCandidateWearIssues("untucked and tucked", null as never).map(x => x.code),
+    ["candidate_shirt_wear_mismatch"], "contradictory instructions must fail closed");
   assert.equal(tucked.wear, "tucked");
   assert.equal(untucked.wear, "untucked");
 });
