@@ -54,6 +54,9 @@ jobs:
           assert.equal(inventoryIntegrityVerified(report),true,'Incomplete source evidence');
           assert.equal(report.release_ready,false,'Inventory must not authorize release');
           assert.equal(report.staging_history_verified,false,'Source artifact must not assert remote history');
+          assert.equal(report.known_stock_reserve_order_risk?.would_overwrite_strict_identity_rejection,true,'Known v2 reserve SQL overwrite risk not recorded');
+          assert.equal(report.known_stock_reserve_order_risk?.actual_deployment_order_verified,false,'Filename order is not proven deployment order');
+          assert.equal(report.known_stock_reserve_order_risk?.release_ready,false,'SQL order warning must not authorize release');
           assert.deepEqual(actual,reconciliationRows(report),'Source rows disagree with emitted SQL file fingerprints');
           assert.equal(actual.length,report.total_sql_files,'Not every tracked SQL has a reconciliation row');
           console.log('PASS: '+actual.length+' exact-head source rows agree with all read-only SQL fingerprints; staging remains unverified');
