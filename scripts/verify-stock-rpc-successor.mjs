@@ -80,6 +80,14 @@ export async function verifyCandidate(getJson, pin=PIN) {
   }
   for(const [path,versions] of Object.entries(pin.files)){
     for(const [type,sha] of Object.entries(versions)){
+      // A valid Git blob existing in the object store does NOT prove it belongs
+      // to the pinned predecessor or candidate commit. Bind each path to its
+      // exact commit's immutable tree before trusting the blob identities.
+      const commit=type==='old' ? pin.baseSha : pin.candidateSha;
+      const entry=await get('/contents/'+path+'?ref='+commit);
+      assert.equal(entry?.type,'file',path+' '+type+' path is not a regular file');
+      assert.equal(entry?.path,path,'Commit file path changed');
+      assert.equal(entry?.sha,sha,path+' '+type+' commit tree does not reference pinned blob');
       assert.match(sha,/^[a-f0-9]{40}$/,'Invalid pinned Git blob');
       const blob=await get('/git/blobs/'+sha);
       assert.equal(blob?.sha,sha,path+' '+type+' Git blob identity drift');
