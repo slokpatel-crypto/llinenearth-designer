@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {summarizeMigrationEntries, fingerprintSql, inventoryIntegrityVerified} from '../scripts/report-legacy-migration-prefixes.mjs';
+import {summarizeMigrationEntries, fingerprintSql, inventoryIntegrityVerified, reconciliationRows} from '../scripts/report-legacy-migration-prefixes.mjs';
 const f=(n,kind='file')=>({path:'supabase/migrations/'+n,kind,
   ...fingerprintSql(Buffer.from('synthetic SQL for '+n))});
 test('legacy eight-digit collisions are explicitly grouped instead of hidden behind filename failure',()=>{
@@ -68,4 +68,25 @@ test('inventory integrity must fail closed for source corruption or absent files
   assert.equal(inventoryIntegrityVerified(summarizeMigrationEntries([])),false);
   assert.equal(inventoryIntegrityVerified({...safe,file_fingerprints:[]}),false);
   assert.equal(inventoryIntegrityVerified({...safe,content_fingerprints_complete:false}),false);
+});
+
+test('source fingerprint inventory exports exactly PR 909 compatible version/filename/hash rows',()=>{
+  const entries=[f('20261103_second.sql'),f('20261103_first.sql'),f('20261104010203_forward.sql')];
+  const report=summarizeMigrationEntries(entries,'a'.repeat(40));
+  const rows=reconciliationRows(report);
+  assert.deepEqual(rows.map(x=>x.filename),['20261103_first.sql','20261103_second.sql','20261104010203_forward.sql']);
+  assert.deepEqual(rows.map(x=>x.version),['20261103','20261103','20261104010203']);
+  assert.deepEqual(rows.map(x=>x.sha256),report.file_fingerprints.map(x=>x.content_sha256));
+  assert.equal(report.release_ready,false);assert.equal(report.staging_history_verified,false);
+});
+test('reconciliation adapter blocks incomplete, malformed and duplicate fingerprint paths',()=>{
+  const report=summarizeMigrationEntries([f('20261103_alpha.sql'),f('20261103_beta.sql')]);
+  const invalid=[
+    {...report,content_fingerprints_complete:false},
+    {...report,file_fingerprints:report.file_fingerprints.slice(1)},
+    {...report,file_fingerprints:[report.file_fingerprints[0],report.file_fingerprints[0]]},
+    {...report,file_fingerprints:[{...report.file_fingerprints[0],path:'supabase/migrations/../bad.sql'},report.file_fingerprints[1]]},
+    {...report,file_fingerprints:[{...report.file_fingerprints[0],content_sha256:'invalid'},report.file_fingerprints[1]]},
+  ];
+  for(const candidate of invalid)assert.throws(()=>reconciliationRows(candidate));
 });
