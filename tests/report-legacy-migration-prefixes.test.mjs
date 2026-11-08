@@ -90,3 +90,12 @@ test('reconciliation adapter blocks incomplete, malformed and duplicate fingerpr
   ];
   for(const candidate of invalid)assert.throws(()=>reconciliationRows(candidate));
 });
+
+test('leading underscore rejected before export, matching PR 909 accepted basename syntax',()=>{
+  const bad=summarizeMigrationEntries([f('20261103__hidden.sql')]);
+  assert.equal(bad.content_fingerprints_complete,false);
+  assert.ok(bad.invalid_entries.some(x=>x.kind==='invalid_filename'));
+  assert.throws(()=>reconciliationRows(bad),/Incomplete source inventory/);
+  const safe=summarizeMigrationEntries([f('20261103_valid-name.sql')]);
+  assert.equal(reconciliationRows(safe)[0].filename,'20261103_valid-name.sql');
+});
