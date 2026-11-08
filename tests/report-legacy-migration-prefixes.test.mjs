@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {summarizeMigrationEntries, fingerprintSql} from '../scripts/report-legacy-migration-prefixes.mjs';
+import {summarizeMigrationEntries, fingerprintSql, inventoryIntegrityVerified} from '../scripts/report-legacy-migration-prefixes.mjs';
 const f=(n,kind='file')=>({path:'supabase/migrations/'+n,kind,
   ...fingerprintSql(Buffer.from('synthetic SQL for '+n))});
 test('legacy eight-digit collisions are explicitly grouped instead of hidden behind filename failure',()=>{
@@ -55,4 +55,17 @@ test('fingerprints are Git typed blobs and exact-byte SHA-256',()=>{
   const hash=fingerprintSql(Buffer.from('hello\n'));
   assert.equal(hash.git_blob_sha1,'ce013625030ba8dba906f756967f9e9ca394464a');
   assert.equal(hash.content_sha256,'5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03');
+});
+
+test('inventory integrity must fail closed for source corruption or absent files, never legacy version collisions',()=>{
+  const safe=summarizeMigrationEntries([f('20261103_one.sql'),f('20261103_two.sql')]);
+  assert.equal(safe.collision_group_count,1);
+  assert.equal(inventoryIntegrityVerified(safe),true);
+  assert.equal(safe.release_ready,false);
+  const corrupted=summarizeMigrationEntries([f('20261103010101_valid.sql'),
+    {path:'supabase/migrations/20261103010102_missing.sql',kind:'missing'}]);
+  assert.equal(inventoryIntegrityVerified(corrupted),false);
+  assert.equal(inventoryIntegrityVerified(summarizeMigrationEntries([])),false);
+  assert.equal(inventoryIntegrityVerified({...safe,file_fingerprints:[]}),false);
+  assert.equal(inventoryIntegrityVerified({...safe,content_fingerprints_complete:false}),false);
 });
