@@ -20,6 +20,14 @@ const files = execFileSync('git', ['ls-files', '-z', '--', ...roots], {encoding:
   .filter(path => !/(?:^|\/)(?:test|tests|__tests__)(?:\/|-|\.)/.test(path))
   .filter(path => !path.startsWith('scripts/audit-retired-stock-rpc-callers.'));
 function foldedStaticStrings(source) {
+  // Statistically written hex/Unicode code points can hide real v1 RPC names.
+  // Conservatively decode these simple escapes for auditing only; do not
+  // evaluate expressions or execute the inspected source.
+  source = source.replace(/\\(?:x([0-9a-fA-F]{2})|u([0-9a-fA-F]{4})|u\{([0-9a-fA-F]{1,6})\})/g,
+    (sequence, hex, four, braced) => {
+      const point = Number.parseInt(hex ?? four ?? braced, 16);
+      return point <= 0x10ffff ? String.fromCodePoint(point) : sequence;
+    });
   // Normalize only literal template strings; interpolated templates cannot be
   // resolved statically. This also catches mixed quote/template concatenation.
   source = source.replace(/`((?:\\.|[^`\\])*)`/g, (literal, body) =>
