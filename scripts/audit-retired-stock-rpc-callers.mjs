@@ -28,6 +28,18 @@ function foldedStaticStrings(source) {
       const point = Number.parseInt(hex ?? four ?? braced, 16);
       return point <= 0x10ffff ? String.fromCodePoint(point) : sequence;
     });
+  // Evaluate only bounded, printable-ASCII literal character-code builders.
+  // Never attempt a dynamic expression or arbitrary source execution.
+  source = source.replace(
+    /\bString\.(?:fromCharCode|fromCodePoint)\(\s*((?:(?:0x[0-9a-fA-F]{1,4}|\d{1,6})\s*,\s*)*(?:0x[0-9a-fA-F]{1,4}|\d{1,6}))\s*\)/g,
+    (expression, argumentsText) => {
+      const parts = argumentsText.split(',').map(value => value.trim());
+      if (parts.length > 80) return expression;
+      const codes = parts.map(Number);
+      if (codes.some(code => !Number.isInteger(code) || code < 32 || code > 126)) return expression;
+      return JSON.stringify(String.fromCharCode(...codes));
+    },
+  );
   // Normalize only literal template strings; interpolated templates cannot be
   // resolved statically. This also catches mixed quote/template concatenation.
   source = source.replace(/`((?:\\.|[^`\\])*)`/g, (literal, body) =>
