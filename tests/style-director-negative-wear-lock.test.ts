@@ -18,6 +18,8 @@ test("negative wear instructions enforce the opposite locked option", () => {
     ["shouldn't tuck", "untucked", "tucked"],
     ["shan't tuck", "untucked", "tucked"],
     ["can't tuck", "untucked", "tucked"],
+    ["cannot tuck", "untucked", "tucked"],
+    ["with or without tucked, but cannot tuck", "untucked", "tucked"],
     ["couldn't tuck", "untucked", "tucked"],
     ["wouldn't tuck", "untucked", "tucked"],
     ["must not tuck, but wear untucked", "untucked", "tucked"],
