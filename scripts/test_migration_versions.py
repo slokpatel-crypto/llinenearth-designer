@@ -48,6 +48,18 @@ class MigrationPreflightTests(unittest.TestCase):
             linked.symlink_to(actual, target_is_directory=True)
             self.assertIn("symlinked migration directory", "\n".join(inspect_migrations(linked)))
 
+    def test_nested_directory_and_non_sql_symlink_block(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            (p / "20261101000000_first.sql").touch()
+            nested = p / "archive"
+            nested.mkdir()
+            (nested / "20261102000000_hidden.sql").touch()
+            (p / "shortcut").symlink_to(nested, target_is_directory=True)
+            findings = "\n".join(inspect_migrations(p))
+            self.assertIn("unexpected migration directory or link: archive", findings)
+            self.assertIn("unexpected migration directory or link: shortcut", findings)
+
     def test_missing_or_empty_directory_blocks(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d)
