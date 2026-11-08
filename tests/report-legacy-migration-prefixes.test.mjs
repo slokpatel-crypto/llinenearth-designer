@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {summarizeMigrationEntries, fingerprintSql, inventoryIntegrityVerified, reconciliationRows} from '../scripts/report-legacy-migration-prefixes.mjs';
+import {summarizeMigrationEntries, fingerprintSql, inventoryIntegrityVerified, reconciliationRows, assessKnownReserveOverwriteOrder} from '../scripts/report-legacy-migration-prefixes.mjs';
 const f=(n,kind='file')=>({path:'supabase/migrations/'+n,kind,
   ...fingerprintSql(Buffer.from('synthetic SQL for '+n))});
 test('legacy eight-digit collisions are explicitly grouped instead of hidden behind filename failure',()=>{
@@ -98,4 +98,38 @@ test('leading underscore rejected before export, matching PR 909 accepted basena
   assert.throws(()=>reconciliationRows(bad),/Incomplete source inventory/);
   const safe=summarizeMigrationEntries([f('20261103_valid-name.sql')]);
   assert.equal(reconciliationRows(safe)[0].filename,'20261103_valid-name.sql');
+});
+
+const reserveStrictSql=`create or replace function public.fabric_stock_reserve_v2(
+  p_fabric_id text) returns uuid language plpgsql as $$
+begin
+  if length(v_fabric)>160 or length(v_key)>180 then
+    raise exception 'reservation identity or evidence exceeds supported length';
+  end if;
+end; $$;`;
+const reserveTruncSql=`create or replace function public.fabric_stock_reserve_v2(
+  p_fabric_id text) returns uuid language plpgsql as $$
+declare
+  v_key text:=left(trim(coalesce(p_request_key,'')),180);
+begin
+  return gen_random_uuid();
+end; $$;`;
+test('known reserve v2 source order reports strict guard overwritten in hypothetical filename order',()=>{
+  const a=assessKnownReserveOverwriteOrder(reserveStrictSql,reserveTruncSql);
+  assert.equal(a.function_name,'public.fabric_stock_reserve_v2');
+  assert.equal(a.would_overwrite_strict_identity_rejection,true);
+  assert.match(a.last_definition_if_filename_order,/provenance_gate\.sql$/);
+  assert.equal(a.actual_deployment_order_verified,false);
+  assert.equal(a.release_ready,false);
+});
+test('known reserve order evidence fails closed if strict guard or truncation behavior changes',()=>{
+  assert.throws(()=>assessKnownReserveOverwriteOrder(reserveStrictSql.replace('raise exception','raise notice'),reserveTruncSql));
+  assert.throws(()=>assessKnownReserveOverwriteOrder(reserveStrictSql,reserveTruncSql.replace('left(trim','trim')));
+  assert.throws(()=>assessKnownReserveOverwriteOrder(reserveStrictSql,reserveStrictSql));
+  assert.throws(()=>assessKnownReserveOverwriteOrder(reserveStrictSql.replace('fabric_stock_reserve_v2','unrelated'),reserveTruncSql));
+});
+test('never misstate an actual SQL migration deployment order based on alphabetical filenames',()=>{
+  const x=assessKnownReserveOverwriteOrder(reserveStrictSql,reserveTruncSql);
+  assert.equal(x.hypothetical_order_basis,'lexicographic_filename_only_not_actual_deployment_order');
+  assert.equal(x.resolution,'BLOCKED_PENDING_APPLIED_HISTORY_AND_FORWARD_ORDER_REVIEW');
 });
