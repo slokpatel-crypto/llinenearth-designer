@@ -7,6 +7,10 @@ import { styleDirectorCandidateWearIssues } from "../src/lib/designer/style-dire
 test("negative wear instructions enforce the opposite locked option", () => {
   for (const [wording, allowed, rejected] of [
     ["do not wear tucked", "untucked", "tucked"],
+    ["must not wear being tucked", "untucked", "tucked"],
+    ["should not wear being untucked", "tucked", "untucked"],
+    ["never wear being tucked", "untucked", "tucked"],
+    ["with or without tucked, but must not wear being tucked", "untucked", "tucked"],
     ["don't wear untucked", "tucked", "untucked"],
     ["mustn't wear tucked", "untucked", "tucked"],
     ["should not wear untucked", "tucked", "untucked"],
