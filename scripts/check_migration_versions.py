@@ -21,6 +21,9 @@ def inspect_migrations(directory: Path) -> list[str]:
     if not any(p.is_file() and p.suffix == ".sql" for p in files):
         errors.append(f"no SQL migrations in {directory}")
     for path in files:
+        if path.is_dir() or (path.is_symlink() and path.suffix.lower() != ".sql"):
+            errors.append(f"unexpected migration directory or link: {path.name}")
+            continue
         if path.suffix.lower() != ".sql":
             continue
         if path.is_symlink():
