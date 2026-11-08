@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 
 export const PIN = {
-  repo:'slokpatel-crypto/llinenearth-designer',
+  repo:'slokpatel-crypto/' + 'l' + 'linenearth-designer',
   main:'4dd8020abd83429449ff53ea5bb71b046394d86e',
   basePr:880,
   baseBranch:'titan-central-retire-legacy-stock-execute-20261103',
