@@ -26,10 +26,16 @@ function foldedStaticStrings(source) {
     body.includes('${') ? literal : JSON.stringify(body));
   // Detect statically concatenated quoted RPC names, including across lines.
   const quoted = /(['"])([^'"\\]*(?:\\.[^'"\\]*)*)\1\s*\+\s*(['"])([^'"\\]*(?:\\.[^'"\\]*)*)\3/g;
+  // Fold simple, fully static JS arrays joined without separators, including
+  // mixed quote/template pieces. Dynamic expressions remain outside this audit.
+  const joined = /\[\s*((?:(?:'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")\s*,\s*)*(?:'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"))\s*\]\s*\.join\(\s*(?:''|"")\s*\)/g;
   let previous;
   do {
     previous = source;
     source = source.replace(quoted, (_match, _q1, left, _q2, right) => JSON.stringify(left + right));
+    source = source.replace(joined, (_match, pieces) =>
+      JSON.stringify((pieces.match(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g) || [])
+        .map(piece => piece.slice(1, -1)).join('')));
   } while (source !== previous);
   return source;
 }
