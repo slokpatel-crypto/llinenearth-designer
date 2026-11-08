@@ -1,0 +1,71 @@
+name: TITAN Read-only Migration Collision Inventory
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/report-legacy-migration-prefixes.mjs'
+      - 'tests/report-legacy-migration-prefixes.test.mjs'
+      - '.github/workflows/titan-migration-collision-inventory.yml'
+      - 'docs/TITAN_MIGRATION_COLLISION_INVENTORY.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory-only:
+    name: Collect migration collision evidence (NOT migration approval)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Assert exact event commit checkout
+        env:
+          EXPECTED_HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prove read-only inventory cannot approve a migration
+        run: |
+          node --check scripts/report-legacy-migration-prefixes.mjs
+          node --test tests/report-legacy-migration-prefixes.test.mjs
+      - name: Collect Git-tracked source inventory without database connection
+        run: |
+          node scripts/report-legacy-migration-prefixes.mjs --output "$RUNNER_TEMP/titan-migration-collisions.json" --reconciliation-output "$RUNNER_TEMP/titan-migration-source-rows.json"
+          node -e 'const x=require(process.argv[1]);require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, "## Read-only migration inventory — NOT RELEASE APPROVAL\n\nTracked SQL: "+x.total_sql_files+"; eight-digit files: "+x.legacy_eight_digit_files+"; conflicting version groups: "+x.collision_group_count+".\n\nStaging history unverified. Release ready: "+x.release_ready+". No SQL applied.\n")' "$RUNNER_TEMP/titan-migration-collisions.json"
+      - name: Verify emitted reconciliation rows against immutable inventory
+        env:
+          SOURCE_REPORT: ${{ runner.temp }}/titan-migration-collisions.json
+          SOURCE_ROWS: ${{ runner.temp }}/titan-migration-source-rows.json
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          import {inventoryIntegrityVerified,reconciliationRows} from './scripts/report-legacy-migration-prefixes.mjs';
+          const report=JSON.parse(readFileSync(process.env.SOURCE_REPORT,'utf8'));
+          const actual=JSON.parse(readFileSync(process.env.SOURCE_ROWS,'utf8'));
+          const head=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+          assert.equal(report.source_commit,head,'Artifact commit does not equal tested checkout');
+          assert.equal(inventoryIntegrityVerified(report),true,'Incomplete source evidence');
+          assert.equal(report.release_ready,false,'Inventory must not authorize release');
+          assert.equal(report.staging_history_verified,false,'Source artifact must not assert remote history');
+          assert.equal(report.known_stock_reserve_order_risk?.would_overwrite_strict_identity_rejection,true,'Known v2 reserve SQL overwrite risk not recorded');
+          assert.equal(report.known_stock_reserve_order_risk?.actual_deployment_order_verified,false,'Filename order is not proven deployment order');
+          assert.equal(report.known_stock_reserve_order_risk?.release_ready,false,'SQL order warning must not authorize release');
+          assert.deepEqual(actual,reconciliationRows(report),'Source rows disagree with emitted SQL file fingerprints');
+          assert.equal(actual.length,report.total_sql_files,'Not every tracked SQL has a reconciliation row');
+          console.log('PASS: '+actual.length+' exact-head source rows agree with all read-only SQL fingerprints; staging remains unverified');
+          NODE
+      - name: Retain non-authorizing source report
+        uses: actions/upload-artifact@v4
+        with:
+          name: titan-read-only-migration-collision-inventory
+          path: |
+            ${{ runner.temp }}/titan-migration-collisions.json
+            ${{ runner.temp }}/titan-migration-source-rows.json
+          retention-days: 14
