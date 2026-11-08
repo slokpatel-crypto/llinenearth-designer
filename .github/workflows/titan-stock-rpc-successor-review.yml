@@ -1,0 +1,32 @@
+name: TITAN Stock RPC Source Successor Review
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/verify-stock-rpc-successor.mjs'
+      - 'tests/verify-stock-rpc-successor.test.mjs'
+      - '.github/workflows/titan-stock-rpc-successor-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  verify-review-evidence:
+    name: Verify pinned PR 880 to PR 910 source bytes (human review still required)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run pure negative and positive invariants
+        run: |
+          node --check scripts/verify-stock-rpc-successor.mjs
+          node --test tests/verify-stock-rpc-successor.test.mjs
+      - name: Verify immutable source Git blobs and unchanged GitHub PR heads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/verify-stock-rpc-successor.mjs
