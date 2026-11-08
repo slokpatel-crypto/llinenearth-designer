@@ -1,0 +1,33 @@
+name: TITAN Staging Read-only Probe Static Safety
+
+on:
+  pull_request:
+    paths:
+      - 'docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql'
+      - 'docs/TITAN_STAGING_MIGRATION_READONLY_EVIDENCE.md'
+      - 'tests/titan-staging-readonly-probe.test.mjs'
+      - '.github/workflows/titan-staging-readonly-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-probe-only:
+    name: Verify staging probe is read-only (NEVER connect to staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Require immutable event-head checkout
+        env:
+          EXPECTED_HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate read-only SQL source without any database connection
+        run: node --test tests/titan-staging-readonly-probe.test.mjs
