@@ -23,6 +23,8 @@ function fixture(overrides={}){
     [api+'/pulls/910/files?per_page=100&page=1']:[{filename:'scripts/file.mjs',status:'modified',sha:latest.sha}],
     [api+'/git/blobs/'+old.sha]:old,
     [api+'/git/blobs/'+latest.sha]:latest,
+    [api+'/contents/scripts/file.mjs?ref='+pin.baseSha]:{type:'file',path:'scripts/file.mjs',sha:old.sha},
+    [api+'/contents/scripts/file.mjs?ref='+pin.candidateSha]:{type:'file',path:'scripts/file.mjs',sha:latest.sha},
     [api+'/commits/'+pin.candidateSha+'/check-runs?per_page=100']:{total_count:4,check_runs:ciRuns},...overrides
   };
   return async path=>{assert.ok(Object.hasOwn(values,path),'Unexpected lookup '+path);return structuredClone(values[path]);};
@@ -84,4 +86,18 @@ test('CI verification never upgrades handoff to approved release',async()=>{
   assert.equal(report.candidate_ci_count,4);
   assert.equal(report.release_ready,false);
   assert.equal(report.review_status,'REVIEW_REQUIRED');
+});
+
+test('predecessor and successor blob IDs must be bound to their exact commit paths',async()=>{
+  const oldPath=api+'/contents/scripts/file.mjs?ref='+pin.baseSha;
+  const newPath=api+'/contents/scripts/file.mjs?ref='+pin.candidateSha;
+  await assert.rejects(verifyCandidate(fixture({
+    [oldPath]:{type:'file',path:'scripts/file.mjs',sha:latest.sha}
+  }),pin),/commit tree does not reference pinned blob/);
+  await assert.rejects(verifyCandidate(fixture({
+    [newPath]:{type:'symlink',path:'scripts/file.mjs',sha:latest.sha}
+  }),pin),/not a regular file/);
+  await assert.rejects(verifyCandidate(fixture({
+    [newPath]:{type:'file',path:'scripts/other.mjs',sha:latest.sha}
+  }),pin),/file path changed/);
 });
