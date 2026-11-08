@@ -6,6 +6,11 @@ import { styleDirectorCandidateWearIssues } from "../src/lib/designer/style-dire
 // because the word "tucked" or "untucked" appears in the candidate description.
 test("negative wear instructions enforce the opposite locked option", () => {
   for (const [wording, allowed, rejected] of [
+    ["do not wear tucked", "untucked", "tucked"],
+    ["don't wear untucked", "tucked", "untucked"],
+    ["mustn't wear tucked", "untucked", "tucked"],
+    ["should not wear untucked", "tucked", "untucked"],
+    ["with or without tucked, but do not wear tucked", "untucked", "tucked"],
     ["never tucked", "untucked", "tucked"],
     ["without being tucked", "untucked", "tucked"],
     ["do not be being tucked", "untucked", "tucked"],
