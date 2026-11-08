@@ -8,6 +8,8 @@ const pin={
   candidatePr:910,candidateBranch:'candidate',candidateSha:'c'.repeat(40),
   files:{'scripts/file.mjs':{old:old.sha,latest:latest.sha}}
 };
+const candidateNames=['build','studio','Disposable PostgreSQL stock reservation invariants','Disposable PostgreSQL legacy stock RPC ACL'];
+const ciRuns=candidateNames.map(name=>({name,head_sha:pin.candidateSha,status:'completed',conclusion:'success',pull_requests:[{number:pin.candidatePr}]}));
 const api='/repos/'+pin.repo;
 const basePr={number:880,state:'open',draft:true,head:{ref:'base',sha:pin.baseSha,repo:{full_name:pin.repo}},base:{ref:'main',repo:{full_name:pin.repo}}};
 const candidatePr={number:910,state:'open',draft:true,head:{ref:'candidate',sha:pin.candidateSha,repo:{full_name:pin.repo}},base:{ref:'base',sha:pin.baseSha,repo:{full_name:pin.repo}}};
@@ -20,7 +22,8 @@ function fixture(overrides={}){
     [api+'/git/ref/heads/candidate']:{ref:'refs/heads/candidate',object:{sha:pin.candidateSha}},
     [api+'/pulls/910/files?per_page=100&page=1']:[{filename:'scripts/file.mjs',status:'modified',sha:latest.sha}],
     [api+'/git/blobs/'+old.sha]:old,
-    [api+'/git/blobs/'+latest.sha]:latest,...overrides
+    [api+'/git/blobs/'+latest.sha]:latest,
+    [api+'/commits/'+pin.candidateSha+'/check-runs?per_page=100']:{total_count:4,check_runs:ciRuns},...overrides
   };
   return async path=>{assert.ok(Object.hasOwn(values,path),'Unexpected lookup '+path);return structuredClone(values[path]);};
 }
@@ -59,4 +62,26 @@ test('second read fence detects moving candidate branch mid-inspection',async()=
       return {ref:'refs/heads/candidate',object:{sha:'e'.repeat(40)}};
     return get(path);
   },pin),/Candidate live branch moved/);
+});
+
+test('candidate CI must be complete, successful, and tied to approved PR head',async()=>{
+  const key=api+'/commits/'+pin.candidateSha+'/check-runs?per_page=100';
+  const bad=[
+    {total_count:4,check_runs:ciRuns.slice(0,3)},
+    {total_count:3,check_runs:ciRuns.slice(0,3)},
+    {total_count:4,check_runs:[...ciRuns.slice(0,3),{...ciRuns[3],conclusion:'failure'}]},
+    {total_count:4,check_runs:[...ciRuns.slice(0,3),{...ciRuns[3],status:'in_progress',conclusion:null}]},
+    {total_count:4,check_runs:[...ciRuns.slice(0,3),{...ciRuns[3],head_sha:'d'.repeat(40)}]},
+    {total_count:4,check_runs:[...ciRuns.slice(0,3),{...ciRuns[3],pull_requests:[]}]},
+    {total_count:4,check_runs:[...ciRuns.slice(0,3),{...ciRuns[3],name:'unreviewed-other-job'}]},
+    {total_count:4,check_runs:[...ciRuns.slice(0,3),{...ciRuns[3],name:ciRuns[0].name}]}
+  ];
+  for(const report of bad) await assert.rejects(verifyCandidate(fixture({[key]:report}),pin));
+});
+test('CI verification never upgrades handoff to approved release',async()=>{
+  const report=await verifyCandidate(fixture(),pin);
+  assert.equal(report.candidate_ci_verified,true);
+  assert.equal(report.candidate_ci_count,4);
+  assert.equal(report.release_ready,false);
+  assert.equal(report.review_status,'REVIEW_REQUIRED');
 });
