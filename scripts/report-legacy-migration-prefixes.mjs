@@ -7,7 +7,7 @@ import {basename, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const ROOT='supabase/migrations';
-const SAFE_FILENAME=/^(\d{8}|\d{14})_([A-Za-z0-9_]+)\.sql$/;
+const SAFE_FILENAME=/^(\d{8}|\d{14})_([A-Za-z0-9][A-Za-z0-9_-]*)\.sql$/;
 export function fingerprintSql(bytes) {
   return {
     git_blob_sha1:createHash('sha1').update('blob '+bytes.length+'\0').update(bytes).digest('hex'),
@@ -77,7 +77,7 @@ export function reconciliationRows(report){
   const output=[];
   const seen=new Set();
   for(const item of report.file_fingerprints){
-    const match=/^supabase\/migrations\/((\d{8}|\d{14})_[A-Za-z0-9_]+\.sql)$/.exec(item.path);
+    const match=/^supabase\/migrations\/((\d{8}|\d{14})_[A-Za-z0-9][A-Za-z0-9_-]*\.sql)$/.exec(item.path);
     if(!match)throw Error('Unsafe migration path in reconciliation export');
     if(seen.has(item.path))throw Error('Repeated migration path in reconciliation export');
     seen.add(item.path);
