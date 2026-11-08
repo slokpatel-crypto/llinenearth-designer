@@ -11,7 +11,7 @@ const pin={
 const candidateNames=['build','studio','Disposable PostgreSQL stock reservation invariants','Disposable PostgreSQL legacy stock RPC ACL'];
 const ciRuns=candidateNames.map(name=>({name,head_sha:pin.candidateSha,status:'completed',conclusion:'success',pull_requests:[{number:pin.candidatePr}]}));
 const api='/repos/'+pin.repo;
-const basePr={number:880,state:'open',draft:true,changed_files:1,head:{ref:'base',sha:pin.baseSha,repo:{full_name:pin.repo}},base:{ref:'main',repo:{full_name:pin.repo}}};
+const basePr={number:880,state:'open',draft:true,changed_files:1,head:{ref:'base',sha:pin.baseSha,repo:{full_name:pin.repo}},base:{ref:'main',sha:pin.main,repo:{full_name:pin.repo}}};
 const candidatePr={number:910,state:'open',draft:true,changed_files:1,head:{ref:'candidate',sha:pin.candidateSha,repo:{full_name:pin.repo}},base:{ref:'base',sha:pin.baseSha,repo:{full_name:pin.repo}}};
 function fixture(overrides={}){
   const values={
