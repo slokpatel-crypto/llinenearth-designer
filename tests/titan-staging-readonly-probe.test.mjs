@@ -39,6 +39,7 @@ test('capture includes deployed function body and security attributes',()=>{
   assert.match(sql,/pg_get_functiondef\(p\.oid\)\s+AS\s+rendered_definition/i);
   assert.match(sql,/md5\(pg_get_functiondef\(p\.oid\)\)\s+AS\s+rendered_definition_md5/i);
   assert.match(sql,/p\.prosecdef\s+AS\s+security_definer/i);
+  assert.match(sql,/pg_get_userbyid\(p\.proowner\)\s+AS\s+function_owner/i);
   assert.match(sql,/p\.proconfig\s+AS\s+function_settings/i);
   const names=['fabric_stock_record','fabric_stock_reserve','fabric_stock_release','fabric_stock_consume_reservation'];
   for(const name of names)for(const suffix of ['','_v2'])
