@@ -230,7 +230,7 @@ const candidateShirtWear = (name: string) => {
   // "Do not wear tucked" forbids a finished wear state, not the act of
   // tucking. Consume the entire phrase so the banned word cannot be parsed
   // later as an affirmative request.
-  remaining = remaining.replace(/\b(?:(?:do|must|should|shall|can|could|would|may|might)\s+not|(?:don|mustn|shouldn|shan|can|couldn|wouldn)['’]?t|cannot|never)\s+wear\s+(?:(?:a|the)\s+)?(?:(?:shirt|garment)\s+)?(?:(?:being)\s+)?(untucked|tucked)\b/gi, (_match, forbidden: string) => {
+  remaining = remaining.replace(/\b(?:(?:do|must|should|shall|can|could|would|may|might)\s+not|(?:don|mustn|shouldn|shan|can|couldn|wouldn)['’]?t|cannot|never)\s+wear\s+(?:(?:a|the|this|that|my|your|his|her|our|their)\s+)?(?:(?:shirt|garment)\s+)?(?:(?:being)\s+)?(untucked|tucked)\b/gi, (_match, forbidden: string) => {
     if (forbidden.toLowerCase() === "tucked") untuckedFromNegation = true;
     else tuckedFromNegation = true;
     return " ";
