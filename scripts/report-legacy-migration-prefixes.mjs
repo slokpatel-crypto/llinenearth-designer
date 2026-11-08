@@ -87,6 +87,36 @@ export function reconciliationRows(report){
   }
   return output.sort((a,b)=>a.filename.localeCompare(b.filename));
 }
+// Static warning for a known conflicting v2 RPC, not a SQL parser or deploy-order claim.
+export function assessKnownReserveOverwriteOrder(identitySql,provenanceSql){
+  const strictPath=ROOT+'/20261103_stock_reservation_identity_length_gate.sql';
+  const truncationPath=ROOT+'/20261103_stock_reservation_provenance_gate.sql';
+  const functionDef=/\bcreate\s+or\s+replace\s+function\s+public\.fabric_stock_reserve_v2\s*\(/gi;
+  for(const [name,sql] of [[strictPath,identitySql],[truncationPath,provenanceSql]]){
+    if(typeof sql!=='string')throw Error('Missing reserve function SQL: '+name);
+    if([...sql.matchAll(functionDef)].length!==1)throw Error('Unexpected v2 reserve function definitions: '+name);
+  }
+  const strictRejects=/if\s+length\(v_fabric\)\s*>\s*160[\s\S]*?raise\s+exception\s+'reservation identity or evidence exceeds supported length'/i.test(identitySql);
+  const truncates=/v_key\s+text\s*:?=\s*left\s*\(\s*trim\s*\([\s\S]*?180\s*\)\s*;/i.test(provenanceSql);
+  const truncationAlsoRejects=/raise\s+exception\s+'reservation identity or evidence exceeds supported length'/i.test(provenanceSql);
+  if(!strictRejects || !truncates || truncationAlsoRejects)
+    throw Error('Known stock reserve v2 SQL identity-guard evidence drifted; independent review required');
+  const hypotheticalFileOrder=[strictPath,truncationPath].sort();
+  const last=hypotheticalFileOrder.at(-1);
+  return {
+    type:'KNOWN_STOCK_RESERVE_V2_FUNCTION_REDEFINITION',
+    function_name:'public.fabric_stock_reserve_v2',
+    strict_identity_rejection_file:strictPath,
+    lossy_truncation_file:truncationPath,
+    hypothetical_order_basis:'lexicographic_filename_only_not_actual_deployment_order',
+    hypothetical_file_order:hypotheticalFileOrder,
+    last_definition_if_filename_order:last,
+    would_overwrite_strict_identity_rejection:last===truncationPath,
+    actual_deployment_order_verified:false,
+    resolution:'BLOCKED_PENDING_APPLIED_HISTORY_AND_FORWARD_ORDER_REVIEW',
+    release_ready:false
+  };
+}
 export function collectTrackedMigrations(){
   // Evidence must describe HEAD, not dirty or separately staged SQL files.
   execFileSync('git',['diff','--quiet','HEAD','--',ROOT]);
@@ -129,6 +159,21 @@ if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
       throw Error('Outputs must use distinct paths');
     const head=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
     const result=summarizeMigrationEntries(collectTrackedMigrations(),head);
+    // Validate source hashes and read exact files before claiming a source-order warning.
+    if(inventoryIntegrityVerified(result)){
+      const paths=[ROOT+'/20261103_stock_reservation_identity_length_gate.sql',
+                   ROOT+'/20261103_stock_reservation_provenance_gate.sql'];
+      const sql=paths.map(path=>{
+        const entry=result.file_fingerprints.find(file=>file.path===path);
+        if(!entry)throw Error('Expected stock v2 source SQL absent: '+path);
+        const bytes=readFileSync(path);
+        const actual=fingerprintSql(bytes);
+        if(actual.content_sha256!==entry.content_sha256 || actual.git_blob_sha1!==entry.git_blob_sha1)
+          throw Error('Stock v2 SQL changed during evidence collection: '+path);
+        return bytes.toString('utf8');
+      });
+      result.known_stock_reserve_order_risk=assessKnownReserveOverwriteOrder(sql[0],sql[1]);
+    }
     const serialized=JSON.stringify(result,null,2)+'\n';
     process.stdout.write(serialized);
     if(!inventoryIntegrityVerified(result)){
