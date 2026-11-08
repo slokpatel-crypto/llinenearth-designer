@@ -308,3 +308,27 @@ scene, GLB, model identity and physical approval flags remain unchanged.
 The packed weighted layout still has 6,957 positive-area triangle overlaps and the branch-aware layout has 7,128. Before changing another UV tree, the overlap audit now derives component ownership only from genuine shared 3D source edges and reports, for every authentic source component, its face count, internal overlapping triangle/face pairs, pairwise area sum and largest observed overlap. Cross-component counts remain separate. Complete packed scans must report zero cross-component overlaps and reconcile every remaining overlap to exactly one component; capped scans remain lower bounds.
 
 This attribution does not split faces, infer trouser panels, alter UV coordinates, source vertices or collision geometry, or declare the largest component a real cutting piece. It identifies the measured dominant software-reconstruction defect for the next isolated UV experiment. Exact original-source Blender results and matching-head CI are required before recording component numbers. Physical grain, repeat, seam allowance, sewn crotch, body clearance and tailor approval remain pending. **Research only; no export, merge or deploy.**
+
+## 2026-11-08 rank-18 constrained placement survey
+
+The capped one-cut evidence left rank 18 as the only tested component-0 cut
+inside the 33.40768mm rank-zero source-edge budget without adding a cut-network
+branch junction. Its full rigid outside-pack translation reduced overlap but
+exceeded the original 1,072.40848mm maximum-gap envelope. The next bounded
+experiment therefore tests exactly 16 deterministic fractions of that same
+translation, from 1/16 through 16/16. It neither searches arbitrary coordinates
+nor changes the selected genuine source edge.
+
+Each fraction must complete the full 5,300-triangle overlap scan, expose exactly
+one independently measured seam, retain the real-edge budget, and stay at or
+below both the original maximum-gap and branch-junction baselines. Only a
+strict overlap reduction passing every bound may be selected; otherwise the
+selection remains `null`. Fractional translation is a software research
+coordinate, not physical panel placement, fabric width, repeat, grain, seam
+allowance, supplier data or a tailor tolerance.
+
+The operation is rigid and leaves source vertices, faces, IDs, body BVH,
+production UVs, saved Blender scene, GLB and the exact Real Model Designer
+identity unchanged. All physical fabric, body-fit, tailor and production flags
+remain false. Exact-head pinned Blender evidence is required before recording
+numeric results. **Research only; no export, deployment or unapproved merge.**

@@ -1673,6 +1673,69 @@ jobs:
               assert two_cut["sourceUvExportOrSavePerformed"] is False
               assert two_cut["physicalFabricTailorOrFitApproved"] is False
               assert two_cut["productionApproved"] is False
+              constrained=weighted[
+                  "researchOnlyComponent0Rank18ConstrainedPlacementSurvey"
+              ]
+              assert constrained["researchOnly"] is True
+              assert constrained["candidateRank"] == 18
+              assert constrained["evaluatedTranslationFractionCount"] == 16
+              assert constrained["rankZeroRealEdgeLengthBudgetMm"] == (
+                  trial["addedActualSourceCutEdgeLengthMm"]
+              )
+              assert constrained["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert constrained["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              constrained_rows=constrained["candidateResults"]
+              assert [row["placementStep"] for row in constrained_rows] == (
+                  list(range(1,17))
+              )
+              assert [row["translationFractionOfOutsidePack"]
+                      for row in constrained_rows] == [
+                          round(step/16.0,8) for step in range(1,17)
+                      ]
+              assert constrained["strictEligibleCandidateCount"] == sum(
+                  row["strictResearchEligible"] for row in constrained_rows
+              )
+              assert constrained["noStrictCandidateObserved"] is (
+                  constrained["strictEligibleCandidateCount"] == 0
+              )
+              for row in constrained_rows:
+                  assert row["candidateRank"] == 18
+                  assert row["baselineOverlapTrianglePairs"] == 6957
+                  assert row["candidateOverlapTrianglePairs"] > 0
+                  assert row["overlapTrianglePairDelta"] == (
+                      row["candidateOverlapTrianglePairs"] -
+                      row["baselineOverlapTrianglePairs"]
+                  )
+                  assert row["candidateUnclosedSharedUvSeams"] == 2586
+                  assert row["exactlyOneNewUnclosedUvSeam"] is True
+                  assert abs(
+                      row["measuredAddedCutNetworkLengthMm"] -
+                      row["addedActualSourceCutEdgeLengthMm"]
+                  ) <= 0.0001
+                  assert row["withinRankZeroRealEdgeLengthBudget"] is True
+                  assert row["physicalPatternApproved"] is False
+                  assert row["productionApproved"] is False
+                  assert row["strictResearchEligible"] is (
+                      row["completeOverlapImprovement"] and
+                      row["withinRankZeroRealEdgeLengthBudget"] and
+                      row["noMaximumUvGapRegression"] and
+                      row["noBranchJunctionRegression"] and
+                      row["exactlyOneNewUnclosedUvSeam"]
+                  )
+              constrained_selected=constrained["strictSelectedCandidate"]
+              if constrained_selected is None:
+                  assert constrained["strictEligibleCandidateCount"] == 0
+              else:
+                  assert constrained_selected["strictResearchEligible"] is True
+                  assert constrained_selected in constrained_rows
+              assert constrained["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert constrained["sourceUvExportOrSavePerformed"] is False
+              assert constrained["physicalFabricTailorOrFitApproved"] is False
+              assert constrained["productionApproved"] is False
               assert branch["productionApproved"] is False
               assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
               assert branch_uv["dualGraphComponentCount"] == 3

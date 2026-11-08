@@ -2107,6 +2107,142 @@ def main():
         "physicalFabricTailorOrFitApproved": False,
         "productionApproved": False,
     }
+    # Rank 18 was the only one-cut candidate inside the rank-zero real-edge
+    # budget with no branch-junction regression. Sample bounded fractions of
+    # its deterministic rigid outside-pack translation to test whether a
+    # smaller move can improve overlap while staying inside the original
+    # maximum-gap envelope. Fractions are research coordinates, not physical
+    # placement, fabric width, seam allowance, or tailor approval.
+    constrained_rows = []
+    constrained_rank = 18
+    for placement_step in range(1, 17):
+        translation_fraction = placement_step / 16.0
+        candidate_trial = subtree_ops[
+            "trial_component0_balanced_subtree_uv_pack"
+        ](
+            merged_verts, base_faces, packed_weighted["face_uv_loops"],
+            weighted_selection["retainedOriginalSourceEdges"],
+            candidate_rank=constrained_rank,
+            translation_fraction=translation_fraction,
+        )
+        candidate_overlap = uv_overlap_audit(
+            base_faces, candidate_trial["face_uv_loops"]
+        )
+        candidate_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+            merged_verts, base_faces, candidate_trial["face_uv_loops"],
+            l_remaining + r_remaining_mapped, subtree_tree_report,
+        )
+        candidate_comparison = overlap_compare(
+            packed_weighted_overlap, candidate_overlap
+        )
+        trial_report = candidate_trial["report"]
+        overlap_delta = candidate_comparison[
+            "candidateOverlapTrianglePairDelta"
+        ]
+        added_length = round(
+            candidate_cut["totalRealGeometryOfUvCutCandidatesMm"] -
+            packed_weighted_cut["totalRealGeometryOfUvCutCandidatesMm"], 5
+        )
+        max_gap_delta = round(
+            candidate_cut["maximumUnclosedUvEdgeGapMm"] -
+            packed_weighted_cut["maximumUnclosedUvEdgeGapMm"], 5
+        )
+        branch_delta = (
+            candidate_cut["uvCutCandidateDegreeThreePlusSourceVertices"] -
+            packed_weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+        )
+        complete_improvement = (
+            candidate_comparison["bothFullResearchUvScansComplete"] and
+            overlap_delta is not None and overlap_delta < 0
+        )
+        within_edge_budget = (
+            trial_report["addedActualSourceCutEdgeLengthMm"] <=
+            subtree_summary["addedActualSourceCutEdgeLengthMm"] + 0.00001
+        )
+        no_max_gap_regression = max_gap_delta <= 0.00001
+        no_branch_regression = branch_delta <= 0
+        exact_one_new_seam = (
+            candidate_cut["unclosedSharedUvCutCandidateEdges"] ==
+            packed_weighted_cut["unclosedSharedUvCutCandidateEdges"] + 1
+        )
+        if (abs(added_length -
+                trial_report["addedActualSourceCutEdgeLengthMm"]) > 0.0001
+                or not exact_one_new_seam):
+            raise RuntimeError(
+                "Component-0 constrained placement audit lost real cut truth."
+            )
+        constrained_rows.append({
+            "candidateRank": constrained_rank,
+            "placementStep": placement_step,
+            "translationFractionOfOutsidePack":
+                trial_report["translationFractionOfOutsidePack"],
+            "rigidResearchUvTranslationMm":
+                trial_report["rigidResearchUvTranslationMm"],
+            "fullOutsidePackTranslationMm":
+                trial_report["fullOutsidePackTranslationMm"],
+            "removedRetainedOriginalSourceEdge":
+                trial_report["removedRetainedOriginalSourceEdge"],
+            "addedActualSourceCutEdgeLengthMm":
+                trial_report["addedActualSourceCutEdgeLengthMm"],
+            "baselineOverlapTrianglePairs":
+                candidate_comparison["baselineObservedTriangleOverlapPairs"],
+            "candidateOverlapTrianglePairs":
+                candidate_comparison["candidateObservedTriangleOverlapPairs"],
+            "overlapTrianglePairDelta": overlap_delta,
+            "candidateMaximumUnclosedUvEdgeGapMm":
+                candidate_cut["maximumUnclosedUvEdgeGapMm"],
+            "maximumUnclosedUvEdgeGapDeltaMm": max_gap_delta,
+            "candidateBranchJunctions":
+                candidate_cut["uvCutCandidateDegreeThreePlusSourceVertices"],
+            "branchJunctionDelta": branch_delta,
+            "candidateUnclosedSharedUvSeams":
+                candidate_cut["unclosedSharedUvCutCandidateEdges"],
+            "candidateTotalCutNetworkLengthMm":
+                candidate_cut["totalRealGeometryOfUvCutCandidatesMm"],
+            "measuredAddedCutNetworkLengthMm": added_length,
+            "completeOverlapImprovement": complete_improvement,
+            "withinRankZeroRealEdgeLengthBudget": within_edge_budget,
+            "noMaximumUvGapRegression": no_max_gap_regression,
+            "noBranchJunctionRegression": no_branch_regression,
+            "exactlyOneNewUnclosedUvSeam": exact_one_new_seam,
+            "strictResearchEligible": (
+                complete_improvement and within_edge_budget and
+                no_max_gap_regression and no_branch_regression and
+                exact_one_new_seam
+            ),
+            "physicalPatternApproved": False,
+            "productionApproved": False,
+        })
+    constrained_eligible = [
+        row for row in constrained_rows if row["strictResearchEligible"]
+    ]
+    constrained_selected = min(constrained_eligible, key=lambda row: (
+        row["overlapTrianglePairDelta"],
+        row["translationFractionOfOutsidePack"],
+    )) if constrained_eligible else None
+    weighted_report["researchOnlyComponent0Rank18ConstrainedPlacementSurvey"] = {
+        "researchOnly": True,
+        "candidateRank": constrained_rank,
+        "candidateSelection": (
+            "16 deterministic fractions of rank 18's rigid outside-pack "
+            "translation, from 1/16 through 16/16"
+        ),
+        "evaluatedTranslationFractionCount": len(constrained_rows),
+        "rankZeroRealEdgeLengthBudgetMm":
+            subtree_summary["addedActualSourceCutEdgeLengthMm"],
+        "baselineMaximumUnclosedUvEdgeGapMm":
+            packed_weighted_cut["maximumUnclosedUvEdgeGapMm"],
+        "baselineBranchJunctions":
+            packed_weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"],
+        "candidateResults": constrained_rows,
+        "strictEligibleCandidateCount": len(constrained_eligible),
+        "strictSelectedCandidate": constrained_selected,
+        "noStrictCandidateObserved": not constrained_eligible,
+        "sourceGeometryAndBodyBVHUnchanged": True,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricTailorOrFitApproved": False,
+        "productionApproved": False,
+    }
     branch_report["actualSourceUvCutNetworkEvidence"] = branch_audit
     branch_report["actualRealSourceUvTreeEvidence"] = branch_uv["report"]
     branch_report["actualSourceGeometryUnchanged"] = True

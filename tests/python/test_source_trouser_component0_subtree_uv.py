@@ -71,6 +71,9 @@ report = baseline["report"]
 assert report["targetComponentId"] == 0
 assert report["targetComponentOriginalSourceFaceCount"] == 1220
 assert report["candidateRankWithinBalancedTreeCuts"] == 0
+assert report["translationFractionOfOutsidePack"] == 1.0
+assert (report["rigidResearchUvTranslationMm"] ==
+        report["fullOutsidePackTranslationMm"])
 assert report["boundedCandidateRankLimit"] == 48
 assert 1 <= report["movedOriginalSourceFaceCount"] <= 610
 assert (report["movedOriginalSourceFaceCount"]
@@ -94,6 +97,24 @@ assert len({tuple(row["report"]["removedRetainedOriginalSourceEdge"])
             for row in ranked}) == 4
 assert all(row["report"]["movedOriginalSourceFaceCount"] <= 610
            for row in ranked)
+
+fractional = trial(
+    points, faces, loops, retained, candidate_rank=0, translation_fraction=0.5
+)
+fractional_report = fractional["report"]
+assert fractional_report["translationFractionOfOutsidePack"] == 0.5
+assert fractional_report["removedRetainedOriginalSourceEdge"] == (
+    report["removedRetainedOriginalSourceEdge"]
+)
+assert fractional_report["addedActualSourceCutEdgeLengthMm"] == (
+    report["addedActualSourceCutEdgeLengthMm"]
+)
+for applied, full in zip(
+        fractional_report["rigidResearchUvTranslationMm"],
+        fractional_report["fullOutsidePackTranslationMm"]):
+    assert abs(applied - full * 0.5) <= 0.00001
+assert fractional_report["maximumOriginalTriangleEdgeChangeMm"] <= .000001
+assert points == original_points and faces == original_faces and loops == original_loops
 
 two_cut = two_cut_trial(points, faces, loops, retained, [0, 2])
 assert two_cut == two_cut_trial(points, faces, loops, retained, (0, 2))
@@ -129,10 +150,11 @@ assert after["observedInteriorOverlapTrianglePairsLowerBound"] == 0
 
 
 def reject(source_points=points, source_faces=faces, source_uv=loops,
-           source_retained=retained, gap=5.0, candidate_rank=0):
+           source_retained=retained, gap=5.0, candidate_rank=0,
+           translation_fraction=1.0):
     try:
         trial(source_points, source_faces, source_uv, source_retained, gap,
-              candidate_rank)
+              candidate_rank, translation_fraction)
     except (ValueError, TypeError, IndexError):
         return
     raise AssertionError("Component-0 UV trial accepted forged source evidence")
@@ -146,6 +168,8 @@ for gap in (0, -1, 101, math.nan, math.inf, True, "5"):
     reject(gap=gap)
 for rank in (-1, 48, 1.0, True, "1"):
     reject(candidate_rank=rank)
+for fraction in (0, -1, 1.00001, math.nan, math.inf, True, "0.5"):
+    reject(translation_fraction=fraction)
 
 
 def reject_two(ranks):

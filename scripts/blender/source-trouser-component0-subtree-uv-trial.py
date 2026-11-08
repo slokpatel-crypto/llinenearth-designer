@@ -13,7 +13,7 @@ import math
 
 def trial_component0_balanced_subtree_uv_pack(
         points, original_faces, face_uv_loops, retained_source_tree_edges,
-        display_gap_mm=5.0, candidate_rank=0):
+        display_gap_mm=5.0, candidate_rank=0, translation_fraction=1.0):
     if (len(original_faces) != 2650 or len(face_uv_loops) != 2650
             or len(retained_source_tree_edges) != 2647 or not points):
         raise ValueError("Component-0 UV trial requires the complete original source forest.")
@@ -24,6 +24,13 @@ def trial_component0_balanced_subtree_uv_pack(
         raise ValueError("Component-0 UV trial gap must be finite and in (0,100]mm.")
     if type(candidate_rank) is not int or not 0 <= candidate_rank < 48:
         raise ValueError("Component-0 UV trial candidate rank must be in [0,48).")
+    if (isinstance(translation_fraction, bool)
+            or not isinstance(translation_fraction, (int, float))
+            or not math.isfinite(translation_fraction)
+            or not 0 < translation_fraction <= 1):
+        raise ValueError(
+            "Component-0 UV trial translation fraction must be finite and in (0,1]."
+        )
     vertices = []
     for raw in points:
         point = tuple(float(value) for value in raw)
@@ -145,8 +152,10 @@ def trial_component0_balanced_subtree_uv_pack(
     minimum_y = min(point[1] for point in all_points)
     moving_minimum_x = min(point[0] for point in moving_points)
     moving_minimum_y = min(point[1] for point in moving_points)
-    dx = maximum_x + float(display_gap_mm) / 1000.0 - moving_minimum_x
-    dy = minimum_y - moving_minimum_y
+    full_dx = maximum_x + float(display_gap_mm) / 1000.0 - moving_minimum_x
+    full_dy = minimum_y - moving_minimum_y
+    dx = full_dx * float(translation_fraction)
+    dy = full_dy * float(translation_fraction)
     candidate_uv = []
     for face_id, row in enumerate(normalized_uv):
         candidate_uv.append([
@@ -176,6 +185,9 @@ def trial_component0_balanced_subtree_uv_pack(
             "targetComponentOriginalSourceFaceCount": 1220,
             "selectionRule": "largest smaller side of one retained component-0 tree edge",
             "candidateRankWithinBalancedTreeCuts": candidate_rank,
+            "translationFractionOfOutsidePack": round(
+                float(translation_fraction), 8
+            ),
             "boundedCandidateRankLimit": 48,
             "removedRetainedOriginalSourceEdge": list(cut_edge),
             "addedActualSourceCutEdgeLengthMm": round(edge_length_mm, 5),
@@ -183,6 +195,9 @@ def trial_component0_balanced_subtree_uv_pack(
             "stationaryComponent0FaceCount": 1220 - len(moved),
             "rigidResearchUvTranslationMm": [
                 round(dx * 1000.0, 5), round(dy * 1000.0, 5),
+            ],
+            "fullOutsidePackTranslationMm": [
+                round(full_dx * 1000.0, 5), round(full_dy * 1000.0, 5),
             ],
             "maximumOriginalTriangleEdgeChangeMm": round(max_change_mm, 9),
             "retainedSourceUvTreeJoinCountBefore": 2647,
