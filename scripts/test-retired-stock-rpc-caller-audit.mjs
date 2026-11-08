@@ -43,6 +43,18 @@ const cases = [
     'client.rpc(`fabric_stock_` + `consume_` + "reservation", payload);', false],
   ['concatenated v2 template is valid', 'src/v2-template.ts',
     'client.rpc(`fabric_stock_` + `reserve_v2`, payload);', true],
+  ['array join reserve blocked', 'src/v1-joined.ts',
+    'client.rpc(["fabric_stock_", "reserve"].join(""), payload);', false],
+  ['array join consume blocked', 'src/v1-consume-joined.ts',
+    "client.rpc(['fabric_stock_', 'consume_', 'reservation'].join(''), payload);", false],
+  ['array join then concatenation blocked', 'src/v1-join-plus.ts',
+    'client.rpc(["fabric_stock_", "re"].join("") + "serve", payload);', false],
+  ['array join with template blocked', 'src/v1-template-join.ts',
+    'client.rpc(["fabric_stock_", `release`].join(""), payload);', false],
+  ['array join of v2 is safe', 'src/v2-joined.ts',
+    'client.rpc(["fabric_stock_", "reserve_v2"].join(""), payload);', true],
+  ['nonempty separator is not a retired name', 'src/v1-not-exact.ts',
+    'client.rpc(["fabric_stock_", "reserve"].join("_"), payload);', true],
   ['longer identifier not v1', 'src/identifier.ts',
     'const key = "prefix_fabric_stock_reserve";', true],
 ];
@@ -64,7 +76,7 @@ try {
     execFileSync('git', ['rm', '-q', '--cached', '--', file], {cwd: root});
     rmSync(full);
   }
-  console.log('PASS: nineteen disposable tracked-source stock RPC audit fixtures');
+  console.log(`PASS: ${cases.length} disposable tracked-source stock RPC audit fixtures`);
 } finally {
   rmSync(root, {recursive: true, force: true});
 }
