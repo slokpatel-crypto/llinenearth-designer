@@ -228,11 +228,11 @@ const candidateShirtWear = (name: string) => {
     return " ";
   });
   // An explicit ban on untucking requires tucked wear, not a neutral choice.
-  remaining = remaining.replace(/\b(?:(?:must|should|shall|do|can|could|would)\s+not|(?:mustn|shouldn|couldn|wouldn|shan|can|don)['’]?t|cannot|never|avoid|no|without)\s+(?:(?:the|any)\s+)?untuck(?:ing)?\b/gi, () => {
+  remaining = remaining.replace(/\b(?:(?:must|should|shall|do|can|could|would|may|might)\s+not|(?:mustn|shouldn|couldn|wouldn|shan|can|don)['’]?t|cannot|never|avoid|no|without)\s+(?:(?:the|any)\s+)?untuck(?:ing)?\b/gi, () => {
     tuckedFromNegation = true;
     return " ";
   });
-  remaining = remaining.replace(/\b(?:(?:must|should|shall|do|can|could|would)\s+not|(?:mustn|shouldn|couldn|wouldn|must|should|shall|shan|can|could|would|don)['’]?t|cannot|never|avoid|no|without)\s+(?:(?:the|any)\s+)?tuck(?:ing)?\b/gi, () => {
+  remaining = remaining.replace(/\b(?:(?:must|should|shall|do|can|could|would|may|might)\s+not|(?:mustn|shouldn|couldn|wouldn|must|should|shall|shan|can|could|would|don)['’]?t|cannot|never|avoid|no|without)\s+(?:(?:the|any)\s+)?tuck(?:ing)?\b/gi, () => {
     untuckedFromNegation = true;
     return " ";
   });
