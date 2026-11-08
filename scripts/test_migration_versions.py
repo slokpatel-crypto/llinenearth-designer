@@ -33,6 +33,16 @@ class MigrationPreflightTests(unittest.TestCase):
             (p / "20261102000000_link.sql").symlink_to(target)
             self.assertIn("symlinked migration file", "\n".join(inspect_migrations(p)))
 
+    def test_symlinked_directory_blocks(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            actual = root / "actual"
+            actual.mkdir()
+            (actual / "20261101000000_first.sql").touch()
+            linked = root / "migrations"
+            linked.symlink_to(actual, target_is_directory=True)
+            self.assertIn("symlinked migration directory", "\n".join(inspect_migrations(linked)))
+
     def test_missing_or_empty_directory_blocks(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d)
