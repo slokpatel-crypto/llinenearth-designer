@@ -3,7 +3,7 @@
 // Scope is intentionally source-only: historical SQL, tests and documentation must retain
 // the old names to prove that permission retirement works.
 import {execFileSync} from 'node:child_process';
-import {readFileSync} from 'node:fs';
+import {lstatSync, readFileSync} from 'node:fs';
 
 const retired = [
   'fabric_stock_record',
@@ -67,6 +67,13 @@ function foldedStaticStrings(source) {
 }
 let matches = 0;
 for (const path of files) {
+  // A tracked symlink can redirect the audit outside the checked-out repository.
+  // Fail closed rather than following it or accepting a missing source.
+  if (!lstatSync(path).isFile()) {
+    console.error(`BLOCKED: ${path}: tracked source is not a regular file`);
+    matches++;
+    continue;
+  }
   // Permit only standalone declarations about historical migration content.
   // A live RPC call appended to an assertion, or on a nearby line, is audited.
   const lines = readFileSync(path, 'utf8').split(/\r?\n/).map(line =>
@@ -97,7 +104,7 @@ if (!files.length) {
   process.exit(1);
 }
 if (matches) {
-  console.error(`BLOCKED: ${matches} retired RPC reference(s); migrate callers to provenance-bearing v2 before rollout`);
+  console.error(`BLOCKED: ${matches} invalid source file or retired RPC reference(s); migrate callers to provenance-bearing v2 before rollout`);
   process.exit(1);
 }
 console.log(`PASS: inspected ${files.length} tracked application/operational source files; no retired v1 stock RPC references`);
