@@ -230,7 +230,7 @@ const candidateShirtWear = (name: string) => {
   // "Do not wear tucked" forbids a finished wear state, not the act of
   // tucking. Consume the entire phrase so the banned word cannot be parsed
   // later as an affirmative request.
-  remaining = remaining.replace(/\b(?:(?:do|must|should|shall|can|could|would|may|might)\s+not|(?:don|mustn|shouldn|shan|can|couldn|wouldn)['’]?t|cannot|never)\s+wear\s+(?:(?:a|the|this|that|these|those|my|your|his|her|our|their)\s+)?(?:(?:linen|dress|formal|casual|cotton)\s+)?(?:(?:shirts?|garments?)\s+)?(?:(?:being)\s+)?(untucked|tucked)\b/gi, (_match, forbidden: string) => {
+  remaining = remaining.replace(/\b(?:(?:do|must|should|shall|can|could|would|may|might)\s+not|(?:don|mustn|shouldn|shan|can|couldn|wouldn)['’]?t|cannot|never)\s+wear\s+(?:(?:a|the|this|that|these|those|my|your|his|her|our|their)\s+)?(?:(?:linen|dress|formal|casual|cotton|striped|checked|blue|white|black)\s+){0,3}(?:(?:shirts?|garments?)\s+)?(?:(?:being)\s+)?(untucked|tucked)\b/gi, (_match, forbidden: string) => {
     if (forbidden.toLowerCase() === "tucked") untuckedFromNegation = true;
     else tuckedFromNegation = true;
     return " ";
@@ -238,7 +238,7 @@ const candidateShirtWear = (name: string) => {
   // Object-bearing commands describe the same wear restriction as "do not
   // tuck", but the garment noun interrupts the existing verb matcher. Consume
   // the entire instruction before positive wear words are scanned.
-  remaining = remaining.replace(/\b(?:(?:do|must|should|shall|can|could|would|may|might)\s+not|(?:don|mustn|shouldn|shan|can|couldn|wouldn)['’]?t|cannot|never)\s+(untuck|tuck)(?:ing)?\s+(?:(?:the|a|any|this|that|these|those|my|your|his|her|our|their)\s+)?(?:(?:linen|dress|formal|casual|cotton)\s+)?(?:shirts?|garments?)\b/gi, (_match, action: string) => {
+  remaining = remaining.replace(/\b(?:(?:do|must|should|shall|can|could|would|may|might)\s+not|(?:don|mustn|shouldn|shan|can|couldn|wouldn)['’]?t|cannot|never)\s+(untuck|tuck)(?:ing)?\s+(?:(?:the|a|any|this|that|these|those|my|your|his|her|our|their)\s+)?(?:(?:linen|dress|formal|casual|cotton|striped|checked|blue|white|black)\s+){0,3}(?:shirts?|garments?)\b/gi, (_match, action: string) => {
     if (action.toLowerCase() === "tuck") untuckedFromNegation = true;
     else tuckedFromNegation = true;
     return " ";
