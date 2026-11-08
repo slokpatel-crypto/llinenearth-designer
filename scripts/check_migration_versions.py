@@ -2,6 +2,7 @@
 """Fail-closed Supabase migration filename/version preflight; no database access."""
 from __future__ import annotations
 import argparse
+import json
 from collections import defaultdict
 from pathlib import Path
 import re
@@ -41,8 +42,12 @@ def inspect_migrations(directory: Path) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("directory", type=Path, nargs="?", default=Path("supabase/migrations"))
+    parser.add_argument("--inventory-json", action="store_true", help="print read-only filename findings as JSON; does not approve migrations")
     args = parser.parse_args()
     problems = inspect_migrations(args.directory)
+    if args.inventory_json:
+        print(json.dumps({"directory": str(args.directory), "approved": False, "findings": [{"kind": ("duplicate_version" if p.startswith("duplicate migration version") else "legacy_or_invalid_filename" if p.startswith("invalid migration filename") else "unsafe_or_missing_entry"), "detail": p} for p in problems], "finding_count": len(problems)}, indent=2, sort_keys=True))
+        return 1 if problems else 0
     for problem in problems:
         print(f"BLOCKED: {problem}", file=sys.stderr)
     if problems:
