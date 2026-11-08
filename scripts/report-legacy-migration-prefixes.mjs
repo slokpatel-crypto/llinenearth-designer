@@ -1,15 +1,23 @@
 #!/usr/bin/env node
 // Inventory only. Never interprets SQL, touches a database, or authorizes migration.
 import {execFileSync} from 'node:child_process';
-import {lstatSync, writeFileSync} from 'node:fs';
+import {lstatSync, readFileSync, writeFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {basename, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const ROOT='supabase/migrations';
 const SAFE_FILENAME=/^(\d{8}|\d{14})_([A-Za-z0-9_]+)\.sql$/;
+export function fingerprintSql(bytes) {
+  return {
+    git_blob_sha1:createHash('sha1').update('blob '+bytes.length+'\0').update(bytes).digest('hex'),
+    content_sha256:createHash('sha256').update(bytes).digest('hex')
+  };
+}
 export function summarizeMigrationEntries(entries, sourceCommit='unknown') {
   const groups=new Map();
   const problems=[];
+  const fingerprints=[];
   let legacy=0, standard=0, sqlFiles=0;
   const seen=new Set();
   for(const item of entries){
@@ -26,6 +34,11 @@ export function summarizeMigrationEntries(entries, sourceCommit='unknown') {
     }
     const match=SAFE_FILENAME.exec(name);
     if(!match){problems.push({kind:'invalid_filename',path});continue;}
+    if(!/^[0-9a-f]{40}$/.test(item.git_blob_sha1||'') ||
+       !/^[0-9a-f]{64}$/.test(item.content_sha256||'')){
+      problems.push({kind:'missing_or_invalid_source_fingerprint',path});continue;
+    }
+    fingerprints.push({path,git_blob_sha1:item.git_blob_sha1,content_sha256:item.content_sha256});
     const version=match[1];
     if(version.length===8)legacy++;else standard++;
     const bucket=groups.get(version)||[];
@@ -41,20 +54,38 @@ export function summarizeMigrationEntries(entries, sourceCommit='unknown') {
     total_sql_files:sqlFiles,unique_numeric_versions:groups.size,
     legacy_eight_digit_files:legacy,standard_fourteen_digit_files:standard,
     collision_group_count:collisions.length,colliding_file_count:collisions.reduce((n,c)=>n+c.count,0),
-    collisions,invalid_entries:problems.sort((a,b)=>a.path.localeCompare(b.path)),
+    collisions,file_fingerprints:fingerprints.sort((a,b)=>a.path.localeCompare(b.path)),
+    content_fingerprints_complete:fingerprints.length===sqlFiles && problems.length===0,
+    invalid_entries:problems.sort((a,b)=>a.path.localeCompare(b.path)),
     // Distinguish data collection success from readiness; a clean repo is not remote applied history.
     report_generated:true,staging_history_verified:false,independent_review_complete:false,
     release_ready:false,approval:'BLOCKED_PENDING_APPLIED_HISTORY_AND_REVIEW'
   };
 }
 export function collectTrackedMigrations(){
-  const raw=execFileSync('git',['ls-files','-z','--',ROOT],{encoding:'utf8'});
-  const paths=raw.split('\0').filter(Boolean);
-  return paths.map(path=>{
+  // Evidence must describe HEAD, not dirty or separately staged SQL files.
+  execFileSync('git',['diff','--quiet','HEAD','--',ROOT]);
+  const raw=execFileSync('git',['ls-files','--stage','-z','--',ROOT],{encoding:'utf8'});
+  return raw.split('\0').filter(Boolean).map(row=>{
+    const match=/^(\d{6}) ([0-9a-f]{40}) (\d)\t(.*)$/.exec(row);
+    if(!match)throw Error('Unparseable tracked Git index entry');
+    const [,mode,oid,stage,path]=match;
+    if(stage!=='0')throw Error('Unmerged SQL migration index entry: '+path);
     let kind='missing';
-    try {const s=lstatSync(path);kind=s.isFile()?'file':s.isSymbolicLink()?'symlink':'other';}
-    catch {kind='missing';}
-    return {path,kind};
+    let hashes={};
+    try {
+      const stat=lstatSync(path);
+      kind=stat.isFile()?'file':stat.isSymbolicLink()?'symlink':'other';
+      if(kind==='file'){
+        const bytes=readFileSync(path);
+        hashes=fingerprintSql(bytes);
+        if(hashes.git_blob_sha1!==oid)throw Error('SQL content differs from committed Git blob: '+path);
+        if(mode!=='100644'&&mode!=='100755')throw Error('Unexpected Git file mode: '+path);
+      }
+    } catch(e) {
+      if(e?.code!=='ENOENT')throw e;
+    }
+    return {path,kind,...hashes};
   });
 }
 if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
