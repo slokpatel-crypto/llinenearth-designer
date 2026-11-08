@@ -10,6 +10,11 @@ test("object-bearing tuck prohibitions enforce the opposite locked wear", () => 
     ["do not untuck the shirt", "tucked"],
     ["should not untuck a garment", "tucked"],
     ["DON'T UNTUCK THE SHIRT!", "tucked"],
+    ["do not tuck my shirt", "untucked"],
+    ["must not tuck your garment", "untucked"],
+    ["cannot untuck her shirt", "tucked"],
+    ["should not untuck our garment", "tucked"],
+    ["DO NOT TUCK THEIR SHIRT!", "untucked"],
   ] as const;
   for (const [candidate, allowed] of cases) {
     const other = allowed === "tucked" ? "untucked" : "tucked";
