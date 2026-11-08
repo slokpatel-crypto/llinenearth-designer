@@ -233,7 +233,7 @@ const candidateShirtWear = (name: string) => {
   });
   // Modal prohibitions of a finished wear state must not be read as
   // affirmative tucked/untucked requests. Keep the opposite locked state.
-  remaining = remaining.replace(/\b(?:(?:must|should|shall|can|could|would)\s+not|(?:mustn|shouldn|couldn|wouldn|shan|can)[\u0027’]?t|cannot)\s+(?:(?:be|being)\s+){1,2}(untucked|tucked)\b/gi, (_match, forbidden: string) => {
+  remaining = remaining.replace(/\b(?:(?:must|should|shall|can|could|would|may|might)\s+not|(?:mustn|shouldn|couldn|wouldn|shan|can)[\u0027’]?t|cannot)\s+(?:(?:be|being)\s+){1,2}(untucked|tucked)\b/gi, (_match, forbidden: string) => {
     if (forbidden.toLowerCase() === "tucked") untuckedFromNegation = true;
     else tuckedFromNegation = true;
     return " ";
