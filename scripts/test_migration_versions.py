@@ -25,6 +25,14 @@ class MigrationPreflightTests(unittest.TestCase):
             (p / "not_timestamped.sql").touch()
             self.assertIn("invalid migration filename", "\n".join(inspect_migrations(p)))
 
+    def test_symlinked_sql_migration_blocks_even_when_target_is_valid(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            (p / "20261101000000_first.sql").touch()
+            target = p / "20261101000000_first.sql"
+            (p / "20261102000000_link.sql").symlink_to(target)
+            self.assertIn("symlinked migration file", "\n".join(inspect_migrations(p)))
+
     def test_missing_or_empty_directory_blocks(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d)
