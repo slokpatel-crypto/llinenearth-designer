@@ -1,0 +1,43 @@
+name: TITAN migration version fail-closed preflight
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/check_migration_versions.py'
+      - 'scripts/test_migration_versions.py'
+      - '.github/workflows/titan-migration-version-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  migration-version-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Require immutable event-head checkout
+        env:
+          EXPECTED_HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - name: Verify synthetic duplicate/malformed/empty inventory regressions
+        run: python3 -m unittest scripts.test_migration_versions -v
+      - name: Capture read-only migration inventory for reconciliation
+        shell: bash
+        run: |
+          python3 scripts/check_migration_versions.py supabase/migrations --inventory-json > migration-inventory.json || status=$?
+          if [ "${status:-0}" -gt 1 ]; then
+            echo "Inventory command failed unexpectedly" >&2
+            exit "${status}"
+          fi
+          python3 -m json.tool migration-inventory.json > /dev/null
+      - name: Publish migration inventory (not deployment approval)
+        uses: actions/upload-artifact@v4
+        with:
+          name: titan-migration-inventory
+          path: migration-inventory.json
+          retention-days: 14
+          if-no-files-found: error
+      - name: Fail closed on actual duplicate migration versions
+        run: python3 scripts/check_migration_versions.py supabase/migrations
