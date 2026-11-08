@@ -78,3 +78,20 @@ test("negative wear instructions cannot be satisfied by inherited or accessor-ba
   }
   assert.equal(reads, 0);
 });
+
+test("case and sentence punctuation do not weaken mandatory wear prohibitions", () => {
+  for (const [wording, permitted, prohibited] of [
+    ["MUST NOT TUCK.", "untucked", "tucked"],
+    ["Do not untuck!", "tucked", "untucked"],
+    ["Shouldn't be tucked.", "untucked", "tucked"],
+    ["CAN NOT TUCK; wear untucked.", "untucked", "tucked"],
+  ] as const) {
+    const locked = Object.freeze({ wear: prohibited });
+    const before = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidateWearIssues(wording, { wear: permitted }), [], wording);
+    const result = styleDirectorCandidateWearIssues(wording, locked);
+    assert.deepEqual(result.map(issue => issue.code), ["candidate_shirt_wear_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateWearIssues(wording, locked), result, wording);
+    assert.equal(JSON.stringify(locked), before, "review must preserve the locked ID");
+  }
+});
