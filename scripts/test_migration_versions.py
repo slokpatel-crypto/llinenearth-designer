@@ -54,7 +54,7 @@ class MigrationPreflightTests(unittest.TestCase):
             p = Path(d)
             (p / "20261101000000_first.sql").touch()
             (p / "20261102000000_hidden.SQL").touch()
-            self.assertIn("invalid migration filename", "\\n".join(inspect_migrations(p)))
+            self.assertIn("invalid migration filename", "\n".join(inspect_migrations(p)))
 
 if __name__ == "__main__":
     unittest.main()
