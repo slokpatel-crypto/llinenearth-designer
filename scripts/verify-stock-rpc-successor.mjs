@@ -8,6 +8,7 @@ export const PIN = {
   repo:'slokpatel-crypto/' + 'l' + 'linenearth-designer',
   main:'4dd8020abd83429449ff53ea5bb71b046394d86e',
   basePr:880,
+  baseChangedFiles:15,
   baseBranch:'titan-central-retire-legacy-stock-execute-20261103',
   baseSha:'6730aba8198018b57db70eda1cadf9dbc41d5dc3',
   candidatePr:910,
@@ -56,6 +57,9 @@ export async function verifyCandidate(getJson, pin=PIN) {
       assert.equal(p?.base?.repo?.full_name,pin.repo,'Source PR base repository changed');
     }
     assert.equal(b?.base?.ref,'main','Base PR retargeted');
+    assert.equal(b?.base?.sha,pin.main,'Base PR no longer founded on reviewed main');
+    assert.equal(b?.changed_files,pin.baseChangedFiles,'Predecessor PR changed-file count drift');
+    assert.equal(c?.changed_files,Object.keys(pin.files).length,'Candidate PR changed-file count drift');
     assert.equal(c?.base?.ref,pin.baseBranch,'Candidate PR retargeted');
     assert.equal(c?.base?.sha,pin.baseSha,'Candidate PR base commit changed');
     assert.equal(br?.ref,'refs/heads/'+pin.baseBranch,'Base branch identity changed');
@@ -64,6 +68,23 @@ export async function verifyCandidate(getJson, pin=PIN) {
     assert.equal(cr?.object?.sha,pin.candidateSha,'Candidate live branch moved');
   }
   await readHeads();
+  const predecessorFiles=await get(pr(pin.basePr)+'/files?per_page=100&page=1');
+  assert.ok(Array.isArray(predecessorFiles),'Missing predecessor changed-file list');
+  assert.equal(predecessorFiles.length,pin.baseChangedFiles,
+    'Predecessor changed-file list incomplete or unreviewed');
+  const predecessorSeen=new Set();
+  for(const file of predecessorFiles){
+    assert.equal(typeof file?.filename,'string','Invalid predecessor file metadata');
+    assert.ok(!predecessorSeen.has(file.filename),'Duplicate predecessor changed-file');
+    predecessorSeen.add(file.filename);
+  }
+  for(const [path,versions] of Object.entries(pin.files)){
+    const entry=predecessorFiles.find(file=>file.filename===path);
+    assert.ok(entry,'Pinned predecessor path absent from source PR diff');
+    assert.equal(entry.status,'added','Predecessor audit path changed kind');
+    assert.equal(entry.sha,versions.old,'Predecessor diff source blob drift');
+    assert.equal(entry.previous_filename,undefined,'Predecessor audit path renamed');
+  }
   const files=await get(pr(pin.candidatePr)+'/files?per_page=100&page=1');
   const names=Object.keys(pin.files);
   assert.ok(Array.isArray(files),'Missing changed-file list');
