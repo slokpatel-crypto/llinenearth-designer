@@ -14,6 +14,13 @@ The generated `source-rows.json` is an **array of `{version,filename,sha256}` so
 
 At main `4dd8020abd83429449ff53ea5bb71b046394d86e`, a live GitHub directory metadata listing on November 8, 2026 showed **58 SQL files, 36 unique digit prefixes and 14 repeated prefix groups**. Draft #903 had one additional standard-timestamp migration (59 SQL, 37 prefixes) and the same 14 repeated groups. These are **different source scopes** from the combined integration draft #881, which previously contained 63 migrations. The CI report records its own immutable checkout SHA to prevent confusing these inventories.
 
+## Confirmed source-only stock reservation overwrite risk
+
+The inventory now reports a narrowly scoped, tested `known_stock_reserve_order_risk` for `public.fabric_stock_reserve_v2`. The checked-in files
+`20261103_stock_reservation_identity_length_gate.sql` and `20261103_stock_reservation_provenance_gate.sql` both redefine the same six-argument function. The former validates full-length requester, fabric, revision, source and request-key inputs and rejects overlength identities; the latter assigns multiple identity fields via `left(trim(...), N)` and does not preserve that same explicit overlength rejection.
+
+If these **two source files** were executed in **lexicographic filename order**, `provenance_gate.sql` would redefine the function last and remove the strict overlength protection. The CI proof asserts this exact source-level hazard on a pinned commit and fails closed if either known SQL definition changes unexpectedly. **This is a hypothetical filename-order analysis, not evidence of actual Supabase CLI ordering, staging function bodies or live deployment.** No ordering or production safety conclusion is possible until approved staging applied-history inspection and an independently reviewed forward-only migration order are completed.
+
 ## Required reviewer/owner acceptance (not accomplished here)
 
 1. Identify an approved **staging**, never assume the one connected Supabase project is staging. Read only `supabase_migrations.schema_migrations` or the approved CLI history with authorized staging credentials.
