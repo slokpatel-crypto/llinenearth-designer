@@ -235,7 +235,15 @@ const candidateShirtWear = (name: string) => {
     else tuckedFromNegation = true;
     return " ";
   });
-  // Object-bearing commands describe the same wear restriction as "do not\n  // tuck", but the garment noun interrupts the existing verb matcher. Consume\n  // the entire instruction before positive wear words are scanned.\n  remaining = remaining.replace(/\\b(?:(?:do|must|should|shall|can|could|would|may|might)\\s+not|(?:don|mustn|shouldn|shan|can|couldn|wouldn)['’]?t|cannot|never)\\s+(untuck|tuck)(?:ing)?\\s+(?:(?:the|a|any)\\s+)?(?:shirt|garment)\\b/gi, (_match, action: string) => {\n    if (action.toLowerCase() === "tuck") untuckedFromNegation = true;\n    else tuckedFromNegation = true;\n    return " ";\n  });\n  // An explicit ban on untucking requires tucked wear, not a neutral choice.
+  // Object-bearing commands describe the same wear restriction as "do not
+  // tuck", but the garment noun interrupts the existing verb matcher. Consume
+  // the entire instruction before positive wear words are scanned.
+  remaining = remaining.replace(/\b(?:(?:do|must|should|shall|can|could|would|may|might)\s+not|(?:don|mustn|shouldn|shan|can|couldn|wouldn)['’]?t|cannot|never)\s+(untuck|tuck)(?:ing)?\s+(?:(?:the|a|any)\s+)?(?:shirt|garment)\b/gi, (_match, action: string) => {
+    if (action.toLowerCase() === "tuck") untuckedFromNegation = true;
+    else tuckedFromNegation = true;
+    return " ";
+  });
+  // An explicit ban on untucking requires tucked wear, not a neutral choice.
   remaining = remaining.replace(/\b(?:(?:must|should|shall|do|can|could|would|may|might)\s+not|(?:mustn|shouldn|couldn|wouldn|shan|can|don)['’]?t|cannot|never|avoid|no|without)\s+(?:(?:the|any)\s+)?untuck(?:ing)?\b/gi, () => {
     tuckedFromNegation = true;
     return " ";
