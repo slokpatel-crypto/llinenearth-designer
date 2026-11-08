@@ -49,12 +49,18 @@ function foldedStaticStrings(source) {
   // Fold simple, fully static JS arrays joined without separators, including
   // mixed quote/template pieces. Dynamic expressions remain outside this audit.
   const joined = /\[\s*((?:(?:'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")\s*,\s*)*(?:'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"))\s*\]\s*\.join\(\s*(?:''|"")\s*\)/g;
+  // Statically specified .concat(...) arguments can assemble retired RPC names
+  // without a + operator. Keep dynamic arguments unexpanded.
+  const concat = /(['"])([^'"\\]*(?:\\.[^'"\\]*)*)\1\s*\.concat\(\s*((?:(?:'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")\s*,\s*)*(?:'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"))\s*\)/g;
   let previous;
   do {
     previous = source;
     source = source.replace(quoted, (_match, _q1, left, _q2, right) => JSON.stringify(left + right));
     source = source.replace(joined, (_match, pieces) =>
       JSON.stringify((pieces.match(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g) || [])
+        .map(piece => piece.slice(1, -1)).join('')));
+    source = source.replace(concat, (_match, _quote, start, pieces) =>
+      JSON.stringify(start + (pieces.match(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g) || [])
         .map(piece => piece.slice(1, -1)).join('')));
   } while (source !== previous);
   return source;
