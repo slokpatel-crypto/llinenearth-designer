@@ -4,7 +4,11 @@ This isolated draft inventories **Git-tracked** Supabase SQL migration filenames
 
 The strict migration version preflight remains in [draft #903](https://github.com/slokpatel-crypto/llinenearth-designer/pull/903) and intentionally rejects historical eight-digit filenames. This **additional** read-only report makes that failure actionable by grouping all repeated eight-digit and fourteen-digit filename versions, even when the filename is not a valid modern Supabase migration name. It does not bypass or weaken that preflight.
 
-Run `node --test tests/report-legacy-migration-prefixes.test.mjs` for pure tests; run `node scripts/report-legacy-migration-prefixes.mjs` at the reviewed checkout for a JSON report. The CI job checks out the exact PR event head and uploads a **non-authorizing** JSON report.
+Run `node --test tests/report-legacy-migration-prefixes.test.mjs` for pure tests. Run `node scripts/report-legacy-migration-prefixes.mjs --output inventory.json --reconciliation-output source-rows.json` at the reviewed checkout. The CI job checks out the exact PR event head and uploads **both non-authorizing JSON files**. It also validates that the tracked SQL bytes agree with the Git index objects. Unsafe or incomplete fingerprints stop the reporter with a failed exit status.
+
+## Compatibility with draft #909
+
+The generated `source-rows.json` is an **array of `{version,filename,sha256}` source rows** intended for the inventory input to draft [#909](https://github.com/slokpatel-crypto/llinenearth-designer/pull/909)'s existing read-only history comparator. Each row is derived from the exact Git-tracked file's validated SHA-256; no invented or inferred remote staging data is included. Two colliding filenames with the same eight-digit version remain two distinct rows. This is a data-format handoff only: PR #909's comparator lives on a separate unmerged branch and **its workflow is not executed by this PR**. Its second input must be independently authenticated owner-approved staging evidence. No direct use of the comparator can authorize release.
 
 ## Snapshot scope
 
