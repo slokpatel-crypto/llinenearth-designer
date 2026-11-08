@@ -47,14 +47,14 @@ ORDER BY p.proname,p.oid::regprocedure::text;
 SELECT 'stock_function_effective_execute' AS evidence_kind,
        p.oid::regprocedure::text AS function_signature,
        requested.role_name,
-       role.oid IS NOT NULL AS role_exists,
-       CASE WHEN role.oid IS NULL THEN NULL
-            ELSE has_function_privilege(role.oid,p.oid,'EXECUTE')
+       registered_role.oid IS NOT NULL AS role_exists,
+       CASE WHEN registered_role.oid IS NULL THEN NULL
+            ELSE has_function_privilege(registered_role.oid,p.oid,'EXECUTE')
        END AS effective_execute
 FROM pg_proc AS p
 JOIN pg_namespace AS ns ON ns.oid=p.pronamespace
 CROSS JOIN (VALUES ('anon'),('authenticated'),('service_role')) AS requested(role_name)
-LEFT JOIN pg_roles AS role ON role.rolname=requested.role_name
+LEFT JOIN pg_roles AS registered_role ON registered_role.rolname=requested.role_name
 WHERE ns.nspname='public'
   AND p.proname IN (
     'fabric_stock_record','fabric_stock_reserve','fabric_stock_release',
