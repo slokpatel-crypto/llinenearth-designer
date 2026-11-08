@@ -19,6 +19,18 @@ if ! { { [ "$sa" -eq 0 ] && [ "$sb" -ne 0 ]; } || { [ "$sb" -eq 0 ] && [ "$sa" -
 fi
 success_key=disposable-race-key-0001
 if [ "$sb" -eq 0 ]; then success_key=disposable-race-key-0002; fi
+loser_key=disposable-race-key-0002
+if [ "$sb" -eq 0 ]; then loser_key=disposable-race-key-0001; fi
+# A loser must fail for exhausted stock, not an unrelated SQL/connection error.
+grep -Fq 'insufficient available stock' "$tmp/$loser_key.err" || {
+  echo 'Competing reservation failed for a reason other than insufficient stock' >&2
+  cat "$tmp/$loser_key.err" >&2
+  exit 1
+}
+[ ! -s "$tmp/$loser_key.out" ] || {
+  echo 'Rejected reservation unexpectedly returned a reservation identity' >&2
+  exit 1
+}
 original="$(cat "$tmp/$success_key.out")"
 replay="$(psql -X -v ON_ERROR_STOP=1 -Atc "select public.fabric_stock_reserve_v2('disposable-test-fabric',3.000,'disposable-locked-revision','$success_key','disposable-operator','disposable-evidence-001')")"
 [ -n "$original" ] && [ "$original" = "$replay" ] || { echo 'Concurrent winner replay was not idempotent' >&2; exit 1; }
