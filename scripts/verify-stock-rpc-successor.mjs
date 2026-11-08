@@ -24,6 +24,14 @@ export const PIN = {
     }
   }
 };
+// The exact check set recorded for the immutable candidate head. Any new,
+// missing, running, unassociated or failed check must receive a fresh review.
+export const REQUIRED_CANDIDATE_CHECKS = Object.freeze([
+  'build',
+  'studio',
+  'Disposable PostgreSQL stock reservation invariants',
+  'Disposable PostgreSQL legacy stock RPC ACL'
+]);
 export function gitBlobSha(bytes) {
   return createHash('sha1').update('blob '+bytes.length+'\0').update(bytes).digest('hex');
 }
@@ -84,8 +92,29 @@ export async function verifyCandidate(getJson, pin=PIN) {
       assert.equal(gitBlobSha(bytes),sha,'Git blob bytes do not match pinned identity');
     }
   }
+  // Check-runs are only supporting evidence for this immutable PR head.
+  // A green predecessor, partial pagination or run not bound to this PR is not enough.
+  const checks=await get('/commits/'+pin.candidateSha+'/check-runs?per_page=100');
+  assert.equal(checks?.total_count,REQUIRED_CANDIDATE_CHECKS.length,
+    'Candidate CI set changed; independently re-review');
+  assert.ok(Array.isArray(checks?.check_runs),'Missing candidate exact-head checks');
+  assert.equal(checks.check_runs.length,REQUIRED_CANDIDATE_CHECKS.length,
+    'Incomplete candidate CI pagination');
+  const namesSeen=new Set();
+  for(const check of checks.check_runs){
+    assert.ok(REQUIRED_CANDIDATE_CHECKS.includes(check?.name),'Unexpected candidate check');
+    assert.ok(!namesSeen.has(check.name),'Duplicate candidate check');
+    namesSeen.add(check.name);
+    assert.equal(check.head_sha,pin.candidateSha,'Candidate CI references wrong head');
+    assert.equal(check.status,'completed','Candidate CI incomplete');
+    assert.equal(check.conclusion,'success','Candidate CI unsuccessful');
+    assert.ok(Array.isArray(check.pull_requests) &&
+      check.pull_requests.some(p=>p.number===pin.candidatePr),
+      'Candidate CI not associated with approved PR');
+  }
   await readHeads();
   return {source_bytes_verified:true,source_files:names.length,candidate_sha:pin.candidateSha,
+    candidate_ci_verified:true,candidate_ci_count:checks.check_runs.length,
     review_status:'REVIEW_REQUIRED',release_ready:false,
     note:'Automated byte identity is not independent human review, staging evidence or permission to merge/deploy.'};
 }
