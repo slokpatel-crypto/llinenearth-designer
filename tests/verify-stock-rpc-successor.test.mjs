@@ -4,15 +4,15 @@ import {verifyCandidate,gitBlobSha} from '../scripts/verify-stock-rpc-successor.
 const blob=s=>{const b=Buffer.from(s);return {sha:gitBlobSha(b),encoding:'base64',size:b.length,content:b.toString('base64')};};
 const old=blob('old content\n'), latest=blob('revised content\n');
 const pin={
-  repo:'sample/titan',main:'a'.repeat(40),basePr:880,baseBranch:'base',baseSha:'b'.repeat(40),
+  repo:'sample/titan',main:'a'.repeat(40),basePr:880,baseChangedFiles:1,baseBranch:'base',baseSha:'b'.repeat(40),
   candidatePr:910,candidateBranch:'candidate',candidateSha:'c'.repeat(40),
   files:{'scripts/file.mjs':{old:old.sha,latest:latest.sha}}
 };
 const candidateNames=['build','studio','Disposable PostgreSQL stock reservation invariants','Disposable PostgreSQL legacy stock RPC ACL'];
 const ciRuns=candidateNames.map(name=>({name,head_sha:pin.candidateSha,status:'completed',conclusion:'success',pull_requests:[{number:pin.candidatePr}]}));
 const api='/repos/'+pin.repo;
-const basePr={number:880,state:'open',draft:true,head:{ref:'base',sha:pin.baseSha,repo:{full_name:pin.repo}},base:{ref:'main',repo:{full_name:pin.repo}}};
-const candidatePr={number:910,state:'open',draft:true,head:{ref:'candidate',sha:pin.candidateSha,repo:{full_name:pin.repo}},base:{ref:'base',sha:pin.baseSha,repo:{full_name:pin.repo}}};
+const basePr={number:880,state:'open',draft:true,changed_files:1,head:{ref:'base',sha:pin.baseSha,repo:{full_name:pin.repo}},base:{ref:'main',repo:{full_name:pin.repo}}};
+const candidatePr={number:910,state:'open',draft:true,changed_files:1,head:{ref:'candidate',sha:pin.candidateSha,repo:{full_name:pin.repo}},base:{ref:'base',sha:pin.baseSha,repo:{full_name:pin.repo}}};
 function fixture(overrides={}){
   const values={
     [api+'/pulls/880']:basePr,
@@ -21,6 +21,7 @@ function fixture(overrides={}){
     [api+'/git/ref/heads/base']:{ref:'refs/heads/base',object:{sha:pin.baseSha}},
     [api+'/git/ref/heads/candidate']:{ref:'refs/heads/candidate',object:{sha:pin.candidateSha}},
     [api+'/pulls/910/files?per_page=100&page=1']:[{filename:'scripts/file.mjs',status:'modified',sha:latest.sha}],
+    [api+'/pulls/880/files?per_page=100&page=1']:[{filename:'scripts/file.mjs',status:'added',sha:old.sha}],
     [api+'/git/blobs/'+old.sha]:old,
     [api+'/git/blobs/'+latest.sha]:latest,
     [api+'/contents/scripts/file.mjs?ref='+pin.baseSha]:{type:'file',path:'scripts/file.mjs',sha:old.sha},
@@ -100,4 +101,29 @@ test('predecessor and successor blob IDs must be bound to their exact commit pat
   await assert.rejects(verifyCandidate(fixture({
     [newPath]:{type:'file',path:'scripts/other.mjs',sha:latest.sha}
   }),pin),/file path changed/);
+});
+
+test('predecessor PR diff proves both source file membership and pinned blob identity',async()=>{
+  const key=api+'/pulls/880/files?per_page=100&page=1';
+  const bad=[
+    [],
+    [{filename:'scripts/other.mjs',status:'added',sha:old.sha}],
+    [{filename:'scripts/file.mjs',status:'modified',sha:old.sha}],
+    [{filename:'scripts/file.mjs',status:'added',sha:latest.sha}],
+    [{filename:'scripts/file.mjs',status:'added',sha:old.sha,previous_filename:'prior.mjs'}]
+  ];
+  for(const diff of bad){
+    await assert.rejects(verifyCandidate(fixture({[key]:diff}),pin));
+  }
+});
+test('predecessor and candidate changed-file-count drift and moved base fail closed',async()=>{
+  await assert.rejects(verifyCandidate(fixture({
+    [api+'/pulls/880']:{...basePr,changed_files:2}
+  }),pin),/Predecessor PR changed-file count drift/);
+  await assert.rejects(verifyCandidate(fixture({
+    [api+'/pulls/910']:{...candidatePr,changed_files:2}
+  }),pin),/Candidate PR changed-file count drift/);
+  await assert.rejects(verifyCandidate(fixture({
+    [api+'/pulls/880']:{...basePr,base:{...basePr.base,sha:'f'.repeat(40)}}
+  }),pin),/Base PR no longer founded/);
 });
