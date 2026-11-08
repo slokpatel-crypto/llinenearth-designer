@@ -114,3 +114,24 @@ test("case and sentence punctuation do not weaken mandatory wear prohibitions", 
     assert.equal(JSON.stringify(locked), before, "review must preserve the locked ID");
   }
 });
+
+
+test("object-bearing tuck and untuck prohibitions enforce the locked wear state", () => {
+  for (const [wording, permitted, forbidden] of [
+    ["do not tuck the shirt", "untucked", "tucked"],
+    ["must not tuck a garment", "untucked", "tucked"],
+    ["shouldn't untuck the shirt", "tucked", "untucked"],
+    ["cannot untuck any garment", "tucked", "untucked"],
+    ["do not tuck the shirt; wear tucked", null, null],
+    ["do not untuck the shirt; wear untucked", null, null],
+  ] as const) {
+    for (const wear of ["tucked", "untucked"] as const) {
+      const locked = Object.freeze({ wear });
+      const actual = styleDirectorCandidateWearIssues(wording, locked).map(issue => issue.code);
+      const expected = permitted === null || wear === forbidden
+        ? ["candidate_shirt_wear_mismatch"] : [];
+      assert.deepEqual(actual, expected, wording + ": " + wear);
+      assert.deepEqual(styleDirectorCandidateWearIssues(wording, locked).map(issue => issue.code), expected);
+    }
+  }
+});
