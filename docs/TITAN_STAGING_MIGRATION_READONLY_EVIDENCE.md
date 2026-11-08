@@ -13,8 +13,8 @@
 
 - Connection/database metadata for manual staging identity checks, **not a self-proving identity token**.
 - Applied migration **versions** and an optional history-table `name` value, if present. Supabase's history is version-keyed. The optional name and a version alone **cannot establish which different SQL file under a duplicate legacy prefix actually ran**.
-- Actual currently deployed `public.fabric_stock_*` function definitions, security-definer flag, function settings and a digest of PostgreSQL's **rendered function definition**. That digest is **not** comparable byte-for-byte with a Git migration SQL file SHA-256.
-- Effective `EXECUTE` permissions for any existing `anon`, `authenticated`, and `service_role` database roles. Missing functions or roles are **unknown/blockers**, not permission passes.
+- Actual currently deployed `public.fabric_stock_*` function definitions, **function owner**, security-definer flag, function settings and a digest of PostgreSQL's **rendered function definition**. That digest is **not** comparable byte-for-byte with a Git migration SQL file SHA-256.
+- Effective `EXECUTE` permissions for any existing `anon`, `authenticated`, and `service_role` database roles. Missing **required v2 RPCs** or an expected role are **unknown/blockers**, not permission passes. A missing retired v1 function may be appropriate when deliberately removed and must **not** be recreated solely to satisfy an evidence query.
 
 The SQL file contains `BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY`, four `SELECT` queries and `COMMIT`. The separate pure tests check that it contains no write statement and captures the required metadata. A successful capture means only that observations were obtained. It cannot prove the historical order of all 58 Git files.
 
