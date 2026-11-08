@@ -62,6 +62,14 @@ export function summarizeMigrationEntries(entries, sourceCommit='unknown') {
     release_ready:false,approval:'BLOCKED_PENDING_APPLIED_HISTORY_AND_REVIEW'
   };
 }
+// File-version collisions are expected review findings. Unsafe/missing
+// source entries or incomplete hashes are evidence integrity failures.
+export function inventoryIntegrityVerified(report){
+  return report?.content_fingerprints_complete===true &&
+    Array.isArray(report?.invalid_entries) && report.invalid_entries.length===0 &&
+    Array.isArray(report?.file_fingerprints) &&
+    report.file_fingerprints.length===report.total_sql_files && report.total_sql_files>0;
+}
 export function collectTrackedMigrations(){
   // Evidence must describe HEAD, not dirty or separately staged SQL files.
   execFileSync('git',['diff','--quiet','HEAD','--',ROOT]);
@@ -97,5 +105,9 @@ if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
     const serialized=JSON.stringify(result,null,2)+'\n';
     if(args.length)writeFileSync(args[1],serialized,{flag:'w'});
     process.stdout.write(serialized);
+    if(!inventoryIntegrityVerified(result)){
+      console.error('BLOCKED: unsafe, missing, or incomplete tracked migration source evidence');
+      process.exitCode=1;
+    }
   }catch(error){console.error('BLOCKED: unable to collect read-only migration inventory:',error.message);process.exitCode=1;}
 }
