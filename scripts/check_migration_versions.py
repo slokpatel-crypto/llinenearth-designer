@@ -12,6 +12,8 @@ NAME = re.compile(r"^(?P<version>[0-9]{14})_(?P<label>[a-zA-Z0-9_]+)\.sql$")
 def inspect_migrations(directory: Path) -> list[str]:
     errors: list[str] = []
     versions: dict[str, list[str]] = defaultdict(list)
+    if directory.is_symlink():
+        return [f"symlinked migration directory: {directory}"]
     if not directory.is_dir():
         return [f"missing migration directory: {directory}"]
     files = sorted(directory.iterdir())
