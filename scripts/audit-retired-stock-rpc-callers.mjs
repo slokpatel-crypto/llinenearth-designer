@@ -3,7 +3,7 @@
 // Scope is intentionally source-only: historical SQL, tests and documentation must retain
 // the old names to prove that permission retirement works.
 import {execFileSync} from 'node:child_process';
-import {readFileSync} from 'node:fs';
+import {lstatSync, readFileSync} from 'node:fs';
 
 const retired = [
   'fabric_stock_record',
@@ -20,21 +20,60 @@ const files = execFileSync('git', ['ls-files', '-z', '--', ...roots], {encoding:
   .filter(path => !/(?:^|\/)(?:test|tests|__tests__)(?:\/|-|\.)/.test(path))
   .filter(path => !path.startsWith('scripts/audit-retired-stock-rpc-callers.'));
 function foldedStaticStrings(source) {
+  // Statistically written hex/Unicode code points can hide real v1 RPC names.
+  // Conservatively decode these simple escapes for auditing only; do not
+  // evaluate expressions or execute the inspected source.
+  source = source.replace(/\\(?:x([0-9a-fA-F]{2})|u([0-9a-fA-F]{4})|u\{([0-9a-fA-F]{1,6})\})/g,
+    (sequence, hex, four, braced) => {
+      const point = Number.parseInt(hex ?? four ?? braced, 16);
+      return point <= 0x10ffff ? String.fromCodePoint(point) : sequence;
+    });
+  // Evaluate only bounded, printable-ASCII literal character-code builders.
+  // Never attempt a dynamic expression or arbitrary source execution.
+  source = source.replace(
+    /\bString\.(?:fromCharCode|fromCodePoint)\(\s*((?:(?:0x[0-9a-fA-F]{1,4}|\d{1,6})\s*,\s*)*(?:0x[0-9a-fA-F]{1,4}|\d{1,6}))\s*\)/g,
+    (expression, argumentsText) => {
+      const parts = argumentsText.split(',').map(value => value.trim());
+      if (parts.length > 80) return expression;
+      const codes = parts.map(Number);
+      if (codes.some(code => !Number.isInteger(code) || code < 32 || code > 126)) return expression;
+      return JSON.stringify(String.fromCharCode(...codes));
+    },
+  );
   // Normalize only literal template strings; interpolated templates cannot be
   // resolved statically. This also catches mixed quote/template concatenation.
   source = source.replace(/`((?:\\.|[^`\\])*)`/g, (literal, body) =>
     body.includes('${') ? literal : JSON.stringify(body));
   // Detect statically concatenated quoted RPC names, including across lines.
   const quoted = /(['"])([^'"\\]*(?:\\.[^'"\\]*)*)\1\s*\+\s*(['"])([^'"\\]*(?:\\.[^'"\\]*)*)\3/g;
+  // Fold simple, fully static JS arrays joined without separators, including
+  // mixed quote/template pieces. Dynamic expressions remain outside this audit.
+  const joined = /\[\s*((?:(?:'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")\s*,\s*)*(?:'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"))\s*\]\s*\.join\(\s*(?:''|"")\s*\)/g;
+  // Statically specified .concat(...) arguments can assemble retired RPC names
+  // without a + operator. Keep dynamic arguments unexpanded.
+  const concat = /(['"])([^'"\\]*(?:\\.[^'"\\]*)*)\1\s*\.concat\(\s*((?:(?:'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")\s*,\s*)*(?:'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"))\s*\)/g;
   let previous;
   do {
     previous = source;
     source = source.replace(quoted, (_match, _q1, left, _q2, right) => JSON.stringify(left + right));
+    source = source.replace(joined, (_match, pieces) =>
+      JSON.stringify((pieces.match(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g) || [])
+        .map(piece => piece.slice(1, -1)).join('')));
+    source = source.replace(concat, (_match, _quote, start, pieces) =>
+      JSON.stringify(start + (pieces.match(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g) || [])
+        .map(piece => piece.slice(1, -1)).join('')));
   } while (source !== previous);
   return source;
 }
 let matches = 0;
 for (const path of files) {
+  // A tracked symlink can redirect the audit outside the checked-out repository.
+  // Fail closed rather than following it or accepting a missing source.
+  if (!lstatSync(path).isFile()) {
+    console.error(`BLOCKED: ${path}: tracked source is not a regular file`);
+    matches++;
+    continue;
+  }
   // Permit only standalone declarations about historical migration content.
   // A live RPC call appended to an assertion, or on a nearby line, is audited.
   const lines = readFileSync(path, 'utf8').split(/\r?\n/).map(line =>
@@ -65,7 +104,7 @@ if (!files.length) {
   process.exit(1);
 }
 if (matches) {
-  console.error(`BLOCKED: ${matches} retired RPC reference(s); migrate callers to provenance-bearing v2 before rollout`);
+  console.error(`BLOCKED: ${matches} invalid source file or retired RPC reference(s); migrate callers to provenance-bearing v2 before rollout`);
   process.exit(1);
 }
 console.log(`PASS: inspected ${files.length} tracked application/operational source files; no retired v1 stock RPC references`);

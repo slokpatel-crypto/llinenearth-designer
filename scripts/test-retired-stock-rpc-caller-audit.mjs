@@ -2,7 +2,7 @@
 // Disposable tracked-source fixtures: prove both detection and narrow historical exemption.
 import assert from 'node:assert/strict';
 import {execFileSync, spawnSync} from 'node:child_process';
-import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 
@@ -43,6 +43,56 @@ const cases = [
     'client.rpc(`fabric_stock_` + `consume_` + "reservation", payload);', false],
   ['concatenated v2 template is valid', 'src/v2-template.ts',
     'client.rpc(`fabric_stock_` + `reserve_v2`, payload);', true],
+  ['array join reserve blocked', 'src/v1-joined.ts',
+    'client.rpc(["fabric_stock_", "reserve"].join(""), payload);', false],
+  ['array join consume blocked', 'src/v1-consume-joined.ts',
+    "client.rpc(['fabric_stock_', 'consume_', 'reservation'].join(''), payload);", false],
+  ['array join then concatenation blocked', 'src/v1-join-plus.ts',
+    'client.rpc(["fabric_stock_", "re"].join("") + "serve", payload);', false],
+  ['array join with template blocked', 'src/v1-template-join.ts',
+    'client.rpc(["fabric_stock_", `release`].join(""), payload);', false],
+  ['array join of v2 is safe', 'src/v2-joined.ts',
+    'client.rpc(["fabric_stock_", "reserve_v2"].join(""), payload);', true],
+  ['nonempty separator is not a retired name', 'src/v1-not-exact.ts',
+    'client.rpc(["fabric_stock_", "reserve"].join("_"), payload);', true],
+  ['hex-escaped retired RPC blocked', 'src/v1-hex-escaped.ts',
+    'client.rpc("fabric_stock_\\x72eserve", payload);', false],
+  ['unicode-escaped retired RPC blocked', 'src/v1-unicode-escaped.ts',
+    'client.rpc("fabric_stock_\\u0072eserve", payload);', false],
+  ['codepoint-escaped retired RPC blocked', 'src/v1-codepoint-escaped.ts',
+    'client.rpc("fabric_stock_\\u{72}elease", payload);', false],
+  ['escaped array join v1 blocked', 'src/v1-escaped-joined.ts',
+    'client.rpc(["fabric_stock_", "\\u0072eserve"].join(""), payload);', false],
+  ['hex-escaped v2 permitted', 'src/v2-escaped.ts',
+    'client.rpc("fabric_stock_\\x72eserve_v2", payload);', true],
+  ['fromCharCode v1 reserve is blocked', 'src/v1-fromchar.ts',
+    'client.rpc("fabric_stock_" + String.fromCharCode(114,101,115,101,114,118,101), payload);', false],
+  ['fromCharCode full v1 release is blocked', 'desktop/src/v1-fromchar-full.ts',
+    'client.rpc(String.fromCharCode(102,97,98,114,105,99,95,115,116,111,99,107,95,114,101,108,101,97,115,101), payload);', false],
+  ['fromCodePoint v1 record is blocked', 'src/v1-codepoint.ts',
+    'client.rpc("fabric_stock_" + String.fromCodePoint(0x72,0x65,0x63,0x6f,0x72,0x64), payload);', false],
+  ['fromCodePoint v2 reserve is allowed', 'src/v2-codepoint.ts',
+    'client.rpc("fabric_stock_" + String.fromCodePoint(0x72,0x65,0x73,0x65,0x72,0x76,0x65,0x5f,0x76,0x32), payload);', true],
+  ['dynamic fromCharCode is outside static audit', 'src/dynamic-code.ts',
+    'client.rpc("fabric_stock_" + String.fromCharCode(lookup), payload);', true],
+  ['non-printable fromCharCode is not folded', 'src/nonprinting-code.ts',
+    'client.rpc("fabric_stock_" + String.fromCharCode(10), payload);', true],
+  ['concat v1 reserve blocked', 'src/v1-concat.ts',
+    'client.rpc("fabric_stock_".concat("reserve"), payload);', false],
+  ['concat v1 consume blocked', 'src/v1-concat-multi.ts',
+    'client.rpc("fabric_".concat("stock_", "consume_", "reservation"), payload);', false],
+  ['chained concat v1 release blocked', 'src/v1-concat-chain.ts',
+    'client.rpc("fabric_".concat("stock_").concat("release"), payload);', false],
+  ['concat template v1 record blocked', 'src/v1-concat-template.ts',
+    'client.rpc("fabric_stock_".concat(`record`), payload);', false],
+  ['array join then concat v1 blocked', 'src/v1-joined-concat.ts',
+    'client.rpc(["fabric_", "stock_"].join("").concat("reserve"), payload);', false],
+  ['concat v2 reserve allowed', 'src/v2-concat.ts',
+    'client.rpc("fabric_stock_".concat("reserve_v2"), payload);', true],
+  ['dynamic concat not statically folded', 'src/dynamic-concat.ts',
+    'client.rpc("fabric_stock_".concat(runtimeName), payload);', true],
+  ['mixed dynamic concat not statically folded', 'src/mixed-dynamic-concat.ts',
+    'client.rpc("fabric_stock_".concat("re", runtimeName), payload);', true],
   ['longer identifier not v1', 'src/identifier.ts',
     'const key = "prefix_fabric_stock_reserve";', true],
 ];
@@ -64,7 +114,17 @@ try {
     execFileSync('git', ['rm', '-q', '--cached', '--', file], {cwd: root});
     rmSync(full);
   }
-  console.log('PASS: nineteen disposable tracked-source stock RPC audit fixtures');
+  // Do not follow Git-tracked source symlinks even when their target is harmless.
+  // Tracked paths must be actual audited regular files.
+  const link = join(root, 'src', 'stock-rpc-link.ts');
+  symlinkSync('baseline.ts', link);
+  execFileSync('git', ['add', '--', 'src/stock-rpc-link.ts'], {cwd: root});
+  const symlinkRun = spawnSync(process.execPath, [auditor], {cwd: root, encoding: 'utf8'});
+  assert.notEqual(symlinkRun.status, 0, 'tracked source symlink should block audit');
+  assert.match(symlinkRun.stderr, /BLOCKED: src\/stock-rpc-link\.ts: tracked source is not a regular file/);
+  execFileSync('git', ['rm', '-q', '--cached', '--', 'src/stock-rpc-link.ts'], {cwd: root});
+  rmSync(link);
+  console.log(`PASS: ${cases.length} disposable tracked-source stock RPC audit fixtures plus tracked-symlink guard`);
 } finally {
   rmSync(root, {recursive: true, force: true});
 }
