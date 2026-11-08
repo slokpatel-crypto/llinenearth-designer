@@ -2,7 +2,7 @@
 // Disposable tracked-source fixtures: prove both detection and narrow historical exemption.
 import assert from 'node:assert/strict';
 import {execFileSync, spawnSync} from 'node:child_process';
-import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 
@@ -114,7 +114,17 @@ try {
     execFileSync('git', ['rm', '-q', '--cached', '--', file], {cwd: root});
     rmSync(full);
   }
-  console.log(`PASS: ${cases.length} disposable tracked-source stock RPC audit fixtures`);
+  // Do not follow Git-tracked source symlinks even when their target is harmless.
+  // Tracked paths must be actual audited regular files.
+  const link = join(root, 'src', 'stock-rpc-link.ts');
+  symlinkSync('baseline.ts', link);
+  execFileSync('git', ['add', '--', 'src/stock-rpc-link.ts'], {cwd: root});
+  const symlinkRun = spawnSync(process.execPath, [auditor], {cwd: root, encoding: 'utf8'});
+  assert.notEqual(symlinkRun.status, 0, 'tracked source symlink should block audit');
+  assert.match(symlinkRun.stderr, /BLOCKED: src\/stock-rpc-link\.ts: tracked source is not a regular file/);
+  execFileSync('git', ['rm', '-q', '--cached', '--', 'src/stock-rpc-link.ts'], {cwd: root});
+  rmSync(link);
+  console.log(`PASS: ${cases.length} disposable tracked-source stock RPC audit fixtures plus tracked-symlink guard`);
 } finally {
   rmSync(root, {recursive: true, force: true});
 }
