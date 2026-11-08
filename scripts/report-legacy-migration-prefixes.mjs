@@ -70,6 +70,23 @@ export function inventoryIntegrityVerified(report){
     Array.isArray(report?.file_fingerprints) &&
     report.file_fingerprints.length===report.total_sql_files && report.total_sql_files>0;
 }
+// Adapter for the source-side input of draft #909's migration-history comparator.
+// No staged/applied-version data is supplied or inferred by this adapter.
+export function reconciliationRows(report){
+  if(!inventoryIntegrityVerified(report))throw Error('Incomplete source inventory; reconciliation export blocked');
+  const output=[];
+  const seen=new Set();
+  for(const item of report.file_fingerprints){
+    const match=/^supabase\/migrations\/((\d{8}|\d{14})_[A-Za-z0-9_]+\.sql)$/.exec(item.path);
+    if(!match)throw Error('Unsafe migration path in reconciliation export');
+    if(seen.has(item.path))throw Error('Repeated migration path in reconciliation export');
+    seen.add(item.path);
+    if(!/^[a-f0-9]{64}$/.test(item.content_sha256) || !/^[a-f0-9]{40}$/.test(item.git_blob_sha1))
+      throw Error('Invalid source fingerprint in reconciliation export');
+    output.push({version:match[2],filename:match[1],sha256:item.content_sha256});
+  }
+  return output.sort((a,b)=>a.filename.localeCompare(b.filename));
+}
 export function collectTrackedMigrations(){
   // Evidence must describe HEAD, not dirty or separately staged SQL files.
   execFileSync('git',['diff','--quiet','HEAD','--',ROOT]);
@@ -99,15 +116,29 @@ export function collectTrackedMigrations(){
 if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
   try{
     const args=process.argv.slice(2);
-    if(args.length>2 || (args.length && (args[0]!=='--output'||args.length!==2)))throw Error('Usage: node report-legacy-migration-prefixes.mjs [--output PATH]');
+    const destinations=new Map();
+    if(args.length%2 || args.length>4)throw Error('Usage: node report-legacy-migration-prefixes.mjs [--output PATH] [--reconciliation-output PATH]');
+    for(let i=0;i<args.length;i+=2){
+      const opt=args[i],target=args[i+1];
+      if(!['--output','--reconciliation-output'].includes(opt) || destinations.has(opt) ||
+         typeof target!=='string' || !target || target.startsWith('--'))
+        throw Error('Invalid inventory output arguments');
+      destinations.set(opt,target);
+    }
+    if(destinations.get('--output') && destinations.get('--output')===destinations.get('--reconciliation-output'))
+      throw Error('Outputs must use distinct paths');
     const head=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
     const result=summarizeMigrationEntries(collectTrackedMigrations(),head);
     const serialized=JSON.stringify(result,null,2)+'\n';
-    if(args.length)writeFileSync(args[1],serialized,{flag:'w'});
     process.stdout.write(serialized);
     if(!inventoryIntegrityVerified(result)){
       console.error('BLOCKED: unsafe, missing, or incomplete tracked migration source evidence');
       process.exitCode=1;
+    }else{
+      const sourceOutput=destinations.get('--output');
+      if(sourceOutput)writeFileSync(sourceOutput,serialized,{flag:'w'});
+      const reconcileOutput=destinations.get('--reconciliation-output');
+      if(reconcileOutput)writeFileSync(reconcileOutput,JSON.stringify(reconciliationRows(result),null,2)+'\n',{flag:'w'});
     }
   }catch(error){console.error('BLOCKED: unable to collect read-only migration inventory:',error.message);process.exitCode=1;}
 }
