@@ -25,6 +25,7 @@ ORDER BY version;
 -- Hash is a compact *database-rendered definition* fingerprint, not a file SHA.
 SELECT 'stock_function_definition' AS evidence_kind,
        p.oid::regprocedure::text AS function_signature,
+       pg_get_userbyid(p.proowner) AS function_owner,
        p.prosecdef AS security_definer,
        p.provolatile AS volatility,
        p.proconfig AS function_settings,
@@ -42,8 +43,8 @@ WHERE ns.nspname='public'
 ORDER BY p.proname,p.oid::regprocedure::text;
 
 -- 4. Effective EXECUTE privileges for each role that exists on approved staging.
--- Missing roles or missing RPC overloads must be handled as unknown/blocked, not
--- silently interpreted as an ACL pass.
+-- Missing required v2 RPCs or expected roles require review. A missing retired
+-- v1 RPC may be an intentional removal, not a reason to restore it.
 SELECT 'stock_function_effective_execute' AS evidence_kind,
        p.oid::regprocedure::text AS function_signature,
        requested.role_name,
