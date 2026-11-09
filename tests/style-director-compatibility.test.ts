@@ -2885,3 +2885,22 @@ test("yet conjunction preserves independent finished-wear intent", () => {
       "repeat review must be deterministic");
   }
 });
+
+test("contrastive however/whereas clauses preserve independent wear instructions", () => {
+  for (const connector of ["however", "whereas"]) {
+    for (const [ban, affirmative, opposite] of [
+      ["Do not wear blue striped linen", "tucked shirt", "untucked"],
+      ["Must not wear cream cotton", "untucked shirt", "tucked"],
+      ["Do not tuck the blue linen shirt", "tucked shirt", "untucked"],
+      ["Must not untuck the cotton garment", "untucked shirt", "tucked"],
+    ] as const) {
+      const candidate = `${ban} ${connector} ${affirmative}`;
+      const locked = { wear: opposite } as const;
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorCandidateWearIssues(candidate, locked);
+      assert.deepEqual(issues.map(issue => issue.code), ["candidate_shirt_wear_mismatch"], candidate);
+      assert.deepEqual(styleDirectorCandidateWearIssues(candidate, locked), issues, "deterministic replay");
+      assert.equal(JSON.stringify(locked), before, "locked construction remains immutable");
+    }
+  }
+});
