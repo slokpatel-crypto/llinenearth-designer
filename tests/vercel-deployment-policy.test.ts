@@ -131,6 +131,39 @@ test("explicit deploy marker in subject stays accepted with a commit body",()=>{
   assert.match(result.stdout,/continue production build/);
 });
 
+test("carriage-return-only blank subject cannot approve a marker on the next line",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"\r[deploy] marker only in the body",
+    VERCEL_ENV:"production",
+  });
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/no \[deploy\] milestone marker/);
+});
+
+test("leading whitespace cannot be stripped into an approved milestone prefix",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:" \t[deploy] indented subject",
+    VERCEL_ENV:"production",
+  });
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/no \[deploy\] milestone marker/);
+});
+
+test("carriage-return-only separator preserves a valid first-line milestone",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"[deploy] approved subject\rRelease notes",
+    VERCEL_ENV:"production",
+  });
+  assert.equal(result.status,1);
+  assert.match(result.stdout,/continue production build/);
+});
+
 test("main deploy marker cannot authorize a preview build",()=>{
   const result=runIgnore({
     VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
