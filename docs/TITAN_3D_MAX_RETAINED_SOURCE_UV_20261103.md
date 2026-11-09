@@ -864,3 +864,59 @@ transfer the previous exact-head passes. The source model
 `linen-earth-studio-model-v1`, original production UV/GLB, physical
 fabric and fit/cutting approval state remain unchanged.
 **DRAFT / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
+
+## 2026-11-09 trace each real UV-cut chain to its original source network
+
+**Evidence from last exact-head successful original-source Blender diagnostic**
+`1f629eac4ec06698419d87d947f1316bbbe29b57`
+(run #42651365657): **390** edge-disjoint source UV-cut chains exactly cover
+**2,587** genuine UV-disconnected original source edges in **66** connected
+source networks. **Six** original cut networks are branched/compound.
+Two of those contain **530** original UV-cut edges and **117** maximal
+chains each, with **50** genuine branch vertices each. Native collision
+QA was successful as *rejection evidence*, not fit/physical clearance
+approval. The previous `7d1db77` update extended top chains to full
+source-vertex IDs; its exact-head Blender/CI checks were still running
+when this new branch-component work began.
+
+**Provenance gap closed in this continuation:** The top-12 longest source
+chains were traceable vertex-by-vertex, but their records lacked a
+source-component identifier. A long chain in a mathematical simple
+open path could be mistaken for a branch of one of the six complex
+networks. The original source UV-cut graph now attaches every maximal
+chain to its **actual connected source component**, identified by that
+component's minimum original source vertex ID. It independently
+reconciles that component's sum of **real original 3D cut edge lengths**
+against the sum of its owned maximal-chain lengths (before rounding),
+with exact source-edge count equality. Component owners must be unique
+and the branched component's total paths/edges must agree with the
+actual source graph. No synthetic source ID or fictitious cut edge is
+used to fill a gap.
+
+The research report includes the full
+`actualBranchedOriginalSourceUvCutNetworks` inventory (six expected on
+the measured source, but no fake guaranteed count), with each component's
+genuine ID, branch junction count, edge count, chain count, and measured
+real source cut-network length. The separate
+`actualLongestBranchedOriginalSourceUvCutChains` contains the top 12
+longest chain *paths belonging to those genuine branched components*,
+including their ordered original vertex ID paths, endpoint IDs,
+source-edge counts and actual 3D length. This is useful for targeting
+topology cleanup without conflating simple open paths with branching
+locations.
+
+Dedicated Python and Node regressions plus native CI independently
+validate component uniqueness, true branch classification, path owner
+membership, positive real component length and original edge coverage;
+zero-cut planar fixtures retain empty branch inventories.
+The original `linen-earth-studio-model-v1` model, source mesh,
+unchanged body scan, original UV and production files are not modified.
+These remain **research cut graphs**, not actual sewing paths,
+approved fabric panels, guaranteed textile length, fit clearance,
+cloth grain or factory cutting instructions.
+
+The new exact PR head must pass its OWN pure Python and pinned native
+Blender source/collision, Full CI and Non-3D QA; prior-head success must
+not be transferred. Original UV overlap, body intersection, 3D source
+geometry and garment physical validation remain blocked.
+**DRAFT / NO MERGE / NO DEPLOY / NO CUTTING.**
