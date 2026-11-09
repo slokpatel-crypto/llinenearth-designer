@@ -106,11 +106,16 @@ test("largest original component one-cut UV trial stays measurable and rejected"
     "Selected retained source edge did not open a measurable UV seam.",
     "joined_uv_endpoints = []",
     "displacement_mm = math.hypot(dx, dy) * 1000.0",
+    "not isinstance(value, (int, float))",
+    "Component-0 UV trial has invalid source positions.",
   ])assert.ok(helper.includes(marker), "seam-origin proof missing: " + marker);
   for(const marker of [
     "reject(source_uv=already_disconnected)",
     "for fraction in (1e-12, 1e-9):",
     "small_visible = trial(",
+    '("0.0", 0, 0)',
+    "(True, 0, 0)",
+    "reject(source_points=bad_points)",
   ])assert.ok(fixture.includes(marker), "seam-origin regression missing: " + marker);
   assert.ok(!helper.includes("import bpy"));
   assert.ok(!driver.includes("save_as_mainfile"));
