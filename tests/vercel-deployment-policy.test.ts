@@ -60,6 +60,7 @@ test("ordinary primary main commits are ignored until a deployment milestone",()
     VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
     VERCEL_GIT_COMMIT_REF:"main",
     VERCEL_GIT_COMMIT_MESSAGE:"Merge customer photo-match status",
+    VERCEL_ENV:"production",
   });
   assert.equal(result.status,0);
   assert.match(result.stdout,/no \[deploy\] milestone marker/);
@@ -94,7 +95,7 @@ test("a later incidental [deploy] mention cannot authorize production",()=>{
     VERCEL_ENV:"production",
   });
   assert.equal(result.status,0);
-  assert.match(result.stdout,/no \\[deploy\\] milestone marker/);
+  assert.match(result.stdout,/no \[deploy\] milestone marker/);
 });
 
 test("main deploy marker cannot authorize a preview build",()=>{
@@ -127,7 +128,7 @@ test("a deployment marker without a word boundary is not approval",()=>{
     VERCEL_ENV:"production",
   });
   assert.equal(result.status,0);
-  assert.match(result.stdout,/no \\[deploy\\] milestone marker/);
+  assert.match(result.stdout,/no \[deploy\] milestone marker/);
 });
 
 test("missing project ID skips build even on a marked main commit",()=>{
@@ -145,6 +146,7 @@ test("blank main commit message cannot implicitly authorize a build",()=>{
     VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
     VERCEL_GIT_COMMIT_REF:"main",
     VERCEL_GIT_COMMIT_MESSAGE:"   ",
+    VERCEL_ENV:"production",
   });
   assert.equal(result.status,0);
   assert.match(result.stdout,/COMMIT_MESSAGE unavailable.*ignore build/);
@@ -165,6 +167,7 @@ test("missing commit-message metadata on main skips the unverified build",()=>{
     VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
     VERCEL_GIT_COMMIT_REF:"main",
     VERCEL_GIT_COMMIT_MESSAGE:undefined,
+    VERCEL_ENV:"production",
   });
   assert.equal(result.status,0);
   assert.match(result.stdout,/COMMIT_MESSAGE unavailable.*ignore build/);
