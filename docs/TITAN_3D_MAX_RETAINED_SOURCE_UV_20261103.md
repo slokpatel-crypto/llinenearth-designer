@@ -455,3 +455,44 @@ is required. A passing native diagnostic source test does not constitute
 overlap-free pattern geometry, original crotch/body clearance, source
 topology repair, measured textile grain or tailor signoff. All production
 gates remain blocked. **Draft PR #897 / no merge / no deploy / no cutting.**
+
+## 2026-11-09 genuine source triangle-collapse diagnostic
+
+**Research only; this is not a production UV cut or fit repair.**
+
+The original-source maximum-retained 3D edge selector previously validated
+nonzero shared-edge lengths but had no independent face-interior area check.
+Four distinct vertex IDs and nonzero edges do **not** prove either of the two
+real original quad triangulations has nonzero area; a collapsed triangle can
+still appear in the retained-edge graph and distort a claimed source metric.
+
+The selector now validates the two original **3D** triangles for each of the
+2,650 authentic source quads using the actual vertex vectors and cross-product
+area, rejecting nonfinite or collapsed area at a purely numerical
+`0.000001 mm²` floor. The floor is not cloth tolerance, thickness, seam
+allowance or fabrication approval. It records
+`minimumOriginalSourceTriangleAreaMm2` as a diagnostic source-geometry
+measurement, distinct from textile consumption or physically approved fabric
+area. Actual body BVH, face/vertex layout, UV research mesh and cut selection
+remain unmodified.
+
+The same entrypoint now refuses bool, numeric-string or fractional original
+face/cut IDs and coerced source point values, matching the strict original
+dual-tree research trust boundary. Added deterministic planar/curved fixture
+assertions plus negative synthetic collapsed-face and forged-identity
+regressions. Scoped modified files: source selector, dedicated Python and Node
+research tests, and this checkpoint only.
+
+The prior tested commit `a913ef95b6bda0e32c5763ba300910b143470ef3`
+had Native Blender collision QA PASS #42638598399 while remaining exact-head
+source/Full CI/Non-3D jobs had not yet finished at inspection; no success from
+that head can be transferred to this new commit. Inspect exact-new-head
+workflows and original-source Blender evidence before interpreting or
+reporting native min-area measurements. Any source collapse or regressed
+compatibility is a blocker, not a reason to weaken the numerical gate.
+
+Genuine source model identity `linen-earth-studio-model-v1`, Blender source,
+production UV/GLB, fabric provenance, body clearance, tailoring and physical
+acceptance remain unchanged and **unapproved**. Original ten hard six-garment
+preflight blockers and UV overlap/seams remain unresolved.
+**DRAFT / NO MERGE / NO DEPLOY / NO PHYSICAL CUTTING.**
