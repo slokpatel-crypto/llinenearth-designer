@@ -15,25 +15,50 @@ def select_original_source_max_retained_uv_tree(points, original_faces, original
         raise ValueError("Real source UV optimization requires 2650 faces and 8 true cut edges.")
     verts = []
     for pt in points:
-        xyz = tuple(float(x) for x in pt)
-        if len(xyz) != 3 or not all(math.isfinite(x) for x in xyz):
+        # Preserve genuine original geometry provenance: coercing a boolean or
+        # numeric-looking text into a coordinate fabricates source evidence.
+        if (len(pt) != 3 or any(
+                isinstance(x, bool) or not isinstance(x, (int, float))
+                or not math.isfinite(x) for x in pt)):
             raise ValueError("Original source position is invalid for retaining UV edges.")
-        verts.append(xyz)
+        verts.append(tuple(float(x) for x in pt))
     owners = defaultdict(list)
+    minimum_triangle_area_mm2 = float("inf")
     for face_id, face_raw in enumerate(original_faces):
-        face = tuple(int(x) for x in face_raw)
-        if (len(face) != 4 or len(set(face)) != 4 or min(face) < 0
-                or max(face) >= len(verts)):
+        if (len(face_raw) != 4 or any(
+                type(x) is not int or x < 0 or x >= len(verts)
+                for x in face_raw) or len(set(face_raw)) != 4):
             raise ValueError("Original source UV max-tree requires valid actual quads.")
+        face = tuple(face_raw)
+        # Detect source collapse in the REAL 3D triangulation independently
+        # of UV flattening. This 1e-6 mm² numerical floor is not cloth area,
+        # tolerance, seam allowance or physical-production certification.
+        for a_idx, b_idx, c_idx in ((0, 1, 2), (0, 2, 3)):
+            a, b, c = (verts[face[k]] for k in (a_idx, b_idx, c_idx))
+            ab = tuple(b[k] - a[k] for k in range(3))
+            ac = tuple(c[k] - a[k] for k in range(3))
+            cross = (
+                ab[1] * ac[2] - ab[2] * ac[1],
+                ab[2] * ac[0] - ab[0] * ac[2],
+                ab[0] * ac[1] - ab[1] * ac[0],
+            )
+            area_mm2 = 0.5 * math.hypot(*cross) * 1000000.0
+            if not math.isfinite(area_mm2) or area_mm2 <= 0.000001:
+                raise ValueError("Original source quad contains a collapsed real 3D triangle.")
+            minimum_triangle_area_mm2 = min(minimum_triangle_area_mm2, area_mm2)
         for i in range(4):
             a, b = face[i], face[(i + 1) % 4]
             key = (min(a, b), max(a, b))
             owners[key].append((face_id, (a, b) == key))
     if any(len(rows) > 2 for rows in owners.values()):
         raise ValueError("Original source mesh is nonmanifold.")
+    if any(
+            len(edge) != 2 or any(type(vertex) is not int or vertex < 0 for vertex in edge)
+            for edge in original_cut_edges):
+        raise ValueError("Original source cut edges require literal integer IDs.")
     actual_cuts = {tuple(sorted(edge)) for edge in original_cut_edges}
     if len(actual_cuts) != 8 or any(
-            len(edge) != 2 or edge[0] == edge[1]
+            edge[0] == edge[1]
             or len(owners.get(edge, [])) != 1 for edge in actual_cuts):
         raise ValueError("A proposed original crotch edge has no unique source owner.")
 
@@ -98,6 +123,7 @@ def select_original_source_max_retained_uv_tree(points, original_faces, original
             "originalSourceSharedEdgeCount": len(shared),
             "originalSourceComponentCount": components,
             "actualOriginalCutEdgeCount": len(actual_cuts),
+            "minimumOriginalSourceTriangleAreaMm2": round(minimum_triangle_area_mm2, 8),
             "maximumRetainedTreeEdgeCount": len(retained),
             "theoreticalNonTreeSourceEdgeCount": len(shared) - len(retained),
             "allRealSharedSourceEdgeLengthMm": round(all_mm, 5),
