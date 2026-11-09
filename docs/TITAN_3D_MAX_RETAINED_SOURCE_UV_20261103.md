@@ -816,3 +816,51 @@ assertions. **Run the new exact-head pinned Blender CI before claiming
 actual garment-source maximal-chain counts or chain endpoints.**
 No merge, production deploy, model replacement, UV save or physical
 cutting approval.
+
+## 2026-11-09 original-source chain path evidence (ordered vertex identities)
+
+The previous maximal-chain report inventoried authentic original source
+UV-disconnected edges without inventing cut/sewing seams and without
+changing original Blender geometry. However, its top 12 chain records
+exposed only start/end source vertex IDs, a count and accumulated 3D
+length: those summaries cannot independently reconstruct an actual
+original-source chain between endpoints. This is especially limiting
+for the six genuine branching networks.
+
+**Scoped research evidence improvement:** Each maximal chain now
+retains an ordered `originalSourceVertexPath` of all original mesh
+vertex IDs; the existing research report exposes complete paths for
+the top 12 genuine 3D source chains, alongside their current original
+source endpoint IDs, real 3D length, and boundary/branch classification.
+Every reported segment must be one of the actual audited original mesh
+UV-cut edges and must occur exactly once across *all* source chains,
+not merely the top 12. The full graph inventory and unrounded 3D edge
+length conservation still must match the original authenticated
+source network, with no fabricated or skipped edges.
+
+Dedicated Python tests reconstruct each top-12 reported chain from
+the original 2,650-quad face-edge index and genuine 3D point array;
+verify ordered vertex counts, literal integer ID ranges, original
+source adjacency, no shared/repeated genuine edges between those paths,
+and the resulting exact real source polyline length against the
+reported millimetres. Native pinned Blender CI checks the ordered
+ID sequence, edge count, endpoints, unique edges and production
+rejection flags; Node QA pins source, Python and native assertions.
+
+**Actual pre-existing source vertex targets** (native prior successful
+run `9df982cb5e34deb2e7d4e1bf59b1ad5cc28f51ac`,
+source run #42649658975) include top degree-four original junction
+source vertex 1738 at (194.70231, -3.34208, 709.66053)mm, 1739
+at (193.49441, -4.06225, 749.72326)mm and 1737 at
+(194.71668, -0.58617, 668.41441)mm. None of the 134 native branch
+junction vertices were on the original boundary or eight genuine
+crotch cut edges. These source-mesh positions are not fabricated
+tailor marks, verified fabric dimensions or approved pattern seams.
+
+**Verification:** This path update requires its own exact GitHub PR
+head pinned native source tests, actual Blender reconstruction
+diagnostics, native body collision, Full CI and Non-3D QA. Do not
+transfer the previous exact-head passes. The source model
+`linen-earth-studio-model-v1`, original production UV/GLB, physical
+fabric and fit/cutting approval state remain unchanged.
+**DRAFT / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
