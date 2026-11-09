@@ -51,7 +51,7 @@ test('capture reports effective grants for anon authenticated and service roles'
   for(const role of ['anon','authenticated','service_role'])
     assert.match(sql,new RegExp("\\('"+role+"'\\)|,'"+role+"'"));
   assert.match(sql,/registered_role\.oid\s+IS\s+NOT\s+NULL\s+AS\s+role_exists/i);
-  assert.match(sql,/CASE\s+WHEN\s+registered_role\.oid\s+IS\s+NULL\s+THEN\s+NULL/i);
+  assert.match(sql,/CASE\s+WHEN\s+registered_role\.oid\s+IS\s+NULL\s+OR\s+p\.oid\s+IS\s+NULL\s+THEN\s+NULL/i);
 });
 
 test('missing named RPCs remain explicit rows in the permissions evidence matrix',()=>{
