@@ -26,6 +26,23 @@ test("actual source UV cut graph counts physical mesh edges without inventing se
     '"measuredSupplierTextileRepeatMm": None',
     '"productionApproved": False',
   ])assert.ok(helper.includes(needle),needle);
+  // Every original UV/face/edge input must be a genuine measured source
+  // primitive, never coerced from numeric-looking strings or booleans.
+  for(const needle of [
+    "isinstance(v, bool) or not isinstance(v, (int, float))",
+    "type(i) is not int or i < 0 or i >= len(vertices)",
+    "isinstance(k, bool) or not isinstance(k, (int, float))",
+    "Original source crotch edge must contain literal integer vertex IDs.",
+  ])assert.ok(helper.includes(needle),"source input provenance gate: "+needle);
+  for(const needle of [
+    "for forged in (False, 0.2, \"0\"):",
+    "for forged in (True, \"0.0\", None, complex(0,0)):",
+    "rejected(flat_points,bad_faces,flat_tree",
+    "rejected(flat_points,faces,bad_uv,cuts",
+  ])assert.ok(synthetic.includes(needle),"invalid source regression: "+needle);
+  assert.ok(!helper.includes("face = tuple(int(i) for i in raw_face)"));
+  assert.ok(!helper.includes("coord = [tuple(float(k) for k in uv) for uv in raw_uv]"));
+  assert.ok(!helper.includes("xyz = tuple(float(v) for v in point)"));
   assert.ok(!helper.includes("bpy.ops."),"No mutation of actual original 3D mesh");
   for(const needle of [
     '"source-trouser-uv-cut-network.py"',
