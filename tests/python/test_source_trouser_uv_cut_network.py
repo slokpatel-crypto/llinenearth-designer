@@ -64,6 +64,8 @@ assert flat["uvCutGraphClosedMaximalSourceChainCount"] == 0
 assert flat["uvCutGraphMaximalSourceChainEdgeCoverageCount"] == 0
 assert flat["uvCutGraphLongestOriginalSourceChainLengthMm"] == 0
 assert flat["actualLongestOriginalSourceUvCutChains"] == []
+assert flat["actualLongestBranchedOriginalSourceUvCutChains"] == []
+assert flat["actualBranchedOriginalSourceUvCutNetworks"] == []
 assert flat["seamCutTopologyApproved"] is False
 assert flat["realTailorCutLinesApproved"] is False
 assert flat["measuredSupplierTextileRepeatMm"] is None
@@ -97,6 +99,33 @@ assert curved["uvCutGraphCycleRank"] == (
 )
 assert curved["uvCutGraphMaximalSourceChainCount"] >= (
     curved["uvCutCandidateGraphComponentCount"]
+)
+branched = curved["actualBranchedOriginalSourceUvCutNetworks"]
+branch_ids = {r["originalSourceMinimumVertexIndex"] for r in branched}
+assert len(branched) == curved["uvCutGraphBranchedOrCompoundComponentCount"]
+assert len(branched) == len(branch_ids)
+assert all(
+    row["uvCutGraphTopology"] == "branched-or-compound"
+    and row["uvCutGraphMaximalChainCount"] >= 2
+    and row["unclosedUvEdgeCount"] ==
+        row["uvCutGraphMaximalChainEdgeCoverageCount"]
+    and row["realOriginalSourceUvCutNetworkLengthMm"] > 0
+    and 0 <= row["originalSourceMinimumVertexIndex"] < len(curved_points)
+    for row in branched
+)
+branch_chains = curved["actualLongestBranchedOriginalSourceUvCutChains"]
+assert len(branch_chains) == min(
+    sum(row["uvCutGraphMaximalChainCount"] for row in branched), 12
+)
+assert all(
+    row["originalSourceComponentMinimumVertexIndex"] in branch_ids
+    and row["originalSourceEdgeCount"] == len(row["originalSourceVertexPath"]) - 1
+    and row["realOriginalSourceChainLengthMm"] > 0
+    for row in branch_chains
+)
+assert all(
+    row["originalSourceComponentMinimumVertexIndex"] >= 0
+    for row in curved["actualLongestOriginalSourceUvCutChains"]
 )
 assert curved["uvCutGraphMaximalSourceChainEdgeCoverageCount"] == (
     curved["unclosedSharedUvCutCandidateEdges"]
