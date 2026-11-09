@@ -116,6 +116,32 @@ for applied, full in zip(
 assert fractional_report["maximumOriginalTriangleEdgeChangeMm"] <= .000001
 assert points == original_points and faces == original_faces and loops == original_loops
 
+reverse = trial(
+    points, faces, loops, retained, candidate_rank=0,
+    translation_fraction=0.5, translation_sign=-1,
+)
+reverse_report = reverse["report"]
+assert reverse_report["translationSignRelativeToOutsidePack"] == -1
+assert reverse_report["removedRetainedOriginalSourceEdge"] == (
+    fractional_report["removedRetainedOriginalSourceEdge"]
+)
+assert reverse_report["addedActualSourceCutEdgeLengthMm"] == (
+    fractional_report["addedActualSourceCutEdgeLengthMm"]
+)
+for forward, backward in zip(
+        fractional_report["rigidResearchUvTranslationMm"],
+        reverse_report["rigidResearchUvTranslationMm"]):
+    assert abs(forward + backward) <= .00001
+assert reverse_report["newUnclosedSourceUvSeamCount"] == 1
+assert reverse_report["maximumOriginalTriangleEdgeChangeMm"] <= .000001
+assert reverse_report["sourceUvExportOrSavePerformed"] is False
+assert reverse_report["productionApproved"] is False
+assert reverse == trial(
+    points, faces, loops, retained, candidate_rank=0,
+    translation_fraction=0.5, translation_sign=-1,
+)
+assert points == original_points and faces == original_faces and loops == original_loops
+
 two_cut = two_cut_trial(points, faces, loops, retained, [0, 2])
 assert two_cut == two_cut_trial(points, faces, loops, retained, (0, 2))
 two_report = two_cut["report"]
@@ -160,10 +186,10 @@ assert after["observedInteriorOverlapTrianglePairsLowerBound"] == 0
 
 def reject(source_points=points, source_faces=faces, source_uv=loops,
            source_retained=retained, gap=5.0, candidate_rank=0,
-           translation_fraction=1.0):
+           translation_fraction=1.0, translation_sign=1):
     try:
         trial(source_points, source_faces, source_uv, source_retained, gap,
-              candidate_rank, translation_fraction)
+              candidate_rank, translation_fraction, translation_sign)
     except (ValueError, TypeError, IndexError):
         return
     raise AssertionError("Component-0 UV trial accepted forged source evidence")
@@ -179,6 +205,8 @@ for rank in (-1, 48, 1.0, True, "1"):
     reject(candidate_rank=rank)
 for fraction in (0, -1, 1.00001, math.nan, math.inf, True, "0.5"):
     reject(translation_fraction=fraction)
+for direction in (0, -2, 2, True, 1.0, "-1", None):
+    reject(translation_sign=direction)
 
 # An arbitrarily tiny, positive float is not proof that the selected original
 # edge became a NEW UV seam. Reject sub-tolerance, almost-zero motion.
