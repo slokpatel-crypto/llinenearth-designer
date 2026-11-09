@@ -496,3 +496,53 @@ production UV/GLB, fabric provenance, body clearance, tailoring and physical
 acceptance remain unchanged and **unapproved**. Original ten hard six-garment
 preflight blockers and UV overlap/seams remain unresolved.
 **DRAFT / NO MERGE / NO DEPLOY / NO PHYSICAL CUTTING.**
+
+## 2026-11-09 rank-18 reversed rigid-translation probe (four true-source experiments)
+
+**Why this research was added.** The preceding independently measured native
+Blender rank-18 outward movement of 1/256 reduced original UV triangle
+overlap pairs from 6,957 to 6,939, but increased maximum unclosed UV gap
+from 1,072.40848mm to 1,076.92613mm. All 16/16 tested outward near-zero
+fractions violated the maximum-gap nonregression gate; none qualified.
+Less overlapping fabric-UV area **alone** is insufficient.
+
+**Actual isolated experiment.** The pure component-0 retained-tree UV trial
+now permits a *validated explicit* direction sign of +1 (preexisting outside
+pack, default) or -1 (research-only opposite direction). It still requires
+a true UV-joined genuine retained source edge, a measurable newly opened
+source seam, immutable 3D face/vertex identities, unchanged intra-face
+metric edge lengths, a finite displacement and strict input values. No
+unbounded signed fractions or textual/bool direction coercions are accepted.
+The Blender research driver evaluates only four predetermined *opposite*
+rank-18 displacement fractions: 1/256, 2/256, 4/256, 8/256, against the
+unchanged full-scan original maximum-retained UV baseline.
+
+For every candidate the existing full-face overlap audit and authentic
+3D source UV seam/cut audit record source-edge length, 5,300-triangle
+overlap pairs, maximum UV gap, cut-network length, branch junctions,
+authentic newly opened seam count and unchanged source/body evidence.
+Strict research eligibility still simultaneously requires **complete
+overlap reduction, no maximum-gap regression, no branch increase, an
+actual exactly-one new seam, and the established rank-0 source-edge budget.**
+An empty eligible set remains a valid rejected experiment, not a failure
+to be masked or optimized away. The new isolated JSON evidence is
+`researchOnlyComponent0Rank18OppositePlacementSurvey`. Independent native
+workflow assertions rederive all numerical acceptance gates and check
+research-only / nonexport / nonproduction flags. Dedicated pure Python and
+Node tests cover valid negative direction, metrics, nonmutation, strict
+sign validation and workflow/driver evidence markers.
+
+**Current verification:** the preceding real-source Blender workflow
+#42639416251 and collision QA #42639416296 passed at source head
+`54308ef165129cdefc6caba3707321d475bd710c`; Full CI and Non-3D
+were still running when this further research edit began. That prior
+native success is **not** verification of the new opposite-direction trial.
+Review the *new exact PR head* native source, collision, Full CI and
+Non-3D results and save measured candidates before drawing conclusions.
+
+This is **not** a signed/approved fabric pattern, garment cut, texture
+mapping, true cloth grain, 3D crotch/body collision repair or physical
+tailor signoff. Original production Blender model
+`linen-earth-studio-model-v1`, source faces, all UV/GLB export assets
+and physical blockers are unchanged.
+**DRAFT / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
