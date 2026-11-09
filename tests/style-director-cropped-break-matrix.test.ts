@@ -152,3 +152,23 @@ test("cropped hem with ordinary trouser fronts rejects every shoe-resting break"
     }
   }
 });
+
+test("ordinary hems retain legitimate shoe-resting breaks without cropped warnings", () => {
+  for (const type of ["formal_flat_front", "pleated_trouser"] as const) {
+    for (const shoeBreak of ["full_break", "half_break", "slight_break", "stacked_break"] as const) {
+      const locked = Object.freeze({
+        shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar",
+          wear: "tucked", sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
+        pant: Object.freeze({ type, pleat: type === "pleated_trouser" ? "single_pleat" : "flat_front",
+          hem: "plain_hem", break: shoeBreak }),
+      }) as unknown as StyleSpecV2;
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      assert.ok(!issues.some(issue => issue.code.startsWith("cropped_")),
+        `${type} / ${shoeBreak}: ordinary hems must not be mistaken for cropped construction`);
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+      assert.equal(styleDirectorProposedCroppedHem(locked.pant), null);
+      assert.equal(JSON.stringify(locked), before);
+    }
+  }
+});
