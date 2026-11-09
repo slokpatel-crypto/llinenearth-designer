@@ -142,6 +142,38 @@ assert reverse == trial(
 )
 assert points == original_points and faces == original_faces and loops == original_loops
 
+# A different 2-D chart direction must be a true 90-degree rigid translation:
+# no per-triangle stretch, fake source cuts, or changes to original model UV.
+for direction in (-1, 1):
+    sideways = trial(
+        points, faces, loops, retained, candidate_rank=0,
+        translation_fraction=0.5, translation_sign=direction,
+        translation_axis="perpendicular",
+    )
+    sideways_report = sideways["report"]
+    assert sideways_report["translationAxisRelativeToOutsidePack"] == "perpendicular"
+    assert sideways_report["translationSignRelativeToOutsidePack"] == direction
+    assert sideways_report["removedRetainedOriginalSourceEdge"] == (
+        fractional_report["removedRetainedOriginalSourceEdge"]
+    )
+    assert sideways_report["addedActualSourceCutEdgeLengthMm"] == (
+        fractional_report["addedActualSourceCutEdgeLengthMm"]
+    )
+    got_x, got_y = sideways_report["rigidResearchUvTranslationMm"]
+    full_x, full_y = sideways_report["fullOutsidePackTranslationMm"]
+    assert abs(got_x - (-full_y * direction * 0.5)) <= .00002
+    assert abs(got_y - (full_x * direction * 0.5)) <= .00002
+    assert sideways_report["newUnclosedSourceUvSeamCount"] == 1
+    assert sideways_report["maximumOriginalTriangleEdgeChangeMm"] <= .000001
+    assert sideways_report["sourceUvExportOrSavePerformed"] is False
+    assert sideways_report["productionApproved"] is False
+    assert sideways == trial(
+        points, faces, loops, retained, candidate_rank=0,
+        translation_fraction=0.5, translation_sign=direction,
+        translation_axis="perpendicular",
+    )
+assert points == original_points and faces == original_faces and loops == original_loops
+
 two_cut = two_cut_trial(points, faces, loops, retained, [0, 2])
 assert two_cut == two_cut_trial(points, faces, loops, retained, (0, 2))
 two_report = two_cut["report"]
@@ -186,10 +218,12 @@ assert after["observedInteriorOverlapTrianglePairsLowerBound"] == 0
 
 def reject(source_points=points, source_faces=faces, source_uv=loops,
            source_retained=retained, gap=5.0, candidate_rank=0,
-           translation_fraction=1.0, translation_sign=1):
+           translation_fraction=1.0, translation_sign=1,
+           translation_axis="outside"):
     try:
         trial(source_points, source_faces, source_uv, source_retained, gap,
-              candidate_rank, translation_fraction, translation_sign)
+              candidate_rank, translation_fraction, translation_sign,
+              translation_axis)
     except (ValueError, TypeError, IndexError):
         return
     raise AssertionError("Component-0 UV trial accepted forged source evidence")
@@ -207,6 +241,8 @@ for fraction in (0, -1, 1.00001, math.nan, math.inf, True, "0.5"):
     reject(translation_fraction=fraction)
 for direction in (0, -2, 2, True, 1.0, "-1", None):
     reject(translation_sign=direction)
+for axis in ("diagonal", True, 0, 90, None, ["outside"], {"outside": True}):
+    reject(translation_axis=axis)
 
 # An arbitrarily tiny, positive float is not proof that the selected original
 # edge became a NEW UV seam. Reject sub-tolerance, almost-zero motion.
