@@ -65,6 +65,7 @@ assert flat["uvCutGraphMaximalSourceChainEdgeCoverageCount"] == 0
 assert flat["uvCutGraphLongestOriginalSourceChainLengthMm"] == 0
 assert flat["actualLongestOriginalSourceUvCutChains"] == []
 assert flat["actualLongestBranchedOriginalSourceUvCutChains"] == []
+assert flat["actualHighestGapBranchedOriginalSourceUvCutChains"] == []
 assert flat["actualBranchedOriginalSourceUvCutNetworks"] == []
 assert flat["seamCutTopologyApproved"] is False
 assert flat["realTailorCutLinesApproved"] is False
@@ -110,6 +111,10 @@ assert all(
     and row["unclosedUvEdgeCount"] ==
         row["uvCutGraphMaximalChainEdgeCoverageCount"]
     and row["realOriginalSourceUvCutNetworkLengthMm"] > 0
+    and row["maximumOriginalSourceUvSeamGapMm"] > 0.001
+    and row["maximumOriginalSourceUvSeamGapMm"] <= (
+        curved["maximumUnclosedUvEdgeGapMm"] + 0.00001
+    )
     and 0 <= row["originalSourceMinimumVertexIndex"] < len(curved_points)
     for row in branched
 )
@@ -121,7 +126,41 @@ assert all(
     row["originalSourceComponentMinimumVertexIndex"] in branch_ids
     and row["originalSourceEdgeCount"] == len(row["originalSourceVertexPath"]) - 1
     and row["realOriginalSourceChainLengthMm"] > 0
+    and row["maximumOriginalSourceUvSeamGapMm"] > 0.001
+    and row["maximumOriginalSourceUvSeamGapMm"] <= (
+        curved["maximumUnclosedUvEdgeGapMm"] + 0.00001
+    )
+    and len(row["originalSourceEdgeAtMaximumUvSeamGap"]) == 2
+    and tuple(row["originalSourceEdgeAtMaximumUvSeamGap"]) in {
+        tuple(sorted(edge)) for edge in zip(
+            row["originalSourceVertexPath"],
+            row["originalSourceVertexPath"][1:]
+        )
+    }
     for row in branch_chains
+)
+gap_ranked = curved["actualHighestGapBranchedOriginalSourceUvCutChains"]
+assert len(gap_ranked) == len(branch_chains)
+assert all(row["originalSourceComponentMinimumVertexIndex"] in branch_ids
+           for row in gap_ranked)
+assert [
+    (-row["maximumOriginalSourceUvSeamGapMm"],
+     -row["realOriginalSourceChainLengthMm"],
+     row["originalSourceComponentMinimumVertexIndex"],
+     row["originalSourceStartVertexIndex"],
+     row["originalSourceEndVertexIndex"])
+    for row in gap_ranked
+] == sorted([
+    (-row["maximumOriginalSourceUvSeamGapMm"],
+     -row["realOriginalSourceChainLengthMm"],
+     row["originalSourceComponentMinimumVertexIndex"],
+     row["originalSourceStartVertexIndex"],
+     row["originalSourceEndVertexIndex"])
+    for row in gap_ranked
+])
+assert max(row["maximumOriginalSourceUvSeamGapMm"]
+           for row in curved["actualLongestOriginalSourceUvCutChains"]) <= (
+    curved["maximumUnclosedUvEdgeGapMm"] + 0.00001
 )
 assert all(
     row["originalSourceComponentMinimumVertexIndex"] >= 0
