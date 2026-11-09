@@ -22,14 +22,26 @@ def classify_original_source_uv_cut_component(
     These are graph facts, not textile grain/cut/fit approvals.
     """
     component = set(component_vertices)
-    if not component:
-        raise ValueError("Original UV cut graph component must be nonempty.")
+    if not component or len(component) != len(component_vertices):
+        raise ValueError("Original UV cut graph component must have unique source vertices.")
     for vertex in component:
         neighbours = cut_graph[vertex]
         if vertex in neighbours or any(
                 n not in component or vertex not in cut_graph[n]
                 for n in neighbours):
             raise ValueError("Original UV cut graph is not symmetric or connected.")
+    # Euler's E - V + 1 formula is valid for CONNECTED components only.
+    # A disconnected path plus a closed loop can otherwise imitate one
+    # simple-open-path (2 ends, zero apparent cycles, no junctions).
+    visited = {min(component)}
+    pending = [min(component)]
+    while pending:
+        for neighbor in cut_graph[pending.pop()]:
+            if neighbor not in visited:
+                visited.add(neighbor)
+                pending.append(neighbor)
+    if visited != component:
+        raise ValueError("Original UV cut graph component is disconnected.")
     total_degrees = sum(len(cut_graph[v]) for v in component)
     if total_degrees % 2:
         raise ValueError("Original UV cut graph has unmatched source-edge owners.")
