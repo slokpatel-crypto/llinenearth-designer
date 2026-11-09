@@ -98,6 +98,39 @@ test("a later incidental [deploy] mention cannot authorize production",()=>{
   assert.match(result.stdout,/no \[deploy\] milestone marker/);
 });
 
+test("blank commit subject with body-only deploy marker is not approval",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"\\n[deploy] copied from release instructions",
+    VERCEL_ENV:"production",
+  });
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/no \\[deploy\\] milestone marker/);
+});
+
+test("ordinary subject followed by deploy marker in body is not approval",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"docs: explain deployment\\n\\n[deploy] only on approved release subjects",
+    VERCEL_ENV:"production",
+  });
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/no \\[deploy\\] milestone marker/);
+});
+
+test("explicit deploy marker in subject stays accepted with a commit body",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"[deploy] independently approved milestone\\n\\nRelease notes",
+    VERCEL_ENV:"production",
+  });
+  assert.equal(result.status,1);
+  assert.match(result.stdout,/continue production build/);
+});
+
 test("main deploy marker cannot authorize a preview build",()=>{
   const result=runIgnore({
     VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
