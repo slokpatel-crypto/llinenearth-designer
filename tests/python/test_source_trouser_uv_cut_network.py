@@ -100,4 +100,26 @@ rejected(flat_points,faces,bad_uv,cuts,flat_tree["report"])
 bad_report = dict(flat_tree["report"])
 bad_report["nonTreeCycleUnclosedUvEdges"] = 17
 rejected(flat_points,faces,flat_tree["face_uv_loops"],cuts,bad_report)
+
+# The genuine original-source cut audit cannot coerce impostor inputs into
+# plausible native vertex IDs or physical UV/3D coordinates.
+for forged in (False, 0.2, "0"):
+    bad_faces = list(faces)
+    bad_faces[0] = (forged, *faces[0][1:])
+    rejected(flat_points,bad_faces,flat_tree["face_uv_loops"],cuts,flat_tree["report"])
+    bad_cuts = list(cuts)
+    bad_cuts[0] = (forged,cuts[0][1])
+    rejected(flat_points,faces,flat_tree["face_uv_loops"],bad_cuts,flat_tree["report"])
+for forged in (True, "0.0", None, complex(0,0)):
+    bad_points = list(flat_points)
+    bad_points[0] = (forged,*flat_points[0][1:])
+    rejected(bad_points,faces,flat_tree["face_uv_loops"],cuts,flat_tree["report"])
+for forged in (True, "0.0", None, complex(0,0)):
+    bad_uv = list(flat_tree["face_uv_loops"])
+    bad_uv[0] = list(bad_uv[0])
+    bad_uv[0][0] = (forged,bad_uv[0][0][1])
+    rejected(flat_points,faces,bad_uv,cuts,flat_tree["report"])
+assert flat_points[0] == (0.0,0.0,0.0)
+assert faces[0] == (0,1,nx+2,nx+1)
+assert flat["productionApproved"] is False
 print("TITAN_ORIGINAL_SOURCE_UV_CUT_NETWORK_SYNTHETIC_PASS")
