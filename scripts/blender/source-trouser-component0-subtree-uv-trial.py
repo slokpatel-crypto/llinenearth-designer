@@ -14,7 +14,7 @@ import math
 def trial_component0_balanced_subtree_uv_pack(
         points, original_faces, face_uv_loops, retained_source_tree_edges,
         display_gap_mm=5.0, candidate_rank=0, translation_fraction=1.0,
-        translation_sign=1, translation_axis="outside"):
+        translation_sign=1, translation_axis="outside", rotation_degrees=0.0):
     if (len(original_faces) != 2650 or len(face_uv_loops) != 2650
             or len(retained_source_tree_edges) != 2647 or not points):
         raise ValueError("Component-0 UV trial requires the complete original source forest.")
@@ -36,6 +36,15 @@ def trial_component0_balanced_subtree_uv_pack(
         raise ValueError("Research UV translation sign must be exactly -1 or +1.")
     if translation_axis not in ("outside", "perpendicular") or type(translation_axis) is not str:
         raise ValueError("Research UV translation axis must be outside or perpendicular.")
+    if (isinstance(rotation_degrees, bool)
+            or not isinstance(rotation_degrees, (int, float))
+            or not math.isfinite(rotation_degrees)
+            or abs(rotation_degrees) > 5.0):
+        raise ValueError("Research UV seam rotation must be a finite +/-5 degrees.")
+    if rotation_degrees != 0 and (
+            translation_fraction != 1.0 or translation_sign != 1
+            or translation_axis != "outside"):
+        raise ValueError("Research UV seam rotation cannot combine with translation.")
     vertices = []
     for raw in points:
         # The source vertices must be real numeric measurements. Coercing
@@ -160,6 +169,7 @@ def trial_component0_balanced_subtree_uv_pack(
     # having two 3D face owners is insufficient evidence of UV continuity.
     joined_uv_endpoints = []
     selected_owners = owners[cut_edge]
+    original_cut_uv_endpoints = []
     for vertex_id in cut_edge:
         left_face, right_face = selected_owners[0][0], selected_owners[1][0]
         left_local = tuple(original_faces[left_face]).index(vertex_id)
@@ -175,6 +185,7 @@ def trial_component0_balanced_subtree_uv_pack(
         joined_uv_endpoints.append(
             (left_face, left_local, right_face, right_local)
         )
+        original_cut_uv_endpoints.append(normalized_uv[left_face][left_local])
 
     all_points = [point for row in normalized_uv for point in row]
     moving_points = [point for face_id in moved for point in normalized_uv[face_id]]
@@ -193,18 +204,38 @@ def trial_component0_balanced_subtree_uv_pack(
     )
     dx = axis_dx * float(translation_fraction) * translation_sign
     dy = axis_dy * float(translation_fraction) * translation_sign
-    displacement_mm = math.hypot(dx, dy) * 1000.0
-    if not math.isfinite(displacement_mm) or displacement_mm <= 0.001:
-        raise ValueError(
-            "Research UV translation does not open a finite measurable new seam."
-        )
+    rotation_center = tuple(
+        (original_cut_uv_endpoints[0][i] + original_cut_uv_endpoints[1][i]) / 2
+        for i in range(2)
+    )
+    theta = math.radians(float(rotation_degrees))
+    cosine, sine = math.cos(theta), math.sin(theta)
+    if rotation_degrees != 0:
+        # Pivot at the midpoint of the same selected REAL source tree edge.
+        # All 547 moved original quads rotate together without UV stretch;
+        # the physical mesh and all untouched original source UVs remain fixed.
+        dx, dy = 0.0, 0.0
+    else:
+        displacement_mm = math.hypot(dx, dy) * 1000.0
+        if not math.isfinite(displacement_mm) or displacement_mm <= 0.001:
+            raise ValueError(
+                "Research UV translation does not open a finite measurable new seam."
+            )
     candidate_uv = []
     for face_id, row in enumerate(normalized_uv):
-        candidate_uv.append([
-            (u + dx, v + dy) if face_id in moved else (u, v)
-            for u, v in row
-        ])
+        if face_id not in moved:
+            candidate_uv.append(list(row))
+        elif rotation_degrees != 0:
+            cx, cy = rotation_center
+            candidate_uv.append([
+                (cx + cosine * (u - cx) - sine * (v - cy),
+                 cy + sine * (u - cx) + cosine * (v - cy))
+                for u, v in row
+            ])
+        else:
+            candidate_uv.append([(u + dx, v + dy) for u, v in row])
 
+    source_cut_opening_gaps_mm = []
     for left_face, left_local, right_face, right_local in joined_uv_endpoints:
         after_gap_mm = math.dist(
             candidate_uv[left_face][left_local],
@@ -214,6 +245,7 @@ def trial_component0_balanced_subtree_uv_pack(
             raise ValueError(
                 "Selected retained source edge did not open a measurable UV seam."
             )
+        source_cut_opening_gaps_mm.append(round(after_gap_mm, 5))
 
     max_change_mm = 0.0
     for before, after in zip(normalized_uv, candidate_uv):
@@ -239,6 +271,19 @@ def trial_component0_balanced_subtree_uv_pack(
             "candidateRankWithinBalancedTreeCuts": candidate_rank,
             "translationSignRelativeToOutsidePack": translation_sign,
             "translationAxisRelativeToOutsidePack": translation_axis,
+            "researchUvPlacementType": (
+                "source-edge-midpoint-rotation" if rotation_degrees != 0
+                else "rigid-subtree-translation"
+            ),
+            "researchUvMidpointRotationDegrees": round(float(rotation_degrees), 6),
+            "sourceEdgeUvMidpointMm": [
+                round(rotation_center[0] * 1000, 5),
+                round(rotation_center[1] * 1000, 5),
+            ],
+            "sourceEdgeOriginalUvLengthMm": round(
+                math.dist(*original_cut_uv_endpoints) * 1000, 5
+            ),
+            "sourceEdgeOpenedEndpointGapsMm": source_cut_opening_gaps_mm,
             "translationFractionOfOutsidePack": round(
                 float(translation_fraction), 8
             ),
@@ -265,7 +310,7 @@ def trial_component0_balanced_subtree_uv_pack(
             "productionApproved": False,
             "metricCaveat": (
                 "One genuine retained source face-tree edge was opened and the smaller "
-                "subtree rigidly translated in research UV space. The numerical gap is "
+                "subtree rigidly placed in research UV space. The numerical gap is "
                 "not seam allowance or fabric width. Internal overlaps, all other cyclic "
                 "seams, cloth grain, body fit and tailoring remain UNVERIFIED."
             ),
