@@ -920,3 +920,52 @@ Blender source/collision, Full CI and Non-3D QA; prior-head success must
 not be transferred. Original UV overlap, body intersection, 3D source
 geometry and garment physical validation remain blocked.
 **DRAFT / NO MERGE / NO DEPLOY / NO CUTTING.**
+
+## 2026-11-09 pinpoint largest authentic UV gaps on branched source paths
+
+**Starting evidence:** The official earlier native 3D source run
+`1f629eac4ec06698419d87d947f1316bbbe29b57` found 390 original
+mesh source-edge chains covering all 2,587 UV-disconnected shared edges,
+including six branched/compound networks, with two 530-edge networks
+requiring 117 maximal chains each. Original source geometry/locked
+scanned body, physical fit and UV production status are still rejected.
+The immediate predecessor's component-owned chain implementation was
+committed; its general CI required one static Node test-marker correction.
+Neither prior native diagnostic nor a passing static unit test is
+manufacturing approval.
+
+**New evidence-only work:** Every true-source maximal cut chain now also
+identifies its *largest measured UV discontinuity* (mm) and the exact
+original mesh source edge vertex ID pair causing that maximum. The
+measure is computed from the original per-face UV-loop mismatches of the
+same actual 2,650 source quads, not a fabricated seam allowance or
+supplier fabric repeat. Each connected source network independently
+records its maximum actual original UV gap, and the combined per-chain
+maximum must reproduce the original global UV gap within numerical
+rounding. Source edges are unique and graph-connected, with the
+unchanged true 3D point and edge identities preserved.
+
+`actualHighestGapBranchedOriginalSourceUvCutChains` reports the
+twelve most severely discontinuous authentic paths *within the actual
+branched networks*, sorted by original measured UV gap (not by physical
+seam length), then real 3D chain length and original source IDs for
+determinism. Both the existing longest-path branched ranking and new
+highest-gap ranking retain their exact component IDs and full ordered
+source vertex paths. The output can identify exact edges for further
+source-UV reconstruction experiments, not assert factory cut or 3D
+sewing approval.
+
+Dedicated pure Python tests verify real original edge adjacency, the
+per-component/chain gap range, actual worst-gap edge membership in
+the ordered source path, the branch-component owner ID and stable
+severity ordering, and empty planar network behavior. Native pinned
+Blender source workflow independently checks measured gap bounds,
+original edge membership, rank ordering and protected physical
+nonapproval. Node source QA pins the same source helper, Python
+and workflow checks.
+
+The **new exact GitHub PR head** requires its own native source,
+collision, Full CI and Non-3D verification. No original Blender
+source mesh, UV/GLB export, body scan, customer preview, textile
+provenance, thresholds, production build, physical fit or tailoring
+approval changed. **Draft / no merge / no deploy / no cutting.**
