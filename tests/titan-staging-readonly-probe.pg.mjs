@@ -132,9 +132,13 @@ test('native PostgreSQL: inherited libpq overrides cannot redirect synthetic fix
     // RFC 5737 TEST-NET-1 is never queried: the child has a controlled env.
     process.env.PGHOSTADDR='192.0.2.23';
     process.env.PGSERVICE='should-never-be-inherited';
-    const address=sql('SELECT inet_server_addr()::text;').trim();
-    assert.equal(address,'127.0.0.1');
+    // Docker may report its container bridge IP as inet_server_addr(),
+    // even though the CLIENT connects to 127.0.0.1 via the published port.
+    const identity=sql("SELECT current_database() || '|' || current_user || '|' || inet_server_port()::text;").trim();
+    assert.equal(identity,'titan_probe_synthetic|titan_probe|5432');
     assert.equal(psqlEnv.PGHOSTADDR,'127.0.0.1');
+    assert.equal(psqlEnv.PGHOST,'127.0.0.1');
+    assert.equal(psqlEnv.PGPORT,'5432');
     assert.equal(Object.hasOwn(psqlEnv,'PGSERVICE'),false);
   }finally{
     if(previousAddress===undefined)delete process.env.PGHOSTADDR;
