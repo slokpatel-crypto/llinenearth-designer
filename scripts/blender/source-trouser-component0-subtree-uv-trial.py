@@ -14,7 +14,7 @@ import math
 def trial_component0_balanced_subtree_uv_pack(
         points, original_faces, face_uv_loops, retained_source_tree_edges,
         display_gap_mm=5.0, candidate_rank=0, translation_fraction=1.0,
-        translation_sign=1):
+        translation_sign=1, translation_axis="outside"):
     if (len(original_faces) != 2650 or len(face_uv_loops) != 2650
             or len(retained_source_tree_edges) != 2647 or not points):
         raise ValueError("Component-0 UV trial requires the complete original source forest.")
@@ -34,6 +34,8 @@ def trial_component0_balanced_subtree_uv_pack(
         )
     if type(translation_sign) is not int or translation_sign not in (-1, 1):
         raise ValueError("Research UV translation sign must be exactly -1 or +1.")
+    if translation_axis not in ("outside", "perpendicular") or type(translation_axis) is not str:
+        raise ValueError("Research UV translation axis must be outside or perpendicular.")
     vertices = []
     for raw in points:
         # The source vertices must be real numeric measurements. Coercing
@@ -182,10 +184,15 @@ def trial_component0_balanced_subtree_uv_pack(
     moving_minimum_y = min(point[1] for point in moving_points)
     full_dx = maximum_x + float(display_gap_mm) / 1000.0 - moving_minimum_x
     full_dy = minimum_y - moving_minimum_y
-    # The reverse direction is an isolated RESEARCH probe, never an
-    # alternate production placement or relaxation of the seam/gap gates.
-    dx = full_dx * float(translation_fraction) * translation_sign
-    dy = full_dy * float(translation_fraction) * translation_sign
+    # Reverse and perpendicular chart placements are independently measured
+    # in RESEARCH UV space only. Exactly +/-90 degrees for the latter;
+    # never adjust source geometry, original UVs or gate thresholds.
+    axis_dx, axis_dy = (
+        (-full_dy, full_dx) if translation_axis == "perpendicular"
+        else (full_dx, full_dy)
+    )
+    dx = axis_dx * float(translation_fraction) * translation_sign
+    dy = axis_dy * float(translation_fraction) * translation_sign
     displacement_mm = math.hypot(dx, dy) * 1000.0
     if not math.isfinite(displacement_mm) or displacement_mm <= 0.001:
         raise ValueError(
@@ -231,6 +238,7 @@ def trial_component0_balanced_subtree_uv_pack(
             "selectionRule": "largest smaller side of one retained component-0 tree edge",
             "candidateRankWithinBalancedTreeCuts": candidate_rank,
             "translationSignRelativeToOutsidePack": translation_sign,
+            "translationAxisRelativeToOutsidePack": translation_axis,
             "translationFractionOfOutsidePack": round(
                 float(translation_fraction), 8
             ),
