@@ -13,6 +13,7 @@ join = runpy.run_path(str(root / "source-trouser-dual-tree-uv.py"))[
 source_graph_module = runpy.run_path(str(root / "source-trouser-uv-cut-network.py"))
 audit = source_graph_module["audit_original_source_uv_cut_network"]
 classify = source_graph_module["classify_original_source_uv_cut_component"]
+trace = source_graph_module["trace_original_source_uv_cut_chains"]
 nx, ny = 53, 50
 assert nx * ny == 2650
 def grid(x, y):
@@ -58,6 +59,11 @@ assert flat["uvCutGraphMaximumJunctionDegree"] == 0
 assert flat["uvCutGraphJunctionsOnActualOriginalBoundary"] == 0
 assert flat["uvCutGraphJunctionsOnGenuineOriginalCrotchCut"] == 0
 assert flat["actualLargestOriginalSourceUvCutJunctions"] == []
+assert flat["uvCutGraphMaximalSourceChainCount"] == 0
+assert flat["uvCutGraphClosedMaximalSourceChainCount"] == 0
+assert flat["uvCutGraphMaximalSourceChainEdgeCoverageCount"] == 0
+assert flat["uvCutGraphLongestOriginalSourceChainLengthMm"] == 0
+assert flat["actualLongestOriginalSourceUvCutChains"] == []
 assert flat["seamCutTopologyApproved"] is False
 assert flat["realTailorCutLinesApproved"] is False
 assert flat["measuredSupplierTextileRepeatMm"] is None
@@ -88,6 +94,41 @@ assert curved["uvCutGraphCycleRank"] == (
     curved["unclosedSharedUvCutCandidateEdges"] -
     curved["uvCutCandidateSourceVertexCount"] +
     curved["uvCutCandidateGraphComponentCount"]
+)
+assert curved["uvCutGraphMaximalSourceChainCount"] >= (
+    curved["uvCutCandidateGraphComponentCount"]
+)
+assert curved["uvCutGraphMaximalSourceChainEdgeCoverageCount"] == (
+    curved["unclosedSharedUvCutCandidateEdges"]
+)
+assert curved["uvCutGraphClosedMaximalSourceChainCount"] <= (
+    curved["uvCutGraphMaximalSourceChainCount"]
+)
+assert sum(row["uvCutGraphMaximalChainCount"]
+           for row in curved["uvCutCandidateGraphLargestComponents"]) <= (
+    curved["uvCutGraphMaximalSourceChainCount"]
+)
+assert all(
+    row["uvCutGraphMaximalChainCount"] >= 1 and
+    row["uvCutGraphMaximalChainEdgeCoverageCount"] ==
+    row["unclosedUvEdgeCount"] and
+    type(row["originalSourceMinimumVertexIndex"]) is int
+    for row in curved["uvCutCandidateGraphLargestComponents"]
+)
+assert len(curved["actualLongestOriginalSourceUvCutChains"]) == min(
+    curved["uvCutGraphMaximalSourceChainCount"],12
+)
+assert all(
+    r["originalSourceEdgeCount"] >= 1
+    and r["realOriginalSourceChainLengthMm"] > 0
+    and type(r["closedGraphLoop"]) is bool
+    and type(r["originalSourceStartVertexIndex"]) is int
+    and type(r["originalSourceEndVertexIndex"]) is int
+    and r["closedGraphLoop"] == (
+        r["originalSourceStartVertexIndex"] ==
+        r["originalSourceEndVertexIndex"]
+    )
+    for r in curved["actualLongestOriginalSourceUvCutChains"]
 )
 junction_count = curved["uvCutCandidateDegreeThreePlusSourceVertices"]
 junctions = curved["actualLargestOriginalSourceUvCutJunctions"]
@@ -142,6 +183,7 @@ def edge_graph(edges):
 
 path_graph = edge_graph(((1,2),(2,3)))
 path_report = classify(path_graph, (1,2,3), {1})
+assert trace(path_graph, (1,2,3)) == [[1,2,3]]
 assert path_report["uvCutGraphTopology"] == "simple-open-path"
 assert path_report["uvCutGraphCycleRank"] == 0
 assert path_report["unclosedUvEdgeCount"] == 2
@@ -151,6 +193,7 @@ assert path_report["originalBoundaryContactSourceVertexCount"] == 1
 
 loop_graph = edge_graph(((1,2),(2,3),(3,4),(4,1)))
 loop_report = classify(loop_graph, (1,2,3,4), set())
+assert trace(loop_graph, (1,2,3,4)) == [[1,2,3,4,1]]
 assert loop_report["uvCutGraphTopology"] == "simple-closed-loop"
 assert loop_report["uvCutGraphCycleRank"] == 1
 assert loop_report["degreeOneSourceVertices"] == 0
@@ -158,6 +201,9 @@ assert loop_report["touchesActualOriginalOpenBoundary"] is False
 
 branch_graph = edge_graph(((1,2),(2,3),(2,4)))
 branch_report = classify(branch_graph, (1,2,3,4), {1,3})
+assert trace(branch_graph, (1,2,3,4)) == [
+    [1,2], [3,2], [4,2]
+]
 assert branch_report["uvCutGraphTopology"] == "branched-or-compound"
 assert branch_report["uvCutGraphCycleRank"] == 0
 assert branch_report["branchingSourceVertices"] == 1
@@ -174,6 +220,11 @@ assert 5 - 6 + 1 == 0  # would masquerade as one simple-open-path
 two_disjoint_loops = edge_graph((
     (1,2),(2,3),(3,1),(4,5),(5,6),(6,4)
 ))
+branch_and_loop = edge_graph(((1,2),(2,3),(3,1),(1,4)))
+assert trace(branch_and_loop, (1,2,3,4)) == [
+    [1,2,3,1], [1,4]
+]
+assert sum(len(row)-1 for row in trace(branch_and_loop,(1,2,3,4))) == 4
 assert 6 - 6 + 1 == 1  # would masquerade as one simple-closed-loop
 for invalid_graph, vertices in (
         ({},()),
@@ -188,6 +239,12 @@ for invalid_graph, vertices in (
         pass
     else:
         raise AssertionError("Invalid or disconnected source UV cut graph was accepted.")
+    try:
+        trace(invalid_graph, vertices)
+    except (ValueError, KeyError):
+        pass
+    else:
+        raise AssertionError("Invalid/disconnected original UV chain was accepted.")
 
 def rejected(points, face_list, uv, edges, report):
     try:
