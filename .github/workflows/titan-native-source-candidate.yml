@@ -1312,6 +1312,62 @@ jobs:
                   "uvCutGraphSimpleClosedLoopComponentCount",
                   "uvCutGraphBranchedOrCompoundComponentCount"
               )) == cut_network["uvCutCandidateGraphComponentCount"]
+              # Maximal edge-disjoint chains are sourced from genuine UV-cut
+              # original mesh edges, with no duplicate, omitted or invented
+              # construction path. Still NOT a tailor-approved seam.
+              chains=cut_network["actualLongestOriginalSourceUvCutChains"]
+              total_chains=cut_network["uvCutGraphMaximalSourceChainCount"]
+              assert cut_network[
+                  "uvCutGraphMaximalSourceChainEdgeCoverageCount"
+              ] == cut_network["unclosedSharedUvCutCandidateEdges"]
+              assert (cut_network["uvCutCandidateGraphComponentCount"] <=
+                      total_chains <=
+                      cut_network["unclosedSharedUvCutCandidateEdges"]
+                      if total_chains else
+                      cut_network["unclosedSharedUvCutCandidateEdges"] == 0)
+              assert 0 <= cut_network[
+                  "uvCutGraphClosedMaximalSourceChainCount"
+              ] <= cut_network["uvCutGraphCycleRank"]
+              assert len(chains) == min(12, total_chains)
+              assert cut_network[
+                  "uvCutGraphLongestOriginalSourceChainLengthMm"
+              ] == (chains[0]["realOriginalSourceChainLengthMm"]
+                    if chains else 0.0)
+              assert all(
+                  type(row["originalSourceStartVertexIndex"]) is int
+                  and type(row["originalSourceEndVertexIndex"]) is int
+                  and 0 <= row["originalSourceStartVertexIndex"] < 2717
+                  and 0 <= row["originalSourceEndVertexIndex"] < 2717
+                  and row["originalSourceEdgeCount"] >= 1
+                  and math.isfinite(row["realOriginalSourceChainLengthMm"])
+                  and row["realOriginalSourceChainLengthMm"] > 0
+                  and type(row["closedGraphLoop"]) is bool
+                  and row["closedGraphLoop"] == (
+                      row["originalSourceStartVertexIndex"] ==
+                      row["originalSourceEndVertexIndex"]
+                  )
+                  and type(row["startsAtOriginalMeshBoundary"]) is bool
+                  and type(row["endsAtOriginalMeshBoundary"]) is bool
+                  and type(row["startsAtSourceUvBranchJunction"]) is bool
+                  and type(row["endsAtSourceUvBranchJunction"]) is bool
+                  for row in chains
+              )
+              assert sum(row["originalSourceEdgeCount"] for row in chains) <= (
+                  cut_network["unclosedSharedUvCutCandidateEdges"]
+              )
+              assert [
+                  (-row["realOriginalSourceChainLengthMm"],
+                   -row["originalSourceEdgeCount"],
+                   row["originalSourceStartVertexIndex"],
+                   row["originalSourceEndVertexIndex"])
+                  for row in chains
+              ] == sorted([
+                  (-row["realOriginalSourceChainLengthMm"],
+                   -row["originalSourceEdgeCount"],
+                   row["originalSourceStartVertexIndex"],
+                   row["originalSourceEndVertexIndex"])
+                  for row in chains
+              ])
               assert 0 <= cut_network[
                   "uvCutGraphInteriorDegreeOneSourceVertexCount"
               ] <= cut_network["uvCutCandidateDegreeOneSourceVertices"]
@@ -1329,6 +1385,12 @@ jobs:
                   and row["uvCutGraphTopology"] in (
                       "simple-open-path", "simple-closed-loop",
                       "branched-or-compound"
+                  )
+                  and type(row["originalSourceMinimumVertexIndex"]) is int
+                  and 0 <= row["originalSourceMinimumVertexIndex"] < 2717
+                  and row["uvCutGraphMaximalChainCount"] >= 1
+                  and row["uvCutGraphMaximalChainEdgeCoverageCount"] == (
+                      row["unclosedUvEdgeCount"]
                   )
                   and row["interiorDegreeOneSourceVertices"] <= (
                       row["degreeOneSourceVertices"]
