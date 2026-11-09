@@ -108,3 +108,21 @@ test("cropped hem authorization requires own plain data fields", () => {
   assert.equal(styleDirectorProposedCroppedHem(mixed), null);
   assert.equal(styleDirectorProposedCroppedHem(null as unknown as Parameters<typeof styleDirectorProposedCroppedHem>[0]), null);
 });
+
+test("cropped hem on a non-cropped trouser type requires review without rewriting locked IDs", () => {
+  for (const type of ["formal_flat_front", "pleated_trouser"]) {
+    const locked = Object.freeze({
+      shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+        sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
+      pant: Object.freeze({ type, pleat: type === "pleated_trouser" ? "single_pleat" : "flat_front",
+        hem: "cropped_above_ankle_hem", break: "cropped_above_ankle" }),
+    }) as unknown as StyleSpecV2;
+    const before = JSON.stringify(locked);
+    const first = styleDirectorConstructionIssues(locked);
+    assert.ok(first.some(issue => issue.code === "cropped_hem_type_mismatch"), type);
+    assert.deepEqual(styleDirectorConstructionIssues(locked), first, "review is deterministic");
+    assert.equal(JSON.stringify(locked), before, "locked construction must not be mutated");
+    assert.equal(styleDirectorProposedCroppedHem(locked.pant), null,
+      "a cropped break cannot authorize changing an incompatible trouser type");
+  }
+});
