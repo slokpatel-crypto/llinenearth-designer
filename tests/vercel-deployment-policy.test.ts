@@ -70,6 +70,7 @@ test("explicitly marked primary main commit continues the production build",()=>
     VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
     VERCEL_GIT_COMMIT_REF:"main",
     VERCEL_GIT_COMMIT_MESSAGE:"[deploy] Roadmap v2 major milestone",
+    VERCEL_ENV:"production",
   });
   assert.equal(result.status,1);
   assert.match(result.stdout,/continue production build/);
@@ -80,8 +81,53 @@ test("deployment marker is case-insensitive",()=>{
     VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
     VERCEL_GIT_COMMIT_REF:"main",
     VERCEL_GIT_COMMIT_MESSAGE:"[DEPLOY] customer photo milestone",
+    VERCEL_ENV:"production",
   });
   assert.equal(result.status,1);
+});
+
+test("a later incidental [deploy] mention cannot authorize production",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"docs: describe the [deploy] marker for future use",
+    VERCEL_ENV:"production",
+  });
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/no \\[deploy\\] milestone marker/);
+});
+
+test("main deploy marker cannot authorize a preview build",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"[deploy] milestone",
+    VERCEL_ENV:"preview",
+  });
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/requires VERCEL_ENV=production/);
+});
+
+test("missing Vercel environment skips even an explicitly marked main commit",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"[deploy] milestone",
+    VERCEL_ENV:undefined,
+  });
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/requires VERCEL_ENV=production/);
+});
+
+test("a deployment marker without a word boundary is not approval",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"[deploy]ment instructions",
+    VERCEL_ENV:"production",
+  });
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/no \\[deploy\\] milestone marker/);
 });
 
 test("missing project ID skips build even on a marked main commit",()=>{
