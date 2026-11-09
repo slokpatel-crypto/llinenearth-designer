@@ -1368,6 +1368,23 @@ jobs:
                       for a,b in zip(row["originalSourceVertexPath"],
                                      row["originalSourceVertexPath"][1:])
                   }
+                  and len(row["originalSourceFaceOwnersAtMaximumUvGap"]) == 2
+                  and all(type(face_id) is int and 0 <= face_id < 2650
+                          for face_id in row["originalSourceFaceOwnersAtMaximumUvGap"])
+                  and len(set(row["originalSourceFaceOwnersAtMaximumUvGap"])) == 2
+                  and len(row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"]) == 2
+                  and all(len(v) == 2 and all(math.isfinite(x) for x in v)
+                          for v in row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"])
+                  and abs(
+                      max(math.hypot(*v) for v in
+                          row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"]) -
+                      row["maximumOriginalSourceUvSeamGapMm"]
+                  ) <= 0.00002
+                  and abs(
+                      math.dist(*row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"]) -
+                      row["relativeSourceUvEndpointDriftMm"]
+                  ) <= 0.00002
+                  and row["relativeSourceUvEndpointDriftMm"] >= 0
                   for row in highest_gap_branches
               )
               assert [
