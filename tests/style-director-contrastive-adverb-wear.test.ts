@@ -5,7 +5,7 @@ import { styleDirectorCandidateWearIssues } from "../src/lib/designer/style-dire
 // Contrastive discourse markers terminate the garment-object prohibition.
 // A following positive instruction must remain visible, never swallowed.
 test("contrastive adverbs preserve contradictory garment-wear clauses", () => {
-  for (const join of ["nevertheless", "nonetheless"] as const) {
+  for (const join of ["nevertheless", "nonetheless", "though", "instead"] as const) {
     for (const noun of ["shirt", "shirts", "garment", "garments"] as const) {
       const candidate = `do not tuck the blue striped linen ${noun} ${join} tucked shirt`;
       for (const wear of ["tucked", "untucked"] as const) {
