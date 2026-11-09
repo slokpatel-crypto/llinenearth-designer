@@ -32,3 +32,21 @@ test("conflicting long qualified instructions never approve either locked wear",
     assert.equal(locked.wear, wear);
   }
 });
+
+test("coordinated wear instructions cannot hide a contradictory affirmative state", () => {
+  // A coordinating word terminates the prohibited garment object. The
+  // following explicit wear instruction must remain visible to review.
+  for (const join of ["and", "but", "or"] as const) {
+    for (const object of ["shirt", "shirts", "garment", "garments"] as const) {
+      const instruction = `do not tuck the blue striped linen ${object} ${join} tucked shirt`;
+      for (const wear of ["tucked", "untucked"] as const) {
+        const locked = Object.freeze({ wear });
+        const issues = styleDirectorCandidateWearIssues(instruction, locked);
+        assert.deepEqual(issues.map(issue => issue.code),
+          ["candidate_shirt_wear_mismatch"], instruction + " / " + wear);
+        assert.deepEqual(styleDirectorCandidateWearIssues(instruction, locked), issues);
+        assert.equal(locked.wear, wear, "locked selection must not be rewritten");
+      }
+    }
+  }
+});
