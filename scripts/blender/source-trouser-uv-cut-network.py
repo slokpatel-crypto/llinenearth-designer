@@ -72,6 +72,65 @@ def classify_original_source_uv_cut_component(
     }
 
 
+def trace_original_source_uv_cut_chains(
+        cut_graph, component_vertices):
+    """Partition a genuine connected UV cut graph into maximal edge chains.
+
+    Every original source edge must appear in exactly one chain. Vertices of
+    degree two are internal to chains; endpoints are genuine graph terminals
+    (degree one or three-plus). A pure degree-two connected component is
+    one closed loop, not an invented cut-open sewing path.
+    """
+    component = set(component_vertices)
+    classify_original_source_uv_cut_component(
+        cut_graph, component_vertices, set()
+    )
+    used_edges = set()
+
+    def walk(start, next_vertex):
+        chain = [start]
+        previous, current = start, next_vertex
+        while True:
+            edge = (min(previous, current), max(previous, current))
+            if edge in used_edges:
+                raise ValueError("Original UV source chain repeated a genuine edge.")
+            used_edges.add(edge)
+            chain.append(current)
+            if current == start or len(cut_graph[current]) != 2:
+                break
+            forward = cut_graph[current] - {previous}
+            if len(forward) != 1:
+                raise ValueError("Original UV source chain has ambiguous degree-two continuation.")
+            previous, current = current, next(iter(forward))
+        return chain
+
+    chains = []
+    terminals = sorted(v for v in component if len(cut_graph[v]) != 2)
+    if terminals:
+        for terminal in terminals:
+            for neighbor in sorted(cut_graph[terminal]):
+                edge = (min(terminal, neighbor), max(terminal, neighbor))
+                if edge not in used_edges:
+                    chains.append(walk(terminal, neighbor))
+    else:
+        start = min(component)
+        chains.append(walk(start, min(cut_graph[start])))
+
+    all_edges = {
+        (min(v, n), max(v, n))
+        for v in component for n in cut_graph[v]
+    }
+    if used_edges != all_edges or sum(len(chain) - 1 for chain in chains) != len(all_edges):
+        raise ValueError("Original UV maximal chains did not cover every source edge.")
+    if any(
+            len(chain) < 2 or (
+                chain[0] != chain[-1] and
+                (len(cut_graph[chain[0]]) == 2 or len(cut_graph[chain[-1]]) == 2)
+            ) for chain in chains):
+        raise ValueError("Original UV source chain did not end at a true graph terminal.")
+    return chains
+
+
 def audit_original_source_uv_cut_network(
         points, original_faces, face_uv_loops, original_cut_edges, tree_report):
     if (len(original_faces) != 2650 or len(face_uv_loops) != 2650
@@ -170,6 +229,8 @@ def audit_original_source_uv_cut_network(
     degrees = Counter(len(neighbours) for neighbours in cut_graph.values())
     unseen = set(cut_graph)
     network_components = []
+    source_chains = []
+    source_chain_full_lengths = []
     original_boundary_vertices = {
         v for edge, rows in owners.items()
         if len(rows) == 1 for v in edge
@@ -186,11 +247,45 @@ def audit_original_source_uv_cut_network(
                 if nxt in unseen:
                     unseen.remove(nxt)
                     queue.append(nxt)
-        network_components.append(
-            classify_original_source_uv_cut_component(
-                cut_graph, component_vertices, original_boundary_vertices
-            )
+        classification = classify_original_source_uv_cut_component(
+            cut_graph, component_vertices, original_boundary_vertices
         )
+        chains = trace_original_source_uv_cut_chains(
+            cut_graph, component_vertices
+        )
+        classification["originalSourceMinimumVertexIndex"] = min(component_vertices)
+        classification["uvCutGraphMaximalChainCount"] = len(chains)
+        classification["uvCutGraphMaximalChainEdgeCoverageCount"] = sum(
+            len(chain) - 1 for chain in chains
+        )
+        if classification["uvCutGraphMaximalChainEdgeCoverageCount"] != (
+                classification["unclosedUvEdgeCount"]):
+            raise ValueError("Original source UV network lost edge-disjoint chain coverage.")
+        network_components.append(classification)
+        for chain in chains:
+            segment_lengths = [
+                math.dist(vertices[a], vertices[b]) * 1000.0
+                for a, b in zip(chain, chain[1:])
+            ]
+            length_mm = math.fsum(segment_lengths)
+            if not math.isfinite(length_mm) or length_mm <= 0:
+                raise ValueError("Original UV source chain lacks finite 3D edge length.")
+            source_chain_full_lengths.append(length_mm)
+            source_chains.append({
+                "originalSourceStartVertexIndex": chain[0],
+                "originalSourceEndVertexIndex": chain[-1],
+                "originalSourceEdgeCount": len(chain) - 1,
+                "realOriginalSourceChainLengthMm": round(length_mm, 5),
+                "closedGraphLoop": chain[0] == chain[-1],
+                "startsAtOriginalMeshBoundary":
+                    chain[0] in original_boundary_vertices,
+                "endsAtOriginalMeshBoundary":
+                    chain[-1] in original_boundary_vertices,
+                "startsAtSourceUvBranchJunction":
+                    len(cut_graph[chain[0]]) >= 3,
+                "endsAtSourceUvBranchJunction":
+                    len(cut_graph[chain[-1]]) >= 3,
+            })
     network_components.sort(
         key=lambda row: (
             -row["unclosedUvEdgeCount"], -row["originalSourceVertexCount"],
@@ -244,6 +339,18 @@ def audit_original_source_uv_cut_network(
             or sum(row["originalSourceVertexCount"]
                    for row in network_components) != len(cut_graph)):
         raise ValueError("Original UV cut graph failed independent Euler accounting.")
+    source_chains.sort(key=lambda row: (
+        -row["realOriginalSourceChainLengthMm"],
+        -row["originalSourceEdgeCount"],
+        row["originalSourceStartVertexIndex"],
+        row["originalSourceEndVertexIndex"],
+    ))
+    if (sum(row["originalSourceEdgeCount"] for row in source_chains) !=
+            len(uv_unclosed) or
+            abs(math.fsum(source_chain_full_lengths) - total_cut_mm) > 0.000001 or
+            sum(row["uvCutGraphMaximalChainCount"]
+                for row in network_components) != len(source_chains)):
+        raise ValueError("Original source maximal chain lengths/edges do not reconcile.")
     first = sorted(
         uv_unclosed, key=lambda v: (-v[0], v[2], v[3])
     )[:12]
@@ -307,6 +414,18 @@ def audit_original_source_uv_cut_network(
             row["touchesGenuineOriginalCrotchCut"] for row in junction_rows
         ),
         "actualLargestOriginalSourceUvCutJunctions": junction_rows[:12],
+        "uvCutGraphMaximalSourceChainCount": len(source_chains),
+        "uvCutGraphClosedMaximalSourceChainCount": sum(
+            row["closedGraphLoop"] for row in source_chains
+        ),
+        "uvCutGraphMaximalSourceChainEdgeCoverageCount": sum(
+            row["originalSourceEdgeCount"] for row in source_chains
+        ),
+        "uvCutGraphLongestOriginalSourceChainLengthMm": (
+            source_chains[0]["realOriginalSourceChainLengthMm"]
+            if source_chains else 0.0
+        ),
+        "actualLongestOriginalSourceUvCutChains": source_chains[:12],
         "uvCutCandidateGraphLargestComponents": network_components[:12],
         "actualLargestGapUvCutEdges": [
             {
