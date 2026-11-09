@@ -262,6 +262,7 @@ def audit_original_source_uv_cut_network(
                 classification["unclosedUvEdgeCount"]):
             raise ValueError("Original source UV network lost edge-disjoint chain coverage.")
         network_components.append(classification)
+        component_chain_lengths = []
         for chain in chains:
             segment_lengths = [
                 math.dist(vertices[a], vertices[b]) * 1000.0
@@ -271,7 +272,10 @@ def audit_original_source_uv_cut_network(
             if not math.isfinite(length_mm) or length_mm <= 0:
                 raise ValueError("Original UV source chain lacks finite 3D edge length.")
             source_chain_full_lengths.append(length_mm)
+            component_chain_lengths.append(length_mm)
             source_chains.append({
+                "originalSourceComponentMinimumVertexIndex":
+                    classification["originalSourceMinimumVertexIndex"],
                 # Preserve every REAL source vertex in traversal order, not
                 # merely endpoints which cannot reconstruct a 3D cut path.
                 # This is metric mesh-source research, never a sewing line.
@@ -290,6 +294,20 @@ def audit_original_source_uv_cut_network(
                 "endsAtSourceUvBranchJunction":
                     len(cut_graph[chain[-1]]) >= 3,
             })
+        # Attribute every true original edge length to exactly one of the
+        # six branched or sixty simple source components. This is not
+        # inferred cloth seam allowance or tailored pattern length.
+        component_cut_edges_mm = [
+            real_mm for _gap, real_mm, a, b in uv_unclosed
+            if a in set(component_vertices) and b in set(component_vertices)
+        ]
+        if (len(component_cut_edges_mm) != classification["unclosedUvEdgeCount"]
+                or abs(math.fsum(component_cut_edges_mm) -
+                       math.fsum(component_chain_lengths)) > 0.000001):
+            raise ValueError("Original source UV component chain lengths do not reconcile.")
+        classification["realOriginalSourceUvCutNetworkLengthMm"] = round(
+            math.fsum(component_chain_lengths), 5
+        )
     network_components.sort(
         key=lambda row: (
             -row["unclosedUvEdgeCount"], -row["originalSourceVertexCount"],
@@ -333,6 +351,18 @@ def audit_original_source_uv_cut_network(
     cut_shape_counts = Counter(
         row["uvCutGraphTopology"] for row in network_components
     )
+    component_owners = {
+        row["originalSourceMinimumVertexIndex"]: row
+        for row in network_components
+    }
+    if len(component_owners) != len(network_components) or any(
+            chain["originalSourceComponentMinimumVertexIndex"] not in component_owners
+            for chain in source_chains):
+        raise ValueError("Original UV source chain does not map to one genuine component.")
+    branched_component_ids = {
+        row["originalSourceMinimumVertexIndex"] for row in network_components
+        if row["uvCutGraphTopology"] == "branched-or-compound"
+    }
     cut_cycle_rank = len(uv_unclosed) - len(cut_graph) + len(network_components)
     if (cut_cycle_rank != sum(
             row["uvCutGraphCycleRank"] for row in network_components)
@@ -376,6 +406,16 @@ def audit_original_source_uv_cut_network(
             checked_chains.add(edge)
     if checked_chains != all_disconnected:
         raise ValueError("Original source UV chain path inventory omitted real cut edges.")
+    branched_chain_rows = [
+        row for row in source_chains
+        if row["originalSourceComponentMinimumVertexIndex"] in branched_component_ids
+    ]
+    if (sum(component_owners[identifier]["uvCutGraphMaximalChainCount"]
+            for identifier in branched_component_ids) != len(branched_chain_rows)
+            or sum(component_owners[identifier]["unclosedUvEdgeCount"]
+                   for identifier in branched_component_ids) != sum(
+                       row["originalSourceEdgeCount"] for row in branched_chain_rows)):
+        raise ValueError("Original branched UV source chains have incomplete component ownership.")
     first = sorted(
         uv_unclosed, key=lambda v: (-v[0], v[2], v[3])
     )[:12]
@@ -451,6 +491,11 @@ def audit_original_source_uv_cut_network(
             if source_chains else 0.0
         ),
         "actualLongestOriginalSourceUvCutChains": source_chains[:12],
+        "actualLongestBranchedOriginalSourceUvCutChains": branched_chain_rows[:12],
+        "actualBranchedOriginalSourceUvCutNetworks": [
+            row for row in network_components
+            if row["uvCutGraphTopology"] == "branched-or-compound"
+        ][:12],
         "uvCutCandidateGraphLargestComponents": network_components[:12],
         "actualLargestGapUvCutEdges": [
             {
