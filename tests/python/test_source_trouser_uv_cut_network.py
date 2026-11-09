@@ -202,7 +202,7 @@ assert loop_report["touchesActualOriginalOpenBoundary"] is False
 branch_graph = edge_graph(((1,2),(2,3),(2,4)))
 branch_report = classify(branch_graph, (1,2,3,4), {1,3})
 assert trace(branch_graph, (1,2,3,4)) == [
-    [1,2], [3,2], [4,2]
+    [1,2], [2,3], [2,4]
 ]
 assert branch_report["uvCutGraphTopology"] == "branched-or-compound"
 assert branch_report["uvCutGraphCycleRank"] == 0
