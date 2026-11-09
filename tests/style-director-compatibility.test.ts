@@ -2904,3 +2904,22 @@ test("contrastive however/whereas clauses preserve independent wear instructions
     }
   }
 });
+
+test("although/while clause boundaries do not swallow independent wear instructions", () => {
+  for (const connector of ["although", "while"]) {
+    for (const [prohibition, positive, lockedWear] of [
+      ["Do not wear blue striped linen", "tucked shirt", "untucked"],
+      ["Must not wear cream cotton", "untucked shirt", "tucked"],
+      ["Do not tuck the blue linen shirt", "tucked shirt", "untucked"],
+      ["Must not untuck the cotton garment", "untucked shirt", "tucked"],
+    ] as const) {
+      const candidate = `${prohibition} ${connector} ${positive}`;
+      const locked = { wear: lockedWear };
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorCandidateWearIssues(candidate, locked);
+      assert.deepEqual(issues.map(issue => issue.code), ["candidate_shirt_wear_mismatch"], candidate);
+      assert.deepEqual(styleDirectorCandidateWearIssues(candidate, locked), issues);
+      assert.equal(JSON.stringify(locked), before);
+    }
+  }
+});
