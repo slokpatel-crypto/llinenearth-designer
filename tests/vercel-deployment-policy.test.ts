@@ -84,22 +84,42 @@ test("deployment marker is case-insensitive",()=>{
   assert.equal(result.status,1);
 });
 
-test("missing Vercel branch metadata fails safe by continuing",()=>{
+test("missing project ID skips build even on a marked main commit",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:undefined,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"[deploy] milestone",
+  });
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/VERCEL_PROJECT_ID unavailable.*ignore build/);
+});
+
+test("blank main commit message cannot implicitly authorize a build",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"   ",
+  });
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/COMMIT_MESSAGE unavailable.*ignore build/);
+});
+
+test("missing Vercel branch metadata skips the unverified build",()=>{
   const result=runIgnore({
     VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
     VERCEL_GIT_COMMIT_REF:undefined,
     VERCEL_GIT_COMMIT_MESSAGE:undefined,
   });
-  assert.equal(result.status,1);
-  assert.match(result.stdout,/continue build fail-safe/);
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/ignore build without a verified branch/);
 });
 
-test("missing commit-message metadata on main fails safe by continuing",()=>{
+test("missing commit-message metadata on main skips the unverified build",()=>{
   const result=runIgnore({
     VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
     VERCEL_GIT_COMMIT_REF:"main",
     VERCEL_GIT_COMMIT_MESSAGE:undefined,
   });
-  assert.equal(result.status,1);
-  assert.match(result.stdout,/COMMIT_MESSAGE unavailable/);
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/COMMIT_MESSAGE unavailable.*ignore build/);
 });
