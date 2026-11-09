@@ -1252,10 +1252,44 @@ jobs:
               assert 0 <= cut_network["uvCutCandidateGraphComponentCount"] <= 2717
               assert cut_network["uvCutCandidateDegreeOneSourceVertices"] >= 0
               assert cut_network["uvCutCandidateDegreeThreePlusSourceVertices"] >= 0
+              # Independently reconcile original mesh graph Euler rank from
+              # edge, vertex and component counts: a cut network with cycles
+              # or junctions is not a simple approved source-panel seam.
+              assert cut_network["uvCutGraphCycleRank"] == (
+                  cut_network["unclosedSharedUvCutCandidateEdges"] -
+                  cut_network["uvCutCandidateSourceVertexCount"] +
+                  cut_network["uvCutCandidateGraphComponentCount"]
+              )
+              assert cut_network["uvCutGraphCycleRank"] >= 0
+              assert sum(cut_network[key] for key in (
+                  "uvCutGraphSimpleOpenPathComponentCount",
+                  "uvCutGraphSimpleClosedLoopComponentCount",
+                  "uvCutGraphBranchedOrCompoundComponentCount"
+              )) == cut_network["uvCutCandidateGraphComponentCount"]
+              assert 0 <= cut_network[
+                  "uvCutGraphInteriorDegreeOneSourceVertexCount"
+              ] <= cut_network["uvCutCandidateDegreeOneSourceVertices"]
+              assert 0 <= cut_network[
+                  "uvCutGraphComponentsWithoutActualOriginalOpenBoundary"
+              ] <= cut_network["uvCutCandidateGraphComponentCount"]
               assert len(cut_network["uvCutCandidateGraphLargestComponents"]) <= 12
               assert all(
                   row["unclosedUvEdgeCount"] > 0 and row["originalSourceVertexCount"] > 0
                   and type(row["touchesActualOriginalOpenBoundary"]) is bool
+                  and row["uvCutGraphCycleRank"] == (
+                      row["unclosedUvEdgeCount"] -
+                      row["originalSourceVertexCount"] + 1
+                  )
+                  and row["uvCutGraphTopology"] in (
+                      "simple-open-path", "simple-closed-loop",
+                      "branched-or-compound"
+                  )
+                  and row["interiorDegreeOneSourceVertices"] <= (
+                      row["degreeOneSourceVertices"]
+                  )
+                  and row["originalBoundaryContactSourceVertexCount"] <= (
+                      row["originalSourceVertexCount"]
+                  )
                   for row in cut_network["uvCutCandidateGraphLargestComponents"]
               )
               assert len(cut_network["actualLargestGapUvCutEdges"]) <= 12
