@@ -2868,3 +2868,20 @@ test("negative finished-wear clauses cannot consume a second conjunctive wear in
     }).map(issue => issue.code), ["candidate_shirt_wear_mismatch"], wording);
   }
 });
+
+
+test("yet conjunction preserves independent finished-wear intent", () => {
+  for (const [wording, requested] of [
+    ["Do not wear blue linen yet tucked shirt", "tucked"],
+    ["Must not wear striped cotton yet untucked shirt", "untucked"],
+    ["Do not tuck the linen shirt yet tucked shirt", "tucked"],
+    ["Must not untuck the cotton garment yet untucked shirt", "untucked"],
+  ] as const) {
+    const opposite = requested === "tucked" ? "untucked" : "tucked";
+    assert.deepEqual(styleDirectorCandidateWearIssues(wording, { wear: opposite })
+      .map(issue => issue.code), ["candidate_shirt_wear_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateWearIssues(wording, { wear: opposite })
+      .map(issue => issue.code), ["candidate_shirt_wear_mismatch"],
+      "repeat review must be deterministic");
+  }
+});
