@@ -1317,6 +1317,46 @@ jobs:
               # construction path. Still NOT a tailor-approved seam.
               chains=cut_network["actualLongestOriginalSourceUvCutChains"]
               total_chains=cut_network["uvCutGraphMaximalSourceChainCount"]
+              branched=cut_network["actualBranchedOriginalSourceUvCutNetworks"]
+              branched_paths=cut_network[
+                  "actualLongestBranchedOriginalSourceUvCutChains"
+              ]
+              branch_ids={
+                  row["originalSourceMinimumVertexIndex"] for row in branched
+              }
+              assert len(branched) == cut_network[
+                  "uvCutGraphBranchedOrCompoundComponentCount"
+              ]
+              assert len(branched) == len(branch_ids)
+              assert len(branched_paths) == min(12, sum(
+                  row["uvCutGraphMaximalChainCount"] for row in branched
+              ))
+              assert all(
+                  row["uvCutGraphTopology"] == "branched-or-compound"
+                  and type(row["originalSourceMinimumVertexIndex"]) is int
+                  and 0 <= row["originalSourceMinimumVertexIndex"] < 2717
+                  and row["uvCutGraphMaximalChainCount"] >= 2
+                  and row["realOriginalSourceUvCutNetworkLengthMm"] > 0
+                  and math.isfinite(row["realOriginalSourceUvCutNetworkLengthMm"])
+                  and row["uvCutGraphMaximalChainEdgeCoverageCount"] ==
+                      row["unclosedUvEdgeCount"]
+                  for row in branched
+              )
+              assert all(
+                  row["originalSourceComponentMinimumVertexIndex"] in branch_ids
+                  and row["originalSourceEdgeCount"] >= 1
+                  and len(row["originalSourceVertexPath"]) ==
+                      row["originalSourceEdgeCount"] + 1
+                  for row in branched_paths
+              )
+              assert sum(row["unclosedUvEdgeCount"] for row in branched) <= (
+                  cut_network["unclosedSharedUvCutCandidateEdges"]
+              )
+              assert all(
+                  type(row["originalSourceComponentMinimumVertexIndex"]) is int
+                  and 0 <= row["originalSourceComponentMinimumVertexIndex"] < 2717
+                  for row in chains
+              )
               assert cut_network[
                   "uvCutGraphMaximalSourceChainEdgeCoverageCount"
               ] == cut_network["unclosedSharedUvCutCandidateEdges"]
