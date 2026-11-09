@@ -15,6 +15,30 @@ audit = source_graph_module["audit_original_source_uv_cut_network"]
 classify = source_graph_module["classify_original_source_uv_cut_component"]
 trace = source_graph_module["trace_original_source_uv_cut_chains"]
 best_fit = source_graph_module["best_fit_original_source_uv_edge_translation"]
+best_rigid = source_graph_module["best_fit_original_source_uv_edge_rigid_alignment"]
+
+# Synthetic proper rotation + translation can close equal-length source
+# segments; length disagreement has a provable irreducible residual.
+equal_rigid = best_rigid(((0, 0), (10, 0)), ((100, 100), (100, 110)))
+assert equal_rigid["sourceUvOwnerEdgeLengthsMm"] == [10.0, 10.0]
+assert equal_rigid["bestFitProperRigidUvRotationDegrees"] == -90.0
+assert equal_rigid["bestFitRigidUvTranslationMm"] == [-100.0, 100.0]
+assert equal_rigid["irreducibleProperRigidAlignmentEndpointResidualMm"] == 0.0
+assert equal_rigid["singleEdgeExactRigidClosurePossible"] is True
+different_rigid = best_rigid(((0, 0), (10, 0)), ((100, 100), (100, 108)))
+assert different_rigid["sourceUvOwnerEdgeLengthsMm"] == [10.0, 8.0]
+assert different_rigid["bestFitProperRigidUvRotationDegrees"] == -90.0
+assert different_rigid["irreducibleProperRigidAlignmentEndpointResidualMm"] == 1.0
+assert different_rigid["singleEdgeExactRigidClosurePossible"] is False
+for bad in (((0, 0),), ((False, 0), (1, 0)), (("0", 0), (1, 0)),
+            ((0, 0), (math.inf, 0)), ((0, 0), (math.nan, 1)),
+            ((0, 0), (0, 0)), (None, (1, 0)), (0, 1)):
+    try:
+        best_rigid(bad, ((1, 1), (2, 2)))
+    except (ValueError, TypeError):
+        pass
+    else:
+        raise AssertionError("Forged or collapsed original UV owner edge was accepted.")
 
 # Two synthetic signed UV owner offsets, not a claim about real fabric.
 assert best_fit((1.0, 3.0), (3.0, 5.0)) == {
@@ -239,6 +263,36 @@ for row in gap_ranked:
     assert row["rigidTranslationCannotExactlyCloseBothEndpoints"] is (
         math.dist(*offsets) > 0.000000001
     )
+    owner_uv = row["sourceUvOriginalOwnerEdgeEndpointsMm"]
+    assert len(owner_uv) == 2 and all(
+        len(owner) == 2 and all(len(point) == 2 for point in owner)
+        for owner in owner_uv
+    )
+    assert all(
+        abs(owner_uv[0][endpoint][axis] -
+            owner_uv[1][endpoint][axis] - offsets[endpoint][axis]) <= 0.00002
+        for endpoint in range(2) for axis in range(2)
+    )
+    actual_alignment = best_rigid(owner_uv[0], owner_uv[1])
+    for name in ("sourceUvOwnerEdgeLengthsMm",
+                 "bestFitProperRigidUvRotationDegrees",
+                 "bestFitRigidUvTranslationMm",
+                 "irreducibleProperRigidAlignmentEndpointResidualMm"):
+        measured = row[name]
+        recomputed = actual_alignment[name]
+        if isinstance(measured, list):
+            assert len(measured) == len(recomputed)
+            assert all(abs(a - b) <= 0.00002 for a, b in zip(measured, recomputed))
+        else:
+            assert abs(measured - recomputed) <= 0.00002
+    assert row["singleEdgeExactRigidClosurePossible"] is (
+        abs(math.dist(*owner_uv[0]) - math.dist(*owner_uv[1])) / 2
+        <= 0.000000001
+    )
+    assert abs(
+        row["irreducibleProperRigidAlignmentEndpointResidualMm"] -
+        abs(math.dist(*owner_uv[0]) - math.dist(*owner_uv[1])) / 2
+    ) <= 0.00002
 assert flat["actualHighestGapBranchedOriginalSourceUvCutChains"] == []
 assert all(
     row["originalSourceComponentMinimumVertexIndex"] >= 0
