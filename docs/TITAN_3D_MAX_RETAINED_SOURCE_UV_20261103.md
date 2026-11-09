@@ -1015,3 +1015,59 @@ garment. Original 3D vertex/face IDs, scan, source body and locked
 `linen-earth-studio-model-v1` remain unchanged. No sewing pattern
 export, replacement mesh, GLB write, merge, deployment or cutting
 approval. **Pending new exact-head native Blender/Full CI results.**
+
+## 2026-11-09 bounded rigid best-fit source-edge translation test
+
+**Measured original-source blocker, previous successful native Blender run
+[#42654854582](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/42654854582):**
+the 2,587 original UV-disconnected source edges span 66 networks and 390
+maximal original mesh chains; six networks have graph branch junctions.
+The **largest measured source UV mismatch** of **1,516.99436mm**
+belongs to real original source vertex edge **1383–1418**, within
+connected branched source network **1354** (157 genuine UV-cut edges,
+39 maximal chains, 13 junctions). That source edge belongs to the
+21-original-edge maximal chain 1418–1732 (409.3102mm true 3D source
+chain length). This is a UV **research chart mismatch**, not physically
+verified cloth clearance or a textile dimension.
+
+**Actual code improvement:** From the unchanged original source mesh's
+two distinct face owner UV offsets at BOTH endpoints of every original
+UV-cut edge, derive the optimal **single rigid 2D translation** of one
+edge owner in research UV space. For signed endpoint offset vectors
+`a` and `b` in mm, the least-squares translation vector is
+`(a + b) / 2`; the mathematically unavoidable maximum residual gap
+at the endpoints after that single rigid translation is
+`|a - b| / 2`. A nonzero endpoint-vector difference means a **single
+translation cannot close both ends exactly** (the result does not say
+what more complex source-topology reconstruction could do).
+The pure helper rejects forged numeric text, boolean, nonfinite or
+non-2D vectors before calculation, requires equality of both
+endpoint residual norms, and reports rounded real measured mean
+translation, irreducible residual and an explicit boolean. It does
+**not** translate, rotate, rescale or save any production UV.
+
+The research report adds
+`bestFitSingleRigidUvEdgeTranslationMm`,
+`irreducibleSingleRigidTranslationEndpointResidualMm` and
+`rigidTranslationCannotExactlyCloseBothEndpoints` to its previously
+established original top-12 highest-gap source paths, including those
+belonging to the true six branched networks. Native Blender CI
+independently recomputes their mean signed vectors and half-drift
+residual from two actually reported original source face-owner
+endpoint offsets. Pure Python tests reconstruct the same formula
+independently from source-face UV loops, plus synthetic equal-offset
+zero-residual cases and fail-closed invalid input tests. Node static
+QA pins source, native workflow and Python evidence checks.
+
+**Scientific limitation:** This is a necessary condition on one real
+UV seam edge for **one** rigid translation. It does not prove chart
+overlap freedom, source panel topology correctness, original scanned
+body BVH clearance, fabric-repeat calibration or tailor-approved
+cutting. It should prevent futile full Blender translations when the
+authentic two-edge-endpoint mismatch itself rules out exact rigid
+closure; any further 2D reconstruction must still meet original
+overlap/gap/branch/real source length and physical gates. All
+`linen-earth-studio-model-v1` source and production UV/GLB bytes are
+unchanged, no fake physical inputs, **draft, no merge/deploy/cutting**.
+New exact-head pinned native source, collision, Full CI and Non-3D
+checks still required before accepting measurements from this change.
