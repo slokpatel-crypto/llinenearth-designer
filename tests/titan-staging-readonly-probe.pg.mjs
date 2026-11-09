@@ -161,7 +161,7 @@ test('native PostgreSQL: default PUBLIC EXECUTE and overloads are separately obs
     "LANGUAGE sql AS 'SELECT true';",
     'REVOKE ALL ON FUNCTION public.fabric_stock_reserve_v2(text) FROM PUBLIC;',
     'GRANT EXECUTE ON FUNCTION public.fabric_stock_reserve_v2(text) TO service_role;',
-  ].join('\\n'));
+  ].join('\n'));
   const rows=evidence();
   assert.equal(rows.length,(expectedNames.length+1)*expectedRoles.length,
     'An unexpected overload must add three evidence rows, not overwrite another signature');
