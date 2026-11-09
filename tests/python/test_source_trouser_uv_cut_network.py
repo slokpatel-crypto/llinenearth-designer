@@ -133,13 +133,31 @@ assert branch_report["uvCutGraphCycleRank"] == 0
 assert branch_report["branchingSourceVertices"] == 1
 assert branch_report["degreeOneSourceVertices"] == 3
 assert branch_report["interiorDegreeOneSourceVertices"] == 1
-for invalid_graph, vertices in (({},()), ({1:{1}},(1,)), ({1:{2},2:set()},(1,2))):
+# Disconnected graph components can forge the SAME Euler rank and degree
+# pattern as a single path/loop unless connectivity is checked separately.
+disjoint_path_and_loop = edge_graph((
+    (1,2),(2,3),(4,5),(5,6),(6,4)
+))
+assert len(disjoint_path_and_loop) == 6
+assert sum(map(len, disjoint_path_and_loop.values())) // 2 == 5
+assert 5 - 6 + 1 == 0  # would masquerade as one simple-open-path
+two_disjoint_loops = edge_graph((
+    (1,2),(2,3),(3,1),(4,5),(5,6),(6,4)
+))
+assert 6 - 6 + 1 == 1  # would masquerade as one simple-closed-loop
+for invalid_graph, vertices in (
+        ({},()),
+        ({1:{1}},(1,)),
+        ({1:{2},2:set()},(1,2)),
+        (path_graph,(1,2,2,3)),  # duplicated source vertex evidence
+        (disjoint_path_and_loop,(1,2,3,4,5,6)),
+        (two_disjoint_loops,(1,2,3,4,5,6))):
     try:
         classify(invalid_graph, vertices, set())
     except (ValueError,KeyError):
         pass
     else:
-        raise AssertionError("Invalid source UV cut graph was accepted.")
+        raise AssertionError("Invalid or disconnected source UV cut graph was accepted.")
 
 def rejected(points, face_list, uv, edges, report):
     try:
