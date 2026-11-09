@@ -118,18 +118,52 @@ assert all(
 assert len(curved["actualLongestOriginalSourceUvCutChains"]) == min(
     curved["uvCutGraphMaximalSourceChainCount"],12
 )
+# Every top-ranked native source chain now retains the complete ordered
+# ORIGINAL source vertex path, enabling exact 3D adjacency and metric checks
+# rather than an un-reconstructable pair of endpoints.
+actual_source_edges = {
+    tuple(sorted((face[i], face[(i+1)%4])))
+    for face in faces for i in range(4)
+}
+top_chains = curved["actualLongestOriginalSourceUvCutChains"]
 assert all(
     r["originalSourceEdgeCount"] >= 1
     and r["realOriginalSourceChainLengthMm"] > 0
     and type(r["closedGraphLoop"]) is bool
     and type(r["originalSourceStartVertexIndex"]) is int
     and type(r["originalSourceEndVertexIndex"]) is int
+    and len(r["originalSourceVertexPath"]) ==
+        r["originalSourceEdgeCount"] + 1
+    and all(type(v) is int and 0 <= v < len(curved_points)
+            for v in r["originalSourceVertexPath"])
+    and r["originalSourceVertexPath"][0] ==
+        r["originalSourceStartVertexIndex"]
+    and r["originalSourceVertexPath"][-1] ==
+        r["originalSourceEndVertexIndex"]
+    and all(
+        a != b and tuple(sorted((a,b))) in actual_source_edges
+        for a,b in zip(r["originalSourceVertexPath"],
+                       r["originalSourceVertexPath"][1:])
+    )
+    and abs(
+        math.fsum(
+            math.dist(curved_points[a], curved_points[b]) * 1000
+            for a,b in zip(r["originalSourceVertexPath"],
+                           r["originalSourceVertexPath"][1:])
+        ) - r["realOriginalSourceChainLengthMm"]
+    ) <= .00002
     and r["closedGraphLoop"] == (
         r["originalSourceStartVertexIndex"] ==
         r["originalSourceEndVertexIndex"]
     )
-    for r in curved["actualLongestOriginalSourceUvCutChains"]
+    for r in top_chains
 )
+assert len({
+    tuple(sorted((a,b)))
+    for r in top_chains
+    for a,b in zip(r["originalSourceVertexPath"],
+                   r["originalSourceVertexPath"][1:])
+}) == sum(r["originalSourceEdgeCount"] for r in top_chains)
 junction_count = curved["uvCutCandidateDegreeThreePlusSourceVertices"]
 junctions = curved["actualLargestOriginalSourceUvCutJunctions"]
 assert len(junctions) == min(junction_count,12)
