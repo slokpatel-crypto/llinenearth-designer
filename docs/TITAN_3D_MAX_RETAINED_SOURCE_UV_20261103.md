@@ -969,3 +969,49 @@ collision, Full CI and Non-3D verification. No original Blender
 source mesh, UV/GLB export, body scan, customer preview, textile
 provenance, thresholds, production build, physical fit or tailoring
 approval changed. **Draft / no merge / no deploy / no cutting.**
+
+## 2026-11-09 genuine source seam two-endpoint UV mismatch vectors
+
+**Reason to add**: The prior genuine original-source UV audit identified
+six branched/compound 3D source-edge cut networks and their worst-gap
+paths but recorded only a **scalar maximum UV gap** per true original
+source edge. Such a scalar cannot distinguish a single nearly rigid
+displacement of two chart edges from endpoints moving in different
+directions. No signed UV offsets, physical fabric grain, scanner-scale
+seam allowances or approved cutting paths were established.
+
+**New strictly original-source evidence:** For each of the unchanged
+2,587 source UV-disconnected, *genuine two-owner original mesh edges*,
+the research auditor computes two signed 2D owner-to-owner UV
+displacements, in research millimetres, from each endpoint of the same
+original edge. It independently verifies that the larger displacement
+norm equals the previously measured actual original edge UV mismatch.
+For each maximal original chain it records face-owner IDs of the
+maximum-gap source edge, both signed source-UV offset vectors,
+their Euclidean relative endpoint drift, the original vertex edge
+pair and its actual graph component. This evidence flows into the
+`actualHighestGapBranchedOriginalSourceUvCutChains` research report,
+without reordering any path, modifying any UV, or inferring a
+tailor-ready physical panel.
+
+Dedicated pure Python tests independently reconstruct both original
+owner-face UV loop coordinates for every ranked branched path's worst
+original source edge, enforce literal matching face IDs, signed
+owner-to-owner vectors, both per-endpoint norms, observed maximum
+gap and Euclidean relative drift; the corresponding native Blender
+CI also independently recomputes these numerical identities from
+the reported vectors and validates two distinct original source
+face IDs. Static Node regressions pin these source, synthetic and
+native evidence checks. The acceptance gates for actual source UV
+overlap, source cuts, unclosed gap, branch degree and real body
+clearance are NOT relaxed.
+
+**Important interpretation:** A near-constant source UV offset
+between both endpoints may suggest a locally rigid chart
+displacement *for this research UV edge only*; a changing offset
+shows relative endpoint mismatch. Neither automatically gives a
+valid unwrap, physically verified textile scale or collision-free
+garment. Original 3D vertex/face IDs, scan, source body and locked
+`linen-earth-studio-model-v1` remain unchanged. No sewing pattern
+export, replacement mesh, GLB write, merge, deployment or cutting
+approval. **Pending new exact-head native Blender/Full CI results.**
