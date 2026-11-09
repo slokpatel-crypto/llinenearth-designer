@@ -357,3 +357,48 @@ direction, not arbitrary 2D placement, cloth nesting or garment pattern design.
 Source geometry, body collision state, model identity and production files are
 unchanged. Physical fabric, fit, tailor and production approval remain false
 until separate real evidence exists. **Research only; no export or deployment.**
+
+## 2026-11-09 fail-closed true seam-origin evidence (research only)
+
+The preceding exact source head `b28cda8d4824572752b46f58666425b2d620f5b3`
+passed **all four matching-head CI workflows**: native collision #42630099281,
+real-source rejection #42630099105, Full CI #42630099118 and Non-3D QA
+#42630099371. This verifies the previous independent numerical gate, not the
+new implementation below.
+
+The earlier official native source report at `4937c3c` rejected **all 16/16**
+rank-18 near-zero fractions, selecting none. Baseline: 6,957 overlapping UV
+triangle pairs / 1,072.40848mm max gap / 323 branch junctions. At 1/256,
+6,939 overlaps but max gap 1,076.92613mm (+4.51765mm); at 5/256, 6,923
+overlaps but max gap 1,095.01047mm (+22.60199mm). The candidate edge
+[1703,1738] remains a genuine **33.28815mm source-mesh edge**, not an
+approved physical cut. A lower overlap count cannot override a gap regression.
+
+**New isolated fix:** the pure source-tree UV repack previously assumed that
+moving an authentic retained 3D tree edge necessarily created exactly one NEW
+UV seam. Its input might already have disconnected UV endpoints, or an
+arbitrarily tiny positive translation could leave endpoints coincident within
+research numerical precision. Before reporting a new seam the helper now:
+
+1. Checks both original shared vertex endpoints on both source face owners are
+   UV-joined within 0.001mm research-coordinate tolerance; pre-split input
+   fails closed.
+2. Requires a finite translation greater than 0.001mm and checks both
+   resulting source-edge endpoints actually differ by more than 0.001mm.
+3. Preserves source vertices, faces, UV research-only separation, original
+   production geometry, Blender identity and all explicit false physical
+   certification flags. The numerical tolerance is NOT garment seam allowance,
+   fabric repeat, grain, measurement or fit proof.
+
+Added positive/negative pure fixture coverage for a detectable tiny trial,
+pre-existing forged UV disconnection and sub-tolerance positive fractions;
+static Node QA protects the invariants. Scoped files: research subtree helper,
+its Python fixture, its Node source regression and this checkpoint. No
+original Blender source mesh/model is saved, no export or production promotion.
+
+**New code-head verification is pending:** inspect latest exact-head native
+Blender source rejection workflow, collision QA, Full CI and Non-3D QA. A
+passing diagnostic workflow is not production approval. All ten original
+six-piece hard preflight failures, original source/body contacts, 2,585+
+research UV cycle seams, real fabric/drape and tailor signoff remain blockers.
+**DRAFT / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
