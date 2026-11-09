@@ -9,6 +9,8 @@
 3. The reviewer runs `docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql` **manually against that verified staging connection only**, with a read-only transaction and error-on-first-failure configuration. Do not configure GitHub Actions, production apps or agent tasks to execute it.
 4. Record run time (UTC), approved project identifier via independently verified dashboard/owner process, collector identity, exact source PR commit, and a private reference to the four query result sets. If the history table does not exist or a query lacks SELECT permission, report **BLOCKED**; do not initialize, repair or grant permissions merely to make the probe pass.
 
+**Partial-output rule:** Run with `psql`'s `ON_ERROR_STOP=1` and verify a successful process exit before accepting any result set. Query 1 may emit connection metadata before Query 2 fails due to denied `SELECT` on the migration table; that partial output is **BLOCKED**, not valid evidence. The disposable native test verifies that an otherwise known PostgreSQL role without migration-history `SELECT` fails, whereas an expressly granted synthetic reviewer can complete the four SELECTs. This does **not** authorize granting permissions on staging or production; privilege changes there require independent owner/database approval.
+
 ## What the SQL actually reads
 
 - Connection/database metadata for manual staging identity checks, **not a self-proving identity token**.
