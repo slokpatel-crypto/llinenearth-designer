@@ -26,14 +26,21 @@ def connect_original_source_uv_forest(
     original_indices = []
     local = []
     for face_index, (raw_face, raw_uv) in enumerate(zip(original_faces, separate_face_uv)):
-        face = tuple(int(v) for v in raw_face)
-        coords = [tuple(float(v) for v in uv) for uv in raw_uv]
-        if (len(face) != 4 or len(set(face)) != 4 or min(face) < 0
-                or len(coords) != 4 or any(
-                    len(uv) != 2 or not all(math.isfinite(v) for v in uv)
-                    for uv in coords
-                )):
+        # Original source vertex IDs and UV coordinates are evidence, not
+        # labels to coerce. int("1"), int(1.9), float(True) and
+        # float("0.01") must never silently invent source topology/scale.
+        if (len(raw_face) != 4 or
+                any(type(v) is not int or v < 0 for v in raw_face) or
+                len(set(raw_face)) != 4 or len(raw_uv) != 4):
             raise ValueError("Original source face or metric UV loop is invalid.")
+        face = tuple(raw_face)
+        coords = []
+        for uv in raw_uv:
+            if (len(uv) != 2 or any(
+                    isinstance(v, bool) or not isinstance(v, (int, float))
+                    or not math.isfinite(v) for v in uv)):
+                raise ValueError("Original source face or metric UV loop is invalid.")
+            coords.append(tuple(float(v) for v in uv))
         # All face UV charts must be nondegenerate, finite and have same orientation.
         cross1 = ((coords[1][0]-coords[0][0])*(coords[2][1]-coords[0][1])
                   -(coords[1][1]-coords[0][1])*(coords[2][0]-coords[0][0]))
@@ -49,10 +56,14 @@ def connect_original_source_uv_forest(
             owners[edge].append((face_index, (a, b) == edge))
     if any(len(rows) > 2 for rows in owners.values()):
         raise ValueError("Actual source seam has nonmanifold original face ownership.")
+    if any(
+            len(edge) != 2 or any(type(v) is not int or v < 0 for v in edge)
+            for edge in original_cut_edges):
+        raise ValueError("Original source cut-edge identities must be integer vertex IDs.")
     cuts = {tuple(sorted(edge)) for edge in original_cut_edges}
     if len(cuts) != 8 or any(
-        len(edge) != 2 or edge[0] == edge[1] or
-        len(owners.get(edge, [])) != 1 for edge in cuts
+        edge[0] == edge[1] or len(owners.get(edge, [])) != 1
+        for edge in cuts
     ):
         raise ValueError("Cannot associate genuine original cut seam with one original owner.")
     adjacent = [[] for _ in original_indices]
@@ -82,9 +93,10 @@ def connect_original_source_uv_forest(
         source_edge_set = {edge for edge, _, _ in shared}
         proposed = []
         for raw_edge in preferred_tree_edges:
-            if len(raw_edge) != 2:
-                raise ValueError("Selected original source UV tree edge is not a pair.")
-            u, v = (int(raw_edge[0]), int(raw_edge[1]))
+            if (len(raw_edge) != 2 or any(
+                    type(index) is not int for index in raw_edge)):
+                raise ValueError("Selected original source UV tree edge is not a strict integer pair.")
+            u, v = raw_edge
             if u >= v or u < 0 or (u, v) not in source_edge_set:
                 raise ValueError("Selected UV edge is not a true canonical shared source edge.")
             proposed.append((u, v))
