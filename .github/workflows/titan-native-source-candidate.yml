@@ -1324,6 +1324,9 @@ jobs:
               branch_ids={
                   row["originalSourceMinimumVertexIndex"] for row in branched
               }
+              highest_gap_branches=cut_network[
+                  "actualHighestGapBranchedOriginalSourceUvCutChains"
+              ]
               assert len(branched) == cut_network[
                   "uvCutGraphBranchedOrCompoundComponentCount"
               ]
@@ -1338,6 +1341,9 @@ jobs:
                   and row["uvCutGraphMaximalChainCount"] >= 2
                   and row["realOriginalSourceUvCutNetworkLengthMm"] > 0
                   and math.isfinite(row["realOriginalSourceUvCutNetworkLengthMm"])
+                  and 0.001 < row["maximumOriginalSourceUvSeamGapMm"] <= (
+                      cut_network["maximumUnclosedUvEdgeGapMm"] + 0.00001
+                  )
                   and row["uvCutGraphMaximalChainEdgeCoverageCount"] ==
                       row["unclosedUvEdgeCount"]
                   for row in branched
@@ -1349,6 +1355,36 @@ jobs:
                       row["originalSourceEdgeCount"] + 1
                   for row in branched_paths
               )
+              assert len(highest_gap_branches) == len(branched_paths)
+              assert all(
+                  row["originalSourceComponentMinimumVertexIndex"] in branch_ids
+                  and row["maximumOriginalSourceUvSeamGapMm"] > 0.001
+                  and row["maximumOriginalSourceUvSeamGapMm"] <= (
+                      cut_network["maximumUnclosedUvEdgeGapMm"] + 0.00001
+                  )
+                  and len(row["originalSourceEdgeAtMaximumUvSeamGap"]) == 2
+                  and tuple(row["originalSourceEdgeAtMaximumUvSeamGap"]) in {
+                      tuple(sorted((a,b)))
+                      for a,b in zip(row["originalSourceVertexPath"],
+                                     row["originalSourceVertexPath"][1:])
+                  }
+                  for row in highest_gap_branches
+              )
+              assert [
+                  (-row["maximumOriginalSourceUvSeamGapMm"],
+                   -row["realOriginalSourceChainLengthMm"],
+                   row["originalSourceComponentMinimumVertexIndex"],
+                   row["originalSourceStartVertexIndex"],
+                   row["originalSourceEndVertexIndex"])
+                  for row in highest_gap_branches
+              ] == sorted([
+                  (-row["maximumOriginalSourceUvSeamGapMm"],
+                   -row["realOriginalSourceChainLengthMm"],
+                   row["originalSourceComponentMinimumVertexIndex"],
+                   row["originalSourceStartVertexIndex"],
+                   row["originalSourceEndVertexIndex"])
+                  for row in highest_gap_branches
+              ])
               assert sum(row["unclosedUvEdgeCount"] for row in branched) <= (
                   cut_network["unclosedSharedUvCutCandidateEdges"]
               )
