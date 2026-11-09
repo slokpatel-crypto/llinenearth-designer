@@ -127,3 +127,28 @@ test("formal and pleated trousers may have cropped hems without forcing cropped 
       "a proposed hem must not silently change a non-cropped trouser type");
   }
 });
+
+test("cropped hem with ordinary trouser fronts rejects every shoe-resting break", () => {
+  const conflicts = [
+    ["full_break", "cropped_full_break"],
+    ["half_break", "cropped_half_break"],
+    ["slight_break", "cropped_slight_break"],
+    ["stacked_break", "cropped_stacked_break"],
+  ] as const;
+  for (const type of ["formal_flat_front", "pleated_trouser"] as const) {
+    for (const [shoeBreak, expected] of conflicts) {
+      const locked = Object.freeze({
+        shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar",
+          wear: "tucked", sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
+        pant: Object.freeze({ type, pleat: "flat_front",
+          hem: "cropped_above_ankle_hem", break: shoeBreak }),
+      }) as unknown as StyleSpecV2;
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      assert.ok(issues.some(issue => issue.code === expected),
+        `${type} / ${shoeBreak}: cropped hem must not claim a shoe-resting break`);
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+      assert.equal(JSON.stringify(locked), before, "locked selections remain immutable");
+    }
+  }
+});
