@@ -162,6 +162,47 @@ assert max(row["maximumOriginalSourceUvSeamGapMm"]
            for row in curved["actualLongestOriginalSourceUvCutChains"]) <= (
     curved["maximumUnclosedUvEdgeGapMm"] + 0.00001
 )
+
+# Reconstruct both independent source-face UV owner offsets from the original
+# face loops (not from a reported witness) on all ranked branched paths.
+def actual_uv_source_edge_owner_witness(edge):
+    original_faces = []
+    edge_pair = set(edge)
+    for face_id, face in enumerate(faces):
+        for i in range(4):
+            if {face[i], face[(i+1) % 4]} != edge_pair:
+                continue
+            loops = curved_tree["face_uv_loops"][face_id]
+            if face[i] == edge[0]:
+                original_faces.append((face_id, loops[i], loops[(i+1) % 4]))
+            else:
+                original_faces.append((face_id, loops[(i+1) % 4], loops[i]))
+    assert len(original_faces) == 2
+    first, second = original_faces
+    offset_0 = [(first[1][axis] - second[1][axis])*1000 for axis in range(2)]
+    offset_1 = [(first[2][axis] - second[2][axis])*1000 for axis in range(2)]
+    return [first[0], second[0]], [offset_0, offset_1]
+
+for row in gap_ranked:
+    edge = row["originalSourceEdgeAtMaximumUvSeamGap"]
+    owners, offsets = actual_uv_source_edge_owner_witness(edge)
+    reported = row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"]
+    assert row["originalSourceFaceOwnersAtMaximumUvGap"] == owners
+    assert len(reported) == 2 and all(len(offset) == 2 for offset in reported)
+    assert all(
+        abs(actual-reported_value) <= 0.00001
+        for actual_vector, report_vector in zip(offsets, reported)
+        for actual, reported_value in zip(actual_vector, report_vector)
+    )
+    assert abs(
+        max(math.hypot(*v) for v in offsets) -
+        row["maximumOriginalSourceUvSeamGapMm"]
+    ) <= 0.00001
+    assert abs(
+        math.dist(*offsets) - row["relativeSourceUvEndpointDriftMm"]
+    ) <= 0.00001
+    assert row["relativeSourceUvEndpointDriftMm"] >= 0
+assert flat["actualHighestGapBranchedOriginalSourceUvCutChains"] == []
 assert all(
     row["originalSourceComponentMinimumVertexIndex"] >= 0
     for row in curved["actualLongestOriginalSourceUvCutChains"]
