@@ -100,6 +100,18 @@ test("largest original component one-cut UV trial stays measurable and rejected"
     '"tests/crotch-trouser-component0-subtree-uv-native.test.ts"',
   ])assert.equal(workflow.split(marker).length-1,2,
     "Source workflow must trigger on PR and main for the one-cut trial");
+  for(const marker of [
+    "Selected original retained tree edge is already UV-disconnected.",
+    "Research UV translation does not open a finite measurable new seam.",
+    "Selected retained source edge did not open a measurable UV seam.",
+    "joined_uv_endpoints = []",
+    "displacement_mm = math.hypot(dx, dy) * 1000.0",
+  ])assert.ok(helper.includes(marker), "seam-origin proof missing: " + marker);
+  for(const marker of [
+    "reject(source_uv=already_disconnected)",
+    "for fraction in (1e-12, 1e-9):",
+    "small_visible = trial(",
+  ])assert.ok(fixture.includes(marker), "seam-origin regression missing: " + marker);
   assert.ok(!helper.includes("import bpy"));
   assert.ok(!driver.includes("save_as_mainfile"));
 });
