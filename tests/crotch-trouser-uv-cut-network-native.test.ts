@@ -20,12 +20,33 @@ test("actual source UV cut graph counts physical mesh edges without inventing se
     '"uvCutCandidateDegreeHistogram": {',
     '"uvCutCandidateDegreeThreePlusSourceVertices": sum(',
     '"uvCutCandidateGraphComponentCount": len(network_components)',
+    '"uvCutGraphCycleRank": cut_cycle_rank',
+    '"uvCutGraphSimpleOpenPathComponentCount":',
+    '"uvCutGraphSimpleClosedLoopComponentCount":',
+    '"uvCutGraphBranchedOrCompoundComponentCount":',
+    '"uvCutGraphInteriorDegreeOneSourceVertexCount":',
+    '"uvCutGraphComponentsWithoutActualOriginalOpenBoundary":',
     '"actualLargestGapUvCutEdges": [',
     '"realTailorCutLinesApproved": False',
     '"sourcePanelUVContinuityVerified": False',
     '"measuredSupplierTextileRepeatMm": None',
     '"productionApproved": False',
   ])assert.ok(helper.includes(needle),needle);
+  for(const needle of [
+    "def classify_original_source_uv_cut_component(",
+    'shape = "simple-open-path"',
+    'shape = "simple-closed-loop"',
+    'shape = "branched-or-compound"',
+    "cycle_rank = edges - len(component) + 1",
+    "cut_cycle_rank = len(uv_unclosed) - len(cut_graph) + len(network_components)",
+    "Original UV cut graph failed independent Euler accounting.",
+  ])assert.ok(helper.includes(needle),"source-panel topology classifier missing: "+needle);
+  for(const needle of [
+    'path_report["uvCutGraphTopology"] == "simple-open-path"',
+    'loop_report["uvCutGraphTopology"] == "simple-closed-loop"',
+    'branch_report["uvCutGraphTopology"] == "branched-or-compound"',
+    'assert curved["uvCutGraphCycleRank"] == (',
+  ])assert.ok(synthetic.includes(needle),"missing source topology test: "+needle);
   // Every original UV/face/edge input must be a genuine measured source
   // primitive, never coerced from numeric-looking strings or booleans.
   for(const needle of [
@@ -58,6 +79,11 @@ test("actual source UV cut graph counts physical mesh edges without inventing se
     'cut_network=oriented["researchOnlyOriginalSourceUvCutNetworkEvidence"]',
     'cut_network["unclosedSharedUvCutCandidateEdges"] == (',
     'cut_network["uvCutCandidateDegreeThreePlusSourceVertices"] >= 0',
+    'cut_network["uvCutGraphCycleRank"] == (',
+    '"uvCutGraphSimpleOpenPathComponentCount"',
+    '"uvCutGraphBranchedOrCompoundComponentCount"',
+    '"uvCutGraphInteriorDegreeOneSourceVertexCount"',
+    'row["uvCutGraphTopology"] in (',
     'cut_network["realTailorCutLinesApproved"] is False',
     '"originalSourceUvCutNetworkEvidence": {',
   ])assert.ok(native.includes(needle),needle);
