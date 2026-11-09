@@ -194,3 +194,26 @@ test("cropped-break review does not hide independently invalid trouser front con
     assert.equal(JSON.stringify(locked), snapshot);
   }
 });
+
+
+test("cropped break against an ordinary hem requires review for every supported trouser front", () => {
+  for (const type of ["formal_flat_front", "pleated_trouser", "cropped_ankle"] as const) {
+    const locked = Object.freeze({
+      shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+        sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
+      pant: Object.freeze({ type, pleat: type === "pleated_trouser" ? "single_pleat" : "flat_front",
+        hem: "plain_hem", break: "cropped_above_ankle" }),
+    }) as unknown as StyleSpecV2;
+    const snapshot = JSON.stringify(locked);
+    const issues = styleDirectorConstructionIssues(locked);
+    assert.ok(issues.some(issue => issue.code === "cropped_break_hem_mismatch"), type);
+    assert.equal(issues.filter(issue => issue.code === "cropped_break_hem_mismatch").length, 1);
+    assert.ok(!issues.some(issue => issue.code === "pleated_front_missing_pleat" ||
+      issue.code === "flat_front_has_pleat"), type);
+    assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+    assert.equal(JSON.stringify(locked), snapshot, "review must not rewrite locked selections");
+    assert.equal(styleDirectorProposedCroppedHem(locked.pant),
+      type === "cropped_ankle" ? "cropped_above_ankle_hem" : null,
+      "a suggestion must not authorize a different trouser type");
+  }
+});
