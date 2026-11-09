@@ -18,13 +18,28 @@ for(const [name,expected] of Object.entries(syntheticEnv)){
     'Refusing PostgreSQL test outside the explicitly configured disposable fixture: '+name);
 }
 
+// Never inherit libpq connection settings (PGHOSTADDR, PGSERVICE, etc.).
+// PGHOSTADDR can override PGHOST; an inherited service may silently select
+// another destination. The child process may only reach our loopback fixture.
+const psqlEnv={
+  PATH:process.env.PATH || '/usr/bin:/bin',
+  HOME:process.env.HOME || '/tmp',
+  LANG:process.env.LANG || 'C',
+  ...syntheticEnv,
+  PGHOSTADDR:'127.0.0.1',
+  PGSSLMODE:'disable',
+  PGCONNECT_TIMEOUT:'5',
+};
+
 function runPsql(args){
   const result=spawnSync('psql',[
     '--no-psqlrc','--set=ON_ERROR_STOP=1','--quiet',
+    '--host=127.0.0.1','--port=5432',
+    '--username=titan_probe','--dbname=titan_probe_synthetic','--no-password',
     '--no-align','--tuples-only','--field-separator=|',...args,
   ],{
     cwd:process.cwd(),
-    env:process.env,
+    env:psqlEnv,
     encoding:'utf8',
     timeout:20000,
   });
@@ -107,5 +122,24 @@ test('native PostgreSQL: missing role stays visible with unknown permission',()=
     assert.equal(row.roleExists,'f');
     assert.equal(row.execute,'');
     assert.equal(row.exists,'f');
+  }
+});
+
+test('native PostgreSQL: inherited libpq overrides cannot redirect synthetic fixture',()=>{
+  const previousAddress=process.env.PGHOSTADDR;
+  const previousService=process.env.PGSERVICE;
+  try{
+    // RFC 5737 TEST-NET-1 is never queried: the child has a controlled env.
+    process.env.PGHOSTADDR='192.0.2.23';
+    process.env.PGSERVICE='should-never-be-inherited';
+    const address=sql('SELECT inet_server_addr()::text;').trim();
+    assert.equal(address,'127.0.0.1');
+    assert.equal(psqlEnv.PGHOSTADDR,'127.0.0.1');
+    assert.equal(Object.hasOwn(psqlEnv,'PGSERVICE'),false);
+  }finally{
+    if(previousAddress===undefined)delete process.env.PGHOSTADDR;
+    else process.env.PGHOSTADDR=previousAddress;
+    if(previousService===undefined)delete process.env.PGSERVICE;
+    else process.env.PGSERVICE=previousService;
   }
 });
