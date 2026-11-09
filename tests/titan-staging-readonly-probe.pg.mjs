@@ -31,7 +31,7 @@ const psqlEnv={
   PGCONNECT_TIMEOUT:'5',
 };
 
-function runPsql(args){
+function runPsql(args,{expectFailure=false}={}){
   const result=spawnSync('psql',[
     '--no-psqlrc','--set=ON_ERROR_STOP=1','--quiet',
     '--host=127.0.0.1','--port=5432',
@@ -44,6 +44,10 @@ function runPsql(args){
     timeout:20000,
   });
   assert.equal(result.error,undefined,'psql could not start');
+  if(expectFailure){
+    assert.notEqual(result.status,0,'Probe unexpectedly succeeded despite missing migration history');
+    return result.stderr;
+  }
   assert.equal(result.status,0,'Synthetic psql execution failed: '+result.stderr);
   return result.stdout;
 }
@@ -146,4 +150,35 @@ test('native PostgreSQL: inherited libpq overrides cannot redirect synthetic fix
     if(previousService===undefined)delete process.env.PGSERVICE;
     else process.env.PGSERVICE=previousService;
   }
+});
+
+test('native PostgreSQL: default PUBLIC EXECUTE and overloads are separately observable',()=>{
+  sql([
+    'CREATE ROLE service_role NOLOGIN;',
+    'CREATE FUNCTION public.fabric_stock_reserve_v2(text) RETURNS boolean',
+    "LANGUAGE sql AS 'SELECT true';",
+    'CREATE FUNCTION public.fabric_stock_reserve_v2(integer) RETURNS boolean',
+    "LANGUAGE sql AS 'SELECT true';",
+    'REVOKE ALL ON FUNCTION public.fabric_stock_reserve_v2(text) FROM PUBLIC;',
+    'GRANT EXECUTE ON FUNCTION public.fabric_stock_reserve_v2(text) TO service_role;',
+  ].join('\\n'));
+  const rows=evidence();
+  assert.equal(rows.length,(expectedNames.length+1)*expectedRoles.length,
+    'An unexpected overload must add three evidence rows, not overwrite another signature');
+  for(const role of expectedRoles){
+    const candidateRows=rows.filter(row=>row.name==='fabric_stock_reserve_v2'&&row.role===role);
+    assert.equal(candidateRows.length,2,'Each overload needs an independently auditable privilege result');
+    const bySig=Object.fromEntries(candidateRows.map(row=>[row.signature,row.execute]));
+    assert.equal(bySig['fabric_stock_reserve_v2(integer)'],'t',
+      'PostgreSQL default PUBLIC EXECUTE grants effective permission to every role');
+    assert.equal(bySig['fabric_stock_reserve_v2(text)'],role==='service_role'?'t':'f');
+  }
+});
+
+test('native PostgreSQL: missing migration history fails closed instead of providing partial evidence',()=>{
+  sql('DROP TABLE supabase_migrations.schema_migrations;');
+  const error=runPsql(['--file','docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql'],
+    {expectFailure:true});
+  assert.match(error,/schema_migrations/);
+  assert.match(error,/does not exist/i);
 });
