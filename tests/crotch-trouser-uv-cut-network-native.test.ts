@@ -36,7 +36,7 @@ test("actual source UV cut graph counts physical mesh edges without inventing se
     '"uvCutGraphLongestOriginalSourceChainLengthMm": (',
     '"actualLongestOriginalSourceUvCutChains": source_chains[:12]',
     '"originalSourceComponentMinimumVertexIndex":',
-    '"realOriginalSourceUvCutNetworkLengthMm": round(',
+    'classification["realOriginalSourceUvCutNetworkLengthMm"] = round(',
     '"actualLongestBranchedOriginalSourceUvCutChains": branched_chain_rows[:12]',
     '"actualBranchedOriginalSourceUvCutNetworks": [',
     "Original branched UV source chains have incomplete component ownership.",
