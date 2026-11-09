@@ -217,3 +217,30 @@ test("cropped break against an ordinary hem requires review for every supported 
       "a suggestion must not authorize a different trouser type");
   }
 });
+
+
+test("cropped type, ordinary hem and shoe-resting break report independent conflicts", () => {
+  for (const [shoeBreak, breakIssue] of [
+    ["full_break", "cropped_full_break"],
+    ["half_break", "cropped_half_break"],
+    ["slight_break", "cropped_slight_break"],
+    ["stacked_break", "cropped_stacked_break"],
+  ] as const) {
+    const locked = Object.freeze({
+      shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+        sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
+      pant: Object.freeze({ type: "cropped_ankle", pleat: "flat_front",
+        hem: "plain_hem", break: shoeBreak }),
+    }) as unknown as StyleSpecV2;
+    const snapshot = JSON.stringify(locked);
+    const issues = styleDirectorConstructionIssues(locked);
+    assert.equal(issues.filter(issue => issue.code === "cropped_type_hem_mismatch").length, 1,
+      "type/hem mismatch must not disappear behind the shoe-break conflict");
+    assert.equal(issues.filter(issue => issue.code === breakIssue).length, 1,
+      "shoe-break contradiction must remain independently reviewable");
+    assert.equal(styleDirectorProposedCroppedHem(locked.pant), null,
+      "a shoe-resting break must never propose a cropped replacement hem");
+    assert.deepEqual(styleDirectorConstructionIssues(locked), issues, "deterministic replay");
+    assert.equal(JSON.stringify(locked), snapshot, "locked selections remain unchanged");
+  }
+});
