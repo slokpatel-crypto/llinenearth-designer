@@ -2945,3 +2945,19 @@ test("cropped construction and shoe-break matrix preserves locked IDs", () => {
     }
   }
 });
+
+
+test("cropped break cannot certify a plain hem across canonical trouser fronts", () => {
+  for (const type of ["formal_flat_front", "pleated_trouser", "cropped_ankle"] as const) {
+    const locked = spec();
+    locked.pant.type = type;
+    locked.pant.hem = "plain_hem";
+    locked.pant.break = "cropped_above_ankle";
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorConstructionIssues(locked);
+    assert.ok(issues.some(issue => issue.code === "cropped_break_hem_mismatch"),
+      `${type} cannot claim an above-ankle break with a plain hem`);
+    assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+    assert.equal(JSON.stringify(locked), before, "review must preserve locked IDs");
+  }
+});
