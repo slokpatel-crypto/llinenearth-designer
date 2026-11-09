@@ -54,6 +54,10 @@ assert flat["uvCutGraphSimpleClosedLoopComponentCount"] == 0
 assert flat["uvCutGraphBranchedOrCompoundComponentCount"] == 0
 assert flat["uvCutGraphInteriorDegreeOneSourceVertexCount"] == 0
 assert flat["uvCutGraphComponentsWithoutActualOriginalOpenBoundary"] == 0
+assert flat["uvCutGraphMaximumJunctionDegree"] == 0
+assert flat["uvCutGraphJunctionsOnActualOriginalBoundary"] == 0
+assert flat["uvCutGraphJunctionsOnGenuineOriginalCrotchCut"] == 0
+assert flat["actualLargestOriginalSourceUvCutJunctions"] == []
 assert flat["seamCutTopologyApproved"] is False
 assert flat["realTailorCutLinesApproved"] is False
 assert flat["measuredSupplierTextileRepeatMm"] is None
@@ -84,6 +88,32 @@ assert curved["uvCutGraphCycleRank"] == (
     curved["unclosedSharedUvCutCandidateEdges"] -
     curved["uvCutCandidateSourceVertexCount"] +
     curved["uvCutCandidateGraphComponentCount"]
+)
+junction_count = curved["uvCutCandidateDegreeThreePlusSourceVertices"]
+junctions = curved["actualLargestOriginalSourceUvCutJunctions"]
+assert len(junctions) == min(junction_count,12)
+assert 0 <= curved["uvCutGraphJunctionsOnActualOriginalBoundary"] <= junction_count
+assert 0 <= curved["uvCutGraphJunctionsOnGenuineOriginalCrotchCut"] <= junction_count
+assert curved["uvCutGraphMaximumJunctionDegree"] == (
+    junctions[0]["sourceUvCutGraphDegree"] if junctions else 0
+)
+assert [(-r["sourceUvCutGraphDegree"],
+         -r["incidentOriginalSourceCutEdgeLengthMm"],
+         r["originalSourceVertexIndex"]) for r in junctions] == sorted(
+    [(-r["sourceUvCutGraphDegree"],
+      -r["incidentOriginalSourceCutEdgeLengthMm"],
+      r["originalSourceVertexIndex"]) for r in junctions]
+)
+assert all(
+    type(r["originalSourceVertexIndex"]) is int
+    and 0 <= r["originalSourceVertexIndex"] < len(curved_points)
+    and r["sourceUvCutGraphDegree"] >= 3
+    and len(r["realOriginalSourcePositionMm"]) == 3
+    and all(math.isfinite(x) for x in r["realOriginalSourcePositionMm"])
+    and r["incidentOriginalSourceCutEdgeLengthMm"] > 0
+    and type(r["touchesActualOriginalOpenBoundary"]) is bool
+    and type(r["touchesGenuineOriginalCrotchCut"]) is bool
+    for r in junctions
 )
 assert sum(curved[key] for key in (
     "uvCutGraphSimpleOpenPathComponentCount",
