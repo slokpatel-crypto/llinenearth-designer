@@ -1,6 +1,6 @@
 # TITAN staging migration/stock RPC evidence — manual read-only capture
 
-**Status: PREPARED ONLY — NOT EXECUTED.** This package creates no connection to Supabase or any other database. It is not confirmation of a staging environment, a migration-history repair plan, database approval, or launch readiness.
+**Status: STAGING PROBE PREPARED ONLY — NOT EXECUTED ON STAGING.** The separate CI safety job runs this SQL only against a disposable PostgreSQL 16 service with synthetic-only roles, history and stock function fixtures; it never connects to Supabase, staging, production, or customer data. This is not confirmation of a staging environment, a migration-history repair plan, database approval, or launch readiness.
 
 ## Prerequisites for an authorized human reviewer
 
@@ -18,7 +18,7 @@
 
 **Important absence check:** Query 4 starts from the eight explicitly named stock RPC candidates crossed with the three roles, not from the set of functions currently installed. It therefore returns **at least 24 evidence rows**, including `expected_function_name`, `function_exists=false`, `function_signature=NULL` and `effective_execute=NULL` for any missing function. A missing role likewise yields `role_exists=false` and an unknown permission. Function overloads may produce extra rows. Reviewers must mark missing required v2 functions and expected roles **BLOCKED/UNKNOWN** and independently determine whether a missing retired v1 function is intentional; no empty result set or NULL privilege is a passing permission check. The absence matrix does **not** itself establish expected function signatures or whether an apparent v2 overload is the production-approved one.
 
-The SQL file contains `BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY`, four `SELECT` queries and `COMMIT`. The separate pure tests check that it contains no write statement and captures the required metadata. A successful capture means only that observations were obtained. It cannot prove the historical order of all 58 Git files.
+The SQL file contains `BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY`, four `SELECT` queries and `COMMIT`. Static tests reject write statements and missing evidence fields. A **separate disposable PostgreSQL-only integration test** now executes this exact read-only probe against deliberately synthetic roles and functions: all missing RPCs, a present function with granted/denied EXECUTE, and a missing role. The integration test creates and removes only disposable fixture objects; it requires the exact `titan_probe_synthetic` database, `titan_probe` user, loopback address, and synthetic CI opt-in environment before running. No production or staging credentials are used or configured. This proves SQL execution and response shape on the synthetic fixture **only**. It cannot establish whether staging has the correct history, the historical order of all source SQL files, authorized staging identity, or production readiness.
 
 ## After collection — no deployment
 
