@@ -147,7 +147,7 @@ test("cropped hem with ordinary trouser fronts rejects every shoe-resting break"
       const issues = styleDirectorConstructionIssues(locked);
       assert.ok(issues.some(issue => issue.code === expected),
         `${type} / ${shoeBreak}: cropped hem must not claim a shoe-resting break`);
-      assert.ok(!issues.some(issue => issue.code === "pleat_type_mismatch"),
+      assert.ok(!issues.some(issue => issue.code === "pleated_front_missing_pleat" || issue.code === "flat_front_has_pleat"),
         `${type}: correctly matched pleat construction must not produce a separate mismatch`);
       assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
       assert.equal(JSON.stringify(locked), before, "locked selections remain immutable");
@@ -172,5 +172,25 @@ test("ordinary hems retain legitimate shoe-resting breaks without cropped warnin
       assert.equal(styleDirectorProposedCroppedHem(locked.pant), null);
       assert.equal(JSON.stringify(locked), before);
     }
+  }
+});
+
+
+test("cropped-break review does not hide independently invalid trouser front construction", () => {
+  for (const [type, pleat, expected] of [
+    ["formal_flat_front", "single_pleat", "flat_front_has_pleat"],
+    ["pleated_trouser", "flat_front", "pleated_front_missing_pleat"],
+  ] as const) {
+    const locked = Object.freeze({
+      shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+        sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
+      pant: Object.freeze({ type, pleat, hem: "cropped_above_ankle_hem", break: "full_break" }),
+    }) as unknown as StyleSpecV2;
+    const snapshot = JSON.stringify(locked);
+    const issues = styleDirectorConstructionIssues(locked);
+    assert.ok(issues.some(issue => issue.code === expected), type);
+    assert.ok(issues.some(issue => issue.code === "cropped_full_break"), type);
+    assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+    assert.equal(JSON.stringify(locked), snapshot);
   }
 });
