@@ -33,10 +33,14 @@ def trial_component0_balanced_subtree_uv_pack(
         )
     vertices = []
     for raw in points:
-        point = tuple(float(value) for value in raw)
-        if len(point) != 3 or not all(math.isfinite(value) for value in point):
+        # The source vertices must be real numeric measurements. Coercing
+        # strings or bools to floats invents valid-looking geometry evidence.
+        if (not hasattr(raw, "__len__") or len(raw) != 3
+                or any(isinstance(value, bool)
+                       or not isinstance(value, (int, float))
+                       or not math.isfinite(value) for value in raw)):
             raise ValueError("Component-0 UV trial has invalid source positions.")
-        vertices.append(point)
+        vertices.append(tuple(float(value) for value in raw))
 
     owners = defaultdict(list)
     normalized_uv = []
