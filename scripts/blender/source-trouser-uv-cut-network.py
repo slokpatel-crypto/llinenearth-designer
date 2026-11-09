@@ -11,6 +11,35 @@ from collections import Counter, defaultdict
 import math
 
 
+def best_fit_original_source_uv_edge_translation(offset_0, offset_1):
+    """Optimal rigid translation for the two actual source UV edge endpoints.
+
+    The mean of two signed offsets minimises sum-of-squared residuals;
+    each residual norm is necessarily half the endpoint-vector drift.
+    This is a single-edge research lower bound, NOT an approved UV chart.
+    """
+    for raw in (offset_0, offset_1):
+        if (not hasattr(raw, "__len__") or len(raw) != 2 or any(
+                isinstance(v, bool) or not isinstance(v, (int, float))
+                or not math.isfinite(v) for v in raw)):
+            raise ValueError("Actual UV source edge offsets require two finite numeric coordinates.")
+    average = tuple(math.fsum((offset_0[i], offset_1[i])) / 2.0 for i in range(2))
+    drift = math.dist(offset_0, offset_1)
+    residual = math.dist(average, offset_0)
+    if (not all(math.isfinite(v) for v in (*average, drift, residual))
+            or abs(residual - drift / 2.0) > 0.0000001
+            or abs(math.dist(average, offset_1) - residual) > 0.0000001):
+        raise ValueError("Actual source UV edge translation lower bound is inconsistent.")
+    return {
+        "bestFitSingleRigidUvEdgeTranslationMm": [
+            round(v, 5) for v in average
+        ],
+        "irreducibleSingleRigidTranslationEndpointResidualMm":
+            round(residual, 5),
+        "rigidTranslationCannotExactlyCloseBothEndpoints": drift > 0.000000001,
+    }
+
+
 def classify_original_source_uv_cut_component(
         cut_graph, component_vertices, original_boundary_vertices):
     """Classify connected ORIGINAL source-edge UV cuts, not sewing lines.
@@ -315,6 +344,15 @@ def audit_original_source_uv_cut_network(
             endpoint_drift_mm = math.dist(offset_0, offset_1)
             if not math.isfinite(endpoint_drift_mm):
                 raise ValueError("Original source UV endpoint mismatch drift is nonfinite.")
+            rigid_edge_bound = best_fit_original_source_uv_edge_translation(
+                offset_0, offset_1
+            )
+            if abs(
+                    rigid_edge_bound[
+                        "irreducibleSingleRigidTranslationEndpointResidualMm"
+                    ] - endpoint_drift_mm / 2
+            ) > 0.00001:
+                raise ValueError("Actual source edge rigid translation residual lost geometry.")
             source_chains.append({
                 "originalSourceComponentMinimumVertexIndex":
                     classification["originalSourceMinimumVertexIndex"],
@@ -334,6 +372,7 @@ def audit_original_source_uv_cut_network(
                     [round(v, 5) for v in offset_1],
                 ],
                 "relativeSourceUvEndpointDriftMm": round(endpoint_drift_mm, 5),
+                **rigid_edge_bound,
                 "closedGraphLoop": chain[0] == chain[-1],
                 "startsAtOriginalMeshBoundary":
                     chain[0] in original_boundary_vertices,
