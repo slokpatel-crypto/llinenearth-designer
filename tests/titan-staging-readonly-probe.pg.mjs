@@ -226,3 +226,25 @@ test('native PostgreSQL: missing database role cannot inherit an existing RPC gr
   assert.equal(rows.filter(row=>row.role==='service_role').length,expectedNames.length+1);
   assert.equal(rows.filter(row=>row.role==='anon'&&row.name==='fabric_stock_reserve_v2').length,2);
 });
+
+test('native PostgreSQL: read-only reviewer without history SELECT fails until explicitly authorized',()=>{
+  sql([
+    'CREATE ROLE titan_readonly_evidence NOLOGIN;',
+    'GRANT USAGE ON SCHEMA supabase_migrations TO titan_readonly_evidence;',
+  ].join('\n'));
+  const denied=runPsql([
+    '--command=SET ROLE titan_readonly_evidence;',
+    '--file','docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql',
+  ],{expectFailure:true});
+  assert.match(denied,/permission denied for table schema_migrations/i,
+    'A missing SELECT grant must abort the probe instead of passing with partial evidence');
+
+  sql('GRANT SELECT ON supabase_migrations.schema_migrations TO titan_readonly_evidence;');
+  const output=runPsql([
+    '--command=SET ROLE titan_readonly_evidence;',
+    '--file','docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql',
+  ]);
+  assert.match(output,/connection_identity\|titan_probe_synthetic\|titan_readonly_evidence\|/);
+  assert.match(output,/migration_history\|20261103\|/);
+  assert.match(output,/stock_function_effective_execute\|/);
+});
