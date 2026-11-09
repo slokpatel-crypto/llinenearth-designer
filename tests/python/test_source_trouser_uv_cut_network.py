@@ -14,6 +14,27 @@ source_graph_module = runpy.run_path(str(root / "source-trouser-uv-cut-network.p
 audit = source_graph_module["audit_original_source_uv_cut_network"]
 classify = source_graph_module["classify_original_source_uv_cut_component"]
 trace = source_graph_module["trace_original_source_uv_cut_chains"]
+best_fit = source_graph_module["best_fit_original_source_uv_edge_translation"]
+
+# Two synthetic signed UV owner offsets, not a claim about real fabric.
+assert best_fit((1.0, 3.0), (3.0, 5.0)) == {
+    "bestFitSingleRigidUvEdgeTranslationMm": [2.0, 4.0],
+    "irreducibleSingleRigidTranslationEndpointResidualMm": round(2**0.5, 5),
+    "rigidTranslationCannotExactlyCloseBothEndpoints": True,
+}
+assert best_fit((-10.0, 7.0), (-10.0, 7.0)) == {
+    "bestFitSingleRigidUvEdgeTranslationMm": [-10.0, 7.0],
+    "irreducibleSingleRigidTranslationEndpointResidualMm": 0.0,
+    "rigidTranslationCannotExactlyCloseBothEndpoints": False,
+}
+for bad in ((True, 1), ("1", 2), (None, 1), (math.inf, 1),
+            (math.nan, 1), (0, ), (1, 2, 3)):
+    try:
+        best_fit(bad, (1.0, 0.0))
+    except (ValueError, TypeError):
+        pass
+    else:
+        raise AssertionError("Forged UV offset accepted as measured evidence.")
 nx, ny = 53, 50
 assert nx * ny == 2650
 def grid(x, y):
@@ -202,6 +223,22 @@ for row in gap_ranked:
         math.dist(*offsets) - row["relativeSourceUvEndpointDriftMm"]
     ) <= 0.00001
     assert row["relativeSourceUvEndpointDriftMm"] >= 0
+    measured_mean = [math.fsum((offsets[0][i], offsets[1][i]))/2
+                     for i in range(2)]
+    assert len(row["bestFitSingleRigidUvEdgeTranslationMm"]) == 2
+    assert all(
+        abs(a-b) <= 0.00001
+        for a,b in zip(measured_mean,
+                       row["bestFitSingleRigidUvEdgeTranslationMm"])
+    )
+    measured_unavoidable_residual = math.dist(*offsets)/2.0
+    assert abs(
+        measured_unavoidable_residual -
+        row["irreducibleSingleRigidTranslationEndpointResidualMm"]
+    ) <= 0.00001
+    assert row["rigidTranslationCannotExactlyCloseBothEndpoints"] is (
+        math.dist(*offsets) > 0.000000001
+    )
 assert flat["actualHighestGapBranchedOriginalSourceUvCutChains"] == []
 assert all(
     row["originalSourceComponentMinimumVertexIndex"] >= 0
