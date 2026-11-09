@@ -705,3 +705,61 @@ before citation as physical-source facts. Preserve any branch/cycle
 blockers; do not reinterpret a mathematical simple path as a factory
 seam or approve the UV/cloth. No production mesh or saved UVs changed.
 **Draft PR #897 / no merge / no deploy / no physical cutting.**
+
+## 2026-11-09 connected actual source-panel cut graph and priority junctions
+
+The existing original-trouser source UV cut graph classifier added in the
+prior checkpoint originally trusted a supplied graph component to be
+connected before applying the Euler identity `cycle rank = E - V + 1`.
+A disjoint three-vertex path plus a three-vertex closed loop has 5 edges,
+6 vertices, two ends, no branch, and appears mathematically as `cycle
+rank = 0` under this invalid connected-component assumption; it could be
+misclassified as a single open panel-edge path. Two disjoint three-edge
+loops likewise appear to have `cycle rank = 1` and could masquerade
+as one closed source-panel loop. These are synthetic topology forgeries,
+NOT genuine original-source measurements.
+
+The classifier now independently traverses the *actual supplied source
+graph* from one original vertex, verifies that every component vertex
+is visited exactly once and that no input source IDs are repeated, and
+rejects disconnected or asymmetric/invalid cut-graph evidence. Only
+then does it use `E - V + 1` for a connected path/ring/compound network.
+Dedicated pure Python negative fixtures reproduce both false-simple
+cases and duplicate vertex IDs; Node static QA pins them. Full actual
+Blender source main graph traversal already constructs connected
+components; the new independent check prevents future callers or
+corrupt reports from silently replacing that property with a guess.
+
+**New genuinely source-anchored junction diagnostics:** The cut-network
+report now enumerates all vertex degrees >=3 from ORIGINAL, shared
+3D source mesh edges, and records its top 12 highest-degree junctions
+in deterministic rank order. For each source vertex it includes
+`originalSourceVertexIndex`, `sourceUvCutGraphDegree`, the original
+`realOriginalSourcePositionMm`, sum of lengths of its adjacent ORIGINAL
+3D UV-disconnected source edges, and whether it lies on the ACTUAL
+original mesh boundary or on the eight GENUINE crotch cut edges.
+The report also includes the total maximum junction degree, junction
+count at real boundary, and junction count incident to true crotch cut
+source vertices. These are measured research identification aids for
+real source-panel topology, not invented tailor sewing points, pattern
+lines, clearance allowances or grain measurements.
+
+Pure Python tests independently check source IDs, finite 3D coordinates,
+positive incident-edge lengths, deterministic sort, no-cut planar
+fixture zeros, and count bounds on the curved original-size grid.
+Pinned native CI independently checks junction ranking, original
+source ID bounds, degree histogram maximum, real mesh unit positions,
+source-provenance flags and graph topology count invariants against
+the unchanged 2,650 original quads. The analysis remains nonexporting,
+nonproduction and preserves the original scanned body/model identity.
+
+**Verification status:** The prior `f03c80abe44e8c64dfb6b08fae7cc71b65ae1ef1`
+head had native collision QA passed, while its native source and
+Full CI/Non-3D checks were unfinished at initial inspection and may
+have been superseded by these commits. The new exact head requires its
+own pure, pinned native Blender source and collision, Full CI and
+Non-3D checks and MUST produce measured original-source junction
+values before any statement about their actual 3D locations. Existing
+source UV overlap, real body collision, source garment topology,
+physical fabric and tailoring/cutting gates are **NOT approved**.
+**Draft PR #897 / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
