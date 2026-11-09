@@ -1339,6 +1339,21 @@ jobs:
                   and 0 <= row["originalSourceStartVertexIndex"] < 2717
                   and 0 <= row["originalSourceEndVertexIndex"] < 2717
                   and row["originalSourceEdgeCount"] >= 1
+                  and type(row["originalSourceVertexPath"]) is list
+                  and len(row["originalSourceVertexPath"]) == (
+                      row["originalSourceEdgeCount"] + 1
+                  )
+                  and all(type(v) is int and 0 <= v < 2717
+                          for v in row["originalSourceVertexPath"])
+                  and row["originalSourceVertexPath"][0] == (
+                      row["originalSourceStartVertexIndex"]
+                  )
+                  and row["originalSourceVertexPath"][-1] == (
+                      row["originalSourceEndVertexIndex"]
+                  )
+                  and all(a != b for a,b in zip(
+                      row["originalSourceVertexPath"],
+                      row["originalSourceVertexPath"][1:]))
                   and math.isfinite(row["realOriginalSourceChainLengthMm"])
                   and row["realOriginalSourceChainLengthMm"] > 0
                   and type(row["closedGraphLoop"]) is bool
@@ -1355,6 +1370,13 @@ jobs:
               assert sum(row["originalSourceEdgeCount"] for row in chains) <= (
                   cut_network["unclosedSharedUvCutCandidateEdges"]
               )
+              reported_chain_edges=[
+                  tuple(sorted((a,b)))
+                  for row in chains
+                  for a,b in zip(row["originalSourceVertexPath"],
+                                 row["originalSourceVertexPath"][1:])
+              ]
+              assert len(set(reported_chain_edges)) == len(reported_chain_edges)
               assert [
                   (-row["realOriginalSourceChainLengthMm"],
                    -row["originalSourceEdgeCount"],
