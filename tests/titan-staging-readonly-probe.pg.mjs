@@ -209,3 +209,20 @@ test('native PostgreSQL: deployed SECURITY DEFINER body and owner remain visible
   assert.match(fields[6],/^[a-f0-9]{32}$/,'Rendered database definition hash is recorded');
   assert.match(output,/SECURITY DEFINER/,'Full rendered function definition must remain available for private review');
 });
+
+test('native PostgreSQL: missing database role cannot inherit an existing RPC grant',()=>{
+  sql([
+    'REVOKE ALL ON FUNCTION public.fabric_stock_reserve_v2(text) FROM service_role;',
+    'DROP ROLE service_role;',
+  ].join('\n'));
+  const rows=evidence();
+  const absentRoleRows=rows.filter(row=>row.role==='service_role'&&row.name==='fabric_stock_reserve_v2');
+  assert.equal(absentRoleRows.length,2,'Every overload must remain visible when the role is missing');
+  for(const row of absentRoleRows){
+    assert.equal(row.exists,'t','The RPC is installed even though the role is absent');
+    assert.equal(row.roleExists,'f');
+    assert.equal(row.execute,'','Missing role is UNKNOWN, never an implied grant');
+  }
+  assert.equal(rows.filter(row=>row.role==='service_role').length,expectedNames.length+1);
+  assert.equal(rows.filter(row=>row.role==='anon'&&row.name==='fabric_stock_reserve_v2').length,2);
+});
