@@ -146,6 +146,27 @@ def trial_component0_balanced_subtree_uv_pack(
     _negative_size, cut_edge, _minimum_face, moved = candidates[candidate_rank]
     moved = set(moved)
 
+    # A declared NEW UV seam must originate from an edge that really was
+    # joined in the input research UV. The authentic selected source edge
+    # having two 3D face owners is insufficient evidence of UV continuity.
+    joined_uv_endpoints = []
+    selected_owners = owners[cut_edge]
+    for vertex_id in cut_edge:
+        left_face, right_face = selected_owners[0][0], selected_owners[1][0]
+        left_local = tuple(original_faces[left_face]).index(vertex_id)
+        right_local = tuple(original_faces[right_face]).index(vertex_id)
+        before_gap_mm = math.dist(
+            normalized_uv[left_face][left_local],
+            normalized_uv[right_face][right_local],
+        ) * 1000.0
+        if before_gap_mm > 0.001:
+            raise ValueError(
+                "Selected original retained tree edge is already UV-disconnected."
+            )
+        joined_uv_endpoints.append(
+            (left_face, left_local, right_face, right_local)
+        )
+
     all_points = [point for row in normalized_uv for point in row]
     moving_points = [point for face_id in moved for point in normalized_uv[face_id]]
     maximum_x = max(point[0] for point in all_points)
@@ -156,12 +177,27 @@ def trial_component0_balanced_subtree_uv_pack(
     full_dy = minimum_y - moving_minimum_y
     dx = full_dx * float(translation_fraction)
     dy = full_dy * float(translation_fraction)
+    displacement_mm = math.hypot(dx, dy) * 1000.0
+    if not math.isfinite(displacement_mm) or displacement_mm <= 0.001:
+        raise ValueError(
+            "Research UV translation does not open a finite measurable new seam."
+        )
     candidate_uv = []
     for face_id, row in enumerate(normalized_uv):
         candidate_uv.append([
             (u + dx, v + dy) if face_id in moved else (u, v)
             for u, v in row
         ])
+
+    for left_face, left_local, right_face, right_local in joined_uv_endpoints:
+        after_gap_mm = math.dist(
+            candidate_uv[left_face][left_local],
+            candidate_uv[right_face][right_local],
+        ) * 1000.0
+        if not math.isfinite(after_gap_mm) or after_gap_mm <= 0.001:
+            raise ValueError(
+                "Selected retained source edge did not open a measurable UV seam."
+            )
 
     max_change_mm = 0.0
     for before, after in zip(normalized_uv, candidate_uv):
