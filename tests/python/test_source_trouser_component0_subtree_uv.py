@@ -218,6 +218,14 @@ for ranks in (None, [], [0], [0, 1, 2], [0, 0], [2, 0],
 bad_points = list(points)
 bad_points[0] = (math.nan, 0, 0)
 reject(source_points=bad_points)
+# Any coercible impostor coordinate would fabricate measured source geometry.
+for forged in (
+        (True, 0, 0), ("0.0", 0, 0), (None, 0, 0),
+        (complex(0, 0), 0, 0), (0, 0), (math.inf, 0, 0)):
+    bad_points = list(points)
+    bad_points[0] = forged
+    reject(source_points=bad_points)
+assert points == original_points
 bad_uv = copy.deepcopy(loops)
 bad_uv[0] = list(reversed(bad_uv[0]))
 reject(source_uv=bad_uv)
