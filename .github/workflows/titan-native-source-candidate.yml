@@ -1780,6 +1780,23 @@ jobs:
                       row["addedActualSourceCutEdgeLengthMm"]
                   ) <= 0.0001
                   assert row["withinRankZeroRealEdgeLengthBudget"] is True
+                  # Independently recompute numerical approval gates from
+                  # raw measured gaps/junctions, not only candidate flags.
+                  assert abs(
+                      row["maximumUnclosedUvEdgeGapDeltaMm"] -
+                      (row["candidateMaximumUnclosedUvEdgeGapMm"] -
+                       near_zero["baselineMaximumUnclosedUvEdgeGapMm"])
+                  ) <= 0.00002
+                  assert row["noMaximumUvGapRegression"] is (
+                      row["maximumUnclosedUvEdgeGapDeltaMm"] <= 0.00001
+                  )
+                  assert row["branchJunctionDelta"] == (
+                      row["candidateBranchJunctions"] -
+                      near_zero["baselineBranchJunctions"]
+                  )
+                  assert row["noBranchJunctionRegression"] is (
+                      row["branchJunctionDelta"] <= 0
+                  )
                   assert row["physicalPatternApproved"] is False
                   assert row["productionApproved"] is False
                   assert row["strictResearchEligible"] is (
