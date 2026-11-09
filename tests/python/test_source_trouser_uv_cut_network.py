@@ -10,9 +10,9 @@ metric = runpy.run_path(str(root / "source-trouser-quad-metric-uv.py"))[
 join = runpy.run_path(str(root / "source-trouser-dual-tree-uv.py"))[
     "connect_original_source_uv_forest"
 ]
-audit = runpy.run_path(str(root / "source-trouser-uv-cut-network.py"))[
-    "audit_original_source_uv_cut_network"
-]
+source_graph_module = runpy.run_path(str(root / "source-trouser-uv-cut-network.py"))
+audit = source_graph_module["audit_original_source_uv_cut_network"]
+classify = source_graph_module["classify_original_source_uv_cut_component"]
 nx, ny = 53, 50
 assert nx * ny == 2650
 def grid(x, y):
@@ -48,6 +48,12 @@ assert flat["uvCutCandidateGraphComponentCount"] == 0
 assert flat["totalRealGeometryOfUvCutCandidatesMm"] == 0
 assert flat["uvCutCandidateSourceVertexCount"] == 0
 assert flat["actualLargestGapUvCutEdges"] == []
+assert flat["uvCutGraphCycleRank"] == 0
+assert flat["uvCutGraphSimpleOpenPathComponentCount"] == 0
+assert flat["uvCutGraphSimpleClosedLoopComponentCount"] == 0
+assert flat["uvCutGraphBranchedOrCompoundComponentCount"] == 0
+assert flat["uvCutGraphInteriorDegreeOneSourceVertexCount"] == 0
+assert flat["uvCutGraphComponentsWithoutActualOriginalOpenBoundary"] == 0
 assert flat["seamCutTopologyApproved"] is False
 assert flat["realTailorCutLinesApproved"] is False
 assert flat["measuredSupplierTextileRepeatMm"] is None
@@ -74,6 +80,66 @@ assert len(curved["actualLargestGapUvCutEdges"]) <= 12
 assert all(v["sourceRealEdgeLengthMm"] > 0 for v in curved["actualLargestGapUvCutEdges"])
 assert all(v["provisionalUvEndpointGapMm"] > 0.001 for v in curved["actualLargestGapUvCutEdges"])
 assert curved["productionApproved"] is False
+assert curved["uvCutGraphCycleRank"] == (
+    curved["unclosedSharedUvCutCandidateEdges"] -
+    curved["uvCutCandidateSourceVertexCount"] +
+    curved["uvCutCandidateGraphComponentCount"]
+)
+assert sum(curved[key] for key in (
+    "uvCutGraphSimpleOpenPathComponentCount",
+    "uvCutGraphSimpleClosedLoopComponentCount",
+    "uvCutGraphBranchedOrCompoundComponentCount"
+)) == curved["uvCutCandidateGraphComponentCount"]
+assert all(
+    row["uvCutGraphCycleRank"] >= 0
+    and row["unclosedUvEdgeCount"] - row["originalSourceVertexCount"] + 1
+        == row["uvCutGraphCycleRank"]
+    and row["interiorDegreeOneSourceVertices"] <= row["degreeOneSourceVertices"]
+    and row["originalBoundaryContactSourceVertexCount"] <= row["originalSourceVertexCount"]
+    and row["uvCutGraphTopology"] in (
+        "simple-open-path", "simple-closed-loop", "branched-or-compound")
+    for row in curved["uvCutCandidateGraphLargestComponents"]
+)
+
+# Unit geometry fixtures here are abstract original-source edge graphs,
+# not verified sewn panels or altered original production 3D source.
+def edge_graph(edges):
+    graph = {}
+    for a,b in edges:
+        graph.setdefault(a,set()).add(b)
+        graph.setdefault(b,set()).add(a)
+    return graph
+
+path_graph = edge_graph(((1,2),(2,3)))
+path_report = classify(path_graph, (1,2,3), {1})
+assert path_report["uvCutGraphTopology"] == "simple-open-path"
+assert path_report["uvCutGraphCycleRank"] == 0
+assert path_report["unclosedUvEdgeCount"] == 2
+assert path_report["degreeOneSourceVertices"] == 2
+assert path_report["interiorDegreeOneSourceVertices"] == 1
+assert path_report["originalBoundaryContactSourceVertexCount"] == 1
+
+loop_graph = edge_graph(((1,2),(2,3),(3,4),(4,1)))
+loop_report = classify(loop_graph, (1,2,3,4), set())
+assert loop_report["uvCutGraphTopology"] == "simple-closed-loop"
+assert loop_report["uvCutGraphCycleRank"] == 1
+assert loop_report["degreeOneSourceVertices"] == 0
+assert loop_report["touchesActualOriginalOpenBoundary"] is False
+
+branch_graph = edge_graph(((1,2),(2,3),(2,4)))
+branch_report = classify(branch_graph, (1,2,3,4), {1,3})
+assert branch_report["uvCutGraphTopology"] == "branched-or-compound"
+assert branch_report["uvCutGraphCycleRank"] == 0
+assert branch_report["branchingSourceVertices"] == 1
+assert branch_report["degreeOneSourceVertices"] == 3
+assert branch_report["interiorDegreeOneSourceVertices"] == 1
+for invalid_graph, vertices in (({},()), ({1:{1}},(1,)), ({1:{2},2:set()},(1,2))):
+    try:
+        classify(invalid_graph, vertices, set())
+    except (ValueError,KeyError):
+        pass
+    else:
+        raise AssertionError("Invalid source UV cut graph was accepted.")
 
 def rejected(points, face_list, uv, edges, report):
     try:
