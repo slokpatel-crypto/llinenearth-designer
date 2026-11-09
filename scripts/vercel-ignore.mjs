@@ -3,7 +3,8 @@ const PRODUCTION_BRANCH = "main";
 const APPROVED_PREVIEW_BRANCHES = new Set(["work/anthropic-knowledge-harvest-20261013-v1", "fix/garment-viewer-identity-honesty-20261015"]);
 // Only an explicit commit-subject prefix authorizes a milestone build.
 // Mentioning [deploy] later in an ordinary message is not release approval.
-const DEPLOY_MARKER = /^\[deploy\](?:\s|$)/i;
+const DEPLOY_MARKER = "[deploy]";
+const DEPLOY_PREFIX = /^\[deploy\](?:\s|$)/i;
 
 // Vercel ignoreCommand: exit 0 skips the build; exit 1 allows it.
 // Unknown deployment metadata must never serve as implicit approval.
@@ -49,7 +50,7 @@ if (typeof commitMessage !== "string" || !commitMessage.trim()) {
   process.exit(0);
 }
 
-if (!DEPLOY_MARKER.test(commitMessage.trim())) {
+if (!DEPLOY_PREFIX.test(commitMessage.trim())) {
   console.log("Primary main commit has no [deploy] milestone marker; ignore automatic production build.");
   process.exit(0);
 }
