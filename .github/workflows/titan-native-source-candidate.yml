@@ -1261,6 +1261,52 @@ jobs:
                   cut_network["uvCutCandidateGraphComponentCount"]
               )
               assert cut_network["uvCutGraphCycleRank"] >= 0
+              # Source junctions must be actual retained mesh vertex IDs,
+              # with finite measured 3D coordinates and traceable seam
+              # incident lengths, not invented manufacturing seam points.
+              junctions=cut_network["actualLargestOriginalSourceUvCutJunctions"]
+              source_branch_count=cut_network[
+                  "uvCutCandidateDegreeThreePlusSourceVertices"
+              ]
+              assert len(junctions) == min(12, source_branch_count)
+              assert len({r["originalSourceVertexIndex"] for r in junctions}) == (
+                  len(junctions)
+              )
+              assert cut_network["uvCutGraphMaximumJunctionDegree"] == max(
+                  [int(degree) for degree, count in
+                   cut_network["uvCutCandidateDegreeHistogram"].items()
+                   if int(degree) >= 3 and count] or [0]
+              )
+              assert 0 <= cut_network[
+                  "uvCutGraphJunctionsOnActualOriginalBoundary"
+              ] <= source_branch_count
+              assert 0 <= cut_network[
+                  "uvCutGraphJunctionsOnGenuineOriginalCrotchCut"
+              ] <= source_branch_count
+              assert all(
+                  type(row["originalSourceVertexIndex"]) is int
+                  and 0 <= row["originalSourceVertexIndex"] < 2717
+                  and type(row["sourceUvCutGraphDegree"]) is int
+                  and row["sourceUvCutGraphDegree"] >= 3
+                  and row["incidentOriginalSourceCutEdgeLengthMm"] > 0
+                  and len(row["realOriginalSourcePositionMm"]) == 3
+                  and all(math.isfinite(v) for v in
+                          row["realOriginalSourcePositionMm"])
+                  and type(row["touchesActualOriginalOpenBoundary"]) is bool
+                  and type(row["touchesGenuineOriginalCrotchCut"]) is bool
+                  for row in junctions
+              )
+              assert [
+                  (-row["sourceUvCutGraphDegree"],
+                   -row["incidentOriginalSourceCutEdgeLengthMm"],
+                   row["originalSourceVertexIndex"])
+                  for row in junctions
+              ] == sorted([
+                  (-row["sourceUvCutGraphDegree"],
+                   -row["incidentOriginalSourceCutEdgeLengthMm"],
+                   row["originalSourceVertexIndex"])
+                  for row in junctions
+              ])
               assert sum(cut_network[key] for key in (
                   "uvCutGraphSimpleOpenPathComponentCount",
                   "uvCutGraphSimpleClosedLoopComponentCount",
