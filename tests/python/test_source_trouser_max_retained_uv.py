@@ -89,6 +89,12 @@ reject_tree(good + [good[0]])
 reject_tree([(0, 999999)] + good[1:])
 reject_tree([(17, 17)] + good[1:])
 reject_tree([(max(e), min(e)) for e in good])
+# A plausible edge after int() conversion is not genuine original provenance.
+for forged_value in (str(good[0][0]), float(good[0][0]) + 0.2, True):
+    impostor_edges = [list(edge) for edge in good]
+    impostor_edges[0][0] = forged_value
+    reject_tree(impostor_edges)
+
 def reject_source(vertices, source_faces, cuts):
     try:
         select(vertices, source_faces, cuts)
