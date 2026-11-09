@@ -1912,6 +1912,106 @@ jobs:
               assert opposite["sourceUvExportOrSavePerformed"] is False
               assert opposite["physicalFabricTailorOrFitApproved"] is False
               assert opposite["productionApproved"] is False
+              orthogonal=weighted[
+                  "researchOnlyComponent0Rank18OrthogonalPlacementSurvey"
+              ]
+              assert orthogonal["researchOnly"] is True
+              assert orthogonal["candidateRank"] == 18
+              assert orthogonal["translationAxisRelativeToOutsidePack"] == (
+                  "perpendicular"
+              )
+              assert orthogonal["evaluatedTranslationFractionCount"] == 4
+              assert orthogonal["rankZeroRealEdgeLengthBudgetMm"] == (
+                  trial["addedActualSourceCutEdgeLengthMm"]
+              )
+              assert orthogonal["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert orthogonal["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              assert orthogonal["baselineTotalCutNetworkLengthMm"] == (
+                  baseline_cut["totalRealGeometryOfUvCutCandidatesMm"]
+              )
+              orthogonal_rows=orthogonal["candidateResults"]
+              assert [(r["placementStep"],
+                       r["translationSignRelativeToOutsidePack"])
+                      for r in orthogonal_rows] == [
+                          (1,1),(1,-1),(4,1),(4,-1)
+                      ]
+              assert orthogonal["strictEligibleCandidateCount"] == sum(
+                  r["strictResearchEligible"] for r in orthogonal_rows
+              )
+              assert orthogonal["noStrictCandidateObserved"] is (
+                  orthogonal["strictEligibleCandidateCount"] == 0
+              )
+              for r in orthogonal_rows:
+                  assert r["candidateRank"] == 18
+                  assert r["translationAxisRelativeToOutsidePack"] == (
+                      "perpendicular"
+                  )
+                  assert r["baselineOverlapTrianglePairs"] == 6957
+                  assert r["candidateOverlapTrianglePairs"] >= 0
+                  assert r["overlapTrianglePairDelta"] == (
+                      r["candidateOverlapTrianglePairs"] -
+                      r["baselineOverlapTrianglePairs"]
+                  )
+                  assert r["completeOverlapImprovement"] is (
+                      r["overlapTrianglePairDelta"] < 0
+                  )
+                  assert r["withinRankZeroRealEdgeLengthBudget"] is (
+                      r["addedActualSourceCutEdgeLengthMm"] <=
+                      orthogonal["rankZeroRealEdgeLengthBudgetMm"] + 0.00001
+                  )
+                  assert r["exactlyOneNewUnclosedUvSeam"] is (
+                      r["candidateUnclosedSharedUvSeams"] ==
+                      baseline_cut["unclosedSharedUvCutCandidateEdges"] + 1
+                  )
+                  assert abs(
+                      r["maximumUnclosedUvEdgeGapDeltaMm"] -
+                      (r["candidateMaximumUnclosedUvEdgeGapMm"] -
+                       orthogonal["baselineMaximumUnclosedUvEdgeGapMm"])
+                  ) <= 0.00002
+                  assert r["noMaximumUvGapRegression"] is (
+                      r["maximumUnclosedUvEdgeGapDeltaMm"] <= 0.00001
+                  )
+                  assert r["branchJunctionDelta"] == (
+                      r["candidateBranchJunctions"] -
+                      orthogonal["baselineBranchJunctions"]
+                  )
+                  assert r["noBranchJunctionRegression"] is (
+                      r["branchJunctionDelta"] <= 0
+                  )
+                  assert abs(
+                      r["measuredAddedCutNetworkLengthMm"] -
+                      (r["candidateTotalCutNetworkLengthMm"] -
+                       orthogonal["baselineTotalCutNetworkLengthMm"])
+                  ) <= 0.00002
+                  sign=r["translationSignRelativeToOutsidePack"]
+                  fraction=r["translationFractionOfOutsidePack"]
+                  dx,dy=r["rigidResearchUvTranslationMm"]
+                  fx,fy=r["fullOutsidePackTranslationMm"]
+                  assert abs(dx - (-fy * fraction * sign)) <= 0.00003
+                  assert abs(dy - (fx * fraction * sign)) <= 0.00003
+                  assert r["physicalPatternApproved"] is False
+                  assert r["productionApproved"] is False
+                  assert r["strictResearchEligible"] is (
+                      r["completeOverlapImprovement"] and
+                      r["withinRankZeroRealEdgeLengthBudget"] and
+                      r["noMaximumUvGapRegression"] and
+                      r["noBranchJunctionRegression"] and
+                      r["exactlyOneNewUnclosedUvSeam"]
+                  )
+              orthogonal_selected=orthogonal["strictSelectedCandidate"]
+              if orthogonal_selected is None:
+                  assert orthogonal["strictEligibleCandidateCount"] == 0
+              else:
+                  assert orthogonal_selected["strictResearchEligible"] is True
+                  assert orthogonal_selected in orthogonal_rows
+              assert orthogonal["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert orthogonal["sourceUvExportOrSavePerformed"] is False
+              assert orthogonal["physicalFabricTailorOrFitApproved"] is False
+              assert orthogonal["productionApproved"] is False
               assert branch["productionApproved"] is False
               assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
               assert branch_uv["dualGraphComponentCount"] == 3
