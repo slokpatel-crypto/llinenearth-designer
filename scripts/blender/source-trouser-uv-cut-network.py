@@ -272,6 +272,10 @@ def audit_original_source_uv_cut_network(
                 raise ValueError("Original UV source chain lacks finite 3D edge length.")
             source_chain_full_lengths.append(length_mm)
             source_chains.append({
+                # Preserve every REAL source vertex in traversal order, not
+                # merely endpoints which cannot reconstruct a 3D cut path.
+                # This is metric mesh-source research, never a sewing line.
+                "originalSourceVertexPath": list(chain),
                 "originalSourceStartVertexIndex": chain[0],
                 "originalSourceEndVertexIndex": chain[-1],
                 "originalSourceEdgeCount": len(chain) - 1,
@@ -351,6 +355,27 @@ def audit_original_source_uv_cut_network(
             sum(row["uvCutGraphMaximalChainCount"]
                 for row in network_components) != len(source_chains)):
         raise ValueError("Original source maximal chain lengths/edges do not reconcile.")
+    # Original mesh edge identities, source vertices and real 3D segment
+    # lengths must be consistent even if a later caller changes sorting.
+    all_disconnected = {
+        (min(a, b), max(a, b)) for _, _, a, b in uv_unclosed
+    }
+    checked_chains = set()
+    for row in source_chains:
+        path = row["originalSourceVertexPath"]
+        if (len(path) != row["originalSourceEdgeCount"] + 1
+                or path[0] != row["originalSourceStartVertexIndex"]
+                or path[-1] != row["originalSourceEndVertexIndex"]
+                or any(type(v) is not int or v < 0 or v >= len(vertices)
+                       for v in path)):
+            raise ValueError("Original UV source chain path has invalid vertex identities.")
+        for a, b in zip(path, path[1:]):
+            edge = (min(a, b), max(a, b))
+            if a == b or edge not in all_disconnected or edge in checked_chains:
+                raise ValueError("Original UV source chain path is not a real unique cut edge.")
+            checked_chains.add(edge)
+    if checked_chains != all_disconnected:
+        raise ValueError("Original source UV chain path inventory omitted real cut edges.")
     first = sorted(
         uv_unclosed, key=lambda v: (-v[0], v[2], v[3])
     )[:12]
