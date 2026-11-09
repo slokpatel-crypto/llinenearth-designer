@@ -54,6 +54,29 @@ test('capture reports effective grants for anon authenticated and service roles'
   assert.match(sql,/CASE\s+WHEN\s+registered_role\.oid\s+IS\s+NULL\s+THEN\s+NULL/i);
 });
 
+test('missing named RPCs remain explicit rows in the permissions evidence matrix',()=>{
+  const grantQuery=statements[4];
+  assert.match(grantQuery,/^SELECT\s/i);
+  assert.match(grantQuery,/FROM\s*\(VALUES[\s\S]*?\)\s+AS\s+expected\(function_name\)/i);
+  assert.match(grantQuery,/CROSS\s+JOIN\s*\(VALUES\s*\('anon'\),\('authenticated'\),\('service_role'\)\)\s+AS\s+requested\(role_name\)/i);
+  assert.match(grantQuery,/LEFT\s+JOIN\s+pg_proc\s+AS\s+p\s+ON\s+p\.pronamespace=ns\.oid\s+AND\s+p\.proname=expected\.function_name/i);
+  assert.match(grantQuery,/p\.oid\s+IS\s+NOT\s+NULL\s+AS\s+function_exists/i);
+  assert.match(grantQuery,/expected\.function_name\s+AS\s+expected_function_name/i);
+  assert.doesNotMatch(grantQuery,/\bWHERE\b/i,'No WHERE filter may remove the missing-function rows');
+  const names=['fabric_stock_record','fabric_stock_reserve','fabric_stock_release','fabric_stock_consume_reservation'];
+  for(const name of names)for(const suffix of ['','_v2'])
+    assert.match(grantQuery,new RegExp("\\('"+name+suffix+"'\\)"));
+});
+
+test('a missing function or role yields UNKNOWN permission, not an apparent grant',()=>{
+  const grantQuery=statements[4];
+  assert.match(grantQuery,/CASE\s+WHEN\s+registered_role\.oid\s+IS\s+NULL\s+OR\s+p\.oid\s+IS\s+NULL\s+THEN\s+NULL/i);
+  assert.match(grantQuery,/ELSE\s+has_function_privilege\(registered_role\.oid,p\.oid,'EXECUTE'\)/i);
+  assert.match(grantQuery,/LEFT\s+JOIN\s+pg_namespace\s+AS\s+ns\s+ON\s+ns\.nspname='public'/i);
+  assert.match(grantQuery,/LEFT\s+JOIN\s+pg_roles\s+AS\s+registered_role\s+ON/i);
+  assert.doesNotMatch(grantQuery,/COALESCE\s*\(\s*has_function_privilege/i);
+});
+
 test('probe cannot claim connection is staging and contains no credential placeholders',()=>{
   assert.match(sql,/current_database\(\)/);
   assert.match(sql,/current_user/);
