@@ -613,3 +613,39 @@ The native pinned Blender driver measures **four fixed** rank-18 midpoint pivot 
 Research-only evidence key:
 `researchOnlyComponent0Rank18MidpointRotationSurvey`. Source helper, native Blender research-only driver, Python pure test (including forged angle and mixing mode rejection), Node regression, native CI verification and this checkpoint were changed. **No** original Blender source/mask, body scans, physical textile data, photo model, production UV/GLB, source geometry, confidence threshold, merge or deployment is changed. The new exact PR head still requires full matching-head native source, native collision, CI and Non-3D evidence, and measured 4-row scientific outcome; no physical fit, sewing, cutting, UV panel, fabric/grain or tailor signoff exists.
 **DRAFT / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
+
+## 2026-11-09 native midpoint-rotation result and strict cut-audit source provenance
+
+**Native predecessor evidence:** Official actual source Blender run [#42645646130](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/42645646130) **COMPLETED SUCCESS** on exact source head `b98fb6a082c072a1f6e2ac33ae4289dfd86663d8`, as a *diagnostic/rejected research experiment*, not production. Actual rank-18 original seam length 33.28815mm and source seam pivot midpoint (862.49684, 691.56754)mm. All four rigid rotations opened both original UV seam endpoints exactly as predicted by the rigid geometric formula, with 0mm original triangle-edge stretch, no new branch junctions, one genuine newly opened seam, and no body/production-source change.
+
+| Actual authentic source rotation | Full overlap triangle pairs (Δ against 6957) | Max unclosed gap mm (Δ against 1072.40848) | Each actual source seam endpoint gap mm | Strict eligible |
+|---|---:|---:|---:|---|
+| -2 degrees | 6955 (-2) | 1077.36559 (+4.95711) | 0.58096 | no: max gap worse |
+| -1 degree | 6956 (-1) | 1074.92376 (+2.51528) | 0.29049 | no: max gap worse |
+| +1 degree | 6980 (+23) | 1069.82000 (-2.58848) | 0.29049 | no: overlaps worse |
+| +2 degrees | 6994 (+37) | 1067.15858 (-5.24990) | 0.58096 | no: overlaps worse |
+
+**All 4 rejected**, `strictEligibleCandidateCount=0`, `strictSelectedCandidate=null`. This sampled geometry tradeoff means only that these true-source local rigid motions do not pass the existing scientific eligibility gates; it says nothing about untested source seams or physically verified panel construction. Original model `linen-earth-studio-model-v1`, original UV and body BVH remain unchanged.
+
+**Follow-on fail-closed original source audit hardening:** The research-only
+`source-trouser-uv-cut-network.py` independently measures cut-network
+length, branch structure and seam gap, and feeds all strict candidate
+comparison gates. Previously it coerced source positions, quad IDs and
+UV coordinates using `float(...)` and `int(...)` *before* validation.
+Although upstream source libraries had been secured, the independent audit
+still admitted coercible boolean/text/fractional impostors. Its input
+boundary now rejects all nonnumeric, nonfinite or boolean 3D/UV positions,
+accepts only literal integer original face and actual crotch-cut vertex
+IDs, then converts genuine numeric source positions. No threshold,
+UV metric, geometry, original ID, source edge, body, or production asset
+was changed.
+
+`tests/python/test_source_trouser_uv_cut_network.py` now includes adversarial
+original face and cut IDs, 3D points and UV coordinates; the dedicated
+`tests/crotch-trouser-uv-cut-network-native.test.ts` pins the code guards.
+The original authentic `2650` face, 8 cut-edge, actual two-owner edge
+counts, all native cut-network branch/gap/overlap checks and physical
+non-approval flags remain the same. New exact-head pure tests and pinned
+native Blender, collision, Full CI and Non-3D gates must be inspected
+separately; do not inherit the predecessor's successful native evidence.
+**Draft / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
