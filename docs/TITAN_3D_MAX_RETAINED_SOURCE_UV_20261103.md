@@ -427,3 +427,31 @@ existing source geometry, body BVH, approved asset isolation and all physical
 fit/garment UV/fabric/tailor gates remain unchanged. New exact-head source,
 collision, CI and non-3D runs must be independently checked. No source
 fabric facts invented; **DRAFT / NO MERGE / NO DEPLOY / NO CUTTING.**
+
+## 2026-11-09 original face/UV/forest input provenance hardening
+
+The genuine original-source dual-tree UV builder used `int(v)` on
+source face IDs, `float(v)` on UV chart coordinates, and `int(...)`
+on explicit retained-tree edge IDs. These coercions could turn strings,
+fractional indices and booleans into plausible topology or metric evidence
+before the existing source-graph and UV validation. The input-trust
+boundary is now strict: original face and cut IDs are literal
+nonnegative Python integers (never booleans), metric UV coordinates
+are finite actual numeric values (never booleans/text), and manually
+supplied tree edges must carry literal canonical integer vertex IDs.
+Only genuine numeric UV values are converted to float *after* validation.
+
+Added synthetic and negative regression coverage for fabricated
+face IDs, original cut IDs, UV values and explicit retained-tree IDs.
+Source guard `tests/crotch-trouser-dual-tree-uv-native.test.ts` pins
+the absence of the formerly unsafe coercions. Scope is restricted
+to the research-only original-source dual-tree helper, its dedicated
+Python/Node tests and this checkpoint. No saved source mesh, UV layer,
+GLB, geometry, photo/model identity, fabric physical claim, source
+metric, test threshold, production approval or release gate is changed.
+
+New exact-head native Blender, full CI, collision and Non-3D verification
+is required. A passing native diagnostic source test does not constitute
+overlap-free pattern geometry, original crotch/body clearance, source
+topology repair, measured textile grain or tailor signoff. All production
+gates remain blocked. **Draft PR #897 / no merge / no deploy / no cutting.**
