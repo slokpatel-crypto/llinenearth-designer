@@ -40,6 +40,66 @@ def best_fit_original_source_uv_edge_translation(offset_0, offset_1):
     }
 
 
+def best_fit_original_source_uv_edge_rigid_alignment(owner_a, owner_b):
+    """Optimal proper 2D rotation+translation for ONE real edge (mm).
+
+    The oriented source edge's 2 endpoints must be aligned without mirror,
+    scale or distortion. For edge lengths L_a and L_b, midpoint alignment
+    after vector alignment leaves an unavoidable |L_a-L_b|/2 residual at
+    EACH endpoint. No complete-chart closure or sewn panel is implied.
+    """
+    for owner in (owner_a, owner_b):
+        if (not hasattr(owner, "__len__") or len(owner) != 2 or any(
+                not hasattr(pt, "__len__") or len(pt) != 2
+                or any(isinstance(v, bool) or not isinstance(v, (int, float))
+                       or not math.isfinite(v) for v in pt)
+                for pt in owner)):
+            raise ValueError("Actual UV edge rigid alignment needs two finite 2D owner endpoints.")
+    a0, a1 = (tuple(float(v) for v in pt) for pt in owner_a)
+    b0, b1 = (tuple(float(v) for v in pt) for pt in owner_b)
+    va = (a1[0] - a0[0], a1[1] - a0[1])
+    vb = (b1[0] - b0[0], b1[1] - b0[1])
+    la, lb = math.hypot(*va), math.hypot(*vb)
+    if not all(math.isfinite(v) and v > 0.000000001 for v in (la, lb)):
+        raise ValueError("Actual UV owner edge has zero or invalid metric length.")
+    cos = (va[0] * vb[0] + va[1] * vb[1]) / (la * lb)
+    sin = (vb[0] * va[1] - vb[1] * va[0]) / (la * lb)
+    norm = math.hypot(cos, sin)
+    if not math.isfinite(norm) or norm <= 0:
+        raise ValueError("Actual UV owner edge rotation is not finite.")
+    cos, sin = cos / norm, sin / norm
+    a_center = tuple(math.fsum((a0[i], a1[i])) / 2 for i in range(2))
+    b_center = tuple(math.fsum((b0[i], b1[i])) / 2 for i in range(2))
+    bx = cos * b_center[0] - sin * b_center[1]
+    by = sin * b_center[0] + cos * b_center[1]
+    translation = (a_center[0] - bx, a_center[1] - by)
+    residuals = []
+    for a, b in ((a0, b0), (a1, b1)):
+        aligned = (
+            cos * b[0] - sin * b[1] + translation[0],
+            sin * b[0] + cos * b[1] + translation[1],
+        )
+        residuals.append(math.dist(a, aligned))
+    lower_bound = abs(la - lb) / 2
+    if (not all(math.isfinite(v) for v in (*translation, *residuals, lower_bound))
+            or abs(residuals[0] - lower_bound) > 0.0000001
+            or abs(residuals[1] - lower_bound) > 0.0000001):
+        raise ValueError("Actual source rigid UV alignment residual violated edge-length invariant.")
+    return {
+        "sourceUvOwnerEdgeLengthsMm": [round(la, 5), round(lb, 5)],
+        "bestFitProperRigidUvRotationDegrees":
+            round(math.degrees(math.atan2(sin, cos)), 6),
+        "bestFitRigidUvTranslationMm": [round(v, 5) for v in translation],
+        "irreducibleProperRigidAlignmentEndpointResidualMm":
+            round(lower_bound, 5),
+        "singleEdgeExactRigidClosurePossible": lower_bound <= 0.000000001,
+        "sourceUvOriginalOwnerEdgeEndpointsMm": [
+            [[round(v, 5) for v in p] for p in (a0, a1)],
+            [[round(v, 5) for v in p] for p in (b0, b1)],
+        ],
+    }
+
+
 def classify_original_source_uv_cut_component(
         cut_graph, component_vertices, original_boundary_vertices):
     """Classify connected ORIGINAL source-edge UV cuts, not sewing lines.
@@ -347,6 +407,11 @@ def audit_original_source_uv_cut_network(
             rigid_edge_bound = best_fit_original_source_uv_edge_translation(
                 offset_0, offset_1
             )
+            source_uv_faces = owners[chain_max_edge]
+            rigid_rotation_bound = best_fit_original_source_uv_edge_rigid_alignment(
+                [[v * 1000.0 for v in uv] for uv in source_uv_faces[0][1]],
+                [[v * 1000.0 for v in uv] for uv in source_uv_faces[1][1]],
+            )
             if abs(
                     rigid_edge_bound[
                         "irreducibleSingleRigidTranslationEndpointResidualMm"
@@ -373,6 +438,7 @@ def audit_original_source_uv_cut_network(
                 ],
                 "relativeSourceUvEndpointDriftMm": round(endpoint_drift_mm, 5),
                 **rigid_edge_bound,
+                **rigid_rotation_bound,
                 "closedGraphLoop": chain[0] == chain[-1],
                 "startsAtOriginalMeshBoundary":
                     chain[0] in original_boundary_vertices,
