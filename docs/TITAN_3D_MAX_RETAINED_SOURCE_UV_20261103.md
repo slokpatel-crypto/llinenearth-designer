@@ -599,3 +599,17 @@ source evidence, collision QA, Full CI, and Non-3D QA. The old
 `linen-earth-studio-model-v1` and all physical preflight, real
 textile calibration and tailor acceptance gates remain protected.
 **DRAFT / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
+
+## 2026-11-09 rank-18 genuine-cut midpoint rotation of intact source subtree
+
+**Verified trigger, exact prior head `e2de391d5a022bae5c145004ad789b7321c1b0dc`:**
+Native Blender source rejection evidence [#42643211919](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/42643211919) **SUCCESS as research execution**. None of four +/-90-degree *translations* passed existing strict UV acceptance: +1/256 overlap 6,980 / max gap 1,073.64677mm; -1/256 6,974 / 1,071.18922mm; +4/256 6,974 / 1,077.47514mm; -4/256 6,980 / 1,067.64622mm. Baseline was 6,957 / 1,072.40848mm, 323 branch junctions, original 33.28815mm selected source edge. All four worsened overlaps. Prior source and collision checks passed; prior general CI and Non-3D had not fully completed at the next push. Do not claim any rejected geometry succeeded.
+
+**New actual research mechanism, not another 1-D chart translation:**
+The pure component-0 retained source-tree UV experiment now optionally rotates all original selected moving faces around **the midpoint of the shared UV coordinates of the genuine source cut edge**. The original face-tree cut candidate identity, original source 2,650 quads/3 components, real 3D cut edge length, joined-before and open-after source seam proofs, numerical orientation and within-triangle metric checks remain unchanged. A finite rotation must be within +/-5 degrees and is incompatible with any alternate translation sign, translation axis or translation fraction. Original default translation behavior remains unchanged and the source and original production UVs are never written.
+
+The native pinned Blender driver measures **four fixed** rank-18 midpoint pivot angles: -2, -1, +1, +2 degrees. Each signed rotation keeps every original UV triangle's two intrinsic edge lengths, diagonal and orientation unchanged. It records both authentic source seam endpoint opening gaps and the selected original cut UV length; for angle \(\theta\) both gaps must agree within existing numerical tolerance with \(L\sin(|\theta|/2)\), where \(L\) is the actual source edge UV length. An independently recalculated native workflow checks this geometry identity, plus complete 5,300-triangle overlap scan, genuine 3D source cut-network length and exactly-one new seam, no maximum-gap regression, no branch increase and the original rank-0 real source-edge length budget. Any one failed gate makes the candidate ineligible even if another number improves. Strict selected candidate may validly be null.
+
+Research-only evidence key:
+`researchOnlyComponent0Rank18MidpointRotationSurvey`. Source helper, native Blender research-only driver, Python pure test (including forged angle and mixing mode rejection), Node regression, native CI verification and this checkpoint were changed. **No** original Blender source/mask, body scans, physical textile data, photo model, production UV/GLB, source geometry, confidence threshold, merge or deployment is changed. The new exact PR head still requires full matching-head native source, native collision, CI and Non-3D evidence, and measured 4-row scientific outcome; no physical fit, sewing, cutting, UV panel, fabric/grain or tailor signoff exists.
+**DRAFT / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
