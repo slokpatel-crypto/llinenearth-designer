@@ -3,14 +3,16 @@ const PRODUCTION_BRANCH = "main";
 const APPROVED_PREVIEW_BRANCHES = new Set(["work/anthropic-knowledge-harvest-20261013-v1", "fix/garment-viewer-identity-honesty-20261015"]);
 const DEPLOY_MARKER = "[deploy]";
 
+// Vercel ignoreCommand: exit 0 skips the build; exit 1 allows it.
+// Unknown deployment metadata must never serve as implicit approval.
 const current = process.env.VERCEL_PROJECT_ID;
 const branch = process.env.VERCEL_GIT_COMMIT_REF;
 const commitMessage = process.env.VERCEL_GIT_COMMIT_MESSAGE;
 const environment = process.env.VERCEL_ENV;
 
 if (!current) {
-  console.log("VERCEL_PROJECT_ID unavailable; continue build fail-safe.");
-  process.exit(1);
+  console.log("VERCEL_PROJECT_ID unavailable; ignore build without a verified project.");
+  process.exit(0);
 }
 
 if (current !== PRIMARY_PROJECT_ID) {
@@ -31,13 +33,13 @@ if (branch && branch !== PRODUCTION_BRANCH) {
 }
 
 if (!branch) {
-  console.log("VERCEL_GIT_COMMIT_REF unavailable; continue build fail-safe.");
-  process.exit(1);
+  console.log("VERCEL_GIT_COMMIT_REF unavailable; ignore build without a verified branch.");
+  process.exit(0);
 }
 
 if (typeof commitMessage !== "string" || !commitMessage.trim()) {
-  console.log("VERCEL_GIT_COMMIT_MESSAGE unavailable on main; continue build fail-safe.");
-  process.exit(1);
+  console.log("VERCEL_GIT_COMMIT_MESSAGE unavailable on main; ignore build without milestone evidence.");
+  process.exit(0);
 }
 
 if (!commitMessage.toLowerCase().includes(DEPLOY_MARKER)) {
