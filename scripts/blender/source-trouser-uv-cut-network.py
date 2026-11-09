@@ -233,6 +233,24 @@ def audit_original_source_uv_cut_network(
     }
     if len(uv_gap_by_original_edge) != len(uv_unclosed):
         raise ValueError("Original UV seam gap has duplicated source-edge identity.")
+    # Each authentic two-owner source cut edge has TWO source UV endpoint
+    # mismatch vectors. Their relative difference distinguishes a chart
+    # offset from an endpoint-dependent mismatch, without modifying UVs.
+    uv_offset_witness = {}
+    for _, _, a, b in uv_unclosed:
+        edge = (min(a, b), max(a, b))
+        if len(owners[edge]) != 2:
+            raise ValueError("Original UV source edge mismatch lacks two real faces.")
+        (face_a, (uv_a0, uv_a1)), (face_b, (uv_b0, uv_b1)) = owners[edge]
+        offset_0 = tuple((uv_a0[i] - uv_b0[i]) * 1000.0 for i in range(2))
+        offset_1 = tuple((uv_a1[i] - uv_b1[i]) * 1000.0 for i in range(2))
+        endpoint_gaps = (math.hypot(*offset_0), math.hypot(*offset_1))
+        if (not all(math.isfinite(v) for v in (*offset_0, *offset_1))
+                or abs(max(endpoint_gaps) - uv_gap_by_original_edge[edge]) > 0.000001):
+            raise ValueError("Original UV gap endpoints disagree with actual source owner loops.")
+        uv_offset_witness[edge] = (face_a, face_b, offset_0, offset_1)
+    if len(uv_offset_witness) != len(uv_unclosed):
+        raise ValueError("Original source UV endpoint witnesses lack complete edge coverage.")
     unseen = set(cut_graph)
     network_components = []
     source_chains = []
@@ -293,6 +311,10 @@ def audit_original_source_uv_cut_network(
                 )
             )[0]
             component_chain_max_gap_mm.append(chain_max_gap)
+            face_a, face_b, offset_0, offset_1 = uv_offset_witness[chain_max_edge]
+            endpoint_drift_mm = math.dist(offset_0, offset_1)
+            if not math.isfinite(endpoint_drift_mm):
+                raise ValueError("Original source UV endpoint mismatch drift is nonfinite.")
             source_chains.append({
                 "originalSourceComponentMinimumVertexIndex":
                     classification["originalSourceMinimumVertexIndex"],
@@ -306,6 +328,12 @@ def audit_original_source_uv_cut_network(
                 "realOriginalSourceChainLengthMm": round(length_mm, 5),
                 "maximumOriginalSourceUvSeamGapMm": round(chain_max_gap, 5),
                 "originalSourceEdgeAtMaximumUvSeamGap": list(chain_max_edge),
+                "originalSourceFaceOwnersAtMaximumUvGap": [face_a, face_b],
+                "sourceUvOffsetAtMaximumGapEdgeEndpointsMm": [
+                    [round(v, 5) for v in offset_0],
+                    [round(v, 5) for v in offset_1],
+                ],
+                "relativeSourceUvEndpointDriftMm": round(endpoint_drift_mm, 5),
                 "closedGraphLoop": chain[0] == chain[-1],
                 "startsAtOriginalMeshBoundary":
                     chain[0] in original_boundary_vertices,
