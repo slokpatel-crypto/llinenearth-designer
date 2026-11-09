@@ -6,6 +6,7 @@ on:
       - 'docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql'
       - 'docs/TITAN_STAGING_MIGRATION_READONLY_EVIDENCE.md'
       - 'tests/titan-staging-readonly-probe.test.mjs'
+      - 'tests/titan-staging-readonly-probe.pg.mjs'
       - '.github/workflows/titan-staging-readonly-probe.yml'
   workflow_dispatch:
 
@@ -31,3 +32,49 @@ jobs:
           node-version: '22'
       - name: Validate read-only SQL source without any database connection
         run: node --test tests/titan-staging-readonly-probe.test.mjs
+
+  synthetic-postgres-only:
+    name: Verify probe results against disposable PostgreSQL (NEVER staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: titan_probe_synthetic
+          POSTGRES_USER: titan_probe
+          POSTGRES_PASSWORD: synthetic_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U titan_probe -d titan_probe_synthetic"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TITAN_SYNTHETIC_POSTGRES: '1'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: titan_probe_synthetic
+      PGUSER: titan_probe
+      PGPASSWORD: synthetic_only
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify immutable event-head checkout
+        env:
+          EXPECTED_HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install disposable PostgreSQL client (never connect to remote databases)
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Validate actual read-only SQL under missing/granted/missing-role scenarios
+        run: node --test tests/titan-staging-readonly-probe.pg.mjs
