@@ -402,3 +402,28 @@ passing diagnostic workflow is not production approval. All ten original
 six-piece hard preflight failures, original source/body contacts, 2,585+
 research UV cycle seams, real fabric/drape and tailor signoff remain blockers.
 **DRAFT / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
+
+## 2026-11-09 source position provenance hardening (continued)
+
+The isolated research helper must not turn boolean `True`, text `"0.0"`,
+null/non-numeric or complex-valued input into apparently measured original
+mesh vertex positions via Python's `float(...)` coercion. Only actual finite
+numeric triplets are accepted before the immutable original-source UV cut
+trial. The tightened validation remains compatible with genuine Blender
+numeric vectors and existing pure synthetic numeric fixtures.
+
+Scope: `scripts/blender/source-trouser-component0-subtree-uv-trial.py`,
+`tests/python/test_source_trouser_component0_subtree_uv.py`,
+`tests/crotch-trouser-component0-subtree-uv-native.test.ts`, and this
+checkpoint. Added negative fixture cases for boolean, string, null, complex,
+short and nonfinite source positions. The previous head
+`58677078a2ab2ea443f5a7c1c21b58973917f6f6` had already passed
+native collision QA #42637002100, while its source, full CI and Non-3D
+results were still in progress when this next isolated edit began; do not
+attribute those statuses to new commits.
+
+The numeric-gated UV experiment, locked `linen-earth-studio-model-v1`,
+existing source geometry, body BVH, approved asset isolation and all physical
+fit/garment UV/fabric/tailor gates remain unchanged. New exact-head source,
+collision, CI and non-3D runs must be independently checked. No source
+fabric facts invented; **DRAFT / NO MERGE / NO DEPLOY / NO CUTTING.**
