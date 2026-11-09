@@ -133,12 +133,21 @@ assert two_report["realTailorCutApproved"] is False
 assert two_report["productionApproved"] is False
 assert points == original_points and faces == original_faces and loops == original_loops
 
-# Stack the deterministically selected subtree over stationary component-0
-# faces, then prove the same one-cut trial removes cross-subtree intersections.
+# Stack the selected subtree's non-boundary faces over stationary component-0
+# faces while preserving the authentic selected tree edge's two joined UV ends.
+# The trial must reject a pre-split edge, not this positive overlap fixture.
 moved = [index for index, (before, after) in enumerate(zip(loops, baseline["face_uv_loops"]))
          if before != after]
+cut_vertices = baseline["report"]["removedRetainedOriginalSourceEdge"]
+joined_moving_face = [
+    face_id for face_id in moved
+    if all(vertex_id in faces[face_id] for vertex_id in cut_vertices)
+]
+assert len(joined_moving_face) == 1
 stacked = copy.deepcopy(loops)
 for offset, face_id in enumerate(moved):
+    if face_id in joined_moving_face:
+        continue
     target = offset % (1220 - len(moved))
     stacked[face_id] = copy.deepcopy(loops[target])
 before = audit(faces, stacked)
