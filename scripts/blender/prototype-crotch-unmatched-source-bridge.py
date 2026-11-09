@@ -2396,6 +2396,87 @@ def main():
         "physicalFabricTailorOrFitApproved": False,
         "productionApproved": False,
     }
+    # A distinct 2-D trial: rigidly shift the same genuine rank-18 subtree
+    # perpendicular to the measured outside-pack displacement. Four fixed
+    # signed fractions, no arbitrary search/shape changes or production UV.
+    orthogonal_rows = []
+    for placement_step, direction_sign in ((1, 1), (1, -1), (4, 1), (4, -1)):
+        candidate_trial = subtree_ops[
+            "trial_component0_balanced_subtree_uv_pack"
+        ](
+            merged_verts, base_faces, packed_weighted["face_uv_loops"],
+            weighted_selection["retainedOriginalSourceEdges"],
+            candidate_rank=constrained_rank,
+            translation_fraction=placement_step / 256.0,
+            translation_sign=direction_sign,
+            translation_axis="perpendicular",
+        )
+        trial_report = candidate_trial["report"]
+        if (trial_report["translationAxisRelativeToOutsidePack"] != "perpendicular"
+                or trial_report["translationSignRelativeToOutsidePack"] != direction_sign
+                or trial_report["sourceUvExportOrSavePerformed"] is not False
+                or trial_report["productionApproved"] is not False):
+            raise RuntimeError("Perpendicular UV probe lost source or research isolation.")
+        candidate_overlap = uv_overlap_audit(
+            base_faces, candidate_trial["face_uv_loops"]
+        )
+        candidate_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+            merged_verts, base_faces, candidate_trial["face_uv_loops"],
+            l_remaining + r_remaining_mapped, subtree_tree_report,
+        )
+        candidate_comparison = overlap_compare(
+            packed_weighted_overlap, candidate_overlap
+        )
+        row = bounded_row(
+            constrained_rank, trial_report, candidate_overlap,
+            candidate_cut, candidate_comparison,
+        )
+        row.update({
+            "placementStep": placement_step,
+            "translationSignRelativeToOutsidePack": direction_sign,
+            "translationAxisRelativeToOutsidePack": "perpendicular",
+            "translationFractionOfOutsidePack":
+                trial_report["translationFractionOfOutsidePack"],
+            "rigidResearchUvTranslationMm":
+                trial_report["rigidResearchUvTranslationMm"],
+            "fullOutsidePackTranslationMm":
+                trial_report["fullOutsidePackTranslationMm"],
+        })
+        orthogonal_rows.append(row)
+    orthogonal_eligible = [
+        row for row in orthogonal_rows if row["strictResearchEligible"]
+    ]
+    orthogonal_selected = min(orthogonal_eligible, key=lambda row: (
+        row["overlapTrianglePairDelta"],
+        row["translationFractionOfOutsidePack"],
+        row["translationSignRelativeToOutsidePack"],
+    )) if orthogonal_eligible else None
+    weighted_report["researchOnlyComponent0Rank18OrthogonalPlacementSurvey"] = {
+        "researchOnly": True,
+        "candidateRank": constrained_rank,
+        "candidateSelection": (
+            "Four fixed +/-90 degree source-tree UV displacements of rank-18 "
+            "at 1/256 and 4/256 of its genuine outside-pack vector length"
+        ),
+        "evaluatedTranslationFractionCount": len(orthogonal_rows),
+        "translationAxisRelativeToOutsidePack": "perpendicular",
+        "rankZeroRealEdgeLengthBudgetMm":
+            subtree_summary["addedActualSourceCutEdgeLengthMm"],
+        "baselineMaximumUnclosedUvEdgeGapMm":
+            packed_weighted_cut["maximumUnclosedUvEdgeGapMm"],
+        "baselineBranchJunctions":
+            packed_weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"],
+        "baselineTotalCutNetworkLengthMm":
+            packed_weighted_cut["totalRealGeometryOfUvCutCandidatesMm"],
+        "candidateResults": orthogonal_rows,
+        "strictEligibleCandidateCount": len(orthogonal_eligible),
+        "strictSelectedCandidate": orthogonal_selected,
+        "noStrictCandidateObserved": not orthogonal_eligible,
+        "sourceGeometryAndBodyBVHUnchanged": True,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricTailorOrFitApproved": False,
+        "productionApproved": False,
+    }
     branch_report["actualSourceUvCutNetworkEvidence"] = branch_audit
     branch_report["actualRealSourceUvTreeEvidence"] = branch_uv["report"]
     branch_report["actualSourceGeometryUnchanged"] = True
