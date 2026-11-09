@@ -546,3 +546,56 @@ tailor signoff. Original production Blender model
 `linen-earth-studio-model-v1`, source faces, all UV/GLB export assets
 and physical blockers are unchanged.
 **DRAFT / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
+
+## 2026-11-09 bounded orthogonal UV chart translation (new 2D direction)
+
+The previous **official native Blender** research at commit
+`ff9a4f9918ccf9af136e560310536c9545c0967c` ran all four rank-18
+opposite-direction trials on the genuine source mesh and selected **none**.
+The unchanged baseline measured 6,957 overlapping UV triangle pairs,
+1,072.40848mm maximum unclosed UV gap and 323 source branch junctions.
+Moving rank 18 in the negative outside-pack direction by 1,2,4,8 / 256
+reduced the maximum gap by 4.51624, 9.03106, 18.05634 and 36.08897mm,
+respectively, **but increased** overlap by 39, 56, 79 and 140 triangle
+pairs. All opened one actual source edge of 33.28815mm with no branch
+increase, but none passed the complete overlap-improvement gate.
+**This rules out those sampled moves, not every possible chart.**
+
+**Next genuinely different 2D research hypothesis:** Instead of advancing
+or reversing along the original full outside-pack displacement vector,
+rigidly translate the same genuinely retained rank-18 subtree *orthogonal*
+to that vector, in two signed directions. Evaluate precisely four fixed
+pairs of (fraction, sign): (1/256,+1), (1/256,-1), (4/256,+1),
+(4/256,-1). The trial function implements exact perpendicular
+`(-full_dy, full_dx)` and only accepts the strings `outside` or
+`perpendicular`, with an explicit exact integer +/-1 direction sign.
+It still demands that both real source retained-edge UV endpoints were
+actually joined before the trial and measurably separated afterwards;
+source points, face IDs and true 3D cut edges stay immutable. Each source
+quad is translated as a rigid chart—no stretching or reorientation.
+
+The native driver saves only
+`researchOnlyComponent0Rank18OrthogonalPlacementSurvey` in its
+**non-exporting research evidence**. For each row it performs the
+complete original 5,300-triangle UV overlap scan plus true-source
+cut-network/gap/branch audit. The unchanged strict research gates are:
+full-scan overlap reduction, nonincreasing maximum gap,
+nonincreasing branch junctions, actual one new seam and the same
+rank-zero true source-edge length budget. The native CI script independently
+recomputes all raw numeric comparison and direction assertions rather than
+trusting candidate-supplied boolean flags. The four candidates may all be
+rejected; that is an acceptable research result. Synthetic Python tests
+check both axes, +/- signs, exact orthogonality, source nonmutation, no
+new approvals and forged axis/sign rejection. Node QA pins source, driver,
+workflow, and regression markers.
+
+Scope: existing 3D pure trial helper, Blender research driver, native 3D
+source workflow, dedicated Python and Node tests, this checkpoint. No
+customer-facing preview changes, production UV exports, user model
+replacement, clothing source geometry edits or physical signoff.
+**Verification pending at the new exact PR head:** full native Blender
+source evidence, collision QA, Full CI, and Non-3D QA. The old
+`ff9a4f99` source and collision success is not proof of this new experiment.
+`linen-earth-studio-model-v1` and all physical preflight, real
+textile calibration and tailor acceptance gates remain protected.
+**DRAFT / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
