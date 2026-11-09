@@ -649,3 +649,59 @@ non-approval flags remain the same. New exact-head pure tests and pinned
 native Blender, collision, Full CI and Non-3D gates must be inspected
 separately; do not inherit the predecessor's successful native evidence.
 **Draft / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
+
+## 2026-11-09 genuine source cut-network graph topology classification
+
+**Problem:** Original source research already measured total UV cut edge
+count, 3D source-edge lengths, largest seam gaps, total graph components
+and branch junctions, but did not distinguish a single open edge path
+from a loop or complex branched/cyclic network within each connected
+source cut component. Multiple translation and rigid midpoint-rotation
+trials on rank 18 were correctly rejected because overlap reduction
+and maximum seam-gap nonregression could not both be achieved.
+
+**New source-only geometric evidence:** The existing pure original-source
+UV cut-network auditor now classifies the connected subgraph of
+**authentic original 3D source edges** for each independently measured
+UV discontinuity component. It computes exact undirected edge count
+from actual source vertex adjacency, graph cycle rank `E - V + 1`,
+actual source-boundary vertex contacts, degree-one ends away from the
+original mesh boundary, and junctions of degree three or more.
+A component is only a mathematical `simple-open-path` when it has two
+degree-one ends, no branches and no cycles; `simple-closed-loop` when
+all vertices have degree two and one graph cycle; otherwise it is
+`branched-or-compound`. A graph path classification does **not**
+approve seam allowance, sewability, grain or source 3D/body fit.
+
+The source report aggregates `uvCutGraphCycleRank`,
+`uvCutGraphSimpleOpenPathComponentCount`,
+`uvCutGraphSimpleClosedLoopComponentCount`,
+`uvCutGraphBranchedOrCompoundComponentCount`,
+`uvCutGraphInteriorDegreeOneSourceVertexCount`, and
+`uvCutGraphComponentsWithoutActualOriginalOpenBoundary`. Each largest
+component also reports its actual topology class, Euler rank and
+boundary/endpoint counts. An additional independent Euler identity
+check rejects contradictory source graph accounting. Existing original
+mesh face/vertex/cut IDs, UV gap and acceptance thresholds, production
+source, locked scanned body and all false physical approval flags stay
+identical; the audit remains measurement-only.
+
+Dedicated Python unit tests cover a three-vertex open path, a four-edge
+closed cycle, a three-spoke branched tree, asymmetric/invalid graph
+rejection, zero-cut original planar UV, and a curved authentic 2,650-face
+synthetic source grid. Native CI independently rechecks Euler rank using
+`unclosedSharedUvCutCandidateEdges - uvCutCandidateSourceVertexCount +
+uvCutCandidateGraphComponentCount`, topology-class totals, boundary
+endpoint bounds and component identities on the actual unchanged original
+Blender trouser source. Node QA pins the helper, native assertions and
+negative regressions.
+
+**Verification:** previous exact head
+`9e6cc415ee84d880c30d746d712b963bffd9876e` had succeeded on native
+collision while source/Full CI/Non-3D were still in progress at start.
+The new source topology report and measured original cut-network
+cycle/path counts require the **new exact-head** pinned Blender run
+before citation as physical-source facts. Preserve any branch/cycle
+blockers; do not reinterpret a mathematical simple path as a factory
+seam or approve the UV/cloth. No production mesh or saved UVs changed.
+**Draft PR #897 / no merge / no deploy / no physical cutting.**
