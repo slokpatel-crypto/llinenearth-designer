@@ -18,21 +18,31 @@ def audit_original_source_uv_cut_network(
         raise ValueError("Actual original 2650-face trouser source and eight cut edges required.")
     vertices = []
     for point in points:
-        xyz = tuple(float(v) for v in point)
-        if len(xyz) != 3 or not all(math.isfinite(v) for v in xyz):
+        # Reject coercible source impostors before treating 3D coordinates as
+        # native measured geometry (bool, numeric text, complex and null).
+        if (len(point) != 3 or any(
+                isinstance(v, bool) or not isinstance(v, (int, float))
+                or not math.isfinite(v) for v in point)):
             raise ValueError("Original trouser mesh has an unknown nonfinite source point.")
-        vertices.append(xyz)
+        vertices.append(tuple(float(v) for v in point))
     if not vertices:
         raise ValueError("Original trouser mesh cannot be empty.")
     owners = defaultdict(list)
     for face_id, (raw_face, raw_uv) in enumerate(zip(original_faces, face_uv_loops)):
-        face = tuple(int(i) for i in raw_face)
-        coord = [tuple(float(k) for k in uv) for uv in raw_uv]
-        if (len(face) != 4 or len(set(face)) != 4 or min(face) < 0
-                or max(face) >= len(vertices) or len(coord) != 4
-                or any(len(uv) != 2 or not all(math.isfinite(q) for q in uv)
-                       for uv in coord)):
+        # Face vertex IDs are exact source topology, not coercible labels.
+        if (len(raw_face) != 4 or any(
+                type(i) is not int or i < 0 or i >= len(vertices)
+                for i in raw_face) or len(set(raw_face)) != 4
+                or len(raw_uv) != 4):
             raise ValueError("Actual source quad or UV loops are not four finite original corners.")
+        face = tuple(raw_face)
+        coord = []
+        for uv in raw_uv:
+            if (len(uv) != 2 or any(
+                    isinstance(k, bool) or not isinstance(k, (int, float))
+                    or not math.isfinite(k) for k in uv)):
+                raise ValueError("Actual source quad or UV loops are not four finite original corners.")
+            coord.append(tuple(float(k) for k in uv))
         for i in range(4):
             a, b = face[i], face[(i + 1) % 4]
             key = (min(a, b), max(a, b))
@@ -43,9 +53,13 @@ def audit_original_source_uv_cut_network(
     if any(len(value) > 2 for value in owners.values()):
         raise ValueError("Original source UV has more than two owners for a real edge.")
 
+    if any(
+            len(edge) != 2 or any(type(i) is not int or i < 0 for i in edge)
+            for edge in original_cut_edges):
+        raise ValueError("Original source crotch edge must contain literal integer vertex IDs.")
     original_cuts = {tuple(sorted(edge)) for edge in original_cut_edges}
     if len(original_cuts) != 8 or any(
-            len(edge) != 2 or edge[0] == edge[1]
+            edge[0] == edge[1]
             or len(owners.get(edge, [])) != 1 for edge in original_cuts):
         raise ValueError("Original source actual crotch cut-edge provenance is invalid.")
     shared_edges = sum(len(v) == 2 for v in owners.values())
