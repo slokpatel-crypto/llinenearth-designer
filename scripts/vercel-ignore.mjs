@@ -52,7 +52,8 @@ if (typeof commitMessage !== "string" || !commitMessage.trim()) {
 
 // VERCEL_GIT_COMMIT_MESSAGE may include a subject followed by a body.
 // Never authorize a deployment from a marker in the body or after a blank subject.
-const commitSubject = commitMessage.split(/\r?\n/, 1)[0].trim();
+// A CR-only line break also ends the subject; do not strip leading whitespace.
+const commitSubject = commitMessage.split(/\r\n|\n|\r/, 1)[0];
 if (!DEPLOY_PREFIX.test(commitSubject)) {
   console.log("Primary main commit has no [deploy] milestone marker; ignore automatic production build.");
   process.exit(0);
