@@ -35,6 +35,9 @@ for name in ("flat", "curved"):
     assert summary["originalSourceComponentCount"] == 1
     assert summary["originalSourceSharedEdgeCount"] == (53*49+50*52)
     assert summary["actualOriginalCutEdgeCount"] == 8
+    assert summary["minimumOriginalSourceTriangleAreaMm2"] > 0
+    if name == "flat":
+        assert abs(summary["minimumOriginalSourceTriangleAreaMm2"] - 50.0) <= 0.00001
     assert summary["maximumRetainedTreeEdgeCount"] == 2649
     assert summary["theoreticalNonTreeSourceEdgeCount"] == summary["originalSourceSharedEdgeCount"] - 2649
     assert len(result["retainedOriginalSourceEdges"]) == 2649
@@ -108,6 +111,31 @@ reject_source(bad_points,faces,cuts)
 bad_faces = list(faces)
 bad_faces[0] = (0,0,1,2)
 reject_source(points,bad_faces,cuts)
+
+# Real 3D face-area collapse must fail independently of nonzero source edges
+# and a well-formed spanning-tree topology.
+collapsed = list(points)
+quad = faces[0]
+collapsed[quad[2]] = tuple(
+    (points[quad[0]][axis] + points[quad[1]][axis]) / 2
+    for axis in range(3)
+)
+reject_source(collapsed, faces, cuts)
+
+# Forged IDs and numeric-looking source positions cannot be coerced to
+# apparently valid geometry, even when their converted values would match.
+for impostor in (False, 0.2, "0"):
+    forged = list(faces)
+    forged[0] = (impostor, *faces[0][1:])
+    reject_source(points, forged, cuts)
+for impostor in (False, 0.2, "0"):
+    forged = list(cuts)
+    forged[0] = (impostor, cuts[0][1])
+    reject_source(points, faces, forged)
+for impostor in (True, "0.0", None, complex(0, 0)):
+    forged = list(points)
+    forged[0] = (impostor, points[0][1], points[0][2])
+    reject_source(forged, faces, cuts)
 
 trial = runpy.run_path(str(
     scripts / "source-trouser-max-retained-uv.py"
