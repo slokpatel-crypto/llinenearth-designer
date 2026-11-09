@@ -182,3 +182,30 @@ test('native PostgreSQL: missing migration history fails closed instead of provi
   assert.match(error,/schema_migrations/);
   assert.match(error,/does not exist/i);
 });
+
+test('native PostgreSQL: duplicate applied versions stay visible without assuming a missing name column',()=>{
+  sql([
+    'CREATE TABLE supabase_migrations.schema_migrations (version text NOT NULL);',
+    "INSERT INTO supabase_migrations.schema_migrations(version) VALUES ('20261103'),('20261103');",
+  ].join('\n'));
+  const output=runPsql(['--file','docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql']);
+  const versions=output.split(/\r?\n/).filter(line=>line.startsWith('migration_history|'));
+  assert.deepEqual(versions,['migration_history|20261103|','migration_history|20261103|'],
+    'Duplicate applied versions must remain distinct observations, not inferred source-file identities');
+});
+
+test('native PostgreSQL: deployed SECURITY DEFINER body and owner remain visible as evidence',()=>{
+  sql([
+    'CREATE OR REPLACE FUNCTION public.fabric_stock_reserve_v2(text) RETURNS boolean',
+    "LANGUAGE sql SECURITY DEFINER AS 'SELECT true';",
+  ].join('\n'));
+  const output=runPsql(['--file','docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql']);
+  const row=output.split(/\r?\n/).find(line=>
+    line.startsWith('stock_function_definition|fabric_stock_reserve_v2(text)|'));
+  assert.ok(row,'Expected deployed v2 function definition evidence');
+  const fields=row.split('|');
+  assert.equal(fields[2],'titan_probe','Function owner must be visible in catalog evidence');
+  assert.equal(fields[3],'t','SECURITY DEFINER must be flagged for independent review');
+  assert.match(fields[6],/^[a-f0-9]{32}$/,'Rendered database definition hash is recorded');
+  assert.match(output,/SECURITY DEFINER/,'Full rendered function definition must remain available for private review');
+});
