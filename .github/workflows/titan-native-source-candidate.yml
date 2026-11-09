@@ -2012,6 +2012,112 @@ jobs:
               assert orthogonal["sourceUvExportOrSavePerformed"] is False
               assert orthogonal["physicalFabricTailorOrFitApproved"] is False
               assert orthogonal["productionApproved"] is False
+              rotation=weighted[
+                  "researchOnlyComponent0Rank18MidpointRotationSurvey"
+              ]
+              assert rotation["researchOnly"] is True
+              assert rotation["candidateRank"] == 18
+              assert rotation["evaluatedRotationCount"] == 4
+              assert rotation["rankZeroRealEdgeLengthBudgetMm"] == (
+                  trial["addedActualSourceCutEdgeLengthMm"]
+              )
+              assert rotation["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert rotation["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              assert rotation["baselineTotalCutNetworkLengthMm"] == (
+                  baseline_cut["totalRealGeometryOfUvCutCandidatesMm"]
+              )
+              rotation_rows=rotation["candidateResults"]
+              assert [r["rotationDegrees"] for r in rotation_rows] == [
+                  -2.0,-1.0,1.0,2.0
+              ]
+              assert rotation["strictEligibleCandidateCount"] == sum(
+                  r["strictResearchEligible"] for r in rotation_rows
+              )
+              assert rotation["noStrictCandidateObserved"] is (
+                  rotation["strictEligibleCandidateCount"] == 0
+              )
+              for r in rotation_rows:
+                  assert r["candidateRank"] == 18
+                  assert r["researchUvPlacementType"] == (
+                      "source-edge-midpoint-rotation"
+                  )
+                  assert r["baselineOverlapTrianglePairs"] == 6957
+                  assert r["overlapTrianglePairDelta"] == (
+                      r["candidateOverlapTrianglePairs"] -
+                      r["baselineOverlapTrianglePairs"]
+                  )
+                  assert r["completeOverlapImprovement"] is (
+                      r["overlapTrianglePairDelta"] < 0
+                  )
+                  assert r["withinRankZeroRealEdgeLengthBudget"] is (
+                      r["addedActualSourceCutEdgeLengthMm"] <=
+                      rotation["rankZeroRealEdgeLengthBudgetMm"] + 0.00001
+                  )
+                  assert r["exactlyOneNewUnclosedUvSeam"] is (
+                      r["candidateUnclosedSharedUvSeams"] ==
+                      baseline_cut["unclosedSharedUvCutCandidateEdges"] + 1
+                  )
+                  assert abs(
+                      r["maximumUnclosedUvEdgeGapDeltaMm"] -
+                      (r["candidateMaximumUnclosedUvEdgeGapMm"] -
+                       rotation["baselineMaximumUnclosedUvEdgeGapMm"])
+                  ) <= 0.00002
+                  assert r["noMaximumUvGapRegression"] is (
+                      r["maximumUnclosedUvEdgeGapDeltaMm"] <= 0.00001
+                  )
+                  assert r["branchJunctionDelta"] == (
+                      r["candidateBranchJunctions"] -
+                      rotation["baselineBranchJunctions"]
+                  )
+                  assert r["noBranchJunctionRegression"] is (
+                      r["branchJunctionDelta"] <= 0
+                  )
+                  assert abs(
+                      r["measuredAddedCutNetworkLengthMm"] -
+                      (r["candidateTotalCutNetworkLengthMm"] -
+                       rotation["baselineTotalCutNetworkLengthMm"])
+                  ) <= 0.00002
+                  assert r["maximumOriginalTriangleEdgeChangeMm"] <= 0.000001
+                  assert r["sourceEdgeOriginalUvLengthMm"] > 0
+                  assert all(math.isfinite(v) for v in (
+                      r["sourceEdgeUvMidpointMm"] +
+                      r["sourceEdgeOpenedEndpointGapsMm"]
+                  ))
+                  assert len(r["sourceEdgeUvMidpointMm"]) == 2
+                  assert len(r["sourceEdgeOpenedEndpointGapsMm"]) == 2
+                  # For a midpoint pivot, each end of the actual source edge
+                  # moves L*sin(|angle|/2). Require numeric native agreement.
+                  expected_opening = (
+                      r["sourceEdgeOriginalUvLengthMm"] *
+                      math.sin(math.radians(abs(r["rotationDegrees"])) / 2)
+                  )
+                  assert all(
+                      gap > 0.001 and abs(gap-expected_opening) <= 0.00101
+                      for gap in r["sourceEdgeOpenedEndpointGapsMm"]
+                  )
+                  assert r["physicalPatternApproved"] is False
+                  assert r["productionApproved"] is False
+                  assert r["strictResearchEligible"] is (
+                      r["completeOverlapImprovement"] and
+                      r["withinRankZeroRealEdgeLengthBudget"] and
+                      r["noMaximumUvGapRegression"] and
+                      r["noBranchJunctionRegression"] and
+                      r["exactlyOneNewUnclosedUvSeam"]
+                  )
+              rotation_selected=rotation["strictSelectedCandidate"]
+              if rotation_selected is None:
+                  assert rotation["strictEligibleCandidateCount"] == 0
+              else:
+                  assert rotation_selected["strictResearchEligible"] is True
+                  assert rotation_selected in rotation_rows
+              assert rotation["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert rotation["sourceUvExportOrSavePerformed"] is False
+              assert rotation["physicalFabricTailorOrFitApproved"] is False
+              assert rotation["productionApproved"] is False
               assert branch["productionApproved"] is False
               assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
               assert branch_uv["dualGraphComponentCount"] == 3
