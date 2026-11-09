@@ -42,6 +42,17 @@ test("real source UV spanning forest joins actual original mesh edges but reject
     'len(tree_body_pairs) != unchanged_source_pairs',
     'seam_winding["researchOnlyOriginalSourceDualTreeUvSurvey"] = tree_report',
   ]) assert.ok(blender.includes(term), term);
+  // Original Blender mesh IDs and UV measurements cannot be fabricated by
+  // int()/float() coercion, including in explicitly selected source UV trees.
+  for (const term of [
+    "any(type(v) is not int or v < 0 for v in raw_face)",
+    "isinstance(v, bool) or not isinstance(v, (int, float))",
+    "Original source cut-edge identities must be integer vertex IDs.",
+    "Selected original source UV tree edge is not a strict integer pair.",
+  ]) assert.ok(pure.includes(term), "source provenance guard missing: "+term);
+  assert.ok(!pure.includes("int(raw_edge[0])"));
+  assert.ok(!pure.includes("tuple(int(v) for v in raw_face)"));
+  assert.ok(!pure.includes("tuple(float(v) for v in uv) for uv in raw_uv"));
   assert.ok(!pure.includes("bpy.ops."),"Pure source UV seam routine cannot mutate Blender");
   assert.ok(!blender.includes("save_as_mainfile"),"Original Blender scene cannot be saved");
   for (const term of [
