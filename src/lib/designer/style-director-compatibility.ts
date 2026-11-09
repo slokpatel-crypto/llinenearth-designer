@@ -1510,14 +1510,9 @@ export function styleDirectorConstructionIssues(
     });
   }
   issues.push(...styleDirectorSilhouetteFitIssues(pant));
-  // A cropped hem on a non-cropped trouser type is equally contradictory.
-  // Keep the locked IDs untouched and require tailoring review.
-  if (pant.hem === "cropped_above_ankle_hem" && pant.type !== "cropped_ankle") {
-    issues.push({
-      code: "cropped_hem_type_mismatch",
-      explanation: "The cropped above-ankle hem conflicts with the saved non-cropped trouser type; confirm the intended construction before cutting.",
-    });
-  }
+  // Hem length and trouser silhouette are independent: a flat-front or
+  // pleated trouser may legitimately be finished above the ankle. The
+  // explicit shoe-break compatibility checks below enforce length parity.
   if (pant.type === "cropped_ankle" && pant.hem !== "cropped_above_ankle_hem") {
     issues.push({
       code: "cropped_type_hem_mismatch",
