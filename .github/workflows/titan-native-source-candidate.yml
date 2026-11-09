@@ -1385,6 +1385,27 @@ jobs:
                       row["relativeSourceUvEndpointDriftMm"]
                   ) <= 0.00002
                   and row["relativeSourceUvEndpointDriftMm"] >= 0
+                  and len(row["bestFitSingleRigidUvEdgeTranslationMm"]) == 2
+                  and all(math.isfinite(x)
+                          for x in row["bestFitSingleRigidUvEdgeTranslationMm"])
+                  and all(
+                      abs(row["bestFitSingleRigidUvEdgeTranslationMm"][i] -
+                          math.fsum((
+                              row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"][0][i],
+                              row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"][1][i]
+                          )) / 2) <= 0.00002
+                      for i in range(2)
+                  )
+                  and row["irreducibleSingleRigidTranslationEndpointResidualMm"] >= 0
+                  and abs(
+                      row["irreducibleSingleRigidTranslationEndpointResidualMm"] -
+                      math.dist(*row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"]) / 2
+                  ) <= 0.00002
+                  and type(row["rigidTranslationCannotExactlyCloseBothEndpoints"]) is bool
+                  and row["rigidTranslationCannotExactlyCloseBothEndpoints"] is (
+                      math.dist(*row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"]) >
+                      0.000000001
+                  )
                   for row in highest_gap_branches
               )
               assert [
