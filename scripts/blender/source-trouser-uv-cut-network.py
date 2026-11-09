@@ -11,6 +11,55 @@ from collections import Counter, defaultdict
 import math
 
 
+def classify_original_source_uv_cut_component(
+        cut_graph, component_vertices, original_boundary_vertices):
+    """Classify connected ORIGINAL source-edge UV cuts, not sewing lines.
+
+    A component's cycle rank E-V+1 is independent of a UV chart's placement.
+    A connected simple path has two degree-one ends and no junction; a
+    connected simple loop has all degree two and one graph cycle. All other
+    networks require more than one unbranched panel-edge path to represent.
+    These are graph facts, not textile grain/cut/fit approvals.
+    """
+    component = set(component_vertices)
+    if not component:
+        raise ValueError("Original UV cut graph component must be nonempty.")
+    for vertex in component:
+        neighbours = cut_graph[vertex]
+        if vertex in neighbours or any(
+                n not in component or vertex not in cut_graph[n]
+                for n in neighbours):
+            raise ValueError("Original UV cut graph is not symmetric or connected.")
+    total_degrees = sum(len(cut_graph[v]) for v in component)
+    if total_degrees % 2:
+        raise ValueError("Original UV cut graph has unmatched source-edge owners.")
+    edges = total_degrees // 2
+    cycle_rank = edges - len(component) + 1
+    if edges < 1 or cycle_rank < 0:
+        raise ValueError("Original source UV cut component has invalid Euler rank.")
+    ends = [v for v in component if len(cut_graph[v]) == 1]
+    branches = sum(len(cut_graph[v]) >= 3 for v in component)
+    touching = sum(v in original_boundary_vertices for v in component)
+    internal_ends = sum(v not in original_boundary_vertices for v in ends)
+    if len(ends) == 2 and branches == 0 and cycle_rank == 0:
+        shape = "simple-open-path"
+    elif not ends and branches == 0 and cycle_rank == 1:
+        shape = "simple-closed-loop"
+    else:
+        shape = "branched-or-compound"
+    return {
+        "originalSourceVertexCount": len(component),
+        "unclosedUvEdgeCount": edges,
+        "touchesActualOriginalOpenBoundary": touching > 0,
+        "originalBoundaryContactSourceVertexCount": touching,
+        "degreeOneSourceVertices": len(ends),
+        "interiorDegreeOneSourceVertices": internal_ends,
+        "branchingSourceVertices": branches,
+        "uvCutGraphCycleRank": cycle_rank,
+        "uvCutGraphTopology": shape,
+    }
+
+
 def audit_original_source_uv_cut_network(
         points, original_faces, face_uv_loops, original_cut_edges, tree_report):
     if (len(original_faces) != 2650 or len(face_uv_loops) != 2650
@@ -125,28 +174,30 @@ def audit_original_source_uv_cut_network(
                 if nxt in unseen:
                     unseen.remove(nxt)
                     queue.append(nxt)
-        component_set = set(component_vertices)
-        component_edges = sum(
-            1 for _gap, _length, a, b in uv_unclosed
-            if a in component_set and b in component_set
+        network_components.append(
+            classify_original_source_uv_cut_component(
+                cut_graph, component_vertices, original_boundary_vertices
+            )
         )
-        network_components.append({
-            "originalSourceVertexCount": len(component_set),
-            "unclosedUvEdgeCount": component_edges,
-            "touchesActualOriginalOpenBoundary": bool(
-                component_set.intersection(original_boundary_vertices)
-            ),
-            "degreeOneSourceVertices": sum(len(cut_graph[v]) == 1
-                                          for v in component_vertices),
-            "branchingSourceVertices": sum(len(cut_graph[v]) >= 3
-                                          for v in component_vertices),
-        })
     network_components.sort(
         key=lambda row: (
             -row["unclosedUvEdgeCount"], -row["originalSourceVertexCount"],
             row["degreeOneSourceVertices"],
         )
     )
+    cut_shape_counts = Counter(
+        row["uvCutGraphTopology"] for row in network_components
+    )
+    cut_cycle_rank = len(uv_unclosed) - len(cut_graph) + len(network_components)
+    if (cut_cycle_rank != sum(
+            row["uvCutGraphCycleRank"] for row in network_components)
+            or cut_cycle_rank < 0
+            or sum(cut_shape_counts.values()) != len(network_components)
+            or sum(row["unclosedUvEdgeCount"]
+                   for row in network_components) != len(uv_unclosed)
+            or sum(row["originalSourceVertexCount"]
+                   for row in network_components) != len(cut_graph)):
+        raise ValueError("Original UV cut graph failed independent Euler accounting.")
     first = sorted(
         uv_unclosed, key=lambda v: (-v[0], v[2], v[3])
     )[:12]
@@ -184,6 +235,21 @@ def audit_original_source_uv_cut_network(
             count for degree, count in degrees.items() if degree >= 3
         ),
         "uvCutCandidateGraphComponentCount": len(network_components),
+        "uvCutGraphCycleRank": cut_cycle_rank,
+        "uvCutGraphSimpleOpenPathComponentCount":
+            cut_shape_counts["simple-open-path"],
+        "uvCutGraphSimpleClosedLoopComponentCount":
+            cut_shape_counts["simple-closed-loop"],
+        "uvCutGraphBranchedOrCompoundComponentCount":
+            cut_shape_counts["branched-or-compound"],
+        "uvCutGraphInteriorDegreeOneSourceVertexCount": sum(
+            row["interiorDegreeOneSourceVertices"]
+            for row in network_components
+        ),
+        "uvCutGraphComponentsWithoutActualOriginalOpenBoundary": sum(
+            not row["touchesActualOriginalOpenBoundary"]
+            for row in network_components
+        ),
         "uvCutCandidateGraphLargestComponents": network_components[:12],
         "actualLargestGapUvCutEdges": [
             {
