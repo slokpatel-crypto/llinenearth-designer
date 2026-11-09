@@ -227,6 +227,12 @@ def audit_original_source_uv_cut_network(
         cut_graph[b].add(a)
         total_cut_mm += real_mm
     degrees = Counter(len(neighbours) for neighbours in cut_graph.values())
+    uv_gap_by_original_edge = {
+        (min(a, b), max(a, b)): gap_mm
+        for gap_mm, _real_mm, a, b in uv_unclosed
+    }
+    if len(uv_gap_by_original_edge) != len(uv_unclosed):
+        raise ValueError("Original UV seam gap has duplicated source-edge identity.")
     unseen = set(cut_graph)
     network_components = []
     source_chains = []
@@ -263,6 +269,7 @@ def audit_original_source_uv_cut_network(
             raise ValueError("Original source UV network lost edge-disjoint chain coverage.")
         network_components.append(classification)
         component_chain_lengths = []
+        component_chain_max_gap_mm = []
         for chain in chains:
             segment_lengths = [
                 math.dist(vertices[a], vertices[b]) * 1000.0
@@ -273,6 +280,19 @@ def audit_original_source_uv_cut_network(
                 raise ValueError("Original UV source chain lacks finite 3D edge length.")
             source_chain_full_lengths.append(length_mm)
             component_chain_lengths.append(length_mm)
+            chain_gap_edges = [
+                (uv_gap_by_original_edge[(min(a, b), max(a, b))],
+                 (min(a, b), max(a, b)))
+                for a, b in zip(chain, chain[1:])
+            ]
+            if len(chain_gap_edges) != len(chain) - 1:
+                raise ValueError("Original source UV gap trace lost a genuine cut edge.")
+            chain_max_gap, chain_max_edge = sorted(
+                chain_gap_edges, key=lambda pair: (
+                    -pair[0], pair[1][0], pair[1][1]
+                )
+            )[0]
+            component_chain_max_gap_mm.append(chain_max_gap)
             source_chains.append({
                 "originalSourceComponentMinimumVertexIndex":
                     classification["originalSourceMinimumVertexIndex"],
@@ -284,6 +304,8 @@ def audit_original_source_uv_cut_network(
                 "originalSourceEndVertexIndex": chain[-1],
                 "originalSourceEdgeCount": len(chain) - 1,
                 "realOriginalSourceChainLengthMm": round(length_mm, 5),
+                "maximumOriginalSourceUvSeamGapMm": round(chain_max_gap, 5),
+                "originalSourceEdgeAtMaximumUvSeamGap": list(chain_max_edge),
                 "closedGraphLoop": chain[0] == chain[-1],
                 "startsAtOriginalMeshBoundary":
                     chain[0] in original_boundary_vertices,
@@ -307,6 +329,16 @@ def audit_original_source_uv_cut_network(
             raise ValueError("Original source UV component chain lengths do not reconcile.")
         classification["realOriginalSourceUvCutNetworkLengthMm"] = round(
             math.fsum(component_chain_lengths), 5
+        )
+        component_cut_gaps_mm = [
+            gap_mm for gap_mm, _real_mm, a, b in uv_unclosed
+            if a in set(component_vertices) and b in set(component_vertices)
+        ]
+        if (len(component_cut_gaps_mm) != classification["unclosedUvEdgeCount"]
+                or max(component_cut_gaps_mm) != max(component_chain_max_gap_mm)):
+            raise ValueError("Original UV component seam gap mismatches genuine source paths.")
+        classification["maximumOriginalSourceUvSeamGapMm"] = round(
+            max(component_cut_gaps_mm), 5
         )
     network_components.sort(
         key=lambda row: (
@@ -410,6 +442,18 @@ def audit_original_source_uv_cut_network(
         row for row in source_chains
         if row["originalSourceComponentMinimumVertexIndex"] in branched_component_ids
     ]
+    highest_gap_branched_chains = sorted(branched_chain_rows, key=lambda row: (
+        -row["maximumOriginalSourceUvSeamGapMm"],
+        -row["realOriginalSourceChainLengthMm"],
+        row["originalSourceComponentMinimumVertexIndex"],
+        row["originalSourceStartVertexIndex"],
+        row["originalSourceEndVertexIndex"],
+    ))
+    if (source_chains and abs(
+            max(row["maximumOriginalSourceUvSeamGapMm"]
+                for row in source_chains) - max_uv_gap_mm
+        ) > 0.00001):
+        raise ValueError("Original source UV chain gaps do not cover global maximum.")
     if (sum(component_owners[identifier]["uvCutGraphMaximalChainCount"]
             for identifier in branched_component_ids) != len(branched_chain_rows)
             or sum(component_owners[identifier]["unclosedUvEdgeCount"]
@@ -492,6 +536,8 @@ def audit_original_source_uv_cut_network(
         ),
         "actualLongestOriginalSourceUvCutChains": source_chains[:12],
         "actualLongestBranchedOriginalSourceUvCutChains": branched_chain_rows[:12],
+        "actualHighestGapBranchedOriginalSourceUvCutChains":
+            highest_gap_branched_chains[:12],
         "actualBranchedOriginalSourceUvCutNetworks": [
             row for row in network_components
             if row["uvCutGraphTopology"] == "branched-or-compound"
