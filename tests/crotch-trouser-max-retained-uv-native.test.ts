@@ -75,6 +75,20 @@ test("maximum real original source edge forest compares cuts without inventing f
     '"scripts/blender/source-trouser-max-retained-uv.py"',
     '"tests/crotch-trouser-max-retained-uv-native.test.ts"',
   ])assert.equal(workflow.split(v).length-1,2,"Original source native workflow PR and push must trigger");
+  for(const marker of [
+    "minimumOriginalSourceTriangleAreaMm2",
+    "Original source quad contains a collapsed real 3D triangle.",
+    "Original source cut edges require literal integer IDs.",
+    "type(x) is not int or x < 0 or x >= len(verts)",
+    "not isinstance(x, (int, float))",
+  ])assert.ok(selector.includes(marker), "real source metric guard missing: "+marker);
+  for(const marker of [
+    "reject_source(collapsed, faces, cuts)",
+    "for impostor in (False, 0.2, \"0\"):",
+    'assert abs(summary["minimumOriginalSourceTriangleAreaMm2"] - 50.0)',
+  ])assert.ok(fixture.includes(marker), "collapsed source fixture missing: "+marker);
+  assert.ok(!selector.includes("face = tuple(int(x) for x in face_raw)"));
+  assert.ok(!selector.includes("xyz = tuple(float(x) for x in pt)"));
   assert.ok(fixture.includes("assert result == select(points, original_faces, original_cut_edges)"));
   assert.ok(fixture.includes("reject_tree(good + [good[0]])"));
   assert.ok(fixture.includes("reject_comparison(baseline_audit, forgery,"));
