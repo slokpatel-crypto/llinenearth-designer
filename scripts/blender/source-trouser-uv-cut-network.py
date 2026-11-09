@@ -197,6 +197,40 @@ def audit_original_source_uv_cut_network(
             row["degreeOneSourceVertices"],
         )
     )
+    # Source 3D evidence for the worst graph junctions, not seam guidance.
+    # Keep original vertex IDs and actual source point coordinates; do not
+    # infer garment grain, body clearance or real tailor cut locations.
+    actual_cut_vertices = {index for edge in original_cuts for index in edge}
+    junction_rows = []
+    for source_vertex, neighbours in cut_graph.items():
+        if len(neighbours) < 3:
+            continue
+        incident_mm = sum(
+            math.dist(vertices[source_vertex], vertices[other]) * 1000.0
+            for other in neighbours
+        )
+        if not math.isfinite(incident_mm) or incident_mm <= 0:
+            raise ValueError("Original source UV branch has invalid incident edge geometry.")
+        junction_rows.append({
+            "originalSourceVertexIndex": source_vertex,
+            "sourceUvCutGraphDegree": len(neighbours),
+            "realOriginalSourcePositionMm": [
+                round(value * 1000.0, 5) for value in vertices[source_vertex]
+            ],
+            "incidentOriginalSourceCutEdgeLengthMm": round(incident_mm, 5),
+            "touchesActualOriginalOpenBoundary":
+                source_vertex in original_boundary_vertices,
+            "touchesGenuineOriginalCrotchCut":
+                source_vertex in actual_cut_vertices,
+        })
+    junction_rows.sort(key=lambda row: (
+        -row["sourceUvCutGraphDegree"],
+        -row["incidentOriginalSourceCutEdgeLengthMm"],
+        row["originalSourceVertexIndex"],
+    ))
+    if len(junction_rows) != sum(
+            count for degree, count in degrees.items() if degree >= 3):
+        raise ValueError("Original source UV cut junction inventory is inconsistent.")
     cut_shape_counts = Counter(
         row["uvCutGraphTopology"] for row in network_components
     )
@@ -262,6 +296,17 @@ def audit_original_source_uv_cut_network(
             not row["touchesActualOriginalOpenBoundary"]
             for row in network_components
         ),
+        "uvCutGraphMaximumJunctionDegree": max(
+            (row["sourceUvCutGraphDegree"] for row in junction_rows),
+            default=0,
+        ),
+        "uvCutGraphJunctionsOnActualOriginalBoundary": sum(
+            row["touchesActualOriginalOpenBoundary"] for row in junction_rows
+        ),
+        "uvCutGraphJunctionsOnGenuineOriginalCrotchCut": sum(
+            row["touchesGenuineOriginalCrotchCut"] for row in junction_rows
+        ),
+        "actualLargestOriginalSourceUvCutJunctions": junction_rows[:12],
         "uvCutCandidateGraphLargestComponents": network_components[:12],
         "actualLargestGapUvCutEdges": [
             {
