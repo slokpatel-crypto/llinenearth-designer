@@ -171,6 +171,29 @@ for rank in (-1, 48, 1.0, True, "1"):
 for fraction in (0, -1, 1.00001, math.nan, math.inf, True, "0.5"):
     reject(translation_fraction=fraction)
 
+# An arbitrarily tiny, positive float is not proof that the selected original
+# edge became a NEW UV seam. Reject sub-tolerance, almost-zero motion.
+for fraction in (1e-12, 1e-9):
+    reject(translation_fraction=fraction)
+small_visible = trial(points, faces, loops, retained, translation_fraction=0.01)
+assert small_visible["report"]["newUnclosedSourceUvSeamCount"] == 1
+assert small_visible["report"]["maximumOriginalTriangleEdgeChangeMm"] <= .000001
+
+# Forge a preexisting gap on the same authentic source edge. Opening an
+# already-separated UV edge must not be counted as a new cut.
+selected_edge = tuple(report["removedRetainedOriginalSourceEdge"])
+selected_owners = [
+    face_id for face_id, face in enumerate(faces)
+    if all(vertex_id in face for vertex_id in selected_edge)
+]
+assert len(selected_owners) == 2
+already_disconnected = copy.deepcopy(loops)
+already_disconnected[selected_owners[0]] = [
+    (u + .005, v) for u, v in already_disconnected[selected_owners[0]]
+]
+reject(source_uv=already_disconnected)
+assert loops == original_loops and faces == original_faces
+
 
 def reject_two(ranks):
     try:
