@@ -1071,3 +1071,53 @@ overlap/gap/branch/real source length and physical gates. All
 unchanged, no fake physical inputs, **draft, no merge/deploy/cutting**.
 New exact-head pinned native source, collision, Full CI and Non-3D
 checks still required before accepting measurements from this change.
+
+## 2026-11-09 proper rigid rotation+translation of genuine source UV edge (diagnostic)
+
+**Measured preceding Blender evidence:** Source component 1354 contains
+the original edge 1383–1418, owned by source faces 1452 and 1453,
+with two original face-owner research UV offsets of
+(-1421.66448, +480.19597)mm and (-1435.88934, +489.38092)mm.
+A *translation-only* optimum for this one source UV edge is their
+midpoint, (-1428.77691, +484.78845)mm; one owner still differs at
+each endpoint by 8.46626mm. This is actual research UV evidence from
+previous native source run #42656037639, **not physical garment fit**.
+
+**Different geometric invariant added, no new garment proposed:** A
+proper planar rigid transform can *rotate as well as translate* one
+original UV owner edge segment to align with its other original
+face-owner segment, without mirror, scale or distortion. For
+two original source edge segments with (research UV) lengths
+`L_a` and `L_b`, exact signed vector alignment plus midpoint
+translation makes both resulting endpoint residuals equal to
+`abs(L_a-L_b)/2`, the best attainable value for any proper
+single-edge rotation+translation. This may be SMALLER than the
+translation-only `|a-b|/2` residual; nevertheless exact local edge
+closure never proves that the other thousands of genuine source
+edges will close simultaneously, or that the UV chart will avoid
+overlapping triangles or fit the scanned body.
+
+The source-only auditor now computes, for each reported worst-gap
+real source chain edge, **both original face-owner UV segment endpoint
+positions**, both original 2D edge lengths, measured optimal proper
+rotation angle, translation, best unavoidable endpoint residual, and
+a nonproduction local-closure boolean. It rejects malformed and
+collapsed UV owner endpoints, requires the native 2D orientation
+preservation formula, and checks both post-rotation endpoint
+residuals independently against the **unrounded** edge-length
+difference. It does not apply transformations to any original
+UV loop or 3D geometry.
+
+Python regression covers equal-length orthogonal segments that
+close exactly with a proper -90 degree rotation, unequal-length
+segments with 1mm unavoidable residual, malformed/nonfinite inputs,
+and recomputation from the actual original owner-edge UV endpoints.
+Pinned native source CI independently checks the source owner
+endpoint coordinates, their measured lengths, reported residual,
+rigid rotation-and-translation result and source nonapproval.
+Node QA pins the source, Python and workflow contracts.
+These checks are evidence-only. Source UV overlap reduction,
+source cut topology, original crotch/body collision clearance,
+supplier textile repeat and physical tailored fit remain
+unapproved. **No original model/mesh/UV/GLB changes; draft,
+no merge, no deploy, no factory cutting approval.**
