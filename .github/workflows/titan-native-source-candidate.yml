@@ -1408,6 +1408,53 @@ jobs:
                   )
                   for row in highest_gap_branches
               )
+              # Independently audit the best proper rotation+translation
+              # from both ORIGINAL source UV owner edge endpoint sequences.
+              # Local source-edge equality does NOT approve whole chart fit.
+              for row in highest_gap_branches:
+                  uv_owners=row["sourceUvOriginalOwnerEdgeEndpointsMm"]
+                  assert len(uv_owners) == 2
+                  assert all(
+                      len(owner) == 2 and all(
+                          len(point) == 2 and all(math.isfinite(v) for v in point)
+                          for point in owner
+                      ) for owner in uv_owners
+                  )
+                  assert all(
+                      abs(uv_owners[0][endpoint][axis] -
+                          uv_owners[1][endpoint][axis] -
+                          row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"][endpoint][axis]
+                      ) <= 0.00002
+                      for endpoint in range(2) for axis in range(2)
+                  )
+                  source_lengths=[math.dist(*owner) for owner in uv_owners]
+                  assert all(v > 0 for v in source_lengths)
+                  assert all(
+                      abs(a - b) <= 0.00002
+                      for a,b in zip(source_lengths,row["sourceUvOwnerEdgeLengthsMm"])
+                  )
+                  lower_bound=abs(source_lengths[0]-source_lengths[1])/2
+                  assert abs(
+                      lower_bound -
+                      row["irreducibleProperRigidAlignmentEndpointResidualMm"]
+                  ) <= 0.00002
+                  radians=math.radians(row["bestFitProperRigidUvRotationDegrees"])
+                  cosine,sine=math.cos(radians),math.sin(radians)
+                  translation=row["bestFitRigidUvTranslationMm"]
+                  assert len(translation) == 2 and all(
+                      math.isfinite(v) for v in translation
+                  )
+                  for actual,target in zip(uv_owners[1],uv_owners[0]):
+                      transformed=(
+                          cosine*actual[0]-sine*actual[1]+translation[0],
+                          sine*actual[0]+cosine*actual[1]+translation[1],
+                      )
+                      assert abs(
+                          math.dist(transformed,target)-lower_bound
+                      ) <= 0.00008
+                  assert type(row["singleEdgeExactRigidClosurePossible"]) is bool
+                  if row["singleEdgeExactRigidClosurePossible"]:
+                      assert lower_bound <= 0.00002
               assert [
                   (-row["maximumOriginalSourceUvSeamGapMm"],
                    -row["realOriginalSourceChainLengthMm"],
