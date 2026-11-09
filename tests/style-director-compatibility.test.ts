@@ -2849,3 +2849,22 @@ test("cropped hem proposal fails closed on throwing or inherited selectors", () 
   assert.equal(canonical.type, "cropped_ankle");
   assert.equal(canonical.break, "cropped_above_ankle");
 });
+
+test("negative finished-wear clauses cannot consume a second conjunctive wear instruction", () => {
+  const clauses = [
+    "Do not wear blue linen and tucked shirt",
+    "Must not wear blue linen but tucked shirt",
+    "Should not wear blue linen or tucked shirt",
+    "Do not wear striped cotton and untucked shirt",
+    "Must not wear striped cotton but untucked shirt",
+    "Should not wear striped cotton or untucked shirt",
+  ];
+  for (const wording of clauses) {
+    // The first clause is incomplete: it cannot safely supply a finished
+    // wear state, nor may it swallow the independent affirmative clause.
+    const intended = wording.includes("untucked shirt") ? "untucked" : "tucked";
+    assert.deepEqual(styleDirectorCandidateWearIssues(wording, {
+      wear: intended === "tucked" ? "untucked" : "tucked",
+    }).map(issue => issue.code), ["candidate_shirt_wear_mismatch"], wording);
+  }
+});
