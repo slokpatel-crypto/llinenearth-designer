@@ -174,6 +174,42 @@ for direction in (-1, 1):
     )
 assert points == original_points and faces == original_faces and loops == original_loops
 
+# Unlike translating a chart, pivot the authentic whole subtree around the
+# midpoint of the selected shared source edge. Both endpoints must open in
+# research UV and the two triangles of every original quad stay rigid.
+for angle in (-2.0, -1.0, 1.0, 2.0):
+    rotated = trial(
+        points, faces, loops, retained,
+        candidate_rank=0, rotation_degrees=angle,
+    )
+    rot_report = rotated["report"]
+    assert rot_report["researchUvPlacementType"] == "source-edge-midpoint-rotation"
+    assert rot_report["researchUvMidpointRotationDegrees"] == angle
+    assert rot_report["translationAxisRelativeToOutsidePack"] == "outside"
+    assert rot_report["rigidResearchUvTranslationMm"] == [0.0, 0.0]
+    assert rot_report["removedRetainedOriginalSourceEdge"] == (
+        fractional_report["removedRetainedOriginalSourceEdge"]
+    )
+    assert rot_report["addedActualSourceCutEdgeLengthMm"] == (
+        fractional_report["addedActualSourceCutEdgeLengthMm"]
+    )
+    expected_gap = (rot_report["sourceEdgeOriginalUvLengthMm"] *
+                    math.sin(math.radians(abs(angle)) / 2))
+    assert len(rot_report["sourceEdgeOpenedEndpointGapsMm"]) == 2
+    for observed in rot_report["sourceEdgeOpenedEndpointGapsMm"]:
+        assert abs(observed - expected_gap) <= 0.00101
+        assert observed > 0.001
+    assert rot_report["newUnclosedSourceUvSeamCount"] == 1
+    assert rot_report["maximumOriginalTriangleEdgeChangeMm"] <= .000001
+    assert rot_report["sourceGeometryAndVertexIDsUnchanged"] is True
+    assert rot_report["sourceUvExportOrSavePerformed"] is False
+    assert rot_report["productionApproved"] is False
+    assert rotated == trial(
+        points, faces, loops, retained,
+        candidate_rank=0, rotation_degrees=angle,
+    )
+assert points == original_points and faces == original_faces and loops == original_loops
+
 two_cut = two_cut_trial(points, faces, loops, retained, [0, 2])
 assert two_cut == two_cut_trial(points, faces, loops, retained, (0, 2))
 two_report = two_cut["report"]
@@ -219,11 +255,11 @@ assert after["observedInteriorOverlapTrianglePairsLowerBound"] == 0
 def reject(source_points=points, source_faces=faces, source_uv=loops,
            source_retained=retained, gap=5.0, candidate_rank=0,
            translation_fraction=1.0, translation_sign=1,
-           translation_axis="outside"):
+           translation_axis="outside", rotation_degrees=0.0):
     try:
         trial(source_points, source_faces, source_uv, source_retained, gap,
               candidate_rank, translation_fraction, translation_sign,
-              translation_axis)
+              translation_axis, rotation_degrees)
     except (ValueError, TypeError, IndexError):
         return
     raise AssertionError("Component-0 UV trial accepted forged source evidence")
@@ -243,6 +279,11 @@ for direction in (0, -2, 2, True, 1.0, "-1", None):
     reject(translation_sign=direction)
 for axis in ("diagonal", True, 0, 90, None, ["outside"], {"outside": True}):
     reject(translation_axis=axis)
+for angle in (True, "1", None, math.nan, math.inf, -math.inf, 5.0001, -5.0001):
+    reject(rotation_degrees=angle)
+reject(rotation_degrees=1.0, translation_fraction=0.5)
+reject(rotation_degrees=-1.0, translation_sign=-1)
+reject(rotation_degrees=1.0, translation_axis="perpendicular")
 
 # An arbitrarily tiny, positive float is not proof that the selected original
 # edge became a NEW UV seam. Reject sub-tolerance, almost-zero motion.
