@@ -2923,3 +2923,25 @@ test("although/while clause boundaries do not swallow independent wear instructi
     }
   }
 });
+
+test("cropped construction and shoe-break matrix preserves locked IDs", () => {
+  const breaks = [
+    ["full_break", "cropped_full_break"],
+    ["slight_break", "cropped_slight_break"],
+    ["stacked_break", "cropped_stacked_break"],
+  ] as const;
+  for (const [shoeBreak, expected] of breaks) {
+    for (const croppedBy of ["type", "hem"] as const) {
+      const locked = spec();
+      locked.pant.type = croppedBy === "type" ? "cropped_ankle" : "formal_flat_front";
+      locked.pant.hem = croppedBy === "hem" ? "cropped_above_ankle_hem" : "plain_hem";
+      locked.pant.break = shoeBreak;
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      assert.ok(issues.some(issue => issue.code === expected),
+        `${croppedBy} / ${shoeBreak} must receive construction review`);
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues, "review is deterministic");
+      assert.equal(JSON.stringify(locked), before, "review must not rewrite locked options");
+    }
+  }
+});
