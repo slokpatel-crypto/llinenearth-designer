@@ -763,3 +763,56 @@ values before any statement about their actual 3D locations. Existing
 source UV overlap, real body collision, source garment topology,
 physical fabric and tailoring/cutting gates are **NOT approved**.
 **Draft PR #897 / NO MERGE / NO DEPLOY / NO CUTTING APPROVAL.**
+
+## 2026-11-09 exact edge-disjoint maximal source cut-chain reconstruction
+
+The previous **native Blender** actual-source UV graph diagnostic at head
+`f03c80abe44e8c64dfb6b08fae7cc71b65ae1ef1` measured 2,587
+UV-disconnected original shared mesh edges distributed across 66 connected
+source cut networks. Exactly 60 are mathematical simple open paths,
+0 simple closed loops, and 6 are branched-or-compound source-edge
+networks, with 134 degree-three-plus source junctions and 257
+degree-one ends away from the actual original boundary. Source graph
+cycle rank was zero. Native source QA [#42648374544](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/42648374544)
+passed as *diagnostic execution*, not manufacturing approval. These
+counts are topology evidence, not externally measured garment fit.
+
+**Actual source-reconstruction analysis added:** The original UV
+cut-network auditor now walks each connected source-edge graph and
+partitions its genuine original UV-disconnected edges into
+**edge-disjoint maximal chains**. Chain interiors may only use degree-two
+original mesh vertices; endpoints must be real graph degree-one or
+degree-three-plus junction vertices. Pure all-degree-two connected
+cycles are represented as **closed** paths, never silently sliced open
+into a manufactured seam. A source junction incident to a loop
+returns to the same authentic vertex. Every original cut edge must
+appear **exactly once**. An independent chain-count and edge-count
+identity, plus the full unrounded native 3D source edge-length sum,
+must exactly reconcile with the original measured cut-network totals;
+otherwise the candidate report is rejected.
+
+Reports include total maximal source chain count, closed-loop chain
+count, full genuine-edge coverage, longest chain length in actual mesh
+millimetres, original source ID endpoints and measured source edge
+lengths for the 12 longest real original-edge chains. Each graph
+component records its minimum original source vertex ID, number
+of maximal chains and exact edge coverage. The original 3D source
+vertices/faces, cut edge ownership, UV loop measurements, body scans,
+locked Studio model, production UV exports and original approval
+gates remain untouched. These source chains are **NOT sewn panel
+outlines, cut lines, seam allowances, physical fabric or acceptable
+drape**. Intersecting panel bodies and physical tailoring remain
+independently blocked.
+
+Dedicated Python regressions prove single open chain, authentic
+closed ring, 3-spoke branch, loop returning to a real branch junction,
+disconnected/malformed network rejection, planar zero cuts,
+full-size curved synthetic mesh, and exact original source-edge
+coverage. Native Blender workflow independently verifies source
+vertex ID bounds, chain count/edge conservation, rank/length ordering,
+closed-chain bounds, maximal chain component accounting and false
+production approval. Node QA pins the source, tests, and native
+assertions. **Run the new exact-head pinned Blender CI before claiming
+actual garment-source maximal-chain counts or chain endpoints.**
+No merge, production deploy, model replacement, UV save or physical
+cutting approval.
