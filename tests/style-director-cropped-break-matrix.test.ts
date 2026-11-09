@@ -140,13 +140,15 @@ test("cropped hem with ordinary trouser fronts rejects every shoe-resting break"
       const locked = Object.freeze({
         shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar",
           wear: "tucked", sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
-        pant: Object.freeze({ type, pleat: "flat_front",
+        pant: Object.freeze({ type, pleat: type === "pleated_trouser" ? "single_pleat" : "flat_front",
           hem: "cropped_above_ankle_hem", break: shoeBreak }),
       }) as unknown as StyleSpecV2;
       const before = JSON.stringify(locked);
       const issues = styleDirectorConstructionIssues(locked);
       assert.ok(issues.some(issue => issue.code === expected),
         `${type} / ${shoeBreak}: cropped hem must not claim a shoe-resting break`);
+      assert.ok(!issues.some(issue => issue.code === "pleat_type_mismatch"),
+        `${type}: correctly matched pleat construction must not produce a separate mismatch`);
       assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
       assert.equal(JSON.stringify(locked), before, "locked selections remain immutable");
     }
