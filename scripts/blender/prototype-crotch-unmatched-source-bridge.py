@@ -2477,6 +2477,85 @@ def main():
         "physicalFabricTailorOrFitApproved": False,
         "productionApproved": False,
     }
+    # A different topology-preserving UV *placement*: rigidly ROTATE the
+    # same genuine rank-18 source subtree around the midpoint of its one
+    # selected retained cut edge, rather than translating the UV chart.
+    # Four fixed angles; all original source vertices/faces/body stay intact.
+    rotation_rows = []
+    for angle in (-2.0, -1.0, 1.0, 2.0):
+        candidate_trial = subtree_ops[
+            "trial_component0_balanced_subtree_uv_pack"
+        ](
+            merged_verts, base_faces, packed_weighted["face_uv_loops"],
+            weighted_selection["retainedOriginalSourceEdges"],
+            candidate_rank=constrained_rank, rotation_degrees=angle,
+        )
+        trial_report = candidate_trial["report"]
+        if (trial_report["researchUvPlacementType"] !=
+                "source-edge-midpoint-rotation"
+                or trial_report["researchUvMidpointRotationDegrees"] != angle
+                or trial_report["sourceUvExportOrSavePerformed"] is not False
+                or trial_report["productionApproved"] is not False):
+            raise RuntimeError("Midpoint rotation lost immutable source/research isolation.")
+        candidate_overlap = uv_overlap_audit(
+            base_faces, candidate_trial["face_uv_loops"]
+        )
+        candidate_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+            merged_verts, base_faces, candidate_trial["face_uv_loops"],
+            l_remaining + r_remaining_mapped, subtree_tree_report,
+        )
+        candidate_comparison = overlap_compare(
+            packed_weighted_overlap, candidate_overlap
+        )
+        row = bounded_row(
+            constrained_rank, trial_report, candidate_overlap,
+            candidate_cut, candidate_comparison,
+        )
+        row.update({
+            "rotationDegrees": trial_report["researchUvMidpointRotationDegrees"],
+            "researchUvPlacementType": trial_report["researchUvPlacementType"],
+            "sourceEdgeOriginalUvLengthMm":
+                trial_report["sourceEdgeOriginalUvLengthMm"],
+            "sourceEdgeOpenedEndpointGapsMm":
+                trial_report["sourceEdgeOpenedEndpointGapsMm"],
+            "sourceEdgeUvMidpointMm": trial_report["sourceEdgeUvMidpointMm"],
+            "maximumOriginalTriangleEdgeChangeMm":
+                trial_report["maximumOriginalTriangleEdgeChangeMm"],
+        })
+        rotation_rows.append(row)
+    rotation_eligible = [
+        row for row in rotation_rows if row["strictResearchEligible"]
+    ]
+    rotation_selected = min(rotation_eligible, key=lambda row: (
+        row["overlapTrianglePairDelta"],
+        abs(row["rotationDegrees"]),
+        row["rotationDegrees"],
+    )) if rotation_eligible else None
+    weighted_report["researchOnlyComponent0Rank18MidpointRotationSurvey"] = {
+        "researchOnly": True,
+        "candidateRank": constrained_rank,
+        "candidateSelection": (
+            "Four fixed genuine cut-edge midpoint rotations: -2,-1,+1,+2 "
+            "degrees; research only, source vertices and full UV gates unchanged"
+        ),
+        "evaluatedRotationCount": len(rotation_rows),
+        "rankZeroRealEdgeLengthBudgetMm":
+            subtree_summary["addedActualSourceCutEdgeLengthMm"],
+        "baselineMaximumUnclosedUvEdgeGapMm":
+            packed_weighted_cut["maximumUnclosedUvEdgeGapMm"],
+        "baselineBranchJunctions":
+            packed_weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"],
+        "baselineTotalCutNetworkLengthMm":
+            packed_weighted_cut["totalRealGeometryOfUvCutCandidatesMm"],
+        "candidateResults": rotation_rows,
+        "strictEligibleCandidateCount": len(rotation_eligible),
+        "strictSelectedCandidate": rotation_selected,
+        "noStrictCandidateObserved": not rotation_eligible,
+        "sourceGeometryAndBodyBVHUnchanged": True,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricTailorOrFitApproved": False,
+        "productionApproved": False,
+    }
     branch_report["actualSourceUvCutNetworkEvidence"] = branch_audit
     branch_report["actualRealSourceUvTreeEvidence"] = branch_uv["report"]
     branch_report["actualSourceGeometryUnchanged"] = True
