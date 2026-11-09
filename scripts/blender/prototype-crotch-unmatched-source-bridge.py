@@ -2243,6 +2243,81 @@ def main():
         "physicalFabricTailorOrFitApproved": False,
         "productionApproved": False,
     }
+    # The 1/16 step already exceeded the baseline maximum-gap envelope, so
+    # inspect only the previously unmeasured near-zero interval. This is a
+    # fixed 16-point survey, not an optimizer or a physical panel placement.
+    near_zero_rows = []
+    for placement_step in range(1, 17):
+        translation_fraction = placement_step / 256.0
+        candidate_trial = subtree_ops[
+            "trial_component0_balanced_subtree_uv_pack"
+        ](
+            merged_verts, base_faces, packed_weighted["face_uv_loops"],
+            weighted_selection["retainedOriginalSourceEdges"],
+            candidate_rank=constrained_rank,
+            translation_fraction=translation_fraction,
+        )
+        candidate_overlap = uv_overlap_audit(
+            base_faces, candidate_trial["face_uv_loops"]
+        )
+        candidate_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+            merged_verts, base_faces, candidate_trial["face_uv_loops"],
+            l_remaining + r_remaining_mapped, subtree_tree_report,
+        )
+        candidate_comparison = overlap_compare(
+            packed_weighted_overlap, candidate_overlap
+        )
+        trial_report = candidate_trial["report"]
+        row = bounded_row(
+            constrained_rank, trial_report, candidate_overlap,
+            candidate_cut, candidate_comparison,
+        )
+        row.update({
+            "placementStep": placement_step,
+            "translationFractionOfOutsidePack":
+                trial_report["translationFractionOfOutsidePack"],
+            "rigidResearchUvTranslationMm":
+                trial_report["rigidResearchUvTranslationMm"],
+            "fullOutsidePackTranslationMm":
+                trial_report["fullOutsidePackTranslationMm"],
+        })
+        if (abs(row["measuredAddedCutNetworkLengthMm"] -
+                row["addedActualSourceCutEdgeLengthMm"]) > 0.0001
+                or not row["exactlyOneNewUnclosedUvSeam"]):
+            raise RuntimeError(
+                "Component-0 near-zero placement audit lost real cut truth."
+            )
+        near_zero_rows.append(row)
+    near_zero_eligible = [
+        row for row in near_zero_rows if row["strictResearchEligible"]
+    ]
+    near_zero_selected = min(near_zero_eligible, key=lambda row: (
+        row["overlapTrianglePairDelta"],
+        row["translationFractionOfOutsidePack"],
+    )) if near_zero_eligible else None
+    weighted_report["researchOnlyComponent0Rank18NearZeroPlacementSurvey"] = {
+        "researchOnly": True,
+        "candidateRank": constrained_rank,
+        "candidateSelection": (
+            "16 deterministic fractions of rank 18's rigid outside-pack "
+            "translation, from 1/256 through 16/256"
+        ),
+        "evaluatedTranslationFractionCount": len(near_zero_rows),
+        "rankZeroRealEdgeLengthBudgetMm":
+            subtree_summary["addedActualSourceCutEdgeLengthMm"],
+        "baselineMaximumUnclosedUvEdgeGapMm":
+            packed_weighted_cut["maximumUnclosedUvEdgeGapMm"],
+        "baselineBranchJunctions":
+            packed_weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"],
+        "candidateResults": near_zero_rows,
+        "strictEligibleCandidateCount": len(near_zero_eligible),
+        "strictSelectedCandidate": near_zero_selected,
+        "noStrictCandidateObserved": not near_zero_eligible,
+        "sourceGeometryAndBodyBVHUnchanged": True,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricTailorOrFitApproved": False,
+        "productionApproved": False,
+    }
     branch_report["actualSourceUvCutNetworkEvidence"] = branch_audit
     branch_report["actualRealSourceUvTreeEvidence"] = branch_uv["report"]
     branch_report["actualSourceGeometryUnchanged"] = True

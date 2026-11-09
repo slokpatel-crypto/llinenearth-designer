@@ -332,3 +332,28 @@ production UVs, saved Blender scene, GLB and the exact Real Model Designer
 identity unchanged. All physical fabric, body-fit, tailor and production flags
 remain false. Exact-head pinned Blender evidence is required before recording
 numeric results. **Research only; no export, deployment or unapproved merge.**
+
+Pinned Blender 4.5.14 source run `42477964533` passed at exact remote head
+`934a1026cca18c12fff882d2531853056a65b342`, but rejected every fraction:
+**0/16 eligible** and `strictSelectedCandidate=null`. All rows retained 323
+branch junctions, exactly one new seam and the measured 33.28815mm source edge.
+Only fractions 14/16 through 16/16 reduced overlap; the best result was 6,845
+pairs versus the 6,957 baseline. Those fractions raised maximum gap to at
+least 2,102.30188mm. Even the smallest 1/16 move raised gap to 1,144.84851mm,
+above the 1,072.40848mm baseline. No UV was exported or promoted.
+
+## 2026-11-09 rank-18 near-zero placement survey
+
+The previous measurement leaves one bounded interval untested: translations
+smaller than 1/16 of the deterministic rank-18 outside-pack move. This survey
+tests exactly 16 fractions from 1/256 through 16/256. It retains the same full
+5,300-triangle overlap scan, one-real-seam proof, 33.40768mm rank-zero edge
+budget, 1,072.40848mm maximum-gap envelope and 323 branch-junction ceiling.
+
+The survey selects a row only when overlap strictly improves and every other
+gate passes. Otherwise selection remains `null`; there is no least-bad fallback.
+This closes the measured near-zero interval for this one fixed translation
+direction, not arbitrary 2D placement, cloth nesting or garment pattern design.
+Source geometry, body collision state, model identity and production files are
+unchanged. Physical fabric, fit, tailor and production approval remain false
+until separate real evidence exists. **Research only; no export or deployment.**

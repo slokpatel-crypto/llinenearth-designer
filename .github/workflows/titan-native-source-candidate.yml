@@ -1736,6 +1736,69 @@ jobs:
               assert constrained["sourceUvExportOrSavePerformed"] is False
               assert constrained["physicalFabricTailorOrFitApproved"] is False
               assert constrained["productionApproved"] is False
+              near_zero=weighted[
+                  "researchOnlyComponent0Rank18NearZeroPlacementSurvey"
+              ]
+              assert near_zero["researchOnly"] is True
+              assert near_zero["candidateRank"] == 18
+              assert near_zero["evaluatedTranslationFractionCount"] == 16
+              assert near_zero["rankZeroRealEdgeLengthBudgetMm"] == (
+                  trial["addedActualSourceCutEdgeLengthMm"]
+              )
+              assert near_zero["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert near_zero["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              near_zero_rows=near_zero["candidateResults"]
+              assert [row["placementStep"] for row in near_zero_rows] == (
+                  list(range(1,17))
+              )
+              assert [row["translationFractionOfOutsidePack"]
+                      for row in near_zero_rows] == [
+                          round(step/256.0,8) for step in range(1,17)
+                      ]
+              assert near_zero["strictEligibleCandidateCount"] == sum(
+                  row["strictResearchEligible"] for row in near_zero_rows
+              )
+              assert near_zero["noStrictCandidateObserved"] is (
+                  near_zero["strictEligibleCandidateCount"] == 0
+              )
+              for row in near_zero_rows:
+                  assert row["candidateRank"] == 18
+                  assert row["baselineOverlapTrianglePairs"] == 6957
+                  assert row["candidateOverlapTrianglePairs"] > 0
+                  assert row["overlapTrianglePairDelta"] == (
+                      row["candidateOverlapTrianglePairs"] -
+                      row["baselineOverlapTrianglePairs"]
+                  )
+                  assert row["candidateUnclosedSharedUvSeams"] == 2586
+                  assert row["exactlyOneNewUnclosedUvSeam"] is True
+                  assert abs(
+                      row["measuredAddedCutNetworkLengthMm"] -
+                      row["addedActualSourceCutEdgeLengthMm"]
+                  ) <= 0.0001
+                  assert row["withinRankZeroRealEdgeLengthBudget"] is True
+                  assert row["physicalPatternApproved"] is False
+                  assert row["productionApproved"] is False
+                  assert row["strictResearchEligible"] is (
+                      row["completeOverlapImprovement"] and
+                      row["withinRankZeroRealEdgeLengthBudget"] and
+                      row["noMaximumUvGapRegression"] and
+                      row["noBranchJunctionRegression"] and
+                      row["exactlyOneNewUnclosedUvSeam"]
+                  )
+              near_zero_selected=near_zero["strictSelectedCandidate"]
+              if near_zero_selected is None:
+                  assert near_zero["strictEligibleCandidateCount"] == 0
+              else:
+                  assert near_zero_selected["strictResearchEligible"] is True
+                  assert near_zero_selected in near_zero_rows
+              assert near_zero["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert near_zero["sourceUvExportOrSavePerformed"] is False
+              assert near_zero["physicalFabricTailorOrFitApproved"] is False
+              assert near_zero["productionApproved"] is False
               assert branch["productionApproved"] is False
               assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
               assert branch_uv["dualGraphComponentCount"] == 3
