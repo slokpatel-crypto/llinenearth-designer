@@ -537,10 +537,12 @@ export function styleDirectorCandidateCollarFinishIntent(candidateShirt: string)
       ? "Self-fabric"
       : /(?:\+|and)\s*cuffs$/i.test(token)
         ? "White contrast collar + cuffs" : "White contrast collar";
+    // Postposed refusal excludes the selected finish; an optional statement
+    // never counts as either a request or a ban.
     const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
-      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(after);
+      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:must|should)\s+not\s+be\s+(?:used|chosen|selected))\b/i.test(after);
     const optional = /\b(?:optional|maybe)\s+$/i.test(before) ||
-      /^\s+(?:(?:is|are)\s+)?(?:optional|not\s+(?:required|needed|mandatory))\b/i.test(after);
+      /^\s+(?:(?:is|are)\s+)?(?:optional|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(after);
     // A prohibition of any white contrast collar also forbids a white
     // contrast collar + cuffs, but banning the combination alone leaves the
     // simpler collar-only treatment available.
