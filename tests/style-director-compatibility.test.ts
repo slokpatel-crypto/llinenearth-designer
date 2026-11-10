@@ -3117,3 +3117,35 @@ test("frozen placket prohibitions preserve locked canonical construction", () =>
     }
   }
 });
+
+
+test("postposed collar prohibitions and optionality preserve canonical locked IDs", () => {
+  for (const wording of [
+    "Camp collar isn't wanted",
+    "Camp collar is not wanted",
+    "Camp collar unwanted",
+    "Camp collar should not be selected",
+  ]) {
+    const prohibited = spec({ collar: "cuban_camp_collar" });
+    const permitted = spec({ collar: "spread_collar" });
+    Object.freeze(prohibited.shirt);
+    Object.freeze(permitted.shirt);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, prohibited.shirt)
+      .map(issue => issue.code), ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, permitted.shirt), [], wording);
+    assert.equal(styleDirectorCandidateCollar(wording, []), null, wording);
+  }
+  for (const wording of [
+    "Camp collar isn't required",
+    "Camp collar is not needed",
+    "Camp collar isn't mandatory",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording,
+      spec({ collar: "spread_collar" }).shirt), [], wording);
+    assert.equal(styleDirectorCandidateCollar(wording, []), null, wording);
+  }
+  assert.deepEqual(styleDirectorCandidateCollarIssues(
+    "Camp collar and camp collar isn't wanted",
+    spec({ collar: "cuban_camp_collar" }).shirt), [],
+    "contradictory construction is handled by the ambiguity gate");
+});
