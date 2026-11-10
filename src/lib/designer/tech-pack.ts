@@ -49,13 +49,24 @@ function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSourc
   }
   const shirt=handoff.construction.shirt;
   const trouser=handoff.construction.trouser;
+  // Use only a structurally valid StyleSpec to derive conditional measurement
+  // requirements. Malformed unverified cuts remain visible as review-only raw
+  // data instead of triggering property-access exceptions while printing.
+  const originalStyleSpec=handoff.construction.styleSpec;
+  const validStyleSpec=validateStyleSpecV2(originalStyleSpec) ? originalStyleSpec : null;
+  const invalidConstruction=originalStyleSpec != null && !validStyleSpec;
+  const missingConstruction=invalidConstruction ? [
+    "StyleSpec v2 contains invalid or unknown garment choices; the raw selection is included for review only and cannot authorise cutting.",
+  ] : validStyleSpec ? [] : [
+    "Exact StyleSpec v2 garment construction is absent; tailor must verify legacy options.",
+  ];
   const audit=auditHandoffMeasurements({
     shirt:shirt.finishedTargets,
     trouser:trouser.finishedTargets,
   }, {
-    shirtWear:handoff.construction.styleSpec?.shirt.wear ?? shirt.wear,
-    shirtCuff:handoff.construction.styleSpec?.shirt.cuff ?? shirt.cuff,
-    trouserRise:handoff.construction.styleSpec?.pant.rise ?? trouser.rise,
+    shirtWear:validStyleSpec?.shirt.wear ?? shirt.wear,
+    shirtCuff:validStyleSpec?.shirt.cuff ?? shirt.cuff,
+    trouserRise:validStyleSpec?.pant.rise ?? trouser.rise,
   });
   if(audit.errors.length) {
     throw new Error(`Unsafe tailor tech pack measurements: ${audit.errors.join(" ")}`);
@@ -64,14 +75,6 @@ function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSourc
   if(fitAudit.errors.length) {
     throw new Error(`Unsafe tailor tech pack fit provenance: ${fitAudit.errors.join(" ")}`);
   }
-  const originalStyleSpec=handoff.construction.styleSpec;
-  const validStyleSpec=validateStyleSpecV2(originalStyleSpec) ? originalStyleSpec : null;
-  const invalidConstruction=Boolean(originalStyleSpec) && !validStyleSpec;
-  const missingConstruction=invalidConstruction ? [
-    "StyleSpec v2 contains invalid or unknown garment choices; the raw selection is included for review only and cannot authorise cutting.",
-  ] : validStyleSpec ? [] : [
-    "Exact StyleSpec v2 garment construction is absent; tailor must verify legacy options.",
-  ];
   const creativeAudit=auditHandoffCreativeReview(handoff.construction.creative);
   if(creativeAudit.errors.length) {
     throw new Error(`Unsafe tailor tech pack creative review: ${creativeAudit.errors.join(" ")}`);
