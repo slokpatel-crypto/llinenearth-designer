@@ -113,8 +113,13 @@ test("with-or-without trouser fit alternatives require review for all versioned 
         requested: null, prohibited: [], ambiguous: true,
       }, wording);
       assert.equal(styleDirectorCandidateTrouserFit(wording), null, wording);
+      // Wide-leg drape also names an independently ambiguous silhouette;
+      // preserving both review gates is the correct fail-closed result.
+      const expectedCodes = label === "wide leg drape fit"
+        ? ["ambiguous_candidate_trouser_fit", "ambiguous_candidate_wide_leg"]
+        : ["ambiguous_candidate_trouser_fit"];
       assert.deepEqual(styleDirectorCandidateWordingIssues("plain shirt", wording)
-        .map(issue => issue.code), ["ambiguous_candidate_trouser_fit"], wording);
+        .map(issue => issue.code), expectedCodes, wording);
       for (const [, id] of candidates) {
         const saved = Object.freeze({ fit: id });
         const before = JSON.stringify(saved);
