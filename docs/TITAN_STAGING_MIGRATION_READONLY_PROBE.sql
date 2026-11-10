@@ -15,9 +15,10 @@ SELECT 'connection_identity' AS evidence_kind,
 -- 2. Version history. Even a recorded name cannot resolve duplicate-version SQL
 -- identity without independent underlying source or current function evidence.
 -- to_jsonb(row) supports older migration-history tables with no "name" column.
--- Hex encodes arbitrary names so newlines/pipes cannot forge evidence rows.
+-- Hex encodes version and name text so embedded newlines and pipes
+-- cannot forge applied-version evidence; reviewer decodes privately.
 SELECT 'migration_history' AS evidence_kind,
-       version,
+       encode(convert_to(version,'UTF8'),'hex') AS version_hex,
        encode(convert_to(coalesce(to_jsonb(m)->>'name',''),'UTF8'),'hex') AS recorded_name_hex
 FROM supabase_migrations.schema_migrations AS m
 ORDER BY version;

@@ -29,7 +29,8 @@ test('only migration metadata and public function catalog are queried',()=>{
 });
 
 test('capture includes migration versions but does not infer SQL file identity',()=>{
-  assert.match(sql,/\bversion\b/);
+  assert.match(sql,/encode\s*\(\s*convert_to\s*\(\s*version\s*,\s*'UTF8'\s*\)\s*,\s*'hex'\s*\)\s+AS\s+version_hex/i);
+  assert.doesNotMatch(sql,/SELECT\s+'migration_history'\s+AS\s+evidence_kind\s*,\s*version\s*,/i);
   assert.match(sql,/encode\s*\(\s*convert_to\s*\(\s*coalesce\s*\(\s*to_jsonb\(m\)->>'name'/i);
   assert.match(sql,/AS\s+recorded_name_hex/i);
   assert.doesNotMatch(sql,/to_jsonb\(m\)->>'name'\s+AS\s+recorded_name\b/i);

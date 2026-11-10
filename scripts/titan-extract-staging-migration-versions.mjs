@@ -5,6 +5,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
 const versionPattern=/^(?:\d{8}|\d{14})$/;
+const versionHexPattern=/^(?:[0-9a-f]{16}|[0-9a-f]{28})$/;
 const roles=['anon','authenticated','service_role'];
 const functionNames=[
   'fabric_stock_record','fabric_stock_reserve','fabric_stock_release',
@@ -41,14 +42,19 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
       connectionLine=i;
     } else if(line.startsWith('migration_history|')){
       const fields=line.split('|');
-      if(fields.length!==3 || !versionPattern.test(fields[1]))
+      // All version bytes are hex-framed by the SQL producer; the original
+      // version can therefore NEVER create another psql line or field.
+      if(fields.length!==3 || !versionHexPattern.test(fields[1]))
         throw Error('Blocked: malformed migration history row');
+      const version=Buffer.from(fields[1],'hex').toString('utf8');
+      if(!versionPattern.test(version))
+        throw Error('Blocked: malformed migration history version');
       // Rendered PostgreSQL function bodies are unquoted multiline output.
       // A line that resembles migration_history inside a function body must
       // NOT be counted as actual applied history.
       if(connectionLine<0 || functionDefinitionSeen || firstMatrixLine>=0)
         throw Error('Blocked: unexpected history row order');
-      versions.push({version:fields[1]});
+      versions.push({version});
     } else if(line.startsWith('stock_function_definition|')){
       if(connectionLine<0 || firstMatrixLine>=0)
         throw Error('Blocked: unexpected function definition row order');
