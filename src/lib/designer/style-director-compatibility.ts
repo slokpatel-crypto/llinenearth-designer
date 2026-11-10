@@ -189,7 +189,7 @@ const candidateSleeveLengths = (name: string) => {
     (_match, word: string) => ban(word),
   );
   const withoutSuffixBans = withoutPrefixedBans.replace(
-    /\b((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:must|should)\s+not\s+be\s+(?:used|worn|chosen|selected))\b/gi,
+    /\b((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:must|should)\s+not|(?:mustn|shouldn)['’]?t)\s+be\s+(?:used|worn|chosen|selected))\b/gi,
     (_match, word: string) => ban(word),
   );
   // A sleeve described as optional is not an instruction to cut that
