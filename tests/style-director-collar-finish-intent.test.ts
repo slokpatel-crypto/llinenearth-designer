@@ -165,3 +165,47 @@ test("postposed collar finish optional statements preserve frozen saved IDs", ()
   assert.deepEqual(styleDirectorCandidateCollarFinishIssues(conflict, saved), []);
   assert.equal(JSON.stringify(saved), original, "versioned collar finish must not change");
 });
+
+test("undecided with-or-without collar finishes are review-only, never a ban", () => {
+  for (const phrase of [
+    "with or without white contrast collar",
+    "with or without a white contrast collar",
+    "with or without white contrast collar + cuffs",
+    "with or without white contrast collar and cuffs",
+    "with or without self-fabric",
+    "with without self-fabric",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateCollarFinishIntent(phrase), {
+      requested: null, prohibited: [], ambiguous: true,
+    }, phrase);
+    assert.equal(styleDirectorCandidateCollarFinish(phrase), null, phrase);
+    assert.deepEqual(wording(phrase), ["ambiguous_candidate_collar_finish"], phrase);
+    for (const collarFinish of [
+      "Self-fabric", "White contrast collar", "White contrast collar + cuffs",
+    ]) {
+      const saved = Object.freeze({ collarFinish });
+      const original = JSON.stringify(saved);
+      assert.deepEqual(styleDirectorCandidateCollarFinishIssues(phrase, saved), [], phrase);
+      assert.equal(JSON.stringify(saved), original, "no mutation to locked collar finish");
+    }
+  }
+});
+
+test("undecided collar finish leaves other explicit restrictions for review", () => {
+  const banned = "with or without white contrast collar + cuffs; no self-fabric";
+  assert.deepEqual(styleDirectorCandidateCollarFinishIntent(banned), {
+    requested: null, prohibited: ["Self-fabric"], ambiguous: true,
+  });
+  assert.deepEqual(wording(banned), ["ambiguous_candidate_collar_finish"]);
+  const requested = "with or without self-fabric; white contrast collar required";
+  assert.deepEqual(styleDirectorCandidateCollarFinishIntent(requested), {
+    requested: "White contrast collar", prohibited: [], ambiguous: true,
+  });
+  assert.deepEqual(wording(requested), ["ambiguous_candidate_collar_finish"]);
+  assert.deepEqual(styleDirectorCandidateCollarFinishIntent("No White contrast collar"), {
+    requested: null, prohibited: ["White contrast collar", "White contrast collar + cuffs"], ambiguous: false,
+  });
+  assert.deepEqual(styleDirectorCandidateCollarFinishIntent("White contrast collar + cuffs"), {
+    requested: "White contrast collar + cuffs", prohibited: [], ambiguous: false,
+  });
+});
