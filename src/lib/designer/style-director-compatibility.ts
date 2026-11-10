@@ -798,6 +798,11 @@ const candidateShirtFitPatterns = [
 
 type CandidateShirtFitId = (typeof candidateShirtFitPatterns)[number]["id"];
 
+// A fit offered "with or without" is undecided. "Without" alone is still
+// a real exclusion. Reuse this contract across shirt and trouser fit options.
+const candidateFitUndecidedPrefix = /\bwith\s+(?:or\s+)?without\s+(?:(?:a|any|the)\s+)?$/i;
+
+
 export function styleDirectorCandidateShirtFitIntent(candidateShirt: string): {
   requested: CandidateShirtFitId | null;
   prohibited: CandidateShirtFitId[];
@@ -805,11 +810,16 @@ export function styleDirectorCandidateShirtFitIntent(candidateShirt: string): {
 } {
   const requested = new Set<CandidateShirtFitId>();
   const prohibited = new Set<CandidateShirtFitId>();
+  let undecided = false;
   for (const { id, pattern } of candidateShirtFitPatterns) {
     for (const match of candidateShirt.matchAll(pattern)) {
       const index = match.index ?? 0;
       const before = candidateShirt.slice(0, index);
       const after = candidateShirt.slice(index + match[0].length);
+      if (candidateFitUndecidedPrefix.test(before)) {
+        undecided = true;
+        continue;
+      }
       const ban = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:should|must)\s+not\s+be\s+(?:chosen|selected|used))\b/i.test(after);
       const optional = /\b(?:optional|maybe)\s+$/i.test(before) ||
@@ -821,7 +831,7 @@ export function styleDirectorCandidateShirtFitIntent(candidateShirt: string): {
   return {
     requested: requested.size === 1 ? [...requested][0] : null,
     prohibited: [...prohibited],
-    ambiguous: requested.size > 1 || [...requested].some(id => prohibited.has(id)),
+    ambiguous: undecided || requested.size > 1 || [...requested].some(id => prohibited.has(id)),
   };
 }
 
@@ -933,11 +943,16 @@ export function styleDirectorCandidateTrouserFitIntent(candidateTrouser: string)
 } {
   const requested = new Set<CandidateTrouserFitId>();
   const prohibited = new Set<CandidateTrouserFitId>();
+  let undecided = false;
   for (const { id, pattern } of candidateTrouserFitPatterns) {
     for (const match of candidateTrouser.matchAll(pattern)) {
       const index = match.index ?? 0;
       const prefix = candidateTrouser.slice(0, index);
       const suffix = candidateTrouser.slice(index + match[0].length);
+      if (candidateFitUndecidedPrefix.test(prefix)) {
+        undecided = true;
+        continue;
+      }
       const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:should|must)\s+not\s+be\s+(?:chosen|selected|used))\b/i.test(suffix);
       const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
@@ -949,7 +964,7 @@ export function styleDirectorCandidateTrouserFitIntent(candidateTrouser: string)
   return {
     requested: requested.size === 1 ? [...requested][0] : null,
     prohibited: [...prohibited],
-    ambiguous: requested.size > 1 || [...requested].some(id => prohibited.has(id)),
+    ambiguous: undecided || requested.size > 1 || [...requested].some(id => prohibited.has(id)),
   };
 }
 
