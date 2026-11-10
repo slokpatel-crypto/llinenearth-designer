@@ -102,6 +102,20 @@ function candidateCollarIntent(name: string): {
     ? "english_spread_collar"
     : /\bsoft[- ]+button[- ]?down[- ]collar\b/i.test(positive)
       ? "soft_button_down" : null;
+  // One family can still name two different canonical IDs. Removing the
+  // specific variant leaves any separately requested ordinary construction.
+  // A canonical alias ("English Spread / British Collar") is a single ID,
+  // whereas "Spread Collar or English Spread Collar" needs human review.
+  const mixedSpreadVariants =
+    /\benglish[- ]+spread(?:[- ]collar|\s*[/&-]\s*british[- ]collar)\b/i.test(positive) &&
+    /\bspread[- ]collar\b/i.test(positive.replace(
+      /\benglish[- ]+spread(?:[- ]collar|\s*[/&-]\s*british[- ]collar)\b/gi, " ",
+    ));
+  const mixedButtonDownVariants =
+    /\bsoft[- ]+button[- ]?down[- ]collar\b/i.test(positive) &&
+    /\bbutton[- ]?down[- ]collar\b/i.test(positive.replace(
+      /\bsoft[- ]+button[- ]?down[- ]collar\b/gi, " ",
+    ));
   const possibleIds = named.length === 1
     ? exactRequested ? [exactRequested] : collarFamilyIds[named[0]]
     : [];
@@ -111,7 +125,8 @@ function candidateCollarIntent(name: string): {
     affirmative: positive,
     // A generic Spread request remains compatible with a separately banned
     // English Spread variant, since the ordinary Spread ID is still allowed.
-    ambiguous: undecided || named.length > 1 || (possibleIds.length > 0 &&
+    ambiguous: undecided || mixedSpreadVariants || mixedButtonDownVariants ||
+      named.length > 1 || (possibleIds.length > 0 &&
       possibleIds.every(id => prohibited.has(id))),
   };
 }
