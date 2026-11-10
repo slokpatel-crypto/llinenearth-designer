@@ -194,10 +194,12 @@ export function styleDirectorCandidateRollUpSleeveIntent(name: string): {
   for (const hit of name.matchAll(/\broll[- ]?up(?:[- ]styled|[- ]sleeves?)?\b/gi)) {
     const prefix = name.slice(0, hit.index ?? 0);
     const suffix = name.slice((hit.index ?? 0) + hit[0].length);
+    // Postposed rejection forbids the rolled sleeve; optional language is
+    // neutral and must not silently change the existing sleeve ID.
     const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
-      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(suffix);
+      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:must|should)\s+not\s+be\s+(?:used|chosen|selected))\b/i.test(suffix);
     const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
-      /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/i.test(suffix);
+      /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
     if (banned) prohibited = true;
     else if (!optional) requested = true;
   }
