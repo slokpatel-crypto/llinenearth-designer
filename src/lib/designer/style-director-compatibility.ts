@@ -65,9 +65,9 @@ function candidateCollarIntent(name: string): {
 } {
   const token = String.raw`(?:english[- ]+spread\s*[/&-]\s*british[- ]collar|cuban(?:\s*[/&-]\s*|\s+)camp|camp(?:\s*[/&-]\s*|\s+)cuban|mandarin(?:\s*[/&-]\s*|\s+)band|band(?:\s*[/&-]\s*|\s+)mandarin|camp|cuban|band|mandarin|cutaway|(?:english[- ]+)?spread|(?:soft[- ]+)?button[- ]?down|point(?:[ -]?(?:standard|\(standard\)))?|club|wing|tab|pin)(?:[- ]collar)?`;
   const prefixBan = new RegExp("\\b(?:no|without|avoid|never|not|do\\s+not|don['’]?t)\\s+(?:(?:use|include|choose|wear|add|have|want)\\s+)?(?:(?:a|any|the)\\s+)?(" + token + ")\\b", "gi");
-  const suffixBan = new RegExp("\\b(" + token + ")\\s+(?:(?:is|are)\\s+)?(?:forbidden|prohibited|banned|not\\s+(?:allowed|permitted)|(?:must|should)\\s+not\\s+be\\s+(?:used|worn))\\b", "gi");
+  const suffixBan = new RegExp("\\b(" + token + ")\\s+(?:(?:is|are)\\s+)?(?:forbidden|prohibited|banned|unwanted|not\\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\\s+wanted|(?:must|should)\\s+not\\s+be\\s+(?:used|worn|chosen|selected))\\b", "gi");
   const prefixOptional = new RegExp("\\b(?:optional|maybe)\\s+(" + token + ")\\b", "gi");
-  const suffixOptional = new RegExp("\\b(" + token + ")\\s+(?:(?:is|are)\\s+)?(?:optional|not\\s+(?:required|needed|mandatory))\\b", "gi");
+  const suffixOptional = new RegExp("\\b(" + token + ")\\s+(?:(?:is|are)\\s+)?(?:optional|not\\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\\s+(?:required|needed|mandatory))\\b", "gi");
   // The prohibition is scoped to the actual versioned ID(s). "No English
   // Spread" must not also forbid ordinary Spread, while "no Spread Collar"
   // forbids the entire spread family. The same rule applies to Soft Button-Down.
