@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { styleDirectorConstructionIssues } from "../src/lib/designer/style-director-compatibility.ts";
+import {
+  styleDirectorConstructionIssues,
+  styleDirectorCandidateTrouserFront,
+  styleDirectorCandidateFrontConstructionIssues,
+  styleDirectorCandidateWordingIssues,
+} from "../src/lib/designer/style-director-compatibility.ts";
 import type { StyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
 
 test("unknown flat-front pleat IDs require vocabulary review, not fabricated physical pleats", () => {
@@ -49,4 +54,69 @@ test("half-sleeve French and barrel cuffs require construction review, while an 
     assert.deepEqual(styleDirectorConstructionIssues(spec), issues);
     assert.equal(JSON.stringify(spec), snapshot);
   }
+});
+
+test("postposed blanket pleat refusal means flat-front construction", () => {
+  const flat = Object.freeze({ pleat: "flat_front" });
+  const pleated = Object.freeze({ pleat: "single_pleat_forward" });
+  for (const wording of [
+    "pleats aren't wanted",
+    "pleats aren’t wanted",
+    "pleating isn't wanted",
+    "pleats are unwanted",
+    "pleats not wanted",
+    "pleats should not be selected",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), "flat_front", wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, flat), [], wording);
+    const first = styleDirectorCandidateFrontConstructionIssues(wording, pleated);
+    assert.deepEqual(first.map(x => x.code), ["candidate_trouser_pleat_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, pleated), first);
+  }
+  const conflict = "pleats aren't wanted, but double pleats required";
+  assert.equal(styleDirectorCandidateTrouserFront(conflict), "ambiguous");
+  assert.ok(styleDirectorCandidateWordingIssues("plain shirt", conflict)
+    .some(x => x.code === "ambiguous_candidate_trouser_front"));
+  assert.equal(flat.pleat, "flat_front");
+  assert.equal(pleated.pleat, "single_pleat_forward");
+});
+
+test("a postposed pleat-count ban rejects only that count", () => {
+  for (const [wording, forbidden, permitted] of [
+    ["double pleats aren't wanted", "double_pleat_forward", "single_pleat_forward"],
+    ["double pleats should not be selected", "double_pleat_reverse", "single_pleat_forward"],
+    ["single pleats aren't wanted", "single_pleat_reverse", "double_pleat_forward"],
+    ["single pleats should not be selected", "single_pleat_forward", "double_pleat_forward"],
+  ] as const) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), null, wording);
+    const locked = Object.freeze({ pleat: forbidden });
+    const snapshot = JSON.stringify(locked);
+    const first = styleDirectorCandidateFrontConstructionIssues(wording, locked);
+    assert.deepEqual(first.map(x => x.code), ["candidate_trouser_pleat_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, locked), first);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording,
+      Object.freeze({ pleat: permitted })), [], wording);
+    assert.equal(JSON.stringify(locked), snapshot);
+  }
+});
+
+test("contracted optional pleat wording is neutral without hiding positive instructions", () => {
+  for (const wording of [
+    "pleats aren't required",
+    "pleats aren’t needed",
+    "pleating isn't mandatory",
+    "double pleats aren't required",
+    "single pleats aren't necessary",
+  ]) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), null, wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording,
+      Object.freeze({ pleat: "flat_front" })), [], wording);
+  }
+  const mixed = "double pleats aren't required; single pleats required";
+  assert.equal(styleDirectorCandidateTrouserFront(mixed), "pleated");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(mixed,
+    Object.freeze({ pleat: "single_pleat_forward" })), []);
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(mixed,
+    Object.freeze({ pleat: "double_pleat_forward" })).map(x => x.code),
+    ["candidate_trouser_pleat_mismatch"]);
 });
