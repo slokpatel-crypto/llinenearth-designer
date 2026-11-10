@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   styleDirectorCandidateCuffIssues,
+  styleDirectorCandidateCuffIntent,
+  styleDirectorCandidateCuff,
+  styleDirectorCandidateWordingIssues,
   styleDirectorCandidateButtonIssues,
   styleDirectorCandidateCollarFinishIssues,
 } from "../src/lib/designer/style-director-compatibility.ts";
@@ -88,4 +91,72 @@ test("collar-finish requests cannot approve missing or unreadable saved construc
   assert.deepEqual(styleDirectorCandidateCollarFinishIssues("maybe self-fabric", {} as never), []);
   assert.equal(self.collarFinish, "Self-fabric");
   assert.equal(contrast.collarFinish, "White contrast collar + cuffs");
+});
+
+test("postposed cuff prohibitions must not become construction requests", () => {
+  const lockedFrench = Object.freeze({ cuff: "french_double_cuff" });
+  const lockedBarrel = Object.freeze({ cuff: "barrel_cuff_1_button" });
+  for (const wording of [
+    "French cuffs aren't wanted",
+    "French cuff isn't wanted",
+    "French cuff is not wanted",
+    "French cuff unwanted",
+    "French cuff should not be selected",
+    "French cuff must not be used",
+  ]) {
+    const intent = styleDirectorCandidateCuffIntent(wording);
+    assert.deepEqual(intent, {
+      requested: null, prohibited: ["french_double_cuff"], ambiguous: false,
+    }, wording);
+    assert.equal(styleDirectorCandidateCuff(wording, []), null, wording);
+    assert.deepEqual(styleDirectorCandidateCuffIssues(wording, lockedFrench).map(x => x.code),
+      ["candidate_cuff_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateCuffIssues(wording, lockedBarrel), [], wording);
+  }
+  for (const wording of [
+    "French cuff isn't required",
+    "French cuff isn't needed",
+    "French cuff isn't mandatory",
+    "French cuff is not required",
+    "French cuff not needed",
+    "French cuffs aren't required",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateCuffIntent(wording), {
+      requested: null, prohibited: [], ambiguous: false,
+    }, wording);
+    assert.equal(styleDirectorCandidateCuff(wording, []), null, wording);
+    assert.deepEqual(styleDirectorCandidateCuffIssues(wording, lockedFrench), [], wording);
+  }
+  const conflict = "French cuff and French cuff isn't wanted";
+  assert.equal(styleDirectorCandidateCuffIntent(conflict).ambiguous, true);
+  assert.deepEqual(styleDirectorCandidateCuffIssues(conflict, lockedFrench), []);
+  assert.ok(styleDirectorCandidateWordingIssues(conflict)
+    .some(issue => issue.code === "ambiguous_candidate_cuff"));
+  assert.equal(lockedFrench.cuff, "french_double_cuff");
+  assert.equal(lockedBarrel.cuff, "barrel_cuff_1_button");
+});
+
+test("postposed cuff refusal applies across all existing cuff families", () => {
+  const cases = [
+    ["French cuff", "french_double_cuff"],
+    ["barrel cuff 1 button", "barrel_cuff_1_button"],
+    ["barrel cuff 2 buttons", "barrel_cuff_2_button"],
+    ["convertible cuff", "convertible_cuff"],
+    ["rounded soft cuff", "rounded_soft_cuff"],
+    ["cocktail cuff", "cocktail_cuff"],
+    ["angled barrel cuff", "angled_barrel_cuff"],
+    ["open short sleeve hem", "open_short_hem_cuff"],
+  ] as const;
+  for (const [name, id] of cases) {
+    const wording = `${name} should not be selected`;
+    assert.deepEqual(styleDirectorCandidateCuffIntent(wording), {
+      requested: null, prohibited: [id], ambiguous: false,
+    }, wording);
+    const locked = Object.freeze({ cuff: id });
+    const original = JSON.stringify(locked);
+    const first = styleDirectorCandidateCuffIssues(wording, locked);
+    assert.deepEqual(first.map(issue => issue.code), ["candidate_cuff_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateCuffIssues(wording, locked), first, wording);
+    assert.equal(JSON.stringify(locked), original, "locked option must remain unchanged");
+  }
 });
