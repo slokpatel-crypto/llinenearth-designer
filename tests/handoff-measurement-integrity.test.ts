@@ -124,6 +124,14 @@ test("malformed generatedAt values reject unsigned handoff construction",()=>{
   }
   const normal=buildProductionHandoff(sample(),"2026-11-02T11:00:00Z");
   assert.equal(normal.generatedAt,"2026-11-02T11:00:00.000Z");
+  const offset=buildProductionHandoff(sample(),"2026-11-02T16:30:00+05:30");
+  assert.equal(offset.generatedAt,"2026-11-02T11:00:00.000Z");
+  for(const bad of ["2026-11-02","2026-11-02T11:00:00",
+    " 2026-11-02T11:00:00Z","2026-11-02T11:00:00Z trailing",
+    "2026-11-02T11:00:00+99:99"]) {
+    assert.throws(()=>buildProductionHandoff(sample(),bad),
+      /Unsafe tailor handoff timestamp/,bad);
+  }
 });
 
 test("verified handoff fails closed before hashing malformed saved lock containers",async()=>{
