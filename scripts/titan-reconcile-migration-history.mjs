@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 
 const hex64 = /^[a-f0-9]{64}$/;
-const version = /^[0-9]{8,20}$/;
+// Match repository/Supabase migration file versions: legacy YYYYMMDD or
+// standard YYYYMMDDHHMMSS; reject unsupported digit counts at the boundary.
+const version = /^(?:[0-9]{8}|[0-9]{14})$/;
 
 /** Compare claimed staging evidence to repository SQL identities without authorizing release. */
 export function reconcileMigrationHistory(inventory, staging) {

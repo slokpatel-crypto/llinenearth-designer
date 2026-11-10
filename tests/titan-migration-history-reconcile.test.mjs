@@ -12,6 +12,17 @@ test('mismatched claimed hash blocks',()=> assert.equal(reconcileMigrationHistor
 test('missing staging version blocks collision',()=> assert.equal(reconcileMigrationHistory(inventory,[]).results[0].reason,'COLLISION_NOT_IN_STAGING_HISTORY'));
 test('duplicate staging versions rejected',()=> assert.throws(()=>reconcileMigrationHistory(inventory,[{version:'20261001'},{version:'20261001'}])));
 test('invalid inventory hash rejected',()=> assert.throws(()=>reconcileMigrationHistory([{...inventory[0],sha256:'fake'}],[])));
+test('unsupported migration digit lengths reject both source and claimed staging versions',()=>{
+  for(const bad of ['2026110','202611030','2026110300000','202611030000000','20261103000000000000']){
+    assert.throws(()=>reconcileMigrationHistory([{...inventory[0],version:bad,filename:bad+'_a.sql'}],[]),/Invalid inventory row/,bad);
+    assert.throws(()=>reconcileMigrationHistory(inventory,[{version:bad}]),/Invalid or repeated staging version/,bad);
+  }
+  for(const valid of ['20261103','20261103000000']){
+    const r=reconcileMigrationHistory([{version:valid,filename:valid+'_valid.sql',sha256:hash('valid')}],[]);
+    assert.equal(r.release_ready,false);
+    assert.equal(r.results[0].status,'BLOCKED');
+  }
+});
 
 import { readdirSync, readFileSync as readSqlFile } from 'node:fs';
 import { join } from 'node:path';
