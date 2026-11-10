@@ -1483,7 +1483,8 @@ export function styleDirectorConstructionIssues(
       explanation: "The proposed half-sleeve uses a full-length cuff option; confirm a buildable short-sleeve finish.",
     });
   }
-  if (shirt.sleeve !== "half_sleeve" && shirt.cuff === "open_short_hem_cuff") {
+  if (["full_sleeve", "roll_up_styled"].includes(shirt.sleeve) &&
+      shirt.cuff === "open_short_hem_cuff") {
     issues.push({
       code: "full_sleeve_open_hem_cuff",
       explanation: "An open short-sleeve hem is paired with a non-short sleeve; confirm the sleeve finish.",
