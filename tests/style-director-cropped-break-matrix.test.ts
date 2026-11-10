@@ -269,3 +269,26 @@ test("invalid pleat IDs remain distinct from real flat-front and pleated conflic
     }
   }
 });
+
+test("unknown pleats do not fabricate front mismatches on ordinary hems", () => {
+  for (const type of ["formal_flat_front", "pleated_trouser", "cropped_ankle"] as const) {
+    for (const pleat of [undefined, null, "", "single_pleat_forward ", "retired_pleat"]) {
+      const locked = Object.freeze({
+        shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+          sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
+        pant: Object.freeze({ type, pleat, hem: "plain_hem", break: "slight_break" }),
+      }) as unknown as StyleSpecV2;
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      assert.equal(issues.filter(issue => issue.code === "unknown_trouser_pleat_option").length, 1);
+      assert.ok(!issues.some(issue => issue.code === "flat_front_has_pleat" ||
+        issue.code === "pleated_front_missing_pleat"),
+        "unrecognized pleats must not be interpreted as known construction");
+      assert.ok(!issues.some(issue => issue.code.startsWith("cropped_") &&
+        issue.code !== "cropped_type_hem_mismatch"),
+        "ordinary hems must not invent cropped break conflicts");
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+      assert.equal(JSON.stringify(locked), before);
+    }
+  }
+});
