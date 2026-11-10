@@ -47,6 +47,33 @@ test('malformed role permissions never become an implicit grant',()=>{
   assert.throws(()=>parseGood(fixture().replace(rows[0],rows[0].replace('|f|anon|t|','|f|anon|t|t'))),/inconsistent/);
   assert.throws(()=>parseGood(fixture().replace(rows[0],rows[0].replace('|t|','|unknown|'))),/inconsistent/);
 });
+test('present function and registered role cannot have UNKNOWN EXECUTE permission',()=>{
+  const altered=rows[0].replace(
+    'fabric_stock_record||f|anon|t|',
+    'fabric_stock_record|fabric_stock_record(text)|t|anon|t|');
+  assert.throws(()=>parseGood(fixture().replace(rows[0],altered)),/inconsistent/);
+});
+test('contradictory function signatures across roles fail closed',()=>{
+  const altered=rows[0].replace(
+    'fabric_stock_record||f|anon|t|',
+    'fabric_stock_record|fabric_stock_record(text)|t|anon|t|t');
+  assert.throws(()=>parseGood(fixture().replace(rows[0],altered)),/signature matrix/);
+});
+test('contradictory role existence across functions fails closed',()=>{
+  const altered=rows[0].replace('|anon|t|','|anon|f|');
+  assert.throws(()=>parseGood(fixture().replace(rows[0],altered)),/role presence/);
+});
+test('genuine complete multi-overload evidence remains a non-approving projection',()=>{
+  const withoutReserve=fixture().split('\n').filter(line=>
+    !line.startsWith('stock_function_effective_execute|fabric_stock_reserve_v2|')).join('\n');
+  const observed=roles.flatMap(role=>[
+    'stock_function_effective_execute|fabric_stock_reserve_v2|fabric_stock_reserve_v2(text)|t|'+role+'|t|f',
+    'stock_function_effective_execute|fabric_stock_reserve_v2|fabric_stock_reserve_v2(integer)|t|'+role+'|t|t'
+  ]);
+  const report=parseGood(withoutReserve+'\n'+observed.join('\n')+'\n');
+  assert.equal(report.expected_permission_pairs_observed,24);
+  assert.equal(report.release_ready,false);
+});
 test('versions must have supported 8 or 14 digit formats',()=>{
   for(const bad of ['2026','20261103000','20261103x','202611030000000'])
     assert.throws(()=>parseGood(fixture([bad])),/malformed migration/);
