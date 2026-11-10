@@ -82,7 +82,7 @@ export function buildProductionHandoff(
   // midnight 24:00 into different dates. Compare the original wall-clock
   // fields after applying the supplied timezone offset to reject rollovers.
   const tz=isIsoTimestamp && !generatedAt.endsWith("Z") ? generatedAt.slice(-6) : "";
-  const offsetMinutes=tz==="":0
+  const offsetMinutes=tz==="" ? 0
     : (tz.startsWith("+")?1:-1)*(Number(tz.slice(1,3))*60+Number(tz.slice(4,6)));
   const wallClock=Number.isFinite(parsedAt)
     ? new Date(parsedAt+offsetMinutes*60_000).toISOString().slice(0,19) : "";
