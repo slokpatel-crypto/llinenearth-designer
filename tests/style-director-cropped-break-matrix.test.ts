@@ -356,3 +356,28 @@ test("unknown cuff IDs do not fabricate a full-length cuff construction conflict
     issue.code === "short_sleeve_cuff_review"),
     "a known full-length barrel cuff must still trigger construction review");
 });
+
+
+test("shirt cuff and trouser break conflicts remain independently reviewable", () => {
+  for (const cuff of ["barrel_cuff_1_button", "french_double_cuff"] as const) {
+    for (const shoeBreak of ["full_break", "slight_break", "stacked_break"] as const) {
+      const locked = Object.freeze({
+        shirt: Object.freeze({ type: "short_sleeve_shirt", collar: "spread_collar",
+          wear: "untucked", sleeve: "half_sleeve", cuff }),
+        pant: Object.freeze({ type: "cropped_ankle", pleat: "flat_front",
+          hem: "cropped_above_ankle_hem", break: shoeBreak }),
+      }) as unknown as StyleSpecV2;
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      assert.equal(issues.filter(issue => issue.code === "short_sleeve_cuff_review").length, 1,
+        "a long-sleeve cuff must not be approved for a short sleeve");
+      assert.equal(issues.filter(issue => issue.code ===
+        (shoeBreak === "full_break" ? "cropped_full_break" :
+          shoeBreak === "slight_break" ? "cropped_slight_break" : "cropped_stacked_break")).length, 1,
+        "an independent cropped shoe-break conflict must not be hidden");
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues,
+        "independent construction review must be deterministic");
+      assert.equal(JSON.stringify(locked), before, "locked selections remain unchanged");
+    }
+  }
+});
