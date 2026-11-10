@@ -70,6 +70,9 @@ export function buildProductionHandoff(
     throw new Error("Unsafe tailor handoff source: expected a locked garment recipe record.");
   }
   const spec=revision.garmentSpec;
+  if(revision.version!=="linen-earth-design-lock-v1" || spec.version!=="linen-earth-garment-spec-v1") {
+    throw new Error("Unsafe tailor handoff source: unsupported locked design or garment specification version.");
+  }
   if(!handoffRecord(spec.source) || !handoffRecord(spec.shirt)
       ||!handoffRecord(spec.trouser) || !handoffRecord(spec.context)) {
     throw new Error("Unsafe tailor handoff source: missing source, garment or context record.");
