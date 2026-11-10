@@ -72,7 +72,12 @@ export function buildProductionHandoff(
   // Rehydrated packets can supply invalid or non-string generation times.
   // Normalise them once so the unsigned review timestamp cannot crash a
   // downstream print/export with an uncontrolled Date RangeError.
-  if(typeof generatedAt!=="string" || !Number.isFinite(Date.parse(generatedAt))) {
+  // Date.parse accepts misleading strings such as "invalid-2026-11-02".
+  // Only explicit ISO timestamps with timezone and finite parsed times
+  // may become export metadata. Preserve offsets and normalise to UTC below.
+  if(typeof generatedAt!=="string"
+      || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(generatedAt)
+      || !Number.isFinite(Date.parse(generatedAt))) {
     throw new Error("Unsafe tailor handoff timestamp: expected a valid generation time.");
   }
   const spec=revision.garmentSpec;
