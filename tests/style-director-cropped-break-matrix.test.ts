@@ -244,3 +244,28 @@ test("cropped type, ordinary hem and shoe-resting break report independent confl
     assert.equal(JSON.stringify(locked), snapshot, "locked selections remain unchanged");
   }
 });
+
+
+test("invalid pleat IDs remain distinct from real flat-front and pleated conflicts", () => {
+  for (const type of ["formal_flat_front", "pleated_trouser", "cropped_ankle"] as const) {
+    for (const pleat of [undefined, null, "", "flat_front ", "unrecognized_pleat"]) {
+      const locked = Object.freeze({
+        shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+          sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
+        pant: Object.freeze({ type, pleat, hem: "cropped_above_ankle_hem",
+          break: "full_break" }),
+      }) as unknown as StyleSpecV2;
+      const snapshot = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      assert.equal(issues.filter(issue => issue.code === "unknown_trouser_pleat_option").length, 1,
+        `${type} / ${String(pleat)}: unknown pleat must require explicit review`);
+      assert.ok(!issues.some(issue => issue.code === "flat_front_has_pleat" ||
+        issue.code === "pleated_front_missing_pleat"),
+        "unknown pleats must not be misreported as known construction");
+      assert.equal(issues.filter(issue => issue.code === "cropped_full_break").length, 1,
+        "independent hem and break conflict must remain visible");
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+      assert.equal(JSON.stringify(locked), snapshot);
+    }
+  }
+});
