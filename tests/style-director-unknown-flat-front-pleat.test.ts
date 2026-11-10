@@ -33,3 +33,20 @@ test("known pleated front on a flat-front trouser still requires construction re
   assert.ok(!issues.some(issue => issue.code === "unknown_trouser_pleat_option"));
   assert.deepEqual(styleDirectorConstructionIssues(spec), issues);
 });
+
+test("half-sleeve French and barrel cuffs require construction review, while an open hem does not", () => {
+  for (const cuff of ["french_double_cuff", "barrel_cuff_1_button", "open_short_hem_cuff"]) {
+    const spec = Object.freeze({
+      shirt: Object.freeze({ type: "short_sleeve_shirt", collar: "spread_collar",
+        wear: "untucked", sleeve: "half_sleeve", cuff }),
+      pant: Object.freeze({ type: "formal_flat_front", pleat: "flat_front",
+        hem: "plain_hem", break: "no_break" }),
+    }) as unknown as StyleSpecV2;
+    const snapshot = JSON.stringify(spec);
+    const issues = styleDirectorConstructionIssues(spec);
+    assert.equal(issues.some(issue => issue.code === "short_sleeve_cuff_review"),
+      cuff !== "open_short_hem_cuff", cuff);
+    assert.deepEqual(styleDirectorConstructionIssues(spec), issues);
+    assert.equal(JSON.stringify(spec), snapshot);
+  }
+});
