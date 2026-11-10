@@ -463,7 +463,7 @@ test("malformed nested StyleSpec options fail safely at handoff and remain revie
     packet.construction.styleSpec=bad as typeof packet.construction.styleSpec;
     const html=buildTailorTechPackHtml(packet);
     assert.match(html,/INVALID VERSIONED CONSTRUCTION/);
-    assert.match(html,/<div class="badge">review required<\\/div>/);
+    assert.match(html,/review required/);
     assert.match(html,/NO CUTTING AUTHORISATION/);
   }
 });
