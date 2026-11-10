@@ -2964,3 +2964,24 @@ test("cropped break cannot certify a plain hem across canonical trouser fronts",
     assert.equal(JSON.stringify(locked), before, "review must preserve locked IDs");
   }
 });
+
+test("ordinary shoe breaks on non-cropped hems do not invent cropped construction defects", () => {
+  for (const type of ["formal_flat_front", "pleated_trouser"] as const) {
+    for (const shoeBreak of ["full_break", "slight_break", "stacked_break"] as const) {
+      const locked = spec();
+      locked.pant.type = type;
+      locked.pant.hem = "plain_hem";
+      locked.pant.break = shoeBreak;
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      const croppedCodes = issues.map(issue => issue.code).filter(code =>
+        code.startsWith("cropped_"));
+      assert.deepEqual(croppedCodes, [],
+        `${type} / ${shoeBreak} must not produce cropped-only defects`);
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues,
+        "construction review must be deterministic");
+      assert.equal(JSON.stringify(locked), before,
+        "review must not rewrite locked tailoring selections");
+    }
+  }
+});
