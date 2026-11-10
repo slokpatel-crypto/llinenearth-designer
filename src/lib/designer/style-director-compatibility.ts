@@ -1072,6 +1072,12 @@ function stripNegatedPleatWording(candidateTrouser: string) {
 // requirement parsing and verification of a versioned locked pleat ID.
 const postposedCountPleatBan = /\b(single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|unwanted|not\s+(?:allowed|permitted|wanted)|(?:aren['’]?t|isn['’]?t)\s+wanted|(?:(?:must|should|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included|chosen|selected)|not\s+to\s+be\s+(?:used|added|included|chosen|selected)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted)|(?:must|should|shall|(?:are|is)\s+to|to)\s+be\s+avoided)\b/gi;
 
+// A direction-specific ban leaves other pleat directions available; optional
+// direction wording is neutral, not permission to change a locked cut.
+
+const postposedDirectionPleatBan = /\b(forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|unwanted|not\s+(?:allowed|permitted|wanted)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted|wanted)|(?:(?:must|should|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included|chosen|selected)|not\s+to\s+be\s+(?:used|added|included|chosen|selected)|(?:must|should|shall|(?:are|is)\s+to|to)\s+be\s+avoided)\b/gi;
+const postposedDirectionPleatOptional = /\b(?:forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory|necessary)|(?:aren['’]?t|isn['’]?t)\s+(?:required|needed|mandatory|necessary))\b/gi;
+
 export function styleDirectorCandidateTrouserFront(
   candidateTrouser: string,
 ): "flat_front" | "pleated" | "ambiguous" | null {
@@ -1084,10 +1090,8 @@ export function styleDirectorCandidateTrouserFront(
       /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:forward|reverse)[ -]?pleats?\b/gi,
       "",
     )
-    .replace(
-      /\b(?:forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted)|(?:(?:must|should|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included)|not\s+to\s+be\s+(?:used|added|included)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted)|(?:must|should|shall|(?:are|is)\s+to|to)\s+be\s+avoided)\b/gi,
-      "",
-    );
+    .replace(postposedDirectionPleatBan, "")
+    .replace(postposedDirectionPleatOptional, "");
   const flatFront = /\bflat[- ]?front\b/i.test(frontWording);
   const positiveWording = stripNegatedPleatWording(frontWording).replace(
     /\bpleat(?:s|ing)?\s+(?:(?:are|is)\s+)?(?:(?:not\s+(?:allowed|permitted|wanted)|unwanted|prohibited|forbidden|banned|disallowed)|(?:(?:should|must|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included|chosen|selected)|not\s+to\s+be\s+(?:used|added|included|chosen|selected)|(?:must|should|shall)\s+be\s+omitted|(?:must|should|(?:are|is)\s+to)\s+be\s+avoided|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted|wanted))\b/gi,
@@ -1252,6 +1256,8 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // of inferring it from the potentially stale photographed trouser label.
   const positiveWording = stripNegatedPleatWording(candidateTrouser)
     .replace(postposedCountPleatBan, "")
+    .replace(postposedDirectionPleatBan, "")
+    .replace(postposedDirectionPleatOptional, "")
     .replace(
     /\b(?:no|without|not|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:(?:a|an|any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(?:single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\b/gi,
     "",
@@ -1292,10 +1298,7 @@ export function styleDirectorCandidateFrontConstructionIssues(
   const directionWording = positiveWording.replace(
     /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:forward|reverse)[ -]?pleats?\b/gi,
     "",
-  ).replace(
-    /\b(?:forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted)|(?:(?:must|should|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included)|not\s+to\s+be\s+(?:used|added|included)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted)|(?:must|should|shall|(?:are|is)\s+to|to)\s+be\s+avoided)\b/gi,
-    "",
-  );
+  ).replace(postposedDirectionPleatBan, "");
   const requestsForward = front === "pleated" && /\bforward\b/i.test(directionWording);
   const requestsReverse = front === "pleated" && /\breverse\b/i.test(directionWording);
   const expectedDirection = requestsForward !== requestsReverse
@@ -1307,9 +1310,8 @@ export function styleDirectorCandidateFrontConstructionIssues(
   const prohibitsForward = /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?forward[ -]?pleats?\b/i.test(candidateTrouser);
   const prohibitsReverse = /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?reverse[ -]?pleats?\b/i.test(candidateTrouser);
   // Direction prohibitions can follow the noun as well as precede it.
-  const prohibitedDirections = [...candidateTrouser.matchAll(
-    /\b(forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|not\s+(?:allowed|permitted)|(?:(?:must|should|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included)|not\s+to\s+be\s+(?:used|added|included)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted)|(?:must|should|shall|(?:are|is)\s+to|to)\s+be\s+avoided)\b/gi,
-  )].map(match => match[1].toLowerCase());
+  const prohibitedDirections = [...candidateTrouser.matchAll(postposedDirectionPleatBan)]
+    .map(match => match[1].toLowerCase());
   // A direction-only ban also requires a known canonical pleat ID:
   // with a stale/unknown ID we cannot verify which direction was locked.
   // Do not infer that an unknown selection is flat-front.
