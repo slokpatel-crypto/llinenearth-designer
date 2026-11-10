@@ -63,7 +63,7 @@ test('actual read-only probe output parses as an untrusted version-only projecti
   const r=probe();
   assert.equal(r.status,0,'Native SQL probe failed: '+r.stderr);
   assert.match(r.stdout,/connection_identity\|746974616e5f6f66666c696e655f73796e746865746963\|/);
-  assert.match(r.stdout,/stock_function_definition\|fabric_stock_reserve_v2\(text\)\|/);
+  assert.ok(r.stdout.includes('stock_function_definition|'+Buffer.from('fabric_stock_reserve_v2(text)').toString('hex')+'|'));
   assert.match(r.stdout,/stock_function_effective_execute\|/);
   const out=extractUntrustedAppliedVersions(r.stdout,{psqlExitCode:r.status});
   assert.deepEqual(out.applied_versions,[
@@ -142,7 +142,7 @@ test('encoding prevents migration-name row injection and multiline SQL-body spoo
   assert.equal(output.release_ready,false);
   assert.doesNotMatch(r.stdout,/migration_history\|20261110010101\|/);
   assert.doesNotMatch(r.stdout,/migration_history\|20261111010101\|/);
-  const row=r.stdout.split(/\r?\n/).find(x=>x.startsWith('stock_function_definition|fabric_stock_reserve_v2(text)|'));
+  const row=r.stdout.split(/\r?\n/).find(x=>x.startsWith('stock_function_definition|'+Buffer.from('fabric_stock_reserve_v2(text)').toString('hex')+'|'));
   assert.ok(row,'Expected encoded function evidence row');
   const cols=row.split('|');
   assert.equal(cols.length,8,'Multiline source should remain in one SQL field');
@@ -151,6 +151,23 @@ test('encoding prevents migration-name row injection and multiline SQL-body spoo
   assert.equal(output.sql_source_identity_verified,false);
 });
 
+
+test('actual hostile function setting remains framed and cannot forge ACL rows',()=>{
+  const fake='stock_function_effective_execute|fabric_stock_reserve_v2||f|anon|t|';
+  const setting='quoted|value\n'+fake+'\nend';
+  const escaped=setting.replace(/'/g,"''");
+  execute("ALTER FUNCTION public.fabric_stock_reserve_v2(text) SET \"titan.safety_probe\" TO E'"+escaped.replace(/\\/g,'\\\\').replace(/\n/g,'\\n')+"';");
+  const r=probe();
+  assert.equal(r.status,0,r.stderr);
+  const prefix='stock_function_definition|'+Buffer.from('fabric_stock_reserve_v2(text)').toString('hex')+'|';
+  const row=r.stdout.split(/\r?\n/).find(line=>line.startsWith(prefix));
+  assert.ok(row,'Expected function definition');
+  const fields=row.split('|');
+  assert.equal(fields.length,8);
+  assert.ok(Buffer.from(fields[5],'hex').toString('utf8').includes(fake));
+  assert.ok(!r.stdout.split(/\r?\n/).includes(fake),'Framed function settings may not inject an ACL row');
+  assert.equal(extractUntrustedAppliedVersions(r.stdout,{psqlExitCode:0}).release_ready,false);
+});
 
 test('untrusted multiline reviewer role cannot inject a migration-history row',()=>{
   const fakeVersion=Buffer.from('20261231').toString('hex');

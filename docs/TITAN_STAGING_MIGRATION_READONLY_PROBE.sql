@@ -26,15 +26,17 @@ FROM supabase_migrations.schema_migrations AS m
 ORDER BY version;
 
 -- 3. Actual currently installed stock RPC definitions and security context.
--- Hex encoding preserves exact rendered body bytes as a single psql field; reviewers
--- decode it offline. A multiline function body must not mimic a history row.
+-- Hex framing covers the signature (which can include quoted type names), owner
+-- (an arbitrary role identifier), function settings and full rendered body.
+-- A multiline catalog value must never impersonate a history/permissions row.
+-- Authorized reviewers decode these values privately.
 -- Hash is a compact *database-rendered definition* fingerprint, not a file SHA.
 SELECT 'stock_function_definition' AS evidence_kind,
-       p.oid::regprocedure::text AS function_signature,
-       pg_get_userbyid(p.proowner) AS function_owner,
+       encode(convert_to(p.oid::regprocedure::text,'UTF8'),'hex') AS function_signature_hex,
+       encode(convert_to(pg_get_userbyid(p.proowner),'UTF8'),'hex') AS function_owner_hex,
        p.prosecdef AS security_definer,
        p.provolatile AS volatility,
-       p.proconfig AS function_settings,
+       encode(convert_to(coalesce(p.proconfig::text,''),'UTF8'),'hex') AS function_settings_hex,
        md5(pg_get_functiondef(p.oid)) AS rendered_definition_md5,
        encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex') AS rendered_definition_hex
 FROM pg_proc AS p
@@ -53,9 +55,11 @@ ORDER BY p.proname,p.oid::regprocedure::text;
 -- function must appear as function_exists=false, not silently vanish.
 -- Missing retired v1 may be intentional; reviewer must classify each result.
 -- If a function or role is absent, effective_execute is NULL (UNKNOWN).
+-- Signatures are UTF-8 hex to protect this permissions matrix from quoted
+-- argument type names containing literal pipes or newlines.
 SELECT 'stock_function_effective_execute' AS evidence_kind,
        expected.function_name AS expected_function_name,
-       p.oid::regprocedure::text AS function_signature,
+       encode(convert_to(p.oid::regprocedure::text,'UTF8'),'hex') AS function_signature_hex,
        p.oid IS NOT NULL AS function_exists,
        requested.role_name,
        registered_role.oid IS NOT NULL AS role_exists,
