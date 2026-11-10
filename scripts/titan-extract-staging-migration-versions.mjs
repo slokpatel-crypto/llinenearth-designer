@@ -36,7 +36,11 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
     const line=lines[i];
     if(line.startsWith('connection_identity|')){
       const fields=line.split('|');
-      if(fields.length!==6 || !fields[1] || !fields[2] || !/^\d*$/.test(fields[4]))
+      // Database and PostgreSQL role identifiers may contain literal pipes or
+      // newlines. SQL must hex-frame both fields, even though they never appear
+      // in the public projection: raw text could forge another history row.
+      if(fields.length!==6 || !/^(?:[0-9a-f]{2})+$/.test(fields[1]) ||
+         !/^(?:[0-9a-f]{2})+$/.test(fields[2]) || !/^\d*$/.test(fields[4]))
         throw Error('Blocked: malformed connection fingerprint');
       connectionCount++;
       connectionLine=i;
