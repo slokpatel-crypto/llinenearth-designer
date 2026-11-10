@@ -939,7 +939,7 @@ export function styleDirectorCandidateShirtFitIntent(candidateShirt: string): {
         continue;
       }
       const ban = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
-        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:should|must)\s+not\s+be\s+(?:chosen|selected|used))\b/i.test(after);
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:should|must)\s+not|(?:shouldn|mustn)['’]?t)\s+be\s+(?:chosen|selected|used|worn))\b/i.test(after);
       const optional = /\b(?:optional|maybe)\s+$/i.test(before) ||
         /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(after);
       if (ban) prohibited.add(id);
@@ -1089,7 +1089,7 @@ export function styleDirectorCandidateTrouserFitIntent(candidateTrouser: string)
         continue;
       }
       const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
-        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:should|must)\s+not\s+be\s+(?:chosen|selected|used))\b/i.test(suffix);
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:should|must)\s+not|(?:shouldn|mustn)['’]?t)\s+be\s+(?:chosen|selected|used|worn))\b/i.test(suffix);
       const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
       if (banned) prohibited.add(id);
