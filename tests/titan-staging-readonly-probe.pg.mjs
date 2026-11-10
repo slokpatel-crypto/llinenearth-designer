@@ -246,7 +246,7 @@ test('native PostgreSQL: read-only reviewer without history SELECT fails until e
     '--command=SET ROLE titan_readonly_evidence;',
     '--file','docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql',
   ]);
-  assert.match(output,/connection_identity\|titan_probe_synthetic\|titan_readonly_evidence\|/);
+  assert.match(output,/connection_identity\|746974616e5f70726f62655f73796e746865746963\|746974616e5f726561646f6e6c795f65766964656e6365\|/);
   assert.match(output,/migration_history\|3230323631313033\|/);
   assert.match(output,/stock_function_effective_execute\|/);
 });
