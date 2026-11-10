@@ -393,11 +393,18 @@ export function styleDirectorCandidatePlacketIntent(candidateShirt: string): {
 } {
   const requests = new Set<CandidatePlacketId>();
   const prohibitions = new Set<CandidatePlacketId>();
+  let undecided = false;
   for (const { id, pattern } of candidatePlacketPatterns) {
     for (const hit of candidateShirt.matchAll(pattern)) {
       const index = hit.index ?? 0;
       const prefix = candidateShirt.slice(0, index);
       const suffix = candidateShirt.slice(index + hit[0].length);
+      // "With or without" is an unresolved construction choice, not the
+      // hard prohibition implied by the embedded word "without".
+      if (/\bwith\s+(?:or\s+)?without\s+(?:(?:a|any|the)\s+)?$/i.test(prefix)) {
+        undecided = true;
+        continue;
+      }
       const forbidden = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:must|should)\s+not\s+be\s+(?:used|chosen|selected))\b/i.test(suffix);
       const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
@@ -409,7 +416,7 @@ export function styleDirectorCandidatePlacketIntent(candidateShirt: string): {
   return {
     requested: requests.size === 1 ? [...requests][0] : null,
     prohibited: [...prohibitions],
-    ambiguous: requests.size > 1 || [...requests].some(id => prohibitions.has(id)),
+    ambiguous: undecided || requests.size > 1 || [...requests].some(id => prohibitions.has(id)),
   };
 }
 
