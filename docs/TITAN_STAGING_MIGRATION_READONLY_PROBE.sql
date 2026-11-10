@@ -15,13 +15,16 @@ SELECT 'connection_identity' AS evidence_kind,
 -- 2. Version history. Even a recorded name cannot resolve duplicate-version SQL
 -- identity without independent underlying source or current function evidence.
 -- to_jsonb(row) supports older migration-history tables with no "name" column.
+-- Hex encodes arbitrary names so newlines/pipes cannot forge evidence rows.
 SELECT 'migration_history' AS evidence_kind,
        version,
-       to_jsonb(m)->>'name' AS recorded_name
+       encode(convert_to(coalesce(to_jsonb(m)->>'name',''),'UTF8'),'hex') AS recorded_name_hex
 FROM supabase_migrations.schema_migrations AS m
 ORDER BY version;
 
 -- 3. Actual currently installed stock RPC definitions and security context.
+-- Hex encoding preserves exact rendered body bytes as a single psql field; reviewers
+-- decode it offline. A multiline function body must not mimic a history row.
 -- Hash is a compact *database-rendered definition* fingerprint, not a file SHA.
 SELECT 'stock_function_definition' AS evidence_kind,
        p.oid::regprocedure::text AS function_signature,
@@ -30,7 +33,7 @@ SELECT 'stock_function_definition' AS evidence_kind,
        p.provolatile AS volatility,
        p.proconfig AS function_settings,
        md5(pg_get_functiondef(p.oid)) AS rendered_definition_md5,
-       pg_get_functiondef(p.oid) AS rendered_definition
+       encode(convert_to(pg_get_functiondef(p.oid),'UTF8'),'hex') AS rendered_definition_hex
 FROM pg_proc AS p
 JOIN pg_namespace AS ns ON ns.oid=p.pronamespace
 WHERE ns.nspname='public'
