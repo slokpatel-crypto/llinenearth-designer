@@ -1,0 +1,35 @@
+# TITAN staging migration/stock RPC evidence — manual read-only capture
+
+**Status: STAGING PROBE PREPARED ONLY — NOT EXECUTED ON STAGING.** The separate CI safety job runs this SQL only against a disposable PostgreSQL 16 service with synthetic-only roles, history and stock function fixtures; it never connects to Supabase, staging, production, or customer data. This is not confirmation of a staging environment, a migration-history repair plan, database approval, or launch readiness.
+
+## Prerequisites for an authorized human reviewer
+
+1. The owner must **explicitly identify and approve an isolated staging project** through an independent control-plane verification. A database name, IP address, or copied JSON claim is not proof that a connection targets staging.
+2. The database/security reviewer must approve a **read-only database account**, permitted access to PostgreSQL system catalogs and `supabase_migrations.schema_migrations`, and a private place for raw results. Never use production credentials or share a connection string, SQL function source, IP address, or tokens in a public PR/issue.
+3. The reviewer runs `docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql` **manually against that verified staging connection only**, with a read-only transaction and error-on-first-failure configuration. Do not configure GitHub Actions, production apps or agent tasks to execute it.
+4. Record run time (UTC), approved project identifier via independently verified dashboard/owner process, collector identity, exact source PR commit, and a private reference to the four query result sets. If the history table does not exist or a query lacks SELECT permission, report **BLOCKED**; do not initialize, repair or grant permissions merely to make the probe pass.
+
+**Partial-output rule:** Run with `psql`'s `ON_ERROR_STOP=1` and verify a successful process exit before accepting any result set. Query 1 may emit connection metadata before Query 2 fails due to denied `SELECT` on the migration table; that partial output is **BLOCKED**, not valid evidence. The disposable native test verifies that an otherwise known PostgreSQL role without migration-history `SELECT` fails, whereas an expressly granted synthetic reviewer can complete the four SELECTs. This does **not** authorize granting permissions on staging or production; privilege changes there require independent owner/database approval.
+
+## What the SQL actually reads
+
+- Connection/database metadata for manual staging identity checks, **not a self-proving identity token**.
+- Applied migration **versions** and an optional history-table `name` value, if present. Supabase's history is version-keyed. The optional name and a version alone **cannot establish which different SQL file under a duplicate legacy prefix actually ran**.
+- Actual currently deployed `public.fabric_stock_*` function definitions, **function owner**, security-definer flag, function settings and a digest of PostgreSQL's **rendered function definition**. That digest is **not** comparable byte-for-byte with a Git migration SQL file SHA-256.
+- Effective `EXECUTE` permissions for any existing `anon`, `authenticated`, and `service_role` database roles. Missing **required v2 RPCs** or an expected role are **unknown/blockers**, not permission passes. A missing retired v1 function may be appropriate when deliberately removed and must **not** be recreated solely to satisfy an evidence query.
+
+**Important absence check:** Query 4 starts from the eight explicitly named stock RPC candidates crossed with the three roles, not from the set of functions currently installed. It therefore returns **at least 24 evidence rows**, including `expected_function_name`, `function_exists=false`, `function_signature=NULL` and `effective_execute=NULL` for any missing function. A missing role likewise yields `role_exists=false` and an unknown permission. Function overloads may produce extra rows. Reviewers must mark missing required v2 functions and expected roles **BLOCKED/UNKNOWN** and independently determine whether a missing retired v1 function is intentional; no empty result set or NULL privilege is a passing permission check. The absence matrix does **not** itself establish expected function signatures or whether an apparent v2 overload is the production-approved one.
+
+The SQL file contains `BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY`, four `SELECT` queries and `COMMIT`. Static tests reject write statements and missing evidence fields. A **separate disposable PostgreSQL-only integration test** now executes this exact read-only probe against deliberately synthetic roles and functions: all missing RPCs, a present function with granted/denied EXECUTE, and a missing role. The integration test creates and removes only disposable fixture objects; it requires the exact `titan_probe_synthetic` database, `titan_probe` user, loopback address, and synthetic CI opt-in environment before running. No production or staging credentials are used or configured. This proves SQL execution and response shape on the synthetic fixture **only**. It cannot establish whether staging has the correct history, the historical order of all source SQL files, authorized staging identity, or production readiness.
+
+## After collection — no deployment
+
+Use the source-only `{version,filename,sha256}` evidence from [draft #912](https://github.com/slokpatel-crypto/llinenearth-designer/pull/912) for comparison with the independently reviewed staging output. Draft [#909](https://github.com/slokpatel-crypto/llinenearth-designer/pull/909) has an offline, fail-closed reconciler. A version-only record can never resolve two SQL files sharing the same version. Do not copy claimed provenance fields to make a reconciliation result green.
+
+For the known `fabric_stock_reserve_v2` hazard, an independent reviewer must check the **actual deployed function body** for full-length identity rejection, not just the filename order. The two historical `20261103` source migrations differ: one rejects oversized identities; one truncates them before validation. Also inspect effective v1 stock RPC EXECUTE revocation and v2 role permissions. Only an owner-approved **forward-only, uniquely versioned migration plan** tested in a disposable PostgreSQL database can resolve this; the SQL probe itself does not patch or migrate anything.
+
+Relevant references: [Supabase migration history and deployment guidance](https://supabase.com/docs/guides/deployment/database-migrations), [Supabase CLI migration list](https://supabase.com/docs/reference/cli/introduction), [PostgreSQL effective function privilege inspection](https://www.postgresql.org/docs/current/functions-info.html).
+
+Release blockers remain [#882](https://github.com/slokpatel-crypto/llinenearth-designer/issues/882) (migration history and ordering), [#878](https://github.com/slokpatel-crypto/llinenearth-designer/issues/878) (protected main and independent approval), physical operator/tailor evidence and explicit owner approval.
+
+**No staging query executed, SQL applied, migration repaired/renamed, PR merged or deployment triggered in this draft.**
