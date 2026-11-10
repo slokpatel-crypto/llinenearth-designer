@@ -137,3 +137,39 @@ test("contracted optional sleeve wording is neutral, but does not hide firm inst
   assert.deepEqual(lockedIssues(ban, "full_sleeve"), ["candidate_sleeve_mismatch"]);
   assert.deepEqual(wordingIssues(ban), []);
 });
+
+test("undecided with-or-without sleeve lengths require wording review without changing a lock", () => {
+  const alternatives = [
+    "with or without short sleeves",
+    "with or without half-sleeve",
+    "with without long sleeves",
+    "with or without any full sleeves",
+    "with or without a short sleeve",
+  ];
+  for (const wording of alternatives) {
+    assert.equal(styleDirectorCandidateSleeve(wording), null, wording);
+    assert.deepEqual(wordingIssues(wording), ["ambiguous_candidate_sleeve"], wording);
+    for (const sleeve of ["half_sleeve", "full_sleeve", "roll_up_styled"]) {
+      const saved = Object.freeze({ sleeve });
+      const snapshot = JSON.stringify(saved);
+      assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, saved), [], wording);
+      assert.equal(JSON.stringify(saved), snapshot, "saved sleeve remains immutable");
+    }
+  }
+});
+
+test("undecided sleeves retain independent firm restrictions for review", () => {
+  for (const [wording, forbidden, permitted] of [
+    ["with or without short sleeves; no full sleeves", "full_sleeve", "half_sleeve"],
+    ["with or without full sleeves; no short sleeves", "half_sleeve", "full_sleeve"],
+    ["with or without half sleeves; full sleeves required", "half_sleeve", "full_sleeve"],
+  ] as const) {
+    assert.deepEqual(wordingIssues(wording), ["ambiguous_candidate_sleeve"], wording);
+    assert.equal(styleDirectorCandidateSleeve(wording), null, wording);
+    assert.deepEqual(lockedIssues(wording, forbidden), ["candidate_sleeve_mismatch"], wording);
+    assert.deepEqual(lockedIssues(wording, permitted), [], wording);
+  }
+  assert.deepEqual(wordingIssues("no short sleeves"), [], "ordinary prohibition unaffected");
+  assert.deepEqual(lockedIssues("no short sleeves", "half_sleeve"),
+    ["candidate_sleeve_mismatch"]);
+});
