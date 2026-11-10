@@ -111,8 +111,11 @@ export function validBodyPreviewProfile(value:unknown):value is BodyPreviewProfi
   if(!value || typeof value!=="object") return false;
   const profile=value as Partial<BodyPreviewProfile>;
   const silhouette=profile.silhouette;
-  const silhouetteValid=!silhouette || (
-    validScale(silhouette.shoulderScale)
+  // A missing optional silhouette is valid. Explicit null, empty strings,
+  // false and zero are malformed stored JSON, not a missing field.
+  const silhouetteValid=silhouette===undefined || (
+    silhouette!==null && typeof silhouette==="object" && !Array.isArray(silhouette)
+    && validScale(silhouette.shoulderScale)
     && validScale(silhouette.chestScale)
     && validScale(silhouette.waistScale)
     && validScale(silhouette.seatScale)
