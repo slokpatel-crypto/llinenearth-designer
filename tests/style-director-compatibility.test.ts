@@ -98,7 +98,7 @@ test("camp-collar type requires matching open collar and untucked wear", () => {
 test("short sleeves cannot be recommended with French double cuffs", () => {
   assert.deepEqual(styleDirectorConstructionIssues(spec({
     sleeve: "half_sleeve", cuff: "french_double_cuff",
-  })).map(x=>x.code), ["short_sleeve_double_cuff"]);
+  })).map(x=>x.code), ["short_sleeve_double_cuff", "short_sleeve_cuff_review"]);
 });
 
 test("pleated and flat-front trouser construction must match selected type", () => {
@@ -321,7 +321,10 @@ test("construction review is deterministic and never mutates locked style IDs", 
   const a=styleDirectorConstructionIssues(selected);
   assert.deepEqual(a,styleDirectorConstructionIssues(selected));
   assert.equal(JSON.stringify(selected),before);
-  assert.equal(a.length,3);
+  assert.deepEqual(a.map(issue => issue.code), [
+    "camp_collar_construction", "short_sleeve_double_cuff",
+    "short_sleeve_cuff_review", "pleated_front_missing_pleat",
+  ]);
 });
 
 test("every canonical locked Style Director option ID is recognised in its own group", () => {
@@ -528,7 +531,7 @@ test("short-sleeve type, sleeve and cuff disagreements require explicit review",
   })).map(issue=>issue.code),["short_sleeve_cuff_review"]);
   assert.deepEqual(styleDirectorConstructionIssues(spec({
     sleeve:"half_sleeve",cuff:"french_double_cuff",
-  })).map(issue=>issue.code),["short_sleeve_double_cuff"]);
+  })).map(issue=>issue.code),["short_sleeve_double_cuff", "short_sleeve_cuff_review"]);
   assert.deepEqual(styleDirectorConstructionIssues(spec({
     sleeve:"full_sleeve",cuff:"open_short_hem_cuff",
   })).map(issue=>issue.code),["full_sleeve_open_hem_cuff"]);
