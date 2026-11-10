@@ -146,6 +146,11 @@ export function styleDirectorCandidateVariantCollar(
 // Keep both positive and negative intent so contradictions and locked-ID
 // mismatches can be reviewed without inventing a replacement construction.
 const candidateSleeveLengths = (name: string) => {
+  // "With or without" offers choices; it must not become a prohibition
+  // simply because "without" precedes a named sleeve length.
+  const undecidedAlternative = /\bwith\s+(?:or\s+)?without\s+(?:(?:a|any)\s+)?(?:short|half|long|full)[ -]?sleeve(?:s|d)?\b/gi;
+  const undecided = undecidedAlternative.test(name);
+  const instruction = name.replace(undecidedAlternative, " ");
   let bannedShort = false;
   let bannedLong = false;
   const ban = (word: string) => {
@@ -153,7 +158,7 @@ const candidateSleeveLengths = (name: string) => {
     else bannedLong = true;
     return " ";
   };
-  const withoutPrefixedBans = name.replace(
+  const withoutPrefixedBans = instruction.replace(
     /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|include|choose|wear|add|have)\s+)?(?:(?:a|any)\s+)?((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\b/gi,
     (_match, word: string) => ban(word),
   );
@@ -178,6 +183,7 @@ const candidateSleeveLengths = (name: string) => {
     long: /\b(?:long|full)[ -]?sleeve(?:s|d)?\b/i.test(affirmative),
     bannedShort,
     bannedLong,
+    undecided,
   };
 };
 
@@ -859,10 +865,9 @@ export function styleDirectorCandidateSleeveIssues(
 export function styleDirectorCandidateSleeve(
   candidateShirt: string,
 ): { sleeve: "half_sleeve"; cuff: "open_short_hem_cuff" } | null {
-  const { short: shortSleeve, long: longSleeve, bannedShort, bannedLong } = candidateSleeveLengths(candidateShirt);
-  // Contradictory sleeve descriptions cannot safely select a construction.
-  // Retain the existing default rather than silently interpreting one half.
-  return shortSleeve && !longSleeve && !bannedShort
+  const { short: shortSleeve, long: longSleeve, bannedShort, undecided } = candidateSleeveLengths(candidateShirt);
+  // An explicitly undecided sleeve choice must never select an open short hem.
+  return !undecided && shortSleeve && !longSleeve && !bannedShort
     ? { sleeve: "half_sleeve", cuff: "open_short_hem_cuff" }
     : null;
 }
@@ -1203,7 +1208,7 @@ export function styleDirectorCandidateWordingIssues(candidateShirt: string, cand
   }
   const sleeves = candidateSleeveLengths(candidateShirt);
   const rollUp = styleDirectorCandidateRollUpSleeveIntent(candidateShirt);
-  if (rollUp.ambiguous || (sleeves.short && sleeves.long) ||
+  if (rollUp.ambiguous || sleeves.undecided || (sleeves.short && sleeves.long) ||
       (sleeves.short && sleeves.bannedShort) ||
       (sleeves.long && sleeves.bannedLong) ||
       (sleeves.bannedShort && sleeves.bannedLong)) {
