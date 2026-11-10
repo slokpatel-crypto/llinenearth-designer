@@ -3186,3 +3186,30 @@ test("contracted modal collar bans do not select forbidden locked constructions"
     assert.equal(styleDirectorCandidateCollar(wording, []), null, wording);
   }
 });
+
+test("frozen modal collar prohibitions preserve independent wording review and saved IDs", () => {
+  for (const wording of [
+    "Camp collar shouldn't be selected",
+    "Camp collar mustn't be worn",
+    "Camp collar shouldn’t be chosen",
+  ]) {
+    for (const [collar, expected] of [
+      ["cuban_camp_collar", ["candidate_collar_mismatch"]],
+      ["spread_collar", []],
+    ] as const) {
+      const locked = spec({ collar });
+      Object.freeze(locked.shirt);
+      Object.freeze(locked.pant);
+      Object.freeze(locked);
+      const before = JSON.stringify(locked);
+      const first = styleDirectorCandidateCollarIssues(wording, locked.shirt);
+      assert.deepEqual(first.map(issue => issue.code), expected, wording);
+      assert.deepEqual(styleDirectorCandidateCollarIssues(wording, locked.shirt), first,
+        "repeat reviews of frozen selections must agree");
+      assert.equal(JSON.stringify(locked), before, "review must not mutate locked IDs");
+      assert.deepEqual(styleDirectorCandidateWordingIssues(wording)
+        .filter(issue => issue.code === "ambiguous_candidate_collar"), [],
+        "an unambiguous prohibition must not be reported as a positive request");
+    }
+  }
+});
