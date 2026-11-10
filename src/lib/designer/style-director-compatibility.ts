@@ -799,11 +799,33 @@ export function styleDirectorCandidateCuffIntent(candidateShirt: string): {
   const requested = new Set<CandidateCuffId>();
   const prohibited = new Set<CandidateCuffId>();
   let undecided = false;
+  // "French or cocktail cuffs" is a two-ID choice, even though the first
+  // adjective omits "cuff". Equivalent French/double and rounded/soft
+  // names still refer to one canonical construction.
+  const named = String.raw`(?:french|double|convertible|rounded|soft|cocktail|angled[- ]barrel)`;
+  const abbreviatedAlternative = new RegExp(
+    String.raw`\b(${named})(?:[- ]cuffs?)?\s+or\s+(${named})[- ]cuffs?\b`,
+    "gi",
+  );
+  const cuffId = (name: string): CandidateCuffId =>
+    /^(?:french|double)$/i.test(name) ? "french_double_cuff"
+      : /^(?:rounded|soft)$/i.test(name) ? "rounded_soft_cuff"
+        : /^convertible$/i.test(name) ? "convertible_cuff"
+          : /^cocktail$/i.test(name) ? "cocktail_cuff" : "angled_barrel_cuff";
+  const instruction = candidateShirt.replace(abbreviatedAlternative,
+    (phrase: string, first: string, second: string) => {
+      if (cuffId(first) !== cuffId(second)) {
+        undecided = true;
+        return " ";
+      }
+      return phrase;
+    },
+  );
   for (const { id, pattern } of candidateCuffPatterns) {
-    for (const match of candidateShirt.matchAll(pattern)) {
+    for (const match of instruction.matchAll(pattern)) {
       const index = match.index ?? 0;
-      const prefix = candidateShirt.slice(0, index);
-      const suffix = candidateShirt.slice(index + match[0].length);
+      const prefix = instruction.slice(0, index);
+      const suffix = instruction.slice(index + match[0].length);
       // "With or without" leaves a cuff choice unresolved; its "without"
       // does not forbid the named canonical construction.
       if (/\bwith\s+(?:or\s+)?without\s+(?:(?:a|any|the)\s+)?$/i.test(prefix)) {
