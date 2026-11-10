@@ -626,7 +626,7 @@ export function styleDirectorCandidateCollarFinishIntent(candidateShirt: string)
     // Postposed refusal excludes the selected finish; an optional statement
     // never counts as either a request or a ban.
     const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
-      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:must|should)\s+not\s+be\s+(?:used|chosen|selected))\b/i.test(after);
+      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:must|should)\s+not|(?:mustn|shouldn)['’]?t)\s+be\s+(?:used|chosen|selected|worn))\b/i.test(after);
     const optional = /\b(?:optional|maybe)\s+$/i.test(before) ||
       /^\s+(?:(?:is|are)\s+)?(?:optional|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(after);
     // A prohibition of any white contrast collar also forbids a white
@@ -723,7 +723,7 @@ export function styleDirectorCandidateButtonIntent(candidateShirt: string): {
       // Postposed material refusals are prohibitions, never requests.
       // Non-mandatory / optional wording must remain neutral.
       const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
-        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:must|should)\s+not\s+be\s+(?:used|chosen|selected))\b/i.test(suffix);
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:must|should)\s+not|(?:mustn|shouldn)['’]?t)\s+be\s+(?:used|chosen|selected|worn))\b/i.test(suffix);
       const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
       if (banned) prohibited.add(id);
@@ -835,7 +835,7 @@ export function styleDirectorCandidateCuffIntent(candidateShirt: string): {
       // A postposed refusal is a prohibition, not a positive cuff choice.
       // Optional wording must remain separate from explicit rejection.
       const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
-        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:must|should)\s+not\s+be\s+(?:used|chosen|selected))\b/i.test(suffix);
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:must|should)\s+not|(?:mustn|shouldn)['’]?t)\s+be\s+(?:used|chosen|selected|worn))\b/i.test(suffix);
       const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
       if (banned) prohibited.add(id);
