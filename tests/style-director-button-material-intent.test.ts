@@ -226,3 +226,54 @@ test("unresolved buttons preserve independent positive and negative requests", (
     requested: "horn", prohibited: [], ambiguous: false,
   });
 });
+
+test("abbreviated alternatives between different button materials require review", () => {
+  for (const label of [
+    "horn or corozo buttons",
+    "corozo or horn buttons",
+    "horn buttons or corozo buttons",
+    "metal or horn buttons",
+    "plastic or metal buttons",
+    "mother-of-pearl or horn buttons",
+    "corozo (vegetable ivory) or horn buttons",
+    "resin or corozo buttons",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateButtonIntent(label), {
+      requested: null, prohibited: [], ambiguous: true,
+    }, label);
+    assert.equal(styleDirectorCandidateButton(label, photoChoices), null, label);
+    assert.deepEqual(wordingCodes(label), ["ambiguous_candidate_button"], label);
+    for (const button of ["mother_of_pearl", "corozo", "horn", "plastic_resin", "metal_contrast"]) {
+      const locked = Object.freeze({ button });
+      const snapshot = JSON.stringify(locked);
+      assert.deepEqual(styleDirectorCandidateButtonIssues(label, locked), [], label);
+      assert.equal(JSON.stringify(locked), snapshot, "saved button ID cannot change");
+    }
+  }
+});
+
+test("equivalent button-material synonyms remain selectable and other bans survive", () => {
+  for (const [label, id] of [
+    ["plastic or resin buttons", "plastic_resin"],
+    ["resin or plastic buttons", "plastic_resin"],
+    ["horn or horn buttons", "horn"],
+    ["mother-of-pearl or mother-of-pearl buttons", "mother_of_pearl"],
+  ] as const) {
+    assert.deepEqual(styleDirectorCandidateButtonIntent(label), {
+      requested: id, prohibited: [], ambiguous: false,
+    }, label);
+    assert.deepEqual(issueCodes(label, id), [], label);
+    assert.deepEqual(wordingCodes(label), [], label);
+  }
+  const ambiguous = "horn or corozo buttons; no metal buttons";
+  assert.deepEqual(styleDirectorCandidateButtonIntent(ambiguous), {
+    requested: null, prohibited: ["metal_contrast"], ambiguous: true,
+  });
+  assert.deepEqual(wordingCodes(ambiguous), ["ambiguous_candidate_button"]);
+  assert.deepEqual(styleDirectorCandidateButtonIntent("no horn buttons"), {
+    requested: null, prohibited: ["horn"], ambiguous: false,
+  });
+  assert.deepEqual(styleDirectorCandidateButtonIntent("horn buttons"), {
+    requested: "horn", prohibited: [], ambiguous: false,
+  });
+});
