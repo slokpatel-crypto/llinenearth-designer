@@ -1412,25 +1412,33 @@ export function styleDirectorConstructionIssues(
     }
   }
   if (shirt.type === "camp_collar_resort" &&
-      (shirt.wear !== "untucked" || shirt.collar !== "cuban_camp_collar")) {
+      ((["tucked", "untucked"].includes(shirt.wear) && shirt.wear !== "untucked") ||
+       (optionsFor("shirt.collar").some(option => option.id === shirt.collar) &&
+        shirt.collar !== "cuban_camp_collar"))) {
     issues.push({
       code: "camp_collar_construction",
       explanation: "The proposed camp-collar resort shirt needs an untucked, open camp-collar construction review.",
     });
   }
-  if (shirt.collar === "cuban_camp_collar" && shirt.type !== "camp_collar_resort") {
+  if (shirt.collar === "cuban_camp_collar" &&
+      optionsFor("shirt.type").some(option => option.id === shirt.type) &&
+      shirt.type !== "camp_collar_resort") {
     issues.push({
       code: "camp_collar_type_mismatch",
       explanation: "The selected Cuban/Camp collar is paired with a different shirt type; confirm the intended open-collar construction before cutting.",
     });
   }
-  if (shirt.type === "band_collar_shirt" && shirt.collar !== "mandarin_band_collar") {
+  if (shirt.type === "band_collar_shirt" &&
+      optionsFor("shirt.collar").some(option => option.id === shirt.collar) &&
+      shirt.collar !== "mandarin_band_collar") {
     issues.push({
       code: "band_collar_construction",
       explanation: "The proposed band-collar shirt type has a different collar construction; confirm the canonical collar before cutting.",
     });
   }
-  if (shirt.collar === "mandarin_band_collar" && shirt.type !== "band_collar_shirt") {
+  if (shirt.collar === "mandarin_band_collar" &&
+      optionsFor("shirt.type").some(option => option.id === shirt.type) &&
+      shirt.type !== "band_collar_shirt") {
     issues.push({
       code: "band_collar_type_mismatch",
       explanation: "The selected Mandarin/Band collar is paired with a different shirt type; confirm the intended collar construction before cutting.",
