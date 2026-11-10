@@ -190,7 +190,7 @@ test('native PostgreSQL: duplicate applied versions stay visible without assumin
   ].join('\n'));
   const output=runPsql(['--file','docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql']);
   const versions=output.split(/\r?\n/).filter(line=>line.startsWith('migration_history|'));
-  assert.deepEqual(versions,['migration_history|20261103|','migration_history|20261103|'],
+  assert.deepEqual(versions,['migration_history|3230323631313033|','migration_history|3230323631313033|'],
     'Duplicate applied versions must remain distinct observations, not inferred source-file identities');
 });
 
@@ -247,6 +247,6 @@ test('native PostgreSQL: read-only reviewer without history SELECT fails until e
     '--file','docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql',
   ]);
   assert.match(output,/connection_identity\|titan_probe_synthetic\|titan_readonly_evidence\|/);
-  assert.match(output,/migration_history\|20261103\|/);
+  assert.match(output,/migration_history\|3230323631313033\|/);
   assert.match(output,/stock_function_effective_execute\|/);
 });
