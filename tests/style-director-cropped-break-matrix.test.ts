@@ -297,3 +297,34 @@ test("unknown pleats do not fabricate front mismatches on ordinary hems", () => 
     }
   }
 });
+
+
+test("unknown sleeve IDs never masquerade as a known full-length cuff conflict", () => {
+  for (const sleeve of [undefined, null, "", "full_sleeve ", "retired_sleeve"]) {
+    const locked = Object.freeze({
+      shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar",
+        wear: "tucked", sleeve, cuff: "open_short_hem_cuff" }),
+      pant: Object.freeze({ type: "formal_flat_front", pleat: "flat_front",
+        hem: "plain_hem", break: "slight_break" }),
+    }) as unknown as StyleSpecV2;
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorConstructionIssues(locked);
+    assert.ok(issues.some(issue => issue.code === "unknown_versioned_option"),
+      "invalid supplied sleeve IDs require catalogue review");
+    assert.ok(!issues.some(issue => issue.code === "full_sleeve_open_hem_cuff"),
+      "an unrecognized sleeve must not be reported as physically full-length");
+    assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+    assert.equal(JSON.stringify(locked), before);
+  }
+  for (const sleeve of ["full_sleeve", "roll_up_styled"] as const) {
+    const locked = {
+      shirt: { type: "dress_shirt", collar: "spread_collar",
+        wear: "tucked", sleeve, cuff: "open_short_hem_cuff" },
+      pant: { type: "formal_flat_front", pleat: "flat_front",
+        hem: "plain_hem", break: "slight_break" },
+    } as unknown as StyleSpecV2;
+    assert.ok(styleDirectorConstructionIssues(locked).some(issue =>
+      issue.code === "full_sleeve_open_hem_cuff"),
+      "known long-sleeve constructions must still reject open short hems");
+  }
+});
