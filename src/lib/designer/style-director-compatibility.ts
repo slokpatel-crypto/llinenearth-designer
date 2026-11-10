@@ -1503,7 +1503,9 @@ export function styleDirectorConstructionIssues(
       explanation: "The proposed pleated trouser has a flat-front construction; confirm the intended pleat.",
     });
   }
-  if (pant.type === "formal_flat_front" && pant.pleat !== "flat_front") {
+  if (pant.type === "formal_flat_front" &&
+      optionsFor("pant.pleat").some(option => option.id === pant.pleat) &&
+      pant.pleat !== "flat_front") {
     issues.push({
       code: "flat_front_has_pleat",
       explanation: "The proposed flat-front trouser includes pleats; confirm the actual front construction.",
