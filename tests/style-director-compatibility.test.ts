@@ -3047,3 +3047,31 @@ test("frozen camp-collar occasion review does not mutate or invent formal requir
   assert.deepEqual(styleDirectorConstructionIssues(selected), []);
   assert.equal(JSON.stringify(selected), before);
 });
+
+test("postposed placket bans do not become positive construction requests", () => {
+  for (const wording of [
+    "French placket isn't wanted",
+    "French placket is not wanted",
+    "French placket unwanted",
+    "French placket should not be selected",
+    "French placket must not be used",
+  ]) {
+    const intent = styleDirectorCandidatePlacketIntent(wording);
+    assert.deepEqual(intent, {
+      requested: null, prohibited: ["french_placket"], ambiguous: false,
+    }, wording);
+    assert.equal(styleDirectorCandidatePlacket(wording, []), null);
+    const locked = spec({ placket: "french_placket" });
+    const before = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, locked.shirt).map(x => x.code),
+      ["candidate_placket_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording,
+      spec({ placket: "hidden_fly_front" }).shirt), [], wording);
+    assert.equal(JSON.stringify(locked), before, "review must not mutate locked construction");
+  }
+  assert.deepEqual(styleDirectorCandidatePlacketIntent("French placket isn't required"), {
+    requested: null, prohibited: [], ambiguous: false,
+  });
+  assert.equal(styleDirectorCandidatePlacketIntent(
+    "French placket and French placket isn't wanted").ambiguous, true);
+});
