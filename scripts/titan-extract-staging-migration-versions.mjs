@@ -30,6 +30,7 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
   let connectionCount=0;
   let connectionLine=-1;
   let firstMatrixLine=-1;
+  let functionDefinitionSeen=false;
   for(let i=0;i<lines.length;i++){
     const line=lines[i];
     if(line.startsWith('connection_identity|')){
@@ -42,9 +43,16 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
       const fields=line.split('|');
       if(fields.length!==3 || !versionPattern.test(fields[1]))
         throw Error('Blocked: malformed migration history row');
-      versions.push({version:fields[1]});
-      if(connectionLine<0 || firstMatrixLine>=0)
+      // Rendered PostgreSQL function bodies are unquoted multiline output.
+      // A line that resembles migration_history inside a function body must
+      // NOT be counted as actual applied history.
+      if(connectionLine<0 || functionDefinitionSeen || firstMatrixLine>=0)
         throw Error('Blocked: unexpected history row order');
+      versions.push({version:fields[1]});
+    } else if(line.startsWith('stock_function_definition|')){
+      if(connectionLine<0 || firstMatrixLine>=0)
+        throw Error('Blocked: unexpected function definition row order');
+      functionDefinitionSeen=true;
     } else if(line.startsWith('stock_function_effective_execute|')){
       if(firstMatrixLine<0)firstMatrixLine=i;
       const fields=line.split('|');
