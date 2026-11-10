@@ -1142,7 +1142,7 @@ export function styleDirectorCandidateWideLegIntent(
 ): "requested" | "prohibited" | "ambiguous" | null {
   const width = String.raw`(?:wide[- ]?leg(?:ged)?(?:[- ]?(?:trousers?|pants?))?|wide[- ]?fit[- ]?(?:trousers?|pants?)|wide[- ]?(?:trousers?|pants?))`;
   const beforeBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|add|have|want)\s+)?(?:(?:a|any)\s+)?${width}\b`, "gi");
-  const afterBan = new RegExp(String.raw`\b${width}\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:should|must|shall)\s+(?:be\s+avoided|not\s+be\s+(?:worn|used|chosen|selected))|to\s+be\s+avoided|not\s+to\s+be\s+(?:worn|used|chosen))\b`, "gi");
+  const afterBan = new RegExp(String.raw`\b${width}\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:should|must|shall)\s+(?:be\s+avoided|not\s+be\s+(?:worn|used|chosen|selected))|(?:shouldn|mustn|shan)['’]?t\s+be\s+(?:worn|used|chosen|selected))|to\s+be\s+avoided|not\s+to\s+be\s+(?:worn|used|chosen))\b`, "gi");
   const optional = new RegExp(String.raw`\b(?:(?:optional|maybe|possibly|perhaps)\s+${width}|${width}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory)|maybe|possibly|perhaps))\b`, "gi");
   let prohibited = false;
   let remaining = candidateTrouser.replace(beforeBan, () => { prohibited = true; return " "; });
@@ -1204,7 +1204,7 @@ export function styleDirectorCandidateDrawstringWaistband(
 ): "requested" | "prohibited" | "ambiguous" | null {
   const token = String.raw`draw[- ]?string`;
   const preBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?${token}\b`, "gi");
-  const postBan = new RegExp(String.raw`\b${token}(?:[- ]?(?:free|less)|\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:should|must|shall)\s+(?:be\s+avoided|not\s+be\s+(?:used|added|included|chosen|selected))|to\s+be\s+avoided|not\s+to\s+be\s+(?:used|added|included)))\b`, "gi");
+  const postBan = new RegExp(String.raw`\b${token}(?:[- ]?(?:free|less)|\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:should|must|shall)\s+(?:be\s+avoided|not\s+be\s+(?:used|added|included|chosen|selected))|(?:shouldn|mustn|shan)['’]?t\s+be\s+(?:used|added|included|chosen|selected))|to\s+be\s+avoided|not\s+to\s+be\s+(?:used|added|included)))\b`, "gi");
   const optional = new RegExp(String.raw`\b${token}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|mandatory|needed|necessary)|(?:isn['’]?t|aren['’]?t)\s+(?:required|mandatory|needed|necessary)|maybe|possibly|perhaps)\b`, "gi");
   const optionalPrefix = new RegExp(String.raw`\b(?:optional|maybe|possibly|perhaps|unnecessary)\s+${token}\b`, "gi");
   let banned = false;
