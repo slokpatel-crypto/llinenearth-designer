@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 
 const versionPattern=/^(?:\d{8}|\d{14})$/;
 const versionHexPattern=/^(?:[0-9a-f]{16}|[0-9a-f]{28})$/;
+const captureEnd='probe_complete|TITAN_STAGING_READONLY_V1';
 const roles=['anon','authenticated','service_role'];
 const functionNames=[
   'fabric_stock_record','fabric_stock_reserve','fabric_stock_release',
@@ -32,9 +33,16 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
   let connectionLine=-1;
   let firstMatrixLine=-1;
   let functionDefinitionSeen=false;
+  let complete=false;
   for(let i=0;i<lines.length;i++){
     const line=lines[i];
-    if(line.startsWith('connection_identity|')){
+    if(complete && line.trim()!=='')
+      throw Error('Blocked: trailing content after probe completion marker');
+    if(line.startsWith('probe_complete')){
+      if(line!==captureEnd || firstMatrixLine<0 || complete)
+        throw Error('Blocked: malformed or premature probe completion marker');
+      complete=true;
+    } else if(line.startsWith('connection_identity|')){
       const fields=line.split('|');
       // Database and PostgreSQL role identifiers may contain literal pipes or
       // newlines. SQL must hex-frame both fields, even though they never appear
@@ -92,6 +100,8 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
   if(connectionCount!==1 || firstMatrixLine<0 || connectionLine>=firstMatrixLine ||
      matrix.size!==expectedPairs.size)
     throw Error('Blocked: partial or ambiguous psql capture');
+  if(!complete)
+    throw Error('Blocked: missing post-COMMIT probe completion marker');
   // The SQL CROSS JOIN produces the same installed signatures for every role.
   // A contradictory matrix is an incomplete or forged capture, not reviewable evidence.
   for(const name of functionNames){
