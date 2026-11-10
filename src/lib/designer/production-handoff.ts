@@ -54,11 +54,26 @@ export type ProductionHandoff={
   caveats:string[];
 };
 
+// A typed interface cannot authenticate a restored JSON record. Validate
+// mandatory nested recipe containers before any property access or spread:
+// missing construction/context must not become a superficially review-ready
+// packet or leak an uncontrolled TypeError to the operator.
+function handoffRecord(value:unknown):value is Record<string,unknown> {
+  return value!==null && typeof value==="object" && !Array.isArray(value);
+}
+
 export function buildProductionHandoff(
   revision:LockedDesignRevision,
   generatedAt=new Date().toISOString(),
 ):ProductionHandoff {
+  if(!handoffRecord(revision) || !handoffRecord(revision.garmentSpec)) {
+    throw new Error("Unsafe tailor handoff source: expected a locked garment recipe record.");
+  }
   const spec=revision.garmentSpec;
+  if(!handoffRecord(spec.source) || !handoffRecord(spec.shirt)
+      ||!handoffRecord(spec.trouser) || !handoffRecord(spec.context)) {
+    throw new Error("Unsafe tailor handoff source: missing source, garment or context record.");
+  }
   // Reject malformed nested StyleSpec before reading shirt/pant selection fields.
   // A corrupt locked recipe must fail with a controlled construction-integrity
   // error, not an incidental TypeError while auditing measurement requirements.
