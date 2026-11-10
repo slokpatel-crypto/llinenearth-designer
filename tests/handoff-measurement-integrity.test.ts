@@ -126,9 +126,12 @@ test("malformed generatedAt values reject unsigned handoff construction",()=>{
   assert.equal(normal.generatedAt,"2026-11-02T11:00:00.000Z");
   const offset=buildProductionHandoff(sample(),"2026-11-02T16:30:00+05:30");
   assert.equal(offset.generatedAt,"2026-11-02T11:00:00.000Z");
+  const leap=buildProductionHandoff(sample(),"2024-02-29T23:59:59Z");
+  assert.equal(leap.generatedAt,"2024-02-29T23:59:59.000Z");
   for(const bad of ["2026-11-02","2026-11-02T11:00:00",
     " 2026-11-02T11:00:00Z","2026-11-02T11:00:00Z trailing",
-    "2026-11-02T11:00:00+99:99"]) {
+    "2026-11-02T11:00:00+99:99","2026-02-29T11:00:00Z",
+    "2026-02-30T11:00:00Z","2026-11-02T24:00:00Z"]) {
     assert.throws(()=>buildProductionHandoff(sample(),bad),
       /Unsafe tailor handoff timestamp/,bad);
   }
