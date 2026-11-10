@@ -37,7 +37,40 @@ function list(items:string[]){
   return items.map((item)=>`<li>${esc(item)}</li>`).join("");
 }
 
+// Stored packet previews are unverified, so their pending production fields
+// cannot be accepted as evidence of actual cloth allocation, quotes or stock.
+// The canonical handoff v1 builder leaves all three pending until independent
+// operator systems verify them. Reject corrupt/forged states before printing.
+function isRecord(value:unknown):value is Record<string,unknown> {
+  return value!==null && typeof value==="object" && !Array.isArray(value);
+}
+
+function assertPrintablePendingProduction(handoff:unknown):asserts handoff is ProductionHandoff {
+  if(!isRecord(handoff)) {
+    throw new Error("Unsafe tailor tech pack packet: expected a handoff record.");
+  }
+  const construction=handoff.construction;
+  if(!isRecord(construction)||!isRecord(construction.shirt)||!isRecord(construction.trouser)) {
+    throw new Error("Unsafe tailor tech pack construction: expected shirt and trouser records.");
+  }
+  const production=handoff.production;
+  if(!isRecord(production)||!isRecord(production.clothEstimate)
+      ||!isRecord(production.stockReservation)||!isRecord(production.quote)) {
+    throw new Error("Unsafe tailor tech pack production fields: expected pending production records.");
+  }
+  const cloth=production.clothEstimate;
+  const reservation=production.stockReservation;
+  const quote=production.quote;
+  if(cloth.basis!=="tailor_required"||cloth.shirtMetres!==null||cloth.trouserMetres!==null
+      ||typeof cloth.note!=="string"||!cloth.note.trim()||cloth.note.length>2000
+      ||reservation.status!=="not_requested"||reservation.reservationId!==null
+      ||quote.status!=="pending"||quote.amount!==null||quote.currency!==null) {
+    throw new Error("Unsafe tailor tech pack production fields: unverified cloth, stock or quote claims.");
+  }
+}
+
 function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSource:boolean){
+  assertPrintablePendingProduction(handoff);
   const unresolvedAudit=auditHandoffHumanNotes(handoff.unresolved,"unresolved");
   const caveatAudit=auditHandoffHumanNotes(handoff.caveats,"caveats");
   if(unresolvedAudit.errors.length || caveatAudit.errors.length) {
