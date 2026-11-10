@@ -3213,3 +3213,34 @@ test("frozen modal collar prohibitions preserve independent wording review and s
     }
   }
 });
+
+test("contracted placket bans preserve frozen construction and optionality", () => {
+  for (const wording of [
+    "French placket shouldn't be selected",
+    "French placket mustn't be used",
+    "French placket shouldn’t be chosen",
+    "French placket mustn’t be worn",
+  ]) {
+    assert.deepEqual(styleDirectorCandidatePlacketIntent(wording), {
+      requested: null, prohibited: ["french_placket"], ambiguous: false,
+    }, wording);
+    assert.equal(styleDirectorCandidatePlacket(wording, []), null, wording);
+    for (const [placket, expected] of [
+      ["french_placket", ["candidate_placket_mismatch"]],
+      ["hidden_fly_front", []],
+    ] as const) {
+      const locked = spec({ placket });
+      Object.freeze(locked.shirt);
+      Object.freeze(locked.pant);
+      Object.freeze(locked);
+      const before = JSON.stringify(locked);
+      const first = styleDirectorCandidatePlacketIssues(wording, locked.shirt);
+      assert.deepEqual(first.map(issue => issue.code), expected, wording);
+      assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, locked.shirt), first);
+      assert.equal(JSON.stringify(locked), before);
+    }
+  }
+  assert.deepEqual(styleDirectorCandidatePlacketIntent("French placket isn't required"), {
+    requested: null, prohibited: [], ambiguous: false,
+  });
+});
