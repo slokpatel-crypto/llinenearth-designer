@@ -3,10 +3,17 @@
 // This is untrusted evidence, not a staging attestation or migration authorization.
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
 
 const versionPattern=/^(?:\d{8}|\d{14})$/;
 const versionHexPattern=/^(?:[0-9a-f]{16}|[0-9a-f]{28})$/;
 const captureEnd='probe_complete|TITAN_STAGING_READONLY_V1';
+const framedHex=/^(?:[0-9a-f]{2})*$/;
+function decodeFramed(hex,{allowEmpty=false}={}){
+  if(typeof hex!=='string' || (!allowEmpty && !hex) || !framedHex.test(hex))
+    throw Error('Blocked: malformed UTF-8 hex-framed catalog field');
+  return new TextDecoder('utf-8',{fatal:true}).decode(Buffer.from(hex,'hex'));
+}
 const roles=['anon','authenticated','service_role'];
 const functionNames=[
   'fabric_stock_record','fabric_stock_reserve','fabric_stock_release',
@@ -29,6 +36,7 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
   const versions=[];
   const matrix=new Map();
   const rolePresence=new Map();
+  const definitionSignatures=new Set();
   let connectionCount=0;
   let connectionLine=-1;
   let firstMatrixLine=-1;
@@ -70,12 +78,28 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
     } else if(line.startsWith('stock_function_definition|')){
       if(connectionLine<0 || firstMatrixLine>=0)
         throw Error('Blocked: unexpected function definition row order');
+      const fields=line.split('|');
+      if(fields.length!==8)throw Error('Blocked: malformed stock function definition row');
+      const [,signatureHex,ownerHex,securityDefiner,volatility,settingsHex,digest,bodyHex]=fields;
+      const signature=decodeFramed(signatureHex);
+      decodeFramed(ownerHex);
+      decodeFramed(settingsHex,{allowEmpty:true});
+      const body=decodeFramed(bodyHex);
+      if(!functionNames.some(name=>signature.startsWith(name+'(') ||
+           signature.startsWith('public.'+name+'(')) ||
+         !['t','f'].includes(securityDefiner) || !['i','s','v'].includes(volatility) ||
+         !/^[a-f0-9]{32}$/.test(digest) ||
+         createHash('md5').update(Buffer.from(bodyHex,'hex')).digest('hex')!==digest ||
+         !body || definitionSignatures.has(signature))
+        throw Error('Blocked: inconsistent or duplicated stock function definition');
+      definitionSignatures.add(signature);
       functionDefinitionSeen=true;
     } else if(line.startsWith('stock_function_effective_execute|')){
       if(firstMatrixLine<0)firstMatrixLine=i;
       const fields=line.split('|');
       if(fields.length!==7)throw Error('Blocked: malformed stock permissions row');
-      const [,name,signature,exists,role,roleExists,canExecute]=fields;
+      const [,name,signatureHex,exists,role,roleExists,canExecute]=fields;
+      const signature=decodeFramed(signatureHex,{allowEmpty:true});
       const pair=name+'|'+role;
       if(!expectedPairs.has(pair) || !['t','f'].includes(exists) ||
          !['t','f'].includes(roleExists) || !['t','f',''].includes(canExecute) ||
@@ -112,6 +136,12 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
         throw Error('Blocked: inconsistent stock function signature matrix');
     }
   }
+  const installedSignatures=new Set(
+    [...matrix.values()].flatMap(signatures=>[...signatures]).filter(Boolean)
+  );
+  if(installedSignatures.size!==definitionSignatures.size ||
+     [...installedSignatures].some(signature=>!definitionSignatures.has(signature)))
+    throw Error('Blocked: stock function definition/matrix disagreement');
   const counts=new Map();
   for(const row of versions)counts.set(row.version,(counts.get(row.version)??0)+1);
   const duplicates=[...counts].filter(([,count])=>count>1)
