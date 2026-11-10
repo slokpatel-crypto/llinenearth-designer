@@ -269,6 +269,23 @@ const candidateShirtWear = (name: string) => {
     else tuckedFromNegation = true;
     return " ";
   });
+  // A refusal after the finished wear state is not an affirmative tucked
+  // or untucked request. Consume the whole clause before scanning for either
+  // state; the opposite wear state is required by an explicit prohibition.
+  remaining = remaining.replace(
+    /\b(untucked|tucked)\s+(?:(?:shirts?|garments?)\s+)?(?:(?:is|are)\s+)?(?:unwanted|prohibited|forbidden|banned|not\s+(?:wanted|allowed|permitted)|(?:isn['’]?t|aren['’]?t)\s+(?:wanted|allowed|permitted)|(?:must|should|shall)\s+not\s+be\s+(?:worn|used|chosen|selected))\b/gi,
+    (_match, forbidden: string) => {
+      if (forbidden.toLowerCase() === "tucked") untuckedFromNegation = true;
+      else tuckedFromNegation = true;
+      return " ";
+    },
+  );
+  // "Not required" is optional, never a prohibition or a new wear choice.
+  // Include a garment noun between the wear state and the optional qualifier.
+  remaining = remaining.replace(
+    /\b(?:untucked|tucked)\s+(?:(?:shirts?|garments?)\s+)?(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory|necessary)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory|necessary))\b/gi,
+    " ",
+  );
   // An optional wear treatment is not a mandatory instruction to tuck or
   // untuck. Neutralize both prefix and suffix forms only after genuine
   // prohibitions have been consumed, keeping unrelated affirmative choices.
