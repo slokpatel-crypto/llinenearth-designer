@@ -408,3 +408,56 @@ test("postposed construction prohibitions respect locked wide-leg and drawstring
   assert.equal(standard.waistband, "belt_loops");
   assert.equal(drawstring.waistband, "drawstring_elastic");
 });
+
+test("contracted drawstring refusals prohibit the saved waistband without changing it", () => {
+  const drawstring = Object.freeze({ waistband: "drawstring_elastic" });
+  const ordinary = Object.freeze({ waistband: "belt_loops" });
+  const snapshot = JSON.stringify(drawstring);
+  for (const candidate of [
+    "drawstring isn't wanted",
+    "drawstring isn’t wanted",
+    "drawstring aren't wanted",
+    "draw-string unwanted",
+    "drawstring is unwanted",
+    "drawstring must not be selected",
+    "drawstring should not be chosen",
+  ]) {
+    assert.equal(styleDirectorCandidateDrawstringWaistband(candidate), "prohibited", candidate);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(candidate, ordinary), [], candidate);
+    const issues = styleDirectorCandidateWaistbandIssues(candidate, drawstring);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_waistband_mismatch"], candidate);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(candidate, drawstring), issues);
+    assert.equal(JSON.stringify(drawstring), snapshot, "locked option must be immutable");
+  }
+  for (const candidate of [
+    "drawstring isn't wanted, but drawstring is required",
+    "drawstring must not be selected; drawstring trousers",
+    "draw-string unwanted and add drawstring",
+  ]) {
+    assert.equal(styleDirectorCandidateDrawstringWaistband(candidate), "ambiguous", candidate);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(candidate, drawstring), [], candidate);
+  }
+});
+
+test("contracted drawstring optionals remain neutral and preserve frozen IDs", () => {
+  const drawstring = Object.freeze({ waistband: "drawstring_elastic" });
+  const ordinary = Object.freeze({ waistband: "belt_loops" });
+  for (const candidate of [
+    "drawstring isn't required",
+    "drawstring isn’t necessary",
+    "draw-string isn't mandatory",
+    "drawstring aren't needed",
+    "drawstring is not needed",
+    "drawstring is optional",
+  ]) {
+    assert.equal(styleDirectorCandidateDrawstringWaistband(candidate), null, candidate);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(candidate, drawstring), [], candidate);
+    assert.deepEqual(styleDirectorCandidateWaistbandIssues(candidate, ordinary), [], candidate);
+  }
+  assert.equal(styleDirectorCandidateDrawstringWaistband(
+    "drawstring isn't required; no drawstring"), "prohibited");
+  assert.equal(styleDirectorCandidateDrawstringWaistband(
+    "drawstring isn't mandatory; drawstring trousers"), "requested");
+  assert.equal(drawstring.waistband, "drawstring_elastic");
+  assert.equal(ordinary.waistband, "belt_loops");
+});
