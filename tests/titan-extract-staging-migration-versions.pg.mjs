@@ -108,3 +108,32 @@ test('real permission-denied history fails closed without accepting partial stdo
     /did not complete/,
   );
 });
+
+test('encoding prevents migration-name row injection and multiline SQL-body spoofing',()=>{
+  execute([
+    'ALTER TABLE supabase_migrations.schema_migrations ADD COLUMN name text;',
+    "UPDATE supabase_migrations.schema_migrations SET name = E'legitimate\\nmigration_history|20261110010101|false' WHERE version = '20261103';",
+    'CREATE OR REPLACE FUNCTION public.fabric_stock_reserve_v2(text) RETURNS boolean LANGUAGE plpgsql AS $$',
+    'BEGIN',
+    '  -- migration_history|20261111010101|false',
+    '  RETURN true;',
+    'END; $$;',
+  ].join('\n'));
+  const r=probe();
+  assert.equal(r.status,0,r.stderr);
+  const output=extractUntrustedAppliedVersions(r.stdout,{psqlExitCode:r.status});
+  assert.deepEqual(output.applied_versions,[
+    {version:'20261103'},{version:'20261103'},{version:'20261104010101'}
+  ]);
+  assert.deepEqual(output.duplicate_applied_versions,[{version:'20261103',count:2}]);
+  assert.equal(output.release_ready,false);
+  assert.doesNotMatch(r.stdout,/migration_history\|20261110010101\|/);
+  assert.doesNotMatch(r.stdout,/migration_history\|20261111010101\|/);
+  const row=r.stdout.split(/\r?\n/).find(x=>x.startsWith('stock_function_definition|fabric_stock_reserve_v2(text)|'));
+  assert.ok(row,'Expected encoded function evidence row');
+  const cols=row.split('|');
+  assert.equal(cols.length,8,'Multiline source should remain in one SQL field');
+  const rendered=Buffer.from(cols[7],'hex').toString('utf8');
+  assert.match(rendered,/migration_history\|20261111010101\|/,'Human reviewer can still decode original function body');
+  assert.equal(output.sql_source_identity_verified,false);
+});
