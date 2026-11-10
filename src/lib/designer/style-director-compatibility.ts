@@ -1477,7 +1477,7 @@ export function styleDirectorConstructionIssues(
     });
   }
   if (shirt.sleeve === "half_sleeve" &&
-      shirt.cuff !== "open_short_hem_cuff" && shirt.cuff !== "french_double_cuff") {
+      shirt.cuff !== "open_short_hem_cuff") {
     issues.push({
       code: "short_sleeve_cuff_review",
       explanation: "The proposed half-sleeve uses a full-length cuff option; confirm a buildable short-sleeve finish.",
