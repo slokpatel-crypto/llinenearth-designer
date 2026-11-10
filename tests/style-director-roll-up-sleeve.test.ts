@@ -85,3 +85,56 @@ test("Roll-up Styled new proposals retain exact ID and cannot claim a verified p
   ).map(issue => issue.code), ["unverified_roll_up_sleeve_photo"]);
   assert.equal(JSON.stringify(saved), before);
 });
+
+test("postposed roll-up refusals cannot silently select a rolled sleeve", () => {
+  const rolled = Object.freeze({ sleeve: "roll_up_styled" });
+  const ordinary = Object.freeze({ sleeve: "full_sleeve" });
+  const snapshot = JSON.stringify(rolled);
+  for (const candidate of [
+    "Roll-up sleeves aren't wanted",
+    "Roll-up sleeves aren’t wanted",
+    "Roll-up Styled isn't wanted",
+    "Roll-up Styled is not wanted",
+    "Roll-up Styled unwanted",
+    "Roll-up sleeves must not be selected",
+    "Roll-up Styled should not be used",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(candidate), {
+      requested: false, prohibited: true, ambiguous: false,
+    }, candidate);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, ordinary), [], candidate);
+    const mismatch = styleDirectorCandidateSleeveIssues(candidate, rolled);
+    assert.deepEqual(mismatch.map(issue => issue.code), ["candidate_sleeve_mismatch"], candidate);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, rolled), mismatch);
+    assert.deepEqual(wordingCodes(candidate), [], candidate);
+    assert.equal(JSON.stringify(rolled), snapshot);
+  }
+});
+
+test("postposed roll-up optionality and contradictory bans preserve locked sleeve IDs", () => {
+  const rolled = Object.freeze({ sleeve: "roll_up_styled" });
+  const full = Object.freeze({ sleeve: "full_sleeve" });
+  for (const candidate of [
+    "Roll-up Styled isn't required",
+    "Roll-up sleeves aren't needed",
+    "Roll-up sleeves aren’t mandatory",
+    "Roll-up Styled is not required",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(candidate), {
+      requested: false, prohibited: false, ambiguous: false,
+    }, candidate);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, rolled), [], candidate);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, full), [], candidate);
+    assert.deepEqual(wordingCodes(candidate), [], candidate);
+  }
+  for (const candidate of [
+    "Roll-up sleeves aren't wanted; Roll-up Styled Shirt",
+    "Roll-up Styled must not be selected; Roll-up Styled Shirt",
+  ]) {
+    assert.equal(styleDirectorCandidateRollUpSleeveIntent(candidate).ambiguous, true, candidate);
+    assert.deepEqual(wordingCodes(candidate), ["ambiguous_candidate_sleeve"], candidate);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, rolled), [], candidate);
+  }
+  assert.equal(rolled.sleeve, "roll_up_styled");
+  assert.equal(full.sleeve, "full_sleeve");
+});
