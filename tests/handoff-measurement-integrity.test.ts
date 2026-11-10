@@ -113,6 +113,34 @@ test("saved occasion, climate and intention must stay printable for reconstructi
   assert.equal(valid.construction.context?.climate,"Hot / humid");
 });
 
+test("malformed generatedAt values reject unsigned handoff construction",()=>{
+  const sample=()=>createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  for(const bad of [null,0,{},[], "not-a-date","invalid-2026-11-02"]) {
+    assert.throws(
+      ()=>buildProductionHandoff(sample(),bad as never),
+      /Unsafe tailor handoff timestamp/,
+      String(bad),
+    );
+  }
+  const normal=buildProductionHandoff(sample(),"2026-11-02T11:00:00Z");
+  assert.equal(normal.generatedAt,"2026-11-02T11:00:00.000Z");
+});
+
+test("verified handoff fails closed before hashing malformed saved lock containers",async()=>{
+  const sample=()=>createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  for(const candidate of [null,[],false,{}, {garmentSpec:null},{garmentSpec:[]},
+    {garmentSpec:"malformed"}]) {
+    await assert.rejects(
+      buildVerifiedProductionHandoff(candidate as never),
+      /Unsafe verified tailor handoff source/,
+    );
+  }
+  const corrupt=sample();
+  corrupt.garmentSpec=null as never;
+  await assert.rejects(buildVerifiedProductionHandoff(corrupt),
+    /Unsafe verified tailor handoff source/);
+});
+
 test("consistent centimetre body/ease/finished ranges remain exportable",()=>{
   const report=auditHandoffMeasurements({shirt:[chest,shoulder,sleeve],trouser:[waist,seat,inseam,outseam]});
   assert.deepEqual(report,{errors:[],missing:[]});
