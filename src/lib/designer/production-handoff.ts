@@ -62,6 +62,24 @@ function handoffRecord(value:unknown):value is Record<string,unknown> {
   return value!==null && typeof value==="object" && !Array.isArray(value);
 }
 
+// Restored JSON and unsigned printable packets share this exact versioned
+// DesignerContext vocabulary. Missing or unsupported input is never a valid
+// recorded selection; optional context in old print previews stays review-only.
+export function invalidHandoffContextField(value:unknown):"record"|"occasion"|"climate"|"intention"|null {
+  if(!handoffRecord(value)) return "record";
+  const supported:Record<"occasion"|"climate"|"intention",ReadonlySet<string>>={
+    occasion:new Set(["Casual","Smart-Casual","Semi-Formal","Formal"]),
+    climate:new Set(["Not specified","Hot / humid","Cool","Air-conditioned"]),
+    intention:new Set(["Understated","Balanced","Expressive"]),
+  };
+  for(const field of ["occasion","climate","intention"] as const) {
+    const selected=value[field];
+    if(typeof selected!=="string" || !selected.trim() || selected.length>240
+        || /[\u0000-\u001F\u007F]/.test(selected) || !supported[field].has(selected)) return field;
+  }
+  return null;
+}
+
 export function buildProductionHandoff(
   revision:LockedDesignRevision,
   generatedAt=new Date().toISOString(),
@@ -97,21 +115,9 @@ export function buildProductionHandoff(
       ||!handoffRecord(spec.trouser) || !handoffRecord(spec.context)) {
     throw new Error("Unsafe tailor handoff source: missing source, garment or context record.");
   }
-  // These values are a versioned part of the design's tailoring intent.
-  // Use the exact DesignerRecommendation/DesignerContext choices from engine.ts;
-  // arbitrary printable strings are NOT recognised selections.
-  const supportedContext:Record<"occasion"|"climate"|"intention",ReadonlySet<string>>={
-    occasion:new Set(["Casual","Smart-Casual","Semi-Formal","Formal"]),
-    climate:new Set(["Not specified","Hot / humid","Cool","Air-conditioned"]),
-    intention:new Set(["Understated","Balanced","Expressive"]),
-  };
-  for(const field of ["occasion","climate","intention"] as const) {
-    const value=spec.context[field];
-    if(typeof value!=="string" || !value.trim() || value.length>240
-        || /[\u0000-\u001F\u007F]/.test(value)
-        || !supportedContext[field].has(value)) {
-      throw new Error(`Unsafe tailor handoff context: missing or invalid ${field}.`);
-    }
+  const contextError=invalidHandoffContextField(spec.context);
+  if(contextError) {
+    throw new Error(`Unsafe tailor handoff context: missing or invalid ${contextError}.`);
   }
   // Reject malformed nested StyleSpec before reading shirt/pant selection fields.
   // A corrupt locked recipe must fail with a controlled construction-integrity

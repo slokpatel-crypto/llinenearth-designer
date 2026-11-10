@@ -1,6 +1,6 @@
 import type { ProductionHandoff } from "@/lib/designer/production-handoff";
 import type { LockedDesignRevision } from "./design-lock.ts";
-import { verifyProductionHandoff } from "./production-handoff.ts";
+import { invalidHandoffContextField, verifyProductionHandoff } from "./production-handoff.ts";
 import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffFabricIdentity, auditHandoffFitProvenance, auditHandoffHumanNotes, auditHandoffMeasurements } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
 
@@ -80,6 +80,16 @@ function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSourc
   if(fabricAudit.errors.length) {
     throw new Error(`Unsafe tailor tech pack fabric identity: ${fabricAudit.errors.join(" ")}`);
   }
+  // Old stored preview packets may omit context. Print that absence as an
+  // unresolved review item rather than inventing a choice; reject any present
+  // but unsupported values before they can appear in the printable report.
+  const recordedContext=handoff.construction.context;
+  if(recordedContext != null) {
+    const error=invalidHandoffContextField(recordedContext);
+    if(error) throw new Error(`Unsafe tailor tech pack context: missing or invalid ${error}.`);
+  }
+  const missingContext=recordedContext == null
+    ? ["Locked design occasion, climate and intention are not recorded; confirm customer intent before tailoring."] : [];
   const shirt=handoff.construction.shirt;
   const trouser=handoff.construction.trouser;
   // Use only a structurally valid StyleSpec to derive conditional measurement
@@ -122,7 +132,7 @@ function renderTailorTechPackHtml(handoff:ProductionHandoff, verifiedLockedSourc
   }
   const outstanding=[...new Set([...handoff.unresolved,...audit.missing,...fitAudit.missing,
     ...blockAudit.missing,...checkAudit.missing,...creativeAudit.missing,
-    ...fabricAudit.missing,...missingConstruction])];
+    ...fabricAudit.missing,...missingConstruction,...missingContext])];
 
   const openConstructionChecks=handoff.construction.checks.some(
     (check)=>check.severity==="review"||check.severity==="warning",

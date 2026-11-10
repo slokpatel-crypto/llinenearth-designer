@@ -262,6 +262,34 @@ test("tech packs show recorded design context for both legacy and versioned cuts
   }
 });
 
+test("unverified stored tech packs reject forged context yet retain review-only legacy absence",()=>{
+  const sample=()=>buildProductionHandoff(
+    createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]),
+    "2026-11-02T11:00:00Z",
+  );
+  for(const field of ["occasion","climate","intention"] as const) {
+    for(const forged of ["Wedding","Unknown","FORMAL","Hot / humid ",null,{},[]]) {
+      const packet=sample();
+      (packet.construction.context as unknown as Record<string,unknown>)[field]=forged;
+      assert.throws(()=>buildTailorTechPackHtml(packet),
+        /Unsafe tailor tech pack context/,field+"="+String(forged));
+    }
+  }
+  const malformed=sample();
+  malformed.construction.context=[] as never;
+  assert.throws(()=>buildTailorTechPackHtml(malformed),
+    /Unsafe tailor tech pack context/);
+  const restoredLegacy=sample();
+  delete restoredLegacy.construction.context;
+  const html=buildTailorTechPackHtml(restoredLegacy);
+  assert.match(html,/Locked design occasion, climate and intention are not recorded/);
+  assert.match(html,/review required/);
+  assert.match(html,/NO CUTTING AUTHORISATION/);
+  const valid=buildTailorTechPackHtml(sample());
+  assert.match(valid,/Recorded occasion and design context/);
+  assert.match(valid,/<th>Occasion<\/th><td>Smart-Casual<\/td>/);
+});
+
 test("an invalid, nonfinite, reversed or mismatched finished target fails closed",()=>{
   const invalid=[
     {...chest,bodyCm:NaN},
