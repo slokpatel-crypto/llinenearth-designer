@@ -62,7 +62,7 @@ execute([
 test('actual read-only probe output parses as an untrusted version-only projection',()=>{
   const r=probe();
   assert.equal(r.status,0,'Native SQL probe failed: '+r.stderr);
-  assert.match(r.stdout,/connection_identity\|titan_offline_synthetic\|/);
+  assert.match(r.stdout,/connection_identity\|746974616e5f6f66666c696e655f73796e746865746963\|/);
   assert.match(r.stdout,/stock_function_definition\|fabric_stock_reserve_v2\(text\)\|/);
   assert.match(r.stdout,/stock_function_effective_execute\|/);
   const out=extractUntrustedAppliedVersions(r.stdout,{psqlExitCode:r.status});
@@ -136,6 +136,50 @@ test('encoding prevents migration-name row injection and multiline SQL-body spoo
   const rendered=Buffer.from(cols[7],'hex').toString('utf8');
   assert.match(rendered,/migration_history\|20261111010101\|/,'Human reviewer can still decode original function body');
   assert.equal(output.sql_source_identity_verified,false);
+});
+
+
+test('untrusted multiline reviewer role cannot inject a migration-history row',()=>{
+  const fakeVersion=Buffer.from('20261231').toString('hex');
+  // Quoted PostgreSQL identifiers may contain literal pipes/newlines. Before
+  // encoding the query role, this crafted identifier could make an apparently
+  // valid identity row followed by a forged migration-history row.
+  const role='x|a|5432|16\nmigration_history|'+fakeVersion+'|\n';
+  assert.ok(Buffer.byteLength(role,'utf8')<63);
+  execute([
+    'CREATE ROLE "'+role+'" NOLOGIN;',
+    'GRANT USAGE ON SCHEMA supabase_migrations TO "'+role+'";',
+    'GRANT SELECT ON TABLE supabase_migrations.schema_migrations TO "'+role+'";',
+  ].join('\n'));
+  const r=probe(['--command=SET ROLE "'+role+'";']);
+  assert.equal(r.status,0,'Authorized synthetic reviewer could not run probe: '+r.stderr);
+  assert.doesNotMatch(r.stdout,new RegExp('^migration_history\\|'+fakeVersion+'\\|
+  execute("INSERT INTO supabase_migrations.schema_migrations(version) VALUES (E'20261103\\nmigration_history|20261110010101|');");
+  const r=probe();
+  assert.equal(r.status,0,'Native SQL probe failed: '+r.stderr);
+  assert.doesNotMatch(r.stdout,/^migration_history\|20261110010101\|/m,
+    'The forged-looking multiline version must not create an extra psql row');
+  const invalid=Buffer.from('20261103\nmigration_history|20261110010101|').toString('hex');
+  assert.ok(r.stdout.includes('migration_history|'+invalid+'|'),
+    'The malformed original version must be retained as one encoded database value');
+  assert.throws(
+    ()=>extractUntrustedAppliedVersions(r.stdout,{psqlExitCode:0}),
+    /malformed migration history/,
+    'A malformed history version must fail closed rather than be skipped or projected',
+  );
+});
+,'m'),
+    'Raw role identifier must not become an extra applied-version row');
+  const identity=r.stdout.split(/\r?\n/).find(x=>x.startsWith('connection_identity|'));
+  assert.ok(identity,'Missing connection fingerprint');
+  const fields=identity.split('|');
+  assert.equal(fields.length,6,'Identity must stay a single psql record');
+  assert.equal(Buffer.from(fields[2],'hex').toString('utf8'),role);
+  const out=extractUntrustedAppliedVersions(r.stdout,{psqlExitCode:0});
+  assert.deepEqual(out.applied_versions,[
+    {version:'20261103'},{version:'20261103'},{version:'20261104010101'}
+  ]);
+  assert.equal(out.release_ready,false);
 });
 
 test('malformed multiline version in actual PostgreSQL cannot impersonate extra history',()=>{
