@@ -80,6 +80,16 @@ test('actual read-only probe output parses as an untrusted version-only projecti
   }
 });
 
+test('actual PostgreSQL transcript rejects unrelated stdout and interior blank records',()=>{
+  const r=probe();
+  assert.equal(r.status,0,r.stderr);
+  const marker='probe_complete|TITAN_STAGING_READONLY_V1';
+  assert.ok(r.stdout.includes(marker));
+  const extra=r.stdout.replace(marker,'unexpected_staging_status|not-from-probe\n'+marker);
+  assert.throws(()=>extractUntrustedAppliedVersions(extra,{psqlExitCode:0}),/unrecognized psql evidence row/);
+  const blank=r.stdout.replace(marker,'\n'+marker);
+  assert.throws(()=>extractUntrustedAppliedVersions(blank,{psqlExitCode:0}),/unexpected blank psql evidence row/);
+});
 test('actual PostgreSQL probe completion marker detects output truncation',()=>{
   const r=probe();
   assert.equal(r.status,0,r.stderr);
