@@ -97,12 +97,19 @@ export function buildProductionHandoff(
       ||!handoffRecord(spec.trouser) || !handoffRecord(spec.context)) {
     throw new Error("Unsafe tailor handoff source: missing source, garment or context record.");
   }
-  // Occasion, climate and intention are part of the locked design recipe.
-  // Do not silently print a blank/default context for a malformed saved value.
+  // These values are a versioned part of the design's tailoring intent.
+  // Use the exact DesignerRecommendation/DesignerContext choices from engine.ts;
+  // arbitrary printable strings are NOT recognised selections.
+  const supportedContext:Record<"occasion"|"climate"|"intention",ReadonlySet<string>>={
+    occasion:new Set(["Casual","Smart-Casual","Semi-Formal","Formal"]),
+    climate:new Set(["Not specified","Hot / humid","Cool","Air-conditioned"]),
+    intention:new Set(["Understated","Balanced","Expressive"]),
+  };
   for(const field of ["occasion","climate","intention"] as const) {
     const value=spec.context[field];
     if(typeof value!=="string" || !value.trim() || value.length>240
-        || /[\u0000-\u001F\u007F]/.test(value)) {
+        || /[\u0000-\u001F\u007F]/.test(value)
+        || !supportedContext[field].has(value)) {
       throw new Error(`Unsafe tailor handoff context: missing or invalid ${field}.`);
     }
   }

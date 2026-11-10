@@ -113,6 +113,30 @@ test("saved occasion, climate and intention must stay printable for reconstructi
   assert.equal(valid.construction.context?.climate,"Hot / humid");
 });
 
+test("locked tailoring context accepts only recognised designer option values",()=>{
+  const sample=()=>createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  const valid={
+    occasion:["Casual","Smart-Casual","Semi-Formal","Formal"],
+    climate:["Not specified","Hot / humid","Cool","Air-conditioned"],
+    intention:["Understated","Balanced","Expressive"],
+  } as const;
+  for(const field of ["occasion","climate","intention"] as const) {
+    for(const allowed of valid[field]) {
+      const revision=sample();
+      (revision.garmentSpec.context as unknown as Record<string,unknown>)[field]=allowed;
+      const packet=buildProductionHandoff(revision,"2026-11-02T11:00:00Z");
+      assert.equal(packet.construction.context?.[field],allowed);
+    }
+    for(const unsupported of ["unknown","FORMAL","Wedding","hot / humid",
+      "Understated ","Not-specified","2026","✅"]) {
+      const revision=sample();
+      (revision.garmentSpec.context as unknown as Record<string,unknown>)[field]=unsupported;
+      assert.throws(()=>buildProductionHandoff(revision),
+        /Unsafe tailor handoff context/,field+"="+unsupported);
+    }
+  }
+});
+
 test("malformed generatedAt values reject unsigned handoff construction",()=>{
   const sample=()=>createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
   for(const bad of [null,0,{},[], "not-a-date","invalid-2026-11-02"]) {
