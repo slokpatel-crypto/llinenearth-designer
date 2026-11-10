@@ -14,6 +14,6 @@
 
 ## CI scope and remaining blockers
 
-`.github/workflows/titan-offline-staging-history.yml` runs synthetic Node.js tests only. It cannot access Supabase/staging/production, set credentials, execute `psql`, or apply migrations. Production blockers remain migration collisions and function overwrite ordering in #882, protected-main/independent review in #878, physical garment acceptance, and explicit owner approval.
+`.github/workflows/titan-offline-staging-history.yml` runs both synthetic Node.js parser tests and native integration tests that invoke the exact probe **only** against a disposable localhost PostgreSQL 16 CI service with fixed synthetic credentials and explicit loopback connection guards. It must never access Supabase/staging/production, use real credentials, or apply production migrations. The parser's CLI always exits nonzero; the unit and native integration suites assert successful extraction while preserving the release block. Production blockers remain migration collisions and function overwrite ordering in #882, protected-main/independent review in #878, physical garment acceptance, and explicit owner approval.
 
 **Never:** automate the live staging probe, treat a complete projection as project identity, rename historical applied migrations, run `migration repair` without separate authorization, weaken strict preflight, merge or deploy from this document.
