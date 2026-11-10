@@ -328,3 +328,31 @@ test("unknown sleeve IDs never masquerade as a known full-length cuff conflict",
       "known long-sleeve constructions must still reject open short hems");
   }
 });
+
+test("unknown cuff IDs do not fabricate a full-length cuff construction conflict", () => {
+  for (const cuff of [undefined, null, "", "retired_cuff", "barrel_cuff_1_button "]) {
+    const locked = Object.freeze({
+      shirt: Object.freeze({ type: "short_sleeve_shirt", collar: "spread_collar",
+        wear: "untucked", sleeve: "half_sleeve", cuff }),
+      pant: Object.freeze({ type: "formal_flat_front", pleat: "flat_front",
+        hem: "plain_hem", break: "slight_break" }),
+    }) as unknown as StyleSpecV2;
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorConstructionIssues(locked);
+    assert.equal(issues.some(issue => issue.code === "short_sleeve_cuff_review"), false,
+      "unknown cuff is not proof of a long-sleeve cuff");
+    assert.equal(issues.some(issue => issue.code === "unknown_versioned_option"),
+      cuff !== undefined, "supplied invalid IDs still require review");
+    assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+    assert.equal(JSON.stringify(locked), before);
+  }
+  const valid = {
+    shirt: { type: "short_sleeve_shirt", collar: "spread_collar",
+      wear: "untucked", sleeve: "half_sleeve", cuff: "barrel_cuff_1_button" },
+    pant: { type: "formal_flat_front", pleat: "flat_front",
+      hem: "plain_hem", break: "slight_break" },
+  } as unknown as StyleSpecV2;
+  assert.ok(styleDirectorConstructionIssues(valid).some(issue =>
+    issue.code === "short_sleeve_cuff_review"),
+    "a known full-length barrel cuff must still trigger construction review");
+});
