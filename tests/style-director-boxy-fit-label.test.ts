@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   styleDirectorCandidateShirtFit,
+  styleDirectorCandidateShirtFit,
   styleDirectorCandidateShirtFitIntent,
   styleDirectorCandidateShirtFitIssues,
   styleDirectorCandidateWordingIssues,
@@ -84,4 +85,58 @@ test("compound boxy fit prohibition coexists with different requested fit, contr
   assert.equal(styleDirectorCandidateShirtFit(contradictory, choices), null);
   assert.deepEqual(issueCodes(contradictory, "boxy_oversized"), [],
     "the wording gate owns contradictions and never rewrites a locked fit");
+});
+
+test("contracted alternatives between different shirt fit IDs require review", () => {
+  for (const phrase of [
+    "slim or relaxed fit",
+    "relaxed fit or slim",
+    "slim-fit or athletic taper fit",
+    "athletic taper or slim fit",
+    "regular or boxy fit",
+    "oversized fit or regular",
+    "classic fit or athletic taper",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateShirtFitIntent(phrase), {
+      requested: null, prohibited: [], ambiguous: true,
+    }, phrase);
+    assert.equal(styleDirectorCandidateShirtFit(phrase, choices), null, phrase);
+    assert.deepEqual(wordingCodes(phrase), ["ambiguous_candidate_shirt_fit"], phrase);
+    for (const id of ["slim_fit", "regular_classic_fit", "relaxed_fit",
+      "boxy_oversized", "athletic_taper"]) {
+      const locked = Object.freeze({ fit: id });
+      const before = JSON.stringify(locked);
+      assert.deepEqual(styleDirectorCandidateShirtFitIssues(phrase, locked), [], phrase);
+      assert.equal(JSON.stringify(locked), before, "undecided fit cannot change the lock");
+    }
+  }
+});
+
+test("equivalent abbreviated fit names stay valid and unrelated restrictions survive", () => {
+  for (const [phrase, canonical] of [
+    ["regular or classic fit", "regular_classic_fit"],
+    ["classic fit or regular", "regular_classic_fit"],
+    ["boxy or oversized fit", "boxy_oversized"],
+    ["oversized fit or boxy", "boxy_oversized"],
+  ] as const) {
+    assert.deepEqual(styleDirectorCandidateShirtFitIntent(phrase), {
+      requested: canonical, prohibited: [], ambiguous: false,
+    }, phrase);
+    assert.equal(styleDirectorCandidateShirtFit(phrase, choices)?.versioned, canonical, phrase);
+    assert.deepEqual(wordingCodes(phrase), [], phrase);
+  }
+  assert.deepEqual(styleDirectorCandidateShirtFitIntent("slim or relaxed linen"), {
+    requested: null, prohibited: [], ambiguous: false,
+  }, "a style adjective choice without the word fit must not invent a fit");
+  const unresolved = "slim or relaxed fit; no boxy fit";
+  assert.deepEqual(styleDirectorCandidateShirtFitIntent(unresolved), {
+    requested: null, prohibited: ["boxy_oversized"], ambiguous: true,
+  });
+  assert.deepEqual(wordingCodes(unresolved), ["ambiguous_candidate_shirt_fit"]);
+  const certain = "regular or classic fit; no slim fit";
+  assert.deepEqual(styleDirectorCandidateShirtFitIntent(certain), {
+    requested: "regular_classic_fit", prohibited: ["slim_fit"], ambiguous: false,
+  });
+  assert.deepEqual(issueCodes(certain, "regular_classic_fit"), []);
+  assert.deepEqual(issueCodes(certain, "slim_fit"), ["candidate_shirt_fit_mismatch"]);
 });
