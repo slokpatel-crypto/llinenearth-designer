@@ -69,6 +69,12 @@ export function buildProductionHandoff(
   if(!handoffRecord(revision) || !handoffRecord(revision.garmentSpec)) {
     throw new Error("Unsafe tailor handoff source: expected a locked garment recipe record.");
   }
+  // Rehydrated packets can supply invalid or non-string generation times.
+  // Normalise them once so the unsigned review timestamp cannot crash a
+  // downstream print/export with an uncontrolled Date RangeError.
+  if(typeof generatedAt!=="string" || !Number.isFinite(Date.parse(generatedAt))) {
+    throw new Error("Unsafe tailor handoff timestamp: expected a valid generation time.");
+  }
   const spec=revision.garmentSpec;
   if(revision.version!=="linen-earth-design-lock-v1" || spec.version!=="linen-earth-garment-spec-v1") {
     throw new Error("Unsafe tailor handoff source: unsupported locked design or garment specification version.");
@@ -281,6 +287,12 @@ export async function buildVerifiedProductionHandoff(
   revision:LockedDesignRevision,
   generatedAt=new Date().toISOString(),
 ):Promise<ProductionHandoff> {
+  // Hash verification assumes a real locked recipe. Reject a missing or
+  // malformed saved lock with the same controlled handoff boundary used for
+  // unsigned preview construction.
+  if(!handoffRecord(revision) || !handoffRecord(revision.garmentSpec)) {
+    throw new Error("Unsafe verified tailor handoff source: expected a locked garment recipe record.");
+  }
   if(!await verifyLockedDesignRevision(revision))
     throw new Error("Locked design hash no longer matches the exact garment and tailoring recipe.");
   if(!hasCanonicalLockedRevisionIdentity(revision))
