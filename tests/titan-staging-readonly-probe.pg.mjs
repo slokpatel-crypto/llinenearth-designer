@@ -207,7 +207,9 @@ test('native PostgreSQL: deployed SECURITY DEFINER body and owner remain visible
   assert.equal(fields[2],'titan_probe','Function owner must be visible in catalog evidence');
   assert.equal(fields[3],'t','SECURITY DEFINER must be flagged for independent review');
   assert.match(fields[6],/^[a-f0-9]{32}$/,'Rendered database definition hash is recorded');
-  assert.match(output,/SECURITY DEFINER/,'Full rendered function definition must remain available for private review');
+  const rendered=Buffer.from(fields[7]||'','hex').toString('utf8');
+  assert.match(rendered,/SECURITY DEFINER/,'Hex-encoded full function definition must be decodable for private review');
+  assert.doesNotMatch(output,/SECURITY DEFINER/,'Unescaped multiline SQL body must not appear in raw psql output');
 });
 
 test('native PostgreSQL: missing database role cannot inherit an existing RPC grant',()=>{
