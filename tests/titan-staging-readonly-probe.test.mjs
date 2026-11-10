@@ -82,8 +82,10 @@ test('a missing function or role yields UNKNOWN permission, not an apparent gran
 });
 
 test('probe cannot claim connection is staging and contains no credential placeholders',()=>{
-  assert.match(sql,/current_database\(\)/);
-  assert.match(sql,/current_user/);
+  assert.match(sql,/encode\s*\(\s*convert_to\s*\(\s*current_database\(\)\s*,\s*'UTF8'\s*\)\s*,\s*'hex'\s*\)\s+AS\s+database_name_hex/i);
+  assert.match(sql,/encode\s*\(\s*convert_to\s*\(\s*current_user\s*,\s*'UTF8'\s*\)\s*,\s*'hex'\s*\)\s+AS\s+query_role_hex/i);
+  assert.doesNotMatch(sql,/current_database\(\)\s+AS\s+database_name\b/i);
+  assert.doesNotMatch(sql,/current_user\s+AS\s+query_role\b/i);
   assert.match(raw,/owner.*independently verify staging project/i);
   assert.doesNotMatch(raw,/postgres(?:ql)?:\/\/|(?:password|service_role_key|anon_key)\s*=/i);
 });
