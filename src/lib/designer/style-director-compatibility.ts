@@ -195,9 +195,9 @@ export function styleDirectorCandidateRollUpSleeveIntent(name: string): {
     const prefix = name.slice(0, hit.index ?? 0);
     const suffix = name.slice((hit.index ?? 0) + hit[0].length);
     const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
-      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(suffix);
+      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:should|must)\s+not\s+be\s+(?:chosen|selected|used))\b/i.test(suffix);
     const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
-      /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/i.test(suffix);
+      /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
     if (banned) prohibited = true;
     else if (!optional) requested = true;
   }
@@ -538,9 +538,9 @@ export function styleDirectorCandidateCollarFinishIntent(candidateShirt: string)
       : /(?:\+|and)\s*cuffs$/i.test(token)
         ? "White contrast collar + cuffs" : "White contrast collar";
     const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
-      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(after);
+      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:should|must)\s+not\s+be\s+(?:chosen|selected|used))\b/i.test(after);
     const optional = /\b(?:optional|maybe)\s+$/i.test(before) ||
-      /^\s+(?:(?:is|are)\s+)?(?:optional|not\s+(?:required|needed|mandatory))\b/i.test(after);
+      /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(after);
     // A prohibition of any white contrast collar also forbids a white
     // contrast collar + cuffs, but banning the combination alone leaves the
     // simpler collar-only treatment available.
