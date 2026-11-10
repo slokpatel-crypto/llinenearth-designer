@@ -58,7 +58,9 @@ function evidence(){
   return lines.map(line=>{
     const fields=line.split('|');
     assert.equal(fields.length,7,'Unexpected permissions evidence projection');
-    const [kind,name,signature,exists,role,roleExists,execute]=fields;
+    const [kind,name,signatureHex,exists,role,roleExists,execute]=fields;
+    assert.match(signatureHex,/^(?:[a-f0-9]{2})*$/,'Function signature must be hex-framed');
+    const signature=Buffer.from(signatureHex,'hex').toString('utf8');
     return {kind,name,signature,exists,role,roleExists,execute};
   });
 }
@@ -201,10 +203,11 @@ test('native PostgreSQL: deployed SECURITY DEFINER body and owner remain visible
   ].join('\n'));
   const output=runPsql(['--file','docs/TITAN_STAGING_MIGRATION_READONLY_PROBE.sql']);
   const row=output.split(/\r?\n/).find(line=>
-    line.startsWith('stock_function_definition|fabric_stock_reserve_v2(text)|'));
+    line.startsWith('stock_function_definition|'+Buffer.from('fabric_stock_reserve_v2(text)').toString('hex')+'|'));
   assert.ok(row,'Expected deployed v2 function definition evidence');
   const fields=row.split('|');
-  assert.equal(fields[2],'titan_probe','Function owner must be visible in catalog evidence');
+  assert.equal(Buffer.from(fields[2],'hex').toString('utf8'),'titan_probe','Framed function owner must be visible for private review');
+  assert.equal(Buffer.from(fields[1],'hex').toString('utf8'),'fabric_stock_reserve_v2(text)');
   assert.equal(fields[3],'t','SECURITY DEFINER must be flagged for independent review');
   assert.match(fields[6],/^[a-f0-9]{32}$/,'Rendered database definition hash is recorded');
   const rendered=Buffer.from(fields[7]||'','hex').toString('utf8');
