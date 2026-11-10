@@ -75,3 +75,8 @@ LEFT JOIN pg_roles AS registered_role ON registered_role.rolname=requested.role_
 ORDER BY expected.function_name,p.oid::regprocedure::text NULLS FIRST,requested.role_name;
 
 COMMIT;
+
+-- Constant post-COMMIT completion row: prevents a truncated stdout capture from
+-- being accepted merely because all expected permission observations appeared.
+-- This is an output framing marker, NOT authentication or deployment approval.
+SELECT 'probe_complete' AS evidence_kind, 'TITAN_STAGING_READONLY_V1' AS capture_format;
