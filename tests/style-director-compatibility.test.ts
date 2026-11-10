@@ -3244,3 +3244,35 @@ test("contracted placket bans preserve frozen construction and optionality", () 
     requested: null, prohibited: [], ambiguous: false,
   });
 });
+
+test("explicit select prohibitions never become positive collar or placket requests", () => {
+  for (const wording of [
+    "Do not select camp collar",
+    "Don't select camp collar",
+    "Never select camp collar",
+  ]) {
+    const forbidden = spec({ collar: "cuban_camp_collar" });
+    const permitted = spec({ collar: "spread_collar" });
+    Object.freeze(forbidden.shirt);
+    Object.freeze(permitted.shirt);
+    assert.equal(styleDirectorCandidateCollar(wording, []), null, wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, forbidden.shirt)
+      .map(issue => issue.code), ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, permitted.shirt), [], wording);
+  }
+  for (const wording of [
+    "Do not select French placket",
+    "Don't select French placket",
+    "Never select French placket",
+  ]) {
+    assert.deepEqual(styleDirectorCandidatePlacketIntent(wording), {
+      requested: null, prohibited: ["french_placket"], ambiguous: false,
+    }, wording);
+    const locked = spec({ placket: "french_placket" });
+    Object.freeze(locked.shirt);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, locked.shirt)
+      .map(issue => issue.code), ["candidate_placket_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording,
+      spec({ placket: "hidden_fly_front" }).shirt), [], wording);
+  }
+});
