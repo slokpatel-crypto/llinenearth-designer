@@ -116,3 +116,49 @@ test("pocket construction survives new proposals without false photographic pari
     { collar: "Spread Collar", shirtWear: "Tucked" }, noPocket,
   ).map(issue => issue.code), []);
 });
+
+test("with-or-without pocket alternatives require review without choosing a saved construction", () => {
+  for (const phrase of [
+    "with or without a pocket",
+    "with or without pockets",
+    "with or without any pockets",
+    "with or without patch pocket",
+    "with or without a flap pocket",
+    "with or without single patch pocket",
+    "with without a pocket",
+  ]) {
+    assert.deepEqual(styleDirectorCandidatePocketIntent(phrase), {
+      requested: null, prohibited: [], ambiguous: true,
+    }, phrase);
+    assert.equal(styleDirectorCandidatePocket(phrase), null, phrase);
+    assert.deepEqual(wording(phrase), ["ambiguous_candidate_pocket"], phrase);
+    for (const id of ["no_pocket", "single_patch_pocket", "flap_pocket"]) {
+      const locked = Object.freeze({ pocket: id });
+      const snapshot = JSON.stringify(locked);
+      assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, locked), [], phrase);
+      assert.equal(JSON.stringify(locked), snapshot, "locked pocket cannot be rewritten");
+    }
+  }
+});
+
+test("undecided pockets keep independent constraints and ordinary firm negations", () => {
+  const phrase = "with or without flap pocket; no patch pocket";
+  assert.deepEqual(styleDirectorCandidatePocketIntent(phrase), {
+    requested: null, prohibited: ["single_patch_pocket"], ambiguous: true,
+  });
+  assert.equal(styleDirectorCandidatePocket(phrase), null);
+  assert.deepEqual(wording(phrase), ["ambiguous_candidate_pocket"]);
+  for (const [label, id] of [
+    ["No Pocket", "no_pocket"],
+    ["Without any pockets", "no_pocket"],
+    ["Patch Pocket Shirt", "single_patch_pocket"],
+    ["Flap Pocket Shirt", "flap_pocket"],
+  ] as const) {
+    assert.deepEqual(styleDirectorCandidatePocketIntent(label), {
+      requested: id, prohibited: [], ambiguous: false,
+    }, label);
+  }
+  assert.deepEqual(styleDirectorCandidatePocketIntent("No Flap Pocket"), {
+    requested: null, prohibited: ["flap_pocket"], ambiguous: false,
+  });
+});
