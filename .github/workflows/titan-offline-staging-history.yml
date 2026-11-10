@@ -1,0 +1,33 @@
+name: TITAN Offline Staging History Projection Safety
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/titan-extract-staging-migration-versions.mjs'
+      - 'tests/titan-extract-staging-migration-versions.test.mjs'
+      - 'docs/TITAN_STAGING_HISTORY_OFFLINE_PROJECTION.md'
+      - '.github/workflows/titan-offline-staging-history.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-synthetic-only:
+    name: Verify offline psql capture projection (synthetic-only, no database)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Require exact source-head checkout
+        env:
+          EXPECTED_HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify synthetic offline capture and fail-closed CLI only
+        run: node --test tests/titan-extract-staging-migration-versions.test.mjs
