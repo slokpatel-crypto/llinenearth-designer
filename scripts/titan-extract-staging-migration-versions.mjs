@@ -42,12 +42,31 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
   let firstMatrixLine=-1;
   let functionDefinitionSeen=false;
   let complete=false;
+  let beginStatusSeen=false;
+  let commitStatusSeen=false;
   for(let i=0;i<lines.length;i++){
     const line=lines[i];
-    if(complete && line.trim()!=='')
-      throw Error('Blocked: trailing content after probe completion marker');
+    // psql may print BEGIN/COMMIT command-status rows without --quiet.
+    // Apart from those bounded tags, every nonempty stdout row must be one
+    // of our explicit SQL evidence records. All variable catalog text is hex.
+    if(line==='' && i===lines.length-1)continue;
+    if(line==='')throw Error('Blocked: unexpected blank psql evidence row');
+    if(complete)throw Error('Blocked: trailing content after probe completion marker');
+    if(line==='BEGIN'){
+      if(i!==0 || beginStatusSeen)throw Error('Blocked: misplaced BEGIN status');
+      beginStatusSeen=true;
+      continue;
+    }
+    if(line==='COMMIT'){
+      if(commitStatusSeen || firstMatrixLine<0 || matrix.size!==expectedPairs.size)
+        throw Error('Blocked: premature or repeated COMMIT status');
+      commitStatusSeen=true;
+      continue;
+    }
+    if(commitStatusSeen && line!==captureEnd)
+      throw Error('Blocked: unexpected evidence after COMMIT status');
     if(line.startsWith('probe_complete')){
-      if(line!==captureEnd || firstMatrixLine<0 || complete)
+      if(line!==captureEnd || firstMatrixLine<0 || complete || beginStatusSeen!==commitStatusSeen)
         throw Error('Blocked: malformed or premature probe completion marker');
       complete=true;
     } else if(line.startsWith('connection_identity|')){
@@ -119,8 +138,14 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
       if((signature==='' && seen.size>0) || (signature!=='' && seen.has('')))
         throw Error('Blocked: contradictory absent/present stock function rows');
       seen.add(signature); matrix.set(pair,seen);
+    } else {
+      // The probe has no free-text stdout: ignore-nothing is safer than
+      // silently projecting incomplete or altered psql transcripts.
+      throw Error('Blocked: unrecognized psql evidence row');
     }
   }
+  if(beginStatusSeen!==commitStatusSeen)
+    throw Error('Blocked: incomplete psql transaction-status envelope');
   if(connectionCount!==1 || firstMatrixLine<0 || connectionLine>=firstMatrixLine ||
      matrix.size!==expectedPairs.size)
     throw Error('Blocked: partial or ambiguous psql capture');
