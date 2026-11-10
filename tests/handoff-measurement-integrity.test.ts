@@ -241,6 +241,27 @@ test("sparse body data and absent exact StyleSpec stay review-only, never ready"
   assert.match(buildTailorTechPackHtml(packet),/review required/);
 });
 
+test("tech packs show recorded design context for both legacy and versioned cuts",()=>{
+  for(const exactCut of [false,true]) {
+    const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam],exactCut);
+    revision.garmentSpec.context={
+      occasion:"Semi-Formal",climate:"Air-conditioned",intention:"Balanced",
+    };
+    const packet=buildProductionHandoff(revision,"2026-11-02T11:00:00Z");
+    const html=buildTailorTechPackHtml(packet);
+    assert.match(html,/Recorded occasion and design context/);
+    assert.match(html,/<th>Occasion<\/th><td>Semi-Formal<\/td>/);
+    assert.match(html,/<th>Climate<\/th><td>Air-conditioned<\/td>/);
+    assert.match(html,/<th>Intention<\/th><td>Balanced<\/td>/);
+    assert.equal((html.match(/<th>Occasion<\/th>/g)||[]).length,1);
+    assert.match(html,/NO CUTTING AUTHORISATION/);
+    if(!exactCut) {
+      assert.match(html,/Older legacy design/);
+      assert.match(html,/review required/);
+    }
+  }
+});
+
 test("an invalid, nonfinite, reversed or mismatched finished target fails closed",()=>{
   const invalid=[
     {...chest,bodyCm:NaN},
