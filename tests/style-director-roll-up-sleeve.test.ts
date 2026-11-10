@@ -138,3 +138,49 @@ test("postposed roll-up optionality and contradictory bans preserve locked sleev
   assert.equal(rolled.sleeve, "roll_up_styled");
   assert.equal(full.sleeve, "full_sleeve");
 });
+
+test("with-or-without roll-up sleeve alternatives require review instead of a ban", () => {
+  const choices = [
+    "with or without roll-up sleeves",
+    "with or without roll up sleeves",
+    "with or without roll-up styled",
+    "with or without a roll-up styled",
+    "with or without any roll up sleeves",
+    "with without roll-up sleeves",
+  ];
+  for (const phrase of choices) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(phrase), {
+      requested: false, prohibited: false, ambiguous: true,
+    }, phrase);
+    assert.deepEqual(wordingCodes(phrase), ["ambiguous_candidate_sleeve"], phrase);
+    assert.equal(styleDirectorCandidateSleeve(phrase), null, phrase);
+    for (const id of ["half_sleeve", "full_sleeve", "roll_up_styled"]) {
+      const locked = Object.freeze({ sleeve: id });
+      const before = JSON.stringify(locked);
+      assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, locked), [], phrase);
+      assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, locked), [], "deterministic review");
+      assert.equal(JSON.stringify(locked), before, "no locked sleeve mutation");
+    }
+  }
+});
+
+test("undecided roll-up alternatives preserve independent firm exclusions", () => {
+  const phrase = "with or without roll-up sleeves; no roll-up styled";
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(phrase), {
+    requested: false, prohibited: true, ambiguous: true,
+  });
+  assert.deepEqual(wordingCodes(phrase), ["ambiguous_candidate_sleeve"]);
+  assert.deepEqual(issueCodes(phrase, "roll_up_styled"), [],
+    "the wording review gate must block selection");
+  const positive = "with or without roll-up styled; roll-up sleeves required";
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(positive), {
+    requested: true, prohibited: false, ambiguous: true,
+  });
+  assert.deepEqual(wordingCodes(positive), ["ambiguous_candidate_sleeve"]);
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("without roll-up styled"), {
+    requested: false, prohibited: true, ambiguous: false,
+  }, "firm prohibition must retain existing semantics");
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("roll-up styled shirt"), {
+    requested: true, prohibited: false, ambiguous: false,
+  });
+});
