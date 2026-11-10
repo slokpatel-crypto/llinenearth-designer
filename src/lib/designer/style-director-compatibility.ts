@@ -720,11 +720,18 @@ export function styleDirectorCandidateCuffIntent(candidateShirt: string): {
 } {
   const requested = new Set<CandidateCuffId>();
   const prohibited = new Set<CandidateCuffId>();
+  let undecided = false;
   for (const { id, pattern } of candidateCuffPatterns) {
     for (const match of candidateShirt.matchAll(pattern)) {
       const index = match.index ?? 0;
       const prefix = candidateShirt.slice(0, index);
       const suffix = candidateShirt.slice(index + match[0].length);
+      // "With or without" leaves a cuff choice unresolved; its "without"
+      // does not forbid the named canonical construction.
+      if (/\bwith\s+(?:or\s+)?without\s+(?:(?:a|any|the)\s+)?$/i.test(prefix)) {
+        undecided = true;
+        continue;
+      }
       // A postposed refusal is a prohibition, not a positive cuff choice.
       // Optional wording must remain separate from explicit rejection.
       const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
@@ -738,7 +745,7 @@ export function styleDirectorCandidateCuffIntent(candidateShirt: string): {
   return {
     requested: requested.size === 1 ? [...requested][0] : null,
     prohibited: [...prohibited],
-    ambiguous: requested.size > 1 || [...requested].some(id => prohibited.has(id)),
+    ambiguous: undecided || requested.size > 1 || [...requested].some(id => prohibited.has(id)),
   };
 }
 
