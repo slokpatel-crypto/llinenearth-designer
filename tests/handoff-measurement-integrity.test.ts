@@ -81,6 +81,8 @@ test("malformed saved recipe containers fail closed before handoff creation",()=
     ["array trouser record",r=>{r.garmentSpec.trouser=[] as never;}],
     ["missing occasion context",r=>{r.garmentSpec.context=null as never;}],
     ["array occasion context",r=>{r.garmentSpec.context=[] as never;}],
+    ["unsupported design lock version",r=>{r.version="linen-earth-design-lock-v9" as never;}],
+    ["unsupported garment recipe version",r=>{r.garmentSpec.version="linen-earth-garment-spec-v9" as never;}],
   ];
   for(const [label,mutate] of invalid){
     const revision=sample();
