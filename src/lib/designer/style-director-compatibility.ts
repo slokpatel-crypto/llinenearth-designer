@@ -1072,7 +1072,8 @@ export function styleDirectorCandidateTrouserFitIntent(candidateTrouser: string)
       reverseLeft: string | undefined, reverseRight: string | undefined) => {
       const first = left ?? reverseLeft;
       const second = right ?? reverseRight;
-      if (first.toLowerCase() !== second.toLowerCase()) {
+      if (first !== undefined && second !== undefined &&
+          first.toLowerCase() !== second.toLowerCase()) {
         undecided = true;
         return " ";
       }
