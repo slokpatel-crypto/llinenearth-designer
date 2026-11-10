@@ -185,7 +185,7 @@ const candidateSleeveLengths = (name: string) => {
     return " ";
   };
   const withoutPrefixedBans = instruction.replace(
-    /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|include|choose|wear|add|have)\s+)?(?:(?:a|any)\s+)?((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\b/gi,
+    /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|include|choose|select|wear|add|have)\s+)?(?:(?:a|any)\s+)?((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\b/gi,
     (_match, word: string) => ban(word),
   );
   const withoutSuffixBans = withoutPrefixedBans.replace(
@@ -235,7 +235,7 @@ export function styleDirectorCandidateRollUpSleeveIntent(name: string): {
     }
     // Postposed rejection forbids the rolled sleeve; optional language is
     // neutral and must not silently change the existing sleeve ID.
-    const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
+    const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|select|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
       /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:must|should)\s+not|(?:mustn['’]?t|shouldn['’]?t))\s+(?:be\s+)?(?:used|chosen|selected|worn))\b/i.test(suffix);
     const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
       /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
@@ -552,7 +552,7 @@ export function styleDirectorCandidatePocketIntent(candidateShirt: string): {
       const start = hit.index ?? 0;
       const before = instruction.slice(0, start);
       const after = instruction.slice(start + hit[0].length);
-      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
+      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|select|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:should|must)\s+not|(?:shouldn|mustn)['’]?t)\s+be\s+(?:chosen|selected|used|worn))\b/i.test(after);
       if (banned) prohibited.add(id);
       else if (!optionalBefore(before) && !optionalAfter(after)) requested.add(id);
@@ -625,7 +625,7 @@ export function styleDirectorCandidateCollarFinishIntent(candidateShirt: string)
     }
     // Postposed refusal excludes the selected finish; an optional statement
     // never counts as either a request or a ban.
-    const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
+    const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|select|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
       /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:must|should)\s+not|(?:mustn|shouldn)['’]?t)\s+be\s+(?:used|chosen|selected|worn))\b/i.test(after);
     const optional = /\b(?:optional|maybe)\s+$/i.test(before) ||
       /^\s+(?:(?:is|are)\s+)?(?:optional|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(after);
@@ -722,7 +722,7 @@ export function styleDirectorCandidateButtonIntent(candidateShirt: string): {
       }
       // Postposed material refusals are prohibitions, never requests.
       // Non-mandatory / optional wording must remain neutral.
-      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
+      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|select|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:must|should)\s+not|(?:mustn|shouldn)['’]?t)\s+be\s+(?:used|chosen|selected|worn))\b/i.test(suffix);
       const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
@@ -834,7 +834,7 @@ export function styleDirectorCandidateCuffIntent(candidateShirt: string): {
       }
       // A postposed refusal is a prohibition, not a positive cuff choice.
       // Optional wording must remain separate from explicit rejection.
-      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
+      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|select|wear|have)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:must|should)\s+not|(?:mustn|shouldn)['’]?t)\s+be\s+(?:used|chosen|selected|worn))\b/i.test(suffix);
       const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
@@ -938,7 +938,7 @@ export function styleDirectorCandidateShirtFitIntent(candidateShirt: string): {
         undecided = true;
         continue;
       }
-      const ban = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
+      const ban = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|select|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:should|must)\s+not|(?:shouldn|mustn)['’]?t)\s+be\s+(?:chosen|selected|used|worn))\b/i.test(after);
       const optional = /\b(?:optional|maybe)\s+$/i.test(before) ||
         /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(after);
@@ -1088,7 +1088,7 @@ export function styleDirectorCandidateTrouserFitIntent(candidateTrouser: string)
         undecided = true;
         continue;
       }
-      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
+      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|select|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:should|must)\s+not|(?:shouldn|mustn)['’]?t)\s+be\s+(?:chosen|selected|used|worn))\b/i.test(suffix);
       const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
@@ -1141,7 +1141,7 @@ export function styleDirectorCandidateWideLegIntent(
   candidateTrouser: string,
 ): "requested" | "prohibited" | "ambiguous" | null {
   const width = String.raw`(?:wide[- ]?leg(?:ged)?(?:[- ]?(?:trousers?|pants?))?|wide[- ]?fit[- ]?(?:trousers?|pants?)|wide[- ]?(?:trousers?|pants?))`;
-  const beforeBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|add|have|want)\s+)?(?:(?:a|any)\s+)?${width}\b`, "gi");
+  const beforeBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|select|wear|include|add|have|want)\s+)?(?:(?:a|any)\s+)?${width}\b`, "gi");
   const afterBan = new RegExp(String.raw`\b${width}\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:should|must|shall)\s+(?:be\s+avoided|not\s+be\s+(?:worn|used|chosen|selected))|(?:shouldn|mustn|shan)['’]?t\s+be\s+(?:worn|used|chosen|selected))|to\s+be\s+avoided|not\s+to\s+be\s+(?:worn|used|chosen))\b`, "gi");
   const optional = new RegExp(String.raw`\b(?:(?:optional|maybe|possibly|perhaps)\s+${width}|${width}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory)|maybe|possibly|perhaps))\b`, "gi");
   let prohibited = false;
@@ -1203,7 +1203,7 @@ export function styleDirectorCandidateDrawstringWaistband(
   candidateTrouser: string,
 ): "requested" | "prohibited" | "ambiguous" | null {
   const token = String.raw`draw[- ]?string`;
-  const preBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?${token}\b`, "gi");
+  const preBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|select|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?${token}\b`, "gi");
   const postBan = new RegExp(String.raw`\b${token}(?:[- ]?(?:free|less)|\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:should|must|shall)\s+(?:be\s+avoided|not\s+be\s+(?:used|added|included|chosen|selected))|(?:shouldn|mustn|shan)['’]?t\s+be\s+(?:used|added|included|chosen|selected))|to\s+be\s+avoided|not\s+to\s+be\s+(?:used|added|included)))\b`, "gi");
   const optional = new RegExp(String.raw`\b${token}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|mandatory|needed|necessary)|(?:isn['’]?t|aren['’]?t)\s+(?:required|mandatory|needed|necessary)|maybe|possibly|perhaps)\b`, "gi");
   const optionalPrefix = new RegExp(String.raw`\b(?:optional|maybe|possibly|perhaps|unnecessary)\s+${token}\b`, "gi");
