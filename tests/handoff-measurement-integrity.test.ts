@@ -445,6 +445,29 @@ test("direct trouser anchors are not silently converted into different lengths o
   }
 });
 
+test("malformed nested StyleSpec options fail safely at handoff and remain review-only in preview",()=>{
+  // Stored or imported objects can be damaged even when their declared schema
+  // version looks correct. No missing nested part can become a cutting choice.
+  const malformed:unknown[]=[
+    {styleSchemaVersion:2,shirt:null,pant:{},legacy:{}},
+    {styleSchemaVersion:2,shirt:{wear:"tucked"},pant:null,legacy:{}},
+    "",
+    false,
+  ];
+  for(const bad of malformed){
+    const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+    revision.garmentSpec.styleSpec=bad as typeof revision.garmentSpec.styleSpec;
+    assert.throws(()=>buildProductionHandoff(revision),/Unsafe tailor handoff construction/);
+
+    const packet=buildProductionHandoff(createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]));
+    packet.construction.styleSpec=bad as typeof packet.construction.styleSpec;
+    const html=buildTailorTechPackHtml(packet);
+    assert.match(html,/INVALID VERSIONED CONSTRUCTION/);
+    assert.match(html,/<div class="badge">review required<\\/div>/);
+    assert.match(html,/NO CUTTING AUTHORISATION/);
+  }
+});
+
 test("unknown advanced cut ID is never passed off as an exact reconstructable tailor instruction",()=>{
   const revision=createRevision([chest],[waist,seat]);
   if(!revision.garmentSpec.styleSpec) throw Error("Missing advanced spec");
