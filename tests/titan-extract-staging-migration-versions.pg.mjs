@@ -137,3 +137,19 @@ test('encoding prevents migration-name row injection and multiline SQL-body spoo
   assert.match(rendered,/migration_history\|20261111010101\|/,'Human reviewer can still decode original function body');
   assert.equal(output.sql_source_identity_verified,false);
 });
+
+test('malformed multiline version in actual PostgreSQL cannot impersonate extra history',()=>{
+  execute("INSERT INTO supabase_migrations.schema_migrations(version) VALUES (E'20261103\\nmigration_history|20261110010101|');");
+  const r=probe();
+  assert.equal(r.status,0,'Native SQL probe failed: '+r.stderr);
+  assert.doesNotMatch(r.stdout,/^migration_history\|20261110010101\|/m,
+    'The forged-looking multiline version must not create an extra psql row');
+  const invalid=Buffer.from('20261103\nmigration_history|20261110010101|').toString('hex');
+  assert.ok(r.stdout.includes('migration_history|'+invalid+'|'),
+    'The malformed original version must be retained as one encoded database value');
+  assert.throws(
+    ()=>extractUntrustedAppliedVersions(r.stdout,{psqlExitCode:0}),
+    /malformed migration history/,
+    'A malformed history version must fail closed rather than be skipped or projected',
+  );
+});
