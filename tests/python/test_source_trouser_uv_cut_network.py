@@ -16,6 +16,9 @@ classify = source_graph_module["classify_original_source_uv_cut_component"]
 trace = source_graph_module["trace_original_source_uv_cut_chains"]
 best_fit = source_graph_module["best_fit_original_source_uv_edge_translation"]
 best_rigid = source_graph_module["best_fit_original_source_uv_edge_rigid_alignment"]
+best_similarity = source_graph_module[
+    "best_fit_original_source_uv_edge_similarity_alignment"
+]
 
 # Synthetic proper rotation + translation can close equal-length source
 # segments; length disagreement has a provable irreducible residual.
@@ -30,6 +33,22 @@ assert different_rigid["sourceUvOwnerEdgeLengthsMm"] == [10.0, 8.0]
 assert different_rigid["bestFitProperRigidUvRotationDegrees"] == -90.0
 assert different_rigid["irreducibleProperRigidAlignmentEndpointResidualMm"] == 1.0
 assert different_rigid["singleEdgeExactRigidClosurePossible"] is False
+equal_similarity = best_similarity(
+    ((0, 0), (10, 0)), ((100, 100), (100, 110))
+)
+assert equal_similarity["sourceUvSimilarityScaleOwnerBToOwnerA"] == 1.0
+assert equal_similarity["sourceUvSimilarityScaleChangePercent"] == 0.0
+assert equal_similarity["singleEdgeSimilarityClosureResidualMm"] == 0.0
+assert equal_similarity["singleEdgeClosureRequiresUvScaleChange"] is False
+assert equal_similarity["sourceUvSimilarityDistortionApproved"] is False
+different_similarity = best_similarity(
+    ((0, 0), (10, 0)), ((100, 100), (100, 108))
+)
+assert different_similarity["sourceUvSimilarityScaleOwnerBToOwnerA"] == 1.25
+assert different_similarity["sourceUvSimilarityScaleChangePercent"] == 25.0
+assert different_similarity["singleEdgeSimilarityClosureResidualMm"] == 0.0
+assert different_similarity["singleEdgeClosureRequiresUvScaleChange"] is True
+assert different_similarity["sourceUvSimilarityDistortionApproved"] is False
 for bad in (((0, 0),), ((False, 0), (1, 0)), (("0", 0), (1, 0)),
             ((0, 0), (math.inf, 0)), ((0, 0), (math.nan, 1)),
             ((0, 0), (0, 0)), (None, (1, 0)), (0, 1)):
@@ -293,6 +312,18 @@ for row in gap_ranked:
         row["irreducibleProperRigidAlignmentEndpointResidualMm"] -
         abs(math.dist(*owner_uv[0]) - math.dist(*owner_uv[1])) / 2
     ) <= 0.00002
+    actual_similarity = best_similarity(owner_uv[0], owner_uv[1])
+    for name in (
+            "sourceUvSimilarityScaleOwnerBToOwnerA",
+            "sourceUvSimilarityScaleChangePercent",
+            "bestFitProperSimilarityUvRotationDegrees",
+            "bestFitSimilarityUvTranslationMm",
+            "singleEdgeSimilarityClosureResidualMm",
+            "singleEdgeClosureRequiresUvScaleChange",
+            "sourceUvSimilarityDistortionApproved"):
+        assert row[name] == actual_similarity[name]
+    assert row["singleEdgeSimilarityClosureResidualMm"] <= 0.0000001
+    assert row["sourceUvSimilarityDistortionApproved"] is False
 assert flat["actualHighestGapBranchedOriginalSourceUvCutChains"] == []
 assert all(
     row["originalSourceComponentMinimumVertexIndex"] >= 0

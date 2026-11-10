@@ -1455,6 +1455,46 @@ jobs:
                   assert type(row["singleEdgeExactRigidClosurePossible"]) is bool
                   if row["singleEdgeExactRigidClosurePossible"]:
                       assert lower_bound <= 0.00002
+                  # A similarity transform can close two endpoints only by
+                  # exposing the exact uniform UV scale change. This is a
+                  # distortion measurement, never a textile/stretch approval.
+                  scale=source_lengths[0]/source_lengths[1]
+                  assert abs(
+                      scale-row["sourceUvSimilarityScaleOwnerBToOwnerA"]
+                  ) <= 0.00000002
+                  assert abs(
+                      abs(scale-1)*100 -
+                      row["sourceUvSimilarityScaleChangePercent"]
+                  ) <= 0.000002
+                  assert row["bestFitProperSimilarityUvRotationDegrees"] == (
+                      row["bestFitProperRigidUvRotationDegrees"]
+                  )
+                  similarity_translation=row["bestFitSimilarityUvTranslationMm"]
+                  assert len(similarity_translation) == 2 and all(
+                      math.isfinite(v) for v in similarity_translation
+                  )
+                  for actual,target in zip(uv_owners[1],uv_owners[0]):
+                      transformed=(
+                          scale*(cosine*actual[0]-sine*actual[1])+
+                          similarity_translation[0],
+                          scale*(sine*actual[0]+cosine*actual[1])+
+                          similarity_translation[1],
+                      )
+                      assert math.dist(transformed,target) <= 0.00008
+                  assert row["singleEdgeSimilarityClosureResidualMm"] <= 0.0000001
+                  assert row["singleEdgeClosureRequiresUvScaleChange"] is (
+                      abs(scale-1) > 0.000000001
+                  )
+                  assert row["sourceUvSimilarityDistortionApproved"] is False
+              print("TITAN_ACTUAL_SOURCE_UV_EDGE_SCALE_REQUIREMENTS_RESEARCH_ONLY",json.dumps([
+                  {
+                      "edge":row["originalSourceEdgeAtMaximumUvSeamGap"],
+                      "ownerScale":row["sourceUvSimilarityScaleOwnerBToOwnerA"],
+                      "scaleChangePercent":row["sourceUvSimilarityScaleChangePercent"],
+                      "requiresScale":row["singleEdgeClosureRequiresUvScaleChange"],
+                  }
+                  for row in highest_gap_branches
+              ],sort_keys=True))
               assert [
                   (-row["maximumOriginalSourceUvSeamGapMm"],
                    -row["realOriginalSourceChainLengthMm"],

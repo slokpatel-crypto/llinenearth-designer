@@ -100,6 +100,58 @@ def best_fit_original_source_uv_edge_rigid_alignment(owner_a, owner_b):
     }
 
 
+def best_fit_original_source_uv_edge_similarity_alignment(owner_a, owner_b):
+    """Exact proper similarity alignment for ONE real UV edge (mm).
+
+    Unlike the rigid lower bound, this diagnostic permits one uniform scale
+    factor. Two noncollapsed segments can therefore close exactly; the
+    required scale departure from 1 is the measured distortion witness, not
+    permission to stretch an original chart or a physical textile.
+    """
+    rigid = best_fit_original_source_uv_edge_rigid_alignment(owner_a, owner_b)
+    a0, a1 = (tuple(float(v) for v in pt) for pt in owner_a)
+    b0, b1 = (tuple(float(v) for v in pt) for pt in owner_b)
+    la, lb = (math.dist(*owner) for owner in ((a0, a1), (b0, b1)))
+    scale = la / lb
+    if not math.isfinite(scale) or scale <= 0:
+        raise ValueError("Actual source UV similarity scale is invalid.")
+    va = (a1[0] - a0[0], a1[1] - a0[1])
+    vb = (b1[0] - b0[0], b1[1] - b0[1])
+    cos = (va[0] * vb[0] + va[1] * vb[1]) / (la * lb)
+    sin = (vb[0] * va[1] - vb[1] * va[0]) / (la * lb)
+    norm = math.hypot(cos, sin)
+    cos, sin = cos / norm, sin / norm
+    a_center = tuple(math.fsum((a0[i], a1[i])) / 2 for i in range(2))
+    b_center = tuple(math.fsum((b0[i], b1[i])) / 2 for i in range(2))
+    rotated_center = (
+        scale * (cos * b_center[0] - sin * b_center[1]),
+        scale * (sin * b_center[0] + cos * b_center[1]),
+    )
+    translation = tuple(a_center[i] - rotated_center[i] for i in range(2))
+    residuals = []
+    for a, b in ((a0, b0), (a1, b1)):
+        aligned = (
+            scale * (cos * b[0] - sin * b[1]) + translation[0],
+            scale * (sin * b[0] + cos * b[1]) + translation[1],
+        )
+        residuals.append(math.dist(a, aligned))
+    residual = max(residuals)
+    if (not all(math.isfinite(v) for v in (*translation, *residuals))
+            or residual > 0.0000001):
+        raise ValueError("Actual source UV similarity alignment did not close its edge.")
+    scale_change = abs(scale - 1.0)
+    return {
+        "sourceUvSimilarityScaleOwnerBToOwnerA": round(scale, 8),
+        "sourceUvSimilarityScaleChangePercent": round(scale_change * 100.0, 6),
+        "bestFitProperSimilarityUvRotationDegrees":
+            rigid["bestFitProperRigidUvRotationDegrees"],
+        "bestFitSimilarityUvTranslationMm": [round(v, 5) for v in translation],
+        "singleEdgeSimilarityClosureResidualMm": round(residual, 8),
+        "singleEdgeClosureRequiresUvScaleChange": scale_change > 0.000000001,
+        "sourceUvSimilarityDistortionApproved": False,
+    }
+
+
 def classify_original_source_uv_cut_component(
         cut_graph, component_vertices, original_boundary_vertices):
     """Classify connected ORIGINAL source-edge UV cuts, not sewing lines.
@@ -412,6 +464,10 @@ def audit_original_source_uv_cut_network(
                 [[v * 1000.0 for v in uv] for uv in source_uv_faces[0][1]],
                 [[v * 1000.0 for v in uv] for uv in source_uv_faces[1][1]],
             )
+            similarity_bound = best_fit_original_source_uv_edge_similarity_alignment(
+                [[v * 1000.0 for v in uv] for uv in source_uv_faces[0][1]],
+                [[v * 1000.0 for v in uv] for uv in source_uv_faces[1][1]],
+            )
             if abs(
                     rigid_edge_bound[
                         "irreducibleSingleRigidTranslationEndpointResidualMm"
@@ -439,6 +495,7 @@ def audit_original_source_uv_cut_network(
                 "relativeSourceUvEndpointDriftMm": round(endpoint_drift_mm, 5),
                 **rigid_edge_bound,
                 **rigid_rotation_bound,
+                **similarity_bound,
                 "closedGraphLoop": chain[0] == chain[-1],
                 "startsAtOriginalMeshBoundary":
                     chain[0] in original_boundary_vertices,
