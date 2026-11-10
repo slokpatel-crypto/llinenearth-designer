@@ -85,6 +85,47 @@ test("consistent centimetre body/ease/finished ranges remain exportable",()=>{
   assert.match(html,/PENDING HUMAN ACCEPTANCE/);
 });
 
+test("unverified tech packs reject fabricated cloth, stock and quote claims",()=>{
+  const sample=()=>buildProductionHandoff(
+    createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]),
+    "2026-11-02T11:00:00Z",
+  );
+  const validHtml=buildTailorTechPackHtml(sample());
+  assert.match(validHtml,/TAILOR REQUIRED/);
+  assert.match(validHtml,/NOT REQUESTED/);
+  assert.match(validHtml,/PENDING/);
+  assert.match(validHtml,/NO CUTTING AUTHORISATION/);
+  type Packet=ReturnType<typeof sample>;
+  const tamperings:Array<[string,(packet:Packet)=>void]>=[
+    ["missing production",p=>{p.production=null as never;}],
+    ["malformed cloth record",p=>{p.production.clothEstimate=[] as never;}],
+    ["fabric metre claim",p=>{p.production.clothEstimate.shirtMetres=2.4 as never;}],
+    ["trouser metre claim",p=>{p.production.clothEstimate.trouserMetres=1.8 as never;}],
+    ["forged cloth basis",p=>{p.production.clothEstimate.basis="supplier_estimate" as never;}],
+    ["unreadable cloth note",p=>{p.production.clothEstimate.note=" " as never;}],
+    ["invalid stock record",p=>{p.production.stockReservation=null as never;}],
+    ["forged reservation ID",p=>{p.production.stockReservation.reservationId="RES-FORGED" as never;}],
+    ["claimed reservation",p=>{p.production.stockReservation.status="reserved" as never;}],
+    ["invalid quote record",p=>{p.production.quote=[] as never;}],
+    ["forged quote amount",p=>{p.production.quote.amount=4000 as never;}],
+    ["forged zero quote",p=>{p.production.quote.amount=0 as never;}],
+    ["forged currency",p=>{p.production.quote.currency="INR" as never;}],
+    ["claimed paid quote",p=>{p.production.quote.status="paid" as never;}],
+  ];
+  for(const [label,mutate] of tamperings){
+    const tampered=sample();
+    mutate(tampered);
+    assert.throws(()=>buildTailorTechPackHtml(tampered),
+      /Unsafe tailor tech pack production fields/,label);
+  }
+  const missingConstruction=sample();
+  missingConstruction.construction.shirt=null as never;
+  assert.throws(()=>buildTailorTechPackHtml(missingConstruction),
+    /Unsafe tailor tech pack construction/);
+  assert.throws(()=>buildTailorTechPackHtml(null as never),
+    /Unsafe tailor tech pack packet/);
+});
+
 test("sparse body data and absent exact StyleSpec stay review-only, never ready",()=>{
   const packet=buildProductionHandoff(createRevision([chest],[waist],false));
   assert.equal(packet.status,"review_required");
