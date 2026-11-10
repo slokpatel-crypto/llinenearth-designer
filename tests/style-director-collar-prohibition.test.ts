@@ -211,3 +211,53 @@ test("English Spread / British Collar bans and optional language do not choose a
   assert.deepEqual(styleDirectorCandidateWordingIssues(contradictory).map(x => x.code),
     ["ambiguous_candidate_collar"]);
 });
+
+test("with-or-without collar alternatives require review across canonical collar families", () => {
+  const labels = [
+    "Camp Collar", "Cuban / Camp Collar", "Mandarin Band Collar",
+    "English Spread / British Collar", "Spread Collar", "Button-Down Collar",
+    "Soft Button-Down Collar", "Point (Standard) Collar", "Club Collar",
+    "Wing Collar", "Tab Collar", "Pin Collar", "Cutaway Collar",
+  ];
+  const canonical = optionsFor("shirt.collar").map(option => option.id);
+  assert.ok(canonical.includes("cuban_camp_collar"));
+  assert.ok(canonical.includes("english_spread_collar"));
+  for (const label of labels) {
+    for (const wording of ["with or without " + label, "with or without a " + label]) {
+      assert.equal(styleDirectorCandidateCollar(wording, photographed), null, wording);
+      assert.equal(styleDirectorCandidateOrdinaryCollar(wording), null, wording);
+      assert.equal(styleDirectorCandidateVariantCollar(wording), null, wording);
+      assert.equal(styleDirectorCandidateSpecialCollar(wording, photographed), null, wording);
+      assert.deepEqual(styleDirectorCandidateWordingIssues(wording).map(issue => issue.code),
+        ["ambiguous_candidate_collar"], wording);
+      for (const id of canonical) {
+        const saved = Object.freeze({ collar: id });
+        const before = JSON.stringify(saved);
+        assert.deepEqual(styleDirectorCandidateCollarIssues(wording, saved), [], wording);
+        assert.equal(JSON.stringify(saved), before, "must not mutate a locked collar");
+      }
+    }
+  }
+  assert.equal(styleDirectorWearForCandidate("Formal",
+    "with or without camp collar", "Tucked"), "Tucked",
+    "optional camp collars must not force untucked wear");
+});
+
+test("collar alternatives retain independent prohibitions and affirmative constructions", () => {
+  const negative = "with or without Camp Collar; no Wing Collar";
+  assert.deepEqual(styleDirectorCandidateWordingIssues(negative).map(issue => issue.code),
+    ["ambiguous_candidate_collar"]);
+  assert.deepEqual(issueCodes(negative, "wing_collar"), [],
+    "wording review owns alternatives and does not rewrite a locked ID");
+  const positive = "with or without Wing Collar; Mandarin Band Collar Shirt";
+  assert.deepEqual(styleDirectorCandidateWordingIssues(positive).map(issue => issue.code),
+    ["ambiguous_candidate_collar"]);
+  assert.equal(styleDirectorCandidateCollar(positive, photographed), null);
+  assert.deepEqual(issueCodes(positive, "mandarin_band_collar"), []);
+  // A firm ban without the word "with" must still reject the forbidden collar.
+  assert.deepEqual(issueCodes("without Camp Collar", "cuban_camp_collar"),
+    ["candidate_collar_mismatch"]);
+  assert.deepEqual(styleDirectorCandidateWordingIssues("without Camp Collar"), []);
+  assert.equal(styleDirectorCandidateCollar(
+    "Mandarin Band Collar Shirt", photographed)?.versioned, "mandarin_band_collar");
+});
