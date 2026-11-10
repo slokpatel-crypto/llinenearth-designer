@@ -80,6 +80,16 @@ test('actual read-only probe output parses as an untrusted version-only projecti
   }
 });
 
+test('actual PostgreSQL transcript rejects unrelated stdout and interior blank records',()=>{
+  const r=probe();
+  assert.equal(r.status,0,r.stderr);
+  const marker='probe_complete|TITAN_STAGING_READONLY_V1';
+  assert.ok(r.stdout.includes(marker));
+  const extra=r.stdout.replace(marker,'unexpected_staging_status|not-from-probe\n'+marker);
+  assert.throws(()=>extractUntrustedAppliedVersions(extra,{psqlExitCode:0}),/unrecognized psql evidence row|unexpected evidence after COMMIT status/);
+  const blank=r.stdout.replace(marker,'\n'+marker);
+  assert.throws(()=>extractUntrustedAppliedVersions(blank,{psqlExitCode:0}),/unexpected blank psql evidence row/);
+});
 test('actual PostgreSQL probe completion marker detects output truncation',()=>{
   const r=probe();
   assert.equal(r.status,0,r.stderr);
@@ -100,7 +110,7 @@ test('incomplete read-only PostgreSQL capture must not become reviewable history
   assert.ok(matrix.length>24,'Fixture must include real function overloads');
   assert.throws(
     ()=>extractUntrustedAppliedVersions(r.stdout.replace(matrix[0]+'\n',''),{psqlExitCode:0}),
-    /partial|signature matrix/,
+    /partial|signature matrix|premature or repeated COMMIT status/,
   );
   assert.throws(
     ()=>extractUntrustedAppliedVersions(r.stdout,{psqlExitCode:3}),
@@ -179,7 +189,10 @@ test('untrusted multiline reviewer role cannot inject a migration-history row',(
     'GRANT USAGE ON SCHEMA supabase_migrations TO "'+role+'";',
     'GRANT SELECT ON TABLE supabase_migrations.schema_migrations TO "'+role+'";',
   ].join('\n'));
-  const r=probe(['--command=SET ROLE "'+role+'";']);
+  // --quiet suppresses the synthetic setup-only SET ROLE command-status row.
+  // A genuine reviewer connects directly as its approved role, so accepting
+  // arbitrary SET tags in captured evidence would weaken the trust boundary.
+  const r=probe(['--quiet','--command=SET ROLE "'+role+'";']);
   assert.equal(r.status,0,'Synthetic reviewer could not run read-only probe: '+r.stderr);
   assert.ok(!r.stdout.split(/\r?\n/).includes('migration_history|'+fakeVersion+'|'),
     'Reviewer identifier must not forge a history row');
