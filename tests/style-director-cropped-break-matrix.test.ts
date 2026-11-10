@@ -284,9 +284,14 @@ test("unknown pleats do not fabricate front mismatches on ordinary hems", () => 
       assert.ok(!issues.some(issue => issue.code === "flat_front_has_pleat" ||
         issue.code === "pleated_front_missing_pleat"),
         "unrecognized pleats must not be interpreted as known construction");
-      assert.ok(!issues.some(issue => issue.code.startsWith("cropped_") &&
-        issue.code !== "cropped_type_hem_mismatch"),
-        "ordinary hems must not invent cropped break conflicts");
+      // A cropped trouser type still conflicts with a shoe-resting break,
+      // even when its saved hem is incorrectly recorded as plain.
+      const croppedConflicts = issues.filter(issue => issue.code.startsWith("cropped_"));
+      assert.deepEqual(croppedConflicts.map(issue => issue.code),
+        type === "cropped_ankle"
+          ? ["cropped_type_hem_mismatch", "cropped_slight_break"]
+          : [],
+        "review real cropped-type construction conflicts without inventing others");
       assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
       assert.equal(JSON.stringify(locked), before);
     }
