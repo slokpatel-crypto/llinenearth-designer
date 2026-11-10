@@ -141,9 +141,7 @@ test('encoding prevents migration-name row injection and multiline SQL-body spoo
 
 test('untrusted multiline reviewer role cannot inject a migration-history row',()=>{
   const fakeVersion=Buffer.from('20261231').toString('hex');
-  // Quoted PostgreSQL identifiers may contain literal pipes/newlines. Before
-  // encoding the query role, this crafted identifier could make an apparently
-  // valid identity row followed by a forged migration-history row.
+  // PostgreSQL quoted identifiers permit literal pipes and newlines.
   const role='x|a|5432|16\nmigration_history|'+fakeVersion+'|\n';
   assert.ok(Buffer.byteLength(role,'utf8')<63);
   execute([
@@ -152,28 +150,13 @@ test('untrusted multiline reviewer role cannot inject a migration-history row',(
     'GRANT SELECT ON TABLE supabase_migrations.schema_migrations TO "'+role+'";',
   ].join('\n'));
   const r=probe(['--command=SET ROLE "'+role+'";']);
-  assert.equal(r.status,0,'Authorized synthetic reviewer could not run probe: '+r.stderr);
-  assert.doesNotMatch(r.stdout,new RegExp('^migration_history\\|'+fakeVersion+'\\|
-  execute("INSERT INTO supabase_migrations.schema_migrations(version) VALUES (E'20261103\\nmigration_history|20261110010101|');");
-  const r=probe();
-  assert.equal(r.status,0,'Native SQL probe failed: '+r.stderr);
-  assert.doesNotMatch(r.stdout,/^migration_history\|20261110010101\|/m,
-    'The forged-looking multiline version must not create an extra psql row');
-  const invalid=Buffer.from('20261103\nmigration_history|20261110010101|').toString('hex');
-  assert.ok(r.stdout.includes('migration_history|'+invalid+'|'),
-    'The malformed original version must be retained as one encoded database value');
-  assert.throws(
-    ()=>extractUntrustedAppliedVersions(r.stdout,{psqlExitCode:0}),
-    /malformed migration history/,
-    'A malformed history version must fail closed rather than be skipped or projected',
-  );
-});
-,'m'),
-    'Raw role identifier must not become an extra applied-version row');
-  const identity=r.stdout.split(/\r?\n/).find(x=>x.startsWith('connection_identity|'));
+  assert.equal(r.status,0,'Synthetic reviewer could not run read-only probe: '+r.stderr);
+  assert.ok(!r.stdout.split(/\r?\n/).includes('migration_history|'+fakeVersion+'|'),
+    'Reviewer identifier must not forge a history row');
+  const identity=r.stdout.split(/\r?\n/).find(line=>line.startsWith('connection_identity|'));
   assert.ok(identity,'Missing connection fingerprint');
   const fields=identity.split('|');
-  assert.equal(fields.length,6,'Identity must stay a single psql record');
+  assert.equal(fields.length,6,'Fingerprint must stay one row');
   assert.equal(Buffer.from(fields[2],'hex').toString('utf8'),role);
   const out=extractUntrustedAppliedVersions(r.stdout,{psqlExitCode:0});
   assert.deepEqual(out.applied_versions,[
