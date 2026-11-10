@@ -173,3 +173,42 @@ test("undecided sleeves retain independent firm restrictions for review", () => 
   assert.deepEqual(lockedIssues("no short sleeves", "half_sleeve"),
     ["candidate_sleeve_mismatch"]);
 });
+
+test("cross-family short/long sleeve alternatives require review, not a selected cut", () => {
+  for (const wording of [
+    "short or long sleeves",
+    "half or full sleeves",
+    "full or half sleeves",
+    "long or short sleeves",
+    "short sleeve or long sleeves",
+    "either half or full sleeve",
+    "full sleeves or short sleeve",
+  ]) {
+    assert.equal(styleDirectorCandidateSleeve(wording), null, wording);
+    assert.deepEqual(wordingIssues(wording), ["ambiguous_candidate_sleeve"], wording);
+    for (const sleeve of ["half_sleeve", "full_sleeve", "roll_up_styled"]) {
+      const locked = Object.freeze({ sleeve });
+      const snapshot = JSON.stringify(locked);
+      assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, locked), [], wording);
+      assert.equal(JSON.stringify(locked), snapshot, "a review cannot alter a locked sleeve ID");
+    }
+  }
+});
+
+test("cross-family alternatives keep independent bans while synonyms remain supported", () => {
+  for (const [wording, denied, permitted] of [
+    ["half or full sleeves; no short sleeves", "half_sleeve", "full_sleeve"],
+    ["long or short sleeves; no full sleeves", "full_sleeve", "half_sleeve"],
+    ["half or full sleeves; full sleeves required", "half_sleeve", "full_sleeve"],
+  ] as const) {
+    assert.equal(styleDirectorCandidateSleeve(wording), null, wording);
+    assert.deepEqual(wordingIssues(wording), ["ambiguous_candidate_sleeve"], wording);
+    assert.deepEqual(lockedIssues(wording, denied), ["candidate_sleeve_mismatch"], wording);
+    assert.deepEqual(lockedIssues(wording, permitted), [], wording);
+  }
+  assert.deepEqual(wordingIssues("short or half sleeves"), []);
+  assert.equal(styleDirectorCandidateSleeve("short or half sleeves")?.sleeve, "half_sleeve");
+  assert.deepEqual(lockedIssues("short or half sleeves", "half_sleeve"), []);
+  assert.deepEqual(wordingIssues("long or full sleeves"), []);
+  assert.deepEqual(lockedIssues("long or full sleeves", "full_sleeve"), []);
+});
