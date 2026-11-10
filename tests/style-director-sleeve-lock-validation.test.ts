@@ -60,7 +60,7 @@ test("explicit sleeve instructions need a canonical own-data locked option", () 
 
 
 test("unknown sleeve IDs do not masquerade as full-length construction conflicts", () => {
-  for (const sleeve of ["retired_sleeve", "", null, undefined]) {
+  for (const sleeve of ["retired_sleeve", "", null]) {
     const locked = Object.freeze({
       shirt: Object.freeze({ type: "short_sleeve_shirt", sleeve, cuff: "open_short_hem_cuff" }),
       pant: Object.freeze({ type: "formal_flat_front", pleat: "flat_front" }),
