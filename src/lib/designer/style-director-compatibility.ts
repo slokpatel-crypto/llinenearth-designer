@@ -950,8 +950,8 @@ export function styleDirectorCandidateWideLegIntent(
 ): "requested" | "prohibited" | "ambiguous" | null {
   const width = String.raw`(?:wide[- ]?leg(?:ged)?(?:[- ]?(?:trousers?|pants?))?|wide[- ]?fit[- ]?(?:trousers?|pants?)|wide[- ]?(?:trousers?|pants?))`;
   const beforeBan = new RegExp(String.raw`\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|add|have|want)\s+)?(?:(?:a|any)\s+)?${width}\b`, "gi");
-  const afterBan = new RegExp(String.raw`\b${width}\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:should|must|shall)\s+(?:be\s+avoided|not\s+be\s+(?:worn|used|chosen))|to\s+be\s+avoided|not\s+to\s+be\s+(?:worn|used|chosen))\b`, "gi");
-  const optional = new RegExp(String.raw`\b(?:(?:optional|maybe|possibly|perhaps)\s+${width}|${width}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|maybe|possibly|perhaps))\b`, "gi");
+  const afterBan = new RegExp(String.raw`\b${width}\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:should|must|shall)\s+(?:be\s+avoided|not\s+be\s+(?:worn|used|chosen|selected))|to\s+be\s+avoided|not\s+to\s+be\s+(?:worn|used|chosen))\b`, "gi");
+  const optional = new RegExp(String.raw`\b(?:(?:optional|maybe|possibly|perhaps)\s+${width}|${width}\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory)|maybe|possibly|perhaps))\b`, "gi");
   let prohibited = false;
   let remaining = candidateTrouser.replace(beforeBan, () => { prohibited = true; return " "; });
   remaining = remaining.replace(afterBan, () => { prohibited = true; return " "; });
