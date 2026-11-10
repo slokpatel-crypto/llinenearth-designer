@@ -1470,7 +1470,8 @@ export function styleDirectorConstructionIssues(
       explanation: "A short-sleeve shirt cannot use the proposed full-length French double-cuff construction.",
     });
   }
-  if (shirt.type === "short_sleeve_shirt" && shirt.sleeve !== "half_sleeve") {
+  if (shirt.type === "short_sleeve_shirt" &&
+      ["full_sleeve", "roll_up_styled"].includes(shirt.sleeve)) {
     issues.push({
       code: "short_sleeve_type_mismatch",
       explanation: "The selected short-sleeve shirt type still specifies a full-length sleeve; confirm the actual sleeve before production.",
