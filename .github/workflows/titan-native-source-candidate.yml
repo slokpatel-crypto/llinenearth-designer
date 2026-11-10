@@ -1483,7 +1483,8 @@ jobs:
                       assert math.dist(transformed,target) <= 0.001
                   assert row["singleEdgeSimilarityClosureResidualMm"] <= 0.0000001
                   assert row["singleEdgeClosureRequiresUvScaleChange"] is (
-                      abs(scale-1) > 0.000000001
+                      abs(row["sourceUvSimilarityScaleOwnerBToOwnerA"]-1) >
+                      0.000000001
                   )
                   assert row["sourceUvSimilarityDistortionApproved"] is False
               print("TITAN_ACTUAL_SOURCE_UV_EDGE_SCALE_REQUIREMENTS_RESEARCH_ONLY",json.dumps([
