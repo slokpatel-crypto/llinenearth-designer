@@ -114,7 +114,7 @@ test("formal and pleated trousers may have cropped hems without forcing cropped 
     const locked = Object.freeze({
       shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar", wear: "tucked",
         sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
-      pant: Object.freeze({ type, pleat: type === "pleated_trouser" ? "single_pleat" : "flat_front",
+      pant: Object.freeze({ type, pleat: type === "pleated_trouser" ? "single_pleat_forward" : "flat_front",
         hem: "cropped_above_ankle_hem", break: "cropped_above_ankle" }),
     }) as unknown as StyleSpecV2;
     const before = JSON.stringify(locked);
@@ -140,7 +140,7 @@ test("cropped hem with ordinary trouser fronts rejects every shoe-resting break"
       const locked = Object.freeze({
         shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar",
           wear: "tucked", sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
-        pant: Object.freeze({ type, pleat: type === "pleated_trouser" ? "single_pleat" : "flat_front",
+        pant: Object.freeze({ type, pleat: type === "pleated_trouser" ? "single_pleat_forward" : "flat_front",
           hem: "cropped_above_ankle_hem", break: shoeBreak }),
       }) as unknown as StyleSpecV2;
       const before = JSON.stringify(locked);
@@ -161,7 +161,7 @@ test("ordinary hems retain legitimate shoe-resting breaks without cropped warnin
       const locked = Object.freeze({
         shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar",
           wear: "tucked", sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
-        pant: Object.freeze({ type, pleat: type === "pleated_trouser" ? "single_pleat" : "flat_front",
+        pant: Object.freeze({ type, pleat: type === "pleated_trouser" ? "single_pleat_forward" : "flat_front",
           hem: "plain_hem", break: shoeBreak }),
       }) as unknown as StyleSpecV2;
       const before = JSON.stringify(locked);
@@ -178,7 +178,7 @@ test("ordinary hems retain legitimate shoe-resting breaks without cropped warnin
 
 test("cropped-break review does not hide independently invalid trouser front construction", () => {
   for (const [type, pleat, expected] of [
-    ["formal_flat_front", "single_pleat", "flat_front_has_pleat"],
+    ["formal_flat_front", "single_pleat_forward", "flat_front_has_pleat"],
     ["pleated_trouser", "flat_front", "pleated_front_missing_pleat"],
   ] as const) {
     const locked = Object.freeze({
@@ -201,7 +201,7 @@ test("cropped break against an ordinary hem requires review for every supported 
     const locked = Object.freeze({
       shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar", wear: "tucked",
         sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
-      pant: Object.freeze({ type, pleat: type === "pleated_trouser" ? "single_pleat" : "flat_front",
+      pant: Object.freeze({ type, pleat: type === "pleated_trouser" ? "single_pleat_forward" : "flat_front",
         hem: "plain_hem", break: "cropped_above_ankle" }),
     }) as unknown as StyleSpecV2;
     const snapshot = JSON.stringify(locked);
