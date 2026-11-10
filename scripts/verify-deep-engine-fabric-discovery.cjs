@@ -102,6 +102,33 @@ async function testViewport(width){
       pantStock:allPants,initialVisibleShirts:visibleStart,
       formalCount,selectionStable:true,unverifiedScalePresented:true,
       advancedCutServerRoundTrip:true});
+  }catch(error){
+    // Capture the actual browser failure BEFORE context.close(). Previous
+    // failures emitted only a timeout: the outer catch tried to screenshot
+    // an already-closed page and left no DOM evidence to diagnose hydration,
+    // filtering or visibility. Never retry, bypass or soften an assertion.
+    const state=await page.evaluate(()=>{
+      const field=document.querySelector("#designer-shirt-search");
+      const card=field?.closest(".newDesignerFabric");
+      const empty=card?.querySelector(".newDesignerFabricNoMatch");
+      const select=card?.querySelector("#designer-shirt");
+      return {
+        documentReadyState:document.readyState,
+        searchValue:field?.value??null,
+        reactPropsAttached:field?Object.keys(field).some(key=>key.startsWith("__reactProps$")):false,
+        matchingCount:card?.querySelector('label[for="designer-shirt"] span')?.textContent??null,
+        choiceCount:card?.querySelectorAll(".newDesignerFabricChoices button").length??null,
+        emptyStateText:empty?.textContent??null,
+        emptyStateVisible:empty?Boolean(empty.getClientRects().length):false,
+        selectedShirtId:select?.value??null,
+        currentPanelText:card?.innerText?.slice(0,1000)??null,
+      };
+    }).catch(e=>({diagnosticError:String(e)}));
+    await fs.writeFile(path.join(output,`failure-${width}.json`),
+      JSON.stringify({width,error:String(error),state},null,2)+"\n").catch(()=>{});
+    await page.screenshot({path:path.join(output,`failure-${width}.png`),
+      fullPage:true}).catch(()=>{});
+    throw error;
   }finally{await context.close();}
 }
 
