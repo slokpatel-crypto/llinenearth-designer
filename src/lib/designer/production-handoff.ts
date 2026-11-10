@@ -75,9 +75,18 @@ export function buildProductionHandoff(
   // Date.parse accepts misleading strings such as "invalid-2026-11-02".
   // Only explicit ISO timestamps with timezone and finite parsed times
   // may become export metadata. Preserve offsets and normalise to UTC below.
-  if(typeof generatedAt!=="string"
-      || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(generatedAt)
-      || !Number.isFinite(Date.parse(generatedAt))) {
+  const isIsoTimestamp=typeof generatedAt==="string"
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(generatedAt);
+  const parsedAt=isIsoTimestamp ? Date.parse(generatedAt) : NaN;
+  // Date.parse also normalises impossible calendar days (February 30) and
+  // midnight 24:00 into different dates. Compare the original wall-clock
+  // fields after applying the supplied timezone offset to reject rollovers.
+  const tz=isIsoTimestamp ? generatedAt.slice(-6) : "";
+  const offsetMinutes=tz==="":0
+    : (tz.startsWith("+")?1:-1)*(Number(tz.slice(1,3))*60+Number(tz.slice(4,6)));
+  const wallClock=Number.isFinite(parsedAt)
+    ? new Date(parsedAt+offsetMinutes*60_000).toISOString().slice(0,19) : "";
+  if(!isIsoTimestamp || !Number.isFinite(parsedAt) || wallClock!==generatedAt.slice(0,19)) {
     throw new Error("Unsafe tailor handoff timestamp: expected a valid generation time.");
   }
   const spec=revision.garmentSpec;
