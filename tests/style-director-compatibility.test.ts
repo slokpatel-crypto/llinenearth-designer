@@ -3028,3 +3028,22 @@ test("camp-collar occasion review is limited to explicit formal tiers and preser
     "unspecified occasion must not be treated as a formal occasion");
   assert.equal(JSON.stringify(selected), original);
 });
+
+
+test("frozen camp-collar occasion review does not mutate or invent formal requirements", () => {
+  const selected = spec({
+    type: "camp_collar_resort", collar: "cuban_camp_collar", wear: "untucked",
+  });
+  Object.freeze(selected.shirt);
+  Object.freeze(selected.pant);
+  Object.freeze(selected);
+  const before = JSON.stringify(selected);
+  for (const occasion of ["Formal", "Semi-Formal"] as const) {
+    const first = styleDirectorConstructionIssues(selected, occasion);
+    assert.deepEqual(first.map(issue => issue.code), ["formal_camp_collar"]);
+    assert.deepEqual(styleDirectorConstructionIssues(selected, occasion), first);
+    assert.equal(JSON.stringify(selected), before);
+  }
+  assert.deepEqual(styleDirectorConstructionIssues(selected), []);
+  assert.equal(JSON.stringify(selected), before);
+});
