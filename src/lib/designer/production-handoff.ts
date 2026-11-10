@@ -59,6 +59,12 @@ export function buildProductionHandoff(
   generatedAt=new Date().toISOString(),
 ):ProductionHandoff {
   const spec=revision.garmentSpec;
+  // Reject malformed nested StyleSpec before reading shirt/pant selection fields.
+  // A corrupt locked recipe must fail with a controlled construction-integrity
+  // error, not an incidental TypeError while auditing measurement requirements.
+  if (spec.styleSpec != null && !validateStyleSpecV2(spec.styleSpec)) {
+    throw new Error("Unsafe tailor handoff construction: unrecognised versioned style option.");
+  }
   const fabricAudit=auditHandoffFabricIdentity(spec.fabrics);
   if(fabricAudit.errors.length) {
     throw new Error(`Unsafe tailor handoff fabric identity: ${fabricAudit.errors.join(" ")}`);
@@ -87,9 +93,6 @@ export function buildProductionHandoff(
   const fitAudit=auditHandoffFitProvenance(fitProvenance);
   if(fitAudit.errors.length) {
     throw new Error(`Unsafe tailor handoff fit provenance: ${fitAudit.errors.join(" ")}`);
-  }
-  if (spec.styleSpec && !validateStyleSpecV2(spec.styleSpec)) {
-    throw new Error("Unsafe tailor handoff construction: unrecognised versioned style option.");
   }
   if ((spec.source.styleSchemaVersion ?? null) !== (spec.styleSpec?.styleSchemaVersion ?? null)) {
     throw new Error("Unsafe tailor handoff construction: locked option schema provenance does not match the selected cut.");
