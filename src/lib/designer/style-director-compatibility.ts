@@ -243,9 +243,18 @@ export function styleDirectorCandidateRollUpSleeveIntent(name: string): {
     else if (!optional) requested = true;
   }
   const lengths = candidateSleeveLengths(name);
+  // Roll-up styled and an ordinary full sleeve are different saved options.
+  // "Full sleeves or roll-up styled" cannot choose the roll-up ID by
+  // substring priority, even though both options are physically long sleeves.
+  // Without "or", "Full Sleeve Roll-up Styled" still names one construction.
+  const rolled = String.raw`roll[- ]?up(?:[- ]styled|[- ]sleeves?)?`;
+  const full = String.raw`(?:full|long)(?:[- ]sleeve(?:s|d)?)?`;
+  const alternative = new RegExp(
+    String.raw`\b(?:${full}\s+or\s+${rolled}|${rolled}\s+or\s+${full})\b`, "i",
+  ).test(name);
   return {
     requested, prohibited,
-    ambiguous: undecided || (requested && prohibited) ||
+    ambiguous: undecided || alternative || (requested && prohibited) ||
       (requested && (lengths.short || lengths.bannedLong)),
   };
 }
