@@ -5,9 +5,11 @@
 BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
 
 -- 1. Connection fingerprint (owner must independently verify staging project ref).
+-- Database and role identifiers are arbitrary text, so hex-frame their bytes
+-- to prevent newline/pipe content from impersonating migration-history rows.
 SELECT 'connection_identity' AS evidence_kind,
-       current_database() AS database_name,
-       current_user AS query_role,
+       encode(convert_to(current_database(),'UTF8'),'hex') AS database_name_hex,
+       encode(convert_to(current_user,'UTF8'),'hex') AS query_role_hex,
        inet_server_addr()::text AS server_address,
        inet_server_port() AS server_port,
        current_setting('server_version') AS postgres_version;
