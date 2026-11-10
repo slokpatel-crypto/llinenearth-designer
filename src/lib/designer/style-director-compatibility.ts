@@ -1084,7 +1084,7 @@ export function styleDirectorCandidateTrouserFront(
     );
   const flatFront = /\bflat[- ]?front\b/i.test(frontWording);
   const positiveWording = stripNegatedPleatWording(frontWording).replace(
-    /\bpleat(?:s|ing)?\s+(?:(?:are|is)\s+)?(?:(?:not\s+(?:allowed|permitted)|prohibited|forbidden|banned|disallowed)|(?:(?:should|must|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included)|not\s+to\s+be\s+(?:used|added|included)|(?:must|should|shall)\s+be\s+omitted|(?:must|should|(?:are|is)\s+to)\s+be\s+avoided|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted))\b/gi,
+    /\bpleat(?:s|ing)?\s+(?:(?:are|is)\s+)?(?:(?:not\s+(?:allowed|permitted|wanted)|prohibited|forbidden|banned|disallowed|unwanted)|(?:(?:should|must|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included|selected)|not\s+to\s+be\s+(?:used|added|included|selected)|(?:must|should|shall)\s+be\s+omitted|(?:must|should|(?:are|is)\s+to)\s+be\s+avoided|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted|wanted))\b/gi,
     "",
   );
   // Optional pleat language describes a choice, not an instruction to cut pleats.
