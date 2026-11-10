@@ -3149,3 +3149,23 @@ test("postposed collar prohibitions and optionality preserve canonical locked ID
     spec({ collar: "cuban_camp_collar" }).shirt), [],
     "contradictory construction is handled by the ambiguity gate");
 });
+
+
+test("frozen collar prohibitions remain deterministic across explicit and optional wording", () => {
+  for (const [wording, collar, expected] of [
+    ["Camp collar isn't wanted", "cuban_camp_collar", "candidate_collar_mismatch"],
+    ["Camp collar should not be selected", "spread_collar", null],
+    ["Camp collar isn't required", "cuban_camp_collar", null],
+    ["Camp collar and camp collar isn't wanted", "cuban_camp_collar", null],
+  ] as const) {
+    const locked = spec({ collar });
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    Object.freeze(locked);
+    const before = JSON.stringify(locked);
+    const first = styleDirectorCandidateCollarIssues(wording, locked.shirt);
+    assert.deepEqual(first.map(issue => issue.code), expected === null ? [] : [expected], wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, locked.shirt), first, wording);
+    assert.equal(JSON.stringify(locked), before, "review must preserve locked IDs");
+  }
+});
