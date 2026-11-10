@@ -630,11 +630,18 @@ export function styleDirectorCandidateButtonIntent(candidateShirt: string): {
 } {
   const requested = new Set<CandidateButtonId>();
   const prohibited = new Set<CandidateButtonId>();
+  let undecided = false;
   for (const { id, pattern } of candidateButtonPatterns) {
     for (const match of candidateShirt.matchAll(pattern)) {
       const start = match.index ?? 0;
       const prefix = candidateShirt.slice(0, start);
       const suffix = candidateShirt.slice(start + match[0].length);
+      // "With or without" leaves the button material unresolved; do not
+      // mistake its embedded "without" for a confirmed material exclusion.
+      if (/\bwith\s+(?:or\s+)?without\s+(?:(?:a|any|the)\s+)?$/i.test(prefix)) {
+        undecided = true;
+        continue;
+      }
       // Postposed material refusals are prohibitions, never requests.
       // Non-mandatory / optional wording must remain neutral.
       const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
@@ -648,7 +655,7 @@ export function styleDirectorCandidateButtonIntent(candidateShirt: string): {
   return {
     requested: requested.size === 1 ? [...requested][0] : null,
     prohibited: [...prohibited],
-    ambiguous: requested.size > 1 || [...requested].some(id => prohibited.has(id)),
+    ambiguous: undecided || requested.size > 1 || [...requested].some(id => prohibited.has(id)),
   };
 }
 
