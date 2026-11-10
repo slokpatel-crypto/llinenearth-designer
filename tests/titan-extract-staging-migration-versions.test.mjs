@@ -6,10 +6,18 @@ import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
 
 const names=['fabric_stock_record','fabric_stock_reserve','fabric_stock_release','fabric_stock_consume_reservation','fabric_stock_record_v2','fabric_stock_reserve_v2','fabric_stock_release_v2','fabric_stock_consume_reservation_v2'];
 const roles=['anon','authenticated','service_role'];
 const endMarker='probe_complete|TITAN_STAGING_READONLY_V1';
+const hex=value=>Buffer.from(value,'utf8').toString('hex');
+const definition=(signature,body='CREATE FUNCTION synthetic',owner='synthetic_owner',settings='')=>
+  ['stock_function_definition',hex(signature),hex(owner),'f','v',hex(settings),
+   createHash('md5').update(body).digest('hex'),hex(body)].join('|');
+const installedRow=(name,signature,role,roleExists='t',execute='t')=>
+  'stock_function_effective_execute|'+name+'|'+hex(signature)+'|t|'+role+'|'+roleExists+'|'+(roleExists==='t'?execute:'');
+const insertDefinition=(raw,definitionRow)=>raw.replace(rows[0],definitionRow+'\n'+rows[0]);
 const rows=names.flatMap(name=>roles.map(role=>'stock_function_effective_execute|'+name+'||f|'+role+'|t|'));
 const fixture=(versions=['20261103'])=>[
   'connection_identity|'+Buffer.from('synthetic_database').toString('hex')+'|'+Buffer.from('synthetic_reader').toString('hex')+'|127.0.0.1|5432|16.15',
@@ -51,13 +59,13 @@ test('malformed role permissions never become an implicit grant',()=>{
 test('present function and registered role cannot have UNKNOWN EXECUTE permission',()=>{
   const altered=rows[0].replace(
     'fabric_stock_record||f|anon|t|',
-    'fabric_stock_record|fabric_stock_record(text)|t|anon|t|');
+    'fabric_stock_record|'+hex('fabric_stock_record(text)')+'|t|anon|t|');
   assert.throws(()=>parseGood(fixture().replace(rows[0],altered)),/inconsistent/);
 });
 test('contradictory function signatures across roles fail closed',()=>{
   const altered=rows[0].replace(
     'fabric_stock_record||f|anon|t|',
-    'fabric_stock_record|fabric_stock_record(text)|t|anon|t|t');
+    'fabric_stock_record|'+hex('fabric_stock_record(text)')+'|t|anon|t|t');
   assert.throws(()=>parseGood(fixture().replace(rows[0],altered)),/signature matrix/);
 });
 test('contradictory role existence across functions fails closed',()=>{
@@ -68,15 +76,17 @@ test('genuine complete multi-overload evidence remains a non-approving projectio
   const withoutReserve=fixture().split('\n').filter(line=>
     line!==endMarker && !line.startsWith('stock_function_effective_execute|fabric_stock_reserve_v2|')).join('\n').trimEnd();
   const observed=roles.flatMap(role=>[
-    'stock_function_effective_execute|fabric_stock_reserve_v2|fabric_stock_reserve_v2(text)|t|'+role+'|t|f',
-    'stock_function_effective_execute|fabric_stock_reserve_v2|fabric_stock_reserve_v2(integer)|t|'+role+'|t|t'
+    installedRow('fabric_stock_reserve_v2','fabric_stock_reserve_v2(text)',role,'t','f'),
+    installedRow('fabric_stock_reserve_v2','fabric_stock_reserve_v2(integer)',role)
   ]);
-  const report=parseGood(withoutReserve+'\n'+observed.join('\n')+'\n'+endMarker+'\n');
+  const complete=withoutReserve.replace(rows[0],definition('fabric_stock_reserve_v2(text)')+'\n'+
+    definition('fabric_stock_reserve_v2(integer)')+'\n'+rows[0]);
+  const report=parseGood(complete+'\n'+observed.join('\n')+'\n'+endMarker+'\n');
   assert.equal(report.expected_permission_pairs_observed,24);
   assert.equal(report.release_ready,false);
 });
 test('a function cannot be both absent and installed in one capture',()=>{
-  const installed='stock_function_effective_execute|fabric_stock_record|fabric_stock_record(text)|t|anon|t|t';
+  const installed=installedRow('fabric_stock_record','fabric_stock_record(text)','anon');
   assert.throws(()=>parseGood(fixture().replace(endMarker,installed+'\n'+endMarker)),/contradictory absent\/present/);
   assert.throws(()=>parseGood(fixture().replace(rows[0],installed+'\n'+rows[0])),/contradictory absent\/present/);
 });
@@ -84,11 +94,11 @@ test('missing role with installed RPC remains an explicit non-approving observat
   let captured=fixture().replace(/\|service_role\|t\|/g,'|service_role|f|');
   for(const role of roles){
     const absent='stock_function_effective_execute|fabric_stock_reserve_v2||f|'+role+'|'+(role==='service_role'?'f':'t')+'|';
-    const installed='stock_function_effective_execute|fabric_stock_reserve_v2|fabric_stock_reserve_v2(text)|t|'+role+'|'+(role==='service_role'?'f':'t')+'|'+(role==='service_role'?'':'t');
+    const installed=installedRow('fabric_stock_reserve_v2','fabric_stock_reserve_v2(text)',role,role==='service_role'?'f':'t');
     assert.ok(captured.includes(absent));
     captured=captured.replace(absent,installed);
   }
-  const report=parseGood(captured);
+  const report=parseGood(insertDefinition(captured,definition('fabric_stock_reserve_v2(text)')));
   assert.equal(report.expected_permission_pairs_observed,24);
   assert.equal(report.sql_source_identity_verified,false);
   assert.equal(report.release_ready,false);
@@ -127,9 +137,9 @@ test('raw or malformed connection identifiers fail closed before history project
     '|'+hostile+'|127.0.0.1|')),/malformed connection fingerprint/);
 });
 test('rendered RPC body text cannot forge an applied migration-history record',()=>{
-  const header='stock_function_definition|fabric_stock_reserve_v2(text)|owner|t|v||hash|CREATE FUNCTION';
+  const header=definition('fabric_stock_reserve_v2(text)');
   const injected=fixture().replace(rows[0],
-    header+'\nBEGIN\nmigration_history|'+Buffer.from('20261110010101').toString('hex')+'|\nEND;\n'+rows[0]);
+    header+'\nmigration_history|'+Buffer.from('20261110010101').toString('hex')+'|\n'+rows[0]);
   assert.throws(()=>parseGood(injected),/unexpected history row order/);
 });
 test('function-definition sections cannot appear after the permission matrix',()=>{
@@ -137,8 +147,28 @@ test('function-definition sections cannot appear after the permission matrix',()
   assert.throws(()=>parseGood(fixture().replace(endMarker,late+'\n'+endMarker)),/unexpected function definition row order/);
 });
 test('function definition multiline body is ignored, not published',()=>{
-  const s=fixture().replace(rows[0],"stock_function_definition|fabric_stock_reserve_v2(text)|synthetic_owner|t|v||hash|CREATE FUNCTION\nPRIVATE-SYNTHETIC-BODY\nEND;\n"+rows[0]);
+  let s=fixture();
+  for(const role of roles){
+    s=s.replace('stock_function_effective_execute|fabric_stock_reserve_v2||f|'+role+'|t|',
+      installedRow('fabric_stock_reserve_v2','fabric_stock_reserve_v2(text)',role));
+  }
+  s=insertDefinition(s,definition('fabric_stock_reserve_v2(text)','CREATE FUNCTION\nPRIVATE-SYNTHETIC-BODY\nEND;'));
   assert.equal(JSON.stringify(parseGood(s)).includes('PRIVATE-SYNTHETIC'),false);
+});
+test('malformed function metadata, hash and matrix mismatch fail closed',()=>{
+  let s=fixture();
+  for(const role of roles){
+    s=s.replace('stock_function_effective_execute|fabric_stock_reserve_v2||f|'+role+'|t|',
+      installedRow('fabric_stock_reserve_v2','fabric_stock_reserve_v2(text)',role));
+  }
+  const header=definition('fabric_stock_reserve_v2(text)','CREATE FUNCTION synthetic');
+  const good=insertDefinition(s,header);
+  assert.equal(parseGood(good).release_ready,false);
+  assert.throws(()=>parseGood(good.replace(header,header.replace('|'+hex('synthetic_owner')+'|','|raw|owner|'))),
+    /malformed stock function definition row/);
+  assert.throws(()=>parseGood(good.replace(header,header.replace(/\|[a-f0-9]{32}\|/, '|'+ '0'.repeat(32) +'|'))),
+    /inconsistent or duplicated stock function definition/);
+  assert.throws(()=>parseGood(s),/definition\/matrix disagreement/);
 });
 test('CLI outputs only sanitized JSON and always exits nonzero, never authorizes release',()=>{
   const dir=mkdtempSync(join(tmpdir(),'titan-psql-offline-'));
