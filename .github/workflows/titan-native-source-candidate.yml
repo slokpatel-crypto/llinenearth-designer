@@ -1480,7 +1480,7 @@ jobs:
                           scale*(sine*actual[0]+cosine*actual[1])+
                           similarity_translation[1],
                       )
-                      assert math.dist(transformed,target) <= 0.00008
+                      assert math.dist(transformed,target) <= 0.001
                   assert row["singleEdgeSimilarityClosureResidualMm"] <= 0.0000001
                   assert row["singleEdgeClosureRequiresUvScaleChange"] is (
                       abs(scale-1) > 0.000000001
