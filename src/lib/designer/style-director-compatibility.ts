@@ -550,6 +550,7 @@ export function styleDirectorCandidateCollarFinishIntent(candidateShirt: string)
 } {
   const requested = new Set<CandidateCollarFinish>();
   const prohibited = new Set<CandidateCollarFinish>();
+  let undecided = false;
   for (const hit of candidateShirt.matchAll(/\b(?:white[- ]contrast[- ]collar(?:\s*(?:\+|and)\s*cuffs)?|self[- ]fabric)\b/gi)) {
     const token = hit[0];
     const start = hit.index ?? 0;
@@ -559,6 +560,12 @@ export function styleDirectorCandidateCollarFinishIntent(candidateShirt: string)
       ? "Self-fabric"
       : /(?:\+|and)\s*cuffs$/i.test(token)
         ? "White contrast collar + cuffs" : "White contrast collar";
+    // "With or without" offers a choice; the embedded "without" is not
+    // a firm ban. Independent explicit finish requests remain reviewable.
+    if (/\bwith\s+(?:or\s+)?without\s+(?:(?:a|any|the)\s+)?$/i.test(before)) {
+      undecided = true;
+      continue;
+    }
     // Postposed refusal excludes the selected finish; an optional statement
     // never counts as either a request or a ban.
     const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
@@ -576,7 +583,7 @@ export function styleDirectorCandidateCollarFinishIntent(candidateShirt: string)
   return {
     requested: requested.size === 1 ? [...requested][0] : null,
     prohibited: [...prohibited],
-    ambiguous: requested.size > 1 || [...requested].some(option => prohibited.has(option)),
+    ambiguous: undecided || requested.size > 1 || [...requested].some(option => prohibited.has(option)),
   };
 }
 
