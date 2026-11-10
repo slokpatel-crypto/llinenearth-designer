@@ -30,13 +30,16 @@ test('only migration metadata and public function catalog are queried',()=>{
 
 test('capture includes migration versions but does not infer SQL file identity',()=>{
   assert.match(sql,/\bversion\b/);
-  assert.match(sql,/to_jsonb\(m\)->>'name'/);
+  assert.match(sql,/encode\s*\(\s*convert_to\s*\(\s*coalesce\s*\(\s*to_jsonb\(m\)->>'name'/i);
+  assert.match(sql,/AS\s+recorded_name_hex/i);
+  assert.doesNotMatch(sql,/to_jsonb\(m\)->>'name'\s+AS\s+recorded_name\b/i);
   assert.match(raw,/not.*resolve duplicate-version SQL/i);
   assert.doesNotMatch(sql,/\b(?:INSERT|UPDATE|DELETE)\s+supabase_migrations\./i);
 });
 
 test('capture includes deployed function body and security attributes',()=>{
-  assert.match(sql,/pg_get_functiondef\(p\.oid\)\s+AS\s+rendered_definition/i);
+  assert.match(sql,/encode\s*\(\s*convert_to\s*\(\s*pg_get_functiondef\(p\.oid\)\s*,\s*'UTF8'\s*\)\s*,\s*'hex'\s*\)\s+AS\s+rendered_definition_hex/i);
+  assert.doesNotMatch(sql,/pg_get_functiondef\(p\.oid\)\s+AS\s+rendered_definition\b/i);
   assert.match(sql,/md5\(pg_get_functiondef\(p\.oid\)\)\s+AS\s+rendered_definition_md5/i);
   assert.match(sql,/p\.prosecdef\s+AS\s+security_definer/i);
   assert.match(sql,/pg_get_userbyid\(p\.proowner\)\s+AS\s+function_owner/i);
