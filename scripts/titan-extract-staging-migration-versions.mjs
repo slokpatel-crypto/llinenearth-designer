@@ -54,7 +54,8 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
          !['t','f'].includes(roleExists) || !['t','f',''].includes(canExecute) ||
          (exists==='f' && signature!=='') ||
          (exists==='t' && !signature.startsWith(name+'(') && !signature.startsWith('public.'+name+'(')) ||
-         ((exists==='f'||roleExists==='f') && canExecute!==''))
+         ((exists==='f'||roleExists==='f') && canExecute!=='') ||
+         (exists==='t' && roleExists==='t' && canExecute===''))
         throw Error('Blocked: inconsistent stock permissions row');
       const seen=matrix.get(pair)??new Set();
       if(seen.has(signature))throw Error('Blocked: repeated stock permissions row');
