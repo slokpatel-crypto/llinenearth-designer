@@ -3010,3 +3010,21 @@ test("frozen canonical trouser construction remains reviewable without mutation"
     }
   }
 });
+
+
+test("camp-collar occasion review is limited to explicit formal tiers and preserves locked construction", () => {
+  const selected = spec({
+    type: "camp_collar_resort", collar: "cuban_camp_collar", wear: "untucked",
+  });
+  const original = JSON.stringify(selected);
+  for (const occasion of ["Formal", "Semi-Formal"] as const) {
+    const issues = styleDirectorConstructionIssues(selected, occasion);
+    assert.deepEqual(issues.map(issue => issue.code), ["formal_camp_collar"], occasion);
+    assert.deepEqual(styleDirectorConstructionIssues(selected, occasion), issues,
+      "occasion review must be deterministic");
+    assert.equal(JSON.stringify(selected), original, "review must not change locked garment IDs");
+  }
+  assert.deepEqual(styleDirectorConstructionIssues(selected), [],
+    "unspecified occasion must not be treated as a formal occasion");
+  assert.equal(JSON.stringify(selected), original);
+});
