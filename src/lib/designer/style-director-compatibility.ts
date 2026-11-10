@@ -1503,6 +1503,18 @@ export function styleDirectorConstructionIssues(
       explanation: "The proposed pleated trouser has a flat-front construction; confirm the intended pleat.",
     });
   }
+  // The named High-Rise Double-Pleat Trouser is a canonical garment type,
+  // not permission to silently replace its saved pleat construction.
+  // Trust the catalogue's declared pleat count; a stale/unknown ID is
+  // separately flagged above and must not be invented into a real pleat.
+  if (pant.type === "double_pleat_high_rise" &&
+      optionsFor("pant.pleat").some(option =>
+        option.id === pant.pleat && option.parameters.pleatCount !== 2)) {
+    issues.push({
+      code: "double_pleat_type_mismatch",
+      explanation: "The selected high-rise double-pleat trouser type does not have a matching two-pleat construction; confirm the locked front before cutting.",
+    });
+  }
   if (pant.type === "formal_flat_front" &&
       optionsFor("pant.pleat").some(option => option.id === pant.pleat) &&
       pant.pleat !== "flat_front") {
