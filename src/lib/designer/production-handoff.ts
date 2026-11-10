@@ -2,6 +2,7 @@ import type { LockedDesignRevision } from "@/lib/designer/design-lock";
 import { verifyLockedDesignRevision } from "./design-lock.ts";
 import { auditHandoffBlockAdjustments, auditHandoffConstructionChecks, auditHandoffCreativeReview, auditHandoffFabricIdentity, auditHandoffFitProvenance, auditHandoffHumanNotes, auditHandoffMeasurements, auditHandoffProductionReadiness } from "./handoff-measurements.ts";
 import { validateStyleSpecV2 } from "./style-spec-v2.ts";
+import { validBodyPreviewProfile } from "./body-profile.ts";
 
 export const PRODUCTION_HANDOFF_VERSION="linen-earth-production-handoff-v1" as const;
 
@@ -124,6 +125,12 @@ export function buildProductionHandoff(
   // error, not an incidental TypeError while auditing measurement requirements.
   if (spec.styleSpec != null && !validateStyleSpecV2(spec.styleSpec)) {
     throw new Error("Unsafe tailor handoff construction: unrecognised versioned style option.");
+  }
+  // The preview silhouette is optional and never physical measurement approval.
+  // When present, validate restored JSON before copying apparent body evidence
+  // into a printable/reconstructable tailor handoff.
+  if (spec.bodyProfile != null && !validBodyPreviewProfile(spec.bodyProfile)) {
+    throw new Error("Unsafe tailor handoff body preview: malformed or unsupported profile.");
   }
   const fabricAudit=auditHandoffFabricIdentity(spec.fabrics);
   if(fabricAudit.errors.length) {

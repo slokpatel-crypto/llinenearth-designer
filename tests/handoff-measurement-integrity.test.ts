@@ -176,6 +176,45 @@ test("verified handoff fails closed before hashing malformed saved lock containe
     /Unsafe verified tailor handoff source/);
 });
 
+test("locked preview profile is optional but malformed body evidence fails closed",()=>{
+  const sample=()=>{
+    const revision=createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+    revision.garmentSpec.bodyProfile={
+      version:1,build:"regular",heightCm:178,skinTone:"medium",source:"default",
+      silhouette:{
+        shoulderScale:1,chestScale:1,waistScale:1,seatScale:1,
+        thighScale:1,legLengthScale:1,evidenceCount:3,
+      },
+    };
+    return revision;
+  };
+  const good=buildProductionHandoff(sample(),"2026-11-02T11:00:00Z");
+  assert.deepEqual(good.construction.bodyProfile,sample().garmentSpec.bodyProfile);
+  assert.equal(good.production.stockReservation.status,"not_requested");
+  const omitted=sample();
+  omitted.garmentSpec.bodyProfile=null;
+  assert.equal(buildProductionHandoff(omitted,"2026-11-02T11:00:00Z").construction.bodyProfile,null);
+
+  const invalid:Array<[string,(r:LockedDesignRevision)=>void]>=[
+    ["scalar preview",r=>{r.garmentSpec.bodyProfile="regular" as never;}],
+    ["array preview",r=>{r.garmentSpec.bodyProfile=[] as never;}],
+    ["unsupported preview version",r=>{r.garmentSpec.bodyProfile!.version=2 as never;}],
+    ["unsupported build",r=>{r.garmentSpec.bodyProfile!.build="invented" as never;}],
+    ["non-finite height",r=>{r.garmentSpec.bodyProfile!.heightCm=Infinity;}],
+    ["invalid skin tone",r=>{r.garmentSpec.bodyProfile!.skinTone="unknown" as never;}],
+    ["unsupported provenance",r=>{r.garmentSpec.bodyProfile!.source="verified_physical" as never;}],
+    ["invalid silhouette shape",r=>{r.garmentSpec.bodyProfile!.silhouette=[] as never;}],
+    ["fabricated silhouette scale",r=>{r.garmentSpec.bodyProfile!.silhouette!.shoulderScale=3.5;}],
+    ["unsupported silhouette evidence",r=>{r.garmentSpec.bodyProfile!.silhouette!.evidenceCount=7;}],
+  ];
+  for(const [name,mutate] of invalid){
+    const record=sample();
+    mutate(record);
+    assert.throws(()=>buildProductionHandoff(record,"2026-11-02T11:00:00Z"),
+      /Unsafe tailor handoff body preview/,name);
+  }
+});
+
 test("consistent centimetre body/ease/finished ranges remain exportable",()=>{
   const report=auditHandoffMeasurements({shirt:[chest,shoulder,sleeve],trouser:[waist,seat,inseam,outseam]});
   assert.deepEqual(report,{errors:[],missing:[]});
