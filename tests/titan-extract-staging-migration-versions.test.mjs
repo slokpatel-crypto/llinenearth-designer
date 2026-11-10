@@ -74,6 +74,24 @@ test('genuine complete multi-overload evidence remains a non-approving projectio
   assert.equal(report.expected_permission_pairs_observed,24);
   assert.equal(report.release_ready,false);
 });
+test('a function cannot be both absent and installed in one capture',()=>{
+  const installed='stock_function_effective_execute|fabric_stock_record|fabric_stock_record(text)|t|anon|t|t';
+  assert.throws(()=>parseGood(fixture()+installed+'\n'),/contradictory absent\/present/);
+  assert.throws(()=>parseGood(fixture().replace(rows[0],installed+'\n'+rows[0])),/contradictory absent\/present/);
+});
+test('missing role with installed RPC remains an explicit non-approving observation',()=>{
+  let captured=fixture().replace(/\|service_role\|t\|/g,'|service_role|f|');
+  for(const role of roles){
+    const absent='stock_function_effective_execute|fabric_stock_reserve_v2||f|'+role+'|'+(role==='service_role'?'f':'t')+'|';
+    const installed='stock_function_effective_execute|fabric_stock_reserve_v2|fabric_stock_reserve_v2(text)|t|'+role+'|'+(role==='service_role'?'f':'t')+'|'+(role==='service_role'?'':'t');
+    assert.ok(captured.includes(absent));
+    captured=captured.replace(absent,installed);
+  }
+  const report=parseGood(captured);
+  assert.equal(report.expected_permission_pairs_observed,24);
+  assert.equal(report.sql_source_identity_verified,false);
+  assert.equal(report.release_ready,false);
+});
 test('versions must have supported 8 or 14 digit formats',()=>{
   for(const bad of ['2026','20261103000','20261103x','202611030000000'])
     assert.throws(()=>parseGood(fixture([bad])),/malformed migration/);
