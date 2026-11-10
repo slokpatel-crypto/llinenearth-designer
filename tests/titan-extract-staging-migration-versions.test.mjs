@@ -12,7 +12,7 @@ const roles=['anon','authenticated','service_role'];
 const rows=names.flatMap(name=>roles.map(role=>'stock_function_effective_execute|'+name+'||f|'+role+'|t|'));
 const fixture=(versions=['20261103'])=>[
   'connection_identity|synthetic_database|synthetic_reader|127.0.0.1|5432|16.15',
-  ...versions.map(v=>'migration_history|'+v+'|'),...rows
+  ...versions.map(v=>'migration_history|'+Buffer.from(v,'utf8').toString('hex')+'|'),...rows
 ].join('\n')+'\n';
 const parseGood=raw=>parse(raw,{psqlExitCode:0});
 
@@ -96,6 +96,18 @@ test('versions must have supported 8 or 14 digit formats',()=>{
   for(const bad of ['2026','20261103000','20261103x','202611030000000'])
     assert.throws(()=>parseGood(fixture([bad])),/malformed migration/);
 });
+test('raw or malformed hex migration-version data fails closed',()=>{
+  const valid=fixture();
+  const encoded=Buffer.from('20261103').toString('hex');
+  assert.throws(()=>parseGood(valid.replace('migration_history|'+encoded+'|',
+    'migration_history|20261103|')),/malformed migration/);
+  assert.throws(()=>parseGood(valid.replace('migration_history|'+encoded+'|',
+    'migration_history|'+encoded+'\nmigration_history|20261110010101|')),
+    /malformed migration/);
+  assert.throws(()=>parseGood(valid.replace('migration_history|'+encoded+'|',
+    'migration_history|'+Buffer.from('20261103\nmigration_history|20261110010101|').toString('hex')+'|')),
+    /malformed migration/);
+});
 test('connection fingerprint is mandatory and unique',()=>{
   const s=fixture();const head=s.split('\n')[0];
   assert.throws(()=>parseGood(s.replace(head+'\n','')),/unexpected history row order/);
@@ -104,7 +116,7 @@ test('connection fingerprint is mandatory and unique',()=>{
 test('rendered RPC body text cannot forge an applied migration-history record',()=>{
   const header='stock_function_definition|fabric_stock_reserve_v2(text)|owner|t|v||hash|CREATE FUNCTION';
   const injected=fixture().replace(rows[0],
-    header+'\nBEGIN\nmigration_history|20261110010101|\nEND;\n'+rows[0]);
+    header+'\nBEGIN\nmigration_history|'+Buffer.from('20261110010101').toString('hex')+'|\nEND;\n'+rows[0]);
   assert.throws(()=>parseGood(injected),/unexpected history row order/);
 });
 test('function-definition sections cannot appear after the permission matrix',()=>{
