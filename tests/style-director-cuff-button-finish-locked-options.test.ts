@@ -160,3 +160,53 @@ test("postposed cuff refusal applies across all existing cuff families", () => {
     assert.equal(JSON.stringify(locked), original, "locked option must remain unchanged");
   }
 });
+
+test("with-or-without cuffs require review without selecting or forbidding a saved cuff", () => {
+  const family = [
+    ["French cuff", "french_double_cuff"],
+    ["barrel cuff 1 button", "barrel_cuff_1_button"],
+    ["barrel cuff 2 buttons", "barrel_cuff_2_button"],
+    ["convertible cuff", "convertible_cuff"],
+    ["rounded soft cuff", "rounded_soft_cuff"],
+    ["cocktail cuff", "cocktail_cuff"],
+    ["angled barrel cuff", "angled_barrel_cuff"],
+    ["open short sleeve hem", "open_short_hem_cuff"],
+  ] as const;
+  for (const [label, expected] of family) {
+    for (const wording of ["with or without " + label, "with or without a " + label]) {
+      assert.deepEqual(styleDirectorCandidateCuffIntent(wording), {
+        requested: null, prohibited: [], ambiguous: true,
+      }, wording);
+      assert.equal(styleDirectorCandidateCuff(wording, []), null, wording);
+      assert.deepEqual(styleDirectorCandidateWordingIssues(wording).map(issue => issue.code),
+        ["ambiguous_candidate_cuff"], wording);
+      for (const id of [expected, "french_double_cuff", "barrel_cuff_1_button"]) {
+        const locked = Object.freeze({ cuff: id });
+        const before = JSON.stringify(locked);
+        assert.deepEqual(styleDirectorCandidateCuffIssues(wording, locked), [], wording);
+        assert.equal(JSON.stringify(locked), before);
+      }
+    }
+  }
+});
+
+test("undecided cuffs keep independent prohibitions and positive choices for review", () => {
+  const forbidden = "with or without french cuff; no convertible cuff";
+  assert.deepEqual(styleDirectorCandidateCuffIntent(forbidden), {
+    requested: null, prohibited: ["convertible_cuff"], ambiguous: true,
+  });
+  assert.deepEqual(styleDirectorCandidateWordingIssues(forbidden).map(issue => issue.code),
+    ["ambiguous_candidate_cuff"]);
+  const positive = "with or without french cuff; cocktail cuff required";
+  assert.deepEqual(styleDirectorCandidateCuffIntent(positive), {
+    requested: "cocktail_cuff", prohibited: [], ambiguous: true,
+  });
+  assert.deepEqual(styleDirectorCandidateWordingIssues(positive).map(issue => issue.code),
+    ["ambiguous_candidate_cuff"]);
+  assert.deepEqual(styleDirectorCandidateCuffIntent("No French cuff"), {
+    requested: null, prohibited: ["french_double_cuff"], ambiguous: false,
+  });
+  assert.deepEqual(styleDirectorCandidateCuffIntent("French cuff"), {
+    requested: "french_double_cuff", prohibited: [], ambiguous: false,
+  });
+});
