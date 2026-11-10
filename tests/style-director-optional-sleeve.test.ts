@@ -82,3 +82,58 @@ test("Roll-up Styled remains compatible with optional short sleeves but not a re
   assert.equal(styleDirectorCandidateRollUpSleeveIntent(impossible).ambiguous, true);
   assert.deepEqual(wordingIssues(impossible), ["ambiguous_candidate_sleeve"]);
 });
+
+test("postposed short/long sleeve prohibitions respect locked versioned sleeve IDs", () => {
+  for (const [candidate, forbidden, permitted] of [
+    ["Short sleeves aren't wanted", "half_sleeve", "full_sleeve"],
+    ["Half sleeve isn’t wanted", "half_sleeve", "roll_up_styled"],
+    ["Short sleeves is not wanted", "half_sleeve", "full_sleeve"],
+    ["Half-sleeved unwanted", "half_sleeve", "full_sleeve"],
+    ["Short sleeve should not be selected", "half_sleeve", "full_sleeve"],
+    ["Long sleeves aren't wanted", "full_sleeve", "half_sleeve"],
+    ["Full sleeve isn't wanted", "roll_up_styled", "half_sleeve"],
+    ["Full sleeves are unwanted", "full_sleeve", "half_sleeve"],
+    ["Long sleeve must not be used", "roll_up_styled", "half_sleeve"],
+  ] as const) {
+    const saved = Object.freeze({ sleeve: forbidden });
+    const snapshot = JSON.stringify(saved);
+    assert.equal(styleDirectorCandidateSleeve(candidate), null, candidate);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, saved)
+      .map(issue => issue.code), ["candidate_sleeve_mismatch"], candidate);
+    assert.deepEqual(lockedIssues(candidate, permitted), [], candidate);
+    assert.deepEqual(wordingIssues(candidate), [], candidate);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, saved)
+      .map(issue => issue.code), ["candidate_sleeve_mismatch"], "deterministic replay");
+    assert.equal(JSON.stringify(saved), snapshot, "locked sleeve IDs are immutable");
+  }
+});
+
+test("contracted optional sleeve wording is neutral, but does not hide firm instructions", () => {
+  for (const candidate of [
+    "Short sleeves aren't needed",
+    "Half-sleeve isn’t required",
+    "Short sleeve isn't mandatory",
+    "Long sleeves aren't required",
+    "Full sleeve isn't needed",
+    "Full sleeves aren’t mandatory",
+  ]) {
+    assert.equal(styleDirectorCandidateSleeve(candidate), null, candidate);
+    assert.deepEqual(lockedIssues(candidate, "full_sleeve"), [], candidate);
+    assert.deepEqual(lockedIssues(candidate, "half_sleeve"), [], candidate);
+    assert.deepEqual(lockedIssues(candidate, "roll_up_styled"), [], candidate);
+    assert.deepEqual(wordingIssues(candidate), [], candidate);
+  }
+  const forbidden = "Short sleeves aren't wanted; short sleeves required";
+  assert.deepEqual(wordingIssues(forbidden), ["ambiguous_candidate_sleeve"]);
+  assert.deepEqual(lockedIssues(forbidden, "half_sleeve"), [],
+    "wording gate, not a silently rewritten lock, owns contradictions");
+  const selected = "Short sleeves aren't needed; full sleeve shirt";
+  assert.deepEqual(lockedIssues(selected, "full_sleeve"), []);
+  assert.deepEqual(lockedIssues(selected, "half_sleeve"), ["candidate_sleeve_mismatch"]);
+  assert.deepEqual(wordingIssues(selected), []);
+  const ban = "Full sleeves aren't wanted; short sleeve shirt";
+  assert.equal(styleDirectorCandidateSleeve(ban)?.sleeve, "half_sleeve");
+  assert.deepEqual(lockedIssues(ban, "half_sleeve"), []);
+  assert.deepEqual(lockedIssues(ban, "full_sleeve"), ["candidate_sleeve_mismatch"]);
+  assert.deepEqual(wordingIssues(ban), []);
+});
