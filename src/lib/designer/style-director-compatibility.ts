@@ -1465,15 +1465,21 @@ export function styleDirectorSilhouetteFitIssues(
   pant: Pick<StyleSpecV2["pant"], "type" | "fit" | "pleat">,
 ): DirectorConstructionIssue[] {
   const issues: DirectorConstructionIssue[] = [];
-  if (pant.type === "wide_leg_relaxed_drape" &&
-      (pant.fit === "slim_tapered" || pant.fit === "regular_tapered" ||
-       pant.fit === "korean_tapered")) {
+  // Cross-field contradictions require proven own-data option IDs. A getter,
+  // inherited field or hostile proxy cannot supply evidence of a leg shape.
+  // Missing/stale selections have separate versioned-option review gates.
+  const type = styleDirectorLockedOptionValue(pant, "type");
+  const fit = styleDirectorLockedOptionValue(pant, "fit");
+  const pleat = styleDirectorLockedOptionValue(pant, "pleat");
+  if (type === "wide_leg_relaxed_drape" &&
+      (fit === "slim_tapered" || fit === "regular_tapered" ||
+       fit === "korean_tapered")) {
     issues.push({
       code: "wide_leg_tapered_fit_mismatch",
       explanation: "The locked trouser claims a wide-leg drape but specifies a tapered fit; confirm the intended leg shape before tailoring.",
     });
   }
-  if (pant.fit === "pleated_straight" && pant.pleat === "flat_front") {
+  if (fit === "pleated_straight" && pleat === "flat_front") {
     issues.push({
       code: "pleated_fit_flat_front_mismatch",
       explanation: "The locked trouser specifies a Pleated Straight fit with a flat-front pleat ID; confirm the actual front construction.",
