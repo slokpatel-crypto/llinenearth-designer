@@ -1078,9 +1078,15 @@ const postposedCountPleatBan = /\b(single|double|one|two|1|2)[ -]?pleat(?:ed|s|i
 const postposedDirectionPleatBan = /\b(forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|unwanted|not\s+(?:allowed|permitted|wanted)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted|wanted)|(?:(?:must|should|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included|chosen|selected)|not\s+to\s+be\s+(?:used|added|included|chosen|selected)|(?:must|should|shall|(?:are|is)\s+to|to)\s+be\s+avoided)\b/gi;
 const postposedDirectionPleatOptional = /\b(?:forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory|necessary)|(?:aren['’]?t|isn['’]?t)\s+(?:required|needed|mandatory|necessary))\b/gi;
 
+
+// With-or-without phrasing leaves the pleat count/direction undecided. It must
+// not become a flat-front request or a count/direction prohibition.
+const undecidedPleatAlternative = /\bwith\s+(?:or\s+)?without\s+(?:(?:a|any)\s+)?(?:(?:single|double|one|two|1|2|forward|reverse)[ -]?)?(?:pleats?|pleating)\b/gi;
+
 export function styleDirectorCandidateTrouserFront(
   candidateTrouser: string,
 ): "flat_front" | "pleated" | "ambiguous" | null {
+  if (candidateTrouser.match(undecidedPleatAlternative)) return "ambiguous";
   // A direction-specific prohibition is not a ban on all pleats.
   // Interpret front intent without it, but retain the original candidate
   // for the directional conflict checks against the locked option ID.
@@ -1251,10 +1257,13 @@ export function styleDirectorCandidateFrontConstructionIssues(
   pant: Pick<StyleSpecV2["pant"], "pleat">,
 ): DirectorConstructionIssue[] {
   const front = styleDirectorCandidateTrouserFront(candidateTrouser);
+  // Ignore undecided alternatives when validating independently mandatory or
+  // forbidden pleats; otherwise "without double pleats" looks like a ban.
+  const explicitWording = candidateTrouser.replace(undecidedPleatAlternative, "");
   // A labelled double pleat is not equivalent to a generic single pleat.
   // Read count from the canonical option's construction parameters instead
   // of inferring it from the potentially stale photographed trouser label.
-  const positiveWording = stripNegatedPleatWording(candidateTrouser)
+  const positiveWording = stripNegatedPleatWording(explicitWording)
     .replace(postposedCountPleatBan, "")
     .replace(postposedDirectionPleatBan, "")
     .replace(postposedDirectionPleatOptional, "")
@@ -1283,10 +1292,10 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // Preserve an allowed single/double/flat-front choice, but never silently
   // approve the forbidden canonical count (or an ID whose count is unknown).
   const prohibitedCountLabels = [
-    ...[...candidateTrouser.matchAll(
+    ...[...explicitWording.matchAll(
       /\b(?:no|without|not|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:(?:a|an|any|visible|front(?:[- ]facing)?|side(?:[- ]facing)?)\s+){0,3}(single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\b/gi,
     )].map(match => match[1].toLowerCase()),
-    ...[...candidateTrouser.matchAll(postposedCountPleatBan)].map(match => match[1].toLowerCase()),
+    ...[...explicitWording.matchAll(postposedCountPleatBan)].map(match => match[1].toLowerCase()),
   ];
   const prohibitsSingleCount = prohibitedCountLabels.some(value => ["single", "one", "1"].includes(value));
   const prohibitsDoubleCount = prohibitedCountLabels.some(value => ["double", "two", "2"].includes(value));
@@ -1307,10 +1316,10 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // A negative direction instruction constrains the selected pleat even
   // when no alternative direction is explicitly requested. Do not treat
   // "avoid reverse pleats" as a blanket ban on all pleated construction.
-  const prohibitsForward = /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?forward[ -]?pleats?\b/i.test(candidateTrouser);
-  const prohibitsReverse = /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?reverse[ -]?pleats?\b/i.test(candidateTrouser);
+  const prohibitsForward = /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?forward[ -]?pleats?\b/i.test(explicitWording);
+  const prohibitsReverse = /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?reverse[ -]?pleats?\b/i.test(explicitWording);
   // Direction prohibitions can follow the noun as well as precede it.
-  const prohibitedDirections = [...candidateTrouser.matchAll(postposedDirectionPleatBan)]
+  const prohibitedDirections = [...explicitWording.matchAll(postposedDirectionPleatBan)]
     .map(match => match[1].toLowerCase());
   // A direction-only ban also requires a known canonical pleat ID:
   // with a stale/unknown ID we cannot verify which direction was locked.
