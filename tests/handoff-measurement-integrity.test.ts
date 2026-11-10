@@ -194,6 +194,10 @@ test("locked preview profile is optional but malformed body evidence fails close
   const omitted=sample();
   omitted.garmentSpec.bodyProfile=null;
   assert.equal(buildProductionHandoff(omitted,"2026-11-02T11:00:00Z").construction.bodyProfile,null);
+  const absentSilhouette=sample();
+  delete absentSilhouette.garmentSpec.bodyProfile!.silhouette;
+  assert.equal(buildProductionHandoff(absentSilhouette,"2026-11-02T11:00:00Z")
+    .construction.bodyProfile?.silhouette,undefined);
 
   const invalid:Array<[string,(r:LockedDesignRevision)=>void]>=[
     ["scalar preview",r=>{r.garmentSpec.bodyProfile="regular" as never;}],
@@ -204,6 +208,10 @@ test("locked preview profile is optional but malformed body evidence fails close
     ["invalid skin tone",r=>{r.garmentSpec.bodyProfile!.skinTone="unknown" as never;}],
     ["unsupported provenance",r=>{r.garmentSpec.bodyProfile!.source="verified_physical" as never;}],
     ["invalid silhouette shape",r=>{r.garmentSpec.bodyProfile!.silhouette=[] as never;}],
+    ["null silhouette",r=>{r.garmentSpec.bodyProfile!.silhouette=null as never;}],
+    ["false silhouette",r=>{r.garmentSpec.bodyProfile!.silhouette=false as never;}],
+    ["zero silhouette",r=>{r.garmentSpec.bodyProfile!.silhouette=0 as never;}],
+    ["blank silhouette",r=>{r.garmentSpec.bodyProfile!.silhouette="" as never;}],
     ["fabricated silhouette scale",r=>{r.garmentSpec.bodyProfile!.silhouette!.shoulderScale=3.5;}],
     ["unsupported silhouette evidence",r=>{r.garmentSpec.bodyProfile!.silhouette!.evidenceCount=7;}],
   ];
