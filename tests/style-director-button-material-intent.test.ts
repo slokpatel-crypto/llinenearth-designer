@@ -117,3 +117,63 @@ test("new proposals preserve canonical button material and photographic parity d
   }, saved).map(issue => issue.code), ["legacy_button_mismatch"]);
   assert.equal(JSON.stringify(saved), before, "review may never rewrite locked button material");
 });
+
+test("postposed button material bans never silently select a material", () => {
+  for (const [label, id] of [
+    ["Mother-of-Pearl Buttons", "mother_of_pearl"],
+    ["Corozo (vegetable ivory) buttons", "corozo"],
+    ["Horn Buttons", "horn"],
+    ["Plastic / Resin Buttons", "plastic_resin"],
+    ["Metal / Contrast Buttons", "metal_contrast"],
+  ] as const) {
+    const candidate = `${label} should not be selected`;
+    assert.deepEqual(styleDirectorCandidateButtonIntent(candidate), {
+      requested: null, prohibited: [id], ambiguous: false,
+    }, candidate);
+    assert.equal(styleDirectorCandidateButton(candidate, photoChoices), null, candidate);
+    const saved = Object.freeze({ button: id });
+    const before = JSON.stringify(saved);
+    const first = styleDirectorCandidateButtonIssues(candidate, saved);
+    assert.deepEqual(first.map(x => x.code), ["candidate_button_mismatch"], candidate);
+    assert.deepEqual(styleDirectorCandidateButtonIssues(candidate, saved), first, candidate);
+    assert.equal(JSON.stringify(saved), before, "locked material must remain unchanged");
+    assert.deepEqual(issueCodes(candidate, id === "horn" ? "corozo" : "horn"), [], candidate);
+  }
+  for (const candidate of [
+    "Horn Buttons aren't wanted",
+    "Horn Buttons isn't wanted",
+    "Horn Buttons is not wanted",
+    "Horn Buttons unwanted",
+    "Horn Buttons must not be used",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateButtonIntent(candidate), {
+      requested: null, prohibited: ["horn"], ambiguous: false,
+    }, candidate);
+    assert.deepEqual(issueCodes(candidate, "horn"), ["candidate_button_mismatch"], candidate);
+    assert.deepEqual(issueCodes(candidate, "corozo"), [], candidate);
+  }
+});
+
+test("optional or contradictory button material wording preserves frozen selections", () => {
+  const locked = Object.freeze({ button: "horn" });
+  const before = JSON.stringify(locked);
+  for (const candidate of [
+    "Horn Buttons aren't required",
+    "Horn Buttons isn't needed",
+    "Horn Buttons isn't mandatory",
+    "Horn Buttons is not required",
+    "Horn Buttons not needed",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateButtonIntent(candidate), {
+      requested: null, prohibited: [], ambiguous: false,
+    }, candidate);
+    assert.equal(styleDirectorCandidateButton(candidate, photoChoices), null, candidate);
+    assert.deepEqual(styleDirectorCandidateButtonIssues(candidate, locked), [], candidate);
+  }
+  const contradictory = "Horn Buttons; Horn Buttons aren't wanted";
+  assert.equal(styleDirectorCandidateButtonIntent(contradictory).ambiguous, true);
+  assert.equal(styleDirectorCandidateButton(contradictory, photoChoices), null);
+  assert.deepEqual(wordingCodes(contradictory), ["ambiguous_candidate_button"]);
+  assert.deepEqual(styleDirectorCandidateButtonIssues(contradictory, locked), []);
+  assert.equal(JSON.stringify(locked), before, "review must not mutate locked material");
+});
