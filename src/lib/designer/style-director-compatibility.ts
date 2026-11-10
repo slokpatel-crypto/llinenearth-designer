@@ -146,9 +146,11 @@ export function styleDirectorCandidateVariantCollar(
 // Keep both positive and negative intent so contradictions and locked-ID
 // mismatches can be reviewed without inventing a replacement construction.
 const candidateSleeveLengths = (name: string) => {
-  // "With or without" offers choices; it must not become a prohibition
-  // simply because "without" precedes a named sleeve length.
-  const undecidedAlternative = /\bwith\s+(?:or\s+)?without\s+(?:(?:a|any)\s+)?(?:short|half|long|full)[ -]?sleeve(?:s|d)?\b/gi;
+  // Both "with or without" and cross-length alternatives leave construction
+  // undecided. "Half or full sleeves" must not select full length merely
+  // because the first "half" omits its sleeve noun. Synonyms within the
+  // same length family ("short or half", "long or full") remain affirmative.
+  const undecidedAlternative = /\b(?:with\s+(?:or\s+)?without\s+(?:(?:a|any)\s+)?(?:short|half|long|full)[ -]?sleeve(?:s|d)?|(?:short|half)(?:[ -]?sleeve(?:s|d)?)?\s+or\s+(?:long|full)[ -]?sleeve(?:s|d)?|(?:long|full)(?:[ -]?sleeve(?:s|d)?)?\s+or\s+(?:short|half)[ -]?sleeve(?:s|d)?)\b/gi;
   const undecided = undecidedAlternative.test(name);
   const instruction = name.replace(undecidedAlternative, " ");
   let bannedShort = false;
