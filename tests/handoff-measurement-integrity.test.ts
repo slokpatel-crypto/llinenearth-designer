@@ -102,7 +102,7 @@ test("malformed saved recipe containers fail closed before handoff creation",()=
 test("saved occasion, climate and intention must stay printable for reconstruction",()=>{
   const sample=()=>createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
   for(const field of ["occasion","climate","intention"] as const) {
-    for(const bad of [null,undefined,""," ",12,[],{}, "too-long".repeat(40), "Hot\\u0000invalid"]) {
+    for(const bad of [null,undefined,""," ",12,[],{}, "too-long".repeat(40), "Hot"+String.fromCharCode(0)+"invalid"]) {
       const revision=sample();
       (revision.garmentSpec.context as unknown as Record<string,unknown>)[field]=bad;
       assert.throws(()=>buildProductionHandoff(revision),
