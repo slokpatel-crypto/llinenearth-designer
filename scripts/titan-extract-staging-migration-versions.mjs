@@ -26,6 +26,7 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
   const lines=raw.split(/\r?\n/);
   const versions=[];
   const matrix=new Map();
+  const rolePresence=new Map();
   let connectionCount=0;
   let connectionLine=-1;
   let firstMatrixLine=-1;
@@ -57,6 +58,10 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
          ((exists==='f'||roleExists==='f') && canExecute!=='') ||
          (exists==='t' && roleExists==='t' && canExecute===''))
         throw Error('Blocked: inconsistent stock permissions row');
+      const priorRoleExists=rolePresence.get(role);
+      if(priorRoleExists!==undefined && priorRoleExists!==roleExists)
+        throw Error('Blocked: inconsistent role presence across matrix');
+      rolePresence.set(role,roleExists);
       const seen=matrix.get(pair)??new Set();
       if(seen.has(signature))throw Error('Blocked: repeated stock permissions row');
       seen.add(signature); matrix.set(pair,seen);
@@ -65,6 +70,16 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
   if(connectionCount!==1 || firstMatrixLine<0 || connectionLine>=firstMatrixLine ||
      matrix.size!==expectedPairs.size)
     throw Error('Blocked: partial or ambiguous psql capture');
+  // The SQL CROSS JOIN produces the same installed signatures for every role.
+  // A contradictory matrix is an incomplete or forged capture, not reviewable evidence.
+  for(const name of functionNames){
+    const reference=matrix.get(name+'|'+roles[0]);
+    for(const role of roles.slice(1)){
+      const other=matrix.get(name+'|'+role);
+      if(reference.size!==other.size || [...reference].some(signature=>!other.has(signature)))
+        throw Error('Blocked: inconsistent stock function signature matrix');
+    }
+  }
   const counts=new Map();
   for(const row of versions)counts.set(row.version,(counts.get(row.version)??0)+1);
   const duplicates=[...counts].filter(([,count])=>count>1)
