@@ -1108,7 +1108,7 @@ export function styleDirectorCandidateTrouserFront(
 
 export type DirectorConstructionIssue = {
   code: "camp_collar_construction" | "band_collar_construction" | "short_sleeve_double_cuff" |
-    "pleated_front_missing_pleat" | "flat_front_has_pleat" | "double_pleat_type_mismatch" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_stacked_break" | "cropped_break_hem_mismatch" | "cropped_type_hem_mismatch" | "cropped_hem_type_mismatch" |
+    "pleated_front_missing_pleat" | "flat_front_has_pleat" | "double_pleat_type_mismatch" | "high_rise_type_mismatch" | "cropped_full_break" | "cropped_half_break" | "cropped_slight_break" | "cropped_stacked_break" | "cropped_break_hem_mismatch" | "cropped_type_hem_mismatch" | "cropped_hem_type_mismatch" |
     "formal_camp_collar" | "legacy_wear_mismatch" | "legacy_collar_mismatch" | "unverified_camp_photo" | "unverified_special_collar_photo" |
     "camp_collar_type_mismatch" | "band_collar_type_mismatch" | "short_sleeve_type_mismatch" | "short_sleeve_cuff_review" | "full_sleeve_open_hem_cuff" | "unverified_short_sleeve_photo" | "unverified_roll_up_sleeve_photo" | "unverified_cutaway_photo" |
     "ambiguous_candidate_collar" | "candidate_collar_mismatch" | "ambiguous_candidate_sleeve" | "candidate_sleeve_mismatch" | "ambiguous_candidate_wear" |
@@ -1513,6 +1513,18 @@ export function styleDirectorConstructionIssues(
     issues.push({
       code: "double_pleat_type_mismatch",
       explanation: "The selected high-rise double-pleat trouser type does not have a matching two-pleat construction; confirm the locked front before cutting.",
+    });
+  }
+  // The reference high-rise double-pleat type requires a high or
+  // extra-high rise selection. Check only real catalogue IDs: unknown and
+  // historical values already have their own review gate above. Never
+  // rewrite a customer's saved rise or infer physical waist placement.
+  if (pant.type === "double_pleat_high_rise" &&
+      optionsFor("pant.rise").some(option => option.id === pant.rise) &&
+      pant.rise !== "high_rise" && pant.rise !== "extra_high_rise") {
+    issues.push({
+      code: "high_rise_type_mismatch",
+      explanation: "The selected high-rise double-pleat trouser type uses a lower-rise option; confirm the locked waistband position before cutting.",
     });
   }
   if (pant.type === "formal_flat_front" &&
