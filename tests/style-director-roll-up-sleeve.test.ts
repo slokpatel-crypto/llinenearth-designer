@@ -184,3 +184,53 @@ test("undecided roll-up alternatives preserve independent firm exclusions", () =
     requested: true, prohibited: false, ambiguous: false,
   });
 });
+
+test("ordinary full-sleeve versus roll-up alternatives need review rather than ID selection", () => {
+  const alternatives = [
+    "full sleeve or roll-up styled",
+    "full sleeves or roll-up sleeves",
+    "long sleeves or roll up styled",
+    "roll-up styled or full sleeves",
+    "roll up sleeves or long sleeve",
+    "full or roll-up sleeves",
+    "roll-up or full sleeves",
+    "long or roll-up styled",
+  ];
+  for (const candidate of alternatives) {
+    const intent = styleDirectorCandidateRollUpSleeveIntent(candidate);
+    assert.equal(intent.ambiguous, true, candidate);
+    assert.deepEqual(wordingCodes(candidate), ["ambiguous_candidate_sleeve"], candidate);
+    assert.equal(styleDirectorCandidateSleeve(candidate), null, candidate);
+    for (const sleeve of ["half_sleeve", "full_sleeve", "roll_up_styled"]) {
+      const locked = Object.freeze({ sleeve });
+      const before = JSON.stringify(locked);
+      assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, locked), [], candidate);
+      assert.equal(JSON.stringify(locked), before, "review never rewrites sleeve IDs");
+    }
+  }
+});
+
+test("a fully specified roll-up construction stays distinct from a true alternative", () => {
+  for (const label of [
+    "Full Sleeve Roll-up Styled Shirt",
+    "long sleeve roll up styled shirt",
+    "roll-up styled long sleeve shirt",
+    "roll-up sleeves",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(label), {
+      requested: true, prohibited: false, ambiguous: false,
+    }, label);
+    assert.deepEqual(wordingCodes(label), [], label);
+    assert.deepEqual(issueCodes(label, "roll_up_styled"), [], label);
+    assert.deepEqual(issueCodes(label, "full_sleeve"), ["candidate_sleeve_mismatch"], label);
+  }
+  const ordinary = "long sleeve shirt";
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(ordinary), {
+    requested: false, prohibited: false, ambiguous: false,
+  });
+  assert.deepEqual(wordingCodes(ordinary), []);
+  assert.deepEqual(issueCodes(ordinary, "full_sleeve"), []);
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("no roll-up styled"), {
+    requested: false, prohibited: true, ambiguous: false,
+  });
+});
