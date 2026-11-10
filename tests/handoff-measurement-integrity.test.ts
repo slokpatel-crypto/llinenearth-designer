@@ -99,6 +99,20 @@ test("malformed saved recipe containers fail closed before handoff creation",()=
   assert.equal(good.production.stockReservation.status,"not_requested");
 });
 
+test("saved occasion, climate and intention must stay printable for reconstruction",()=>{
+  const sample=()=>createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  for(const field of ["occasion","climate","intention"] as const) {
+    for(const bad of [null,undefined,""," ",12,[],{}, "too-long".repeat(40), "Hot\\u0000invalid"]) {
+      const revision=sample();
+      (revision.garmentSpec.context as unknown as Record<string,unknown>)[field]=bad;
+      assert.throws(()=>buildProductionHandoff(revision),
+        /Unsafe tailor handoff context/, `${field}: ${String(bad)}`);
+    }
+  }
+  const valid=buildProductionHandoff(sample(),"2026-11-02T11:00:00Z");
+  assert.equal(valid.construction.context?.climate,"Hot / humid");
+});
+
 test("consistent centimetre body/ease/finished ranges remain exportable",()=>{
   const report=auditHandoffMeasurements({shirt:[chest,shoulder,sleeve],trouser:[waist,seat,inseam,outseam]});
   assert.deepEqual(report,{errors:[],missing:[]});
