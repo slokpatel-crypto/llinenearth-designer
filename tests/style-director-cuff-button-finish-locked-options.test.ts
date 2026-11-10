@@ -210,3 +210,60 @@ test("undecided cuffs keep independent prohibitions and positive choices for rev
     requested: "french_double_cuff", prohibited: [], ambiguous: false,
   });
 });
+
+test("abbreviated mixed cuff constructions require review without rewriting locks", () => {
+  for (const phrase of [
+    "French or cocktail cuffs",
+    "cocktail or French cuff",
+    "French cuff or convertible cuff",
+    "convertible or French cuffs",
+    "rounded or cocktail cuffs",
+    "soft or French cuff",
+    "angled barrel or convertible cuffs",
+    "double or rounded cuff",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateCuffIntent(phrase), {
+      requested: null, prohibited: [], ambiguous: true,
+    }, phrase);
+    assert.equal(styleDirectorCandidateCuff(phrase, []), null, phrase);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(phrase).map(issue => issue.code),
+      ["ambiguous_candidate_cuff"], phrase);
+    for (const id of [
+      "french_double_cuff", "barrel_cuff_1_button", "barrel_cuff_2_button",
+      "convertible_cuff", "rounded_soft_cuff", "cocktail_cuff",
+      "angled_barrel_cuff", "open_short_hem_cuff",
+    ]) {
+      const saved = Object.freeze({ cuff: id });
+      const original = JSON.stringify(saved);
+      assert.deepEqual(styleDirectorCandidateCuffIssues(phrase, saved), [], phrase);
+      assert.equal(JSON.stringify(saved), original, "review must never mutate locked cuff");
+    }
+  }
+});
+
+test("abbreviated cuff synonyms and independent firm bans retain their meaning", () => {
+  for (const [phrase, canonical] of [
+    ["French or double cuffs", "french_double_cuff"],
+    ["double or French cuff", "french_double_cuff"],
+    ["rounded or soft cuffs", "rounded_soft_cuff"],
+    ["soft or rounded cuff", "rounded_soft_cuff"],
+  ] as const) {
+    assert.deepEqual(styleDirectorCandidateCuffIntent(phrase), {
+      requested: canonical, prohibited: [], ambiguous: false,
+    }, phrase);
+    assert.deepEqual(styleDirectorCandidateCuffIssues(phrase, { cuff: canonical }), [], phrase);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(phrase), [], phrase);
+  }
+  const independentlyBanned = "French or cocktail cuffs; no convertible cuff";
+  assert.deepEqual(styleDirectorCandidateCuffIntent(independentlyBanned), {
+    requested: null, prohibited: ["convertible_cuff"], ambiguous: true,
+  });
+  assert.deepEqual(styleDirectorCandidateWordingIssues(independentlyBanned)
+    .map(issue => issue.code), ["ambiguous_candidate_cuff"]);
+  assert.deepEqual(styleDirectorCandidateCuffIntent("no French cuff"), {
+    requested: null, prohibited: ["french_double_cuff"], ambiguous: false,
+  });
+  assert.deepEqual(styleDirectorCandidateCuffIntent("cocktail cuff"), {
+    requested: "cocktail_cuff", prohibited: [], ambiguous: false,
+  });
+});
