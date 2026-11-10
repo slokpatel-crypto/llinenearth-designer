@@ -4,7 +4,7 @@ import { styleDirectorConstructionIssues } from "../src/lib/designer/style-direc
 import type { StyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
 
 test("unknown flat-front pleat IDs require vocabulary review, not fabricated physical pleats", () => {
-  for (const pleat of [undefined, null, "", "flat_front ", "obsolete_double_pleat"]) {
+  for (const pleat of [undefined, null, "", "flat_front ", "obsolete_double_pleat", "single_pleat"]) {
     const spec = Object.freeze({
       shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar", wear: "tucked",
         sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
@@ -25,7 +25,7 @@ test("known pleated front on a flat-front trouser still requires construction re
   const spec = Object.freeze({
     shirt: Object.freeze({ type: "dress_shirt", collar: "spread_collar", wear: "tucked",
       sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" }),
-    pant: Object.freeze({ type: "formal_flat_front", pleat: "single_pleat",
+    pant: Object.freeze({ type: "formal_flat_front", pleat: "single_pleat_forward",
       hem: "plain_hem", break: "no_break" }),
   }) as unknown as StyleSpecV2;
   const issues = styleDirectorConstructionIssues(spec);
