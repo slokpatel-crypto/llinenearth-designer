@@ -91,3 +91,52 @@ test("generic hidden wording alone is not proof of a placket construction", () =
     assert.equal(styleDirectorCandidatePlacket(label, photographed), null, label);
   }
 });
+
+test("with-or-without plackets are unresolved, never a ban or selected construction", () => {
+  for (const wording of [
+    "with or without hidden placket",
+    "with or without a hidden placket",
+    "with or without a Hidden / Fly-front",
+    "with or without standard (visible stitch)",
+    "with or without a contrast placket",
+    "with or without french placket",
+    "with without covered placket",
+  ]) {
+    assert.deepEqual(styleDirectorCandidatePlacketIntent(wording), {
+      requested: null, prohibited: [], ambiguous: true,
+    }, wording);
+    assert.equal(styleDirectorCandidatePlacket(wording, photographed), null, wording);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(wording)
+      .map(issue => issue.code), ["ambiguous_candidate_placket"], wording);
+    for (const id of [
+      "standard_visible_placket", "hidden_fly_front", "french_placket",
+      "covered_placket", "contrast_placket",
+    ]) {
+      const saved = Object.freeze({ placket: id });
+      const original = JSON.stringify(saved);
+      assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, saved), [], wording);
+      assert.equal(JSON.stringify(saved), original, "locked placket must not change");
+    }
+  }
+});
+
+test("undecided plackets keep independent prohibitions and ordinary firm instructions", () => {
+  const mixed = "with or without hidden placket; no french placket";
+  assert.deepEqual(styleDirectorCandidatePlacketIntent(mixed), {
+    requested: null, prohibited: ["french_placket"], ambiguous: true,
+  });
+  assert.deepEqual(styleDirectorCandidateWordingIssues(mixed)
+    .map(issue => issue.code), ["ambiguous_candidate_placket"]);
+  const affirmative = "with or without contrast placket; hidden placket required";
+  assert.deepEqual(styleDirectorCandidatePlacketIntent(affirmative), {
+    requested: "hidden_fly_front", prohibited: [], ambiguous: true,
+  });
+  assert.deepEqual(styleDirectorCandidateWordingIssues(affirmative)
+    .map(issue => issue.code), ["ambiguous_candidate_placket"]);
+  assert.deepEqual(styleDirectorCandidatePlacketIntent("No Hidden / Fly-front"), {
+    requested: null, prohibited: ["hidden_fly_front"], ambiguous: false,
+  });
+  assert.deepEqual(styleDirectorCandidatePlacketIntent("Hidden / Fly-front"), {
+    requested: "hidden_fly_front", prohibited: [], ambiguous: false,
+  });
+});
