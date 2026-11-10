@@ -309,8 +309,8 @@ test("unknown sleeve IDs never masquerade as a known full-length cuff conflict",
     }) as unknown as StyleSpecV2;
     const before = JSON.stringify(locked);
     const issues = styleDirectorConstructionIssues(locked);
-    assert.ok(issues.some(issue => issue.code === "unknown_versioned_option"),
-      "invalid supplied sleeve IDs require catalogue review");
+    assert.equal(issues.some(issue => issue.code === "unknown_versioned_option"),
+      sleeve !== undefined, "supplied invalid IDs require review; absent fields belong to the full parser");
     assert.ok(!issues.some(issue => issue.code === "full_sleeve_open_hem_cuff"),
       "an unrecognized sleeve must not be reported as physically full-length");
     assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
