@@ -64,6 +64,10 @@ export function extractUntrustedAppliedVersions(raw,{psqlExitCode}={}){
       rolePresence.set(role,roleExists);
       const seen=matrix.get(pair)??new Set();
       if(seen.has(signature))throw Error('Blocked: repeated stock permissions row');
+      // A LEFT JOIN returns either a single NULL-signature absence row OR
+      // installed overload rows, never both for one expected function.
+      if((signature==='' && seen.size>0) || (signature!=='' && seen.has('')))
+        throw Error('Blocked: contradictory absent/present stock function rows');
       seen.add(signature); matrix.set(pair,seen);
     }
   }
