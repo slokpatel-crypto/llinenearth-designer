@@ -55,3 +55,64 @@ test("double-pleat type review never contaminates other trouser types", () => {
     assert.ok(!issues.some(issue => issue.code === "double_pleat_type_mismatch"), type);
   }
 });
+
+test("named high-rise double-pleat type respects real catalogue rise IDs", () => {
+  const validRises = ["high_rise", "extra_high_rise"] as const;
+  const lowerRises = ["low_rise", "mid_rise"] as const;
+  for (const rise of [...validRises, ...lowerRises]) {
+    assert.ok(optionsFor("pant.rise").some(option => option.id === rise),
+      rise + ": rise choice must exist in the versioned catalogue");
+    for (const pleat of ["double_pleat_forward", "double_pleat_reverse"]) {
+      const base = lockedSpec("double_pleat_high_rise", pleat);
+      const locked = Object.freeze({
+        shirt: base.shirt, pant: Object.freeze({ ...base.pant, rise }),
+      }) as StyleSpecV2;
+      const snapshot = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      assert.equal(issues.filter(issue => issue.code === "high_rise_type_mismatch").length,
+        lowerRises.includes(rise as typeof lowerRises[number]) ? 1 : 0, rise);
+      assert.ok(!issues.some(issue => issue.code === "double_pleat_type_mismatch"),
+        "matching double pleats must not depend on rise review");
+      assert.ok(!issues.some(issue => issue.code === "unknown_versioned_option"), rise);
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+      assert.equal(JSON.stringify(locked), snapshot, "locked rise and pleat IDs stay unchanged");
+    }
+  }
+});
+
+test("missing and stale rise IDs do not fabricate a verified lower-rise construction", () => {
+  for (const rise of [undefined, null, "", "high_rise ", "obsolete_low_rise"]) {
+    const base = lockedSpec("double_pleat_high_rise", "double_pleat_forward");
+    const locked = Object.freeze({
+      shirt: base.shirt, pant: Object.freeze({ ...base.pant, rise }),
+    }) as unknown as StyleSpecV2;
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorConstructionIssues(locked);
+    assert.equal(issues.filter(issue => issue.code === "high_rise_type_mismatch").length, 0,
+      "unrecognized rise cannot establish a physical mismatch");
+    assert.equal(issues.filter(issue => issue.code === "unknown_versioned_option").length,
+      rise === undefined ? 0 : 1, "invalid saved rise must remain reviewable");
+    assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+    assert.equal(JSON.stringify(locked), before);
+  }
+});
+
+test("independent low-rise and missing-double-pleat conflicts both reach review", () => {
+  const base = lockedSpec("double_pleat_high_rise", "flat_front");
+  const locked = Object.freeze({
+    shirt: base.shirt, pant: Object.freeze({ ...base.pant, rise: "low_rise" }),
+  }) as StyleSpecV2;
+  const before = JSON.stringify(locked);
+  const issues = styleDirectorConstructionIssues(locked);
+  assert.equal(issues.filter(issue => issue.code === "high_rise_type_mismatch").length, 1);
+  assert.equal(issues.filter(issue => issue.code === "double_pleat_type_mismatch").length, 1);
+  assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+  assert.equal(JSON.stringify(locked), before);
+  const ordinary = lockedSpec("pleated_trouser", "double_pleat_forward");
+  const withoutNamedRise = Object.freeze({
+    shirt: ordinary.shirt, pant: Object.freeze({ ...ordinary.pant, rise: "mid_rise" }),
+  }) as StyleSpecV2;
+  assert.ok(!styleDirectorConstructionIssues(withoutNamedRise)
+    .some(issue => issue.code === "high_rise_type_mismatch"),
+    "ordinary pleated trouser must not inherit named high-rise restrictions");
+});
