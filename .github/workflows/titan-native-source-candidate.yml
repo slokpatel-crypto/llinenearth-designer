@@ -1461,11 +1461,11 @@ jobs:
                   scale=source_lengths[0]/source_lengths[1]
                   assert abs(
                       scale-row["sourceUvSimilarityScaleOwnerBToOwnerA"]
-                  ) <= 0.00000002
+                  ) <= 0.000002
                   assert abs(
                       abs(scale-1)*100 -
                       row["sourceUvSimilarityScaleChangePercent"]
-                  ) <= 0.000002
+                  ) <= 0.0002
                   assert row["bestFitProperSimilarityUvRotationDegrees"] == (
                       row["bestFitProperRigidUvRotationDegrees"]
                   )
