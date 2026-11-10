@@ -11,7 +11,7 @@ const names=['fabric_stock_record','fabric_stock_reserve','fabric_stock_release'
 const roles=['anon','authenticated','service_role'];
 const rows=names.flatMap(name=>roles.map(role=>'stock_function_effective_execute|'+name+'||f|'+role+'|t|'));
 const fixture=(versions=['20261103'])=>[
-  'connection_identity|synthetic_database|synthetic_reader|127.0.0.1|5432|16.15',
+  'connection_identity|'+Buffer.from('synthetic_database').toString('hex')+'|'+Buffer.from('synthetic_reader').toString('hex')+'|127.0.0.1|5432|16.15',
   ...versions.map(v=>'migration_history|'+Buffer.from(v,'utf8').toString('hex')+'|'),...rows
 ].join('\n')+'\n';
 const parseGood=raw=>parse(raw,{psqlExitCode:0});
@@ -112,6 +112,18 @@ test('connection fingerprint is mandatory and unique',()=>{
   const s=fixture();const head=s.split('\n')[0];
   assert.throws(()=>parseGood(s.replace(head+'\n','')),/unexpected history row order/);
   assert.throws(()=>parseGood(head+'\n'+s),/partial/);
+});
+test('raw or malformed connection identifiers fail closed before history projection',()=>{
+  const valid=fixture();
+  const encodedDatabase=Buffer.from('synthetic_database').toString('hex');
+  const encodedRole=Buffer.from('synthetic_reader').toString('hex');
+  assert.throws(()=>parseGood(valid.replace('connection_identity|'+encodedDatabase+'|',
+    'connection_identity|synthetic_database|')),/malformed connection fingerprint/);
+  assert.throws(()=>parseGood(valid.replace('|'+encodedRole+'|127.0.0.1|',
+    '|synthetic_reader|127.0.0.1|')),/malformed connection fingerprint/);
+  const hostile='x|a|5432|16\nmigration_history|'+Buffer.from('20261231').toString('hex')+'|\n';
+  assert.throws(()=>parseGood(valid.replace('|'+encodedRole+'|127.0.0.1|',
+    '|'+hostile+'|127.0.0.1|')),/malformed connection fingerprint/);
 });
 test('rendered RPC body text cannot forge an applied migration-history record',()=>{
   const header='stock_function_definition|fabric_stock_reserve_v2(text)|owner|t|v||hash|CREATE FUNCTION';
