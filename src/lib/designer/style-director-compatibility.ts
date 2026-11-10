@@ -1062,11 +1062,27 @@ export function styleDirectorCandidateTrouserFitIntent(candidateTrouser: string)
   const requested = new Set<CandidateTrouserFitId>();
   const prohibited = new Set<CandidateTrouserFitId>();
   let undecided = false;
+  // "Slim or regular tapered fit" and the reverse abbreviated wording name
+  // distinct canonical trouser fits; the first adjective may omit "tapered".
+  // Same-adjective repetitions such as "slim or slim tapered" stay definite.
+  const sharedTaperAlternative =
+    /\b(slim|regular)(?:[- ]tapered)?\s+or\s+(slim|regular)[- ]tapered(?:[- ]fit)?\b|\b(slim|regular)[- ]tapered(?:[- ]fit)?\s+or\s+(slim|regular)\b/gi;
+  const instruction = candidateTrouser.replace(sharedTaperAlternative,
+    (phrase: string, left: string | undefined, right: string | undefined,
+      reverseLeft: string | undefined, reverseRight: string | undefined) => {
+      const first = left ?? reverseLeft;
+      const second = right ?? reverseRight;
+      if (first.toLowerCase() !== second.toLowerCase()) {
+        undecided = true;
+        return " ";
+      }
+      return phrase;
+    });
   for (const { id, pattern } of candidateTrouserFitPatterns) {
-    for (const match of candidateTrouser.matchAll(pattern)) {
+    for (const match of instruction.matchAll(pattern)) {
       const index = match.index ?? 0;
-      const prefix = candidateTrouser.slice(0, index);
-      const suffix = candidateTrouser.slice(index + match[0].length);
+      const prefix = instruction.slice(0, index);
+      const suffix = instruction.slice(index + match[0].length);
       if (candidateFitUndecidedPrefix.test(prefix)) {
         undecided = true;
         continue;
