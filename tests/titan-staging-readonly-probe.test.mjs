@@ -7,14 +7,15 @@ const raw=readFileSync(path,'utf8');
 const sql=raw.replace(/^\s*--[^\n]*$/gm,'').trim();
 const statements=sql.split(';').map(s=>s.trim()).filter(Boolean);
 
-test('probe wraps all statements in a repeatable-read, read-only transaction',()=>{
+test('probe wraps four evidence queries in a read-only transaction then emits a post-COMMIT sentinel',()=>{
   assert.match(statements[0],/^BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY$/i);
-  assert.equal(statements.at(-1).toUpperCase(),'COMMIT');
-  assert.equal(statements.length,6,'Expected BEGIN, four read-only SELECTs, COMMIT');
+  assert.equal(statements.at(-2).toUpperCase(),'COMMIT');
+  assert.match(statements.at(-1),/^SELECT\s+'probe_complete'\s+AS\s+evidence_kind\s*,\s*'TITAN_STAGING_READONLY_V1'\s+AS\s+capture_format$/i);
+  assert.equal(statements.length,7,'Expected BEGIN, four evidence SELECTs, COMMIT and safe completion SELECT');
 });
 
 test('all query statements are SELECTs with no extra write commands',()=>{
-  for(const statement of statements.slice(1,-1)){
+  for(const statement of [...statements.slice(1,-2),statements.at(-1)]){
     assert.match(statement,/^SELECT\s/i);
     assert.doesNotMatch(statement,/\b(?:INTO|FOR\s+UPDATE|FOR\s+SHARE|LOCK\s+TABLE|PERFORM|DO|CALL|EXECUTE|INSERT|UPDATE|DELETE|UPSERT|CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|COPY|VACUUM|SET\s+ROLE)\b(?!['"])/i);
   }

@@ -9,10 +9,11 @@ import {fileURLToPath} from 'node:url';
 
 const names=['fabric_stock_record','fabric_stock_reserve','fabric_stock_release','fabric_stock_consume_reservation','fabric_stock_record_v2','fabric_stock_reserve_v2','fabric_stock_release_v2','fabric_stock_consume_reservation_v2'];
 const roles=['anon','authenticated','service_role'];
+const endMarker='probe_complete|TITAN_STAGING_READONLY_V1';
 const rows=names.flatMap(name=>roles.map(role=>'stock_function_effective_execute|'+name+'||f|'+role+'|t|'));
 const fixture=(versions=['20261103'])=>[
   'connection_identity|'+Buffer.from('synthetic_database').toString('hex')+'|'+Buffer.from('synthetic_reader').toString('hex')+'|127.0.0.1|5432|16.15',
-  ...versions.map(v=>'migration_history|'+Buffer.from(v,'utf8').toString('hex')+'|'),...rows
+  ...versions.map(v=>'migration_history|'+Buffer.from(v,'utf8').toString('hex')+'|'),...rows,endMarker
 ].join('\n')+'\n';
 const parseGood=raw=>parse(raw,{psqlExitCode:0});
 
@@ -41,7 +42,7 @@ test('psql process failure blocks even if partial results resemble a complete ca
 });
 test('missing or duplicated matrix observation rejects truncated or ambiguous output',()=>{
   assert.throws(()=>parseGood(fixture().replace(rows[0]+'\n','')),/partial/);
-  assert.throws(()=>parseGood(fixture()+rows[0]+'\n'),/repeated/);
+  assert.throws(()=>parseGood(fixture().replace(endMarker,rows[0]+'\n'+endMarker)),/repeated/);
 });
 test('malformed role permissions never become an implicit grant',()=>{
   assert.throws(()=>parseGood(fixture().replace(rows[0],rows[0].replace('|f|anon|t|','|f|anon|t|t'))),/inconsistent/);
@@ -65,18 +66,18 @@ test('contradictory role existence across functions fails closed',()=>{
 });
 test('genuine complete multi-overload evidence remains a non-approving projection',()=>{
   const withoutReserve=fixture().split('\n').filter(line=>
-    !line.startsWith('stock_function_effective_execute|fabric_stock_reserve_v2|')).join('\n');
+    line!==endMarker && !line.startsWith('stock_function_effective_execute|fabric_stock_reserve_v2|')).join('\n').trimEnd();
   const observed=roles.flatMap(role=>[
     'stock_function_effective_execute|fabric_stock_reserve_v2|fabric_stock_reserve_v2(text)|t|'+role+'|t|f',
     'stock_function_effective_execute|fabric_stock_reserve_v2|fabric_stock_reserve_v2(integer)|t|'+role+'|t|t'
   ]);
-  const report=parseGood(withoutReserve+'\n'+observed.join('\n')+'\n');
+  const report=parseGood(withoutReserve+'\n'+observed.join('\n')+'\n'+endMarker+'\n');
   assert.equal(report.expected_permission_pairs_observed,24);
   assert.equal(report.release_ready,false);
 });
 test('a function cannot be both absent and installed in one capture',()=>{
   const installed='stock_function_effective_execute|fabric_stock_record|fabric_stock_record(text)|t|anon|t|t';
-  assert.throws(()=>parseGood(fixture()+installed+'\n'),/contradictory absent\/present/);
+  assert.throws(()=>parseGood(fixture().replace(endMarker,installed+'\n'+endMarker)),/contradictory absent\/present/);
   assert.throws(()=>parseGood(fixture().replace(rows[0],installed+'\n'+rows[0])),/contradictory absent\/present/);
 });
 test('missing role with installed RPC remains an explicit non-approving observation',()=>{
@@ -133,7 +134,7 @@ test('rendered RPC body text cannot forge an applied migration-history record',(
 });
 test('function-definition sections cannot appear after the permission matrix',()=>{
   const late='stock_function_definition|fabric_stock_reserve_v2(text)|owner|t|v||hash|CREATE FUNCTION';
-  assert.throws(()=>parseGood(fixture()+late+'\n'),/unexpected function definition row order/);
+  assert.throws(()=>parseGood(fixture().replace(endMarker,late+'\n'+endMarker)),/unexpected function definition row order/);
 });
 test('function definition multiline body is ignored, not published',()=>{
   const s=fixture().replace(rows[0],"stock_function_definition|fabric_stock_reserve_v2(text)|synthetic_owner|t|v||hash|CREATE FUNCTION\nPRIVATE-SYNTHETIC-BODY\nEND;\n"+rows[0]);
@@ -154,6 +155,14 @@ test('CLI outputs only sanitized JSON and always exits nonzero, never authorizes
     assert.equal(no.status,2);
     assert.equal(no.stdout,'');
   }finally{rmSync(dir,{recursive:true,force:true});}
+});
+test('post-COMMIT completion marker is required after every ACL observation',()=>{
+  const valid=fixture();
+  assert.throws(()=>parseGood(valid.replace(endMarker+'\n','')),/missing post-COMMIT/);
+  assert.throws(()=>parseGood(valid.replace(endMarker,'probe_complete|WRONG_FORMAT')),/malformed or premature/);
+  assert.throws(()=>parseGood(valid.replace(endMarker,endMarker+'\n'+endMarker)),/trailing content/);
+  assert.throws(()=>parseGood(valid.replace(endMarker,endMarker+'\n'+'migration_history|3230323631323331|')),/trailing content/);
+  assert.throws(()=>parseGood(valid.replace(endMarker+'\n','').replace(rows[0],endMarker+'\n'+rows[0])),/malformed or premature/);
 });
 test('malformed, oversized or embedded-NUL capture is blocked',()=>{
   assert.throws(()=>parseGood(fixture()+'\0'),/invalid/);

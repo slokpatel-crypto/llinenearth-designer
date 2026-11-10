@@ -80,6 +80,19 @@ test('actual read-only probe output parses as an untrusted version-only projecti
   }
 });
 
+test('actual PostgreSQL probe completion marker detects output truncation',()=>{
+  const r=probe();
+  assert.equal(r.status,0,r.stderr);
+  const marker='probe_complete|TITAN_STAGING_READONLY_V1';
+  assert.ok(r.stdout.split(/\r?\n/).includes(marker),'Actual post-COMMIT completion row missing');
+  const truncated=r.stdout.replace(marker+'\n','');
+  assert.notEqual(truncated,r.stdout,'The native probe fixture must contain a newline-terminated marker');
+  assert.throws(
+    ()=>extractUntrustedAppliedVersions(truncated,{psqlExitCode:0}),
+    /missing post-COMMIT/,
+    'A capture with all permissions but no terminal row is incomplete',
+  );
+});
 test('incomplete read-only PostgreSQL capture must not become reviewable history',()=>{
   const r=probe();
   assert.equal(r.status,0,r.stderr);
