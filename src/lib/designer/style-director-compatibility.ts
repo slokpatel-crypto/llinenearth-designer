@@ -762,7 +762,7 @@ export function styleDirectorCandidateShirtFitIntent(candidateShirt: string): {
       const before = candidateShirt.slice(0, index);
       const after = candidateShirt.slice(index + match[0].length);
       const ban = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
-        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(after);
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted))\b/i.test(after);
       const optional = /\b(?:optional|maybe)\s+$/i.test(before) ||
         /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/i.test(after);
       if (ban) prohibited.add(id);
@@ -891,7 +891,7 @@ export function styleDirectorCandidateTrouserFitIntent(candidateTrouser: string)
       const prefix = candidateTrouser.slice(0, index);
       const suffix = candidateTrouser.slice(index + match[0].length);
       const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
-        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|not\s+(?:allowed|permitted))\b/i.test(suffix);
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted))\b/i.test(suffix);
       const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory))\b/i.test(suffix);
       if (banned) prohibited.add(id);
