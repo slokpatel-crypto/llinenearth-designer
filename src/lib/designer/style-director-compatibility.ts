@@ -208,9 +208,16 @@ export function styleDirectorCandidateRollUpSleeveIntent(name: string): {
 } {
   let requested = false;
   let prohibited = false;
+  let undecided = false;
   for (const hit of name.matchAll(/\broll[- ]?up(?:[- ]styled|[- ]sleeves?)?\b/gi)) {
     const prefix = name.slice(0, hit.index ?? 0);
     const suffix = name.slice((hit.index ?? 0) + hit[0].length);
+    // An explicit "with or without" choice is unresolved: its "without"
+    // must not turn into a confirmed roll-up ban or a positive request.
+    if (/\bwith\s+(?:or\s+)?without\s+(?:(?:a|any|the)\s+)?$/i.test(prefix)) {
+      undecided = true;
+      continue;
+    }
     // Postposed rejection forbids the rolled sleeve; optional language is
     // neutral and must not silently change the existing sleeve ID.
     const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
@@ -223,7 +230,7 @@ export function styleDirectorCandidateRollUpSleeveIntent(name: string): {
   const lengths = candidateSleeveLengths(name);
   return {
     requested, prohibited,
-    ambiguous: (requested && prohibited) ||
+    ambiguous: undecided || (requested && prohibited) ||
       (requested && (lengths.short || lengths.bannedLong)),
   };
 }
