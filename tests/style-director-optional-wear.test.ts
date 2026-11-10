@@ -72,3 +72,59 @@ test("two mandatory wear instructions still require review without rewriting the
     assert.equal(JSON.stringify(locked), before);
   }
 });
+
+test("postposed tucked-wear refusals require untucked wear without rewriting locked IDs", () => {
+  for (const label of [
+    "Tucked shirt isn't wanted",
+    "Tucked shirts aren’t wanted",
+    "Tucked is not wanted",
+    "Tucked shirt unwanted",
+    "Tucked should not be worn",
+  ]) {
+    const saved = Object.freeze({ wear: "tucked" as const });
+    const before = JSON.stringify(saved);
+    assert.deepEqual(wearIssues(label, "tucked"), ["candidate_shirt_wear_mismatch"], label);
+    assert.deepEqual(wearIssues(label, "untucked"), [], label);
+    assert.deepEqual(wordingIssues(label), [], label);
+    assert.equal(styleDirectorWearForCandidate("Formal", label, "Tucked"), "Untucked", label);
+    assert.equal(JSON.stringify(saved), before);
+  }
+});
+
+test("postposed untucked-wear refusals require tucked wear without false positives", () => {
+  for (const label of [
+    "Untucked shirt isn't wanted",
+    "Untucked shirts aren’t wanted",
+    "Untucked is not allowed",
+    "Untucked shirts prohibited",
+    "Untucked should not be worn",
+  ]) {
+    assert.deepEqual(wearIssues(label, "untucked"), ["candidate_shirt_wear_mismatch"], label);
+    assert.deepEqual(wearIssues(label, "tucked"), [], label);
+    assert.deepEqual(wordingIssues(label), [], label);
+    assert.equal(styleDirectorWearForCandidate("Casual", label, "Untucked"), "Tucked", label);
+  }
+  const contradiction = "Tucked shirt required; tucked shirt isn't wanted";
+  assert.deepEqual(wordingIssues(contradiction), ["ambiguous_candidate_wear"]);
+  assert.deepEqual(wearIssues(contradiction, "tucked"), ["candidate_shirt_wear_mismatch"]);
+  assert.deepEqual(wearIssues(contradiction, "untucked"), ["candidate_shirt_wear_mismatch"]);
+});
+
+test("postposed optional tucked and untucked garment states remain neutral", () => {
+  for (const label of [
+    "Tucked shirt isn't needed",
+    "Tucked shirts aren’t mandatory",
+    "Tucked shirt not required",
+    "Untucked shirt isn't required",
+    "Untucked shirts aren't necessary",
+    "Untucked shirt optional",
+  ]) {
+    assert.deepEqual(wearIssues(label, "tucked"), [], label);
+    assert.deepEqual(wearIssues(label, "untucked"), [], label);
+    assert.deepEqual(wordingIssues(label), [], label);
+  }
+  const selected = "Tucked shirt isn't required; untucked shirt";
+  assert.deepEqual(wearIssues(selected, "untucked"), []);
+  assert.deepEqual(wearIssues(selected, "tucked"), ["candidate_shirt_wear_mismatch"]);
+  assert.deepEqual(wordingIssues(selected), []);
+});
