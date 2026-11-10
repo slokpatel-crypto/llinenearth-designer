@@ -77,6 +77,15 @@ export function buildProductionHandoff(
       ||!handoffRecord(spec.trouser) || !handoffRecord(spec.context)) {
     throw new Error("Unsafe tailor handoff source: missing source, garment or context record.");
   }
+  // Occasion, climate and intention are part of the locked design recipe.
+  // Do not silently print a blank/default context for a malformed saved value.
+  for(const field of ["occasion","climate","intention"] as const) {
+    const value=spec.context[field];
+    if(typeof value!=="string" || !value.trim() || value.length>240
+        || /[\u0000-\u001F\u007F]/.test(value)) {
+      throw new Error(`Unsafe tailor handoff context: missing or invalid ${field}.`);
+    }
+  }
   // Reject malformed nested StyleSpec before reading shirt/pant selection fields.
   // A corrupt locked recipe must fail with a controlled construction-integrity
   // error, not an incidental TypeError while auditing measurement requirements.
