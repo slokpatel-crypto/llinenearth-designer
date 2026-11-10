@@ -70,6 +70,33 @@ function createRevision(shirt:FinishedTarget[],trouser:FinishedTarget[],exactCut
   };
 }
 
+test("malformed saved recipe containers fail closed before handoff creation",()=>{
+  const sample=()=>createRevision([chest,shoulder,sleeve],[waist,seat,inseam,outseam]);
+  const invalid:Array<[string,(revision:LockedDesignRevision)=>void]>=[
+    ["missing recipe",r=>{r.garmentSpec=null as never;}],
+    ["scalar recipe",r=>{r.garmentSpec="not a recipe" as never;}],
+    ["missing source metadata",r=>{r.garmentSpec.source=null as never;}],
+    ["source metadata array",r=>{r.garmentSpec.source=[] as never;}],
+    ["missing shirt record",r=>{r.garmentSpec.shirt=null as never;}],
+    ["array trouser record",r=>{r.garmentSpec.trouser=[] as never;}],
+    ["missing occasion context",r=>{r.garmentSpec.context=null as never;}],
+    ["array occasion context",r=>{r.garmentSpec.context=[] as never;}],
+  ];
+  for(const [label,mutate] of invalid){
+    const revision=sample();
+    mutate(revision);
+    assert.throws(()=>buildProductionHandoff(revision),
+      /Unsafe tailor handoff source/,label);
+  }
+  assert.throws(()=>buildProductionHandoff(null as never),
+    /Unsafe tailor handoff source/);
+  assert.throws(()=>buildProductionHandoff([] as never),
+    /Unsafe tailor handoff source/);
+  const good=buildProductionHandoff(sample(),"2026-11-02T11:00:00Z");
+  assert.equal(good.construction.context?.occasion,"Smart-Casual");
+  assert.equal(good.production.stockReservation.status,"not_requested");
+});
+
 test("consistent centimetre body/ease/finished ranges remain exportable",()=>{
   const report=auditHandoffMeasurements({shirt:[chest,shoulder,sleeve],trouser:[waist,seat,inseam,outseam]});
   assert.deepEqual(report,{errors:[],missing:[]});
