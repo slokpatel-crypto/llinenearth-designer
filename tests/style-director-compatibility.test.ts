@@ -3069,9 +3069,20 @@ test("postposed placket bans do not become positive construction requests", () =
       spec({ placket: "hidden_fly_front" }).shirt), [], wording);
     assert.equal(JSON.stringify(locked), before, "review must not mutate locked construction");
   }
-  assert.deepEqual(styleDirectorCandidatePlacketIntent("French placket isn't required"), {
-    requested: null, prohibited: [], ambiguous: false,
-  });
+  for (const wording of [
+    "French placket isn't required",
+    "French placket isn't needed",
+    "French placket isn't mandatory",
+    "French placket is not required",
+    "French placket is not needed",
+  ]) {
+    assert.deepEqual(styleDirectorCandidatePlacketIntent(wording), {
+      requested: null, prohibited: [], ambiguous: false,
+    }, wording);
+    assert.equal(styleDirectorCandidatePlacket(wording, []), null, wording);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(
+      wording, spec({ placket: "hidden_fly_front" }).shirt), [], wording);
+  }
   assert.equal(styleDirectorCandidatePlacketIntent(
     "French placket and French placket isn't wanted").ambiguous, true);
 });
