@@ -461,3 +461,55 @@ test("contracted drawstring optionals remain neutral and preserve frozen IDs", (
   assert.equal(drawstring.waistband, "drawstring_elastic");
   assert.equal(ordinary.waistband, "belt_loops");
 });
+
+test("contracted wide-leg exclusions reject conflicting locked silhouettes without mutation", () => {
+  const wide = Object.freeze({ type: "wide_leg_relaxed_drape", waistband: "belt_loops" });
+  const classic = Object.freeze({ type: "formal_flat_front", waistband: "belt_loops" });
+  const before = JSON.stringify(wide);
+  const negatives = [
+    "wide-leg trousers aren't wanted",
+    "wide-leg trousers aren’t wanted",
+    "wide-leg pants isn't wanted",
+    "wide-legged pants unwanted",
+    "wide-fit trousers must not be selected",
+    "wide-leg trousers should not be selected",
+  ];
+  for (const candidate of negatives) {
+    assert.equal(styleDirectorCandidateWideLegIntent(candidate), "prohibited", candidate);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(candidate, classic), [], candidate);
+    const first = styleDirectorCandidateWideLegIssues(candidate, wide);
+    assert.deepEqual(first.map(issue => issue.code), ["candidate_wide_leg_mismatch"], candidate);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(candidate, wide), first, candidate);
+    assert.equal(JSON.stringify(wide), before, "locked silhouette unchanged");
+  }
+  const contradictory = [
+    "wide-leg trousers aren't wanted; wide-leg pants required",
+    "wide-leg trousers should not be selected; choose wide-leg trousers",
+  ];
+  for (const candidate of contradictory) {
+    assert.equal(styleDirectorCandidateWideLegIntent(candidate), "ambiguous", candidate);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(candidate, wide), [], candidate);
+  }
+});
+
+test("contracted optional wide-leg wording never silently changes the frozen trouser type", () => {
+  const wide = Object.freeze({ type: "wide_leg_relaxed_drape" });
+  const classic = Object.freeze({ type: "formal_flat_front" });
+  for (const candidate of [
+    "wide-leg trousers aren't required",
+    "wide-leg trousers aren’t needed",
+    "wide-leg pants isn't mandatory",
+    "wide-fit trousers are not required",
+    "wide-leg trousers optional",
+  ]) {
+    assert.equal(styleDirectorCandidateWideLegIntent(candidate), null, candidate);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(candidate, wide), [], candidate);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(candidate, classic), [], candidate);
+  }
+  assert.equal(styleDirectorCandidateWideLegIntent(
+    "wide-leg trousers aren't required; no wide-leg trousers"), "prohibited");
+  assert.equal(styleDirectorCandidateWideLegIntent(
+    "wide-leg trousers aren't mandatory; wide-leg pants required"), "requested");
+  assert.equal(wide.type, "wide_leg_relaxed_drape");
+  assert.equal(classic.type, "formal_flat_front");
+});
