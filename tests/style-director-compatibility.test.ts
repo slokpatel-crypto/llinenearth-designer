@@ -3169,3 +3169,20 @@ test("frozen collar prohibitions remain deterministic across explicit and option
     assert.equal(JSON.stringify(locked), before, "review must preserve locked IDs");
   }
 });
+
+test("contracted modal collar bans do not select forbidden locked constructions", () => {
+  for (const wording of [
+    "Camp collar shouldn't be selected",
+    "Camp collar mustn't be worn",
+    "Camp collar shouldn’t be chosen",
+  ]) {
+    const forbidden = spec({ collar: "cuban_camp_collar" });
+    const permitted = spec({ collar: "spread_collar" });
+    Object.freeze(forbidden.shirt);
+    Object.freeze(permitted.shirt);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, forbidden.shirt)
+      .map(issue => issue.code), ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, permitted.shirt), [], wording);
+    assert.equal(styleDirectorCandidateCollar(wording, []), null, wording);
+  }
+});
