@@ -679,11 +679,32 @@ export function styleDirectorCandidateButtonIntent(candidateShirt: string): {
   const requested = new Set<CandidateButtonId>();
   const prohibited = new Set<CandidateButtonId>();
   let undecided = false;
+  // A short alternative can omit "buttons" after its first material:
+  // "horn or corozo buttons" must not silently select Corozo. Equivalent
+  // plastic/resin names still identify the same existing material ID.
+  const material = String.raw`(?:mother[- ]of[- ]pearl|corozo(?:\s*\(\s*vegetable\s+ivory\s*\))?|horn|plastic|resin|metal)`;
+  const abbreviatedAlternative = new RegExp(
+    String.raw`\b(${material})(?:[- ]buttons?)?\s+or\s+(${material})[- ]buttons?\b`, "gi",
+  );
+  const materialId = (label: string): CandidateButtonId =>
+    /^mother/i.test(label) ? "mother_of_pearl"
+      : /^corozo/i.test(label) ? "corozo"
+        : /^horn/i.test(label) ? "horn"
+          : /^(?:plastic|resin)/i.test(label) ? "plastic_resin" : "metal_contrast";
+  const instruction = candidateShirt.replace(abbreviatedAlternative,
+    (match: string, first: string, second: string) => {
+      if (materialId(first) !== materialId(second)) {
+        undecided = true;
+        return " ";
+      }
+      return match;
+    },
+  );
   for (const { id, pattern } of candidateButtonPatterns) {
-    for (const match of candidateShirt.matchAll(pattern)) {
+    for (const match of instruction.matchAll(pattern)) {
       const start = match.index ?? 0;
-      const prefix = candidateShirt.slice(0, start);
-      const suffix = candidateShirt.slice(start + match[0].length);
+      const prefix = instruction.slice(0, start);
+      const suffix = instruction.slice(start + match[0].length);
       // "With or without" leaves the button material unresolved; do not
       // mistake its embedded "without" for a confirmed material exclusion.
       if (/\bwith\s+(?:or\s+)?without\s+(?:(?:a|any|the)\s+)?$/i.test(prefix)) {
