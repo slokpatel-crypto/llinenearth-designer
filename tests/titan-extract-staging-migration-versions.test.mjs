@@ -42,7 +42,7 @@ test('psql process failure blocks even if partial results resemble a complete ca
 });
 test('missing or duplicated matrix observation rejects truncated or ambiguous output',()=>{
   assert.throws(()=>parseGood(fixture().replace(rows[0]+'\n','')),/partial/);
-  assert.throws(()=>parseGood(fixture()+rows[0]+'\n'),/repeated/);
+  assert.throws(()=>parseGood(fixture().replace(endMarker,rows[0]+'\n'+endMarker)),/repeated/);
 });
 test('malformed role permissions never become an implicit grant',()=>{
   assert.throws(()=>parseGood(fixture().replace(rows[0],rows[0].replace('|f|anon|t|','|f|anon|t|t'))),/inconsistent/);
@@ -77,7 +77,7 @@ test('genuine complete multi-overload evidence remains a non-approving projectio
 });
 test('a function cannot be both absent and installed in one capture',()=>{
   const installed='stock_function_effective_execute|fabric_stock_record|fabric_stock_record(text)|t|anon|t|t';
-  assert.throws(()=>parseGood(fixture()+installed+'\n'),/contradictory absent\/present/);
+  assert.throws(()=>parseGood(fixture().replace(endMarker,installed+'\n'+endMarker)),/contradictory absent\/present/);
   assert.throws(()=>parseGood(fixture().replace(rows[0],installed+'\n'+rows[0])),/contradictory absent\/present/);
 });
 test('missing role with installed RPC remains an explicit non-approving observation',()=>{
@@ -134,7 +134,7 @@ test('rendered RPC body text cannot forge an applied migration-history record',(
 });
 test('function-definition sections cannot appear after the permission matrix',()=>{
   const late='stock_function_definition|fabric_stock_reserve_v2(text)|owner|t|v||hash|CREATE FUNCTION';
-  assert.throws(()=>parseGood(fixture()+late+'\n'),/unexpected function definition row order/);
+  assert.throws(()=>parseGood(fixture().replace(endMarker,late+'\n'+endMarker)),/unexpected function definition row order/);
 });
 test('function definition multiline body is ignored, not published',()=>{
   const s=fixture().replace(rows[0],"stock_function_definition|fabric_stock_reserve_v2(text)|synthetic_owner|t|v||hash|CREATE FUNCTION\nPRIVATE-SYNTHETIC-BODY\nEND;\n"+rows[0]);
