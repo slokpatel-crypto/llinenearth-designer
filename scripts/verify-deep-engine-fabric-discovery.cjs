@@ -34,6 +34,17 @@ async function testViewport(width){
     await page.goto(base+"/designer-studio",{waitUntil:"domcontentloaded"});
     await page.locator(".newDesignerFabricSearch").first().waitFor({state:"visible",timeout:20000});
     await page.locator(".brandIntro").waitFor({state:"hidden",timeout:20000});
+    // The intro is initially hidden during SSR, and the fabric input itself
+    // can be visible before React hydration. Filling it too early can update
+    // the bare DOM without running the real search onChange handler. Verify
+    // that the production control is actually interactive; never skip the
+    // empty-results assertion or rely on an arbitrary sleep/retry.
+    await page.waitForFunction(()=>{
+      const field=document.querySelector("#designer-shirt-search");
+      if(!field) return false;
+      const propsKey=Object.keys(field).find(key=>key.startsWith("__reactProps$"));
+      return Boolean(propsKey&&typeof field[propsKey]?.onChange==="function");
+    },null,{timeout:20000});
     // 16/50+ actual supplier records, not a made-up 10-row selector.
     const shirt=input(page,"#designer-shirt"),pant=input(page,"#designer-pant");
     const initialShirt=await shirt.inputValue(),initialPant=await pant.inputValue();
