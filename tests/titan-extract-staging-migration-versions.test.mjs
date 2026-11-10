@@ -197,29 +197,29 @@ test('post-COMMIT completion marker is required after every ACL observation',()=
 test('unrecognized stdout and interior blank rows fail closed even with complete ACL matrix',()=>{
   const raw=fixture();
   const bad=[
-    raw.replace(endMarker,'NOTICE|unrecognized line\\n'+endMarker),
-    raw.replace(endMarker,'migration_histori|3230323631313033|\\n'+endMarker),
-    raw.replace(endMarker,'\\n'+endMarker),
-    raw.replace(endMarker,' \\n'+endMarker),
-    'unexpected prefix\\n'+raw,
-    raw+ '\\n',
+    raw.replace(endMarker,'NOTICE|unrecognized line\n'+endMarker),
+    raw.replace(endMarker,'migration_histori|3230323631313033|\n'+endMarker),
+    raw.replace(endMarker,'\n'+endMarker),
+    raw.replace(endMarker,' \n'+endMarker),
+    'unexpected prefix\n'+raw,
+    raw+ '\n',
   ];
   for(const input of bad)
     assert.throws(()=>parseGood(input),/unrecognized|unexpected blank|trailing/,JSON.stringify(input.slice(-75)));
 });
 test('optional psql BEGIN and COMMIT status rows are permitted only as a paired envelope',()=>{
   const raw=fixture();
-  const envelope='BEGIN\\n'+raw.replace(endMarker,'COMMIT\\n'+endMarker);
+  const envelope='BEGIN\n'+raw.replace(endMarker,'COMMIT\n'+endMarker);
   const r=parseGood(envelope);
   assert.deepEqual(r.applied_versions,[{version:'20261103'}]);
   assert.equal(r.release_ready,false);
   const bad=[
-    'BEGIN\\n'+raw,
-    raw.replace(endMarker,'COMMIT\\n'+endMarker),
-    'BEGIN\\nBEGIN\\n'+raw.replace(endMarker,'COMMIT\\n'+endMarker),
-    'BEGIN\\n'+raw.replace(endMarker,'COMMIT\\nCOMMIT\\n'+endMarker),
-    'BEGIN\\n'+raw.replace('migration_history|','COMMIT\\nmigration_history|').replace(endMarker,'COMMIT\\n'+endMarker),
-    raw.replace(endMarker,'COMMIT\\n'+endMarker+'\\nBEGIN'),
+    'BEGIN\n'+raw,
+    raw.replace(endMarker,'COMMIT\n'+endMarker),
+    'BEGIN\nBEGIN\n'+raw.replace(endMarker,'COMMIT\n'+endMarker),
+    'BEGIN\n'+raw.replace(endMarker,'COMMIT\nCOMMIT\n'+endMarker),
+    'BEGIN\n'+raw.replace('migration_history|','COMMIT\nmigration_history|').replace(endMarker,'COMMIT\n'+endMarker),
+    raw.replace(endMarker,'COMMIT\n'+endMarker+'\nBEGIN'),
   ];
   for(const input of bad)
     assert.throws(()=>parseGood(input),/status|completion|after COMMIT|trailing|unrecognized/);
