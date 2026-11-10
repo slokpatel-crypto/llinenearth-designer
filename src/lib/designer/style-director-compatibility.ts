@@ -85,7 +85,16 @@ function candidateCollarIntent(name: string): {
     });
     return " ";
   };
-  let positive = name.replace(prefixBan, recordBan).replace(suffixBan, recordBan);
+  // This is a genuine choice between collar constructions, not the ban that
+  // the embedded word "without" would otherwise create. Strip only this
+  // alternative before evaluating any independently stated requirements.
+  const alternative = new RegExp(
+    String.raw`\bwith\s+(?:or\s+)?without\s+(?:(?:a|any|the)\s+)?(?:${token})\b`,
+    "gi",
+  );
+  let undecided = false;
+  const explicit = name.replace(alternative, () => { undecided = true; return " "; });
+  let positive = explicit.replace(prefixBan, recordBan).replace(suffixBan, recordBan);
   positive = positive.replace(prefixOptional, " ").replace(suffixOptional, " ");
   const requested = candidateCollarFamilies(positive);
   const named = (Object.keys(requested) as CandidateCollarFamily[]).filter(family => requested[family]);
@@ -102,7 +111,7 @@ function candidateCollarIntent(name: string): {
     affirmative: positive,
     // A generic Spread request remains compatible with a separately banned
     // English Spread variant, since the ordinary Spread ID is still allowed.
-    ambiguous: named.length > 1 || (possibleIds.length > 0 &&
+    ambiguous: undecided || named.length > 1 || (possibleIds.length > 0 &&
       possibleIds.every(id => prohibited.has(id))),
   };
 }
