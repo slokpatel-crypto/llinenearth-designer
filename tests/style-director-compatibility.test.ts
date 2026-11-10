@@ -3093,7 +3093,9 @@ test("frozen placket prohibitions preserve locked canonical construction", () =>
     ["French placket isn't wanted", "french_placket", "candidate_placket_mismatch"],
     ["French placket should not be selected", "hidden_fly_front", null],
     ["French placket is not required", "french_placket", null],
-    ["French placket and French placket isn't wanted", "french_placket", "candidate_placket_mismatch"],
+    // Contradictory requirements are reviewed by the wording gate, not the
+    // single-construction mismatch gate.
+    ["French placket and French placket isn't wanted", "french_placket", null],
   ] as const) {
     const locked = spec({ placket: lockedPlacket });
     Object.freeze(locked.shirt);
@@ -3106,5 +3108,12 @@ test("frozen placket prohibitions preserve locked canonical construction", () =>
     assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, locked.shirt), first,
       "frozen review must be deterministic");
     assert.equal(JSON.stringify(locked), before, "locked option IDs must not change");
+    if (styleDirectorCandidatePlacketIntent(wording).ambiguous) {
+      assert.deepEqual(
+        styleDirectorCandidateWordingIssues(wording).map(issue => issue.code)
+          .filter(code => code === "ambiguous_candidate_placket"),
+        ["ambiguous_candidate_placket"], "contradictory placket intent must reach review",
+      );
+    }
   }
 });
