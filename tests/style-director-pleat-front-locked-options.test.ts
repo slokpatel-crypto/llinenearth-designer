@@ -177,3 +177,47 @@ test("undecided pleats never hide an independent explicit direction or count ban
   assert.ok(styleDirectorCandidateWordingIssues("plain shirt", byCount)
     .some(issue => issue.code === "ambiguous_candidate_trouser_front"));
 });
+
+test("alternative pleat counts and directions require explicit review", () => {
+  const alternatives = [
+    "single or double pleats",
+    "single pleat or double pleats",
+    "double pleats or single pleat",
+    "one or two pleats",
+    "1 or 2 pleats",
+    "forward or reverse pleats",
+    "reverse pleats or forward pleats",
+    "either forward or reverse pleats",
+  ];
+  const canonical = [
+    "flat_front", "single_pleat_forward", "single_pleat_reverse",
+    "double_pleat_forward", "double_pleat_reverse",
+  ];
+  for (const wording of alternatives) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), "ambiguous", wording);
+    assert.deepEqual(styleDirectorCandidateWordingIssues("plain shirt", wording)
+      .map(issue => issue.code), ["ambiguous_candidate_trouser_front"], wording);
+    for (const pleat of canonical) {
+      const saved = Object.freeze({ pleat });
+      const snapshot = JSON.stringify(saved);
+      assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, saved), [], wording);
+      assert.equal(JSON.stringify(saved), snapshot);
+    }
+  }
+});
+
+test("ambiguous pleat alternatives preserve independent explicit bans", () => {
+  for (const [wording, denied, allowed] of [
+    ["single or double pleats; no reverse pleats", "single_pleat_reverse", "single_pleat_forward"],
+    ["forward or reverse pleats; double pleats forbidden", "double_pleat_forward", "single_pleat_reverse"],
+  ] as const) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), "ambiguous", wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording,
+      Object.freeze({ pleat: denied })).map(issue => issue.code),
+      ["candidate_trouser_pleat_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording,
+      Object.freeze({ pleat: allowed })), [], wording);
+    assert.ok(styleDirectorCandidateWordingIssues("plain shirt", wording)
+      .some(issue => issue.code === "ambiguous_candidate_trouser_front"), wording);
+  }
+});
