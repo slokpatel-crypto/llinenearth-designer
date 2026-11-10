@@ -125,3 +125,55 @@ test("opposite direction request plus explicit prohibition still requires review
     Object.freeze({ pleat: "single_pleat_reverse" })).map(issue => issue.code),
     ["candidate_trouser_pleat_mismatch"]);
 });
+
+test("with-or-without pleats stays ambiguous instead of selecting a locked front", () => {
+  const alternatives = [
+    "with or without pleats",
+    "with or without any pleats",
+    "with without pleats",
+    "with or without double pleats",
+    "with or without single pleats",
+    "with or without forward pleats",
+    "with or without a reverse pleat",
+  ];
+  const permitted = [
+    "flat_front", "single_pleat_forward", "single_pleat_reverse",
+    "double_pleat_forward", "double_pleat_reverse",
+  ];
+  for (const wording of alternatives) {
+    assert.equal(styleDirectorCandidateTrouserFront(wording), "ambiguous", wording);
+    assert.ok(styleDirectorCandidateWordingIssues("plain shirt", wording)
+      .some(issue => issue.code === "ambiguous_candidate_trouser_front"), wording);
+    for (const pleat of permitted) {
+      const locked = Object.freeze({ pleat });
+      const before = JSON.stringify(locked);
+      assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(wording, locked), [],
+        wording + ": undecided alternatives must not ban a versioned ID");
+      assert.equal(JSON.stringify(locked), before);
+    }
+  }
+});
+
+test("undecided pleats never hide an independent explicit direction or count ban", () => {
+  const byDirection = "with or without double pleats; no reverse pleats";
+  assert.equal(styleDirectorCandidateTrouserFront(byDirection), "ambiguous");
+  for (const pleat of ["single_pleat_reverse", "double_pleat_reverse"]) {
+    const locked = Object.freeze({ pleat });
+    const first = styleDirectorCandidateFrontConstructionIssues(byDirection, locked);
+    assert.deepEqual(first.map(issue => issue.code), ["candidate_trouser_pleat_mismatch"]);
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(byDirection, locked), first);
+  }
+  for (const pleat of ["flat_front", "single_pleat_forward", "double_pleat_forward"]) {
+    assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(byDirection,
+      Object.freeze({ pleat })), []);
+  }
+  const byCount = "with or without double pleats; double pleats are prohibited";
+  assert.equal(styleDirectorCandidateTrouserFront(byCount), "ambiguous");
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(byCount,
+    Object.freeze({ pleat: "double_pleat_forward" })).map(issue => issue.code),
+    ["candidate_trouser_pleat_mismatch"]);
+  assert.deepEqual(styleDirectorCandidateFrontConstructionIssues(byCount,
+    Object.freeze({ pleat: "single_pleat_forward" })), []);
+  assert.ok(styleDirectorCandidateWordingIssues("plain shirt", byCount)
+    .some(issue => issue.code === "ambiguous_candidate_trouser_front"));
+});
