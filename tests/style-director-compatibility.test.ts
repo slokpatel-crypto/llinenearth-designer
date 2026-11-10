@@ -2985,3 +2985,28 @@ test("ordinary shoe breaks on non-cropped hems do not invent cropped constructio
     }
   }
 });
+
+
+test("frozen canonical trouser construction remains reviewable without mutation", () => {
+  for (const type of ["formal_flat_front", "pleated_trouser", "cropped_ankle"] as const) {
+    for (const shoeBreak of ["full_break", "slight_break", "stacked_break", "cropped_above_ankle"] as const) {
+      const locked = spec();
+      locked.pant.type = type;
+      locked.pant.break = shoeBreak;
+      locked.pant.hem = type === "cropped_ankle" ? "cropped_above_ankle_hem" : "plain_hem";
+      Object.freeze(locked.shirt);
+      Object.freeze(locked.pant);
+      Object.freeze(locked);
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues,
+        "frozen locked designs must produce repeatable review results");
+      assert.equal(JSON.stringify(locked), before,
+        "construction review must never mutate frozen versioned selections");
+      if (type === "cropped_ankle" && shoeBreak !== "cropped_above_ankle") {
+        assert.ok(issues.some(issue => issue.code === `cropped_${shoeBreak}`),
+          "cropped construction with an ordinary shoe break requires review");
+      }
+    }
+  }
+});
