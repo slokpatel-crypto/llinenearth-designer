@@ -8,6 +8,7 @@ import {
   styleDirectorCandidateTrouserFit,
   styleDirectorCandidateTrouserFitIntent,
   styleDirectorCandidateWordingIssues,
+  styleDirectorSilhouetteFitIssues,
 } from "../src/lib/designer/style-director-compatibility.ts";
 
 const malformedLocked = (field: string, plausibleId: string) => {
@@ -145,4 +146,61 @@ test("undecided shirt and trouser fits preserve separately named firm instructio
   assert.deepEqual(styleDirectorCandidateTrouserFitIntent("without slim tapered fit"), {
     requested: null, prohibited: ["slim_tapered"], ambiguous: false,
   });
+});
+
+test("silhouette cross-field contradictions read only own locked option data", () => {
+  const cases = [
+    [{ type: "wide_leg_relaxed_drape", fit: "slim_tapered", pleat: "flat_front" },
+      ["wide_leg_tapered_fit_mismatch"]],
+    [{ type: "wide_leg_relaxed_drape", fit: "regular_tapered", pleat: "flat_front" },
+      ["wide_leg_tapered_fit_mismatch"]],
+    [{ type: "wide_leg_relaxed_drape", fit: "korean_tapered", pleat: "flat_front" },
+      ["wide_leg_tapered_fit_mismatch"]],
+    [{ type: "formal_flat_front", fit: "pleated_straight", pleat: "flat_front" },
+      ["pleated_fit_flat_front_mismatch"]],
+    [{ type: "wide_leg_relaxed_drape", fit: "pleated_straight", pleat: "flat_front" },
+      ["pleated_fit_flat_front_mismatch"]],
+    [{ type: "wide_leg_relaxed_drape", fit: "regular_classic", pleat: "flat_front" }, []],
+  ] as const;
+  for (const [value, codes] of cases) {
+    const saved = Object.freeze(Object.assign(Object.create(null), value));
+    const before = JSON.stringify(saved);
+    assert.deepEqual(styleDirectorSilhouetteFitIssues(saved)
+      .map(issue => issue.code), codes, JSON.stringify(value));
+    assert.deepEqual(styleDirectorSilhouetteFitIssues(saved),
+      styleDirectorSilhouetteFitIssues(saved), "deterministic review");
+    assert.equal(JSON.stringify(saved), before, "frozen locked IDs must not change");
+  }
+});
+
+test("silhouette checks never execute inherited accessors or hostile saved option getters", () => {
+  let getterCalls = 0;
+  const inherited = Object.create({
+    type: "wide_leg_relaxed_drape", fit: "slim_tapered", pleat: "flat_front",
+  });
+  const accessor = Object.defineProperty({}, "fit", {
+    enumerable: true,
+    get() { getterCalls++; throw new Error("untrusted fit getter"); },
+  });
+  Object.defineProperty(accessor, "type", {
+    enumerable: true, value: "wide_leg_relaxed_drape",
+  });
+  const hostile = new Proxy({}, {
+    getOwnPropertyDescriptor() { throw new Error("untrusted descriptor"); },
+  });
+  const revoked = Proxy.revocable({}, {});
+  revoked.revoke();
+  const mixed = Object.create({ fit: "slim_tapered" });
+  mixed.type = "wide_leg_relaxed_drape";
+  mixed.pleat = "flat_front";
+  for (const value of [null, {}, inherited, accessor, hostile, revoked.proxy, mixed]) {
+    assert.deepEqual(styleDirectorSilhouetteFitIssues(value as never), [],
+      "unverified fields cannot certify a specific contradiction");
+    assert.deepEqual(styleDirectorSilhouetteFitIssues(value as never), []);
+  }
+  assert.equal(getterCalls, 0, "cross-field validation cannot run getters");
+  const own = Object.freeze({ type: "wide_leg_relaxed_drape", fit: "slim_tapered" });
+  assert.deepEqual(styleDirectorSilhouetteFitIssues(own as never)
+    .map(issue => issue.code), ["wide_leg_tapered_fit_mismatch"],
+    "partial own-data fixtures still reveal provable contradictions");
 });
