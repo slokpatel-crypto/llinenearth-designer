@@ -261,3 +261,52 @@ test("collar alternatives retain independent prohibitions and affirmative constr
   assert.equal(styleDirectorCandidateCollar(
     "Mandarin Band Collar Shirt", photographed)?.versioned, "mandarin_band_collar");
 });
+
+test("ordinary and specialist collar variants in one family are never silently chosen", () => {
+  const ambiguous = [
+    ["Spread Collar or English Spread Collar", "spread_collar", "english_spread_collar"],
+    ["English Spread Collar; Spread Collar", "english_spread_collar", "spread_collar"],
+    ["Spread Collar and English Spread / British Collar", "spread_collar", "english_spread_collar"],
+    ["Button-Down Collar or Soft Button-Down Collar", "button_down_collar", "soft_button_down"],
+    ["Soft Button-Down Collar; Button-Down Collar", "soft_button_down", "button_down_collar"],
+  ] as const;
+  for (const [wording, ordinary, variant] of ambiguous) {
+    assert.deepEqual(styleDirectorCandidateWordingIssues(wording).map(issue => issue.code),
+      ["ambiguous_candidate_collar"], wording);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(wording), null, wording);
+    assert.equal(styleDirectorCandidateVariantCollar(wording), null, wording);
+    assert.equal(styleDirectorCandidateCollar(wording, photographed), null, wording);
+    for (const id of [ordinary, variant]) {
+      const saved = Object.freeze({ collar: id });
+      const initial = JSON.stringify(saved);
+      assert.deepEqual(styleDirectorCandidateCollarIssues(wording, saved), [], wording);
+      assert.equal(JSON.stringify(saved), initial, "ambiguous names must not rewrite saved IDs");
+    }
+  }
+});
+
+test("canonical collar aliases and independently prohibited variants stay unambiguous", () => {
+  for (const [wording, exact] of [
+    ["English Spread / British Collar", "english_spread_collar"],
+    ["English Spread & British Collar Shirt", "english_spread_collar"],
+    ["Soft Button-Down Collar", "soft_button_down"],
+    ["Spread Collar", "spread_collar"],
+    ["Button-Down Collar", "button_down_collar"],
+  ] as const) {
+    assert.deepEqual(styleDirectorCandidateWordingIssues(wording), [], wording);
+    assert.deepEqual(issueCodes(wording, exact), [], wording);
+  }
+  for (const [wording, ordinary, excluded] of [
+    ["No English Spread Collar; Spread Collar Shirt", "spread_collar", "english_spread_collar"],
+    ["Avoid Soft Button-Down Collar; Button-Down Collar Shirt", "button_down_collar", "soft_button_down"],
+    ["Optional English Spread Collar; Spread Collar Shirt", "spread_collar", "english_spread_collar"],
+    ["Maybe Soft Button-Down Collar; Button-Down Collar Shirt", "button_down_collar", "soft_button_down"],
+  ] as const) {
+    assert.deepEqual(styleDirectorCandidateWordingIssues(wording), [], wording);
+    assert.deepEqual(issueCodes(wording, ordinary), [], wording);
+    assert.equal(styleDirectorCandidateVariantCollar(wording), null, wording);
+    if (/^(?:No|Avoid)/.test(wording)) {
+      assert.deepEqual(issueCodes(wording, excluded), ["candidate_collar_mismatch"], wording);
+    }
+  }
+});
