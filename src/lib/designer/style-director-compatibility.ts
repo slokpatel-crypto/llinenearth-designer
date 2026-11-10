@@ -1079,9 +1079,10 @@ const postposedDirectionPleatBan = /\b(forward|reverse)[ -]?pleats?\s+(?:(?:are|
 const postposedDirectionPleatOptional = /\b(?:forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory|necessary)|(?:aren['’]?t|isn['’]?t)\s+(?:required|needed|mandatory|necessary))\b/gi;
 
 
-// With-or-without phrasing leaves the pleat count/direction undecided. It must
-// not become a flat-front request or a count/direction prohibition.
-const undecidedPleatAlternative = /\bwith\s+(?:or\s+)?without\s+(?:(?:a|any)\s+)?(?:(?:single|double|one|two|1|2|forward|reverse)[ -]?)?(?:pleats?|pleating)\b/gi;
+// With-or-without and explicit count/direction alternatives remain undecided.
+// Neither is permission to choose a front, count or direction on a locked design.
+// A separate positive/negative instruction is still checked independently.
+const undecidedPleatAlternative = /\b(?:with\s+(?:or\s+)?without\s+(?:(?:a|any)\s+)?(?:(?:single|double|one|two|1|2|forward|reverse)[ -]?)?(?:pleats?|pleating)|(?:single|double|one|two|1|2|forward|reverse)(?:[ -]?pleats?)?\s+or\s+(?:single|double|one|two|1|2|forward|reverse)[ -]?pleats?)\b/gi;
 
 export function styleDirectorCandidateTrouserFront(
   candidateTrouser: string,
