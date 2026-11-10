@@ -1283,7 +1283,13 @@ export function styleDirectorCandidateFrontConstructionIssues(
   // Do not silently substitute one for the other in tailoring instructions.
   // A prohibited direction is not a requested direction. Preserve positive
   // direction instructions elsewhere (e.g. "no reverse pleats; forward pleats").
+  // Optional direction wording is not an instruction to orient the pleat.
+  // Remove the full qualified phrase, not just "pleats aren't required",
+  // so a later positive opposite direction can still be honoured.
   const directionWording = positiveWording.replace(
+    /\b(?:forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|necessary|mandatory)|(?:aren['’]?t|isn['’]?t)\s+(?:required|needed|necessary|mandatory))\b/gi,
+    "",
+  ).replace(
     /\b(?:no|without|avoid|never|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose)\s+)?(?:forward|reverse)[ -]?pleats?\b/gi,
     "",
   ).replace(
