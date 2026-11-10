@@ -466,23 +466,28 @@ export function styleDirectorCandidatePocketIntent(candidateShirt: string): {
   prohibited: CandidatePocketId[];
   ambiguous: boolean;
 } {
+  // An unresolved pocket alternative cannot be mistaken for "no pocket"
+  // or a ban on patch/flap construction. Keep separate explicit constraints.
+  const alternative = /\bwith\s+(?:or\s+)?without\s+(?:(?:a|any|the)\s+)?(?:(?:single[- ]patch|patch|flap)[- ]?)?pockets?\b/gi;
+  const undecided = alternative.test(candidateShirt);
+  const instruction = candidateShirt.replace(alternative, " ");
   const requested = new Set<CandidatePocketId>();
   const prohibited = new Set<CandidatePocketId>();
   const optionalBefore = (prefix: string) => /\b(?:optional|maybe)\s+$/i.test(prefix);
   const optionalAfter = (suffix: string) => /^\s+(?:(?:is|are)\s+)?(?:optional|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
   // "No Pocket" states the *absence* of the pocket. It is not a
   // prohibition of the versioned no_pocket ID.
-  for (const hit of candidateShirt.matchAll(/\b(?:no|without)\s+(?:(?:a|any|the)\s+)?pockets?\b|\bpocketless\b/gi)) {
+  for (const hit of instruction.matchAll(/\b(?:no|without)\s+(?:(?:a|any|the)\s+)?pockets?\b|\bpocketless\b/gi)) {
     const start = hit.index ?? 0;
-    const before = candidateShirt.slice(0, start);
-    const after = candidateShirt.slice(start + hit[0].length);
+    const before = instruction.slice(0, start);
+    const after = instruction.slice(start + hit[0].length);
     if (!optionalBefore(before) && !optionalAfter(after)) requested.add("no_pocket");
   }
   for (const { id, pattern } of candidatePocketPatterns) {
-    for (const hit of candidateShirt.matchAll(pattern)) {
+    for (const hit of instruction.matchAll(pattern)) {
       const start = hit.index ?? 0;
-      const before = candidateShirt.slice(0, start);
-      const after = candidateShirt.slice(start + hit[0].length);
+      const before = instruction.slice(0, start);
+      const after = instruction.slice(start + hit[0].length);
       const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:should|must)\s+not\s+be\s+(?:chosen|selected|used))\b/i.test(after);
       if (banned) prohibited.add(id);
@@ -492,7 +497,7 @@ export function styleDirectorCandidatePocketIntent(candidateShirt: string): {
   return {
     requested: requested.size === 1 ? [...requested][0] : null,
     prohibited: [...prohibited],
-    ambiguous: requested.size > 1 || [...requested].some(id => prohibited.has(id)),
+    ambiguous: undecided || requested.size > 1 || [...requested].some(id => prohibited.has(id)),
   };
 }
 
