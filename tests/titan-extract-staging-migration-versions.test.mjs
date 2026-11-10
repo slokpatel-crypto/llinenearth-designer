@@ -101,6 +101,16 @@ test('connection fingerprint is mandatory and unique',()=>{
   assert.throws(()=>parseGood(s.replace(head+'\n','')),/unexpected history row order/);
   assert.throws(()=>parseGood(head+'\n'+s),/partial/);
 });
+test('rendered RPC body text cannot forge an applied migration-history record',()=>{
+  const header='stock_function_definition|fabric_stock_reserve_v2(text)|owner|t|v||hash|CREATE FUNCTION';
+  const injected=fixture().replace(rows[0],
+    header+'\nBEGIN\nmigration_history|20261110010101|\nEND;\n'+rows[0]);
+  assert.throws(()=>parseGood(injected),/unexpected history row order/);
+});
+test('function-definition sections cannot appear after the permission matrix',()=>{
+  const late='stock_function_definition|fabric_stock_reserve_v2(text)|owner|t|v||hash|CREATE FUNCTION';
+  assert.throws(()=>parseGood(fixture()+late+'\n'),/unexpected function definition row order/);
+});
 test('function definition multiline body is ignored, not published',()=>{
   const s=fixture().replace(rows[0],"stock_function_definition|fabric_stock_reserve_v2(text)|synthetic_owner|t|v||hash|CREATE FUNCTION\nPRIVATE-SYNTHETIC-BODY\nEND;\n"+rows[0]);
   assert.equal(JSON.stringify(parseGood(s)).includes('PRIVATE-SYNTHETIC'),false);
