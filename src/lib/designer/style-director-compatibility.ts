@@ -859,11 +859,29 @@ export function styleDirectorCandidateShirtFitIntent(candidateShirt: string): {
   const requested = new Set<CandidateShirtFitId>();
   const prohibited = new Set<CandidateShirtFitId>();
   let undecided = false;
+  // A shortened choice such as "slim or relaxed fit" names two different
+  // canonical fits, although only the last adjective carries "fit".
+  // Keep synonymous regular/classic and boxy/oversized alternatives valid.
+  const fitFamily = (word: string): CandidateShirtFitId => {
+    const name = word.toLowerCase().replace(/[- ]+/g, " ");
+    if (name === "regular" || name === "classic") return "regular_classic_fit";
+    if (name === "boxy" || name === "oversized") return "boxy_oversized";
+    if (name === "athletic taper") return "athletic_taper";
+    return name === "slim" ? "slim_fit" : "relaxed_fit";
+  };
+  const contractedAlternatives = /\b(slim|regular|classic|relaxed|boxy|oversized|athletic[ -]taper)(?:[- ]fit)?\s+or\s+(slim|regular|classic|relaxed|boxy|oversized|athletic[ -]taper)(?:[- ]fit)?\b/gi;
+  const instruction = candidateShirt.replace(contractedAlternatives, (phrase, first: string, second: string) => {
+    if (/\bfit\b/i.test(phrase) && fitFamily(first) !== fitFamily(second)) {
+      undecided = true;
+      return " ";
+    }
+    return phrase;
+  });
   for (const { id, pattern } of candidateShirtFitPatterns) {
-    for (const match of candidateShirt.matchAll(pattern)) {
+    for (const match of instruction.matchAll(pattern)) {
       const index = match.index ?? 0;
-      const before = candidateShirt.slice(0, index);
-      const after = candidateShirt.slice(index + match[0].length);
+      const before = instruction.slice(0, index);
+      const after = instruction.slice(index + match[0].length);
       if (candidateFitUndecidedPrefix.test(before)) {
         undecided = true;
         continue;
