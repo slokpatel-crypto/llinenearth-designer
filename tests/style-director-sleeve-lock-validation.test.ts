@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   styleDirectorCandidateSleeveIssues,
+  styleDirectorConstructionIssues,
 } from "../src/lib/designer/style-director-compatibility.ts";
 
 test("explicit sleeve instructions need a canonical own-data locked option", () => {
@@ -55,4 +56,27 @@ test("explicit sleeve instructions need a canonical own-data locked option", () 
   assert.equal(full.sleeve, "full_sleeve");
   assert.equal(half.sleeve, "half_sleeve");
   assert.equal(rolled.sleeve, "roll_up_styled");
+});
+
+
+test("unknown sleeve IDs do not masquerade as full-length construction conflicts", () => {
+  for (const sleeve of ["retired_sleeve", "", null, undefined]) {
+    const locked = Object.freeze({
+      shirt: Object.freeze({ type: "short_sleeve_shirt", sleeve, cuff: "open_short_hem_cuff" }),
+      pant: Object.freeze({ type: "formal_flat_front", pleat: "flat_front" }),
+    });
+    const issues = styleDirectorConstructionIssues(locked as never);
+    assert.ok(issues.some(issue => issue.code === "unknown_versioned_option"), String(sleeve));
+    assert.ok(!issues.some(issue => issue.code === "short_sleeve_type_mismatch"), String(sleeve));
+    assert.deepEqual(styleDirectorConstructionIssues(locked as never), issues);
+    assert.equal(locked.shirt.sleeve, sleeve);
+  }
+  for (const sleeve of ["full_sleeve", "roll_up_styled"]) {
+    const locked = Object.freeze({
+      shirt: Object.freeze({ type: "short_sleeve_shirt", sleeve, cuff: "barrel_cuff_1_button" }),
+      pant: Object.freeze({ type: "formal_flat_front", pleat: "flat_front" }),
+    });
+    assert.ok(styleDirectorConstructionIssues(locked as never).some(issue =>
+      issue.code === "short_sleeve_type_mismatch"), sleeve);
+  }
 });
