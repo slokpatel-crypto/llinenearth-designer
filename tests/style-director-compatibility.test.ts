@@ -3400,3 +3400,23 @@ test("postposed collar inclusion bans preserve frozen canonical selections", () 
     assert.equal(JSON.stringify(forbidden), before);
   }
 });
+
+test("never-qualified postposed collar bans cannot select a forbidden construction", () => {
+  for (const wording of [
+    "Camp collar must never be included",
+    "Camp collar should never be worn",
+    "Camp collar must never be selected",
+  ]) {
+    const forbidden = spec({ collar: "cuban_camp_collar" });
+    const permitted = spec({ collar: "spread_collar" });
+    Object.freeze(forbidden.shirt);
+    Object.freeze(permitted.shirt);
+    const snapshot = JSON.stringify(forbidden);
+    const issues = styleDirectorCandidateCollarIssues(wording, forbidden.shirt);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, forbidden.shirt), issues);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, permitted.shirt), [], wording);
+    assert.equal(styleDirectorCandidateCollar(wording, []), null, wording);
+    assert.equal(JSON.stringify(forbidden), snapshot);
+  }
+});
