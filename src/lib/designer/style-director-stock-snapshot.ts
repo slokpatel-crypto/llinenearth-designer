@@ -83,8 +83,12 @@ function snapshotAvailableFabric(input: unknown): FabricColorway | null {
     for (const key of ["weightGsm", "formalityScore"] as const) {
       const value = read(key);
       if (value !== undefined) {
+        // Match the loader's existing physical metadata boundaries. A value
+        // like 0.01 GSM or a negative formality score must not be promoted into
+        // Designer evidence by this later structural snapshot.
         if (typeof value !== "number" || !Number.isFinite(value) ||
-            (key === "weightGsm" && value <= 0)) return null;
+            (key === "weightGsm" && (value < 40 || value > 1000)) ||
+            (key === "formalityScore" && (value < 1 || value > 5))) return null;
         (copy as unknown as Record<string, unknown>)[key] = value;
       }
     }

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
-import { createStyleDirectorLooks, type StyleDirectorAnswers } from "@/lib/style-director-agent";
+import { createStyleDirectorLooks } from "@/lib/style-director-agent";
+import { parseStyleDirectorAnswers } from "@/lib/designer/style-director-answers";
 import { maybeEnrichStyleDirectorLooks } from "@/lib/designer/anthropic-editorial";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import { designerFabricFromStock } from "@/lib/designer/engine";
@@ -11,14 +12,10 @@ import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availab
 
 export const runtime = "nodejs";
 
-function valid(body: Partial<StyleDirectorAnswers>): body is StyleDirectorAnswers {
-  return Boolean(body.occasion && body.mood && body.time && body.climate && body.garment && body.colorDirection);
-}
-
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as Partial<StyleDirectorAnswers>;
-    if (!valid(body)) return NextResponse.json({ error: "Complete the style journey first." }, { status: 400 });
+    const body = parseStyleDirectorAnswers(await request.json());
+    if (!body) return NextResponse.json({ error: "Choose a valid option at every style journey step." }, { status: 400 });
     const metadata=await loadDesignerFabricMetadata();
     const metadataStock=applyDesignerFabricMetadataToStock(metadata);
     const liveStock=await applyLiveVerifiedStockAvailability(metadataStock);
