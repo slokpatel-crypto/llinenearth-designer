@@ -58,8 +58,11 @@ test("affirmative choices survive separate gerund prohibitions", () => {
 
 test("unprohibited affirmative gerund descriptions remain recognizable", () => {
   assert.equal(styleDirectorCandidateOrdinaryCollar("Wearing a spread collar"), "spread");
-  assert.equal(styleDirectorCandidateCollar("Choosing a camp collar", []), null,
-    "the exact advanced resolver requires its normal legacy choice contract");
+  assert.deepEqual(
+    styleDirectorCandidateCollar("Choosing a camp collar", []),
+    { legacy: null, versioned: "cuban_camp_collar" },
+    "positive advanced construction keeps its canonical ID without inventing a legacy photo",
+  );
   assert.deepEqual(
     styleDirectorCandidateCollarIssues("Choosing a camp collar", { collar: "cuban_camp_collar" }), [],
   );
