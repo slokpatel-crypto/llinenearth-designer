@@ -250,6 +250,8 @@ async function verifyPublicStyleDirectorRequestBoundary() {
     ["wrong-garment-type", JSON.stringify({ ...supported, garment: 123 })],
     ["incorrect-case", JSON.stringify({ ...supported, garment: "SHIRT" })],
     ["nested-choice", JSON.stringify({ ...supported, garment: { id: "shirt" } })],
+    ["oversized-valid-json", JSON.stringify({ ...supported, padding: "x".repeat(9000) })],
+    ["oversized-invalid-json", "x".repeat(9000)],
   ];
   for (const [name, body] of cases) {
     const response = await fetch(new URL("/api/style-director", baseURL), {

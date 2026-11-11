@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { parseStyleDirectorAnswers, parseStyleDirectorJsonRequest } from "../src/lib/designer/style-director-answers.ts";
+import { parseStyleDirectorAnswers, parseStyleDirectorJsonRequest, STYLE_DIRECTOR_MAX_REQUEST_BYTES } from "../src/lib/designer/style-director-answers.ts";
 
 const journey = {
   occasion: "Travel",
@@ -127,4 +127,49 @@ test("the API returns 400 for bad JSON and keeps real server failures separate",
     "invalid JSON and invalid choices must exit as 400 before IO, while server errors remain 500");
   assert.ok(!route.includes("parseStyleDirectorAnswers(await request.json())"),
     "unsafe JSON decoder must not be inside the server's broad 500 catch");
+});
+
+test("real public requests enforce a strict byte cap without truncating valid JSON", async () => {
+  const makeRequest = (body: string) => new Request("https://linenearth.example/api/style-director", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body,
+  });
+  const emptyPadding = JSON.stringify({ ...journey, padding: "" });
+  const paddingLength = STYLE_DIRECTOR_MAX_REQUEST_BYTES - new TextEncoder().encode(emptyPadding).length;
+  assert.ok(paddingLength > 0, "ordinary six-choice submissions fit within the cap");
+  const exactlyAllowed = JSON.stringify({ ...journey, padding: "x".repeat(paddingLength) });
+  const oneByteOver = JSON.stringify({ ...journey, padding: "x".repeat(paddingLength + 1) });
+  assert.equal(new TextEncoder().encode(exactlyAllowed).length, STYLE_DIRECTOR_MAX_REQUEST_BYTES);
+  assert.equal(new TextEncoder().encode(oneByteOver).length, STYLE_DIRECTOR_MAX_REQUEST_BYTES + 1);
+  assert.deepEqual(await parseStyleDirectorJsonRequest(makeRequest(exactlyAllowed)), journey,
+    "a valid bounded request may carry unrelated fields without forwarding them");
+  assert.equal(await parseStyleDirectorJsonRequest(makeRequest(oneByteOver)), null,
+    "the request must reject the first excess byte before parsing JSON");
+  assert.equal(await parseStyleDirectorJsonRequest(makeRequest("x".repeat(9000))), null);
+});
+
+test("the bounded decoder survives split UTF-8 and stops untrusted streaming input", async () => {
+  const original = new TextEncoder().encode(JSON.stringify({ ...journey, note: "café" }));
+  const splitAt = original.indexOf(0xc3) + 1;
+  assert.ok(splitAt > 1, "test must split inside a two-byte UTF-8 character");
+  let decoderCalls = 0;
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(original.slice(0, splitAt));
+      controller.enqueue(original.slice(splitAt));
+      controller.close();
+    },
+  });
+  const parsed = await parseStyleDirectorJsonRequest({
+    body: stream,
+    json: async () => { decoderCalls++; throw new Error("must use bounded stream"); },
+  });
+  assert.deepEqual(parsed, journey);
+  assert.equal(decoderCalls, 0);
+  const badUtf8 = new ReadableStream<Uint8Array>({
+    start(controller) { controller.enqueue(new Uint8Array([0xc3])); controller.close(); },
+  });
+  assert.equal(await parseStyleDirectorJsonRequest({
+    body: badUtf8,
+    json: async () => { throw new Error("unexpected JSON decoder"); },
+  }), null, "incomplete multibyte payload must fail closed");
 });
