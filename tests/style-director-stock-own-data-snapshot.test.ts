@@ -134,3 +134,63 @@ test("only malformed stock produces no looks; valid nearby rows still get real o
   assert.deepEqual(unavailable, [],
     "a supplier's availability claim cannot override an unavailable stock marker");
 });
+
+
+test("operator metadata numeric bounds apply to later catalogue snapshots, including both edges", () => {
+  // Align with parseMetadata() in designer-fabric-metadata: GSM 40..1000,
+  // formality score 1..5. Boundary values must remain usable; invalid
+  // values must not masquerade as verified physical material evidence.
+  const allowed = [
+    { weightGsm: 40, formalityScore: 1 },
+    { weightGsm: 1000, formalityScore: 5 },
+    { weightGsm: 180, formalityScore: 3.5 },
+  ];
+  for (const sample of allowed) {
+    const row = { ...stockFixture(), ...sample };
+    const copy = styleDirectorStockSnapshot([row]);
+    assert.equal(copy.length, 1, "valid metadata at an inclusive boundary must be retained");
+    assert.equal(copy[0].weightGsm, sample.weightGsm);
+    assert.equal(copy[0].formalityScore, sample.formalityScore);
+    assert.equal(copy[0].availabilityVerified, undefined,
+      "numeric stock fields do not imply verified metreage");
+  }
+  for (const gsm of [0, -1, 39.99, 1000.01, 1200, Number.NaN,
+    Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    const invalid = { ...stockFixture(), weightGsm: gsm };
+    assert.deepEqual(styleDirectorStockSnapshot([invalid]), [],
+      "reject impossible/out-of-policy GSM: " + String(gsm));
+  }
+  for (const score of [-100, 0, 0.99, 5.01, 6, 100, Number.NaN,
+    Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    const invalid = { ...stockFixture(), formalityScore: score };
+    assert.deepEqual(styleDirectorStockSnapshot([invalid]), [],
+      "reject out-of-range styling score: " + String(score));
+  }
+});
+
+test("bad numeric metadata on a duplicate does not shadow an eligible physically catalogued row", async () => {
+  const [{ FABRIC_STOCK }, { createStyleDirectorLooks }] = await Promise.all([
+    import("@/lib/fabric-stock"), import("@/lib/style-director-agent"),
+  ]);
+  const shirt = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("shirt"));
+  const pant = FABRIC_STOCK.find(f => f.inStock && f.suitableFor.includes("trouser"));
+  assert.ok(shirt && pant);
+  const supplied = [
+    { ...shirt, weightGsm: 1 },
+    { ...pant, formalityScore: -100 },
+    shirt, pant,
+  ] as FabricColorway[];
+  const saved = JSON.stringify(supplied);
+  const result = createStyleDirectorLooks({
+    occasion: "Travel", mood: "Relaxed", time: "Day", climate: "Hot",
+    garment: "shirt", colorDirection: "Surprise me",
+  }, supplied);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].fabric.id, shirt.id,
+    "malformed first duplicate must not hide a later valid hero fabric");
+  assert.equal(result[0].realModel?.pantId, pant.id,
+    "malformed trouser score must not shadow a valid supporting trouser");
+  assert.equal(JSON.stringify(supplied), saved, "source catalogue remains immutable");
+  assert.equal(result[0].fabric.weightGsm, shirt.weightGsm,
+    "invalid GSM cannot be copied into generated look");
+});
