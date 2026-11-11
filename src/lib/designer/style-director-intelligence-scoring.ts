@@ -43,8 +43,14 @@ function styleDirectorScoringStrings(value: unknown): string[] | null {
 
 export function usableStyleDirectorIntelligence(value: DesignerFabricIntelligence | null | undefined):
   ScorableStyleDirectorIntelligence | null {
-  if (!value || styleDirectorIntelligenceTrustWeight(value) === 0) return null;
+  // Authenticate the same captured provenance that the ranking will use.
+  // Dynamic descriptor proxies must not supply "approved" for validation
+  // and a different review/trust value for the returned ranking snapshot.
   const read = (key: string) => styleDirectorOwnScoringValue(value, key);
+  const trust = read("trust");
+  const reviewStatus = read("reviewStatus");
+  const provenance = { trust, reviewStatus } as Pick<DesignerFabricIntelligence, "trust" | "reviewStatus">;
+  if (styleDirectorIntelligenceTrustWeight(provenance) === 0) return null;
   const formality = read("formality");
   const statementLevel = read("statementLevel");
   if (typeof formality !== "number" || !Number.isInteger(formality) || formality < 1 || formality > 5 ||
@@ -61,8 +67,8 @@ export function usableStyleDirectorIntelligence(value: DesignerFabricIntelligenc
   // Only copied plain data affects ranking. Other stored fields, including
   // physical evidence, are neither invoked nor silently treated as verified.
   return {
-    trust: read("trust") as ScorableStyleDirectorIntelligence["trust"],
-    reviewStatus: read("reviewStatus") as ScorableStyleDirectorIntelligence["reviewStatus"],
+    trust: trust as ScorableStyleDirectorIntelligence["trust"],
+    reviewStatus: reviewStatus as ScorableStyleDirectorIntelligence["reviewStatus"],
     formality: formality as ScorableStyleDirectorIntelligence["formality"],
     statementLevel: statementLevel as ScorableStyleDirectorIntelligence["statementLevel"],
     bestGarments: bestGarments as ScorableStyleDirectorIntelligence["bestGarments"],
