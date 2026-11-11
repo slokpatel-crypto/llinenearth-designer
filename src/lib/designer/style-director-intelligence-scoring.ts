@@ -28,7 +28,7 @@ function styleDirectorScoringStrings(value: unknown): string[] | null {
   try {
     if (!Array.isArray(value)) return null;
     const size = Object.getOwnPropertyDescriptor(value, "length")?.value;
-    if (!Number.isInteger(size) || size < 0 || size > 128) return null;
+    if (typeof size !== "number" || !Number.isInteger(size) || size < 0 || size > 128) return null;
     const strings: string[] = [];
     for (let index = 0; index < size; index++) {
       const entry = Object.getOwnPropertyDescriptor(value, String(index));
