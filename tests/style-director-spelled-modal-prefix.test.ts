@@ -176,3 +176,31 @@ test("positive, optional and contradictory instructions are not silently convert
   assert.deepEqual(styleDirectorCandidateWordingIssues(contradiction).map(x => x.code),
     ["ambiguous_candidate_pocket"]);
 });
+
+
+test("spelled collar bans must be removed by the RegExp string before matching canonical IDs", () => {
+  for (const statement of [
+    "Should not select camp collar",
+    "Must not select camp collar",
+    "Should not use camp collar",
+    "Must not wear camp collar",
+  ]) {
+    const locked = Object.freeze({ collar: "cuban_camp_collar" });
+    assert.deepEqual(
+      styleDirectorCandidateCollarIssues(statement, locked).map(issue => issue.code),
+      ["candidate_collar_mismatch"],
+      "a forbidden locked collar must not be approved: " + statement,
+    );
+    assert.deepEqual(styleDirectorCandidateCollarIssues(statement, { collar: "spread_collar" }), [],
+      "a different buildable collar must remain allowed: " + statement);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(statement), [], statement);
+  }
+  for (const statement of ["Should select camp collar", "Must select camp collar"]) {
+    assert.deepEqual(styleDirectorCandidateCollarIssues(statement, { collar: "cuban_camp_collar" }), []);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(statement, { collar: "spread_collar" })
+      .map(issue => issue.code), ["candidate_collar_mismatch"]);
+  }
+  const mixed = "Should not select camp collar; camp collar required";
+  assert.deepEqual(styleDirectorCandidateWordingIssues(mixed).map(issue => issue.code),
+    ["ambiguous_candidate_collar"], "a direct contradiction remains review-only");
+});
