@@ -18,7 +18,8 @@ test("unknown flat-front pleat IDs require vocabulary review, not fabricated phy
     }) as unknown as StyleSpecV2;
     const snapshot = JSON.stringify(spec);
     const issues = styleDirectorConstructionIssues(spec);
-    assert.equal(issues.filter(issue => issue.code === "unknown_trouser_pleat_option").length, 1);
+    assert.equal(issues.filter(issue => issue.code === "unknown_trouser_pleat_option").length,
+      pleat === undefined ? 0 : 1);
     assert.ok(!issues.some(issue => issue.code === "flat_front_has_pleat"),
       "an unknown ID cannot establish that a real pleat exists");
     assert.deepEqual(styleDirectorConstructionIssues(spec), issues);
