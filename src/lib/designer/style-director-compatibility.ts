@@ -185,7 +185,7 @@ const candidateSleeveLengths = (name: string) => {
     return " ";
   };
   const withoutPrefixedBans = instruction.replace(
-    /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t|(?:must|should)\s+(?:not|never)|cannot|can['’]?t)\s+(?:(?:use|include|choose|select|wear|add|have)\s+)?(?:(?:a|any)\s+)?((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\b/gi,
+    /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t|(?:must|should)\s+(?:not|never)|(?:mustn|shouldn)['’]?t|cannot|can['’]?t)\s+(?:(?:use|include|choose|select|wear|add|have)\s+)?(?:(?:a|any)\s+)?((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\b/gi,
     (_match, word: string) => ban(word),
   );
   const withoutSuffixBans = withoutPrefixedBans.replace(
