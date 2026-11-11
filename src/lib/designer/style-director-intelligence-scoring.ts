@@ -107,3 +107,28 @@ export function styleDirectorScoringProfile(
   return candidate && typeof candidate === "object"
     ? candidate as DesignerFabricIntelligence : null;
 }
+
+/**
+ * Evaluate a fabric's ranking signal exactly once before comparisons.
+ * A stored intelligence map may be dynamic or externally constructed; reading
+ * it from a sort comparator makes ordering dependent on comparator call order.
+ * Stable original order is retained for equal finite scores. Invalid scores
+ * sort after valid entries and cannot promote a fabric candidate.
+ */
+export function styleDirectorRankFabricCandidatesOnce<T>(
+  candidates: readonly T[],
+  rank: (candidate: T) => number,
+  limit: number,
+): T[] {
+  const count = Number.isSafeInteger(limit) && limit > 0 ? limit : 0;
+  const scored = candidates.map((candidate, index) => {
+    const value = rank(candidate);
+    return { candidate, index, score: Number.isFinite(value) ? value : null };
+  });
+  scored.sort((a, b) =>
+    a.score === null ? (b.score === null ? a.index - b.index : 1)
+    : b.score === null ? -1
+    : (b.score - a.score) || a.index - b.index,
+  );
+  return scored.slice(0, count).map(entry => entry.candidate);
+}
