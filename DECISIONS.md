@@ -1,5 +1,11 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-11-11 — Verify signed-handoff audit response before marking audited
+
+**Decision:** the Supabase `style_director_handoff_audit_record_v2` RPC returns a PostgreSQL UUID JSON string. HTTP 200 is not enough to certify a persisted audit: reject null, object, array, malformed JSON, non-UUIDs, invalid MIME/UTF-8, or payloads above 256 bytes. On an upstream error or an unverifiable audit ID, preserve the independently verified signed handoff with `verified:true,audited:false,auditId:null` rather than incorrectly claiming `audited:true` or misclassifying it as a client HTTP 400. Do not log raw upstream response content.
+
+**Safety/evidence:** do not alter HMAC token/expiration, canonical style IDs, signed design, or database schema. Deterministic tests cover valid UUID, mixed-case UUID, malformed/oversized/wrong-MIME upstream content and guard ordering. Full exact-head quality/unit/engine/production build, browser CI and photographic QA remain mandatory, as does human review. A verified software audit does not establish fabric metres, fit/cutting approval or launch readiness.
+
 ## 2026-11-11 — Bound signed Style Director handoff request before verification
 
 **Decision:** public `POST /api/style-director/handoff` also receives untrusted JSON and must not call unlimited `request.json()` ahead of HMAC token checking or optional Supabase audit. Stream at most **64 KiB raw UTF-8** for the larger signed recipe payload; reject invalid UTF-8, malformed JSON, nonobject roots and excess bytes with HTTP 400. Keep the separate six-choice Style Director endpoint at **8 KiB**. The verifier still returns its existing HTTP 409 for structurally valid but invalid/expired tokens, and remains fail-closed on mismatched locked designs.
