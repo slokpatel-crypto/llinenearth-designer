@@ -1,4 +1,6 @@
 import type { DesignerFabricIntelligence } from "../fabric-intelligence-types.ts";
+import { colorFamilies } from "../vocab/colors.ts";
+import { climateTags, garmentUses } from "../vocab/styling.ts";
 import { styleDirectorIntelligenceTrustWeight } from "./style-director-compatibility.ts";
 
 type ScorableStyleDirectorIntelligence = Pick<
@@ -62,6 +64,18 @@ export function usableStyleDirectorIntelligence(value: DesignerFabricIntelligenc
   const goodColorFamilies = styleDirectorScoringStrings(styleDirectorOwnScoringValue(pairing, "goodColorFamilies"));
   const avoidColorFamilies = styleDirectorScoringStrings(styleDirectorOwnScoringValue(pairing, "avoidColorFamilies"));
   if (!bestGarments || !climateVisualFit || !goodColorFamilies || !avoidColorFamilies) return null;
+  // Stored arrays are bounded strings, but their values must also belong to
+  // the shared closed vocabularies. Unknown IDs could otherwise forge pair
+  // matches or garment suitability without a real analyzer-backed category.
+  const isKnown = (entries: readonly string[], allowed: ReadonlySet<string>) =>
+    entries.every(id => allowed.has(id));
+  const garmentIds: ReadonlySet<string> = new Set(garmentUses.map(entry => entry.id));
+  const climateIds: ReadonlySet<string> = new Set(climateTags.map(entry => entry.id));
+  const colorIds: ReadonlySet<string> = new Set(colorFamilies.map(entry => entry.id));
+  if (!isKnown(bestGarments, garmentIds) ||
+      !isKnown(climateVisualFit, climateIds) ||
+      !isKnown(goodColorFamilies, colorIds) ||
+      !isKnown(avoidColorFamilies, colorIds)) return null;
   const depth = read("depth");
   const colorFamily = read("colorFamily");
   // Only copied plain data affects ranking. Other stored fields, including
@@ -77,8 +91,10 @@ export function usableStyleDirectorIntelligence(value: DesignerFabricIntelligenc
       goodColorFamilies: goodColorFamilies as ScorableStyleDirectorIntelligence["pairing"]["goodColorFamilies"],
       avoidColorFamilies: avoidColorFamilies as ScorableStyleDirectorIntelligence["pairing"]["avoidColorFamilies"],
     },
-    depth: (typeof depth === "string" ? depth : "mid") as ScorableStyleDirectorIntelligence["depth"],
-    colorFamily: (typeof colorFamily === "string" ? colorFamily : null) as ScorableStyleDirectorIntelligence["colorFamily"],
+    depth: (typeof depth === "string" && ["very-light", "light", "mid", "deep", "very-deep"].includes(depth)
+      ? depth : "mid") as ScorableStyleDirectorIntelligence["depth"],
+    colorFamily: (typeof colorFamily === "string" && colorIds.has(colorFamily)
+      ? colorFamily : null) as ScorableStyleDirectorIntelligence["colorFamily"],
   };
 }
 
