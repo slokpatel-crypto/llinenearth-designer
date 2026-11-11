@@ -1889,9 +1889,47 @@ export function styleDirectorConstructionIssues(
  * advanced collars may have intentionally approximate legacy previews.
  */
 export function styleDirectorPresentationIssues(
-  style: Pick<DesignerStyle, "collar" | "shirtWear"> & Partial<Pick<DesignerStyle, "trouser" | "cuff" | "placket" | "shirtFit" | "button" | "rise" | "waistband" | "break">>,
-  spec: Pick<StyleSpecV2, "shirt"> & Partial<Pick<StyleSpecV2, "pant">>,
+  styleInput: Pick<DesignerStyle, "collar" | "shirtWear"> & Partial<Pick<DesignerStyle, "trouser" | "cuff" | "placket" | "shirtFit" | "button" | "rise" | "waistband" | "break">>,
+  specInput: Pick<StyleSpecV2, "shirt"> & Partial<Pick<StyleSpecV2, "pant">>,
 ): DirectorConstructionIssue[] {
+  // The photographic and saved-spec inputs may come from different versions
+  // or untrusted persistence boundaries. A verified label cannot be inferred
+  // from a getter, inherited selector or a revoked/throwing Proxy.
+  const photoKeys = [
+    "collar", "shirtWear", "trouser", "cuff", "placket",
+    "shirtFit", "button", "rise", "waistband", "break",
+  ] as const;
+  const shirtKeys = [
+    "collar", "wear", "cuff", "placket", "fit", "button",
+    "collarFinish", "pocket", "sleeve",
+  ] as const;
+  const pantKeys = ["type", "rise", "waistband", "break"] as const;
+  const plainOwnData = (value: unknown, keys: readonly string[]): Record<string, unknown> | null => {
+    if (value === null || typeof value !== "object") return null;
+    const plain: Record<string, unknown> = Object.create(null);
+    try {
+      for (const key of keys) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (!descriptor) continue;
+        if (!("value" in descriptor)) return null;
+        plain[key] = descriptor.value;
+      }
+    } catch {
+      return null;
+    }
+    return plain;
+  };
+  const photo = plainOwnData(styleInput, photoKeys);
+  const root = plainOwnData(specInput, ["shirt", "pant"]);
+  const shirt = root ? plainOwnData(root.shirt, shirtKeys) : null;
+  const pant = root && root.pant !== undefined ? plainOwnData(root.pant, pantKeys) : undefined;
+  if (!photo || !root || !shirt || pant === null ||
+      typeof photo.collar !== "string" || typeof photo.shirtWear !== "string") return [{
+    code: "legacy_collar_mismatch",
+    explanation: "The photographic or locked garment selectors are unreadable, inherited or accessor-backed; do not certify visual parity without verified versioned data.",
+  }];
+  const style = photo as typeof styleInput;
+  const spec = { shirt: shirt as typeof specInput.shirt, ...(pant ? { pant: pant as NonNullable<typeof specInput.pant> } : {}) };
   const issues: DirectorConstructionIssue[] = [];
   const expectedWear = style.shirtWear === "Tucked" ? "tucked"
     : style.shirtWear === "Untucked" ? "untucked" : null;
