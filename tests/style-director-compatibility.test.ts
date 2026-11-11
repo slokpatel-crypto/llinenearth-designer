@@ -3315,3 +3315,30 @@ test("optional tuck wording does not rewrite or constrain frozen wear IDs", () =
       .map(issue => issue.code), ["candidate_shirt_wear_mismatch"]);
   }
 });
+
+test("conflicting tuck instructions fail closed without rewriting frozen wear selections", () => {
+  for (const wording of [
+    "tucked and untucked",
+    "tucked or untucked",
+  ]) {
+    for (const wear of ["tucked", "untucked"] as const) {
+      const locked = Object.freeze({ wear });
+      const first = styleDirectorCandidateWearIssues(wording, locked);
+      assert.deepEqual(first.map(issue => issue.code),
+        ["candidate_shirt_wear_mismatch"], wording);
+      assert.deepEqual(styleDirectorCandidateWearIssues(wording, locked), first,
+        "conflicting wear review must be deterministic");
+      assert.equal(locked.wear, wear, "review must preserve the locked wear ID");
+    }
+  }
+});
+
+test("explicit wear instructions override occasion defaults without changing locked designs", () => {
+  for (const [occasion, wording, proposed, expected] of [
+    ["Formal", "wear untucked", "Tucked", "Untucked"],
+    ["Casual", "wear tucked", "Untucked", "Tucked"],
+  ] as const) {
+    assert.equal(styleDirectorWearForCandidate(occasion, wording, proposed), expected);
+    assert.equal(styleDirectorWearForCandidate(occasion, wording, proposed), expected);
+  }
+});
