@@ -15,6 +15,12 @@ test("contracted postposed collar prohibitions cannot approve the forbidden lock
     ["Cutaway collar isn't to be worn", "cutaway_collar"],
     ["English Spread collar isn't to be selected", "english_spread_collar"],
     ["Soft Button-Down collar isn't to be chosen", "soft_button_down"],
+    ["Camp collar isn't to be added", "cuban_camp_collar"],
+    ["Camp collar isn’t to be included", "cuban_camp_collar"],
+    ["Band collar is not to be added", "mandarin_band_collar"],
+    ["Cutaway collar is not to be included", "cutaway_collar"],
+    ["Cuban collar mustn't be included", "cuban_camp_collar"],
+    ["English Spread collar should not be added", "english_spread_collar"],
   ] as const;
 
   for (const [phrase, forbiddenId] of cases) {
