@@ -39,3 +39,17 @@ export function parseStyleDirectorAnswers(body: unknown): StyleDirectorAnswers |
     return null;
   }
 }
+
+/**
+ * Malformed, empty, or unreadable JSON is a client request failure, not an
+ * internal Style Director error. Keep parsing ahead of inventory/network IO.
+ */
+export async function parseStyleDirectorJsonRequest(
+  request: Pick<Request, "json">,
+): Promise<StyleDirectorAnswers | null> {
+  try {
+    return parseStyleDirectorAnswers(await request.json());
+  } catch {
+    return null;
+  }
+}

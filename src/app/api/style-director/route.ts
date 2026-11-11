@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { createStyleDirectorLooks } from "@/lib/style-director-agent";
-import { parseStyleDirectorAnswers } from "@/lib/designer/style-director-answers";
+import { parseStyleDirectorJsonRequest } from "@/lib/designer/style-director-answers";
 import { maybeEnrichStyleDirectorLooks } from "@/lib/designer/anthropic-editorial";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import { designerFabricFromStock } from "@/lib/designer/engine";
@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const body = parseStyleDirectorAnswers(await request.json());
+    const body = await parseStyleDirectorJsonRequest(request);
     if (!body) return NextResponse.json({ error: "Choose a valid option at every style journey step." }, { status: 400 });
     const metadata=await loadDesignerFabricMetadata();
     const metadataStock=applyDesignerFabricMetadataToStock(metadata);

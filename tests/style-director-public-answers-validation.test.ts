@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { parseStyleDirectorAnswers } from "../src/lib/designer/style-director-answers.ts";
+import { parseStyleDirectorAnswers, parseStyleDirectorJsonRequest } from "../src/lib/designer/style-director-answers.ts";
 
 const journey = {
   occasion: "Travel",
@@ -80,7 +80,7 @@ test("extra client fields are discarded without reading accessors or altering in
 
 test("public Style Director rejects invalid answers before any stock lookup or recommendation", () => {
   const route = readFileSync("src/app/api/style-director/route.ts", "utf8");
-  const guard = route.indexOf("const body = parseStyleDirectorAnswers(await request.json());");
+  const guard = route.indexOf("const body = await parseStyleDirectorJsonRequest(request);");
   const reject = route.indexOf("if (!body) return NextResponse.json(");
   const stock = route.indexOf("const metadata=await loadDesignerFabricMetadata();");
   const engine = route.indexOf("const looks=createStyleDirectorLooks(body,stock,fabricIntelligence);");
@@ -88,4 +88,43 @@ test("public Style Director rejects invalid answers before any stock lookup or r
     "server must parse allowed IDs before network reads or creating recommendations");
   assert.equal(route.includes("function valid(body: Partial<StyleDirectorAnswers>)"), false,
     "truthy-only validation must not remain on the public endpoint");
+});
+
+test("the public JSON boundary rejects malformed, empty and unreadable bodies", async () => {
+  const makeRequest = (body: string) => new Request("https://linenearth.example/api/style-director", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
+  const valid = await parseStyleDirectorJsonRequest(makeRequest(JSON.stringify(journey)));
+  assert.deepEqual(valid, journey);
+  const withExtra = await parseStyleDirectorJsonRequest(makeRequest(
+    JSON.stringify({ ...journey, operator: true }),
+  ));
+  assert.deepEqual(withExtra, journey, "untrusted extra fields cannot pass into stock lookup");
+  for (const malformed of ["", "{", "not-json", "null", "[]", "{}", "{\"garment\":42}"]) {
+    assert.equal(await parseStyleDirectorJsonRequest(makeRequest(malformed)), null,
+      "bad JSON must be rejected before any stock read: " + malformed);
+  }
+  assert.equal(await parseStyleDirectorJsonRequest({
+    json: async () => { throw new SyntaxError("invalid JSON"); },
+  }), null, "a JSON decoding failure must fail closed");
+  assert.equal(await parseStyleDirectorJsonRequest({
+    json: async () => { throw new Error("unreadable request stream"); },
+  }), null, "a failed request stream must not become a server 500");
+});
+
+test("the API returns 400 for bad JSON and keeps real server failures separate", () => {
+  const route = readFileSync("src/app/api/style-director/route.ts", "utf8");
+  assert.match(route, /const body = await parseStyleDirectorJsonRequest\(request\);/);
+  const boundary = route.indexOf("const body = await parseStyleDirectorJsonRequest(request);");
+  const reject = route.indexOf("if (!body) return NextResponse.json(");
+  const badStatus = route.indexOf("{ status: 400 }", reject);
+  const stock = route.indexOf("const metadata=await loadDesignerFabricMetadata();");
+  const unexpectedError = route.indexOf("{ status: 500 }");
+  assert.ok(boundary >= 0 && boundary < reject && reject < badStatus &&
+    badStatus < stock && stock < unexpectedError,
+    "invalid JSON and invalid choices must exit as 400 before IO, while server errors remain 500");
+  assert.ok(!route.includes("parseStyleDirectorAnswers(await request.json())"),
+    "unsafe JSON decoder must not be inside the server's broad 500 catch");
 });
