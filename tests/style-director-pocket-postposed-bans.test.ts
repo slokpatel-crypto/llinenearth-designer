@@ -65,3 +65,46 @@ test("contradictory pocket instructions trigger wording review", () => {
     requested: "no_pocket", prohibited: [], ambiguous: false,
   });
 });
+
+test("contracted modal pocket bans fail closed for locked flap and patch pockets", () => {
+  for (const [label, forbidden, allowed] of [
+    ["Flap pocket shouldn't be selected", "flap_pocket", "single_patch_pocket"],
+    ["Flap pocket mustn't be used", "flap_pocket", "no_pocket"],
+    ["Flap pocket shouldn’t be chosen", "flap_pocket", "no_pocket"],
+    ["Patch pocket mustn’t be worn", "single_patch_pocket", "flap_pocket"],
+    ["Patch pocket should not be selected", "single_patch_pocket", "no_pocket"],
+  ] as const) {
+    const intent = { requested: null, prohibited: [forbidden], ambiguous: false };
+    assert.deepEqual(styleDirectorCandidatePocketIntent(label), intent, label);
+    assert.equal(styleDirectorCandidatePocket(label), null, label);
+    const locked = Object.freeze({ pocket: forbidden });
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorCandidatePocketIssues(label, locked);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_pocket_mismatch"], label);
+    assert.deepEqual(styleDirectorCandidatePocketIssues(label, locked), issues, label);
+    assert.equal(JSON.stringify(locked), before, "never rewrite the frozen canonical pocket ID");
+    assert.deepEqual(styleDirectorCandidatePocketIssues(label, { pocket: allowed }), [], label);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(label), [], label);
+  }
+});
+
+test("contracted pocket exclusions do not swallow positive alternatives or neutrality", () => {
+  const wording = "Flap pocket shouldn't be selected; patch pocket required";
+  assert.deepEqual(styleDirectorCandidatePocketIntent(wording), {
+    requested: "single_patch_pocket", prohibited: ["flap_pocket"], ambiguous: false,
+  });
+  assert.equal(styleDirectorCandidatePocket(wording), "single_patch_pocket");
+  assert.deepEqual(styleDirectorCandidatePocketIssues(wording, { pocket: "single_patch_pocket" }), []);
+  assert.deepEqual(styleDirectorCandidateWordingIssues(wording), []);
+  assert.deepEqual(styleDirectorCandidatePocketIntent("Flap pocket should be selected"), {
+    requested: "flap_pocket", prohibited: [], ambiguous: false,
+  });
+  assert.deepEqual(styleDirectorCandidatePocketIntent("Flap pocket isn't required"), {
+    requested: null, prohibited: [], ambiguous: false,
+  });
+  const contradictory = "Flap pocket shouldn't be selected; flap pocket required";
+  assert.equal(styleDirectorCandidatePocketIntent(contradictory).ambiguous, true);
+  assert.equal(styleDirectorCandidatePocket(contradictory), null);
+  assert.ok(styleDirectorCandidateWordingIssues(contradictory)
+    .some(issue => issue.code === "ambiguous_candidate_pocket"));
+});
