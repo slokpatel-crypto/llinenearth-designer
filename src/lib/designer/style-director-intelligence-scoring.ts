@@ -113,7 +113,7 @@ export function styleDirectorScoringProfile(
  * A stored intelligence map may be dynamic or externally constructed; reading
  * it from a sort comparator makes ordering dependent on comparator call order.
  * Stable original order is retained for equal finite scores. Invalid scores
- * sort after valid entries and cannot promote a fabric candidate.
+ * are excluded entirely, including when fewer than the requested limit remain.
  */
 export function styleDirectorRankFabricCandidatesOnce<T>(
   candidates: readonly T[],
