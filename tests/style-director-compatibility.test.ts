@@ -35,7 +35,6 @@ import {
   styleDirectorIntelligenceTrustWeight,
   styleDirectorPresentationIssues,
   styleDirectorWearForCandidate,
-  styleDirectorCandidateWearIssues,
 } from "../src/lib/designer/style-director-compatibility.ts";
 import type { StyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
 import type { DesignerStyle } from "../src/lib/designer/engine.ts";
