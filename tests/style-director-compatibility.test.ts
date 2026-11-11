@@ -3466,3 +3466,33 @@ test("postposed placket inclusion and never-allowed bans preserve frozen IDs", (
     assert.equal(JSON.stringify(forbidden), snapshot);
   }
 });
+
+test("modal prefix placket bans require review without rewriting frozen construction", () => {
+  for (const wording of [
+    "Must not use French placket",
+    "Should never include French placket",
+    "Cannot select French placket",
+    "Can't wear French placket",
+    "Mustn't choose French placket",
+  ]) {
+    assert.deepEqual(styleDirectorCandidatePlacketIntent(wording), {
+      requested: null, prohibited: ["french_placket"], ambiguous: false,
+    }, wording);
+    const forbidden = spec({ placket: "french_placket" });
+    const permitted = spec({ placket: "hidden_fly_front" });
+    const before = JSON.stringify(forbidden);
+    Object.freeze(forbidden.shirt);
+    Object.freeze(permitted.shirt);
+    const issues = styleDirectorCandidatePlacketIssues(wording, forbidden.shirt);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_placket_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, forbidden.shirt), issues);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, permitted.shirt), [], wording);
+    assert.equal(JSON.stringify(forbidden), before);
+  }
+  assert.deepEqual(styleDirectorCandidatePlacketIntent("Use French placket"), {
+    requested: "french_placket", prohibited: [], ambiguous: false,
+  });
+  assert.deepEqual(styleDirectorCandidatePlacketIntent("Must not use French placket; choose covered placket"), {
+    requested: "covered_placket", prohibited: ["french_placket"], ambiguous: false,
+  });
+});
