@@ -151,3 +151,48 @@ test("plain copies ignore untrusted extra physical-evidence getters", () => {
   assert.equal(calls, 0);
   assert.equal("verifiedPhysical" in result, false);
 });
+
+
+test("provenance is captured once, so dynamic proxies cannot change the validated scoring identity", () => {
+  for (const field of ["trust", "reviewStatus"] as const) {
+    let reads = 0;
+    const original = fixture();
+    const dynamic = new Proxy(original, {
+      getOwnPropertyDescriptor(target, key) {
+        if (key === field) {
+          reads++;
+          if (reads > 1) throw new Error("untrusted provenance read twice");
+        }
+        return Reflect.getOwnPropertyDescriptor(target, key);
+      },
+    });
+    const copy = score(dynamic);
+    assert.ok(copy, field + " must have a consistent approved snapshot");
+    assert.equal(reads, 1, field + " must be read only once per scoring review");
+    assert.equal(copy.reviewStatus, "approved", field);
+    assert.equal(copy.trust, "reviewed", field);
+    assert.equal(styleDirectorIntelligenceTrustWeight(copy), 1);
+    assert.deepEqual(copy.bestGarments, ["shirt", "overshirt"]);
+  }
+});
+
+test("captured rejected or missing provenance fails closed without reading ranking fields", () => {
+  for (const reviewed of [
+    { trust: "reviewed", reviewStatus: "rejected" },
+    { trust: "reviewed", reviewStatus: undefined },
+    { trust: undefined, reviewStatus: "approved" },
+  ]) {
+    let accessedFormality = 0;
+    const unsafe = new Proxy({ ...fixture(), ...reviewed }, {
+      getOwnPropertyDescriptor(target, key) {
+        if (key === "formality") {
+          accessedFormality++;
+          throw new Error("must not inspect a rejected profile's scoring fields");
+        }
+        return Reflect.getOwnPropertyDescriptor(target, key);
+      },
+    });
+    assert.equal(score(unsafe), null);
+    assert.equal(accessedFormality, 0);
+  }
+});
