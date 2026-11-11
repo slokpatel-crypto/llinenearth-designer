@@ -238,7 +238,7 @@ export function styleDirectorCandidateRollUpSleeveIntent(name: string): {
     const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
       /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:must|should)\s+not|(?:mustn['’]?t|shouldn['’]?t))\s+(?:be\s+)?(?:used|chosen|selected|worn))\b/i.test(suffix);
     const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
-      /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
+      /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory|necessary)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory|necessary))\b/i.test(suffix);
     if (banned) prohibited = true;
     else if (!optional) requested = true;
   }
