@@ -257,7 +257,8 @@ test("invalid pleat IDs remain distinct from real flat-front and pleated conflic
       }) as unknown as StyleSpecV2;
       const snapshot = JSON.stringify(locked);
       const issues = styleDirectorConstructionIssues(locked);
-      assert.equal(issues.filter(issue => issue.code === "unknown_trouser_pleat_option").length, 1,
+      assert.equal(issues.filter(issue => issue.code === "unknown_trouser_pleat_option").length,
+          pleat === undefined ? 0 : 1,
         `${type} / ${String(pleat)}: unknown pleat must require explicit review`);
       assert.ok(!issues.some(issue => issue.code === "flat_front_has_pleat" ||
         issue.code === "pleated_front_missing_pleat"),
