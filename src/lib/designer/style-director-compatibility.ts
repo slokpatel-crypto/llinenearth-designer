@@ -1602,7 +1602,36 @@ export function styleDirectorConstructionIssues(
   occasion?: OccasionTier,
 ): DirectorConstructionIssue[] {
   const issues: DirectorConstructionIssue[] = [];
-  const { shirt, pant } = spec;
+  // Read untrusted saved selections exactly once through own data descriptors.
+  // A getter, inherited value or revoked Proxy is not persisted evidence of
+  // a buildable garment. Snapshotting also prevents inconsistent repeated
+  // reads while validating dependent shirt/pant construction combinations.
+  const snapshot = (value: unknown, keys: readonly string[]): Record<string, unknown> | null => {
+    if (value === null || typeof value !== "object") return null;
+    const safe: Record<string, unknown> = Object.create(null);
+    try {
+      for (const key of keys) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (!descriptor) continue; // Partial test fixtures may omit selectors.
+        if (!("value" in descriptor)) return null; // Never invoke accessors.
+        safe[key] = descriptor.value;
+      }
+    } catch {
+      return null; // Unreadable/revoked proxies cannot certify a locked cut.
+    }
+    return safe;
+  };
+  const shirt = snapshot(styleDirectorLockedOptionValue(spec, "shirt"), [
+    "type", "collar", "collarFinish", "cuff", "placket", "pocket",
+    "sleeve", "fit", "length", "hem", "back", "wear", "button",
+  ]) as unknown as StyleSpecV2["shirt"] | null;
+  const pant = snapshot(styleDirectorLockedOptionValue(spec, "pant"), [
+    "type", "fit", "rise", "pleat", "waistband", "hem", "break",
+  ]) as unknown as StyleSpecV2["pant"] | null;
+  if (shirt === null || pant === null) return [{
+    code: "unknown_versioned_option",
+    explanation: "A saved garment contains unreadable, accessor-backed or missing construction data; review its versioned selections before cutting.",
+  }];
   // Saved designs are reconstructed from canonical option IDs, not labels.
   // These pure checks also accept partial isolated test fixtures: validate
   // every supplied ID, but do not fabricate missing selections. The full
