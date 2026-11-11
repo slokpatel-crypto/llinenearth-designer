@@ -96,6 +96,17 @@ test("camp-collar type requires matching open collar and untucked wear", () => {
   })).map(x=>x.code), ["camp_collar_construction"]);
 });
 
+test("optional sleeve necessity wording does not become a locked sleeve instruction", () => {
+  for (const phrase of [
+    "Short sleeves are not necessary",
+    "Half sleeves aren't necessary",
+    "Full sleeves aren’t necessary",
+    "Long sleeves are not necessary",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, spec()), [], phrase);
+  }
+});
+
 test("short sleeves cannot be recommended with French double cuffs", () => {
   assert.deepEqual(styleDirectorConstructionIssues(spec({
     sleeve: "half_sleeve", cuff: "french_double_cuff",
