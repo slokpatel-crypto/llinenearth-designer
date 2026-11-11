@@ -1262,12 +1262,12 @@ function stripNegatedPleatWording(candidateTrouser: string) {
 // A postposed prohibition of a particular pleat count does not prohibit all
 // pleats. Reuse this exact matcher for candidate-front intent, counted
 // requirement parsing and verification of a versioned locked pleat ID.
-const postposedCountPleatBan = /\b(single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|unwanted|not\s+(?:allowed|permitted|wanted)|(?:aren['’]?t|isn['’]?t)\s+wanted|(?:(?:must|should|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included|chosen|selected)|not\s+to\s+be\s+(?:used|added|included|chosen|selected)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted)|(?:must|should|shall|(?:are|is)\s+to|to)\s+be\s+avoided)\b/gi;
+const postposedCountPleatBan = /\b(single|double|one|two|1|2)[ -]?pleat(?:ed|s|ing)?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|unwanted|not\s+(?:allowed|permitted|wanted)|(?:aren['’]?t|isn['’]?t)\s+wanted|(?:(?:must|should|shall|may)\s+(?:not|never)|(?:mustn|shouldn|shan)['’]?t|cannot|can['’]?t)\s+be\s+(?:used|added|included|chosen|selected)|not\s+to\s+be\s+(?:used|added|included|chosen|selected)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted)|(?:must|should|shall|(?:are|is)\s+to|to)\s+be\s+avoided)\b/gi;
 
 // A direction-specific ban leaves other pleat directions available; optional
 // direction wording is neutral, not permission to change a locked cut.
 
-const postposedDirectionPleatBan = /\b(forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|unwanted|not\s+(?:allowed|permitted|wanted)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted|wanted)|(?:(?:must|should|shall|may)\s+(?:not|never)|cannot|can['’]?t)\s+be\s+(?:used|added|included|chosen|selected)|not\s+to\s+be\s+(?:used|added|included|chosen|selected)|(?:must|should|shall|(?:are|is)\s+to|to)\s+be\s+avoided)\b/gi;
+const postposedDirectionPleatBan = /\b(forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:prohibited|forbidden|banned|disallowed|unwanted|not\s+(?:allowed|permitted|wanted)|(?:aren['’]?t|isn['’]?t)\s+(?:allowed|permitted|wanted)|(?:(?:must|should|shall|may)\s+(?:not|never)|(?:mustn|shouldn|shan)['’]?t|cannot|can['’]?t)\s+be\s+(?:used|added|included|chosen|selected)|not\s+to\s+be\s+(?:used|added|included|chosen|selected)|(?:must|should|shall|(?:are|is)\s+to|to)\s+be\s+avoided)\b/gi;
 const postposedDirectionPleatOptional = /\b(?:forward|reverse)[ -]?pleats?\s+(?:(?:are|is)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory|necessary)|(?:aren['’]?t|isn['’]?t)\s+(?:required|needed|mandatory|necessary))\b/gi;
 
 
