@@ -3055,6 +3055,8 @@ test("postposed placket bans do not become positive construction requests", () =
     "French placket unwanted",
     "French placket should not be selected",
     "French placket must not be used",
+    "French placket should never be selected",
+    "French placket must never be worn",
   ]) {
     const intent = styleDirectorCandidatePlacketIntent(wording);
     assert.deepEqual(intent, {
