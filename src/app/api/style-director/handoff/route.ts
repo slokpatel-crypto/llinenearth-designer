@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
+import { parseBoundedStyleDirectorHandoffJson } from "@/lib/designer/style-director-handoff-request";
 import { verifyStyleDirectorHandoffToken, styleDirectorHandoffMatches } from "@/lib/designer/style-director-handoff";
 import type { DesignerClimate, DesignerIntention, DesignerStyle, OccasionTier } from "@/lib/designer/engine";
 import { validateStyleSpecV2, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
@@ -9,7 +10,8 @@ export const runtime="nodejs";
 
 export async function POST(request:Request){
   try{
-    const body=await request.json() as {token?:string;shirtId?:string;pantId?:string;occasion?:OccasionTier;climate?:DesignerClimate;intention?:DesignerIntention;style?:DesignerStyle;styleSpec?:StyleSpecV2};
+    const body=await parseBoundedStyleDirectorHandoffJson(request) as {token?:string;shirtId?:string;pantId?:string;occasion?:OccasionTier;climate?:DesignerClimate;intention?:DesignerIntention;style?:DesignerStyle;styleSpec?:StyleSpecV2}|null;
+    if(!body) return NextResponse.json({error:"Invalid Style Director handoff request."},{status:400});
     const token=String(body.token||"");
     const payload=verifyStyleDirectorHandoffToken(token);
     if(!payload) return NextResponse.json({error:"Style Director handoff token is invalid or expired."},{status:409});

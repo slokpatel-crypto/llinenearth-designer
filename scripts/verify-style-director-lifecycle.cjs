@@ -269,9 +269,31 @@ async function verifyPublicStyleDirectorRequestBoundary() {
   }
 }
 
+// Actual Next.js signed-handoff boundary, exercised without a mocked fetch.
+// Invalid/oversized bodies must fail with 400 before token/HMAC or audit IO.
+async function verifyBoundedHandoffRequestBoundary() {
+  for (const [name, body] of [
+    ["oversized-valid", JSON.stringify({ token: "not-a-token", padding: "x".repeat(70000) })],
+    ["oversized-malformed", "x".repeat(70000)],
+    ["nonobject", "[]"],
+  ]) {
+    const response = await fetch(new URL("/api/style-director/handoff", baseURL), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+      signal: AbortSignal.timeout(15000),
+    });
+    assert.equal(response.status, 400, "handoff " + name + " must return HTTP 400 before token verification");
+    assert.deepEqual(await response.json(), { error: "Invalid Style Director handoff request." }, name);
+    summary.regressions.push({ name: "handoff-http-" + name, status: "passed", actualHttp: true });
+    console.log("PASS handoff-http-" + name);
+  }
+}
+
 (async () => {
   fs.mkdirSync(output, { recursive: true });
   await verifyPublicStyleDirectorRequestBoundary();
+  await verifyBoundedHandoffRequestBoundary();
   browser = await chromium.launch({ headless: true });
   for (const width of [390, 768, 1440]) {
     const { page, context } = await freshPage(width);

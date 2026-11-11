@@ -1,5 +1,11 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-11-11 — Bound signed Style Director handoff request before verification
+
+**Decision:** public `POST /api/style-director/handoff` also receives untrusted JSON and must not call unlimited `request.json()` ahead of HMAC token checking or optional Supabase audit. Stream at most **64 KiB raw UTF-8** for the larger signed recipe payload; reject invalid UTF-8, malformed JSON, nonobject roots and excess bytes with HTTP 400. Keep the separate six-choice Style Director endpoint at **8 KiB**. The verifier still returns its existing HTTP 409 for structurally valid but invalid/expired tokens, and remains fail-closed on mismatched locked designs.
+
+**Evidence:** exact 65,536/65,537-byte, split UTF-8, malformed and nonobject tests, plus three real Next.js HTTP negative cases in the existing photographic Style Director lifecycle gate. No changed recipe IDs, token format, options, production stock provenance, paid AI dependency, schema or photo model. This is request allocation control, **not** global rate limiting or physical production release approval. Fresh exact-head CI, browser QA and human review are required.
+
 ## 2026-11-11 — Limit public Style Director JSON before parsing
 
 **Decision:** cap the six-choice public `POST /api/style-director` request to 8 KiB (measured in raw UTF-8 bytes) and stop reading when the stream exceeds that limit. Reject oversized, invalid or malformed JSON with HTTP 400 before fabric metadata/network calls. Preserve every valid option ID and signed handoff contract. Extra bounded fields are ignored; size checks do not reinterpret physical fabric facts.
