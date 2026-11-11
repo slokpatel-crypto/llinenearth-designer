@@ -3420,3 +3420,23 @@ test("never-qualified postposed collar bans cannot select a forbidden constructi
     assert.equal(JSON.stringify(forbidden), snapshot);
   }
 });
+
+test("never-allowed collar restrictions fail closed without mutating saved IDs", () => {
+  for (const wording of [
+    "Camp collar is never allowed",
+    "Camp collar never permitted",
+    "Camp collar is never permitted",
+  ]) {
+    const forbidden = spec({ collar: "cuban_camp_collar" });
+    const permitted = spec({ collar: "spread_collar" });
+    const snapshot = JSON.stringify(forbidden);
+    Object.freeze(forbidden.shirt);
+    Object.freeze(permitted.shirt);
+    const issues = styleDirectorCandidateCollarIssues(wording, forbidden.shirt);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, forbidden.shirt), issues);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, permitted.shirt), [], wording);
+    assert.equal(styleDirectorCandidateCollar(wording, []), null, wording);
+    assert.equal(JSON.stringify(forbidden), snapshot);
+  }
+});
