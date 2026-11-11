@@ -40,7 +40,8 @@ test("missing, stale and forged pleat IDs remain unknown, not fabricated double-
     const locked = lockedSpec("double_pleat_high_rise", pleat);
     const before = JSON.stringify(locked);
     const issues = styleDirectorConstructionIssues(locked);
-    assert.equal(issues.filter(issue => issue.code === "unknown_trouser_pleat_option").length, 1);
+    assert.equal(issues.filter(issue => issue.code === "unknown_trouser_pleat_option").length,
+      pleat === undefined ? 0 : 1, "missing fields are checked by the full parser; supplied invalid IDs fail closed");
     assert.ok(!issues.some(issue => issue.code === "double_pleat_type_mismatch"),
       "a nonexistent option must not establish a real pleat count");
     assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
