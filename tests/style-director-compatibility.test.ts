@@ -3496,3 +3496,24 @@ test("modal prefix placket bans require review without rewriting frozen construc
     requested: "covered_placket", prohibited: ["french_placket"], ambiguous: false,
   });
 });
+
+test("modal sleeve prohibitions preserve locked construction and reject forbidden length", () => {
+  const cases = [
+    ["Must never include short sleeves", "half_sleeve", "full_sleeve"],
+    ["Short sleeves cannot be selected", "half_sleeve", "full_sleeve"],
+    ["Should not wear full sleeves", "full_sleeve", "half_sleeve"],
+    ["Full sleeves must never be included", "full_sleeve", "half_sleeve"],
+    ["Cannot select half sleeves", "half_sleeve", "full_sleeve"],
+  ] as const;
+  for (const [instruction, forbidden, permitted] of cases) {
+    const locked = spec({ sleeve: forbidden });
+    const before = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(instruction, locked.shirt)
+      .map(issue => issue.code), ["candidate_sleeve_mismatch"], instruction);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(instruction, { sleeve: permitted }), [],
+      "allowed canonical construction should remain valid: " + instruction);
+    assert.equal(styleDirectorCandidateSleeve(instruction), null,
+      "a prohibited length must never be selected as a new proposal");
+    assert.equal(JSON.stringify(locked), before, "locked IDs must not be rewritten");
+  }
+});
