@@ -3378,3 +3378,25 @@ test("cannot-be-used collar bans require review without changing frozen IDs", ()
     assert.equal(JSON.stringify(forbidden), before, "locked IDs must remain unchanged");
   }
 });
+
+test("postposed collar inclusion bans preserve frozen canonical selections", () => {
+  for (const wording of [
+    "Camp collar is not to be included",
+    "Camp collar cannot be included",
+    "Camp collar can't be included",
+  ]) {
+    const forbidden = spec({ collar: "cuban_camp_collar" });
+    const permitted = spec({ collar: "spread_collar" });
+    Object.freeze(forbidden.shirt);
+    Object.freeze(forbidden.pant);
+    Object.freeze(forbidden);
+    Object.freeze(permitted.shirt);
+    const before = JSON.stringify(forbidden);
+    const issues = styleDirectorCandidateCollarIssues(wording, forbidden.shirt);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, forbidden.shirt), issues);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, permitted.shirt), [], wording);
+    assert.equal(styleDirectorCandidateCollar(wording, []), null, wording);
+    assert.equal(JSON.stringify(forbidden), before);
+  }
+});
