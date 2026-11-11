@@ -1,5 +1,15 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-11-11 — Validate public Style Director journey answers and stock metadata bounds
+
+**Decision:** the public POST /api/style-director boundary accepts only the established six closed-set journey choices. Parse untrusted JSON to a fresh typed value object and reject invalid or missing choices with HTTP 400 before stock lookup, optional editorial work or handoff signing. TypeScript casts and truthiness do not validate JSON. Unknown extra request fields are not forwarded.
+
+**Fabric bounds:** the deterministic stock snapshot must enforce the existing ingestion policy of 40–1000 GSM and 1–5 formality rather than silently promoting out-of-range supplier or corrupted values. This is input validation, not evidence that fabric GSM, composition, colour, drape, stock or metreage was measured or approved.
+
+**Compatibility:** all previously valid six-choice journey submissions, canonical garment IDs and versioned design recipes remain unchanged. No database migration, new dependency, paid-AI request, model change or browser draft migration is introduced. Invalid API callers must choose supported options. Independent physical QA, human review, live-backend release and tailor signoff are still required.
+
+**Evidence:** deterministic tests cover each valid choice, malformed/accessor/inherited options, extra fields, GSM/formality numerical boundaries, stale duplicate stock rows and stable stock pairing. Exact-head CI and Non-3D browser QA are required for the combined integration commit.
+
 Architecture and product decisions that must persist across coding sessions.
 
 ## 2026-10-05 — Style Director signs the complete garment recipe

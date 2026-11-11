@@ -44,7 +44,7 @@ const { chromium } = Module.createRequire(path.join(runtime, "package.json"))("p
 const baseURL = process.env.LINEN_BROWSER_QA_URL || "http://127.0.0.1:3000";
 const output = path.resolve("artifacts/preview-lifecycle/style-director");
 const summary = {
-  browser: "Chromium", providerResponses: "mocked; no paid provider calls",
+  browser: "Chromium", providerResponses: "invalid public request HTTP real; photo/editorial mocked; no paid provider calls",
   calibration: "unverified except synthetic API-change regressions",
   physicalOrDeviceAcceptance: false, viewports: [], regressions: [], errors: [],
 };
@@ -232,8 +232,44 @@ async function regression(name, run) {
   } finally { await context.close(); }
 }
 
+// Exercise the actual Next.js public API before installing browser response mocks.
+// All requests are invalid by design, so none may reach stock, editorial, or paid providers.
+async function verifyPublicStyleDirectorRequestBoundary() {
+  const supported = {
+    occasion: "Travel", mood: "Relaxed", time: "Day", climate: "Hot",
+    garment: "shirt", colorDirection: "Light",
+  };
+  const cases = [
+    ["malformed-json", "{"],
+    ["empty-body", ""],
+    ["json-null", "null"],
+    ["json-array", "[]"],
+    ["empty-object", "{}"],
+    ["missing-choice", JSON.stringify({ ...supported, climate: undefined })],
+    ["unknown-garment", JSON.stringify({ ...supported, garment: "jacket" })],
+    ["wrong-garment-type", JSON.stringify({ ...supported, garment: 123 })],
+    ["incorrect-case", JSON.stringify({ ...supported, garment: "SHIRT" })],
+    ["nested-choice", JSON.stringify({ ...supported, garment: { id: "shirt" } })],
+  ];
+  for (const [name, body] of cases) {
+    const response = await fetch(new URL("/api/style-director", baseURL), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+      signal: AbortSignal.timeout(15000),
+    });
+    assert.equal(response.status, 400, name + " must return HTTP 400, not a server error");
+    assert.match(response.headers.get("content-type") || "", /application\/json/i, name);
+    const payload = await response.json();
+    assert.deepEqual(payload, { error: "Choose a valid option at every style journey step." }, name);
+    summary.regressions.push({ name: "public-http-" + name, status: "passed", actualHttp: true });
+    console.log("PASS public-http-" + name);
+  }
+}
+
 (async () => {
   fs.mkdirSync(output, { recursive: true });
+  await verifyPublicStyleDirectorRequestBoundary();
   browser = await chromium.launch({ headless: true });
   for (const width of [390, 768, 1440]) {
     const { page, context } = await freshPage(width);
