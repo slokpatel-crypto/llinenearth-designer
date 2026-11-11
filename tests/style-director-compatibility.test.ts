@@ -3440,3 +3440,29 @@ test("never-allowed collar restrictions fail closed without mutating saved IDs",
     assert.equal(JSON.stringify(forbidden), snapshot);
   }
 });
+
+
+test("postposed placket inclusion and never-allowed bans preserve frozen IDs", () => {
+  for (const wording of [
+    "French placket cannot be included",
+    "French placket can't be included",
+    "French placket is not to be included",
+    "French placket must never be included",
+    "French placket is never allowed",
+    "French placket never permitted",
+  ]) {
+    assert.deepEqual(styleDirectorCandidatePlacketIntent(wording), {
+      requested: null, prohibited: ["french_placket"], ambiguous: false,
+    }, wording);
+    const forbidden = spec({ placket: "french_placket" });
+    const permitted = spec({ placket: "hidden_fly_front" });
+    const snapshot = JSON.stringify(forbidden);
+    Object.freeze(forbidden.shirt);
+    Object.freeze(permitted.shirt);
+    const first = styleDirectorCandidatePlacketIssues(wording, forbidden.shirt);
+    assert.deepEqual(first.map(issue => issue.code), ["candidate_placket_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, forbidden.shirt), first);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, permitted.shirt), [], wording);
+    assert.equal(JSON.stringify(forbidden), snapshot);
+  }
+});
