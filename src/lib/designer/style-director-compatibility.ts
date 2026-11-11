@@ -1718,7 +1718,8 @@ export function styleDirectorConstructionIssues(
   }
   // A stale or fabricated pleat ID must not pass construction review merely
   // because it differs from flat_front. Keep the saved ID unchanged.
-  if (!optionsFor("pant.pleat").some(option => option.id === pant.pleat)) {
+  if (pant.pleat !== undefined &&
+      !optionsFor("pant.pleat").some(option => option.id === pant.pleat)) {
     issues.push({
       code: "unknown_trouser_pleat_option",
       explanation: "The selected trouser pleat ID is not in the versioned option catalogue; confirm its construction before production.",
