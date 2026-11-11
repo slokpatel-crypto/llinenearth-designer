@@ -3280,3 +3280,25 @@ test("explicit select prohibitions never become positive collar or placket reque
       spec({ placket: "hidden_fly_front" }).shirt), [], wording);
   }
 });
+
+
+test("optional tuck wording does not rewrite or constrain frozen wear IDs", () => {
+  for (const wording of ["with or without tucked", "with or without being untucked"]) {
+    for (const wear of ["tucked", "untucked"] as const) {
+      const locked = Object.freeze({ wear });
+      assert.deepEqual(styleDirectorCandidateWearIssues(wording, locked), [], wording);
+      assert.deepEqual(styleDirectorCandidateWearIssues(wording, locked), [],
+        "optional wording must remain deterministic");
+      assert.equal(locked.wear, wear);
+    }
+  }
+  for (const [wording, permitted] of [
+    ["not tucked", "untucked"],
+    ["not untucked", "tucked"],
+  ] as const) {
+    assert.deepEqual(styleDirectorCandidateWearIssues(wording, Object.freeze({ wear: permitted })), []);
+    const forbidden = permitted === "tucked" ? "untucked" : "tucked";
+    assert.deepEqual(styleDirectorCandidateWearIssues(wording, Object.freeze({ wear: forbidden }))
+      .map(issue => issue.code), ["candidate_shirt_wear_mismatch"]);
+  }
+});
