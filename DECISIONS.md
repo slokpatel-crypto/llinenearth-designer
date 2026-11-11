@@ -1,5 +1,11 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-11-11 — Limit public Style Director JSON before parsing
+
+**Decision:** cap the six-choice public `POST /api/style-director` request to 8 KiB (measured in raw UTF-8 bytes) and stop reading when the stream exceeds that limit. Reject oversized, invalid or malformed JSON with HTTP 400 before fabric metadata/network calls. Preserve every valid option ID and signed handoff contract. Extra bounded fields are ignored; size checks do not reinterpret physical fabric facts.
+
+**Verification:** test exactly 8192 bytes versus 8193 bytes, split UTF-8 sequences, invalid UTF-8, and two real Next.js HTTP cases using the existing Chromium lifecycle gate. The limit does not replace rate limiting or infrastructure-level resource controls. No new dependency, database migration, AI provider, Vercel deploy or physical approval.
+
 ## 2026-11-11 — Validate public Style Director journey answers and stock metadata bounds
 
 **Decision:** the public POST /api/style-director boundary accepts only the established six closed-set journey choices. Parse untrusted JSON to a fresh typed value object and reject invalid or missing choices with HTTP 400 before stock lookup, optional editorial work or handoff signing. TypeScript casts and truthiness do not validate JSON. Unknown extra request fields are not forwarded.

@@ -44,11 +44,33 @@ export function parseStyleDirectorAnswers(body: unknown): StyleDirectorAnswers |
  * Malformed, empty, or unreadable JSON is a client request failure, not an
  * internal Style Director error. Keep parsing ahead of inventory/network IO.
  */
+// The questionnaire needs fewer than 300 bytes. Reject oversized public
+// requests during streaming, before stock queries or JSON object allocation.
+export const STYLE_DIRECTOR_MAX_REQUEST_BYTES = 8 * 1024;
+
 export async function parseStyleDirectorJsonRequest(
-  request: Pick<Request, "json">,
+  request: Pick<Request, "json"> & Partial<Pick<Request, "body">>,
 ): Promise<StyleDirectorAnswers | null> {
   try {
-    return parseStyleDirectorAnswers(await request.json());
+    const stream = request.body;
+    // Keep the pure JSON-decoder test contract for synthetic Request substitutes.
+    if (!stream) return parseStyleDirectorAnswers(await request.json());
+    const reader = stream.getReader();
+    const decoder = new TextDecoder("utf-8", { fatal: true });
+    let body = "";
+    let byteLength = 0;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      byteLength += value.byteLength;
+      if (byteLength > STYLE_DIRECTOR_MAX_REQUEST_BYTES) {
+        void reader.cancel().catch(() => {});
+        return null;
+      }
+      body += decoder.decode(value, { stream: true });
+    }
+    body += decoder.decode();
+    return parseStyleDirectorAnswers(JSON.parse(body));
   } catch {
     return null;
   }
