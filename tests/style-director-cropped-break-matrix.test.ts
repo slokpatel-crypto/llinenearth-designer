@@ -281,7 +281,8 @@ test("unknown pleats do not fabricate front mismatches on ordinary hems", () => 
       }) as unknown as StyleSpecV2;
       const before = JSON.stringify(locked);
       const issues = styleDirectorConstructionIssues(locked);
-      assert.equal(issues.filter(issue => issue.code === "unknown_trouser_pleat_option").length, 1);
+      assert.equal(issues.filter(issue => issue.code === "unknown_trouser_pleat_option").length,
+        pleat === undefined ? 0 : 1);
       assert.ok(!issues.some(issue => issue.code === "flat_front_has_pleat" ||
         issue.code === "pleated_front_missing_pleat"),
         "unrecognized pleats must not be interpreted as known construction");
