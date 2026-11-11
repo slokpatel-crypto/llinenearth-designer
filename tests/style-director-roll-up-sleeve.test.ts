@@ -234,3 +234,27 @@ test("a fully specified roll-up construction stays distinct from a true alternat
     requested: false, prohibited: true, ambiguous: false,
   });
 });
+
+test("contracted postposed roll-up restrictions reject locked rolled sleeves", () => {
+  const rolled = Object.freeze({ sleeve: "roll_up_styled" });
+  const full = Object.freeze({ sleeve: "full_sleeve" });
+  const before = JSON.stringify(rolled);
+  for (const phrase of [
+    "Roll-up Styled isn't allowed",
+    "Roll-up Styled isn’t permitted",
+    "Roll-up sleeves aren't allowed",
+    "Roll-up sleeves aren’t permitted",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(phrase), {
+      requested: false, prohibited: true, ambiguous: false,
+    }, phrase);
+    assert.deepEqual(issueCodes(phrase, "roll_up_styled"), ["candidate_sleeve_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, full), [], phrase);
+    assert.deepEqual(wordingCodes(phrase), [], phrase);
+    assert.equal(JSON.stringify(rolled), before);
+  }
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("Roll-up Styled is allowed"), {
+    requested: true, prohibited: false, ambiguous: false,
+  });
+  assert.deepEqual(issueCodes("Roll-up Styled is allowed", "roll_up_styled"), []);
+});
