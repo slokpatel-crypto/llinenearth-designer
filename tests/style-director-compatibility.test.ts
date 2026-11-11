@@ -3539,3 +3539,29 @@ test("contracted modal sleeve bans reject forbidden lengths without mutating sav
     sleeve: "half_sleeve", cuff: "open_short_hem_cuff",
   }, "affirmative short sleeves must retain their canonical compatible cuff");
 });
+
+
+test("contracted postposed placket bans cannot approve a forbidden locked ID", () => {
+  for (const wording of [
+    "French placket isn't allowed",
+    "French placket isn’t permitted",
+    "French placket aren't allowed",
+  ]) {
+    assert.deepEqual(styleDirectorCandidatePlacketIntent(wording), {
+      requested: null, prohibited: ["french_placket"], ambiguous: false,
+    }, wording);
+    const forbidden = spec({ placket: "french_placket" });
+    const allowed = spec({ placket: "hidden_fly_front" });
+    Object.freeze(forbidden.shirt);
+    Object.freeze(allowed.shirt);
+    const before = JSON.stringify(forbidden);
+    const first = styleDirectorCandidatePlacketIssues(wording, forbidden.shirt);
+    assert.deepEqual(first.map(issue => issue.code), ["candidate_placket_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, forbidden.shirt), first);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, allowed.shirt), [], wording);
+    assert.equal(JSON.stringify(forbidden), before);
+  }
+  assert.deepEqual(styleDirectorCandidatePlacketIntent("French placket is allowed"), {
+    requested: "french_placket", prohibited: [], ambiguous: false,
+  });
+});
