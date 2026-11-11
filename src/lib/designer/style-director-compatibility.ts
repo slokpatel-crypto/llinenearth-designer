@@ -313,7 +313,7 @@ const candidateShirtWear = (name: string) => {
   // or untucked request. Consume the whole clause before scanning for either
   // state; the opposite wear state is required by an explicit prohibition.
   remaining = remaining.replace(
-    /\b(untucked|tucked)\s+(?:(?:shirts?|garments?)\s+)?(?:(?:is|are)\s+)?(?:unwanted|prohibited|forbidden|banned|not\s+(?:wanted|allowed|permitted)|(?:isn['’]?t|aren['’]?t)\s+(?:wanted|allowed|permitted)|(?:must|should|shall)\s+not\s+be\s+(?:worn|used|chosen|selected))\b/gi,
+    /\b(untucked|tucked)\s+(?:(?:shirts?|garments?)\s+)?(?:(?:is|are)\s+)?(?:unwanted|prohibited|forbidden|banned|not\s+(?:wanted|allowed|permitted)|(?:isn['’]?t|aren['’]?t)\s+(?:wanted|allowed|permitted)|(?:(?:must|should|shall)\s+not|(?:mustn|shouldn|shan)['’]?t)\s+be\s+(?:worn|used|chosen|selected))\b/gi,
     (_match, forbidden: string) => {
       if (forbidden.toLowerCase() === "tucked") untuckedFromNegation = true;
       else tuckedFromNegation = true;
