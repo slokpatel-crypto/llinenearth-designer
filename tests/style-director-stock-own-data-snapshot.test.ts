@@ -85,9 +85,9 @@ test("an accessor-backed array slot and inherited stock fields cannot shadow val
     get() { arrayGetterCalls++; throw new Error("untrusted array index"); },
     configurable: true,
   });
-  const snap = styleDirectorStockSnapshot([...inaccessibleRows]);
-  assert.deepEqual(snap.map(s => s.id), [valid.id]);
-  assert.equal(arrayGetterCalls, 1, "spreading a user fixture invokes the getter; snapshot must not");
+  assert.throws(() => [...inaccessibleRows], /untrusted array index/,
+    "ordinary spreading invokes the malicious accessor");
+  assert.equal(arrayGetterCalls, 1);
   const direct = styleDirectorStockSnapshot(inaccessibleRows);
   assert.deepEqual(direct.map(s => s.id), [valid.id]);
   assert.equal(arrayGetterCalls, 1, "snapshot must read index descriptors without invoking getters");
