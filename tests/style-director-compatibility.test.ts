@@ -103,7 +103,7 @@ test("optional sleeve necessity wording does not become a locked sleeve instruct
     "Full sleeves aren’t necessary",
     "Long sleeves are not necessary",
   ]) {
-    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, spec()), [], phrase);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, spec().shirt), [], phrase);
   }
 });
 
