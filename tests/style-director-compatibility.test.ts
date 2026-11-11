@@ -3356,3 +3356,25 @@ test("cannot-be-used collar and placket bans preserve locked construction IDs", 
       spec({ placket: "hidden_fly_front" }).shirt), [], wording);
   }
 });
+
+
+test("cannot-be-used collar bans require review without changing frozen IDs", () => {
+  for (const wording of [
+    "Camp collar cannot be used",
+    "Camp collar can't be selected",
+  ]) {
+    const forbidden = spec({ collar: "cuban_camp_collar" });
+    const allowed = spec({ collar: "spread_collar" });
+    Object.freeze(forbidden.shirt);
+    Object.freeze(forbidden.pant);
+    Object.freeze(forbidden);
+    Object.freeze(allowed.shirt);
+    const before = JSON.stringify(forbidden);
+    const first = styleDirectorCandidateCollarIssues(wording, forbidden.shirt);
+    assert.deepEqual(first.map(issue => issue.code), ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, forbidden.shirt), first);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, allowed.shirt), [], wording);
+    assert.equal(styleDirectorCandidateCollar(wording, []), null, wording);
+    assert.equal(JSON.stringify(forbidden), before, "locked IDs must remain unchanged");
+  }
+});
