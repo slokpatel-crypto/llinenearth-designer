@@ -466,7 +466,7 @@ export function styleDirectorCandidatePlacketIntent(candidateShirt: string): {
         /\b(?:(?:must|should)\s+(?:not|never)|(?:mustn|shouldn|can)['’]?t|cannot)\s+(?:(?:use|add|include|choose|select|wear|have)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|never\s+(?:allowed|permitted)|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+(?:wanted|allowed|permitted)|not\s+to\s+be\s+(?:used|chosen|selected|worn|included)|(?:(?:must|should)\s+(?:not|never)|(?:mustn|shouldn|can)['’]?t|cannot)\s+be\s+(?:used|chosen|selected|worn|included))\b/i.test(suffix);
       const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
-        /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn[\'’]?t|aren[\'’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
+        /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory|necessary)|(?:isn[\'’]?t|aren[\'’]?t)\s+(?:required|needed|mandatory|necessary))\b/i.test(suffix);
       if (forbidden) prohibitions.add(id);
       else if (!optional) requests.add(id);
     }
