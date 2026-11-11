@@ -3535,5 +3535,7 @@ test("contracted modal sleeve bans reject forbidden lengths without mutating sav
     assert.equal(styleDirectorCandidateSleeve(instruction), null, instruction);
     assert.equal(JSON.stringify(locked), snapshot);
   }
-  assert.equal(styleDirectorCandidateSleeve("Choose short sleeves"), "half_sleeve");
+  assert.deepEqual(styleDirectorCandidateSleeve("Choose short sleeves"), {
+    sleeve: "half_sleeve", cuff: "open_short_hem_cuff",
+  }, "affirmative short sleeves must retain their canonical compatible cuff");
 });
