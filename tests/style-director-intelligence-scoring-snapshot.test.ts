@@ -196,3 +196,50 @@ test("captured rejected or missing provenance fails closed without reading ranki
     assert.equal(accessedFormality, 0);
   }
 });
+
+
+test("unknown garment, climate and color family IDs cannot forge a trusted ranking signal", () => {
+  for (const invalid of [
+    { ...fixture(), bestGarments: ["shirt", "fabricated_premium_garment"] },
+    { ...fixture(), climateVisualFit: ["hot_humid", "perfect_in_all_weather"] },
+    { ...fixture(), pairing: {
+      goodColorFamilies: ["blue_family", "not_a_color_family"],
+      avoidColorFamilies: ["orange_family"],
+    } },
+    { ...fixture(), pairing: {
+      goodColorFamilies: ["blue_family"],
+      avoidColorFamilies: ["orange_family", "not_a_color_family"],
+    } },
+  ]) {
+    assert.equal(score(invalid), null,
+      "invalid shared vocabulary must never receive styling or matching weight");
+  }
+});
+
+test("valid colors and garment IDs remain usable; invalid optional colors are neutral", () => {
+  const valid = score(fixture());
+  assert.ok(valid);
+  assert.deepEqual(valid.bestGarments, ["shirt", "overshirt"]);
+  assert.deepEqual(valid.climateVisualFit, ["hot_humid"]);
+  assert.equal(valid.colorFamily, "blue_family");
+  assert.equal(valid.depth, "mid");
+  assert.deepEqual(valid.pairing.goodColorFamilies, ["blue_family"]);
+  assert.deepEqual(valid.pairing.avoidColorFamilies, ["orange_family"]);
+
+  const badColor = score({ ...fixture(), colorFamily: "not_a_color_family" });
+  assert.ok(badColor);
+  assert.equal(badColor.colorFamily, null, "invalid color must not fabricate positive pair matches");
+  const badDepth = score({ ...fixture(), depth: "ultra_perfect" });
+  assert.ok(badDepth);
+  assert.equal(badDepth.depth, "mid", "invalid optional depth must not alter scores");
+  const missingColor = score({ ...fixture(), colorFamily: null });
+  assert.ok(missingColor);
+  assert.equal(missingColor.colorFamily, null);
+  const emptyLists = score({ ...fixture(),
+    bestGarments: [], climateVisualFit: [],
+    pairing: { goodColorFamilies: [], avoidColorFamilies: [] },
+  });
+  assert.ok(emptyLists, "an empty, non-affirmative classification is still valid");
+  assert.deepEqual(emptyLists.bestGarments, []);
+  assert.deepEqual(emptyLists.pairing.goodColorFamilies, []);
+});
