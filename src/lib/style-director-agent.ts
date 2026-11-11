@@ -5,7 +5,7 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { styleDirectorScoringProfile, usableStyleDirectorIntelligence } from "@/lib/designer/style-director-intelligence-scoring";
+import { styleDirectorRankFabricCandidatesOnce, styleDirectorScoringProfile, usableStyleDirectorIntelligence } from "@/lib/designer/style-director-intelligence-scoring";
 import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidatePocket, styleDirectorCandidatePocketIssues, styleDirectorCandidateButton, styleDirectorCandidateButtonIssues, styleDirectorCandidateCollarFinish, styleDirectorCandidateCollarFinishIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateTrouserFit, styleDirectorCandidateTrouserFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateVariantCollar, styleDirectorCandidateSleeve, styleDirectorCandidateRollUpSleeveIntent, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorProposedCroppedHem, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
@@ -208,7 +208,7 @@ function chooseFabrics(
     seenIds.add(f.id);
     return true;
   });
-  return [...eligible].sort((x,y)=>rankFabric(a,y,intelligence)-rankFabric(a,x,intelligence)).slice(0,3);
+  return styleDirectorRankFabricCandidatesOnce(eligible, fabric => rankFabric(a,fabric,intelligence), 3);
 }
 
 function realModelOccasion(a: StyleDirectorAnswers): OccasionTier {
