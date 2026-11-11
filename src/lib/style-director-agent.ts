@@ -5,6 +5,8 @@ import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
+import { styleDirectorRankFabricCandidatesOnce, styleDirectorScoringProfile, usableStyleDirectorIntelligence } from "@/lib/designer/style-director-intelligence-scoring";
+import { styleDirectorStockSnapshot } from "@/lib/designer/style-director-stock-snapshot";
 import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidatePocket, styleDirectorCandidatePocketIssues, styleDirectorCandidateButton, styleDirectorCandidateButtonIssues, styleDirectorCandidateCollarFinish, styleDirectorCandidateCollarFinishIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateTrouserFit, styleDirectorCandidateTrouserFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateVariantCollar, styleDirectorCandidateSleeve, styleDirectorCandidateRollUpSleeveIntent, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorProposedCroppedHem, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
@@ -107,23 +109,12 @@ function colorScore(fabric: FabricColorway, direction: StyleDirectorAnswers["col
  * It is not a certificate for the physical fabric. A missing shape, invalid
  * numerical rating or rejected/unknown review cannot rank a customer look.
  */
-function usableStyleDirectorIntelligence(value: DesignerFabricIntelligence | null | undefined):
-  DesignerFabricIntelligence | null {
-  if (!value || styleDirectorIntelligenceTrustWeight(value) === 0) return null;
-  if (!Number.isInteger(value.formality) || value.formality < 1 || value.formality > 5 ||
-      !Number.isInteger(value.statementLevel) || value.statementLevel < 1 || value.statementLevel > 5 ||
-      !Array.isArray(value.bestGarments) || !Array.isArray(value.climateVisualFit) ||
-      !value.pairing || !Array.isArray(value.pairing.goodColorFamilies) ||
-      !Array.isArray(value.pairing.avoidColorFamilies)) return null;
-  return value;
-}
-
 function directorIntelligenceScore(
   a:StyleDirectorAnswers,
   fabric:FabricColorway,
   map?:Record<string,DesignerFabricIntelligence>|null,
 ) {
-  const intel=usableStyleDirectorIntelligence(map?.[fabric.id]);
+  const intel=usableStyleDirectorIntelligence(styleDirectorScoringProfile(map, fabric.id));
   if(!intel) return 0;
   const w=styleDirectorIntelligenceTrustWeight(intel);
   const targetFormality:Record<StyleDirectorAnswers["occasion"],number>={
@@ -167,8 +158,8 @@ function directorPairIntelligenceScore(
   occasion:OccasionTier,
   map?:Record<string,DesignerFabricIntelligence>|null,
 ) {
-  const shirt=usableStyleDirectorIntelligence(map?.[shirtId]);
-  const pant=usableStyleDirectorIntelligence(map?.[pantId]);
+  const shirt=usableStyleDirectorIntelligence(styleDirectorScoringProfile(map, shirtId));
+  const pant=usableStyleDirectorIntelligence(styleDirectorScoringProfile(map, pantId));
   if(!shirt && !pant) return 0;
   const target:Record<OccasionTier,number>={Casual:1.7,"Smart-Casual":2.7,"Semi-Formal":3.7,Formal:4.6};
   let score=0;
@@ -218,7 +209,7 @@ function chooseFabrics(
     seenIds.add(f.id);
     return true;
   });
-  return [...eligible].sort((x,y)=>rankFabric(a,y,intelligence)-rankFabric(a,x,intelligence)).slice(0,3);
+  return styleDirectorRankFabricCandidatesOnce(eligible, fabric => rankFabric(a,fabric,intelligence), 3);
 }
 
 function realModelOccasion(a: StyleDirectorAnswers): OccasionTier {
@@ -488,20 +479,24 @@ export function createStyleDirectorLooks(
   intelligence?:Record<string,DesignerFabricIntelligence>|null,
 ):StyleDirectorLook[] {
   const context = contextFromAnswers(answers);
+  // Snapshot the caller's catalogue once so ranking, conversion and
+  // supporting shirt/trouser pair selection share the same safe data.
+  // Catalogue availability is not proof of physical metreage or cutting fit.
+  const safeStock = styleDirectorStockSnapshot(stock);
   // Resolve duplicate catalogue IDs independently for each garment role.
   // An earlier shirt-only row must not hide a later trouser-eligible row
   // with the same ID (and vice versa). Never mutate the caller's catalogue.
   const eligibleFor = (garment: "shirt" | "trouser") => {
     const seen = new Set<string>();
-    return stock.filter((fabric) => {
-      if (!fabric.inStock || !fabric.suitableFor.includes(garment) || seen.has(fabric.id)) return false;
+    return safeStock.filter((fabric) => {
+      if (!fabric.suitableFor.includes(garment) || seen.has(fabric.id)) return false;
       seen.add(fabric.id);
       return true;
     }).map(designerFabricFromStock);
   };
   const calibratedShirts = eligibleFor("shirt");
   const calibratedPants = eligibleFor("trouser");
-  return chooseFabrics(answers,stock,intelligence).map((fabric,index)=>{
+  return chooseFabrics(answers,safeStock,intelligence).map((fabric,index)=>{
     const brief: DesignerBrief = {
       fabric: {
         profile: fabricProfileFromStock(fabric),
