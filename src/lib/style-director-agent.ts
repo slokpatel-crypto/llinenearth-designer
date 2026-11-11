@@ -6,6 +6,7 @@ import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types
 import { colorFamilyPairSignal } from "@/lib/vocab";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { styleDirectorRankFabricCandidatesOnce, styleDirectorScoringProfile, usableStyleDirectorIntelligence } from "@/lib/designer/style-director-intelligence-scoring";
+import { styleDirectorStockSnapshot } from "@/lib/designer/style-director-stock-snapshot";
 import { styleDirectorCandidateCollar, styleDirectorCandidateCollarIssues, styleDirectorCandidatePlacket, styleDirectorCandidatePlacketIssues, styleDirectorCandidatePocket, styleDirectorCandidatePocketIssues, styleDirectorCandidateButton, styleDirectorCandidateButtonIssues, styleDirectorCandidateCollarFinish, styleDirectorCandidateCollarFinishIssues, styleDirectorCandidateCuff, styleDirectorCandidateCuffIssues, styleDirectorCandidateShirtFit, styleDirectorCandidateShirtFitIssues, styleDirectorCandidateTrouserFit, styleDirectorCandidateTrouserFitIssues, styleDirectorCandidateSpecialCollar, styleDirectorCandidateOrdinaryCollar, styleDirectorCandidateVariantCollar, styleDirectorCandidateSleeve, styleDirectorCandidateRollUpSleeveIntent, styleDirectorCandidateSleeveIssues, styleDirectorCandidateFrontConstructionIssues, styleDirectorCandidateTrouserFront, styleDirectorCandidateWideLeg, styleDirectorCandidateWideLegIntent, styleDirectorCandidateWideLegIssues, styleDirectorCandidateDrawstringWaistband, styleDirectorCandidateWaistbandIssues, styleDirectorCandidateWordingIssues, styleDirectorCandidateWearIssues, styleDirectorConstructionIssues, styleDirectorProposedCroppedHem, styleDirectorIntelligenceTrustWeight, styleDirectorPresentationIssues, styleDirectorWearForCandidate } from "@/lib/designer/style-director-compatibility";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
@@ -478,20 +479,24 @@ export function createStyleDirectorLooks(
   intelligence?:Record<string,DesignerFabricIntelligence>|null,
 ):StyleDirectorLook[] {
   const context = contextFromAnswers(answers);
+  // Snapshot the caller's catalogue once so ranking, conversion and
+  // supporting shirt/trouser pair selection share the same safe data.
+  // Catalogue availability is not proof of physical metreage or cutting fit.
+  const safeStock = styleDirectorStockSnapshot(stock);
   // Resolve duplicate catalogue IDs independently for each garment role.
   // An earlier shirt-only row must not hide a later trouser-eligible row
   // with the same ID (and vice versa). Never mutate the caller's catalogue.
   const eligibleFor = (garment: "shirt" | "trouser") => {
     const seen = new Set<string>();
-    return stock.filter((fabric) => {
-      if (!fabric.inStock || !fabric.suitableFor.includes(garment) || seen.has(fabric.id)) return false;
+    return safeStock.filter((fabric) => {
+      if (!fabric.suitableFor.includes(garment) || seen.has(fabric.id)) return false;
       seen.add(fabric.id);
       return true;
     }).map(designerFabricFromStock);
   };
   const calibratedShirts = eligibleFor("shirt");
   const calibratedPants = eligibleFor("trouser");
-  return chooseFabrics(answers,stock,intelligence).map((fabric,index)=>{
+  return chooseFabrics(answers,safeStock,intelligence).map((fabric,index)=>{
     const brief: DesignerBrief = {
       fabric: {
         profile: fabricProfileFromStock(fabric),
