@@ -3342,3 +3342,17 @@ test("explicit wear instructions override occasion defaults without changing loc
     assert.equal(styleDirectorWearForCandidate(occasion, wording, proposed), expected);
   }
 });
+
+test("cannot-be-used collar and placket bans preserve locked construction IDs", () => {
+  for (const wording of ["French placket cannot be used", "French placket can't be selected"]) {
+    assert.deepEqual(styleDirectorCandidatePlacketIntent(wording), {
+      requested: null, prohibited: ["french_placket"], ambiguous: false,
+    }, wording);
+    const forbidden = spec({ placket: "french_placket" });
+    Object.freeze(forbidden.shirt);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, forbidden.shirt)
+      .map(issue => issue.code), ["candidate_placket_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording,
+      spec({ placket: "hidden_fly_front" }).shirt), [], wording);
+  }
+});
