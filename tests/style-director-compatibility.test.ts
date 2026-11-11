@@ -3517,3 +3517,23 @@ test("modal sleeve prohibitions preserve locked construction and reject forbidde
     assert.equal(JSON.stringify(locked), before, "locked IDs must not be rewritten");
   }
 });
+
+test("contracted modal sleeve bans reject forbidden lengths without mutating saved IDs", () => {
+  for (const [instruction, forbidden, permitted] of [
+    ["Mustn't choose short sleeves", "half_sleeve", "full_sleeve"],
+    ["Shouldn't include full sleeves", "full_sleeve", "half_sleeve"],
+    ["Mustn’t wear half sleeves", "half_sleeve", "full_sleeve"],
+    ["Shouldn’t select long sleeves", "full_sleeve", "half_sleeve"],
+  ] as const) {
+    const locked = spec({ sleeve: forbidden });
+    const snapshot = JSON.stringify(locked);
+    Object.freeze(locked.shirt);
+    const issues = styleDirectorCandidateSleeveIssues(instruction, locked.shirt);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_sleeve_mismatch"], instruction);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(instruction, locked.shirt), issues);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(instruction, { sleeve: permitted }), [], instruction);
+    assert.equal(styleDirectorCandidateSleeve(instruction), null, instruction);
+    assert.equal(JSON.stringify(locked), snapshot);
+  }
+  assert.equal(styleDirectorCandidateSleeve("Choose short sleeves"), "half_sleeve");
+});
