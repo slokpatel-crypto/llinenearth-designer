@@ -101,6 +101,19 @@ test("short sleeves cannot be recommended with French double cuffs", () => {
   })).map(x=>x.code), ["short_sleeve_double_cuff", "short_sleeve_cuff_review"]);
 });
 
+
+test("partial trouser fixtures do not invent a missing pleat while stale IDs fail closed", () => {
+  const partial = spec({}, { pleat: undefined as unknown as string });
+  const before = JSON.stringify(partial);
+  assert.deepEqual(styleDirectorConstructionIssues(partial), [],
+    "partial pure fixtures omit pleat; full locked-spec parsing checks required fields");
+  assert.equal(JSON.stringify(partial), before);
+  const stale = spec({}, { pleat: "retired_pleat" });
+  assert.deepEqual(styleDirectorConstructionIssues(stale).map(issue => issue.code),
+    ["unknown_trouser_pleat_option"]);
+  assert.deepEqual(styleDirectorConstructionIssues(stale), styleDirectorConstructionIssues(stale));
+});
+
 test("pleated and flat-front trouser construction must match selected type", () => {
   assert.deepEqual(styleDirectorConstructionIssues(spec({}, {
     type: "pleated_trouser", pleat: "flat_front",
