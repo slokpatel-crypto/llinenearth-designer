@@ -56,9 +56,18 @@ test("invalid candidate scores cannot rank above valid finite evidence", () => {
     "negative-infinity": Number.NEGATIVE_INFINITY,
   };
   assert.deepEqual(styleDirectorRankFabricCandidatesOnce(catalogue, id => ranking[id], 5),
-    ["finite-high", "finite-low", "nan", "positive-infinity", "negative-infinity"]);
+    ["finite-high", "finite-low"],
+    "nonfinite results cannot backfill an otherwise short styling recommendation");
   assert.deepEqual(styleDirectorRankFabricCandidatesOnce(catalogue, id => ranking[id], 2),
     ["finite-high", "finite-low"]);
+  assert.deepEqual(styleDirectorRankFabricCandidatesOnce(["nan", "positive-infinity"] as const,
+    id => ranking[id], 3), [], "never recommend a fabric with unrankable score");
+  let unnecessaryReads = 0;
+  assert.deepEqual(styleDirectorRankFabricCandidatesOnce(catalogue, () => {
+    unnecessaryReads++;
+    return 1;
+  }, 0), []);
+  assert.equal(unnecessaryReads, 0, "zero-result requests must not evaluate untrusted scores");
 });
 
 test("the scorer's output is a separate array and never changes saved fabric objects", () => {
