@@ -107,15 +107,89 @@ function colorScore(fabric: FabricColorway, direction: StyleDirectorAnswers["col
  * It is not a certificate for the physical fabric. A missing shape, invalid
  * numerical rating or rejected/unknown review cannot rank a customer look.
  */
+type ScorableStyleDirectorIntelligence = Pick<
+  DesignerFabricIntelligence,
+  "trust" | "reviewStatus" | "formality" | "statementLevel" |
+  "bestGarments" | "climateVisualFit" | "colorFamily" | "depth"
+> & {
+  pairing: Pick<DesignerFabricIntelligence["pairing"], "goodColorFamilies" | "avoidColorFamilies">;
+};
+
+/** A stored approval is only usable when it is an own data value. */
+function styleDirectorOwnScoringValue(value: unknown, key: string): unknown {
+  if (value === null || typeof value !== "object") return undefined;
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor && "value" in descriptor ? descriptor.value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Copy the finite string lists used by ranking without invoking saved getters.
+ * Reject sparse, accessor-backed, oversized or unreadable arrays entirely.
+ */
+function styleDirectorScoringStrings(value: unknown): string[] | null {
+  try {
+    if (!Array.isArray(value)) return null;
+    const size = Object.getOwnPropertyDescriptor(value, "length")?.value;
+    if (!Number.isInteger(size) || size < 0 || size > 128) return null;
+    const strings: string[] = [];
+    for (let index = 0; index < size; index++) {
+      const entry = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!entry || !("value" in entry) || typeof entry.value !== "string") return null;
+      strings.push(entry.value);
+    }
+    return strings;
+  } catch {
+    return null;
+  }
+}
+
 function usableStyleDirectorIntelligence(value: DesignerFabricIntelligence | null | undefined):
-  DesignerFabricIntelligence | null {
+  ScorableStyleDirectorIntelligence | null {
   if (!value || styleDirectorIntelligenceTrustWeight(value) === 0) return null;
-  if (!Number.isInteger(value.formality) || value.formality < 1 || value.formality > 5 ||
-      !Number.isInteger(value.statementLevel) || value.statementLevel < 1 || value.statementLevel > 5 ||
-      !Array.isArray(value.bestGarments) || !Array.isArray(value.climateVisualFit) ||
-      !value.pairing || !Array.isArray(value.pairing.goodColorFamilies) ||
-      !Array.isArray(value.pairing.avoidColorFamilies)) return null;
-  return value;
+  const read = (key: string) => styleDirectorOwnScoringValue(value, key);
+  const formality = read("formality");
+  const statementLevel = read("statementLevel");
+  if (typeof formality !== "number" || !Number.isInteger(formality) || formality < 1 || formality > 5 ||
+      typeof statementLevel !== "number" || !Number.isInteger(statementLevel) || statementLevel < 1 ||
+      statementLevel > 5) return null;
+  const bestGarments = styleDirectorScoringStrings(read("bestGarments"));
+  const climateVisualFit = styleDirectorScoringStrings(read("climateVisualFit"));
+  const pairing = read("pairing");
+  const goodColorFamilies = styleDirectorScoringStrings(styleDirectorOwnScoringValue(pairing, "goodColorFamilies"));
+  const avoidColorFamilies = styleDirectorScoringStrings(styleDirectorOwnScoringValue(pairing, "avoidColorFamilies"));
+  if (!bestGarments || !climateVisualFit || !goodColorFamilies || !avoidColorFamilies) return null;
+  const depth = read("depth");
+  const colorFamily = read("colorFamily");
+  // Only copied plain data affects ranking. Other stored fields, including
+  // physical evidence, are neither invoked nor silently treated as verified.
+  return {
+    trust: read("trust") as ScorableStyleDirectorIntelligence["trust"],
+    reviewStatus: read("reviewStatus") as ScorableStyleDirectorIntelligence["reviewStatus"],
+    formality: formality as ScorableStyleDirectorIntelligence["formality"],
+    statementLevel: statementLevel as ScorableStyleDirectorIntelligence["statementLevel"],
+    bestGarments: bestGarments as ScorableStyleDirectorIntelligence["bestGarments"],
+    climateVisualFit: climateVisualFit as ScorableStyleDirectorIntelligence["climateVisualFit"],
+    pairing: {
+      goodColorFamilies: goodColorFamilies as ScorableStyleDirectorIntelligence["pairing"]["goodColorFamilies"],
+      avoidColorFamilies: avoidColorFamilies as ScorableStyleDirectorIntelligence["pairing"]["avoidColorFamilies"],
+    },
+    depth: (typeof depth === "string" ? depth : "mid") as ScorableStyleDirectorIntelligence["depth"],
+    colorFamily: (typeof colorFamily === "string" ? colorFamily : null) as ScorableStyleDirectorIntelligence["colorFamily"],
+  };
+}
+
+/** Never invoke a scoring-map getter or trust an inherited fabric profile. */
+function styleDirectorScoringProfile(
+  map: Record<string, DesignerFabricIntelligence> | null | undefined,
+  id: string,
+): DesignerFabricIntelligence | null {
+  const candidate = styleDirectorOwnScoringValue(map, id);
+  return candidate && typeof candidate === "object"
+    ? candidate as DesignerFabricIntelligence : null;
 }
 
 function directorIntelligenceScore(
@@ -123,7 +197,7 @@ function directorIntelligenceScore(
   fabric:FabricColorway,
   map?:Record<string,DesignerFabricIntelligence>|null,
 ) {
-  const intel=usableStyleDirectorIntelligence(map?.[fabric.id]);
+  const intel=usableStyleDirectorIntelligence(styleDirectorScoringProfile(map, fabric.id));
   if(!intel) return 0;
   const w=styleDirectorIntelligenceTrustWeight(intel);
   const targetFormality:Record<StyleDirectorAnswers["occasion"],number>={
@@ -167,8 +241,8 @@ function directorPairIntelligenceScore(
   occasion:OccasionTier,
   map?:Record<string,DesignerFabricIntelligence>|null,
 ) {
-  const shirt=usableStyleDirectorIntelligence(map?.[shirtId]);
-  const pant=usableStyleDirectorIntelligence(map?.[pantId]);
+  const shirt=usableStyleDirectorIntelligence(styleDirectorScoringProfile(map, shirtId));
+  const pant=usableStyleDirectorIntelligence(styleDirectorScoringProfile(map, pantId));
   if(!shirt && !pant) return 0;
   const target:Record<OccasionTier,number>={Casual:1.7,"Smart-Casual":2.7,"Semi-Formal":3.7,Formal:4.6};
   let score=0;
