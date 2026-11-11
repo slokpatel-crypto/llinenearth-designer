@@ -19,6 +19,7 @@ import {
   styleDirectorCandidateTrouserFitIssues,
   styleDirectorCandidateOrdinaryCollar,
   styleDirectorCandidateSleeve,
+  styleDirectorCandidateRollUpSleeveIntent,
   styleDirectorCandidateSleeveIssues,
   styleDirectorCandidateFrontConstructionIssues,
   styleDirectorCandidateTrouserFront,
@@ -3059,6 +3060,37 @@ test("frozen camp-collar occasion review does not mutate or invent formal requir
   }
   assert.deepEqual(styleDirectorConstructionIssues(selected), []);
   assert.equal(JSON.stringify(selected), before);
+});
+
+test("nonessential construction wording does not select a placket or roll-up sleeve", () => {
+  for (const wording of [
+    "French placket is not necessary",
+    "French placket isn't necessary",
+    "French placket isn’t necessary",
+  ]) {
+    assert.deepEqual(styleDirectorCandidatePlacketIntent(wording), {
+      requested: null, prohibited: [], ambiguous: false,
+    }, wording);
+    assert.equal(styleDirectorCandidatePlacket(wording, []), null, wording);
+    const locked = spec({ placket: "hidden_fly_front" });
+    Object.freeze(locked.shirt);
+    const before = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, locked.shirt), [], wording);
+    assert.equal(JSON.stringify(locked), before);
+  }
+  for (const wording of [
+    "Roll-up styled is not necessary",
+    "Roll-up styled isn't necessary",
+    "Roll-up styled isn’t necessary",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(wording), {
+      requested: false, prohibited: false, ambiguous: false,
+    }, wording);
+  }
+  assert.deepEqual(styleDirectorCandidatePlacketIntent("French placket is necessary"), {
+    requested: "french_placket", prohibited: [], ambiguous: false,
+  });
+  assert.equal(styleDirectorCandidateRollUpSleeveIntent("Roll-up styled is necessary").requested, true);
 });
 
 test("postposed placket bans do not become positive construction requests", () => {
