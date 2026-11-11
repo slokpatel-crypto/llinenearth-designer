@@ -121,14 +121,15 @@ export function styleDirectorRankFabricCandidatesOnce<T>(
   limit: number,
 ): T[] {
   const count = Number.isSafeInteger(limit) && limit > 0 ? limit : 0;
-  const scored = candidates.map((candidate, index) => {
+  if (!count) return [];
+  const scored: { candidate: T; index: number; score: number }[] = [];
+  for (let index = 0; index < candidates.length; index++) {
+    const candidate = candidates[index];
     const value = rank(candidate);
-    return { candidate, index, score: Number.isFinite(value) ? value : null };
-  });
-  scored.sort((a, b) =>
-    a.score === null ? (b.score === null ? a.index - b.index : 1)
-    : b.score === null ? -1
-    : (b.score - a.score) || a.index - b.index,
-  );
+    // A nonfinite result cannot certify a candidate as rankable. Do not
+    // backfill a shortlist with NaN/Infinity when valid stock runs short.
+    if (Number.isFinite(value)) scored.push({ candidate, index, score: value });
+  }
+  scored.sort((a, b) => (b.score - a.score) || a.index - b.index);
   return scored.slice(0, count).map(entry => entry.candidate);
 }
