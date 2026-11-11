@@ -19,6 +19,9 @@ best_rigid = source_graph_module["best_fit_original_source_uv_edge_rigid_alignme
 best_similarity = source_graph_module[
     "best_fit_original_source_uv_edge_similarity_alignment"
 ]
+compare_junction = source_graph_module[
+    "compare_original_source_uv_junction_rigid_alignments"
+]
 
 # Synthetic proper rotation + translation can close equal-length source
 # segments; length disagreement has a provable irreducible residual.
@@ -49,6 +52,39 @@ assert different_similarity["sourceUvSimilarityScaleChangePercent"] == 25.0
 assert different_similarity["singleEdgeSimilarityClosureResidualMm"] == 0.0
 assert different_similarity["singleEdgeClosureRequiresUvScaleChange"] is True
 assert different_similarity["sourceUvSimilarityDistortionApproved"] is False
+same_junction = compare_junction((
+    ((1, 2), ((0, 0), (10, 0)), ((100, 100), (110, 100))),
+    ((1, 3), ((0, 0), (0, 10)), ((100, 100), (100, 110))),
+    ((1, 4), ((10, 0), (10, 10)), ((110, 100), (110, 110))),
+))
+assert same_junction["maximumPairwiseRigidRotationDisagreementDegrees"] == 0.0
+assert same_junction["maximumPairwiseRigidTranslationDisagreementMm"] == 0.0
+assert same_junction["singleDeterministicRigidTransformClosesAllIncidentEdges"] is True
+assert same_junction["junctionRigidUvConsistencyApproved"] is False
+different_junction = compare_junction((
+    ((1, 2), ((0, 0), (10, 0)), ((100, 100), (110, 100))),
+    ((1, 3), ((0, 0), (0, 10)), ((100, 100), (100, 110))),
+    ((1, 4), ((10, 0), (10, 10)), ((100, 110), (110, 110))),
+))
+assert different_junction["maximumPairwiseRigidRotationDisagreementDegrees"] == 90.0
+assert different_junction["maximumPairwiseRigidTranslationDisagreementMm"] > 0
+assert different_junction["singleDeterministicRigidTransformClosesAllIncidentEdges"] is False
+for bad in (
+        (),
+        (((1, 2), ((0, 0), (1, 0)), ((2, 0), (3, 0))),) * 3,
+        (((2, 1), ((0, 0), (1, 0)), ((2, 0), (3, 0))),
+         ((1, 3), ((0, 0), (0, 1)), ((2, 0), (2, 1))),
+         ((1, 4), ((1, 0), (1, 1)), ((3, 0), (3, 1)))),
+        (((1, 2), ((0, 0), (1, 0)), ((2, 0), (3, 0))),
+         ((3, 4), ((0, 0), (0, 1)), ((2, 0), (2, 1))),
+         ((5, 6), ((1, 0), (1, 1)), ((3, 0), (3, 1)))),
+):
+    try:
+        compare_junction(bad)
+    except (ValueError, TypeError):
+        pass
+    else:
+        raise AssertionError("Forged original UV junction rigid evidence was accepted.")
 for bad in (((0, 0),), ((False, 0), (1, 0)), (("0", 0), (1, 0)),
             ((0, 0), (math.inf, 0)), ((0, 0), (math.nan, 1)),
             ((0, 0), (0, 0)), (None, (1, 0)), (0, 1)):
@@ -417,6 +453,21 @@ assert all(
     and len(r["realOriginalSourcePositionMm"]) == 3
     and all(math.isfinite(x) for x in r["realOriginalSourcePositionMm"])
     and r["incidentOriginalSourceCutEdgeLengthMm"] > 0
+    and len(r["incidentOriginalSourceUvOwnerFacePairs"]) ==
+        r["sourceUvCutGraphDegree"]
+    and len(r["incidentBestFitProperRigidTransforms"]) ==
+        r["sourceUvCutGraphDegree"]
+    and all(
+        r["originalSourceVertexIndex"] in pair["originalSourceEdge"]
+        and len(pair["deterministicOwnerFacePair"]) == 2
+        and pair["deterministicOwnerFacePair"][0] <
+            pair["deterministicOwnerFacePair"][1]
+        for pair in r["incidentOriginalSourceUvOwnerFacePairs"]
+    )
+    and r["maximumPairwiseRigidRotationDisagreementDegrees"] >= 0
+    and r["maximumPairwiseRigidTranslationDisagreementMm"] >= 0
+    and type(r["singleDeterministicRigidTransformClosesAllIncidentEdges"]) is bool
+    and r["junctionRigidUvConsistencyApproved"] is False
     and type(r["touchesActualOriginalOpenBoundary"]) is bool
     and type(r["touchesGenuineOriginalCrotchCut"]) is bool
     for r in junctions

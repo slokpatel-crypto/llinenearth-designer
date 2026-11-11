@@ -152,6 +152,65 @@ def best_fit_original_source_uv_edge_similarity_alignment(owner_a, owner_b):
     }
 
 
+def compare_original_source_uv_junction_rigid_alignments(incident_edges):
+    """Compare deterministic proper-rigid fits at one real cut junction.
+
+    Each item is ``(source_edge, owner_a, owner_b)`` with source-edge vertex
+    IDs and the two face-owner UV segments in deterministic face-ID order.
+    Agreement only tests whether those exact local B-to-A mappings are one
+    common 2D transform; it does not infer a movable cloth panel or seam.
+    """
+    if not hasattr(incident_edges, "__len__") or len(incident_edges) < 3:
+        raise ValueError("Actual UV branch consistency needs at least three incident edges.")
+    seen = set()
+    rows = []
+    for item in incident_edges:
+        if not hasattr(item, "__len__") or len(item) != 3:
+            raise ValueError("Actual UV branch incident evidence is malformed.")
+        edge, owner_a, owner_b = item
+        if (not hasattr(edge, "__len__") or len(edge) != 2
+                or any(type(v) is not int or v < 0 for v in edge)
+                or edge[0] >= edge[1] or tuple(edge) in seen):
+            raise ValueError("Actual UV branch needs unique canonical source edges.")
+        seen.add(tuple(edge))
+        rigid = best_fit_original_source_uv_edge_rigid_alignment(owner_a, owner_b)
+        rows.append({
+            "originalSourceEdge": list(edge),
+            "properRigidRotationDegrees":
+                rigid["bestFitProperRigidUvRotationDegrees"],
+            "properRigidTranslationMm": rigid["bestFitRigidUvTranslationMm"],
+            "irreducibleEndpointResidualMm":
+                rigid["irreducibleProperRigidAlignmentEndpointResidualMm"],
+        })
+    common_vertices = set(next(iter(seen)))
+    for edge in seen:
+        common_vertices.intersection_update(edge)
+    if len(common_vertices) != 1:
+        raise ValueError("Actual UV branch edges do not share one source junction.")
+    rotations = [row["properRigidRotationDegrees"] for row in rows]
+    translations = [row["properRigidTranslationMm"] for row in rows]
+    rotation_spread = max(
+        abs(math.remainder(a - b, 360.0))
+        for i, a in enumerate(rotations) for b in rotations[i + 1:]
+    )
+    translation_spread = max(
+        math.dist(a, b)
+        for i, a in enumerate(translations) for b in translations[i + 1:]
+    )
+    if not all(math.isfinite(v) for v in (rotation_spread, translation_spread)):
+        raise ValueError("Actual UV branch rigid-transform disagreement is nonfinite.")
+    consistent = rotation_spread <= 0.000001 and translation_spread <= 0.00001
+    return {
+        "incidentBestFitProperRigidTransforms": rows,
+        "maximumPairwiseRigidRotationDisagreementDegrees":
+            round(rotation_spread, 6),
+        "maximumPairwiseRigidTranslationDisagreementMm":
+            round(translation_spread, 5),
+        "singleDeterministicRigidTransformClosesAllIncidentEdges": consistent,
+        "junctionRigidUvConsistencyApproved": False,
+    }
+
+
 def classify_original_source_uv_cut_component(
         cut_graph, component_vertices, original_boundary_vertices):
     """Classify connected ORIGINAL source-edge UV cuts, not sewing lines.
@@ -550,6 +609,27 @@ def audit_original_source_uv_cut_network(
         )
         if not math.isfinite(incident_mm) or incident_mm <= 0:
             raise ValueError("Original source UV branch has invalid incident edge geometry.")
+        incident_edges = []
+        incident_face_pairs = []
+        for other in sorted(neighbours):
+            edge = (min(source_vertex, other), max(source_vertex, other))
+            if len(owners[edge]) != 2:
+                raise ValueError("Original source UV branch edge lacks two face owners.")
+            (face_a, owner_a), (face_b, owner_b) = owners[edge]
+            if face_a >= face_b:
+                raise ValueError("Original source UV face-owner order is not deterministic.")
+            incident_edges.append((
+                edge,
+                [[v * 1000.0 for v in uv] for uv in owner_a],
+                [[v * 1000.0 for v in uv] for uv in owner_b],
+            ))
+            incident_face_pairs.append({
+                "originalSourceEdge": list(edge),
+                "deterministicOwnerFacePair": [face_a, face_b],
+            })
+        rigid_consistency = compare_original_source_uv_junction_rigid_alignments(
+            incident_edges
+        )
         junction_rows.append({
             "originalSourceVertexIndex": source_vertex,
             "sourceUvCutGraphDegree": len(neighbours),
@@ -557,6 +637,8 @@ def audit_original_source_uv_cut_network(
                 round(value * 1000.0, 5) for value in vertices[source_vertex]
             ],
             "incidentOriginalSourceCutEdgeLengthMm": round(incident_mm, 5),
+            "incidentOriginalSourceUvOwnerFacePairs": incident_face_pairs,
+            **rigid_consistency,
             "touchesActualOriginalOpenBoundary":
                 source_vertex in original_boundary_vertices,
             "touchesGenuineOriginalCrotchCut":
