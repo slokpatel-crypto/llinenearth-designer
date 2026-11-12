@@ -140,3 +140,79 @@ test("duplicate handoff audit cannot inflate the Style Director clean-case count
   assert.equal(summary.thresholdMet,false);
   assert.equal(summary.validationComplete,false);
 });
+
+test("a blocking Style Director case prevents approval even when clean target is met",()=>{
+  const clean={
+    case_id:"SD-CLEAN",device_class:"mobile",
+    directions_understandable:true,directions_distinct:true,
+    stock_handoff_worked:true,handoff_audit_id:"55555555-5555-4555-8555-555555555555",
+    blocking_issue:false,created_at:"2026-11-12T09:00:00Z",
+  };
+  const blocked={
+    ...clean,case_id:"SD-BLOCKED",device_class:"desktop",
+    handoff_audit_id:"66666666-6666-4666-8666-666666666666",
+    blocking_issue:true,created_at:"2026-11-12T09:05:00Z",
+  };
+  const signoff={
+    status:"approved",required_positive_cases:1,signed_by:"Owner",
+    created_at:"2026-11-12T10:00:00Z",
+  };
+  const blockedSummary=summarizeStyleDirectorValidation([clean,blocked],[signoff]);
+  assert.equal(blockedSummary.thresholdMet,true);
+  assert.equal(blockedSummary.blockingCases,1);
+  assert.equal(blockedSummary.validationComplete,false);
+
+  // The latest observation for the same case supersedes the earlier defect.
+  const resolved={
+    ...blocked,blocking_issue:false,created_at:"2026-11-12T09:30:00Z",
+  };
+  const resolvedSummary=summarizeStyleDirectorValidation([clean,blocked,resolved],[signoff]);
+  assert.equal(resolvedSummary.blockingCases,0);
+  assert.equal(resolvedSummary.positiveCases,2);
+  assert.equal(resolvedSummary.validationComplete,true);
+});
+
+test("Style Director approval must be renewed after new user-test evidence",()=>{
+  const clean={
+    case_id:"SD-RETEST",device_class:"mobile",
+    directions_understandable:true,directions_distinct:true,
+    stock_handoff_worked:true,handoff_audit_id:"77777777-7777-4777-8777-777777777777",
+    blocking_issue:false,created_at:"2026-11-12T09:00:00Z",
+  };
+  const oldApproval={
+    status:"approved",required_positive_cases:1,signed_by:"Owner",
+    created_at:"2026-11-12T09:30:00Z",
+  };
+  const afterApproval={
+    ...clean,case_id:"SD-NEW-TEST",
+    handoff_audit_id:"88888888-8888-4888-8888-888888888888",
+    created_at:"2026-11-12T10:00:00Z",
+  };
+  const stale=summarizeStyleDirectorValidation([clean,afterApproval],[oldApproval]);
+  assert.equal(stale.thresholdMet,true);
+  assert.equal(stale.blockingCases,0);
+  assert.equal(stale.validationComplete,false);
+
+  const fresh=summarizeStyleDirectorValidation([clean,afterApproval],[
+    oldApproval,{...oldApproval,created_at:"2026-11-12T11:00:00Z"},
+  ]);
+  assert.equal(fresh.validationComplete,true);
+});
+
+test("unreviewed or malformed stored sign-off never reports validation complete",()=>{
+  const clean={
+    case_id:"SD-STORE",device_class:"tablet",
+    directions_understandable:true,directions_distinct:true,
+    stock_handoff_worked:true,handoff_audit_id:"99999999-9999-4999-8999-999999999999",
+    blocking_issue:false,created_at:"2026-11-12T09:00:00Z",
+  };
+  const signoff={
+    status:"approved",required_positive_cases:1,signed_by:"Owner",
+    created_at:"2026-11-12T10:00:00Z",
+  };
+  assert.equal(summarizeStyleDirectorValidation([clean],[{...signoff,signed_by:" "}]).validationComplete,false);
+  assert.equal(summarizeStyleDirectorValidation([clean],[{...signoff,required_positive_cases:0}]).validationComplete,false);
+  assert.equal(summarizeStyleDirectorValidation([clean],[{...signoff,required_positive_cases:51}]).validationComplete,false);
+  assert.equal(summarizeStyleDirectorValidation([clean],[{...signoff,created_at:"bad-date"}]).validationComplete,false);
+  assert.equal(summarizeStyleDirectorValidation([{...clean,created_at:"bad-date"}],[signoff]).validationComplete,false);
+});
