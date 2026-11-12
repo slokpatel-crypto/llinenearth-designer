@@ -3819,3 +3819,19 @@ test("short-sleeve proposal never overrides explicit or undecided roll-up constr
     sleeve: "half_sleeve", cuff: "open_short_hem_cuff",
   });
 });
+
+test("prohibited collar wording cannot certify missing or cross-category locked option IDs", () => {
+  for (const wording of [
+    "Camp Collar is never to be used",
+    "Wing Collar is never to be worn",
+  ]) {
+    for (const collar of [undefined, "retired_collar_id", "french_placket"]) {
+      const locked = Object.freeze({ collar }) as unknown as Parameters<typeof styleDirectorCandidateCollarIssues>[1];
+      const before = JSON.stringify(locked);
+      const first = styleDirectorCandidateCollarIssues(wording, locked);
+      assert.deepEqual(first.map(issue => issue.code), ["candidate_collar_mismatch"], wording);
+      assert.deepEqual(styleDirectorCandidateCollarIssues(wording, locked), first);
+      assert.equal(JSON.stringify(locked), before, "locked option IDs must never be rewritten");
+    }
+  }
+});
