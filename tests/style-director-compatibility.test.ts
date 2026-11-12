@@ -3779,3 +3779,22 @@ test("combined sleeve constraints preserve distinct roll-up and ordinary long-sl
     assert.equal(JSON.stringify(forbidden), before, "saved sleeve ID must remain unchanged");
   }
 });
+
+test("explicit sleeve instructions reject absent and stale locked IDs without mutation", () => {
+  for (const wording of [
+    "Choose short sleeves",
+    "Choose full sleeves",
+    "Choose roll-up styled",
+    "No short sleeves",
+    "No roll-up styled",
+  ]) {
+    for (const sleeve of [undefined, "retired_sleeve_option", "french_placket"]) {
+      const locked = Object.freeze({ sleeve }) as unknown as Parameters<typeof styleDirectorCandidateSleeveIssues>[1];
+      const snapshot = JSON.stringify(locked);
+      const first = styleDirectorCandidateSleeveIssues(wording, locked);
+      assert.deepEqual(first.map(issue => issue.code), ["candidate_sleeve_mismatch"], wording);
+      assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, locked), first);
+      assert.equal(JSON.stringify(locked), snapshot);
+    }
+  }
+});
