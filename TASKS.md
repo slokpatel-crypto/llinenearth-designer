@@ -46,3 +46,14 @@
 - **Not run:** Native scanned-body Blender, realistic garment collisions, UV/sewing/fit preflight, and four-angle appearance review. The `blender` executable was absent (`command -v blender` returned no path). No new acceptance or production claims.
 - **Root cause / STOP:** The authoritative Worker C milestone manifest is still missing from `main`; existing real-geometry contact evidence remains unresolved, and centroid-only variants already failed. Do not repeat these approaches or start new features/PRs. Resume only with a versioned source-pattern redesign specification, locked scanned-body test fixture, and measurable zero-contact/topology/UV gates.
 - **Verification label:** **software-verified, not physically verified**. **Production approval: false**.
+
+## Worker C — STOP recheck (2026-11-12, 04:13 UTC request)
+
+- **Milestone status:** **BLOCKED — STOP** under the two-attempt rule. No new geometry approach attempted; no features, PRs, deployment, or other workers' files touched.
+- **Verified exact branch test source:** GitHub blob `f2425badbc8af0f785c51dd04c8e1122d9ed6f18` matched `git hash-object` of the locally reproduced full Python file.
+- **Actual test run in Python 3.13.5:** `python3 -m unittest discover -s /mnt/data/worker-c-20261112-recheck -p 'test_worker_c_fixed_cut_edge_clearance.py' -v` — **4/4 passed, 0.002 seconds**. `python3 -m py_compile /mnt/data/worker-c-20261112-recheck/test_worker_c_fixed_cut_edge_clearance.py` — **passed**.
+- **Synthetic fixture result only:** Unchanged cut edge remains at **1 mm** clearance after a centroid-only offset; the endpoint Lipschitz upper bound is **3 mm** against a research-only **7 mm** threshold; non-crossing is not clearance; moving the source edge is a different geometry operation.
+- **Native Blender:** `command -v blender` returned no executable; **no** new scanned-body collision result, garment/topology/UV verification, real fitting or physical approval.
+- **Root cause:** No authoritative Worker C milestone manifest or source redesign acceptance gate on `main`, and the locked original source cut edges cannot be cleared by the two previously unsuccessful centroid-displacement strategies. Previous real Blender contact and hard preflight blockers remain open.
+- **Required to resume:** Authoritative scope, locked source/body test fixture, and measurable body-BVH zero-contact, mesh topology, UV/sewing and four-view evaluation criteria before a redesigned cut-edge approach.
+- **Label:** **software-verified, not physically verified**; **production-approved: false**.
