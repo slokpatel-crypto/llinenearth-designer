@@ -3693,3 +3693,25 @@ test("postposed disallowed roll-up sleeves preserve versioned construction", () 
     requested: true, prohibited: false, ambiguous: false,
   });
 });
+
+test("disallowed ordinary sleeve lengths fail closed while preserving locked IDs", () => {
+  for (const [wording, forbidden, permitted] of [
+    ["Short sleeves are disallowed", "half_sleeve", "full_sleeve"],
+    ["Full sleeves disallowed", "full_sleeve", "half_sleeve"],
+    ["Long sleeves are disallowed", "full_sleeve", "half_sleeve"],
+    ["Half sleeves disallowed", "half_sleeve", "full_sleeve"],
+  ] as const) {
+    const locked = spec({ sleeve: forbidden });
+    const before = JSON.stringify(locked);
+    Object.freeze(locked.shirt);
+    const first = styleDirectorCandidateSleeveIssues(wording, locked.shirt);
+    assert.deepEqual(first.map(issue => issue.code), ["candidate_sleeve_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, locked.shirt), first);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, { sleeve: permitted }), [], wording);
+    assert.equal(styleDirectorCandidateSleeve(wording), null, wording);
+    assert.equal(JSON.stringify(locked), before);
+  }
+  assert.deepEqual(styleDirectorCandidateSleeve("Choose short sleeves"), {
+    sleeve: "half_sleeve", cuff: "open_short_hem_cuff",
+  });
+});
