@@ -100,3 +100,10 @@
 - **Unavailable verification:** `command -v blender` found no executable. Native scanned-body BVH, mesh topology, UV/sewing, 4-angle comparison, and physical fit were **not run**. No new production clearance is claimed.
 - **Root cause:** Missing authoritative assigned milestone/test-body fixtures and real native acceptance criteria. Prior actual Blender research recorded persistent body intersections and 10 hard preflight blockers; two centroid-only approaches failed because cut-edge endpoints remain fixed. A different source-edge topology strategy and real Blender verification are required before resuming.
 - **Verification classification:** **software-verified, not physically verified**. **Production approval: false**. **STOP**.
+
+## Worker C — 2026-11-12 04:19:31 UTC repeat request: STOP
+
+- **Actual rerun:** `python3 -m unittest discover -s /mnt/data/worker-c-20261112-recheck -p 'test_worker_c_fixed_cut_edge_clearance.py' -v`: **4/4 passed in 0.002s**. `python3 -m py_compile` on the same source: **passed**. Its local Git blob hash `f2425badbc8af0f785c51dd04c8e1122d9ed6f18` exactly matches the current Worker C branch test.
+- **Scope of verification:** Synthetic plane fixture only: unchanged 1 mm source-edge clearance and a 3 mm distance upper bound below the research-only 7 mm target. **software-verified, not physically verified**.
+- **Not performed:** Native Blender/scanned-body collision, garment topology, UV/sewing or fitting verification (`blender` executable unavailable). No garment mesh or other workers' source changed.
+- **BLOCKED / STOP root cause:** `TASKS.md` is absent from `main`, so no authoritative assigned acceptance manifest exists. The real original source cut edges are not cleared by either failed centroid-only approach; historical body collisions and preflight failures remain. Resume only with a specified source-edge redesign, locked native body fixture and measurable independent acceptance checks. No new features, PRs or deployments.
