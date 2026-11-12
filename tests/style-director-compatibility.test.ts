@@ -8,6 +8,7 @@ import {
   styleDirectorCandidatePlacketIntent,
   styleDirectorCandidatePlacket,
   styleDirectorCandidatePlacketIssues,
+  styleDirectorCandidatePocketIssues,
   styleDirectorCandidateCuffIntent,
   styleDirectorCandidateCuff,
   styleDirectorCandidateCuffIssues,
@@ -3851,4 +3852,30 @@ test("explicit placket prohibitions fail closed for missing and cross-category l
       assert.equal(JSON.stringify(locked), before);
     }
   }
+});
+
+
+test("explicit pocket requests and exclusions reject stale locked IDs without mutation", () => {
+  for (const wording of [
+    "Choose flap pocket",
+    "Choose patch pocket",
+    "No pocket",
+    "Flap pocket is prohibited",
+    "Patch pocket is not allowed",
+  ]) {
+    for (const pocket of [undefined, "retired_pocket_id", "french_placket"]) {
+      const locked = Object.freeze({ pocket }) as unknown as Parameters<typeof styleDirectorCandidatePocketIssues>[1];
+      const snapshot = JSON.stringify(locked);
+      const issues = styleDirectorCandidatePocketIssues(wording, locked);
+      assert.deepEqual(issues.map(issue => issue.code), ["candidate_pocket_mismatch"], wording);
+      assert.deepEqual(styleDirectorCandidatePocketIssues(wording, locked), issues);
+      assert.equal(JSON.stringify(locked), snapshot);
+    }
+  }
+  assert.deepEqual(styleDirectorCandidatePocketIssues("Choose flap pocket",
+    { pocket: "flap_pocket" }), []);
+  assert.deepEqual(styleDirectorCandidatePocketIssues("No pocket",
+    { pocket: "no_pocket" }), []);
+  assert.deepEqual(styleDirectorCandidatePocketIssues("Flap pocket is prohibited",
+    { pocket: "single_patch_pocket" }), []);
 });
