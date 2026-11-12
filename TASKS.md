@@ -57,3 +57,11 @@
 - **Root cause:** No authoritative Worker C milestone manifest or source redesign acceptance gate on `main`, and the locked original source cut edges cannot be cleared by the two previously unsuccessful centroid-displacement strategies. Previous real Blender contact and hard preflight blockers remain open.
 - **Required to resume:** Authoritative scope, locked source/body test fixture, and measurable body-BVH zero-contact, mesh topology, UV/sewing and four-view evaluation criteria before a redesigned cut-edge approach.
 - **Label:** **software-verified, not physically verified**; **production-approved: false**.
+
+## Worker C — requested repeat check (2026-11-12, 04:14 UTC)
+
+- **STOP remains effective:** milestone BLOCKED; authoritative `TASKS.md` absent from `main`; original scanned-body collision and preflight gates remain unresolved after failed fixed-edge centroid approaches.
+- **Executed test on the exact existing source:** `git hash-object /mnt/data/worker-c-20261112-recheck/test_worker_c_fixed_cut_edge_clearance.py` returned `f2425badbc8af0f785c51dd04c8e1122d9ed6f18` (matches this branch's GitHub file).
+- **Fresh results:** `python3 -m unittest discover -s /mnt/data/worker-c-20261112-recheck -p 'test_worker_c_fixed_cut_edge_clearance.py' -v` — **4/4 PASS (0.001s)**; `python3 -m py_compile /mnt/data/worker-c-20261112-recheck/test_worker_c_fixed_cut_edge_clearance.py` — **PASS**. These only test the 1 mm fixed-source-edge versus 7 mm research threshold on a synthetic planar body, not the scanned garment.
+- **Native test:** `blender` not found; **NOT RUN**. No Blender geometry collision clearance, cloth UV, sewing, visual fit or production evidence has been newly established.
+- **Root cause and disposition:** missing authoritative milestone/source fixture and persistent real-body contacts; moving only bridge centroids cannot move the original fixed cut edges. Further centroid-only trials prohibited by two-attempt rule. **software-verified, not physically verified**; **STOP**, no new feature/PR/deploy.
