@@ -106,3 +106,14 @@
 - Only this assigned-branch blocker record updated. No new feature, PR, Style Director, Tailor Handoff or 3D changes.
 
 **Worker result: STOP.**
+
+## Recheck — 2026-11-12 04:43 UTC
+
+- Read the assigned-branch `TASKS.md`: Worker B's collar/cuff/trouser milestone is already **BLOCKED** and the same approach failed more than twice.
+- Verified `main:TASKS.md` is still absent (GitHub 404).
+- Verified locally with `find /mnt/data -maxdepth 3` that neither a `.git` checkout nor `TASKS.md` is present. Both `git` and `node` executables exist, but the source is absent. Did not repeat the failed DNS clone.
+- **Root cause:** No authoritative shared milestone acceptance criteria, and no runnable project checkout/Chromium environment for mandatory app tests and responsive visual checks.
+- **Application tests:** not run. **390/768/1440px visual checks:** not run. **Code changes:** none. **Physical fabric/measurement inputs:** none. **Verification:** **not software-verified**.
+- No new features, PRs, or edits to Style Director, Tailor Handoff or 3D files. Stop under the two-attempt rule.
+
+**Worker result: STOP.**
