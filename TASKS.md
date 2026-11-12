@@ -86,3 +86,13 @@
 - No work on Style Director, Tailor Handoff or 3D; no new features or PRs.
 
 **Worker result: STOP.**
+
+## Recheck — 2026-11-12 04:35 UTC
+
+- **Verified:** Existing Worker B milestone in this file still states **BLOCKED** after two or more failed attempts; `main:TASKS.md` still returns GitHub 404.
+- **Verified locally:** No `.git` checkout or `TASKS.md` under `/mnt/data` to depth three. Git and Node exist, but source checkout/browser verification cannot run. The earlier DNS-failing clone method was not retried.
+- **Root cause:** No authoritative shared milestone acceptance criteria or runnable source/Chromium environment to verify collar, cuff and trouser fidelity.
+- **Tests:** not run. **390/768/1440 browser visual checks:** not run. **Code changes:** none. **Physical data:** none. **Status:** BLOCKED; **not software-verified**.
+- No changes to other workers, features or PRs.
+
+**Worker result: STOP.**
