@@ -96,3 +96,13 @@
 - No changes to other workers, features or PRs.
 
 **Worker result: STOP.**
+
+## Recheck — 2026-11-12 04:40 UTC
+
+- Read Worker B `TASKS.md` on the assigned branch. It explicitly remains **BLOCKED**, with two or more prior attempts and instructions to STOP.
+- Confirmed `main:TASKS.md` still returns GitHub 404; independently authored acceptance criteria are unavailable.
+- **Root cause:** The required source checkout and Chromium testing environment were not available in prior verified attempts (GitHub clone repeatedly failed with DNS errors). There is no evidence they have been restored. The two-attempt rule prohibits repeating the same failing approach or making untested visual edits.
+- **Application tests:** not run; **collar/cuff/trouser visual checks (390/768/1440):** not run; **code changed:** none; **physical verification:** none; **label:** **not software-verified**.
+- Only this assigned-branch blocker record updated. No new feature, PR, Style Director, Tailor Handoff or 3D changes.
+
+**Worker result: STOP.**
