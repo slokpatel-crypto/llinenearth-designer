@@ -152,3 +152,12 @@
 - **Native tests:** `blender` not installed; **no new** scanned-body collision, UV/sewing, fitted-geometry or four-angle visual results. Production fit remains unapproved.
 - **Root cause:** No authoritative assigned milestone, locked real test-body fixture or zero-contact acceptance criteria. Two previous centroid-only approaches failed because they cannot move the original fixed source edges. Requires source-edge redesign and independent native verification before any further geometry changes.
 - **Scope:** Documentation record only; no additional features, geometry files, other workers' files, PRs, or deployments. **STOP**.
+
+## Worker C — 2026-11-12 04:28:19 UTC request: STOP
+
+- **Current status:** BLOCKED; `main/TASKS.md` still returns 404. No approved milestone acceptance manifest; fixed original source-edge collisions remain unresolved after two failed centroid-offset approaches.
+- **Executed on this turn:** `python3 -m unittest discover -s /mnt/data/worker-c-live -p 'test_worker_c_fixed_cut_edge_clearance.py' -v` — **4/4 passed (0.002s)**; `python3 -m py_compile /mnt/data/worker-c-live/test_worker_c_fixed_cut_edge_clearance.py` — **passed** on Python 3.13.5. `git hash-object` of the executed file matched branch blob `f2425badbc8af0f785c51dd04c8e1122d9ed6f18`.
+- **Verified:** Synthetic fixed-edge test only: 1 mm unchanged clearance, 3 mm endpoint upper bound against research-only 7 mm. **software-verified, not physically verified**.
+- **Not run:** Native Blender (no executable found), scanned-body collision preflight, garment UV/sewing/fit or four-view checks. Production approval remains false.
+- **Root cause:** Immutable original cut edges cannot be cleared by shifting only patch centroids; previous two approaches failed, and authoritative real-body acceptance criteria are absent. Require original seam/source-edge redesign plus native BVH zero-contact, topology and UV validation before resuming.
+- **Changes:** `TASKS.md` only; no new features, other workers' files, PRs, or deployments. **STOP**.
