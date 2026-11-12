@@ -56,3 +56,11 @@
 - **Root cause unchanged:** No authoritative shared milestone and no runnable local project checkout / Chromium QA setup. Earlier clone attempts failed on DNS, so this method was not repeated.
 - **Code changes:** none. **Application tests:** not run. **390/768/1440 visual checks:** not run. **Physical fabric/measurement inputs:** none. **Verification:** not software-verified.
 - No unrelated files, features or PRs changed. **STOP.**
+
+## Recheck — 2026-11-12 04:25 UTC
+
+- Re-read current Worker B `TASKS.md`, which already records two failed attempts and the required STOP condition. `main:TASKS.md` remains absent (GitHub 404).
+- **Root cause:** Without an authoritative shared milestone and a runnable local repository/Chromium environment, the assigned collar, cuff and trouser visual-accuracy gate cannot be implemented and validated responsibly. Previous GitHub clone attempts failed due to DNS and must not be repeated without an environmental change.
+- **Application tests:** none run. **Responsive visual checks:** none run. **Code changed:** none. **Physical data used:** none. **Verification:** not software-verified. No changes outside this blocker record and no PR.
+
+**Worker result: STOP.**
