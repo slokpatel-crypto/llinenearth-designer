@@ -64,7 +64,7 @@ function candidateCollarIntent(name: string): {
   ambiguous: boolean;
 } {
   const token = String.raw`(?:english[- ]+spread\s*[/&-]\s*british[- ]collar|cuban(?:\s*[/&-]\s*|\s+)camp|camp(?:\s*[/&-]\s*|\s+)cuban|mandarin(?:\s*[/&-]\s*|\s+)band|band(?:\s*[/&-]\s*|\s+)mandarin|camp|cuban|band|mandarin|cutaway|(?:english[- ]+)?spread|(?:soft[- ]+)?button[- ]?down|point(?:[ -]?(?:standard|\(standard\)))?|club|wing|tab|pin)(?:[- ]collar)?`;
-  const prefixBan = new RegExp("\\b(?:no|without|avoid|never|not|do\\s+not|don['’]?t)\\s+(?:(?:use|include|choose|select|wear|add|have|want)\\s+)?(?:(?:a|any|the)\\s+)?(" + token + ")\\b", "gi");
+  const prefixBan = new RegExp("\\b(?:no|without|avoid|never|not|do\\s+not|don['’]?t|(?:must|should|shall|can|could|would|may|might)\\s+not|(?:mustn|shouldn|shan|can|couldn|wouldn)['’]?t|cannot)\\s+(?:(?:use|include|choose|select|wear|add|have|want)\\s+)?(?:(?:a|any|the)\\s+)?(" + token + ")\\b", "gi");
   const suffixBan = new RegExp("\\b(" + token + ")\\s+(?:(?:is|are)\\s+)?(?:forbidden|prohibited|banned|disallowed|unwanted|never\\s+(?:allowed|permitted|to\\s+be\\s+(?:used|worn|chosen|selected|included))|not\\s+(?:allowed|permitted|wanted|to\\s+be\\s+(?:used|worn|chosen|selected|included))|(?:isn['’]?t|aren['’]?t)\\s+wanted|(?:(?:must|should)\\s+(?:not|never)|(?:mustn|shouldn|can)['’]?t|cannot)\\s+be\\s+(?:used|worn|chosen|selected|included))\\b", "gi");
   const prefixOptional = new RegExp("\\b(?:optional|maybe)\\s+(" + token + ")\\b", "gi");
   const suffixOptional = new RegExp("\\b(" + token + ")\\s+(?:(?:is|are)\\s+)?(?:optional|not\\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\\s+(?:required|needed|mandatory))\\b", "gi");
