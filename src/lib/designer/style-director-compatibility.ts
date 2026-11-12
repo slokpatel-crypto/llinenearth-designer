@@ -189,7 +189,7 @@ const candidateSleeveLengths = (name: string) => {
     (_match, word: string) => ban(word),
   );
   const withoutSuffixBans = withoutPrefixedBans.replace(
-    /\b((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|disallowed|unwanted|never\s+(?:allowed|permitted)|not\s+(?:allowed|permitted|wanted|to\s+be\s+(?:used|worn|chosen|selected|included))|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:must|should)\s+(?:not|never)|(?:mustn|shouldn|can)['’]?t|cannot)\s+be\s+(?:used|worn|chosen|selected|included))\b/gi,
+    /\b((?:short|half|long|full)[ -]?sleeve(?:s|d)?)\s+(?:(?:are|is)\s+)?(?:forbidden|prohibited|banned|disallowed|unwanted|never\s+(?:allowed|permitted)|not\s+(?:allowed|permitted|wanted|to\s+be\s+(?:used|worn|chosen|selected|included))|(?:isn['’]?t|aren['’]?t)\s+(?:wanted|allowed|permitted|to\s+be\s+(?:used|worn|chosen|selected|included))|(?:(?:must|should)\s+(?:not|never)|(?:mustn|shouldn|can)['’]?t|cannot)\s+(?:be\s+)?(?:used|worn|chosen|selected|included))\b/gi,
     (_match, word: string) => ban(word),
   );
   // A sleeve described as optional is not an instruction to cut that
