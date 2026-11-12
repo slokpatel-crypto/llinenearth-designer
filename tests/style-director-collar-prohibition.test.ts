@@ -314,7 +314,7 @@ test("canonical collar aliases and independently prohibited variants stay unambi
 test("never-to-be-used collar bans do not become positive locked construction requests", () => {
   for (const [wording, prohibited, permitted] of [
     ["Camp Collar is never to be used", "cuban_camp_collar", "spread_collar"],
-    ["Wing Collar should never to be used", "wing_collar", "spread_collar"],
+    ["Wing Collar is never to be worn", "wing_collar", "spread_collar"],
     ["Tab Collar is never to be selected", "tab_collar", "spread_collar"],
     ["Club Collar is never to be included", "club_collar", "spread_collar"],
   ] as const) {
