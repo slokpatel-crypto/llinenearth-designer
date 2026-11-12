@@ -80,3 +80,25 @@ test("unknown sleeve IDs do not masquerade as full-length construction conflicts
       issue.code === "short_sleeve_type_mismatch"), sleeve);
   }
 });
+
+test("roll-up prohibitions never override an explicitly locked ordinary sleeve", () => {
+  const cases = [
+    "Roll-up styled is disallowed",
+    "Roll-up sleeves are not to be included",
+    "Roll-up styled is not to be used",
+    "Never select roll-up styled",
+  ];
+  for (const wording of cases) {
+    for (const sleeve of ["full_sleeve", "half_sleeve"]) {
+      const locked = Object.freeze({ sleeve });
+      assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, locked), [], wording);
+      assert.equal(locked.sleeve, sleeve, "validation must not mutate the locked ID");
+    }
+    assert.deepEqual(
+      styleDirectorCandidateSleeveIssues(wording, Object.freeze({ sleeve: "roll_up_styled" }))
+        .map(issue => issue.code),
+      ["candidate_sleeve_mismatch"],
+      wording,
+    );
+  }
+});
