@@ -65,3 +65,11 @@
 - **Fresh results:** `python3 -m unittest discover -s /mnt/data/worker-c-20261112-recheck -p 'test_worker_c_fixed_cut_edge_clearance.py' -v` — **4/4 PASS (0.001s)**; `python3 -m py_compile /mnt/data/worker-c-20261112-recheck/test_worker_c_fixed_cut_edge_clearance.py` — **PASS**. These only test the 1 mm fixed-source-edge versus 7 mm research threshold on a synthetic planar body, not the scanned garment.
 - **Native test:** `blender` not found; **NOT RUN**. No Blender geometry collision clearance, cloth UV, sewing, visual fit or production evidence has been newly established.
 - **Root cause and disposition:** missing authoritative milestone/source fixture and persistent real-body contacts; moving only bridge centroids cannot move the original fixed cut edges. Further centroid-only trials prohibited by two-attempt rule. **software-verified, not physically verified**; **STOP**, no new feature/PR/deploy.
+
+## Worker C — final blocked recheck (2026-11-12T04:16:02Z)
+
+- **Test source:** Existing `tests/python/test_worker_c_fixed_cut_edge_clearance.py`; local `git hash-object` exactly matched GitHub blob `f2425badbc8af0f785c51dd04c8e1122d9ed6f18`.
+- **Executed:** `python3 -m unittest discover -s /mnt/data/worker-c-20261112-recheck -p 'test_worker_c_fixed_cut_edge_clearance.py' -v` — **4/4 passed in 0.001s**; `python3 -m py_compile` of the same file — **passed**.
+- **Verified only in synthetic test body:** A fixed cut edge remains 1 mm from the test plane after its interior bridge centroid shifts; the continuous endpoint upper bound is 3 mm, below the research-only 7 mm threshold. These are **software-verified, not physically verified** tests and are **not** a native scanned-body fit result.
+- **Not run:** Native Blender (`command -v blender` found no executable), new real-body collision checks, UV/sewing or photographic four-angle fit. No geometry, export or other worker code modified.
+- **Root cause / STOP:** No authoritative milestone specification on `main`; previous real-geometry BVH contact and preflight failures persist; two centroid-only strategies do not remove collisions at immutable original cut edges. **BLOCKED — STOP.** Do not repeat the failed geometry approach or create features, PRs or deployments.
