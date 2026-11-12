@@ -125,3 +125,13 @@
 - **Not run:** `command -v blender` found no executable. No native Blender BVH collision, production mesh, UV, sewing, four-view, or physical fit verification.
 - **Root cause:** Original source edges remain fixed when only interior bridge centroids are moved; two previous displacement approaches left or worsened recorded scanned-body contacts. An authoritative source-pattern redesign specification, locked scanned-body fixture, and independent zero-contact/UV/topology acceptance gates are required before more geometry work.
 - **Scope:** This `TASKS.md` status update only; no garment geometry, other worker files, new PRs, or deployment. **software-verified, not physically verified. STOP.**
+
+## Worker C — blocked rerun for 2026-11-12 04:23:47 UTC request
+
+- **State:** BLOCKED — STOP (two-attempt rule); authoritative `TASKS.md` still absent from `main`. No geometry changes attempted.
+- **Verified exact test source:** Local `/mnt/data/worker-c-live/test_worker_c_fixed_cut_edge_clearance.py` `git hash-object` returned `f2425badbc8af0f785c51dd04c8e1122d9ed6f18`, matching the GitHub branch file.
+- **Actually executed in this turn:** `python3 -m unittest discover -s /mnt/data/worker-c-live -p 'test_worker_c_fixed_cut_edge_clearance.py' -v` — **4 passed (0.002 s)**. `python3 -m py_compile /mnt/data/worker-c-live/test_worker_c_fixed_cut_edge_clearance.py` — **passed**.
+- **Synthetic-only evidence:** An unchanged cut edge remains 1 mm from the flat test body after a centroid-only change; the computed 3 mm upper bound is below the 7 mm research target. This does **not** demonstrate clearance of original scan meshes.
+- **Unavailable:** `blender` not installed. No native scanned-body BVH, garment preflight, UV/sewing, four-view, or physical fitting test run.
+- **Root cause / unblock:** Missing authoritative acceptance scope and real fixture; both earlier centroid displacement approaches failed against original fixed source edges. Require redesign of original seam-edge topology and native zero-contact/UV/topology acceptance gates before further implementation.
+- **Classification:** **software-verified, not physically verified**. No new features, PRs, other worker changes or deployment. **STOP**.
