@@ -35,3 +35,17 @@ Base: `titan-parallel-style-director` at `9fcbcd456aa5c27922875d11b615f6423ed1ce
 ## Disposition
 
 One safety defect fixed and targeted-tested. **Not ready for production; not an authenticated owner/tailor sign-off; no merge, deploy or new PR.**
+
+## Worker A integration candidate — 2026-11-12
+
+**Status: merged into isolated candidate branch, not merged to main; combined CI pending.**
+
+- Reviewed `main..titan-parallel-style-director` and `main..titan-parallel-tailor-handoff`: zero shared modified paths. Both start from the same `main` baseline `4dd8020abd83429449ff53ea5bb71b046394d86e`.
+- Ported five exact donor blobs from Tailor Handoff head `28290501a7d79bce875fbcde1584886e903c9ea1` into this candidate on Style Director base `9fcbcd456aa5c27922875d11b615f6423ed1ce1b`: `handoff-measurements.ts`, `production-handoff.ts`, `tech-pack.ts`, `tests/handoff-measurement-integrity.test.ts` and `docs/TITAN_PARALLEL_TAILOR_HANDOFF.md`.
+- The merge was an atomic Git tree/commit with parent `06cbd29ce29c10d280d8155d3996921d0319ae76`, commit `80a577459a7d1b4132868ced3ae0827cb6808b2e`. The five committed blobs were independently re-fetched and match the donor blobs **bit for bit**.
+- Candidate versus primary Style Director branch: **0 behind / 4 ahead**, only eight intended paths: the five Tailor Handoff files, two Style Director validation files, and this `TASKS.md`.
+- Donor Tailor Handoff exact head: GitHub **Full CI SUCCESS** and **Deep Engine Non-3D QA SUCCESS**. Style Director donor exact head: **Deep Engine Non-3D QA SUCCESS**, Full CI **in progress** at inspection. These independent source checks do **not** establish that the combined candidate passed.
+- Combined candidate full `quality/test/engine/preview/release/build/browser` CI: **not run** (normal workflows use PR/main triggers; no extra PR was opened). Do not call this production-ready until exact combined SHA passes and an integration reviewer signs off.
+- No measured body data, certified fabric scale, signed seam allowance, physical fit sample or tailor signoff was supplied. Software validation and unsigned tailor review packets **never authorise cutting**.
+
+**Worker A next acceptance action:** run and inspect exact combined-head Full CI + Non-3D QA with reviewer-authorized integration workflow; resolve failures strictly within Worker A's scope. Separate physical acceptance is still blocked. Do not duplicate older draft PRs or automatically deploy.
