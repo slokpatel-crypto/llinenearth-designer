@@ -70,3 +70,22 @@ test("contradictory pocket instructions trigger wording review", () => {
     requested: "no_pocket", prohibited: [], ambiguous: false,
   });
 });
+
+test("explicit pocket restrictions reject unreadable locked option IDs without rewriting them", () => {
+  for (const wording of [
+    "Flap pocket is not wanted",
+    "Flap pocket should not be selected",
+    "Patch pocket required",
+  ]) {
+    for (const pocket of [undefined, "retired_pocket_id", "wing_collar"]) {
+      const locked = Object.freeze({ pocket }) as unknown as Parameters<typeof styleDirectorCandidatePocketIssues>[1];
+      const snapshot = JSON.stringify(locked);
+      const first = styleDirectorCandidatePocketIssues(wording, locked);
+      assert.deepEqual(first.map(issue => issue.code), ["candidate_pocket_mismatch"], wording);
+      assert.deepEqual(styleDirectorCandidatePocketIssues(wording, locked), first);
+      assert.equal(JSON.stringify(locked), snapshot, "saved pocket option must remain unchanged");
+    }
+  }
+  assert.deepEqual(styleDirectorCandidatePocketIssues(
+    "Flap pocket is not wanted", { pocket: "single_patch_pocket" }), []);
+});
