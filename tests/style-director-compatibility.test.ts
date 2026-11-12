@@ -3835,3 +3835,20 @@ test("prohibited collar wording cannot certify missing or cross-category locked 
     }
   }
 });
+
+test("explicit placket prohibitions fail closed for missing and cross-category locked IDs", () => {
+  for (const wording of [
+    "French placket is prohibited",
+    "Covered placket is not allowed",
+    "Contrast placket must not be used",
+  ]) {
+    for (const placket of [undefined, "retired_placket_id", "wing_collar"]) {
+      const locked = Object.freeze({ placket }) as unknown as Parameters<typeof styleDirectorCandidatePlacketIssues>[1];
+      const before = JSON.stringify(locked);
+      const first = styleDirectorCandidatePlacketIssues(wording, locked);
+      assert.deepEqual(first.map(issue => issue.code), ["candidate_placket_mismatch"], wording);
+      assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, locked), first);
+      assert.equal(JSON.stringify(locked), before);
+    }
+  }
+});
