@@ -75,3 +75,14 @@
 - No other worker files, features or PRs changed.
 
 **Worker result: STOP.**
+
+## Recheck — 2026-11-12 04:33 UTC
+
+- Read current Worker B milestone and previous STOP records on `worker-b-designer-studio`; task remains explicitly **BLOCKED** after more than two attempts.
+- Queried `main:TASKS.md`: still GitHub 404, so authoritative acceptance criteria remain missing.
+- Checked `/mnt/data` to depth three: no `.git` checkout or `TASKS.md`. Git and Node are installed, but repository tests and Chromium visual checks cannot be run here. Previous clone attempts were blocked by DNS; do not repeat an unchanged approach.
+- **Root cause:** No shared milestone and no runnable project checkout/browser environment to validate collar, cuff and trouser changes.
+- **Tests:** not run. **Visual checks at 390/768/1440:** not run. **Designer Studio code changed:** none. **Physical evidence:** none. **Verification:** **not software-verified**.
+- No work on Style Director, Tailor Handoff or 3D; no new features or PRs.
+
+**Worker result: STOP.**
