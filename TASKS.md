@@ -135,3 +135,11 @@
 - **Unavailable:** `blender` not installed. No native scanned-body BVH, garment preflight, UV/sewing, four-view, or physical fitting test run.
 - **Root cause / unblock:** Missing authoritative acceptance scope and real fixture; both earlier centroid displacement approaches failed against original fixed source edges. Require redesign of original seam-edge topology and native zero-contact/UV/topology acceptance gates before further implementation.
 - **Classification:** **software-verified, not physically verified**. No new features, PRs, other worker changes or deployment. **STOP**.
+
+## Worker C — 2026-11-12 04:24:48 UTC request: STOP
+
+- **Status:** BLOCKED / STOP (existing two-attempt rule). `TASKS.md` remains absent from `main`; this branch's document is only a blocker record.
+- **Tests executed this turn:** Retrieved the existing Worker C test source and recreated it byte-for-byte locally. `git hash-object /mnt/data/worker-c-verification/test_worker_c_fixed_cut_edge_clearance.py` = `f2425badbc8af0f785c51dd04c8e1122d9ed6f18` (matches GitHub file SHA). `python3 -m unittest discover -s /mnt/data/worker-c-verification -p 'test_worker_c_fixed_cut_edge_clearance.py' -v`: **4/4 PASS in 0.002s**. `python3 -m py_compile`: **PASS**, Python 3.13.5.
+- **Verified, synthetic only:** Fixed test edge remains at 1 mm after centroid-only movement; endpoint Lipschitz upper bound is 3 mm versus research-only 7 mm. Non-crossing does not imply clearance. **software-verified, not physically verified**.
+- **Native checks not run:** `command -v blender` = not installed; no new actual scanned-body BVH, mesh topology, UV/sewing, four-angle or fitted garment evidence.
+- **Root cause and next gate:** Authoritative Worker C milestone, locked scanned-body fixture and measurable native acceptance gates absent; previous two centroid-only approaches failed to resolve original source-edge collisions. Resume only with a specified source-edge redesign and independent zero-contact/UV/topology tests. No new features, mesh edits, other-worker files, PRs or deployments. **STOP**.
