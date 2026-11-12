@@ -236,7 +236,7 @@ export function styleDirectorCandidateRollUpSleeveIntent(name: string): {
     // Postposed rejection forbids the rolled sleeve; optional language is
     // neutral and must not silently change the existing sleeve ID.
     const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t|cannot|can['’]?t|(?:must|should)\s+(?:not|never)|(?:mustn|shouldn)['’]?t)\s+(?:(?:use|add|include|choose|select|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
-      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|disallowed|unwanted|never\s+(?:allowed|permitted)|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+(?:wanted|allowed|permitted)|(?:(?:must|should)\s+(?:not|never)|(?:mustn|shouldn|can)['’]?t|cannot)\s+(?:be\s+)?(?:used|chosen|selected|worn|included))\b/i.test(suffix);
+      /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|disallowed|unwanted|never\s+(?:allowed|permitted)|not\s+(?:allowed|permitted|wanted|to\s+be\s+(?:used|worn|chosen|selected|included))|(?:isn['’]?t|aren['’]?t)\s+(?:wanted|allowed|permitted|to\s+be\s+(?:used|worn|chosen|selected|included))|(?:(?:must|should)\s+(?:not|never)|(?:mustn|shouldn|can)['’]?t|cannot)\s+(?:be\s+)?(?:used|chosen|selected|worn|included))\b/i.test(suffix);
     const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
       /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory|necessary)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory|necessary))\b/i.test(suffix);
     if (banned) prohibited = true;
