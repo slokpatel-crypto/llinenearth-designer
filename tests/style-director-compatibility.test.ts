@@ -3736,3 +3736,26 @@ test("postposed roll-up not-to-be-used instructions cannot select prohibited con
   assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("Roll-up styled is to be used"),
     { requested: true, prohibited: false, ambiguous: false });
 });
+
+test("contracted and not-to-be ordinary sleeve bans reject forbidden locked IDs", () => {
+  for (const [wording, forbidden, permitted] of [
+    ["Short sleeves aren't allowed", "half_sleeve", "full_sleeve"],
+    ["Half sleeves aren’t permitted", "half_sleeve", "full_sleeve"],
+    ["Long sleeves aren't to be worn", "full_sleeve", "half_sleeve"],
+    ["Full sleeves are not to be used", "full_sleeve", "half_sleeve"],
+    ["Short sleeves cannot be selected", "half_sleeve", "full_sleeve"],
+    ["Long sleeves shouldn't be included", "full_sleeve", "half_sleeve"],
+  ] as const) {
+    const locked = spec({ sleeve: forbidden });
+    const snapshot = JSON.stringify(locked);
+    Object.freeze(locked.shirt);
+    const issues = styleDirectorCandidateSleeveIssues(wording, locked.shirt);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_sleeve_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, locked.shirt), issues);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, { sleeve: permitted }), [], wording);
+    assert.equal(styleDirectorCandidateSleeve(wording), null, wording);
+    assert.equal(JSON.stringify(locked), snapshot);
+  }
+  assert.deepEqual(styleDirectorCandidateSleeveIssues(
+    "Short sleeves are allowed", { sleeve: "half_sleeve" }), []);
+});
