@@ -36,3 +36,13 @@
 - **Root cause:** The authoritative assigned `TASKS.md` milestone, real source/test-body fixture and executable zero-contact acceptance criteria remain unavailable; earlier scanned-body bridge contacts persist and two centroid-offset strategies failed to create clearance while preserving immutable source cut edges.
 - **Next allowed milestone action:** After authoritative scope and real fixture are provided, redesign original source seam/edge topology (rather than repeat centroid-only displacements), then independently verify body BVH, mesh validity, UV/sewing constraints and four-view evidence before any fit claim.
 - **Classification:** **software-verified, not physically verified**. Production approval remains false.
+
+## Worker C — repeated STOP verification (2026-11-12, 04:11 UTC request)
+
+- **Status:** BLOCKED; STOP under the existing two-attempt rule. No source geometry, model, UV, fabric or out-of-scope files modified.
+- **Source checked:** Retrieved `tests/python/test_worker_c_fixed_cut_edge_clearance.py` from this exact branch; a local source copy had `git hash-object` **`f2425badbc8af0f785c51dd04c8e1122d9ed6f18`**, identical to the fetched GitHub blob.
+- **Tests actually executed now:** Python 3.13.5 `python3 -m unittest -v /mnt/data/worker-c-recheck/test_worker_c_fixed_cut_edge_clearance.py` — **4/4 passed** in 0.002s. `python3 -m py_compile /mnt/data/worker-c-recheck/test_worker_c_fixed_cut_edge_clearance.py` — **passed**.
+- **What those tests establish:** On the synthetic plane fixture only, a fixed source edge 1 mm from the body does not move when the bridge centroid changes; the endpoint-based continuous upper bound is 3 mm (under research-only 7 mm); no plane crossing is not sufficient to establish clearance; a different edge position produces 8 mm clearance in the toy fixture.
+- **Not run:** Native scanned-body Blender, realistic garment collisions, UV/sewing/fit preflight, and four-angle appearance review. The `blender` executable was absent (`command -v blender` returned no path). No new acceptance or production claims.
+- **Root cause / STOP:** The authoritative Worker C milestone manifest is still missing from `main`; existing real-geometry contact evidence remains unresolved, and centroid-only variants already failed. Do not repeat these approaches or start new features/PRs. Resume only with a versioned source-pattern redesign specification, locked scanned-body test fixture, and measurable zero-contact/topology/UV gates.
+- **Verification label:** **software-verified, not physically verified**. **Production approval: false**.
