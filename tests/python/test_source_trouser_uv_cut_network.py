@@ -59,6 +59,13 @@ same_junction = compare_junction((
 ))
 assert same_junction["maximumPairwiseRigidRotationDisagreementDegrees"] == 0.0
 assert same_junction["maximumPairwiseRigidTranslationDisagreementMm"] == 0.0
+assert same_junction["minimumDeterministicRigidTransformGroupCount"] == 1
+assert same_junction["minimumDeterministicRigidTransformGroups"] == [{
+    "incidentOriginalSourceEdges": [[1, 2], [1, 3], [1, 4]],
+    "maximumWithinGroupRotationDisagreementDegrees": 0.0,
+    "maximumWithinGroupTranslationDisagreementMm": 0.0,
+}]
+assert same_junction["allIncidentEdgesRequireDistinctRigidTransforms"] is False
 assert same_junction["singleDeterministicRigidTransformClosesAllIncidentEdges"] is True
 assert same_junction["junctionRigidUvConsistencyApproved"] is False
 different_junction = compare_junction((
@@ -68,6 +75,19 @@ different_junction = compare_junction((
 ))
 assert different_junction["maximumPairwiseRigidRotationDisagreementDegrees"] == 90.0
 assert different_junction["maximumPairwiseRigidTranslationDisagreementMm"] > 0
+assert different_junction["minimumDeterministicRigidTransformGroupCount"] == 2
+assert different_junction["minimumDeterministicRigidTransformGroups"] == [
+    {
+        "incidentOriginalSourceEdges": [[1, 2], [1, 3]],
+        "maximumWithinGroupRotationDisagreementDegrees": 0.0,
+        "maximumWithinGroupTranslationDisagreementMm": 0.0,
+    }, {
+        "incidentOriginalSourceEdges": [[1, 4]],
+        "maximumWithinGroupRotationDisagreementDegrees": 0.0,
+        "maximumWithinGroupTranslationDisagreementMm": 0.0,
+    },
+]
+assert different_junction["allIncidentEdgesRequireDistinctRigidTransforms"] is False
 assert different_junction["singleDeterministicRigidTransformClosesAllIncidentEdges"] is False
 for bad in (
         (),
@@ -466,6 +486,14 @@ assert all(
     )
     and r["maximumPairwiseRigidRotationDisagreementDegrees"] >= 0
     and r["maximumPairwiseRigidTranslationDisagreementMm"] >= 0
+    and 1 <= r["minimumDeterministicRigidTransformGroupCount"] <=
+        r["sourceUvCutGraphDegree"]
+    and len(r["minimumDeterministicRigidTransformGroups"]) ==
+        r["minimumDeterministicRigidTransformGroupCount"]
+    and sum(len(group["incidentOriginalSourceEdges"])
+            for group in r["minimumDeterministicRigidTransformGroups"]) ==
+        r["sourceUvCutGraphDegree"]
+    and type(r["allIncidentEdgesRequireDistinctRigidTransforms"]) is bool
     and type(r["singleDeterministicRigidTransformClosesAllIncidentEdges"]) is bool
     and r["junctionRigidUvConsistencyApproved"] is False
     and type(r["touchesActualOriginalOpenBoundary"]) is bool

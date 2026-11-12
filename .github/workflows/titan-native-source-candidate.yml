@@ -1319,6 +1319,32 @@ jobs:
                   translations=[
                       part["properRigidTranslationMm"] for part in transforms
                   ]
+                  def transforms_compatible(a,b):
+                      return (
+                          abs(math.remainder(rotations[a]-rotations[b],360.0))
+                              <= 0.000001
+                          and math.dist(translations[a],translations[b])
+                              <= 0.00001
+                      )
+                  def admits_group_count(limit):
+                      groups=[]
+                      def assign(index):
+                          if index == degree:
+                              return True
+                          for group in groups:
+                              if all(transforms_compatible(index,other)
+                                     for other in group):
+                                  group.append(index)
+                                  if assign(index+1):
+                                      return True
+                                  group.pop()
+                          if len(groups) < limit:
+                              groups.append([index])
+                              if assign(index+1):
+                                  return True
+                              groups.pop()
+                          return False
+                      return assign(0)
                   assert all(
                       math.isfinite(part["properRigidRotationDegrees"])
                       and len(part["properRigidTranslationMm"]) == 2
@@ -1349,7 +1375,41 @@ jobs:
                       "singleDeterministicRigidTransformClosesAllIncidentEdges"
                   ] is (rotation_spread <= 0.000001 and
                         translation_spread <= 0.00001)
+                  minimum_count=next(
+                      count for count in range(1,degree+1)
+                      if admits_group_count(count)
+                  )
+                  reported_groups=row[
+                      "minimumDeterministicRigidTransformGroups"
+                  ]
+                  assert row[
+                      "minimumDeterministicRigidTransformGroupCount"
+                  ] == len(reported_groups) == minimum_count
+                  grouped_edges=[
+                      tuple(edge) for group in reported_groups
+                      for edge in group["incidentOriginalSourceEdges"]
+                  ]
+                  assert sorted(grouped_edges) == sorted(
+                      tuple(part["originalSourceEdge"])
+                      for part in transforms
+                  )
+                  transform_by_edge={
+                      tuple(part["originalSourceEdge"]):index
+                      for index,part in enumerate(transforms)
+                  }
+                  for group in reported_groups:
+                      indices=[transform_by_edge[tuple(edge)] for edge in
+                               group["incidentOriginalSourceEdges"]]
+                      assert all(
+                          transforms_compatible(a,b)
+                          for pos,a in enumerate(indices)
+                          for b in indices[pos+1:]
+                      )
+                  assert row[
+                      "allIncidentEdgesRequireDistinctRigidTransforms"
+                  ] is (minimum_count == degree)
                   assert row["junctionRigidUvConsistencyApproved"] is False
+              print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_MINIMUM_RIGID_GROUPS_RESEARCH_ONLY",json.dumps(junctions[0] if junctions else {},sort_keys=True))
               print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_RIGID_CONSISTENCY_RESEARCH_ONLY",json.dumps(junctions[0] if junctions else {},sort_keys=True))
               assert [
                   (-row["sourceUvCutGraphDegree"],

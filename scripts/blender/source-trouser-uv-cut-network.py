@@ -189,6 +189,72 @@ def compare_original_source_uv_junction_rigid_alignments(incident_edges):
         raise ValueError("Actual UV branch edges do not share one source junction.")
     rotations = [row["properRigidRotationDegrees"] for row in rows]
     translations = [row["properRigidTranslationMm"] for row in rows]
+    def compatible(i, j):
+        return (
+            abs(math.remainder(rotations[i] - rotations[j], 360.0)) <= 0.000001
+            and math.dist(translations[i], translations[j]) <= 0.00001
+        )
+
+    compatibility = [
+        [i == j or compatible(i, j) for j in range(len(rows))]
+        for i in range(len(rows))
+    ]
+
+    # This is an exact minimum clique cover of the compatibility graph (or,
+    # equivalently, an exact colouring of its incompatibility complement).
+    # Incident degrees are small on the locked source mesh. Trying group
+    # limits in ascending order makes the first complete assignment minimal;
+    # fixed edge order and group symmetry breaking make its witness stable.
+    def assignment_with_group_limit(limit):
+        groups = []
+
+        def assign(row_index):
+            if row_index == len(rows):
+                return [list(group) for group in groups]
+            for group in groups:
+                if all(compatibility[row_index][other] for other in group):
+                    group.append(row_index)
+                    result = assign(row_index + 1)
+                    if result is not None:
+                        return result
+                    group.pop()
+            if len(groups) < limit:
+                groups.append([row_index])
+                result = assign(row_index + 1)
+                if result is not None:
+                    return result
+                groups.pop()
+            return None
+
+        return assign(0)
+
+    minimum_groups = None
+    for group_limit in range(1, len(rows) + 1):
+        minimum_groups = assignment_with_group_limit(group_limit)
+        if minimum_groups is not None:
+            break
+    if minimum_groups is None:
+        raise ValueError("Actual UV branch rigid-transform grouping failed.")
+
+    group_rows = []
+    for group in minimum_groups:
+        group_rotation_spread = max(
+            [abs(math.remainder(rotations[a] - rotations[b], 360.0))
+             for pos, a in enumerate(group) for b in group[pos + 1:]] or [0.0]
+        )
+        group_translation_spread = max(
+            [math.dist(translations[a], translations[b])
+             for pos, a in enumerate(group) for b in group[pos + 1:]] or [0.0]
+        )
+        group_rows.append({
+            "incidentOriginalSourceEdges": [
+                rows[index]["originalSourceEdge"] for index in group
+            ],
+            "maximumWithinGroupRotationDisagreementDegrees":
+                round(group_rotation_spread, 6),
+            "maximumWithinGroupTranslationDisagreementMm":
+                round(group_translation_spread, 5),
+        })
     rotation_spread = max(
         abs(math.remainder(a - b, 360.0))
         for i, a in enumerate(rotations) for b in rotations[i + 1:]
@@ -206,6 +272,10 @@ def compare_original_source_uv_junction_rigid_alignments(incident_edges):
             round(rotation_spread, 6),
         "maximumPairwiseRigidTranslationDisagreementMm":
             round(translation_spread, 5),
+        "minimumDeterministicRigidTransformGroupCount": len(minimum_groups),
+        "minimumDeterministicRigidTransformGroups": group_rows,
+        "allIncidentEdgesRequireDistinctRigidTransforms":
+            len(minimum_groups) == len(rows),
         "singleDeterministicRigidTransformClosesAllIncidentEdges": consistent,
         "junctionRigidUvConsistencyApproved": False,
     }
