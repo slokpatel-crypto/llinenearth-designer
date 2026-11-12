@@ -65,3 +65,20 @@ test("modal collar bans reject only the named variant and retain allowed sibling
     assert.equal(JSON.stringify(locked), before);
   }
 });
+
+// Contracted negative wording must not become an affirmative collar choice.
+test("contracted collar variant bans remain fail-closed without rejecting siblings", () => {
+  for (const [instruction, forbidden, permitted] of [
+    ["English Spread Collar shouldn't be used", "english_spread_collar", "spread_collar"],
+    ["Soft Button-Down Collar mustn't be selected", "soft_button_down", "button_down_collar"],
+    ["English Spread Collar can't be worn", "english_spread_collar", "spread_collar"],
+    ["Soft Button-Down Collar cannot be included", "soft_button_down", "button_down_collar"],
+  ] as const) {
+    const allowed = { collar: permitted };
+    const before = JSON.stringify(allowed);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(instruction, allowed), [], instruction);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(instruction, { collar: forbidden }).map(issue => issue.code), ["candidate_collar_mismatch"], instruction);
+    assert.equal(styleDirectorCandidateVariantCollar(instruction), null, instruction);
+    assert.equal(JSON.stringify(allowed), before);
+  }
+});
