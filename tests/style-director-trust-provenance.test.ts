@@ -34,3 +34,34 @@ test("Style Director trust scoring accepts only explicit own plain values", () =
     reviewStatus: "rejected", trust: "reviewed",
   }), 0);
 });
+
+test("Style Director trust scoring fails closed for revoked and throwing proxies", () => {
+  const revoked = Proxy.revocable({ reviewStatus: "approved", trust: "reviewed" }, {});
+  revoked.revoke();
+  assert.equal(styleDirectorIntelligenceTrustWeight(revoked.proxy), 0);
+
+  const hostile = new Proxy({ reviewStatus: "approved", trust: "reviewed" }, {
+    getOwnPropertyDescriptor() { throw new Error("unreadable provenance"); },
+  });
+  assert.equal(styleDirectorIntelligenceTrustWeight(hostile), 0);
+});
+
+test("Style Director trust scoring never evaluates a trust getter", () => {
+  let calls = 0;
+  const record = { reviewStatus: "approved" } as Record<string, unknown>;
+  Object.defineProperty(record, "trust", {
+    enumerable: true,
+    get() { calls++; throw new Error("untrusted trust getter"); },
+  });
+  assert.equal(styleDirectorIntelligenceTrustWeight(record as never), 0);
+  assert.equal(calls, 0);
+});
+
+test("Style Director trust scoring preserves frozen explicit review decisions", () => {
+  const approved = Object.freeze({ reviewStatus: "approved", trust: "reviewed" });
+  const corrected = Object.freeze({ reviewStatus: "corrected", trust: "reviewed" });
+  const rejected = Object.freeze({ reviewStatus: "rejected", trust: "reviewed" });
+  assert.equal(styleDirectorIntelligenceTrustWeight(approved), 1);
+  assert.equal(styleDirectorIntelligenceTrustWeight(corrected), 1);
+  assert.equal(styleDirectorIntelligenceTrustWeight(rejected), 0);
+});
