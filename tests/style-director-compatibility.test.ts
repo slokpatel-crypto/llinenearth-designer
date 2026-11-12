@@ -3798,3 +3798,22 @@ test("explicit sleeve instructions reject absent and stale locked IDs without mu
     }
   }
 });
+
+test("short-sleeve proposal never overrides explicit or undecided roll-up construction", () => {
+  for (const wording of [
+    "Choose short sleeves; choose roll-up styled",
+    "Choose short sleeves or roll-up styled",
+    "Choose short sleeves; roll-up styled is optional",
+    "Choose short sleeves; with or without roll-up styled",
+  ]) {
+    const locked = spec({ sleeve: "half_sleeve" });
+    const before = JSON.stringify(locked);
+    Object.freeze(locked.shirt);
+    assert.equal(styleDirectorCandidateSleeve(wording), null, wording);
+    assert.equal(styleDirectorCandidateSleeve(wording), null, wording);
+    assert.equal(JSON.stringify(locked), before);
+  }
+  assert.deepEqual(styleDirectorCandidateSleeve("Choose short sleeves; no roll-up styled"), {
+    sleeve: "half_sleeve", cuff: "open_short_hem_cuff",
+  });
+});
