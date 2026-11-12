@@ -1030,8 +1030,11 @@ export function styleDirectorCandidateSleeve(
   candidateShirt: string,
 ): { sleeve: "half_sleeve"; cuff: "open_short_hem_cuff" } | null {
   const { short: shortSleeve, long: longSleeve, bannedShort, undecided } = candidateSleeveLengths(candidateShirt);
-  // An explicitly undecided sleeve choice must never select an open short hem.
-  return !undecided && shortSleeve && !longSleeve && !bannedShort
+  const rollUp = styleDirectorCandidateRollUpSleeveIntent(candidateShirt);
+  // Never propose an open short hem when the same instruction requests a
+  // rolled full sleeve, or leaves the rolled construction undecided.
+  return !undecided && !rollUp.requested && !rollUp.ambiguous &&
+    shortSleeve && !longSleeve && !bannedShort
     ? { sleeve: "half_sleeve", cuff: "open_short_hem_cuff" }
     : null;
 }
