@@ -3715,3 +3715,24 @@ test("disallowed ordinary sleeve lengths fail closed while preserving locked IDs
     sleeve: "half_sleeve", cuff: "open_short_hem_cuff",
   });
 });
+
+test("postposed roll-up not-to-be-used instructions cannot select prohibited construction", () => {
+  for (const wording of [
+    "Roll-up styled is not to be used",
+    "Roll-up sleeves are not to be worn",
+    "Roll-up styled isn't to be selected",
+    "Roll-up sleeves aren’t to be included",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(wording),
+      { requested: false, prohibited: true, ambiguous: false }, wording);
+    const locked = spec({ sleeve: "roll_up_styled" });
+    const snapshot = JSON.stringify(locked);
+    Object.freeze(locked.shirt);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, locked.shirt)
+      .map(issue => issue.code), ["candidate_sleeve_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, { sleeve: "full_sleeve" }), [], wording);
+    assert.equal(JSON.stringify(locked), snapshot);
+  }
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("Roll-up styled is to be used"),
+    { requested: true, prohibited: false, ambiguous: false });
+});
