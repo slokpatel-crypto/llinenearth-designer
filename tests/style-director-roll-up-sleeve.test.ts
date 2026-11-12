@@ -258,3 +258,23 @@ test("contracted postposed roll-up restrictions reject locked rolled sleeves", (
   });
   assert.deepEqual(issueCodes("Roll-up Styled is allowed", "roll_up_styled"), []);
 });
+
+
+test("postposed explicit roll-up usage bans reject only the rolled locked ID", () => {
+  const rolled = Object.freeze({ sleeve: "roll_up_styled" });
+  const ordinary = Object.freeze({ sleeve: "full_sleeve" });
+  for (const phrase of [
+    "Roll-up Styled cannot be used",
+    "Roll-up sleeves can't be selected",
+    "Roll-up Styled must not be worn",
+    "Roll-up sleeves should never be included",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(phrase), {
+      requested: false, prohibited: true, ambiguous: false,
+    }, phrase);
+    assert.deepEqual(issueCodes(phrase, "roll_up_styled"), ["candidate_sleeve_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, ordinary), [], phrase);
+    assert.deepEqual(wordingCodes(phrase), [], phrase);
+    assert.equal(rolled.sleeve, "roll_up_styled");
+  }
+});
