@@ -58,9 +58,9 @@ test("Style Director trust scoring never evaluates a trust getter", () => {
 });
 
 test("Style Director trust scoring preserves frozen explicit review decisions", () => {
-  const approved = Object.freeze({ reviewStatus: "approved", trust: "reviewed" });
-  const corrected = Object.freeze({ reviewStatus: "corrected", trust: "reviewed" });
-  const rejected = Object.freeze({ reviewStatus: "rejected", trust: "reviewed" });
+  const approved = Object.freeze({ reviewStatus: "approved", trust: "reviewed" } as const);
+  const corrected = Object.freeze({ reviewStatus: "corrected", trust: "reviewed" } as const);
+  const rejected = Object.freeze({ reviewStatus: "rejected", trust: "reviewed" } as const);
   assert.equal(styleDirectorIntelligenceTrustWeight(approved), 1);
   assert.equal(styleDirectorIntelligenceTrustWeight(corrected), 1);
   assert.equal(styleDirectorIntelligenceTrustWeight(rejected), 0);
