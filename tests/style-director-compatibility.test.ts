@@ -3628,3 +3628,20 @@ test("modal roll-up bans cannot become positive construction requests", () => {
     requested: true, prohibited: false, ambiguous: false,
   });
 });
+
+test("roll-up select modal distinguishes prohibition from affirmative selection", () => {
+  for (const wording of [
+    "Can’t select roll-up styled",
+    "Can't select roll-up sleeves",
+    "Cannot select roll-up styled",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(wording), {
+      requested: false, prohibited: true, ambiguous: false,
+    }, wording);
+  }
+  for (const wording of ["Can select roll-up styled", "Select roll-up styled"]) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(wording), {
+      requested: true, prohibited: false, ambiguous: false,
+    }, wording);
+  }
+});
