@@ -3667,3 +3667,29 @@ test("disallowed placket wording forbids the locked construction without rewriti
     requested: "french_placket", prohibited: [], ambiguous: false,
   });
 });
+
+test("postposed disallowed roll-up sleeves preserve versioned construction", () => {
+  for (const wording of [
+    "Roll-up styled is disallowed",
+    "Roll-up sleeves disallowed",
+    "Roll-up styled is never permitted",
+    "Roll-up sleeves never allowed",
+  ]) {
+    const intent = styleDirectorCandidateRollUpSleeveIntent(wording);
+    assert.deepEqual(intent, {
+      requested: false, prohibited: true, ambiguous: false,
+    }, wording);
+    const forbidden = spec({ sleeve: "roll_up_styled" });
+    const allowed = spec({ sleeve: "full_sleeve" });
+    const snapshot = JSON.stringify(forbidden);
+    Object.freeze(forbidden.shirt);
+    Object.freeze(allowed.shirt);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, forbidden.shirt)
+      .map(issue => issue.code), ["candidate_sleeve_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, allowed.shirt), [], wording);
+    assert.equal(JSON.stringify(forbidden), snapshot);
+  }
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("Roll-up styled is allowed"), {
+    requested: true, prohibited: false, ambiguous: false,
+  });
+});
