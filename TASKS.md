@@ -157,3 +157,15 @@
 - No work outside this status file, and no new features or pull requests. Do not continue identical rechecks without a changed prerequisite.
 
 **Worker result: STOP.**
+
+
+## Execution-environment clarification — 2026-11-12
+
+- Re-read the assigned branch's milestone. It is already **BLOCKED**, with the two-attempt STOP condition met. `TASKS.md` still returns GitHub 404 on `main`; only Worker B's own blocker document exists.
+- **Newly verified:** The runtime does have `/usr/bin/chromium` (Chromium 144.0.7559.96), Node `v22.16.0`, npm `10.9.2`, and Git `2.47.3`. Therefore **Chromium's executable is present**, correcting any earlier implication that the browser binary itself is unavailable.
+- **Still blocked:** `find /mnt/data -maxdepth 4` found no checkout (`.git`) or `TASKS.md`. A direct `curl -I --max-time 5 https://github.com` timed out while resolving GitHub DNS. This is a fresh environment verification, not an additional attempt to clone the repository.
+- **Root cause:** Missing local source checkout, unreachable GitHub from the container, and no shared acceptance file on `main`; with no application source/assets, neither the six required npm gates nor actual 390/768/1440 Designer Studio visual checks can be executed. The existing two-attempt STOP rule remains applicable.
+- **Code changes:** none. **App tests:** not run. **Visual checks:** not run. **Physical fabric/measurement inputs:** none. **Verification status:** **not software-verified**.
+- Scope preserved: no edits to Style Director, Tailor Handoff, 3D, or existing Designer Studio source; no new PR, no deployment. Do not append further identical blocker logs without a changed prerequisite.
+
+**Worker result: STOP.**
