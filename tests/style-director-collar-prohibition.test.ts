@@ -310,3 +310,19 @@ test("canonical collar aliases and independently prohibited variants stay unambi
     }
   }
 });
+
+test("never-to-be-used collar bans do not become positive locked construction requests", () => {
+  for (const [wording, prohibited, permitted] of [
+    ["Camp Collar is never to be used", "cuban_camp_collar", "spread_collar"],
+    ["Wing Collar is never to be worn", "wing_collar", "spread_collar"],
+    ["Tab Collar is never to be selected", "tab_collar", "spread_collar"],
+    ["Club Collar is never to be included", "club_collar", "spread_collar"],
+  ] as const) {
+    const locked = Object.freeze({ collar: prohibited });
+    assert.equal(styleDirectorCandidateCollar(wording, photographed), null, wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, locked).map(x => x.code),
+      ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(issueCodes(wording, permitted), [], wording);
+    assert.equal(locked.collar, prohibited);
+  }
+});
