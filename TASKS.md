@@ -153,11 +153,11 @@
 - **Root cause:** No authoritative assigned milestone, locked real test-body fixture or zero-contact acceptance criteria. Two previous centroid-only approaches failed because they cannot move the original fixed source edges. Requires source-edge redesign and independent native verification before any further geometry changes.
 - **Scope:** Documentation record only; no additional features, geometry files, other workers' files, PRs, or deployments. **STOP**.
 
-## Worker C — 2026-11-12 04:34:23 UTC request; verified 04:35:04 UTC — STOP
+## Worker C — 2026-11-12 04:35:27 UTC request: BLOCKED — STOP
 
-- **Status:** BLOCKED under the two-attempt rule. Authoritative `TASKS.md` remains absent from `main`; this branch records the blocker, not an approved milestone.
-- **Executed (exact GitHub test source):** `git hash-object /mnt/data/worker-c-current/test_worker_c_fixed_cut_edge_clearance.py` matched branch blob `f2425badbc8af0f785c51dd04c8e1122d9ed6f18`. `python3 -m unittest discover -s /mnt/data/worker-c-current -p test_worker_c_fixed_cut_edge_clearance.py -v`: **4/4 PASS (0.002s)**. `python3 -m py_compile`: **PASS**.
-- **Verified only:** The synthetic planar-body regression: a fixed source edge remains 1 mm from the plane after patch-centroid motion; its distance upper bound is 3 mm, below the research-only 7 mm target. **software-verified, not physically verified**.
-- **Unverified:** `blender` executable is not installed. Native scanned-body BVH, real mesh topology, UV/sewing, four-angle imagery, and physical fitting were **not run**.
-- **Root cause:** Centroid motion does not change original cut-edge endpoints. Two earlier offset approaches left or worsened scanned-body collisions; an authoritative original-edge redesign milestone, locked real-body fixture and independent native collision/topology/UV gates are required to resume.
-- **Scope:** `TASKS.md` verification record only; no source mesh/geometry, other-worker files, features, new PRs or deployments. **STOP.**
+- **Source / scope:** Read current Worker C `TASKS.md` and `tests/python/test_worker_c_fixed_cut_edge_clearance.py`. `main/TASKS.md` returned 404 (no authoritative milestone manifest). The existing worker branch document is a blocker record only.
+- **Actual tests run:** `git hash-object /mnt/data/worker-c-current/test_worker_c_fixed_cut_edge_clearance.py` = `f2425badbc8af0f785c51dd04c8e1122d9ed6f18`, matching the fetched GitHub file. Python 3.13.5 `python3 -m unittest discover -s /mnt/data/worker-c-current -p 'test_worker_c_fixed_cut_edge_clearance.py' -v`: **4/4 PASS in 0.001s**. `python3 -m py_compile`: **PASS**.
+- **Result / limitation:** Synthetic planar test body: an unchanged cut edge remains 1 mm from the plane after centroid-only movement, and endpoint Lipschitz upper bound is 3 mm versus research-only 7 mm threshold. **software-verified, not physically verified**. This does not establish scanned-body clearance or physical fit.
+- **Native validation:** `blender` unavailable in the execution environment; no new scanned-body BVH, garment mesh/UV/sewing, photographic four-angle or physical fitting checks.
+- **Root cause / STOP:** Two previously tried centroid-only approaches left or worsened original scanned-body contacts because original cut-edge endpoints remain fixed. There is no authoritative source-edge redesign milestone, locked real test-body fixture or independent zero-contact/topology/UV acceptance gate. STOP rather than repeat the failed approach.
+- **Scope of changes:** This `TASKS.md` status entry only. No new geometry code, other workers' files, PRs, features, or deployment.
