@@ -82,3 +82,12 @@
 - **Unavailable:** `command -v blender` returned no executable. No new real-body BVH, geometry, UV/sewing, photographic appearance, physical-fit or production acceptance test.
 - **Root cause:** Missing authoritative milestone/test-body acceptance fixture; real source cut edges remain fixed, and the previous two centroid-offset experiments did not remove the existing real-body contacts. The next permissible approach requires an independently specified and testable source-edge redesign, not another identical centroid experiment.
 - **Change scope:** `TASKS.md` verification record only; no new feature, PR, geometry, other worker file or deployment. **software-verified, not physically verified**. **STOP**.
+
+## Worker C — 2026-11-12 04:18 UTC test recheck; STOP
+
+- **Current milestone status:** **BLOCKED — STOP**. Authoritative `TASKS.md` on `main` still returns 404. The existing branch copy is a blocker report, not a task-acceptance manifest. No 3D source, production meshes, UVs, Style Director, Tailor Handoff or Designer Studio code changed.
+- **Source identity:** `git hash-object /mnt/data/worker-c-20261112-recheck/test_worker_c_fixed_cut_edge_clearance.py` returned `f2425badbc8af0f785c51dd04c8e1122d9ed6f18`, matching the test file on this branch.
+- **Tests actually executed:** `python3 -m unittest discover -s /mnt/data/worker-c-20261112-recheck -p 'test_worker_c_fixed_cut_edge_clearance.py' -v` — **4 passed in 0.002s**. `python3 -m py_compile` of the same file — **PASS**. Only the synthetic planar-body immutable-edge property was tested (1 mm edge clearance, 3 mm continuous distance upper bound versus research-only 7 mm threshold).
+- **Native Blender / scanned body:** `command -v blender` returned no executable. **NOT RUN**: native BVH collision checks, source geometry/UV/sewing QA, four-angle photoreal comparison or real physical fit.
+- **Root cause / STOP:** No authoritative accepted Worker C scope, locked real body fixture or executable zero-contact gate; both previously attempted centroid-only offsets left or worsened real scan contacts because original source cut-edge endpoints remain fixed. Redesign requires explicit source-edge/topology constraints and native Blender verification. Do not repeat failed displacement or open new features/PRs.
+- **Label:** **software-verified, not physically verified**. Production approval remains false.
