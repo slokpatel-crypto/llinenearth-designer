@@ -26,3 +26,13 @@
 - **New real Blender evaluation:** **NOT RUN.** This environment has no Blender executable or cached original CC0 scanned-body source, and the existing PR #885 research head is separate from this branch. No honest new real mesh collision count or fit result can be reported.
 - **Root cause / next action:** Locked original cut edges cannot be cleared by moving only interior bridge centroids. A true fix needs the authoritative Worker C source-pattern/edge redesign specification, actual locked test-body Blender fixture, zero-contact and topology/UV gates, then native source preflight with all results recorded on the same tested commit. Do not repeat the failed centroid offset or publish a substitute garment.
 - **Verification label:** **software-verified, not physically verified**. No production approval; no PR or deployment created.
+
+## Worker C — blocked milestone recheck (2026-11-12)
+
+- **Disposition:** BLOCKED — STOP. No new features, geometry changes, PRs or deployment.
+- **Executed on this turn:** Copied the exact GitHub source `tests/python/test_worker_c_fixed_cut_edge_clearance.py` into a temporary local test directory; `git hash-object` matched repository blob `f2425badbc8af0f785c51dd04c8e1122d9ed6f18`.
+- **Actual commands and results:** `python3 -m unittest -v /mnt/data/worker-c-check/test_worker_c_fixed_cut_edge_clearance.py` — **4 tests run, 4 passed (0.002s)**; `python3 -m py_compile /mnt/data/worker-c-check/test_worker_c_fixed_cut_edge_clearance.py` — **passed**. Fixture output confirmed the 1.0 mm fixed edge remains unchanged after centroid-only movement; its 3.0 mm endpoint-distance bound is below the research-only 7.0 mm threshold; 8.0 mm clearance requires moving the actual edge in this synthetic geometry.
+- **Native real-source status:** `blender` executable not present in this environment; **no current native Blender, original scanned-body BVH, seam/UV or fitted-garment test ran**. Do not conflate green historical *rejection* CI with accepted geometry.
+- **Root cause:** The authoritative assigned `TASKS.md` milestone, real source/test-body fixture and executable zero-contact acceptance criteria remain unavailable; earlier scanned-body bridge contacts persist and two centroid-offset strategies failed to create clearance while preserving immutable source cut edges.
+- **Next allowed milestone action:** After authoritative scope and real fixture are provided, redesign original source seam/edge topology (rather than repeat centroid-only displacements), then independently verify body BVH, mesh validity, UV/sewing constraints and four-view evidence before any fit claim.
+- **Classification:** **software-verified, not physically verified**. Production approval remains false.
