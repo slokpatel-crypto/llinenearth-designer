@@ -3645,3 +3645,25 @@ test("roll-up select modal distinguishes prohibition from affirmative selection"
     }, wording);
   }
 });
+
+test("disallowed placket wording forbids the locked construction without rewriting IDs", () => {
+  for (const wording of ["French placket is disallowed", "French placket disallowed"]) {
+    const intent = styleDirectorCandidatePlacketIntent(wording);
+    assert.deepEqual(intent, {
+      requested: null, prohibited: ["french_placket"], ambiguous: false,
+    }, wording);
+    const forbidden = spec({ placket: "french_placket" });
+    const allowed = spec({ placket: "hidden_fly_front" });
+    const before = JSON.stringify(forbidden);
+    Object.freeze(forbidden.shirt);
+    Object.freeze(allowed.shirt);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, forbidden.shirt)
+      .map(issue => issue.code), ["candidate_placket_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(wording, allowed.shirt), [], wording);
+    assert.equal(styleDirectorCandidatePlacket(wording, []), null, wording);
+    assert.equal(JSON.stringify(forbidden), before);
+  }
+  assert.deepEqual(styleDirectorCandidatePlacketIntent("French placket is allowed"), {
+    requested: "french_placket", prohibited: [], ambiguous: false,
+  });
+});
