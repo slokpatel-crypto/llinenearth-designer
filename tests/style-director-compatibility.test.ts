@@ -3759,3 +3759,23 @@ test("contracted and not-to-be ordinary sleeve bans reject forbidden locked IDs"
   assert.deepEqual(styleDirectorCandidateSleeveIssues(
     "Short sleeves are allowed", { sleeve: "half_sleeve" }), []);
 });
+
+test("combined sleeve constraints preserve distinct roll-up and ordinary long-sleeve IDs", () => {
+  for (const [instruction, allowed, rejected] of [
+    ["Choose roll-up styled; no short sleeves", "roll_up_styled", "half_sleeve"],
+    ["Use roll-up styled; avoid half sleeves", "roll_up_styled", "full_sleeve"],
+    ["Choose full sleeves; no roll-up styled", "full_sleeve", "roll_up_styled"],
+    ["Choose short sleeves; no roll-up styled", "half_sleeve", "roll_up_styled"],
+  ] as const) {
+    const permitted = spec({ sleeve: allowed });
+    const forbidden = spec({ sleeve: rejected });
+    const before = JSON.stringify(forbidden);
+    Object.freeze(permitted.shirt);
+    Object.freeze(forbidden.shirt);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(instruction, permitted.shirt), [], instruction);
+    const issues = styleDirectorCandidateSleeveIssues(instruction, forbidden.shirt);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_sleeve_mismatch"], instruction);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(instruction, forbidden.shirt), issues);
+    assert.equal(JSON.stringify(forbidden), before, "saved sleeve ID must remain unchanged");
+  }
+});
