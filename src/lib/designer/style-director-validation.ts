@@ -89,10 +89,23 @@ export function summarizeStyleDirectorValidation(
     ? Number(latestSignoff?.required_positive_cases)
     : null;
   const thresholdMet=requiredPositiveCases!==null&&positive.length>=requiredPositiveCases;
+  // A passing sample quota never overrides a currently open blocking case.
+  // Approval must also cover the latest evidence: re-test after signing
+  // requires a fresh owner decision rather than reusing an old sign-off.
+  const blockingCases=latest.filter((row)=>row.blocking_issue).length;
+  const approvalTime=Date.parse(latestSignoff?.created_at??"");
+  const approvalCoversLatestTests=Number.isFinite(approvalTime)&&latest.every((row)=>{
+    const observedTime=Date.parse(row.created_at);
+    return Number.isFinite(observedTime)&&observedTime<=approvalTime;
+  });
+  const approvalHasReviewer=typeof latestSignoff?.signed_by==="string"
+    && latestSignoff.signed_by.trim().length>=2;
+  const validTarget=requiredPositiveCases!==null
+    && requiredPositiveCases>=1&&requiredPositiveCases<=50;
   return {
     uniqueCases:latest.length,
     positiveCases:positive.length,
-    blockingCases:latest.filter((row)=>row.blocking_issue).length,
+    blockingCases,
     understandableCases:latest.filter((row)=>row.directions_understandable).length,
     distinctCases:latest.filter((row)=>row.directions_distinct).length,
     handoffCases:latest.filter((row)=>row.stock_handoff_worked).length,
@@ -104,6 +117,7 @@ export function summarizeStyleDirectorValidation(
     requiredPositiveCases,
     thresholdMet,
     evidenceRecorded:latest.length>0,
-    validationComplete:thresholdMet&&latestSignoff?.status==="approved",
+    validationComplete:thresholdMet&&validTarget&&blockingCases===0
+      &&approvalCoversLatestTests&&approvalHasReviewer&&latestSignoff?.status==="approved",
   };
 }
