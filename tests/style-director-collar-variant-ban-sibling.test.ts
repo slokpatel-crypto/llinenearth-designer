@@ -43,3 +43,25 @@ test("a permitted ordinary collar remains selectable beside an explicit variant 
     assert.equal(JSON.stringify(locked), snapshot);
   }
 });
+
+test("modal collar bans reject only the named variant and retain allowed siblings", () => {
+  for (const [instruction, forbidden, permitted] of [
+    ["Must not use English Spread Collar", "english_spread_collar", "spread_collar"],
+    ["Should not select Soft Button-Down Collar", "soft_button_down", "button_down_collar"],
+    ["Cannot wear English Spread Collar", "english_spread_collar", "spread_collar"],
+    ["Can't choose Soft Button-Down Collar", "soft_button_down", "button_down_collar"],
+    ["Mustn't include English Spread Collar", "english_spread_collar", "spread_collar"],
+    ["Shouldn't have Soft Button-Down Collar", "soft_button_down", "button_down_collar"],
+  ] as const) {
+    const locked = { collar: permitted };
+    const before = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(instruction, locked), []);
+    assert.deepEqual(
+      styleDirectorCandidateCollarIssues(instruction, { collar: forbidden }).map(issue => issue.code),
+      ["candidate_collar_mismatch"],
+    );
+    assert.deepEqual(styleDirectorCandidateWordingIssues(instruction), []);
+    assert.equal(styleDirectorCandidateVariantCollar(instruction), null);
+    assert.equal(JSON.stringify(locked), before);
+  }
+});
