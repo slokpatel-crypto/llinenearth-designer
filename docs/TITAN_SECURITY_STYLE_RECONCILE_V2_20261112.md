@@ -29,3 +29,12 @@
 - Release checklist/checkpoint and TODO files absent on this branch (404). Keep this persistent reconciliation checkpoint instead of inventing or replacing historical files.
 - Physical stock, customer/operator field acceptance, tailor, devices, Blender geometry/UV, owner signoff: PENDING/BLOCKED. No main merge, deployment, paid AI, live migrations or stock changes.
 - Next slice: port contracted-negative collar regression, run matching-head Full CI/Non-3D, re-check latest primary SHA and ancestry, then reconcile remaining tests.
+
+## 2026-11-13 — contracted collar regression reconciliation
+
+- Acceptance slice: prove that four postposed contracted/negative variant-collar bans reject the forbidden saved ID while preserving a permitted sibling, no silent selection, and no mutation. This tests the parser previously ported from primary; no photographic or tailor approval implied.
+- Exact parent `3e5852d3c6c268d98d7c340c9631b5aacaaeeda6`; regression commit `8e63053f63d30c0b42a9736490cb9e9af324fa82`. Only `tests/style-director-collar-variant-ban-sibling.test.ts` changed before this checkpoint commit.
+- Parent exact-head CI #43306514649 SUCCESS and Non-3D QA #43306514883 SUCCESS, verified via GitHub workflow results. **New regression commit has not yet passed matching-head CI or browser QA; tests not run locally.** Do not infer new acceptance from parent green.
+- Live primary PR #868 at inspection `c9c4e059720f9d2892576d8bc707947b4b44f8c6`, CI #43313766263 and Non-3D #43313766254 IN_PROGRESS. Comparison with candidate parent: 9 primary-only, 12 candidate-only commits, shared ancestor `838c0065f9e638d0420121de722dc166e6e8e46f`; compatibility source and four test files differ. Do not overwrite newer primary or candidate work.
+- Historical release checklist/checkpoint and TODO files absent on this draft (404); this existing reconciliation checkpoint is append-only. Remaining physical gates PENDING/BLOCKED: verified stock, customer/operator field evidence, tailor, devices, native Blender geometry/UV, owner approval. No main merge, deployment, paid AI, live stock or migration mutation.
+- Next 30–40-minute slice: inspect matching-head CI/Non-3D for checkpoint SHA; repair any regression failures, then reconcile primary-only pocket/placket tests without weakening security. Only consider isolated main intake with dependency proof and no-deploy guard.
