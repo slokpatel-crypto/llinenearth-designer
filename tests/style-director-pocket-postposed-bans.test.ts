@@ -15,6 +15,11 @@ test("postposed unwanted and modal bans do not select a forbidden pocket", () =>
     "Flap pocket unwanted",
     "Flap pocket should not be selected",
     "Flap pocket must not be used",
+    "Flap pocket must not be worn",
+    "Flap pocket should not be included",
+    "Flap pocket shouldn’t be selected",
+    "Flap pocket can’t be used",
+    "Flap pocket cannot be chosen",
   ]) {
     assert.deepEqual(styleDirectorCandidatePocketIntent(label), {
       requested: null, prohibited: ["flap_pocket"], ambiguous: false,
