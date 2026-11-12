@@ -8,3 +8,14 @@
 - `AGENTS.md` and `DECISIONS.md` inspected. `docs/TITAN_RELEASE_CHECKLIST.md`, `docs/TITAN_RELEASE_CHECKPOINT.md`, and `TODO.md` were absent on this inspected branch (404); do not overwrite historical release records on other branches.
 - Remaining PENDING/BLOCKED: real stock evidence, authenticated customer/operator field acceptance, tailor and measurement signoff, native Blender geometry/UV, physical devices, independent review and owner approval. Preserve `linen-earth-studio-model-v1`. No paid AI, deployment, live migration or live stock mutation.
 - Next 30–40-minute slice: obtain matching-head Full CI and Non-3D QA for the combined result; diagnose failures if any. Check latest primary SHA again before further reconciliation.
+
+## 2026-11-12 23:24 IST — modal collar prohibition reconciliation
+
+- Acceptance criterion: a modal ban of a specific collar variant (e.g. `Must not use English Spread Collar`) rejects only the forbidden canonical variant while preserving the ordinary sibling and existing locked design; regression test covers modal variants. This is software behavior, **not** photographic collar parity or physical tailoring approval.
+- Live candidate parent `49c0000bb8a2bd649c253074d6b8b3a314ac38ca` (PR #985), matching-head CI run `43262341804` **PASS**, Non-3D QA run `43262341802` **PASS**. The original checkpoint above predates these successful results.
+- Live primary PR #868 inspected at `9fcbcd456aa5c27922875d11b615f6423ed1ce1b`; its CI `43272826741` and Non-3D `43272826825` were **IN_PROGRESS** when checked. Candidate vs primary: 3 primary-only and 6 candidate-only commits; changed files relevant to this slice were compatibility parser and new modal-ban regression.
+- Ported exact primary compatibility parser blob `2c9d9a70d92c8704a9207517de318dfba6aca4fa`: `49c0000bb8a2bd649c253074d6b8b3a314ac38ca` → `7dfa1b858aef6997f4ddeddb48add90d5a2244e4`.
+- Ported exact primary modal-ban regression blob `335278e4f6ab37a16a102b523310f5607041200e`: `7dfa1b858aef6997f4ddeddb48add90d5a2244e4` → `95ef5e53dec4f5c007536cfedcac78cf3fd241da`.
+- **Matching-head checks for the new combined result remain PENDING**. No local tests or browser run were executed during this session. Do not reuse earlier passing CI as proof for the new commit, and do not merge to main.
+- Blockers: real stock/provenance, customer and operator acceptance, tailor, device, native Blender geometry/UV, review, owner signoff remain PENDING/BLOCKED. No stock, migration, paid AI, deployment or model identity changes.
+- Next 30–40-minute slice: verify CI and Non-3D at the final checkpoint SHA, investigate any failures, compare newer primary head and only then assess safe isolated main intake with no-deploy guard.
