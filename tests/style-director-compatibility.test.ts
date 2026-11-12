@@ -3608,3 +3608,23 @@ test("contracted postposed placket bans cannot approve a forbidden locked ID", (
     requested: "french_placket", prohibited: [], ambiguous: false,
   });
 });
+
+test("modal roll-up bans cannot become positive construction requests", () => {
+  for (const wording of [
+    "Cannot select roll-up styled",
+    "Can't wear roll-up sleeves",
+    "Must not include roll-up styled",
+    "Should never choose roll-up styled",
+    "Roll-up styled cannot be selected",
+    "Roll-up sleeves can't be worn",
+  ]) {
+    const intent = styleDirectorCandidateRollUpSleeveIntent(wording);
+    assert.deepEqual(intent, {
+      requested: false, prohibited: true, ambiguous: false,
+    }, wording);
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(wording), intent);
+  }
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("Choose roll-up styled"), {
+    requested: true, prohibited: false, ambiguous: false,
+  });
+});
