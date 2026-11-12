@@ -73,3 +73,12 @@
 - **Verified only in synthetic test body:** A fixed cut edge remains 1 mm from the test plane after its interior bridge centroid shifts; the continuous endpoint upper bound is 3 mm, below the research-only 7 mm threshold. These are **software-verified, not physically verified** tests and are **not** a native scanned-body fit result.
 - **Not run:** Native Blender (`command -v blender` found no executable), new real-body collision checks, UV/sewing or photographic four-angle fit. No geometry, export or other worker code modified.
 - **Root cause / STOP:** No authoritative milestone specification on `main`; previous real-geometry BVH contact and preflight failures persist; two centroid-only strategies do not remove collisions at immutable original cut edges. **BLOCKED — STOP.** Do not repeat the failed geometry approach or create features, PRs or deployments.
+
+## Worker C — repeat request 2026-11-12 04:16 UTC (STOP)
+
+- **Disposition:** BLOCKED / STOP. Milestone scope is still not authoritative because `TASKS.md` is absent from `main`; the Worker C branch document is a blocker record, not an approved redesign specification.
+- **Actual re-execution:** `git hash-object /mnt/data/worker-c-20261112-recheck/test_worker_c_fixed_cut_edge_clearance.py` = `f2425badbc8af0f785c51dd04c8e1122d9ed6f18` (matches Worker C branch test source). `python3 -m unittest discover -s /mnt/data/worker-c-20261112-recheck -p test_worker_c_fixed_cut_edge_clearance.py -v` = **4 tests passed in 0.002s**. `python3 -m py_compile` on the same file **passed**.
+- **What was verified:** Synthetic flat-body fixed-edge regression only (1 mm unchanged edge; 3 mm Lipschitz upper bound against research-only 7 mm threshold). Not a native mesh or garment-fit clearance result.
+- **Unavailable:** `command -v blender` returned no executable. No new real-body BVH, geometry, UV/sewing, photographic appearance, physical-fit or production acceptance test.
+- **Root cause:** Missing authoritative milestone/test-body acceptance fixture; real source cut edges remain fixed, and the previous two centroid-offset experiments did not remove the existing real-body contacts. The next permissible approach requires an independently specified and testable source-edge redesign, not another identical centroid experiment.
+- **Change scope:** `TASKS.md` verification record only; no new feature, PR, geometry, other worker file or deployment. **software-verified, not physically verified**. **STOP**.
