@@ -64,3 +64,14 @@
 - **Application tests:** none run. **Responsive visual checks:** none run. **Code changed:** none. **Physical data used:** none. **Verification:** not software-verified. No changes outside this blocker record and no PR.
 
 **Worker result: STOP.**
+
+## Recheck — 2026-11-12 04:28 UTC
+
+- Re-read current Worker B `TASKS.md`, which already documents repeated failures and mandates **STOP**.
+- Confirmed `main:TASKS.md` still returns 404; there is no authoritative shared milestone.
+- Local `/mnt/data` contains neither a checkout (`.git`) nor `TASKS.md` within three levels. Git and Node exist, but the previously failed DNS/clone method was not repeated.
+- **Root cause:** Missing authoritative milestone plus missing runnable project checkout/Chromium environment; required collar/cuff/trouser visual verification cannot be performed.
+- **Tests:** not executed. **390/768/1440 visual checks:** not executed. **Code changes:** none. **Physical evidence:** none. **Classification:** **not software-verified**.
+- No other worker files, features or PRs changed.
+
+**Worker result: STOP.**
