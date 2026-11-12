@@ -36,3 +36,23 @@ test("placket restrictions require a canonical own locked option", () => {
   }), [{ code: "candidate_placket_mismatch",
     explanation: "The requested or prohibited shirt placket conflicts with the locked versioned construction; confirm the front before tailoring." }]);
 });
+
+test("explicit placket bans reject only the prohibited canonical construction", () => {
+  const cases = [
+    ["No standard placket", "standard_visible_placket", "hidden_fly_front"],
+    ["Without hidden placket", "hidden_fly_front", "standard_visible_placket"],
+    ["French placket is forbidden", "french_placket", "standard_visible_placket"],
+    ["Covered placket must not be used", "covered_placket", "standard_visible_placket"],
+    ["Contrast placket is not allowed", "contrast_placket", "standard_visible_placket"],
+  ] as const;
+  for (const [instruction, banned, permitted] of cases) {
+    const lockedBanned = Object.freeze({ placket: banned });
+    const lockedPermitted = Object.freeze({ placket: permitted });
+    const first = styleDirectorCandidatePlacketIssues(instruction, lockedBanned);
+    assert.deepEqual(first.map(issue => issue.code), ["candidate_placket_mismatch"], instruction);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(instruction, lockedBanned), first);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(instruction, lockedPermitted), [], instruction);
+    assert.equal(lockedBanned.placket, banned);
+    assert.equal(lockedPermitted.placket, permitted);
+  }
+});
