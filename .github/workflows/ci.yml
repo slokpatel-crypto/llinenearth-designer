@@ -62,6 +62,8 @@ jobs:
             if curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null; then break; fi
             sleep 1
           done
+          # Fast CI-only signed HTTP operator auth/CSRF/body-size gate before slow GLB checks.
+          node scripts/verify-operator-production-private-http.cjs
           # Run the 3D gate first: it is the largest production-asset contract and should fail fast
           # before the longer photographic/style lifecycle suite when a GLB regression is present.
           # The four real GLB pixel snapshots are slow on software WebGL (~4m
