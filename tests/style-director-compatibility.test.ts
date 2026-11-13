@@ -4018,3 +4018,32 @@ test("cropped hem review retains independent break and type conflicts across sav
   });
   assert.deepEqual(styleDirectorConstructionIssues(valid), []);
 });
+
+test("cropped trouser construction rejects every positive shoe-break depth without rewriting locks", () => {
+  const breakCodes = [
+    ["slight_break", "cropped_slight_break"],
+    ["half_break", "cropped_half_break"],
+    ["full_break", "cropped_full_break"],
+    ["stacked_break", "cropped_stacked_break"],
+  ] as const;
+  for (const [shoeBreak, expectedCode] of breakCodes) {
+    for (const croppedBy of ["type", "hem"] as const) {
+      const pant = croppedBy === "type"
+        ? { type: "cropped_ankle", hem: "plain_hem", break: shoeBreak }
+        : { type: "formal_flat_front", hem: "cropped_above_ankle_hem", break: shoeBreak };
+      const locked = spec({}, pant);
+      const before = JSON.stringify(locked);
+      Object.freeze(locked.pant);
+      const first = styleDirectorConstructionIssues(locked).map(issue => issue.code);
+      assert.ok(first.includes(expectedCode), JSON.stringify(pant));
+      assert.deepEqual(styleDirectorConstructionIssues(locked).map(issue => issue.code), first);
+      assert.equal(JSON.stringify(locked), before);
+    }
+  }
+  for (const shoeBreak of ["no_break", "cropped_above_ankle"] as const) {
+    const compatible = spec({}, {
+      type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: shoeBreak,
+    });
+    assert.deepEqual(styleDirectorConstructionIssues(compatible), []);
+  }
+});
