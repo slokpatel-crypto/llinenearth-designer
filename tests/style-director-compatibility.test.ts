@@ -3923,3 +3923,25 @@ test("cropped shoe-break label cannot certify a non-cropped locked hem", () => {
     .some(issue => issue.code === "cropped_break_hem_mismatch"),
   "matching cropped break and hem must remain available");
 });
+
+test("independent cropped trouser conflicts cannot conceal each other", () => {
+  const locked = spec({}, {
+    type: "cropped_ankle", hem: "plain_hem", break: "stacked_break",
+  });
+  const before = JSON.stringify(locked);
+  Object.freeze(locked.pant);
+  const first = styleDirectorConstructionIssues(locked).map(issue => issue.code);
+  assert.ok(first.includes("cropped_type_hem_mismatch"),
+    "cropped trouser type must not certify a full-length hem");
+  assert.ok(first.includes("cropped_stacked_break"),
+    "cropped trouser type must not certify stacked shoe break");
+  assert.deepEqual(styleDirectorConstructionIssues(locked).map(issue => issue.code), first);
+  assert.equal(JSON.stringify(locked), before, "review must not rewrite saved IDs");
+
+  const matching = spec({}, {
+    type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "no_break",
+  });
+  const codes = styleDirectorConstructionIssues(matching).map(issue => issue.code);
+  assert.ok(!codes.includes("cropped_type_hem_mismatch"));
+  assert.ok(!codes.includes("cropped_stacked_break"));
+});
