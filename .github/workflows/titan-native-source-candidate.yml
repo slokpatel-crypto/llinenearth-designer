@@ -1411,7 +1411,9 @@ jobs:
                   assert row["junctionRigidUvConsistencyApproved"] is False
               print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_MINIMUM_RIGID_GROUPS_RESEARCH_ONLY",json.dumps(junctions[0] if junctions else {},sort_keys=True))
               print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_RIGID_CONSISTENCY_RESEARCH_ONLY",json.dumps(junctions[0] if junctions else {},sort_keys=True))
-              placement=tree["researchOnlyJunctionFaceRigidPlacementTrial"]
+              placement=oriented[
+                  "researchOnlyOriginalSourceMaxRetainedUvEvidence"
+              ]["researchOnlyJunctionFaceRigidPlacementTrial"]
               placement_trial=placement["trial"]
               placement_cut=placement["candidateUvCutNetwork"]
               placement_overlap=placement["candidateResearchUvOverlap"]
