@@ -1796,6 +1796,68 @@ def main():
             packed_weighted = packed
             packed_weighted_overlap = packed_overlap
             packed_weighted_cut = packed_cut
+    # At the highest-degree authentic cut junction, solve the largest exact
+    # subset of incident constraints using one proper-rigid pose per complete
+    # owner face.  This disposable candidate establishes whether a local
+    # three-edge tree closure helps the full 5,300-triangle layout; it does
+    # not mutate the stored source UVs or approve a physical panel.
+    junction = packed_weighted_cut["actualLargestOriginalSourceUvCutJunctions"][0]
+    junction_edges = [
+        row["originalSourceEdge"]
+        for row in junction["incidentOriginalSourceUvOwnerFacePairs"]
+    ]
+    junction_trial = cut_audit_ops[
+        "trial_original_source_uv_junction_face_rigid_placement"
+    ](
+        base_faces, packed_weighted["face_uv_loops"],
+        junction["originalSourceVertexIndex"], junction_edges,
+    )
+    junction_summary = junction_trial["report"]
+    junction_overlap = uv_overlap_audit(
+        base_faces, junction_trial["face_uv_loops"]
+    )
+    junction_comparison = overlap_compare(
+        packed_weighted_overlap, junction_overlap
+    )
+    junction_tree_report = dict(weighted_uv["report"])
+    junction_tree_report["verifiedTreeConnectedSharedEdges"] = (
+        packed_weighted_cut["originalSharedSourceEdgeCount"] -
+        junction_summary["candidateUnclosedSharedUvEdgeCount"]
+    )
+    junction_tree_report["nonTreeCycleEdgesWithinOneMicrometre"] = 0
+    junction_tree_report["nonTreeCycleUnclosedUvEdges"] = (
+        junction_summary["candidateUnclosedSharedUvEdgeCount"]
+    )
+    junction_cut = cut_audit_ops["audit_original_source_uv_cut_network"](
+        merged_verts, base_faces, junction_trial["face_uv_loops"],
+        l_remaining + r_remaining_mapped, junction_tree_report,
+    )
+    if (junction_summary["targetOriginalSourceVertex"] != 1738
+            or len(junction_summary["incidentOriginalSourceEdges"]) != 4
+            or junction_summary["maximumSimultaneouslyClosedIncidentEdges"] != 3
+            or junction_summary["maximumOriginalTriangleEdgeChangeMm"] > 0.000001
+            or junction_cut["unclosedSharedUvCutCandidateEdges"] !=
+               junction_summary["candidateUnclosedSharedUvEdgeCount"]
+            or not junction_comparison["bothFullResearchUvScansComplete"]
+            or junction_overlap["expectedTriangleCount"] != 5300
+            or junction_summary["sourceUvExportOrSavePerformed"]
+            or junction_summary["physicalPatternApproved"]
+            or junction_summary["productionApproved"]
+            or junction_cut["productionApproved"]
+            or junction_comparison["productionApproved"]):
+        raise RuntimeError("Junction whole-face rigid UV trial lost source or rejection truth.")
+    weighted_report["researchOnlyJunctionFaceRigidPlacementTrial"] = {
+        "researchOnly": True,
+        "trial": junction_summary,
+        "candidateResearchUvOverlap": junction_overlap,
+        "packedBaselineVsCandidateOverlap": junction_comparison,
+        "packedBaselineUvCutNetwork": packed_weighted_cut,
+        "candidateUvCutNetwork": junction_cut,
+        "sourceMeshAndBodyBVHUnchanged": True,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricAndTailorApproval": False,
+        "productionApproved": False,
+    }
     # One bounded genuine source-tree cut on authentic component 0. Only the
     # smaller resulting face subtree moves in research UV space; source 3D,
     # garment assets, Blender scenes and exports remain untouched.

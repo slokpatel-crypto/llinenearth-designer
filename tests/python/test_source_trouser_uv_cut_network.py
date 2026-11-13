@@ -22,6 +22,9 @@ best_similarity = source_graph_module[
 compare_junction = source_graph_module[
     "compare_original_source_uv_junction_rigid_alignments"
 ]
+trial_junction = source_graph_module[
+    "trial_original_source_uv_junction_face_rigid_placement"
+]
 
 # Synthetic proper rotation + translation can close equal-length source
 # segments; length disagreement has a provable irreducible residual.
@@ -105,6 +108,46 @@ for bad in (
         pass
     else:
         raise AssertionError("Forged original UV junction rigid evidence was accepted.")
+
+# Four synthetic source quads form a degree-four owner-face cycle.  Every
+# individual incident edge is exactly rigid-closable, but the cycle poses are
+# inconsistent, so the exact deterministic search can close only a tree of
+# three edges.  Whole-face proper-rigid movement must preserve every triangle
+# edge length.
+junction_faces = (
+    (1, 2, 10, 3),
+    (1, 3, 11, 4),
+    (1, 4, 12, 5),
+    (1, 5, 13, 2),
+)
+junction_uv = (
+    ((0, 0), (1, 0), (1, 1), (0, 1)),
+    ((3, 0), (4, 0), (4, 1), (3, 1)),
+    ((6, 0), (7, 0), (7, 1), (6, 1)),
+    ((9, 0), (10, 0), (10, 1), (9.5, 0.866025403784)),
+)
+junction_edges = ((1, 2), (1, 3), (1, 4), (1, 5))
+junction_trial = trial_junction(junction_faces, junction_uv, 1, junction_edges)
+junction_report = junction_trial["report"]
+assert junction_report["maximumSimultaneouslyClosedIncidentEdges"] == 3
+assert len(junction_report["closedIncidentOriginalSourceEdges"]) == 3
+assert len(junction_report["openIncidentOriginalSourceEdges"]) == 1
+assert junction_report["maximumOriginalTriangleEdgeChangeMm"] == 0.0
+assert junction_report["sourceUvExportOrSavePerformed"] is False
+assert junction_report["physicalPatternApproved"] is False
+assert junction_report["productionApproved"] is False
+for bad_faces, bad_uv, bad_vertex, bad_edges in (
+        (junction_faces[:-1], junction_uv, 1, junction_edges),
+        (junction_faces, junction_uv, True, junction_edges),
+        (junction_faces, junction_uv, 1, ((1, 2), (1, 2), (1, 4))),
+        (junction_faces, junction_uv, 1, ((1, 2), (3, 4), (1, 4))),
+):
+    try:
+        trial_junction(bad_faces, bad_uv, bad_vertex, bad_edges)
+    except (ValueError, TypeError):
+        pass
+    else:
+        raise AssertionError("Forged UV junction face placement was accepted.")
 for bad in (((0, 0),), ((False, 0), (1, 0)), (("0", 0), (1, 0)),
             ((0, 0), (math.inf, 0)), ((0, 0), (math.nan, 1)),
             ((0, 0), (0, 0)), (None, (1, 0)), (0, 1)):

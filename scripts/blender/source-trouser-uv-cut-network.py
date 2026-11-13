@@ -8,6 +8,7 @@ factory seam allowances, or certified fabric texture scale.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from itertools import combinations
 import math
 
 
@@ -149,6 +150,191 @@ def best_fit_original_source_uv_edge_similarity_alignment(owner_a, owner_b):
         "singleEdgeSimilarityClosureResidualMm": round(residual, 8),
         "singleEdgeClosureRequiresUvScaleChange": scale_change > 0.000000001,
         "sourceUvSimilarityDistortionApproved": False,
+    }
+
+
+def trial_original_source_uv_junction_face_rigid_placement(
+        original_faces, face_uv_loops, junction_vertex, incident_source_edges):
+    """Close the largest exact subset of one junction by whole-face poses.
+
+    This is a disposable research trial.  It moves complete UV owner faces by
+    proper rigid transforms and never edits source geometry, stored UVs, or a
+    Blender scene.  The exact subset search is deliberately limited to the
+    supplied incident edges; callers still have to run whole-layout overlap
+    and cut-network audits before interpreting the candidate.
+    """
+    if (len(original_faces) != len(face_uv_loops)
+            or type(junction_vertex) is not int or junction_vertex < 0
+            or not hasattr(incident_source_edges, "__len__")
+            or len(incident_source_edges) < 3):
+        raise ValueError("Junction face placement needs matching source faces and incident edges.")
+    faces = []
+    uvs = []
+    owners = defaultdict(list)
+    for face_id, (raw_face, raw_uv) in enumerate(zip(original_faces, face_uv_loops)):
+        if (len(raw_face) != 4 or len(set(raw_face)) != 4
+                or any(type(v) is not int or v < 0 for v in raw_face)
+                or len(raw_uv) != 4):
+            raise ValueError("Junction face placement requires literal source quads.")
+        face = tuple(raw_face)
+        uv = []
+        for point in raw_uv:
+            if (not hasattr(point, "__len__") or len(point) != 2
+                    or any(isinstance(v, bool) or not isinstance(v, (int, float))
+                           or not math.isfinite(v) for v in point)):
+                raise ValueError("Junction face placement requires finite UV loops.")
+            uv.append(tuple(float(v) for v in point))
+        faces.append(face)
+        uvs.append(uv)
+        for corner in range(4):
+            a, b = face[corner], face[(corner + 1) % 4]
+            edge = (min(a, b), max(a, b))
+            endpoints = (uv[corner], uv[(corner + 1) % 4])
+            owners[edge].append((face_id, endpoints if (a, b) == edge else endpoints[::-1]))
+    edges = []
+    for raw_edge in incident_source_edges:
+        if (not hasattr(raw_edge, "__len__") or len(raw_edge) != 2
+                or any(type(v) is not int or v < 0 for v in raw_edge)):
+            raise ValueError("Junction face placement requires literal source edges.")
+        edge = tuple(sorted(raw_edge))
+        if (edge[0] == edge[1] or junction_vertex not in edge
+                or edge in edges or len(owners.get(edge, ())) != 2):
+            raise ValueError("Junction face placement edge provenance is invalid.")
+        edges.append(edge)
+    edges.sort()
+
+    # A pose is (angle radians, tx, ty), mapping original UV to candidate UV.
+    def apply(pose, point):
+        angle, tx, ty = pose
+        cos, sin = math.cos(angle), math.sin(angle)
+        return (cos * point[0] - sin * point[1] + tx,
+                sin * point[0] + cos * point[1] + ty)
+
+    def compose(left, right):
+        """Return left(right(point))."""
+        angle = left[0] + right[0]
+        rotated_translation = apply((left[0], left[1], left[2]),
+                                    (right[1], right[2]))
+        return (angle, rotated_translation[0], rotated_translation[1])
+
+    def inverse(pose):
+        angle, tx, ty = pose
+        cos, sin = math.cos(angle), math.sin(angle)
+        return (-angle, -cos * tx - sin * ty, sin * tx - cos * ty)
+
+    relations = {}
+    for edge in edges:
+        (face_a, owner_a), (face_b, owner_b) = owners[edge]
+        if face_a > face_b:
+            face_a, face_b, owner_a, owner_b = face_b, face_a, owner_b, owner_a
+        rigid = best_fit_original_source_uv_edge_rigid_alignment(owner_a, owner_b)
+        if not rigid["singleEdgeExactRigidClosurePossible"]:
+            raise ValueError("Junction owner edge lengths cannot close rigidly.")
+        a0, a1 = owner_a
+        b0, b1 = owner_b
+        va = (a1[0] - a0[0], a1[1] - a0[1])
+        vb = (b1[0] - b0[0], b1[1] - b0[1])
+        angle = math.atan2(va[1], va[0]) - math.atan2(vb[1], vb[0])
+        cos, sin = math.cos(angle), math.sin(angle)
+        translation = (
+            a0[0] - (cos * b0[0] - sin * b0[1]),
+            a0[1] - (sin * b0[0] + cos * b0[1]),
+        )
+        relations[edge] = (
+            face_a, face_b,
+            (angle, *translation),
+        )
+
+    def solve(subset):
+        adjacency = defaultdict(list)
+        for edge in subset:
+            face_a, face_b, b_to_a = relations[edge]
+            adjacency[face_a].append((face_b, b_to_a))
+            adjacency[face_b].append((face_a, inverse(b_to_a)))
+        poses = {}
+        for root in sorted(adjacency):
+            if root in poses:
+                continue
+            poses[root] = (0.0, 0.0, 0.0)
+            queue = [root]
+            while queue:
+                face = queue.pop(0)
+                for neighbour, neighbour_to_face in sorted(adjacency[face]):
+                    candidate = compose(poses[face], neighbour_to_face)
+                    if neighbour not in poses:
+                        poses[neighbour] = candidate
+                        queue.append(neighbour)
+                    else:
+                        old = poses[neighbour]
+                        if (abs(math.remainder(old[0] - candidate[0], 2 * math.pi)) > 1e-8
+                                or math.dist(old[1:], candidate[1:]) > 1e-8):
+                            return None
+        return poses
+
+    selected = None
+    poses = None
+    for size in range(len(edges), 0, -1):
+        for subset in combinations(edges, size):
+            candidate = solve(subset)
+            if candidate is not None:
+                selected, poses = tuple(subset), candidate
+                break
+        if selected is not None:
+            break
+    if selected is None:
+        raise ValueError("Junction face placement could not solve any incident edge.")
+
+    candidate_uvs = [list(row) for row in uvs]
+    for face_id, pose in poses.items():
+        candidate_uvs[face_id] = [apply(pose, point) for point in uvs[face_id]]
+
+    def edge_gap(edge, layout):
+        rows = []
+        for face_id, endpoints in owners[edge]:
+            face = faces[face_id]
+            mapped = []
+            for vertex in edge:
+                mapped.append(layout[face_id][face.index(vertex)])
+            rows.append(mapped)
+        return max(math.dist(rows[0][i], rows[1][i]) for i in range(2))
+
+    closed = [edge for edge in edges if edge_gap(edge, candidate_uvs) <= 1e-8]
+    if tuple(closed) != selected:
+        raise ValueError("Junction face placement exact closure set is inconsistent.")
+    max_edge_change = 0.0
+    for face_id, face in enumerate(faces):
+        for tri in ((0, 1, 2), (0, 2, 3)):
+            for a, b in ((tri[0], tri[1]), (tri[1], tri[2]), (tri[2], tri[0])):
+                max_edge_change = max(max_edge_change, abs(
+                    math.dist(uvs[face_id][a], uvs[face_id][b]) -
+                    math.dist(candidate_uvs[face_id][a], candidate_uvs[face_id][b])
+                ))
+    shared = [edge for edge, rows in owners.items() if len(rows) == 2]
+    baseline_unclosed = sum(edge_gap(edge, uvs) > 0.000001 for edge in shared)
+    candidate_unclosed = sum(edge_gap(edge, candidate_uvs) > 0.000001 for edge in shared)
+    return {
+        "face_uv_loops": candidate_uvs,
+        "report": {
+            "researchOnly": True,
+            "targetOriginalSourceVertex": junction_vertex,
+            "incidentOriginalSourceEdges": [list(edge) for edge in edges],
+            "maximumSimultaneouslyClosedIncidentEdges": len(closed),
+            "closedIncidentOriginalSourceEdges": [list(edge) for edge in closed],
+            "openIncidentOriginalSourceEdges": [list(edge) for edge in edges if edge not in closed],
+            "candidateIncidentEdgeGapsMm": [
+                {"originalSourceEdge": list(edge),
+                 "candidateUvEndpointGapMm": round(edge_gap(edge, candidate_uvs) * 1000, 8)}
+                for edge in edges
+            ],
+            "rigidlyMovedOriginalSourceFaceIds": sorted(poses),
+            "maximumOriginalTriangleEdgeChangeMm": round(max_edge_change * 1000, 8),
+            "baselineUnclosedSharedUvEdgeCount": baseline_unclosed,
+            "candidateUnclosedSharedUvEdgeCount": candidate_unclosed,
+            "unclosedSharedUvEdgeCountDelta": candidate_unclosed - baseline_unclosed,
+            "sourceUvExportOrSavePerformed": False,
+            "physicalPatternApproved": False,
+            "productionApproved": False,
+        },
     }
 
 

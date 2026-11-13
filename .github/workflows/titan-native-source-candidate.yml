@@ -1411,6 +1411,43 @@ jobs:
                   assert row["junctionRigidUvConsistencyApproved"] is False
               print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_MINIMUM_RIGID_GROUPS_RESEARCH_ONLY",json.dumps(junctions[0] if junctions else {},sort_keys=True))
               print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_RIGID_CONSISTENCY_RESEARCH_ONLY",json.dumps(junctions[0] if junctions else {},sort_keys=True))
+              placement=tree["researchOnlyJunctionFaceRigidPlacementTrial"]
+              placement_trial=placement["trial"]
+              placement_cut=placement["candidateUvCutNetwork"]
+              placement_overlap=placement["candidateResearchUvOverlap"]
+              placement_comparison=placement[
+                  "packedBaselineVsCandidateOverlap"
+              ]
+              assert placement["researchOnly"] is True
+              assert placement_trial["targetOriginalSourceVertex"] == 1738
+              assert len(placement_trial["incidentOriginalSourceEdges"]) == 4
+              assert placement_trial[
+                  "maximumSimultaneouslyClosedIncidentEdges"
+              ] == 3
+              assert len(placement_trial[
+                  "closedIncidentOriginalSourceEdges"
+              ]) == 3
+              assert len(placement_trial[
+                  "openIncidentOriginalSourceEdges"
+              ]) == 1
+              assert len(placement_trial["candidateIncidentEdgeGapsMm"]) == 4
+              assert placement_trial["maximumOriginalTriangleEdgeChangeMm"] <= 0.000001
+              assert placement_cut["unclosedSharedUvCutCandidateEdges"] == (
+                  placement_trial["candidateUnclosedSharedUvEdgeCount"]
+              )
+              assert placement_trial["unclosedSharedUvEdgeCountDelta"] == (
+                  placement_trial["candidateUnclosedSharedUvEdgeCount"] -
+                  placement_trial["baselineUnclosedSharedUvEdgeCount"]
+              )
+              assert placement_overlap["expectedOriginalSourceQuadCount"] == 2650
+              assert placement_overlap["expectedTriangleCount"] == 5300
+              assert placement_comparison["bothFullResearchUvScansComplete"] is True
+              assert placement_trial["sourceUvExportOrSavePerformed"] is False
+              assert placement_trial["physicalPatternApproved"] is False
+              assert placement_trial["productionApproved"] is False
+              assert placement["physicalFabricAndTailorApproval"] is False
+              assert placement["productionApproved"] is False
+              print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_FACE_RIGID_PLACEMENT_RESEARCH_ONLY",json.dumps(placement,sort_keys=True))
               assert [
                   (-row["sourceUvCutGraphDegree"],
                    -row["incidentOriginalSourceCutEdgeLengthMm"],
