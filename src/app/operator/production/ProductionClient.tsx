@@ -14,7 +14,7 @@ import {isCurrentVerifiedOperatorLock} from "@/lib/designer/verified-operator-lo
 import {
   PRODUCTION_WRITE_HOLD_KEY,productionWriteHoldPending,beginProductionWriteHoldAtomically,PRODUCTION_WRITE_LOCK_NAME,
   PRODUCTION_WRITE_SESSION_LOCK_NAME,
-  releaseProductionWriteHold,acknowledgeProductionWriteHold,readProductionWriteHoldKey,
+  releaseProductionWriteHold,acknowledgeProductionWriteHold,
   captureProductionWriteEpoch,productionWriteEpochUnchanged,
   PRODUCTION_WRITE_EPOCH_KEY,captureProductionWriteReviewSnapshot,
   productionWriteReviewSnapshotUnchanged,type ProductionWriteReviewSnapshot,
@@ -319,7 +319,8 @@ export default function ProductionClient(){
 
   async function lookupPendingCreationReceipt(){
     if(!requiresWriteReview||busy||actionInFlight.current)return;
-    const pendingKey=readProductionWriteHoldKey(safeProductionHoldStorage());
+    const snapshot=captureProductionWriteReviewSnapshot(safeProductionHoldStorage());
+    const pendingKey=snapshot?.holdToken;
     if(!pendingKey){
       setRecoveredCreationReceipts(null);setRecoveredStatusReceipts(null);
       setMessage("The original request ID is missing or inaccessible. Writes remain paused; inspect authoritative records before any retry.");
@@ -339,8 +340,9 @@ export default function ProductionClient(){
       const receipts=parseProductionCreationReceiptResponse(data.receipts);
       if(!receipts)throw new Error("Unverified receipt lookup response.");
       // A concurrent tab may have changed the marker while the read was in
-      // flight. Never present the former key's results as current evidence.
-      if(readProductionWriteHoldKey(safeProductionHoldStorage())!==pendingKey){
+      // flight, even if the old UUID is unchanged. Require both its token
+      // and write epoch; never present superseded results as current evidence.
+      if(!productionWriteReviewSnapshotUnchanged(safeProductionHoldStorage(),snapshot)){
         throw new Error("Pending request key changed while checking its receipt.");
       }
       setRecoveredCreationReceipts(receipts);
