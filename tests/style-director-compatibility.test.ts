@@ -4212,3 +4212,25 @@ test("unknown waistband IDs do not conceal independent sleeve and cropped-length
     assert.equal(JSON.stringify(locked), before);
   }
 });
+
+
+test("missing waistband selection does not invent an unknown ID or suppress independent construction review", () => {
+  const locked = spec(
+    { sleeve: "half_sleeve", cuff: "french_double_cuff" },
+    { type: "cropped_ankle", hem: "plain_hem", break: "stacked_break" },
+  );
+  delete (locked.pant as Record<string, unknown>).waistband;
+  Object.freeze(locked.shirt);
+  Object.freeze(locked.pant);
+  Object.freeze(locked);
+  const before = JSON.stringify(locked);
+  const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+  const first = review();
+  for (const code of ["short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break"]) {
+    assert.ok(first.includes(code), "missing waistband must not hide " + code);
+  }
+  assert.ok(!first.includes("unknown_versioned_option"),
+    "an absent waistband is not a supplied retired catalogue ID");
+  assert.deepEqual(review(), first);
+  assert.equal(JSON.stringify(locked), before);
+});
