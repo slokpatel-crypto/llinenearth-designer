@@ -3901,3 +3901,25 @@ test("cropped trouser construction never certifies a stacked shoe break", () => 
     .some(issue => issue.code === "cropped_stacked_break"),
   "full-length stacking must not be rejected as a cropped-length conflict");
 });
+
+test("cropped shoe-break label cannot certify a non-cropped locked hem", () => {
+  for (const pant of [
+    { type: "formal_flat_front", hem: "plain_hem", break: "cropped_above_ankle" },
+    { type: "formal_flat_front", hem: "turn_up_cuff_hem", break: "cropped_above_ankle" },
+  ]) {
+    const locked = spec({}, pant);
+    const snapshot = JSON.stringify(locked);
+    Object.freeze(locked.pant);
+    const first = styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    assert.ok(first.includes("cropped_break_hem_mismatch"),
+      "cropped length label must not approve an incompatible hem");
+    assert.deepEqual(styleDirectorConstructionIssues(locked).map(issue => issue.code), first);
+    assert.equal(JSON.stringify(locked), snapshot);
+  }
+  const compatible = spec({}, {
+    type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "cropped_above_ankle",
+  });
+  assert.ok(!styleDirectorConstructionIssues(compatible)
+    .some(issue => issue.code === "cropped_break_hem_mismatch"),
+  "matching cropped break and hem must remain available");
+});
