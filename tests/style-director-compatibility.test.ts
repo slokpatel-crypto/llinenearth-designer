@@ -3992,3 +3992,29 @@ test("cropped-hem proposal requires both exact canonical construction selections
     valid as Parameters<typeof styleDirectorProposedCroppedHem>[0]), "cropped_above_ankle_hem",
     "own non-enumerable data properties are still legitimate canonical selections");
 });
+
+test("cropped hem review retains independent break and type conflicts across saved selections", () => {
+  const combinations = [
+    { type: "cropped_ankle", hem: "plain_hem", break: "cropped_above_ankle",
+      expected: ["cropped_type_hem_mismatch", "cropped_break_hem_mismatch"] },
+    { type: "cropped_ankle", hem: "plain_hem", break: "stacked_break",
+      expected: ["cropped_type_hem_mismatch", "cropped_stacked_break"] },
+    { type: "formal_flat_front", hem: "cropped_above_ankle_hem", break: "stacked_break",
+      expected: ["cropped_stacked_break"] },
+  ] as const;
+  for (const { expected, ...pant } of combinations) {
+    const locked = spec({}, pant);
+    const before = JSON.stringify(locked);
+    Object.freeze(locked.pant);
+    const codes = styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    for (const code of expected) {
+      assert.ok(codes.includes(code), `${JSON.stringify(pant)} must report ${code}`);
+    }
+    assert.deepEqual(styleDirectorConstructionIssues(locked).map(issue => issue.code), codes);
+    assert.equal(JSON.stringify(locked), before);
+  }
+  const valid = spec({}, {
+    type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "no_break",
+  });
+  assert.deepEqual(styleDirectorConstructionIssues(valid), []);
+});
