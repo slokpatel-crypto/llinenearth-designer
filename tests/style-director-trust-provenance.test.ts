@@ -87,3 +87,40 @@ test("Style Director trust scoring rejects incomplete frozen review provenance",
   assert.equal(styleDirectorIntelligenceTrustWeight(missingReview as never), 0);
   assert.equal(styleDirectorIntelligenceTrustWeight(Object.freeze(Object.create(null))), 0);
 });
+
+test("Style Director provenance weights obey the closed trust/review matrix", () => {
+  const expected = [
+    ["reviewed", "approved", 1],
+    ["reviewed", "corrected", 1],
+    ["reviewed", "unreviewed", 0.28],
+    ["reviewed", "rejected", 0],
+    ["high-confidence", "approved", 0.72],
+    ["high-confidence", "corrected", 0.72],
+    ["high-confidence", "unreviewed", 0.72],
+    ["high-confidence", "rejected", 0],
+    ["provisional", "approved", 0.28],
+    ["provisional", "corrected", 0.28],
+    ["provisional", "unreviewed", 0.28],
+    ["provisional", "rejected", 0],
+  ] as const;
+  for (const [trust, reviewStatus, weight] of expected) {
+    const record = Object.freeze({ trust, reviewStatus });
+    assert.equal(styleDirectorIntelligenceTrustWeight(record), weight,
+      `${trust}/${reviewStatus}`);
+    assert.equal(styleDirectorIntelligenceTrustWeight(record), weight,
+      "repeated ranking must be deterministic");
+  }
+});
+
+test("unknown provenance vocabulary cannot acquire review authority", () => {
+  for (const trust of ["verified", "supplier", "", null, 1]) {
+    const record = Object.freeze({ trust, reviewStatus: "approved" });
+    assert.equal(styleDirectorIntelligenceTrustWeight(record as never), 0);
+  }
+  for (const reviewStatus of ["accepted", "pending", "", null, true]) {
+    const record = Object.freeze({ trust: "reviewed", reviewStatus });
+    assert.equal(styleDirectorIntelligenceTrustWeight(record as never), 0);
+  }
+  assert.equal(styleDirectorIntelligenceTrustWeight(null), 0);
+  assert.equal(styleDirectorIntelligenceTrustWeight(undefined), 0);
+});
