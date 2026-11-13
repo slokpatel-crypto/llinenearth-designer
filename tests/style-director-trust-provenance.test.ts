@@ -124,3 +124,35 @@ test("unknown provenance vocabulary cannot acquire review authority", () => {
   assert.equal(styleDirectorIntelligenceTrustWeight(null), 0);
   assert.equal(styleDirectorIntelligenceTrustWeight(undefined), 0);
 });
+
+test("Style Director provenance rejects benign accessors without invoking them", () => {
+  let calls = 0;
+  for (const field of ["trust", "reviewStatus"] as const) {
+    const record: Record<string, unknown> = {
+      trust: "reviewed", reviewStatus: "approved",
+    };
+    Object.defineProperty(record, field, {
+      enumerable: true,
+      configurable: true,
+      get() { calls++; return field === "trust" ? "reviewed" : "approved"; },
+    });
+    const before = Object.getOwnPropertyDescriptor(record, field);
+    assert.equal(styleDirectorIntelligenceTrustWeight(record as never), 0, field);
+    assert.equal(styleDirectorIntelligenceTrustWeight(record as never), 0, field);
+    assert.equal(calls, 0, "accessors cannot manufacture approval");
+    assert.deepEqual(Object.getOwnPropertyDescriptor(record, field), before);
+  }
+});
+
+test("Style Director provenance accepts non-enumerable own data, not inherited approval", () => {
+  const record = Object.create({ trust: "reviewed" });
+  Object.defineProperty(record, "reviewStatus", {
+    value: "approved", enumerable: false, writable: false,
+  });
+  assert.equal(styleDirectorIntelligenceTrustWeight(record), 0);
+  Object.defineProperty(record, "trust", {
+    value: "reviewed", enumerable: false, writable: false,
+  });
+  Object.freeze(record);
+  assert.equal(styleDirectorIntelligenceTrustWeight(record), 1);
+});
