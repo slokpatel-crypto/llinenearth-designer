@@ -156,3 +156,34 @@ test("Style Director provenance accepts non-enumerable own data, not inherited a
   Object.freeze(record);
   assert.equal(styleDirectorIntelligenceTrustWeight(record), 1);
 });
+
+test("Style Director provenance rejects coercion traps without changing locked records", () => {
+  let coercions = 0;
+  const hostile = Object.freeze({
+    toString() { coercions++; throw new Error("must not coerce provenance"); },
+    valueOf() { coercions++; throw new Error("must not coerce provenance"); },
+    [Symbol.toPrimitive]() { coercions++; throw new Error("must not coerce provenance"); },
+  });
+  for (const field of ["trust", "reviewStatus"] as const) {
+    const record = Object.freeze({
+      trust: field === "trust" ? hostile : "reviewed",
+      reviewStatus: field === "reviewStatus" ? hostile : "approved",
+    });
+    const before = Object.getOwnPropertyDescriptors(record);
+    assert.equal(styleDirectorIntelligenceTrustWeight(record as never), 0);
+    assert.equal(styleDirectorIntelligenceTrustWeight(record as never), 0);
+    assert.deepEqual(Object.getOwnPropertyDescriptors(record), before);
+  }
+  assert.equal(coercions, 0, "provenance vocabulary must be compared without coercion");
+});
+
+test("Style Director trust score remains fail-closed for prototype-polluted own fields", () => {
+  const polluted = Object.create({ reviewStatus: "approved", trust: "reviewed" });
+  Object.defineProperty(polluted, "reviewStatus", { value: "rejected", enumerable: true });
+  Object.freeze(polluted);
+  assert.equal(styleDirectorIntelligenceTrustWeight(polluted), 0);
+  const own = Object.freeze(Object.assign(Object.create(null), {
+    reviewStatus: "corrected", trust: "reviewed",
+  }));
+  assert.equal(styleDirectorIntelligenceTrustWeight(own), 1);
+});
