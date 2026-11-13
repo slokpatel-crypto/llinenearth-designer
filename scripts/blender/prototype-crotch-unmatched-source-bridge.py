@@ -1845,7 +1845,19 @@ def main():
             or junction_summary["productionApproved"]
             or junction_cut["productionApproved"]
             or junction_comparison["productionApproved"]):
-        raise RuntimeError("Junction whole-face rigid UV trial lost source or rejection truth.")
+        raise RuntimeError(
+            "Junction whole-face rigid UV trial lost source or rejection truth: " +
+            json.dumps({
+                "trial": junction_summary,
+                "candidateCutCount":
+                    junction_cut["unclosedSharedUvCutCandidateEdges"],
+                "overlapExpectedTriangles":
+                    junction_overlap["expectedTriangleCount"],
+                "overlapComparison": junction_comparison,
+                "candidateCutProductionApproved":
+                    junction_cut["productionApproved"],
+            }, sort_keys=True)
+        )
     weighted_report["researchOnlyJunctionFaceRigidPlacementTrial"] = {
         "researchOnly": True,
         "trial": junction_summary,
