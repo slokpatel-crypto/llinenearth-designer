@@ -4089,3 +4089,24 @@ test("cropped trouser review preserves unknown shoe-break evidence alongside ind
   });
   assert.deepEqual(styleDirectorConstructionIssues(compatible), []);
 });
+
+test("independent shirt and trouser construction conflicts survive a combined locked design", () => {
+  const locked = spec({
+    type: "short_sleeve_shirt",
+    sleeve: "half_sleeve",
+    cuff: "french_double_cuff",
+  }, {
+    type: "cropped_ankle",
+    hem: "plain_hem",
+    break: "stacked_break",
+  });
+  const snapshot = JSON.stringify(locked);
+  const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+  const codes = review();
+  assert.ok(codes.includes("short_sleeve_double_cuff"),
+    "the shirt's impossible double cuff must remain visible");
+  assert.ok(codes.some(code => code.includes("cropped") || code.includes("break")),
+    "the trouser construction must be reviewed independently of the shirt");
+  assert.deepEqual(review(), codes, "construction review must be deterministic");
+  assert.equal(JSON.stringify(locked), snapshot, "review cannot rewrite locked option IDs");
+});
