@@ -64,3 +64,33 @@ test("the public handoff API must bound JSON before verifying the token or acces
   assert.equal(source.includes("const body=await request.json()"), false,
     "an unbounded JSON read cannot precede the HMAC and audit");
 });
+
+test("handoff size limit counts UTF-8 bytes and rejects multibyte overflow", async () => {
+  const empty = JSON.stringify({ token: "signed-recipe-placeholder", padding: "" });
+  const available = STYLE_DIRECTOR_HANDOFF_MAX_REQUEST_BYTES - Buffer.byteLength(empty);
+  const twoByteCharacters = "é".repeat(Math.floor(available / 2));
+  const accepted = JSON.stringify({ token: "signed-recipe-placeholder", padding: twoByteCharacters });
+  assert.ok(Buffer.byteLength(accepted) <= STYLE_DIRECTOR_HANDOFF_MAX_REQUEST_BYTES);
+  assert.deepEqual(await parseBoundedStyleDirectorHandoffJson(makeRequest(accepted)), {
+    token: "signed-recipe-placeholder", padding: twoByteCharacters,
+  });
+  const overflow = JSON.stringify({ token: "signed-recipe-placeholder", padding: twoByteCharacters + "é" });
+  assert.ok(Buffer.byteLength(overflow) > STYLE_DIRECTOR_HANDOFF_MAX_REQUEST_BYTES);
+  assert.equal(await parseBoundedStyleDirectorHandoffJson(makeRequest(overflow)), null);
+});
+
+test("oversized streamed handoff stops reading and cancels the remaining request body", async () => {
+  let canceled = false;
+  let pulled = 0;
+  const source = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      pulled++;
+      controller.enqueue(new Uint8Array(STYLE_DIRECTOR_HANDOFF_MAX_REQUEST_BYTES + 1));
+    },
+    cancel() { canceled = true; },
+  }, { highWaterMark: 0 });
+  assert.equal(await parseBoundedStyleDirectorHandoffJson({ body: source }), null);
+  assert.equal(pulled, 1, "must not consume subsequent chunks after the byte limit");
+  await Promise.resolve();
+  assert.equal(canceled, true, "oversized body must cancel the stream");
+});
