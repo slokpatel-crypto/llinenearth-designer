@@ -65,3 +65,25 @@ test("Style Director trust scoring preserves frozen explicit review decisions", 
   assert.equal(styleDirectorIntelligenceTrustWeight(corrected), 1);
   assert.equal(styleDirectorIntelligenceTrustWeight(rejected), 0);
 });
+
+test("Style Director trust scoring rejects unreadable proxy metadata without executing values", () => {
+  let getterCalls = 0;
+  const record = { reviewStatus: "approved", trust: "reviewed" };
+  const guarded = new Proxy(record, {
+    get() { getterCalls++; throw new Error("must not read executable values"); },
+    getOwnPropertyDescriptor(_target, key) {
+      if (key === "trust") throw new Error("trust descriptor unavailable");
+      return Reflect.getOwnPropertyDescriptor(record, key);
+    },
+  });
+  assert.equal(styleDirectorIntelligenceTrustWeight(guarded), 0);
+  assert.equal(getterCalls, 0);
+});
+
+test("Style Director trust scoring rejects incomplete frozen review provenance", () => {
+  const missingTrust = Object.freeze({ reviewStatus: "approved" });
+  const missingReview = Object.freeze({ trust: "reviewed" });
+  assert.equal(styleDirectorIntelligenceTrustWeight(missingTrust as never), 0);
+  assert.equal(styleDirectorIntelligenceTrustWeight(missingReview as never), 0);
+  assert.equal(styleDirectorIntelligenceTrustWeight(Object.freeze(Object.create(null))), 0);
+});
