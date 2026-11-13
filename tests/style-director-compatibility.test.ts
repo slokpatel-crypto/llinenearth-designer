@@ -4138,3 +4138,28 @@ test("cropped shoe-break conflicts remain independent of unrelated sleeve constr
   );
   assert.deepEqual(styleDirectorConstructionIssues(valid), []);
 });
+
+test("named waistband construction conflicts survive independent cropped hem review", () => {
+  const cases = [
+    ["bespoke_side_adjuster", "classic_belt_loops", "side_adjuster_type_mismatch"],
+    ["gurkha", "classic_belt_loops", "gurkha_tab_waistband_mismatch"],
+    ["linen_drawstring", "classic_belt_loops", "linen_drawstring_waistband_mismatch"],
+  ] as const;
+  for (const [type, waistband, warning] of cases) {
+    // Only exercise options that remain in the real versioned catalogue.
+    assert.ok(optionsFor("pant.type").some(option => option.id === type), type);
+    assert.ok(optionsFor("pant.waistband").some(option => option.id === waistband), waistband);
+    const locked = spec({}, {
+      type, waistband, hem: "cropped_above_ankle_hem", break: "stacked_break",
+    });
+    const before = JSON.stringify(locked);
+    Object.freeze(locked.pant);
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const codes = review();
+    assert.ok(codes.includes(warning), type + " must retain its named waist construction review");
+    assert.ok(codes.includes("cropped_stacked_break"),
+      "an unrelated waist mismatch must not suppress the length conflict");
+    assert.deepEqual(review(), codes, "repeated review must be deterministic");
+    assert.equal(JSON.stringify(locked), before, "locked options cannot be silently rewritten");
+  }
+});
