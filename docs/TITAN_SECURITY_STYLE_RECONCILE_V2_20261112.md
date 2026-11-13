@@ -67,3 +67,11 @@
 - Release checklist/checkpoint and TODO missing on this branch (404); AGENTS.md and DECISIONS.md inspected. Preserve historical checkpoints on their own branches.
 - Stock truth, customer/operator field acceptance, tailor, Blender native geometry/UV, device screenshots and owner approval remain PENDING/BLOCKED. No main merge, deployment, live stock/migration, paid AI or model identity changes.
 - Next 30–40-minute slice: verify exact new checkpoint SHA Full CI/Non-3D, then compare current primary and candidate tests; reconcile one independent compatibility test group only after checking current ancestry.
+
+## 2026-11-13 — Malformed provenance regression parity
+
+- Parent SHA: `42248b5cd70974a8c8ba825b6767b4ef189e709f`; implementation SHA: `359319bd918df23a5634f6e36a0b93198096e2c3`.
+- Acceptance slice: preserve primary Style Director malformed primitive, hostile getter, and inherited frozen approval fail-closed regression cases in the security reconciliation draft (`tests/style-director-malformed-provenance.test.ts`). Exact test content copied from live primary branch; no production source or physical approval altered.
+- Live branch comparison before commit: primary was 18 commits ahead and candidate 20 commits ahead of common ancestor `838c0065f9e638d0420121de722dc166e6e8e46f`; candidate had zero returned pull-request workflow runs at its previous exact SHA. This is a regression port, not a verified test pass.
+- Verification: no local test runner or browser QA executed in this connector session; full CI/Non-3D matching-head result PENDING. Do not count release criteria passed.
+- Blockers: branch divergence, missing matching-head CI, real stock/customer/operator/tailor/device/Blender evidence. Next slice: reconcile remaining primary-only tests and run full matching-head CI/Non-3D and security gates before any main intake.
