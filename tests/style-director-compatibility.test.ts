@@ -4110,3 +4110,31 @@ test("independent shirt and trouser construction conflicts survive a combined lo
   assert.deepEqual(review(), codes, "construction review must be deterministic");
   assert.equal(JSON.stringify(locked), snapshot, "review cannot rewrite locked option IDs");
 });
+
+
+test("cropped shoe-break conflicts remain independent of unrelated sleeve construction", () => {
+  const breaks = [
+    ["slight_break", "cropped_slight_break"],
+    ["half_break", "cropped_half_break"],
+    ["full_break", "cropped_full_break"],
+    ["stacked_break", "cropped_stacked_break"],
+  ] as const;
+  for (const [shoeBreak, warning] of breaks) {
+    const locked = spec(
+      { sleeve: "half_sleeve", cuff: "french_double_cuff" },
+      { type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: shoeBreak },
+    );
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    assert.ok(issues.includes("short_sleeve_double_cuff"), shoeBreak);
+    assert.ok(issues.includes("short_sleeve_cuff_review"), shoeBreak);
+    assert.ok(issues.includes(warning), shoeBreak);
+    assert.deepEqual(styleDirectorConstructionIssues(locked).map(issue => issue.code), issues);
+    assert.equal(JSON.stringify(locked), before, "review cannot rewrite locked IDs");
+  }
+  const valid = spec(
+    { sleeve: "full_sleeve", cuff: "barrel_cuff_1_button" },
+    { type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "no_break" },
+  );
+  assert.deepEqual(styleDirectorConstructionIssues(valid), []);
+});
