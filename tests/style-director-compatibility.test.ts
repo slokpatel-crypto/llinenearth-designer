@@ -4068,3 +4068,24 @@ test("cropped trouser conflicts remain independent of unrelated valid shirt cons
     assert.equal(JSON.stringify(locked), before, "locked shirt and trouser IDs remain intact");
   }
 });
+
+test("cropped trouser review preserves unknown shoe-break evidence alongside independent hem mismatch", () => {
+  for (const shoeBreak of ["retired_shoe_break", "french_placket", undefined] as const) {
+    const locked = spec({}, {
+      type: "cropped_ankle", hem: "plain_hem", break: shoeBreak,
+    });
+    const snapshot = JSON.stringify(locked);
+    Object.freeze(locked.pant);
+    const first = styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    assert.ok(first.includes("cropped_type_hem_mismatch"),
+      "unknown or missing break must not suppress a separate cropped-type hem conflict");
+    assert.equal(first.includes("unknown_versioned_option"), shoeBreak !== undefined,
+      "only supplied unknown break IDs should trigger catalogue review");
+    assert.deepEqual(styleDirectorConstructionIssues(locked).map(issue => issue.code), first);
+    assert.equal(JSON.stringify(locked), snapshot, "saved IDs must not be repaired implicitly");
+  }
+  const compatible = spec({}, {
+    type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "no_break",
+  });
+  assert.deepEqual(styleDirectorConstructionIssues(compatible), []);
+});
