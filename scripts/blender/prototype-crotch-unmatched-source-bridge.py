@@ -1832,13 +1832,16 @@ def main():
         merged_verts, base_faces, junction_trial["face_uv_loops"],
         l_remaining + r_remaining_mapped, junction_tree_report,
     )
-    if (junction_summary["targetOriginalSourceVertex"] != 1738
+    if (junction_summary["targetOriginalSourceVertex"] != 416
             or len(junction_summary["incidentOriginalSourceEdges"]) != 4
             or junction_summary["maximumSimultaneouslyClosedIncidentEdges"] != 3
+            or junction_summary["openIncidentOriginalSourceEdges"] != [[416, 529]]
+            or junction_summary["unclosedSharedUvEdgeCountDelta"] != 0
             or junction_summary["maximumOriginalTriangleEdgeChangeMm"] > 0.000001
             or junction_cut["unclosedSharedUvCutCandidateEdges"] !=
                junction_summary["candidateUnclosedSharedUvEdgeCount"]
             or not junction_comparison["bothFullResearchUvScansComplete"]
+            or junction_comparison["candidateOverlapTrianglePairDelta"] != -5
             or junction_overlap["expectedTriangleCount"] != 5300
             or junction_summary["sourceUvExportOrSavePerformed"]
             or junction_summary["physicalPatternApproved"]

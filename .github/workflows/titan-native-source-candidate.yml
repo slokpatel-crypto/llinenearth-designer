@@ -1419,7 +1419,7 @@ jobs:
                   "packedBaselineVsCandidateOverlap"
               ]
               assert placement["researchOnly"] is True
-              assert placement_trial["targetOriginalSourceVertex"] == 1738
+              assert placement_trial["targetOriginalSourceVertex"] == 416
               assert len(placement_trial["incidentOriginalSourceEdges"]) == 4
               assert placement_trial[
                   "maximumSimultaneouslyClosedIncidentEdges"
@@ -1430,6 +1430,9 @@ jobs:
               assert len(placement_trial[
                   "openIncidentOriginalSourceEdges"
               ]) == 1
+              assert placement_trial[
+                  "openIncidentOriginalSourceEdges"
+              ] == [[416,529]]
               assert len(placement_trial["candidateIncidentEdgeGapsMm"]) == 4
               assert placement_trial["maximumOriginalTriangleEdgeChangeMm"] <= 0.000001
               assert placement_cut["unclosedSharedUvCutCandidateEdges"] == (
@@ -1439,9 +1442,19 @@ jobs:
                   placement_trial["candidateUnclosedSharedUvEdgeCount"] -
                   placement_trial["baselineUnclosedSharedUvEdgeCount"]
               )
+              assert placement_trial["unclosedSharedUvEdgeCountDelta"] == 0
               assert placement_overlap["expectedOriginalSourceQuadCount"] == 2650
               assert placement_overlap["expectedTriangleCount"] == 5300
               assert placement_comparison["bothFullResearchUvScansComplete"] is True
+              assert placement_comparison[
+                  "baselineObservedTriangleOverlapPairs"
+              ] == 6957
+              assert placement_comparison[
+                  "candidateObservedTriangleOverlapPairs"
+              ] == 6952
+              assert placement_comparison[
+                  "candidateOverlapTrianglePairDelta"
+              ] == -5
               assert placement_trial["sourceUvExportOrSavePerformed"] is False
               assert placement_trial["physicalPatternApproved"] is False
               assert placement_trial["productionApproved"] is False

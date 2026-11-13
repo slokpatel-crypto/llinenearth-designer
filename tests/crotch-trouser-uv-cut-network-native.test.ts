@@ -180,7 +180,7 @@ test("actual source UV cut graph counts physical mesh edges without inventing se
     'cut_network["unclosedSharedUvCutCandidateEdges"] == (',
     'cut_network["uvCutCandidateDegreeThreePlusSourceVertices"] >= 0',
     'TITAN_ACTUAL_SOURCE_UV_JUNCTION_FACE_RIGID_PLACEMENT_RESEARCH_ONLY',
-    'placement_trial["targetOriginalSourceVertex"] == 1738',
+    'placement_trial["targetOriginalSourceVertex"] == 416',
     'cut_network["uvCutGraphCycleRank"] == (',
     '"uvCutGraphSimpleOpenPathComponentCount"',
     '"uvCutGraphBranchedOrCompoundComponentCount"',
