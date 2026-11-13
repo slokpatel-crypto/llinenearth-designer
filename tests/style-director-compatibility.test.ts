@@ -3945,3 +3945,25 @@ test("independent cropped trouser conflicts cannot conceal each other", () => {
   assert.ok(!codes.includes("cropped_type_hem_mismatch"));
   assert.ok(!codes.includes("cropped_stacked_break"));
 });
+
+
+test("cropped-hem proposal ignores accessor-backed and inherited garment selections", () => {
+  const canonical = Object.freeze({ type: "cropped_ankle", break: "cropped_above_ankle" });
+  assert.equal(styleDirectorProposedCroppedHem(canonical), "cropped_above_ankle_hem");
+  let getterCalls = 0;
+  const accessor = Object.defineProperties({}, {
+    type: { enumerable: true, get() { getterCalls++; throw Error("untrusted type"); } },
+    break: { enumerable: true, value: "cropped_above_ankle" },
+  });
+  assert.equal(styleDirectorProposedCroppedHem(accessor as typeof canonical), null);
+  assert.equal(getterCalls, 0, "construction proposal must not execute persisted accessors");
+  const inherited = Object.create({ type: "cropped_ankle", break: "cropped_above_ankle" });
+  assert.equal(styleDirectorProposedCroppedHem(inherited), null);
+  const ownType = Object.assign(Object.create({ break: "cropped_above_ankle" }), {
+    type: "cropped_ankle",
+  });
+  assert.equal(styleDirectorProposedCroppedHem(ownType), null);
+  const boxed = { type: new String("cropped_ankle"), break: "cropped_above_ankle" };
+  assert.equal(styleDirectorProposedCroppedHem(boxed as unknown as typeof canonical), null);
+  assert.deepEqual(canonical, { type: "cropped_ankle", break: "cropped_above_ankle" });
+});
