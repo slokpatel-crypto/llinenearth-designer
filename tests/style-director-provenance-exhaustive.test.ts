@@ -71,3 +71,27 @@ test("computed provenance cannot fabricate approval or execute scoring getters",
   assert.equal(styleDirectorIntelligenceTrustWeight(ownData), 1,
     "valid own data on a null-prototype record must remain supported");
 });
+
+test("non-string and spoofed provenance values cannot acquire approval weight", () => {
+  const forgedValues: unknown[] = [
+    new String("reviewed"),
+    ["reviewed"],
+    { toString() { throw new Error("untrusted conversion executed"); } },
+    Symbol("reviewed"),
+    1n,
+  ];
+  for (const value of forgedValues) {
+    for (const key of ["trust", "reviewStatus"] as const) {
+      const record = {
+        trust: "reviewed",
+        reviewStatus: "approved",
+        [key]: value,
+      } as unknown as Parameters<typeof styleDirectorIntelligenceTrustWeight>[0];
+      assert.equal(styleDirectorIntelligenceTrustWeight(record), 0, key + " must fail closed");
+      assert.equal(styleDirectorIntelligenceTrustWeight(record), 0, "replay must fail closed");
+    }
+  }
+  assert.equal(styleDirectorIntelligenceTrustWeight(
+    Object.freeze({ trust: "reviewed", reviewStatus: "approved" }),
+  ), 1, "valid own-string metadata remains supported");
+});
