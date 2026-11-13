@@ -56,3 +56,14 @@
 - Live primary `b47edf3dca83638ea7e5e221f7556dae2fec4e28` vs candidate parent: diverged by 12 primary-only / 16 candidate-only commits, common ancestor `838c0065f9e638d0420121de722dc166e6e8e46f`. Primary CI #43331077713 and Non-3D #43331077871 were in progress at inspection. Candidate parent returned no matching PR workflow runs. **New regression is unverified: no local tests or matching-head CI/browser/release/build/disposable DB evidence.** Do not merge main.
 - `AGENTS.md` and `DECISIONS.md` inspected; `docs/TITAN_RELEASE_CHECKLIST.md`, `docs/TITAN_RELEASE_CHECKPOINT.md`, and `TODO.md` returned 404 on candidate. Historical release evidence must not be invented. Remaining T/J release acceptance and real stock, customer/operator, tailor, device, native Blender and owner signoff remain PENDING/BLOCKED.
 - Next 30–40-minute slice: check matching-head workflows for checkpoint SHA, diagnose failures; reconcile remaining primary compatibility changes only after exact-head evidence. No deployment, paid AI, live migration, stock mutation or model identity change.
+
+
+## 2026-11-13 — unreadable/incomplete trust provenance regression reconciliation
+
+- Acceptance slice: preserve fail-closed Style Director trust scoring for unreadable proxy descriptors and incomplete frozen approval records, with zero execution of hostile getters. Added the two latest primary regression cases without changing production code or physical truth.
+- Exact parent: `61445ee21913034e9614592f1f3df6a4bb3e0d61`; test result: `a55cd65215312baa37b08b92bb6409445f96af3c`. Primary source `7e11a031f36a347d30738f9d989d3d00f0bb90fb`, source test blob `3bde264dc6b19f4d3cc425cfd1219e7ef585aca9`.
+- Primary source matching-head CI #43339115140 and Non-3D #43339114142 were IN_PROGRESS at inspection. Candidate parent workflow query returned no PR-triggered runs; combined status returned no statuses. **No tests or browser QA executed locally, and no matching-head CI is proven for the new commit. Criterion PENDING verification.**
+- Live candidate and primary diverged (primary-only 13 commits, candidate-only 18 before this port); six primary-side changed paths require further careful reconciliation. No safe isolated main intake proven.
+- Release checklist/checkpoint and TODO missing on this branch (404); AGENTS.md and DECISIONS.md inspected. Preserve historical checkpoints on their own branches.
+- Stock truth, customer/operator field acceptance, tailor, Blender native geometry/UV, device screenshots and owner approval remain PENDING/BLOCKED. No main merge, deployment, live stock/migration, paid AI or model identity changes.
+- Next 30–40-minute slice: verify exact new checkpoint SHA Full CI/Non-3D, then compare current primary and candidate tests; reconcile one independent compatibility test group only after checking current ancestry.
