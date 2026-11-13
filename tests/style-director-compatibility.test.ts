@@ -3879,3 +3879,25 @@ test("explicit pocket requests and exclusions reject stale locked IDs without mu
   assert.deepEqual(styleDirectorCandidatePocketIssues("Flap pocket is prohibited",
     { pocket: "single_patch_pocket" }), []);
 });
+
+test("cropped trouser construction never certifies a stacked shoe break", () => {
+  for (const pant of [
+    { type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "stacked_break" },
+    { type: "formal_flat_front", hem: "cropped_above_ankle_hem", break: "stacked_break" },
+  ]) {
+    const locked = spec({}, pant);
+    const before = JSON.stringify(locked);
+    Object.freeze(locked.pant);
+    const first = styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    assert.ok(first.includes("cropped_stacked_break"),
+      "above-ankle length and shoe stacking require construction review");
+    assert.deepEqual(styleDirectorConstructionIssues(locked).map(issue => issue.code), first);
+    assert.equal(JSON.stringify(locked), before, "locked garment IDs must remain intact");
+  }
+  const fullLength = spec({}, {
+    type: "formal_flat_front", hem: "plain_hem", break: "stacked_break",
+  });
+  assert.ok(!styleDirectorConstructionIssues(fullLength)
+    .some(issue => issue.code === "cropped_stacked_break"),
+  "full-length stacking must not be rejected as a cropped-length conflict");
+});
