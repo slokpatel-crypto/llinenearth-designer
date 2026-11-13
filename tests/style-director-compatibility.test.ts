@@ -4047,3 +4047,24 @@ test("cropped trouser construction rejects every positive shoe-break depth witho
     assert.deepEqual(styleDirectorConstructionIssues(compatible), []);
   }
 });
+
+test("cropped trouser conflicts remain independent of unrelated valid shirt construction", () => {
+  const shirtVariants = [
+    { type: "dress_shirt", collar: "spread_collar", wear: "tucked" },
+    { type: "band_collar_shirt", collar: "mandarin_band_collar", wear: "tucked" },
+    { type: "camp_collar_resort", collar: "cuban_camp_collar", wear: "untucked" },
+  ] as const;
+  for (const shirt of shirtVariants) {
+    const locked = spec(shirt, {
+      type: "cropped_ankle", hem: "plain_hem", break: "stacked_break",
+    });
+    const before = JSON.stringify(locked);
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    const issues = styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    assert.deepEqual(issues, ["cropped_type_hem_mismatch", "cropped_stacked_break"],
+      "unrelated shirt options cannot suppress independent trouser safety review");
+    assert.deepEqual(styleDirectorConstructionIssues(locked).map(issue => issue.code), issues);
+    assert.equal(JSON.stringify(locked), before, "locked shirt and trouser IDs remain intact");
+  }
+});
