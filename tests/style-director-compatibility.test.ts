@@ -4163,3 +4163,27 @@ test("named waistband construction conflicts survive independent cropped hem rev
     assert.equal(JSON.stringify(locked), before, "locked options cannot be silently rewritten");
   }
 });
+
+test("waistband, sleeve and cropped-length construction warnings coexist without altering locked IDs", () => {
+  for (const [type, warning] of [
+    ["bespoke_side_adjuster", "side_adjuster_type_mismatch"],
+    ["gurkha", "gurkha_tab_waistband_mismatch"],
+    ["linen_drawstring", "linen_drawstring_waistband_mismatch"],
+  ] as const) {
+    const locked = spec(
+      { sleeve: "half_sleeve", cuff: "french_double_cuff" },
+      { type, waistband: "belt_loops", hem: "cropped_above_ankle_hem", break: "stacked_break" },
+    );
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    Object.freeze(locked);
+    const snapshot = JSON.stringify(locked);
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const first = review();
+    for (const code of [warning, "short_sleeve_double_cuff", "cropped_stacked_break"]) {
+      assert.ok(first.includes(code), type + " must independently report " + code);
+    }
+    assert.deepEqual(review(), first, "locked construction review must be deterministic");
+    assert.equal(JSON.stringify(locked), snapshot, "review must not modify saved options");
+  }
+});
