@@ -3967,3 +3967,28 @@ test("cropped-hem proposal ignores accessor-backed and inherited garment selecti
   assert.equal(styleDirectorProposedCroppedHem(boxed as unknown as typeof canonical), null);
   assert.deepEqual(canonical, { type: "cropped_ankle", break: "cropped_above_ankle" });
 });
+
+test("cropped-hem proposal requires both exact canonical construction selections", () => {
+  for (const [type, shoeBreak] of [
+    ["cropped_ankle", "no_break"],
+    ["formal_flat_front", "cropped_above_ankle"],
+    ["cropped_ankle", "stacked_break"],
+    ["retired_cropped_type", "cropped_above_ankle"],
+    ["cropped_ankle", "retired_break"],
+    [undefined, "cropped_above_ankle"],
+    ["cropped_ankle", undefined],
+  ] as const) {
+    const locked = Object.freeze({ type, break: shoeBreak });
+    const snapshot = JSON.stringify(locked);
+    assert.equal(styleDirectorProposedCroppedHem(
+      locked as Parameters<typeof styleDirectorProposedCroppedHem>[0]), null);
+    assert.equal(JSON.stringify(locked), snapshot, "proposal must not mutate saved IDs");
+  }
+  const valid = Object.freeze(Object.defineProperties({}, {
+    type: { value: "cropped_ankle", configurable: false },
+    break: { value: "cropped_above_ankle", configurable: false },
+  }));
+  assert.equal(styleDirectorProposedCroppedHem(
+    valid as Parameters<typeof styleDirectorProposedCroppedHem>[0]), "cropped_above_ankle_hem",
+    "own non-enumerable data properties are still legitimate canonical selections");
+});
