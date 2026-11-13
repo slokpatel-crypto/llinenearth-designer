@@ -4187,3 +4187,28 @@ test("waistband, sleeve and cropped-length construction warnings coexist without
     assert.equal(JSON.stringify(locked), snapshot, "review must not modify saved options");
   }
 });
+
+test("unknown waistband IDs do not conceal independent sleeve and cropped-length conflicts", () => {
+  for (const waistband of ["retired_waistband", "french_placket"] as const) {
+    const locked = spec(
+      { sleeve: "half_sleeve", cuff: "french_double_cuff" },
+      { type: "cropped_ankle", waistband, hem: "plain_hem", break: "stacked_break" },
+    );
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    Object.freeze(locked);
+    const before = JSON.stringify(locked);
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const first = review();
+    for (const code of [
+      "unknown_versioned_option",
+      "short_sleeve_double_cuff",
+      "cropped_type_hem_mismatch",
+      "cropped_stacked_break",
+    ]) {
+      assert.ok(first.includes(code), waistband + " must preserve independent " + code);
+    }
+    assert.deepEqual(review(), first);
+    assert.equal(JSON.stringify(locked), before);
+  }
+});
