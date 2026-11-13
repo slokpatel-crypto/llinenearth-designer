@@ -3905,7 +3905,7 @@ test("cropped trouser construction never certifies a stacked shoe break", () => 
 test("cropped shoe-break label cannot certify a non-cropped locked hem", () => {
   for (const pant of [
     { type: "formal_flat_front", hem: "plain_hem", break: "cropped_above_ankle" },
-    { type: "formal_flat_front", hem: "turn_up_cuff_hem", break: "cropped_above_ankle" },
+    { type: "formal_flat_front", hem: "cuffed_turn_up", break: "cropped_above_ankle" },
   ]) {
     const locked = spec({}, pant);
     const snapshot = JSON.stringify(locked);
