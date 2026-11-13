@@ -4141,9 +4141,9 @@ test("cropped shoe-break conflicts remain independent of unrelated sleeve constr
 
 test("named waistband construction conflicts survive independent cropped hem review", () => {
   const cases = [
-    ["bespoke_side_adjuster", "classic_belt_loops", "side_adjuster_type_mismatch"],
-    ["gurkha", "classic_belt_loops", "gurkha_tab_waistband_mismatch"],
-    ["linen_drawstring", "classic_belt_loops", "linen_drawstring_waistband_mismatch"],
+    ["bespoke_side_adjuster", "belt_loops", "side_adjuster_type_mismatch"],
+    ["gurkha", "belt_loops", "gurkha_tab_waistband_mismatch"],
+    ["linen_drawstring", "belt_loops", "linen_drawstring_waistband_mismatch"],
   ] as const;
   for (const [type, waistband, warning] of cases) {
     // Only exercise options that remain in the real versioned catalogue.
