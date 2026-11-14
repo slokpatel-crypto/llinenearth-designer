@@ -1,0 +1,11 @@
+# TITAN Style Director security reconciliation checkpoint
+
+2026-11-11 UTC — T1/T5/J4 engineering slice; release T1–T6/J1–J6 remain PENDING/BLOCKED.
+
+- Parent primary Style Director draft PR #868: `c7b418d08de87296efad9f1484524124229ceadd`; exact-head CI [43005322166](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/43005322166) SUCCESS and Non-3D [43005322420](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/43005322420) SUCCESS.
+- Independent source PR #976: `4c478a76d2433689a4610dbcc69ede74b14c3297`; exact-head CI [42963825089](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/42963825089) SUCCESS, Non-3D [42963825228](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/42963825228) SUCCESS. Source and primary diverged (source ahead 5, behind 13); never merge the entire sibling stack blindly.
+- New isolated draft PR #977: `work/titan-style-director-audit-reconcile-20261111`. Commits parent → result: `c7b418d08de87296efad9f1484524124229ceadd` → `cff9406b7f711bf948f50a41890f031590923561` → `0c23b1b237d5b58616626cb74e6d0be0aca25c44` → `f789f0fb0f0811e8ac808df21fbd2fa8c4fde55c` → `c2b69d9136949ddc682b00e7e852edec7d8761a1` → `6d8a26a3d390d284e55c3d83d3c5f90188ea48a5`.
+- Files: `src/app/api/style-director/handoff/route.ts`, `src/lib/designer/style-director-handoff-request.ts`, `src/lib/designer/style-director-handoff-audit.ts`, `tests/style-director-handoff-request-bounds.test.ts`, `tests/style-director-handoff-audit-bounds.test.ts`.
+- Acceptance: reject oversized/malformed signed handoff input; only claim persisted audit when bounded JSON response contains exact UUID. Regression tests ported unchanged from independently verified source. **New exact-head CI, browser and release verification PENDING**; parent/sibling green cannot certify this new SHA.
+- Physical BLOCKED: real supplier stock, authenticated owner/operator Supabase walkthrough, measurements/tailor, native Blender geometry/UV, physical devices, beta and first-ten delivery, privacy/security and owner release signoffs. No main merge, deployment, production mutation or paid AI.
+- Next: resolve #977 matching-head CI and Non-3D; fix any failures; compare latest primary head and port only verified compatible changes; preserve no-deploy guard on any later isolated main intake.
