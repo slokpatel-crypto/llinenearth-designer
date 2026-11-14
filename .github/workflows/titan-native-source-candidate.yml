@@ -22,6 +22,10 @@ on:
       - "scripts/blender/source-trouser-quad-metric-uv.py"
       - "scripts/blender/source-trouser-dual-tree-uv.py"
       - "scripts/blender/source-trouser-uv-cut-network.py"
+      - "scripts/blender/source-trouser-max-retained-uv.py"
+      - "scripts/blender/source-trouser-uv-overlap-audit.py"
+      - "scripts/blender/source-trouser-component-uv-pack.py"
+      - "scripts/blender/source-trouser-component0-subtree-uv-trial.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -36,6 +40,10 @@ on:
       - "tests/crotch-trouser-quad-metric-uv-native.test.ts"
       - "tests/crotch-trouser-dual-tree-uv-native.test.ts"
       - "tests/crotch-trouser-uv-cut-network-native.test.ts"
+      - "tests/crotch-trouser-max-retained-uv-native.test.ts"
+      - "tests/crotch-trouser-uv-overlap-native.test.ts"
+      - "tests/crotch-trouser-component-uv-native.test.ts"
+      - "tests/crotch-trouser-component0-subtree-uv-native.test.ts"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -53,6 +61,10 @@ on:
       - "tests/python/test_source_trouser_quad_metric_uv.py"
       - "tests/python/test_source_trouser_dual_tree_uv.py"
       - "tests/python/test_source_trouser_uv_cut_network.py"
+      - "tests/python/test_source_trouser_max_retained_uv.py"
+      - "tests/python/test_source_trouser_uv_overlap.py"
+      - "tests/python/test_source_trouser_component_uv_pack.py"
+      - "tests/python/test_source_trouser_component0_subtree_uv.py"
       - ".github/workflows/titan-native-source-candidate.yml"
   push:
     branches: [main]
@@ -75,6 +87,10 @@ on:
       - "scripts/blender/source-trouser-quad-metric-uv.py"
       - "scripts/blender/source-trouser-dual-tree-uv.py"
       - "scripts/blender/source-trouser-uv-cut-network.py"
+      - "scripts/blender/source-trouser-max-retained-uv.py"
+      - "scripts/blender/source-trouser-uv-overlap-audit.py"
+      - "scripts/blender/source-trouser-component-uv-pack.py"
+      - "scripts/blender/source-trouser-component0-subtree-uv-trial.py"
       - "scripts/blender/prototype-crotch-connected-face-remesh.py"
       - "tests/crotch-bridge-centroid-clearance-native.test.ts"
       - "tests/crotch-fixed-boundary-body-ray-native.test.ts"
@@ -89,6 +105,11 @@ on:
       - "tests/crotch-trouser-quad-metric-uv-native.test.ts"
       - "tests/crotch-trouser-dual-tree-uv-native.test.ts"
       - "tests/crotch-trouser-uv-cut-network-native.test.ts"
+      - "tests/crotch-trouser-max-retained-uv-native.test.ts"
+      - "tests/crotch-trouser-uv-overlap-native.test.ts"
+      - "tests/crotch-trouser-component-uv-native.test.ts"
+      - "tests/crotch-trouser-component0-subtree-uv-native.test.ts"
+      - "tests/python/test_source_trouser_component0_subtree_uv.py"
       - "tests/crotch-unmatched-bridge-native.test.ts"
       - "tests/crotch-source-weld-native.test.ts"
       - "tests/crotch-seam-pairing-native.test.ts"
@@ -121,6 +142,10 @@ jobs:
           python3 tests/python/test_source_trouser_quad_metric_uv.py
           python3 tests/python/test_source_trouser_dual_tree_uv.py
           python3 tests/python/test_source_trouser_uv_cut_network.py
+          python3 tests/python/test_source_trouser_max_retained_uv.py
+          python3 tests/python/test_source_trouser_uv_overlap.py
+          python3 tests/python/test_source_trouser_component_uv_pack.py
+          python3 tests/python/test_source_trouser_component0_subtree_uv.py
       - name: Fetch checksum-verified Blender 4.5.14
         shell: bash
         run: |
@@ -1227,10 +1252,690 @@ jobs:
               assert 0 <= cut_network["uvCutCandidateGraphComponentCount"] <= 2717
               assert cut_network["uvCutCandidateDegreeOneSourceVertices"] >= 0
               assert cut_network["uvCutCandidateDegreeThreePlusSourceVertices"] >= 0
+              # Independently reconcile original mesh graph Euler rank from
+              # edge, vertex and component counts: a cut network with cycles
+              # or junctions is not a simple approved source-panel seam.
+              assert cut_network["uvCutGraphCycleRank"] == (
+                  cut_network["unclosedSharedUvCutCandidateEdges"] -
+                  cut_network["uvCutCandidateSourceVertexCount"] +
+                  cut_network["uvCutCandidateGraphComponentCount"]
+              )
+              assert cut_network["uvCutGraphCycleRank"] >= 0
+              # Source junctions must be actual retained mesh vertex IDs,
+              # with finite measured 3D coordinates and traceable seam
+              # incident lengths, not invented manufacturing seam points.
+              junctions=cut_network["actualLargestOriginalSourceUvCutJunctions"]
+              source_branch_count=cut_network[
+                  "uvCutCandidateDegreeThreePlusSourceVertices"
+              ]
+              assert len(junctions) == min(12, source_branch_count)
+              assert len({r["originalSourceVertexIndex"] for r in junctions}) == (
+                  len(junctions)
+              )
+              assert cut_network["uvCutGraphMaximumJunctionDegree"] == max(
+                  [int(degree) for degree, count in
+                   cut_network["uvCutCandidateDegreeHistogram"].items()
+                   if int(degree) >= 3 and count] or [0]
+              )
+              assert 0 <= cut_network[
+                  "uvCutGraphJunctionsOnActualOriginalBoundary"
+              ] <= source_branch_count
+              assert 0 <= cut_network[
+                  "uvCutGraphJunctionsOnGenuineOriginalCrotchCut"
+              ] <= source_branch_count
+              assert all(
+                  type(row["originalSourceVertexIndex"]) is int
+                  and 0 <= row["originalSourceVertexIndex"] < 2717
+                  and type(row["sourceUvCutGraphDegree"]) is int
+                  and row["sourceUvCutGraphDegree"] >= 3
+                  and row["incidentOriginalSourceCutEdgeLengthMm"] > 0
+                  and len(row["realOriginalSourcePositionMm"]) == 3
+                  and all(math.isfinite(v) for v in
+                          row["realOriginalSourcePositionMm"])
+                  and type(row["touchesActualOriginalOpenBoundary"]) is bool
+                  and type(row["touchesGenuineOriginalCrotchCut"]) is bool
+                  for row in junctions
+              )
+              for row in junctions:
+                  face_pairs=row["incidentOriginalSourceUvOwnerFacePairs"]
+                  transforms=row["incidentBestFitProperRigidTransforms"]
+                  degree=row["sourceUvCutGraphDegree"]
+                  assert len(face_pairs) == len(transforms) == degree
+                  assert {
+                      tuple(part["originalSourceEdge"]) for part in face_pairs
+                  } == {
+                      tuple(part["originalSourceEdge"]) for part in transforms
+                  }
+                  assert all(
+                      row["originalSourceVertexIndex"] in part["originalSourceEdge"]
+                      and len(part["deterministicOwnerFacePair"]) == 2
+                      and part["deterministicOwnerFacePair"][0] <
+                          part["deterministicOwnerFacePair"][1]
+                      for part in face_pairs
+                  )
+                  rotations=[
+                      part["properRigidRotationDegrees"] for part in transforms
+                  ]
+                  translations=[
+                      part["properRigidTranslationMm"] for part in transforms
+                  ]
+                  def transforms_compatible(a,b):
+                      return (
+                          abs(math.remainder(rotations[a]-rotations[b],360.0))
+                              <= 0.000001
+                          and math.dist(translations[a],translations[b])
+                              <= 0.00001
+                      )
+                  def admits_group_count(limit):
+                      groups=[]
+                      def assign(index):
+                          if index == degree:
+                              return True
+                          for group in groups:
+                              if all(transforms_compatible(index,other)
+                                     for other in group):
+                                  group.append(index)
+                                  if assign(index+1):
+                                      return True
+                                  group.pop()
+                          if len(groups) < limit:
+                              groups.append([index])
+                              if assign(index+1):
+                                  return True
+                              groups.pop()
+                          return False
+                      return assign(0)
+                  assert all(
+                      math.isfinite(part["properRigidRotationDegrees"])
+                      and len(part["properRigidTranslationMm"]) == 2
+                      and all(math.isfinite(v) for v in
+                              part["properRigidTranslationMm"])
+                      and part["irreducibleEndpointResidualMm"] >= 0
+                      for part in transforms
+                  )
+                  rotation_spread=max(
+                      abs(math.remainder(a-b,360.0))
+                      for i,a in enumerate(rotations)
+                      for b in rotations[i+1:]
+                  )
+                  translation_spread=max(
+                      math.dist(a,b)
+                      for i,a in enumerate(translations)
+                      for b in translations[i+1:]
+                  )
+                  assert abs(
+                      rotation_spread-
+                      row["maximumPairwiseRigidRotationDisagreementDegrees"]
+                  ) <= 0.000001
+                  assert abs(
+                      translation_spread-
+                      row["maximumPairwiseRigidTranslationDisagreementMm"]
+                  ) <= 0.00001
+                  assert row[
+                      "singleDeterministicRigidTransformClosesAllIncidentEdges"
+                  ] is (rotation_spread <= 0.000001 and
+                        translation_spread <= 0.00001)
+                  minimum_count=next(
+                      count for count in range(1,degree+1)
+                      if admits_group_count(count)
+                  )
+                  reported_groups=row[
+                      "minimumDeterministicRigidTransformGroups"
+                  ]
+                  assert row[
+                      "minimumDeterministicRigidTransformGroupCount"
+                  ] == len(reported_groups) == minimum_count
+                  grouped_edges=[
+                      tuple(edge) for group in reported_groups
+                      for edge in group["incidentOriginalSourceEdges"]
+                  ]
+                  assert sorted(grouped_edges) == sorted(
+                      tuple(part["originalSourceEdge"])
+                      for part in transforms
+                  )
+                  transform_by_edge={
+                      tuple(part["originalSourceEdge"]):index
+                      for index,part in enumerate(transforms)
+                  }
+                  for group in reported_groups:
+                      indices=[transform_by_edge[tuple(edge)] for edge in
+                               group["incidentOriginalSourceEdges"]]
+                      assert all(
+                          transforms_compatible(a,b)
+                          for pos,a in enumerate(indices)
+                          for b in indices[pos+1:]
+                      )
+                  assert row[
+                      "allIncidentEdgesRequireDistinctRigidTransforms"
+                  ] is (minimum_count == degree)
+                  assert row["junctionRigidUvConsistencyApproved"] is False
+              print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_MINIMUM_RIGID_GROUPS_RESEARCH_ONLY",json.dumps(junctions[0] if junctions else {},sort_keys=True))
+              print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_RIGID_CONSISTENCY_RESEARCH_ONLY",json.dumps(junctions[0] if junctions else {},sort_keys=True))
+              placement=oriented[
+                  "researchOnlyOriginalSourceMaxRetainedUvEvidence"
+              ]["researchOnlyJunctionFaceRigidPlacementTrial"]
+              placement_trial=placement["trial"]
+              placement_cut=placement["candidateUvCutNetwork"]
+              placement_overlap=placement["candidateResearchUvOverlap"]
+              placement_comparison=placement[
+                  "packedBaselineVsCandidateOverlap"
+              ]
+              assert placement["researchOnly"] is True
+              assert placement_trial["targetOriginalSourceVertex"] == 416
+              assert len(placement_trial["incidentOriginalSourceEdges"]) == 4
+              assert placement_trial[
+                  "maximumSimultaneouslyClosedIncidentEdges"
+              ] == 3
+              assert len(placement_trial[
+                  "closedIncidentOriginalSourceEdges"
+              ]) == 3
+              assert len(placement_trial[
+                  "openIncidentOriginalSourceEdges"
+              ]) == 1
+              assert placement_trial[
+                  "openIncidentOriginalSourceEdges"
+              ] == [[416,529]]
+              assert len(placement_trial["candidateIncidentEdgeGapsMm"]) == 4
+              assert placement_trial["maximumOriginalTriangleEdgeChangeMm"] <= 0.000001
+              assert placement_cut["unclosedSharedUvCutCandidateEdges"] == (
+                  placement_trial["candidateUnclosedSharedUvEdgeCount"]
+              )
+              assert placement_trial["unclosedSharedUvEdgeCountDelta"] == (
+                  placement_trial["candidateUnclosedSharedUvEdgeCount"] -
+                  placement_trial["baselineUnclosedSharedUvEdgeCount"]
+              )
+              assert placement_trial["unclosedSharedUvEdgeCountDelta"] == 0
+              assert placement_overlap["expectedOriginalSourceQuadCount"] == 2650
+              assert placement_overlap["expectedTriangleCount"] == 5300
+              assert placement_comparison["bothFullResearchUvScansComplete"] is True
+              assert placement_comparison[
+                  "baselineObservedTriangleOverlapPairs"
+              ] == 6957
+              assert placement_comparison[
+                  "candidateObservedTriangleOverlapPairs"
+              ] == 6952
+              assert placement_comparison[
+                  "candidateOverlapTrianglePairDelta"
+              ] == -5
+              assert placement_trial["sourceUvExportOrSavePerformed"] is False
+              assert placement_trial["physicalPatternApproved"] is False
+              assert placement_trial["productionApproved"] is False
+              assert placement["physicalFabricAndTailorApproval"] is False
+              assert placement["productionApproved"] is False
+              print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_FACE_RIGID_PLACEMENT_RESEARCH_ONLY",json.dumps(placement,sort_keys=True))
+              four_chart=oriented[
+                  "researchOnlyOriginalSourceMaxRetainedUvEvidence"
+              ]["researchOnlyJunctionFourChartSplitTrial"]
+              four_chart_trial=four_chart["trial"]
+              four_chart_overlap=four_chart["candidateResearchUvOverlap"]
+              four_chart_comparison=four_chart[
+                  "packedBaselineVsCandidateOverlap"
+              ]
+              assert four_chart["researchOnly"] is True
+              assert four_chart_trial["targetOriginalSourceVertex"] == 416
+              assert four_chart_trial["closedIncidentEdgeCount"] == 4
+              assert len(four_chart_trial[
+                  "closedIncidentOriginalSourceEdges"
+              ]) == 4
+              assert len(four_chart_trial["splitOriginalSourceFaceIds"]) == 4
+              assert four_chart_trial["movedTrianglePoseCount"] == 4
+              assert four_chart_trial[
+                  "baselineUnclosedSharedUvEdgeCount"
+              ] == 2585
+              assert four_chart_trial[
+                  "candidateUnclosedSharedUvEdgeCount"
+              ] == 2583
+              assert four_chart_trial[
+                  "newUnclosedInternalSplitDiagonalCount"
+              ] == 2
+              assert four_chart_trial[
+                  "candidateTotalUnclosedUvSeamCount"
+              ] == 2585
+              assert four_chart_trial[
+                  "totalUnclosedUvSeamCountDelta"
+              ] == 0
+              assert len(four_chart_trial[
+                  "internalSplitDiagonalEvidence"
+              ]) == 4
+              assert four_chart_trial[
+                  "candidateTotalUnclosedUvSeamCount"
+              ] == (
+                  four_chart_trial["candidateUnclosedSharedUvEdgeCount"] +
+                  four_chart_trial["newUnclosedInternalSplitDiagonalCount"]
+              )
+              assert four_chart_trial["totalUnclosedUvSeamCountDelta"] == (
+                  four_chart_trial["candidateTotalUnclosedUvSeamCount"] -
+                  four_chart_trial["baselineUnclosedSharedUvEdgeCount"]
+              )
+              assert four_chart_trial[
+                  "maximumOriginalTriangleEdgeChangeMm"
+              ] <= 0.000001
+              assert four_chart_overlap["actualTrianglesInspected"] == 5300
+              assert four_chart_overlap["auditTruncated"] is False
+              assert four_chart_comparison[
+                  "bothFullResearchUvScansComplete"
+              ] is True
+              assert four_chart_comparison[
+                  "baselineObservedTriangleOverlapPairs"
+              ] == 6957
+              assert four_chart_comparison[
+                  "candidateObservedTriangleOverlapPairs"
+              ] == 6953
+              assert four_chart_comparison[
+                  "candidateOverlapTrianglePairDelta"
+              ] == -4
+              assert four_chart_trial["storedSourceUvChanged"] is False
+              assert four_chart_trial["sourceUvExportOrSavePerformed"] is False
+              assert four_chart_trial["physicalPatternApproved"] is False
+              assert four_chart_trial["productionApproved"] is False
+              assert four_chart["physicalFabricAndTailorApproval"] is False
+              assert four_chart["productionApproved"] is False
+              print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_FOUR_CHART_SPLIT_RESEARCH_ONLY",json.dumps(four_chart,sort_keys=True))
+              anchor_enumeration=oriented[
+                  "researchOnlyOriginalSourceMaxRetainedUvEvidence"
+              ]["researchOnlyJunctionFourChartAnchorEnumeration"]
+              anchor_search=anchor_enumeration["search"]
+              anchor_best=anchor_enumeration["bestCandidate"]
+              anchor_trial=anchor_best["trial"]
+              anchor_overlap=anchor_best["candidateResearchUvOverlap"]
+              anchor_comparison=anchor_best[
+                  "packedBaselineVsCandidateOverlap"
+              ]
+              assert anchor_enumeration["researchOnly"] is True
+              assert anchor_search["targetOriginalSourceVertex"] == 416
+              assert anchor_search["anchorAssignmentCount"] == 16
+              assert anchor_search[
+                  "minimumNewUnclosedInternalSplitDiagonalCount"
+              ] == 2
+              assert anchor_search[
+                  "minimumCandidateTotalUnclosedUvSeamCount"
+              ] == 2585
+              assert anchor_search[
+                  "assignmentCountAtMinimumInternalSplitSeams"
+              ] == 2
+              assert anchor_enumeration[
+                  "auditedMinimumInternalCandidateCount"
+              ] == anchor_search[
+                  "assignmentCountAtMinimumInternalSplitSeams"
+              ]
+              assert len(anchor_enumeration[
+                  "auditedMinimumInternalCandidateSummaries"
+              ]) == anchor_enumeration[
+                  "auditedMinimumInternalCandidateCount"
+              ]
+              assert anchor_search[
+                  "allAssignmentsCloseAllIncidentEdges"
+              ] is True
+              assert anchor_search[
+                  "allAssignmentsPreserveTriangleEdgeLengths"
+              ] is True
+              assert anchor_trial["closedIncidentEdgeCount"] == 4
+              assert anchor_trial[
+                  "candidateUnclosedSharedUvEdgeCount"
+              ] == 2583
+              assert anchor_trial[
+                  "newUnclosedInternalSplitDiagonalCount"
+              ] == anchor_search[
+                  "minimumNewUnclosedInternalSplitDiagonalCount"
+              ]
+              assert anchor_trial[
+                  "candidateTotalUnclosedUvSeamCount"
+              ] == 2585
+              assert anchor_trial[
+                  "totalUnclosedUvSeamCountDelta"
+              ] == 0
+              assert anchor_trial[
+                  "maximumOriginalTriangleEdgeChangeMm"
+              ] <= 0.000001
+              assert anchor_overlap["actualTrianglesInspected"] == 5300
+              assert anchor_overlap["auditTruncated"] is False
+              assert anchor_comparison[
+                  "bothFullResearchUvScansComplete"
+              ] is True
+              assert anchor_comparison[
+                  "baselineObservedTriangleOverlapPairs"
+              ] == 6957
+              assert anchor_comparison[
+                  "candidateObservedTriangleOverlapPairs"
+              ] == 6953
+              assert anchor_comparison[
+                  "candidateOverlapTrianglePairDelta"
+              ] == -4
+              assert anchor_search["storedSourceUvChanged"] is False
+              assert anchor_search["sourceUvExportOrSavePerformed"] is False
+              assert anchor_search["physicalPatternApproved"] is False
+              assert anchor_search["productionApproved"] is False
+              assert anchor_enumeration[
+                  "physicalFabricAndTailorApproval"
+              ] is False
+              assert anchor_enumeration["productionApproved"] is False
+              print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_FOUR_CHART_ANCHOR_ENUMERATION_RESEARCH_ONLY",json.dumps(anchor_enumeration,sort_keys=True))
+              assert [
+                  (-row["sourceUvCutGraphDegree"],
+                   -row["incidentOriginalSourceCutEdgeLengthMm"],
+                   row["originalSourceVertexIndex"])
+                  for row in junctions
+              ] == sorted([
+                  (-row["sourceUvCutGraphDegree"],
+                   -row["incidentOriginalSourceCutEdgeLengthMm"],
+                   row["originalSourceVertexIndex"])
+                  for row in junctions
+              ])
+              assert sum(cut_network[key] for key in (
+                  "uvCutGraphSimpleOpenPathComponentCount",
+                  "uvCutGraphSimpleClosedLoopComponentCount",
+                  "uvCutGraphBranchedOrCompoundComponentCount"
+              )) == cut_network["uvCutCandidateGraphComponentCount"]
+              # Maximal edge-disjoint chains are sourced from genuine UV-cut
+              # original mesh edges, with no duplicate, omitted or invented
+              # construction path. Still NOT a tailor-approved seam.
+              chains=cut_network["actualLongestOriginalSourceUvCutChains"]
+              total_chains=cut_network["uvCutGraphMaximalSourceChainCount"]
+              branched=cut_network["actualBranchedOriginalSourceUvCutNetworks"]
+              branched_paths=cut_network[
+                  "actualLongestBranchedOriginalSourceUvCutChains"
+              ]
+              branch_ids={
+                  row["originalSourceMinimumVertexIndex"] for row in branched
+              }
+              highest_gap_branches=cut_network[
+                  "actualHighestGapBranchedOriginalSourceUvCutChains"
+              ]
+              assert len(branched) == cut_network[
+                  "uvCutGraphBranchedOrCompoundComponentCount"
+              ]
+              assert len(branched) == len(branch_ids)
+              assert len(branched_paths) == min(12, sum(
+                  row["uvCutGraphMaximalChainCount"] for row in branched
+              ))
+              assert all(
+                  row["uvCutGraphTopology"] == "branched-or-compound"
+                  and type(row["originalSourceMinimumVertexIndex"]) is int
+                  and 0 <= row["originalSourceMinimumVertexIndex"] < 2717
+                  and row["uvCutGraphMaximalChainCount"] >= 2
+                  and row["realOriginalSourceUvCutNetworkLengthMm"] > 0
+                  and math.isfinite(row["realOriginalSourceUvCutNetworkLengthMm"])
+                  and 0.001 < row["maximumOriginalSourceUvSeamGapMm"] <= (
+                      cut_network["maximumUnclosedUvEdgeGapMm"] + 0.00001
+                  )
+                  and row["uvCutGraphMaximalChainEdgeCoverageCount"] ==
+                      row["unclosedUvEdgeCount"]
+                  for row in branched
+              )
+              assert all(
+                  row["originalSourceComponentMinimumVertexIndex"] in branch_ids
+                  and row["originalSourceEdgeCount"] >= 1
+                  and len(row["originalSourceVertexPath"]) ==
+                      row["originalSourceEdgeCount"] + 1
+                  for row in branched_paths
+              )
+              assert len(highest_gap_branches) == len(branched_paths)
+              assert all(
+                  row["originalSourceComponentMinimumVertexIndex"] in branch_ids
+                  and row["maximumOriginalSourceUvSeamGapMm"] > 0.001
+                  and row["maximumOriginalSourceUvSeamGapMm"] <= (
+                      cut_network["maximumUnclosedUvEdgeGapMm"] + 0.00001
+                  )
+                  and len(row["originalSourceEdgeAtMaximumUvSeamGap"]) == 2
+                  and tuple(row["originalSourceEdgeAtMaximumUvSeamGap"]) in {
+                      tuple(sorted((a,b)))
+                      for a,b in zip(row["originalSourceVertexPath"],
+                                     row["originalSourceVertexPath"][1:])
+                  }
+                  and len(row["originalSourceFaceOwnersAtMaximumUvGap"]) == 2
+                  and all(type(face_id) is int and 0 <= face_id < 2650
+                          for face_id in row["originalSourceFaceOwnersAtMaximumUvGap"])
+                  and len(set(row["originalSourceFaceOwnersAtMaximumUvGap"])) == 2
+                  and len(row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"]) == 2
+                  and all(len(v) == 2 and all(math.isfinite(x) for x in v)
+                          for v in row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"])
+                  and abs(
+                      max(math.hypot(*v) for v in
+                          row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"]) -
+                      row["maximumOriginalSourceUvSeamGapMm"]
+                  ) <= 0.00002
+                  and abs(
+                      math.dist(*row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"]) -
+                      row["relativeSourceUvEndpointDriftMm"]
+                  ) <= 0.00002
+                  and row["relativeSourceUvEndpointDriftMm"] >= 0
+                  and len(row["bestFitSingleRigidUvEdgeTranslationMm"]) == 2
+                  and all(math.isfinite(x)
+                          for x in row["bestFitSingleRigidUvEdgeTranslationMm"])
+                  and all(
+                      abs(row["bestFitSingleRigidUvEdgeTranslationMm"][i] -
+                          math.fsum((
+                              row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"][0][i],
+                              row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"][1][i]
+                          )) / 2) <= 0.00002
+                      for i in range(2)
+                  )
+                  and row["irreducibleSingleRigidTranslationEndpointResidualMm"] >= 0
+                  and abs(
+                      row["irreducibleSingleRigidTranslationEndpointResidualMm"] -
+                      math.dist(*row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"]) / 2
+                  ) <= 0.00002
+                  and type(row["rigidTranslationCannotExactlyCloseBothEndpoints"]) is bool
+                  and row["rigidTranslationCannotExactlyCloseBothEndpoints"] is (
+                      math.dist(*row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"]) >
+                      0.000000001
+                  )
+                  for row in highest_gap_branches
+              )
+              # Independently audit the best proper rotation+translation
+              # from both ORIGINAL source UV owner edge endpoint sequences.
+              # Local source-edge equality does NOT approve whole chart fit.
+              for row in highest_gap_branches:
+                  uv_owners=row["sourceUvOriginalOwnerEdgeEndpointsMm"]
+                  assert len(uv_owners) == 2
+                  assert all(
+                      len(owner) == 2 and all(
+                          len(point) == 2 and all(math.isfinite(v) for v in point)
+                          for point in owner
+                      ) for owner in uv_owners
+                  )
+                  assert all(
+                      abs(uv_owners[0][endpoint][axis] -
+                          uv_owners[1][endpoint][axis] -
+                          row["sourceUvOffsetAtMaximumGapEdgeEndpointsMm"][endpoint][axis]
+                      ) <= 0.00002
+                      for endpoint in range(2) for axis in range(2)
+                  )
+                  source_lengths=[math.dist(*owner) for owner in uv_owners]
+                  assert all(v > 0 for v in source_lengths)
+                  assert all(
+                      abs(a - b) <= 0.00002
+                      for a,b in zip(source_lengths,row["sourceUvOwnerEdgeLengthsMm"])
+                  )
+                  lower_bound=abs(source_lengths[0]-source_lengths[1])/2
+                  assert abs(
+                      lower_bound -
+                      row["irreducibleProperRigidAlignmentEndpointResidualMm"]
+                  ) <= 0.00002
+                  radians=math.radians(row["bestFitProperRigidUvRotationDegrees"])
+                  cosine,sine=math.cos(radians),math.sin(radians)
+                  translation=row["bestFitRigidUvTranslationMm"]
+                  assert len(translation) == 2 and all(
+                      math.isfinite(v) for v in translation
+                  )
+                  for actual,target in zip(uv_owners[1],uv_owners[0]):
+                      transformed=(
+                          cosine*actual[0]-sine*actual[1]+translation[0],
+                          sine*actual[0]+cosine*actual[1]+translation[1],
+                      )
+                      assert abs(
+                          math.dist(transformed,target)-lower_bound
+                      ) <= 0.00008
+                  assert type(row["singleEdgeExactRigidClosurePossible"]) is bool
+                  if row["singleEdgeExactRigidClosurePossible"]:
+                      assert lower_bound <= 0.00002
+                  # A similarity transform can close two endpoints only by
+                  # exposing the exact uniform UV scale change. This is a
+                  # distortion measurement, never a textile/stretch approval.
+                  scale=source_lengths[0]/source_lengths[1]
+                  assert abs(
+                      scale-row["sourceUvSimilarityScaleOwnerBToOwnerA"]
+                  ) <= 0.000002
+                  assert abs(
+                      abs(scale-1)*100 -
+                      row["sourceUvSimilarityScaleChangePercent"]
+                  ) <= 0.0002
+                  assert row["bestFitProperSimilarityUvRotationDegrees"] == (
+                      row["bestFitProperRigidUvRotationDegrees"]
+                  )
+                  similarity_translation=row["bestFitSimilarityUvTranslationMm"]
+                  assert len(similarity_translation) == 2 and all(
+                      math.isfinite(v) for v in similarity_translation
+                  )
+                  for actual,target in zip(uv_owners[1],uv_owners[0]):
+                      transformed=(
+                          scale*(cosine*actual[0]-sine*actual[1])+
+                          similarity_translation[0],
+                          scale*(sine*actual[0]+cosine*actual[1])+
+                          similarity_translation[1],
+                      )
+                      assert math.dist(transformed,target) <= 0.001
+                  assert row["singleEdgeSimilarityClosureResidualMm"] <= 0.0000001
+                  assert row["singleEdgeClosureRequiresUvScaleChange"] is (
+                      abs(row["sourceUvSimilarityScaleOwnerBToOwnerA"]-1) >
+                      0.000000001
+                  )
+                  assert row["sourceUvSimilarityDistortionApproved"] is False
+              print("TITAN_ACTUAL_SOURCE_UV_EDGE_SCALE_REQUIREMENTS_RESEARCH_ONLY",json.dumps([
+                  {
+                      "edge":row["originalSourceEdgeAtMaximumUvSeamGap"],
+                      "ownerScale":row["sourceUvSimilarityScaleOwnerBToOwnerA"],
+                      "scaleChangePercent":row["sourceUvSimilarityScaleChangePercent"],
+                      "requiresScale":row["singleEdgeClosureRequiresUvScaleChange"],
+                  }
+                  for row in highest_gap_branches
+              ],sort_keys=True))
+              assert [
+                  (-row["maximumOriginalSourceUvSeamGapMm"],
+                   -row["realOriginalSourceChainLengthMm"],
+                   row["originalSourceComponentMinimumVertexIndex"],
+                   row["originalSourceStartVertexIndex"],
+                   row["originalSourceEndVertexIndex"])
+                  for row in highest_gap_branches
+              ] == sorted([
+                  (-row["maximumOriginalSourceUvSeamGapMm"],
+                   -row["realOriginalSourceChainLengthMm"],
+                   row["originalSourceComponentMinimumVertexIndex"],
+                   row["originalSourceStartVertexIndex"],
+                   row["originalSourceEndVertexIndex"])
+                  for row in highest_gap_branches
+              ])
+              assert sum(row["unclosedUvEdgeCount"] for row in branched) <= (
+                  cut_network["unclosedSharedUvCutCandidateEdges"]
+              )
+              assert all(
+                  type(row["originalSourceComponentMinimumVertexIndex"]) is int
+                  and 0 <= row["originalSourceComponentMinimumVertexIndex"] < 2717
+                  for row in chains
+              )
+              assert cut_network[
+                  "uvCutGraphMaximalSourceChainEdgeCoverageCount"
+              ] == cut_network["unclosedSharedUvCutCandidateEdges"]
+              assert (cut_network["uvCutCandidateGraphComponentCount"] <=
+                      total_chains <=
+                      cut_network["unclosedSharedUvCutCandidateEdges"]
+                      if total_chains else
+                      cut_network["unclosedSharedUvCutCandidateEdges"] == 0)
+              assert 0 <= cut_network[
+                  "uvCutGraphClosedMaximalSourceChainCount"
+              ] <= cut_network["uvCutGraphCycleRank"]
+              assert len(chains) == min(12, total_chains)
+              assert cut_network[
+                  "uvCutGraphLongestOriginalSourceChainLengthMm"
+              ] == (chains[0]["realOriginalSourceChainLengthMm"]
+                    if chains else 0.0)
+              assert all(
+                  type(row["originalSourceStartVertexIndex"]) is int
+                  and type(row["originalSourceEndVertexIndex"]) is int
+                  and 0 <= row["originalSourceStartVertexIndex"] < 2717
+                  and 0 <= row["originalSourceEndVertexIndex"] < 2717
+                  and row["originalSourceEdgeCount"] >= 1
+                  and type(row["originalSourceVertexPath"]) is list
+                  and len(row["originalSourceVertexPath"]) == (
+                      row["originalSourceEdgeCount"] + 1
+                  )
+                  and all(type(v) is int and 0 <= v < 2717
+                          for v in row["originalSourceVertexPath"])
+                  and row["originalSourceVertexPath"][0] == (
+                      row["originalSourceStartVertexIndex"]
+                  )
+                  and row["originalSourceVertexPath"][-1] == (
+                      row["originalSourceEndVertexIndex"]
+                  )
+                  and all(a != b for a,b in zip(
+                      row["originalSourceVertexPath"],
+                      row["originalSourceVertexPath"][1:]))
+                  and math.isfinite(row["realOriginalSourceChainLengthMm"])
+                  and row["realOriginalSourceChainLengthMm"] > 0
+                  and type(row["closedGraphLoop"]) is bool
+                  and row["closedGraphLoop"] == (
+                      row["originalSourceStartVertexIndex"] ==
+                      row["originalSourceEndVertexIndex"]
+                  )
+                  and type(row["startsAtOriginalMeshBoundary"]) is bool
+                  and type(row["endsAtOriginalMeshBoundary"]) is bool
+                  and type(row["startsAtSourceUvBranchJunction"]) is bool
+                  and type(row["endsAtSourceUvBranchJunction"]) is bool
+                  for row in chains
+              )
+              assert sum(row["originalSourceEdgeCount"] for row in chains) <= (
+                  cut_network["unclosedSharedUvCutCandidateEdges"]
+              )
+              reported_chain_edges=[
+                  tuple(sorted((a,b)))
+                  for row in chains
+                  for a,b in zip(row["originalSourceVertexPath"],
+                                 row["originalSourceVertexPath"][1:])
+              ]
+              assert len(set(reported_chain_edges)) == len(reported_chain_edges)
+              assert [
+                  (-row["realOriginalSourceChainLengthMm"],
+                   -row["originalSourceEdgeCount"],
+                   row["originalSourceStartVertexIndex"],
+                   row["originalSourceEndVertexIndex"])
+                  for row in chains
+              ] == sorted([
+                  (-row["realOriginalSourceChainLengthMm"],
+                   -row["originalSourceEdgeCount"],
+                   row["originalSourceStartVertexIndex"],
+                   row["originalSourceEndVertexIndex"])
+                  for row in chains
+              ])
+              assert 0 <= cut_network[
+                  "uvCutGraphInteriorDegreeOneSourceVertexCount"
+              ] <= cut_network["uvCutCandidateDegreeOneSourceVertices"]
+              assert 0 <= cut_network[
+                  "uvCutGraphComponentsWithoutActualOriginalOpenBoundary"
+              ] <= cut_network["uvCutCandidateGraphComponentCount"]
               assert len(cut_network["uvCutCandidateGraphLargestComponents"]) <= 12
               assert all(
                   row["unclosedUvEdgeCount"] > 0 and row["originalSourceVertexCount"] > 0
                   and type(row["touchesActualOriginalOpenBoundary"]) is bool
+                  and row["uvCutGraphCycleRank"] == (
+                      row["unclosedUvEdgeCount"] -
+                      row["originalSourceVertexCount"] + 1
+                  )
+                  and row["uvCutGraphTopology"] in (
+                      "simple-open-path", "simple-closed-loop",
+                      "branched-or-compound"
+                  )
+                  and type(row["originalSourceMinimumVertexIndex"]) is int
+                  and 0 <= row["originalSourceMinimumVertexIndex"] < 2717
+                  and row["uvCutGraphMaximalChainCount"] >= 1
+                  and row["uvCutGraphMaximalChainEdgeCoverageCount"] == (
+                      row["unclosedUvEdgeCount"]
+                  )
+                  and row["interiorDegreeOneSourceVertices"] <= (
+                      row["degreeOneSourceVertices"]
+                  )
+                  and row["originalBoundaryContactSourceVertexCount"] <= (
+                      row["originalSourceVertexCount"]
+                  )
                   for row in cut_network["uvCutCandidateGraphLargestComponents"]
               )
               assert len(cut_network["actualLargestGapUvCutEdges"]) <= 12
@@ -1248,6 +1953,864 @@ jobs:
               assert cut_network["measuredSupplierTextileRepeatMm"] is None
               assert cut_network["productionApproved"] is False
               assert "NOT permission" not in cut_network["metricCaveat"]
+              weighted=oriented["researchOnlyOriginalSourceMaxRetainedUvEvidence"]
+              assert weighted["researchOnly"] is True
+              assert weighted["originalSourceQuadCount"] == 2650
+              assert weighted["originalSourceUvLoopCount"] == 10600
+              assert weighted["nativeResearchUvLoopCount"] == 10600
+              assert weighted["nativeResearchUvLayerName"] == "TITAN_RESEARCH_UNVERIFIED_MAXIMUM_RETAINED_SOURCE_EDGES"
+              assert weighted["dualGraphComponentCount"] == tree["dualGraphComponentCount"] == 3
+              assert weighted["sharedOriginalSourceEdgeCount"] == 5234
+              assert weighted["verifiedTreeConnectedSharedEdges"] == 2647
+              assert weighted["nonTreeCycleSharedEdges"] == 2587
+              assert weighted["verifiedTreeConnectedSharedEdges"] == (
+                  2650 - weighted["dualGraphComponentCount"]
+              )
+              assert weighted["maximumTreeEdgeUvJoinErrorMm"] <= 0.001
+              assert weighted["originalSourceStageUVProvenance"] == uv_stages
+              assert weighted["nativeOriginalBodyContactPairsUnchanged"] == (
+                  tree["nativeRealOriginalSourceBodyPairsUnchanged"]
+              ) == 29600
+              assert weighted["actualOriginalSourceUVTopology"].startswith("deterministic max-retained")
+              assert weighted["selectedForestSource"] == "explicit validated original-source shared edge list"
+              max_selection=weighted["maxRetainedOriginalSourceSelection"]
+              assert max_selection["researchOnly"] is True
+              assert max_selection["originalSourceQuadCount"] == 2650
+              assert max_selection["originalSourceSharedEdgeCount"] == 5234
+              assert max_selection["originalSourceComponentCount"] == 3
+              assert max_selection["actualOriginalCutEdgeCount"] == 8
+              assert max_selection["maximumRetainedTreeEdgeCount"] == 2647
+              assert max_selection["theoreticalNonTreeSourceEdgeCount"] == 2587
+              assert math.isfinite(max_selection["minimumOmittedOriginalSourceEdgeLengthMm"])
+              assert math.isfinite(max_selection["allRealSharedSourceEdgeLengthMm"])
+              assert max_selection["minimumOmittedOriginalSourceEdgeLengthMm"] >= 0
+              assert max_selection["allRealSharedSourceEdgeLengthMm"] > 0
+              assert max_selection["minimumOmittedOriginalSourceEdgeLengthMm"] <= (
+                  max_selection["allRealSharedSourceEdgeLengthMm"]
+              )
+              assert max_selection["actualCuttingLinesApproved"] is False
+              assert max_selection["overlapFreeUvApproved"] is False
+              assert max_selection["fabricScaleAndGrainApproved"] is False
+              assert max_selection["physicalCrotchFitApproved"] is False
+              assert max_selection["productionApproved"] is False
+              weighted_cut=weighted["actualSourceCutNetworkEvidence"]
+              assert weighted_cut["originalSharedSourceEdgeCount"] == 5234
+              assert weighted_cut["unclosedSharedUvCutCandidateEdges"] == (
+                  weighted["nonTreeCycleUnclosedUvEdges"]
+              )
+              assert weighted_cut["joinedSharedUvEdges"] + (
+                  weighted_cut["unclosedSharedUvCutCandidateEdges"]
+              ) == 5234
+              assert weighted_cut["realTailorCutLinesApproved"] is False
+              assert weighted_cut["productionApproved"] is False
+              assert weighted["baselineBfsSourceCutNetworkLengthMm"] == (
+                  cut_network["totalRealGeometryOfUvCutCandidatesMm"]
+              )
+              assert weighted["maxRetainedActualSourceCutNetworkLengthMm"] == (
+                  weighted_cut["totalRealGeometryOfUvCutCandidatesMm"]
+              )
+              assert abs(weighted["maxRetainedActualCutLengthChangeVsBfsMm"] -
+                         (weighted["maxRetainedActualSourceCutNetworkLengthMm"] -
+                          weighted["baselineBfsSourceCutNetworkLengthMm"])) <= 0.0001
+              if tree["nonTreeCycleEdgesWithinOneMicrometre"] == 0:
+                  assert weighted["maxRetainedActualCutLengthChangeVsBfsMm"] <= 0.001
+              assert weighted["localMetricTrianglesRemainUnscaled"] is True
+              assert weighted["sourcePanelsFullyStitchedInUV"] is False
+              assert weighted["physicalFabricScaleVerified"] is False
+              assert weighted["originalGarmentTexelScaleAndGrainApproved"] is False
+              # Exact original scanned source: bounded research objective,
+              # independently reconstructed 2D face-loop UV and topology only.
+              branch=oriented["researchOnlyBranchAwareSourceUvEvidence"]
+              assert branch["researchOnly"] is True
+              assert branch["originalSourceQuadCount"] == 2650
+              assert branch["originalSourceSharedEdgeCount"] == 5234
+              assert branch["originalSourceComponentCount"] == 3
+              assert branch["retainedOriginalSourceTreeEdges"] == 2647
+              assert branch["branchPenaltyResearchWeightMm"] == 100.0
+              assert branch["candidateEdgeCap"] == 48
+              assert branch["evaluatedOmittedOriginalEdges"] == 48
+              assert branch["candidateResearchObjectiveMm"] <= (
+                  branch["baselineResearchObjectiveMm"] + 0.00002
+              )
+              assert branch["actualSourceGeometryUnchanged"] is True
+              assert branch["nativeBodyContactsInvariantFromUnchangedSource"] == 29600
+              assert branch["newSourceObjectSavedOrExported"] is False
+              assert branch["actualUvClosureMeasured"] is True
+              assert branch["overlapFreeUvApproved"] is False
+              assert branch["physicalSewnCrotchPatternApproved"] is False
+              assert branch["physicalFabricScaleApproved"] is False
+              assert branch["sourceBodyFitApproved"] is False
+              assert branch["tailorSeamsApproved"] is False
+              branch_uv=branch["actualRealSourceUvTreeEvidence"]
+              branch_cut=branch["actualSourceUvCutNetworkEvidence"]
+              pareto=branch["independentMeasuredUvParetoComparison"]
+              assert pareto["researchOnly"] is True
+              assert pareto["nativeSourceTopologyPreserved"] is True
+              assert pareto["measuredResearchParetoImprovement"] is False
+              assert pareto["measuredTradeoffObserved"] is True
+              assert pareto["physicalBodyFitApproved"] is False
+              assert pareto["uvOverlapCertifiedAbsent"] is False
+              assert pareto["sewnTextileCutLinesApproved"] is False
+              assert pareto["productionApproved"] is False
+              delta=pareto["measuredSourceUvDeltasVsWeighted"]
+              assert delta["branchJunctions"] == (
+                  branch_cut["uvCutCandidateDegreeThreePlusSourceVertices"] -
+                  weighted_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              assert delta["cutCandidateMeshLengthMm"] == round(
+                  branch_cut["totalRealGeometryOfUvCutCandidatesMm"] -
+                  weighted_cut["totalRealGeometryOfUvCutCandidatesMm"], 5
+              )
+              assert delta["rmsUnclosedUvGapMm"] == round(
+                  branch_uv["rmsNonTreeUvSeamGapMm"] -
+                  weighted["rmsNonTreeUvSeamGapMm"], 5
+              )
+              assert delta["branchJunctions"] < 0
+              assert delta["cutCandidateMeshLengthMm"] > 0
+              assert delta["rmsUnclosedUvGapMm"] > 0
+              # Actual 2D triangle interiors from the unchanged 2,650-face
+              # scanned-source UV loops; never claim sewn panels or fabrication.
+              for overlap in (
+                  weighted["researchOnlyOriginalSourceUvOverlapEvidence"],
+                  branch["researchOnlyOriginalSourceUvOverlapEvidence"],
+              ):
+                  assert overlap["researchOnly"] is True
+                  assert overlap["expectedOriginalSourceQuadCount"] == 2650
+                  assert overlap["expectedTriangleCount"] == 5300
+                  assert overlap["narrowphaseTrianglePairCheckCap"] == 100000
+                  assert 0 < overlap["actualTrianglesInspected"] <= 5300
+                  assert 0 <= overlap["narrowphaseTrianglePairsChecked"] <= 100000
+                  assert overlap["observedInteriorOverlapTrianglePairsLowerBound"] >= 0
+                  assert overlap["observedDistinctSourceFacePairsLowerBound"] >= 0
+                  assert overlap["observedTriangleOverlapAreaSumLowerBoundMm2"] >= 0
+                  assert overlap["largestObservedTriangleInteriorOverlapAreaMm2"] >= 0
+                  assert overlap["originalSourceFaceGraphComponentCount"] == 3
+                  assert overlap["originalSourceComponentFaceCounts"] == [1220,715,715]
+                  component_rows=overlap["withinComponentOverlapBreakdown"]
+                  assert len(component_rows) == 3
+                  assert [row["componentId"] for row in component_rows] == [0,1,2]
+                  assert [row["originalSourceFaceCount"] for row in component_rows] == [1220,715,715]
+                  assert sum(row["observedInteriorOverlapTrianglePairsLowerBound"]
+                             for row in component_rows) + overlap[
+                      "crossComponentInteriorOverlapTrianglePairsLowerBound"
+                  ] == overlap["observedInteriorOverlapTrianglePairsLowerBound"]
+                  assert sum(row["observedDistinctSourceFacePairsLowerBound"]
+                             for row in component_rows) + overlap[
+                      "crossComponentDistinctSourceFacePairsLowerBound"
+                  ] == overlap["observedDistinctSourceFacePairsLowerBound"]
+                  assert all(row["observedTriangleOverlapAreaSumLowerBoundMm2"] >= 0
+                             and row["largestObservedTriangleInteriorOverlapAreaMm2"] >= 0
+                             for row in component_rows)
+                  assert overlap["crossComponentTriangleOverlapAreaSumLowerBoundMm2"] >= 0
+                  assert overlap[
+                      "crossComponentLargestObservedTriangleInteriorOverlapAreaMm2"
+                  ] >= 0
+                  assert overlap["originalProductionSourceUvApproved"] is False
+                  assert overlap["completeGarmentUvOverlapFreeApproved"] is False
+                  assert overlap["realTailorCuttingApproved"] is False
+                  assert overlap["physicalSourceFitApproved"] is False
+                  assert overlap["physicalFabricRepeatVerified"] is False
+                  assert overlap["productionApproved"] is False
+                  assert len(overlap["firstSourceFaceTriangleOverlapWitnesses"]) <= 12
+                  assert overlap["observedInteriorOverlapTrianglePairsLowerBound"] >= len(
+                      overlap["firstSourceFaceTriangleOverlapWitnesses"]
+                  )
+                  if overlap["auditTruncated"]:
+                      assert overlap["canClaimNoInteriorOverlapInThisUvLayout"] is False
+                  else:
+                      assert overlap["actualTrianglesInspected"] == 5300
+                  for witness in overlap["firstSourceFaceTriangleOverlapWitnesses"]:
+                      faces=witness["originalSourceFaceIds"]
+                      assert len(faces) == 2 and all(
+                          type(index) is int and 0 <= index < 2650 for index in faces
+                      )
+                      assert faces[0] != faces[1]
+                      assert math.isfinite(witness["actualUvInteriorOverlapAreaMm2"])
+                      assert witness["actualUvInteriorOverlapAreaMm2"] > 0
+              comparison=branch["researchOnlyOriginalSourceUvOverlapComparison"]
+              assert comparison["researchOnly"] is True
+              assert comparison["bothFullResearchUvScansComplete"] is True
+              assert comparison["baselineObservedTriangleOverlapPairs"] > 0
+              assert comparison["candidateObservedTriangleOverlapPairs"] > 0
+              assert comparison["candidateOverlapTrianglePairDelta"] == (
+                  comparison["candidateObservedTriangleOverlapPairs"] -
+                  comparison["baselineObservedTriangleOverlapPairs"]
+              )
+              assert comparison["candidateOverlapTrianglePairDelta"] > 0
+              assert comparison["candidateWorsenedRealUvInteriorOverlap"] is True
+              assert comparison["candidateImprovedRealUvInteriorOverlap"] is False
+              assert comparison["bothOriginalResearchUvLayoutsOverlapFree"] is False
+              assert comparison["completeGarmentUvApproved"] is False
+              assert comparison["realCuttingOrSeamApproved"] is False
+              assert comparison["bodyGarmentClearanceApproved"] is False
+              assert comparison["productionApproved"] is False
+              # Research-only rigid XY separation of genuine original face
+              # graph components: physical garment vertices remain unchanged.
+              for source_report in (weighted, branch):
+                  packed=source_report["researchOnlyRigidSourceUvComponentPackingEvidence"]
+                  assert packed["researchOnly"] is True
+                  assert packed["unclosedSourceUvSeamCountUnchanged"] is True
+                  assert packed["originalSourceSeamGapUnchanged"] is True
+                  assert packed["sourceMeshAndBodyBVHUnchanged"] is True
+                  assert packed["sourceUvExportOrSavePerformed"] is False
+                  assert packed["realFabricScaleOrRepeatApproved"] is False
+                  assert packed["tailorCutAndFitApproved"] is False
+                  assert packed["productionApproved"] is False
+                  pack_report=packed["packing"]
+                  assert pack_report["originalSourceQuadCount"] == 2650
+                  assert pack_report["originalSourceUvLoopCount"] == 10600
+                  assert pack_report["originalSourceFaceGraphComponentCount"] == 3
+                  assert pack_report["originalSourceComponentFaceCounts"] == [1220,715,715]
+                  assert pack_report["sourceGeometryAndVertexIDsUnchanged"] is True
+                  assert pack_report["originalSourceUvTreeUnchanged"] is True
+                  assert pack_report["maximumOriginalTriangleEdgeChangeMm"] <= 0.000001
+                  assert pack_report["sourcePanelsOverlapFreeApproved"] is False
+                  assert pack_report["realTailorSeamsApproved"] is False
+                  assert pack_report["productionApproved"] is False
+                  assert len(pack_report["components"]) == 3
+                  for a,b in zip(pack_report["components"],pack_report["components"][1:]):
+                      assert (b["packedResearchUvBoundingBoxMm"][0] >=
+                              a["packedResearchUvBoundingBoxMm"][2] + 4.9999)
+                  after=packed["packedResearchUvOverlap"]
+                  comparison=packed["sourceOverlapBeforeVsPacked"]
+                  assert after["researchOnly"] is True
+                  assert after["actualTrianglesInspected"] <= 5300
+                  assert after["completeGarmentUvOverlapFreeApproved"] is False
+                  assert after["productionApproved"] is False
+                  assert after["originalSourceFaceGraphComponentCount"] == 3
+                  assert after["originalSourceComponentFaceCounts"] == [1220,715,715]
+                  assert after["crossComponentInteriorOverlapTrianglePairsLowerBound"] == 0
+                  assert after["crossComponentDistinctSourceFacePairsLowerBound"] == 0
+                  assert after["crossComponentTriangleOverlapAreaSumLowerBoundMm2"] == 0
+                  assert sum(row["observedInteriorOverlapTrianglePairsLowerBound"]
+                             for row in after["withinComponentOverlapBreakdown"]) == after[
+                      "observedInteriorOverlapTrianglePairsLowerBound"
+                  ]
+                  assert comparison["researchOnly"] is True
+                  assert comparison["completeGarmentUvApproved"] is False
+                  assert comparison["productionApproved"] is False
+                  if comparison["bothFullResearchUvScansComplete"]:
+                      assert comparison["candidateOverlapTrianglePairDelta"] <= 0
+                      assert comparison["candidateWorsenedRealUvInteriorOverlap"] is False
+                  else:
+                      assert comparison["candidateOverlapTrianglePairDelta"] is None
+              subtree=weighted["researchOnlyComponent0SubtreeUvTrial"]
+              assert subtree["researchOnly"] is True
+              assert subtree["sourceMeshAndBodyBVHUnchanged"] is True
+              assert subtree["sourceUvExportOrSavePerformed"] is False
+              assert subtree["physicalFabricAndTailorApproval"] is False
+              assert subtree["productionApproved"] is False
+              trial=subtree["trial"]
+              assert trial["targetComponentId"] == 0
+              assert trial["targetComponentOriginalSourceFaceCount"] == 1220
+              assert trial["movedOriginalSourceFaceCount"] > 0
+              assert trial["movedOriginalSourceFaceCount"] <= 610
+              assert trial["movedOriginalSourceFaceCount"] + trial[
+                  "stationaryComponent0FaceCount"
+              ] == 1220
+              assert len(trial["removedRetainedOriginalSourceEdge"]) == 2
+              assert trial["addedActualSourceCutEdgeLengthMm"] > 0
+              assert trial["retainedSourceUvTreeJoinCountBefore"] == 2647
+              assert trial["retainedSourceUvTreeJoinCountAfter"] == 2646
+              assert trial["newUnclosedSourceUvSeamCount"] == 1
+              assert trial["maximumOriginalTriangleEdgeChangeMm"] <= 0.000001
+              assert trial["sourceGeometryAndVertexIDsUnchanged"] is True
+              assert trial["realTailorCutApproved"] is False
+              assert trial["physicalBodyFitApproved"] is False
+              assert trial["productionApproved"] is False
+              baseline_cut=subtree["packedBaselineUvCutNetwork"]
+              candidate_cut=subtree["candidateUvCutNetwork"]
+              assert candidate_cut["unclosedSharedUvCutCandidateEdges"] == (
+                  baseline_cut["unclosedSharedUvCutCandidateEdges"] + 1
+              )
+              assert abs((candidate_cut["totalRealGeometryOfUvCutCandidatesMm"] -
+                          baseline_cut["totalRealGeometryOfUvCutCandidatesMm"]) -
+                         trial["addedActualSourceCutEdgeLengthMm"]) <= 0.0001
+              candidate_overlap=subtree["candidateResearchUvOverlap"]
+              subtree_comparison=subtree["packedBaselineVsCandidateOverlap"]
+              assert candidate_overlap["actualTrianglesInspected"] == 5300
+              assert candidate_overlap["auditTruncated"] is False
+              assert candidate_overlap["completeGarmentUvOverlapFreeApproved"] is False
+              assert candidate_overlap["productionApproved"] is False
+              assert subtree_comparison["bothFullResearchUvScansComplete"] is True
+              assert subtree_comparison["candidateOverlapTrianglePairDelta"] == (
+                  subtree_comparison["candidateObservedTriangleOverlapPairs"] -
+                  subtree_comparison["baselineObservedTriangleOverlapPairs"]
+              )
+              assert subtree_comparison["completeGarmentUvApproved"] is False
+              assert subtree_comparison["productionApproved"] is False
+              survey=weighted["researchOnlyComponent0CappedTreeCutSurvey"]
+              assert survey["researchOnly"] is True
+              assert survey["evaluatedCandidateCount"] == 24
+              assert survey["candidateRankZeroRealEdgeLengthBudgetMm"] == (
+                  trial["addedActualSourceCutEdgeLengthMm"]
+              )
+              assert survey["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert survey["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              rows=survey["candidateResults"]
+              assert [row["candidateRank"] for row in rows] == list(range(24))
+              assert len({tuple(row["removedRetainedOriginalSourceEdge"])
+                          for row in rows}) == 24
+              assert survey["strictEligibleCandidateCount"] == sum(
+                  row["strictResearchEligible"] for row in rows
+              )
+              assert survey["noStrictCandidateObserved"] is (
+                  survey["strictEligibleCandidateCount"] == 0
+              )
+              for row in rows:
+                  assert row["baselineOverlapTrianglePairs"] == 6957
+                  assert row["candidateOverlapTrianglePairs"] > 0
+                  assert row["overlapTrianglePairDelta"] == (
+                      row["candidateOverlapTrianglePairs"] -
+                      row["baselineOverlapTrianglePairs"]
+                  )
+                  assert row["candidateUnclosedSharedUvSeams"] == 2586
+                  assert row["exactlyOneNewUnclosedUvSeam"] is True
+                  assert abs(
+                      row["measuredAddedCutNetworkLengthMm"] -
+                      row["addedActualSourceCutEdgeLengthMm"]
+                  ) <= 0.0001
+                  assert row["physicalPatternApproved"] is False
+                  assert row["productionApproved"] is False
+                  assert row["strictResearchEligible"] is (
+                      row["completeOverlapImprovement"] and
+                      row["withinRankZeroRealEdgeLengthBudget"] and
+                      row["noMaximumUvGapRegression"] and
+                      row["noBranchJunctionRegression"] and
+                      row["exactlyOneNewUnclosedUvSeam"]
+                  )
+              selected=survey["strictSelectedCandidate"]
+              if selected is None:
+                  assert survey["strictEligibleCandidateCount"] == 0
+              else:
+                  assert selected["strictResearchEligible"] is True
+                  assert selected in rows
+              assert survey["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert survey["sourceUvExportOrSavePerformed"] is False
+              assert survey["physicalFabricTailorOrFitApproved"] is False
+              assert survey["productionApproved"] is False
+              two_cut=weighted["researchOnlyComponent0CappedTwoCutSurvey"]
+              assert two_cut["researchOnly"] is True
+              assert two_cut["sourceOneCutRanks"] == [0,2,6,15,18]
+              assert two_cut["evaluatedCandidatePairCount"] == 10
+              assert two_cut["doubleRankZeroRealEdgeLengthBudgetMm"] == round(
+                  2 * trial["addedActualSourceCutEdgeLengthMm"], 5
+              )
+              assert two_cut["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert two_cut["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              pair_rows=two_cut["candidateResults"]
+              expected_pairs=[[left,right]
+                              for index,left in enumerate([0,2,6,15,18])
+                              for right in [0,2,6,15,18][index+1:]]
+              assert [row["candidateRanks"] for row in pair_rows] == expected_pairs
+              assert two_cut["strictEligibleCandidateCount"] == sum(
+                  row["strictResearchEligible"] for row in pair_rows
+              )
+              assert two_cut["noStrictCandidateObserved"] is (
+                  two_cut["strictEligibleCandidateCount"] == 0
+              )
+              for row in pair_rows:
+                  assert len(row["removedRetainedOriginalSourceEdges"]) == 2
+                  assert len({tuple(edge) for edge in
+                              row["removedRetainedOriginalSourceEdges"]}) == 2
+                  assert row["baselineOverlapTrianglePairs"] == 6957
+                  assert row["candidateOverlapTrianglePairs"] > 0
+                  assert row["overlapTrianglePairDelta"] == (
+                      row["candidateOverlapTrianglePairs"] -
+                      row["baselineOverlapTrianglePairs"]
+                  )
+                  assert row["candidateUnclosedSharedUvSeams"] == 2587
+                  assert row["exactlyTwoNewUnclosedUvSeams"] is True
+                  assert abs(
+                      row["measuredAddedCutNetworkLengthMm"] -
+                      row["addedActualSourceCutEdgeLengthMm"]
+                  ) <= 0.0001
+                  assert row["withinDoubleRankZeroRealEdgeLengthBudget"] is True
+                  assert row["physicalPatternApproved"] is False
+                  assert row["productionApproved"] is False
+                  assert row["strictResearchEligible"] is (
+                      row["completeOverlapImprovement"] and
+                      row["withinDoubleRankZeroRealEdgeLengthBudget"] and
+                      row["noMaximumUvGapRegression"] and
+                      row["noBranchJunctionRegression"] and
+                      row["exactlyTwoNewUnclosedUvSeams"]
+                  )
+              two_cut_selected=two_cut["strictSelectedCandidate"]
+              if two_cut_selected is None:
+                  assert two_cut["strictEligibleCandidateCount"] == 0
+              else:
+                  assert two_cut_selected["strictResearchEligible"] is True
+                  assert two_cut_selected in pair_rows
+              assert two_cut["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert two_cut["sourceUvExportOrSavePerformed"] is False
+              assert two_cut["physicalFabricTailorOrFitApproved"] is False
+              assert two_cut["productionApproved"] is False
+              constrained=weighted[
+                  "researchOnlyComponent0Rank18ConstrainedPlacementSurvey"
+              ]
+              assert constrained["researchOnly"] is True
+              assert constrained["candidateRank"] == 18
+              assert constrained["evaluatedTranslationFractionCount"] == 16
+              assert constrained["rankZeroRealEdgeLengthBudgetMm"] == (
+                  trial["addedActualSourceCutEdgeLengthMm"]
+              )
+              assert constrained["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert constrained["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              constrained_rows=constrained["candidateResults"]
+              assert [row["placementStep"] for row in constrained_rows] == (
+                  list(range(1,17))
+              )
+              assert [row["translationFractionOfOutsidePack"]
+                      for row in constrained_rows] == [
+                          round(step/16.0,8) for step in range(1,17)
+                      ]
+              assert constrained["strictEligibleCandidateCount"] == sum(
+                  row["strictResearchEligible"] for row in constrained_rows
+              )
+              assert constrained["noStrictCandidateObserved"] is (
+                  constrained["strictEligibleCandidateCount"] == 0
+              )
+              for row in constrained_rows:
+                  assert row["candidateRank"] == 18
+                  assert row["baselineOverlapTrianglePairs"] == 6957
+                  assert row["candidateOverlapTrianglePairs"] > 0
+                  assert row["overlapTrianglePairDelta"] == (
+                      row["candidateOverlapTrianglePairs"] -
+                      row["baselineOverlapTrianglePairs"]
+                  )
+                  assert row["candidateUnclosedSharedUvSeams"] == 2586
+                  assert row["exactlyOneNewUnclosedUvSeam"] is True
+                  assert abs(
+                      row["measuredAddedCutNetworkLengthMm"] -
+                      row["addedActualSourceCutEdgeLengthMm"]
+                  ) <= 0.0001
+                  assert row["withinRankZeroRealEdgeLengthBudget"] is True
+                  assert row["physicalPatternApproved"] is False
+                  assert row["productionApproved"] is False
+                  assert row["strictResearchEligible"] is (
+                      row["completeOverlapImprovement"] and
+                      row["withinRankZeroRealEdgeLengthBudget"] and
+                      row["noMaximumUvGapRegression"] and
+                      row["noBranchJunctionRegression"] and
+                      row["exactlyOneNewUnclosedUvSeam"]
+                  )
+              constrained_selected=constrained["strictSelectedCandidate"]
+              if constrained_selected is None:
+                  assert constrained["strictEligibleCandidateCount"] == 0
+              else:
+                  assert constrained_selected["strictResearchEligible"] is True
+                  assert constrained_selected in constrained_rows
+              assert constrained["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert constrained["sourceUvExportOrSavePerformed"] is False
+              assert constrained["physicalFabricTailorOrFitApproved"] is False
+              assert constrained["productionApproved"] is False
+              near_zero=weighted[
+                  "researchOnlyComponent0Rank18NearZeroPlacementSurvey"
+              ]
+              assert near_zero["researchOnly"] is True
+              assert near_zero["candidateRank"] == 18
+              assert near_zero["evaluatedTranslationFractionCount"] == 16
+              assert near_zero["rankZeroRealEdgeLengthBudgetMm"] == (
+                  trial["addedActualSourceCutEdgeLengthMm"]
+              )
+              assert near_zero["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert near_zero["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              near_zero_rows=near_zero["candidateResults"]
+              assert [row["placementStep"] for row in near_zero_rows] == (
+                  list(range(1,17))
+              )
+              assert [row["translationFractionOfOutsidePack"]
+                      for row in near_zero_rows] == [
+                          round(step/256.0,8) for step in range(1,17)
+                      ]
+              assert near_zero["strictEligibleCandidateCount"] == sum(
+                  row["strictResearchEligible"] for row in near_zero_rows
+              )
+              assert near_zero["noStrictCandidateObserved"] is (
+                  near_zero["strictEligibleCandidateCount"] == 0
+              )
+              for row in near_zero_rows:
+                  assert row["candidateRank"] == 18
+                  assert row["baselineOverlapTrianglePairs"] == 6957
+                  assert row["candidateOverlapTrianglePairs"] > 0
+                  assert row["overlapTrianglePairDelta"] == (
+                      row["candidateOverlapTrianglePairs"] -
+                      row["baselineOverlapTrianglePairs"]
+                  )
+                  assert row["candidateUnclosedSharedUvSeams"] == 2586
+                  assert row["exactlyOneNewUnclosedUvSeam"] is True
+                  assert abs(
+                      row["measuredAddedCutNetworkLengthMm"] -
+                      row["addedActualSourceCutEdgeLengthMm"]
+                  ) <= 0.0001
+                  assert row["withinRankZeroRealEdgeLengthBudget"] is True
+                  # Independently recompute numerical approval gates from
+                  # raw measured gaps/junctions, not only candidate flags.
+                  assert abs(
+                      row["maximumUnclosedUvEdgeGapDeltaMm"] -
+                      (row["candidateMaximumUnclosedUvEdgeGapMm"] -
+                       near_zero["baselineMaximumUnclosedUvEdgeGapMm"])
+                  ) <= 0.00002
+                  assert row["noMaximumUvGapRegression"] is (
+                      row["maximumUnclosedUvEdgeGapDeltaMm"] <= 0.00001
+                  )
+                  assert row["branchJunctionDelta"] == (
+                      row["candidateBranchJunctions"] -
+                      near_zero["baselineBranchJunctions"]
+                  )
+                  assert row["noBranchJunctionRegression"] is (
+                      row["branchJunctionDelta"] <= 0
+                  )
+                  assert row["physicalPatternApproved"] is False
+                  assert row["productionApproved"] is False
+                  assert row["strictResearchEligible"] is (
+                      row["completeOverlapImprovement"] and
+                      row["withinRankZeroRealEdgeLengthBudget"] and
+                      row["noMaximumUvGapRegression"] and
+                      row["noBranchJunctionRegression"] and
+                      row["exactlyOneNewUnclosedUvSeam"]
+                  )
+              near_zero_selected=near_zero["strictSelectedCandidate"]
+              if near_zero_selected is None:
+                  assert near_zero["strictEligibleCandidateCount"] == 0
+              else:
+                  assert near_zero_selected["strictResearchEligible"] is True
+                  assert near_zero_selected in near_zero_rows
+              assert near_zero["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert near_zero["sourceUvExportOrSavePerformed"] is False
+              assert near_zero["physicalFabricTailorOrFitApproved"] is False
+              assert near_zero["productionApproved"] is False
+              opposite=weighted[
+                  "researchOnlyComponent0Rank18OppositePlacementSurvey"
+              ]
+              assert opposite["researchOnly"] is True
+              assert opposite["candidateRank"] == 18
+              assert opposite["translationSignRelativeToOutsidePack"] == -1
+              assert opposite["evaluatedTranslationFractionCount"] == 4
+              assert opposite["rankZeroRealEdgeLengthBudgetMm"] == (
+                  trial["addedActualSourceCutEdgeLengthMm"]
+              )
+              assert opposite["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert opposite["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              assert opposite["baselineTotalCutNetworkLengthMm"] == (
+                  baseline_cut["totalRealGeometryOfUvCutCandidatesMm"]
+              )
+              opposite_rows=opposite["candidateResults"]
+              assert [r["placementStep"] for r in opposite_rows] == [1,2,4,8]
+              assert [r["translationFractionOfOutsidePack"]
+                      for r in opposite_rows] == [
+                          round(step/256.0,8) for step in (1,2,4,8)
+                      ]
+              assert opposite["strictEligibleCandidateCount"] == sum(
+                  r["strictResearchEligible"] for r in opposite_rows
+              )
+              assert opposite["noStrictCandidateObserved"] is (
+                  opposite["strictEligibleCandidateCount"] == 0
+              )
+              for r in opposite_rows:
+                  assert r["candidateRank"] == 18
+                  assert r["translationSignRelativeToOutsidePack"] == -1
+                  assert r["baselineOverlapTrianglePairs"] == 6957
+                  assert r["candidateOverlapTrianglePairs"] >= 0
+                  assert r["overlapTrianglePairDelta"] == (
+                      r["candidateOverlapTrianglePairs"] -
+                      r["baselineOverlapTrianglePairs"]
+                  )
+                  assert r["withinRankZeroRealEdgeLengthBudget"] is (
+                      r["addedActualSourceCutEdgeLengthMm"] <=
+                      opposite["rankZeroRealEdgeLengthBudgetMm"] + 0.00001
+                  )
+                  assert r["candidateUnclosedSharedUvSeams"] >= 0
+                  assert r["exactlyOneNewUnclosedUvSeam"] is (
+                      r["candidateUnclosedSharedUvSeams"] ==
+                      baseline_cut["unclosedSharedUvCutCandidateEdges"] + 1
+                  )
+                  assert abs(
+                      r["maximumUnclosedUvEdgeGapDeltaMm"] -
+                      (r["candidateMaximumUnclosedUvEdgeGapMm"] -
+                       opposite["baselineMaximumUnclosedUvEdgeGapMm"])
+                  ) <= 0.00002
+                  assert r["noMaximumUvGapRegression"] is (
+                      r["maximumUnclosedUvEdgeGapDeltaMm"] <= 0.00001
+                  )
+                  assert r["branchJunctionDelta"] == (
+                      r["candidateBranchJunctions"] -
+                      opposite["baselineBranchJunctions"]
+                  )
+                  assert r["noBranchJunctionRegression"] is (
+                      r["branchJunctionDelta"] <= 0
+                  )
+                  assert abs(
+                      r["measuredAddedCutNetworkLengthMm"] -
+                      (r["candidateTotalCutNetworkLengthMm"] -
+                       opposite["baselineTotalCutNetworkLengthMm"])
+                  ) <= 0.00002
+                  assert r["completeOverlapImprovement"] is False or (
+                      r["candidateOverlapTrianglePairs"] <
+                      r["baselineOverlapTrianglePairs"]
+                  )
+                  assert sum(a*b for a,b in zip(
+                      r["rigidResearchUvTranslationMm"],
+                      r["fullOutsidePackTranslationMm"]
+                  )) < 0
+                  assert r["physicalPatternApproved"] is False
+                  assert r["productionApproved"] is False
+                  assert r["strictResearchEligible"] is (
+                      r["completeOverlapImprovement"] and
+                      r["withinRankZeroRealEdgeLengthBudget"] and
+                      r["noMaximumUvGapRegression"] and
+                      r["noBranchJunctionRegression"] and
+                      r["exactlyOneNewUnclosedUvSeam"]
+                  )
+              opposite_selected=opposite["strictSelectedCandidate"]
+              if opposite_selected is None:
+                  assert opposite["strictEligibleCandidateCount"] == 0
+              else:
+                  assert opposite_selected["strictResearchEligible"] is True
+                  assert opposite_selected in opposite_rows
+              assert opposite["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert opposite["sourceUvExportOrSavePerformed"] is False
+              assert opposite["physicalFabricTailorOrFitApproved"] is False
+              assert opposite["productionApproved"] is False
+              orthogonal=weighted[
+                  "researchOnlyComponent0Rank18OrthogonalPlacementSurvey"
+              ]
+              assert orthogonal["researchOnly"] is True
+              assert orthogonal["candidateRank"] == 18
+              assert orthogonal["translationAxisRelativeToOutsidePack"] == (
+                  "perpendicular"
+              )
+              assert orthogonal["evaluatedTranslationFractionCount"] == 4
+              assert orthogonal["rankZeroRealEdgeLengthBudgetMm"] == (
+                  trial["addedActualSourceCutEdgeLengthMm"]
+              )
+              assert orthogonal["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert orthogonal["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              assert orthogonal["baselineTotalCutNetworkLengthMm"] == (
+                  baseline_cut["totalRealGeometryOfUvCutCandidatesMm"]
+              )
+              orthogonal_rows=orthogonal["candidateResults"]
+              assert [(r["placementStep"],
+                       r["translationSignRelativeToOutsidePack"])
+                      for r in orthogonal_rows] == [
+                          (1,1),(1,-1),(4,1),(4,-1)
+                      ]
+              assert orthogonal["strictEligibleCandidateCount"] == sum(
+                  r["strictResearchEligible"] for r in orthogonal_rows
+              )
+              assert orthogonal["noStrictCandidateObserved"] is (
+                  orthogonal["strictEligibleCandidateCount"] == 0
+              )
+              for r in orthogonal_rows:
+                  assert r["candidateRank"] == 18
+                  assert r["translationAxisRelativeToOutsidePack"] == (
+                      "perpendicular"
+                  )
+                  assert r["baselineOverlapTrianglePairs"] == 6957
+                  assert r["candidateOverlapTrianglePairs"] >= 0
+                  assert r["overlapTrianglePairDelta"] == (
+                      r["candidateOverlapTrianglePairs"] -
+                      r["baselineOverlapTrianglePairs"]
+                  )
+                  assert r["completeOverlapImprovement"] is (
+                      r["overlapTrianglePairDelta"] < 0
+                  )
+                  assert r["withinRankZeroRealEdgeLengthBudget"] is (
+                      r["addedActualSourceCutEdgeLengthMm"] <=
+                      orthogonal["rankZeroRealEdgeLengthBudgetMm"] + 0.00001
+                  )
+                  assert r["exactlyOneNewUnclosedUvSeam"] is (
+                      r["candidateUnclosedSharedUvSeams"] ==
+                      baseline_cut["unclosedSharedUvCutCandidateEdges"] + 1
+                  )
+                  assert abs(
+                      r["maximumUnclosedUvEdgeGapDeltaMm"] -
+                      (r["candidateMaximumUnclosedUvEdgeGapMm"] -
+                       orthogonal["baselineMaximumUnclosedUvEdgeGapMm"])
+                  ) <= 0.00002
+                  assert r["noMaximumUvGapRegression"] is (
+                      r["maximumUnclosedUvEdgeGapDeltaMm"] <= 0.00001
+                  )
+                  assert r["branchJunctionDelta"] == (
+                      r["candidateBranchJunctions"] -
+                      orthogonal["baselineBranchJunctions"]
+                  )
+                  assert r["noBranchJunctionRegression"] is (
+                      r["branchJunctionDelta"] <= 0
+                  )
+                  assert abs(
+                      r["measuredAddedCutNetworkLengthMm"] -
+                      (r["candidateTotalCutNetworkLengthMm"] -
+                       orthogonal["baselineTotalCutNetworkLengthMm"])
+                  ) <= 0.00002
+                  sign=r["translationSignRelativeToOutsidePack"]
+                  fraction=r["translationFractionOfOutsidePack"]
+                  dx,dy=r["rigidResearchUvTranslationMm"]
+                  fx,fy=r["fullOutsidePackTranslationMm"]
+                  assert abs(dx - (-fy * fraction * sign)) <= 0.00003
+                  assert abs(dy - (fx * fraction * sign)) <= 0.00003
+                  assert r["physicalPatternApproved"] is False
+                  assert r["productionApproved"] is False
+                  assert r["strictResearchEligible"] is (
+                      r["completeOverlapImprovement"] and
+                      r["withinRankZeroRealEdgeLengthBudget"] and
+                      r["noMaximumUvGapRegression"] and
+                      r["noBranchJunctionRegression"] and
+                      r["exactlyOneNewUnclosedUvSeam"]
+                  )
+              orthogonal_selected=orthogonal["strictSelectedCandidate"]
+              if orthogonal_selected is None:
+                  assert orthogonal["strictEligibleCandidateCount"] == 0
+              else:
+                  assert orthogonal_selected["strictResearchEligible"] is True
+                  assert orthogonal_selected in orthogonal_rows
+              assert orthogonal["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert orthogonal["sourceUvExportOrSavePerformed"] is False
+              assert orthogonal["physicalFabricTailorOrFitApproved"] is False
+              assert orthogonal["productionApproved"] is False
+              rotation=weighted[
+                  "researchOnlyComponent0Rank18MidpointRotationSurvey"
+              ]
+              assert rotation["researchOnly"] is True
+              assert rotation["candidateRank"] == 18
+              assert rotation["evaluatedRotationCount"] == 4
+              assert rotation["rankZeroRealEdgeLengthBudgetMm"] == (
+                  trial["addedActualSourceCutEdgeLengthMm"]
+              )
+              assert rotation["baselineMaximumUnclosedUvEdgeGapMm"] == (
+                  baseline_cut["maximumUnclosedUvEdgeGapMm"]
+              )
+              assert rotation["baselineBranchJunctions"] == (
+                  baseline_cut["uvCutCandidateDegreeThreePlusSourceVertices"]
+              )
+              assert rotation["baselineTotalCutNetworkLengthMm"] == (
+                  baseline_cut["totalRealGeometryOfUvCutCandidatesMm"]
+              )
+              rotation_rows=rotation["candidateResults"]
+              assert [r["rotationDegrees"] for r in rotation_rows] == [
+                  -2.0,-1.0,1.0,2.0
+              ]
+              assert rotation["strictEligibleCandidateCount"] == sum(
+                  r["strictResearchEligible"] for r in rotation_rows
+              )
+              assert rotation["noStrictCandidateObserved"] is (
+                  rotation["strictEligibleCandidateCount"] == 0
+              )
+              for r in rotation_rows:
+                  assert r["candidateRank"] == 18
+                  assert r["researchUvPlacementType"] == (
+                      "source-edge-midpoint-rotation"
+                  )
+                  assert r["baselineOverlapTrianglePairs"] == 6957
+                  assert r["overlapTrianglePairDelta"] == (
+                      r["candidateOverlapTrianglePairs"] -
+                      r["baselineOverlapTrianglePairs"]
+                  )
+                  assert r["completeOverlapImprovement"] is (
+                      r["overlapTrianglePairDelta"] < 0
+                  )
+                  assert r["withinRankZeroRealEdgeLengthBudget"] is (
+                      r["addedActualSourceCutEdgeLengthMm"] <=
+                      rotation["rankZeroRealEdgeLengthBudgetMm"] + 0.00001
+                  )
+                  assert r["exactlyOneNewUnclosedUvSeam"] is (
+                      r["candidateUnclosedSharedUvSeams"] ==
+                      baseline_cut["unclosedSharedUvCutCandidateEdges"] + 1
+                  )
+                  assert abs(
+                      r["maximumUnclosedUvEdgeGapDeltaMm"] -
+                      (r["candidateMaximumUnclosedUvEdgeGapMm"] -
+                       rotation["baselineMaximumUnclosedUvEdgeGapMm"])
+                  ) <= 0.00002
+                  assert r["noMaximumUvGapRegression"] is (
+                      r["maximumUnclosedUvEdgeGapDeltaMm"] <= 0.00001
+                  )
+                  assert r["branchJunctionDelta"] == (
+                      r["candidateBranchJunctions"] -
+                      rotation["baselineBranchJunctions"]
+                  )
+                  assert r["noBranchJunctionRegression"] is (
+                      r["branchJunctionDelta"] <= 0
+                  )
+                  assert abs(
+                      r["measuredAddedCutNetworkLengthMm"] -
+                      (r["candidateTotalCutNetworkLengthMm"] -
+                       rotation["baselineTotalCutNetworkLengthMm"])
+                  ) <= 0.00002
+                  assert r["maximumOriginalTriangleEdgeChangeMm"] <= 0.000001
+                  assert r["sourceEdgeOriginalUvLengthMm"] > 0
+                  assert all(math.isfinite(v) for v in (
+                      r["sourceEdgeUvMidpointMm"] +
+                      r["sourceEdgeOpenedEndpointGapsMm"]
+                  ))
+                  assert len(r["sourceEdgeUvMidpointMm"]) == 2
+                  assert len(r["sourceEdgeOpenedEndpointGapsMm"]) == 2
+                  # For a midpoint pivot, each end of the actual source edge
+                  # moves L*sin(|angle|/2). Require numeric native agreement.
+                  expected_opening = (
+                      r["sourceEdgeOriginalUvLengthMm"] *
+                      math.sin(math.radians(abs(r["rotationDegrees"])) / 2)
+                  )
+                  assert all(
+                      gap > 0.001 and abs(gap-expected_opening) <= 0.00101
+                      for gap in r["sourceEdgeOpenedEndpointGapsMm"]
+                  )
+                  assert r["physicalPatternApproved"] is False
+                  assert r["productionApproved"] is False
+                  assert r["strictResearchEligible"] is (
+                      r["completeOverlapImprovement"] and
+                      r["withinRankZeroRealEdgeLengthBudget"] and
+                      r["noMaximumUvGapRegression"] and
+                      r["noBranchJunctionRegression"] and
+                      r["exactlyOneNewUnclosedUvSeam"]
+                  )
+              rotation_selected=rotation["strictSelectedCandidate"]
+              if rotation_selected is None:
+                  assert rotation["strictEligibleCandidateCount"] == 0
+              else:
+                  assert rotation_selected["strictResearchEligible"] is True
+                  assert rotation_selected in rotation_rows
+              assert rotation["sourceGeometryAndBodyBVHUnchanged"] is True
+              assert rotation["sourceUvExportOrSavePerformed"] is False
+              assert rotation["physicalFabricTailorOrFitApproved"] is False
+              assert rotation["productionApproved"] is False
+              assert branch["productionApproved"] is False
+              assert branch_uv["verifiedTreeConnectedSharedEdges"] == 2647
+              assert branch_uv["dualGraphComponentCount"] == 3
+              assert branch_uv["maximumTreeEdgeUvJoinErrorMm"] <= 0.001
+              assert branch_cut["originalSharedSourceEdgeCount"] == 5234
+              assert branch_cut["originalOpenSourceBoundaryEdges"] == 132
+              assert branch_cut["unclosedSharedUvCutCandidateEdges"] == (
+                  branch_uv["nonTreeCycleUnclosedUvEdges"]
+              )
+              assert branch_cut["realTailorCutLinesApproved"] is False
+              assert branch_cut["productionApproved"] is False
+              assert weighted["physicalSewnCrotchPatternApproved"] is False
+              assert weighted["productionApproved"] is False
               assert "not sewn garment" in cut_network["metricCaveat"]
               assert "UNVERIFIED" in tree["metricCaveat"]
               assert "DIFFERENT UV island" in quads["metricCaveat"]
@@ -1687,6 +3250,19 @@ jobs:
               "radial18TriangleContactedAreaMm2":radial["contactingBridgeAreaMm2"],
               "radialDisplacementMm":shifts,
               "originalCutSegmentBodyContacts":original["actualBodyContactByOriginalCutEdgePair"],
+              "maxRetainedOriginalSourceUvExperiment": {
+                  "strategy":"maximum real 3D shared-edge spanning forest",
+                  "originalComponents":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["dualGraphComponentCount"],
+                  "retainedOriginalSharedEdges":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["verifiedTreeConnectedSharedEdges"],
+                  "unclosedOriginalUvCycleEdges":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["nonTreeCycleUnclosedUvEdges"],
+                  "theoreticalOmittedSourceEdgeLengthMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["maxRetainedOriginalSourceSelection"]["minimumOmittedOriginalSourceEdgeLengthMm"],
+                  "baselineCandidateCutLengthMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["baselineBfsSourceCutNetworkLengthMm"],
+                  "weightedCandidateCutLengthMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["maxRetainedActualSourceCutNetworkLengthMm"],
+                  "candidateChangeMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["maxRetainedActualCutLengthChangeVsBfsMm"],
+                  "maxRemainingUvGapMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceMaxRetainedUvEvidence"]["maximumNonTreeUvSeamGapMm"],
+                  "physicalCuttingOrFabricApproved":False,
+                  "productionApproved":False,
+              },
               "originalSourceUvCutNetworkEvidence": {
                   "unclosedActualSourceEdges":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceUvCutNetworkEvidence"]["unclosedSharedUvCutCandidateEdges"],
                   "totalOriginalSourceUvCutCandidateLengthMm":offset["researchOnlyOriginalSeamWindingAndUVProvenance"]["researchOnlyOriginalSourceUvCutNetworkEvidence"]["totalRealGeometryOfUvCutCandidatesMm"],

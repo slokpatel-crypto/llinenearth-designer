@@ -89,4 +89,20 @@ bad_coords = list(flat["face_uv_loops"])
 bad_coords[0] = list(bad_coords[0])
 bad_coords[0][2] = bad_coords[0][1]
 rejected(faces, bad_coords, cuts)
+
+# Source IDs and metric UVs must not be silently coerced from fabricated
+# boolean, fractional or text values into apparently native Blender data.
+for impostor in (True, 0.9, "0"):
+    forged_faces = list(faces)
+    forged_faces[0] = (impostor, *faces[0][1:])
+    rejected(forged_faces, flat["face_uv_loops"], cuts)
+for impostor in (True, 0.5, "0"):
+    forged_cuts = list(cuts)
+    forged_cuts[0] = (impostor, cuts[0][1])
+    rejected(faces, flat["face_uv_loops"], forged_cuts)
+for impostor in (True, "0.0", None):
+    forged_uv = list(flat["face_uv_loops"])
+    forged_uv[0] = list(forged_uv[0])
+    forged_uv[0][0] = (impostor, forged_uv[0][0][1])
+    rejected(faces, forged_uv, cuts)
 print("TITAN_ORIGINAL_TROUSER_METRIC_DUAL_TREE_UV_SYNTHETIC_PASS")
