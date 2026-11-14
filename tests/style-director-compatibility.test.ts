@@ -4266,3 +4266,29 @@ test("absent and explicitly invalid waistband IDs retain distinct review outcome
     assert.equal(JSON.stringify(locked), snapshot, "review must not mutate saved data");
   }
 });
+
+test("multiple supplied invalid construction IDs remain reviewable alongside independent physical conflicts", () => {
+  for (const [waistband, shoeBreak] of [
+    ["retired_waistband", "retired_break"],
+    ["french_placket", "french_placket"],
+    ["", ""],
+  ] as const) {
+    const locked = spec(
+      { sleeve: "half_sleeve", cuff: "french_double_cuff" },
+      { type: "cropped_ankle", waistband, hem: "plain_hem", break: shoeBreak },
+    );
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    Object.freeze(locked);
+    const before = JSON.stringify(locked);
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const first = review();
+    assert.equal(first.filter(code => code === "unknown_versioned_option").length, 2,
+      "each supplied invalid versioned field needs its own catalogue warning");
+    for (const code of ["short_sleeve_double_cuff", "cropped_type_hem_mismatch"]) {
+      assert.ok(first.includes(code), "invalid saved IDs cannot hide " + code);
+    }
+    assert.deepEqual(review(), first, "review order must be deterministic");
+    assert.equal(JSON.stringify(locked), before, "saved selections remain untouched");
+  }
+});
