@@ -4350,3 +4350,23 @@ test("missing cuff differs from supplied stale cuff without hiding independent t
     assert.equal(JSON.stringify(locked), snapshot, "locked options must not be rewritten");
   }
 });
+
+test("invalid saved trouser hem does not erase independent cuff and shoe-break review", () => {
+  for (const hem of ["retired_hem", "french_double_cuff", ""] as const) {
+    const locked = spec(
+      { sleeve: "half_sleeve", cuff: "french_double_cuff" },
+      { type: "cropped_ankle", hem, break: "stacked_break" },
+    );
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    Object.freeze(locked);
+    const before = JSON.stringify(locked);
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const codes = review();
+    assert.ok(codes.includes("unknown_versioned_option"), "invalid hem requires catalogue review");
+    assert.ok(codes.includes("short_sleeve_double_cuff"), "shirt construction remains independently reviewable");
+    assert.ok(codes.includes("cropped_stacked_break"), "cropped length and shoe break still conflict");
+    assert.deepEqual(review(), codes, "review ordering must remain deterministic");
+    assert.equal(JSON.stringify(locked), before, "locked garment options must remain untouched");
+  }
+});
