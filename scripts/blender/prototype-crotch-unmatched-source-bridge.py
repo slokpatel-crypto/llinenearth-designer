@@ -1977,12 +1977,31 @@ def main():
     best_anchor_row = audited_anchor_rows[0]
     if (anchor_search_summary["targetOriginalSourceVertex"] != 416
             or anchor_search_summary["anchorAssignmentCount"] != 16
+            or anchor_search_summary[
+                "minimumNewUnclosedInternalSplitDiagonalCount"] != 2
+            or anchor_search_summary[
+                "minimumCandidateTotalUnclosedUvSeamCount"] != 2585
+            or anchor_search_summary[
+                "assignmentCountAtMinimumInternalSplitSeams"] != 2
             or len(anchor_search["candidate_trials"]) != 16
             or len(audited_anchor_rows) != anchor_search_summary[
                 "assignmentCountAtMinimumInternalSplitSeams"]
             or not anchor_search_summary["allAssignmentsCloseAllIncidentEdges"]
             or not anchor_search_summary[
                 "allAssignmentsPreserveTriangleEdgeLengths"]
+            or best_anchor_row["trial"][
+                "candidateUnclosedSharedUvEdgeCount"] != 2583
+            or best_anchor_row["trial"][
+                "newUnclosedInternalSplitDiagonalCount"] != 2
+            or best_anchor_row["trial"][
+                "candidateTotalUnclosedUvSeamCount"] != 2585
+            or best_anchor_row["trial"]["totalUnclosedUvSeamCountDelta"] != 0
+            or best_anchor_row["packedBaselineVsCandidateOverlap"][
+                "baselineObservedTriangleOverlapPairs"] != 6957
+            or best_anchor_row["packedBaselineVsCandidateOverlap"][
+                "candidateObservedTriangleOverlapPairs"] != 6953
+            or best_anchor_row["packedBaselineVsCandidateOverlap"][
+                "candidateOverlapTrianglePairDelta"] != -4
             or best_anchor_row["candidateResearchUvOverlap"][
                 "actualTrianglesInspected"] != 5300
             or best_anchor_row["candidateResearchUvOverlap"]["auditTruncated"]

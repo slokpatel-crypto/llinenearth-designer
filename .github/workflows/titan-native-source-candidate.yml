@@ -1544,6 +1544,15 @@ jobs:
               assert anchor_enumeration["researchOnly"] is True
               assert anchor_search["targetOriginalSourceVertex"] == 416
               assert anchor_search["anchorAssignmentCount"] == 16
+              assert anchor_search[
+                  "minimumNewUnclosedInternalSplitDiagonalCount"
+              ] == 2
+              assert anchor_search[
+                  "minimumCandidateTotalUnclosedUvSeamCount"
+              ] == 2585
+              assert anchor_search[
+                  "assignmentCountAtMinimumInternalSplitSeams"
+              ] == 2
               assert anchor_enumeration[
                   "auditedMinimumInternalCandidateCount"
               ] == anchor_search[
@@ -1562,10 +1571,19 @@ jobs:
               ] is True
               assert anchor_trial["closedIncidentEdgeCount"] == 4
               assert anchor_trial[
+                  "candidateUnclosedSharedUvEdgeCount"
+              ] == 2583
+              assert anchor_trial[
                   "newUnclosedInternalSplitDiagonalCount"
               ] == anchor_search[
                   "minimumNewUnclosedInternalSplitDiagonalCount"
               ]
+              assert anchor_trial[
+                  "candidateTotalUnclosedUvSeamCount"
+              ] == 2585
+              assert anchor_trial[
+                  "totalUnclosedUvSeamCountDelta"
+              ] == 0
               assert anchor_trial[
                   "maximumOriginalTriangleEdgeChangeMm"
               ] <= 0.000001
@@ -1574,6 +1592,15 @@ jobs:
               assert anchor_comparison[
                   "bothFullResearchUvScansComplete"
               ] is True
+              assert anchor_comparison[
+                  "baselineObservedTriangleOverlapPairs"
+              ] == 6957
+              assert anchor_comparison[
+                  "candidateObservedTriangleOverlapPairs"
+              ] == 6953
+              assert anchor_comparison[
+                  "candidateOverlapTrianglePairDelta"
+              ] == -4
               assert anchor_search["storedSourceUvChanged"] is False
               assert anchor_search["sourceUvExportOrSavePerformed"] is False
               assert anchor_search["physicalPatternApproved"] is False
