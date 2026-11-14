@@ -4370,3 +4370,44 @@ test("invalid saved trouser hem does not erase independent cuff and shoe-break r
     assert.equal(JSON.stringify(locked), before, "locked garment options must remain untouched");
   }
 });
+
+test("contrast cuff claims remain independently reviewable alongside invalid saved trouser options", () => {
+  for (const waistband of ["retired_waistband", "french_double_cuff", ""] as const) {
+    const locked = spec(
+      {
+        sleeve: "half_sleeve",
+        cuff: "open_short_hem_cuff",
+        collarFinish: "White contrast collar + cuffs",
+      },
+      {
+        type: "cropped_ankle",
+        hem: "plain_hem",
+        break: "stacked_break",
+        waistband,
+      },
+    );
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    Object.freeze(locked);
+    const before = JSON.stringify(locked);
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const codes = review();
+    assert.equal(codes.filter(code => code === "unknown_versioned_option").length, 1,
+      "an invalid waistband needs its own canonical-ID review");
+    for (const code of [
+      "short_sleeve_contrast_cuff_finish",
+      "cropped_type_hem_mismatch",
+      "cropped_stacked_break",
+    ]) {
+      assert.ok(codes.includes(code), "independent construction issue suppressed: " + code);
+    }
+    assert.deepEqual(review(), codes, "repeated reviews must be deterministic");
+    assert.equal(JSON.stringify(locked), before, "locked garment selections cannot be rewritten");
+  }
+  const buildable = spec(
+    { sleeve: "half_sleeve", cuff: "open_short_hem_cuff", collarFinish: "Self-fabric" },
+    { type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "no_break" },
+  );
+  assert.deepEqual(styleDirectorConstructionIssues(buildable), [],
+    "a valid short-sleeve finish and cropped trouser should not trigger false construction warnings");
+});
