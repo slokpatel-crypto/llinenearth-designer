@@ -4234,3 +4234,35 @@ test("missing waistband selection does not invent an unknown ID or suppress inde
   assert.deepEqual(review(), first);
   assert.equal(JSON.stringify(locked), before);
 });
+
+
+test("absent and explicitly invalid waistband IDs retain distinct review outcomes", () => {
+  for (const [waistband, expectedUnknown] of [
+    [undefined, false], [null, true], ["", true], ["retired_waistband", true],
+  ] as const) {
+    const locked = spec(
+      { sleeve: "half_sleeve", cuff: "french_double_cuff" },
+      { type: "cropped_ankle", hem: "plain_hem", break: "stacked_break" },
+    );
+    if (waistband === undefined) {
+      delete (locked.pant as Record<string, unknown>).waistband;
+    } else {
+      (locked.pant as Record<string, unknown>).waistband = waistband;
+    }
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    Object.freeze(locked);
+    const snapshot = JSON.stringify(locked);
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const codes = review();
+    assert.equal(codes.includes("unknown_versioned_option"), expectedUnknown,
+      "explicitly supplied invalid IDs must not be treated as missing");
+    for (const code of [
+      "short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break",
+    ]) {
+      assert.ok(codes.includes(code), "independent construction conflict lost: " + code);
+    }
+    assert.deepEqual(review(), codes, "repeatable locked-design review");
+    assert.equal(JSON.stringify(locked), snapshot, "review must not mutate saved data");
+  }
+});
