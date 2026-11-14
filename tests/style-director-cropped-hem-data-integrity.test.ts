@@ -41,3 +41,25 @@ test("cropped hem suggestion is deterministic and does not rewrite locked data",
     type: "cropped_ankle", break: "stacked_break",
   }), null);
 });
+
+
+test("cropped hem recommendation fails closed on revoked or hostile saved selections", () => {
+  const revoked = Proxy.revocable({ type: "cropped_ankle", break: "cropped_above_ankle" }, {});
+  revoked.revoke();
+  const hostile = new Proxy({}, {
+    getOwnPropertyDescriptor() {
+      throw new Error("untrusted descriptor lookup");
+    },
+    get() {
+      throw new Error("untrusted property access");
+    },
+  });
+  for (const candidate of [null, undefined, revoked.proxy, hostile]) {
+    assert.equal(styleDirectorProposedCroppedHem(candidate as never), null);
+    assert.equal(styleDirectorProposedCroppedHem(candidate as never), null);
+  }
+  const wrongType = Object.freeze({ type: "formal_flat_front", break: "cropped_above_ankle" });
+  const wrongBreak = Object.freeze({ type: "cropped_ankle", break: "no_break" });
+  assert.equal(styleDirectorProposedCroppedHem(wrongType as never), null);
+  assert.equal(styleDirectorProposedCroppedHem(wrongBreak as never), null);
+});
