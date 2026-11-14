@@ -4320,3 +4320,33 @@ test("invalid saved cuff and waistband IDs do not suppress cropped construction 
     assert.equal(JSON.stringify(locked), before, "saved IDs must remain unchanged");
   }
 });
+
+test("missing cuff differs from supplied stale cuff without hiding independent trouser conflicts", () => {
+  for (const [cuff, expectedUnknown] of [
+    [undefined, false], [null, true], ["retired_cuff", true], ["belt_loops", true],
+  ] as const) {
+    const locked = spec(
+      { sleeve: "half_sleeve" },
+      { type: "cropped_ankle", hem: "plain_hem", break: "stacked_break" },
+    );
+    if (cuff === undefined) {
+      delete (locked.shirt as Record<string, unknown>).cuff;
+    } else {
+      (locked.shirt as Record<string, unknown>).cuff = cuff;
+    }
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    Object.freeze(locked);
+    const snapshot = JSON.stringify(locked);
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const codes = review();
+    assert.equal(codes.includes("unknown_versioned_option"), expectedUnknown,
+      "only a supplied invalid cuff ID receives catalogue review");
+    assert.ok(codes.includes("cropped_type_hem_mismatch"),
+      "shirt catalogue uncertainty cannot suppress an independent hem conflict");
+    assert.ok(codes.includes("cropped_stacked_break"),
+      "shirt catalogue uncertainty cannot suppress an independent shoe-break conflict");
+    assert.deepEqual(review(), codes, "repeated review must be deterministic");
+    assert.equal(JSON.stringify(locked), snapshot, "locked options must not be rewritten");
+  }
+});
