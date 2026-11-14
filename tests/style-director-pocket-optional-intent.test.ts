@@ -54,8 +54,8 @@ test("optional pocket choice never overrides a separate explicit flap exclusion"
     const locked = Object.freeze({ pocket });
     const before = Object.getOwnPropertyDescriptors(locked);
     const expected = [{ code: "candidate_pocket_mismatch", explanation: "The explicit pocket request or exclusion conflicts with the versioned locked shirt pocket construction; confirm the pocket before cutting." }];
-    assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, locked), expected);
-    assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, locked), expected);
+    assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, locked as Parameters<typeof styleDirectorCandidatePocketIssues>[1]), expected);
+    assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, locked as Parameters<typeof styleDirectorCandidatePocketIssues>[1]), expected);
     assert.deepEqual(Object.getOwnPropertyDescriptors(locked), before);
   }
   assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, { pocket: "no_pocket" }), []);
