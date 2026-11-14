@@ -42,3 +42,22 @@ test("contradictory positive pocket instructions require review, not an arbitrar
   assert.equal(styleDirectorCandidatePocket(phrase), null);
   assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, { pocket: "flap_pocket" }), []);
 });
+
+test("optional pocket choice never overrides a separate explicit flap exclusion", () => {
+  const phrase = "with or without patch pocket, but flap pocket must not be used";
+  const intent = styleDirectorCandidatePocketIntent(phrase);
+  assert.equal(intent.requested, null);
+  assert.equal(intent.ambiguous, true);
+  assert.deepEqual(intent.prohibited, ["flap_pocket"]);
+  assert.equal(styleDirectorCandidatePocket(phrase), null);
+  for (const pocket of ["flap_pocket", "retired_pocket"]) {
+    const locked = Object.freeze({ pocket });
+    const before = Object.getOwnPropertyDescriptors(locked);
+    const expected = [{ code: "candidate_pocket_mismatch", explanation: "The explicit pocket request or exclusion conflicts with the versioned locked shirt pocket construction; confirm the pocket before cutting." }];
+    assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, locked), expected);
+    assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, locked), expected);
+    assert.deepEqual(Object.getOwnPropertyDescriptors(locked), before);
+  }
+  assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, { pocket: "no_pocket" }), []);
+  assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, { pocket: "single_patch_pocket" }), []);
+});
