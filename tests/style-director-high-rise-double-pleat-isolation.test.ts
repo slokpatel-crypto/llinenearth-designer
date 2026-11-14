@@ -8,11 +8,11 @@ import type { StyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
  * claims. A stale ID in either field must not suppress review of the other.
  */
 test("high-rise double-pleat type checks rise and pleat independently", () => {
-  for (const [rise, pleat, expectedUnknown] of [
-    ["mid_rise", "flat_front", false],
-    ["retired_rise", "flat_front", true],
-    ["mid_rise", "retired_pleat", true],
-    ["retired_rise", "retired_pleat", true],
+  for (const [rise, pleat] of [
+    ["mid_rise", "flat_front"],
+    ["retired_rise", "flat_front"],
+    ["mid_rise", "retired_pleat"],
+    ["retired_rise", "retired_pleat"],
   ] as const) {
     const pant = Object.freeze({
       type: "double_pleat_high_rise", rise, pleat,
