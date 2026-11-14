@@ -4411,3 +4411,26 @@ test("contrast cuff claims remain independently reviewable alongside invalid sav
   assert.deepEqual(styleDirectorConstructionIssues(buildable), [],
     "a valid short-sleeve finish and cropped trouser should not trigger false construction warnings");
 });
+
+test("retired trouser type preserves independent cuff and cropped-hem shoe-break review", () => {
+  for (const type of ["retired_trouser_type", "french_double_cuff", ""] as const) {
+    const locked = spec(
+      { sleeve: "half_sleeve", cuff: "french_double_cuff" },
+      { type, hem: "cropped_above_ankle_hem", break: "stacked_break" },
+    );
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    Object.freeze(locked);
+    const before = JSON.stringify(locked);
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const codes = review();
+    assert.equal(codes.filter(code => code === "unknown_versioned_option").length, 1,
+      "each supplied invalid trouser type must remain visible for catalogue review");
+    assert.ok(codes.includes("short_sleeve_double_cuff"),
+      "unknown trouser type cannot conceal independent shirt construction");
+    assert.ok(codes.includes("cropped_stacked_break"),
+      "explicit cropped hem must still conflict with stacked shoe break");
+    assert.deepEqual(review(), codes, "repeated review must preserve issue order");
+    assert.equal(JSON.stringify(locked), before, "locked design must remain untouched");
+  }
+});
