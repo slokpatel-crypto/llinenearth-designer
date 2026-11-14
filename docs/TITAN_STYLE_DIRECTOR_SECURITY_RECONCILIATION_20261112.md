@@ -1,0 +1,10 @@
+# TITAN Style Director security reconciliation — 2026-11-12 UTC
+
+- Criterion: T1/T5/T6 and J4, **code integration only**; no human or production approval.
+- Source parent: primary draft PR #868 at `f0772518126961c7af1d693d1828d183d9dd2fec`. Prior verified security source: draft PR #979 at `4e2f7f328536a780342b645bf268f64306b90e12`, Full CI #43072499464 PASS and Non-3D #43072499436 PASS **at that old SHA only**.
+- Compared live primary against security candidate: primary 12 commits ahead, nine behind; primary changes concentrated in Style Director compatibility and tests. No primary branch was overwritten.
+- Parent → integration code SHA: `f0772518126961c7af1d693d1828d183d9dd2fec` → `8d6fab3f2780133c4bc51e357a493865fdf914a4`. Intermediate commits: `0707daf4b15c7706cb402c465ee64b8bbea6c0aa`, `eb756daef8e38859b22345837c0be667e44b14e3`, `5d822e4188a45bc764a424be7f317d86deb30f74`, `7528c1e28d46a01de34f81af4b7abb3fdc806927`.
+- Files: `src/app/api/style-director/handoff/route.ts`, `src/lib/designer/style-director-handoff-{request,audit}.ts`, and corresponding two bounded request/audit tests. Restored bounded signed handoff JSON parsing, fail-closed audited UUID receipt, redacted audit failures. Existing primary compatibility implementation/tests retained unchanged. No schema/paid-AI/model changes.
+- At initial read, primary `f0772518` Full CI #43098117345 and Non-3D #43098117466 were QUEUED; not counted as success. New reconciliation head quality, full Node, engine, preview, release, build, browser, Non-3D, security and disposable DB **PENDING** until exact-head runs complete.
+- T1–T6/J1–J6 full integrated acceptance **PENDING/BLOCKED**: real verified supplier/shop stock, authenticated owner/customer/operator Supabase journey, genuine tailor/fit, native Blender/four-view, physical device, beta/five and ten delivery evidence, privacy/security and explicit owner approval absent.
+- Next: open draft against current primary branch, check exact new head CI and Non-3D; fix failures and reconcile further primary commits before any isolated intake/main update. No deployment, live migrations, live stock or main merge.
