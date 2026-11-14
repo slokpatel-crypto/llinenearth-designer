@@ -34,6 +34,17 @@ async function testViewport(width){
     await page.goto(base+"/designer-studio",{waitUntil:"domcontentloaded"});
     await page.locator(".newDesignerFabricSearch").first().waitFor({state:"visible",timeout:20000});
     await page.locator(".brandIntro").waitFor({state:"hidden",timeout:20000});
+    // The intro is initially hidden during SSR, and the fabric input itself
+    // can be visible before React hydration. Filling it too early can update
+    // the bare DOM without running the real search onChange handler. Verify
+    // that the production control is actually interactive; never skip the
+    // empty-results assertion or rely on an arbitrary sleep/retry.
+    await page.waitForFunction(()=>{
+      const field=document.querySelector("#designer-shirt-search");
+      if(!field) return false;
+      const propsKey=Object.keys(field).find(key=>key.startsWith("__reactProps$"));
+      return Boolean(propsKey&&typeof field[propsKey]?.onChange==="function");
+    },null,{timeout:20000});
     // 16/50+ actual supplier records, not a made-up 10-row selector.
     const shirt=input(page,"#designer-shirt"),pant=input(page,"#designer-pant");
     const initialShirt=await shirt.inputValue(),initialPant=await pant.inputValue();
@@ -102,6 +113,33 @@ async function testViewport(width){
       pantStock:allPants,initialVisibleShirts:visibleStart,
       formalCount,selectionStable:true,unverifiedScalePresented:true,
       advancedCutServerRoundTrip:true});
+  }catch(error){
+    // Capture the actual browser failure BEFORE context.close(). Previous
+    // failures emitted only a timeout: the outer catch tried to screenshot
+    // an already-closed page and left no DOM evidence to diagnose hydration,
+    // filtering or visibility. Never retry, bypass or soften an assertion.
+    const state=await page.evaluate(()=>{
+      const field=document.querySelector("#designer-shirt-search");
+      const card=field?.closest(".newDesignerFabric");
+      const empty=card?.querySelector(".newDesignerFabricNoMatch");
+      const select=card?.querySelector("#designer-shirt");
+      return {
+        documentReadyState:document.readyState,
+        searchValue:field?.value??null,
+        reactPropsAttached:field?Object.keys(field).some(key=>key.startsWith("__reactProps$")):false,
+        matchingCount:card?.querySelector('label[for="designer-shirt"] span')?.textContent??null,
+        choiceCount:card?.querySelectorAll(".newDesignerFabricChoices button").length??null,
+        emptyStateText:empty?.textContent??null,
+        emptyStateVisible:empty?Boolean(empty.getClientRects().length):false,
+        selectedShirtId:select?.value??null,
+        currentPanelText:card?.innerText?.slice(0,1000)??null,
+      };
+    }).catch(e=>({diagnosticError:String(e)}));
+    await fs.writeFile(path.join(output,`failure-${width}.json`),
+      JSON.stringify({width,error:String(error),state},null,2)+"\n").catch(()=>{});
+    await page.screenshot({path:path.join(output,`failure-${width}.png`),
+      fullPage:true}).catch(()=>{});
+    throw error;
   }finally{await context.close();}
 }
 
