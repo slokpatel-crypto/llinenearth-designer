@@ -28,6 +28,9 @@ trial_junction = source_graph_module[
 trial_four_chart_split = source_graph_module[
     "trial_original_source_uv_junction_four_chart_split"
 ]
+enumerate_four_chart_anchors = source_graph_module[
+    "enumerate_original_source_uv_junction_four_chart_anchor_assignments"
+]
 
 # Synthetic proper rotation + translation can close equal-length source
 # segments; length disagreement has a provable irreducible residual.
@@ -151,6 +154,21 @@ assert four_chart_report["storedSourceUvChanged"] is False
 assert four_chart_report["sourceUvExportOrSavePerformed"] is False
 assert four_chart_report["physicalPatternApproved"] is False
 assert four_chart_report["productionApproved"] is False
+anchor_search = enumerate_four_chart_anchors(
+    junction_faces, junction_uv, 1, junction_edges
+)
+anchor_report = anchor_search["report"]
+assert anchor_report["anchorAssignmentCount"] == 16
+assert len(anchor_search["candidate_trials"]) == 16
+assert anchor_report["minimumNewUnclosedInternalSplitDiagonalCount"] <= (
+    four_chart_report["newUnclosedInternalSplitDiagonalCount"]
+)
+assert anchor_report["assignmentCountAtMinimumInternalSplitSeams"] >= 1
+assert anchor_report["allAssignmentsCloseAllIncidentEdges"] is True
+assert anchor_report["allAssignmentsPreserveTriangleEdgeLengths"] is True
+assert anchor_report["storedSourceUvChanged"] is False
+assert anchor_report["physicalPatternApproved"] is False
+assert anchor_report["productionApproved"] is False
 for bad_faces, bad_uv, bad_vertex, bad_edges in (
         (junction_faces[:-1], junction_uv, 1, junction_edges),
         (junction_faces, junction_uv, True, junction_edges),

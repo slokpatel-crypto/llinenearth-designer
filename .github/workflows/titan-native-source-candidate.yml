@@ -1531,6 +1531,58 @@ jobs:
               assert four_chart["physicalFabricAndTailorApproval"] is False
               assert four_chart["productionApproved"] is False
               print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_FOUR_CHART_SPLIT_RESEARCH_ONLY",json.dumps(four_chart,sort_keys=True))
+              anchor_enumeration=oriented[
+                  "researchOnlyOriginalSourceMaxRetainedUvEvidence"
+              ]["researchOnlyJunctionFourChartAnchorEnumeration"]
+              anchor_search=anchor_enumeration["search"]
+              anchor_best=anchor_enumeration["bestCandidate"]
+              anchor_trial=anchor_best["trial"]
+              anchor_overlap=anchor_best["candidateResearchUvOverlap"]
+              anchor_comparison=anchor_best[
+                  "packedBaselineVsCandidateOverlap"
+              ]
+              assert anchor_enumeration["researchOnly"] is True
+              assert anchor_search["targetOriginalSourceVertex"] == 416
+              assert anchor_search["anchorAssignmentCount"] == 16
+              assert anchor_enumeration[
+                  "auditedMinimumInternalCandidateCount"
+              ] == anchor_search[
+                  "assignmentCountAtMinimumInternalSplitSeams"
+              ]
+              assert len(anchor_enumeration[
+                  "auditedMinimumInternalCandidateSummaries"
+              ]) == anchor_enumeration[
+                  "auditedMinimumInternalCandidateCount"
+              ]
+              assert anchor_search[
+                  "allAssignmentsCloseAllIncidentEdges"
+              ] is True
+              assert anchor_search[
+                  "allAssignmentsPreserveTriangleEdgeLengths"
+              ] is True
+              assert anchor_trial["closedIncidentEdgeCount"] == 4
+              assert anchor_trial[
+                  "newUnclosedInternalSplitDiagonalCount"
+              ] == anchor_search[
+                  "minimumNewUnclosedInternalSplitDiagonalCount"
+              ]
+              assert anchor_trial[
+                  "maximumOriginalTriangleEdgeChangeMm"
+              ] <= 0.000001
+              assert anchor_overlap["actualTrianglesInspected"] == 5300
+              assert anchor_overlap["auditTruncated"] is False
+              assert anchor_comparison[
+                  "bothFullResearchUvScansComplete"
+              ] is True
+              assert anchor_search["storedSourceUvChanged"] is False
+              assert anchor_search["sourceUvExportOrSavePerformed"] is False
+              assert anchor_search["physicalPatternApproved"] is False
+              assert anchor_search["productionApproved"] is False
+              assert anchor_enumeration[
+                  "physicalFabricAndTailorApproval"
+              ] is False
+              assert anchor_enumeration["productionApproved"] is False
+              print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_FOUR_CHART_ANCHOR_ENUMERATION_RESEARCH_ONLY",json.dumps(anchor_enumeration,sort_keys=True))
               assert [
                   (-row["sourceUvCutGraphDegree"],
                    -row["incidentOriginalSourceCutEdgeLengthMm"],

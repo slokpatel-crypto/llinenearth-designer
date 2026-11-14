@@ -8,7 +8,7 @@ factory seam allowances, or certified fabric texture scale.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from itertools import combinations
+from itertools import combinations, product
 import math
 
 
@@ -339,7 +339,8 @@ def trial_original_source_uv_junction_face_rigid_placement(
 
 
 def trial_original_source_uv_junction_four_chart_split(
-        original_faces, face_uv_loops, junction_vertex, incident_source_edges):
+        original_faces, face_uv_loops, junction_vertex, incident_source_edges,
+        moving_face_by_edge=None):
     """Split four owner quads through a junction, then close all four edges.
 
     Each target quad is represented by two research-only triangles divided by
@@ -387,6 +388,18 @@ def trial_original_source_uv_junction_four_chart_split(
             raise ValueError("Four-chart split edge provenance is invalid.")
         edges.append(edge)
     edges.sort()
+    if moving_face_by_edge is None:
+        moving_face_by_edge = {
+            edge: max(edge_faces[edge]) for edge in edges
+        }
+    elif (not isinstance(moving_face_by_edge, dict)
+          or set(moving_face_by_edge) != set(edges)):
+        raise ValueError("Four-chart split mover assignment must cover each incident edge.")
+    else:
+        moving_face_by_edge = dict(moving_face_by_edge)
+    if any(type(face_id) is not int or face_id not in edge_faces[edge]
+           for edge, face_id in moving_face_by_edge.items()):
+        raise ValueError("Four-chart split mover must own its assigned incident edge.")
     target_faces = sorted({face_id for edge in edges for face_id in edge_faces[edge]})
     incidence = Counter(face_id for edge in edges for face_id in edge_faces[edge])
     if len(target_faces) != 4 or any(incidence[face_id] != 2 for face_id in target_faces):
@@ -444,7 +457,9 @@ def trial_original_source_uv_junction_four_chart_split(
 
     moved_triangles = set()
     for edge in edges:
-        face_a, face_b = sorted(edge_faces[edge])
+        face_b = moving_face_by_edge[edge]
+        face_a = next(face_id for face_id in edge_faces[edge]
+                      if face_id != face_b)
         _triangle_a, owner_a = owner_triangle(face_a, edge, original_triangles)
         triangle_b, owner_b = owner_triangle(face_b, edge, original_triangles)
         move_key = (face_b, triangle_b)
@@ -530,6 +545,17 @@ def trial_original_source_uv_junction_four_chart_split(
             "closedIncidentEdgeCount": len(closed),
             "splitOriginalSourceFaceIds": target_faces,
             "movedTrianglePoseCount": len(moved_triangles),
+            "movingOriginalSourceFaceByIncidentEdge": [
+                {
+                    "originalSourceEdge": list(edge),
+                    "movingOriginalSourceFaceId": moving_face_by_edge[edge],
+                    "anchoredOriginalSourceFaceId": next(
+                        face_id for face_id in edge_faces[edge]
+                        if face_id != moving_face_by_edge[edge]
+                    ),
+                }
+                for edge in edges
+            ],
             "internalSplitDiagonalEvidence": internal_rows,
             "newUnclosedInternalSplitDiagonalCount": internal_unclosed,
             "baselineUnclosedSharedUvEdgeCount": baseline_unclosed,
@@ -539,6 +565,90 @@ def trial_original_source_uv_junction_four_chart_split(
             "totalUnclosedUvSeamCountDelta":
                 candidate_unclosed + internal_unclosed - baseline_unclosed,
             "maximumOriginalTriangleEdgeChangeMm": round(max_edge_change * 1000, 8),
+            "storedSourceUvChanged": False,
+            "sourceUvExportOrSavePerformed": False,
+            "physicalPatternApproved": False,
+            "productionApproved": False,
+        },
+    }
+
+
+def enumerate_original_source_uv_junction_four_chart_anchor_assignments(
+        original_faces, face_uv_loops, junction_vertex, incident_source_edges):
+    """Enumerate all 2^4 rigid anchor choices for the four incident edges.
+
+    The junction-to-opposite split is fixed because it is the only quad
+    diagonal that gives the two junction edges independent triangle poses.
+    Every edge then has exactly two choices for which owner triangle stays at
+    its original UV pose.  This bounded exhaustive search measures whether a
+    different anchoring can avoid the internal split seams; it never writes a
+    UV layer or approves a physical pattern.
+    """
+    if (not hasattr(incident_source_edges, "__len__")
+            or len(incident_source_edges) != 4):
+        raise ValueError("Four-chart anchor enumeration needs four incident edges.")
+    edges = []
+    edge_faces = defaultdict(list)
+    for face_id, raw_face in enumerate(original_faces):
+        if (not hasattr(raw_face, "__len__") or len(raw_face) != 4
+                or len(set(raw_face)) != 4
+                or any(type(v) is not int or v < 0 for v in raw_face)):
+            raise ValueError("Four-chart anchor enumeration requires literal source quads.")
+        face = tuple(raw_face)
+        for corner in range(4):
+            edge_faces[tuple(sorted((face[corner], face[(corner + 1) % 4])))].append(
+                face_id
+            )
+    for raw_edge in incident_source_edges:
+        if (not hasattr(raw_edge, "__len__") or len(raw_edge) != 2
+                or any(type(v) is not int or v < 0 for v in raw_edge)):
+            raise ValueError("Four-chart anchor enumeration requires literal source edges.")
+        edge = tuple(sorted(raw_edge))
+        if (edge[0] == edge[1] or junction_vertex not in edge
+                or edge in edges or len(edge_faces.get(edge, ())) != 2):
+            raise ValueError("Four-chart anchor enumeration edge provenance is invalid.")
+        edges.append(edge)
+    edges.sort()
+    trials = []
+    for choices in product((0, 1), repeat=4):
+        movers = {
+            edge: sorted(edge_faces[edge])[choice]
+            for edge, choice in zip(edges, choices)
+        }
+        trial = trial_original_source_uv_junction_four_chart_split(
+            original_faces, face_uv_loops, junction_vertex, edges,
+            moving_face_by_edge=movers,
+        )
+        trials.append(trial)
+    minimum_internal = min(
+        trial["report"]["newUnclosedInternalSplitDiagonalCount"]
+        for trial in trials
+    )
+    minimum_total = min(
+        trial["report"]["candidateTotalUnclosedUvSeamCount"]
+        for trial in trials
+    )
+    return {
+        "candidate_trials": trials,
+        "report": {
+            "researchOnly": True,
+            "targetOriginalSourceVertex": junction_vertex,
+            "incidentOriginalSourceEdges": [list(edge) for edge in edges],
+            "anchorAssignmentCount": len(trials),
+            "minimumNewUnclosedInternalSplitDiagonalCount": minimum_internal,
+            "minimumCandidateTotalUnclosedUvSeamCount": minimum_total,
+            "assignmentCountAtMinimumInternalSplitSeams": sum(
+                trial["report"]["newUnclosedInternalSplitDiagonalCount"]
+                == minimum_internal for trial in trials
+            ),
+            "allAssignmentsCloseAllIncidentEdges": all(
+                trial["report"]["closedIncidentEdgeCount"] == 4
+                for trial in trials
+            ),
+            "allAssignmentsPreserveTriangleEdgeLengths": all(
+                trial["report"]["maximumOriginalTriangleEdgeChangeMm"]
+                <= 0.000001 for trial in trials
+            ),
             "storedSourceUvChanged": False,
             "sourceUvExportOrSavePerformed": False,
             "physicalPatternApproved": False,

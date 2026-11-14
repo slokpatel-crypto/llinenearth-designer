@@ -74,6 +74,9 @@ test("actual source UV cut graph counts physical mesh edges without inventing se
     '"maximumOriginalTriangleEdgeChangeMm": round(max_edge_change * 1000, 8)',
     '"newUnclosedInternalSplitDiagonalCount": internal_unclosed',
     '"candidateTotalUnclosedUvSeamCount":',
+    'def enumerate_original_source_uv_junction_four_chart_anchor_assignments(',
+    '"anchorAssignmentCount": len(trials)',
+    '"allAssignmentsCloseAllIncidentEdges": all(',
     "Actual source rigid UV alignment residual violated edge-length invariant.",
     "Actual UV source edge offsets require two finite numeric coordinates.",
     "Original UV gap endpoints disagree with actual source owner loops.",
@@ -176,6 +179,7 @@ test("actual source UV cut graph counts physical mesh edges without inventing se
     'seam_winding["researchOnlyOriginalSourceUvCutNetworkEvidence"] = cut_audit',
     'weighted_report["researchOnlyJunctionFaceRigidPlacementTrial"] = {',
     'weighted_report["researchOnlyJunctionFourChartSplitTrial"] = {',
+    'weighted_report["researchOnlyJunctionFourChartAnchorEnumeration"] = {',
   ])assert.ok(source.includes(needle),needle);
   for(const needle of [
     '"scripts/blender/source-trouser-uv-cut-network.py"',
@@ -187,6 +191,7 @@ test("actual source UV cut graph counts physical mesh edges without inventing se
     'cut_network["uvCutCandidateDegreeThreePlusSourceVertices"] >= 0',
     'TITAN_ACTUAL_SOURCE_UV_JUNCTION_FACE_RIGID_PLACEMENT_RESEARCH_ONLY',
     'TITAN_ACTUAL_SOURCE_UV_JUNCTION_FOUR_CHART_SPLIT_RESEARCH_ONLY',
+    'TITAN_ACTUAL_SOURCE_UV_JUNCTION_FOUR_CHART_ANCHOR_ENUMERATION_RESEARCH_ONLY',
     'placement_trial["targetOriginalSourceVertex"] == 416',
     '"candidateUnclosedSharedUvEdgeCount"\n              ] == 2583',
     '"newUnclosedInternalSplitDiagonalCount"\n              ] == 2',

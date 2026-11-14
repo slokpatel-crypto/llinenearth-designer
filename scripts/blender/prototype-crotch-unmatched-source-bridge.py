@@ -1936,6 +1936,98 @@ def main():
         "physicalFabricAndTailorApproval": False,
         "productionApproved": False,
     }
+    # Exhaust the 2^4 choices of which incident-edge owner triangle remains
+    # anchored.  Only minimum-internal-seam candidates receive the complete
+    # 5,300-triangle overlap audit; the best row is still research evidence,
+    # never a stored UV edit or a production pattern.
+    anchor_search = cut_audit_ops[
+        "enumerate_original_source_uv_junction_four_chart_anchor_assignments"
+    ](
+        base_faces, packed_weighted["face_uv_loops"],
+        junction["originalSourceVertexIndex"], junction_edges,
+    )
+    anchor_search_summary = anchor_search["report"]
+    minimum_internal = anchor_search_summary[
+        "minimumNewUnclosedInternalSplitDiagonalCount"
+    ]
+    minimum_internal_trials = [
+        trial for trial in anchor_search["candidate_trials"]
+        if trial["report"]["newUnclosedInternalSplitDiagonalCount"]
+        == minimum_internal
+    ]
+    audited_anchor_rows = []
+    for trial in minimum_internal_trials:
+        overlap = uv_overlap_audit(
+            base_faces, packed_weighted["face_uv_loops"],
+            research_triangle_overrides=trial["research_triangle_overrides"],
+        )
+        comparison = overlap_compare(packed_weighted_overlap, overlap)
+        audited_anchor_rows.append({
+            "trial": trial["report"],
+            "candidateResearchUvOverlap": overlap,
+            "packedBaselineVsCandidateOverlap": comparison,
+        })
+    audited_anchor_rows.sort(key=lambda row: (
+        row["packedBaselineVsCandidateOverlap"][
+            "candidateObservedTriangleOverlapPairs"],
+        row["trial"]["candidateTotalUnclosedUvSeamCount"],
+        tuple(item["movingOriginalSourceFaceId"] for item in
+              row["trial"]["movingOriginalSourceFaceByIncidentEdge"]),
+    ))
+    best_anchor_row = audited_anchor_rows[0]
+    if (anchor_search_summary["targetOriginalSourceVertex"] != 416
+            or anchor_search_summary["anchorAssignmentCount"] != 16
+            or len(anchor_search["candidate_trials"]) != 16
+            or len(audited_anchor_rows) != anchor_search_summary[
+                "assignmentCountAtMinimumInternalSplitSeams"]
+            or not anchor_search_summary["allAssignmentsCloseAllIncidentEdges"]
+            or not anchor_search_summary[
+                "allAssignmentsPreserveTriangleEdgeLengths"]
+            or best_anchor_row["candidateResearchUvOverlap"][
+                "actualTrianglesInspected"] != 5300
+            or best_anchor_row["candidateResearchUvOverlap"]["auditTruncated"]
+            or not best_anchor_row["packedBaselineVsCandidateOverlap"][
+                "bothFullResearchUvScansComplete"]
+            or anchor_search_summary["storedSourceUvChanged"]
+            or anchor_search_summary["sourceUvExportOrSavePerformed"]
+            or anchor_search_summary["physicalPatternApproved"]
+            or anchor_search_summary["productionApproved"]):
+        raise RuntimeError(
+            "Four-chart anchor enumeration lost source or rejection truth: " +
+            json.dumps({
+                "search": anchor_search_summary,
+                "auditedMinimumInternalCandidateCount":
+                    len(audited_anchor_rows),
+                "bestTrial": best_anchor_row["trial"],
+                "bestOverlapComparison": best_anchor_row[
+                    "packedBaselineVsCandidateOverlap"],
+            }, sort_keys=True)
+        )
+    weighted_report["researchOnlyJunctionFourChartAnchorEnumeration"] = {
+        "researchOnly": True,
+        "search": anchor_search_summary,
+        "auditedMinimumInternalCandidateCount": len(audited_anchor_rows),
+        "auditedMinimumInternalCandidateSummaries": [
+            {
+                "movingOriginalSourceFaceByIncidentEdge": row["trial"][
+                    "movingOriginalSourceFaceByIncidentEdge"],
+                "newUnclosedInternalSplitDiagonalCount": row["trial"][
+                    "newUnclosedInternalSplitDiagonalCount"],
+                "candidateTotalUnclosedUvSeamCount": row["trial"][
+                    "candidateTotalUnclosedUvSeamCount"],
+                "candidateObservedTriangleOverlapPairs": row[
+                    "packedBaselineVsCandidateOverlap"
+                ]["candidateObservedTriangleOverlapPairs"],
+            }
+            for row in audited_anchor_rows
+        ],
+        "bestCandidate": best_anchor_row,
+        "sourceMeshAndBodyBVHUnchanged": True,
+        "storedSourceUvChanged": False,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricAndTailorApproval": False,
+        "productionApproved": False,
+    }
     # One bounded genuine source-tree cut on authentic component 0. Only the
     # smaller resulting face subtree moves in research UV space; source 3D,
     # garment assets, Blender scenes and exports remain untouched.
