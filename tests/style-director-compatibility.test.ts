@@ -4292,3 +4292,31 @@ test("multiple supplied invalid construction IDs remain reviewable alongside ind
     assert.equal(JSON.stringify(locked), before, "saved selections remain untouched");
   }
 });
+
+
+test("invalid saved cuff and waistband IDs do not suppress cropped construction review", () => {
+  for (const [cuff, waistband] of [
+    ["retired_cuff", "retired_waistband"],
+    ["belt_loops", "french_placket"],
+    ["", ""],
+  ] as const) {
+    const locked = spec(
+      { sleeve: "half_sleeve", cuff },
+      { type: "cropped_ankle", waistband, hem: "plain_hem", break: "stacked_break" },
+    );
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    Object.freeze(locked);
+    const before = JSON.stringify(locked);
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const first = review();
+    assert.equal(first.filter(code => code === "unknown_versioned_option").length, 2,
+      "invalid cuff and waistband selections must each be reviewed");
+    assert.ok(first.includes("cropped_type_hem_mismatch"),
+      "invalid shirt IDs must not hide the cropped trouser hem conflict");
+    assert.ok(first.includes("cropped_stacked_break"),
+      "invalid waistband IDs must not hide the stacked shoe break conflict");
+    assert.deepEqual(review(), first, "construction review must be deterministic");
+    assert.equal(JSON.stringify(locked), before, "saved IDs must remain unchanged");
+  }
+});
