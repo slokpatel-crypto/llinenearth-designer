@@ -499,13 +499,14 @@ export function styleDirectorCandidatePlacketIssues(
   candidateShirt: string, shirt: Pick<StyleSpecV2["shirt"], "placket">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidatePlacketIntent(candidateShirt);
-  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  // An undecided placket choice does not override an independent explicit exclusion.
+  if (intent.requested === null && intent.prohibited.length === 0) return [];
   const lockedPlacket = styleDirectorLockedOptionValue(shirt, "placket");
   // A missing, inherited, accessor or stale option cannot prove compliance.
   const trusted = typeof lockedPlacket === "string" &&
     optionsFor("shirt.placket").some(option => option.id === lockedPlacket);
   const conflicts = !trusted ||
-    (intent.requested !== null && lockedPlacket !== intent.requested) ||
+    (!intent.ambiguous && intent.requested !== null && lockedPlacket !== intent.requested) ||
     intent.prohibited.includes(lockedPlacket as CandidatePlacketId);
   return conflicts ? [{
     code: "candidate_placket_mismatch",
