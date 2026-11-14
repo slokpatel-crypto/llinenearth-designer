@@ -1894,11 +1894,21 @@ def main():
     )
     if (four_chart_summary["targetOriginalSourceVertex"] != 416
             or four_chart_summary["closedIncidentEdgeCount"] != 4
+            or four_chart_summary["baselineUnclosedSharedUvEdgeCount"] != 2585
+            or four_chart_summary["candidateUnclosedSharedUvEdgeCount"] != 2583
+            or four_chart_summary["newUnclosedInternalSplitDiagonalCount"] != 2
+            or four_chart_summary["candidateTotalUnclosedUvSeamCount"] != 2585
+            or four_chart_summary["totalUnclosedUvSeamCountDelta"] != 0
             or len(four_chart_summary["splitOriginalSourceFaceIds"]) != 4
             or four_chart_summary["movedTrianglePoseCount"] != 4
             or len(four_chart_summary["internalSplitDiagonalEvidence"]) != 4
             or four_chart_summary["maximumOriginalTriangleEdgeChangeMm"] > 0.000001
             or not four_chart_comparison["bothFullResearchUvScansComplete"]
+            or four_chart_comparison[
+                "baselineObservedTriangleOverlapPairs"] != 6957
+            or four_chart_comparison[
+                "candidateObservedTriangleOverlapPairs"] != 6953
+            or four_chart_comparison["candidateOverlapTrianglePairDelta"] != -4
             or four_chart_overlap["actualTrianglesInspected"] != 5300
             or four_chart_overlap["auditTruncated"]
             or four_chart_summary["storedSourceUvChanged"]

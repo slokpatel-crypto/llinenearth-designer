@@ -1479,6 +1479,21 @@ jobs:
               ]) == 4
               assert len(four_chart_trial["splitOriginalSourceFaceIds"]) == 4
               assert four_chart_trial["movedTrianglePoseCount"] == 4
+              assert four_chart_trial[
+                  "baselineUnclosedSharedUvEdgeCount"
+              ] == 2585
+              assert four_chart_trial[
+                  "candidateUnclosedSharedUvEdgeCount"
+              ] == 2583
+              assert four_chart_trial[
+                  "newUnclosedInternalSplitDiagonalCount"
+              ] == 2
+              assert four_chart_trial[
+                  "candidateTotalUnclosedUvSeamCount"
+              ] == 2585
+              assert four_chart_trial[
+                  "totalUnclosedUvSeamCountDelta"
+              ] == 0
               assert len(four_chart_trial[
                   "internalSplitDiagonalEvidence"
               ]) == 4
@@ -1500,6 +1515,15 @@ jobs:
               assert four_chart_comparison[
                   "bothFullResearchUvScansComplete"
               ] is True
+              assert four_chart_comparison[
+                  "baselineObservedTriangleOverlapPairs"
+              ] == 6957
+              assert four_chart_comparison[
+                  "candidateObservedTriangleOverlapPairs"
+              ] == 6953
+              assert four_chart_comparison[
+                  "candidateOverlapTrianglePairDelta"
+              ] == -4
               assert four_chart_trial["storedSourceUvChanged"] is False
               assert four_chart_trial["sourceUvExportOrSavePerformed"] is False
               assert four_chart_trial["physicalPatternApproved"] is False
