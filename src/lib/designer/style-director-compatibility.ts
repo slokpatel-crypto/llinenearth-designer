@@ -553,7 +553,7 @@ export function styleDirectorCandidatePocketIntent(candidateShirt: string): {
       const start = hit.index ?? 0;
       const before = instruction.slice(0, start);
       const after = instruction.slice(start + hit[0].length);
-      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
+      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t|(?:must|should|shall|can|could|would|may|might)\s+not|(?:mustn|shouldn|shan|can|couldn|wouldn)['’]?t|cannot)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:should|must)\s+not|(?:shouldn|mustn|can)['’]?t|cannot)\s+(?:be\s+)?(?:chosen|selected|used|worn|included))\b/i.test(after);
       if (banned) prohibited.add(id);
       else if (!optionalBefore(before) && !optionalAfter(after)) requested.add(id);
