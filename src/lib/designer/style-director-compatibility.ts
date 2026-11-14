@@ -578,12 +578,14 @@ export function styleDirectorCandidatePocketIssues(
   shirt: Pick<StyleSpecV2["shirt"], "pocket">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidatePocketIntent(candidateShirt);
-  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  // An unresolved alternative does not cancel an independent explicit ban.
+  // Enforce exclusions even when positive selection needs human review.
+  if (intent.requested === null && intent.prohibited.length === 0) return [];
   const lockedPocket = styleDirectorLockedOptionValue(shirt, "pocket");
   // A negative pocket request must not silently approve an unreadable ID.
   const trusted = typeof lockedPocket === "string" &&
     optionsFor("shirt.pocket").some(option => option.id === lockedPocket);
-  const wrongRequest = !trusted || (intent.requested !== null && lockedPocket !== intent.requested);
+  const wrongRequest = !trusted || (!intent.ambiguous && intent.requested !== null && lockedPocket !== intent.requested);
   const bannedChoice = intent.prohibited.includes(lockedPocket as CandidatePocketId);
   return wrongRequest || bannedChoice ? [{
     code: "candidate_pocket_mismatch",
