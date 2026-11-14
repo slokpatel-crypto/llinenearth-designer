@@ -25,6 +25,9 @@ compare_junction = source_graph_module[
 trial_junction = source_graph_module[
     "trial_original_source_uv_junction_face_rigid_placement"
 ]
+trial_four_chart_split = source_graph_module[
+    "trial_original_source_uv_junction_four_chart_split"
+]
 
 # Synthetic proper rotation + translation can close equal-length source
 # segments; length disagreement has a provable irreducible residual.
@@ -136,6 +139,18 @@ assert junction_report["maximumOriginalTriangleEdgeChangeMm"] == 0.0
 assert junction_report["sourceUvExportOrSavePerformed"] is False
 assert junction_report["physicalPatternApproved"] is False
 assert junction_report["productionApproved"] is False
+four_chart_trial = trial_four_chart_split(
+    junction_faces, junction_uv, 1, junction_edges
+)
+four_chart_report = four_chart_trial["report"]
+assert four_chart_report["closedIncidentEdgeCount"] == 4
+assert len(four_chart_report["closedIncidentOriginalSourceEdges"]) == 4
+assert four_chart_report["newUnclosedInternalSplitDiagonalCount"] >= 1
+assert four_chart_report["maximumOriginalTriangleEdgeChangeMm"] == 0.0
+assert four_chart_report["storedSourceUvChanged"] is False
+assert four_chart_report["sourceUvExportOrSavePerformed"] is False
+assert four_chart_report["physicalPatternApproved"] is False
+assert four_chart_report["productionApproved"] is False
 for bad_faces, bad_uv, bad_vertex, bad_edges in (
         (junction_faces[:-1], junction_uv, 1, junction_edges),
         (junction_faces, junction_uv, True, junction_edges),
@@ -148,6 +163,18 @@ for bad_faces, bad_uv, bad_vertex, bad_edges in (
         pass
     else:
         raise AssertionError("Forged UV junction face placement was accepted.")
+for bad_faces, bad_uv, bad_vertex, bad_edges in (
+        (junction_faces[:-1], junction_uv, 1, junction_edges),
+        (junction_faces, junction_uv, True, junction_edges),
+        (junction_faces, junction_uv, 1, ((1, 2), (1, 2), (1, 4), (1, 5))),
+        (junction_faces, junction_uv, 1, ((1, 2), (1, 3), (1, 4), (3, 4))),
+):
+    try:
+        trial_four_chart_split(bad_faces, bad_uv, bad_vertex, bad_edges)
+    except (ValueError, TypeError):
+        pass
+    else:
+        raise AssertionError("Forged UV junction four-chart split was accepted.")
 for bad in (((0, 0),), ((False, 0), (1, 0)), (("0", 0), (1, 0)),
             ((0, 0), (math.inf, 0)), ((0, 0), (math.nan, 1)),
             ((0, 0), (0, 0)), (None, (1, 0)), (0, 1)):

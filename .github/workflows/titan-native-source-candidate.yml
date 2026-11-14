@@ -1463,6 +1463,50 @@ jobs:
               assert placement["physicalFabricAndTailorApproval"] is False
               assert placement["productionApproved"] is False
               print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_FACE_RIGID_PLACEMENT_RESEARCH_ONLY",json.dumps(placement,sort_keys=True))
+              four_chart=oriented[
+                  "researchOnlyOriginalSourceMaxRetainedUvEvidence"
+              ]["researchOnlyJunctionFourChartSplitTrial"]
+              four_chart_trial=four_chart["trial"]
+              four_chart_overlap=four_chart["candidateResearchUvOverlap"]
+              four_chart_comparison=four_chart[
+                  "packedBaselineVsCandidateOverlap"
+              ]
+              assert four_chart["researchOnly"] is True
+              assert four_chart_trial["targetOriginalSourceVertex"] == 416
+              assert four_chart_trial["closedIncidentEdgeCount"] == 4
+              assert len(four_chart_trial[
+                  "closedIncidentOriginalSourceEdges"
+              ]) == 4
+              assert len(four_chart_trial["splitOriginalSourceFaceIds"]) == 4
+              assert four_chart_trial["movedTrianglePoseCount"] == 4
+              assert len(four_chart_trial[
+                  "internalSplitDiagonalEvidence"
+              ]) == 4
+              assert four_chart_trial[
+                  "candidateTotalUnclosedUvSeamCount"
+              ] == (
+                  four_chart_trial["candidateUnclosedSharedUvEdgeCount"] +
+                  four_chart_trial["newUnclosedInternalSplitDiagonalCount"]
+              )
+              assert four_chart_trial["totalUnclosedUvSeamCountDelta"] == (
+                  four_chart_trial["candidateTotalUnclosedUvSeamCount"] -
+                  four_chart_trial["baselineUnclosedSharedUvEdgeCount"]
+              )
+              assert four_chart_trial[
+                  "maximumOriginalTriangleEdgeChangeMm"
+              ] <= 0.000001
+              assert four_chart_overlap["actualTrianglesInspected"] == 5300
+              assert four_chart_overlap["auditTruncated"] is False
+              assert four_chart_comparison[
+                  "bothFullResearchUvScansComplete"
+              ] is True
+              assert four_chart_trial["storedSourceUvChanged"] is False
+              assert four_chart_trial["sourceUvExportOrSavePerformed"] is False
+              assert four_chart_trial["physicalPatternApproved"] is False
+              assert four_chart_trial["productionApproved"] is False
+              assert four_chart["physicalFabricAndTailorApproval"] is False
+              assert four_chart["productionApproved"] is False
+              print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_FOUR_CHART_SPLIT_RESEARCH_ONLY",json.dumps(four_chart,sort_keys=True))
               assert [
                   (-row["sourceUvCutGraphDegree"],
                    -row["incidentOriginalSourceCutEdgeLengthMm"],

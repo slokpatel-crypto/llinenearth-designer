@@ -9,6 +9,8 @@ test("original scanned-source UV overlap audit preserves bounded and non-product
   const fixture=readFileSync("tests/python/test_source_trouser_uv_overlap.py","utf8");
   for(const key of [
     "def audit_original_source_uv_triangle_overlaps(",
+    "research_triangle_overrides=None",
+    'research_triangle_overrides.get(face_id)',
     "len(original_faces) != 2650 or len(face_uv_loops) != 2650",
     "if type(max_pair_tests) is not int or not 1 <= max_pair_tests <= 250000:",
     "triangle_number = len(triangles)",
@@ -49,6 +51,8 @@ test("original scanned-source UV overlap audit preserves bounded and non-product
   for(const key of [
     'assert baseline["observedInteriorOverlapTrianglePairsLowerBound"] == 0',
     'assert overlap["observedInteriorOverlapTrianglePairsLowerBound"] > 0',
+    'override_overlap = audit(',
+    'research_triangle_overrides=triangle_override',
     'assert cross["crossComponentInteriorOverlapTrianglePairsLowerBound"] > 0',
     'assert cross["originalSourceComponentFaceCounts"] == [1325, 1325]',
     'assert bounded["auditTruncated"] is True',

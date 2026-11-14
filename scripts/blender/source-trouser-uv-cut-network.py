@@ -338,6 +338,215 @@ def trial_original_source_uv_junction_face_rigid_placement(
     }
 
 
+def trial_original_source_uv_junction_four_chart_split(
+        original_faces, face_uv_loops, junction_vertex, incident_source_edges):
+    """Split four owner quads through a junction, then close all four edges.
+
+    Each target quad is represented by two research-only triangles divided by
+    the junction-to-opposite diagonal.  The triangle adjacent to each incident
+    edge receives its own proper-rigid pose.  This intentionally exposes the
+    internal diagonal seams and collateral shared-edge changes required to
+    close an inconsistent four-way cycle; it does not modify stored UVs.
+    """
+    if (len(original_faces) != len(face_uv_loops)
+            or type(junction_vertex) is not int or junction_vertex < 0
+            or not hasattr(incident_source_edges, "__len__")
+            or len(incident_source_edges) != 4):
+        raise ValueError("Four-chart split needs matching source faces and four incident edges.")
+    faces = []
+    uvs = []
+    edge_faces = defaultdict(list)
+    for face_id, (raw_face, raw_uv) in enumerate(zip(original_faces, face_uv_loops)):
+        if (len(raw_face) != 4 or len(set(raw_face)) != 4
+                or any(type(v) is not int or v < 0 for v in raw_face)
+                or len(raw_uv) != 4):
+            raise ValueError("Four-chart split requires literal source quads.")
+        face = tuple(raw_face)
+        uv = []
+        for point in raw_uv:
+            if (not hasattr(point, "__len__") or len(point) != 2
+                    or any(isinstance(v, bool) or not isinstance(v, (int, float))
+                           or not math.isfinite(v) for v in point)):
+                raise ValueError("Four-chart split requires finite UV loops.")
+            uv.append(tuple(float(v) for v in point))
+        faces.append(face)
+        uvs.append(tuple(uv))
+        for corner in range(4):
+            edge = tuple(sorted((face[corner], face[(corner + 1) % 4])))
+            edge_faces[edge].append(face_id)
+    if any(len(rows) > 2 for rows in edge_faces.values()):
+        raise ValueError("Four-chart split source topology is nonmanifold.")
+    edges = []
+    for raw_edge in incident_source_edges:
+        if (not hasattr(raw_edge, "__len__") or len(raw_edge) != 2
+                or any(type(v) is not int or v < 0 for v in raw_edge)):
+            raise ValueError("Four-chart split requires literal source edges.")
+        edge = tuple(sorted(raw_edge))
+        if (edge[0] == edge[1] or junction_vertex not in edge
+                or edge in edges or len(edge_faces.get(edge, ())) != 2):
+            raise ValueError("Four-chart split edge provenance is invalid.")
+        edges.append(edge)
+    edges.sort()
+    target_faces = sorted({face_id for edge in edges for face_id in edge_faces[edge]})
+    incidence = Counter(face_id for edge in edges for face_id in edge_faces[edge])
+    if len(target_faces) != 4 or any(incidence[face_id] != 2 for face_id in target_faces):
+        raise ValueError("Four-chart split requires one four-face incident cycle.")
+
+    triangle_vertices = {}
+    original_triangles = {}
+    candidate_triangles = {}
+    for face_id in target_faces:
+        face = faces[face_id]
+        if junction_vertex not in face:
+            raise ValueError("Four-chart split target face lacks the source junction.")
+        start = face.index(junction_vertex)
+        order = tuple((start + offset) % 4 for offset in range(4))
+        rotated_vertices = tuple(face[index] for index in order)
+        rotated_uv = tuple(uvs[face_id][index] for index in order)
+        triangle_vertices[face_id] = (
+            (rotated_vertices[0], rotated_vertices[1], rotated_vertices[2]),
+            (rotated_vertices[0], rotated_vertices[2], rotated_vertices[3]),
+        )
+        original_triangles[face_id] = (
+            (rotated_uv[0], rotated_uv[1], rotated_uv[2]),
+            (rotated_uv[0], rotated_uv[2], rotated_uv[3]),
+        )
+        candidate_triangles[face_id] = [
+            list(original_triangles[face_id][0]),
+            list(original_triangles[face_id][1]),
+        ]
+
+    def owner_triangle(face_id, edge, layout):
+        matches = []
+        for triangle_id, vertices in enumerate(triangle_vertices[face_id]):
+            if all(vertex in vertices for vertex in edge):
+                coordinates = layout[face_id][triangle_id]
+                matches.append((triangle_id, tuple(
+                    coordinates[vertices.index(vertex)] for vertex in edge
+                )))
+        if len(matches) != 1:
+            raise ValueError("Four-chart split edge does not have one triangle owner.")
+        return matches[0]
+
+    def rigid_b_to_a(owner_a, owner_b):
+        rigid = best_fit_original_source_uv_edge_rigid_alignment(owner_a, owner_b)
+        if not rigid["singleEdgeExactRigidClosurePossible"]:
+            raise ValueError("Four-chart split owner edge lengths cannot close rigidly.")
+        va = (owner_a[1][0] - owner_a[0][0], owner_a[1][1] - owner_a[0][1])
+        vb = (owner_b[1][0] - owner_b[0][0], owner_b[1][1] - owner_b[0][1])
+        angle = math.atan2(va[1], va[0]) - math.atan2(vb[1], vb[0])
+        cos, sin = math.cos(angle), math.sin(angle)
+        translation = (
+            owner_a[0][0] - (cos * owner_b[0][0] - sin * owner_b[0][1]),
+            owner_a[0][1] - (sin * owner_b[0][0] + cos * owner_b[0][1]),
+        )
+        return angle, translation
+
+    moved_triangles = set()
+    for edge in edges:
+        face_a, face_b = sorted(edge_faces[edge])
+        _triangle_a, owner_a = owner_triangle(face_a, edge, original_triangles)
+        triangle_b, owner_b = owner_triangle(face_b, edge, original_triangles)
+        move_key = (face_b, triangle_b)
+        if move_key in moved_triangles:
+            raise ValueError("Four-chart split attempted to reuse one triangle pose.")
+        moved_triangles.add(move_key)
+        angle, translation = rigid_b_to_a(owner_a, owner_b)
+        cos, sin = math.cos(angle), math.sin(angle)
+        candidate_triangles[face_b][triangle_b] = [
+            (cos * point[0] - sin * point[1] + translation[0],
+             sin * point[0] + cos * point[1] + translation[1])
+            for point in original_triangles[face_b][triangle_b]
+        ]
+
+    def boundary_owner(face_id, edge, layout):
+        if face_id in target_faces:
+            return owner_triangle(face_id, edge, layout)[1]
+        face = faces[face_id]
+        return tuple(uvs[face_id][face.index(vertex)] for vertex in edge)
+
+    def shared_gap(edge, layout):
+        face_a, face_b = edge_faces[edge]
+        owner_a = boundary_owner(face_a, edge, layout)
+        owner_b = boundary_owner(face_b, edge, layout)
+        return max(math.dist(owner_a[index], owner_b[index]) for index in range(2))
+
+    closed = [edge for edge in edges if shared_gap(edge, candidate_triangles) <= 1e-8]
+    if closed != edges:
+        raise ValueError("Four-chart split did not close all four incident edges.")
+    internal_rows = []
+    for face_id in target_faces:
+        vertices = triangle_vertices[face_id]
+        diagonal = (junction_vertex, vertices[0][2])
+        endpoints = []
+        for triangle_id in range(2):
+            endpoints.append(tuple(
+                candidate_triangles[face_id][triangle_id][
+                    vertices[triangle_id].index(vertex)
+                ] for vertex in diagonal
+            ))
+        gap = max(math.dist(endpoints[0][index], endpoints[1][index])
+                  for index in range(2))
+        internal_rows.append({
+            "originalSourceFaceId": face_id,
+            "splitDiagonalSourceVertices": list(diagonal),
+            "candidateInternalDiagonalGapMm": round(gap * 1000, 8),
+        })
+    shared_edges = [edge for edge, rows in edge_faces.items() if len(rows) == 2]
+    baseline_unclosed = sum(
+        max(math.dist(
+            tuple(uvs[rows[0]][faces[rows[0]].index(vertex)] for vertex in edge)[index],
+            tuple(uvs[rows[1]][faces[rows[1]].index(vertex)] for vertex in edge)[index],
+        ) for index in range(2)) > 0.000001
+        for edge, rows in ((edge, edge_faces[edge]) for edge in shared_edges)
+    )
+    candidate_unclosed = sum(
+        shared_gap(edge, candidate_triangles) > 0.000001 for edge in shared_edges
+    )
+    internal_unclosed = sum(
+        row["candidateInternalDiagonalGapMm"] > 0.001 for row in internal_rows
+    )
+    max_edge_change = 0.0
+    for face_id in target_faces:
+        for triangle_id in range(2):
+            before = original_triangles[face_id][triangle_id]
+            after = candidate_triangles[face_id][triangle_id]
+            for a, b in ((0, 1), (1, 2), (2, 0)):
+                max_edge_change = max(max_edge_change, abs(
+                    math.dist(before[a], before[b]) - math.dist(after[a], after[b])
+                ))
+    overrides = {
+        face_id: tuple(tuple(point for point in triangle)
+                       for triangle in candidate_triangles[face_id])
+        for face_id in target_faces
+    }
+    return {
+        "research_triangle_overrides": overrides,
+        "report": {
+            "researchOnly": True,
+            "targetOriginalSourceVertex": junction_vertex,
+            "incidentOriginalSourceEdges": [list(edge) for edge in edges],
+            "closedIncidentOriginalSourceEdges": [list(edge) for edge in closed],
+            "closedIncidentEdgeCount": len(closed),
+            "splitOriginalSourceFaceIds": target_faces,
+            "movedTrianglePoseCount": len(moved_triangles),
+            "internalSplitDiagonalEvidence": internal_rows,
+            "newUnclosedInternalSplitDiagonalCount": internal_unclosed,
+            "baselineUnclosedSharedUvEdgeCount": baseline_unclosed,
+            "candidateUnclosedSharedUvEdgeCount": candidate_unclosed,
+            "candidateTotalUnclosedUvSeamCount":
+                candidate_unclosed + internal_unclosed,
+            "totalUnclosedUvSeamCountDelta":
+                candidate_unclosed + internal_unclosed - baseline_unclosed,
+            "maximumOriginalTriangleEdgeChangeMm": round(max_edge_change * 1000, 8),
+            "storedSourceUvChanged": False,
+            "sourceUvExportOrSavePerformed": False,
+            "physicalPatternApproved": False,
+            "productionApproved": False,
+        },
+    }
+
+
 def compare_original_source_uv_junction_rigid_alignments(incident_edges):
     """Compare deterministic proper-rigid fits at one real cut junction.
 

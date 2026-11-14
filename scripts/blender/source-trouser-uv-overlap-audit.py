@@ -98,7 +98,8 @@ def _original_face_graph_components(original_faces):
 
 
 def audit_original_source_uv_triangle_overlaps(
-        original_faces, face_uv_loops, max_pair_tests=100000):
+        original_faces, face_uv_loops, max_pair_tests=100000,
+        research_triangle_overrides=None):
     """Observe strict interior intersections without fabric/manufacturing claims.
 
     The broadphase is a deterministic 100mm UV grid. Stops at a validated
@@ -109,6 +110,13 @@ def audit_original_source_uv_triangle_overlaps(
     if type(max_pair_tests) is not int or not 1 <= max_pair_tests <= 250000:
         raise ValueError("Bounded original source overlap search requires 1..250000 tests.")
 
+    if research_triangle_overrides is None:
+        research_triangle_overrides = {}
+    if (not isinstance(research_triangle_overrides, dict)
+            or any(type(face_id) is not int or face_id < 0
+                   or face_id >= len(original_faces)
+                   for face_id in research_triangle_overrides)):
+        raise ValueError("Research triangle overrides require genuine source face IDs.")
     component_ids, component_groups = _original_face_graph_components(original_faces)
 
     cell = 0.1  # numerical broadphase only, NOT textile repeat or seam allowance
@@ -147,8 +155,31 @@ def audit_original_source_uv_triangle_overlaps(
             )):
                 raise ValueError("Missing, fabricated or nonfinite original-source UV point.")
             row.append((float(p[0]), float(p[1])))
-        for triangle_id, corners in enumerate(((0, 1, 2), (0, 2, 3))):
-            tri = tuple(row[i] for i in corners)
+        override = research_triangle_overrides.get(face_id)
+        if override is None:
+            face_triangles = (
+                (row[0], row[1], row[2]),
+                (row[0], row[2], row[3]),
+            )
+        else:
+            if (not hasattr(override, "__len__") or len(override) != 2
+                    or any(not hasattr(tri, "__len__") or len(tri) != 3
+                           for tri in override)):
+                raise ValueError("Research triangle override must contain two triangles.")
+            face_triangles = []
+            for raw_triangle in override:
+                triangle = []
+                for point in raw_triangle:
+                    if (not hasattr(point, "__len__") or len(point) != 2
+                            or any(isinstance(value, bool)
+                                   or not isinstance(value, (int, float))
+                                   or not math.isfinite(value)
+                                   for value in point)):
+                        raise ValueError("Research triangle override has invalid UV coordinates.")
+                    triangle.append(tuple(float(value) for value in point))
+                face_triangles.append(tuple(triangle))
+            face_triangles = tuple(face_triangles)
+        for triangle_id, tri in enumerate(face_triangles):
             signed_area = _cross(*tri)
             if not math.isfinite(signed_area) or signed_area <= 1e-14:
                 raise ValueError("Original source UV triangle is inverted or degenerate.")

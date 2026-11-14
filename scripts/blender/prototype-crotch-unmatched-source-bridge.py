@@ -1873,6 +1873,59 @@ def main():
         "physicalFabricAndTailorApproval": False,
         "productionApproved": False,
     }
+    # Explicitly split each of the four owner quads through the same genuine
+    # junction so each incident edge can use an independent rigid triangle
+    # pose.  Audit the resulting four internal diagonals and the complete
+    # 5,300-triangle UV layout; this is never a stored source-UV mutation.
+    four_chart_trial = cut_audit_ops[
+        "trial_original_source_uv_junction_four_chart_split"
+    ](
+        base_faces, packed_weighted["face_uv_loops"],
+        junction["originalSourceVertexIndex"], junction_edges,
+    )
+    four_chart_summary = four_chart_trial["report"]
+    four_chart_overlap = uv_overlap_audit(
+        base_faces, packed_weighted["face_uv_loops"],
+        research_triangle_overrides=
+            four_chart_trial["research_triangle_overrides"],
+    )
+    four_chart_comparison = overlap_compare(
+        packed_weighted_overlap, four_chart_overlap
+    )
+    if (four_chart_summary["targetOriginalSourceVertex"] != 416
+            or four_chart_summary["closedIncidentEdgeCount"] != 4
+            or len(four_chart_summary["splitOriginalSourceFaceIds"]) != 4
+            or four_chart_summary["movedTrianglePoseCount"] != 4
+            or len(four_chart_summary["internalSplitDiagonalEvidence"]) != 4
+            or four_chart_summary["maximumOriginalTriangleEdgeChangeMm"] > 0.000001
+            or not four_chart_comparison["bothFullResearchUvScansComplete"]
+            or four_chart_overlap["actualTrianglesInspected"] != 5300
+            or four_chart_overlap["auditTruncated"]
+            or four_chart_summary["storedSourceUvChanged"]
+            or four_chart_summary["sourceUvExportOrSavePerformed"]
+            or four_chart_summary["physicalPatternApproved"]
+            or four_chart_summary["productionApproved"]
+            or four_chart_comparison["productionApproved"]):
+        raise RuntimeError(
+            "Junction four-chart split lost source or rejection truth: " +
+            json.dumps({
+                "trial": four_chart_summary,
+                "overlapComparison": four_chart_comparison,
+                "overlapExpectedTriangles":
+                    four_chart_overlap["expectedTriangleCount"],
+            }, sort_keys=True)
+        )
+    weighted_report["researchOnlyJunctionFourChartSplitTrial"] = {
+        "researchOnly": True,
+        "trial": four_chart_summary,
+        "candidateResearchUvOverlap": four_chart_overlap,
+        "packedBaselineVsCandidateOverlap": four_chart_comparison,
+        "sourceMeshAndBodyBVHUnchanged": True,
+        "storedSourceUvChanged": False,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricAndTailorApproval": False,
+        "productionApproved": False,
+    }
     # One bounded genuine source-tree cut on authentic component 0. Only the
     # smaller resulting face subtree moves in research UV space; source 3D,
     # garment assets, Blender scenes and exports remain untouched.

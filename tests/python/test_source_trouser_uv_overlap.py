@@ -27,6 +27,36 @@ assert baseline["canClaimNoInteriorOverlapInThisUvLayout"] is True
 assert baseline["completeGarmentUvOverlapFreeApproved"] is False
 assert baseline["productionApproved"] is False
 
+# A research-only per-triangle override is scanned in the same full 5,300
+# triangle inventory without rewriting the source quad loops.  Moving face 1's
+# two triangles onto face 0 must create measured overlap while the baseline
+# input remains unchanged.
+triangle_override = {
+    1: (
+        (islands[0][0], islands[0][1], islands[0][2]),
+        (islands[0][0], islands[0][2], islands[0][3]),
+    )
+}
+override_overlap = audit(
+    faces, islands, research_triangle_overrides=triangle_override
+)
+assert override_overlap["actualTrianglesInspected"] == 5300
+assert override_overlap["auditTruncated"] is False
+assert override_overlap["observedInteriorOverlapTrianglePairsLowerBound"] > 0
+assert islands == prior["flat_metric"]["face_uv_loops"]
+for bad_override in (
+        {False: triangle_override[1]},
+        {2650: triangle_override[1]},
+        {1: (triangle_override[1][0],)},
+        {1: (((math.nan, 0), (0, 0), (1, 0)), triangle_override[1][1])},
+):
+    try:
+        audit(faces, islands, research_triangle_overrides=bad_override)
+    except (ValueError, TypeError):
+        pass
+    else:
+        raise AssertionError("Forged research triangle override was accepted")
+
 # Valid true-original-face fixture coordinates with deliberately overlapping
 # research face UV loops. This MUST NOT be mistaken for textile cut approval.
 stacked = list(islands)
