@@ -4434,3 +4434,29 @@ test("retired trouser type preserves independent cuff and cropped-hem shoe-break
     assert.equal(JSON.stringify(locked), before, "locked design must remain untouched");
   }
 });
+
+test("missing versus invalid trouser rise retains independent sleeve and hem construction checks", () => {
+  for (const [rise, invalid] of [
+    [undefined, false], [null, true], ["retired_rise", true], ["french_double_cuff", true],
+  ] as const) {
+    const locked = spec(
+      { sleeve: "half_sleeve", cuff: "french_double_cuff" },
+      { type: "cropped_ankle", hem: "plain_hem", break: "stacked_break" },
+    );
+    if (rise === undefined) delete (locked.pant as Record<string, unknown>).rise;
+    else (locked.pant as Record<string, unknown>).rise = rise;
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    Object.freeze(locked);
+    const snapshot = JSON.stringify(locked);
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const codes = review();
+    assert.equal(codes.includes("unknown_versioned_option"), invalid,
+      "only explicitly invalid rise IDs require catalogue review");
+    for (const code of ["short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break"]) {
+      assert.ok(codes.includes(code), "rise uncertainty cannot conceal " + code);
+    }
+    assert.deepEqual(review(), codes);
+    assert.equal(JSON.stringify(locked), snapshot);
+  }
+});
