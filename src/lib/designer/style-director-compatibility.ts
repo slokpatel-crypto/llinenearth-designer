@@ -539,7 +539,7 @@ export function styleDirectorCandidatePocketIntent(candidateShirt: string): {
   const requested = new Set<CandidatePocketId>();
   const prohibited = new Set<CandidatePocketId>();
   const optionalBefore = (prefix: string) => /\b(?:optional|maybe)\s+$/i.test(prefix);
-  const optionalAfter = (suffix: string) => /^\s+(?:(?:is|are)\s+)?(?:optional|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
+  const optionalAfter = (suffix: string) => /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory|necessary)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory|necessary))\b/i.test(suffix);
   // "No Pocket" states the *absence* of the pocket. It is not a
   // prohibition of the versioned no_pocket ID.
   for (const hit of instruction.matchAll(/\b(?:no|without)\s+(?:(?:a|any|the)\s+)?pockets?\b|\bpocketless\b/gi)) {
