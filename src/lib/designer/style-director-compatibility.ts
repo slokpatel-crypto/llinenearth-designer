@@ -1637,9 +1637,18 @@ export function styleDirectorConstructionIssues(
   // A supplied inherited or accessor-backed fit is not a trusted saved ID.
   // Inspect its descriptor without invoking user-defined getters. Missing fit
   // remains the full spec parser's responsibility for partial pure fixtures.
-  const fitDescriptor = Object.getOwnPropertyDescriptor(pant, "fit");
-  if ((fitDescriptor && !Object.prototype.hasOwnProperty.call(fitDescriptor, "value")) ||
-      (!fitDescriptor && "fit" in pant)) {
+  // A proxy may throw while describing a saved fit or checking its
+  // prototype chain. Fail closed without letting that one unreadable field
+  // suppress independent sleeve and trouser construction checks.
+  let unsafeFit = false;
+  try {
+    const fitDescriptor = Object.getOwnPropertyDescriptor(pant, "fit");
+    unsafeFit = (fitDescriptor !== undefined && !Object.prototype.hasOwnProperty.call(fitDescriptor, "value")) ||
+      (fitDescriptor === undefined && "fit" in pant);
+  } catch {
+    unsafeFit = true;
+  }
+  if (unsafeFit) {
     issues.push({
       code: "unknown_versioned_option",
       explanation: "The saved pant.fit selection is inherited or computed rather than a versioned data ID; confirm its locked value before tailoring.",
