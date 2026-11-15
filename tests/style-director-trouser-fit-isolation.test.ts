@@ -448,3 +448,26 @@ test("own accessor fit is never executed or treated as a canonical saved option"
   assert.equal(getterCalls, 0);
   assert.equal(typeof Object.getOwnPropertyDescriptor(pant, "fit")?.get, "function");
 });
+
+test("null-prototype and frozen array fit values fail closed without masking construction review", () => {
+  const values = [Object.freeze(Object.assign(Object.create(null), { id: "slim_tapered" })), Object.freeze(["slim_tapered"])];
+  for (const fit of values) {
+    const pant = Object.freeze({
+      type: "cropped_ankle", fit, pleat: "flat_front",
+      hem: "plain_hem", break: "stacked_break",
+    });
+    const shirt = Object.freeze({
+      type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+      sleeve: "half_sleeve", cuff: "french_double_cuff",
+    });
+    const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+    const inspect = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const first = inspect();
+    for (const code of [
+      "unknown_versioned_option", "short_sleeve_double_cuff",
+      "cropped_type_hem_mismatch", "cropped_stacked_break",
+    ]) assert.ok(first.includes(code), "object-shaped fit concealed " + code);
+    assert.deepEqual(inspect(), first);
+    assert.equal(pant.fit, fit);
+  }
+});
