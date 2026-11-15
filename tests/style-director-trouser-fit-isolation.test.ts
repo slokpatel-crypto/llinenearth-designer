@@ -92,3 +92,25 @@ test("non-enumerable inherited and setter-only fit cannot bypass independent con
     assert.deepEqual(read(), first);
   }
 });
+
+test("own non-enumerable data fit is a valid locked ID, unlike inherited or computed fit", () => {
+  const pant = Object.defineProperty({
+    type: "cropped_ankle", pleat: "flat_front",
+    hem: "plain_hem", break: "stacked_break",
+  }, "fit", { value: "slim_tapered", enumerable: false });
+  const shirt = Object.freeze({
+    type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+    sleeve: "half_sleeve", cuff: "french_double_cuff",
+  });
+  Object.freeze(pant);
+  const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+  const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+  const first = review();
+  assert.ok(!first.includes("unknown_versioned_option"),
+    "a canonical own data ID must not be rejected solely because it is non-enumerable");
+  for (const code of ["short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break"]) {
+    assert.ok(first.includes(code), "valid fit concealed " + code);
+  }
+  assert.deepEqual(review(), first);
+  assert.equal(Object.getOwnPropertyDescriptor(pant, "fit")?.value, "slim_tapered");
+});
