@@ -31,3 +31,36 @@ test("missing and retired trouser fit IDs do not hide independent sleeve and cro
     assert.equal(JSON.stringify(locked), snapshot);
   }
 });
+
+test("inherited and accessor-backed trouser fits cannot certify a locked design or hide separate construction faults", () => {
+  const invalidFits: readonly Record<string, unknown>[] = [
+    Object.create({ fit: "slim_tapered" }) as Record<string, unknown>,
+    Object.defineProperty({}, "fit", {
+      enumerable: true,
+      get() { throw new Error("untrusted saved fit accessor must not execute"); },
+    }),
+    Object.defineProperty({}, "fit", {
+      enumerable: true,
+      get() { return "slim_tapered"; },
+    }),
+  ];
+  for (const pant of invalidFits) {
+    Object.assign(pant, {
+      type: "cropped_ankle", pleat: "flat_front",
+      hem: "plain_hem", break: "stacked_break",
+    });
+    Object.freeze(pant);
+    const shirt = Object.freeze({
+      type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+      sleeve: "half_sleeve", cuff: "french_double_cuff",
+    });
+    const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const first = review();
+    assert.ok(first.includes("unknown_versioned_option"));
+    for (const code of [
+      "short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break",
+    ]) assert.ok(first.includes(code), "unsafe fit concealed " + code);
+    assert.deepEqual(review(), first);
+  }
+});
