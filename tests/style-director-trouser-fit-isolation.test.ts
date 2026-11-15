@@ -243,3 +243,29 @@ test("own canonical fit does not consult a hostile proxy membership trap", () =>
   assert.deepEqual(review(), first);
   assert.equal(target.fit, "slim_tapered");
 });
+
+test("canonical own fit descriptor remains usable when proxy property reads throw", () => {
+  const target = Object.freeze({
+    type: "cropped_ankle", fit: "slim_tapered", pleat: "flat_front",
+    hem: "plain_hem", break: "stacked_break",
+  });
+  const pant = new Proxy(target, {
+    get(object, key, receiver) {
+      if (key === "fit") throw new Error("locked fit must be read as own data, not invoked");
+      return Reflect.get(object, key, receiver);
+    },
+  });
+  const shirt = Object.freeze({
+    type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+    sleeve: "half_sleeve", cuff: "french_double_cuff",
+  });
+  const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+  const inspect = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+  const first = inspect();
+  assert.ok(!first.includes("unknown_versioned_option"));
+  for (const code of ["short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break"]) {
+    assert.ok(first.includes(code), "hostile property read concealed " + code);
+  }
+  assert.deepEqual(inspect(), first);
+  assert.equal(target.fit, "slim_tapered");
+});
