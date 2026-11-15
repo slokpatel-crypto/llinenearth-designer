@@ -185,3 +185,35 @@ test("own canonical fit overrides a hostile inherited accessor without executing
   assert.deepEqual(review(), first);
   assert.equal(Object.getOwnPropertyDescriptor(pant, "fit")?.value, "slim_tapered");
 });
+
+test("unreadable proxy fit descriptors fail closed without hiding independent construction issues", () => {
+  for (const trap of ["descriptor", "has"] as const) {
+    const target = Object.freeze({
+      type: "cropped_ankle", pleat: "flat_front",
+      hem: "plain_hem", break: "stacked_break",
+    });
+    const pant = new Proxy(target, {
+      getOwnPropertyDescriptor(object, key) {
+        if (key === "fit" && trap === "descriptor") throw new Error("unreadable fit descriptor");
+        return Reflect.getOwnPropertyDescriptor(object, key);
+      },
+      has(object, key) {
+        if (key === "fit" && trap === "has") throw new Error("unreadable fit membership");
+        return Reflect.has(object, key);
+      },
+    });
+    const shirt = Object.freeze({
+      type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+      sleeve: "half_sleeve", cuff: "french_double_cuff",
+    });
+    const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const first = review();
+    for (const code of [
+      "unknown_versioned_option", "short_sleeve_double_cuff",
+      "cropped_type_hem_mismatch", "cropped_stacked_break",
+    ]) assert.ok(first.includes(code), trap + " suppressed " + code);
+    assert.deepEqual(review(), first);
+    assert.equal(target.type, "cropped_ankle");
+  }
+});
