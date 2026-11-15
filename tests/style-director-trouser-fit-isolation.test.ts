@@ -64,3 +64,31 @@ test("inherited and accessor-backed trouser fits cannot certify a locked design 
     assert.deepEqual(review(), first);
   }
 });
+
+test("non-enumerable inherited and setter-only fit cannot bypass independent construction review", () => {
+  const inherited = Object.create(Object.defineProperty({}, "fit", {
+    configurable: true, value: "slim_tapered", enumerable: false,
+  })) as Record<string, unknown>;
+  const setterOnly = Object.defineProperty({}, "fit", {
+    enumerable: false, set(_value: unknown) { throw new Error("setter must not run"); },
+  }) as Record<string, unknown>;
+  for (const pant of [inherited, setterOnly]) {
+    Object.assign(pant, {
+      type: "cropped_ankle", pleat: "flat_front",
+      hem: "plain_hem", break: "stacked_break",
+    });
+    Object.freeze(pant);
+    const shirt = Object.freeze({
+      type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+      sleeve: "half_sleeve", cuff: "french_double_cuff",
+    });
+    const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+    const read = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const first = read();
+    assert.ok(first.includes("unknown_versioned_option"));
+    for (const code of ["short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break"]) {
+      assert.ok(first.includes(code), "untrusted fit hid " + code);
+    }
+    assert.deepEqual(read(), first);
+  }
+});
