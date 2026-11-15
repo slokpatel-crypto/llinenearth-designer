@@ -342,3 +342,27 @@ test("canonical fit survives a proxy that forbids key enumeration", () => {
   assert.deepEqual(inspect(), first);
   assert.equal(target.fit, "slim_tapered");
 });
+
+test("an absent own fit with a throwing inherited getter fails closed without executing it", () => {
+  const prototype = Object.defineProperty({}, "fit", {
+    get() { throw new Error("inherited fit must never execute"); },
+  });
+  const pant = Object.assign(Object.create(prototype) as Record<string, unknown>, {
+    type: "cropped_ankle", pleat: "flat_front",
+    hem: "plain_hem", break: "stacked_break",
+  });
+  Object.freeze(pant);
+  const shirt = Object.freeze({
+    type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+    sleeve: "half_sleeve", cuff: "french_double_cuff",
+  });
+  const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+  const inspect = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+  const first = inspect();
+  for (const code of [
+    "unknown_versioned_option", "short_sleeve_double_cuff",
+    "cropped_type_hem_mismatch", "cropped_stacked_break",
+  ]) assert.ok(first.includes(code), "inherited throwing fit hid " + code);
+  assert.deepEqual(inspect(), first);
+  assert.equal(Object.getOwnPropertyDescriptor(pant, "fit"), undefined);
+});
