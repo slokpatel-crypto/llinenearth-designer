@@ -393,3 +393,32 @@ test("hostile non-string fit values cannot coerce into a trusted ID or hide cons
     assert.equal(pant.fit, fit);
   }
 });
+
+test("boxed and coercible fit labels cannot impersonate canonical saved option IDs", () => {
+  let coercions = 0;
+  const deceptive = Object.freeze({
+    [Symbol.toPrimitive]() { coercions++; return "slim_tapered"; },
+    toString() { coercions++; return "slim_tapered"; },
+    valueOf() { coercions++; return "slim_tapered"; },
+  });
+  for (const fit of [new String("slim_tapered"), deceptive, true, 0, NaN] as const) {
+    const pant = Object.freeze({
+      type: "cropped_ankle", fit, pleat: "flat_front",
+      hem: "plain_hem", break: "stacked_break",
+    });
+    const shirt = Object.freeze({
+      type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+      sleeve: "half_sleeve", cuff: "french_double_cuff",
+    });
+    const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+    const inspect = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const first = inspect();
+    for (const code of [
+      "unknown_versioned_option", "short_sleeve_double_cuff",
+      "cropped_type_hem_mismatch", "cropped_stacked_break",
+    ]) assert.ok(first.includes(code), "coercible fit concealed " + code);
+    assert.deepEqual(inspect(), first);
+    assert.equal(pant.fit, fit);
+  }
+  assert.equal(coercions, 0, "untrusted saved values must not be coerced");
+});
