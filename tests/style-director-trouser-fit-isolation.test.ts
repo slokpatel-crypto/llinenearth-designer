@@ -217,3 +217,29 @@ test("unreadable proxy fit descriptors fail closed without hiding independent co
     assert.equal(target.type, "cropped_ankle");
   }
 });
+
+test("own canonical fit does not consult a hostile proxy membership trap", () => {
+  const target = Object.freeze({
+    type: "cropped_ankle", fit: "slim_tapered", pleat: "flat_front",
+    hem: "plain_hem", break: "stacked_break",
+  });
+  const pant = new Proxy(target, {
+    has(object, key) {
+      if (key === "fit") throw new Error("own fit must not require membership lookup");
+      return Reflect.has(object, key);
+    },
+  });
+  const shirt = Object.freeze({
+    type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+    sleeve: "half_sleeve", cuff: "french_double_cuff",
+  });
+  const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+  const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+  const first = review();
+  assert.ok(!first.includes("unknown_versioned_option"));
+  for (const code of ["short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break"]) {
+    assert.ok(first.includes(code), "valid proxy-backed fit concealed " + code);
+  }
+  assert.deepEqual(review(), first);
+  assert.equal(target.fit, "slim_tapered");
+});
