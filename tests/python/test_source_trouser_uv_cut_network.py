@@ -31,6 +31,9 @@ trial_four_chart_split = source_graph_module[
 enumerate_four_chart_anchors = source_graph_module[
     "enumerate_original_source_uv_junction_four_chart_anchor_assignments"
 ]
+enumerate_mixed_triangulations = source_graph_module[
+    "enumerate_original_source_uv_junction_mixed_triangulations"
+]
 
 # Synthetic proper rotation + translation can close equal-length source
 # segments; length disagreement has a provable irreducible residual.
@@ -169,6 +172,27 @@ assert anchor_report["allAssignmentsPreserveTriangleEdgeLengths"] is True
 assert anchor_report["storedSourceUvChanged"] is False
 assert anchor_report["physicalPatternApproved"] is False
 assert anchor_report["productionApproved"] is False
+mixed_search = enumerate_mixed_triangulations(
+    junction_faces, junction_uv, 1, junction_edges
+)
+mixed_report = mixed_search["report"]
+assert mixed_report["triangulationAssignmentCount"] == 16
+assert mixed_report["transformConsistentTriangulationCount"] >= 1
+assert mixed_report["transformInconsistentTriangulationCount"] >= 1
+assert mixed_report["rootAnchorCandidateCount"] == len(
+    mixed_search["candidate_trials"]
+)
+assert mixed_report["minimumNewUnclosedInternalSplitDiagonalCount"] <= (
+    anchor_report["minimumNewUnclosedInternalSplitDiagonalCount"]
+)
+assert mixed_report["candidateCountAtMinimumInternalAndTotal"] >= 1
+assert mixed_report["allRetainedCandidatesCloseAllIncidentEdges"] is True
+assert mixed_report[
+    "allRetainedCandidatesPreserveTriangleEdgeLengths"
+] is True
+assert mixed_report["storedSourceUvChanged"] is False
+assert mixed_report["physicalPatternApproved"] is False
+assert mixed_report["productionApproved"] is False
 for bad_faces, bad_uv, bad_vertex, bad_edges in (
         (junction_faces[:-1], junction_uv, 1, junction_edges),
         (junction_faces, junction_uv, True, junction_edges),

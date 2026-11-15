@@ -2047,6 +2047,72 @@ def main():
         "physicalFabricAndTailorApproval": False,
         "productionApproved": False,
     }
+    # Exhaust both quad diagonals at the same genuine junction. The alternate
+    # diagonal combines both incident edges on one triangle and is retained
+    # only when its proper-rigid transform graph is cycle-consistent. Audit
+    # the deterministic minimum-seam candidate across all 5,300 triangles.
+    mixed_search = cut_audit_ops[
+        "enumerate_original_source_uv_junction_mixed_triangulations"
+    ](
+        base_faces, packed_weighted["face_uv_loops"],
+        junction["originalSourceVertexIndex"], junction_edges,
+    )
+    mixed_search_summary = mixed_search["report"]
+    mixed_best_trial = mixed_search["best_candidate_trial"]
+    mixed_best_summary = mixed_best_trial["report"]
+    mixed_best_overlap = uv_overlap_audit(
+        base_faces, packed_weighted["face_uv_loops"],
+        research_triangle_overrides=
+            mixed_best_trial["research_triangle_overrides"],
+    )
+    mixed_best_comparison = overlap_compare(
+        packed_weighted_overlap, mixed_best_overlap
+    )
+    if (mixed_search_summary["targetOriginalSourceVertex"] != 416
+            or mixed_search_summary["triangulationAssignmentCount"] != 16
+            or mixed_search_summary["transformConsistentTriangulationCount"] < 1
+            or mixed_search_summary["transformInconsistentTriangulationCount"] < 1
+            or mixed_search_summary["rootAnchorCandidateCount"] != len(
+                mixed_search["candidate_trials"])
+            or not mixed_search_summary[
+                "allRetainedCandidatesCloseAllIncidentEdges"]
+            or not mixed_search_summary[
+                "allRetainedCandidatesPreserveTriangleEdgeLengths"]
+            or mixed_best_summary["closedIncidentEdgeCount"] != 4
+            or mixed_best_summary[
+                "newUnclosedInternalSplitDiagonalCount"] !=
+                mixed_search_summary[
+                    "minimumNewUnclosedInternalSplitDiagonalCount"]
+            or mixed_best_summary["maximumOriginalTriangleEdgeChangeMm"] > 0.000001
+            or mixed_best_overlap["actualTrianglesInspected"] != 5300
+            or mixed_best_overlap["auditTruncated"]
+            or not mixed_best_comparison["bothFullResearchUvScansComplete"]
+            or mixed_search_summary["storedSourceUvChanged"]
+            or mixed_search_summary["sourceUvExportOrSavePerformed"]
+            or mixed_search_summary["physicalPatternApproved"]
+            or mixed_search_summary["productionApproved"]):
+        raise RuntimeError(
+            "Mixed junction triangulation search lost source or rejection truth: " +
+            json.dumps({
+                "search": mixed_search_summary,
+                "bestTrial": mixed_best_summary,
+                "bestOverlapComparison": mixed_best_comparison,
+            }, sort_keys=True)
+        )
+    weighted_report["researchOnlyJunctionMixedTriangulationEnumeration"] = {
+        "researchOnly": True,
+        "search": mixed_search_summary,
+        "bestCandidate": {
+            "trial": mixed_best_summary,
+            "candidateResearchUvOverlap": mixed_best_overlap,
+            "packedBaselineVsCandidateOverlap": mixed_best_comparison,
+        },
+        "sourceMeshAndBodyBVHUnchanged": True,
+        "storedSourceUvChanged": False,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalFabricAndTailorApproval": False,
+        "productionApproved": False,
+    }
     # One bounded genuine source-tree cut on authentic component 0. Only the
     # smaller resulting face subtree moves in research UV space; source 3D,
     # garment assets, Blender scenes and exports remain untouched.

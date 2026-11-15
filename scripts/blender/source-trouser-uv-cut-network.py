@@ -657,6 +657,370 @@ def enumerate_original_source_uv_junction_four_chart_anchor_assignments(
     }
 
 
+def enumerate_original_source_uv_junction_mixed_triangulations(
+        original_faces, face_uv_loops, junction_vertex, incident_source_edges):
+    """Exhaust both diagonals on four junction quads with rigid chart graphs.
+
+    A junction-to-opposite diagonal gives the two incident edges independent
+    triangle nodes.  The other diagonal puts both incident edges on one node,
+    which is accepted only when the resulting proper-rigid transform graph is
+    cycle-consistent.  Each graph component is anchored once at every member
+    node, yielding a finite exhaustive research search without UV writes.
+    """
+    if (len(original_faces) != len(face_uv_loops)
+            or type(junction_vertex) is not int or junction_vertex < 0
+            or not hasattr(incident_source_edges, "__len__")
+            or len(incident_source_edges) != 4):
+        raise ValueError("Mixed triangulation search needs matching quads and four edges.")
+    faces, uvs = [], []
+    edge_faces = defaultdict(list)
+    for face_id, (raw_face, raw_uv) in enumerate(zip(original_faces, face_uv_loops)):
+        if (len(raw_face) != 4 or len(set(raw_face)) != 4
+                or any(type(v) is not int or v < 0 for v in raw_face)
+                or len(raw_uv) != 4):
+            raise ValueError("Mixed triangulation search requires literal source quads.")
+        face = tuple(raw_face)
+        uv = []
+        for point in raw_uv:
+            if (not hasattr(point, "__len__") or len(point) != 2
+                    or any(isinstance(v, bool) or not isinstance(v, (int, float))
+                           or not math.isfinite(v) for v in point)):
+                raise ValueError("Mixed triangulation search requires finite UV loops.")
+            uv.append(tuple(float(v) for v in point))
+        faces.append(face)
+        uvs.append(tuple(uv))
+        for corner in range(4):
+            edge_faces[tuple(sorted((face[corner], face[(corner + 1) % 4])))].append(
+                face_id
+            )
+    if any(len(rows) > 2 for rows in edge_faces.values()):
+        raise ValueError("Mixed triangulation source topology is nonmanifold.")
+    edges = []
+    for raw_edge in incident_source_edges:
+        if (not hasattr(raw_edge, "__len__") or len(raw_edge) != 2
+                or any(type(v) is not int or v < 0 for v in raw_edge)):
+            raise ValueError("Mixed triangulation search requires literal source edges.")
+        edge = tuple(sorted(raw_edge))
+        if (edge[0] == edge[1] or junction_vertex not in edge
+                or edge in edges or len(edge_faces.get(edge, ())) != 2):
+            raise ValueError("Mixed triangulation edge provenance is invalid.")
+        edges.append(edge)
+    edges.sort()
+    target_faces = sorted({face_id for edge in edges for face_id in edge_faces[edge]})
+    incidence = Counter(face_id for edge in edges for face_id in edge_faces[edge])
+    if len(target_faces) != 4 or any(incidence[face_id] != 2 for face_id in target_faces):
+        raise ValueError("Mixed triangulation search requires one four-face cycle.")
+
+    rotated = {}
+    for face_id in target_faces:
+        face = faces[face_id]
+        if junction_vertex not in face:
+            raise ValueError("Mixed triangulation target face lacks the junction.")
+        start = face.index(junction_vertex)
+        order = tuple((start + offset) % 4 for offset in range(4))
+        rotated[face_id] = (
+            tuple(face[index] for index in order),
+            tuple(uvs[face_id][index] for index in order),
+        )
+
+    def apply(pose, point):
+        angle, tx, ty = pose
+        cos, sin = math.cos(angle), math.sin(angle)
+        return (cos * point[0] - sin * point[1] + tx,
+                sin * point[0] + cos * point[1] + ty)
+
+    def compose(left, right):
+        angle = left[0] + right[0]
+        translated = apply(left, (right[1], right[2]))
+        return (angle, translated[0], translated[1])
+
+    def inverse(pose):
+        angle, tx, ty = pose
+        cos, sin = math.cos(angle), math.sin(angle)
+        return (-angle, -cos * tx - sin * ty, sin * tx - cos * ty)
+
+    def rigid_b_to_a(owner_a, owner_b):
+        rigid = best_fit_original_source_uv_edge_rigid_alignment(owner_a, owner_b)
+        if not rigid["singleEdgeExactRigidClosurePossible"]:
+            raise ValueError("Mixed triangulation owner edge cannot close rigidly.")
+        va = (owner_a[1][0] - owner_a[0][0], owner_a[1][1] - owner_a[0][1])
+        vb = (owner_b[1][0] - owner_b[0][0], owner_b[1][1] - owner_b[0][1])
+        angle = math.atan2(va[1], va[0]) - math.atan2(vb[1], vb[0])
+        cos, sin = math.cos(angle), math.sin(angle)
+        return (angle,
+                owner_a[0][0] - (cos * owner_b[0][0] - sin * owner_b[0][1]),
+                owner_a[0][1] - (sin * owner_b[0][0] + cos * owner_b[0][1]))
+
+    def original_shared_gap(edge):
+        rows = edge_faces[edge]
+        owners = [tuple(uvs[face_id][faces[face_id].index(vertex)]
+                        for vertex in edge) for face_id in rows]
+        return max(math.dist(owners[0][index], owners[1][index])
+                   for index in range(2))
+
+    shared_edges = [edge for edge, rows in edge_faces.items() if len(rows) == 2]
+    baseline_unclosed = sum(
+        original_shared_gap(edge) > 0.000001 for edge in shared_edges
+    )
+    trials, topology_rows = [], []
+    for diagonal_choices in product((0, 1), repeat=4):
+        choice_by_face = dict(zip(target_faces, diagonal_choices))
+        triangle_vertices, original_triangles = {}, {}
+        for face_id in target_faces:
+            vertices, coordinates = rotated[face_id]
+            if choice_by_face[face_id] == 0:
+                triangle_vertices[face_id] = (
+                    (vertices[0], vertices[1], vertices[2]),
+                    (vertices[0], vertices[2], vertices[3]),
+                )
+                original_triangles[face_id] = (
+                    (coordinates[0], coordinates[1], coordinates[2]),
+                    (coordinates[0], coordinates[2], coordinates[3]),
+                )
+            else:
+                triangle_vertices[face_id] = (
+                    (vertices[0], vertices[1], vertices[3]),
+                    (vertices[1], vertices[2], vertices[3]),
+                )
+                original_triangles[face_id] = (
+                    (coordinates[0], coordinates[1], coordinates[3]),
+                    (coordinates[1], coordinates[2], coordinates[3]),
+                )
+
+        def owner_triangle(face_id, edge, layout):
+            matches = []
+            for triangle_id, vertices in enumerate(triangle_vertices[face_id]):
+                if all(vertex in vertices for vertex in edge):
+                    coordinates = layout[face_id][triangle_id]
+                    matches.append(((face_id, triangle_id), tuple(
+                        coordinates[vertices.index(vertex)] for vertex in edge
+                    )))
+            if len(matches) != 1:
+                raise ValueError("Mixed triangulation boundary lacks one triangle owner.")
+            return matches[0]
+
+        nodes = [(face_id, triangle_id) for face_id in target_faces
+                 for triangle_id in range(2)]
+        adjacency = {node: [] for node in nodes}
+        for edge in edges:
+            face_a, face_b = sorted(edge_faces[edge])
+            node_a, owner_a = owner_triangle(face_a, edge, original_triangles)
+            node_b, owner_b = owner_triangle(face_b, edge, original_triangles)
+            b_to_a = rigid_b_to_a(owner_a, owner_b)
+            adjacency[node_a].append((node_b, b_to_a))
+            adjacency[node_b].append((node_a, inverse(b_to_a)))
+
+        components, unseen = [], set(nodes)
+        while unseen:
+            root = min(unseen)
+            component, queue = [], [root]
+            unseen.remove(root)
+            while queue:
+                node = queue.pop(0)
+                component.append(node)
+                for neighbour, _relation in adjacency[node]:
+                    if neighbour in unseen:
+                        unseen.remove(neighbour)
+                        queue.append(neighbour)
+            components.append(tuple(sorted(component)))
+
+        component_variants = []
+        consistent = True
+        for component in components:
+            variants = []
+            for root in component:
+                poses = {root: (0.0, 0.0, 0.0)}
+                queue = [root]
+                while queue and consistent:
+                    node = queue.pop(0)
+                    for neighbour, neighbour_to_node in adjacency[node]:
+                        candidate = compose(poses[node], neighbour_to_node)
+                        if neighbour not in poses:
+                            poses[neighbour] = candidate
+                            queue.append(neighbour)
+                        else:
+                            old = poses[neighbour]
+                            if (abs(math.remainder(old[0] - candidate[0],
+                                                   2 * math.pi)) > 1e-8
+                                    or math.dist(old[1:], candidate[1:]) > 1e-8):
+                                consistent = False
+                                break
+                if not consistent:
+                    break
+                variants.append((root, poses))
+            if not consistent:
+                break
+            component_variants.append(tuple(variants))
+        if not consistent:
+            topology_rows.append({
+                "nonJunctionDiagonalOriginalSourceFaceIds": [
+                    face_id for face_id in target_faces
+                    if choice_by_face[face_id] == 1
+                ],
+                "transformConsistent": False,
+                "rootAnchorCandidateCount": 0,
+            })
+            continue
+
+        root_candidate_count = math.prod(len(rows) for rows in component_variants)
+        topology_rows.append({
+            "nonJunctionDiagonalOriginalSourceFaceIds": [
+                face_id for face_id in target_faces
+                if choice_by_face[face_id] == 1
+            ],
+            "transformConsistent": True,
+            "rootAnchorCandidateCount": root_candidate_count,
+        })
+        for selected_variants in product(*component_variants):
+            poses = {}
+            anchored_nodes = []
+            for root, component_poses in selected_variants:
+                anchored_nodes.append(root)
+                poses.update(component_poses)
+            candidate_triangles = {
+                face_id: tuple(tuple(apply(poses[(face_id, triangle_id)], point)
+                                     for point in original_triangles[face_id][triangle_id])
+                               for triangle_id in range(2))
+                for face_id in target_faces
+            }
+
+            def boundary_owner(face_id, edge):
+                if face_id in target_faces:
+                    return owner_triangle(face_id, edge, candidate_triangles)[1]
+                return tuple(uvs[face_id][faces[face_id].index(vertex)]
+                             for vertex in edge)
+
+            def shared_gap(edge):
+                face_a, face_b = edge_faces[edge]
+                owner_a = boundary_owner(face_a, edge)
+                owner_b = boundary_owner(face_b, edge)
+                return max(math.dist(owner_a[index], owner_b[index])
+                           for index in range(2))
+
+            closed = [edge for edge in edges if shared_gap(edge) <= 1e-8]
+            if closed != edges:
+                raise ValueError("Consistent mixed triangulation did not close all edges.")
+            internal_rows = []
+            for face_id in target_faces:
+                vertices = triangle_vertices[face_id]
+                diagonal = tuple(sorted(set(vertices[0]) & set(vertices[1])))
+                endpoints = [tuple(
+                    candidate_triangles[face_id][triangle_id][
+                        vertices[triangle_id].index(vertex)
+                    ] for vertex in diagonal
+                ) for triangle_id in range(2)]
+                gap = max(math.dist(endpoints[0][index], endpoints[1][index])
+                          for index in range(2))
+                internal_rows.append({
+                    "originalSourceFaceId": face_id,
+                    "usesNonJunctionDiagonal": choice_by_face[face_id] == 1,
+                    "splitDiagonalSourceVertices": list(diagonal),
+                    "candidateInternalDiagonalGapMm": round(gap * 1000, 8),
+                })
+            candidate_unclosed = sum(
+                shared_gap(edge) > 0.000001 for edge in shared_edges
+            )
+            internal_unclosed = sum(
+                row["candidateInternalDiagonalGapMm"] > 0.001
+                for row in internal_rows
+            )
+            max_edge_change = 0.0
+            for face_id in target_faces:
+                for triangle_id in range(2):
+                    before = original_triangles[face_id][triangle_id]
+                    after = candidate_triangles[face_id][triangle_id]
+                    for a, b in ((0, 1), (1, 2), (2, 0)):
+                        max_edge_change = max(max_edge_change, abs(
+                            math.dist(before[a], before[b]) -
+                            math.dist(after[a], after[b])
+                        ))
+            trials.append({
+                "research_triangle_overrides": candidate_triangles,
+                "report": {
+                    "researchOnly": True,
+                    "targetOriginalSourceVertex": junction_vertex,
+                    "incidentOriginalSourceEdges": [list(edge) for edge in edges],
+                    "closedIncidentEdgeCount": len(closed),
+                    "nonJunctionDiagonalOriginalSourceFaceIds": [
+                        face_id for face_id in target_faces
+                        if choice_by_face[face_id] == 1
+                    ],
+                    "anchoredTriangleNodes": [list(node)
+                                              for node in sorted(anchored_nodes)],
+                    "internalSplitDiagonalEvidence": internal_rows,
+                    "newUnclosedInternalSplitDiagonalCount": internal_unclosed,
+                    "baselineUnclosedSharedUvEdgeCount": baseline_unclosed,
+                    "candidateUnclosedSharedUvEdgeCount": candidate_unclosed,
+                    "candidateTotalUnclosedUvSeamCount":
+                        candidate_unclosed + internal_unclosed,
+                    "totalUnclosedUvSeamCountDelta":
+                        candidate_unclosed + internal_unclosed - baseline_unclosed,
+                    "maximumOriginalTriangleEdgeChangeMm":
+                        round(max_edge_change * 1000, 8),
+                    "storedSourceUvChanged": False,
+                    "sourceUvExportOrSavePerformed": False,
+                    "physicalPatternApproved": False,
+                    "productionApproved": False,
+                },
+            })
+    if not trials:
+        raise ValueError("No transform-consistent mixed triangulation candidate exists.")
+    trials.sort(key=lambda trial: (
+        trial["report"]["newUnclosedInternalSplitDiagonalCount"],
+        trial["report"]["candidateTotalUnclosedUvSeamCount"],
+        trial["report"]["candidateUnclosedSharedUvEdgeCount"],
+        tuple(trial["report"]["nonJunctionDiagonalOriginalSourceFaceIds"]),
+        tuple(tuple(node) for node in trial["report"]["anchoredTriangleNodes"]),
+    ))
+    minimum_internal = trials[0]["report"][
+        "newUnclosedInternalSplitDiagonalCount"
+    ]
+    minimum_total = min(
+        trial["report"]["candidateTotalUnclosedUvSeamCount"]
+        for trial in trials
+        if trial["report"]["newUnclosedInternalSplitDiagonalCount"]
+        == minimum_internal
+    )
+    return {
+        "best_candidate_trial": trials[0],
+        "candidate_trials": trials,
+        "report": {
+            "researchOnly": True,
+            "targetOriginalSourceVertex": junction_vertex,
+            "triangulationAssignmentCount": len(topology_rows),
+            "transformConsistentTriangulationCount": sum(
+                row["transformConsistent"] for row in topology_rows
+            ),
+            "transformInconsistentTriangulationCount": sum(
+                not row["transformConsistent"] for row in topology_rows
+            ),
+            "rootAnchorCandidateCount": len(trials),
+            "minimumNewUnclosedInternalSplitDiagonalCount": minimum_internal,
+            "minimumCandidateTotalUnclosedUvSeamCountAtMinimumInternal":
+                minimum_total,
+            "candidateCountAtMinimumInternalAndTotal": sum(
+                trial["report"]["newUnclosedInternalSplitDiagonalCount"]
+                == minimum_internal
+                and trial["report"]["candidateTotalUnclosedUvSeamCount"]
+                == minimum_total for trial in trials
+            ),
+            "triangulationEvidence": topology_rows,
+            "allRetainedCandidatesCloseAllIncidentEdges": all(
+                trial["report"]["closedIncidentEdgeCount"] == 4
+                for trial in trials
+            ),
+            "allRetainedCandidatesPreserveTriangleEdgeLengths": all(
+                trial["report"]["maximumOriginalTriangleEdgeChangeMm"]
+                <= 0.000001 for trial in trials
+            ),
+            "storedSourceUvChanged": False,
+            "sourceUvExportOrSavePerformed": False,
+            "physicalPatternApproved": False,
+            "productionApproved": False,
+        },
+    }
+
+
 def compare_original_source_uv_junction_rigid_alignments(incident_edges):
     """Compare deterministic proper-rigid fits at one real cut junction.
 

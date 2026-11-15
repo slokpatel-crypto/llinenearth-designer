@@ -1610,6 +1610,56 @@ jobs:
               ] is False
               assert anchor_enumeration["productionApproved"] is False
               print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_FOUR_CHART_ANCHOR_ENUMERATION_RESEARCH_ONLY",json.dumps(anchor_enumeration,sort_keys=True))
+              mixed=oriented[
+                  "researchOnlyOriginalSourceMaxRetainedUvEvidence"
+              ]["researchOnlyJunctionMixedTriangulationEnumeration"]
+              mixed_search=mixed["search"]
+              mixed_best=mixed["bestCandidate"]
+              mixed_trial=mixed_best["trial"]
+              mixed_overlap=mixed_best["candidateResearchUvOverlap"]
+              mixed_comparison=mixed_best[
+                  "packedBaselineVsCandidateOverlap"
+              ]
+              assert mixed["researchOnly"] is True
+              assert mixed_search["targetOriginalSourceVertex"] == 416
+              assert mixed_search["triangulationAssignmentCount"] == 16
+              assert mixed_search[
+                  "transformConsistentTriangulationCount"
+              ] >= 1
+              assert mixed_search[
+                  "transformInconsistentTriangulationCount"
+              ] >= 1
+              assert mixed_search["rootAnchorCandidateCount"] >= 1
+              assert mixed_search[
+                  "candidateCountAtMinimumInternalAndTotal"
+              ] >= 1
+              assert mixed_search[
+                  "allRetainedCandidatesCloseAllIncidentEdges"
+              ] is True
+              assert mixed_search[
+                  "allRetainedCandidatesPreserveTriangleEdgeLengths"
+              ] is True
+              assert mixed_trial["closedIncidentEdgeCount"] == 4
+              assert mixed_trial[
+                  "newUnclosedInternalSplitDiagonalCount"
+              ] == mixed_search[
+                  "minimumNewUnclosedInternalSplitDiagonalCount"
+              ]
+              assert mixed_trial[
+                  "maximumOriginalTriangleEdgeChangeMm"
+              ] <= 0.000001
+              assert mixed_overlap["actualTrianglesInspected"] == 5300
+              assert mixed_overlap["auditTruncated"] is False
+              assert mixed_comparison[
+                  "bothFullResearchUvScansComplete"
+              ] is True
+              assert mixed_search["storedSourceUvChanged"] is False
+              assert mixed_search["sourceUvExportOrSavePerformed"] is False
+              assert mixed_search["physicalPatternApproved"] is False
+              assert mixed_search["productionApproved"] is False
+              assert mixed["physicalFabricAndTailorApproval"] is False
+              assert mixed["productionApproved"] is False
+              print("TITAN_ACTUAL_SOURCE_UV_JUNCTION_MIXED_TRIANGULATION_ENUMERATION_RESEARCH_ONLY",json.dumps(mixed,sort_keys=True))
               assert [
                   (-row["sourceUvCutGraphDegree"],
                    -row["incidentOriginalSourceCutEdgeLengthMm"],
