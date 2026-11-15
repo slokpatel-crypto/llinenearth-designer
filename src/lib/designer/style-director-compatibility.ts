@@ -499,14 +499,24 @@ export function styleDirectorCandidatePlacketIssues(
   candidateShirt: string, shirt: Pick<StyleSpecV2["shirt"], "placket">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidatePlacketIntent(candidateShirt);
-  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  // Contradictory requests for the same placket are handled by the wording gate;
+  // an independent exclusion still applies when a separate choice is undecided.
+  // A contradictory request is reviewed by the wording gate, but must not
+  // suppress a separate, independently prohibited placket construction.
+  const contradictory = intent.ambiguous && intent.requested !== null &&
+    intent.prohibited.includes(intent.requested);
+  const independentBans = contradictory
+    ? intent.prohibited.filter(id => id !== intent.requested)
+    : intent.prohibited;
+  if (contradictory && independentBans.length === 0) return [];
+  if (intent.requested === null && independentBans.length === 0) return [];
   const lockedPlacket = styleDirectorLockedOptionValue(shirt, "placket");
   // A missing, inherited, accessor or stale option cannot prove compliance.
   const trusted = typeof lockedPlacket === "string" &&
     optionsFor("shirt.placket").some(option => option.id === lockedPlacket);
   const conflicts = !trusted ||
-    (intent.requested !== null && lockedPlacket !== intent.requested) ||
-    intent.prohibited.includes(lockedPlacket as CandidatePlacketId);
+    (!intent.ambiguous && intent.requested !== null && lockedPlacket !== intent.requested) ||
+    independentBans.includes(lockedPlacket as CandidatePlacketId);
   return conflicts ? [{
     code: "candidate_placket_mismatch",
     explanation: "The requested or prohibited shirt placket conflicts with the locked versioned construction; confirm the front before tailoring.",
