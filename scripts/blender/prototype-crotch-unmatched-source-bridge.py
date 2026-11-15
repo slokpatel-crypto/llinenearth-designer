@@ -2070,8 +2070,15 @@ def main():
     )
     if (mixed_search_summary["targetOriginalSourceVertex"] != 416
             or mixed_search_summary["triangulationAssignmentCount"] != 16
-            or mixed_search_summary["transformConsistentTriangulationCount"] < 1
-            or mixed_search_summary["transformInconsistentTriangulationCount"] < 1
+            or mixed_search_summary["transformConsistentTriangulationCount"] != 15
+            or mixed_search_summary["transformInconsistentTriangulationCount"] != 1
+            or mixed_search_summary["rootAnchorCandidateCount"] != 134
+            or mixed_search_summary[
+                "minimumNewUnclosedInternalSplitDiagonalCount"] != 2
+            or mixed_search_summary[
+                "minimumCandidateTotalUnclosedUvSeamCountAtMinimumInternal"] != 2585
+            or mixed_search_summary[
+                "candidateCountAtMinimumInternalAndTotal"] != 8
             or mixed_search_summary["rootAnchorCandidateCount"] != len(
                 mixed_search["candidate_trials"])
             or not mixed_search_summary[
@@ -2080,13 +2087,26 @@ def main():
                 "allRetainedCandidatesPreserveTriangleEdgeLengths"]
             or mixed_best_summary["closedIncidentEdgeCount"] != 4
             or mixed_best_summary[
+                "nonJunctionDiagonalOriginalSourceFaceIds"] != []
+            or mixed_best_summary[
+                "candidateUnclosedSharedUvEdgeCount"] != 2583
+            or mixed_best_summary[
                 "newUnclosedInternalSplitDiagonalCount"] !=
                 mixed_search_summary[
                     "minimumNewUnclosedInternalSplitDiagonalCount"]
+            or mixed_best_summary[
+                "candidateTotalUnclosedUvSeamCount"] != 2585
+            or mixed_best_summary["totalUnclosedUvSeamCountDelta"] != 0
             or mixed_best_summary["maximumOriginalTriangleEdgeChangeMm"] > 0.000001
             or mixed_best_overlap["actualTrianglesInspected"] != 5300
             or mixed_best_overlap["auditTruncated"]
             or not mixed_best_comparison["bothFullResearchUvScansComplete"]
+            or mixed_best_comparison[
+                "baselineObservedTriangleOverlapPairs"] != 6957
+            or mixed_best_comparison[
+                "candidateObservedTriangleOverlapPairs"] != 6953
+            or mixed_best_comparison[
+                "candidateOverlapTrianglePairDelta"] != -4
             or mixed_search_summary["storedSourceUvChanged"]
             or mixed_search_summary["sourceUvExportOrSavePerformed"]
             or mixed_search_summary["physicalPatternApproved"]

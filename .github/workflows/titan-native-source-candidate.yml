@@ -1625,14 +1625,20 @@ jobs:
               assert mixed_search["triangulationAssignmentCount"] == 16
               assert mixed_search[
                   "transformConsistentTriangulationCount"
-              ] >= 1
+              ] == 15
               assert mixed_search[
                   "transformInconsistentTriangulationCount"
-              ] >= 1
-              assert mixed_search["rootAnchorCandidateCount"] >= 1
+              ] == 1
+              assert mixed_search["rootAnchorCandidateCount"] == 134
+              assert mixed_search[
+                  "minimumNewUnclosedInternalSplitDiagonalCount"
+              ] == 2
+              assert mixed_search[
+                  "minimumCandidateTotalUnclosedUvSeamCountAtMinimumInternal"
+              ] == 2585
               assert mixed_search[
                   "candidateCountAtMinimumInternalAndTotal"
-              ] >= 1
+              ] == 8
               assert mixed_search[
                   "allRetainedCandidatesCloseAllIncidentEdges"
               ] is True
@@ -1641,6 +1647,12 @@ jobs:
               ] is True
               assert mixed_trial["closedIncidentEdgeCount"] == 4
               assert mixed_trial[
+                  "nonJunctionDiagonalOriginalSourceFaceIds"
+              ] == []
+              assert mixed_trial[
+                  "candidateUnclosedSharedUvEdgeCount"
+              ] == 2583
+              assert mixed_trial[
                   "newUnclosedInternalSplitDiagonalCount"
               ] == mixed_search[
                   "minimumNewUnclosedInternalSplitDiagonalCount"
@@ -1648,11 +1660,26 @@ jobs:
               assert mixed_trial[
                   "maximumOriginalTriangleEdgeChangeMm"
               ] <= 0.000001
+              assert mixed_trial[
+                  "candidateTotalUnclosedUvSeamCount"
+              ] == 2585
+              assert mixed_trial[
+                  "totalUnclosedUvSeamCountDelta"
+              ] == 0
               assert mixed_overlap["actualTrianglesInspected"] == 5300
               assert mixed_overlap["auditTruncated"] is False
               assert mixed_comparison[
                   "bothFullResearchUvScansComplete"
               ] is True
+              assert mixed_comparison[
+                  "baselineObservedTriangleOverlapPairs"
+              ] == 6957
+              assert mixed_comparison[
+                  "candidateObservedTriangleOverlapPairs"
+              ] == 6953
+              assert mixed_comparison[
+                  "candidateOverlapTrianglePairDelta"
+              ] == -4
               assert mixed_search["storedSourceUvChanged"] is False
               assert mixed_search["sourceUvExportOrSavePerformed"] is False
               assert mixed_search["physicalPatternApproved"] is False
