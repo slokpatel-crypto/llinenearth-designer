@@ -499,7 +499,9 @@ export function styleDirectorCandidatePlacketIssues(
   candidateShirt: string, shirt: Pick<StyleSpecV2["shirt"], "placket">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidatePlacketIntent(candidateShirt);
-  // An undecided placket choice does not override an independent explicit exclusion.
+  // Contradictory requests for the same placket are handled by the wording gate;
+  // an independent exclusion still applies when a separate choice is undecided.
+  if (intent.ambiguous && intent.requested !== null && intent.prohibited.includes(intent.requested)) return [];
   if (intent.requested === null && intent.prohibited.length === 0) return [];
   const lockedPlacket = styleDirectorLockedOptionValue(shirt, "placket");
   // A missing, inherited, accessor or stale option cannot prove compliance.
