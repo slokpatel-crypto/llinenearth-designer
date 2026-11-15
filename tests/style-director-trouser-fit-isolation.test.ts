@@ -493,3 +493,26 @@ test("whitespace and case-altered saved fit IDs never silently normalize into a 
     assert.equal(pant.fit, fit);
   }
 });
+
+test("unicode lookalike fit IDs require explicit review without rewriting locked choices", () => {
+  const variants = ["slim＿tapered", "slim_tapеred", "slim_tapered\u00a0", "\ufeffslim_tapered"];
+  for (const fit of variants) {
+    const pant = Object.freeze({
+      type: "cropped_ankle", fit, pleat: "flat_front",
+      hem: "plain_hem", break: "stacked_break",
+    });
+    const shirt = Object.freeze({
+      type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+      sleeve: "half_sleeve", cuff: "french_double_cuff",
+    });
+    const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+    const inspect = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const first = inspect();
+    for (const code of [
+      "unknown_versioned_option", "short_sleeve_double_cuff",
+      "cropped_type_hem_mismatch", "cropped_stacked_break",
+    ]) assert.ok(first.includes(code), "unicode lookalike concealed " + code);
+    assert.deepEqual(inspect(), first);
+    assert.equal(pant.fit, fit);
+  }
+});
