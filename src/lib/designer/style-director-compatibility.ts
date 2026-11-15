@@ -1630,10 +1630,21 @@ export function styleDirectorConstructionIssues(
     ["shirt.fit", shirt.fit], ["shirt.length", shirt.length],
     ["shirt.hem", shirt.hem], ["shirt.back", shirt.back],
     ["shirt.wear", shirt.wear], ["shirt.button", shirt.button],
-    ["pant.type", pant.type], ["pant.fit", pant.fit],
+    ["pant.type", pant.type], ["pant.fit", styleDirectorLockedOptionValue(pant, "fit")],
     ["pant.rise", pant.rise], ["pant.waistband", pant.waistband],
     ["pant.hem", pant.hem], ["pant.break", pant.break],
   ] as const;
+  // A supplied inherited or accessor-backed fit is not a trusted saved ID.
+  // Inspect its descriptor without invoking user-defined getters. Missing fit
+  // remains the full spec parser's responsibility for partial pure fixtures.
+  const fitDescriptor = Object.getOwnPropertyDescriptor(pant, "fit");
+  if ((fitDescriptor && !Object.prototype.hasOwnProperty.call(fitDescriptor, "value")) ||
+      (!fitDescriptor && "fit" in pant)) {
+    issues.push({
+      code: "unknown_versioned_option",
+      explanation: "The saved pant.fit selection is inherited or computed rather than a versioned data ID; confirm its locked value before tailoring.",
+    });
+  }
   for (const [group, id] of selectedOptions) {
     if (id === undefined) continue;
     if (typeof id !== "string" || !optionsFor(group).some((option) => option.id === id)) {
