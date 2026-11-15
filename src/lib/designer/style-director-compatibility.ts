@@ -549,7 +549,7 @@ export function styleDirectorCandidatePocketIntent(candidateShirt: string): {
   const requested = new Set<CandidatePocketId>();
   const prohibited = new Set<CandidatePocketId>();
   const optionalBefore = (prefix: string) => /\b(?:optional|maybe)\s+$/i.test(prefix);
-  const optionalAfter = (suffix: string) => /^\s+(?:(?:is|are)\s+)?(?:optional|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
+  const optionalAfter = (suffix: string) => /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory|necessary)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory|necessary))\b/i.test(suffix);
   // "No Pocket" states the *absence* of the pocket. It is not a
   // prohibition of the versioned no_pocket ID.
   for (const hit of instruction.matchAll(/\b(?:no|without)\s+(?:(?:a|any|the)\s+)?pockets?\b|\bpocketless\b/gi)) {
@@ -563,7 +563,7 @@ export function styleDirectorCandidatePocketIntent(candidateShirt: string): {
       const start = hit.index ?? 0;
       const before = instruction.slice(0, start);
       const after = instruction.slice(start + hit[0].length);
-      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
+      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t|(?:must|should|shall|can|could|would|may|might)\s+not|(?:mustn|shouldn|shan|can|couldn|wouldn)['’]?t|cannot)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:(?:should|must)\s+not|(?:shouldn|mustn|can)['’]?t|cannot)\s+(?:be\s+)?(?:chosen|selected|used|worn|included))\b/i.test(after);
       if (banned) prohibited.add(id);
       else if (!optionalBefore(before) && !optionalAfter(after)) requested.add(id);
@@ -588,12 +588,14 @@ export function styleDirectorCandidatePocketIssues(
   shirt: Pick<StyleSpecV2["shirt"], "pocket">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidatePocketIntent(candidateShirt);
-  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  // An unresolved alternative does not cancel an independent explicit ban.
+  // Enforce exclusions even when positive selection needs human review.
+  if (intent.requested === null && intent.prohibited.length === 0) return [];
   const lockedPocket = styleDirectorLockedOptionValue(shirt, "pocket");
   // A negative pocket request must not silently approve an unreadable ID.
   const trusted = typeof lockedPocket === "string" &&
     optionsFor("shirt.pocket").some(option => option.id === lockedPocket);
-  const wrongRequest = !trusted || (intent.requested !== null && lockedPocket !== intent.requested);
+  const wrongRequest = !trusted || (!intent.ambiguous && intent.requested !== null && lockedPocket !== intent.requested);
   const bannedChoice = intent.prohibited.includes(lockedPocket as CandidatePocketId);
   return wrongRequest || bannedChoice ? [{
     code: "candidate_pocket_mismatch",
