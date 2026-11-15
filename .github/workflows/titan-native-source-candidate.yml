@@ -1629,6 +1629,20 @@ jobs:
               assert mixed_search[
                   "transformInconsistentTriangulationCount"
               ] == 1
+              mixed_conflicts=mixed_search[
+                  "transformInconsistentCycleClosureEvidence"
+              ]
+              assert len(mixed_conflicts) == 1
+              assert mixed_conflicts[0][
+                  "cycleClosureMaximumPredictedVertexDisagreementMm"
+              ] > 0
+              assert mixed_conflicts[0][
+                  "minimumMaxPathReconciliationVertexDisplacementLowerBoundMm"
+              ] > 0
+              assert mixed_conflicts[0]["physicalUvStrainSolved"] is False
+              assert mixed_conflicts[0][
+                  "requiresNonRigidDeformationOrSeam"
+              ] is True
               assert mixed_search["rootAnchorCandidateCount"] == 134
               assert mixed_search[
                   "minimumNewUnclosedInternalSplitDiagonalCount"

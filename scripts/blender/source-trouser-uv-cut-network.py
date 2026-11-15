@@ -826,6 +826,7 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
 
         component_variants = []
         consistent = True
+        conflict_evidence = None
         for component in components:
             variants = []
             for root in component:
@@ -843,6 +844,37 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
                             if (abs(math.remainder(old[0] - candidate[0],
                                                    2 * math.pi)) > 1e-8
                                     or math.dist(old[1:], candidate[1:]) > 1e-8):
+                                predicted_displacements = [
+                                    math.dist(apply(old, point), apply(candidate, point))
+                                    for point in original_triangles[
+                                        neighbour[0]
+                                    ][neighbour[1]]
+                                ]
+                                maximum_disagreement = max(predicted_displacements)
+                                conflict_evidence = {
+                                    "conflictingTriangleNode": list(neighbour),
+                                    "cycleClosureRotationDefectDegrees": round(abs(
+                                        math.degrees(math.remainder(
+                                            old[0] - candidate[0], 2 * math.pi
+                                        ))
+                                    ), 8),
+                                    "cycleClosurePoseTranslationDefectMm": round(
+                                        math.dist(old[1:], candidate[1:]) * 1000, 8
+                                    ),
+                                    "cycleClosureMaximumPredictedVertexDisagreementMm":
+                                        round(maximum_disagreement * 1000, 8),
+                                    # For two incompatible predicted positions p and q,
+                                    # every reconciled position r has
+                                    # max(|r-p|, |r-q|) >= |p-q|/2.  This is a
+                                    # displacement lower bound only, not a claim that
+                                    # a physically valid strained chart exists.
+                                    "minimumMaxPathReconciliationVertexDisplacementLowerBoundMm":
+                                        round(maximum_disagreement * 500, 8),
+                                    "lowerBoundDerivation":
+                                        "half_maximum_two_path_vertex_disagreement",
+                                    "physicalUvStrainSolved": False,
+                                    "requiresNonRigidDeformationOrSeam": True,
+                                }
                                 consistent = False
                                 break
                 if not consistent:
@@ -859,6 +891,7 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
                 ],
                 "transformConsistent": False,
                 "rootAnchorCandidateCount": 0,
+                "cycleClosureConflictEvidence": conflict_evidence,
             })
             continue
 
@@ -994,6 +1027,10 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
             "transformInconsistentTriangulationCount": sum(
                 not row["transformConsistent"] for row in topology_rows
             ),
+            "transformInconsistentCycleClosureEvidence": [
+                row["cycleClosureConflictEvidence"] for row in topology_rows
+                if not row["transformConsistent"]
+            ],
             "rootAnchorCandidateCount": len(trials),
             "minimumNewUnclosedInternalSplitDiagonalCount": minimum_internal,
             "minimumCandidateTotalUnclosedUvSeamCountAtMinimumInternal":

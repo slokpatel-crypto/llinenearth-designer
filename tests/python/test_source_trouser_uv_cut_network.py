@@ -179,6 +179,17 @@ mixed_report = mixed_search["report"]
 assert mixed_report["triangulationAssignmentCount"] == 16
 assert mixed_report["transformConsistentTriangulationCount"] >= 1
 assert mixed_report["transformInconsistentTriangulationCount"] >= 1
+conflicts = mixed_report["transformInconsistentCycleClosureEvidence"]
+assert len(conflicts) == mixed_report["transformInconsistentTriangulationCount"]
+assert all(row["cycleClosureMaximumPredictedVertexDisagreementMm"] > 0
+           for row in conflicts)
+assert all(row[
+    "minimumMaxPathReconciliationVertexDisplacementLowerBoundMm"
+] == round(row["cycleClosureMaximumPredictedVertexDisagreementMm"] / 2, 8)
+           for row in conflicts)
+assert all(row["physicalUvStrainSolved"] is False for row in conflicts)
+assert all(row["requiresNonRigidDeformationOrSeam"] is True
+           for row in conflicts)
 assert mixed_report["rootAnchorCandidateCount"] == len(
     mixed_search["candidate_trials"]
 )

@@ -2060,6 +2060,9 @@ def main():
     mixed_search_summary = mixed_search["report"]
     mixed_best_trial = mixed_search["best_candidate_trial"]
     mixed_best_summary = mixed_best_trial["report"]
+    mixed_conflicts = mixed_search_summary[
+        "transformInconsistentCycleClosureEvidence"
+    ]
     mixed_best_overlap = uv_overlap_audit(
         base_faces, packed_weighted["face_uv_loops"],
         research_triangle_overrides=
@@ -2072,6 +2075,13 @@ def main():
             or mixed_search_summary["triangulationAssignmentCount"] != 16
             or mixed_search_summary["transformConsistentTriangulationCount"] != 15
             or mixed_search_summary["transformInconsistentTriangulationCount"] != 1
+            or len(mixed_conflicts) != 1
+            or mixed_conflicts[0][
+                "cycleClosureMaximumPredictedVertexDisagreementMm"] <= 0
+            or mixed_conflicts[0][
+                "minimumMaxPathReconciliationVertexDisplacementLowerBoundMm"] <= 0
+            or mixed_conflicts[0]["physicalUvStrainSolved"]
+            or not mixed_conflicts[0]["requiresNonRigidDeformationOrSeam"]
             or mixed_search_summary["rootAnchorCandidateCount"] != 134
             or mixed_search_summary[
                 "minimumNewUnclosedInternalSplitDiagonalCount"] != 2
