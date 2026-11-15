@@ -269,3 +269,26 @@ test("canonical own fit descriptor remains usable when proxy property reads thro
   assert.deepEqual(inspect(), first);
   assert.equal(target.fit, "slim_tapered");
 });
+
+test("prototype-free locked trouser records retain canonical fit and independent construction review", () => {
+  const pant = Object.assign(Object.create(null) as Record<string, unknown>, {
+    type: "cropped_ankle", fit: "slim_tapered", pleat: "flat_front",
+    hem: "plain_hem", break: "stacked_break",
+  });
+  const shirt = Object.freeze({
+    type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+    sleeve: "half_sleeve", cuff: "french_double_cuff",
+  });
+  Object.freeze(pant);
+  const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+  const inspect = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+  const first = inspect();
+  assert.ok(!first.includes("unknown_versioned_option"),
+    "own canonical fit on a null-prototype record must remain valid");
+  for (const code of ["short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break"]) {
+    assert.ok(first.includes(code), "null-prototype fit concealed " + code);
+  }
+  assert.deepEqual(inspect(), first);
+  assert.equal(Object.getPrototypeOf(pant), null);
+  assert.equal(Object.getOwnPropertyDescriptor(pant, "fit")?.value, "slim_tapered");
+});
