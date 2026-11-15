@@ -319,3 +319,26 @@ test("invalid own fit cannot be rescued by a canonical inherited fit", () => {
   assert.deepEqual(inspect(), first);
   assert.equal(Object.getOwnPropertyDescriptor(pant, "fit")?.value, "retired_trouser_fit");
 });
+
+test("canonical fit survives a proxy that forbids key enumeration", () => {
+  const target = Object.freeze({
+    type: "cropped_ankle", fit: "slim_tapered", pleat: "flat_front",
+    hem: "plain_hem", break: "stacked_break",
+  });
+  const pant = new Proxy(target, {
+    ownKeys() { throw new Error("saved option inspection must not enumerate proxy keys"); },
+  });
+  const shirt = Object.freeze({
+    type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+    sleeve: "half_sleeve", cuff: "french_double_cuff",
+  });
+  const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+  const inspect = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+  const first = inspect();
+  assert.ok(!first.includes("unknown_versioned_option"));
+  for (const code of ["short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break"]) {
+    assert.ok(first.includes(code), "key enumeration hid " + code);
+  }
+  assert.deepEqual(inspect(), first);
+  assert.equal(target.fit, "slim_tapered");
+});
