@@ -158,3 +158,30 @@ test("hidden own fit values reject wrong-group and non-string IDs without losing
     assert.equal(Object.getOwnPropertyDescriptor(pant, "fit")?.value, fit);
   }
 });
+
+test("own canonical fit overrides a hostile inherited accessor without executing it", () => {
+  const prototype = Object.defineProperty({}, "fit", {
+    get() { throw new Error("prototype getter must not execute"); },
+  });
+  const pant = Object.assign(Object.create(prototype) as Record<string, unknown>, {
+    type: "cropped_ankle", pleat: "flat_front",
+    hem: "plain_hem", break: "stacked_break",
+  });
+  Object.defineProperty(pant, "fit", {
+    value: "slim_tapered", enumerable: false, configurable: true,
+  });
+  Object.freeze(pant);
+  const shirt = Object.freeze({
+    type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+    sleeve: "half_sleeve", cuff: "french_double_cuff",
+  });
+  const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+  const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+  const first = review();
+  assert.ok(!first.includes("unknown_versioned_option"));
+  for (const code of ["short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break"]) {
+    assert.ok(first.includes(code), "valid own fit hid " + code);
+  }
+  assert.deepEqual(review(), first);
+  assert.equal(Object.getOwnPropertyDescriptor(pant, "fit")?.value, "slim_tapered");
+});
