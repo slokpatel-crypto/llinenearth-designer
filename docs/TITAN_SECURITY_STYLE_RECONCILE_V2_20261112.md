@@ -126,3 +126,12 @@
 - Source exact-head Full CI #43705421878 and Non-3D #43705421859 were IN_PROGRESS at inspection. Candidate parent matching-head PR workflows returned []. **No tests, CI, browser QA, build, release check, or disposable DB verification has passed on the combined result in this session. Criterion PENDING, not complete.**
 - Before change, comparison showed 80 primary-only and 30 candidate-only commits across 25 files; no safe full-stack or main merge. Historical release checklist/checkpoint and TODO.md remain absent on this branch; preserve historical records elsewhere.
 - Next slice: check exact-head Full CI/Non-3D for this combined candidate; if absent, investigate GitHub Actions trigger/permissions with richer check-suite access. Then reconcile the next isolated compatibility defect and verify it, without weakening security. Real stock, customer/operator acceptance, tailor, native Blender/UV, device QA and owner approval remain PENDING/BLOCKED. No deployment, paid AI, live migration or stock mutation.
+
+
+## 2026-11-15 — optional pocket and independent ban reconciliation
+
+- Acceptance slice: optional pocket language and unresolved with-or-without alternatives must not choose a versioned pocket ID; independent explicit flap exclusions must still reject a locked forbidden pocket and an unknown pocket ID without mutating the locked object.
+- Exact parent `ce0626adf7ea96828fcd9625249df75a2f404494` → regression commit `880a26f8b5c059f9bb5641fce86949d8fd9810ca` → implementation commit `163a63b9f1ad127643854e7d012c0f57b9c051c3`.
+- Source inspected: primary Style Director PR #868 at `aebcbe3b2ecec627e2cb1a0e0edc31f10e70c258`; matching-head workflow runs `43737399411` and `43737399386` returned SUCCESS. Candidate had no matching-head workflow runs at prior SHA. Ported only pocket-intent and pocket-issue implementation section plus `tests/style-director-pocket-optional-intent.test.ts`, retaining unrelated security code.
+- **New combined candidate is NOT VERIFIED**: no local test, Full CI, Non-3D/browser QA, security, build or release check run at the new SHA. No release criterion certified. Next slice: run/obtain exact-head tests and CI, fix any failures, compare newest primary before further ports.
+- Real stock, customer/operator field acceptance, tailor, native Blender geometry/UV, device checks, owner approval remain PENDING/BLOCKED. Historical release checklist/checkpoint and TODO.md absent on candidate. No main merge, deployment, paid AI, live migration or stock mutation.
