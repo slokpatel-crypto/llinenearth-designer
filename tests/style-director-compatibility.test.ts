@@ -4481,3 +4481,27 @@ test("short-sleeve garment type and sleeve-end construction are reviewed indepen
     assert.equal(JSON.stringify(locked), before);
   }
 });
+
+
+test("short-sleeve type and long-sleeve French cuff conflicts remain independent of trouser construction", () => {
+  const valid = spec({
+    type: "short_sleeve_shirt", sleeve: "half_sleeve", cuff: "open_short_hem_cuff",
+  }, { type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "no_break" });
+  assert.deepEqual(styleDirectorConstructionIssues(valid), [], "both garment constructions are compatible");
+
+  for (const sleeve of ["full_sleeve", "roll_up_styled"] as const) {
+    const locked = spec({
+      type: "short_sleeve_shirt", sleeve, cuff: "french_double_cuff",
+    }, { type: "cropped_ankle", hem: "cropped_above_ankle_hem", break: "full_break" });
+    const before = JSON.stringify(locked);
+    Object.freeze(locked.shirt);
+    Object.freeze(locked.pant);
+    Object.freeze(locked);
+    const review = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const codes = review();
+    assert.ok(codes.includes("short_sleeve_type_mismatch"), sleeve);
+    assert.ok(codes.includes("cropped_full_break"), sleeve);
+    assert.deepEqual(review(), codes, "issue order must be deterministic");
+    assert.equal(JSON.stringify(locked), before, "locked option IDs must not be rewritten");
+  }
+});
