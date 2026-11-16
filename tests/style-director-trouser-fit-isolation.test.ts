@@ -564,3 +564,28 @@ test("missing fit remains parser-owned while explicit null fails closed without 
     assert.equal(pant.fit, fitState === "null" ? null : undefined);
   }
 });
+
+test("serialized locked trouser fits retain canonical IDs and reject explicit null after replay", () => {
+  for (const fit of ["slim_tapered", null] as const) {
+    const saved = {
+      shirt: {
+        type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+        sleeve: "half_sleeve", cuff: "french_double_cuff",
+      },
+      pant: {
+        type: "cropped_ankle", fit, pleat: "flat_front",
+        hem: "plain_hem", break: "stacked_break",
+      },
+    };
+    const serialized = JSON.stringify(saved);
+    const replayed = JSON.parse(serialized) as StyleSpecV2;
+    const inspect = () => styleDirectorConstructionIssues(replayed).map(issue => issue.code);
+    const first = inspect();
+    assert.equal(first.includes("unknown_versioned_option"), fit === null);
+    for (const code of [
+      "short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break",
+    ]) assert.ok(first.includes(code), "JSON replay concealed " + code);
+    assert.deepEqual(inspect(), first);
+    assert.equal(JSON.stringify(replayed), serialized, "construction review mutated locked replay");
+  }
+});
