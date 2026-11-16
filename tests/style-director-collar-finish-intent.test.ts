@@ -84,7 +84,11 @@ test("contradictory collar finishes require wording review, never rewrite locked
     assert.deepEqual(wording(name), ["ambiguous_candidate_collar_finish"], name);
     const saved = { collarFinish: "Self-fabric" };
     const before = JSON.stringify(saved);
-    assert.deepEqual(styleDirectorCandidateCollarFinishIssues(name, saved),\n      name.includes("No Self-fabric") ? [{\n        code: "candidate_collar_finish_mismatch",\n        explanation: "The specified collar/contrast finish conflicts with the locked shirt details; verify the separate fabric and cuff placement before cutting.",\n      }] : [], name);
+    assert.deepEqual(styleDirectorCandidateCollarFinishIssues(name, saved),
+      name.includes("No Self-fabric") ? [{
+        code: "candidate_collar_finish_mismatch",
+        explanation: "The specified collar/contrast finish conflicts with the locked shirt details; verify the separate fabric and cuff placement before cutting.",
+      }] : [], name);
     assert.equal(JSON.stringify(saved), before);
   }
 });
@@ -162,7 +166,9 @@ test("postposed collar finish optional statements preserve frozen saved IDs", ()
   assert.equal(styleDirectorCandidateCollarFinishIntent(conflict).ambiguous, true);
   assert.equal(styleDirectorCandidateCollarFinish(conflict), null);
   assert.deepEqual(wording(conflict), ["ambiguous_candidate_collar_finish"]);
-  assert.deepEqual(styleDirectorCandidateCollarFinishIssues(conflict, saved).map(issue => issue.code),\n    ["candidate_collar_finish_mismatch"],\n    "an explicit ban must remain enforceable even when a contradictory request is ambiguous");
+  assert.deepEqual(styleDirectorCandidateCollarFinishIssues(conflict, saved).map(issue => issue.code),
+    ["candidate_collar_finish_mismatch"],
+    "an explicit ban must remain enforceable even when a contradictory request is ambiguous");
   assert.equal(JSON.stringify(saved), original, "versioned collar finish must not change");
 });
 
