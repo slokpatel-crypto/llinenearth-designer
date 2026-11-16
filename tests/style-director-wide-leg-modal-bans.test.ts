@@ -36,3 +36,21 @@ test("modal bans and separate positive requests stay ambiguous without overwriti
   assert.deepEqual(styleDirectorCandidateWideLegIssues(phrase, locked), []);
   assert.equal(locked.type, "wide_leg_relaxed_drape");
 });
+
+test("postposed modal wide-leg exclusions bind locked construction without selecting a replacement", () => {
+  for (const phrase of [
+    "Wide-leg trousers cannot be used",
+    "Wide-leg pants can't be selected",
+    "Wide-leg trousers mustn't be worn",
+    "Wide-leg pants shouldn't be chosen",
+  ]) {
+    assert.equal(styleDirectorCandidateWideLegIntent(phrase), "prohibited", phrase);
+    assert.equal(styleDirectorCandidateWideLeg(phrase), false, phrase);
+    const locked = Object.freeze({ type: "wide_leg_relaxed_drape" });
+    const issues = styleDirectorCandidateWideLegIssues(phrase, locked);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_wide_leg_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(phrase, locked), issues, phrase);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(phrase, { type: "formal_flat_front" }), [], phrase);
+    assert.equal(locked.type, "wide_leg_relaxed_drape");
+  }
+});
