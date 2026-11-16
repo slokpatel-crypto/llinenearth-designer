@@ -4538,3 +4538,18 @@ test("wide-leg exclusion phrasing never becomes an affirmative silhouette reques
   assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are optional"), null);
   assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers not to be selected, but wide-leg pants required"), "ambiguous");
 });
+
+test("unacceptable wide-leg construction is a prohibition, not a silhouette recommendation", () => {
+  for (const phrase of [
+    "Wide-leg trousers are not acceptable",
+    "Wide-leg pants are not suitable",
+    "Wide leg trousers not acceptable",
+    "Wide-fit trousers are not suitable",
+  ]) {
+    assert.equal(styleDirectorCandidateWideLegIntent(phrase), "prohibited", phrase);
+    assert.equal(styleDirectorCandidateWideLeg(phrase), false, phrase);
+    assert.equal(styleDirectorCandidateWideLegIntent(phrase), "prohibited", "deterministic parsing");
+  }
+  assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are acceptable"), "requested");
+  assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are not acceptable, but wide-leg pants required"), "ambiguous");
+});
