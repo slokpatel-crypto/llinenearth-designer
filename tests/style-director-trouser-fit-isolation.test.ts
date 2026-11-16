@@ -560,6 +560,6 @@ test("missing or null saved trouser fit cannot certify cutting while other confl
     ]) assert.ok(first.includes(code), fitState + " fit concealed " + code);
     assert.deepEqual(inspect(), first);
     assert.equal(Object.hasOwn(pant, "fit"), fitState !== "absent");
-    assert.equal(pant.fit, undefined === (fitState === "null" ? null : undefined) ? undefined : null);
+    assert.equal(pant.fit, fitState === "null" ? null : undefined);
   }
 });
