@@ -548,10 +548,11 @@
   .newDesignerPhotoActionsCompact{grid-column:1/-1}
 }
 
-/* At the 768px QA width the global three-link contact bar covered the lower
-   full-body photograph. Keep the Designer contact route available, but use
-   the same single far-edge WhatsApp control as narrow mobile layouts. */
-@media (min-width:761px) and (max-width:820px){
+/* The global three-link bar can cross the lower full-body photograph whenever
+   the preview occupies the right side of the viewport. Keep the primary
+   Designer contact route at every non-mobile width, but compact it to the
+   same single far-edge WhatsApp control used on narrow screens. */
+@media (min-width:761px){
   .floatingContactDock{right:12px;bottom:78px;gap:6px}
   .floatingContactDock .floatingContact{min-height:44px;padding:6px}
   .floatingContactDock .floatingContact>span{width:32px;height:32px}

@@ -423,13 +423,13 @@ test("compact photo actions are legible and scroll-reachable on short desktop sc
   assert.ok(markup.includes("Save trusted preview"));
 });
 
-test("tablet Designer keeps the full-body photograph clear of the wide contact bar", () => {
+test("Designer keeps the full-body photograph clear of the wide contact bar at every viewport", () => {
   const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
   const script=readFileSync("scripts/verify-photo-form.cjs","utf8");
-  assert.match(css,/@media \(min-width:761px\) and \(max-width:820px\)\{[\s\S]*?\.floatingContactDock \.floatingInstagram,[\s\S]*?\.floatingContactDock \.floatingLocation\{display:none\}/);
-  assert.match(css,/@media \(min-width:761px\) and \(max-width:820px\)\{[\s\S]*?\.floatingContactDock\{right:12px;bottom:78px;gap:6px\}/);
-  assert.match(script,/tablet Designer must compact the contact dock to one control/);
-  assert.match(script,/tablet contact control must stay outside the central full-body model region/);
-  assert.match(script,/tablet-contact-dock-clearance-768\.png/);
-  assert.match(script,/tabletContactDockCompact/);
+  assert.match(css,/@media \(min-width:761px\)\{[\s\S]*?\.floatingContactDock \.floatingInstagram,[\s\S]*?\.floatingContactDock \.floatingLocation\{display:none\}/);
+  assert.match(css,/@media \(min-width:761px\)\{[\s\S]*?\.floatingContactDock\{right:12px;bottom:78px;gap:6px\}/);
+  assert.match(script,/Designer must compact the contact dock to one primary control/);
+  assert.match(script,/contact control must stay outside the central full-body model region/);
+  assert.match(script,/contact-dock-model-clearance-/);
+  assert.match(script,/contactDockModelClear/);
 });
