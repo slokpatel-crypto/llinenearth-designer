@@ -30,6 +30,22 @@ class MigrationPreflightTests(unittest.TestCase):
             (p / "not_timestamped.sql").touch()
             self.assertIn("invalid migration filename", "\n".join(inspect_migrations(p)))
 
+    def test_invalid_calendar_timestamp_blocks(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            (p / "20261101000000_valid.sql").touch()
+            for version in ("20261301000000", "20260230000000", "20261101246000", "20261101000060"):
+                (p / f"{version}_invalid.sql").touch()
+            findings = "\n".join(inspect_migrations(p))
+            for version in ("20261301000000", "20260230000000", "20261101246000", "20261101000060"):
+                self.assertIn(f"invalid migration timestamp: {version}_invalid.sql", findings)
+
+    def test_leap_day_timestamp_is_valid(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            (p / "20240229000000_leap.sql").touch()
+            self.assertEqual(inspect_migrations(p), [])
+
     def test_symlinked_sql_migration_blocks_even_when_target_is_valid(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d)
