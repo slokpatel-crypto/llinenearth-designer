@@ -738,7 +738,7 @@ export function styleDirectorCandidateButtonIntent(candidateShirt: string): {
       }
       // Postposed material refusals are prohibitions, never requests.
       // Non-mandatory / optional wording must remain neutral.
-      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
+      const banned = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t|cannot|can['’]?t|(?:must|should|shall|may|might|would|could)\s+not|(?:mustn|shouldn|shan|wouldn|couldn)['’]?t)\s+(?:(?:use|add|include|choose|wear|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:must|should)\s+not\s+be\s+(?:used|chosen|selected))\b/i.test(suffix);
       const optional = /\b(?:optional|maybe)\s+$/i.test(prefix) ||
         /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(suffix);
