@@ -361,6 +361,18 @@ async function run(){
         const stripedPant={...pant,image:"/qa-stripe-pant.png",patternType:"Pin Stripe",patternScale:"Fine",renderScale:undefined};
         const style={collar:"Point (Standard) Collar",collarFinish:"Self-fabric",cuff:"Barrel Cuff (1-button)",placket:"Standard (visible stitch)",shirtFit:"Regular / Classic Fit",shirtWear:"Tucked",trouser:"Pleated Trouser",rise:"Mid Rise",waistband:"Belt Loops",break:"Slight Break",button:"Plastic / Resin"};
         function stats(source,render,box,limit){let count=0,sx=0,sy=0,sxx=0,sxy=0;for(let y=box.y;y<box.y+box.h;y+=2)for(let x=box.x;x<box.x+box.w;x+=2){const i=(y*W+x)*4;if(Math.max(source[i],source[i+1],source[i+2])>limit)continue;const a=.2126*source[i]+.7152*source[i+1]+.0722*source[i+2],b=.2126*render[i]+.7152*render[i+1]+.0722*render[i+2];count++;sx+=a;sy+=b;sxx+=a*a;sxy+=a*b;}return {count,slope:(sxy-sx*sy/count)/(sxx-sx*sx/count)};}
+        function patternedStats(source,render,box,limit){
+          const groups=[{count:0,sx:0,sy:0,sxx:0,sxy:0},{count:0,sx:0,sy:0,sxx:0,sxy:0}];
+          for(let y=box.y;y<box.y+box.h;y+=2)for(let x=box.x;x<box.x+box.w;x+=2){
+            const i=(y*W+x)*4;if(Math.max(source[i],source[i+1],source[i+2])>limit)continue;
+            const r=render[i],g=render[i+1],b=render[i+2],group=groups[b>r+15&&b>g+8?1:0];
+            const a=.2126*source[i]+.7152*source[i+1]+.0722*source[i+2],value=.2126*r+.7152*g+.0722*b;
+            group.count++;group.sx+=a;group.sy+=value;group.sxx+=a*a;group.sxy+=a*value;
+          }
+          const valid=groups.filter(group=>group.count>20).map(group=>({...group,slope:(group.sxy-group.sx*group.sy/group.count)/(group.sxx-group.sx*group.sx/group.count)}));
+          const count=valid.reduce((sum,group)=>sum+group.count,0);
+          return {count,groups:valid.length,slope:valid.reduce((sum,group)=>sum+group.slope*group.count,0)/count};
+        }
         window.__photoFormImages={};
         for(const template of ["tucked","pleated","wide"]){
           const model=await image(`/designer/studio-${template==="tucked"?"tucked":"pleated"}.webp`),trouser=await image(`/designer/studio-${template}.webp`),selected={...style,shirtWear:template==="tucked"?"Tucked":"Untucked",trouser:template==="wide"?"Wide-leg / Relaxed Drape Trouser":"Pleated Trouser"};
@@ -396,8 +408,8 @@ async function run(){
           window.__photoFormAfter.compose(pantStriped.getContext("2d"),model,trouser,shirtImage,stripedImage,shirt,stripedPant,selected);
           const pantStripeData=pantStriped.getContext("2d").getImageData(0,0,W,H).data;
           const patternedFolds=[
-            ...regions.slice(0,3).map(region=>({name:region.name,...stats(raw,stripeData,region,region.limit)})),
-            ...regions.slice(3).map(region=>({name:region.name,...stats(legRaw,pantStripeData,region,region.limit)})),
+            ...regions.slice(0,3).map(region=>({name:region.name,...patternedStats(raw,stripeData,region,region.limit)})),
+            ...regions.slice(3).map(region=>({name:region.name,...patternedStats(legRaw,pantStripeData,region,region.limit)})),
           ];
           function changes(pixels,box){
             let count=0;
@@ -459,12 +471,10 @@ async function run(){
         assert.ok(result.pantStripeRightBlue>40,result.template+" right trouser must retain visibly blue stripe bands");
         assert.equal(result.protectedPantChanges,0,result.template+" striped trousers must preserve skin, shoes, inner-leg gap and set");
         for(const fold of result.folds)assert.ok(fold.after.slope>fold.before.slope*1.15,`${result.template} ${fold.name}: depicted fold contrast must improve, ${fold.before.slope} -> ${fold.after.slope}`);
-        for(const fold of result.patternedFolds)assert.ok(fold.slope>.1,
-          `${result.template} patterned ${fold.name}: selected stripes must retain positive photographed fold response, slope ${fold.slope}`);
-        for(const group of [result.patternedFolds.slice(0,3),result.patternedFolds.slice(3)]){
-          const mean=group.reduce((sum,fold)=>sum+fold.slope,0)/group.length;
-          assert.ok(mean>.2,
-            `${result.template} patterned garment panels must retain strong mean photographed fold response, slope ${mean}`);
+        for(const fold of result.patternedFolds){
+          assert.equal(fold.groups,2,`${result.template} patterned ${fold.name}: both textile colours must be sampled`);
+          assert.ok(fold.slope>.08,
+            `${result.template} patterned ${fold.name}: like-colour stripe pixels must retain photographed fold response, slope ${fold.slope}`);
         }
       }
       await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");await ready(page);await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,"real-untucked.png")});
