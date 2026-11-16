@@ -739,6 +739,175 @@ def reconcile_conflicting_uv_triangle_by_midpoint(
     }
 
 
+def audit_midpoint_cycle_local_seams(
+        original_faces, face_uv_loops, incident_source_edges,
+        triangle_vertices_by_face, research_triangle_overrides):
+    """Measure every local boundary after a disposable midpoint cycle layout.
+
+    The audit works only on supplied research coordinates.  It neither writes
+    a UV layer nor treats a small residual as closed without the existing
+    one-micrometre numerical threshold.  Incident source edges and each
+    overridden quad's internal split diagonal are reported separately so an
+    overlap improvement cannot conceal newly opened seams.
+    """
+    if (len(original_faces) != len(face_uv_loops)
+            or not isinstance(triangle_vertices_by_face, dict)
+            or not isinstance(research_triangle_overrides, dict)
+            or not research_triangle_overrides):
+        raise ValueError("Local midpoint seam audit needs source faces and overrides.")
+
+    faces, uvs, edge_faces = [], [], defaultdict(list)
+    for face_id, (raw_face, raw_uv) in enumerate(zip(
+            original_faces, face_uv_loops)):
+        if (len(raw_face) != 4 or len(set(raw_face)) != 4
+                or any(type(vertex) is not int or vertex < 0
+                       for vertex in raw_face)
+                or len(raw_uv) != 4):
+            raise ValueError("Local midpoint seam audit requires literal source quads.")
+        face = tuple(raw_face)
+        uv = []
+        for point in raw_uv:
+            if (not hasattr(point, "__len__") or len(point) != 2
+                    or any(isinstance(value, bool)
+                           or not isinstance(value, (int, float))
+                           or not math.isfinite(value) for value in point)):
+                raise ValueError("Local midpoint seam audit requires finite UV loops.")
+            uv.append(tuple(float(value) for value in point))
+        faces.append(face)
+        uvs.append(tuple(uv))
+        for corner in range(4):
+            edge_faces[tuple(sorted((
+                face[corner], face[(corner + 1) % 4]
+            )))].append(face_id)
+
+    normalized_vertices, normalized_overrides = {}, {}
+    for face_id, raw_triangles in research_triangle_overrides.items():
+        if type(face_id) is not int or face_id < 0 or face_id >= len(faces):
+            raise ValueError("Local midpoint override has an invalid source face.")
+        raw_vertices = triangle_vertices_by_face.get(face_id)
+        if (not hasattr(raw_vertices, "__len__") or len(raw_vertices) != 2
+                or not hasattr(raw_triangles, "__len__")
+                or len(raw_triangles) != 2):
+            raise ValueError("Local midpoint override needs two source triangles.")
+        vertex_rows, coordinate_rows = [], []
+        for raw_vertex_row, raw_coordinate_row in zip(
+                raw_vertices, raw_triangles):
+            if (not hasattr(raw_vertex_row, "__len__")
+                    or len(raw_vertex_row) != 3
+                    or len(set(raw_vertex_row)) != 3
+                    or any(type(vertex) is not int
+                           or vertex not in faces[face_id]
+                           for vertex in raw_vertex_row)
+                    or not hasattr(raw_coordinate_row, "__len__")
+                    or len(raw_coordinate_row) != 3):
+                raise ValueError("Local midpoint override triangle provenance is invalid.")
+            coordinates = []
+            for point in raw_coordinate_row:
+                if (not hasattr(point, "__len__") or len(point) != 2
+                        or any(isinstance(value, bool)
+                               or not isinstance(value, (int, float))
+                               or not math.isfinite(value) for value in point)):
+                    raise ValueError("Local midpoint override coordinates are invalid.")
+                coordinates.append(tuple(float(value) for value in point))
+            vertex_rows.append(tuple(raw_vertex_row))
+            coordinate_rows.append(tuple(coordinates))
+        shared = set(vertex_rows[0]) & set(vertex_rows[1])
+        if len(shared) != 2 or set(vertex_rows[0]) | set(vertex_rows[1]) != set(
+                faces[face_id]):
+            raise ValueError("Local midpoint triangles do not reconstruct one source quad.")
+        normalized_vertices[face_id] = tuple(vertex_rows)
+        normalized_overrides[face_id] = tuple(coordinate_rows)
+
+    def owner(face_id, edge):
+        if face_id not in normalized_overrides:
+            return tuple(uvs[face_id][faces[face_id].index(vertex)]
+                         for vertex in edge)
+        matches = []
+        for vertices, coordinates in zip(
+                normalized_vertices[face_id], normalized_overrides[face_id]):
+            if all(vertex in vertices for vertex in edge):
+                matches.append(tuple(
+                    coordinates[vertices.index(vertex)] for vertex in edge
+                ))
+        if len(matches) != 1:
+            raise ValueError("Local midpoint boundary lacks one triangle owner.")
+        return matches[0]
+
+    incident_rows = []
+    seen_edges = set()
+    for raw_edge in incident_source_edges:
+        if (not hasattr(raw_edge, "__len__") or len(raw_edge) != 2
+                or any(type(vertex) is not int or vertex < 0
+                       for vertex in raw_edge)):
+            raise ValueError("Local midpoint incident edge provenance is invalid.")
+        edge = tuple(sorted(raw_edge))
+        if edge[0] == edge[1] or edge in seen_edges or len(
+                edge_faces.get(edge, ())) != 2:
+            raise ValueError("Local midpoint incident edge must be shared and unique.")
+        seen_edges.add(edge)
+        face_a, face_b = edge_faces[edge]
+        owner_a, owner_b = owner(face_a, edge), owner(face_b, edge)
+        endpoint_gaps = [
+            math.dist(owner_a[index], owner_b[index]) * 1000
+            for index in range(2)
+        ]
+        incident_rows.append({
+            "incidentOriginalSourceEdge": list(edge),
+            "ownerOriginalSourceFaceIds": [face_a, face_b],
+            "endpointResidualsMm": [round(value, 8) for value in endpoint_gaps],
+            "maximumEndpointResidualMm": round(max(endpoint_gaps), 8),
+            "closedWithinOneMicrometre": max(endpoint_gaps) <= 0.001,
+        })
+
+    diagonal_rows = []
+    for face_id in sorted(normalized_overrides):
+        vertices = normalized_vertices[face_id]
+        coordinates = normalized_overrides[face_id]
+        diagonal = tuple(sorted(set(vertices[0]) & set(vertices[1])))
+        endpoints = [tuple(
+            coordinates[triangle_id][vertices[triangle_id].index(vertex)]
+            for vertex in diagonal
+        ) for triangle_id in range(2)]
+        gaps = [math.dist(endpoints[0][index], endpoints[1][index]) * 1000
+                for index in range(2)]
+        diagonal_rows.append({
+            "originalSourceFaceId": face_id,
+            "splitDiagonalSourceVertices": list(diagonal),
+            "endpointResidualsMm": [round(value, 8) for value in gaps],
+            "maximumEndpointResidualMm": round(max(gaps), 8),
+            "closedWithinOneMicrometre": max(gaps) <= 0.001,
+        })
+
+    open_incident = sum(not row["closedWithinOneMicrometre"]
+                        for row in incident_rows)
+    open_internal = sum(not row["closedWithinOneMicrometre"]
+                        for row in diagonal_rows)
+    return {
+        "researchOnly": True,
+        "incidentSourceEdgeResidualEvidence": incident_rows,
+        "internalSplitDiagonalResidualEvidence": diagonal_rows,
+        "closedIncidentSourceEdgeCount": len(incident_rows) - open_incident,
+        "openIncidentSourceEdgeCount": open_incident,
+        "closedInternalSplitDiagonalCount": len(diagonal_rows) - open_internal,
+        "openInternalSplitDiagonalCount": open_internal,
+        "totalLocalOpenSeamCount": open_incident + open_internal,
+        "maximumIncidentSourceEdgeResidualMm": round(max(
+            (row["maximumEndpointResidualMm"] for row in incident_rows),
+            default=0.0,
+        ), 8),
+        "maximumInternalSplitDiagonalResidualMm": round(max(
+            (row["maximumEndpointResidualMm"] for row in diagonal_rows),
+            default=0.0,
+        ), 8),
+        "allIncidentAndInternalBoundariesContinuous":
+            open_incident == 0 and open_internal == 0,
+        "storedSourceUvChanged": False,
+        "sourceUvExportOrSavePerformed": False,
+        "physicalUvContinuityApproved": False,
+        "productionApproved": False,
+    }
+
+
 def enumerate_original_source_uv_junction_mixed_triangulations(
         original_faces, face_uv_loops, junction_vertex, incident_source_edges):
     """Exhaust both diagonals on four junction quads with rigid chart graphs.
@@ -955,14 +1124,39 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
                                 face_triangles[triangle_id] = reconciliation[
                                     "reconciled_triangle"
                                 ]
+                                cycle_triangles = {
+                                    cycle_face_id: list(
+                                        original_triangles[cycle_face_id]
+                                    ) for cycle_face_id in target_faces
+                                }
+                                for placed_node, placed_pose in poses.items():
+                                    placed_face_id, placed_triangle_id = placed_node
+                                    cycle_triangles[placed_face_id][placed_triangle_id] = tuple(
+                                        apply(placed_pose, point) for point in
+                                        original_triangles[placed_face_id][placed_triangle_id]
+                                    )
+                                cycle_triangles[face_id][triangle_id] = reconciliation[
+                                    "reconciled_triangle"
+                                ]
+                                cycle_triangles = {
+                                    cycle_face_id: tuple(rows)
+                                    for cycle_face_id, rows in cycle_triangles.items()
+                                }
+                                local_seams = audit_midpoint_cycle_local_seams(
+                                    faces, uvs, edges, triangle_vertices,
+                                    cycle_triangles,
+                                )
                                 conflict_reconciliation_trial = {
                                     "research_triangle_overrides": {
                                         face_id: tuple(face_triangles)
                                     },
+                                    "research_cycle_triangle_overrides":
+                                        cycle_triangles,
                                     "report": {
                                         "targetOriginalSourceVertex": junction_vertex,
                                         "conflictingTriangleNode": list(neighbour),
                                         **reconciliation["report"],
+                                        "localSeamContinuityAudit": local_seams,
                                     },
                                 }
                                 conflict_evidence = {
@@ -1132,6 +1326,18 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
         if trial["report"]["newUnclosedInternalSplitDiagonalCount"]
         == minimum_internal
     )
+    for reconciliation_trial in reconciliation_trials:
+        local_seams = reconciliation_trial["report"][
+            "localSeamContinuityAudit"
+        ]
+        local_seams["explicitRigidCandidateOpenSeamCount"] = minimum_internal
+        local_seams["openSeamCountDeltaVsExplicitRigidCandidate"] = (
+            local_seams["totalLocalOpenSeamCount"] - minimum_internal
+        )
+        local_seams["midpointHasFewerOpenSeamsThanExplicitRigidCandidate"] = (
+            local_seams["totalLocalOpenSeamCount"] < minimum_internal
+        )
+        local_seams["candidateAccepted"] = False
     return {
         "best_candidate_trial": trials[0],
         "candidate_trials": trials,

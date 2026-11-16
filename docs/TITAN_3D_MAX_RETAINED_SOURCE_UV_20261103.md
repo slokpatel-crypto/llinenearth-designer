@@ -1157,3 +1157,35 @@ source cut topology, original crotch/body collision clearance,
 supplier textile repeat and physical tailored fit remain
 unapproved. **No original model/mesh/UV/GLB changes; draft,
 no merge, no deploy, no factory cutting approval.**
+
+## 2026-11-16 midpoint-cycle local seam inventory (pending native evidence)
+
+**Acceptance criterion:** The disposable midpoint reconciliation must account
+for every one of junction 416's four genuine incident source edges and every
+one of the four internal quad split diagonals. It is rejected unless the sum
+of measured open incident and internal boundaries is lower than the explicit
+best rigid candidate's two open internal seams. A lower seam count still does
+not grant physical or production approval.
+
+**Implemented audit:** The inconsistent-cycle research path now materializes
+all eight local triangle coordinates, including the midpoint-reconciled
+conflicting triangle, without writing them to Blender or the source UV layer.
+It measures both endpoint residuals for each of the four incident source edges
+and each internal split diagonal, classifies closure only within the existing
+one-micrometre numerical threshold, and reports separate and total open-seam
+counts. The report compares that total with the exhaustively enumerated rigid
+candidate minimum rather than inferring continuity from the earlier one-witness
+overlap reduction. Pure-Python regression checks the complete 4+4 inventory,
+count reconciliation, rigid-candidate comparison and fail-closed flags; the
+native driver and pinned native workflow independently enforce the same
+invariants on the authentic source scene.
+
+This checkpoint records the code acceptance boundary before exact-head native
+execution. Actual original-source residuals and the pass/fail comparison remain
+pending the pinned Blender workflow. Regardless of that result,
+`physicalUvContinuityApproved=false`, `candidateAccepted=false` and
+`productionApproved=false`; stored source UVs, mesh, GLB and canonical
+`linen-earth-studio-model-v1` identity remain unchanged. Collision/drape,
+four-angle likeness, approved model measurements, supplier textile scale and
+physical fabric/tailor evidence remain required. **DRAFT / NO MERGE / NO
+DEPLOY / NO CUTTING.**

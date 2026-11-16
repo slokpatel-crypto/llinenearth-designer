@@ -1678,6 +1678,32 @@ jobs:
               assert midpoint_trial["physicalUvStrainSolved"] is False
               assert midpoint_trial["physicalUvStrainApproved"] is False
               assert midpoint_trial["productionApproved"] is False
+              midpoint_local=midpoint_trial["localSeamContinuityAudit"]
+              assert len(midpoint_local[
+                  "incidentSourceEdgeResidualEvidence"
+              ]) == 4
+              assert len(midpoint_local[
+                  "internalSplitDiagonalResidualEvidence"
+              ]) == 4
+              assert midpoint_local[
+                  "closedIncidentSourceEdgeCount"
+              ] + midpoint_local["openIncidentSourceEdgeCount"] == 4
+              assert midpoint_local[
+                  "closedInternalSplitDiagonalCount"
+              ] + midpoint_local["openInternalSplitDiagonalCount"] == 4
+              assert midpoint_local["totalLocalOpenSeamCount"] == (
+                  midpoint_local["openIncidentSourceEdgeCount"]
+                  + midpoint_local["openInternalSplitDiagonalCount"]
+              )
+              assert midpoint_local["explicitRigidCandidateOpenSeamCount"] == 2
+              assert midpoint_local[
+                  "openSeamCountDeltaVsExplicitRigidCandidate"
+              ] == midpoint_local["totalLocalOpenSeamCount"] - 2
+              assert midpoint_local[
+                  "physicalUvContinuityApproved"
+              ] is False
+              assert midpoint_local["candidateAccepted"] is False
+              assert midpoint_local["productionApproved"] is False
               assert midpoint_overlap["actualTrianglesInspected"] == 5300
               assert midpoint_overlap["auditTruncated"] is False
               assert midpoint_comparison[

@@ -37,6 +37,9 @@ enumerate_mixed_triangulations = source_graph_module[
 reconcile_midpoint = source_graph_module[
     "reconcile_conflicting_uv_triangle_by_midpoint"
 ]
+audit_midpoint_seams = source_graph_module[
+    "audit_midpoint_cycle_local_seams"
+]
 
 midpoint = reconcile_midpoint(
     ((0, 0), (0.01, 0), (0, 0.01)),
@@ -236,14 +239,39 @@ for conflict, trial in zip(conflicts, midpoint_trials):
     assert reconciliation["mathematicalMidpointReconciliationComputed"] is True
     assert reconciliation["physicalUvStrainSolved"] is False
     assert reconciliation["physicalUvStrainApproved"] is False
-    assert trial["report"] == {
-        "targetOriginalSourceVertex": 1,
-        "conflictingTriangleNode": conflict["conflictingTriangleNode"],
-        **reconciliation,
-    }
+    assert trial["report"]["targetOriginalSourceVertex"] == 1
+    assert trial["report"]["conflictingTriangleNode"] == conflict[
+        "conflictingTriangleNode"
+    ]
+    for key, value in reconciliation.items():
+        assert trial["report"][key] == value
     assert set(trial["research_triangle_overrides"]) == {
         conflict["conflictingTriangleNode"][0]
     }
+    assert set(trial["research_cycle_triangle_overrides"]) == {0, 1, 2, 3}
+    local = trial["report"]["localSeamContinuityAudit"]
+    assert len(local["incidentSourceEdgeResidualEvidence"]) == 4
+    assert len(local["internalSplitDiagonalResidualEvidence"]) == 4
+    assert local["closedIncidentSourceEdgeCount"] + local[
+        "openIncidentSourceEdgeCount"
+    ] == 4
+    assert local["closedInternalSplitDiagonalCount"] + local[
+        "openInternalSplitDiagonalCount"
+    ] == 4
+    assert local["totalLocalOpenSeamCount"] == (
+        local["openIncidentSourceEdgeCount"]
+        + local["openInternalSplitDiagonalCount"]
+    )
+    assert local["explicitRigidCandidateOpenSeamCount"] == mixed_report[
+        "minimumNewUnclosedInternalSplitDiagonalCount"
+    ]
+    assert local["openSeamCountDeltaVsExplicitRigidCandidate"] == (
+        local["totalLocalOpenSeamCount"]
+        - local["explicitRigidCandidateOpenSeamCount"]
+    )
+    assert local["physicalUvContinuityApproved"] is False
+    assert local["candidateAccepted"] is False
+    assert local["productionApproved"] is False
 assert mixed_report["rootAnchorCandidateCount"] == len(
     mixed_search["candidate_trials"]
 )

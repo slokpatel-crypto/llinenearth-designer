@@ -2070,6 +2070,7 @@ def main():
         raise RuntimeError("Expected one authentic inconsistent-cycle midpoint trial.")
     midpoint_trial = midpoint_trials[0]
     midpoint_summary = midpoint_trial["report"]
+    midpoint_local = midpoint_summary["localSeamContinuityAudit"]
     midpoint_overlap = uv_overlap_audit(
         base_faces, packed_weighted["face_uv_loops"],
         research_triangle_overrides=
@@ -2107,6 +2108,24 @@ def main():
             or midpoint_summary["physicalUvStrainSolved"]
             or midpoint_summary["physicalUvStrainApproved"]
             or midpoint_summary["productionApproved"]
+            or len(midpoint_local[
+                "incidentSourceEdgeResidualEvidence"]) != 4
+            or len(midpoint_local[
+                "internalSplitDiagonalResidualEvidence"]) != 4
+            or midpoint_local["closedIncidentSourceEdgeCount"]
+                + midpoint_local["openIncidentSourceEdgeCount"] != 4
+            or midpoint_local["closedInternalSplitDiagonalCount"]
+                + midpoint_local["openInternalSplitDiagonalCount"] != 4
+            or midpoint_local["totalLocalOpenSeamCount"] !=
+                midpoint_local["openIncidentSourceEdgeCount"]
+                + midpoint_local["openInternalSplitDiagonalCount"]
+            or midpoint_local["explicitRigidCandidateOpenSeamCount"] != 2
+            or midpoint_local[
+                "openSeamCountDeltaVsExplicitRigidCandidate"] !=
+                midpoint_local["totalLocalOpenSeamCount"] - 2
+            or midpoint_local["physicalUvContinuityApproved"]
+            or midpoint_local["candidateAccepted"]
+            or midpoint_local["productionApproved"]
             or midpoint_overlap["actualTrianglesInspected"] != 5300
             or midpoint_overlap["auditTruncated"]
             or not midpoint_comparison["bothFullResearchUvScansComplete"]
