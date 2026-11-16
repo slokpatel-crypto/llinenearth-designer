@@ -667,11 +667,14 @@ export function styleDirectorCandidateCollarFinishIssues(
   shirt: Pick<StyleSpecV2["shirt"], "collarFinish">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidateCollarFinishIntent(candidateShirt);
-  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  // An undecided finish choice must not suppress an independently stated
+  // prohibition. The wording gate handles ambiguity; the locked recipe must
+  // still respect explicit exclusions without selecting a new finish.
+  if (intent.requested === null && intent.prohibited.length === 0) return [];
   const lockedFinish = styleDirectorLockedOptionValue(shirt, "collarFinish");
   // Unknown, inherited and unreadable values cannot prove an explicit finish.
   const trusted = candidateFinishChoices.some(option => option === lockedFinish);
-  return !trusted || (intent.requested !== null && intent.requested !== lockedFinish) ||
+  return !trusted || (!intent.ambiguous && intent.requested !== null && intent.requested !== lockedFinish) ||
     intent.prohibited.includes(lockedFinish as CandidateCollarFinish) ? [{
       code: "candidate_collar_finish_mismatch",
       explanation: "The specified collar/contrast finish conflicts with the locked shirt details; verify the separate fabric and cuff placement before cutting.",
