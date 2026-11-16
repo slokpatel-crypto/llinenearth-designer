@@ -4460,3 +4460,24 @@ test("missing versus invalid trouser rise retains independent sleeve and hem con
     assert.equal(JSON.stringify(locked), snapshot);
   }
 });
+
+
+test("short-sleeve garment type and sleeve-end construction are reviewed independently", () => {
+  const valid = spec({
+    type: "short_sleeve_shirt", sleeve: "half_sleeve", cuff: "open_short_hem_cuff",
+  });
+  assert.deepEqual(styleDirectorConstructionIssues(valid), [],
+    "canonical short-sleeve construction must not be rejected");
+
+  for (const sleeve of ["full_sleeve", "roll_up_styled"] as const) {
+    const locked = spec({
+      type: "short_sleeve_shirt", sleeve, cuff: "open_short_hem_cuff",
+    });
+    const before = JSON.stringify(locked);
+    const codes = styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    assert.ok(codes.includes("short_sleeve_type_mismatch"), sleeve);
+    assert.ok(codes.includes("full_sleeve_open_hem_cuff"), sleeve);
+    assert.deepEqual(styleDirectorConstructionIssues(locked).map(issue => issue.code), codes);
+    assert.equal(JSON.stringify(locked), before);
+  }
+});
