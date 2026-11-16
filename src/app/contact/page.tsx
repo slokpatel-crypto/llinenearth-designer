@@ -1,8 +1,7 @@
 import { AppShell } from "@/components/AppShell";
-import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { ContactEnquiryForm } from "@/components/ContactEnquiryForm";
 
 export default function ContactPage() {
-  const whatsappHref = buildWhatsAppUrl({ topic: "Shop visit and tailoring consultation" });
   return (
     <AppShell>
       <section className="businessHero contactHero wrap">
@@ -24,7 +23,7 @@ export default function ContactPage() {
           <span className="micro">FASTEST ENQUIRY</span>
           <h2>Start on WhatsApp.</h2>
           <p>Tell us what you need made and when you plan to wear it. We can prepare the conversation before you visit the shop.</p>
-          <a className="contactWhatsapp" href={whatsappHref} target="_blank" rel="noreferrer">Open WhatsApp <span>→</span></a>
+          <ContactEnquiryForm />
         </article>
       </section>
     </AppShell>
