@@ -4553,3 +4553,18 @@ test("unacceptable wide-leg construction is a prohibition, not a silhouette reco
   assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are acceptable"), "requested");
   assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are not acceptable, but wide-leg pants required"), "ambiguous");
 });
+
+test("ruled-out wide-leg silhouettes are prohibited without rewriting locked construction", () => {
+  for (const phrase of [
+    "Wide-leg trousers are ruled out",
+    "Wide-leg pants ruled out",
+    "Wide-fit trousers are excluded",
+    "Wide-leg trousers are excluded",
+  ]) {
+    assert.equal(styleDirectorCandidateWideLegIntent(phrase), "prohibited", phrase);
+    assert.equal(styleDirectorCandidateWideLeg(phrase), false, phrase);
+    assert.equal(styleDirectorCandidateWideLegIntent(phrase), "prohibited", "repeatable parsing");
+  }
+  assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are included"), "requested");
+  assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are ruled out but wide-leg pants required"), "ambiguous");
+});
