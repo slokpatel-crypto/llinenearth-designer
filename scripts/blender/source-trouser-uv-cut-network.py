@@ -657,6 +657,88 @@ def enumerate_original_source_uv_junction_four_chart_anchor_assignments(
     }
 
 
+def reconcile_conflicting_uv_triangle_by_midpoint(
+        original_triangle, prediction_a, prediction_b):
+    """Reconcile two path predictions with a vertex-wise minimax midpoint.
+
+    The midpoint attains the half-disagreement displacement lower bound for
+    each pair of predicted vertices.  It is deliberately only a local
+    mathematical candidate: edge strain is measured and never approved as
+    physical cloth, a saved UV, or a manufacturable pattern.
+    """
+    rows = []
+    for name, triangle in (("original", original_triangle),
+                           ("predictionA", prediction_a),
+                           ("predictionB", prediction_b)):
+        if not hasattr(triangle, "__len__") or len(triangle) != 3:
+            raise ValueError(f"{name} UV triangle must have three vertices.")
+        row = []
+        for point in triangle:
+            if (not hasattr(point, "__len__") or len(point) != 2
+                    or any(isinstance(value, bool)
+                           or not isinstance(value, (int, float))
+                           or not math.isfinite(value) for value in point)):
+                raise ValueError(f"{name} UV triangle must be finite 2D data.")
+            row.append(tuple(float(value) for value in point))
+        rows.append(tuple(row))
+    original, first, second = rows
+    original_lengths = [
+        math.dist(original[a], original[b])
+        for a, b in ((0, 1), (1, 2), (2, 0))
+    ]
+    if any(length <= 1e-12 for length in original_lengths):
+        raise ValueError("Original UV triangle cannot contain a collapsed edge.")
+    reconciled = tuple(
+        ((point_a[0] + point_b[0]) / 2,
+         (point_a[1] + point_b[1]) / 2)
+        for point_a, point_b in zip(first, second)
+    )
+    reconciled_lengths = [
+        math.dist(reconciled[a], reconciled[b])
+        for a, b in ((0, 1), (1, 2), (2, 0))
+    ]
+    strains = [
+        (after / before - 1.0) * 100.0
+        for before, after in zip(original_lengths, reconciled_lengths)
+    ]
+    half_disagreements = [
+        math.dist(point_a, point_b) / 2
+        for point_a, point_b in zip(first, second)
+    ]
+    return {
+        "reconciled_triangle": reconciled,
+        "report": {
+            "researchOnly": True,
+            "reconciliationMethod": "vertexwise_two_path_midpoint_minimax",
+            "originalTriangleEdgeLengthsMm": [
+                round(value * 1000, 8) for value in original_lengths
+            ],
+            "reconciledTriangleEdgeLengthsMm": [
+                round(value * 1000, 8) for value in reconciled_lengths
+            ],
+            "triangleEdgeLengthStrainPercent": [
+                round(value, 8) for value in strains
+            ],
+            "maximumAbsoluteTriangleEdgeLengthStrainPercent": round(
+                max(abs(value) for value in strains), 8
+            ),
+            "maximumTriangleEdgeLengthChangeMm": round(max(
+                abs(after - before)
+                for before, after in zip(original_lengths, reconciled_lengths)
+            ) * 1000, 8),
+            "maximumPathReconciliationVertexDisplacementMm": round(
+                max(half_disagreements) * 1000, 8
+            ),
+            "mathematicalMidpointReconciliationComputed": True,
+            "storedSourceUvChanged": False,
+            "sourceUvExportOrSavePerformed": False,
+            "physicalUvStrainSolved": False,
+            "physicalUvStrainApproved": False,
+            "productionApproved": False,
+        },
+    }
+
+
 def enumerate_original_source_uv_junction_mixed_triangulations(
         original_faces, face_uv_loops, junction_vertex, incident_source_edges):
     """Exhaust both diagonals on four junction quads with rigid chart graphs.
@@ -762,7 +844,7 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
     baseline_unclosed = sum(
         original_shared_gap(edge) > 0.000001 for edge in shared_edges
     )
-    trials, topology_rows = [], []
+    trials, topology_rows, reconciliation_trials = [], [], []
     for diagonal_choices in product((0, 1), repeat=4):
         choice_by_face = dict(zip(target_faces, diagonal_choices))
         triangle_vertices, original_triangles = {}, {}
@@ -827,6 +909,7 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
         component_variants = []
         consistent = True
         conflict_evidence = None
+        conflict_reconciliation_trial = None
         for component in components:
             variants = []
             for root in component:
@@ -844,13 +927,44 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
                             if (abs(math.remainder(old[0] - candidate[0],
                                                    2 * math.pi)) > 1e-8
                                     or math.dist(old[1:], candidate[1:]) > 1e-8):
+                                source_triangle = original_triangles[
+                                    neighbour[0]
+                                ][neighbour[1]]
+                                first_prediction = tuple(
+                                    apply(old, point) for point in source_triangle
+                                )
+                                second_prediction = tuple(
+                                    apply(candidate, point) for point in source_triangle
+                                )
                                 predicted_displacements = [
-                                    math.dist(apply(old, point), apply(candidate, point))
-                                    for point in original_triangles[
-                                        neighbour[0]
-                                    ][neighbour[1]]
+                                    math.dist(first, second)
+                                    for first, second in zip(
+                                        first_prediction, second_prediction
+                                    )
                                 ]
                                 maximum_disagreement = max(predicted_displacements)
+                                reconciliation = (
+                                    reconcile_conflicting_uv_triangle_by_midpoint(
+                                        source_triangle,
+                                        first_prediction,
+                                        second_prediction,
+                                    )
+                                )
+                                face_id, triangle_id = neighbour
+                                face_triangles = list(original_triangles[face_id])
+                                face_triangles[triangle_id] = reconciliation[
+                                    "reconciled_triangle"
+                                ]
+                                conflict_reconciliation_trial = {
+                                    "research_triangle_overrides": {
+                                        face_id: tuple(face_triangles)
+                                    },
+                                    "report": {
+                                        "targetOriginalSourceVertex": junction_vertex,
+                                        "conflictingTriangleNode": list(neighbour),
+                                        **reconciliation["report"],
+                                    },
+                                }
                                 conflict_evidence = {
                                     "conflictingTriangleNode": list(neighbour),
                                     "cycleClosureRotationDefectDegrees": round(abs(
@@ -872,6 +986,7 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
                                         round(maximum_disagreement * 500, 8),
                                     "lowerBoundDerivation":
                                         "half_maximum_two_path_vertex_disagreement",
+                                    "midpointReconciliation": reconciliation["report"],
                                     "physicalUvStrainSolved": False,
                                     "requiresNonRigidDeformationOrSeam": True,
                                 }
@@ -884,6 +999,9 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
                 break
             component_variants.append(tuple(variants))
         if not consistent:
+            if conflict_reconciliation_trial is None:
+                raise ValueError("Inconsistent UV cycle lacks reconciliation evidence.")
+            reconciliation_trials.append(conflict_reconciliation_trial)
             topology_rows.append({
                 "nonJunctionDiagonalOriginalSourceFaceIds": [
                     face_id for face_id in target_faces
@@ -1017,6 +1135,8 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
     return {
         "best_candidate_trial": trials[0],
         "candidate_trials": trials,
+        "inconsistent_cycle_midpoint_reconciliation_trials":
+            reconciliation_trials,
         "report": {
             "researchOnly": True,
             "targetOriginalSourceVertex": junction_vertex,
@@ -1031,6 +1151,7 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
                 row["cycleClosureConflictEvidence"] for row in topology_rows
                 if not row["transformConsistent"]
             ],
+            "midpointReconciliationTrialCount": len(reconciliation_trials),
             "rootAnchorCandidateCount": len(trials),
             "minimumNewUnclosedInternalSplitDiagonalCount": minimum_internal,
             "minimumCandidateTotalUnclosedUvSeamCountAtMinimumInternal":

@@ -2063,6 +2063,21 @@ def main():
     mixed_conflicts = mixed_search_summary[
         "transformInconsistentCycleClosureEvidence"
     ]
+    midpoint_trials = mixed_search[
+        "inconsistent_cycle_midpoint_reconciliation_trials"
+    ]
+    if len(midpoint_trials) != 1:
+        raise RuntimeError("Expected one authentic inconsistent-cycle midpoint trial.")
+    midpoint_trial = midpoint_trials[0]
+    midpoint_summary = midpoint_trial["report"]
+    midpoint_overlap = uv_overlap_audit(
+        base_faces, packed_weighted["face_uv_loops"],
+        research_triangle_overrides=
+            midpoint_trial["research_triangle_overrides"],
+    )
+    midpoint_comparison = overlap_compare(
+        packed_weighted_overlap, midpoint_overlap
+    )
     mixed_best_overlap = uv_overlap_audit(
         base_faces, packed_weighted["face_uv_loops"],
         research_triangle_overrides=
@@ -2076,10 +2091,27 @@ def main():
             or mixed_search_summary["transformConsistentTriangulationCount"] != 15
             or mixed_search_summary["transformInconsistentTriangulationCount"] != 1
             or len(mixed_conflicts) != 1
+            or mixed_search_summary["midpointReconciliationTrialCount"] != 1
             or mixed_conflicts[0][
                 "cycleClosureMaximumPredictedVertexDisagreementMm"] <= 0
             or mixed_conflicts[0][
                 "minimumMaxPathReconciliationVertexDisplacementLowerBoundMm"] <= 0
+            or midpoint_summary[
+                "maximumPathReconciliationVertexDisplacementMm"] !=
+                mixed_conflicts[0][
+                    "minimumMaxPathReconciliationVertexDisplacementLowerBoundMm"]
+            or midpoint_summary[
+                "maximumAbsoluteTriangleEdgeLengthStrainPercent"] <= 0
+            or not midpoint_summary[
+                "mathematicalMidpointReconciliationComputed"]
+            or midpoint_summary["physicalUvStrainSolved"]
+            or midpoint_summary["physicalUvStrainApproved"]
+            or midpoint_summary["productionApproved"]
+            or midpoint_overlap["actualTrianglesInspected"] != 5300
+            or midpoint_overlap["auditTruncated"]
+            or not midpoint_comparison["bothFullResearchUvScansComplete"]
+            or midpoint_comparison[
+                "candidateObservedTriangleOverlapPairs"] is None
             or mixed_conflicts[0]["physicalUvStrainSolved"]
             or not mixed_conflicts[0]["requiresNonRigidDeformationOrSeam"]
             or mixed_search_summary["rootAnchorCandidateCount"] != 134
@@ -2136,6 +2168,13 @@ def main():
             "trial": mixed_best_summary,
             "candidateResearchUvOverlap": mixed_best_overlap,
             "packedBaselineVsCandidateOverlap": mixed_best_comparison,
+        },
+        "inconsistentCycleMidpointReconciliation": {
+            "trial": midpoint_summary,
+            "candidateResearchUvOverlap": midpoint_overlap,
+            "packedBaselineVsCandidateOverlap": midpoint_comparison,
+            "physicalUvStrainThresholdApproved": False,
+            "candidateAccepted": False,
         },
         "sourceMeshAndBodyBVHUnchanged": True,
         "storedSourceUvChanged": False,

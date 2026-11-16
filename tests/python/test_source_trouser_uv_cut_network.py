@@ -34,6 +34,38 @@ enumerate_four_chart_anchors = source_graph_module[
 enumerate_mixed_triangulations = source_graph_module[
     "enumerate_original_source_uv_junction_mixed_triangulations"
 ]
+reconcile_midpoint = source_graph_module[
+    "reconcile_conflicting_uv_triangle_by_midpoint"
+]
+
+midpoint = reconcile_midpoint(
+    ((0, 0), (0.01, 0), (0, 0.01)),
+    ((0, 0), (0.01, 0), (0, 0.01)),
+    ((0, 0), (0.0102, 0), (0, 0.0098)),
+)
+midpoint_report = midpoint["report"]
+assert midpoint_report["reconciliationMethod"] == (
+    "vertexwise_two_path_midpoint_minimax"
+)
+assert midpoint_report["maximumPathReconciliationVertexDisplacementMm"] == 0.1
+assert midpoint_report["maximumAbsoluteTriangleEdgeLengthStrainPercent"] == 1.0
+assert midpoint_report["mathematicalMidpointReconciliationComputed"] is True
+assert midpoint_report["storedSourceUvChanged"] is False
+assert midpoint_report["physicalUvStrainSolved"] is False
+assert midpoint_report["physicalUvStrainApproved"] is False
+assert midpoint_report["productionApproved"] is False
+for malformed in (
+        (((0, 0), (1, 0)), ((0, 0), (1, 0), (0, 1))),
+        (((0, 0), (0, 0), (0, 1)), ((0, 0), (1, 0), (0, 1))),
+        (((0, 0), (1, 0), (0, 1)), ((0, 0), (True, 0), (0, 1))),
+        (((0, 0), (1, 0), (0, 1)), ((0, 0), (math.inf, 0), (0, 1))),
+):
+    try:
+        reconcile_midpoint(malformed[0], malformed[1], malformed[1])
+    except (ValueError, TypeError):
+        pass
+    else:
+        raise AssertionError("Malformed UV midpoint reconciliation was accepted.")
 
 # Synthetic proper rotation + translation can close equal-length source
 # segments; length disagreement has a provable irreducible residual.
@@ -190,6 +222,28 @@ assert all(row[
 assert all(row["physicalUvStrainSolved"] is False for row in conflicts)
 assert all(row["requiresNonRigidDeformationOrSeam"] is True
            for row in conflicts)
+assert mixed_report["midpointReconciliationTrialCount"] == len(conflicts)
+midpoint_trials = mixed_search[
+    "inconsistent_cycle_midpoint_reconciliation_trials"
+]
+assert len(midpoint_trials) == len(conflicts)
+for conflict, trial in zip(conflicts, midpoint_trials):
+    reconciliation = conflict["midpointReconciliation"]
+    assert reconciliation["maximumPathReconciliationVertexDisplacementMm"] == (
+        conflict["minimumMaxPathReconciliationVertexDisplacementLowerBoundMm"]
+    )
+    assert reconciliation["maximumAbsoluteTriangleEdgeLengthStrainPercent"] > 0
+    assert reconciliation["mathematicalMidpointReconciliationComputed"] is True
+    assert reconciliation["physicalUvStrainSolved"] is False
+    assert reconciliation["physicalUvStrainApproved"] is False
+    assert trial["report"] == {
+        "targetOriginalSourceVertex": 1,
+        "conflictingTriangleNode": conflict["conflictingTriangleNode"],
+        **reconciliation,
+    }
+    assert set(trial["research_triangle_overrides"]) == {
+        conflict["conflictingTriangleNode"][0]
+    }
 assert mixed_report["rootAnchorCandidateCount"] == len(
     mixed_search["candidate_trials"]
 )

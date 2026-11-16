@@ -1643,6 +1643,56 @@ jobs:
               assert mixed_conflicts[0][
                   "requiresNonRigidDeformationOrSeam"
               ] is True
+              midpoint=mixed[
+                  "inconsistentCycleMidpointReconciliation"
+              ]
+              midpoint_trial=midpoint["trial"]
+              midpoint_overlap=midpoint[
+                  "candidateResearchUvOverlap"
+              ]
+              midpoint_comparison=midpoint[
+                  "packedBaselineVsCandidateOverlap"
+              ]
+              assert mixed_search[
+                  "midpointReconciliationTrialCount"
+              ] == 1
+              assert midpoint_trial[
+                  "reconciliationMethod"
+              ] == "vertexwise_two_path_midpoint_minimax"
+              assert midpoint_trial[
+                  "maximumPathReconciliationVertexDisplacementMm"
+              ] == mixed_conflicts[0][
+                  "minimumMaxPathReconciliationVertexDisplacementLowerBoundMm"
+              ]
+              assert midpoint_trial[
+                  "maximumAbsoluteTriangleEdgeLengthStrainPercent"
+              ] > 0
+              assert midpoint_trial[
+                  "maximumTriangleEdgeLengthChangeMm"
+              ] > 0
+              assert midpoint_trial[
+                  "mathematicalMidpointReconciliationComputed"
+              ] is True
+              assert midpoint_trial["storedSourceUvChanged"] is False
+              assert midpoint_trial["sourceUvExportOrSavePerformed"] is False
+              assert midpoint_trial["physicalUvStrainSolved"] is False
+              assert midpoint_trial["physicalUvStrainApproved"] is False
+              assert midpoint_trial["productionApproved"] is False
+              assert midpoint_overlap["actualTrianglesInspected"] == 5300
+              assert midpoint_overlap["auditTruncated"] is False
+              assert midpoint_comparison[
+                  "bothFullResearchUvScansComplete"
+              ] is True
+              assert midpoint_comparison[
+                  "baselineObservedTriangleOverlapPairs"
+              ] == 6957
+              assert type(midpoint_comparison[
+                  "candidateObservedTriangleOverlapPairs"
+              ]) is int
+              assert midpoint[
+                  "physicalUvStrainThresholdApproved"
+              ] is False
+              assert midpoint["candidateAccepted"] is False
               assert mixed_search["rootAnchorCandidateCount"] == 134
               assert mixed_search[
                   "minimumNewUnclosedInternalSplitDiagonalCount"

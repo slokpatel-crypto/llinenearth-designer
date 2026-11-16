@@ -1072,6 +1072,42 @@ unchanged, no fake physical inputs, **draft, no merge/deploy/cutting**.
 New exact-head pinned native source, collision, Full CI and Non-3D
 checks still required before accepting measurements from this change.
 
+## 2026-11-16 constrained midpoint reconciliation of the rigid cycle defect
+
+**Starting evidence:** Exact draft head
+`6609b3e95d61df7062f714907872c802a3fff996` passed Full CI, Non-3D,
+native collision and native source-rejection workflows. Its genuine source
+junction-416 witness measured a 0.50242144mm maximum disagreement between
+two rigid chart paths and a rigorous 0.25121072mm minimum-max reconciliation
+displacement lower bound. That result did not solve a UV strain field.
+
+**Acceptance-driven research slice:** For the one transform-inconsistent
+mixed-triangulation cycle, the auditor now constructs the unique vertex-wise
+midpoint between the two conflicting predicted positions of its authentic
+triangle. This midpoint attains the earlier half-disagreement minimax bound
+for each vertex. It reports all three original/reconciled edge lengths,
+signed edge-length strain percentages, maximum absolute edge strain,
+maximum edge-length change and maximum reconciliation displacement. The
+candidate triangle is then inserted as a disposable single-triangle override
+into the complete 5,300-triangle overlap audit so overlap impact is measured,
+not assumed.
+
+The midpoint calculation rejects malformed, nonfinite or collapsed triangle
+evidence. A synthetic regression independently checks a known 1% strain and
+0.1mm displacement case, invalid inputs, exact equality to the cycle lower
+bound and the unchanged fail-closed flags. Native CI must independently run
+the actual original-source scene and publish the real strain/overlap result.
+
+This is deliberately **not an accepted pattern**: no evidence-backed physical
+strain tolerance exists, `physicalUvStrainSolved=false`,
+`physicalUvStrainApproved=false`, `candidateAccepted=false`, and no source UV,
+mesh, body/BVH, GLB or four-angle asset is written. The exact new head must
+pass focused Python/Node checks, all six repository gates, native Blender
+source/collision workflows, Full CI and Non-3D QA. Supplier fabric repeat,
+physical drape, body/model measurements, tailor/cutting approval, source
+likeness and production acceptance remain blocked. **DRAFT / NO MERGE / NO
+DEPLOY / NO CUTTING.**
+
 ## 2026-11-09 proper rigid rotation+translation of genuine source UV edge (diagnostic)
 
 **Measured preceding Blender evidence:** Source component 1354 contains
