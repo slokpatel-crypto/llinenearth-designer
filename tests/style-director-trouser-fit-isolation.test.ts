@@ -589,3 +589,28 @@ test("serialized locked trouser fits retain canonical IDs and reject explicit nu
     assert.equal(JSON.stringify(replayed), serialized, "construction review mutated locked replay");
   }
 });
+
+test("JSON-replayed malformed fit shapes cannot become cutting-approved IDs", () => {
+  const malformed = [false, 0, 1, [], ["slim_tapered"], { id: "slim_tapered" }, "constructor"];
+  for (const fit of malformed) {
+    const serialized = JSON.stringify({
+      shirt: {
+        type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+        sleeve: "half_sleeve", cuff: "french_double_cuff",
+      },
+      pant: {
+        type: "cropped_ankle", fit, pleat: "flat_front",
+        hem: "plain_hem", break: "stacked_break",
+      },
+    });
+    const replayed = JSON.parse(serialized) as StyleSpecV2;
+    const inspect = () => styleDirectorConstructionIssues(replayed).map(issue => issue.code);
+    const first = inspect();
+    for (const code of [
+      "unknown_versioned_option", "short_sleeve_double_cuff",
+      "cropped_type_hem_mismatch", "cropped_stacked_break",
+    ]) assert.ok(first.includes(code), "replayed malformed fit concealed " + code);
+    assert.deepEqual(inspect(), first);
+    assert.equal(JSON.stringify(replayed), serialized, "review modified persisted design");
+  }
+});
