@@ -1,0 +1,93 @@
+.form {
+  display: grid;
+  gap: 14px;
+  margin-top: 26px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  color: #c6d5e8;
+}
+
+.field > span {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.field em {
+  color: #8fa3b9;
+  font-style: normal;
+}
+
+.field input,
+.field select,
+.field textarea {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(198, 213, 232, 0.3);
+  border-radius: 4px;
+  background: #0b2034;
+  color: #f3f7fb;
+  padding: 13px 12px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 92px;
+}
+
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible,
+.submit:focus-visible {
+  outline: 2px solid #9cc5f2;
+  outline-offset: 2px;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: #90a4b9;
+}
+
+.submit {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 3px;
+  background: #e6eef7;
+  color: #07111d;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.submit:hover {
+  background: #ffffff;
+}
+
+.note {
+  margin: 0;
+  color: #a4b7cd;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .row { grid-template-columns: 1fr; }
+}
