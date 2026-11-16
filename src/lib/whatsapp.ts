@@ -30,7 +30,7 @@ export const WHATSAPP_NUMBER_CONFIGURED = Boolean(WHATSAPP_BUSINESS_NUMBER);
 function enquiryField(value: unknown, maxLength: number): string {
   if (typeof value !== "string") return "";
   const singleLine = value
-    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, " ")
+    .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060\u2066-\u2069\ufeff]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   return Array.from(singleLine).slice(0, maxLength).join("");
