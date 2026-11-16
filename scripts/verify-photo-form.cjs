@@ -55,6 +55,21 @@ async function run(){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     const dark=await page.locator("#designer-shirt option").evaluateAll(options=>options.find(o=>/Black - Jute Feel/.test(o.textContent))?.value);assert.ok(dark);
     await page.locator("#designer-shirt").selectOption(dark);await ready(page);
+    if(width===768){
+      const visibleContacts=await page.locator(".floatingContactDock .floatingContact").evaluateAll(links=>
+        links.filter(link=>{
+          const style=getComputedStyle(link),rect=link.getBoundingClientRect();
+          return style.display!=="none" && style.visibility!=="hidden" && rect.width>0 && rect.height>0;
+        }).map(link=>({name:link.textContent?.trim(),box:(()=>{const r=link.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};})()})));
+      assert.equal(visibleContacts.length,1,"tablet Designer must compact the contact dock to one control");
+      assert.match(visibleContacts[0].name||"",/whatsapp/i);
+      const tabletStage=await page.locator(".newDesignerPhotoStage").boundingBox();
+      const tabletDock=await page.locator(".floatingContactDock").boundingBox();
+      assert.ok(tabletStage && tabletDock && tabletDock.width<=60
+        && tabletDock.x>=tabletStage.x+tabletStage.width*.78,
+        `tablet contact control must stay outside the central full-body model region: ${JSON.stringify({tabletStage,tabletDock})}`);
+      await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,"tablet-contact-dock-clearance-768.png")});
+    }
     // The catalogue's Black - Jute Feel shirt and plain Beige trousers have
     // no recorded visible motif repeat. Verified-repeat language must not
     // appear simply because Solid is marked scale-exempt in the compositor.
@@ -224,6 +239,7 @@ async function run(){
     summary.viewports[summary.viewports.length-1].fabricSummaryReadable=true;
     summary.viewports[summary.viewports.length-1].compactActionsReadable=true;
     summary.viewports[summary.viewports.length-1].tallDesktopActionRowReachable=true;
+    if(width===768)summary.viewports[summary.viewports.length-1].tabletContactDockCompact=true;
     summary.viewports[summary.viewports.length-1].solidScaleClaimTruthful=true;
     summary.viewports[summary.viewports.length-1].solidScaleNoteUnobstructed=true;
     // Exercise the ACTUAL customer controls, not just pure IDs. Advanced v2
