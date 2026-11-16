@@ -90,7 +90,7 @@ test("different positive materials, and requesting a prohibited one, require man
     assert.equal(styleDirectorCandidateButtonIntent(label).ambiguous, true, label);
     assert.equal(styleDirectorCandidateButton(label, photoChoices), null, label);
     assert.deepEqual(wordingCodes(label), ["ambiguous_candidate_button"], label);
-    assert.deepEqual(issueCodes(label, "horn"), [], label);
+    assert.deepEqual(issueCodes(label, "horn"), label === "No Horn Buttons; Horn Buttons" ? ["candidate_button_mismatch"] : [], label);
   }
   const compatible = "No Horn Buttons; Corozo Buttons";
   assert.deepEqual(styleDirectorCandidateButtonIntent(compatible), {
@@ -174,7 +174,7 @@ test("optional or contradictory button material wording preserves frozen selecti
   assert.equal(styleDirectorCandidateButtonIntent(contradictory).ambiguous, true);
   assert.equal(styleDirectorCandidateButton(contradictory, photoChoices), null);
   assert.deepEqual(wordingCodes(contradictory), ["ambiguous_candidate_button"]);
-  assert.deepEqual(styleDirectorCandidateButtonIssues(contradictory, locked), []);
+  assert.deepEqual(styleDirectorCandidateButtonIssues(contradictory, locked).map(issue => issue.code), ["candidate_button_mismatch"]);
   assert.equal(JSON.stringify(locked), before, "review must not mutate locked material");
 });
 
