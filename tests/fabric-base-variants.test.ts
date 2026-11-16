@@ -203,3 +203,19 @@ test("malformed or duplicate identities and competing approvals fail closed",()=
   assert.equal(run([base],[approval(base)],[{...ivory,patternFamily:"pinstripe"}]).variants.length,0);
   assert.equal(run([base],[approval(base)],[{...ivory,photoSha256:"bad"}]).variants.length,0);
 });
+
+test("one colourway can have separate lots without inheriting the first lot's approval",()=>{
+  const nextLot={...ivory,lotId:"roll-99",photoId:"ivory-new-photo",photoSha256:shaB};
+  const result=run([base],[approval(base)],[ivory,nextLot]);
+  assert.equal(result.variants.length,2,"distinct lots of one variant must both survive");
+  assert.deepEqual(result.variants.map(v=>v.identity.lotId),["roll-11","roll-99"]);
+  assert.equal(result.variants[0].physical.gsm.value,160);
+  assert.equal(result.variants[1].physical.gsm.value,null,
+    "new lot must not inherit a receipt scoped to the earlier lot");
+  const explicitlyCovered={...base,scope:{kind:"base",covers:[
+    {variantId:"ivory",lotId:"roll-11"},{variantId:"ivory",lotId:"roll-99"}]}};
+  const approved=run([explicitlyCovered],[approval(explicitlyCovered)],[ivory,nextLot]);
+  assert.deepEqual(approved.variants.map(v=>v.physical.gsm.value),[160,160]);
+  assert.equal(run([base],[approval(base)],[ivory,{...ivory}]).variants.length,0,
+    "duplicate identity pairs must still fail closed");
+});
