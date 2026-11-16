@@ -118,6 +118,28 @@ test("new proposals preserve canonical button material and photographic parity d
   assert.equal(JSON.stringify(saved), before, "review may never rewrite locked button material");
 });
 
+test("modal prohibitions of button materials are binding construction constraints", () => {
+  for (const candidate of [
+    "Must not use Horn Buttons",
+    "Should not choose Horn Buttons",
+    "Cannot wear Horn Buttons",
+    "Can't have Horn Buttons",
+    "Wouldn't use Horn Buttons",
+    "Mustn't add Horn Buttons",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateButtonIntent(candidate), {
+      requested: null, prohibited: ["horn"], ambiguous: false,
+    }, candidate);
+    assert.equal(styleDirectorCandidateButton(candidate, photoChoices), null, candidate);
+    const locked = Object.freeze({ button: "horn" });
+    const before = JSON.stringify(locked);
+    assert.deepEqual(issueCodes(candidate, "horn"), ["candidate_button_mismatch"], candidate);
+    assert.deepEqual(issueCodes(candidate, "corozo"), [], candidate);
+    assert.deepEqual(wordingCodes(candidate), [], candidate);
+    assert.equal(JSON.stringify(locked), before);
+  }
+});
+
 test("postposed button material bans never silently select a material", () => {
   for (const [label, id] of [
     ["Mother-of-Pearl Buttons", "mother_of_pearl"],
