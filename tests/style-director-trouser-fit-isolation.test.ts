@@ -539,7 +539,7 @@ test("prototype property names cannot masquerade as saved trouser-fit IDs", () =
   }
 });
 
-test("missing or null saved trouser fit cannot certify cutting while other conflicts remain visible", () => {
+test("missing fit remains parser-owned while explicit null fails closed without hiding other conflicts", () => {
   for (const fitState of ["absent", "undefined", "null"] as const) {
     const pant: Record<string, unknown> = {
       type: "cropped_ankle", pleat: "flat_front",
@@ -555,9 +555,10 @@ test("missing or null saved trouser fit cannot certify cutting while other confl
     const inspect = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
     const first = inspect();
     for (const code of [
-      "unknown_versioned_option", "short_sleeve_double_cuff",
-      "cropped_type_hem_mismatch", "cropped_stacked_break",
+      "short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break",
     ]) assert.ok(first.includes(code), fitState + " fit concealed " + code);
+    assert.equal(first.includes("unknown_versioned_option"), fitState === "null",
+      "missing fields are parser-owned, but an explicitly null saved fit is invalid");
     assert.deepEqual(inspect(), first);
     assert.equal(Object.hasOwn(pant, "fit"), fitState !== "absent");
     assert.equal(pant.fit, fitState === "null" ? null : undefined);
