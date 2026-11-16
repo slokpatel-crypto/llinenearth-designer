@@ -4507,7 +4507,7 @@ test("short-sleeve type and long-sleeve French cuff conflicts remain independent
 });
 
 test("named high-rise double-pleat trouser keeps independent front and rise review gates", () => {
-  const valid = spec({}, {type: "double_pleat_high_rise", pleat: "double_pleat", rise: "high_rise"});
+  const valid = spec({}, {type: "double_pleat_high_rise", pleat: "double_pleat_forward", rise: "high_rise"});
   const beforeValid = JSON.stringify(valid);
   assert.deepEqual(styleDirectorConstructionIssues(valid).filter(issue =>
     ["double_pleat_type_mismatch", "high_rise_type_mismatch"].includes(issue.code)), []);
