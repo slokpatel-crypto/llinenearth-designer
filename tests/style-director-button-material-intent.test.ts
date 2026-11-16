@@ -277,3 +277,25 @@ test("equivalent button-material synonyms remain selectable and other bans survi
     requested: "horn", prohibited: [], ambiguous: false,
   });
 });
+
+test("undecided button choice never cancels an independent locked-material ban", () => {
+  const candidate = "with or without Horn Buttons; no Corozo Buttons";
+  const intent = styleDirectorCandidateButtonIntent(candidate);
+  assert.deepEqual(intent, {
+    requested: null, prohibited: ["corozo"], ambiguous: true,
+  });
+  assert.equal(styleDirectorCandidateButton(candidate, photoChoices), null);
+  assert.deepEqual(wordingCodes(candidate), ["ambiguous_candidate_button"]);
+  for (const [id, expected] of [
+    ["corozo", ["candidate_button_mismatch"]],
+    ["horn", []],
+    ["plastic_resin", []],
+  ] as const) {
+    const locked = Object.freeze({ button: id });
+    const snapshot = JSON.stringify(locked);
+    const first = styleDirectorCandidateButtonIssues(candidate, locked).map(issue => issue.code);
+    assert.deepEqual(first, expected, id);
+    assert.deepEqual(styleDirectorCandidateButtonIssues(candidate, locked).map(issue => issue.code), first);
+    assert.equal(JSON.stringify(locked), snapshot, "review must not change locked button IDs");
+  }
+});
