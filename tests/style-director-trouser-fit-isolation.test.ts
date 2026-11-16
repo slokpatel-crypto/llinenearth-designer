@@ -614,3 +614,35 @@ test("JSON-replayed malformed fit shapes cannot become cutting-approved IDs", ()
     assert.equal(JSON.stringify(replayed), serialized, "review modified persisted design");
   }
 });
+
+test("alternating invalid and canonical saved fits never leak construction approval across reviews", () => {
+  const shirt = Object.freeze({
+    type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+    sleeve: "half_sleeve", cuff: "french_double_cuff",
+  });
+  const create = (fit: unknown) => Object.freeze({
+    shirt, pant: Object.freeze({
+      type: "cropped_ankle", fit, pleat: "flat_front",
+      hem: "plain_hem", break: "stacked_break",
+    }),
+  }) as unknown as StyleSpecV2;
+  const valid = create("slim_tapered");
+  const invalid = create({ id: "slim_tapered" });
+  const snapshot = [JSON.stringify(valid), JSON.stringify(invalid)];
+  const review = (spec: StyleSpecV2) =>
+    styleDirectorConstructionIssues(spec).map(issue => issue.code);
+  const expectedValid = review(valid);
+  const expectedInvalid = review(invalid);
+  assert.ok(!expectedValid.includes("unknown_versioned_option"));
+  assert.ok(expectedInvalid.includes("unknown_versioned_option"));
+  for (const codes of [expectedValid, expectedInvalid]) {
+    for (const code of [
+      "short_sleeve_double_cuff", "cropped_type_hem_mismatch", "cropped_stacked_break",
+    ]) assert.ok(codes.includes(code), "independent construction conflict disappeared");
+  }
+  for (let iteration = 0; iteration < 4; iteration++) {
+    assert.deepEqual(review(invalid), expectedInvalid);
+    assert.deepEqual(review(valid), expectedValid);
+  }
+  assert.deepEqual([JSON.stringify(valid), JSON.stringify(invalid)], snapshot);
+});
