@@ -59,3 +59,17 @@ test("long or malformed enquiry fields remain bounded and do not break URL encod
   const parsed = new URL(buildWhatsAppUrl({ topic: "Wedding & kurta" }));
   assert.match(parsed.searchParams.get("text") ?? "", /Enquiry: Wedding & kurta/);
 });
+
+test("invisible bidi and zero-width controls cannot spoof WhatsApp enquiry content", () => {
+  const message = buildWhatsAppMessage({
+    customerName: "A\u202eeman\u202c",
+    topic: "Kurta\u2066fake\u2069",
+    garment: "Shi\u200brt",
+    details: "Price\u200f: 0\u2060",
+  });
+  assert.match(message, /Customer: A eman/);
+  assert.match(message, /Enquiry: Kurta fake/);
+  assert.match(message, /Garment: Shi rt/);
+  assert.match(message, /Price : 0/);
+  assert.doesNotMatch(message, /[\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/);
+});
