@@ -4568,3 +4568,26 @@ test("ruled-out wide-leg silhouettes are prohibited without rewriting locked con
   assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are included"), "requested");
   assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are ruled out but wide-leg pants required"), "ambiguous");
 });
+
+test("explicitly disallowed wide-leg cuts never become positive tailoring requests", () => {
+  const forbidden = [
+    "Wide-leg trousers are disallowed",
+    "Wide-leg pants are unacceptable",
+    "Wide-fit trousers are unsuitable",
+  ];
+  for (const phrase of forbidden) {
+    const wide = spec({}, { type: "wide_leg_relaxed_drape" });
+    const ordinary = spec({}, { type: "formal_flat_front" });
+    const snapshot = JSON.stringify(wide);
+    assert.equal(styleDirectorCandidateWideLegIntent(phrase), "prohibited", phrase);
+    assert.equal(styleDirectorCandidateWideLeg(phrase), false, phrase);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(phrase, wide.pant)
+      .map(issue => issue.code), ["candidate_wide_leg_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(phrase, ordinary.pant), [], phrase);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(phrase, wide.pant),
+      styleDirectorCandidateWideLegIssues(phrase, wide.pant), "deterministic review");
+    assert.equal(JSON.stringify(wide), snapshot, "locked option IDs must not be rewritten");
+  }
+  assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are acceptable"), "requested");
+  assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are optional"), null);
+});
