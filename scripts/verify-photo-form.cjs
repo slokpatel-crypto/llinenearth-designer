@@ -395,6 +395,10 @@ async function run(){
           const pantStriped=makeCanvas();
           window.__photoFormAfter.compose(pantStriped.getContext("2d"),model,trouser,shirtImage,stripedImage,shirt,stripedPant,selected);
           const pantStripeData=pantStriped.getContext("2d").getImageData(0,0,W,H).data;
+          const patternedFolds=[
+            ...regions.slice(0,3).map(region=>({name:region.name,...stats(raw,stripeData,region,region.limit)})),
+            ...regions.slice(3).map(region=>({name:region.name,...stats(legRaw,pantStripeData,region,region.limit)})),
+          ];
           function changes(pixels,box){
             let count=0;
             for(let y=box.y;y<box.y+box.h;y+=4)for(let x=box.x;x<box.x+box.w;x+=4){
@@ -434,7 +438,7 @@ async function run(){
           window.__photoFormImages["stripe-"+template]=stripeCanvas.toDataURL("image/png");
           window.__photoFormImages["pant-stripe-"+template]=pantStripeCanvas.toDataURL("image/png");
           window.__photoFormImages[template]=display.toDataURL("image/png");
-          results.push({template,renderMs,folds,protectedChanges,protectedPantChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,pantStripeLeft,pantStripeRight,pantStripeLeftBlue,pantStripeRightBlue});
+          results.push({template,renderMs,folds,patternedFolds,protectedChanges,protectedPantChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,pantStripeLeft,pantStripeRight,pantStripeLeftBlue,pantStripeRightBlue});
         }return results;
       });
       for(const result of summary.forms){
@@ -455,6 +459,8 @@ async function run(){
         assert.ok(result.pantStripeRightBlue>40,result.template+" right trouser must retain visibly blue stripe bands");
         assert.equal(result.protectedPantChanges,0,result.template+" striped trousers must preserve skin, shoes, inner-leg gap and set");
         for(const fold of result.folds)assert.ok(fold.after.slope>fold.before.slope*1.15,`${result.template} ${fold.name}: depicted fold contrast must improve, ${fold.before.slope} -> ${fold.after.slope}`);
+        for(const fold of result.patternedFolds)assert.ok(fold.slope>.24,
+          `${result.template} patterned ${fold.name}: selected stripes must retain photographed fold response, slope ${fold.slope}`);
       }
       await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");await ready(page);await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,"real-untucked.png")});
     }

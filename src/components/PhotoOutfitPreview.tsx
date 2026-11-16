@@ -661,6 +661,7 @@ function drawGarment(
   if (!pattern) throw new Error("Could not prepare the fabric pattern.");
   const visualFallback=patternScaleForFabric(fabric);
   const scale = photoFabricPatternScale(fabricRenderAsset(fabric),visualFallback,placement.photoPxPerMm) * (placement.scale ?? 1);
+  const patterned = fabric.patternType !== "Solid";
   pattern.setTransform(fabricPatternTransform(fabric,placement,scale));
   context.fillStyle = pattern;
   context.fillRect(0, 0, WIDTH, HEIGHT);
@@ -674,6 +675,7 @@ function drawGarment(
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
   context.globalAlpha = .9;
+  if (patterned) context.globalAlpha = 1;
   context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
   // A tiny multiply reinforcement is enough for deep folds because the shape
@@ -681,6 +683,7 @@ function drawGarment(
   // the original navy/beige template cloth back into the selected fabric.
   context.globalCompositeOperation = "multiply";
   context.globalAlpha = .07;
+  if (patterned) context.globalAlpha = .11;
   context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
   // Restore seam, weave, wrinkle and medium-fold contrast only from a
@@ -691,9 +694,11 @@ function drawGarment(
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
   context.globalAlpha = .7;
+  if (patterned) context.globalAlpha = .82;
   context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
   context.globalCompositeOperation = "overlay";
   context.globalAlpha = .14;
+  if (patterned) context.globalAlpha = .18;
   context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
 
   // Put a faint copy of the real textile back above the lighting model. This
@@ -701,7 +706,12 @@ function drawGarment(
   // alone tends to wash the source cloth into a smooth painted surface.
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
-  context.globalAlpha = fabric.patternType === "Solid" ? .12 : .16;
+  // Patterned tiles already carry much stronger local contrast than solids.
+  // Reapplying them too heavily after the photographic relief pass flattens
+  // folds and makes stripes look pasted onto the model. Keep only enough of
+  // this upper pass to protect fine textile edges; the base pattern remains
+  // fully opaque and therefore keeps the selected swatch colours authoritative.
+  context.globalAlpha = patterned ? .08 : .12;
   context.fillStyle = pattern;
   context.fillRect(0, 0, WIDTH, HEIGHT);
 

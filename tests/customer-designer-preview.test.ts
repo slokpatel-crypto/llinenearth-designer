@@ -165,6 +165,8 @@ test("photo compositor restores garment-local colour-neutral photographic relief
   assert.match(source,/const relief = photographicReliefMap\(photo, detailMask\)/);
   assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.7[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/globalCompositeOperation = "overlay"[\s\S]*globalAlpha = \.14[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/if \(patterned\) context\.globalAlpha = \.82/);
+  assert.match(source,/if \(patterned\) context\.globalAlpha = \.18/);
 });
 
 
@@ -178,8 +180,9 @@ test("instant photo compositor normalizes source albedo before borrowing studio 
   assert.match(source,/const lightingMask = photoLightingMask\(mask,path,Boolean\(placement\.maskPrepared\)\)/);
   assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.9[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.07[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/if \(patterned\) context\.globalAlpha = 1/);
+  assert.match(source,/if \(patterned\) context\.globalAlpha = \.11/);
   assert.match(source,/selected Linen Earth cloth/);
-  assert.doesNotMatch(source,/context\.globalAlpha = \.82/);
 
   const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
   assert.match(css,/\.newDesignerPhotoStage\{[^}]*background:#0a1726/);
