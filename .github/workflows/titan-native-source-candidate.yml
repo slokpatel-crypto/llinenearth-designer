@@ -1699,6 +1699,33 @@ jobs:
               assert midpoint_local[
                   "openSeamCountDeltaVsExplicitRigidCandidate"
               ] == midpoint_local["totalLocalOpenSeamCount"] - 2
+              assert midpoint_local["closedIncidentSourceEdgeCount"] == 2
+              assert midpoint_local["openIncidentSourceEdgeCount"] == 2
+              assert midpoint_local["closedInternalSplitDiagonalCount"] == 1
+              assert midpoint_local["openInternalSplitDiagonalCount"] == 3
+              assert midpoint_local["totalLocalOpenSeamCount"] == 5
+              assert midpoint_local[
+                  "openSeamCountDeltaVsExplicitRigidCandidate"
+              ] == 3
+              assert midpoint_local[
+                  "midpointHasFewerOpenSeamsThanExplicitRigidCandidate"
+              ] is False
+              assert midpoint_local[
+                  "maximumIncidentSourceEdgeResidualMm"
+              ] == 0.25121072
+              assert midpoint_local[
+                  "maximumInternalSplitDiagonalResidualMm"
+              ] == 1104.49810864
+              assert [
+                  row["incidentOriginalSourceEdge"] for row in midpoint_local[
+                      "incidentSourceEdgeResidualEvidence"
+                  ] if not row["closedWithinOneMicrometre"]
+              ] == [[416,417],[416,529]]
+              assert [
+                  row["originalSourceFaceId"] for row in midpoint_local[
+                      "internalSplitDiagonalResidualEvidence"
+                  ] if not row["closedWithinOneMicrometre"]
+              ] == [396,471,491]
               assert midpoint_local[
                   "physicalUvContinuityApproved"
               ] is False

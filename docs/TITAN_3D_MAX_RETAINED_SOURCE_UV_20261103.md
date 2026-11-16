@@ -1158,7 +1158,7 @@ supplier textile repeat and physical tailored fit remain
 unapproved. **No original model/mesh/UV/GLB changes; draft,
 no merge, no deploy, no factory cutting approval.**
 
-## 2026-11-16 midpoint-cycle local seam inventory (pending native evidence)
+## 2026-11-16 midpoint-cycle local seam inventory
 
 **Acceptance criterion:** The disposable midpoint reconciliation must account
 for every one of junction 416's four genuine incident source edges and every
@@ -1180,9 +1180,22 @@ count reconciliation, rigid-candidate comparison and fail-closed flags; the
 native driver and pinned native workflow independently enforce the same
 invariants on the authentic source scene.
 
-This checkpoint records the code acceptance boundary before exact-head native
-execution. Actual original-source residuals and the pass/fail comparison remain
-pending the pinned Blender workflow. Regardless of that result,
+**Pinned native result:** Exact-head native Blender run
+[#43864334535](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/43864334535)
+measured two closed and two open incident source edges, plus one closed and
+three open internal split diagonals. The open incident edges are 416–417
+(maximum endpoint residual 0.24916769mm) and 416–529 (0.25121072mm).
+Internal source faces 396, 471 and 491 remain open in this deterministic
+research-chart layout; its maximum internal chart-coordinate separation is
+1,104.49810864mm. That large UV coordinate value is not a measured textile
+dimension or physical garment gap. The midpoint total is therefore **five
+open local boundaries**, three more than the explicit rigid candidate's two;
+`midpointHasFewerOpenSeamsThanExplicitRigidCandidate=false`. The acceptance
+criterion fails and the midpoint candidate remains rejected.
+
+The run's artifact is
+[`titan-native-candidate-evidence` #14225500366](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/43864334535/artifacts/14225500366).
+Regardless of the completed diagnostic,
 `physicalUvContinuityApproved=false`, `candidateAccepted=false` and
 `productionApproved=false`; stored source UVs, mesh, GLB and canonical
 `linen-earth-studio-model-v1` identity remain unchanged. Collision/drape,
