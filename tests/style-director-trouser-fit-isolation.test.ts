@@ -538,3 +538,28 @@ test("prototype property names cannot masquerade as saved trouser-fit IDs", () =
     assert.equal(pant.fit, fit);
   }
 });
+
+test("missing or null saved trouser fit cannot certify cutting while other conflicts remain visible", () => {
+  for (const fitState of ["absent", "undefined", "null"] as const) {
+    const pant: Record<string, unknown> = {
+      type: "cropped_ankle", pleat: "flat_front",
+      hem: "plain_hem", break: "stacked_break",
+    };
+    if (fitState !== "absent") pant.fit = fitState === "null" ? null : undefined;
+    Object.freeze(pant);
+    const shirt = Object.freeze({
+      type: "dress_shirt", collar: "spread_collar", wear: "tucked",
+      sleeve: "half_sleeve", cuff: "french_double_cuff",
+    });
+    const locked = Object.freeze({ shirt, pant }) as unknown as StyleSpecV2;
+    const inspect = () => styleDirectorConstructionIssues(locked).map(issue => issue.code);
+    const first = inspect();
+    for (const code of [
+      "unknown_versioned_option", "short_sleeve_double_cuff",
+      "cropped_type_hem_mismatch", "cropped_stacked_break",
+    ]) assert.ok(first.includes(code), fitState + " fit concealed " + code);
+    assert.deepEqual(inspect(), first);
+    assert.equal(Object.hasOwn(pant, "fit"), fitState !== "absent");
+    assert.equal(pant.fit, undefined === (fitState === "null" ? null : undefined) ? undefined : null);
+  }
+});
