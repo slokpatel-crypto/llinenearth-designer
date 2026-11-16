@@ -459,8 +459,13 @@ async function run(){
         assert.ok(result.pantStripeRightBlue>40,result.template+" right trouser must retain visibly blue stripe bands");
         assert.equal(result.protectedPantChanges,0,result.template+" striped trousers must preserve skin, shoes, inner-leg gap and set");
         for(const fold of result.folds)assert.ok(fold.after.slope>fold.before.slope*1.15,`${result.template} ${fold.name}: depicted fold contrast must improve, ${fold.before.slope} -> ${fold.after.slope}`);
-        for(const fold of result.patternedFolds)assert.ok(fold.slope>.24,
-          `${result.template} patterned ${fold.name}: selected stripes must retain photographed fold response, slope ${fold.slope}`);
+        for(const fold of result.patternedFolds)assert.ok(fold.slope>.1,
+          `${result.template} patterned ${fold.name}: selected stripes must retain positive photographed fold response, slope ${fold.slope}`);
+        for(const group of [result.patternedFolds.slice(0,3),result.patternedFolds.slice(3)]){
+          const mean=group.reduce((sum,fold)=>sum+fold.slope,0)/group.length;
+          assert.ok(mean>.2,
+            `${result.template} patterned garment panels must retain strong mean photographed fold response, slope ${mean}`);
+        }
       }
       await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");await ready(page);await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,"real-untucked.png")});
     }

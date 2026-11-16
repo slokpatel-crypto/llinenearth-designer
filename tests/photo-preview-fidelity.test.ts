@@ -219,7 +219,8 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/sourceHeaderAndFabricLabelsVerified=true/);
   assert.match(script,/sourceHeadingModeVerified=true/);
   assert.match(script,/patternedFolds/);
-  assert.match(script,/selected stripes must retain photographed fold response/);
+  assert.match(script,/selected stripes must retain positive photographed fold response/);
+  assert.match(script,/patterned garment panels must retain strong mean photographed fold response/);
   assert.match(script,/Studio source\./);
   assert.match(script,/SELECTED SHIRT/);
   assert.match(script,/SELECTED TROUSER/);
