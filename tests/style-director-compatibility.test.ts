@@ -4591,3 +4591,26 @@ test("explicitly disallowed wide-leg cuts never become positive tailoring reques
   assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are acceptable"), "requested");
   assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are optional"), null);
 });
+
+test("postposed pocket exclusions reject locked construction without inventing a pocket", () => {
+  const phrases = [
+    "Flap pockets are disallowed",
+    "Flap pocket is unacceptable",
+    "Flap pockets are unsuitable",
+    "Flap pocket is not acceptable",
+    "Flap pocket isn't suitable",
+    "Patch pockets are not suitable",
+  ];
+  for (const phrase of phrases) {
+    const locked = spec({ pocket: /patch/i.test(phrase) ? "single_patch_pocket" : "flap_pocket" });
+    const before = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, locked.shirt).map(issue => issue.code),
+      ["candidate_pocket_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, locked.shirt),
+      styleDirectorCandidatePocketIssues(phrase, locked.shirt), phrase);
+    assert.equal(JSON.stringify(locked), before, phrase);
+    assert.deepEqual(styleDirectorCandidatePocketIssues(phrase, spec({ pocket: "no_pocket" }).shirt), [], phrase);
+  }
+  assert.deepEqual(styleDirectorCandidatePocketIssues("Flap pocket is acceptable",
+    spec({ pocket: "flap_pocket" }).shirt), []);
+});
