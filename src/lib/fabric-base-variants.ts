@@ -156,12 +156,18 @@ export function resolveFabricBaseVariants(input:{baseId:unknown;variants:unknown
   const issues:string[]=[];
   const repeated=new Set<string>(),seen=new Set<string>();
   for(const row of input.variants)if(obj(row)&&id(row.variantId)){
-    if(seen.has(row.variantId))repeated.add(row.variantId);seen.add(row.variantId);
+    // A colour/print variant may have multiple independently traced production lots.
+    // Only the same (variantId, lotId) pair is an ambiguous duplicate.
+    if(id(row.lotId)){
+      const pair=JSON.stringify([row.variantId,row.lotId]);
+      if(seen.has(pair))repeated.add(pair);
+      seen.add(pair);
+    }
   }
   const variants:FabricVariantResolution[]=[];
   for(const row of input.variants){
     const identity=normalizeVariant(row);
-    if(!identity||repeated.has(identity.variantId)){
+    if(!identity||repeated.has(JSON.stringify([identity.variantId,identity.lotId]))){
       issues.push("invalid or duplicate variant identity");continue;
     }
     variants.push({identity,physical:Object.fromEntries(fields.map(f=>[f,empty()])) as Record<FabricPhysicalField,ResolvedFabricClaim>,
