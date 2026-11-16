@@ -4522,3 +4522,19 @@ test("named high-rise double-pleat trouser keeps independent front and rise revi
   assert.deepEqual(actual(), expected, "construction review must be repeatable");
   assert.equal(JSON.stringify(conflicting), before, "locked option IDs must remain untouched");
 });
+
+test("wide-leg exclusion phrasing never becomes an affirmative silhouette request", () => {
+  for (const phrase of [
+    "Wide-leg trousers are not to be used",
+    "Wide-leg pants is not to be selected",
+    "Wide-leg trousers not to be selected",
+    "Wide-leg trousers not to be chosen",
+  ]) {
+    assert.equal(styleDirectorCandidateWideLegIntent(phrase), "prohibited", phrase);
+    assert.equal(styleDirectorCandidateWideLeg(phrase), false, phrase);
+    assert.equal(styleDirectorCandidateWideLegIntent(phrase), "prohibited", "repeatable parsing");
+  }
+  assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers to be selected"), "requested");
+  assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are optional"), null);
+  assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers not to be selected, but wide-leg pants required"), "ambiguous");
+});
