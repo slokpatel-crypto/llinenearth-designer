@@ -106,6 +106,22 @@ class MigrationPreflightTests(unittest.TestCase):
             self.assertEqual({f["kind"] for f in report["findings"]},
                              {"duplicate_version", "legacy_or_invalid_filename"})
 
+    def test_inventory_classifies_invalid_calendar_timestamp_separately(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            (p / "20261101000000_valid.sql").touch()
+            (p / "20260230000000_invalid.sql").touch()
+            output = io.StringIO()
+            with patch("sys.argv", ["check_migration_versions.py", str(p), "--inventory-json"]):
+                with contextlib.redirect_stdout(output):
+                    status = main()
+            report = json.loads(output.getvalue())
+            self.assertEqual(status, 1)
+            self.assertFalse(report["approved"])
+            self.assertEqual(report["finding_count"], 1)
+            self.assertEqual(report["findings"][0]["kind"], "invalid_calendar_timestamp")
+            self.assertIn("20260230000000_invalid.sql", report["findings"][0]["detail"])
+
     def test_inventory_never_claims_approval_even_when_clean(self):
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / "20261101000000_first.sql").touch()
