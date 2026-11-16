@@ -5,6 +5,7 @@ import argparse
 import json
 from collections import defaultdict
 from pathlib import Path
+from datetime import datetime
 import re
 import sys
 
@@ -36,7 +37,13 @@ def inspect_migrations(directory: Path) -> list[str]:
         if match is None:
             errors.append(f"invalid migration filename: {path.name}")
             continue
-        versions[match.group("version")].append(path.name)
+        version = match.group("version")
+        try:
+            datetime.strptime(version, "%Y%m%d%H%M%S")
+        except ValueError:
+            errors.append(f"invalid migration timestamp: {path.name}")
+            continue
+        versions[version].append(path.name)
     for version, names in sorted(versions.items()):
         if len(names) > 1:
             errors.append(f"duplicate migration version {version}: {', '.join(names)}")
