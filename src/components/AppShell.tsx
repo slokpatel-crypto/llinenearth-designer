@@ -12,7 +12,7 @@ const primaryLinks = [
   ["Contact", "/contact"],
 ] as const;
 
-const secondaryLinks: ReadonlyArray<readonly [string,string]> = [];
+const secondaryLinks: ReadonlyArray<readonly [string,string]> = [["Reference Photo Match", "/reference-match"]];
 
 const LEGACY_INSTAGRAM_HANDLE = "l" + "linenearth.india";
 const INSTAGRAM_URL = `https://www.instagram.com/${LEGACY_INSTAGRAM_HANDLE}/`;
