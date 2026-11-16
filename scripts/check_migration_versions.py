@@ -56,7 +56,7 @@ def main() -> int:
     args = parser.parse_args()
     problems = inspect_migrations(args.directory)
     if args.inventory_json:
-        print(json.dumps({"directory": str(args.directory), "approved": False, "findings": [{"kind": ("duplicate_version" if p.startswith("duplicate migration version") else "legacy_or_invalid_filename" if p.startswith("invalid migration filename") else "unsafe_or_missing_entry"), "detail": p} for p in problems], "finding_count": len(problems)}, indent=2, sort_keys=True))
+        print(json.dumps({"directory": str(args.directory), "approved": False, "findings": [{"kind": ("duplicate_version" if p.startswith("duplicate migration version") else "legacy_or_invalid_filename" if p.startswith("invalid migration filename") else "invalid_calendar_timestamp" if p.startswith("invalid migration timestamp") else "unsafe_or_missing_entry"), "detail": p} for p in problems], "finding_count": len(problems)}, indent=2, sort_keys=True))
         return 1 if problems else 0
     for problem in problems:
         print(f"BLOCKED: {problem}", file=sys.stderr)
