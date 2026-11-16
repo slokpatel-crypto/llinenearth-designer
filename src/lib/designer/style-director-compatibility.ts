@@ -775,13 +775,15 @@ export function styleDirectorCandidateButtonIssues(
   shirt: Pick<StyleSpecV2["shirt"], "button">,
 ): DirectorConstructionIssue[] {
   const intent = styleDirectorCandidateButtonIntent(candidateShirt);
-  if (intent.ambiguous || (intent.requested === null && intent.prohibited.length === 0)) return [];
+  // Ambiguous positive choices require wording review, but they must not
+  // suppress an independently explicit ban on a locked button material.
+  if (intent.requested === null && intent.prohibited.length === 0) return [];
   const lockedButton = styleDirectorLockedOptionValue(shirt, "button");
   // A negative instruction cannot approve a stale or unreadable material ID.
   const trusted = typeof lockedButton === "string" &&
     optionsFor("shirt.button").some(option => option.id === lockedButton);
   const invalid = !trusted ||
-    (intent.requested !== null && lockedButton !== intent.requested) ||
+    (!intent.ambiguous && intent.requested !== null && lockedButton !== intent.requested) ||
     intent.prohibited.includes(lockedButton as CandidateButtonId);
   return invalid ? [{
     code: "candidate_button_mismatch",
