@@ -4505,3 +4505,20 @@ test("short-sleeve type and long-sleeve French cuff conflicts remain independent
     assert.equal(JSON.stringify(locked), before, "locked option IDs must not be rewritten");
   }
 });
+
+test("named high-rise double-pleat trouser keeps independent front and rise review gates", () => {
+  const valid = spec({}, {type: "double_pleat_high_rise", pleat: "double_pleat", rise: "high_rise"});
+  const beforeValid = JSON.stringify(valid);
+  assert.deepEqual(styleDirectorConstructionIssues(valid).filter(issue =>
+    ["double_pleat_type_mismatch", "high_rise_type_mismatch"].includes(issue.code)), []);
+  assert.equal(JSON.stringify(valid), beforeValid);
+
+  const conflicting = spec({}, {type: "double_pleat_high_rise", pleat: "flat_front", rise: "mid_rise"});
+  const before = JSON.stringify(conflicting);
+  const expected = ["double_pleat_type_mismatch", "high_rise_type_mismatch"];
+  const actual = () => styleDirectorConstructionIssues(conflicting)
+    .filter(issue => expected.includes(issue.code)).map(issue => issue.code);
+  assert.deepEqual(actual(), expected);
+  assert.deepEqual(actual(), expected, "construction review must be repeatable");
+  assert.equal(JSON.stringify(conflicting), before, "locked option IDs must remain untouched");
+});
