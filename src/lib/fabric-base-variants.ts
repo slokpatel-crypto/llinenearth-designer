@@ -92,7 +92,7 @@ function normalizeClaim(raw:unknown):FabricPhysicalClaim|null {
     const covers:{variantId:string;lotId:string}[]=[];const seen=new Set<string>();
     for(const c of raw.scope.covers){
       if(!obj(c)||!keys(c,["variantId","lotId"])||!id(c.variantId)||!id(c.lotId))return null;
-      const k=c.variantId+":"+c.lotId;
+      const k=JSON.stringify([c.variantId,c.lotId]);
       if(seen.has(k))return null;
       seen.add(k);covers.push({variantId:c.variantId,lotId:c.lotId});
     }
