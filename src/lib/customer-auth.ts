@@ -86,8 +86,9 @@ export async function getCustomerIdentity(request:Request):Promise<CustomerIdent
     headers:{authorization:`Bearer ${token}`},
   });
   // A provider outage is not evidence that a customer signed out.
+  // Rate limiting (429) is temporary unavailability, not a signed-out customer.
   // Keep ordinary 4xx invalid/expired-token responses unauthenticated.
-  if(response.status>=500) throw new Error("Customer identity provider unavailable.");
+  if(response.status===429 || response.status>=500) throw new Error("Customer identity provider unavailable.");
   if(!response.ok) return null;
   const user=await response.json() as {id?:string;email?:string|null};
   if(!user.id) return null;
