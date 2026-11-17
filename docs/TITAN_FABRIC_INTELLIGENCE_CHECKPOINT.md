@@ -170,3 +170,11 @@
 - Test: added a negative/positive regression in `tests/fabric-base-variants.test.ts`. No local Node execution in this GitHub-only run; matching-head CI/Non-3D results must be checked for the final checkpoint SHA, not inferred from earlier green runs.
 - Human/physical blockers: authenticated approval ledger, independently measured fabric and supplier records, tailor/customer/device signoffs all PENDING. No live stock or production mutation.
 - Next slice: run/inspect matching-head CI, resolve failures, then integrate authenticated lot-specific evidence approvals only with disposable DB and access-control tests.
+
+
+## 2026-11-18 — Physical evidence URL credential boundary
+
+- Parent baseline: PR #862 fabric branch prior to commit `8e56f8b621fb2346459f97cec704de4c68500a83`. Source correction: `8e56f8b621fb2346459f97cec704de4c68500a83`; regression: `1f8485f53d109b53d0dcc42b042b650c396fc192`.
+- Criterion: physical supplier evidence source URLs must not contain embedded username/password credentials. Existing HTTPS URLs without userinfo remain accepted; no inventory, source photo, schema or model change.
+- Regression adds user/password, username-only and encoded password cases. Tests and matching-head CI are **PENDING**; code committed is not evidence of passing execution.
+- Physical fabric samples, measured properties, independent owner review and supplier approval remain **PENDING**. Next: inspect exact-head Full CI and Non-3D; resolve failures, then independently review evidence intake before any isolated main merge. No deployment or live migration authorized.
