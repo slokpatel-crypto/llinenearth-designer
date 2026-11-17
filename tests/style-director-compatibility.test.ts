@@ -4764,3 +4764,25 @@ test("discouraged wide-leg silhouettes are exclusions, not positive tailoring in
   assert.equal(styleDirectorCandidateWideLegIntent(
     "Wide-leg trousers are discouraged; wide-leg pants required"), "ambiguous");
 });
+
+test("non-compulsory roll-up sleeves stay neutral without rewriting locked sleeve IDs", () => {
+  for (const phrase of [
+    "Roll-up styled is not compulsory",
+    "Roll-up sleeves aren't compulsory",
+    "Roll-up styled is not necessary",
+    "Roll-up sleeves aren't necessary",
+  ]) {
+    const locked = spec({ sleeve: "roll_up_styled" });
+    const before = JSON.stringify(locked);
+    const intent = styleDirectorCandidateRollUpSleeveIntent(phrase);
+    assert.deepEqual(intent, { requested: false, prohibited: false, ambiguous: false }, phrase);
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(phrase), intent, "repeatable");
+    assert.equal(JSON.stringify(locked), before, "locked sleeve must remain unchanged");
+  }
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(
+    "Roll-up styled isn't compulsory; roll-up styled required"),
+    { requested: true, prohibited: false, ambiguous: false });
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(
+    "Roll-up styled isn't compulsory; no roll-up styled"),
+    { requested: false, prohibited: true, ambiguous: false });
+});
