@@ -50,3 +50,25 @@ test("independent affirmative and modal prohibition remain contradictory", () =>
   assert.deepEqual(intent.prohibited, ["White contrast collar", "White contrast collar + cuffs"]);
   assert.equal(styleDirectorCandidateCollarFinish(name), null);
 });
+
+test("postposed collar-finish rejection adjectives are exclusions, not selections", () => {
+  for (const adjective of ["disallowed", "unacceptable", "unsuitable", "not acceptable", "not suitable"]) {
+    for (const finish of ["White contrast collar", "White contrast collar + cuffs"] as const) {
+      const phrase = `${finish} is ${adjective}`;
+      const intent = styleDirectorCandidateCollarFinishIntent(phrase);
+      const forbidden = finish === "White contrast collar"
+        ? ["White contrast collar", "White contrast collar + cuffs"]
+        : ["White contrast collar + cuffs"];
+      assert.deepEqual(intent, { requested: null, prohibited: forbidden, ambiguous: false }, phrase);
+      assert.equal(styleDirectorCandidateCollarFinish(phrase), null, phrase);
+      assert.deepEqual(styleDirectorCandidateCollarFinishIssues(phrase, { collarFinish: "Self-fabric" }), [], phrase);
+      for (const locked of forbidden) {
+        assert.deepEqual(
+          styleDirectorCandidateCollarFinishIssues(phrase, { collarFinish: locked }).map(issue => issue.code),
+          ["candidate_collar_finish_mismatch"], phrase,
+        );
+      }
+      assert.deepEqual(styleDirectorCandidateCollarFinishIntent(phrase), intent, phrase);
+    }
+  }
+});
