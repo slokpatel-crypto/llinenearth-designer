@@ -94,3 +94,10 @@
 - Independent security review on PR #988 still PENDING; no review approval recorded at inspection. No main merge until matching-head CI and independent approval, exact live main no-deploy guard and isolated ancestry checks.
 - Physical supplier stock, measured fabrics, tailor signoff, customer pilot, device and native model acceptance remain PENDING/BLOCKED. No live mutation, paid AI or deployment.
 - Next 30–40-minute slice: inspect new-head CI and repair any failing built-Next test; obtain independent security approval, then reevaluate guarded isolated main intake.
+
+## 2026-11-18 — repair built-Next legacy compatibility regression execution
+- Parent SHA: `9631d283d95ff96f97f8d83048c73f92c4070a79`; result test-fix commit: `4d6b3c64c3a12c52269acccd25ee73d84eb7bdd0`.
+- Matching-parent [Full CI #44141786434](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44141786434) FAILED in built-Next customer session synthetic HTTP step: `ReferenceError: signedOut is not defined` at script line 49. Cause: compatibility assertions were appended as literal `\\n` text inside a JavaScript comment, so `signedOut` declaration was commented out. [Non-3D #44141786544](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44141786544) SUCCESS; disposable PostgreSQL job SUCCESS. Previous matching-head success does not apply to this new test.
+- Criterion: executable built-Next authenticated legacy session HTTP 200 plus existing 429/503/401 and signed-out cases. Fix changes literal escaped newline sequences to actual source line breaks, so the authenticated assertion executes before the signed-out assertion. This fix is committed but its new-head CI is PENDING; do not claim the regression passed until verified.
+- No production source, migration, stock, deployment, model identity or paid AI changes. Independent security approval PENDING; human/physical fabric, supplier, tailor, customer, device and native 3D acceptance PENDING/BLOCKED.
+- Next: inspect exact-head Full CI and Non-3D; fix any remaining failures, then request independent security review. Main intake remains blocked pending review and final exact-head gates.
