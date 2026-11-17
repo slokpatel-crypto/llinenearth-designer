@@ -62,7 +62,7 @@ export function validateVerifiedPhysicalEvidence(input:VerifiedPhysicalEvidenceI
   if(sourceUrl) {
     try {
       const url=new URL(sourceUrl);
-      if(url.protocol!=="https:" || !url.hostname) throw new Error("Invalid HTTPS URL");
+      if(url.protocol!=="https:" || !url.hostname || url.username || url.password) throw new Error("Invalid HTTPS URL");
     } catch {
       throw new Error("Verified physical evidence source URL must use HTTPS and be a valid URL.");
     }
