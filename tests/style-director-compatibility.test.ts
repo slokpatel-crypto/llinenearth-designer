@@ -4808,3 +4808,27 @@ test("discouraged roll-up sleeves are exclusions rather than positive constructi
     "Roll-up sleeves are discouraged; roll-up styled required"),
     { requested: true, prohibited: true, ambiguous: true });
 });
+
+test("discouraged collar wording excludes only the named construction", () => {
+  for (const wording of [
+    "Camp collar is discouraged",
+    "Camp collar is unsuitable",
+    "Camp collar is unacceptable",
+    "Camp collar discouraged",
+  ]) {
+    const locked = spec({ collar: "cuban_camp_collar" });
+    const before = JSON.stringify(locked);
+    Object.freeze(locked.shirt);
+    const issues = styleDirectorCandidateCollarIssues(wording, locked.shirt);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, spec().shirt), [], wording);
+    assert.equal(styleDirectorCandidateCollar(wording, selectableCollars), null, wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, locked.shirt), issues);
+    assert.equal(JSON.stringify(locked), before);
+  }
+  assert.deepEqual(
+    styleDirectorCandidateCollarIssues("Camp collar is discouraged; spread collar requested", spec().shirt),
+    [],
+    "an independent affirmative construction remains valid",
+  );
+});
