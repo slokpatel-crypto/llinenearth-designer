@@ -15,7 +15,7 @@ async function main() {
     assert.equal(req.url,"/auth/v1/user");
     assert.equal(req.headers.authorization,"Bearer synthetic-legacy-token");
     res.writeHead(upstreamStatus,{"content-type":"application/json"});
-    res.end(JSON.stringify({error:"SYNTHETIC_PRIVATE_PROVIDER_SECRET"}));
+    res.end(JSON.stringify(upstreamStatus===200?{id:"synthetic-customer-123",email:"synthetic@example.invalid"}:{error:"SYNTHETIC_PRIVATE_PROVIDER_SECRET"}));
   });
   const providerPort=await listen(provider);
   const portServer=http.createServer();
@@ -45,11 +45,11 @@ async function main() {
       assert.doesNotMatch(body,/SYNTHETIC_PRIVATE_PROVIDER_SECRET|synthetic-legacy-token/);
       assert.deepEqual(JSON.parse(body),providerCode===401?{customer:null}:{customer:null,error:"Customer session temporarily unavailable."});
     }
-    const signedOut=await fetch(url);
+    // Compatibility: a healthy legacy access-token bridge must still resolve the customer.\n    upstreamStatus=200;\n    const authenticated=await fetch(url,{headers:{cookie:"le_customer_access=synthetic-legacy-token"},cache:"no-store"});\n    assert.equal(authenticated.status,200);\n    assert.match(authenticated.headers.get("cache-control")||"",/private.*no-store/);\n    assert.deepEqual(await authenticated.json(),{customer:{id:"synthetic-customer-123",email:"synthetic@example.invalid"}});\n    const signedOut=await fetch(url);
     assert.equal(signedOut.status,200);
     assert.deepEqual(await signedOut.json(),{customer:null});
     assert.doesNotMatch(output,/SYNTHETIC_PRIVATE_PROVIDER_SECRET|synthetic-legacy-token/);
-    console.log("PASS built-Next customer-session HTTP 429/503/401 and signed-out regression");
+    console.log("PASS built-Next customer-session HTTP 429/503/401, authenticated legacy bridge and signed-out regression");
   }finally{
     child.kill("SIGTERM");
     await Promise.race([new Promise(resolve=>child.once("exit",resolve)),delay(2000)]);
