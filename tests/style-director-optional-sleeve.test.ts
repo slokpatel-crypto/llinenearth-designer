@@ -233,3 +233,26 @@ test("contracted sleeve-length rejections are exclusions, never positive cuts", 
   assert.deepEqual(wordingIssues("Short sleeves aren't recommended; short sleeve shirt"),
     ["ambiguous_candidate_sleeve"]);
 });
+
+test("non-ideal sleeve lengths are exclusions without changing locked constructions", () => {
+  for (const [candidate, forbidden, allowed] of [
+    ["Short sleeves are not ideal", "half_sleeve", "full_sleeve"],
+    ["Half sleeve isn't ideal", "half_sleeve", "roll_up_styled"],
+    ["Long sleeves are not ideal", "full_sleeve", "half_sleeve"],
+    ["Full sleeve isn’t ideal", "roll_up_styled", "half_sleeve"],
+  ] as const) {
+    const locked = Object.freeze({ sleeve: forbidden });
+    const before = JSON.stringify(locked);
+    assert.equal(styleDirectorCandidateSleeve(candidate), null, candidate);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, locked).map(x => x.code),
+      ["candidate_sleeve_mismatch"], candidate);
+    assert.deepEqual(lockedIssues(candidate, allowed), [], candidate);
+    assert.deepEqual(wordingIssues(candidate), [], candidate);
+    assert.equal(JSON.stringify(locked), before);
+  }
+  const independent = "Short sleeves are not ideal; full sleeve shirt";
+  assert.deepEqual(lockedIssues(independent, "full_sleeve"), []);
+  assert.deepEqual(lockedIssues(independent, "half_sleeve"), ["candidate_sleeve_mismatch"]);
+  assert.deepEqual(wordingIssues("Short sleeves are not ideal; short sleeve shirt"),
+    ["ambiguous_candidate_sleeve"]);
+});
