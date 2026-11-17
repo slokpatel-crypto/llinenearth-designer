@@ -256,3 +256,25 @@ test("non-ideal sleeve lengths are exclusions without changing locked constructi
   assert.deepEqual(wordingIssues("Short sleeves are not ideal; short sleeve shirt"),
     ["ambiguous_candidate_sleeve"]);
 });
+
+test("never-recommended sleeve lengths remain exclusions, not affirmative cuts", () => {
+  for (const [candidate, forbidden, permitted] of [
+    ["Short sleeves are never recommended", "half_sleeve", "full_sleeve"],
+    ["Half sleeve never preferred", "half_sleeve", "full_sleeve"],
+    ["Full sleeves are never advisable", "full_sleeve", "half_sleeve"],
+    ["Long sleeves never suitable", "full_sleeve", "half_sleeve"],
+  ] as const) {
+    const locked = Object.freeze({ sleeve: forbidden });
+    assert.equal(styleDirectorCandidateSleeve(candidate), null, candidate);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, locked).map(x => x.code),
+      ["candidate_sleeve_mismatch"], candidate);
+    assert.deepEqual(lockedIssues(candidate, permitted), [], candidate);
+    assert.deepEqual(wordingIssues(candidate), [], candidate);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(candidate, locked).map(x => x.code),
+      ["candidate_sleeve_mismatch"], candidate);
+    assert.equal(locked.sleeve, forbidden);
+  }
+  assert.deepEqual(wordingIssues("Short sleeves never recommended; short sleeve shirt"),
+    ["ambiguous_candidate_sleeve"]);
+  assert.deepEqual(lockedIssues("Short sleeves never recommended; full sleeve shirt", "full_sleeve"), []);
+});
