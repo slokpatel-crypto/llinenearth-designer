@@ -212,3 +212,23 @@ test("cross-family alternatives keep independent bans while synonyms remain supp
   assert.deepEqual(wordingIssues("long or full sleeves"), []);
   assert.deepEqual(lockedIssues("long or full sleeves", "full_sleeve"), []);
 });
+
+test("contracted sleeve-length rejections are exclusions, never positive cuts", () => {
+  for (const length of ["Short sleeves", "Half-sleeve", "Full sleeves", "Long sleeve"]) {
+    const banned = /^(?:Short|Half)/.test(length) ? "half_sleeve" : "full_sleeve";
+    const allowed = banned === "half_sleeve" ? "full_sleeve" : "half_sleeve";
+    for (const phrase of ["aren't recommended", "isn’t preferred", "aren't suitable", "isn’t advisable"]) {
+      const candidate = `${length} ${phrase}`;
+      assert.equal(styleDirectorCandidateSleeve(candidate), null, candidate);
+      assert.deepEqual(lockedIssues(candidate, banned), ["candidate_sleeve_mismatch"], candidate);
+      assert.deepEqual(lockedIssues(candidate, allowed), [], candidate);
+      assert.deepEqual(wordingIssues(candidate), [], candidate);
+    }
+  }
+  const independent = "Short sleeves aren't recommended; full sleeve shirt";
+  assert.equal(styleDirectorCandidateSleeve(independent)?.sleeve, "full_sleeve");
+  assert.deepEqual(lockedIssues(independent, "full_sleeve"), []);
+  assert.deepEqual(lockedIssues(independent, "half_sleeve"), ["candidate_sleeve_mismatch"]);
+  assert.deepEqual(wordingIssues("Short sleeves aren't recommended; short sleeve shirt"),
+    ["ambiguous_candidate_sleeve"]);
+});
