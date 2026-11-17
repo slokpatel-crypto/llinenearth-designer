@@ -78,3 +78,15 @@ test("future-dated inspection receipts fail closed while UTC-plus time zones rem
   assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,evidenceDate:tomorrowUtc})?.evidenceDate,tomorrowUtc,
     "permit current local date in UTC+14 while today's UTC calendar day is earlier");
 });
+
+
+test("physical evidence links reject embedded URL credentials without exposing supplier secrets",()=>{
+  for(const sourceUrl of [
+    "https://user:password@supplier.example/receipt",
+    "https://token@supplier.example/receipt",
+    "https://user:%70ass@supplier.example/receipt",
+  ]){
+    assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,sourceUrl}),null);
+  }
+  assert.equal(normalizeFabricPhysicalEvidenceProvenance({...valid,sourceUrl:"https://supplier.example/receipt"})?.sourceUrl,"https://supplier.example/receipt");
+});
