@@ -57,7 +57,7 @@ export function normalizeFabricPhysicalEvidenceProvenance(value:unknown):FabricP
     try{
       const parsed=new URL(sourceUrl);
       // A supplier verification link must use TLS, matching the evidence intake contract.
-      if(parsed.protocol!=="https:" || !parsed.hostname) return null;
+      if(parsed.protocol!=="https:" || !parsed.hostname || parsed.username || parsed.password) return null;
     }catch{return null;}
   }
 
