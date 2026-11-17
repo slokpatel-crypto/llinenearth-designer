@@ -4786,3 +4786,25 @@ test("non-compulsory roll-up sleeves stay neutral without rewriting locked sleev
     "Roll-up styled isn't compulsory; no roll-up styled"),
     { requested: false, prohibited: true, ambiguous: false });
 });
+
+test("discouraged roll-up sleeves are exclusions rather than positive construction requests", () => {
+  for (const phrase of [
+    "Roll-up sleeves are discouraged",
+    "Roll-up styled is not recommended",
+    "Roll-up sleeves aren't preferred",
+    "Roll-up styled is unacceptable",
+    "Roll-up sleeves are unsuitable",
+  ]) {
+    const locked = Object.freeze(spec({ sleeve: "roll_up_styled" }).shirt);
+    const snapshot = JSON.stringify(locked);
+    const expected = { requested: false, prohibited: true, ambiguous: false };
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(phrase), expected, phrase);
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(phrase), expected, "repeatable");
+    assert.equal(JSON.stringify(locked), snapshot, "preserve canonical sleeve selection");
+  }
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("Roll-up sleeves are recommended"),
+    { requested: true, prohibited: false, ambiguous: false });
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(
+    "Roll-up sleeves are discouraged; roll-up styled required"),
+    { requested: true, prohibited: true, ambiguous: true });
+});
