@@ -4943,3 +4943,24 @@ test("inadvisable roll-up wording excludes the existing sleeve without selecting
     "Roll-up sleeves are not advisable; roll-up styled required"),
     { requested: true, prohibited: true, ambiguous: true });
 });
+
+
+test("roll-up styling not ideal is an exclusion, never a silent sleeve selection", () => {
+  const locked = Object.freeze(spec({ sleeve: "full_sleeve" }));
+  const snapshot = JSON.stringify(locked);
+  for (const phrase of [
+    "Roll-up sleeves are not ideal",
+    "Roll-up styled isn't ideal",
+    "Roll-up sleeves aren’t ideal",
+  ]) {
+    const expected = { requested: false, prohibited: true, ambiguous: false };
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(phrase), expected);
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(phrase), expected);
+    assert.equal(JSON.stringify(locked), snapshot);
+  }
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("Roll-up sleeves are ideal"),
+    { requested: true, prohibited: false, ambiguous: false });
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(
+    "Roll-up sleeves are not ideal; roll-up styled required"),
+    { requested: true, prohibited: true, ambiguous: true });
+});
