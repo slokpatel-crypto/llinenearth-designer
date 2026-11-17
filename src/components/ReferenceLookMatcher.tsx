@@ -6,6 +6,8 @@ import { DESIGNER_SHIRTS, DESIGNER_PANTS, type DesignerFabric } from "@/lib/desi
 import {
   rankReferenceSwatches,
   sampleReferencePatch,
+  withReferenceTargetSample,
+  type ReferenceSamples,
   type Rgb,
 } from "@/lib/designer/reference-look-matcher";
 import styles from "./ReferenceLookMatcher.module.css";
@@ -19,18 +21,19 @@ export function ReferenceLookMatcher() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestId = useRef(0);
   const [garment, setGarment] = useState<Garment>("shirt");
-  const [sample, setSample] = useState<Rgb | null>(null);
+  const [samples, setSamples] = useState<ReferenceSamples>({ shirt: null, pant: null });
   const [imageReady, setImageReady] = useState(false);
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
   const fabrics: DesignerFabric[] = garment === "shirt" ? DESIGNER_SHIRTS : DESIGNER_PANTS;
+  const sample = samples[garment];
   const matches = sample ? rankReferenceSwatches(sample, fabrics, 6) : [];
   const sampleHex = sample ? "#" + sample.map((part) => part.toString(16).padStart(2, "0")).join("") : null;
 
   function chooseFile(file?: File) {
     const thisRequest = ++requestId.current;
     setError("");
-    setSample(null);
+    setSamples({ shirt: null, pant: null });
     setImageReady(false);
     setFileName("");
     if (!file) return;
@@ -83,14 +86,14 @@ export function ReferenceLookMatcher() {
       setError("Tap an opaque garment area in the photo.");
       return;
     }
-    setSample(sampled);
+    setSamples((previous) => withReferenceTargetSample(previous, garment, sampled));
     setError("");
   }
 
   return (
     <div className={styles.workflow}>
       <section className={styles.photoPanel}>
-        <div className={styles.panelHeading}><span>01 / YOUR REFERENCE</span><h2>Tap the colour you want to match.</h2></div>
+        <div className={styles.panelHeading}><span>01 / YOUR REFERENCE</span><h2>Sample shirt and trouser colours separately.</h2></div>
         <label className={styles.upload}>
           <span>Choose a reference photo</span>
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => chooseFile(event.target.files?.[0])} />
@@ -112,16 +115,23 @@ export function ReferenceLookMatcher() {
       </section>
 
       <section className={styles.matchesPanel} aria-live="polite">
-        <div className={styles.panelHeading}><span>02 / LINEN EARTH FABRICS</span><h2>Closest catalogue colours.</h2></div>
+        <div className={styles.panelHeading}><span>02 / LINEN EARTH FABRICS</span><h2>Closest colours for each garment.</h2></div>
         <div className={styles.switches} role="group" aria-label="Choose garment fabric category">
-          <button type="button" aria-pressed={garment === "shirt"} onClick={() => setGarment("shirt")}>Shirt fabrics</button>
-          <button type="button" aria-pressed={garment === "pant"} onClick={() => setGarment("pant")}>Trouser fabrics</button>
+          <button type="button" aria-pressed={garment === "shirt"} onClick={() => setGarment("shirt")}>Shirt fabrics{samples.shirt ? " · sampled" : ""}</button>
+          <button type="button" aria-pressed={garment === "pant"} onClick={() => setGarment("pant")}>Trouser fabrics{samples.pant ? " · sampled" : ""}</button>
         </div>
+        <p className={styles.sampleStatus} role="status">
+          Shirt: {samples.shirt ? "colour selected" : "not sampled"} · Trouser: {samples.pant ? "colour selected" : "not sampled"}
+        </p>
         {sample && sampleHex ? (
           <>
             <div className={styles.sampled}>
               <span className={styles.sampleSwatch} style={{ backgroundColor: sampleHex }} />
-              <div><strong>Sampled photo colour</strong><small>{sampleHex.toUpperCase()} · approximate on-screen sample</small></div>
+              <div><strong>{garment === "shirt" ? "Shirt" : "Trouser"} photo colour</strong><small>{sampleHex.toUpperCase()} · approximate on-screen sample</small></div>
+              <button type="button" className={styles.clearButton}
+                onClick={() => setSamples((previous) => withReferenceTargetSample(previous, garment, null))}>
+                Clear
+              </button>
             </div>
             <div className={styles.matchList}>
               {matches.map(({ fabric }) => (
@@ -139,13 +149,13 @@ export function ReferenceLookMatcher() {
               ))}
               {matches.length === 0 && <p>No catalogue swatches have usable colour data in this category.</p>}
             </div>
-            <p className={styles.disclaimer}>This matches a selected photo colour to approximate catalogue swatch colours. Lighting and screens change colour. It does not identify fabric weave, verify stock, infer the garment cut, or approve a fit.</p>
+            <p className={styles.disclaimer}>Shirt and trouser selections remain separate. This compares photo colours to approximate catalogue swatch colours. Lighting and screens change colour. It does not identify fabric weave, verify stock, infer the garment cut, or approve a fit.</p>
             <Link className={styles.continue} href="/designer-studio">Open Designer to choose fabric and customize <span aria-hidden="true">↗</span></Link>
           </>
         ) : (
           <div className={styles.instructions}>
-            <b>To see suggestions</b>
-            <p>Upload a picture, then tap the shirt, trouser or jacket area whose colour you like. Select which fabric category to search.</p>
+            <b>{garment === "shirt" ? "Choose the shirt colour" : "Choose the trouser colour"}</b>
+            <p>Upload a photo, select the shirt or trouser category, then tap that garment area. The other garment's colour stays separate when you switch categories.</p>
           </div>
         )}
       </section>
