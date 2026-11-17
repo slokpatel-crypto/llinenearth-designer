@@ -219,3 +219,24 @@ test("one colourway can have separate lots without inheriting the first lot's ap
   assert.equal(run([base],[approval(base)],[ivory,{...ivory}]).variants.length,0,
     "duplicate identity pairs must still fail closed");
 });
+
+
+test("lot coverage identity tuples do not collide when IDs contain colons",()=>{
+  const first={...ivory,variantId:"a:b",lotId:"c"};
+  const second={...stripe,variantId:"a",lotId:"b:c"};
+  const claim={...base,scope:{kind:"base",covers:[
+    {variantId:first.variantId,lotId:first.lotId},
+    {variantId:second.variantId,lotId:second.lotId},
+  ]}};
+  assert.notEqual(snapshotFabricPhysicalClaim(claim),null,
+    "two distinct (variantId, lotId) tuples must be valid even with colons");
+  const result=run([claim],[approval(claim)],[first,second]);
+  assert.equal(result.variants.length,2);
+  assert.deepEqual(result.variants.map(v=>v.physical.gsm.value),[160,160]);
+  const duplicate={...claim,scope:{kind:"base",covers:[
+    {variantId:first.variantId,lotId:first.lotId},
+    {variantId:first.variantId,lotId:first.lotId},
+  ]}};
+  assert.equal(snapshotFabricPhysicalClaim(duplicate),null,
+    "actual duplicate tuple coverage must still fail closed");
+});
