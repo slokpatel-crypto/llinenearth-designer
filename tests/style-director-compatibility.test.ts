@@ -4876,3 +4876,49 @@ test("inadvisable collar wording forbids the named locked construction without i
     "separate affirmative collar remains independently actionable",
   );
 });
+
+test("discouraged trouser fits remain exclusions, not affirmative cutting instructions", () => {
+  for (const phrase of [
+    "Slim tapered fit is discouraged",
+    "Slim tapered fit is not advisable",
+    "Slim tapered fit isn't recommended",
+    "Slim tapered fit is unsuitable",
+    "Slim tapered fit is unacceptable",
+  ]) {
+    const intent = styleDirectorCandidateTrouserFitIntent(phrase);
+    assert.equal(intent.requested, null, phrase);
+    assert.deepEqual(intent.prohibited, ["slim_tapered"], phrase);
+    assert.equal(intent.ambiguous, false, phrase);
+    assert.equal(styleDirectorCandidateTrouserFit(phrase), null, phrase);
+    const locked = { fit: "slim_tapered" };
+    const before = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidateTrouserFitIssues(phrase, locked).map(x => x.code),
+      ["candidate_trouser_fit_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidateTrouserFitIntent(phrase), intent, "deterministic");
+    assert.equal(JSON.stringify(locked), before, "locked option remains unchanged");
+    assert.deepEqual(styleDirectorCandidateTrouserFitIssues(phrase, { fit: "straight_classic" }), [],
+      "an unrelated valid fit is not prohibited");
+  }
+  const requested = styleDirectorCandidateTrouserFitIntent("Slim tapered fit with pleated front");
+  assert.equal(requested.requested, "slim_tapered");
+  assert.deepEqual(requested.prohibited, []);
+  const contradictory = styleDirectorCandidateTrouserFitIntent(
+    "Slim tapered fit is discouraged, but choose slim tapered fit");
+  assert.equal(contradictory.ambiguous, true, "contradictory construction must not auto-select");
+});
+
+test("non-compulsory trouser fit wording is neutral for all locked fit IDs", () => {
+  for (const phrase of [
+    "Slim tapered fit is not compulsory",
+    "Slim tapered fit isn't compulsory",
+    "Slim tapered fit is not necessary",
+    "Slim tapered fit is not required",
+  ]) {
+    const intent = styleDirectorCandidateTrouserFitIntent(phrase);
+    assert.deepEqual(intent, { requested: null, prohibited: [], ambiguous: false }, phrase);
+    assert.equal(styleDirectorCandidateTrouserFit(phrase), null);
+    for (const fit of ["slim_tapered", "straight_classic"]) {
+      assert.deepEqual(styleDirectorCandidateTrouserFitIssues(phrase, { fit }), [], phrase);
+    }
+  }
+});
