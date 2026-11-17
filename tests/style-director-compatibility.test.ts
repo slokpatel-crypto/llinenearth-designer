@@ -1331,6 +1331,27 @@ test("negative optional and contradictory shirt-fit wording must fail closed", (
   assert.ok(agent.includes("...styleDirectorCandidateShirtFitIssues(candidate.garments.shirt, styleSpec.shirt)"));
 });
 
+test("unnecessary collar wording stays neutral without silently selecting a locked construction", () => {
+  const neutral = [
+    "Spread Collar is not necessary",
+    "Spread Collar isn't necessary",
+    "Button-Down Collar is not necessary",
+    "Button-Down Collar isn't necessary",
+    "Camp Collar is not necessary",
+    "Camp Collar isn't necessary",
+  ];
+  for (const name of neutral) {
+    assert.equal(styleDirectorCandidateOrdinaryCollar(name), null, name);
+    assert.equal(styleDirectorCandidateVariantCollar(name), null, name);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(name),
+      styleDirectorCandidateOrdinaryCollar(name), "resolution must be repeatable");
+  }
+  assert.equal(styleDirectorCandidateOrdinaryCollar(
+    "Spread Collar is not necessary; choose Button-Down Collar"), "button_down");
+  assert.equal(styleDirectorCandidateOrdinaryCollar(
+    "Button-Down Collar isn't necessary; choose Spread Collar"), "spread");
+});
+
 test("ordinary collar resolver rejects incidental words and contradictory constructions", () => {
   const yes = [
     ["Spread-Collar Dress Shirt", "spread"],
