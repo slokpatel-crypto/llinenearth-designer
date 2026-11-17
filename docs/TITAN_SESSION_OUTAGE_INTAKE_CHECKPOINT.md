@@ -44,3 +44,12 @@
 - Blockers: built-Next HTTP provider 503/429/401 negative integration and independent security approval still missing; physical fabric/stock, tailor, customer, device and native evidence PENDING/BLOCKED. Main no-deploy guard verified at inspection but must be rechecked before merge.
 - Next 30–40-minute slice: inspect exact new-head CI, add/run built-Next HTTP identity-provider integration for 429/503 versus 401 and independently review the isolated diff. Do not merge before all intake gates pass.
 - No main merge, deployment, paid AI or live database/stock mutation.
+
+## 2026-11-17 — provider-bridge and session-handler integration regression
+- Parent exact SHA: `8ff21615c1ad4e62d99a69de366907111bc62df3`; test implementation `71aadb152acb842ba3cf4f3b27815748767a7f02`; assertion correction `0b805920a47cfd3e569544748439d416fc764c05`.
+- Criterion: actual `getCustomerIdentity` and actual session GET handler must jointly distinguish upstream Supabase HTTP 429/503 (route 503) from 401 (route 200 signed-out), preserving private no-store and redacted provider response.
+- Added `tests/customer-session-provider-bridge.test.ts`, using controlled fetch and transpiled modules. This is in-process provider/handler integration, **not** a built Next server HTTP test. Test not executed locally; matching-head CI for implementation SHA was not returned at inspection, therefore new acceptance remains PENDING.
+- Prior exact head `8ff21615c1ad4e62d99a69de366907111bc62df3`: Full CI [44077358492](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44077358492) SUCCESS; Non-3D QA [44077358473](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44077358473) SUCCESS. These runs do not certify the new test commits.
+- Blockers: matching-head CI, built-Next network HTTP test, independent security approval and live-main no-deploy guard recheck before any main integration. Physical stock/supplier, tailor, customer/device and native gates remain PENDING/BLOCKED.
+- Next small slice: inspect new-head CI, repair any failures, then implement actual built-Next HTTP test if executable runner permits; do not merge or deploy without all intake gates.
+- No main merge, deployment, paid AI, live migration or stock mutation.
