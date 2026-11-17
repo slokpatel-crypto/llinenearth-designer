@@ -178,3 +178,12 @@
 - Criterion: physical supplier evidence source URLs must not contain embedded username/password credentials. Existing HTTPS URLs without userinfo remain accepted; no inventory, source photo, schema or model change.
 - Regression adds user/password, username-only and encoded password cases. Tests and matching-head CI are **PENDING**; code committed is not evidence of passing execution.
 - Physical fabric samples, measured properties, independent owner review and supplier approval remain **PENDING**. Next: inspect exact-head Full CI and Non-3D; resolve failures, then independently review evidence intake before any isolated main merge. No deployment or live migration authorized.
+
+## 2026-11-18 — Align physical intake URL credentials with supplier provenance
+
+- Parent: `697b1707b5bc503a15a3ea9a3b82656d7dc44e2d`; matching-head CI #44194118304 and Non-3D QA #44194118345 both completed successfully at that parent.
+- Source: `4cfe4c30180c51e3eacf207f3c8377158858b550`; regression: `02aa1ccf0f41d83327a3dd8840f781926a166bac`.
+- Criterion: physical intake `validateVerifiedPhysicalEvidence` must reject HTTPS source URLs with embedded username/password, matching the separately hardened `normalizeFabricPhysicalEvidenceProvenance` path. Previously the intake path accepted them, creating an inconsistent supplier-evidence boundary.
+- Regression: new Node test rejects username/password, username-only and percent-encoded password; accepts an ordinary credential-free HTTPS reference. No schema, stock, customer auth, UI, paid AI or model changes.
+- Evidence: code and regression committed; **matching-head CI/Non-3D and local Node execution are not yet verified** at the new commit. Check new-head workflow outcomes and fix any failure before considering integration. Independent reviewer, authenticated approval ledger and real measured supplier/lot evidence remain PENDING/BLOCKED. No main merge, deployment or live database change.
+- Next slice: inspect exact-head Full CI and Non-3D, then rotate to independently verifiable customer ownership or tailor handoff work rather than adding further speculative fabric guards.
