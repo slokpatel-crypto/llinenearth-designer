@@ -75,3 +75,18 @@ test("malformed JSON text fields cannot become supplier proof",()=>{
     verifiedFiberContent:"100% linen",verifiedPhysicalEvidenceNote:"Physical inspector reviewed this roll.",
   }));
 });
+
+test("physical intake rejects credential-bearing HTTPS evidence links",()=>{
+  for(const source of [
+    "https://supplier:password@example.com/lot",
+    "https://supplier@example.com/lot",
+    "https://supplier:p%40ssword@example.com/lot",
+  ]){
+    assert.throws(()=>validateVerifiedPhysicalEvidence({
+      verifiedGsm:145,verifiedPhysicalSourceUrl:source,
+    }),/valid URL/i,source);
+  }
+  assert.doesNotThrow(()=>validateVerifiedPhysicalEvidence({
+    verifiedGsm:145,verifiedPhysicalSourceUrl:"https://supplier.example/lot?ref=123",
+  }));
+});
