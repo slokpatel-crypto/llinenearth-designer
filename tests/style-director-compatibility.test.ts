@@ -4922,3 +4922,24 @@ test("non-compulsory trouser fit wording is neutral for all locked fit IDs", () 
     }
   }
 });
+
+test("inadvisable roll-up wording excludes the existing sleeve without selecting a replacement", () => {
+  for (const phrase of [
+    "Roll-up sleeves are not advisable",
+    "Roll-up styled isn't advisable",
+    "Roll-up sleeves aren't advisable",
+    "Roll-up styled not advisable",
+  ]) {
+    const locked = Object.freeze(spec({ sleeve: "roll_up_styled" }).shirt);
+    const before = JSON.stringify(locked);
+    const expected = { requested: false, prohibited: true, ambiguous: false };
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(phrase), expected, phrase);
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(phrase), expected, "repeatable");
+    assert.equal(JSON.stringify(locked), before, "locked option remains unchanged");
+  }
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("Roll-up sleeves are advisable"),
+    { requested: true, prohibited: false, ambiguous: false });
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(
+    "Roll-up sleeves are not advisable; roll-up styled required"),
+    { requested: true, prohibited: true, ambiguous: true });
+});
