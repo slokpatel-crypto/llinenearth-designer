@@ -41,6 +41,8 @@ jobs:
           path: artifacts/fabric-calibration-worksheet.csv
           retention-days: 14
       - run: npm run build
+      - name: Verify built-Next customer session provider outage HTTP boundary (synthetic)
+        run: node scripts/verify-customer-session-built-http.cjs
       - name: Verify private operator production HTTP transport (synthetic)
         run: node scripts/verify-operator-private-transport-http.cjs
       - name: Verify private stock ledger HTTP response and creation IDs (synthetic)
