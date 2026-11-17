@@ -19,6 +19,7 @@ import {
   styleDirectorCandidateTrouserFit,
   styleDirectorCandidateTrouserFitIssues,
   styleDirectorCandidateOrdinaryCollar,
+  styleDirectorCandidateVariantCollar,
   styleDirectorCandidateSleeve,
   styleDirectorCandidateRollUpSleeveIntent,
   styleDirectorCandidateSleeveIssues,
