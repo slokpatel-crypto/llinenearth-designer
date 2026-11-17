@@ -4708,3 +4708,27 @@ test("non-compulsory wide-leg wording remains neutral while independent instruct
   assert.equal(styleDirectorCandidateWideLegIntent(
     "Wide-leg trousers requested; wide-leg trousers are not allowed"), "ambiguous");
 });
+
+test("unnecessary and non-compulsory collar language remains neutral without altering locked options", () => {
+  for (const phrase of [
+    "Camp collar is unnecessary",
+    "Camp collar is not compulsory",
+    "Camp collar isn't compulsory",
+    "Camp collar isn't necessary",
+  ]) {
+    const locked = spec({ collar: "cuban_camp_collar" });
+    const before = JSON.stringify(locked);
+    assert.equal(styleDirectorCandidateCollar(phrase, []), null, phrase);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(phrase, locked.shirt), [], phrase);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(phrase, locked.shirt), [], "repeatable");
+    assert.equal(JSON.stringify(locked), before, "locked collar must remain unchanged");
+  }
+  assert.equal(styleDirectorCandidateCollar(
+    "Camp collar is unnecessary; spread collar requested", []), null,
+    "ordinary collar must not be replaced by an optional camp collar");
+  assert.equal(styleDirectorCandidateOrdinaryCollar(
+    "Camp collar is unnecessary; spread collar requested"), "spread");
+  assert.equal(styleDirectorCandidateCollar(
+    "Camp collar is unnecessary; camp collar required", [])?.versioned,
+    "cuban_camp_collar", "independent affirmative request must prevail");
+});
