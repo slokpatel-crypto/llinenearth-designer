@@ -38,9 +38,15 @@ async function run() {
       await page.getByText("#1E3C78", { exact: false }).waitFor();
       const shirts = await page.locator("article").count();
       assert.ok(shirts > 0 && shirts <= 6, "real catalogue shirt candidates exist");
-      await page.getByRole("button", { name: "Trouser fabrics" }).click();
+      await page.getByRole("button", { name: /Trouser fabrics/ }).click();
+      assert.equal(await page.locator("article").count(), 0, "a shirt sample cannot silently act as a trouser sample");
+      await photo.click({ position: { x: size.width / 2, y: size.height / 2 } });
       const trousers = await page.locator("article").count();
-      assert.ok(trousers > 0 && trousers <= 6, "real catalogue trouser candidates exist");
+      assert.ok(trousers > 0 && trousers <= 6, "real catalogue trouser candidates exist after trouser sampling");
+      await page.getByRole("button", { name: /Shirt fabrics/ }).click();
+      assert.equal(await page.locator("article").count(), shirts, "shirt candidate list survives sampling trouser");
+      await page.getByRole("button", { name: /Trouser fabrics/ }).click();
+      assert.equal(await page.locator("article").count(), trousers, "trouser candidate list survives returning from shirt");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, "mobile viewport overflow");
       await page.screenshot({ path: path.join(output, "reference-colour-" + width + ".png"), fullPage: true });
       summary.viewports.push({ width, shirts, trousers, noOverflow: true, sampledRgb: [30, 60, 120] });
