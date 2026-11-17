@@ -226,7 +226,8 @@ test("contracted sleeve-length rejections are exclusions, never positive cuts", 
     }
   }
   const independent = "Short sleeves aren't recommended; full sleeve shirt";
-  assert.equal(styleDirectorCandidateSleeve(independent)?.sleeve, "full_sleeve");
+  assert.equal(styleDirectorCandidateSleeve(independent), null,
+    "full sleeves are validated against locked IDs, not auto-proposed by the short-sleeve helper");
   assert.deepEqual(lockedIssues(independent, "full_sleeve"), []);
   assert.deepEqual(lockedIssues(independent, "half_sleeve"), ["candidate_sleeve_mismatch"]);
   assert.deepEqual(wordingIssues("Short sleeves aren't recommended; short sleeve shirt"),
