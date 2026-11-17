@@ -159,3 +159,14 @@
 - **Evidence:** added `tests/fabric-base-variants.test.ts` regression for distinct lots, explicit coverage, non-inheritance and exact duplicates. Tests/CI are **PENDING** at the resulting checkpoint head; do not transfer earlier green runs. No local test execution claimed.
 - **Blockers:** independent authenticated review ledger, real measured rolls, verified supplier provenance and customer/tailor signoff remain absent. This pure candidate resolver does not certify stock or physical fabric facts.
 - **Next 30–40-minute slice:** check matching-head CI, run dedicated tests and reconcile with current main; if green, assess another independently verifiable fabric/customer ownership integration gap. Keep draft and no deployment.
+
+
+## 2026-11-17 — Lot coverage tuple collision regression
+
+- Parent: `350616bfb47db0216ee06e3a1221fbdedf572695`.
+- Implementation: `de5046f62a263e5a761b9b2c31ea7886dfcc9baf`.
+- Regression: `50f0e3fd0f6397ddcf72eec67641c755fa510e9b`.
+- Criterion: base-claim coverage must distinguish exact `(variantId,lotId)` pairs even when either permitted ID contains a colon; real duplicate pairs remain rejected. The prior concatenated key allowed `("a:b","c")` to collide with `("a","b:c")`, rejecting legitimate distinct lot coverage.
+- Test: added a negative/positive regression in `tests/fabric-base-variants.test.ts`. No local Node execution in this GitHub-only run; matching-head CI/Non-3D results must be checked for the final checkpoint SHA, not inferred from earlier green runs.
+- Human/physical blockers: authenticated approval ledger, independently measured fabric and supplier records, tailor/customer/device signoffs all PENDING. No live stock or production mutation.
+- Next slice: run/inspect matching-head CI, resolve failures, then integrate authenticated lot-specific evidence approvals only with disposable DB and access-control tests.
