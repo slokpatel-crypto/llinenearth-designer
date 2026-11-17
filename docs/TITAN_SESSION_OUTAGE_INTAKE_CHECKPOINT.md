@@ -23,3 +23,10 @@
 - Verified branch `vercel.json` contains `git.deploymentEnabled=false`; verify live main again immediately before any integration. No standalone built-Next HTTP test with mocked provider 503/401 has been demonstrated, and no independent security review approval is recorded. Therefore main intake remains BLOCKED, despite green general CI.
 - Next exact acceptance slice: implement and run an executable HTTP-level regression against the built Next session route with controlled 503/401 provider responses, asserting status, cache headers, redaction and ordinary signed-out behavior. Then rerun matching-head CI and review isolated dependency ancestry before guarded main merge.
 - No physical supplier/stock, tailor, customer/device, native 3D or production approval evidence supplied; those gates remain PENDING/BLOCKED. No live migration, stock mutation, paid AI, main merge or deployment performed.
+
+## 2026-11-17 — executable route-handler regression
+- Parent: `490a605ef68e1b6a5ac3fd09ecbbd54f4de8fd61`; behavior-test commit: `c06ea3d5497d352f94f566f2fccfe19ac512f6d1`.
+- Criterion: exercise the actual transpiled session GET handler with injected identity results: thrown infrastructure outage must return 503 with redacted logs/no-store; signed-out null must return 200; valid identity must remain 200.
+- Added `tests/customer-session-route-behavior.test.ts`. This is a handler-level regression, **not** a built-Next HTTP or browser test. Local execution NOT RUN; exact-head CI PENDING. Previous head `490a605ef68e1b6a5ac3fd09ecbbd54f4de8fd61` had successful CI #44050698109 and Non-3D #44050698389, which do not certify this new head.
+- No migrations, deployment, live stock, paid AI, or physical evidence change. Main integration blocked pending new matching-head checks, independent review and required built-Next HTTP evidence.
+- Next: inspect CI for this new head; repair test if needed, run built-Next HTTP negative test and security review, confirm main `vercel.json` no-deploy guard before any isolated intake.
