@@ -4732,3 +4732,23 @@ test("unnecessary and non-compulsory collar language remains neutral without alt
     "Camp collar is unnecessary; camp collar required", [])?.versioned,
     "cuban_camp_collar", "independent affirmative request must prevail");
 });
+
+test("discouraged wide-leg silhouettes are exclusions, not positive tailoring instructions", () => {
+  for (const phrase of [
+    "Wide-leg trousers are discouraged",
+    "Wide-leg pants discouraged",
+    "Wide-fit trousers are discouraged",
+  ]) {
+    const locked = Object.freeze({ type: "wide_leg_relaxed_drape" });
+    assert.equal(styleDirectorCandidateWideLegIntent(phrase), "prohibited", phrase);
+    assert.equal(styleDirectorCandidateWideLeg(phrase), false, phrase);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(phrase, locked)
+      .map(issue => issue.code), ["candidate_wide_leg_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(phrase,
+      Object.freeze({ type: "formal_flat_front" })), [], phrase);
+    assert.equal(styleDirectorCandidateWideLegIntent(phrase), "prohibited", "repeatable");
+  }
+  assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are encouraged"), "requested");
+  assert.equal(styleDirectorCandidateWideLegIntent(
+    "Wide-leg trousers are discouraged; wide-leg pants required"), "ambiguous");
+});
