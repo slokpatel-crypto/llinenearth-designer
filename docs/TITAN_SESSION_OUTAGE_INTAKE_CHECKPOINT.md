@@ -86,3 +86,11 @@
 - Live main `vercel.json` checked at `4dd8020abd83429449ff53ea5bb71b046394d86e`: `git.deploymentEnabled=false`. Recheck main and all exact-head gates before any integration. This documentation-only result commit itself requires matching-head CI.
 - Next independent slice: obtain external security approval, then verify final main ancestry, no-deploy guard, exact-head CI and isolated dependency-complete diff before guarded main intake. If review is unavailable, rotate to an independent fabric-provenance, tailoring or operator lifecycle milestone; no speculative merge.
 - Human/physical fabric stock, measured textiles, tailor, customer/device, native 3D and full release acceptance remain PENDING/BLOCKED. No deployment, live migration, stock mutation or paid AI.
+
+## 2026-11-17 — built-Next authenticated legacy bridge compatibility
+- Parent SHA: `add92ba6efb8ccfafa22ed205e79467372eaff4e` (matching-head CI #44130601223 and Non-3D #44130601239 both SUCCESS). Result test commit: `60dddb5aa06b366149b49214ebd084e0b355cd20`.
+- Criterion: in addition to 429/503 provider outage and 401 invalid-token cases, a valid legacy `le_customer_access` token with upstream HTTP 200 and customer id/email must return authenticated HTTP 200 with private no-store headers, proving backward-compatible identity resolution through the built Next network boundary.
+- Change: extended `scripts/verify-customer-session-built-http.cjs` synthetic local provider and assertions. No production source or schema changes. The new assertion has NOT been run locally; matching-head Full CI and Non-3D PENDING for the result and this checkpoint commit. Do not treat previous green CI as certification of this change.
+- Independent security review on PR #988 still PENDING; no review approval recorded at inspection. No main merge until matching-head CI and independent approval, exact live main no-deploy guard and isolated ancestry checks.
+- Physical supplier stock, measured fabrics, tailor signoff, customer pilot, device and native model acceptance remain PENDING/BLOCKED. No live mutation, paid AI or deployment.
+- Next 30–40-minute slice: inspect new-head CI and repair any failing built-Next test; obtain independent security approval, then reevaluate guarded isolated main intake.
