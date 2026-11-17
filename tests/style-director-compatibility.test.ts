@@ -4639,3 +4639,28 @@ test("wide-leg non-preference is an exclusion rather than a construction request
   assert.equal(styleDirectorCandidateWideLegIntent(
     "Wide-leg trousers are not preferred, but wide-leg pants are requested"), "ambiguous");
 });
+
+
+test("unsuitable or discouraged collars are exclusions, not positive selections", () => {
+  for (const wording of [
+    "Camp collar is not suitable",
+    "Camp collar is not recommended",
+    "Camp collar isn't preferred",
+    "Camp collar is not desired",
+    "Camp collar isn't suitable",
+  ]) {
+    const forbidden = spec({ collar: "cuban_camp_collar" });
+    const allowed = spec({ collar: "spread_collar" });
+    const before = JSON.stringify(forbidden);
+    Object.freeze(forbidden.shirt);
+    Object.freeze(allowed.shirt);
+    const issues = styleDirectorCandidateCollarIssues(wording, forbidden.shirt);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, allowed.shirt), [], wording);
+    assert.equal(styleDirectorCandidateCollar(wording, []), null, wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, forbidden.shirt), issues);
+    assert.equal(JSON.stringify(forbidden), before);
+  }
+  assert.equal(styleDirectorCandidateCollar("Camp collar is recommended", [] )?.versioned,
+    "cuban_camp_collar", "affirmative recommendation still selects the existing option");
+});
