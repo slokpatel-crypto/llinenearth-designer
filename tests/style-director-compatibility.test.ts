@@ -4614,3 +4614,28 @@ test("postposed pocket exclusions reject locked construction without inventing a
   assert.deepEqual(styleDirectorCandidatePocketIssues("Flap pocket is acceptable",
     spec({ pocket: "flap_pocket" }).shirt), []);
 });
+
+
+test("wide-leg non-preference is an exclusion rather than a construction request", () => {
+  for (const phrase of [
+    "Wide-leg trousers are not recommended",
+    "Wide-leg pants are not preferred",
+    "Wide-fit trousers are not desired",
+    "Wide-leg trousers not recommended",
+  ]) {
+    const locked = spec({}, { type: "wide_leg_relaxed_drape" });
+    const before = JSON.stringify(locked);
+    assert.equal(styleDirectorCandidateWideLegIntent(phrase), "prohibited", phrase);
+    assert.equal(styleDirectorCandidateWideLeg(phrase), false, phrase);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(phrase, locked.pant)
+      .map(issue => issue.code), ["candidate_wide_leg_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidateWideLegIssues(phrase,
+      spec({}, { type: "formal_flat_front" }).pant), [], phrase);
+    assert.equal(JSON.stringify(locked), before, "must preserve locked selections");
+    assert.equal(styleDirectorCandidateWideLegIntent(phrase), "prohibited", "repeatable");
+  }
+  assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are recommended"), "requested");
+  assert.equal(styleDirectorCandidateWideLegIntent("Wide-leg trousers are not required"), null);
+  assert.equal(styleDirectorCandidateWideLegIntent(
+    "Wide-leg trousers are not preferred, but wide-leg pants are requested"), "ambiguous");
+});
