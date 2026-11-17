@@ -45,7 +45,13 @@ async function main() {
       assert.doesNotMatch(body,/SYNTHETIC_PRIVATE_PROVIDER_SECRET|synthetic-legacy-token/);
       assert.deepEqual(JSON.parse(body),providerCode===401?{customer:null}:{customer:null,error:"Customer session temporarily unavailable."});
     }
-    // Compatibility: a healthy legacy access-token bridge must still resolve the customer.\n    upstreamStatus=200;\n    const authenticated=await fetch(url,{headers:{cookie:"le_customer_access=synthetic-legacy-token"},cache:"no-store"});\n    assert.equal(authenticated.status,200);\n    assert.match(authenticated.headers.get("cache-control")||"",/private.*no-store/);\n    assert.deepEqual(await authenticated.json(),{customer:{id:"synthetic-customer-123",email:"synthetic@example.invalid"}});\n    const signedOut=await fetch(url);
+    // Compatibility: a healthy legacy access-token bridge must still resolve the customer.
+    upstreamStatus=200;
+    const authenticated=await fetch(url,{headers:{cookie:"le_customer_access=synthetic-legacy-token"},cache:"no-store"});
+    assert.equal(authenticated.status,200);
+    assert.match(authenticated.headers.get("cache-control")||"",/private.*no-store/);
+    assert.deepEqual(await authenticated.json(),{customer:{id:"synthetic-customer-123",email:"synthetic@example.invalid"}});
+    const signedOut=await fetch(url);
     assert.equal(signedOut.status,200);
     assert.deepEqual(await signedOut.json(),{customer:null});
     assert.doesNotMatch(output,/SYNTHETIC_PRIVATE_PROVIDER_SECRET|synthetic-legacy-token/);
