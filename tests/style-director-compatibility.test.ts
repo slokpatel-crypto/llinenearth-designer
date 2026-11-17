@@ -121,6 +121,26 @@ test("non-compulsory sleeve wording does not select or conflict with locked slee
   }
 });
 
+test("inadvisable sleeve length is excluded without changing locked sleeve IDs", () => {
+  for (const phrase of [
+    "Short sleeves are not advisable",
+    "Half sleeves aren't advisable",
+    "Full sleeves are not advisable",
+    "Long sleeves aren’t advisable",
+  ]) {
+    const banned = /^(?:Short|Half)/.test(phrase) ? "half_sleeve" : "full_sleeve";
+    const opposite = banned === "half_sleeve" ? "full_sleeve" : "half_sleeve";
+    const locked = spec({ sleeve: banned }).shirt;
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorCandidateSleeveIssues(phrase, locked);
+    assert.ok(issues.length > 0, phrase + " must not approve the forbidden length");
+    assert.deepEqual(issues, styleDirectorCandidateSleeveIssues(phrase, locked), "deterministic");
+    assert.equal(JSON.stringify(locked), before, "preserve saved option ID");
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, spec({ sleeve: opposite }).shirt), [],
+      phrase + " must not reject the alternative sleeve");
+  }
+});
+
 test("short sleeves cannot be recommended with French double cuffs", () => {
   assert.deepEqual(styleDirectorConstructionIssues(spec({
     sleeve: "half_sleeve", cuff: "french_double_cuff",
