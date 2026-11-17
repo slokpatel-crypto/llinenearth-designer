@@ -109,6 +109,18 @@ test("optional sleeve necessity wording does not become a locked sleeve instruct
   }
 });
 
+test("non-compulsory sleeve wording does not select or conflict with locked sleeves", () => {
+  for (const phrase of [
+    "Short sleeves are not compulsory",
+    "Half sleeves aren't compulsory",
+    "Full sleeves aren’t compulsory",
+    "Long sleeves are not compulsory",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, spec().shirt), [], phrase);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, spec({ sleeve: "half_sleeve" }).shirt), [], phrase);
+  }
+});
+
 test("short sleeves cannot be recommended with French double cuffs", () => {
   assert.deepEqual(styleDirectorConstructionIssues(spec({
     sleeve: "half_sleeve", cuff: "french_double_cuff",
