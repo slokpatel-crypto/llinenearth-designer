@@ -52,7 +52,7 @@ test("provider 429/503 remain outages while 401 is signed-out",async()=>{
       assert.equal(result.status,expected,"upstream "+upstream);
       assert.deepEqual(result.body,upstream===401?{customer:null}:{customer:null,error:"Customer session temporarily unavailable."});
       assert.match(result.headers["cache-control"],/private.*no-store/);
-      assert.doesNotMatch(JSON.stringify(result)+logs.join(" "),"upstream-secret-token");
+      assert.doesNotMatch(JSON.stringify(result)+logs.join(" "),/upstream-secret-token/);
     }
   }finally{
     globalThis.fetch=previousFetch;
