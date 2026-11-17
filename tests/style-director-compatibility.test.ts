@@ -4832,3 +4832,27 @@ test("discouraged collar wording excludes only the named construction", () => {
     "an independent affirmative construction remains valid",
   );
 });
+
+test("inadvisable collar wording forbids the named locked construction without inventing alternatives", () => {
+  for (const wording of [
+    "Camp collar is not advisable",
+    "Camp collar isn't advisable",
+    "Camp collar aren’t advisable",
+    "Camp collar not advisable",
+  ]) {
+    const locked = spec({ collar: "cuban_camp_collar" });
+    const before = JSON.stringify(locked);
+    Object.freeze(locked.shirt);
+    const issues = styleDirectorCandidateCollarIssues(wording, locked.shirt);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, spec().shirt), [], wording);
+    assert.equal(styleDirectorCandidateCollar(wording, selectableCollars), null, wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, locked.shirt), issues, wording);
+    assert.equal(JSON.stringify(locked), before, wording);
+  }
+  assert.deepEqual(
+    styleDirectorCandidateCollarIssues("Camp collar is not advisable; spread collar requested", spec().shirt),
+    [],
+    "separate affirmative collar remains independently actionable",
+  );
+});
