@@ -18,8 +18,17 @@ export function listSavedDesigns(): SavedDesign[] {
   try {
     const raw = window.localStorage.getItem(SAVED_DESIGNS_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as SavedDesign[];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Older browser stores may contain partial/null entries. Preserve usable
+    // versioned recipes instead of letting one corrupt entry break all saves.
+    return parsed.filter((item): item is SavedDesign =>
+      item !== null && typeof item === "object" &&
+      typeof item.id === "string" &&
+      item.version !== null && typeof item.version === "object" &&
+      typeof item.version.id === "string" &&
+      (item.version.specHash === undefined || typeof item.version.specHash === "string")
+    );
   } catch {
     return [];
   }
