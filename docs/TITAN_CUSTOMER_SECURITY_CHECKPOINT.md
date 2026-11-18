@@ -108,3 +108,12 @@ Verified parent `dc203a64ff1a34062b64295ee225be6300a9dd4d` (draft PR #863) with 
 - Verification: code and test committed; **no local test or matching-head CI result yet** for regression SHA. Keep criterion PENDING until CI and suitable runtime tests pass.
 - Scope: browser-only backwards compatibility. Does NOT establish authenticated owner isolation, server persistence, or second-device recovery.
 - Next slice: authenticated server-backed ordinary saved-design CRUD with two-account isolation and second-browser recovery using a disposable database. Physical stock/fabric, tailoring, devices, customers, native model and independent security gates remain PENDING/BLOCKED. No main merge, live migration, deployment or paid AI.
+
+
+## 2026-11-19 — Exact-head verification of saved-design collision regression
+
+- Verified parent/source head: `e67cb00896759dcdd460515eabe1695ce3a70fde` on draft PR #863, identical to live branch before this checkpoint append.
+- Matching-head GitHub Actions: CI run `44405766486` **completed/success** and Deep Engine — Non-3D QA run `44405766579` **completed/success**, both returned by commit workflow lookup for the exact parent SHA. This verifies the previously committed `e435cf410bd34ca7e9c1d559ebe88603f30f6c67` regression-fixture correction and `cba7a1f7` deletion protection through the workflows; it is not live/staging browser evidence.
+- Criterion: recognized saved-design deletion must not delete an unknown future-format entry with the same ID; regression now uses a complete valid legacy design fixture. No application source change in this checkpoint.
+- Remaining engineering gate: ordinary saved designs are still browser-wide localStorage. Build authenticated owner-scoped durable CRUD with two-owner denial and second-device recovery on a disposable backend; never auto-claim anonymous browser drafts as owner data. Do not duplicate migration/stock, 3D or Style Director workers.
+- Human/physical gates PENDING: actual stock/fabric evidence, tailor signoff, customer/operator and mobile-device pilots, native geometry and independent security review. No live database mutation, main merge, deployment or paid AI. Matching-head CI for this documentation-only checkpoint commit remains PENDING.
