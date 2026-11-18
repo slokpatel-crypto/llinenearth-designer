@@ -278,3 +278,23 @@ test("never-recommended sleeve lengths remain exclusions, not affirmative cuts",
     ["ambiguous_candidate_sleeve"]);
   assert.deepEqual(lockedIssues("Short sleeves never recommended; full sleeve shirt", "full_sleeve"), []);
 });
+
+test("never-ideal and never-acceptable sleeve wording cannot approve locked cuts", () => {
+  for (const [candidate, denied, allowed] of [
+    ["Short sleeves are never ideal", "half_sleeve", "full_sleeve"],
+    ["Half sleeve never acceptable", "half_sleeve", "full_sleeve"],
+    ["Long sleeves are never ideal", "full_sleeve", "half_sleeve"],
+    ["Full sleeves never acceptable", "roll_up_styled", "half_sleeve"],
+  ] as const) {
+    const locked = Object.freeze({ sleeve: denied });
+    const snapshot = JSON.stringify(locked);
+    assert.equal(styleDirectorCandidateSleeve(candidate), null, candidate);
+    assert.deepEqual(lockedIssues(candidate, denied), ["candidate_sleeve_mismatch"], candidate);
+    assert.deepEqual(lockedIssues(candidate, allowed), [], candidate);
+    assert.deepEqual(wordingIssues(candidate), [], candidate);
+    assert.equal(JSON.stringify(locked), snapshot);
+  }
+  assert.deepEqual(wordingIssues("Short sleeves are never ideal; short sleeve shirt"),
+    ["ambiguous_candidate_sleeve"]);
+  assert.deepEqual(lockedIssues("Short sleeves are never ideal; full sleeve shirt", "full_sleeve"), []);
+});
