@@ -156,6 +156,27 @@ test("invalid physical evidence URL and unproven physical facts fail closed",()=
   }
 });
 
+test("persisted supplier URLs with embedded credentials cannot certify customer physical facts",()=>{
+  for(const sourceUrl of [
+    "https://user:secret@supplier.example/roll",
+    "https://user@supplier.example/roll",
+    "https://user:%73ecret@supplier.example/roll",
+  ]) {
+    const reviewed=intelligence("reviewed");
+    reviewed.verifiedPhysical.sourceUrl=sourceUrl;
+    reviewed.verifiedPhysical.evidenceNote=null;
+    const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+    assert.equal(result.patternScaleVerified,undefined,sourceUrl);
+    assert.equal(result.weightGsm,null,sourceUrl);
+    assert.equal(result.drape,null,sourceUrl);
+    assert.equal(result.fiberContentVerified,undefined,sourceUrl);
+  }
+  const safe=intelligence("reviewed");
+  safe.verifiedPhysical.sourceUrl="https://supplier.example/roll";
+  safe.verifiedPhysical.evidenceNote=null;
+  assert.equal(applyVerifiedPhysicalFabricEvidence(fabric,safe).patternScaleVerified,true);
+});
+
 test("invalid GSM, drape or fibre values cannot turn into verified physical facts",()=>{
   const reviewed=intelligence("reviewed");
   reviewed.verifiedPhysical.gsm=Infinity;
