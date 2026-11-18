@@ -5046,3 +5046,26 @@ test("contracted collar prohibitions do not become affirmative construction requ
       "a prohibited collar is not an affirmative photo construction");
   }
 });
+
+test("unapproved collar instructions exclude only the named construction", () => {
+  for (const phrase of [
+    "Spread Collar is not approved",
+    "Spread Collar isn't approved",
+    "Spread Collar isn’t approved",
+    "Spread Collar not approved",
+  ]) {
+    const locked = spec({ collar: "spread_collar" }).shirt;
+    const before = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(phrase, locked)
+      .map(issue => issue.code), ["candidate_collar_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(
+      phrase, spec({ collar: "button_down_collar" }).shirt), [], phrase);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(phrase), null, phrase);
+    assert.equal(styleDirectorCandidateVariantCollar(phrase), null, phrase);
+    assert.equal(JSON.stringify(locked), before, "do not rewrite locked IDs");
+    assert.deepEqual(styleDirectorCandidateCollarIssues(phrase, locked),
+      styleDirectorCandidateCollarIssues(phrase, locked), "deterministic");
+  }
+  assert.equal(styleDirectorCandidateOrdinaryCollar(
+    "Spread Collar is not approved; Button-Down Collar requested"), "button_down");
+});
