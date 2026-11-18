@@ -187,3 +187,11 @@
 - Regression: new Node test rejects username/password, username-only and percent-encoded password; accepts an ordinary credential-free HTTPS reference. No schema, stock, customer auth, UI, paid AI or model changes.
 - Evidence: code and regression committed; **matching-head CI/Non-3D and local Node execution are not yet verified** at the new commit. Check new-head workflow outcomes and fix any failure before considering integration. Independent reviewer, authenticated approval ledger and real measured supplier/lot evidence remain PENDING/BLOCKED. No main merge, deployment or live database change.
 - Next slice: inspect exact-head Full CI and Non-3D, then rotate to independently verifiable customer ownership or tailor handoff work rather than adding further speculative fabric guards.
+
+## 2026-11-18 — Customer projection credential-bearing URL parity
+
+- Parent head: `9ef56d15c9089b4a047e1828756e3bbfa8aad528`; source fix `117586f4d6a66893b60a811cc99ea0f7970ba815`; regression `9135160b41c2df66ffe4dadcb6993f08bf1d4b49`.
+- Criterion: persisted reviewed supplier evidence URLs with URL username/password (including percent-encoded credentials) must not promote physical-scale, GSM, drape or fibre claims at the customer projection boundary. Valid credential-free HTTPS links remain eligible when the remaining review/provenance conditions pass.
+- Baseline exact-head CI at parent `9ef56d15c9089b4a047e1828756e3bbfa8aad528`: CI run 44202357448 SUCCESS; Non-3D run 44202357457 SUCCESS. These runs predate the change and do not verify the new regression.
+- New code/regression committed; matching-head CI and Non-3D QA **PENDING**, no local execution claimed. No independent security approval or actual physical fabric proof supplied. No main merge or deployment.
+- Next slice: verify matching-head Full CI and Non-3D; investigate failures, then prioritize owner-scoped saved-design integration or independent fabric approval ledger without fabricating stock or measured values.
