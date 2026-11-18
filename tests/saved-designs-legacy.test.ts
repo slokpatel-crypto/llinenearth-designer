@@ -66,3 +66,34 @@ test("corrupt legacy entries do not block saving or erase valid designs", () => 
     else (globalThis as { window?: unknown }).window = previousWindow;
   }
 });
+
+test("incomplete saved-design payloads cannot poison later browser saves", () => {
+  const store = new Map<string, string>();
+  const previousWindow = (globalThis as { window?: unknown }).window;
+  (globalThis as { window?: unknown }).window = {
+    localStorage: {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => { store.set(key, value); },
+    },
+  };
+  try {
+    const valid = { id: "SD-valid", title: "Valid", savedAt: "2026-01-01",
+      brief: {}, version: { id: "valid" }, renderSet: {} };
+    store.set(SAVED_DESIGNS_KEY, JSON.stringify([
+      { ...valid, id: "SD-no-render", renderSet: null },
+      { ...valid, id: "SD-no-brief", brief: null },
+      { ...valid, id: "SD-array-version", version: [] },
+      { ...valid, id: "SD-empty-version", version: { id: "" } },
+      { ...valid, id: "SD-no-title", title: null },
+      valid,
+    ]));
+    assert.deepEqual(listSavedDesigns().map(item => item.id), ["SD-valid"]);
+    saveDesign({ title: "New", brief: {} as Parameters<typeof saveDesign>[0]["brief"],
+      version: { id: "new" } as Parameters<typeof saveDesign>[0]["version"],
+      renderSet: {} as Parameters<typeof saveDesign>[0]["renderSet"] });
+    assert.deepEqual(listSavedDesigns().map(item => item.id), ["SD-new", "SD-valid"]);
+  } finally {
+    if (previousWindow === undefined) delete (globalThis as { window?: unknown }).window;
+    else (globalThis as { window?: unknown }).window = previousWindow;
+  }
+});
