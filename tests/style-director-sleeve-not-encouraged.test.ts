@@ -44,3 +44,28 @@ test("roll-up styled is not encouraged: preserve locked sleeve construction", ()
   assert.deepEqual(styleDirectorCandidateWordingIssues("Roll-up Styled is not encouraged; Roll-up Styled shirt"),
     [{ code: "ambiguous_candidate_sleeve", explanation: "This proposed shirt names both short and long sleeves; confirm one sleeve construction before approving the recommendation." }]);
 });
+
+test("excluded and rejected sleeve constructions do not become positive cuts", () => {
+  for (const length of ["Short sleeves", "Half sleeve", "Long sleeves", "Full sleeve"]) {
+    const forbidden = /^(?:Short|Half)/.test(length) ? "half_sleeve" : "full_sleeve";
+    const permitted = forbidden === "half_sleeve" ? "full_sleeve" : "half_sleeve";
+    for (const rejection of ["are excluded", "is rejected", "are ruled out"]) {
+      const candidate = `${length} ${rejection}`;
+      assert.equal(styleDirectorCandidateSleeve(candidate), null, candidate);
+      assert.deepEqual(codes(candidate, forbidden), ["candidate_sleeve_mismatch"], candidate);
+      assert.deepEqual(codes(candidate, permitted), [], candidate);
+      assert.deepEqual(codes(candidate, forbidden), ["candidate_sleeve_mismatch"], "repeatability");
+    }
+  }
+  for (const candidate of ["Roll-up Styled is excluded", "Roll-up sleeves are rejected", "Roll-up Styled ruled out"]) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(candidate), {
+      requested: false, prohibited: true, ambiguous: false,
+    }, candidate);
+    assert.deepEqual(codes(candidate, "roll_up_styled"), ["candidate_sleeve_mismatch"], candidate);
+    assert.deepEqual(codes(candidate, "half_sleeve"), [], candidate);
+  }
+  const independent = "Short sleeves are excluded; full sleeves required";
+  assert.equal(styleDirectorCandidateSleeve(independent)?.sleeve, "full_sleeve");
+  assert.deepEqual(codes(independent, "full_sleeve"), []);
+  assert.deepEqual(codes(independent, "half_sleeve"), ["candidate_sleeve_mismatch"]);
+});
