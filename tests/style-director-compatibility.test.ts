@@ -5270,7 +5270,9 @@ test("modal fit exclusions stay isolated across shirt and trouser decisions", ()
   assert.deepEqual(styleDirectorCandidateShirtFitIssues(
     shirtPrompt, { fit: "relaxed_fit" }), []);
   assert.deepEqual(styleDirectorCandidateTrouserFitIssues(
-    trouserPrompt, { fit: "regular_tapered" }), []);
+    trouserPrompt, { fit: "regular_tapered" }).map(issue => issue.code),
+    ["unverified_trouser_fit_photo"]);
+  // A compatible construction does not imply verified photographic geometry.
   assert.deepEqual(styleDirectorCandidateShirtFitIntent(shirtPrompt), shirtIntent);
   assert.deepEqual(styleDirectorCandidateTrouserFitIntent(trouserPrompt), trouserIntent);
   assert.equal(shirt.fit, "slim_fit");
