@@ -69,6 +69,24 @@ export function saveDesign(input: Omit<SavedDesign, "id" | "savedAt">): SavedDes
 
 export function removeSavedDesign(id: string) {
   if (typeof window === "undefined") return;
-  const next = listSavedDesigns().filter((item) => item.id !== id);
+  const raw = window.localStorage.getItem(SAVED_DESIGNS_KEY);
+  if (raw === null) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("Saved designs could not be read. Existing browser data was preserved.");
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error("Saved designs have an unsupported format. Existing browser data was preserved.");
+  }
+  // Remove only the requested valid entry. Keep every other raw record byte-for-
+  // byte equivalent after serialization, including legacy shapes not understood
+  // by the current reader, so a delete cannot silently discard recoverable data.
+  const next = parsed.filter((item) =>
+    item === null || typeof item !== "object" || Array.isArray(item) ||
+    (item as { id?: unknown }).id !== id
+  );
+  if (next.length === parsed.length) return;
   window.localStorage.setItem(SAVED_DESIGNS_KEY, JSON.stringify(next));
 }
