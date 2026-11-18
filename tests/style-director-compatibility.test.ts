@@ -5226,40 +5226,28 @@ test("negative placket suitability and approval never select forbidden construct
   assert.equal(mixed.ambiguous, false);
 });
 
-test("postposed modal fit prohibitions never select or rewrite locked construction", () => {
-  const cases = [
-    {
-      phrases: ["Slim fit cannot be used", "Slim fit can't be chosen", "Slim fit mustn't be worn", "Slim fit shouldn't be selected"],
-      intent: styleDirectorCandidateShirtFitIntent,
-      issues: styleDirectorCandidateShirtFitIssues,
-      key: "fit",
-      forbidden: "slim_fit",
-      permitted: "regular_classic_fit",
-      code: "candidate_shirt_fit_mismatch",
-    },
-    {
-      phrases: ["Slim tapered fit cannot be used", "Slim tapered fit can't be chosen", "Slim tapered fit mustn't be worn", "Slim tapered fit shouldn't be selected"],
-      intent: styleDirectorCandidateTrouserFitIntent,
-      issues: styleDirectorCandidateTrouserFitIssues,
-      key: "fit",
-      forbidden: "slim_tapered",
-      permitted: "regular_tapered",
-      code: "candidate_trouser_fit_mismatch",
-    },
-  ] as const;
-  for (const entry of cases) {
-    for (const phrase of entry.phrases) {
-      const intent = entry.intent(phrase);
-      assert.equal(intent.requested, null, phrase);
-      assert.deepEqual(intent.prohibited, [entry.forbidden], phrase);
-      assert.equal(intent.ambiguous, false, phrase);
-      const locked = Object.freeze({ fit: entry.forbidden });
-      const snapshot = JSON.stringify(locked);
-      const issues = entry.issues(phrase, locked);
-      assert.deepEqual(issues.map(issue => issue.code), [entry.code], phrase);
-      assert.deepEqual(entry.issues(phrase, locked), issues, phrase);
-      assert.deepEqual(entry.issues(phrase, Object.freeze({ fit: entry.permitted })), [], phrase);
-      assert.equal(JSON.stringify(locked), snapshot, phrase);
-    }
+test("postposed modal shirt-fit exclusions preserve versioned selections", () => {
+  for (const phrase of ["Slim fit cannot be used", "Slim fit can't be chosen", "Slim fit mustn't be worn", "Slim fit shouldn't be selected"]) {
+    const intent = styleDirectorCandidateShirtFitIntent(phrase);
+    assert.deepEqual(intent, { requested: null, prohibited: ["slim_fit"], ambiguous: false }, phrase);
+    const locked = Object.freeze({ fit: "slim_fit" as const });
+    const issues = styleDirectorCandidateShirtFitIssues(phrase, locked);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_shirt_fit_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidateShirtFitIssues(phrase, locked), issues, phrase);
+    assert.deepEqual(styleDirectorCandidateShirtFitIssues(phrase, { fit: "regular_classic_fit" }), [], phrase);
+    assert.equal(locked.fit, "slim_fit");
+  }
+});
+
+test("postposed modal trouser-fit exclusions preserve versioned selections", () => {
+  for (const phrase of ["Slim tapered fit cannot be used", "Slim tapered fit can't be chosen", "Slim tapered fit mustn't be worn", "Slim tapered fit shouldn't be selected"]) {
+    const intent = styleDirectorCandidateTrouserFitIntent(phrase);
+    assert.deepEqual(intent, { requested: null, prohibited: ["slim_tapered"], ambiguous: false }, phrase);
+    const locked = Object.freeze({ fit: "slim_tapered" as const });
+    const issues = styleDirectorCandidateTrouserFitIssues(phrase, locked);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_trouser_fit_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidateTrouserFitIssues(phrase, locked), issues, phrase);
+    assert.deepEqual(styleDirectorCandidateTrouserFitIssues(phrase, { fit: "regular_tapered" }), [], phrase);
+    assert.equal(locked.fit, "slim_tapered");
   }
 });
