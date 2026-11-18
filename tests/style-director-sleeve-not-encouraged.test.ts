@@ -65,7 +65,8 @@ test("excluded and rejected sleeve constructions do not become positive cuts", (
     assert.deepEqual(codes(candidate, "half_sleeve"), [], candidate);
   }
   const independent = "Short sleeves are excluded; full sleeves required";
-  assert.equal(styleDirectorCandidateSleeve(independent)?.sleeve, "full_sleeve");
+  // This helper only proposes the short-sleeve/open-hem override; it does not infer full sleeves.
+  assert.equal(styleDirectorCandidateSleeve(independent), null);
   assert.deepEqual(codes(independent, "full_sleeve"), []);
   assert.deepEqual(codes(independent, "half_sleeve"), ["candidate_sleeve_mismatch"]);
 });
