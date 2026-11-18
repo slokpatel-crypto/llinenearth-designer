@@ -195,3 +195,12 @@
 - Baseline exact-head CI at parent `9ef56d15c9089b4a047e1828756e3bbfa8aad528`: CI run 44202357448 SUCCESS; Non-3D run 44202357457 SUCCESS. These runs predate the change and do not verify the new regression.
 - New code/regression committed; matching-head CI and Non-3D QA **PENDING**, no local execution claimed. No independent security approval or actual physical fabric proof supplied. No main merge or deployment.
 - Next slice: verify matching-head Full CI and Non-3D; investigate failures, then prioritize owner-scoped saved-design integration or independent fabric approval ledger without fabricating stock or measured values.
+
+## 2026-11-18 — exact-head verification of credential-bearing supplier URL protections
+
+- Verified parent/head `4f6492a308dd6f2875df3a525d337dc30190b55d` for draft PR #862 against GitHub live PR metadata.
+- Full CI run `44210520342` **completed success** at that exact SHA; Deep Engine Non-3D QA run `44210520391` **completed success** at that exact SHA. These checks verify the previously committed credential-bearing source URL rejection regressions; they do **not** establish physical supplier truth or independent review.
+- Affected acceptance: supplier evidence URL credential rejection at physical intake and customer-facing evidence promotion. No new application behavior or test was added in this checkpoint-only update.
+- Blockers: authenticated independent human review, real supplier/owner fabric measurements and inspection receipts, customer/tailor pilot evidence. Do not promote synthetic fixture evidence to physical approval.
+- Next independent engineering slice: cross-account saved-design ownership and lock/recovery integration regression on the current compatible customer-security draft, without changing fabric/stock or Style Director files.
+- This checkpoint commit itself requires its own matching-head CI; prior successful checks apply to its parent SHA only.
