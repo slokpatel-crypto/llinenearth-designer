@@ -5192,3 +5192,36 @@ test("rejected placket constructions remain exclusions, never affirmative select
   assert.deepEqual(mixed.prohibited, ["french_placket"]);
   assert.equal(mixed.ambiguous, false);
 });
+
+test("negative placket suitability and approval never select forbidden construction", () => {
+  for (const phrase of [
+    "French placket is not approved",
+    "French placket isn't compatible",
+    "French placket isn’t appropriate",
+    "French placket is not acceptable",
+    "French placket is not feasible",
+    "French placket is unsuitable",
+    "French placket is inappropriate",
+    "French placket is never ideal",
+  ]) {
+    const intent = styleDirectorCandidatePlacketIntent(phrase);
+    assert.deepEqual(intent, {
+      requested: null, prohibited: ["french_placket"], ambiguous: false,
+    }, phrase);
+    assert.equal(styleDirectorCandidatePlacket(phrase, []), null, phrase);
+    const forbidden = Object.freeze({ placket: "french_placket" as const });
+    const snapshot = JSON.stringify(forbidden);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(phrase, forbidden).map(issue => issue.code),
+      ["candidate_placket_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidatePlacketIssues(
+      phrase, Object.freeze({ placket: "standard_visible_placket" as const })), [], phrase);
+    assert.equal(JSON.stringify(forbidden), snapshot);
+    assert.deepEqual(styleDirectorCandidatePlacketIntent(phrase), intent);
+  }
+  const mixed = styleDirectorCandidatePlacketIntent(
+    "French placket is not feasible; covered placket requested",
+  );
+  assert.equal(mixed.requested, "covered_placket");
+  assert.deepEqual(mixed.prohibited, ["french_placket"]);
+  assert.equal(mixed.ambiguous, false);
+});
