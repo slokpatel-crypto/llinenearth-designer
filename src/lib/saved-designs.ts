@@ -39,6 +39,20 @@ export function listSavedDesigns(): SavedDesign[] {
 
 export function saveDesign(input: Omit<SavedDesign, "id" | "savedAt">): SavedDesign {
   if (typeof window === "undefined") throw new Error("Saved designs are available in the browser.");
+  // Never overwrite an unreadable legacy store: doing so can permanently erase
+  // customer recipes that may still be recoverable from the original bytes.
+  const raw = window.localStorage.getItem(SAVED_DESIGNS_KEY);
+  if (raw !== null) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error("Saved designs could not be read. Existing browser data was preserved.");
+    }
+    if (!Array.isArray(parsed)) {
+      throw new Error("Saved designs have an unsupported format. Existing browser data was preserved.");
+    }
+  }
   const existing = listSavedDesigns();
   const saved: SavedDesign = {
     ...input,
