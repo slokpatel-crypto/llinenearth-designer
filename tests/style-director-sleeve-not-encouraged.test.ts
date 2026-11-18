@@ -42,5 +42,5 @@ test("roll-up styled is not encouraged: preserve locked sleeve construction", ()
   assert.deepEqual(codes(independent, "half_sleeve"), []);
   assert.deepEqual(codes(independent, "roll_up_styled"), ["candidate_sleeve_mismatch"]);
   assert.deepEqual(styleDirectorCandidateWordingIssues("Roll-up Styled is not encouraged; Roll-up Styled shirt"),
-    ["ambiguous_candidate_sleeve"]);
+    [{ code: "ambiguous_candidate_sleeve", explanation: "This proposed shirt names both short and long sleeves; confirm one sleeve construction before approving the recommendation." }]);
 });
