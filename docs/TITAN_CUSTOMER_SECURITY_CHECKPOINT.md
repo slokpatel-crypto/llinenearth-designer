@@ -100,3 +100,11 @@ Verified parent `dc203a64ff1a34062b64295ee225be6300a9dd4d` (draft PR #863) with 
 - Evidence: source and regression committed; GitHub commit-workflow lookup for `7eedf07c64b78faf98cb262eacce63bd73069eb5` returned no PR-triggered workflow runs at time of checkpoint. No local npm quality/test/engine/performance/release/build or browser QA was run in this session. All remain UNVERIFIED at this head.
 - Blockers: ordinary designs still use browser-wide localStorage, with no owner-scoped server CRUD or second-device recovery; staging/customer identities and independent security acceptance pending. Physical stock, fabric, tailor, device and native model approvals remain pending.
 - Next bounded slice: build and test authenticated ordinary saved-design CRUD on the existing owner-scoped backend, with two-account negative tests and second-browser recovery; use disposable backend only. Do not merge to main or deploy without matching-head full gates.
+
+## 2026-11-18 — Legacy saved-design delete preservation (pending exact-head verification)
+- Parent SHA: `4c7a06e991c583e324dba9405ad1b227103035fc` (matching-head CI #44351525753 and Non-3D #44351525726 both succeeded before this change).
+- Code SHA: `51156c86c3ef8b7ab2a74bf7851cf87453e5fa68`; regression SHA: `33563e8b2d0add1d2b40cff6f98688db566d8279`.
+- Criterion: removing one browser-saved design must not discard unrelated recoverable legacy records or overwrite unreadable/unsupported legacy stores. Added tests for malformed JSON, non-array payload, unknown entries, exact deletion, and absent-ID no-op.
+- Verification: code and test committed; **no local test or matching-head CI result yet** for regression SHA. Keep criterion PENDING until CI and suitable runtime tests pass.
+- Scope: browser-only backwards compatibility. Does NOT establish authenticated owner isolation, server persistence, or second-device recovery.
+- Next slice: authenticated server-backed ordinary saved-design CRUD with two-account isolation and second-browser recovery using a disposable database. Physical stock/fabric, tailoring, devices, customers, native model and independent security gates remain PENDING/BLOCKED. No main merge, live migration, deployment or paid AI.
