@@ -30,6 +30,7 @@ def world_geometry(obj):
         mesh.calc_loop_triangles()
         points = [evaluated.matrix_world @ vertex.co for vertex in mesh.vertices]
         faces = [tuple(face.vertices) for face in mesh.polygons]
+        triangles = [[] for _face in faces]
         if not points or not faces or not mesh.loop_triangles:
             raise RuntimeError("Cannot diagnose missing or empty native surface geometry.")
         if any(not all(math.isfinite(v) for v in p) for p in points):
@@ -41,9 +42,12 @@ def world_geometry(obj):
             if not math.isfinite(value):
                 raise RuntimeError("Contacting face area cannot be measured.")
             areas[triangle.polygon_index] += value
+            triangles[triangle.polygon_index].append(tuple(triangle.vertices))
         if min(areas) < 0 or sum(areas) <= 0:
             raise RuntimeError("Invalid physical surface area in real mesh.")
-        return {"points": points, "polygons": faces, "areas": areas}
+        if any(not group for group in triangles):
+            raise RuntimeError("Evaluated garment polygon has no native triangulation.")
+        return {"points": points, "polygons": faces, "triangles": triangles, "areas": areas}
     finally:
         evaluated.to_mesh_clear()
 
@@ -99,6 +103,66 @@ def quantile(values, p):
     return ordered[round((len(ordered) - 1) * p)]
 
 
+def segment_triangle_intersection(start, end, a, b, c, epsilon=1e-10):
+    """Return a real segment/triangle crossing point, excluding coplanar ambiguity."""
+    direction = end - start
+    edge1, edge2 = b - a, c - a
+    cross = direction.cross(edge2)
+    determinant = edge1.dot(cross)
+    if abs(determinant) <= epsilon:
+        return None
+    inverse = 1.0 / determinant
+    offset = start - a
+    u = offset.dot(cross) * inverse
+    if u < -epsilon or u > 1.0 + epsilon:
+        return None
+    q = offset.cross(edge1)
+    v = direction.dot(q) * inverse
+    if v < -epsilon or u + v > 1.0 + epsilon:
+        return None
+    fraction = edge2.dot(q) * inverse
+    if fraction < -epsilon or fraction > 1.0 + epsilon:
+        return None
+    return start + direction * max(0.0, min(1.0, fraction))
+
+
+def triangle_pair_intersection_points(points, left_triangle, right_triangle):
+    left = [points[0][index] for index in left_triangle]
+    right = [points[1][index] for index in right_triangle]
+    found = []
+    for source, target in ((left, right), (right, left)):
+        for start, end in zip(source, source[1:] + source[:1]):
+            point = segment_triangle_intersection(start, end, *target)
+            if point is not None and not any((point - existing).length <= 1e-8 for existing in found):
+                found.append(point)
+    return found
+
+
+def intersection_segment_lengths_mm(left, right, pairs):
+    """Measure actual surface crossings behind epsilon-expanded BVH candidates.
+
+    One maximum segment is retained per polygon pair, avoiding double counting
+    internal loop-triangle diagonals. Exact coplanar overlap remains deliberately
+    unclassified rather than being invented as penetration depth.
+    """
+    lengths = []
+    for left_face, right_face in pairs:
+        points = []
+        for left_triangle in left["triangles"][left_face]:
+            for right_triangle in right["triangles"][right_face]:
+                for point in triangle_pair_intersection_points(
+                        (left["points"], right["points"]), left_triangle, right_triangle):
+                    if not any((point - existing).length <= 1e-8 for existing in points):
+                        points.append(point)
+        length = max(
+            ((a - b).length for index, a in enumerate(points) for b in points[index + 1:]),
+            default=0.0,
+        )
+        if length > 1e-8:
+            lengths.append(length * 1000.0)
+    return lengths
+
+
 def cross_section(left, right, body, z):
     l, r, b = (plane_span(g, z) for g in (left, right, body))
     projected_overlap = None
@@ -136,6 +200,7 @@ def edge_topology(geometry, contact_faces):
 def analyze(body, left, right):
     source, l, r = world_geometry(body), world_geometry(left), world_geometry(right)
     pairs = real_tree(l).overlap(real_tree(r))
+    crossing_lengths = intersection_segment_lengths_mm(l, r, pairs)
     left_indices = {a for a, _ in pairs}
     right_indices = {b for _, b in pairs}
     if any(a < 0 or a >= len(l["polygons"]) or b < 0 or b >= len(r["polygons"])
@@ -172,6 +237,19 @@ def analyze(body, left, right):
     touching_right = sum(r["areas"][i] for i in right_indices)
     measured = {
         "legLegPolygonContactPairs": len(pairs),
+        "geometricIntersectionWitness": {
+            "bvhCandidatePairs": len(pairs),
+            "crossingPolygonPairs": len(crossing_lengths),
+            "epsilonOnlyTangentialOrCoplanarPairs": len(pairs) - len(crossing_lengths),
+            "crossingSegmentLengthMm": ({
+                "minimum": round(min(crossing_lengths), 6),
+                "median": round(statistics.median(crossing_lengths), 6),
+                "maximum": round(max(crossing_lengths), 6),
+                "sumPolygonPairProxy": round(sum(crossing_lengths), 6),
+                "count": len(crossing_lengths),
+            } if crossing_lengths else None),
+            "interpretation": "Exact non-coplanar triangle crossing segments inside epsilon-expanded polygon BVH candidates; not penetration volume, cloth thickness, clearance or fit approval.",
+        },
         "contactPairsByBodyHeightOctile": octiles,
         "contactingLeftLegFaceCount": len(left_indices),
         "contactingRightLegFaceCount": len(right_indices),
