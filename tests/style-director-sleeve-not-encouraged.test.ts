@@ -1,0 +1,46 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  styleDirectorCandidateSleeve,
+  styleDirectorCandidateSleeveIssues,
+  styleDirectorCandidateRollUpSleeveIntent,
+  styleDirectorCandidateWordingIssues,
+} from "../src/lib/designer/style-director-compatibility.ts";
+
+const codes = (candidate: string, sleeve: string) =>
+  styleDirectorCandidateSleeveIssues(candidate, Object.freeze({ sleeve })).map(issue => issue.code);
+
+test("sleeve lengths that are not encouraged are exclusions, not requested cuts", () => {
+  for (const length of ["Short sleeves", "Half sleeve", "Long sleeves", "Full sleeve"]) {
+    const forbidden = /^(?:Short|Half)/.test(length) ? "half_sleeve" : "full_sleeve";
+    const permitted = forbidden === "half_sleeve" ? "full_sleeve" : "half_sleeve";
+    for (const rejection of ["are not encouraged", "is not encouraged", "aren't encouraged", "isn’t encouraged"]) {
+      const candidate = `${length} ${rejection}`;
+      assert.equal(styleDirectorCandidateSleeve(candidate), null, candidate);
+      assert.deepEqual(codes(candidate, forbidden), ["candidate_sleeve_mismatch"], candidate);
+      assert.deepEqual(codes(candidate, permitted), [], candidate);
+      assert.deepEqual(styleDirectorCandidateWordingIssues(candidate), [], candidate);
+      assert.deepEqual(codes(candidate, forbidden), ["candidate_sleeve_mismatch"], "repeatability");
+    }
+  }
+});
+
+test("roll-up styled is not encouraged: preserve locked sleeve construction", () => {
+  for (const candidate of [
+    "Roll-up Styled is not encouraged",
+    "Roll-up sleeves aren't encouraged",
+    "Roll-up Styled isn’t encouraged",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(candidate), {
+      requested: false, prohibited: true, ambiguous: false,
+    }, candidate);
+    assert.deepEqual(codes(candidate, "roll_up_styled"), ["candidate_sleeve_mismatch"], candidate);
+    assert.deepEqual(codes(candidate, "half_sleeve"), [], candidate);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(candidate), [], candidate);
+  }
+  const independent = "Roll-up Styled is not encouraged; short sleeves required";
+  assert.deepEqual(codes(independent, "half_sleeve"), []);
+  assert.deepEqual(codes(independent, "roll_up_styled"), ["candidate_sleeve_mismatch"]);
+  assert.deepEqual(styleDirectorCandidateWordingIssues("Roll-up Styled is not encouraged; Roll-up Styled shirt"),
+    ["ambiguous_candidate_sleeve"]);
+});
