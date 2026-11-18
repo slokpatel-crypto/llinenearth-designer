@@ -65,3 +65,26 @@ test("wanted and optional fits retain their distinct meaning", () => {
   assert.deepEqual(styleDirectorCandidateTrouserFitIntent("slim tapered fit optional"),
     { requested: null, prohibited: [], ambiguous: false });
 });
+
+test("ruled-out fits remain exclusions with locked construction preserved", () => {
+  for (const phrase of ["slim fit ruled out", "slim fit is ruled out"]) {
+    assert.deepEqual(styleDirectorCandidateShirtFitIntent(phrase),
+      { requested: null, prohibited: ["slim_fit"], ambiguous: false });
+    const locked = Object.freeze({ fit: "slim_fit" });
+    assert.deepEqual(styleDirectorCandidateShirtFitIssues(phrase, locked).map(x => x.code),
+      ["candidate_shirt_fit_mismatch"]);
+    assert.deepEqual(styleDirectorCandidateShirtFitIssues(phrase, { fit: "relaxed_fit" }), []);
+  }
+  for (const phrase of ["slim tapered fit ruled out", "slim tapered fit is ruled out"]) {
+    assert.deepEqual(styleDirectorCandidateTrouserFitIntent(phrase),
+      { requested: null, prohibited: ["slim_tapered"], ambiguous: false });
+    const locked = Object.freeze({ fit: "slim_tapered" });
+    assert.deepEqual(styleDirectorCandidateTrouserFitIssues(phrase, locked).map(x => x.code),
+      ["candidate_trouser_fit_mismatch"]);
+    assert.deepEqual(styleDirectorCandidateTrouserFitIssues(phrase, { fit: "regular_tapered" }), []);
+  }
+  assert.deepEqual(styleDirectorCandidateShirtFitIntent("slim fit requested"),
+    { requested: "slim_fit", prohibited: [], ambiguous: false });
+  assert.deepEqual(styleDirectorCandidateTrouserFitIntent("slim tapered fit requested"),
+    { requested: "slim_tapered", prohibited: [], ambiguous: false });
+});
