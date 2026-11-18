@@ -5,12 +5,34 @@ import importlib.util
 from pathlib import Path
 
 import bpy
+from mathutils import Vector
 
 source = Path(__file__).resolve().parents[2] / "scripts/blender/diagnose-linen-earth-crotch.py"
 spec = importlib.util.spec_from_file_location("titan_crotch_cross_section", source)
 assert spec is not None and spec.loader is not None
 diagnosis = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(diagnosis)
+
+# A deterministic perpendicular triangle pair crosses along a 1m segment.
+# This proves the new metric measures actual surface intersection geometry,
+# rather than relabelling epsilon-expanded BVH candidates.
+left_fixture = {
+    "points": [Vector((-1, -1, 0)), Vector((1, -1, 0)), Vector((0, 1, 0))],
+    "triangles": [[(0, 1, 2)]],
+}
+right_fixture = {
+    "points": [Vector((0, -1, -1)), Vector((0, 1, -1)), Vector((0, 0, 1))],
+    "triangles": [[(0, 1, 2)]],
+}
+known = diagnosis.intersection_segment_lengths_mm(left_fixture, right_fixture, [(0, 0)])
+assert len(known) == 1 and abs(known[0] - 1000.0) < 1e-6, known
+
+# An epsilon candidate that only touches at one point has no crossing segment.
+touch_fixture = {
+    "points": [Vector((0, 0, 0)), Vector((0, 1, 1)), Vector((0, -1, 1))],
+    "triangles": [[(0, 1, 2)]],
+}
+assert diagnosis.intersection_segment_lengths_mm(left_fixture, touch_fixture, [(0, 0)]) == []
 
 bpy.ops.object.select_all(action="SELECT")
 bpy.ops.object.delete(use_global=False)
@@ -29,6 +51,12 @@ initial_left = [tuple(v.co) for v in left.data.vertices]
 initial_right = [tuple(v.co) for v in right.data.vertices]
 first = diagnosis.analyze(body, left, right)
 assert first["legLegPolygonContactPairs"] > 0, first
+crossing = first["geometricIntersectionWitness"]
+assert crossing["bvhCandidatePairs"] == first["legLegPolygonContactPairs"]
+assert 0 < crossing["crossingPolygonPairs"] <= crossing["bvhCandidatePairs"]
+assert crossing["crossingSegmentLengthMm"]["count"] == crossing["crossingPolygonPairs"]
+assert crossing["crossingSegmentLengthMm"]["maximum"] > 0
+assert crossing["crossingSegmentLengthMm"]["sumPolygonPairProxy"] >= crossing["crossingSegmentLengthMm"]["maximum"]
 assert sum(first["contactPairsByBodyHeightOctile"]) == first["legLegPolygonContactPairs"]
 assert first["contactingLeftLegFaceCount"] > 0 and first["contactingRightLegFaceCount"] > 0
 assert 0 < first["contactFractionLeftLeg"] <= 1
@@ -45,6 +73,9 @@ right.location.x += 5.0
 bpy.context.view_layer.update()
 apart = diagnosis.analyze(body, left, right)
 assert apart["legLegPolygonContactPairs"] == 0
+assert apart["geometricIntersectionWitness"]["bvhCandidatePairs"] == 0
+assert apart["geometricIntersectionWitness"]["crossingPolygonPairs"] == 0
+assert apart["geometricIntersectionWitness"]["crossingSegmentLengthMm"] is None
 assert apart["contactingLeftLegFaceAreaMm2"] == 0
 assert apart["contactingRightLegFaceAreaMm2"] == 0
 assert apart["actualContactZCrossSections"] == []
