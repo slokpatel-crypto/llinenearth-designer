@@ -344,3 +344,27 @@ test("unacceptable collar constructions are excluded without rewriting locked ID
   assert.deepEqual(issueCodes(independent, "button_down_collar"), []);
   assert.deepEqual(issueCodes(independent, "spread_collar"), ["candidate_collar_mismatch"]);
 });
+
+test("explicitly excluded collar constructions remain prohibited without altering saved IDs", () => {
+  for (const [wording, forbidden, allowed] of [
+    ["Spread Collar is excluded", "spread_collar", "button_down_collar"],
+    ["Spread Collar rejected", "spread_collar", "button_down_collar"],
+    ["Camp Collar is ruled out", "cuban_camp_collar", "spread_collar"],
+    ["Wing Collar ruled out", "wing_collar", "spread_collar"],
+  ] as const) {
+    const locked = Object.freeze({ collar: forbidden });
+    assert.equal(styleDirectorCandidateCollar(wording, photographed), null, wording);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(wording), null, wording);
+    assert.equal(styleDirectorCandidateVariantCollar(wording), null, wording);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(wording, locked).map(x => x.code),
+      ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(issueCodes(wording, allowed), [], wording);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(wording), [], wording);
+    assert.equal(locked.collar, forbidden);
+  }
+  const alternative = "Spread Collar is ruled out; Button-Down Collar Shirt";
+  assert.equal(styleDirectorCandidateOrdinaryCollar(alternative), "button_down");
+  assert.deepEqual(issueCodes(alternative, "button_down_collar"), []);
+  assert.deepEqual(issueCodes(alternative, "spread_collar"), ["candidate_collar_mismatch"]);
+  assert.equal(styleDirectorCandidateOrdinaryCollar("Spread Collar is selected"), "spread");
+});
