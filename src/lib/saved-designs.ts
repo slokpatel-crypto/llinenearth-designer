@@ -23,10 +23,13 @@ export function listSavedDesigns(): SavedDesign[] {
     // Older browser stores may contain partial/null entries. Preserve usable
     // versioned recipes instead of letting one corrupt entry break all saves.
     return parsed.filter((item): item is SavedDesign =>
-      item !== null && typeof item === "object" &&
-      typeof item.id === "string" &&
-      item.version !== null && typeof item.version === "object" &&
-      typeof item.version.id === "string" &&
+      item !== null && typeof item === "object" && !Array.isArray(item) &&
+      typeof item.id === "string" && item.id.length > 0 &&
+      typeof item.title === "string" &&
+      item.brief !== null && typeof item.brief === "object" && !Array.isArray(item.brief) &&
+      item.renderSet !== null && typeof item.renderSet === "object" && !Array.isArray(item.renderSet) &&
+      item.version !== null && typeof item.version === "object" && !Array.isArray(item.version) &&
+      typeof item.version.id === "string" && item.version.id.length > 0 &&
       (item.version.specHash === undefined || typeof item.version.specHash === "string")
     );
   } catch {
