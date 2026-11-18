@@ -547,6 +547,15 @@ jobs:
           assert actual["legLegPolygonContactPairs"] == production_pairs, (
               "Native cross-section source does not match actual final production preflight",
               actual["legLegPolygonContactPairs"], production_pairs)
+          witness = actual["geometricIntersectionWitness"]
+          assert witness["bvhCandidatePairs"] == production_pairs
+          crossings = witness["crossingPolygonPairs"]
+          assert type(crossings) is int and 0 < crossings <= production_pairs
+          assert witness["epsilonOnlyTangentialOrCoplanarPairs"] == production_pairs - crossings
+          segments = witness["crossingSegmentLengthMm"]
+          assert segments["count"] == crossings
+          assert 0 < segments["minimum"] <= segments["median"] <= segments["maximum"]
+          assert segments["sumPolygonPairProxy"] >= segments["maximum"]
           bands = actual["contactPairsByBodyHeightOctile"]
           assert isinstance(bands, list) and len(bands) == 8
           assert all(type(n) is int and n >= 0 for n in bands)
@@ -575,6 +584,7 @@ jobs:
               "contactFootprintLeftMm2": actual["contactingLeftLegFaceAreaMm2"],
               "contactFootprintRightMm2": actual["contactingRightLegFaceAreaMm2"],
               "contactWorldBoundsMm": actual["worldContactBoundsMm"],
+              "actualCrossingSegments": witness,
               "crossSections": sections,
               "candidateOnly": True,
           }))
