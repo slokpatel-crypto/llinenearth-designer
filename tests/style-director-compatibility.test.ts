@@ -5010,3 +5010,18 @@ test("never acceptable collar instructions are exclusions, not affirmative const
   assert.equal(styleDirectorCandidateOrdinaryCollar("Spread Collar is never acceptable; Button-Down Collar requested"),
     "button_down", "a separately affirmative alternative must remain selectable");
 });
+
+
+test("inappropriate collar wording excludes rather than requests a construction", () => {
+  for (const phrase of [
+    "Spread Collar is inappropriate",
+    "Spread Collar is not appropriate",
+    "Spread Collar isn't appropriate",
+    "Spread Collar isn’t appropriate",
+  ]) {
+    assert.equal(styleDirectorCandidateOrdinaryCollar(phrase), null, phrase);
+    assert.equal(styleDirectorCandidateVariantCollar(phrase), null, phrase);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(phrase + " but Button-Down Collar is preferred"), "button_down", phrase);
+  }
+  assert.equal(styleDirectorCandidateOrdinaryCollar("Spread Collar is appropriate"), "spread");
+});
