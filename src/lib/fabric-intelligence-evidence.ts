@@ -35,7 +35,8 @@ export function applyVerifiedPhysicalFabricEvidence(
     try {
       const parsed=new URL(sourceUrl);
       validSourceUrl=sourceTextValid && sourceUrl.length<=1800 && evidenceNote.length<=500
-        && parsed.protocol==="https:" && Boolean(parsed.hostname);
+        && parsed.protocol==="https:" && Boolean(parsed.hostname)
+        && !parsed.username && !parsed.password;
     } catch { validSourceUrl=false; }
   }
   // An approved profile is not itself a physical measurement. Field-level
