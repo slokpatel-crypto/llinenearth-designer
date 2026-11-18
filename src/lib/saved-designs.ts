@@ -13,6 +13,17 @@ export type SavedDesign = {
   renderSet: RenderSet;
 };
 
+function isSavedDesign(item: unknown): item is SavedDesign {
+  return item !== null && typeof item === "object" && !Array.isArray(item) &&
+    typeof (item as SavedDesign).id === "string" && (item as SavedDesign).id.length > 0 &&
+    typeof (item as SavedDesign).title === "string" &&
+    (item as SavedDesign).brief !== null && typeof (item as SavedDesign).brief === "object" && !Array.isArray((item as SavedDesign).brief) &&
+    (item as SavedDesign).renderSet !== null && typeof (item as SavedDesign).renderSet === "object" && !Array.isArray((item as SavedDesign).renderSet) &&
+    (item as SavedDesign).version !== null && typeof (item as SavedDesign).version === "object" && !Array.isArray((item as SavedDesign).version) &&
+    typeof (item as SavedDesign).version.id === "string" && (item as SavedDesign).version.id.length > 0 &&
+    ((item as SavedDesign).version.specHash === undefined || typeof (item as SavedDesign).version.specHash === "string");
+}
+
 export function listSavedDesigns(): SavedDesign[] {
   if (typeof window === "undefined") return [];
   try {
@@ -22,16 +33,7 @@ export function listSavedDesigns(): SavedDesign[] {
     if (!Array.isArray(parsed)) return [];
     // Older browser stores may contain partial/null entries. Preserve usable
     // versioned recipes instead of letting one corrupt entry break all saves.
-    return parsed.filter((item): item is SavedDesign =>
-      item !== null && typeof item === "object" && !Array.isArray(item) &&
-      typeof item.id === "string" && item.id.length > 0 &&
-      typeof item.title === "string" &&
-      item.brief !== null && typeof item.brief === "object" && !Array.isArray(item.brief) &&
-      item.renderSet !== null && typeof item.renderSet === "object" && !Array.isArray(item.renderSet) &&
-      item.version !== null && typeof item.version === "object" && !Array.isArray(item.version) &&
-      typeof item.version.id === "string" && item.version.id.length > 0 &&
-      (item.version.specHash === undefined || typeof item.version.specHash === "string")
-    );
+    return parsed.filter(isSavedDesign);
   } catch {
     return [];
   }
@@ -42,6 +44,7 @@ export function saveDesign(input: Omit<SavedDesign, "id" | "savedAt">): SavedDes
   // Never overwrite an unreadable legacy store: doing so can permanently erase
   // customer recipes that may still be recoverable from the original bytes.
   const raw = window.localStorage.getItem(SAVED_DESIGNS_KEY);
+  let rawEntries: unknown[] = [];
   if (raw !== null) {
     let parsed: unknown;
     try {
@@ -52,8 +55,9 @@ export function saveDesign(input: Omit<SavedDesign, "id" | "savedAt">): SavedDes
     if (!Array.isArray(parsed)) {
       throw new Error("Saved designs have an unsupported format. Existing browser data was preserved.");
     }
+    rawEntries = parsed;
   }
-  const existing = listSavedDesigns();
+  const existing = rawEntries.filter(isSavedDesign);
   const saved: SavedDesign = {
     ...input,
     id: `SD-${input.version.specHash || input.version.id}`,
@@ -63,7 +67,10 @@ export function saveDesign(input: Omit<SavedDesign, "id" | "savedAt">): SavedDes
   const next = [saved, ...existing.filter((item) =>
     (item.version.specHash || item.version.id) !== identity
   )].slice(0, 24);
-  window.localStorage.setItem(SAVED_DESIGNS_KEY, JSON.stringify(next));
+  // Unknown legacy records are not part of the 24 readable-design limit.
+  // Preserve them during saves just as during deletion; they may be recoverable.
+  const unknown = rawEntries.filter((item) => !isSavedDesign(item));
+  window.localStorage.setItem(SAVED_DESIGNS_KEY, JSON.stringify([...next, ...unknown]));
   return saved;
 }
 
