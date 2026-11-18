@@ -1767,11 +1767,17 @@ jobs:
               assert global_trial["sourceVertexConsensusCount"] == 9
               assert global_trial[
                   "maximumConsensusCoordinateDisplacementMm"
-              ] > 0
+              ] == 0.25121072
+              assert global_trial[
+                  "rootMeanSquareConsensusCoordinateDisplacementMm"
+              ] == 0.10255635
               assert global_trial[
                   "maximumAbsoluteTriangleEdgeLengthStrainPercent"
-              ] > 0
-              assert global_trial["maximumTriangleEdgeLengthChangeMm"] > 0
+              ] == 0.79673184
+              assert global_trial[
+                  "maximumTriangleEdgeLengthChangeMm"
+              ] == 0.24924657
+              assert global_trial["orientationFlipCount"] == 0
               assert global_trial[
                   "allSourceVertexOccurrencesCoincident"
               ] is True
@@ -1813,6 +1819,12 @@ jobs:
               assert global_comparison[
                   "baselineObservedTriangleOverlapPairs"
               ] == 6957
+              assert global_comparison[
+                  "candidateObservedTriangleOverlapPairs"
+              ] == 6952
+              assert global_comparison[
+                  "candidateOverlapTrianglePairDelta"
+              ] == -5
               assert type(global_comparison[
                   "candidateObservedTriangleOverlapPairs"
               ]) is int

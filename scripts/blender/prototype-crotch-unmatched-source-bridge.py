@@ -2160,11 +2160,14 @@ def main():
             or global_continuity_summary["coordinateOccurrenceCount"] != 24
             or global_continuity_summary["sourceVertexConsensusCount"] != 9
             or global_continuity_summary[
-                "maximumConsensusCoordinateDisplacementMm"] <= 0
+                "maximumConsensusCoordinateDisplacementMm"] != 0.25121072
             or global_continuity_summary[
-                "maximumAbsoluteTriangleEdgeLengthStrainPercent"] <= 0
+                "rootMeanSquareConsensusCoordinateDisplacementMm"] != 0.10255635
             or global_continuity_summary[
-                "maximumTriangleEdgeLengthChangeMm"] <= 0
+                "maximumAbsoluteTriangleEdgeLengthStrainPercent"] != 0.79673184
+            or global_continuity_summary[
+                "maximumTriangleEdgeLengthChangeMm"] != 0.24924657
+            or global_continuity_summary["orientationFlipCount"] != 0
             or not global_continuity_summary[
                 "allSourceVertexOccurrencesCoincident"]
             or global_continuity_summary[
@@ -2196,6 +2199,12 @@ def main():
                 "bothFullResearchUvScansComplete"]
             or global_continuity_comparison[
                 "candidateObservedTriangleOverlapPairs"] is None
+            or global_continuity_comparison[
+                "baselineObservedTriangleOverlapPairs"] != 6957
+            or global_continuity_comparison[
+                "candidateObservedTriangleOverlapPairs"] != 6952
+            or global_continuity_comparison[
+                "candidateOverlapTrianglePairDelta"] != -5
             or mixed_search_summary["rootAnchorCandidateCount"] != 134
             or mixed_search_summary[
                 "minimumNewUnclosedInternalSplitDiagonalCount"] != 2

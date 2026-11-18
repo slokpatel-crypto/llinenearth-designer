@@ -1202,3 +1202,40 @@ Regardless of the completed diagnostic,
 four-angle likeness, approved model measurements, supplier textile scale and
 physical fabric/tailor evidence remain required. **DRAFT / NO MERGE / NO
 DEPLOY / NO CUTTING.**
+
+## 2026-11-18 global eight-triangle continuity trial
+
+**Acceptance criterion:** Reconcile all 24 coordinate occurrences in the four
+authentic source quads by one global source-vertex consensus, close all four
+incident source edges and all four internal split diagonals within one
+micrometre, introduce no orientation flip, and measure the resulting
+coordinate displacement, edge strain and full 5,300-triangle overlap impact.
+Passing this mathematical continuity check remains insufficient for physical
+or production approval without an evidence-backed material strain tolerance.
+
+**Implemented research path:** The source-only auditor rigidly attaches each
+quad's two triangles along its authentic internal diagonal, then computes the
+least-squares coordinate for each of the nine genuine source vertices across
+all eight triangles. It reports maximum and RMS coordinate displacement,
+per-edge length change/strain, orientation flips, the complete 4+4 boundary
+inventory, and a disposable full-garment UV overlap scan. No Blender source UV,
+mesh, body/BVH, GLB, render or canonical model identity is modified or saved.
+
+**Pinned native result:** Exact-head native Blender run
+[#44309132920](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44309132920)
+closed all eight audited local boundaries with zero residual and zero
+orientation flips. The required non-rigid consensus displaced a coordinate by
+at most 0.25121072mm (RMS 0.10255635mm), changed a triangle edge by at most
+0.24924657mm, and produced 0.79673184% maximum absolute edge-length strain.
+The complete overlap scan inspected all 5,300 triangles and changed observed
+interior-overlap pairs from 6,957 to 6,952 (-5). These UV-domain quantities
+are not textile measurements, physical drape results or approval thresholds.
+
+The numerical continuity criterion passes, but the candidate remains rejected:
+there is no approved physical UV strain threshold or supplier fabric evidence,
+so `physicalUvStrainThresholdApproved=false`,
+`physicalUvContinuityApproved=false`, `candidateAccepted=false` and
+`productionApproved=false`. Native collision/clearance, four-angle source
+likeness, approved model measurements, supplier textile scale and physical
+fabric/tailor evidence remain required. **DRAFT / NO MERGE / NO DEPLOY / NO
+CUTTING.**
