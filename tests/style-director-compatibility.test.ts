@@ -4998,3 +4998,15 @@ test("unencouraged collar wording is an exclusion, not a positive candidate", ()
   }
   assert.equal(styleDirectorCandidateOrdinaryCollar("Spread collar is encouraged"), "spread");
 });
+
+test("never acceptable collar instructions are exclusions, not affirmative construction", () => {
+  for (const prohibited of ["Spread Collar", "Camp Collar", "Button-Down Collar"]) {
+    const instruction = prohibited + " is never acceptable";
+    assert.equal(styleDirectorCandidateOrdinaryCollar(instruction), null, instruction);
+    assert.equal(styleDirectorCandidateVariantCollar(instruction), null, instruction);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(instruction, spec({ collar: "point_standard_collar" }).shirt), [],
+      "an unrelated locked collar must remain eligible: " + instruction);
+  }
+  assert.equal(styleDirectorCandidateOrdinaryCollar("Spread Collar is never acceptable; Button-Down Collar requested"),
+    "button_down", "a separately affirmative alternative must remain selectable");
+});
