@@ -5091,3 +5091,25 @@ test("incompatible collar instructions cannot select prohibited construction", (
     "Spread Collar is not compatible; Button-Down Collar requested"), "button_down");
   assert.equal(styleDirectorCandidateOrdinaryCollar("Spread Collar is compatible"), "spread");
 });
+
+test("unacceptable sleeve wording rejects only the named locked construction", () => {
+  for (const phrase of [
+    "Short sleeves are not acceptable",
+    "Half sleeves aren't acceptable",
+    "Full sleeves are not acceptable",
+    "Long sleeves aren’t acceptable",
+  ]) {
+    const short = /^(?:Short|Half)/.test(phrase);
+    const banned = spec({ sleeve: short ? "half_sleeve" : "full_sleeve" }).shirt;
+    const allowed = spec({ sleeve: short ? "full_sleeve" : "half_sleeve" }).shirt;
+    const snapshot = JSON.stringify(banned);
+    const issues = styleDirectorCandidateSleeveIssues(phrase, banned);
+    assert.ok(issues.length > 0, phrase + " must reject forbidden locked sleeve");
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, banned), issues, "repeatable");
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, allowed), [], "unrelated sleeve allowed");
+    assert.equal(JSON.stringify(banned), snapshot, "locked IDs must remain immutable");
+  }
+  assert.deepEqual(styleDirectorCandidateSleeveIssues(
+    "Short sleeves are acceptable", spec({ sleeve: "half_sleeve" }).shirt,
+  ), [], "affirmative construction remains supported");
+});
