@@ -5251,3 +5251,28 @@ test("postposed modal trouser-fit exclusions preserve versioned selections", () 
     assert.equal(locked.fit, "slim_tapered");
   }
 });
+
+test("modal fit exclusions stay isolated across shirt and trouser decisions", () => {
+  const shirt = Object.freeze({ fit: "slim_fit" as const });
+  const trouser = Object.freeze({ fit: "slim_tapered" as const });
+  const shirtPrompt = "Slim fit cannot be used; relaxed fit requested";
+  const trouserPrompt = "Slim tapered fit cannot be used; regular tapered fit requested";
+  const shirtIntent = styleDirectorCandidateShirtFitIntent(shirtPrompt);
+  const trouserIntent = styleDirectorCandidateTrouserFitIntent(trouserPrompt);
+  assert.deepEqual(shirtIntent, {
+    requested: "relaxed_fit", prohibited: ["slim_fit"], ambiguous: false,
+  });
+  assert.deepEqual(trouserIntent, {
+    requested: "regular_tapered", prohibited: ["slim_tapered"], ambiguous: false,
+  });
+  assert.ok(styleDirectorCandidateShirtFitIssues(shirtPrompt, shirt).length > 0);
+  assert.ok(styleDirectorCandidateTrouserFitIssues(trouserPrompt, trouser).length > 0);
+  assert.deepEqual(styleDirectorCandidateShirtFitIssues(
+    shirtPrompt, { fit: "relaxed_fit" }), []);
+  assert.deepEqual(styleDirectorCandidateTrouserFitIssues(
+    trouserPrompt, { fit: "regular_tapered" }), []);
+  assert.deepEqual(styleDirectorCandidateShirtFitIntent(shirtPrompt), shirtIntent);
+  assert.deepEqual(styleDirectorCandidateTrouserFitIntent(trouserPrompt), trouserIntent);
+  assert.equal(shirt.fit, "slim_fit");
+  assert.equal(trouser.fit, "slim_tapered");
+});
