@@ -1746,6 +1746,80 @@ jobs:
                   "physicalUvStrainThresholdApproved"
               ] is False
               assert midpoint["candidateAccepted"] is False
+              global_cycle=mixed[
+                  "inconsistentCycleGlobalEightTriangleContinuity"
+              ]
+              global_trial=global_cycle["trial"]
+              global_local=global_trial["localSeamContinuityAudit"]
+              global_overlap=global_cycle["candidateResearchUvOverlap"]
+              global_comparison=global_cycle[
+                  "packedBaselineVsCandidateOverlap"
+              ]
+              assert mixed_search[
+                  "globalEightTriangleContinuityTrialCount"
+              ] == 1
+              assert global_trial["reconciliationMethod"] == (
+                  "global_eight_triangle_vertex_consensus_least_squares"
+              )
+              assert global_trial["sourceQuadCount"] == 4
+              assert global_trial["triangleCount"] == 8
+              assert global_trial["coordinateOccurrenceCount"] == 24
+              assert global_trial["sourceVertexConsensusCount"] == 9
+              assert global_trial[
+                  "maximumConsensusCoordinateDisplacementMm"
+              ] > 0
+              assert global_trial[
+                  "maximumAbsoluteTriangleEdgeLengthStrainPercent"
+              ] > 0
+              assert global_trial["maximumTriangleEdgeLengthChangeMm"] > 0
+              assert global_trial[
+                  "allSourceVertexOccurrencesCoincident"
+              ] is True
+              assert global_trial[
+                  "physicalUvStrainThresholdApproved"
+              ] is False
+              assert global_trial["physicalUvContinuityApproved"] is False
+              assert global_trial["candidateAccepted"] is False
+              assert global_trial["productionApproved"] is False
+              assert global_local["closedIncidentSourceEdgeCount"] == 4
+              assert global_local["openIncidentSourceEdgeCount"] == 0
+              assert global_local[
+                  "closedInternalSplitDiagonalCount"
+              ] == 4
+              assert global_local[
+                  "openInternalSplitDiagonalCount"
+              ] == 0
+              assert global_local["totalLocalOpenSeamCount"] == 0
+              assert global_local[
+                  "allIncidentAndInternalBoundariesContinuous"
+              ] is True
+              assert global_local[
+                  "explicitRigidCandidateOpenSeamCount"
+              ] == 2
+              assert global_local[
+                  "openSeamCountDeltaVsExplicitRigidCandidate"
+              ] == -2
+              assert global_local[
+                  "globalContinuityHasFewerOpenSeamsThanExplicitRigidCandidate"
+              ] is True
+              assert global_local["physicalUvContinuityApproved"] is False
+              assert global_local["candidateAccepted"] is False
+              assert global_local["productionApproved"] is False
+              assert global_overlap["actualTrianglesInspected"] == 5300
+              assert global_overlap["auditTruncated"] is False
+              assert global_comparison[
+                  "bothFullResearchUvScansComplete"
+              ] is True
+              assert global_comparison[
+                  "baselineObservedTriangleOverlapPairs"
+              ] == 6957
+              assert type(global_comparison[
+                  "candidateObservedTriangleOverlapPairs"
+              ]) is int
+              assert global_cycle[
+                  "physicalUvStrainThresholdApproved"
+              ] is False
+              assert global_cycle["candidateAccepted"] is False
               assert mixed_search["rootAnchorCandidateCount"] == 134
               assert mixed_search[
                   "minimumNewUnclosedInternalSplitDiagonalCount"

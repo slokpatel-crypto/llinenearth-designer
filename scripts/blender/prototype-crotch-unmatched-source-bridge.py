@@ -2066,8 +2066,13 @@ def main():
     midpoint_trials = mixed_search[
         "inconsistent_cycle_midpoint_reconciliation_trials"
     ]
+    global_continuity_trials = mixed_search[
+        "inconsistent_cycle_global_continuity_trials"
+    ]
     if len(midpoint_trials) != 1:
         raise RuntimeError("Expected one authentic inconsistent-cycle midpoint trial.")
+    if len(global_continuity_trials) != 1:
+        raise RuntimeError("Expected one authentic global eight-triangle trial.")
     midpoint_trial = midpoint_trials[0]
     midpoint_summary = midpoint_trial["report"]
     midpoint_local = midpoint_summary["localSeamContinuityAudit"]
@@ -2078,6 +2083,19 @@ def main():
     )
     midpoint_comparison = overlap_compare(
         packed_weighted_overlap, midpoint_overlap
+    )
+    global_continuity_trial = global_continuity_trials[0]
+    global_continuity_summary = global_continuity_trial["report"]
+    global_continuity_local = global_continuity_summary[
+        "localSeamContinuityAudit"
+    ]
+    global_continuity_overlap = uv_overlap_audit(
+        base_faces, packed_weighted["face_uv_loops"],
+        research_triangle_overrides=
+            global_continuity_trial["research_triangle_overrides"],
+    )
+    global_continuity_comparison = overlap_compare(
+        packed_weighted_overlap, global_continuity_overlap
     )
     mixed_best_overlap = uv_overlap_audit(
         base_faces, packed_weighted["face_uv_loops"],
@@ -2093,6 +2111,8 @@ def main():
             or mixed_search_summary["transformInconsistentTriangulationCount"] != 1
             or len(mixed_conflicts) != 1
             or mixed_search_summary["midpointReconciliationTrialCount"] != 1
+            or mixed_search_summary[
+                "globalEightTriangleContinuityTrialCount"] != 1
             or mixed_conflicts[0][
                 "cycleClosureMaximumPredictedVertexDisagreementMm"] <= 0
             or mixed_conflicts[0][
@@ -2133,6 +2153,49 @@ def main():
                 "candidateObservedTriangleOverlapPairs"] is None
             or mixed_conflicts[0]["physicalUvStrainSolved"]
             or not mixed_conflicts[0]["requiresNonRigidDeformationOrSeam"]
+            or global_continuity_summary["reconciliationMethod"] !=
+                "global_eight_triangle_vertex_consensus_least_squares"
+            or global_continuity_summary["sourceQuadCount"] != 4
+            or global_continuity_summary["triangleCount"] != 8
+            or global_continuity_summary["coordinateOccurrenceCount"] != 24
+            or global_continuity_summary["sourceVertexConsensusCount"] != 9
+            or global_continuity_summary[
+                "maximumConsensusCoordinateDisplacementMm"] <= 0
+            or global_continuity_summary[
+                "maximumAbsoluteTriangleEdgeLengthStrainPercent"] <= 0
+            or global_continuity_summary[
+                "maximumTriangleEdgeLengthChangeMm"] <= 0
+            or not global_continuity_summary[
+                "allSourceVertexOccurrencesCoincident"]
+            or global_continuity_summary[
+                "physicalUvStrainThresholdApproved"]
+            or global_continuity_summary["physicalUvContinuityApproved"]
+            or global_continuity_summary["candidateAccepted"]
+            or global_continuity_summary["productionApproved"]
+            or global_continuity_local["closedIncidentSourceEdgeCount"] != 4
+            or global_continuity_local["openIncidentSourceEdgeCount"] != 0
+            or global_continuity_local[
+                "closedInternalSplitDiagonalCount"] != 4
+            or global_continuity_local[
+                "openInternalSplitDiagonalCount"] != 0
+            or global_continuity_local["totalLocalOpenSeamCount"] != 0
+            or not global_continuity_local[
+                "allIncidentAndInternalBoundariesContinuous"]
+            or global_continuity_local[
+                "explicitRigidCandidateOpenSeamCount"] != 2
+            or global_continuity_local[
+                "openSeamCountDeltaVsExplicitRigidCandidate"] != -2
+            or not global_continuity_local[
+                "globalContinuityHasFewerOpenSeamsThanExplicitRigidCandidate"]
+            or global_continuity_local["physicalUvContinuityApproved"]
+            or global_continuity_local["candidateAccepted"]
+            or global_continuity_local["productionApproved"]
+            or global_continuity_overlap["actualTrianglesInspected"] != 5300
+            or global_continuity_overlap["auditTruncated"]
+            or not global_continuity_comparison[
+                "bothFullResearchUvScansComplete"]
+            or global_continuity_comparison[
+                "candidateObservedTriangleOverlapPairs"] is None
             or mixed_search_summary["rootAnchorCandidateCount"] != 134
             or mixed_search_summary[
                 "minimumNewUnclosedInternalSplitDiagonalCount"] != 2
@@ -2192,6 +2255,13 @@ def main():
             "trial": midpoint_summary,
             "candidateResearchUvOverlap": midpoint_overlap,
             "packedBaselineVsCandidateOverlap": midpoint_comparison,
+            "physicalUvStrainThresholdApproved": False,
+            "candidateAccepted": False,
+        },
+        "inconsistentCycleGlobalEightTriangleContinuity": {
+            "trial": global_continuity_summary,
+            "candidateResearchUvOverlap": global_continuity_overlap,
+            "packedBaselineVsCandidateOverlap": global_continuity_comparison,
             "physicalUvStrainThresholdApproved": False,
             "candidateAccepted": False,
         },

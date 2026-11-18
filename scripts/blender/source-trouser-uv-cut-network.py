@@ -739,6 +739,152 @@ def reconcile_conflicting_uv_triangle_by_midpoint(
     }
 
 
+def reconcile_uv_cycle_by_global_vertex_consensus(
+        triangle_vertices_by_face, original_triangles_by_face,
+        placed_triangles_by_face):
+    """Close four source quads by least-squares shared-vertex consensus.
+
+    Every occurrence of a genuine source vertex in the eight already placed
+    triangles receives the arithmetic mean of its predicted coordinates. This
+    is the exact least-squares coordinate solution under shared-vertex equality,
+    not a cloth-energy or tailoring solve. Distortion is measured, no tolerance
+    is approved, and no stored UV is written.
+    """
+    if (not isinstance(triangle_vertices_by_face, dict)
+            or not isinstance(original_triangles_by_face, dict)
+            or not isinstance(placed_triangles_by_face, dict)
+            or set(triangle_vertices_by_face) != set(original_triangles_by_face)
+            or set(triangle_vertices_by_face) != set(placed_triangles_by_face)
+            or len(triangle_vertices_by_face) != 4):
+        raise ValueError("Global cycle consensus needs four matching source quads.")
+
+    vertices_by_face, originals_by_face, placed_by_face = {}, {}, {}
+    occurrences = defaultdict(list)
+    for face_id in sorted(triangle_vertices_by_face):
+        raw_vertices = triangle_vertices_by_face[face_id]
+        raw_originals = original_triangles_by_face[face_id]
+        raw_placed = placed_triangles_by_face[face_id]
+        if (type(face_id) is not int or face_id < 0
+                or not hasattr(raw_vertices, "__len__") or len(raw_vertices) != 2
+                or not hasattr(raw_originals, "__len__") or len(raw_originals) != 2
+                or not hasattr(raw_placed, "__len__") or len(raw_placed) != 2):
+            raise ValueError("Global cycle consensus requires two triangles per quad.")
+        vertex_rows, original_rows, placed_rows = [], [], []
+        for raw_vertex_row, raw_original, raw_prediction in zip(
+                raw_vertices, raw_originals, raw_placed):
+            if (not hasattr(raw_vertex_row, "__len__")
+                    or len(raw_vertex_row) != 3
+                    or len(set(raw_vertex_row)) != 3
+                    or any(type(vertex) is not int or vertex < 0
+                           for vertex in raw_vertex_row)
+                    or not hasattr(raw_original, "__len__")
+                    or len(raw_original) != 3
+                    or not hasattr(raw_prediction, "__len__")
+                    or len(raw_prediction) != 3):
+                raise ValueError("Global cycle triangle provenance is invalid.")
+            coordinates = []
+            for name, triangle in (("original", raw_original),
+                                   ("predicted", raw_prediction)):
+                row = []
+                for point in triangle:
+                    if (not hasattr(point, "__len__") or len(point) != 2
+                            or any(isinstance(value, bool)
+                                   or not isinstance(value, (int, float))
+                                   or not math.isfinite(value) for value in point)):
+                        raise ValueError(
+                            f"Global cycle {name} coordinates must be finite 2D data."
+                        )
+                    row.append(tuple(float(value) for value in point))
+                coordinates.append(tuple(row))
+            vertex_row = tuple(raw_vertex_row)
+            vertex_rows.append(vertex_row)
+            original_rows.append(coordinates[0])
+            placed_rows.append(coordinates[1])
+            for vertex, point in zip(vertex_row, coordinates[1]):
+                occurrences[vertex].append(point)
+        if (len(set(vertex_rows[0]) & set(vertex_rows[1])) != 2
+                or len(set(vertex_rows[0]) | set(vertex_rows[1])) != 4):
+            raise ValueError("Global cycle triangles do not reconstruct a source quad.")
+        vertices_by_face[face_id] = tuple(vertex_rows)
+        originals_by_face[face_id] = tuple(original_rows)
+        placed_by_face[face_id] = tuple(placed_rows)
+
+    consensus = {
+        vertex: (sum(point[0] for point in points) / len(points),
+                 sum(point[1] for point in points) / len(points))
+        for vertex, points in occurrences.items()
+    }
+    reconciled = {
+        face_id: tuple(tuple(consensus[vertex] for vertex in vertices)
+                       for vertices in vertices_by_face[face_id])
+        for face_id in vertices_by_face
+    }
+    displacements = [
+        math.dist(point, consensus[vertex])
+        for vertex, points in occurrences.items() for point in points
+    ]
+    edge_strains, edge_changes = [], []
+    orientation_flips = 0
+
+    def signed_area(triangle):
+        return 0.5 * ((triangle[1][0] - triangle[0][0])
+                      * (triangle[2][1] - triangle[0][1])
+                      - (triangle[1][1] - triangle[0][1])
+                      * (triangle[2][0] - triangle[0][0]))
+
+    for face_id in sorted(vertices_by_face):
+        for triangle_id in range(2):
+            before = originals_by_face[face_id][triangle_id]
+            after = reconciled[face_id][triangle_id]
+            before_area, after_area = signed_area(before), signed_area(after)
+            if abs(before_area) <= 1e-12 or abs(after_area) <= 1e-12:
+                raise ValueError("Global cycle consensus collapsed a source triangle.")
+            orientation_flips += (before_area > 0) != (after_area > 0)
+            for a, b in ((0, 1), (1, 2), (2, 0)):
+                before_length = math.dist(before[a], before[b])
+                after_length = math.dist(after[a], after[b])
+                if before_length <= 1e-12:
+                    raise ValueError("Global cycle source triangle has a collapsed edge.")
+                edge_changes.append(abs(after_length - before_length))
+                edge_strains.append((after_length / before_length - 1) * 100)
+
+    return {
+        "research_triangle_overrides": reconciled,
+        "report": {
+            "researchOnly": True,
+            "reconciliationMethod":
+                "global_eight_triangle_vertex_consensus_least_squares",
+            "sourceQuadCount": 4,
+            "triangleCount": 8,
+            "coordinateOccurrenceCount": sum(len(rows)
+                                               for rows in occurrences.values()),
+            "sourceVertexConsensusCount": len(consensus),
+            "maximumConsensusCoordinateDisplacementMm": round(
+                max(displacements) * 1000, 8
+            ),
+            "rootMeanSquareConsensusCoordinateDisplacementMm": round(
+                math.sqrt(sum(value * value for value in displacements)
+                          / len(displacements)) * 1000, 8
+            ),
+            "maximumAbsoluteTriangleEdgeLengthStrainPercent": round(
+                max(abs(value) for value in edge_strains), 8
+            ),
+            "maximumTriangleEdgeLengthChangeMm": round(
+                max(edge_changes) * 1000, 8
+            ),
+            "orientationFlipCount": orientation_flips,
+            "allSourceVertexOccurrencesCoincident": True,
+            "leastSquaresCoordinateConsensusComputed": True,
+            "storedSourceUvChanged": False,
+            "sourceUvExportOrSavePerformed": False,
+            "physicalUvStrainThresholdApproved": False,
+            "physicalUvContinuityApproved": False,
+            "candidateAccepted": False,
+            "productionApproved": False,
+        },
+    }
+
+
 def audit_midpoint_cycle_local_seams(
         original_faces, face_uv_loops, incident_source_edges,
         triangle_vertices_by_face, research_triangle_overrides):
@@ -1013,7 +1159,8 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
     baseline_unclosed = sum(
         original_shared_gap(edge) > 0.000001 for edge in shared_edges
     )
-    trials, topology_rows, reconciliation_trials = [], [], []
+    trials, topology_rows = [], []
+    reconciliation_trials, global_continuity_trials = [], []
     for diagonal_choices in product((0, 1), repeat=4):
         choice_by_face = dict(zip(target_faces, diagonal_choices))
         triangle_vertices, original_triangles = {}, {}
@@ -1079,6 +1226,7 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
         consistent = True
         conflict_evidence = None
         conflict_reconciliation_trial = None
+        conflict_global_continuity_trial = None
         for component in components:
             variants = []
             for root in component:
@@ -1142,6 +1290,82 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
                                     cycle_face_id: tuple(rows)
                                     for cycle_face_id, rows in cycle_triangles.items()
                                 }
+                                # Use one complete rigid path as the reference,
+                                # then attach each second triangle rigidly across
+                                # its authentic internal diagonal. The following
+                                # consensus is the only non-rigid operation.
+                                globally_placed = {
+                                    cycle_face_id: list(rows)
+                                    for cycle_face_id, rows in cycle_triangles.items()
+                                }
+                                globally_placed[face_id][triangle_id] = first_prediction
+                                for cycle_face_id in target_faces:
+                                    placed_ids = [
+                                        placed_triangle_id
+                                        for placed_triangle_id in range(2)
+                                        if (cycle_face_id, placed_triangle_id) in poses
+                                    ]
+                                    if len(placed_ids) != 1:
+                                        raise ValueError(
+                                            "Inconsistent cycle must place one owner "
+                                            "triangle per source quad."
+                                        )
+                                    placed_id = placed_ids[0]
+                                    other_id = 1 - placed_id
+                                    placed_vertices = triangle_vertices[
+                                        cycle_face_id][placed_id]
+                                    other_vertices = triangle_vertices[
+                                        cycle_face_id][other_id]
+                                    diagonal = tuple(sorted(
+                                        set(placed_vertices) & set(other_vertices)
+                                    ))
+                                    if len(diagonal) != 2:
+                                        raise ValueError(
+                                            "Global cycle placement lacks a split diagonal."
+                                        )
+                                    placed_owner = tuple(
+                                        globally_placed[cycle_face_id][placed_id][
+                                            placed_vertices.index(vertex)]
+                                        for vertex in diagonal
+                                    )
+                                    other_owner = tuple(
+                                        original_triangles[cycle_face_id][other_id][
+                                            other_vertices.index(vertex)]
+                                        for vertex in diagonal
+                                    )
+                                    other_to_placed = rigid_b_to_a(
+                                        placed_owner, other_owner
+                                    )
+                                    globally_placed[cycle_face_id][other_id] = tuple(
+                                        apply(other_to_placed, point) for point in
+                                        original_triangles[cycle_face_id][other_id]
+                                    )
+                                globally_placed = {
+                                    cycle_face_id: tuple(rows)
+                                    for cycle_face_id, rows in globally_placed.items()
+                                }
+                                global_reconciliation = (
+                                    reconcile_uv_cycle_by_global_vertex_consensus(
+                                        triangle_vertices, original_triangles,
+                                        globally_placed,
+                                    )
+                                )
+                                global_local_seams = audit_midpoint_cycle_local_seams(
+                                    faces, uvs, edges, triangle_vertices,
+                                    global_reconciliation[
+                                        "research_triangle_overrides"],
+                                )
+                                conflict_global_continuity_trial = {
+                                    "research_triangle_overrides":
+                                        global_reconciliation[
+                                            "research_triangle_overrides"],
+                                    "report": {
+                                        "targetOriginalSourceVertex": junction_vertex,
+                                        "conflictingTriangleNode": list(neighbour),
+                                        **global_reconciliation["report"],
+                                        "localSeamContinuityAudit": global_local_seams,
+                                    },
+                                }
                                 local_seams = audit_midpoint_cycle_local_seams(
                                     faces, uvs, edges, triangle_vertices,
                                     cycle_triangles,
@@ -1193,9 +1417,11 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
                 break
             component_variants.append(tuple(variants))
         if not consistent:
-            if conflict_reconciliation_trial is None:
+            if (conflict_reconciliation_trial is None
+                    or conflict_global_continuity_trial is None):
                 raise ValueError("Inconsistent UV cycle lacks reconciliation evidence.")
             reconciliation_trials.append(conflict_reconciliation_trial)
+            global_continuity_trials.append(conflict_global_continuity_trial)
             topology_rows.append({
                 "nonJunctionDiagonalOriginalSourceFaceIds": [
                     face_id for face_id in target_faces
@@ -1338,11 +1564,23 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
             local_seams["totalLocalOpenSeamCount"] < minimum_internal
         )
         local_seams["candidateAccepted"] = False
+    for global_trial in global_continuity_trials:
+        local_seams = global_trial["report"]["localSeamContinuityAudit"]
+        local_seams["explicitRigidCandidateOpenSeamCount"] = minimum_internal
+        local_seams["openSeamCountDeltaVsExplicitRigidCandidate"] = (
+            local_seams["totalLocalOpenSeamCount"] - minimum_internal
+        )
+        local_seams["globalContinuityHasFewerOpenSeamsThanExplicitRigidCandidate"] = (
+            local_seams["totalLocalOpenSeamCount"] < minimum_internal
+        )
+        local_seams["candidateAccepted"] = False
     return {
         "best_candidate_trial": trials[0],
         "candidate_trials": trials,
         "inconsistent_cycle_midpoint_reconciliation_trials":
             reconciliation_trials,
+        "inconsistent_cycle_global_continuity_trials":
+            global_continuity_trials,
         "report": {
             "researchOnly": True,
             "targetOriginalSourceVertex": junction_vertex,
@@ -1358,6 +1596,8 @@ def enumerate_original_source_uv_junction_mixed_triangulations(
                 if not row["transformConsistent"]
             ],
             "midpointReconciliationTrialCount": len(reconciliation_trials),
+            "globalEightTriangleContinuityTrialCount":
+                len(global_continuity_trials),
             "rootAnchorCandidateCount": len(trials),
             "minimumNewUnclosedInternalSplitDiagonalCount": minimum_internal,
             "minimumCandidateTotalUnclosedUvSeamCountAtMinimumInternal":

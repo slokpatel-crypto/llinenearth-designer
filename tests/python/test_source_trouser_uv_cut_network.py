@@ -37,6 +37,9 @@ enumerate_mixed_triangulations = source_graph_module[
 reconcile_midpoint = source_graph_module[
     "reconcile_conflicting_uv_triangle_by_midpoint"
 ]
+reconcile_global_cycle = source_graph_module[
+    "reconcile_uv_cycle_by_global_vertex_consensus"
+]
 audit_midpoint_seams = source_graph_module[
     "audit_midpoint_cycle_local_seams"
 ]
@@ -69,6 +72,12 @@ for malformed in (
         pass
     else:
         raise AssertionError("Malformed UV midpoint reconciliation was accepted.")
+try:
+    reconcile_global_cycle({}, {}, {})
+except ValueError:
+    pass
+else:
+    raise AssertionError("Empty global UV cycle reconciliation was accepted.")
 
 # Synthetic proper rotation + translation can close equal-length source
 # segments; length disagreement has a provable irreducible residual.
@@ -229,7 +238,12 @@ assert mixed_report["midpointReconciliationTrialCount"] == len(conflicts)
 midpoint_trials = mixed_search[
     "inconsistent_cycle_midpoint_reconciliation_trials"
 ]
+global_trials = mixed_search[
+    "inconsistent_cycle_global_continuity_trials"
+]
 assert len(midpoint_trials) == len(conflicts)
+assert len(global_trials) == len(conflicts)
+assert mixed_report["globalEightTriangleContinuityTrialCount"] == len(conflicts)
 for conflict, trial in zip(conflicts, midpoint_trials):
     reconciliation = conflict["midpointReconciliation"]
     assert reconciliation["maximumPathReconciliationVertexDisplacementMm"] == (
@@ -269,6 +283,39 @@ for conflict, trial in zip(conflicts, midpoint_trials):
         local["totalLocalOpenSeamCount"]
         - local["explicitRigidCandidateOpenSeamCount"]
     )
+    assert local["physicalUvContinuityApproved"] is False
+    assert local["candidateAccepted"] is False
+    assert local["productionApproved"] is False
+for trial in global_trials:
+    report = trial["report"]
+    local = report["localSeamContinuityAudit"]
+    assert report["reconciliationMethod"] == (
+        "global_eight_triangle_vertex_consensus_least_squares"
+    )
+    assert report["sourceQuadCount"] == 4
+    assert report["triangleCount"] == 8
+    assert report["coordinateOccurrenceCount"] == 24
+    assert report["sourceVertexConsensusCount"] == 9
+    assert report["maximumConsensusCoordinateDisplacementMm"] > 0
+    assert report["maximumAbsoluteTriangleEdgeLengthStrainPercent"] > 0
+    assert report["maximumTriangleEdgeLengthChangeMm"] > 0
+    assert report["allSourceVertexOccurrencesCoincident"] is True
+    assert report["leastSquaresCoordinateConsensusComputed"] is True
+    assert report["physicalUvStrainThresholdApproved"] is False
+    assert report["physicalUvContinuityApproved"] is False
+    assert report["candidateAccepted"] is False
+    assert report["productionApproved"] is False
+    assert local["closedIncidentSourceEdgeCount"] == 4
+    assert local["openIncidentSourceEdgeCount"] == 0
+    assert local["closedInternalSplitDiagonalCount"] == 4
+    assert local["openInternalSplitDiagonalCount"] == 0
+    assert local["totalLocalOpenSeamCount"] == 0
+    assert local["allIncidentAndInternalBoundariesContinuous"] is True
+    assert local["explicitRigidCandidateOpenSeamCount"] == 2
+    assert local["openSeamCountDeltaVsExplicitRigidCandidate"] == -2
+    assert local[
+        "globalContinuityHasFewerOpenSeamsThanExplicitRigidCandidate"
+    ] is True
     assert local["physicalUvContinuityApproved"] is False
     assert local["candidateAccepted"] is False
     assert local["productionApproved"] is False
