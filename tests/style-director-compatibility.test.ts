@@ -5113,3 +5113,30 @@ test("unacceptable sleeve wording rejects only the named locked construction", (
     "Short sleeves are acceptable", spec({ sleeve: "half_sleeve" }).shirt,
   ), [], "affirmative construction remains supported");
 });
+
+test("infeasible sleeve instructions exclude only the named construction", () => {
+  for (const phrase of [
+    "Short sleeves are not feasible",
+    "Half sleeves aren't feasible",
+    "Full sleeves aren’t feasible",
+    "Long sleeves are not feasible",
+  ]) {
+    const forbidden = /^(?:Short|Half)/.test(phrase) ? "half_sleeve" : "full_sleeve";
+    const allowed = forbidden === "half_sleeve" ? "full_sleeve" : "half_sleeve";
+    const locked = spec({ sleeve: forbidden }).shirt;
+    const snapshot = JSON.stringify(locked);
+    const issues = styleDirectorCandidateSleeveIssues(phrase, locked);
+    assert.ok(issues.length > 0, phrase);
+    assert.deepEqual(issues, styleDirectorCandidateSleeveIssues(phrase, locked));
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, spec({ sleeve: allowed }).shirt), [], phrase);
+    assert.equal(JSON.stringify(locked), snapshot);
+  }
+});
+
+test("infeasible roll-up is not a positive sleeve selection", () => {
+  for (const phrase of ["Roll-up Styled is not feasible", "Roll-up Styled isn't feasible"]) {
+    const intent = styleDirectorCandidateRollUpSleeveIntent(phrase);
+    assert.deepEqual(intent, { requested: false, prohibited: true, ambiguous: false }, phrase);
+    assert.deepEqual(intent, styleDirectorCandidateRollUpSleeveIntent(phrase));
+  }
+});
