@@ -957,7 +957,7 @@ export function styleDirectorCandidateShirtFitIntent(candidateShirt: string): {
         continue;
       }
       const ban = /\b(?:no|without|avoid|never|not|do\s+not|don['’]?t)\s+(?:(?:use|choose|wear|include|have|want)\s+)?(?:(?:a|any|the)\s+)?$/i.test(before) ||
-        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|not\s+(?:allowed|permitted|wanted)|(?:isn['’]?t|aren['’]?t)\s+wanted|(?:should|must)\s+not\s+be\s+(?:chosen|selected|used))\b/i.test(after);
+        /^\s+(?:(?:is|are)\s+)?(?:forbidden|prohibited|banned|unwanted|excluded|rejected|not\s+(?:allowed|permitted|wanted|approved|acceptable|compatible|feasible)|(?:isn['’]?t|aren['’]?t)\s+(?:wanted|allowed|permitted|approved|acceptable|compatible|feasible)|(?:should|must)\s+not\s+be\s+(?:chosen|selected|used))\b/i.test(after);
       const optional = /\b(?:optional|maybe)\s+$/i.test(before) ||
         /^\s+(?:(?:is|are)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory))\b/i.test(after);
       if (ban) prohibited.add(id);
