@@ -30,8 +30,8 @@ test("deleting a design preserves malformed and non-array legacy data", () => {
 
 test("deleting one design preserves unknown legacy entries and other designs", () => {
   const legacy = {id:"legacy-unknown", unusualField:{recoverable:true}};
-  const target = {id:"SD-target", title:"Remove me"};
-  const survivor = {id:"SD-keep", title:"Keep me"};
+  const target = {id:"SD-target", title:"Remove me", brief:{}, renderSet:{}, version:{id:"v-target"}};
+  const survivor = {id:"SD-keep", title:"Keep me", brief:{}, renderSet:{}, version:{id:"v-keep"}};
   withStore(JSON.stringify([legacy, target, null, survivor, "unrecognized"]), (storage) => {
     removeSavedDesign("SD-target");
     assert.deepEqual(JSON.parse(storage.get(SAVED_DESIGNS_KEY)!), [legacy,null,survivor,"unrecognized"]);
