@@ -4981,3 +4981,20 @@ test("nonideal collar wording excludes the named construction without selecting 
       styleDirectorCandidateOrdinaryCollar(banned), "deterministic");
   }
 });
+
+test("unencouraged collar wording is an exclusion, not a positive candidate", () => {
+  for (const phrase of [
+    "Spread collar is not encouraged",
+    "Spread collar isn't encouraged",
+    "Spread collar isn’t encouraged",
+    "Spread collar not encouraged",
+  ]) {
+    assert.equal(styleDirectorCandidateOrdinaryCollar(phrase), null, phrase);
+    assert.equal(styleDirectorCandidateVariantCollar(phrase), null, phrase);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(
+      phrase + "; button-down collar requested"), "button_down", phrase);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(phrase),
+      styleDirectorCandidateOrdinaryCollar(phrase), "repeatable");
+  }
+  assert.equal(styleDirectorCandidateOrdinaryCollar("Spread collar is encouraged"), "spread");
+});
