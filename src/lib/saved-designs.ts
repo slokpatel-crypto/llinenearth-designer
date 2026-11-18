@@ -33,7 +33,10 @@ export function saveDesign(input: Omit<SavedDesign, "id" | "savedAt">): SavedDes
     id: `SD-${input.version.specHash || input.version.id}`,
     savedAt: new Date().toISOString(),
   };
-  const next = [saved, ...existing.filter((item) => item.version.specHash !== saved.version.specHash)].slice(0, 24);
+  const identity = saved.version.specHash || saved.version.id;
+  const next = [saved, ...existing.filter((item) =>
+    (item.version.specHash || item.version.id) !== identity
+  )].slice(0, 24);
   window.localStorage.setItem(SAVED_DESIGNS_KEY, JSON.stringify(next));
   return saved;
 }
