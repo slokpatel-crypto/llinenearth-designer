@@ -5161,3 +5161,34 @@ test("explicitly rejected shirt fits do not become affirmative construction choi
     "Slim fit is rejected; relaxed fit requested",
   ).requested, "relaxed_fit");
 });
+
+test("rejected placket constructions remain exclusions, never affirmative selections", () => {
+  for (const phrase of [
+    "French placket is excluded",
+    "French placket rejected",
+    "French placket ruled out",
+    "French placket is prohibited",
+  ]) {
+    const intent = styleDirectorCandidatePlacketIntent(phrase);
+    assert.equal(intent.requested, null, phrase);
+    assert.deepEqual(intent.prohibited, ["french_placket"], phrase);
+    assert.equal(intent.ambiguous, false, phrase);
+    assert.equal(styleDirectorCandidatePlacket(phrase, []), null, phrase);
+    assert.deepEqual(
+      styleDirectorCandidatePlacketIssues(phrase, Object.freeze({ placket: "french_placket" }))
+        .map(issue => issue.code),
+      ["candidate_placket_mismatch"], phrase,
+    );
+    assert.deepEqual(
+      styleDirectorCandidatePlacketIssues(phrase, Object.freeze({ placket: "standard_visible_placket" })),
+      [], phrase,
+    );
+    assert.deepEqual(styleDirectorCandidatePlacketIntent(phrase), intent, phrase);
+  }
+  const mixed = styleDirectorCandidatePlacketIntent(
+    "French placket is rejected; covered placket requested",
+  );
+  assert.equal(mixed.requested, "covered_placket");
+  assert.deepEqual(mixed.prohibited, ["french_placket"]);
+  assert.equal(mixed.ambiguous, false);
+});
