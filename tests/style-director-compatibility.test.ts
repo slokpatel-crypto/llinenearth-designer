@@ -4964,3 +4964,20 @@ test("roll-up styling not ideal is an exclusion, never a silent sleeve selection
     "Roll-up sleeves are not ideal; roll-up styled required"),
     { requested: true, prohibited: true, ambiguous: true });
 });
+
+test("nonideal collar wording excludes the named construction without selecting it", () => {
+  for (const banned of [
+    "Spread collar is not ideal",
+    "Spread collar isn't ideal",
+    "Spread collar isn’t ideal",
+    "Spread collar is never ideal",
+    "Spread collar never recommended",
+  ]) {
+    assert.equal(styleDirectorCandidateOrdinaryCollar(banned), null, banned);
+    assert.equal(styleDirectorCandidateVariantCollar(banned), null, banned);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(banned + "; button-down collar requested"),
+      "button_down", banned + " must retain independent affirmative choice");
+    assert.equal(styleDirectorCandidateOrdinaryCollar(banned),
+      styleDirectorCandidateOrdinaryCollar(banned), "deterministic");
+  }
+});
