@@ -5025,3 +5025,24 @@ test("inappropriate collar wording excludes rather than requests a construction"
   }
   assert.equal(styleDirectorCandidateOrdinaryCollar("Spread Collar is appropriate"), "spread");
 });
+
+test("contracted collar prohibitions do not become affirmative construction requests", () => {
+  for (const phrase of [
+    "Spread Collar isn't allowed",
+    "Spread Collar isn’t permitted",
+    "Spread Collar aren't allowed",
+    "Spread Collar aren’t permitted",
+  ]) {
+    const locked = spec({ collar: "spread_collar" }).shirt;
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorCandidateCollarIssues(phrase, locked);
+    assert.ok(issues.length > 0, phrase + " must flag the forbidden locked collar");
+    assert.deepEqual(styleDirectorCandidateCollarIssues(phrase, locked), issues);
+    assert.equal(JSON.stringify(locked), before, "locked ID must not be rewritten");
+    assert.deepEqual(styleDirectorCandidateCollarIssues(
+      phrase, spec({ collar: "button_down_collar" }).shirt,
+    ), [], "unrelated canonical collar remains allowed");
+    assert.equal(styleDirectorCandidateOrdinaryCollar(phrase), null,
+      "a prohibited collar is not an affirmative photo construction");
+  }
+});
