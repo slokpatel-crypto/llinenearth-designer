@@ -55,6 +55,7 @@ async function run(){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     const dark=await page.locator("#designer-shirt option").evaluateAll(options=>options.find(o=>/Black - Jute Feel/.test(o.textContent))?.value);assert.ok(dark);
     await page.locator("#designer-shirt").selectOption(dark);await ready(page);
+    const solidCanvasHash=await actualPhotoPixelHash(page);
     const visibleContacts=await page.locator(".floatingContactDock .floatingContact").evaluateAll(links=>
       links.filter(link=>{
         const style=getComputedStyle(link),rect=link.getBoundingClientRect();
@@ -78,6 +79,25 @@ async function run(){
     assert.equal(coversModel,false,
       `contact control must stay outside the central full-body model region: ${JSON.stringify({width,contactStage,compactDock,protectedModel})}`);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`contact-dock-model-clearance-${width}.png`)});
+    // Exercise a real catalogue image rather than allowing the synthetic QA
+    // stripe to stand in for customer evidence. Pixel standard-deviation audit
+    // identifies Printed Linen Blend 08 as the highest-contrast current shirt
+    // swatch; that ranking is visual only and is not a physical repeat scale.
+    const realPattern=await page.locator("#designer-shirt option").evaluateAll(options=>
+      options.find(option=>/Printed Linen Blend 08/.test(option.textContent))?.value);
+    assert.ok(realPattern,"highest-contrast real catalogue pattern must remain selectable");
+    await page.locator("#designer-shirt").selectOption(realPattern);await ready(page);
+    assert.notEqual(await actualPhotoPixelHash(page),solidCanvasHash,
+      "real catalogue pattern selection must repaint the deterministic preview");
+    const realPatternCaption=page.locator('[data-photo-caption="instant"]');
+    assert.match(await realPatternCaption.textContent(),/pattern scale is still approximate for Printed Linen Blend 08/i,
+      "real catalogue pattern must retain its unmeasured-scale warning");
+    assert.doesNotMatch(await realPatternCaption.textContent(),/reviewed physical evidence/,
+      "real catalogue pixels cannot imply measured textile scale");
+    await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`real-catalogue-pattern-${width}.png`)});
+    await page.locator("#designer-shirt").selectOption(dark);await ready(page);
+    assert.equal(await actualPhotoPixelHash(page),solidCanvasHash,
+      "switching back from a real catalogue pattern must reproduce the same deterministic solid preview");
     // The catalogue's Black - Jute Feel shirt and plain Beige trousers have
     // no recorded visible motif repeat. Verified-repeat language must not
     // appear simply because Solid is marked scale-exempt in the compositor.
@@ -248,6 +268,7 @@ async function run(){
     summary.viewports[summary.viewports.length-1].compactActionsReadable=true;
     summary.viewports[summary.viewports.length-1].tallDesktopActionRowReachable=true;
     summary.viewports[summary.viewports.length-1].contactDockModelClear=true;
+    summary.viewports[summary.viewports.length-1].realCataloguePatternVerified=true;
     summary.viewports[summary.viewports.length-1].solidScaleClaimTruthful=true;
     summary.viewports[summary.viewports.length-1].solidScaleNoteUnobstructed=true;
     // Exercise the ACTUAL customer controls, not just pure IDs. Advanced v2
@@ -348,6 +369,9 @@ async function run(){
         const makeCanvas=()=>{const c=document.createElement("canvas");c.width=W;c.height=H;return c;};
         const control=document.createElement("canvas");control.width=control.height=64;const cc=control.getContext("2d");cc.fillStyle="#b46d58";cc.fillRect(0,0,64,64);const shirtImage=await image(control.toDataURL());cc.fillStyle="#b9afa0";cc.fillRect(0,0,64,64);const pantImage=await image(control.toDataURL());
         const engine=window.__photoFormAfter.engine,shirt={...engine.DESIGNER_SHIRTS[0],image:"/qa-solid-shirt.png",hex:"#b46d58",patternType:"Solid",renderScale:undefined},pant={...engine.DESIGNER_PANTS[0],image:"/qa-solid-pant.png",hex:"#b9afa0",patternType:"Solid",renderScale:undefined};
+        const cataloguePatternFabric=engine.DESIGNER_SHIRTS.find(fabric=>fabric.id==="printed-linen-blend-08");
+        if(!cataloguePatternFabric)throw Error("Printed Linen Blend 08 missing from real Designer catalogue");
+        const cataloguePatternImage=await image(cataloguePatternFabric.image);
         // Synthetic stripe TEST TILE only; it is never shown as a customer
         // fabric or passed to a provider. Actual mannequin images stay intact.
         // Use a full-size QA textile tile: swatchTile crops/expands stripes.
@@ -401,6 +425,9 @@ async function run(){
           const striped=makeCanvas();
           window.__photoFormAfter.compose(striped.getContext("2d"),model,trouser,stripedImage,pantImage,stripedFabric,pant,selected);
           const stripeData=striped.getContext("2d").getImageData(0,0,W,H).data;
+          const cataloguePattern=makeCanvas();
+          window.__photoFormAfter.compose(cataloguePattern.getContext("2d"),model,trouser,cataloguePatternImage,pantImage,cataloguePatternFabric,pant,selected);
+          const cataloguePatternData=cataloguePattern.getContext("2d").getImageData(0,0,W,H).data;
           // The previous visual suite used a stripe SHIRT with solid trousers.
           // Exercise each photographed trouser cut with real browser pixels too:
           // a bad per-leg canvas transform must not silently pass unit tests.
@@ -421,6 +448,8 @@ async function run(){
           }
           const stripeBody=changes(stripeData,{x:414,y:310,w:180,h:176});
           const stripeSleeve=changes(stripeData,{x:307,y:356,w:38,h:190});
+          const cataloguePatternBody=changes(cataloguePatternData,{x:414,y:310,w:180,h:176});
+          const cataloguePatternSleeve=changes(cataloguePatternData,{x:307,y:356,w:38,h:190});
           const pantStripeLeft=changes(pantStripeData,{x:389,y:800,w:61,h:480});
           const pantStripeRight=changes(pantStripeData,{x:575,y:800,w:57,h:480});
           // Detect actual dark-blue textile bands, not merely a different
@@ -441,20 +470,29 @@ async function run(){
             const i=(y*W+x)*4;
             if(pantStripeData[i]!==current[i]||pantStripeData[i+1]!==current[i+1]||pantStripeData[i+2]!==current[i+2])protectedPantChanges++;
           }
+          let protectedCataloguePatternChanges=0;
+          for(const r of protectedRegions)for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++){
+            const i=(y*W+x)*4;
+            if(cataloguePatternData[i]!==current[i]||cataloguePatternData[i+1]!==current[i+1]||cataloguePatternData[i+2]!==current[i+2])protectedCataloguePatternChanges++;
+          }
           const stripeCanvas=makeCanvas();stripeCanvas.width=W*2;
           stripeCanvas.getContext("2d").drawImage(after,0,0);
           stripeCanvas.getContext("2d").drawImage(striped,W,0);
           const pantStripeCanvas=makeCanvas();pantStripeCanvas.width=W*2;
           pantStripeCanvas.getContext("2d").drawImage(after,0,0);
           pantStripeCanvas.getContext("2d").drawImage(pantStriped,W,0);
+          const cataloguePatternCanvas=makeCanvas();cataloguePatternCanvas.width=W*2;
+          cataloguePatternCanvas.getContext("2d").drawImage(after,0,0);
+          cataloguePatternCanvas.getContext("2d").drawImage(cataloguePattern,W,0);
           window.__photoFormImages["stripe-"+template]=stripeCanvas.toDataURL("image/png");
           window.__photoFormImages["pant-stripe-"+template]=pantStripeCanvas.toDataURL("image/png");
+          window.__photoFormImages["catalogue-pattern-"+template]=cataloguePatternCanvas.toDataURL("image/png");
           window.__photoFormImages[template]=display.toDataURL("image/png");
-          results.push({template,renderMs,folds,patternedFolds,protectedChanges,protectedPantChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,pantStripeLeft,pantStripeRight,pantStripeLeftBlue,pantStripeRightBlue});
+          results.push({template,renderMs,folds,patternedFolds,protectedChanges,protectedPantChanges,protectedCataloguePatternChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,cataloguePatternBody,cataloguePatternSleeve,pantStripeLeft,pantStripeRight,pantStripeLeftBlue,pantStripeRightBlue});
         }return results;
       });
       for(const result of summary.forms){
-        for(const name of [result.template,"stripe-"+result.template,"pant-stripe-"+result.template]){
+        for(const name of [result.template,"stripe-"+result.template,"pant-stripe-"+result.template,"catalogue-pattern-"+result.template]){
           await page.evaluate(name=>{const image=document.createElement("img");image.id="photo-form-comparison";image.src=window.__photoFormImages[name];image.style.width="1024px";document.body.append(image);},name);
           await page.locator("#photo-form-comparison").screenshot({path:path.join(out,`before-after-${name}.png`)});
           await page.locator("#photo-form-comparison").evaluate(image=>image.remove());
@@ -465,6 +503,10 @@ async function run(){
         assert.equal(result.wrongWaistPixels,0,"source shirting must stay fully covered at the tucked waist");
         assert.ok(result.stripeBody>400,result.template+" photo body must render the selected striped tile");
         assert.ok(result.stripeSleeve>50,result.template+" photo sleeve must render the selected striped tile");
+        assert.ok(result.cataloguePatternBody>400,result.template+" body must render the real Printed Linen Blend 08 catalogue pattern");
+        assert.ok(result.cataloguePatternSleeve>50,result.template+" sleeve must render the real Printed Linen Blend 08 catalogue pattern");
+        assert.equal(result.protectedCataloguePatternChanges,0,
+          result.template+" real catalogue pattern must preserve skin, shoes, inner-leg gap and set");
         assert.ok(result.pantStripeLeft>50,result.template+" left trouser must render the selected striped cloth");
         assert.ok(result.pantStripeRight>50,result.template+" right trouser must render the selected striped cloth");
         assert.ok(result.pantStripeLeftBlue>40,result.template+" left trouser must retain visibly blue stripe bands");

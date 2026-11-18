@@ -222,6 +222,13 @@ test("photographic browser harness verifies actual customer advanced-cut and leg
   assert.match(script,/function patternedStats/);
   assert.match(script,/both textile colours must be sampled/);
   assert.match(script,/like-colour stripe pixels must retain photographed fold response/);
+  assert.match(script,/realCataloguePatternVerified=true/);
+  assert.match(script,/real-catalogue-pattern-/);
+  assert.match(script,/Printed Linen Blend 08/);
+  assert.match(script,/real catalogue pattern must retain its unmeasured-scale warning/);
+  assert.match(script,/switching back from a real catalogue pattern must reproduce the same deterministic solid preview/);
+  assert.match(script,/protectedCataloguePatternChanges/);
+  assert.match(script,/real catalogue pattern must preserve skin, shoes, inner-leg gap and set/);
   assert.match(script,/Studio source\./);
   assert.match(script,/SELECTED SHIRT/);
   assert.match(script,/SELECTED TROUSER/);
