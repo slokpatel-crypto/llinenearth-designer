@@ -1239,3 +1239,40 @@ so `physicalUvStrainThresholdApproved=false`,
 likeness, approved model measurements, supplier textile scale and physical
 fabric/tailor evidence remain required. **DRAFT / NO MERGE / NO DEPLOY / NO
 CUTTING.**
+
+## 2026-11-19 native crotch surface-crossing severity witness
+
+**Acceptance criterion:** The existing epsilon-expanded leg/leg BVH candidate
+pairs must be independently classified using their evaluated native
+loop-triangle geometry. A real non-coplanar crossing must produce a finite,
+positive intersection segment, while a point-only/tangential or coplanar case
+must not be relabelled as penetration. The authentic rejected candidate must
+retain at least one actual crossing, and the diagnostic must not modify or save
+source geometry.
+
+**Implemented read-only evidence path:** The crotch diagnostic now retains the
+native evaluated triangulation for every polygon, intersects both directions of
+every triangle-pair edge against the opposing triangle, deduplicates crossing
+points, and records one maximum crossing segment per BVH polygon pair. The
+report separates actual crossing-pair count from epsilon-only, tangential or
+coplanar candidates and reports minimum, median, maximum and summed-pair proxy
+segment lengths. The latter is explicitly not penetration volume, cloth
+thickness, body clearance or physical-fit approval. A native Blender regression
+pins a known perpendicular one-metre segment exactly, rejects a point-only
+touch, verifies overlapping evaluated spheres, and verifies separated geometry.
+
+**Local non-release evidence:** Blender 4.3.2 rebuilt the unchanged canonical
+candidate and classified 84 of 85 BVH candidates as non-coplanar surface
+crossings (minimum 0.002157mm, median 1.786884mm, maximum 66.550877mm;
+summed-pair proxy 1,152.221518mm). These version-specific local measurements are
+provisional until the exact draft head runs the repository-pinned Blender
+4.5.14 workflow. Regardless of the eventual pinned values, the candidate
+remains rejected and `physicalFitApproved=false` and
+`productionApproved=false`; this evidence does not establish penetration
+depth, drape, comfort or tailoring acceptance.
+
+Canonical `linen-earth-studio-model-v1`, stored source UV, garment mesh,
+body/BVH, GLB and four-angle imagery remain unchanged. Approved model
+measurements/source likeness, physical drape and fabric evidence, tailor review
+and four-angle approval remain required. **DRAFT / NO MERGE / NO DEPLOY / NO
+CUTTING.**
