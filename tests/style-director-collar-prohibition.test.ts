@@ -326,3 +326,21 @@ test("never-to-be-used collar bans do not become positive locked construction re
     assert.equal(locked.collar, prohibited);
   }
 });
+
+test("unacceptable collar constructions are excluded without rewriting locked IDs", () => {
+  for (const [wording, forbidden, permitted] of [
+    ["Spread Collar is not acceptable", "spread_collar", "button_down_collar"],
+    ["Spread Collar isn't acceptable", "spread_collar", "button_down_collar"],
+    ["Spread Collar isn’t acceptable", "spread_collar", "button_down_collar"],
+    ["Camp Collar is not acceptable", "cuban_camp_collar", "spread_collar"],
+  ] as const) {
+    assert.equal(styleDirectorCandidateCollar(wording, photographed), null, wording);
+    assert.deepEqual(issueCodes(wording, forbidden), ["candidate_collar_mismatch"], wording);
+    assert.deepEqual(issueCodes(wording, permitted), [], wording);
+    assert.deepEqual(styleDirectorCandidateWordingIssues(wording), [], wording);
+    assert.deepEqual(issueCodes(wording, forbidden), issueCodes(wording, forbidden), "deterministic replay");
+  }
+  const independent = "Spread Collar is not acceptable; Button-Down Collar Shirt";
+  assert.deepEqual(issueCodes(independent, "button_down_collar"), []);
+  assert.deepEqual(issueCodes(independent, "spread_collar"), ["candidate_collar_mismatch"]);
+});
