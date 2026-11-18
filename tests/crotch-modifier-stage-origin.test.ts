@@ -33,4 +33,17 @@ test("native crotch stage snapshots are research-only and preserve production so
     'assert source["changesProductionGeometry"] is False',
     'physical["boundaryIntersections"]["garmentLegToLeg"]',
   ]) assert.ok(workflow.includes(required), required);
+  for(const required of [
+    'witness = actual["geometricIntersectionWitness"]',
+    'assert witness["bvhCandidatePairs"] == production_pairs',
+    'assert type(crossings) is int and 0 < crossings <= production_pairs',
+    '"actualCrossingSegments": witness',
+  ]) assert.ok(workflow.includes(required), required);
+  for(const required of [
+    'def segment_triangle_intersection(',
+    'def intersection_segment_lengths_mm(',
+    '"geometricIntersectionWitness": {',
+    '"crossingPolygonPairs": len(crossing_lengths)',
+    'not penetration volume, cloth thickness, clearance or fit approval',
+  ]) assert.ok(readFileSync("scripts/blender/diagnose-linen-earth-crotch.py","utf8").includes(required),required);
 });
