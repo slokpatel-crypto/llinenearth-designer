@@ -33,6 +33,7 @@ import {
   PHOTO_TUCKED_SHIRT_BODY_CLIP, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP,
   PHOTO_TUCKED_LEFT_TROUSER_CLIP, PHOTO_TUCKED_RIGHT_TROUSER_CLIP,
   PHOTO_UNTUCKED_SHIRT_BODY_CLIP, PHOTO_UNTUCKED_LEFT_SLEEVE_CLIP, PHOTO_UNTUCKED_RIGHT_SLEEVE_CLIP, PHOTO_UNTUCKED_COLLAR_CLIP,
+  PHOTO_TUCKED_PLACKET_DETAIL, PHOTO_UNTUCKED_PLACKET_DETAIL,
   photoTemplateForStyle, photoTemplateGaps, previewFabricLabel,
 } from "@/lib/designer/photo-preview";
 
@@ -999,6 +1000,37 @@ function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageEleme
   target.drawImage(layer, 0, 0);
 }
 
+function drawPhotographicConstructionRelief(target:CanvasRenderingContext2D,photo:HTMLImageElement,path:string) {
+  const layer=document.createElement("canvas");
+  layer.width=WIDTH;
+  layer.height=HEIGHT;
+  const context=layer.getContext("2d");
+  if(!context) throw new Error("Canvas is unavailable.");
+  const detailMask=featheredPathMask(path);
+  const relief=photographicReliefMap(photo,detailMask);
+
+  // Only neutral high-frequency structure returns from the canonical photo.
+  // Source dye and unverified button material never enter the selected cloth.
+  context.fillStyle="#808080";
+  context.fillRect(0,0,WIDTH,HEIGHT);
+  context.globalCompositeOperation="soft-light";
+  context.globalAlpha=.72;
+  context.drawImage(relief,0,0,WIDTH,HEIGHT);
+  context.globalCompositeOperation="overlay";
+  context.globalAlpha=.28;
+  context.drawImage(relief,0,0,WIDTH,HEIGHT);
+  context.globalAlpha=1;
+  context.globalCompositeOperation="destination-in";
+  context.drawImage(detailMask,0,0);
+  context.globalCompositeOperation="source-over";
+
+  target.save();
+  target.globalCompositeOperation="soft-light";
+  target.globalAlpha=.55;
+  target.drawImage(layer,0,0);
+  target.restore();
+}
+
 export type PhotoPreviewCalibration={photoPxPerMm?:number};
 
 export function composePhotoOutfit(
@@ -1035,6 +1067,7 @@ export function composePhotoOutfit(
     drawCreativePattern(context,creative,PHOTO_TUCKED_LEFT_SLEEVE_CLIP,masks.shirt);
     drawCreativePattern(context,creative,PHOTO_TUCKED_RIGHT_SLEEVE_CLIP,masks.shirt);
     drawCreativeDetails(context,creative,true,masks.shirt);
+    drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_TUCKED_PLACKET_DETAIL);
 
     if (style.collarFinish === "Self-fabric") {
       // The broad neck clear zone removed inner collar folds as well as skin.
@@ -1121,6 +1154,7 @@ export function composePhotoOutfit(
         anchorY:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.collar.y, referenceX:510, referenceY:244,
       });
     });
+    drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_UNTUCKED_PLACKET_DETAIL);
     drawCreativePattern(context,creative,"",shirtMask);
     drawCreativeDetails(context,creative,false,shirtMask);
     if (style.collarFinish !== "Self-fabric") drawWhiteDetail(context, modelPhoto, PHOTO_COLLAR_MASK);

@@ -444,3 +444,17 @@ test("Designer keeps the full-body photograph clear of the wide contact bar at e
   assert.match(script,/contact-dock-model-clearance-/);
   assert.match(script,/contactDockModelClear/);
 });
+
+test("high-contrast cloth retains neutral photographed placket relief", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const paths=readFileSync("src/lib/designer/photo-preview.ts","utf8");
+  const script=readFileSync("scripts/verify-photo-form.cjs","utf8");
+  assert.match(paths,/PHOTO_TUCKED_PLACKET_DETAIL/);
+  assert.match(paths,/PHOTO_UNTUCKED_PLACKET_DETAIL/);
+  assert.match(source,/function drawPhotographicConstructionRelief/);
+  assert.match(source,/photographicReliefMap\(photo,detailMask\)/);
+  assert.match(source,/drawPhotographicConstructionRelief\(context,modelPhoto,PHOTO_TUCKED_PLACKET_DETAIL\)/);
+  assert.match(source,/drawPhotographicConstructionRelief\(context,modelPhoto,PHOTO_UNTUCKED_PLACKET_DETAIL\)/);
+  assert.match(script,/function constructionCorrelation/);
+  assert.match(script,/placketCorrelation\.after>result\.placketCorrelation\.before/);
+});

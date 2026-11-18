@@ -1,7 +1,7 @@
 // Actual exported compositors, real photographs and Chromium Canvas. The old
 // release is the baseline; uniform colour controls isolate shape from weave.
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),Module=require("node:module"),ts=require("typescript"),sharp=require("sharp"),{execFileSync}=require("node:child_process");
-const BASE="5126ebb6f82179b7fe25106e71f234248af3a677",component="src/components/PhotoOutfitPreview.tsx";
+const BASE="5126ebb6f82179b7fe25106e71f234248af3a677",PLACKET_BASE="3081d84ec52ae86ca046418a1ea74c1d725eec3a",component="src/components/PhotoOutfitPreview.tsx";
 function bundle(revision){
   const modules=new Map();
   // Generated tiles are identical inputs for both renderers; the generator
@@ -23,8 +23,8 @@ function bundle(revision){
   add(component);add("src/lib/designer/engine.ts");
   return `(()=>{const modules={${[...modules].map(([file,{code,mapping}])=>`${JSON.stringify(file)}:[function(module,exports,require){${code}\n},${JSON.stringify(mapping)}]`).join(",")}},cache={};function load(file){if(cache[file])return cache[file].exports;const module={exports:{}};cache[file]=module;const [run,mapping]=modules[file];run(module,module.exports,request=>load(mapping[request]));return module.exports;}return {compose:load(${JSON.stringify(component)}).composePhotoOutfit,engine:load("src/lib/designer/engine.ts")};})()`;
 }
-const beforeBundle=bundle(BASE),afterBundle=bundle();
-if(process.argv.includes("--bundle-only")){console.log(`Photo-form test bundles valid: baseline ${beforeBundle.length} bytes, current ${afterBundle.length} bytes.`);process.exit(0);}
+const beforeBundle=bundle(BASE),placketBaseBundle=bundle(PLACKET_BASE),afterBundle=bundle();
+if(process.argv.includes("--bundle-only")){console.log(`Photo-form test bundles valid: baseline ${beforeBundle.length} bytes, placket base ${placketBaseBundle.length} bytes, current ${afterBundle.length} bytes.`);process.exit(0);}
 const runtime=process.env.LINEN_BROWSER_QA_RUNTIME;if(!runtime)throw Error("Set LINEN_BROWSER_QA_RUNTIME");
 const {chromium}=Module.createRequire(path.join(runtime,"package.json"))("playwright"),base=process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000",out=path.resolve("artifacts/preview-lifecycle/photo-form");
 const summary={baseline:BASE,browser:"Chromium",physicalAcceptance:false,paidCalls:0,viewports:[],forms:[],errors:[]};let browser,activePage;
@@ -362,7 +362,7 @@ async function run(){
       summary.viewports[summary.viewports.length-1].collarCuffPlacketDisclosed=true;
     }
     if(width===1440){
-      await page.addScriptTag({content:`window.__photoFormBefore=${beforeBundle};window.__photoFormAfter=${afterBundle};`});
+      await page.addScriptTag({content:`window.__photoFormBefore=${beforeBundle};window.__photoFormPlacketBase=${placketBaseBundle};window.__photoFormAfter=${afterBundle};`});
       summary.forms=await page.evaluate(async()=>{
         const results=[],W=1024,H=1536;
         const image=src=>new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=src;});
@@ -397,6 +397,16 @@ async function run(){
           const count=valid.reduce((sum,group)=>sum+group.count,0);
           return {count,groups:valid.length,slope:valid.reduce((sum,group)=>sum+group.slope*group.count,0)/count};
         }
+        function constructionCorrelation(source,render,box){
+          let count=0,sx=0,sy=0,sxx=0,syy=0,sxy=0;
+          for(let y=box.y;y<box.y+box.h;y++)for(let x=box.x;x<box.x+box.w;x++){
+            const i=(y*W+x)*4;
+            const a=.2126*source[i]+.7152*source[i+1]+.0722*source[i+2];
+            const b=.2126*render[i]+.7152*render[i+1]+.0722*render[i+2];
+            count++;sx+=a;sy+=b;sxx+=a*a;syy+=b*b;sxy+=a*b;
+          }
+          return (sxy-sx*sy/count)/Math.sqrt((sxx-sx*sx/count)*(syy-sy*sy/count));
+        }
         window.__photoFormImages={};
         for(const template of ["tucked","pleated","wide"]){
           const model=await image(`/designer/studio-${template==="tucked"?"tucked":"pleated"}.webp`),trouser=await image(`/designer/studio-${template}.webp`),selected={...style,shirtWear:template==="tucked"?"Tucked":"Untucked",trouser:template==="wide"?"Wide-leg / Relaxed Drape Trouser":"Pleated Trouser"};
@@ -428,6 +438,14 @@ async function run(){
           const cataloguePattern=makeCanvas();
           window.__photoFormAfter.compose(cataloguePattern.getContext("2d"),model,trouser,cataloguePatternImage,pantImage,cataloguePatternFabric,pant,selected);
           const cataloguePatternData=cataloguePattern.getContext("2d").getImageData(0,0,W,H).data;
+          const priorCataloguePattern=makeCanvas();
+          window.__photoFormPlacketBase.compose(priorCataloguePattern.getContext("2d"),model,trouser,cataloguePatternImage,pantImage,cataloguePatternFabric,pant,selected);
+          const priorCataloguePatternData=priorCataloguePattern.getContext("2d").getImageData(0,0,W,H).data;
+          const placketBox={x:501,y:252,w:18,h:template==="tucked"?293:459};
+          const placketCorrelation={
+            before:constructionCorrelation(raw,priorCataloguePatternData,placketBox),
+            after:constructionCorrelation(raw,cataloguePatternData,placketBox),
+          };
           // The previous visual suite used a stripe SHIRT with solid trousers.
           // Exercise each photographed trouser cut with real browser pixels too:
           // a bad per-leg canvas transform must not silently pass unit tests.
@@ -488,7 +506,7 @@ async function run(){
           window.__photoFormImages["pant-stripe-"+template]=pantStripeCanvas.toDataURL("image/png");
           window.__photoFormImages["catalogue-pattern-"+template]=cataloguePatternCanvas.toDataURL("image/png");
           window.__photoFormImages[template]=display.toDataURL("image/png");
-          results.push({template,renderMs,folds,patternedFolds,protectedChanges,protectedPantChanges,protectedCataloguePatternChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,cataloguePatternBody,cataloguePatternSleeve,pantStripeLeft,pantStripeRight,pantStripeLeftBlue,pantStripeRightBlue});
+          results.push({template,renderMs,folds,patternedFolds,placketCorrelation,protectedChanges,protectedPantChanges,protectedCataloguePatternChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,cataloguePatternBody,cataloguePatternSleeve,pantStripeLeft,pantStripeRight,pantStripeLeftBlue,pantStripeRightBlue});
         }return results;
       });
       for(const result of summary.forms){
@@ -507,6 +525,8 @@ async function run(){
         assert.ok(result.cataloguePatternSleeve>50,result.template+" sleeve must render the real Printed Linen Blend 08 catalogue pattern");
         assert.equal(result.protectedCataloguePatternChanges,0,
           result.template+" real catalogue pattern must preserve skin, shoes, inner-leg gap and set");
+        assert.ok(result.placketCorrelation.after>result.placketCorrelation.before,
+          `${result.template} catalogue pattern must retain more photographed center-front construction relief, correlation ${result.placketCorrelation.before} -> ${result.placketCorrelation.after}`);
         assert.ok(result.pantStripeLeft>50,result.template+" left trouser must render the selected striped cloth");
         assert.ok(result.pantStripeRight>50,result.template+" right trouser must render the selected striped cloth");
         assert.ok(result.pantStripeLeftBlue>40,result.template+" left trouser must retain visibly blue stripe bands");
