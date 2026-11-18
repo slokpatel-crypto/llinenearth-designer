@@ -5140,3 +5140,24 @@ test("infeasible roll-up is not a positive sleeve selection", () => {
     assert.deepEqual(intent, styleDirectorCandidateRollUpSleeveIntent(phrase));
   }
 });
+
+test("explicitly rejected shirt fits do not become affirmative construction choices", () => {
+  for (const phrase of [
+    "Slim fit is not approved",
+    "Slim fit isn't acceptable",
+    "Slim fit isn’t compatible",
+    "Slim fit is not feasible",
+    "Slim fit is excluded",
+    "Slim fit is rejected",
+  ]) {
+    const intent = styleDirectorCandidateShirtFitIntent(phrase);
+    assert.equal(intent.requested, null, phrase);
+    assert.deepEqual(intent.prohibited, ["slim_fit"], phrase);
+    assert.equal(intent.ambiguous, false, phrase);
+    assert.deepEqual(intent, styleDirectorCandidateShirtFitIntent(phrase));
+  }
+  assert.equal(styleDirectorCandidateShirtFitIntent("Slim fit is approved").requested, "slim_fit");
+  assert.equal(styleDirectorCandidateShirtFitIntent(
+    "Slim fit is rejected; relaxed fit requested",
+  ).requested, "relaxed_fit");
+});
