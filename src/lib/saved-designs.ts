@@ -90,10 +90,9 @@ export function removeSavedDesign(id: string) {
   // Remove only the requested valid entry. Keep every other raw record byte-for-
   // byte equivalent after serialization, including legacy shapes not understood
   // by the current reader, so a delete cannot silently discard recoverable data.
-  const next = parsed.filter((item) =>
-    item === null || typeof item !== "object" || Array.isArray(item) ||
-    (item as { id?: unknown }).id !== id
-  );
+  // Only a recognized saved design can be deleted by this legacy API.
+  // Future-format entries may reuse an id and must remain recoverable.
+  const next = parsed.filter((item) => !isSavedDesign(item) || item.id !== id);
   if (next.length === parsed.length) return;
   window.localStorage.setItem(SAVED_DESIGNS_KEY, JSON.stringify(next));
 }
