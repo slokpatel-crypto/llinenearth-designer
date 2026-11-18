@@ -457,4 +457,5 @@ test("high-contrast cloth retains neutral photographed placket relief", () => {
   assert.match(source,/drawPhotographicConstructionRelief\(context,modelPhoto,PHOTO_UNTUCKED_PLACKET_DETAIL\)/);
   assert.match(script,/function constructionCorrelation/);
   assert.match(script,/placketCorrelation\.after>result\.placketCorrelation\.before/);
+  assert.match(script,/ensureRevision\(BASE\);ensureRevision\(PLACKET_BASE\)/);
 });

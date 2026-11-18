@@ -2,6 +2,11 @@
 // release is the baseline; uniform colour controls isolate shape from weave.
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),Module=require("node:module"),ts=require("typescript"),sharp=require("sharp"),{execFileSync}=require("node:child_process");
 const BASE="5126ebb6f82179b7fe25106e71f234248af3a677",PLACKET_BASE="3081d84ec52ae86ca046418a1ea74c1d725eec3a",component="src/components/PhotoOutfitPreview.tsx";
+function ensureRevision(revision){
+  try{execFileSync("git",["cat-file","-e",`${revision}^{commit}`],{stdio:"ignore"});}
+  catch{execFileSync("git",["fetch","--depth=1","origin",revision],{stdio:["ignore","ignore","pipe"]});}
+}
+ensureRevision(BASE);ensureRevision(PLACKET_BASE);
 function bundle(revision){
   const modules=new Map();
   // Generated tiles are identical inputs for both renderers; the generator
