@@ -5069,3 +5069,25 @@ test("unapproved collar instructions exclude only the named construction", () =>
   assert.equal(styleDirectorCandidateOrdinaryCollar(
     "Spread Collar is not approved; Button-Down Collar requested"), "button_down");
 });
+
+test("incompatible collar instructions cannot select prohibited construction", () => {
+  for (const phrase of [
+    "Spread Collar is not compatible",
+    "Spread Collar isn't compatible",
+    "Spread Collar isn’t compatible",
+    "Spread Collar not compatible",
+  ]) {
+    const locked = spec({ collar: "spread_collar" }).shirt;
+    const snapshot = JSON.stringify(locked);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(phrase, locked)
+      .map(issue => issue.code), ["candidate_collar_mismatch"], phrase);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(
+      phrase, spec({ collar: "button_down_collar" }).shirt), [], phrase);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(phrase), null, phrase);
+    assert.equal(styleDirectorCandidateVariantCollar(phrase), null, phrase);
+    assert.equal(JSON.stringify(locked), snapshot, "preserve versioned IDs");
+  }
+  assert.equal(styleDirectorCandidateOrdinaryCollar(
+    "Spread Collar is not compatible; Button-Down Collar requested"), "button_down");
+  assert.equal(styleDirectorCandidateOrdinaryCollar("Spread Collar is compatible"), "spread");
+});
