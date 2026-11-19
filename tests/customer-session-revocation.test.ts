@@ -38,7 +38,8 @@ test("sign-out is fail closed and account UI cannot acknowledge a 503 as success
   assert.match(logout,/await revokeCustomerSessionBearer\(signedCookie\)/);
   assert.ok(logout.indexOf("await revokeCustomerSessionBearer")<logout.indexOf('const response=NextResponse.json({ok:true}'));
   assert.match(logout,/status:503/);
-  assert.match(account,/if\(!response.ok\)/);
+  assert.match(account,/if\(!response.ok\|\|data\?\.ok!==true\)/,
+    "sign-out must reject both HTTP failure and missing or false acknowledgment");
   assert.match(account,/Secure sign-out could not be completed/);
   assert.match(auth,/if\(customerSessionRevocationRequired\(\)\)return null/);
   assert.match(auth,/await customerSessionBearerAllowed\(signedCookie\)/);
