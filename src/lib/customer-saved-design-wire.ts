@@ -23,7 +23,22 @@ export type CustomerSavedDesignWrite = {
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const FORBIDDEN_OWNERSHIP_KEYS = new Set(["ownerId", "owner_id", "customerId", "customer_id", "userId", "user_id", "authorization", "sessionToken", "accessToken"]);\n\n/** Reject nested ownership claims, including prototype-shaped objects and cycles. */\nfunction hasUnsafeClaims(value: unknown, seen = new Set<object>(), depth = 0): boolean {\n  if (depth > 32) return true;\n  if (value === null || typeof value !== "object") return false;\n  if (seen.has(value)) return true;\n  seen.add(value);\n  for (const [key, child] of Object.entries(value)) {\n    if (FORBIDDEN_OWNERSHIP_KEYS.has(key) || key === "__proto__" || key === "constructor" || key === "prototype" || hasUnsafeClaims(child, seen, depth + 1)) return true;\n  }\n  seen.delete(value);\n  return false;\n}\n\nconst validId = (value: unknown) =>
+const FORBIDDEN_OWNERSHIP_KEYS = new Set(["ownerId", "owner_id", "customerId", "customer_id", "userId", "user_id", "authorization", "sessionToken", "accessToken"]);
+
+/** Reject nested ownership claims, including prototype-shaped objects and cycles. */
+function hasUnsafeClaims(value: unknown, seen = new Set<object>(), depth = 0): boolean {
+  if (depth > 32) return true;
+  if (value === null || typeof value !== "object") return false;
+  if (seen.has(value)) return true;
+  seen.add(value);
+  for (const [key, child] of Object.entries(value)) {
+    if (FORBIDDEN_OWNERSHIP_KEYS.has(key) || key === "__proto__" || key === "constructor" || key === "prototype" || hasUnsafeClaims(child, seen, depth + 1)) return true;
+  }
+  seen.delete(value);
+  return false;
+}
+
+const validId = (value: unknown) =>
   typeof value === "string" && value.length >= 1 && value.length <= 160 &&
   /^[A-Za-z0-9_-]+$/.test(value);
 
