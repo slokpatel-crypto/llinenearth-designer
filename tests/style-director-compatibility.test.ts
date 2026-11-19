@@ -5564,3 +5564,25 @@ test("withdrawn ideal sleeve guidance rejects only the named length", () => {
     assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, spec({ sleeve: allowed }).shirt), [], phrase);
   }
 });
+
+test("withdrawn sleeve necessity is optional, not a locked construction change", () => {
+  for (const phrase of [
+    "Short sleeves no longer required",
+    "Half sleeves no longer needed",
+    "Full sleeves no longer mandatory",
+    "Long sleeves no longer necessary",
+    "Short sleeves no longer compulsory",
+  ]) {
+    for (const sleeve of ["half_sleeve", "full_sleeve"] as const) {
+      const locked = spec({ sleeve }).shirt;
+      const snapshot = JSON.stringify(locked);
+      assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, locked), [], phrase);
+      assert.equal(JSON.stringify(locked), snapshot, "preserve locked option IDs");
+    }
+  }
+  assert.deepEqual(styleDirectorCandidateSleeveIssues(
+    "Short sleeves no longer permitted; full sleeves requested",
+    spec({ sleeve: "half_sleeve" }).shirt,
+  ).map(issue => issue.code), ["candidate_sleeve_mismatch"],
+  "a genuine prohibition must still fail closed");
+});
