@@ -1322,3 +1322,42 @@ drape, comfort or tailoring approval. `candidateAccepted=false`,
 approved model measurements/source likeness, four-angle approval, physical
 fabric evidence and tailor review remain required. **DRAFT / NO MERGE / NO
 DEPLOY / NO CUTTING.**
+
+## 2026-11-19 authentic crossing locality witness
+
+**Acceptance criterion:** Localize every genuine non-coplanar crossing in the
+existing unchanged control and rejected positive-9mm connected source trial to
+its exact authentic left/right source polygon pair, normalized scanned-body
+height octile and minimum distance from the immutable original cut boundary.
+All crossing counts and octile histograms must reconcile. This read-only
+witness must not introduce a clearance, cloth-thickness, drape or fit
+threshold, and must not modify or save source geometry.
+
+**Pinned native result:** Blender 4.5.14 source-rejection run
+[#44511459383](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44511459383)
+on exact code head `e6b128a7fed795fc1f9c6c20749530e80ad17caf`
+localized every crossing:
+
+| Authentic source-leg evidence | Unchanged control | Positive-9mm candidate |
+|---|---:|---:|
+| Crossing segments | **1** | **2** |
+| Scanned-body height octiles | 3 | 3, 4 |
+| Original cut-boundary distances | 239.879521mm | 239.879521mm, **31.007934mm** |
+| Authentic polygon pairs | 209/209 | 209/209, **167/167** |
+| Crossing-segment lengths | 43.570162mm | 43.570162mm, **33.150419mm** |
+
+The trial therefore introduces a second authentic crossing on polygon pair
+167/167, in body-height octile 4 and 31.007934mm from the nearest immutable
+source cut edge. That is localization, not evidence that 31.007934mm is a safe
+or unsafe physical distance. The candidate remains rejected. Artifact
+[`titan-native-candidate-evidence` #14522343800](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44511459383/artifacts/14522343800),
+digest `sha256:274bacf04561d0787e8c72ed20cc0545dd687b2fdb12616fe527658e83b59d7d`.
+
+Canonical `linen-earth-studio-model-v1`, stored source UV, garment mesh,
+body/BVH, GLB and four-angle imagery remain unchanged. The next bounded native
+slice is to trace polygon pair 167/167 to the authentic source-edge and local
+face-ring topology that the rejected movement perturbs, without proposing a
+new displacement until physical clearance and fabric evidence exist. Native
+drape, approved model measurements/source likeness, four-angle approval,
+physical fabric evidence and tailor review remain required. **DRAFT / NO MERGE
+/ NO DEPLOY / NO CUTTING.**
