@@ -96,7 +96,8 @@ test("claiming a secure copy recovers from network and malformed JSON failures",
  assert.match(claim,/try\s*\{/);
  assert.match(claim,/const response=await fetch\(url,/);
  assert.match(claim,/const data=await response\.json\(\)/);
- assert.match(claim,/if\(!response\.ok\|\|!data\.claimed\)/);
+ assert.match(claim,/if\(!response\.ok\|\|data\?\.claimed!==true\)/,
+   "a claim succeeds only for HTTP success with an explicit true acknowledgment");
  assert.match(claim,/catch\s*\{/);
  assert.match(claim,/Secure copy could not be linked\. Please retry\./);
  assert.match(claim,/finally\s*\{\s*setBusy\(false\)/);
