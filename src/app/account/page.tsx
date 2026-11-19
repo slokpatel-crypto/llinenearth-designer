@@ -202,7 +202,10 @@ export default function AccountPage(){
     setBusy(true);
     try{
       const response=await fetch("/api/customer-auth/logout",{method:"POST"});
-      if(!response.ok){
+      // HTTP success alone does not prove the server invalidated the session.
+      // Reject malformed or false acknowledgments without hiding account state.
+      const data=await response.json().catch(()=>null);
+      if(!response.ok||data?.ok!==true){
         setMessage("Secure sign-out could not be completed. Please retry.");
         return;
       }
