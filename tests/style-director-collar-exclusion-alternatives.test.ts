@@ -30,3 +30,23 @@ test("specific collar variant prohibitions do not select the prohibited variant"
     assert.equal(styleDirectorCandidateOrdinaryCollar(phrase), null, phrase);
   }
 });
+
+test("no-longer-permitted collars remain exclusions rather than new selections", () => {
+  for (const phrase of [
+    "Camp collar is no longer allowed; spread collar requested",
+    "Band collar no longer permitted; spread collar requested",
+    "Cutaway collar is no longer recommended; spread collar requested",
+    "Camp collar no longer acceptable; spread collar requested",
+  ]) {
+    assert.equal(styleDirectorCandidateOrdinaryCollar(phrase), "spread", phrase);
+    assert.equal(styleDirectorCandidateVariantCollar(phrase), null, phrase);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(phrase), "spread", "repeatability: " + phrase);
+  }
+  for (const phrase of [
+    "English spread collar is no longer permitted",
+    "Soft button-down collar is no longer allowed",
+  ]) {
+    assert.equal(styleDirectorCandidateVariantCollar(phrase), null, phrase);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(phrase), null, phrase);
+  }
+});
