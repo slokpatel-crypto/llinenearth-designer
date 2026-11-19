@@ -5444,3 +5444,22 @@ test("independent shirt and trouser construction conflicts survive either single
     }
   }
 });
+
+test("collar, sleeve and trouser construction conflicts remain independently actionable", () => {
+  const cases = [
+    { shirt: { type: "camp_collar_resort", collar: "point_standard_collar", sleeve: "half_sleeve", cuff: "french_double_cuff" }, pant: { type: "pleated_trouser", pleat: "flat_front" }, expected: [true, true, true] },
+    { shirt: { type: "camp_collar_resort", collar: "cuban_camp_collar", wear: "untucked", sleeve: "half_sleeve", cuff: "french_double_cuff" }, pant: { type: "pleated_trouser", pleat: "flat_front" }, expected: [false, true, true] },
+    { shirt: { type: "camp_collar_resort", collar: "point_standard_collar", sleeve: "full_sleeve", cuff: "french_double_cuff" }, pant: { type: "pleated_trouser", pleat: "flat_front" }, expected: [true, false, true] },
+    { shirt: { type: "camp_collar_resort", collar: "point_standard_collar", sleeve: "half_sleeve", cuff: "french_double_cuff" }, pant: { type: "pleated_trouser", pleat: "single_pleat_forward" }, expected: [true, true, false] },
+  ] as const;
+  const conflictCodes = ["camp_collar_construction", "short_sleeve_double_cuff", "pleated_front_missing_pleat"];
+  for (const { shirt, pant, expected } of cases) {
+    const locked = spec({ ...shirt }, { ...pant });
+    const snapshot = JSON.stringify(locked);
+    const issues = styleDirectorConstructionIssues(locked);
+    const codes = issues.map(issue => issue.code);
+    assert.deepEqual(conflictCodes.map(code => codes.includes(code)), [...expected]);
+    assert.deepEqual(styleDirectorConstructionIssues(locked), issues, "repeatable construction review");
+    assert.equal(JSON.stringify(locked), snapshot, "locked canonical IDs are immutable");
+  }
+});
