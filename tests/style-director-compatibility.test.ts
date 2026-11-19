@@ -5609,3 +5609,23 @@ test("withdrawn roll-up necessity stays optional while withdrawal of permission 
   assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("Roll-up styled requested"),
     { requested: true, prohibited: false, ambiguous: false });
 });
+
+test("contradictory roll-up sleeve instructions cannot certify a locked construction", () => {
+  for (const wording of [
+    "Roll-up styled requested; roll-up styled prohibited",
+    "Roll-up styled preferred but roll-up styled not allowed",
+    "Roll-up styled or full sleeves",
+    "Full sleeves or roll-up styled",
+  ]) {
+    const intent = styleDirectorCandidateRollUpSleeveIntent(wording);
+    assert.equal(intent.ambiguous, true, wording);
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(wording), intent, "deterministic parsing");
+    for (const sleeve of ["full_sleeve", "roll_up_styled"] as const) {
+      const locked = Object.freeze({ sleeve });
+      const snapshot = JSON.stringify(locked);
+      assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, locked), [],
+        "ambiguous candidate must defer to wording review, not silently rewrite IDs");
+      assert.equal(JSON.stringify(locked), snapshot);
+    }
+  }
+});
