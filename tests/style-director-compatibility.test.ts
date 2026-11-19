@@ -5327,3 +5327,19 @@ test("withdrawn collar approval and feasibility exclude only the named construct
   assert.ok(styleDirectorCandidateCollarIssues(
     alternative, { collar: "cuban_camp_collar" }).length > 0);
 });
+
+test("withdrawn specialty collars do not override an explicitly selected ordinary collar", () => {
+  for (const phrase of [
+    "Camp collar no longer approved; Spread collar requested",
+    "Band collar no longer compatible; Spread collar requested",
+    "Cutaway collar no longer feasible; Spread collar requested",
+  ]) {
+    const locked = Object.freeze({ collar: "spread_collar" as const });
+    const snapshot = JSON.stringify(locked);
+    assert.equal(styleDirectorCandidateOrdinaryCollar(phrase), "spread", phrase);
+    assert.equal(styleDirectorCandidateVariantCollar(phrase), null, phrase);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(phrase, locked), [], phrase);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(phrase, locked), [], "deterministic replay");
+    assert.equal(JSON.stringify(locked), snapshot, "locked versioned ID remains unchanged");
+  }
+});
