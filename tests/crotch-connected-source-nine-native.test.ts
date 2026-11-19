@@ -15,6 +15,12 @@ test("connected original source cut seam tests REAL adjacent trouser faces and p
     "points[index] = nearest_point + direction * (signed_offset_mm / 1000.0)",
     'if bpy.data.collections[EXPORT].objects.get(name) is not None:',
     'pairs = body_tree.overlap(geom_ops["real_tree"](measured))',
+    'geom_ops["geometric_intersection_witness"](',
+    '"positiveNineMmAuthenticLegCrossingAndBodyGate": crossing_body_gate',
+    'witness["experimentalBridgeFacesExcluded"] = len(bridge_faces)',
+    '"strictCrossingSegmentReductionObserved": strict_crossing_reduction',
+    '"noWholeSourceBodyBVHPairRegressionObserved": no_body_collision_regression',
+    '"candidateRetainedForFurtherResearch": (',
     '"originalSourceAdjacentFaceCount": len(affected_source_faces)',
     '"targetBridgeBodyBVHPairs": sum(',
     '"adjacentOriginalSourceBodyBVHPairs": sum(',
@@ -34,6 +40,8 @@ test("connected original source cut seam tests REAL adjacent trouser faces and p
     'src_nine["sourceEdgeReadingsUnderSevenMm"] == 0',
     'connected["sourceAdjacentFaceNormalFlipsAfterNineMm"]',
     'connected["localBridgeBodyCollisionImprovementObserved"]',
+    'connected["positiveNineMmAuthenticLegCrossingAndBodyGate"]',
+    'crossing_gate["candidateRetainedForFurtherResearch"] is (',
     '"connectedSourceNineMmTrial":targeted["researchOnlyConnectedSourceNineMmTrial"]',
   ]) assert.ok(workflow.includes(needle), needle);
   assert.equal(

@@ -26,6 +26,13 @@ right_fixture = {
 }
 known = diagnosis.intersection_segment_lengths_mm(left_fixture, right_fixture, [(0, 0)])
 assert len(known) == 1 and abs(known[0] - 1000.0) < 1e-6, known
+known_pairs, known_witness = diagnosis.geometric_intersection_witness(
+    {**left_fixture, "polygons": [(0, 1, 2)]},
+    {**right_fixture, "polygons": [(0, 1, 2)]},
+)
+assert known_pairs == [(0, 0)], known_pairs
+assert known_witness["crossingPolygonPairs"] == 1, known_witness
+assert known_witness["crossingSegmentLengthMm"]["sumPolygonPairProxy"] == 1000.0
 
 # An epsilon candidate that only touches at one point has no crossing segment.
 touch_fixture = {

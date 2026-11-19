@@ -42,7 +42,8 @@ test("native crotch stage snapshots are research-only and preserve production so
   for(const required of [
     'def segment_triangle_intersection(',
     'def intersection_segment_lengths_mm(',
-    '"geometricIntersectionWitness": {',
+    'def geometric_intersection_witness(',
+    '"geometricIntersectionWitness": crossing_witness',
     '"crossingPolygonPairs": len(crossing_lengths)',
     'not penetration volume, cloth thickness, clearance or fit approval',
   ]) assert.ok(readFileSync("scripts/blender/diagnose-linen-earth-crotch.py","utf8").includes(required),required);

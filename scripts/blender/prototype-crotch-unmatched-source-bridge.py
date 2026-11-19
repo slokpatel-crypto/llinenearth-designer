@@ -752,6 +752,7 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
         return {
             "object": obj,
             "mesh": mesh,
+            "geometry": measured,
             "actualBodyFacePairs": pairs,
             "actualSourceFaceAreas": measured["areas"],
             "report": {
@@ -797,6 +798,69 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
                           ring_normal_targets_mm=(7.0,))
     local_body_two = make("Positive9MmLocalBodyNormalTwoRings7And4Mm", 9.0,
                           ring_normal_targets_mm=(7.0, 4.0))
+
+    def authentic_leg_crossing_witness(trial):
+        """Measure left/right crossings on genuine source faces, excluding bridges."""
+        measured = trial["geometry"]
+        if len(base_faces) != 2650 or len(base_faces) % 2:
+            raise RuntimeError("Expected two authentic equal 1,325-face source legs.")
+        leg_face_count = len(base_faces) // 2
+        if len(measured["polygons"]) != len(base_faces) + len(bridge_faces):
+            raise RuntimeError("Connected seam trial lost source/bridge face provenance.")
+
+        def subset(start, end):
+            return {
+                "points": measured["points"],
+                "polygons": measured["polygons"][start:end],
+                "triangles": measured["triangles"][start:end],
+                "areas": measured["areas"][start:end],
+            }
+
+        _pairs, witness = geom_ops["geometric_intersection_witness"](
+            subset(0, leg_face_count),
+            subset(leg_face_count, len(base_faces)),
+        )
+        witness["authenticSourceFacesPerLeg"] = leg_face_count
+        witness["experimentalBridgeFacesExcluded"] = len(bridge_faces)
+        witness["sourceLegGeometryOnly"] = True
+        witness["productionApproved"] = False
+        return witness
+
+    control_crossing = authentic_leg_crossing_witness(control)
+    moved_crossing = authentic_leg_crossing_witness(moved)
+
+    def crossing_sum(witness):
+        segments = witness["crossingSegmentLengthMm"]
+        return segments["sumPolygonPairProxy"] if segments is not None else 0.0
+
+    strict_crossing_reduction = (
+        moved_crossing["crossingPolygonPairs"]
+        <= control_crossing["crossingPolygonPairs"]
+        and crossing_sum(moved_crossing) < crossing_sum(control_crossing)
+    )
+    no_body_collision_regression = (
+        moved["report"]["wholeSourceBodyBVHPairs"]
+        <= control["report"]["wholeSourceBodyBVHPairs"]
+    )
+    crossing_body_gate = {
+        "candidateLabel": "positiveNineMm",
+        "unchangedControl": control_crossing,
+        "positiveNineMm": moved_crossing,
+        "strictCrossingSegmentReductionObserved": strict_crossing_reduction,
+        "noWholeSourceBodyBVHPairRegressionObserved": no_body_collision_regression,
+        "candidateRetainedForFurtherResearch": (
+            strict_crossing_reduction and no_body_collision_regression
+        ),
+        "candidateAccepted": False,
+        "physicalFitApproved": False,
+        "metricCaveat": (
+            "Read-only non-coplanar crossing segments compare only the two authentic "
+            "1,325-face source-leg surfaces; six experimental bridge faces are excluded. "
+            "The summed polygon-pair segment proxy is not penetration volume, cloth "
+            "thickness, clearance, drape, comfort or fit approval."
+        ),
+        "productionApproved": False,
+    }
     falloff_trials = {
         "oneRingHalf": one_ring,
         "twoRing": two_ring,
@@ -882,6 +946,7 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
         "falloffTrials": {
             label: trial["report"] for label, trial in falloff_trials.items()
         },
+        "positiveNineMmAuthenticLegCrossingAndBodyGate": crossing_body_gate,
         "falloffSameOriginalFaceRegionContactEvidence": regional_attribution,
         "originalSourceMeshRingVertexCounts": {
             str(ring): sum(d == ring for d in source_rings.values())

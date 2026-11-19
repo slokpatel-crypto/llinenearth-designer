@@ -3337,6 +3337,44 @@ jobs:
               src_nine["targetBridgeBodyBVHPairs"] <
               src_control["targetBridgeBodyBVHPairs"]
           )
+          crossing_gate=connected["positiveNineMmAuthenticLegCrossingAndBodyGate"]
+          assert crossing_gate["candidateLabel"] == "positiveNineMm"
+          assert crossing_gate["candidateAccepted"] is False
+          assert crossing_gate["physicalFitApproved"] is False
+          assert crossing_gate["productionApproved"] is False
+          control_crossing=crossing_gate["unchangedControl"]
+          candidate_crossing=crossing_gate["positiveNineMm"]
+          for witness in (control_crossing,candidate_crossing):
+              assert witness["authenticSourceFacesPerLeg"] == 1325
+              assert witness["experimentalBridgeFacesExcluded"] == 6
+              assert witness["sourceLegGeometryOnly"] is True
+              assert witness["productionApproved"] is False
+              assert witness["bvhCandidatePairs"] >= witness["crossingPolygonPairs"] >= 0
+              assert witness["epsilonOnlyTangentialOrCoplanarPairs"] == (
+                  witness["bvhCandidatePairs"] - witness["crossingPolygonPairs"]
+              )
+              segments=witness["crossingSegmentLengthMm"]
+              if witness["crossingPolygonPairs"]:
+                  assert segments["count"] == witness["crossingPolygonPairs"]
+                  assert 0 < segments["minimum"] <= segments["median"] <= segments["maximum"]
+                  assert segments["sumPolygonPairProxy"] >= segments["maximum"]
+              else:
+                  assert segments is None
+          def segment_sum(witness):
+              segments=witness["crossingSegmentLengthMm"]
+              return segments["sumPolygonPairProxy"] if segments else 0
+          crossing_reduced=(
+              candidate_crossing["crossingPolygonPairs"] <= control_crossing["crossingPolygonPairs"]
+              and segment_sum(candidate_crossing) < segment_sum(control_crossing)
+          )
+          no_body_regression=(
+              src_nine["wholeSourceBodyBVHPairs"] <= src_control["wholeSourceBodyBVHPairs"]
+          )
+          assert crossing_gate["strictCrossingSegmentReductionObserved"] is crossing_reduced
+          assert crossing_gate["noWholeSourceBodyBVHPairRegressionObserved"] is no_body_regression
+          assert crossing_gate["candidateRetainedForFurtherResearch"] is (
+              crossing_reduced and no_body_regression
+          )
           rings=connected["originalSourceMeshRingVertexCounts"]
           assert rings["0"] == 4 and rings["1"] > 0 and rings["2"] > 0
           falloffs=connected["falloffTrials"]
@@ -3619,6 +3657,7 @@ jobs:
               "fixedBoundaryBodyRayEvidence":targeted["fixedBridgeBoundaryBodyRayEvidence"],
               "sourceCutEdgeReprojectionTrial":targeted["researchOnlySourceCutEdgeReprojectionTrial"],
               "connectedSourceNineMmTrial":targeted["researchOnlyConnectedSourceNineMmTrial"],
+              "positiveNineMmCrossingAndBodyGate":connected["positiveNineMmAuthenticLegCrossingAndBodyGate"],
               "localBodyNormalRingMetrics": {
                   label:connected["falloffTrials"][label]
                   for label in ("localBodyNormalOneRing7Mm","localBodyNormalTwoRings7And4Mm")

@@ -163,6 +163,25 @@ def intersection_segment_lengths_mm(left, right, pairs):
     return lengths
 
 
+def geometric_intersection_witness(left, right):
+    """Classify polygon-BVH candidates with independent triangle crossings."""
+    pairs = real_tree(left).overlap(real_tree(right))
+    crossing_lengths = intersection_segment_lengths_mm(left, right, pairs)
+    return pairs, {
+        "bvhCandidatePairs": len(pairs),
+        "crossingPolygonPairs": len(crossing_lengths),
+        "epsilonOnlyTangentialOrCoplanarPairs": len(pairs) - len(crossing_lengths),
+        "crossingSegmentLengthMm": ({
+            "minimum": round(min(crossing_lengths), 6),
+            "median": round(statistics.median(crossing_lengths), 6),
+            "maximum": round(max(crossing_lengths), 6),
+            "sumPolygonPairProxy": round(sum(crossing_lengths), 6),
+            "count": len(crossing_lengths),
+        } if crossing_lengths else None),
+        "interpretation": "Exact non-coplanar triangle crossing segments inside epsilon-expanded polygon BVH candidates; not penetration volume, cloth thickness, clearance or fit approval.",
+    }
+
+
 def cross_section(left, right, body, z):
     l, r, b = (plane_span(g, z) for g in (left, right, body))
     projected_overlap = None
@@ -199,8 +218,7 @@ def edge_topology(geometry, contact_faces):
 
 def analyze(body, left, right):
     source, l, r = world_geometry(body), world_geometry(left), world_geometry(right)
-    pairs = real_tree(l).overlap(real_tree(r))
-    crossing_lengths = intersection_segment_lengths_mm(l, r, pairs)
+    pairs, crossing_witness = geometric_intersection_witness(l, r)
     left_indices = {a for a, _ in pairs}
     right_indices = {b for _, b in pairs}
     if any(a < 0 or a >= len(l["polygons"]) or b < 0 or b >= len(r["polygons"])
@@ -237,19 +255,7 @@ def analyze(body, left, right):
     touching_right = sum(r["areas"][i] for i in right_indices)
     measured = {
         "legLegPolygonContactPairs": len(pairs),
-        "geometricIntersectionWitness": {
-            "bvhCandidatePairs": len(pairs),
-            "crossingPolygonPairs": len(crossing_lengths),
-            "epsilonOnlyTangentialOrCoplanarPairs": len(pairs) - len(crossing_lengths),
-            "crossingSegmentLengthMm": ({
-                "minimum": round(min(crossing_lengths), 6),
-                "median": round(statistics.median(crossing_lengths), 6),
-                "maximum": round(max(crossing_lengths), 6),
-                "sumPolygonPairProxy": round(sum(crossing_lengths), 6),
-                "count": len(crossing_lengths),
-            } if crossing_lengths else None),
-            "interpretation": "Exact non-coplanar triangle crossing segments inside epsilon-expanded polygon BVH candidates; not penetration volume, cloth thickness, clearance or fit approval.",
-        },
+        "geometricIntersectionWitness": crossing_witness,
         "contactPairsByBodyHeightOctile": octiles,
         "contactingLeftLegFaceCount": len(left_indices),
         "contactingRightLegFaceCount": len(right_indices),
