@@ -88,3 +88,20 @@ test("account-owned results require a second same-owner session confirmation bef
  assert.match(refresh,/!Array\.isArray\(owned\[0\]\?\.designs\)/);
  assert.match(refresh,/!Array\.isArray\(owned\[2\]\?\.outcomes\)/);
 });
+
+
+test("claiming a secure copy recovers from network and malformed JSON failures",()=>{
+ const source=readFileSync("src/app/account/page.tsx","utf8");
+ const claim=source.slice(source.indexOf('async function claim(kind:'),source.indexOf('async function deleteOwned('));
+ assert.match(claim,/try\s*\{/);
+ assert.match(claim,/const response=await fetch\(url,/);
+ assert.match(claim,/const data=await response\.json\(\)/);
+ assert.match(claim,/if\(!response\.ok\|\|!data\.claimed\)/);
+ assert.match(claim,/catch\s*\{/);
+ assert.match(claim,/Secure copy could not be linked\. Please retry\./);
+ assert.match(claim,/finally\s*\{\s*setBusy\(false\)/);
+ assert.equal(claim.match(/setBusy\(false\)/g)?.length,1,
+   "release busy state on success, rejection, malformed JSON and refresh failure");
+ assert.ok(claim.indexOf('setClaimDesign("")')>claim.indexOf("if(!response.ok"),
+   "never clear recovery bearer after a failed claim");
+});
