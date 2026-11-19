@@ -5362,3 +5362,20 @@ test("withdrawn sleeve approval excludes that length without changing locked IDs
     assert.equal(JSON.stringify(locked), snapshot);
   }
 });
+
+
+test("withdrawn sleeve construction permits a separately requested alternative", () => {
+  for (const [wording, prohibited, permitted] of [
+    ["Short sleeves no longer approved; Long sleeves requested", "half_sleeve", "full_sleeve"],
+    ["Long sleeves no longer desired; Short sleeves requested", "full_sleeve", "half_sleeve"],
+  ] as const) {
+    const forbidden = Object.freeze({ sleeve: prohibited });
+    const allowed = Object.freeze({ sleeve: permitted });
+    const before = JSON.stringify({ forbidden, allowed });
+    const issues = styleDirectorCandidateSleeveIssues(wording, forbidden);
+    assert.ok(issues.some(issue => issue.code === "candidate_sleeve_mismatch"), wording);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, forbidden), issues);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, allowed), [], wording);
+    assert.equal(JSON.stringify({ forbidden, allowed }), before, "locked IDs remain unchanged");
+  }
+});
