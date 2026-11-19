@@ -52,3 +52,14 @@ test("customer recovery requires a literal true claim acknowledgment before disc
   assert.match(account,/if\(kind==="design"\) setClaimDesign\(""\); else setClaimMeasurement\(""\);/);
   assert.ok(account.indexOf("data?.claimed!==true")<account.indexOf('setClaimDesign(""); else setClaimMeasurement("");'));
 });
+
+test("account destructive and production transitions require literal boolean acknowledgments",()=>{
+  const account=readFileSync(new URL("../src/app/account/page.tsx",import.meta.url),"utf8");
+  assert.match(account,/data\?\.deleted!==true/);
+  assert.match(account,/data\?\.accepted!==true/);
+  assert.match(account,/data\.revoked!==true/);
+  // Strings, arrays and objects are truthy in JS but are not server confirmations.
+  for(const value of ["true",1,{},[],null,false,undefined]){
+    assert.notEqual(value,true);
+  }
+});
