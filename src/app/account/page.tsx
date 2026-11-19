@@ -129,21 +129,31 @@ export default function AccountPage(){
 
   async function sendCode(){
     setBusy(true);setMessage("");
-    const response=await fetch("/api/customer-auth/otp",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email})});
-    const data=await response.json();
-    setBusy(false);
-    if(!response.ok){setMessage(data.error||"Could not send code.");return;}
-    setCodeSent(true);setMessage("A sign-in code was sent to your email.");
+    try {
+      const response=await fetch("/api/customer-auth/otp",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email})});
+      const data=await response.json();
+      if(!response.ok){setMessage(data.error||"Could not send code.");return;}
+      setCodeSent(true);setMessage("A sign-in code was sent to your email.");
+    } catch {
+      setMessage("Could not send code. Please retry.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function verify(){
     setBusy(true);setMessage("");
-    const response=await fetch("/api/customer-auth/verify",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email,token:code})});
-    const data=await response.json();
-    setBusy(false);
-    if(!response.ok){setMessage(data.error||"Could not sign in.");return;}
-    setCode("");setMessage("Signed in securely.");
-    await refresh();
+    try {
+      const response=await fetch("/api/customer-auth/verify",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email,token:code})});
+      const data=await response.json();
+      if(!response.ok){setMessage(data.error||"Could not sign in.");return;}
+      setCode("");setMessage("Signed in securely.");
+      await refresh();
+    } catch {
+      setMessage("Could not sign in. Please retry.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function claim(kind:"design"|"measurement"){
