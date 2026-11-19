@@ -23,7 +23,7 @@ export type CustomerSavedDesignWrite = {
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const validId = (value: unknown) =>
+const FORBIDDEN_OWNERSHIP_KEYS = new Set(["ownerId", "owner_id", "customerId", "customer_id", "userId", "user_id", "authorization", "sessionToken", "accessToken"]);\n\n/** Reject nested ownership claims, including prototype-shaped objects and cycles. */\nfunction hasUnsafeClaims(value: unknown, seen = new Set<object>(), depth = 0): boolean {\n  if (depth > 32) return true;\n  if (value === null || typeof value !== "object") return false;\n  if (seen.has(value)) return true;\n  seen.add(value);\n  for (const [key, child] of Object.entries(value)) {\n    if (FORBIDDEN_OWNERSHIP_KEYS.has(key) || key === "__proto__" || key === "constructor" || key === "prototype" || hasUnsafeClaims(child, seen, depth + 1)) return true;\n  }\n  seen.delete(value);\n  return false;\n}\n\nconst validId = (value: unknown) =>
   typeof value === "string" && value.length >= 1 && value.length <= 160 &&
   /^[A-Za-z0-9_-]+$/.test(value);
 
@@ -46,6 +46,6 @@ export function parseCustomerSavedDesignWrite(
     !["brief", "version", "renderSet"].includes(key))) return null;
   const {brief, version, renderSet} = value.recipe;
   if (!record(brief) || !record(version) || !record(renderSet) ||
-      !validId(version.id)) return null;
+      !validId(version.id) || hasUnsafeClaims(value.recipe)) return null;
   return value as CustomerSavedDesignWrite;
 }
