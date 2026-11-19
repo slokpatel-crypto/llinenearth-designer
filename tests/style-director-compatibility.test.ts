@@ -141,6 +141,23 @@ test("inadvisable sleeve length is excluded without changing locked sleeve IDs",
   }
 });
 
+test("withdrawn sleeve approval never changes the independently locked alternative", () => {
+  for (const [phrase, allowed, forbidden] of [
+    ["Short sleeves no longer permitted; full sleeves requested", "full_sleeve", "half_sleeve"],
+    ["Long sleeves no longer suitable; short sleeves requested", "half_sleeve", "full_sleeve"],
+    ["Half sleeves no longer wanted; long sleeves requested", "full_sleeve", "half_sleeve"],
+  ] as const) {
+    const selected = spec({ sleeve: allowed }).shirt;
+    const snapshot = JSON.stringify(selected);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, selected), [], phrase);
+    assert.equal(JSON.stringify(selected), snapshot, "locked option must not be mutated");
+    const rejected = spec({ sleeve: forbidden }).shirt;
+    const issues = styleDirectorCandidateSleeveIssues(phrase, rejected);
+    assert.ok(issues.length > 0, phrase);
+    assert.deepEqual(issues, styleDirectorCandidateSleeveIssues(phrase, rejected), "deterministic");
+  }
+});
+
 test("short sleeves cannot be recommended with French double cuffs", () => {
   assert.deepEqual(styleDirectorConstructionIssues(spec({
     sleeve: "half_sleeve", cuff: "french_double_cuff",
