@@ -138,14 +138,14 @@ def triangle_pair_intersection_points(points, left_triangle, right_triangle):
     return found
 
 
-def intersection_segment_lengths_mm(left, right, pairs):
-    """Measure actual surface crossings behind epsilon-expanded BVH candidates.
+def intersection_segment_witnesses(left, right, pairs):
+    """Locate actual surface crossings behind epsilon-expanded BVH candidates.
 
     One maximum segment is retained per polygon pair, avoiding double counting
     internal loop-triangle diagonals. Exact coplanar overlap remains deliberately
     unclassified rather than being invented as penetration depth.
     """
-    lengths = []
+    witnesses = []
     for left_face, right_face in pairs:
         points = []
         for left_triangle in left["triangles"][left_face]:
@@ -154,13 +154,27 @@ def intersection_segment_lengths_mm(left, right, pairs):
                         (left["points"], right["points"]), left_triangle, right_triangle):
                     if not any((point - existing).length <= 1e-8 for existing in points):
                         points.append(point)
-        length = max(
-            ((a - b).length for index, a in enumerate(points) for b in points[index + 1:]),
-            default=0.0,
-        )
+        candidates = [
+            ((a - b).length, a, b)
+            for index, a in enumerate(points) for b in points[index + 1:]
+        ]
+        best = max(candidates, key=lambda row: row[0]) if candidates else (0.0, None, None)
+        length, start, end = best
         if length > 1e-8:
-            lengths.append(length * 1000.0)
-    return lengths
+            witnesses.append({
+                "leftPolygonIndex": left_face,
+                "rightPolygonIndex": right_face,
+                "lengthMm": length * 1000.0,
+                "start": start.copy(),
+                "end": end.copy(),
+                "midpoint": (start + end) / 2.0,
+            })
+    return witnesses
+
+
+def intersection_segment_lengths_mm(left, right, pairs):
+    """Compatibility summary for callers that only need crossing lengths."""
+    return [row["lengthMm"] for row in intersection_segment_witnesses(left, right, pairs)]
 
 
 def geometric_intersection_witness(left, right):

@@ -13,6 +13,7 @@ import json
 import math
 from pathlib import Path
 import runpy
+import statistics
 import sys
 
 import bpy
@@ -574,7 +575,8 @@ def trial_source_cut_edge_reprojection(vertices, boundary, source_cut_edges,
 
 def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
                                         target_start, target_faces, source_cut_edges,
-                                        body_tree, research, geom_ops, seam_ops):
+                                        body_tree, body_z_bounds, research,
+                                        geom_ops, seam_ops):
     """Move real cut vertices in COPIES of adjacent source-leg faces and bridge.
 
     This is a full source-shell topology comparison, NOT a sewn/closed cloth
@@ -598,6 +600,11 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
     }
     if not affected_source_faces:
         raise RuntimeError("Selected source-seam vertices have no adjacent original trouser faces.")
+    body_low, body_high = body_z_bounds
+    body_height = body_high - body_low
+    if (not all(math.isfinite(v) for v in body_z_bounds)
+            or not math.isfinite(body_height) or body_height <= 0.1):
+        raise RuntimeError("Actual scanned body has no finite vertical localization span.")
     target_bridge_faces = set(range(
         len(base_faces) + target_start, len(base_faces) + target_start + len(target_faces)
     ))
@@ -816,10 +823,70 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
                 "areas": measured["areas"][start:end],
             }
 
-        _pairs, witness = geom_ops["geometric_intersection_witness"](
-            subset(0, leg_face_count),
-            subset(leg_face_count, len(base_faces)),
+        left_leg = subset(0, leg_face_count)
+        right_leg = subset(leg_face_count, len(base_faces))
+        pairs, witness = geom_ops["geometric_intersection_witness"](
+            left_leg, right_leg,
         )
+        segments = geom_ops["intersection_segment_witnesses"](
+            left_leg, right_leg, pairs,
+        )
+        if len(segments) != witness["crossingPolygonPairs"]:
+            raise RuntimeError("Crossing locality lost a genuine source polygon pair.")
+
+        def point_segment_distance_mm(point, edge):
+            start, end = (vertices[index] for index in edge)
+            delta = end - start
+            squared = delta.length_squared
+            if not math.isfinite(squared) or squared <= 1e-18:
+                raise RuntimeError("Authentic original source cut edge is degenerate.")
+            fraction = max(0.0, min(1.0, (point - start).dot(delta) / squared))
+            distance = (point - (start + delta * fraction)).length * 1000.0
+            if not math.isfinite(distance) or distance < 0:
+                raise RuntimeError("Crossing-to-cut-boundary distance is invalid.")
+            return distance
+
+        localized = []
+        octiles = [0] * 8
+        boundary_distances = []
+        for row in segments:
+            midpoint = row["midpoint"]
+            fraction = max(0.0, min(1.0, (midpoint.z - body_low) / body_height))
+            band = max(0, min(7, math.floor(fraction * 8)))
+            boundary_distance = min(
+                point_segment_distance_mm(midpoint, edge)
+                for edge in source_cut_edges
+            )
+            octiles[band] += 1
+            boundary_distances.append(boundary_distance)
+            localized.append({
+                "leftAuthenticPolygonIndex": row["leftPolygonIndex"],
+                "rightAuthenticPolygonIndex": row["rightPolygonIndex"],
+                "crossingSegmentLengthMm": round(row["lengthMm"], 6),
+                "midpointZMm": round(midpoint.z * 1000.0, 6),
+                "scannedBodyHeightFraction": round(fraction, 8),
+                "scannedBodyHeightOctile": band,
+                "immutableOriginalCutBoundaryDistanceMm": round(boundary_distance, 6),
+            })
+        if sum(octiles) != len(segments):
+            raise RuntimeError("Body-height crossing histogram lost a segment.")
+        witness["crossingLocality"] = {
+            "allCrossingSegmentsLocalized": len(localized) == len(segments),
+            "crossingSegmentCount": len(localized),
+            "scannedBodyHeightOctileCounts": octiles,
+            "immutableOriginalCutBoundaryDistanceMm": ({
+                "minimum": round(min(boundary_distances), 6),
+                "median": round(statistics.median(boundary_distances), 6),
+                "maximum": round(max(boundary_distances), 6),
+            } if boundary_distances else None),
+            "segments": localized,
+            "interpretation": (
+                "Read-only localization against immutable authentic cut-edge coordinates "
+                "and normalized scanned-body height; no safe distance, cloth thickness, "
+                "clearance, drape or fit threshold is asserted."
+            ),
+            "productionApproved": False,
+        }
         witness["authenticSourceFacesPerLeg"] = leg_face_count
         witness["experimentalBridgeFacesExcluded"] = len(bridge_faces)
         witness["sourceLegGeometryOnly"] = True
@@ -3153,7 +3220,10 @@ def main():
                 merged_verts, base_faces, bridge_faces, face_start,
                 bridge_faces[face_start:face_start + worst["bridgeTriangles"]],
                 (tuple(worst["leftEdge"]), tuple(worst["rightEdge"])),
-                body_tree, research, geom_ops, seam_ops,
+                body_tree,
+                (min(point.z for point in body_geom["points"]),
+                 max(point.z for point in body_geom["points"])),
+                research, geom_ops, seam_ops,
             )
         )
         face_remesh_ops = runpy.run_path(str(Path(__file__).with_name(

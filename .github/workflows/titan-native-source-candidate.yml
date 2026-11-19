@@ -3360,6 +3360,26 @@ jobs:
                   assert segments["sumPolygonPairProxy"] >= segments["maximum"]
               else:
                   assert segments is None
+              locality=witness["crossingLocality"]
+              assert locality["productionApproved"] is False
+              assert locality["allCrossingSegmentsLocalized"] is True
+              assert locality["crossingSegmentCount"] == witness["crossingPolygonPairs"]
+              assert len(locality["scannedBodyHeightOctileCounts"]) == 8
+              assert sum(locality["scannedBodyHeightOctileCounts"]) == locality["crossingSegmentCount"]
+              assert len(locality["segments"]) == locality["crossingSegmentCount"]
+              if locality["segments"]:
+                  distances=locality["immutableOriginalCutBoundaryDistanceMm"]
+                  assert 0 <= distances["minimum"] <= distances["median"] <= distances["maximum"]
+              else:
+                  assert locality["immutableOriginalCutBoundaryDistanceMm"] is None
+              for row in locality["segments"]:
+                  assert type(row["leftAuthenticPolygonIndex"]) is int
+                  assert type(row["rightAuthenticPolygonIndex"]) is int
+                  assert row["crossingSegmentLengthMm"] > 0
+                  assert math.isfinite(row["midpointZMm"])
+                  assert 0 <= row["scannedBodyHeightFraction"] <= 1
+                  assert row["scannedBodyHeightOctile"] in range(8)
+                  assert row["immutableOriginalCutBoundaryDistanceMm"] >= 0
           def segment_sum(witness):
               segments=witness["crossingSegmentLengthMm"]
               return segments["sumPolygonPairProxy"] if segments else 0

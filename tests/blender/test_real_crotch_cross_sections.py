@@ -26,6 +26,14 @@ right_fixture = {
 }
 known = diagnosis.intersection_segment_lengths_mm(left_fixture, right_fixture, [(0, 0)])
 assert len(known) == 1 and abs(known[0] - 1000.0) < 1e-6, known
+known_segments = diagnosis.intersection_segment_witnesses(
+    left_fixture, right_fixture, [(0, 0)]
+)
+assert len(known_segments) == 1, known_segments
+assert known_segments[0]["leftPolygonIndex"] == 0
+assert known_segments[0]["rightPolygonIndex"] == 0
+assert abs(known_segments[0]["lengthMm"] - 1000.0) < 1e-6
+assert known_segments[0]["midpoint"].length < 1e-8
 known_pairs, known_witness = diagnosis.geometric_intersection_witness(
     {**left_fixture, "polygons": [(0, 1, 2)]},
     {**right_fixture, "polygons": [(0, 1, 2)]},
