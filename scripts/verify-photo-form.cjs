@@ -101,7 +101,7 @@ async function run(){
       "real catalogue pattern must not imply approved sewn-panel matching");
     assert.equal(await realPatternCaption.getAttribute("data-photo-pattern-placement"),"unverified",
       "patterned preview must expose an unverified panel-placement state");
-    summary.viewports[summary.viewports.length-1].patternPanelPlacementUnverified=true;
+    const patternPanelPlacementUnverified=true;
     assert.doesNotMatch(await realPatternCaption.textContent(),/reviewed physical evidence/,
       "real catalogue pixels cannot imply measured textile scale");
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`real-catalogue-pattern-${width}.png`)});
@@ -273,7 +273,7 @@ async function run(){
     assert.match(await page.locator(".newDesignerPhotoTag").textContent(),/CUTS APPROX\./);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`dark-untucked-${width}.png`)});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
-    summary.viewports.push({width,overflow:false,realCataloguePreview:true,tuckedAndUntuckedScreenshots:true});
+    summary.viewports.push({width,overflow:false,realCataloguePreview:true,tuckedAndUntuckedScreenshots:true,patternPanelPlacementUnverified});
     summary.viewports[summary.viewports.length-1].fabricSummaryReadable=true;
     summary.viewports[summary.viewports.length-1].compactActionsReadable=true;
     summary.viewports[summary.viewports.length-1].tallDesktopActionRowReachable=true;
