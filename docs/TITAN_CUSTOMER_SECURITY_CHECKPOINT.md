@@ -176,3 +176,11 @@ Parent SHA `e299e3da925e5e789287ca9b3f2b2dfcd6d340e6` had matching-head CI `4444
 - New commit tests, full quality/build, browser QA and matching-head CI: NOT YET VERIFIED. No live migrations, stock writes, main merge or deployment.
 - Principal release blocker unchanged: ordinary `src/lib/saved-designs.ts` browser-local saved recipes lack authenticated owner-scoped durable CRUD and cross-account/second-device disposable-DB verification. Physical fabric/stock, tailoring, device, native geometry and independent security signoff remain PENDING.
 - Next bounded slice: implement authenticated owner-scoped saved-design read/write on a compatible isolated draft, prove account A/B denial and second-session recovery using disposable DB; do not silently migrate ambiguous legacy browser data.
+
+
+## 2026-11-19 — Restore sign-out security regressions after strict acknowledgment change
+
+- **Parent:** `65dfda851605c83c3c586d842cc29f8c5f2dbdc6`; **test commits:** `d2e9904f6e9ba5a1afe11e0cbffe804639935420`, `d0e97ad84a5f69c5cc87f78404f1aac6a63c0a2a`.
+- **Criterion:** signed-out state and private-data clearing must occur only after both successful HTTP and explicit JSON `ok: true`. Updated the two source-level regressions that incorrectly demanded the older `if(!response.ok)` expression; the application already uses `if(!response.ok||data?.ok!==true)`. No application logic was weakened.
+- **Evidence at parent SHA:** Full CI [44509266840](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44509266840) **FAILED** (910/912 tests passed; two outdated logout source assertions failed); Non-3D [44509266922](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44509266922) **FAILED** at unit gate. Disposable PostgreSQL customer-security and stock jobs passed. The two test edits and this checkpoint have **not yet passed matching-head CI**, and no local tests/browser QA/build were run in this session.
+- **Blockers:** authenticated durable ordinary saved-design persistence, disposable two-account owner isolation and second-device recovery; staging rollout and owner/physical/security acceptance remain pending. **Next slice:** inspect matching-head full CI and Non-3D, fix any actual failures; then implement a small owner-scoped saved-design persistence boundary with synthetic two-identity tests. No main merge or deployment.
