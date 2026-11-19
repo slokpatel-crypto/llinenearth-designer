@@ -224,3 +224,9 @@ Parent SHA `e299e3da925e5e789287ca9b3f2b2dfcd6d340e6` had matching-head CI `4444
 - **Verification:** workflow committed, **NOT EXECUTED at this checkpoint**. Matching-head SQL job, full CI, Non-3D and browser evidence for resulting documentation commit remain PENDING. A green generic CI run does not prove the SQL test executed.
 - **Blockers:** verified owner-derived authenticated API CRUD, second-browser recovery, live/staging migration authorization, independent security review and all physical/owner release gates remain PENDING. No live migration, main merge, deployment or paid AI.
 - **Next bounded slice:** inspect new workflow's exact-head outcome; repair actual SQL failures; implement authenticated server-derived owner CRUD with synthetic two-customer HTTP tests, never silently import browser localStorage.
+
+## 2026-11-20 — Authenticated ordinary saved-design API (UNVERIFIED)
+- **Parent:** `ddce2aaacf72ea48616fa243389bf1461a0a7311`; **implementation:** `3498b85c1a2fbe50902a55ab2167a955ae8e9d39`.
+- **Criterion:** new `/api/customer-saved-designs` GET and POST endpoints derive owner from verified customer session; validate versioned recipe, IDs, request size and strict RPC acknowledgements; deny anonymous reads/writes and return private no-store responses. Existing localStorage remains unchanged; no automatic anonymous-record import.
+- **Evidence:** parent matching-head Full CI #44622718464, Non-3D #44622718564 and disposable PostgreSQL #44622718357 all succeeded. New route has NOT been tested or CI-verified; API acceptance remains PENDING. No browser/second-device evidence.
+- **Next bounded slice:** add two-customer HTTP isolation regressions and run matching-head full CI/build; wire explicit authenticated save/recovery UI only after backend tests. Check RPC response shape and staging migration before enabling. Physical/human release gates PENDING. No main merge, deployment, live migration or paid AI.
