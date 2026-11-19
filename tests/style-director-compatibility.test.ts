@@ -5419,3 +5419,28 @@ test("independent shirt and trouser construction conflicts remain visible togeth
     issue.code === "short_sleeve_double_cuff" ||
     issue.code === "pleated_front_missing_pleat"), "compatible alternatives must clear both conflicts");
 });
+
+test("independent shirt and trouser construction conflicts survive either single correction", () => {
+  const shirtVariants = [
+    { sleeve: "half_sleeve", cuff: "french_double_cuff" },
+    { sleeve: "full_sleeve", cuff: "french_double_cuff" },
+  ] as const;
+  const pantVariants = [
+    { type: "pleated_trouser", pleat: "flat_front" },
+    { type: "pleated_trouser", pleat: "single_pleat_forward" },
+  ] as const;
+  for (const [shirtIndex, shirt] of shirtVariants.entries()) {
+    for (const [pantIndex, pant] of pantVariants.entries()) {
+      const locked = Object.freeze(spec({ ...shirt }, { ...pant }));
+      const snapshot = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      const codes = issues.map(issue => issue.code);
+      assert.equal(codes.includes("short_sleeve_double_cuff"), shirtIndex === 0,
+        "shirt issue must depend on shirt construction, not trouser correction");
+      assert.equal(codes.includes("pleated_front_missing_pleat"), pantIndex === 0,
+        "trouser issue must depend on trouser construction, not shirt correction");
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues, "deterministic replay");
+      assert.equal(JSON.stringify(locked), snapshot, "no locked IDs may be rewritten");
+    }
+  }
+});
