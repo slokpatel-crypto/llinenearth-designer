@@ -159,3 +159,11 @@ Parent SHA `e299e3da925e5e789287ca9b3f2b2dfcd6d340e6` had matching-head CI `4444
 - Verification: code and test committed; local tests, build, browser QA and matching-head CI **not yet executed/confirmed** for these commits. No physical/customer acceptance is claimed.
 - Blockers: authenticated server-backed ordinary saved-design CRUD, two-account isolation and second-browser recovery against a disposable database; physical fabric/stock/tailor/device/native/security evidence still pending.
 - Next 30–40-minute slice: reconcile the existing owner-scoped vault and browser saved-design paths; implement one durable saved-design write/read contract and negative cross-account regression without live migrations.
+
+## 2026-11-19 — malformed successful session payload (isolated customer account slice)
+
+- Parent branch SHA: `3a214256e4fb108e1f648c3662f86e2ffcec615d`; application commit: `69f35cd2c03c7da0048d202c9eebc54d86860a39`; regression commit: `bbaea1fba6cac56adaf93f8e5de3969fa97bdd7e`.
+- Criterion: a session endpoint that returns HTTP 200 with JSON `null`, an array, or a primitive must not throw while dereferencing `.customer`, leave stale account data, or claim a valid customer session. Invalid payloads are marked unavailable and the account fails closed.
+- Evidence: source-level regression appended to `tests/customer-security-request-boundary.test.ts` consistent with existing account UI contract tests. **Not executed locally**; matching-head Full CI, Non-3D/browser QA, build, security and disposable DB checks **not yet confirmed** at regression SHA. Previous head `3a214256` had reported successful matching-head CI/Non-3D; that is not evidence for this change.
+- Blockers: owner-scoped durable ordinary saved-design persistence, disposable two-account/second-browser recovery, staging security proof and physical stock/fabric/tailor/device/native evidence. No human approval claimed.
+- Next 30–40-minute slice: add durable saved-design read/write integration using existing authenticated vault contracts, with two-identity negative tests and browser recovery. No live migrations or production deployment.
