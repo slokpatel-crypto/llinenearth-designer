@@ -459,3 +459,16 @@ test("high-contrast cloth retains neutral photographed placket relief", () => {
   assert.match(script,/placketCorrelation\.after>result\.placketCorrelation\.before/);
   assert.match(script,/ensureRevision\(BASE\);ensureRevision\(PLACKET_BASE\)/);
 });
+
+test("high-contrast cloth retains neutral photographed collar and cuff relief", () => {
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const script=readFileSync("scripts/verify-photo-form.cjs","utf8");
+  assert.match(source,/drawPhotographicConstructionRelief\(context,modelPhoto,PHOTO_TUCKED_COLLAR_MASK\)/);
+  assert.match(source,/drawPhotographicConstructionRelief\(context,modelPhoto,PHOTO_TUCKED_CUFF_MASK\)/);
+  assert.match(source,/drawPhotographicConstructionRelief\(context,modelPhoto,PHOTO_UNTUCKED_COLLAR_CLIP\)/);
+  assert.match(source,/drawPhotographicConstructionRelief\(context,modelPhoto,PHOTO_CUFF_MASK\)/);
+  assert.match(script,/DETAIL_BASE="1f26829ecbc67a579beea136a7882bac224c0b99"/);
+  assert.match(script,/collarCorrelation\.after>result\.collarCorrelation\.before/);
+  assert.match(script,/cuffCorrelation\.after>result\.cuffCorrelation\.before/);
+  assert.match(script,/ensureRevision\(BASE\);ensureRevision\(PLACKET_BASE\);ensureRevision\(DETAIL_BASE\)/);
+});

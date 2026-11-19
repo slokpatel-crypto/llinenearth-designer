@@ -1075,6 +1075,12 @@ export function composePhotoOutfit(
       // collar cloth, then draw the existing traced collar wings over it.
       drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_NECK_CLEAR, masks.collar,{...calibratedPlacement,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.collar,anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.x,anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.y, referenceX:510, referenceY:244});
       drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined,{...calibratedPlacement,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.collar,anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.x,anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.y, referenceX:510, referenceY:244});
+      // Contrast prints can visually bury the fixed photograph's point-collar
+      // and barrel-cuff seams. Reapply only their neutral high-frequency
+      // structure after painting the selected self fabric; no source dye or
+      // alternate construction is introduced.
+      drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_TUCKED_COLLAR_MASK);
+      drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_TUCKED_CUFF_MASK);
     } else {
       drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined);
       if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined);
@@ -1154,6 +1160,10 @@ export function composePhotoOutfit(
         anchorY:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.collar.y, referenceX:510, referenceY:244,
       });
     });
+    if (style.collarFinish === "Self-fabric") {
+      drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_UNTUCKED_COLLAR_CLIP);
+      drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_CUFF_MASK);
+    }
     drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_UNTUCKED_PLACKET_DETAIL);
     drawCreativePattern(context,creative,"",shirtMask);
     drawCreativeDetails(context,creative,false,shirtMask);
