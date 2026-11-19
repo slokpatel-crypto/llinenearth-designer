@@ -72,3 +72,15 @@ test("malformed successful session JSON fails closed without dereferencing null"
   assert.match(account,/const unavailable=!validSession\|\|Boolean\(session\.unavailable\)/);
   assert.ok(account.indexOf("const validSession=")<account.indexOf("setCustomer(next)"));
 });
+
+
+test("logout requires a literal success acknowledgment before clearing private account state",()=>{
+  const account=readFileSync(new URL("../src/app/account/page.tsx",import.meta.url),"utf8");
+  const start=account.indexOf("async function logout()");
+  const end=account.indexOf("async function ",start+10);
+  const logout=account.slice(start,end<0?undefined:end);
+  assert.match(logout,/const data=await response\.json\(\)\.catch\(\(\)=>null\)/);
+  assert.match(logout,/if\(!response\.ok\|\|data\?\.ok!==true\)/);
+  assert.ok(logout.indexOf("data?.ok!==true")<logout.indexOf("setCustomer(null)"));
+  for(const ack of [null,false,"true",1,{},[]]) assert.notEqual(ack,true);
+});
