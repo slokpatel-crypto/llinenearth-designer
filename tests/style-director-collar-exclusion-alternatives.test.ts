@@ -50,3 +50,21 @@ test("no-longer-permitted collars remain exclusions rather than new selections",
     assert.equal(styleDirectorCandidateOrdinaryCollar(phrase), null, phrase);
   }
 });
+
+test("withdrawn collar approval never overrides an independent spread selection", () => {
+  for (const phrase of [
+    "Band collar is no longer suitable; spread collar requested",
+    "Camp collar is no longer permitted; spread collar requested",
+    "Cutaway collar no longer allowed; spread collar requested",
+  ]) {
+    const first = [
+      styleDirectorCandidateOrdinaryCollar(phrase),
+      styleDirectorCandidateVariantCollar(phrase),
+    ];
+    assert.deepEqual(first, ["spread", null], phrase);
+    assert.deepEqual([
+      styleDirectorCandidateOrdinaryCollar(phrase),
+      styleDirectorCandidateVariantCollar(phrase),
+    ], first, "deterministic replay: " + phrase);
+  }
+});
