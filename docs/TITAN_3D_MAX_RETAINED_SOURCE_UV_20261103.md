@@ -1276,3 +1276,49 @@ body/BVH, GLB and four-angle imagery remain unchanged. Approved model
 measurements/source likeness, physical drape and fabric evidence, tailor review
 and four-angle approval remain required. **DRAFT / NO MERGE / NO DEPLOY / NO
 CUTTING.**
+
+## 2026-11-19 connected positive-9mm seam candidate crossing gate
+
+**Acceptance criterion:** Re-run the independent native triangle-crossing
+segment witness on the existing isolated connected positive-9mm source-seam
+candidate and its unchanged equal-topology control. Retain the candidate for
+further research only if its summed crossing-segment proxy strictly decreases,
+its crossing-pair count does not increase, and its whole-source/body BVH pair
+count does not regress. This is a research rejection gate, not a fit tolerance.
+
+**Implemented read-only evidence path:** The connected source experiment now
+partitions the authentic 2,650 source faces back into the two original
+1,325-face leg surfaces after applying the existing disposable seam movement.
+It excludes all six invented bridge faces from the leg/leg crossing comparison,
+uses the same evaluated triangle-intersection classifier as the final garment
+diagnostic, and separately retains the existing whole-source/body BVH count.
+No original mesh, stored UV, export object, GLB, render or canonical identity is
+modified or saved.
+
+**Pinned native result:** Blender 4.5.14 source-rejection run
+[#44461976874](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44461976874)
+on exact code head `3c78220ece5d14c74a77f91b264ef1da3965b66d`
+measured:
+
+| Authentic source-leg evidence | Unchanged control | Positive-9mm candidate |
+|---|---:|---:|
+| Epsilon BVH candidate pairs | 1 | 2 |
+| Actual non-coplanar crossing pairs | **1** | **2** |
+| Crossing-segment summed polygon-pair proxy | **43.570162mm** | **76.720581mm** |
+| Maximum crossing segment | 43.570162mm | 43.570162mm |
+| Whole connected source/body BVH pairs | **29,620** | **29,637** |
+
+Both hard conditions fail: crossing severity increases and body intersections
+regress by 17 pairs. `strictCrossingSegmentReductionObserved=false`,
+`noWholeSourceBodyBVHPairRegressionObserved=false` and
+`candidateRetainedForFurtherResearch=false`. The positive-9mm seam movement is
+therefore rejected rather than promoted. The evidence artifact is
+[`titan-native-candidate-evidence` #14500352714](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44461976874/artifacts/14500352714),
+digest `sha256:a0ccb56344c4e87194f8468d45c6f97154d6baf05b95b6fd709dd9c8d2311f70`.
+
+This segment sum is not penetration depth/volume, cloth thickness, clearance,
+drape, comfort or tailoring approval. `candidateAccepted=false`,
+`physicalFitApproved=false` and `productionApproved=false`. Native drape,
+approved model measurements/source likeness, four-angle approval, physical
+fabric evidence and tailor review remain required. **DRAFT / NO MERGE / NO
+DEPLOY / NO CUTTING.**
