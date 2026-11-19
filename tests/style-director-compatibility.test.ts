@@ -5396,3 +5396,26 @@ test("withdrawn sleeve construction permits a separately requested alternative",
     assert.equal(JSON.stringify({ forbidden, allowed }), before, "locked IDs remain unchanged");
   }
 });
+
+test("independent shirt and trouser construction conflicts remain visible together", () => {
+  const locked = spec(
+    { sleeve: "half_sleeve", cuff: "french_double_cuff" },
+    { type: "pleated_trouser", pleat: "flat_front" },
+  );
+  const before = JSON.stringify(locked);
+  const issues = styleDirectorConstructionIssues(locked);
+  const codes = issues.map(issue => issue.code);
+  assert.ok(codes.includes("short_sleeve_double_cuff"), "shirt construction conflict must survive");
+  assert.ok(codes.includes("pleated_front_missing_pleat"), "trouser construction conflict must survive");
+  assert.equal(new Set(codes).size, codes.length, "no duplicate issue codes");
+  assert.deepEqual(styleDirectorConstructionIssues(locked), issues, "repeatable without state");
+  assert.equal(JSON.stringify(locked), before, "never rewrite the locked garment spec");
+
+  const corrected = spec(
+    { sleeve: "full_sleeve", cuff: "french_double_cuff" },
+    { type: "pleated_trouser", pleat: "single_pleat_forward" },
+  );
+  assert.ok(!styleDirectorConstructionIssues(corrected).some(issue =>
+    issue.code === "short_sleeve_double_cuff" ||
+    issue.code === "pleated_front_missing_pleat"), "compatible alternatives must clear both conflicts");
+});
