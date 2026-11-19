@@ -5518,3 +5518,32 @@ test("stale locked option review does not suppress independent trouser construct
     }
   }
 });
+
+
+test("independent construction conflicts survive stale option IDs without rewriting locked designs", () => {
+  for (const invalidCollar of [false, true]) {
+    for (const invalidCuff of [false, true]) {
+      for (const invalidPleat of [false, true]) {
+        const selected = spec({
+          collar: invalidCollar ? "retired_collar_id" : "spread_collar",
+          sleeve: "half_sleeve",
+          cuff: invalidCuff ? "retired_cuff_id" : "french_double_cuff",
+        }, {
+          type: "pleated_trouser",
+          pleat: invalidPleat ? "retired_pleat_id" : "flat_front",
+        });
+        const snapshot = JSON.stringify(selected);
+        const issues = styleDirectorConstructionIssues(selected);
+        const codes = issues.map(issue => issue.code);
+        assert.equal(codes.filter(code => code === "unknown_versioned_option").length,
+          Number(invalidCollar) + Number(invalidCuff));
+        assert.equal(codes.includes("unknown_trouser_pleat_option"), invalidPleat);
+        assert.equal(codes.includes("pleated_front_missing_pleat"), !invalidPleat);
+        assert.deepEqual(issues, styleDirectorConstructionIssues(selected),
+          "review must be deterministic across independent stale IDs");
+        assert.equal(JSON.stringify(selected), snapshot,
+          "locked design IDs must not be silently corrected");
+      }
+    }
+  }
+});
