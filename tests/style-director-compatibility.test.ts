@@ -5343,3 +5343,22 @@ test("withdrawn specialty collars do not override an explicitly selected ordinar
     assert.equal(JSON.stringify(locked), snapshot, "locked versioned ID remains unchanged");
   }
 });
+
+test("withdrawn sleeve approval excludes that length without changing locked IDs", () => {
+  for (const phrase of [
+    "Short sleeves no longer approved",
+    "Half sleeves no longer suitable",
+    "Full sleeves no longer permitted",
+    "Long sleeves no longer desired",
+  ]) {
+    const banned = /^(?:Short|Half)/.test(phrase) ? "half_sleeve" : "full_sleeve";
+    const alternative = banned === "half_sleeve" ? "full_sleeve" : "half_sleeve";
+    const locked = spec({ sleeve: banned }).shirt;
+    const snapshot = JSON.stringify(locked);
+    const issues = styleDirectorCandidateSleeveIssues(phrase, locked);
+    assert.ok(issues.length > 0, phrase);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, locked), issues);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, spec({ sleeve: alternative }).shirt), []);
+    assert.equal(JSON.stringify(locked), snapshot);
+  }
+});
