@@ -164,7 +164,7 @@ export default function AccountPage(){
     try {
       const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"claim",recoveryToken:token.trim()})});
       const data=await response.json();
-      if(!response.ok||!data.claimed){setMessage(data.error||"That secure copy could not be linked.");return;}
+      if(!response.ok||data?.claimed!==true){setMessage(typeof data?.error==="string"?data.error:"That secure copy could not be linked.");return;}
       if(kind==="design") setClaimDesign(""); else setClaimMeasurement("");
       setMessage(kind==="design"?"Design linked to your account.":"Measurements linked to your account.");
       await refresh();
