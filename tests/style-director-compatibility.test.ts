@@ -5629,3 +5629,25 @@ test("contradictory roll-up sleeve instructions cannot certify a locked construc
     }
   }
 });
+
+
+test("explicit roll-up construction rules fail closed for retired sleeve IDs", () => {
+  for (const wording of [
+    "Roll-up styled requested",
+    "Roll-up styled prohibited",
+  ]) {
+    const locked = Object.freeze({ sleeve: "retired_sleeve_id" });
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorCandidateSleeveIssues(wording, locked);
+    assert.deepEqual(issues.map(issue => issue.code), ["candidate_sleeve_mismatch"], wording);
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, locked), issues);
+    assert.equal(JSON.stringify(locked), before, "never replace a retired locked ID");
+  }
+  assert.deepEqual(styleDirectorCandidateSleeveIssues(
+    "Roll-up styled requested", { sleeve: "roll_up_styled" }), []);
+  assert.deepEqual(styleDirectorCandidateSleeveIssues(
+    "Roll-up styled prohibited", { sleeve: "full_sleeve" }), []);
+  assert.deepEqual(styleDirectorCandidateSleeveIssues(
+    "Roll-up styled prohibited", { sleeve: "roll_up_styled" })
+    .map(issue => issue.code), ["candidate_sleeve_mismatch"]);
+});
