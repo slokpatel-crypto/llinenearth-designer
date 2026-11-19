@@ -150,3 +150,12 @@ Parent SHA `e299e3da925e5e789287ca9b3f2b2dfcd6d340e6` had matching-head CI `4444
 - Verified parent/head `775519427cbfd6cfc361442b1eedf1e7be58ee81` on draft PR #863; GitHub Actions CI run #44461391995 and Deep Engine Non-3D QA run #44461392024 both completed successfully for this head.
 - This verifies the previously committed strict `deleted:true` and `accepted:true` UI acknowledgment regressions through those workflows. It does not establish disposable-database, cross-account, second-browser, physical or independent security acceptance. Local npm and interactive browser tests were not run in this session.
 - Next acceptance-driven engineering slice: implement and test authenticated owner-scoped ordinary saved-design persistence against a disposable database; keep anonymous browser records separate, with explicit migration/consent and two-account negative tests. No main intake without dependency-complete isolated diff and matching-head verification.
+
+
+## 2026-11-19 — OTP UI acknowledgment hardening (pending matching-head verification)
+- Parent SHA: `dffce2e702e58012557c1abd3d613467aa389a1b` (Full CI 44468267104 and Non-3D QA 44468267057 succeeded on this parent).
+- Application commit: `d92b1c8e4b5bbabb9c96535a0ead1a464aeff2c9`; regression commit: `06b4e34282db9ee5cb3ba512966d3a34b15f76f3`.
+- Criterion: OTP send and verify must not claim success on HTTP 200 with malformed, false or missing `ok:true`; verify also requires a customer ID. The server endpoints return `{ok:true}` and `{ok:true,customer}` respectively. Regression `tests/customer-auth-ui-ack.test.ts` pins the UI/server contract.
+- Verification: code and test committed; local tests, build, browser QA and matching-head CI **not yet executed/confirmed** for these commits. No physical/customer acceptance is claimed.
+- Blockers: authenticated server-backed ordinary saved-design CRUD, two-account isolation and second-browser recovery against a disposable database; physical fabric/stock/tailor/device/native/security evidence still pending.
+- Next 30–40-minute slice: reconcile the existing owner-scoped vault and browser saved-design paths; implement one durable saved-design write/read contract and negative cross-account regression without live migrations.
