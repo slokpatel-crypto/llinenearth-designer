@@ -3384,7 +3384,7 @@ jobs:
                   target_edges={tuple(sorted(item["originalSourceCutEdge"]))
                                 for item in src_nine["sourceEdgeReadings"]}
                   immutable_edges={tuple(sorted(item[key]))
-                                   for item in trial["trialSegments"]
+                                   for item in offset["trialSegments"]
                                    for key in ("leftEdge","rightEdge")}
                   assert len(target_edges) == 2 and len(immutable_edges) == 8
                   assert tuple(row["nearestTargetMovedCutEdge"]) in target_edges

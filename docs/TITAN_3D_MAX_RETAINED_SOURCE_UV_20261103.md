@@ -1425,3 +1425,12 @@ so this is an explicit external blocker, not a passing candidate gate. The
 local Blender 4.3.2 trace above remains development evidence only until the
 pinned native workflow executes successfully. No candidate was promoted and
 no source geometry, UV, GLB, render or canonical identity changed.
+
+Pinned Blender 4.5.14 subsequently reached the restored experiment on run
+#44615846287 and exposed a workflow-only scoping error: the eight-edge
+assertion read `trialSegments` from the centroid sub-trial instead of the
+enclosing four-pair report. The source experiment itself emitted its evidence
+artifact, but this attempt is failed and cannot be credited. The corrected
+assertion reads `offset["trialSegments"]`; its focused regression now requires
+that exact enclosing-report reference. A fresh exact-head pinned run is
+required.

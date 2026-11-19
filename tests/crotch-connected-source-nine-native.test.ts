@@ -59,6 +59,7 @@ test("connected original source cut seam tests REAL adjacent trouser faces and p
     'locality=witness["crossingLocality"]',
     'assert locality["allCrossingSegmentsLocalized"] is True',
     'assert sum(locality["scannedBodyHeightOctileCounts"]) == locality["crossingSegmentCount"]',
+    'for item in offset["trialSegments"]',
     'assert len(target_edges) == 2 and len(immutable_edges) == 8',
     'assert tuple(row["nearestTargetMovedCutEdge"]) in target_edges',
     'assert nearest_edge in immutable_edges',
