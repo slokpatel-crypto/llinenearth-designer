@@ -61,12 +61,15 @@ export default function AccountPage(){
       .then(r=>r.ok?r.json():Promise.reject(new Error("Session check unavailable")))
       .catch(()=>({customer:null,unavailable:true}));
     if(epoch!==refreshEpoch.current)return;
-    const raw=session.customer;
+    // A 200 response with JSON null/primitive is not a valid session.
+    // Treat it as unavailable rather than throwing and retaining stale UI.
+    const validSession=session!==null&&typeof session==="object"&&!Array.isArray(session);
+    const raw=validSession?session.customer:null;
     const next:Customer|null=raw&&typeof raw==="object"&&!Array.isArray(raw)&&
       typeof raw.id==="string"&&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw.id)&&
       (raw.email===null||typeof raw.email==="string")?raw:null;
-    const unavailable=Boolean(session.unavailable)||(raw!=null&&!next);
+    const unavailable=!validSession||Boolean(session.unavailable)||(raw!=null&&!next);
     setSessionUnavailable(unavailable);
     if(loadedOwnerId.current!==(next?.id??null)){
       // Clear prior account data in the same render batch as identity change.
