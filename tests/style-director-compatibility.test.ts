@@ -5585,3 +5585,27 @@ test("withdrawn sleeve necessity is optional, not a locked construction change",
     spec({ sleeve: "half_sleeve" }).shirt,
   ).length > 0, "a genuine prohibition must still fail closed");
 });
+
+test("withdrawn roll-up necessity stays optional while withdrawal of permission is a ban", () => {
+  for (const wording of [
+    "Roll-up styled no longer required",
+    "Roll-up styled is no longer needed",
+    "Roll-up styled no longer mandatory",
+    "Roll-up styled is no longer necessary",
+    "Roll-up styled no longer compulsory",
+  ]) {
+    const result = styleDirectorCandidateRollUpSleeveIntent(wording);
+    assert.deepEqual(result, { requested: false, prohibited: false, ambiguous: false }, wording);
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(wording), result, "deterministic intent");
+  }
+  for (const wording of [
+    "Roll-up styled no longer permitted",
+    "Roll-up styled is no longer approved",
+    "Roll-up styled no longer suitable",
+  ]) {
+    assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent(wording),
+      { requested: false, prohibited: true, ambiguous: false }, wording);
+  }
+  assert.deepEqual(styleDirectorCandidateRollUpSleeveIntent("Roll-up styled requested"),
+    { requested: true, prohibited: false, ambiguous: false });
+});
