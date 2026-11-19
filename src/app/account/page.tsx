@@ -132,7 +132,7 @@ export default function AccountPage(){
     try {
       const response=await fetch("/api/customer-auth/otp",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email})});
       const data=await response.json();
-      if(!response.ok){setMessage(data.error||"Could not send code.");return;}
+      if(!response.ok||data?.ok!==true){setMessage(typeof data?.error==="string"?data.error:"Could not send code.");return;}
       setCodeSent(true);setMessage("A sign-in code was sent to your email.");
     } catch {
       setMessage("Could not send code. Please retry.");
@@ -146,7 +146,7 @@ export default function AccountPage(){
     try {
       const response=await fetch("/api/customer-auth/verify",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email,token:code})});
       const data=await response.json();
-      if(!response.ok){setMessage(data.error||"Could not sign in.");return;}
+      if(!response.ok||data?.ok!==true||typeof data?.customer?.id!=="string"){setMessage(typeof data?.error==="string"?data.error:"Could not sign in.");return;}
       setCode("");setMessage("Signed in securely.");
       await refresh();
     } catch {
