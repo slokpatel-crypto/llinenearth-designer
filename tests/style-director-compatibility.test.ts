@@ -5651,3 +5651,21 @@ test("explicit roll-up construction rules fail closed for retired sleeve IDs", (
     "Roll-up styled prohibited", { sleeve: "roll_up_styled" })
     .map(issue => issue.code), ["candidate_sleeve_mismatch"]);
 });
+
+test("retired sleeve selection never masks independent trouser-front construction review", () => {
+  for (const correctedPleat of [false, true]) {
+    for (const sleeve of ["retired_sleeve_id", "full_sleeve"] as const) {
+      const locked = spec({ sleeve, cuff: "barrel_cuff_1_button" }, {
+        type: "pleated_trouser",
+        pleat: correctedPleat ? "single_pleat_forward" : "flat_front",
+      });
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      const codes = issues.map(issue => issue.code);
+      assert.equal(codes.includes("unknown_versioned_option"), sleeve === "retired_sleeve_id");
+      assert.equal(codes.includes("pleated_front_missing_pleat"), !correctedPleat);
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues, "deterministic replay");
+      assert.equal(JSON.stringify(locked), before, "preserve locked sleeve and pleat IDs");
+    }
+  }
+});
