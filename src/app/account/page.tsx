@@ -161,13 +161,18 @@ export default function AccountPage(){
     if(!token.trim()) return;
     setBusy(true);setMessage("");
     const url=kind==="design"?"/api/designer/vault":"/api/measurements/vault";
-    const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"claim",recoveryToken:token.trim()})});
-    const data=await response.json();
-    setBusy(false);
-    if(!response.ok||!data.claimed){setMessage(data.error||"That secure copy could not be linked.");return;}
-    if(kind==="design") setClaimDesign(""); else setClaimMeasurement("");
-    setMessage(kind==="design"?"Design linked to your account.":"Measurements linked to your account.");
-    await refresh();
+    try {
+      const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"claim",recoveryToken:token.trim()})});
+      const data=await response.json();
+      if(!response.ok||!data.claimed){setMessage(data.error||"That secure copy could not be linked.");return;}
+      if(kind==="design") setClaimDesign(""); else setClaimMeasurement("");
+      setMessage(kind==="design"?"Design linked to your account.":"Measurements linked to your account.");
+      await refresh();
+    } catch {
+      setMessage("Secure copy could not be linked. Please retry.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function deleteOwned(kind:"design"|"measurement",vaultId:string){
