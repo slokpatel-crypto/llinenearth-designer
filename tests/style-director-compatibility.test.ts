@@ -5463,3 +5463,33 @@ test("collar, sleeve and trouser construction conflicts remain independently act
     assert.equal(JSON.stringify(locked), snapshot, "locked canonical IDs are immutable");
   }
 });
+
+test("all eight collar sleeve and pleat correction combinations remain independent", () => {
+  for (const correctCollar of [false, true]) {
+    for (const correctSleeve of [false, true]) {
+      for (const correctPleat of [false, true]) {
+        const locked = Object.freeze(spec({
+          type: "camp_collar_resort",
+          collar: correctCollar ? "cuban_camp_collar" : "point_standard_collar",
+          wear: "untucked",
+          sleeve: correctSleeve ? "full_sleeve" : "half_sleeve",
+          cuff: "french_double_cuff",
+        }, {
+          type: "pleated_trouser",
+          pleat: correctPleat ? "single_pleat_forward" : "flat_front",
+        }));
+        const before = JSON.stringify(locked);
+        const issues = styleDirectorConstructionIssues(locked);
+        const codes = issues.map(issue => issue.code);
+        assert.deepEqual([
+          codes.includes("camp_collar_construction"),
+          codes.includes("short_sleeve_double_cuff"),
+          codes.includes("pleated_front_missing_pleat"),
+        ], [!correctCollar, !correctSleeve, !correctPleat]);
+        assert.equal(new Set(codes).size, codes.length, "no duplicate warnings");
+        assert.deepEqual(styleDirectorConstructionIssues(locked), issues, "deterministic replay");
+        assert.equal(JSON.stringify(locked), before, "locked IDs must remain immutable");
+      }
+    }
+  }
+});
