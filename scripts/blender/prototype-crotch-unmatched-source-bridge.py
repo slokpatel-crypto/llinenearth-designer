@@ -574,7 +574,8 @@ def trial_source_cut_edge_reprojection(vertices, boundary, source_cut_edges,
 
 
 def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
-                                        target_start, target_faces, source_cut_edges,
+                                        target_start, target_faces, target_source_cut_edges,
+                                        all_original_cut_edges,
                                         body_tree, body_z_bounds, research,
                                         geom_ops, seam_ops):
     """Move real cut vertices in COPIES of adjacent source-leg faces and bridge.
@@ -584,9 +585,12 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
     NOT reconstructed. The original exported 6 garments cannot be modified.
     """
     boundary, patch_open = ordered_triangle_patch_boundary(target_faces)
-    source = {tuple(sorted(edge)) for edge in source_cut_edges}
+    source = {tuple(sorted(edge)) for edge in target_source_cut_edges}
+    immutable_cut_boundary = {tuple(sorted(edge)) for edge in all_original_cut_edges}
     if not source.issubset(patch_open) or len(source) != 2:
         raise RuntimeError("Connected trial source segments do not match source cut boundary.")
+    if len(immutable_cut_boundary) != 8 or not source.issubset(immutable_cut_boundary):
+        raise RuntimeError("Connected trial requires all eight authentic source cut edges.")
     faces = [tuple(face) for face in base_faces] + [tuple(face) for face in bridge_faces]
     if not base_faces or not bridge_faces or not (0 <= target_start <
                                                    len(bridge_faces)):
@@ -639,6 +643,69 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
         frontier = next_frontier
     if not any(v == 1 for v in source_rings.values()) or not any(v == 2 for v in source_rings.values()):
         raise RuntimeError("Original source trouser has no genuine two-ring geometry for falloff.")
+
+    # Authentic face rings are derived only from original source-face edges.
+    # Bridge faces and spatial proximity never create topology neighbours.
+    source_edge_faces = {}
+    for face_index, face in enumerate(base_faces):
+        for offset, vertex in enumerate(face):
+            edge = tuple(sorted((vertex, face[(offset + 1) % len(face)])))
+            source_edge_faces.setdefault(edge, []).append(face_index)
+    if any(len(owners) > 2 for owners in source_edge_faces.values()):
+        raise RuntimeError("Authentic source face-ring graph is nonmanifold.")
+    source_face_neighbours = {index: set() for index in range(len(base_faces))}
+    for owners in source_edge_faces.values():
+        if len(owners) == 2:
+            a, b = owners
+            source_face_neighbours[a].add(b)
+            source_face_neighbours[b].add(a)
+
+    def source_face_ring_trace(global_face_index):
+        if not 0 <= global_face_index < len(base_faces):
+            raise RuntimeError("Crossing references a non-authentic source face.")
+        depths = {global_face_index: 0}
+        frontier = {global_face_index}
+        ring_depth = 0
+        while frontier and not affected_source_faces.intersection(depths):
+            next_frontier = set()
+            for face_index in frontier:
+                next_frontier.update(source_face_neighbours[face_index])
+            next_frontier.difference_update(depths)
+            ring_depth += 1
+            for face_index in next_frontier:
+                depths[face_index] = ring_depth
+            frontier = next_frontier
+        seed_depths = [depths[index] for index in affected_source_faces if index in depths]
+        minimum_seed_ring = min(seed_depths) if seed_depths else None
+
+        local_depths = {global_face_index: 0}
+        frontier = {global_face_index}
+        for depth in (1, 2):
+            next_frontier = set()
+            for face_index in frontier:
+                next_frontier.update(source_face_neighbours[face_index])
+            next_frontier.difference_update(local_depths)
+            for face_index in next_frontier:
+                local_depths[face_index] = depth
+            frontier = next_frontier
+        face = base_faces[global_face_index]
+        face_edges = [
+            tuple(sorted((vertex, face[(offset + 1) % len(face)])))
+            for offset, vertex in enumerate(face)
+        ]
+        cut_edges = sorted(edge for edge in face_edges if edge in immutable_cut_boundary)
+        return {
+            "authenticGlobalPolygonIndex": global_face_index,
+            "authenticSourceVertexIndices": list(face),
+            "authenticEdgeVertexPairs": [list(edge) for edge in face_edges],
+            "incidentImmutableCutEdges": [list(edge) for edge in cut_edges],
+            "directlyAlteredByPositiveNineMm": global_face_index in affected_source_faces,
+            "minimumFaceAdjacencyRingsToAlteredSourceFace": minimum_seed_ring,
+            "localFaceRingCountsZeroThroughTwo": [
+                sum(value == depth for value in local_depths.values())
+                for depth in range(3)
+            ],
+        }
     def make(label, signed_offset_mm, ring_weights=(), ring_normal_targets_mm=()):
         points = [point.copy() for point in vertices]
         movements = []
@@ -741,7 +808,7 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
             if not math.isfinite(value) or value < 0:
                 raise RuntimeError("Connected source contact area not physical.")
         edge_distances = []
-        for edge in source_cut_edges:
+        for edge in target_source_cut_edges:
             a, b = edge
             values = []
             for fraction in (0.125,0.25,0.375,0.5,0.625,0.75,0.875):
@@ -853,19 +920,30 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
             midpoint = row["midpoint"]
             fraction = max(0.0, min(1.0, (midpoint.z - body_low) / body_height))
             band = max(0, min(7, math.floor(fraction * 8)))
-            boundary_distance = min(
-                point_segment_distance_mm(midpoint, edge)
-                for edge in source_cut_edges
+            target_boundary_distance, nearest_target_cut_edge = min(
+                (point_segment_distance_mm(midpoint, edge), tuple(sorted(edge)))
+                for edge in target_source_cut_edges
             )
+            boundary_distance, nearest_cut_edge = min(
+                (point_segment_distance_mm(midpoint, edge), edge)
+                for edge in immutable_cut_boundary
+            )
+            left_global_face = row["leftPolygonIndex"]
+            right_global_face = leg_face_count + row["rightPolygonIndex"]
             octiles[band] += 1
             boundary_distances.append(boundary_distance)
             localized.append({
                 "leftAuthenticPolygonIndex": row["leftPolygonIndex"],
                 "rightAuthenticPolygonIndex": row["rightPolygonIndex"],
+                "leftAuthenticFaceTopology": source_face_ring_trace(left_global_face),
+                "rightAuthenticFaceTopology": source_face_ring_trace(right_global_face),
                 "crossingSegmentLengthMm": round(row["lengthMm"], 6),
                 "midpointZMm": round(midpoint.z * 1000.0, 6),
                 "scannedBodyHeightFraction": round(fraction, 8),
                 "scannedBodyHeightOctile": band,
+                "nearestTargetMovedCutEdge": list(nearest_target_cut_edge),
+                "targetMovedCutEdgeDistanceMm": round(target_boundary_distance, 6),
+                "nearestImmutableOriginalCutEdge": list(nearest_cut_edge),
                 "immutableOriginalCutBoundaryDistanceMm": round(boundary_distance, 6),
             })
         if sum(octiles) != len(segments):
@@ -882,8 +960,10 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
             "segments": localized,
             "interpretation": (
                 "Read-only localization against immutable authentic cut-edge coordinates "
-                "and normalized scanned-body height; no safe distance, cloth thickness, "
-                "clearance, drape or fit threshold is asserted."
+                "and normalized scanned-body height. All eight original cut edges are searched "
+                "separately from the two target moved cut edges. Face rings use shared authentic source "
+                "edges only and exclude invented bridge faces and spatial proximity; "
+                "no safe distance, cloth thickness, clearance, drape or fit threshold is asserted."
             ),
             "productionApproved": False,
         }
@@ -895,6 +975,26 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
 
     control_crossing = authentic_leg_crossing_witness(control)
     moved_crossing = authentic_leg_crossing_witness(moved)
+
+    control_crossing_pairs = {
+        (row["leftAuthenticPolygonIndex"], row["rightAuthenticPolygonIndex"])
+        for row in control_crossing["crossingLocality"]["segments"]
+    }
+    introduced_crossings = [
+        row for row in moved_crossing["crossingLocality"]["segments"]
+        if (row["leftAuthenticPolygonIndex"], row["rightAuthenticPolygonIndex"])
+        not in control_crossing_pairs
+    ]
+    introduced_topology_traced = bool(introduced_crossings) and all(
+        side["directlyAlteredByPositiveNineMm"] is True
+        and side["minimumFaceAdjacencyRingsToAlteredSourceFace"] == 0
+        and side["localFaceRingCountsZeroThroughTwo"][0] == 1
+        for row in introduced_crossings
+        for side in (
+            row["leftAuthenticFaceTopology"],
+            row["rightAuthenticFaceTopology"],
+        )
+    )
 
     def crossing_sum(witness):
         segments = witness["crossingSegmentLengthMm"]
@@ -913,6 +1013,8 @@ def trial_connected_source_edge_nine_mm(vertices, base_faces, bridge_faces,
         "candidateLabel": "positiveNineMm",
         "unchangedControl": control_crossing,
         "positiveNineMm": moved_crossing,
+        "introducedCrossingTopology": introduced_crossings,
+        "allIntroducedCrossingsTraceDirectlyToAlteredSourceFaces": introduced_topology_traced,
         "strictCrossingSegmentReductionObserved": strict_crossing_reduction,
         "noWholeSourceBodyBVHPairRegressionObserved": no_body_collision_regression,
         "candidateRetainedForFurtherResearch": (
@@ -3220,6 +3322,11 @@ def main():
                 merged_verts, base_faces, bridge_faces, face_start,
                 bridge_faces[face_start:face_start + worst["bridgeTriangles"]],
                 (tuple(worst["leftEdge"]), tuple(worst["rightEdge"])),
+                tuple(
+                    tuple(row[key])
+                    for row in per_pair
+                    for key in ("leftEdge", "rightEdge")
+                ),
                 body_tree,
                 (min(point.z for point in body_geom["points"]),
                  max(point.z for point in body_geom["points"])),

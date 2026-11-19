@@ -1361,3 +1361,43 @@ new displacement until physical clearance and fabric evidence exist. Native
 drape, approved model measurements/source likeness, four-angle approval,
 physical fabric evidence and tailor review remain required. **DRAFT / NO MERGE
 / NO DEPLOY / NO CUTTING.**
+
+## 2026-11-19 authentic crossing face-ring and complete cut-boundary trace
+
+**Acceptance criterion:** Trace every unchanged-control and rejected-candidate
+crossing face through authentic shared-edge face adjacency to the original
+faces altered by the positive-9mm trial. Record each face's genuine vertex and
+edge IDs, incident original cut edges, zero/one/two-ring face counts, and the
+nearest edge among all eight immutable original cut edges. Separately preserve
+distance to the two target moved edges. The newly introduced crossing must be
+fully localized without proposing another displacement or inventing a physical
+clearance threshold.
+
+**Evidence correction:** The preceding locality witness's
+`immutableOriginalCutBoundaryDistanceMm` searched only the two cut edges used
+by the target bridge despite its broader label. This slice makes that limited
+31.007934mm value explicit as `targetMovedCutEdgeDistanceMm` and independently
+searches the complete eight-edge original boundary. Earlier CI remains valid
+for the prior implementation, but the 31.007934mm number must not be described
+as distance to the complete original cut boundary.
+
+**Local native result:** Blender 4.3.2 on the immutable staged source scene
+reproduced the unchanged pair 209/209 and introduced pair 167/167. The new pair
+is directly on altered global authentic faces 167 and 1492 (zero face rings
+from the altered-face set). Each side has local ring counts **1 / 3 / 5** at
+depths zero/one/two. The left face contains vertices
+`[216,1353,1354,218]` and incident original cut edge `[216,1353]`; the right
+contains `[1353,1580,1582,1354]` and incident edge `[1353,1580]`. The nearest
+of all eight original cut edges is `[216,1353]` at **16.575210mm**, while the
+nearest of the two target moved edges remains `[1580,1581]` at
+**31.007934mm**. These are geometric witness distances, not clearance,
+penetration depth, cloth thickness or safe-fit tolerances.
+
+The complete face-ring graph uses only shared authentic source edges; invented
+bridge faces and spatial proximity cannot create neighbours. Source geometry,
+stored UVs, body/BVH, GLB, renders and canonical
+`linen-earth-studio-model-v1` identity remain unchanged. Repository-pinned
+Blender 4.5.14 evidence and all exact-head workflows remain required before
+crediting the implementation. Native drape, approved model measurements and
+source likeness, four-angle approval, physical fabric evidence and tailor
+review remain pending. **DRAFT / NO MERGE / NO DEPLOY / NO CUTTING.**
