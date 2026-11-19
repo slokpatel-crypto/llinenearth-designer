@@ -37,3 +37,16 @@ test("reject malformed and oversized recipes before persistence", () => {
   for (const size of [0, -1, NaN, 1.5, CUSTOMER_SAVED_DESIGN_MAX_BYTES + 1])
     assert.equal(parseCustomerSavedDesignWrite(valid(), size), null);
 });
+
+
+test("nested recipe ownership claims and cyclic payloads fail closed", () => {
+  for (const recipe of [
+    {...valid().recipe, brief: {customerId: "bob"}},
+    {...valid().recipe, version: {id: "v_1", metadata: {owner_id: "bob"}}},
+    {...valid().recipe, renderSet: {views: [{authorization: "secret"}]}},
+    {...valid().recipe, brief: JSON.parse('{"__proto__":{"isAdmin":true}}')},
+  ]) assert.equal(parseCustomerSavedDesignWrite({...valid(), recipe}, 400), null);
+  const cyclic: Record<string, unknown> = {occasion: "office"};
+  cyclic.self = cyclic;
+  assert.equal(parseCustomerSavedDesignWrite({...valid(), recipe: {...valid().recipe, brief: cyclic}}, 400), null);
+});
