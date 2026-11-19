@@ -63,3 +63,12 @@ test("account destructive and production transitions require literal boolean ack
     assert.notEqual(value,true);
   }
 });
+
+
+test("malformed successful session JSON fails closed without dereferencing null",()=>{
+  const account=readFileSync(new URL("../src/app/account/page.tsx",import.meta.url),"utf8");
+  assert.match(account,/const validSession=session!==null&&typeof session==="object"&&!Array\.isArray\(session\)/);
+  assert.match(account,/const raw=validSession\?session\.customer:null/);
+  assert.match(account,/const unavailable=!validSession\|\|Boolean\(session\.unavailable\)/);
+  assert.ok(account.indexOf("const validSession=")<account.indexOf("setCustomer(next)"));
+});
