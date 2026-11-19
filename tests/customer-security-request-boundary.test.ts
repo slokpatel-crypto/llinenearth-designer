@@ -1,4 +1,5 @@
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import {
   readSecureJsonObject,
@@ -42,4 +43,12 @@ test("actual streamed content size and malformed JSON are rejected",async()=>{
   await assert.rejects(readSecureJsonObject(request({"content-type":"application/json"},"[1]"),64),SecureJsonBodyInvalid);
   await assert.rejects(readSecureJsonObject(request({"content-type":"application/json"},"{bad"),64),SecureJsonBodyInvalid);
   assert.deepEqual(await readSecureJsonObject(request({"content-type":"application/json"},'{"action":"listOwned"}'),64),{action:"listOwned"});
+});
+
+
+test("customer recovery requires a literal true claim acknowledgment before discarding the bearer",()=>{
+  const account=readFileSync(new URL("../src/app/account/page.tsx",import.meta.url),"utf8");
+  assert.match(account,/data\?\.claimed!==true/);
+  assert.match(account,/if\(kind==="design"\) setClaimDesign\(""\); else setClaimMeasurement\(""\);/);
+  assert.ok(account.indexOf("data?.claimed!==true")<account.indexOf('setClaimDesign(""); else setClaimMeasurement("");'));
 });
