@@ -5278,3 +5278,29 @@ test("modal fit exclusions stay isolated across shirt and trouser decisions", ()
   assert.equal(shirt.fit, "slim_fit");
   assert.equal(trouser.fit, "slim_tapered");
 });
+
+test("infeasible collar wording excludes only the prohibited canonical construction", () => {
+  for (const phrase of [
+    "Camp collar is not feasible",
+    "Camp collar isn't feasible",
+    "Band collar isn’t feasible",
+    "Cutaway collar is not feasible",
+  ]) {
+    const forbidden = phrase.startsWith("Camp") ? "cuban_camp_collar"
+      : phrase.startsWith("Band") ? "mandarin_band_collar" : "cutaway_collar";
+    const locked = Object.freeze({ collar: forbidden });
+    const snapshot = JSON.stringify(locked);
+    const issues = styleDirectorCandidateCollarIssues(phrase, locked);
+    assert.ok(issues.length > 0, phrase + " must not approve the forbidden collar");
+    assert.deepEqual(styleDirectorCandidateCollarIssues(phrase, locked), issues);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(
+      phrase, { collar: "point_standard_collar" }), [], phrase + " must permit an unrelated collar");
+    assert.equal(styleDirectorCandidateCollar(phrase, []), null, phrase);
+    assert.equal(JSON.stringify(locked), snapshot);
+  }
+  const alternative = "Camp collar is not feasible; Band collar requested";
+  assert.deepEqual(styleDirectorCandidateCollarIssues(
+    alternative, { collar: "mandarin_band_collar" }), []);
+  assert.ok(styleDirectorCandidateCollarIssues(
+    alternative, { collar: "cuban_camp_collar" }).length > 0);
+});
