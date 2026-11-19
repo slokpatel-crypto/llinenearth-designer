@@ -201,7 +201,7 @@ const candidateSleeveLengths = (name: string) => {
       " ",
     )
     .replace(
-      /\b(?:short|half|long|full)[ -]?sleeve(?:s|d)?\s+(?:(?:are|is)\s+)?(?:optional|unnecessary|not\s+(?:required|needed|mandatory|necessary|compulsory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory|necessary|compulsory))\b/gi,
+      /\b(?:short|half|long|full)[ -]?sleeve(?:s|d)?\s+(?:(?:are|is)\s+)?(?:optional|unnecessary|(?:not|no\s+longer)\s+(?:required|needed|mandatory|necessary|compulsory)|(?:isn['’]?t|aren['’]?t)\s+(?:required|needed|mandatory|necessary|compulsory))\b/gi,
       " ",
     );
   return {
