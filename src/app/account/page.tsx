@@ -187,7 +187,7 @@ export default function AccountPage(){
         body:JSON.stringify({action:"deleteOwned",vaultId}),
       });
       const data=await response.json();
-      if(!response.ok||!data.deleted) throw new Error(data.error||"Secure copy could not be deleted.");
+      if(!response.ok||data?.deleted!==true) throw new Error(data.error||"Secure copy could not be deleted.");
       setMessage(kind==="design"?"Secure design copy deleted.":"Secure measurement copy deleted.");
       await refresh();
     }catch(error){
@@ -254,7 +254,7 @@ export default function AccountPage(){
         body:JSON.stringify({action:"accept_quote",quoteId}),
       });
       const data=await response.json();
-      if(!response.ok||!data.accepted) throw new Error(data.error||"Quote could not be accepted.");
+      if(!response.ok||data?.accepted!==true) throw new Error(data.error||"Quote could not be accepted.");
       setMessage("Quote accepted. Linen Earth can now create the production order from this exact locked design.");
       await refresh();
     }catch(error){
