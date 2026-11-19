@@ -5547,3 +5547,20 @@ test("independent construction conflicts survive stale option IDs without rewrit
     }
   }
 });
+
+
+test("withdrawn ideal sleeve guidance rejects only the named length", () => {
+  for (const [phrase, forbidden, allowed] of [
+    ["Short sleeves no longer ideal; full sleeves requested", "half_sleeve", "full_sleeve"],
+    ["Long sleeves no longer ideal; half sleeves requested", "full_sleeve", "half_sleeve"],
+    ["Half sleeves no longer ideal; long sleeves requested", "half_sleeve", "full_sleeve"],
+  ] as const) {
+    const locked = spec({ sleeve: forbidden }).shirt;
+    const snapshot = JSON.stringify(locked);
+    const issues = styleDirectorCandidateSleeveIssues(phrase, locked);
+    assert.ok(issues.length > 0, phrase);
+    assert.deepEqual(issues, styleDirectorCandidateSleeveIssues(phrase, locked));
+    assert.equal(JSON.stringify(locked), snapshot, "locked IDs remain immutable");
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, spec({ sleeve: allowed }).shirt), [], phrase);
+  }
+});
