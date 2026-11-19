@@ -22,10 +22,11 @@ test("customer account refresh invalidates stale owner responses before renderin
 test("successful logout invalidates pending account fetches and immediately clears PII",()=>{
  const source=readFileSync("src/app/account/page.tsx","utf8");
  const logout=source.slice(source.indexOf("async function logout()"),source.indexOf("async function revokeOwnedShareLink"));
- assert.ok(logout.indexOf("if(!response.ok)")>=0);
+ assert.ok(logout.includes("if(!response.ok||data?.ok!==true)"),
+   "sign-out requires HTTP success and an explicit true server acknowledgment");
  const confirmed=logout.indexOf('setMessage("Signed out.")');
  const invalidate=logout.indexOf("refreshEpoch.current+=1");
- assert.ok(invalidate>logout.indexOf("if(!response.ok)")&&invalidate<confirmed,
+ assert.ok(invalidate>logout.indexOf("if(!response.ok||data?.ok!==true)")&&invalidate<confirmed,
    "invalidate only after successful logout and before sign-out confirmation");
  for(const stmt of ["loadedOwnerId.current=null","setCustomer(null)","setShares([])",
    "setDesigns([])","setProfiles([])","setQuotes([])","setOrders([])",
