@@ -5304,3 +5304,26 @@ test("infeasible collar wording excludes only the prohibited canonical construct
   assert.ok(styleDirectorCandidateCollarIssues(
     alternative, { collar: "cuban_camp_collar" }).length > 0);
 });
+
+test("withdrawn collar approval and feasibility exclude only the named construction", () => {
+  for (const [phrase, forbidden] of [
+    ["Camp collar no longer approved", "cuban_camp_collar"],
+    ["Band collar no longer compatible", "mandarin_band_collar"],
+    ["Cutaway collar no longer feasible", "cutaway_collar"],
+    ["Camp collar no longer appropriate", "cuban_camp_collar"],
+  ] as const) {
+    const locked = Object.freeze({ collar: forbidden });
+    const issues = styleDirectorCandidateCollarIssues(phrase, locked);
+    assert.ok(issues.length > 0, phrase);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(phrase, locked), issues);
+    assert.deepEqual(styleDirectorCandidateCollarIssues(
+      phrase, { collar: "point_standard_collar" }), [], phrase);
+    assert.equal(styleDirectorCandidateCollar(phrase, []), null, phrase);
+    assert.equal(locked.collar, forbidden);
+  }
+  const alternative = "Camp collar no longer approved; Band collar requested";
+  assert.deepEqual(styleDirectorCandidateCollarIssues(
+    alternative, { collar: "mandarin_band_collar" }), []);
+  assert.ok(styleDirectorCandidateCollarIssues(
+    alternative, { collar: "cuban_camp_collar" }).length > 0);
+});
