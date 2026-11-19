@@ -208,3 +208,12 @@ Parent SHA `e299e3da925e5e789287ca9b3f2b2dfcd6d340e6` had matching-head CI `4444
 - **Evidence:** prior exact-head Full CI #44570884275 and Non-3D #44570884320 succeeded at parent `de810337`. New commits were not tested locally; matching-head CI, disposable DB and browser QA are pending, so acceptance is NOT verified.
 - **Blockers:** this is a pure wire validator, NOT durable saved-design storage. Owner-derived authenticated API, server owner-filtered database CRUD, two-account disposable DB isolation and second-browser recovery remain unimplemented. Physical stock/fabric, tailoring, native geometry, devices, independent security and release gates remain PENDING.
 - **Next bounded slice:** implement owner-scoped durable read/write using an existing private database pattern, with Alice/Bob negative tests; do not import anonymous browser recipes silently. No main merge or deploy.
+
+
+## 2026-11-20 — Ordinary saved-design database foundation (UNVERIFIED)
+- Parent head: `f8ede13a730183f1336c80ecbbc68e6ea3a1ba5d` (matching-head CI #44581335147 and Non-3D #44581334877 green for **parent only**).
+- Migration commit: `c23f17b108a51b9948ca6d9b2bd95f06bf769236`; disposable SQL regression commit: `389a2d0e9b8a7972e47cfeaec6e28cfc58b330b1`.
+- Criterion: isolated ordinary-design durable database foundation with composite (owner_user_id,design_id) key; service-role-only RPCs for upsert/list/get/delete, 1 MiB JSON bound, schema version and ID matching. Existing browser localStorage and locked-design vault untouched. Migration is **not applied** anywhere by this run.
+- Added `tests/sql/customer-saved-designs-isolation.sql` for two synthetic users, same design ID isolation, cross-owner read/delete denial, privilege checks and rollback. **NOT EXECUTED**; no matching-head CI, release, browser, or disposable PostgreSQL evidence for new commits. No production acceptance claim.
+- Blockers: synthetic SQL must run in disposable Supabase/Postgres with auth.users; confirm CI integration and ACL behavior; authenticated Next API must derive owner ID from verified session (never browser), validate wire payload, and expose second-browser recovery. Do not enable production persistence before these checks. Physical stock/tailor/device/native/security gates still pending.
+- Next 30–40-minute slice: wire disposable SQL test into existing CI job, fix any actual failures, then build authenticated owner-derived API and two-identity HTTP tests. Do not deploy or merge unverified stack.
