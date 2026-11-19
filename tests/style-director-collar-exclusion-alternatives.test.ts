@@ -12,6 +12,8 @@ test("collar exclusions preserve separately requested canonical constructions", 
     "Camp collar is not feasible; spread collar requested",
     "No camp collar; spread collar requested",
     "Camp collar cannot be used; spread collar requested",
+    "Band collar ruled out; spread collar requested",
+    "Cutaway collar is unsuitable; spread collar requested",
   ]) {
     assert.equal(styleDirectorCandidateOrdinaryCollar(phrase), "spread", phrase);
     assert.equal(styleDirectorCandidateVariantCollar(phrase), null, phrase);
