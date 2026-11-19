@@ -167,3 +167,12 @@ Parent SHA `e299e3da925e5e789287ca9b3f2b2dfcd6d340e6` had matching-head CI `4444
 - Evidence: source-level regression appended to `tests/customer-security-request-boundary.test.ts` consistent with existing account UI contract tests. **Not executed locally**; matching-head Full CI, Non-3D/browser QA, build, security and disposable DB checks **not yet confirmed** at regression SHA. Previous head `3a214256` had reported successful matching-head CI/Non-3D; that is not evidence for this change.
 - Blockers: owner-scoped durable ordinary saved-design persistence, disposable two-account/second-browser recovery, staging security proof and physical stock/fabric/tailor/device/native evidence. No human approval claimed.
 - Next 30–40-minute slice: add durable saved-design read/write integration using existing authenticated vault contracts, with two-identity negative tests and browser recovery. No live migrations or production deployment.
+
+
+### 2026-11-19 — explicit sign-out acknowledgment (pending matching-head CI)
+- Parent `ac56e2cc67a71856eef98adf42f07af4b0c58a51`; application commit `e80ea77293ed59880eb010d46758077c65cce9b3`; regression commit `569a18e065c2c287fabe5eda97221ffb2ead99de`.
+- Criterion: HTTP 200 without literal `{ok:true}` must not clear the customer account UI, credentials, or private account state. Malformed JSON, `null`, string/number/object success values fail closed. Added source-level regression in `tests/customer-security-request-boundary.test.ts`; behavioral browser verification remains pending.
+- Baseline `ac56e2cc67a71856eef98adf42f07af4b0c58a51`: GitHub Actions CI #44500930554 and Deep Engine Non-3D QA #44500930526 reported success for that exact SHA. These are NOT evidence for the new commits.
+- New commit tests, full quality/build, browser QA and matching-head CI: NOT YET VERIFIED. No live migrations, stock writes, main merge or deployment.
+- Principal release blocker unchanged: ordinary `src/lib/saved-designs.ts` browser-local saved recipes lack authenticated owner-scoped durable CRUD and cross-account/second-device disposable-DB verification. Physical fabric/stock, tailoring, device, native geometry and independent security signoff remain PENDING.
+- Next bounded slice: implement authenticated owner-scoped saved-design read/write on a compatible isolated draft, prove account A/B denial and second-session recovery using disposable DB; do not silently migrate ambiguous legacy browser data.
