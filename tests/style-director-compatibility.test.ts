@@ -5493,3 +5493,28 @@ test("all eight collar sleeve and pleat correction combinations remain independe
     }
   }
 });
+
+test("stale locked option review does not suppress independent trouser construction conflicts", () => {
+  for (const [field, stale] of [
+    ["collar", "retired_collar_id"],
+    ["placket", "retired_placket_id"],
+    ["button", "retired_button_id"],
+  ] as const) {
+    for (const correctedPleat of [false, true]) {
+      const locked = Object.freeze(spec({ [field]: stale }, {
+        type: "pleated_trouser",
+        pleat: correctedPleat ? "single_pleat_forward" : "flat_front",
+      }));
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      const codes = issues.map(issue => issue.code);
+      assert.ok(codes.includes("unknown_versioned_option"), field);
+      assert.equal(codes.includes("pleated_front_missing_pleat"), !correctedPleat,
+        "stale shirt ID cannot hide an unrelated trouser conflict");
+      assert.equal(codes.filter(code => code === "unknown_versioned_option").length, 1,
+        "exactly one supplied shirt ID is stale");
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues, "deterministic replay");
+      assert.equal(JSON.stringify(locked), before, "locked IDs must never be repaired implicitly");
+    }
+  }
+});
