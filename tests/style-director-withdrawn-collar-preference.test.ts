@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   styleDirectorCandidateCollar,
+  styleDirectorCandidateOrdinaryCollar,
   styleDirectorCandidateCollarIssues,
   styleDirectorCandidateWordingIssues,
 } from "../src/lib/designer/style-director-compatibility.ts";
@@ -32,7 +33,9 @@ test("withdrawn collar preferences are exclusions, not construction requests", (
 
 test("withdrawn preference does not suppress separately requested collar", () => {
   const wording = "Camp Collar no longer desired; Spread Collar Shirt";
-  assert.equal(styleDirectorCandidateCollar(wording, photographed)?.versioned, "spread_collar");
+  assert.equal(styleDirectorCandidateOrdinaryCollar(wording), "spread");
+  assert.equal(styleDirectorCandidateCollar(wording, photographed), null,
+    "advanced-collar resolver must not claim an ordinary spread collar");
   assert.deepEqual(styleDirectorCandidateCollarIssues(wording, { collar: "spread_collar" }), []);
   assert.deepEqual(styleDirectorCandidateCollarIssues(wording, { collar: "cuban_camp_collar" })
     .map(x => x.code), ["candidate_collar_mismatch"]);
