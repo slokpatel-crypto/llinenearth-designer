@@ -97,6 +97,11 @@ async function run(){
     const realPatternCaption=page.locator('[data-photo-caption="instant"]');
     assert.match(await realPatternCaption.textContent(),/pattern scale is still approximate for Printed Linen Blend 08/i,
       "real catalogue pattern must retain its unmeasured-scale warning");
+    assert.match(await realPatternCaption.textContent(),/panel motif alignment is illustrative for Printed Linen Blend 08, including collar\/body and sleeve\/cuff joins/i,
+      "real catalogue pattern must not imply approved sewn-panel matching");
+    assert.equal(await realPatternCaption.getAttribute("data-photo-pattern-placement"),"unverified",
+      "patterned preview must expose an unverified panel-placement state");
+    summary.viewports[summary.viewports.length-1].patternPanelPlacementUnverified=true;
     assert.doesNotMatch(await realPatternCaption.textContent(),/reviewed physical evidence/,
       "real catalogue pixels cannot imply measured textile scale");
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`real-catalogue-pattern-${width}.png`)});

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import type { DesignerStyle } from "../src/lib/designer/engine.ts";
 import type { StyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
-import { photoConstructionMismatches, photoPatternScaleDisclosure } from "../src/lib/designer/photo-preview-fidelity.ts";
+import { photoConstructionMismatches, photoPatternPanelPlacementDisclosure, photoPatternScaleDisclosure } from "../src/lib/designer/photo-preview-fidelity.ts";
 
 const baseStyle: DesignerStyle = {
   collar: "Point (Standard) Collar",
@@ -403,13 +403,32 @@ test("solid catalogue selections do not impersonate physical motif calibration",
     /pattern scale is still approximate for missing classification/);
 });
 
+test("patterned previews keep sewn-panel motif placement separate from repeat scale", () => {
+  assert.equal(photoPatternPanelPlacementDisclosure(["Solid","Solid"],false,[]),"");
+  assert.match(
+    photoPatternPanelPlacementDisclosure(["Floral","Solid"],false,["Printed Linen Blend 08"]),
+    /panel motif alignment is illustrative for Printed Linen Blend 08, including collar\/body and sleeve\/cuff joins/,
+  );
+  assert.equal(
+    photoPatternPanelPlacementDisclosure(["Pin Stripe"],true,["Striped linen"]),
+    "panel motif alignment uses reviewed cutting-placement evidence",
+  );
+  assert.match(
+    photoPatternPanelPlacementDisclosure([""],false,[]),
+    /illustrative for visible patterned cloth/,
+  );
+});
+
 test("live instant caption obtains scale truth from the dedicated material disclosure", () => {
   const src=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.ok(src.includes("const photoScaleNotice=photoPatternScaleDisclosure("));
+  assert.ok(src.includes("const photoPanelPlacementNotice=photoPatternPanelPlacementDisclosure("));
+  assert.ok(src.includes('data-photo-pattern-placement={panelPlacementVerified?"verified":"unverified"}'));
+  assert.ok(src.includes('const photoPatternTruthNotice=[photoScaleNotice,photoPanelPlacementNotice].filter(Boolean).join(". ")'));
   assert.ok(src.includes('"pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists"'));
   assert.ok(src.includes("previewScaleVerified,approximateScaleItems"));
   assert.ok(src.includes("visiblePanelFabric.patternType"));
-  assert.ok(src.includes("{photoScaleNotice}. Fit and drape still require physical verification."));
+  assert.ok(src.includes("{photoPatternTruthNotice}. Fit and drape still require physical verification."));
   assert.ok(!src.includes('{previewScaleVerified ? "pattern scale uses reviewed physical evidence'));
 });
 

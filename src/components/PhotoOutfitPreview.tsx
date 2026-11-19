@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { photoConstructionMismatches, photoPatternScaleDisclosure } from "@/lib/designer/photo-preview-fidelity";
+import { photoConstructionMismatches, photoPatternPanelPlacementDisclosure, photoPatternScaleDisclosure } from "@/lib/designer/photo-preview-fidelity";
 import { photoFabricCaptionSafeCrop } from "@/lib/designer/photo-fabric-caption-crop";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { applyRuntimeFabricScale, photoFabricPatternScale, visiblePatternScaleVerified, type FabricRenderAsset } from "@/lib/designer/live-preview";
@@ -1337,6 +1337,21 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     ...(panelPatternScaleVerified||!visiblePanelFabric?[]:[visiblePanelFabric.name]),
   ])];
   const photoScaleNotice=photoPatternScaleDisclosure([shirt.patternType,pant.patternType,...(visiblePanelFabric?[visiblePanelFabric.patternType]:[])],previewScaleVerified,approximateScaleItems,"pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists");
+  const patternedPlacementItems=[...new Set([
+    ...(shirt.patternType.toLowerCase()==="solid"?[]:[shirt.name]),
+    ...(pant.patternType.toLowerCase()==="solid"?[]:[pant.name]),
+    ...(!visiblePanelFabric||visiblePanelFabric.patternType.toLowerCase()==="solid"?[]:[visiblePanelFabric.name]),
+  ])];
+  // No current catalogue record proves how a physical cutter matched visible
+  // motifs across photographed garment pieces. Keep placement separate from
+  // repeat-scale evidence even when scale calibration is available.
+  const panelPlacementVerified=patternedPlacementItems.length===0;
+  const photoPanelPlacementNotice=photoPatternPanelPlacementDisclosure(
+    [shirt.patternType,pant.patternType,...(visiblePanelFabric?[visiblePanelFabric.patternType]:[])],
+    panelPlacementVerified,
+    patternedPlacementItems,
+  );
+  const photoPatternTruthNotice=[photoScaleNotice,photoPanelPlacementNotice].filter(Boolean).join(". ");
   const renderSignature=JSON.stringify({
     shirt:shirt.id,
     pant:pant.id,
@@ -1803,7 +1818,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     {!showOriginal && !showCreativeAi && constructionMismatches.length>0 && <div className="newDesignerPhotoConstructionNotice" data-photo-construction-mismatch="true" role="status" style={{margin:"10px 20px 12px",padding:"9px 12px",borderLeft:"3px solid #a65d43",background:"#faf6f0",color:"#514538",fontSize:"12px",lineHeight:1.5}}>
       <strong>Photographic construction limits</strong> · {constructionMismatches.map((gap)=>gap.label).join(", ")} not reconstructed in the fixed studio photograph. Your selected construction remains in the saved design specification.
     </div>}
-    {!showOriginal && !showCreativeAi && ready && <p className="newDesignerPhotoApproximation" style={{fontSize:"12px",lineHeight:1.6,margin:"10px 20px 12px",padding:"12px 14px",background:"#faf6f0",borderLeft:"3px solid #a65d43",color:"#514538",overflowWrap:"anywhere"}} data-photo-caption="instant"><strong>Instant preview</strong> · Studio model; {photoScaleNotice}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
+    {!showOriginal && !showCreativeAi && ready && <p className="newDesignerPhotoApproximation" style={{fontSize:"12px",lineHeight:1.6,margin:"10px 20px 12px",padding:"12px 14px",background:"#faf6f0",borderLeft:"3px solid #a65d43",color:"#514538",overflowWrap:"anywhere"}} data-photo-caption="instant" data-photo-pattern-placement={panelPlacementVerified?"verified":"unverified"}><strong>Instant preview</strong> · Studio model; {photoPatternTruthNotice}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
     <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-ready={ready?"true":"false"} aria-busy={!ready && !error}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-hidden={!ready || showOriginal || showCreativeAi} aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} style={{visibility:ready?"visible":"hidden"}} />
       {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image)} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal ${photorealView} view of ${shirt.name} with ${pant.name}`} />}

@@ -22,6 +22,28 @@ export function photoPatternScaleDisclosure(
   return "pattern scale is still approximate for " + unverifiedFabricNames.join(" / ");
 }
 
+/**
+ * Visible repeat scale and sewn-panel motif matching are independent evidence
+ * gates. A calibrated repeat does not prove how a cutter aligned collar, cuff
+ * or body pieces, so the photographic preview must keep that claim open until
+ * reviewed placement evidence exists for every visible patterned cloth.
+ */
+export function photoPatternPanelPlacementDisclosure(
+  patternTypes: readonly string[],
+  allVisiblePanelPlacementVerified: boolean,
+  patternedFabricNames: readonly string[],
+): string {
+  const hasPatternRepeat = patternTypes.some((type) => type.trim().toLowerCase() !== "solid");
+  if (!hasPatternRepeat) return "";
+  if (allVisiblePanelPlacementVerified) {
+    return "panel motif alignment uses reviewed cutting-placement evidence";
+  }
+  const namedPatternedCloths = [...new Set(patternedFabricNames.map((name) => name.trim()).filter(Boolean))];
+  const clothLabel = namedPatternedCloths.join(" / ") || "visible patterned cloth";
+  return "panel motif alignment is illustrative for " + clothLabel +
+    ", including collar/body and sleeve/cuff joins";
+}
+
 export type PhotoConstructionMismatch = {
   field: string;
   label: string;
