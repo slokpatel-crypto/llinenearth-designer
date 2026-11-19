@@ -144,3 +144,9 @@ Parent SHA `e299e3da925e5e789287ca9b3f2b2dfcd6d340e6` had matching-head CI `4444
 - Evidence: GitHub file commits above; no local npm quality, full tests, engine, performance, release check, build or browser QA executed. Matching-head CI/Non-3D for new code and checkpoint are PENDING, not green. No backend/staging acceptance claimed.
 - Remaining release blockers: authenticated ordinary saved-design CRUD and disposable two-account/second-device isolation; stock/fabric measurements, tailoring, customer/operator device pilots, native geometry, independent security review. No main merge, live migration, production deploy, paid AI or stock change.
 - Next bounded slice: test authenticated owner-scoped ordinary saved-design CRUD with two-account denial and second-device recovery using a disposable backend, without auto-importing anonymous localStorage.
+
+## 2026-11-19 — Exact-head CI verification for strict account acknowledgments
+
+- Verified parent/head `775519427cbfd6cfc361442b1eedf1e7be58ee81` on draft PR #863; GitHub Actions CI run #44461391995 and Deep Engine Non-3D QA run #44461392024 both completed successfully for this head.
+- This verifies the previously committed strict `deleted:true` and `accepted:true` UI acknowledgment regressions through those workflows. It does not establish disposable-database, cross-account, second-browser, physical or independent security acceptance. Local npm and interactive browser tests were not run in this session.
+- Next acceptance-driven engineering slice: implement and test authenticated owner-scoped ordinary saved-design persistence against a disposable database; keep anonymous browser records separate, with explicit migration/consent and two-account negative tests. No main intake without dependency-complete isolated diff and matching-head verification.
