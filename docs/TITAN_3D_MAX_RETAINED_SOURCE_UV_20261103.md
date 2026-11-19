@@ -1401,3 +1401,27 @@ Blender 4.5.14 evidence and all exact-head workflows remain required before
 crediting the implementation. Native drape, approved model measurements and
 source likeness, four-angle approval, physical fabric evidence and tailor
 review remain pending. **DRAFT / NO MERGE / NO DEPLOY / NO CUTTING.**
+
+### 2026-11-20 publication and exact-head checkpoint
+
+The implementation was published to draft PR #897 as
+`65a4b99fb0a0e385247f0b38ac6d6a712104f1b1`. Its first workflow upload was
+transport-corrupted and could not be decoded as UTF-8; the complete
+232,278-byte workflow was restored without changing the experiment in
+`6fa6d86aeeeda8401096211b570ec968e1a9039b` (blob
+`2bef7a878703c081861286c180118797eea9b871`). On that exact repaired head,
+native authoring run #44614600383, source-preservation run #44614600526 and
+collision run #44614600389 passed. Full CI #44614600280 passed quality,
+Blender-helper syntax, unit tests, engine/preview/release/build checks and the
+disposable PostgreSQL invariants before entering its browser step; Non-3D QA
+#44614600286 likewise entered its real-browser step. Their final conclusions
+must still be checked on the final documentation head.
+
+Pinned-Blender candidate run #44614600476 did not reach Blender or project
+evidence: both the initial attempt and its failed-job retry received HTTP 403
+from the official `download.blender.org` Blender 4.5.14 archive. Its report
+reader unit test passed, but every native candidate evidence step was skipped,
+so this is an explicit external blocker, not a passing candidate gate. The
+local Blender 4.3.2 trace above remains development evidence only until the
+pinned native workflow executes successfully. No candidate was promoted and
+no source geometry, UV, GLB, render or canonical identity changed.
