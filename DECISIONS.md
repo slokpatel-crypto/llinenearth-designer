@@ -1,5 +1,11 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-11-20 — Native garment contact evidence must cover every panel pair
+
+**Decision:** Preserve the original locked photographic model and photo guide targets. A production Blender scene must have measured world-space contact evidence for all 15 distinct six-panel combinations, not just leg/leg and shirt/waist. All 13 formerly unchecked pairs now reject collisions and unknown geometry; existing zero leg/leg and 120 tucked-junction maximum remain unchanged. This is a fail-closed QA contract, **not** proof that the current source mesh is repaired, or a waiver for intentional sewn joins.
+
+**Independent evidence:** Pinned Blender fixture covers real torso/sleeve and sleeve/leg crossings. The separate native source workflow captures hashed same-scene front/35°/side/back candidate frames, keeps source bytes unchanged and explicitly disallows realism, drape, photo-match and tailor approval. No runtime schema or dependency change, GLB promotion, production database mutation or deployment.
+
 ## 2026-11-20 — Style Director offers read-only comparison across four fashion priorities
 
 **Customer journey:** after receiving three existing Style Director directions, customers can compare them side by side by overall balance, occasion, environment or expression. The pure comparison model reorders only the existing Designer Engine's bounded (0–100) candidate score dimensions; ties retain source order and invalid scores are unranked. Each panel shows the actual colourway, outfit information and, where available, existing canonical StyleSpec v2 construction IDs resolved through the shared options library. Choosing a card returns to the original unchanged selected look and its existing signed Designer handoff.
