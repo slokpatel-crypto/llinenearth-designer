@@ -207,3 +207,30 @@ test("do not offer a flat-front change that contradicts a separately locked plea
     [x.optionGroup, x.proposedId]), [["pant.pleat", "flat_front"]],
     "existing safe canonical suggestion must remain available");
 });
+
+test("working conflict snapshot preserves a deterministic frozen multi-repair sequence", () => {
+  const locked = makeSpec();
+  locked.pant.type = "cropped_ankle";
+  locked.pant.fit = "slim_tapered";
+  locked.pant.hem = "plain_hem";
+  locked.pant.break = "full_break";
+  const original = JSON.stringify(locked);
+  Object.freeze(locked.shirt);
+  Object.freeze(locked.pant);
+  Object.freeze(locked);
+  const first = styleDirectorConstructionSuggestions(locked);
+  assert.deepEqual(first.map(x => [x.optionGroup, x.proposedId]), [
+    ["pant.hem", "cropped_above_ankle_hem"],
+    ["pant.break", "no_break"],
+  ]);
+  for (let iteration = 0; iteration < 5; iteration++) {
+    assert.deepEqual(styleDirectorConstructionSuggestions(locked), first);
+  }
+  assert.equal(JSON.stringify(locked), original);
+  const candidate = {
+    ...locked,
+    pant: { ...locked.pant, hem: "cropped_above_ankle_hem", break: "no_break" },
+  };
+  assert.ok(styleDirectorConstructionIssues(candidate).length <
+    styleDirectorConstructionIssues(locked).length);
+});
