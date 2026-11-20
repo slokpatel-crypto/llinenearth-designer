@@ -325,3 +325,28 @@ test("correcting wide-leg fit and cropped break independently preserves saved se
     }
   }
 });
+
+test("wide-leg and drawstring conflicts are independently reported on frozen saved designs", () => {
+  for (const sleeve of ["full_sleeve", "retired_sleeve"] as const) {
+    for (const fixFit of [false, true]) {
+      for (const fixWaistband of [false, true]) {
+        const spec = makeSpec(sleeve, "wide_leg_relaxed_drape", "flat_front");
+        spec.pant.fit = fixFit ? "relaxed" : "slim_tapered";
+        spec.pant.waistband = fixWaistband ? "drawstring_elastic" : "belt_loops";
+        spec.pant.hem = "cropped_above_ankle_hem";
+        spec.pant.break = "stacked_break";
+        const before = JSON.stringify(spec);
+        Object.freeze(spec.shirt);
+        Object.freeze(spec.pant);
+        Object.freeze(spec);
+        const issues = styleDirectorConstructionIssues(spec);
+        const codes = issues.map(issue => issue.code);
+        assert.equal(codes.includes("wide_leg_tapered_fit_mismatch"), !fixFit);
+        assert.ok(codes.includes("cropped_stacked_break"));
+        assert.equal(codes.includes("unknown_versioned_option"), sleeve === "retired_sleeve");
+        assert.deepEqual(styleDirectorConstructionIssues(spec), issues);
+        assert.equal(JSON.stringify(spec), before);
+      }
+    }
+  }
+});
