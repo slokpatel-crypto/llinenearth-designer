@@ -29,6 +29,9 @@ for name,sign in zip(mod.SLEEVES,(-1,1)):
         location=(sign*.31,0,.70))
     obj=bpy.context.object
     obj.name=name
+    # Production authored garment meshes are world-space with identity transforms.
+    # Apply the synthetic primitive location to match that exact contract.
+    bpy.ops.object.transform_apply(location=True,rotation=False,scale=False)
     objects[name]=obj
 base=mod.snapshot(objects)
 hashes={name:mod.digest_mesh(obj) for name,obj in objects.items()}

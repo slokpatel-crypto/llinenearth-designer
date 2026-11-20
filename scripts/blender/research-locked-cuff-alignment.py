@@ -89,7 +89,9 @@ def move_cuffs(objects,heights,shift_mm):
     moved={}
     for name,z,side in zip(SLEEVES,heights,(1.,-1.)):
         obj=objects[name]
-        if any(abs(v)>1e-7 for v in obj.rotation_euler) or any(abs(v-1.)>1e-7 for v in obj.scale):
+        if (any(abs(v)>1e-7 for v in obj.rotation_euler)
+            or any(abs(v)>1e-7 for v in obj.location)
+            or any(abs(v-1.)>1e-7 for v in obj.scale)):
             raise RuntimeError("Physical transforms must be applied before cuff trial")
         count=0
         for v in obj.data.vertices:

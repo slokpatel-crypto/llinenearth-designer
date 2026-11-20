@@ -33,3 +33,10 @@ Even a good trial cannot certify cuff sewing, real textile repeat, collar,
 trouser fit, four photographic angles or tailor/owner acceptance.
 Do not merge this geometry experiment into default authoring.
 See research PR and latest native evidence for measured outcomes.
+
+The synthetic Blender geometry fixture applies primitive location before
+moving cuff vertices. The actual source-authoring contract requires identity
+object transforms; moving local vertices on an un-applied translated mesh
+could silently shift the wrong physical-height band. The native trial now
+rejects translated/rotated/scaled garment objects rather than inventing a
+new coordinate frame. No native result may be claimed until exact-head QA.
