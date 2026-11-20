@@ -1,5 +1,5 @@
 import { FABRIC_STOCK, type FabricColorway } from "../fabric-stock.ts";
-import reference from "./reference-data.json";
+import reference from "./reference-data.json" with { type: "json" };
 import { optionsFor } from "./options/library.ts";
 import { fromLegacyStyle, type StyleSpecV2 } from "./style-spec-v2.ts";
 import { evaluateCrossGarmentRules } from "./rules/evaluator.ts";
