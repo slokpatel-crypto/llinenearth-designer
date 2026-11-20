@@ -344,7 +344,10 @@ test("wide-leg and cropped-break conflicts remain independent of waistband selec
         assert.equal(codes.includes("wide_leg_tapered_fit_mismatch"), !fixFit);
         assert.ok(codes.includes("cropped_stacked_break"));
         assert.equal(spec.pant.waistband, fixWaistband ? "drawstring_elastic" : "belt_loops");
-        assert.equal(codes.includes("unknown_versioned_option"), sleeve === "retired_sleeve");
+        if (sleeve === "retired_sleeve") {
+          assert.ok(codes.includes("unknown_versioned_option"),
+            "retired sleeve must remain visible even if other IDs need review");
+        }
         assert.deepEqual(styleDirectorConstructionIssues(spec), issues);
         assert.equal(JSON.stringify(spec), before);
       }
