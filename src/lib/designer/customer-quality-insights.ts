@@ -93,9 +93,14 @@ export function summarizeCustomerQualityInsights(
     reviews.length >= CUSTOMER_INSIGHT_RPC_LIMITS.reviews ||
     policies.length >= CUSTOMER_INSIGHT_RPC_LIMITS.policies;
   const newestByOrder = new Map<string, Latest<CustomerOutcomeEvidenceRow>>();
+  const invalidOrders = new Set<string>();
   let invalidRows = 0;
   for (const outcome of outcomes) {
-    if (!validOutcome(outcome) || timestamp(outcome.created_at) === null) { invalidRows++; continue; }
+    if (!validOutcome(outcome) || timestamp(outcome.created_at) === null) {
+      invalidRows++;
+      if (typeof outcome.order_id === "string" && outcome.order_id) invalidOrders.add(outcome.order_id);
+      continue;
+    }
     const at = timestamp(outcome.created_at)!;
     const current = newestByOrder.get(outcome.order_id);
     if (!current || at > current.time) newestByOrder.set(outcome.order_id, { row: outcome, time: at, ambiguous: false });
@@ -121,7 +126,8 @@ export function summarizeCustomerQualityInsights(
     const at = timestamp(policy.created_at);
     if (at === null || !Number.isInteger(policy.minimum_approved_cases) || policy.minimum_approved_cases < 1 ||
       policy.minimum_approved_cases > 10000 || typeof policy.approved_by !== "string" ||
-      policy.approved_by.trim().length < 2) continue;
+      policy.approved_by.trim().length < 2 || typeof policy.note !== "string" ||
+      policy.note.trim().length < 3) continue;
     if (!newestPolicy || at > newestPolicy.time) newestPolicy = { row: policy, time: at, ambiguous: false };
     else if (at === newestPolicy.time && policy.policy_id !== newestPolicy.row.policy_id)
       newestPolicy.ambiguous = true;
@@ -133,6 +139,9 @@ export function summarizeCustomerQualityInsights(
   const groups = new Map<string, QualityCohort>();
   let reviewedUniqueOrders = 0, approvedWithLineage = 0, verifiedWornFit = 0;
   for (const {row: outcome, ambiguous} of newestByOrder.values()) {
+    // An invalid row for the same order may be a newer correction. Never
+    // promote an older approved record when its chronology is unknowable.
+    if (invalidOrders.has(outcome.order_id)) { excluded.ambiguous++; continue; }
     if (ambiguous) { excluded.ambiguous++; continue; }
     const review = newestReview.get(outcome.outcome_id);
     if (blockedReviews.has(outcome.outcome_id) || review?.ambiguous) { excluded.ambiguous++; continue; }
