@@ -1,0 +1,838 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  createOrderLifecycle, applyOrderLifecycleEvent, replayOrderLifecycle, restoreOrderLifecycleSnapshot,
+  applyOrderLifecycleEventIdempotently, orderLifecycleVersionFence, applyOrderLifecycleEventWithVersionFence,
+  ORDER_QC_CHECKS, ORDER_LIFECYCLE_ACTIONS, ORDER_LIFECYCLE_STAGES,
+  type OrderLifecycleAction, type OrderLifecycleStage, type OrderLifecycleState,
+} from "../src/lib/operator/order-lifecycle.ts";
+
+const id = "01234567-89ab-4cde-8f01-23456789abcd";
+const revision = "rev-locked-00000001";
+const hash = "a".repeat(64);
+const base = () => createOrderLifecycle(id, revision, hash);
+const qc = () => ({inspector:"Named Tailor", inspectionReference:"QC-REAL-RECEIPT-001",
+  revisionId:revision, recipeHash:hash,
+  checks:Object.fromEntries(ORDER_QC_CHECKS.map(x=>[x,true]))});
+function step(state:OrderLifecycleState,action:OrderLifecycleAction,extra:Record<string,unknown>={}) {
+  return applyOrderLifecycleEvent(state,{
+    eventId:"event-"+String(state.sequence+1).padStart(8,"0"),orderId:id,
+    action,from:state.status,sequence:state.sequence+1,previousEventId:state.lastEventId,
+    occurredAt:new Date(Date.UTC(2026,10,3,0,0,state.sequence+1)).toISOString(),
+    actor:"operator-001",evidenceRef:"receipt-"+String(state.sequence+1).padStart(8,"0"),
+    ...extra,
+  });
+}
+function progress(...actions:OrderLifecycleAction[]){return actions.reduce((s,a)=>step(s,a),base());}
+const toQc = () => progress("accept","start_cutting","start_stitching","start_finishing","submit_qc");
+
+test("full audited order lifecycle requires acceptance, finishing, QC, dispatch and delivery",()=>{
+  const accepted=progress("accept");
+  assert.equal(accepted.status,"accepted");
+  const ready=step(toQc(),"approve_qc",{qc:qc()});
+  const dispatched=step(ready,"dispatch");
+  const delivered=step(dispatched,"deliver");
+  assert.equal(delivered.status,"delivered");
+  assert.equal(delivered.audit.length,8);
+  assert.deepEqual(delivered.audit.map(x=>x.to),[
+    "accepted","cutting","stitching","finishing","qc_pending","qc_approved","dispatched","delivered"]);
+  assert.equal(replayOrderLifecycle(id,revision,hash,delivered.audit).status,"delivered");
+  assert.equal(base().audit.length,0);
+});
+
+test("cannot skip acceptance, cutting, stitching, finishing, QC or dispatch",()=>{
+  for(const [state,action] of [[base(),"start_cutting"],[base(),"deliver"],
+    [progress("accept"),"start_stitching"],[progress("accept","start_cutting"),"submit_qc"],
+    [toQc(),"dispatch"]] as const){
+    assert.throws(()=>step(state,action),/Illegal order transition/);
+  }
+});
+
+test("QC requires all six checks, named inspector, physical reference and exact locked lineage",()=>{
+  const s=toQc();
+  for(const wrong of [
+    {...qc(),checks:{...qc().checks,recipe_match:false}},
+    {...qc(),checks:{...qc().checks,unexpected:true}},
+    {...qc(),inspector:"X"},
+    {...qc(),inspectionReference:"x"},
+    {...qc(),revisionId:"different-revision"},
+    {...qc(),recipeHash:"b".repeat(64)},
+  ]) assert.throws(()=>step(s,"approve_qc",{qc:wrong}),/QC|Invalid/);
+  assert.throws(()=>step(s,"approve_qc"),/Invalid lifecycle event/);
+});
+
+test("QC rework must return through stitching, finishing and a NEW approval",()=>{
+  const rejected=step(toQc(),"reject_qc",{reason:"Hem needs restitching"});
+  assert.equal(rejected.status,"qc_rework");
+  assert.throws(()=>step(rejected,"dispatch"),/Illegal/);
+  const stitched=step(rejected,"start_rework");
+  const rechecked=step(step(stitched,"start_finishing"),"submit_qc");
+  assert.equal(step(rechecked,"approve_qc",{qc:qc()}).status,"qc_approved");
+});
+
+test("rework and recovery require a new physical QC inspection reference",()=>{
+  const first=step(toQc(),"approve_qc",{qc:qc()});
+  const held=step(first,"hold_for_recovery",{reason:"Seam defect found after first QC"});
+  const resumed=step(held,"resume_recovery",{reason:"Tailor approved rework"});
+  const pending=step(step(resumed,"start_finishing"),"submit_qc");
+  assert.throws(()=>step(pending,"approve_qc",{qc:qc()}),
+    /fresh QC inspection reference/,"an earlier QC receipt cannot approve repaired work");
+  const fresh={...qc(),inspectionReference:"QC-REAL-RECEIPT-002"};
+  const approved=step(pending,"approve_qc",{qc:fresh});
+  assert.equal(approved.status,"qc_approved");
+  assert.equal(approved.audit.filter(x=>x.action==="approve_qc").length,2);
+  assert.equal(replayOrderLifecycle(id,revision,hash,approved.audit).status,"qc_approved");
+  const tampered=approved.audit.map(x=>x.action==="approve_qc" && x.sequence===approved.sequence
+    ? {...x,qc:qc()} : x);
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,tampered),
+    /fresh QC inspection reference/,"replay must also reject duplicated QC receipts");
+});
+
+test("cancellation is audited, reason-required and terminal; dispatch cannot cancel",()=>{
+  for(const s of [base(),progress("accept"),toQc(),step(toQc(),"approve_qc",{qc:qc()})]){
+    assert.throws(()=>step(s,"cancel"),/reason/);
+    const cancelled=step(s,"cancel",{reason:"Customer explicitly withdrew before dispatch"});
+    assert.equal(cancelled.status,"cancelled");
+    assert.throws(()=>step(cancelled,"accept"),/Illegal/);
+    assert.throws(()=>step(cancelled,"resume_recovery",{reason:"attempt"}),/Illegal/);
+  }
+  const shipped=step(step(toQc(),"approve_qc",{qc:qc()}),"dispatch");
+  assert.throws(()=>step(shipped,"cancel",{reason:"too late"}),/Illegal/);
+  assert.throws(()=>step(step(shipped,"deliver"),"cancel",{reason:"too late"}),/Illegal/);
+});
+
+test("recovery holds are audited and never restore old QC approval",()=>{
+  const approved=step(toQc(),"approve_qc",{qc:qc()});
+  const held=step(approved,"hold_for_recovery",{reason:"Unexpected physical recheck required"});
+  assert.equal(held.status,"recovery_pending");
+  assert.equal(held.heldFrom,"qc_approved");
+  assert.throws(()=>step(held,"dispatch"),/Illegal/);
+  assert.throws(()=>step(held,"resume_recovery"),/reason/);
+  const resumed=step(held,"resume_recovery",{reason:"Rework authorized and logged"});
+  assert.equal(resumed.status,"stitching");
+  assert.equal(resumed.heldFrom,null);
+  assert.throws(()=>step(resumed,"dispatch"),/Illegal/);
+  const newQc=step(step(resumed,"start_finishing"),"submit_qc");
+  assert.equal(step(newQc,"approve_qc",{
+    qc:{...qc(),inspectionReference:"QC-REAL-RECEIPT-002"},
+  }).status,"qc_approved");
+});
+
+test("recovery from accepted/cutting preserves stage without advancing",()=>{
+  for(const s of [progress("accept"),progress("accept","start_cutting")]){
+    const held=step(s,"hold_for_recovery",{reason:"Production interruption"});
+    const resumed=step(held,"resume_recovery",{reason:"Operator confirmed restart"});
+    assert.equal(resumed.status,s.status);
+  }
+  assert.throws(()=>step(base(),"hold_for_recovery",{reason:"unsupported"}),/Illegal/);
+});
+
+test("stale concurrency, replay, duplicates and wrong order identity fail closed",()=>{
+  const s=progress("accept");
+  const event={eventId:"event-00000002",orderId:id,action:"start_cutting",from:"accepted",
+    sequence:2,previousEventId:s.lastEventId,occurredAt:"2026-11-03T00:00:02.000Z",
+    actor:"operator-001",evidenceRef:"receipt-00000002"};
+  assert.equal(applyOrderLifecycleEvent(s,event).status,"cutting");
+  for(const bad of [
+    {...event,sequence:1},{...event,sequence:3},{...event,previousEventId:null},
+    {...event,orderId:"00000000-0000-4000-8000-000000000000"},
+    {...event,from:"created"},{...event,eventId:s.lastEventId},
+    {...event,occurredAt:"2026-11-03T00:00:01.000Z"},
+    {...event,occurredAt:"not-a-date"},
+  ]) assert.throws(()=>applyOrderLifecycleEvent(s,bad));
+});
+
+test("reject malformed identities, evidence, actor, event action and unrecognized QC payload",()=>{
+  assert.throws(()=>createOrderLifecycle("bad",revision,hash),/order ID/);
+  assert.throws(()=>createOrderLifecycle(id,"short",hash),/revision/);
+  assert.throws(()=>createOrderLifecycle(id,revision,"A".repeat(64)),/recipe hash/);
+  const s=base();
+  for(const extra of [{actor:" "},{evidenceRef:"missing"},{action:"teleport"},
+    {eventId:"short"},{qc:qc()}]) assert.throws(()=>step(s,"accept",extra));
+});
+
+test("blank-only operator, receipt, reason and QC evidence fail closed",()=>{
+  const s=base();
+  for(const extra of [
+    {actor:"   "}, {evidenceRef:"        "},
+  ]) assert.throws(()=>step(s,"accept",extra),/Invalid/);
+  assert.throws(()=>step(s,"cancel",{reason:"   "}),/Invalid reason/);
+  assert.throws(()=>step(toQc(),"reject_qc",{reason:"   "}),/Invalid reason/);
+  for(const wrong of [
+    {...qc(),inspector:"  "},
+    {...qc(),inspectionReference:"   "},
+  ]) assert.throws(()=>step(toQc(),"approve_qc",{qc:wrong}),/Invalid/);
+  assert.equal(step(s,"accept").status,"accepted",
+    "normal nonblank operator evidence remains accepted");
+});
+
+test("replay refuses altered destinations, removed history and out-of-order events",()=>{
+  const delivered=step(step(toQc(),"approve_qc",{qc:qc()}),"dispatch");
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,delivered.audit.slice(1)),/Stale|non-sequential/);
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,[{...delivered.audit[0],to:"delivered"}]),/Tampered/);
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,Array(10001).fill(null)),/oversized/);
+});
+
+test("applied audit replay requires a present exact destination on every stored event",()=>{
+  const delivered=step(step(toQc(),"approve_qc",{qc:qc()}),"dispatch");
+  const first=delivered.audit[0];
+  const missing=Object.fromEntries(Object.entries(first).filter(([key])=>key!=="to"));
+  for(const altered of [
+    missing,{...first,to:undefined},{...first,to:null},{...first,to:"delivered"},
+  ]){
+    assert.throws(()=>replayOrderLifecycle(id,revision,hash,[altered]),/Tampered audit destination/);
+  }
+  assert.equal(replayOrderLifecycle(id,revision,hash,delivered.audit).status,"dispatched");
+});
+
+test("calendar-invalid ISO-shaped event dates fail closed, including offset and leap boundaries",()=>{
+  for(const occurredAt of [
+    "2026-02-29T00:00:00Z",
+    "2026-02-30T00:00:00Z",
+    "2026-04-31T12:00:00Z",
+    "1900-02-29T00:00:00Z",
+    "2026-11-03T24:00:00Z",
+    "2026-11-03T00:60:00Z",
+    "2026-11-03T00:00:60Z",
+    "2026-11-03T00:00:00+14:01",
+    "2026-11-03T00:00:00-23:00",
+    "2026-11-03T00:00:00+01:60",
+    "0000-01-01T00:00:00Z",
+    "2026-11-03T00:00:00.1234Z",
+    "2026-11-03T00:00:00.000000+05:30",
+  ]) assert.throws(()=>step(base(),"accept",{occurredAt}),/Invalid event timestamp/,occurredAt);
+  for(const occurredAt of [
+    "2024-02-29T23:59:59+14:00",
+    "2000-02-29T00:00:00-14:00",
+    "2026-04-30T23:59:59.999Z",
+    "2026-04-30T23:59:59.1Z",
+    "2026-11-03T00:00:00+05:30",
+  ]) assert.equal(step(base(),"accept",{occurredAt}).status,"accepted",occurredAt);
+  const first=step(base(),"accept",{occurredAt:"2024-02-29T23:59:59+14:00"});
+  assert.throws(()=>step(first,"start_cutting",{occurredAt:"2024-02-29T09:59:59Z"}),
+    /timestamps must increase strictly/,"equivalent instant is not a later audit event");
+});
+
+
+test("external evidence references cannot be reused across stages or forged in audit replay",()=>{
+  const accepted=progress("accept");
+  assert.throws(()=>step(accepted,"start_cutting",{
+    evidenceRef:accepted.audit[0].evidenceRef,
+  }),/already used/,"the same external receipt must not attest two different transitions");
+  const cutting=step(accepted,"start_cutting");
+  const tampered=cutting.audit.map((item,index)=>index===1
+    ? {...item,evidenceRef:cutting.audit[0].evidenceRef} : item);
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,tampered),/already used/,
+    "audit replay must reject a receipt duplicated after the fact");
+});
+
+test("accepted state, audit entries and QC checks are frozen at runtime",()=>{
+  const approved=step(toQc(),"approve_qc",{qc:qc()});
+  const last=approved.audit[approved.audit.length-1];
+  const checks=last.qc?.checks;
+  assert.ok(checks);
+  for(const value of [approved,approved.audit,last,last.qc,checks])
+    assert.equal(Object.isFrozen(value),true,"accepted audit data must be immutable");
+  assert.throws(()=>Object.assign(approved,{status:"delivered"}),TypeError);
+  assert.throws(()=>Object.assign(approved.audit,{0:null}),TypeError);
+  assert.throws(()=>Object.assign(last,{actor:"forged-operator"}),TypeError);
+  assert.throws(()=>Object.assign(checks,{recipe_match:false}),TypeError);
+  assert.equal(replayOrderLifecycle(id,revision,hash,approved.audit).status,"qc_approved");
+});
+
+
+test("serialized order snapshots must replay exactly before reuse",()=>{
+  const approved=step(toQc(),"approve_qc",{qc:qc()});
+  const saved=JSON.parse(JSON.stringify(approved));
+  const restored=restoreOrderLifecycleSnapshot(saved);
+  assert.deepEqual(restored,approved);
+  assert.notEqual(restored,saved,"rehydration must not trust a mutable input object");
+  assert.equal(Object.isFrozen(restored.audit),true);
+  assert.equal(Object.isFrozen(restored.audit.at(-1)?.qc?.checks),true);
+  assert.equal(step(restored,"dispatch").status,"dispatched");
+
+  const held=step(approved,"hold_for_recovery",{reason:"New seam defect requires recovery"});
+  const heldSnapshot=JSON.parse(JSON.stringify(held));
+  assert.deepEqual(restoreOrderLifecycleSnapshot(heldSnapshot),held);
+  for(const corrupted of [
+    {...saved,status:"delivered"},
+    {...saved,sequence:0},
+    {...saved,lastEventId:"event-99999999"},
+    {...saved,heldFrom:"stitching"},
+    {...saved,audit:saved.audit.slice(0,-1)},
+    {...saved,audit:[...saved.audit.slice(0,-1),{...saved.audit.at(-1),to:"delivered"}]},
+    {...saved,orderId:"123e4567-e89b-12d3-a456-426614174000"},
+    {...saved,revisionId:"rev-locked-00000002"},
+    {...saved,recipeHash:"b".repeat(64)},
+    {...saved,audit:null},
+    {...heldSnapshot,heldFrom:"cutting"},
+  ]) assert.throws(()=>restoreOrderLifecycleSnapshot(corrupted),
+    /snapshot|audit|identity|revision|recipe|destination|Invalid|Stale|non-sequential/);
+});
+
+test("untrusted lifecycle objects cannot bypass QC, recovery or audit rehydration",()=>{
+  const created=base();
+  // This fabricated state used to allow a direct dispatch without any QC
+  // event: its structural TypeScript shape was trusted by the reducer.
+  const forgedApproved={...created,status:"qc_approved" as const};
+  assert.throws(()=>step(forgedApproved,"dispatch"),
+    /Untrusted lifecycle snapshot/, "a forged approved stage cannot dispatch");
+  const forgedHeld={...created,status:"recovery_pending" as const,heldFrom:"accepted" as const};
+  assert.throws(()=>step(forgedHeld,"resume_recovery",{reason:"Fake recovery"}),
+    /Untrusted lifecycle snapshot/, "a fabricated recovery pointer cannot resume");
+  const realApproved=step(toQc(),"approve_qc",{qc:qc()});
+  const jsonClone=JSON.parse(JSON.stringify(realApproved)) as OrderLifecycleState;
+  assert.throws(()=>step(jsonClone,"dispatch"),/Untrusted lifecycle snapshot/,
+    "serialized data must be replayed before authorizing a transition");
+  const prototypeClone=Object.create(realApproved) as OrderLifecycleState;
+  assert.throws(()=>step(prototypeClone,"dispatch"),/Untrusted lifecycle snapshot/,
+    "inherited state fields cannot borrow the trusted object's identity");
+  const restored=restoreOrderLifecycleSnapshot(jsonClone);
+  assert.equal(step(restored,"dispatch").status,"dispatched",
+    "canonical audit replay restores trusted transition eligibility");
+  assert.equal(step(realApproved,"dispatch").status,"dispatched",
+    "original reducer-minted state remains usable");
+});
+
+
+test("sub-millisecond audit timestamp ambiguity is rejected before replay",()=>{
+  const first=step(base(),"accept",{occurredAt:"2026-11-03T00:00:00.123Z"});
+  assert.throws(()=>step(first,"start_cutting",{
+    occurredAt:"2026-11-03T00:00:00.1239Z",
+  }),/Invalid event timestamp/,
+  "extra fractional precision must not silently truncate into a prior millisecond");
+  const serialized=JSON.parse(JSON.stringify(first));
+  serialized.audit[0].occurredAt="2026-11-03T00:00:00.123000Z";
+  assert.throws(()=>restoreOrderLifecycleSnapshot(serialized),/Invalid event timestamp/);
+});
+
+
+test("reason evidence is permitted only for cancellation, QC rejection and recovery",()=>{
+  const ordinary = [
+    [base(), "accept"],
+    [progress("accept"), "start_cutting"],
+    [toQc(), "approve_qc"],
+  ] as const;
+  for (const [state, action] of ordinary) {
+    const extra = action === "approve_qc" ? {qc:qc(),reason:"Unrequested commentary"} : {reason:"Unrequested commentary"};
+    assert.throws(()=>step(state,action,extra),/Unexpected reason/);
+  }
+  const accepted=step(base(),"accept");
+  const forged=accepted.audit.map(event=>({...event,reason:"Retroactive explanation"}));
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,forged),/Unexpected reason/,
+    "persisted audit replay must reject extra reason evidence on an ordinary transition");
+  assert.equal(step(base(),"cancel",{reason:"Customer requested cancellation"}).status,"cancelled");
+});
+
+test("stored audit replay rejects unknown evidence fields rather than silently dropping them",()=>{
+  const accepted=step(base(),"accept");
+  const first=accepted.audit[0];
+  for(const injected of [
+    {...first, operatorApproved:true},
+    {...first, customerPaymentConfirmed:"unverified"},
+    {...first, qcOverride:{passed:true}},
+  ]){
+    assert.throws(()=>replayOrderLifecycle(id,revision,hash,[injected]),
+      /Unexpected stored audit field/,
+      "unknown persisted claims must not be silently erased by canonical replay");
+    const serialized=JSON.parse(JSON.stringify(accepted));
+    serialized.audit[0]=injected;
+    assert.throws(()=>restoreOrderLifecycleSnapshot(serialized),/Unexpected stored audit field/);
+  }
+  assert.equal(replayOrderLifecycle(id,revision,hash,accepted.audit).status,"accepted");
+  assert.equal(step(restoreOrderLifecycleSnapshot(JSON.parse(JSON.stringify(accepted))),
+    "start_cutting").status,"cutting");
+});
+
+test("unknown QC and snapshot evidence claims are rejected during live approval and restore",()=>{
+  const pending=toQc();
+  const approved=step(pending,"approve_qc",{qc:qc()});
+  for(const invalid of [
+    {...qc(), overrideApproved:true},
+    {...qc(), checks:{...qc().checks, forgedInspection:true}},
+  ]) assert.throws(()=>step(pending,"approve_qc",{qc:invalid}),/Unexpected QC/);
+  const saved=JSON.parse(JSON.stringify(approved));
+  assert.throws(()=>restoreOrderLifecycleSnapshot({...saved, paymentVerified:true}),
+    /Unexpected lifecycle snapshot field/);
+  for(const altered of [
+    {...qc(), inspectorSignatureVerified:true},
+    {...qc(), checks:{...qc().checks, forgedInspection:true}},
+  ]) {
+    const tampered=JSON.parse(JSON.stringify(saved));
+    tampered.audit.at(-1).qc=altered;
+    assert.throws(()=>restoreOrderLifecycleSnapshot(tampered),/Unexpected QC/);
+  }
+  assert.equal(restoreOrderLifecycleSnapshot(saved).status,"qc_approved");
+});
+
+
+test("live lifecycle inputs reject unknown operator, payment and QC claims",()=>{
+  for (const injected of [
+    {operatorApproved:true},
+    {customerPaymentConfirmed:"unverified"},
+    {qcOverride:{passed:true}},
+  ]) {
+    assert.throws(()=>step(base(),"accept",injected),/Unexpected order event field/);
+  }
+  assert.equal(step(base(),"accept").status,"accepted");
+});
+
+
+test("live event destination claims must match the computed transition",()=>{
+  const created=base();
+  for(const to of ["delivered","qc_approved",null,undefined]) {
+    assert.throws(()=>step(created,"accept",{to}),/Claimed order destination/,
+      "a forged or empty destination must not be silently discarded");
+  }
+  const accepted=step(created,"accept",{to:"accepted"});
+  assert.equal(accepted.status,"accepted");
+  assert.equal(replayOrderLifecycle(id,revision,hash,accepted.audit).status,"accepted");
+  const held=step(accepted,"hold_for_recovery",{
+    reason:"Machine maintenance requires a documented hold",to:"recovery_pending",
+  });
+  assert.equal(held.status,"recovery_pending");
+  assert.throws(()=>step(held,"resume_recovery",{
+    reason:"Machine is available again",to:"qc_approved",
+  }),/Claimed order destination/);
+});
+
+
+test("explicit undefined reason and QC claims are not silently discarded",()=>{
+  for (const action of ["accept"] as const) {
+    assert.throws(()=>step(base(),action,{reason:undefined}),/Unexpected reason/);
+    assert.throws(()=>step(base(),action,{qc:undefined}),/QC approval evidence/);
+    assert.throws(()=>step(base(),action,{qc:null}),/QC approval evidence/);
+  }
+  const accepted=step(base(),"accept");
+  const audit=accepted.audit.map(e=>({...e,reason:undefined}));
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,audit),/Unexpected reason/);
+  const qcAudit=accepted.audit.map(e=>({...e,qc:undefined}));
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,qcAudit),/QC approval evidence/);
+  assert.equal(step(toQc(),"approve_qc",{qc:qc()}).status,"qc_approved");
+});
+
+test("audit identity, operator, reason and physical evidence reject bidi spoofing controls",()=>{
+  const bidi = "\u202e";
+  assert.throws(()=>createOrderLifecycle(id,revision+bidi,hash),/Invalid locked revision ID/);
+  assert.throws(()=>step(base(),"accept",{actor:"operator"+bidi+"-001"}),/Invalid operator actor/);
+  assert.throws(()=>step(base(),"accept",{evidenceRef:"receipt-"+bidi+"00000001"}),/Invalid external evidence reference/);
+  assert.throws(()=>step(base(),"cancel",{reason:"Customer "+bidi+"confirmed"}),/Invalid reason/);
+  const accepted=step(base(),"accept");
+  const tampered=accepted.audit.map(event=>({...event,actor:"operator"+bidi+"-001"}));
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,tampered),/Invalid operator actor/);
+  assert.equal(step(base(),"accept").status,"accepted");
+});
+
+
+test("audit text rejects invisible formatting in live events and replay",()=>{
+  for(const mark of ["\u200b","\u200c","\u200d","\u200e","\u200f","\u2060","\ufeff"]){
+    assert.throws(()=>createOrderLifecycle(id,revision+mark,hash),/Invalid locked revision ID/);
+    assert.throws(()=>step(base(),"accept",{actor:"operator"+mark+"-001"}),/Invalid operator actor/);
+    assert.throws(()=>step(base(),"accept",{evidenceRef:"receipt-"+mark+"00000001"}),/Invalid external evidence reference/);
+    assert.throws(()=>step(base(),"cancel",{reason:"Customer"+mark+" confirmed cancellation"}),/Invalid reason/);
+    const accepted=step(base(),"accept");
+    assert.throws(()=>replayOrderLifecycle(id,revision,hash,
+      accepted.audit.map(event=>({...event,actor:"operator"+mark+"-001"}))),/Invalid operator actor/);
+  }
+  assert.equal(step(base(),"accept").status,"accepted");
+});
+
+test("audit evidence rejects C1 controls, invisible soft hyphens and Unicode line separators",()=>{
+  const forbidden=["\u0085","\u009f","\u00ad","\u034f","\u061c","\u180e","\u2028","\u2029"];
+  for(const mark of forbidden){
+    assert.throws(()=>createOrderLifecycle(id,revision+mark,hash),/Invalid locked revision ID/);
+    assert.throws(()=>step(base(),"accept",{actor:"operator"+mark+"-001"}),/Invalid operator actor/);
+    assert.throws(()=>step(base(),"accept",{evidenceRef:"receipt-"+mark+"00000001"}),/Invalid external evidence reference/);
+    assert.throws(()=>step(base(),"cancel",{reason:"Customer"+mark+" approved cancellation"}),/Invalid reason/);
+    const accepted=step(base(),"accept");
+    assert.throws(()=>replayOrderLifecycle(id,revision,hash,
+      accepted.audit.map(event=>({...event,evidenceRef:"receipt-"+mark+"00000001"}))),
+      /Invalid external evidence reference/);
+  }
+  assert.equal(step(base(),"accept").status,"accepted");
+});
+
+
+test("live order transitions enforce the same audit cap as serialized replay",()=>{
+  // The limit is checked before parsing an untrusted event. Build the large
+  // history through valid transitions rather than forging trusted state.
+  let state=base();
+  state=step(state,"accept");
+  for(let i=0;i<4999;i++){
+    state=step(state,"hold_for_recovery",{reason:"Temporary production hold"});
+    state=step(state,"resume_recovery",{reason:"Production resumed"});
+  }
+  state=step(state,"hold_for_recovery",{reason:"Temporary production hold"});
+  assert.equal(state.audit.length,10000);
+  assert.equal(replayOrderLifecycle(id,revision,hash,state.audit).sequence,10000);
+  assert.throws(()=>step(state,"resume_recovery",{reason:"Production resumed"}),
+    /maximum event count/);
+});
+
+test("audit records reject inherited, accessor and symbol evidence before transition or replay",()=>{
+  const accepted=step(base(),"accept");
+  const event={...accepted.audit[0],eventId:"event-00000002",sequence:1};
+  const inherited=Object.create(event);
+  assert.throws(()=>applyOrderLifecycleEvent(base(),inherited),/record prototype/);
+  const accessor={...event};
+  Object.defineProperty(accessor,"actor",{enumerable:true,get(){throw Error("getter executed");}});
+  assert.throws(()=>applyOrderLifecycleEvent(base(),accessor),/record property/);
+  const symbol={...event,[Symbol("secret approval")]:true};
+  assert.throws(()=>applyOrderLifecycleEvent(base(),symbol),/record property/);
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,[inherited]),/record prototype/);
+  const snapshot=Object.create({...accepted});
+  assert.throws(()=>restoreOrderLifecycleSnapshot(snapshot),/record prototype/);
+  const forgedChecks={...qc().checks};
+  Object.defineProperty(forgedChecks,"recipe_match",{enumerable:true,get(){throw Error("QC getter executed");}});
+  assert.throws(()=>step(toQc(),"approve_qc",{qc:{...qc(),checks:forgedChecks}}),/record property/);
+  assert.equal(replayOrderLifecycle(id,revision,hash,accepted.audit).status,"accepted");
+});
+
+test("non-enumerable audit claims are rejected rather than erased by JSON serialization",()=>{
+  const accepted=step(base(),"accept");
+  const event={...accepted.audit[0]};
+  Object.defineProperty(event,"paymentApproved",{value:true,enumerable:false});
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,[event]),/record property/);
+  const live={...accepted.audit[0]};
+  Object.defineProperty(live,"paymentApproved",{value:true,enumerable:false});
+  assert.throws(()=>applyOrderLifecycleEvent(base(),live),/record property/);
+  const snapshot={...accepted};
+  Object.defineProperty(snapshot,"operatorOverride",{value:true,enumerable:false});
+  assert.throws(()=>restoreOrderLifecycleSnapshot(snapshot),/record property/);
+  const hiddenQc={...qc()};
+  Object.defineProperty(hiddenQc,"verifiedByTailor",{value:true,enumerable:false});
+  assert.throws(()=>step(toQc(),"approve_qc",{qc:hiddenQc}),/record property/);
+  const hiddenChecks={...qc().checks};
+  Object.defineProperty(hiddenChecks,"inspectionOverride",{value:true,enumerable:false});
+  assert.throws(()=>step(toQc(),"approve_qc",{qc:{...qc(),checks:hiddenChecks}}),/record property/);
+  assert.equal(replayOrderLifecycle(id,revision,hash,accepted.audit).status,"accepted");
+});
+
+
+test("audit history arrays reject hidden fields, getters, symbols, holes and inherited data",()=>{
+  const accepted=step(base(),"accept");
+  const valid=[...accepted.audit];
+  assert.equal(replayOrderLifecycle(id,revision,hash,valid).status,"accepted");
+  assert.equal(replayOrderLifecycle(id,revision,hash,[]).status,"created");
+
+  const extra=[...valid] as unknown[] & {paymentApproved?:boolean};
+  extra.paymentApproved=true;
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,extra),/audit array property/);
+  const hidden=[...valid];
+  Object.defineProperty(hidden,"verifiedByOperator",{value:true,enumerable:false});
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,hidden),/audit array property/);
+  const symbol=[...valid] as unknown[] & {[key:symbol]:unknown};
+  symbol[Symbol("override")]=true;
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,symbol),/audit array property/);
+
+  const accessor=[...valid];
+  Object.defineProperty(accessor,"0",{
+    enumerable:true,configurable:true,get(){throw Error("audit getter must not execute");},
+  });
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,accessor),/audit array property/);
+  const sparse=[...valid];
+  delete sparse[0];
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,sparse),/sparse order audit/);
+  const inherited=Object.setPrototypeOf([...valid],Object.create(Array.prototype));
+  assert.throws(()=>replayOrderLifecycle(id,revision,hash,inherited),/audit array prototype/);
+
+  const snapshot=JSON.parse(JSON.stringify(accepted));
+  snapshot.audit=hidden;
+  assert.throws(()=>restoreOrderLifecycleSnapshot(snapshot),/audit array property/);
+  assert.equal(restoreOrderLifecycleSnapshot(JSON.parse(JSON.stringify(accepted))).status,"accepted");
+});
+
+
+test("idempotent event retry returns the unchanged audited state without repeating side effects",()=>{
+  const first=step(base(),"accept");
+  const receipt=first.audit[0];
+  const fresh=applyOrderLifecycleEventIdempotently(base(),receipt);
+  assert.equal(fresh.outcome,"applied");
+  assert.deepEqual(fresh.state,first);
+  assert.equal(Object.isFrozen(fresh),true);
+  const repeated=applyOrderLifecycleEventIdempotently(fresh.state,receipt);
+  assert.equal(repeated.outcome,"already_applied");
+  assert.equal(repeated.state,fresh.state);
+  assert.equal(repeated.state.audit.length,1);
+
+  const withoutDestination=Object.fromEntries(Object.entries(receipt).filter(([key])=>key!=="to"));
+  const reused=applyOrderLifecycleEventIdempotently(repeated.state,withoutDestination);
+  assert.equal(reused.outcome,"already_applied");
+  assert.equal(reused.state,repeated.state);
+
+  const later=step(first,"start_cutting");
+  const historical=applyOrderLifecycleEventIdempotently(later,withoutDestination);
+  assert.equal(historical.outcome,"already_applied");
+  assert.equal(historical.state,later,"a historical retry must never roll back a later stage");
+  assert.equal(historical.state.audit.length,2);
+});
+
+test("same event ID with changed claims fails closed and new IDs still obey sequence fences",()=>{
+  const accepted=step(base(),"accept");
+  const old=accepted.audit[0];
+  const altered=[
+    {...old,actor:"another-operator"},
+    {...old,evidenceRef:"receipt-forged-0001"},
+    {...old,occurredAt:"2026-11-03T00:00:09.000Z"},
+    {...old,action:"start_cutting"},
+    {...old,sequence:2},
+    {...old,from:"cutting"},
+    {...old,previousEventId:"event-00000000"},
+    {...old,to:"delivered"},
+    {...old,reason:undefined},
+    {...old,qc:undefined},
+  ];
+  for(const forged of altered) {
+    assert.throws(()=>applyOrderLifecycleEventIdempotently(accepted,forged),
+      /Conflicting order event retry/,
+      "a duplicate ID must never silently accept changed evidence or sequence");
+  }
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(accepted,{...old,paid:true}),
+    /Unexpected order event field/);
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(accepted,{...old,orderId:"another-order-0001"}),
+    /Order identity mismatch/);
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(accepted,{
+    ...old,eventId:"different-event-00001",
+  }),/Stale or non-sequential order event/);
+  assert.equal(accepted.audit.length,1);
+});
+
+test("idempotent retries preserve QC, recovery and terminal-stage audit integrity",()=>{
+  const pending=toQc();
+  const signed=step(pending,"approve_qc",{qc:qc()});
+  const qcReceipt=signed.audit.at(-1);
+  assert.ok(qcReceipt);
+  assert.equal(applyOrderLifecycleEventIdempotently(signed,qcReceipt).outcome,"already_applied");
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(signed,{
+    ...qcReceipt,qc:{...qcReceipt.qc,checks:{...qcReceipt.qc?.checks,fabric_match:false}},
+  }),/Conflicting order event retry/);
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(signed,{
+    ...qcReceipt,qc:{...qcReceipt.qc,inspectionReference:"QC-FORGED-002"},
+  }),/Conflicting order event retry/);
+  const held=step(signed,"hold_for_recovery",{reason:"Machine inspection requires a hold"});
+  assert.equal(applyOrderLifecycleEventIdempotently(held,held.audit.at(-1)).outcome,"already_applied");
+  const restored=restoreOrderLifecycleSnapshot(JSON.parse(JSON.stringify(held)));
+  assert.equal(applyOrderLifecycleEventIdempotently(restored,held.audit.at(-1)).outcome,"already_applied");
+
+  const dispatched=step(signed,"dispatch");
+  const delivered=step(dispatched,"deliver");
+  const final=applyOrderLifecycleEventIdempotently(delivered,delivered.audit.at(-1));
+  assert.equal(final.outcome,"already_applied");
+  assert.equal(final.state,delivered);
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(
+    JSON.parse(JSON.stringify(delivered)),delivered.audit.at(-1)),/Untrusted lifecycle snapshot/);
+  assert.throws(()=>applyOrderLifecycleEventIdempotently(
+    {...delivered},delivered.audit.at(-1)),/Untrusted lifecycle snapshot/);
+});
+
+
+test("all reachable lifecycle stages enforce the exhaustive action matrix",()=>{
+  // Independent contract oracle: new actions/stages must not silently gain
+  // permission to skip fitting, physical QC, dispatch or terminal constraints.
+  const states:Record<OrderLifecycleStage,OrderLifecycleState>={
+    created:base(),
+    accepted:progress("accept"),
+    cutting:progress("accept","start_cutting"),
+    stitching:progress("accept","start_cutting","start_stitching"),
+    finishing:progress("accept","start_cutting","start_stitching","start_finishing"),
+    qc_pending:toQc(),
+    qc_rework:step(toQc(),"reject_qc",{reason:"Defective seam must be restitched"}),
+    qc_approved:step(toQc(),"approve_qc",{qc:qc()}),
+    dispatched:step(step(toQc(),"approve_qc",{qc:qc()}),"dispatch"),
+    delivered:step(step(step(toQc(),"approve_qc",{qc:qc()}),"dispatch"),"deliver"),
+    cancelled:step(base(),"cancel",{reason:"Customer cancelled order"}),
+    recovery_pending:step(progress("accept"),"hold_for_recovery",{
+      reason:"Machine unavailable during order acceptance",
+    }),
+  };
+  const allowed:Record<OrderLifecycleStage,Partial<Record<OrderLifecycleAction,OrderLifecycleStage>>>={
+    created:{accept:"accepted",cancel:"cancelled"},
+    accepted:{start_cutting:"cutting",cancel:"cancelled",hold_for_recovery:"recovery_pending"},
+    cutting:{start_stitching:"stitching",cancel:"cancelled",hold_for_recovery:"recovery_pending"},
+    stitching:{start_finishing:"finishing",cancel:"cancelled",hold_for_recovery:"recovery_pending"},
+    finishing:{submit_qc:"qc_pending",cancel:"cancelled",hold_for_recovery:"recovery_pending"},
+    qc_pending:{reject_qc:"qc_rework",approve_qc:"qc_approved",cancel:"cancelled",
+      hold_for_recovery:"recovery_pending"},
+    qc_rework:{start_rework:"stitching",cancel:"cancelled",hold_for_recovery:"recovery_pending"},
+    qc_approved:{dispatch:"dispatched",cancel:"cancelled",hold_for_recovery:"recovery_pending"},
+    dispatched:{deliver:"delivered"},
+    delivered:{},
+    cancelled:{},
+    recovery_pending:{resume_recovery:"accepted",cancel:"cancelled"},
+  };
+  let permitted=0,denied=0;
+  for(const stage of ORDER_LIFECYCLE_STAGES){
+    const initial=states[stage];
+    assert.equal(initial.status,stage);
+    for(const action of ORDER_LIFECYCLE_ACTIONS){
+      const extra:Record<string,unknown>={};
+      if(["cancel","reject_qc","hold_for_recovery","resume_recovery"].includes(action))
+        extra.reason="Documented production exception";
+      if(action==="approve_qc")extra.qc=qc();
+      const destination=allowed[stage][action];
+      if(destination){
+        const next=step(initial,action,extra);
+        assert.equal(next.status,destination,`${stage} + ${action}`);
+        assert.equal(next.sequence,initial.sequence+1);
+        assert.equal(next.audit.at(-1)?.to,destination);
+        assert.equal(replayOrderLifecycle(id,revision,hash,next.audit).status,destination);
+        permitted++;
+      }else{
+        assert.throws(()=>step(initial,action,extra),/Illegal order transition/,
+          `Disallowed ${stage} + ${action} must fail closed`);
+        denied++;
+      }
+      assert.equal(states[stage],initial,"the test must not mutate its own state");
+    }
+  }
+  assert.equal(permitted+denied,ORDER_LIFECYCLE_STAGES.length*ORDER_LIFECYCLE_ACTIONS.length);
+  assert.ok(permitted>20&&denied>100);
+});
+
+
+test("version fence rejects lost updates while allowing exact historical idempotent retries",()=>{
+  const initial=base();
+  const initialFence=orderLifecycleVersionFence(initial);
+  assert.deepEqual(initialFence,{
+    orderId:id,revisionId:revision,recipeHash:hash,sequence:0,lastEventId:null,
+  });
+  assert.equal(Object.isFrozen(initialFence),true);
+  const acceptance=step(initial,"accept").audit[0];
+  const applied=applyOrderLifecycleEventWithVersionFence(initial,acceptance,initialFence);
+  assert.equal(applied.outcome,"applied");
+  assert.equal(applied.state.status,"accepted");
+  const next=step(applied.state,"start_cutting").audit.at(-1);
+  assert.ok(next);
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(applied.state,next,initialFence),
+    /Stale order lifecycle version fence/,"second operator cannot use the original version to progress order");
+  const acceptedFence=orderLifecycleVersionFence(applied.state);
+  assert.equal(acceptedFence.sequence,1);
+  assert.equal(acceptedFence.lastEventId,acceptance.eventId);
+  const cutting=applyOrderLifecycleEventWithVersionFence(applied.state,next,acceptedFence);
+  assert.equal(cutting.outcome,"applied");
+  assert.equal(cutting.state.status,"cutting");
+  assert.equal(cutting.state.audit.length,2);
+
+  const retried=applyOrderLifecycleEventWithVersionFence(cutting.state,acceptance,initialFence);
+  assert.equal(retried.outcome,"already_applied");
+  assert.equal(retried.state,cutting.state,"retry must not regress the order or add audit events");
+  const conflicting={...acceptance,actor:"forged-operator"};
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(cutting.state,conflicting,initialFence),
+    /Conflicting order event retry/,"old fence must never authorize tampering with a prior event");
+});
+
+test("version fence requires exact locked order identity and a plain complete record",()=>{
+  const initial=base();
+  const fence=orderLifecycleVersionFence(initial);
+  const event=step(initial,"accept").audit[0];
+  for(const invalid of [
+    {...fence,orderId:"another-order-0001"},
+    {...fence,revisionId:"rev-locked-00000002"},
+    {...fence,recipeHash:"b".repeat(64)},
+  ]) assert.throws(()=>applyOrderLifecycleEventWithVersionFence(initial,event,invalid),
+    /locked identity mismatch/);
+
+  for(const invalid of [
+    {...fence,sequence:-1},
+    {...fence,sequence:1},
+    {...fence,sequence:10001},
+    {...fence,sequence:0.5},
+    {...fence,sequence:"0"},
+    {...fence,lastEventId:"event-00000001"},
+    {...fence,lastEventId:undefined},
+    {...fence,sequence:1,lastEventId:null},
+    {...fence,sequence:1,lastEventId:"bad"},
+    {orderId:id,revisionId:revision,recipeHash:hash,sequence:0},
+  ]) assert.throws(()=>applyOrderLifecycleEventWithVersionFence(initial,event,invalid),
+    /Invalid order lifecycle version fence/);
+
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(initial,event,{
+    ...fence,operatorApproved:true,
+  }),/Unexpected version fence field/);
+  const symbol={...fence,[Symbol("override")]:true};
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(initial,event,symbol),/record property/);
+  const getter={...fence};
+  Object.defineProperty(getter,"sequence",{enumerable:true,get(){throw Error("getter must not run");}});
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(initial,event,getter),/record property/);
+  assert.throws(()=>orderLifecycleVersionFence({...initial}),/Untrusted lifecycle snapshot/);
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(
+    JSON.parse(JSON.stringify(initial)),event,fence),/Untrusted lifecycle snapshot/);
+  assert.equal(applyOrderLifecycleEventWithVersionFence(initial,event,fence).outcome,"applied");
+  const restored=restoreOrderLifecycleSnapshot(JSON.parse(JSON.stringify(step(initial,"accept"))));
+  assert.equal(orderLifecycleVersionFence(restored).sequence,1);
+});
+
+test("version-fenced terminal delivery refuses later transitions and stale fresh event IDs",()=>{
+  const signed=step(toQc(),"approve_qc",{qc:qc()});
+  const readyFence=orderLifecycleVersionFence(signed);
+  const dispatched=step(signed,"dispatch");
+  const delivery=step(dispatched,"deliver").audit.at(-1);
+  assert.ok(delivery);
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(dispatched,delivery,readyFence),
+    /Stale order lifecycle version fence/);
+  const delivered=applyOrderLifecycleEventWithVersionFence(
+    dispatched,delivery,orderLifecycleVersionFence(dispatched));
+  assert.equal(delivered.state.status,"delivered");
+  assert.equal(delivered.outcome,"applied");
+  assert.equal(applyOrderLifecycleEventWithVersionFence(
+    delivered.state,delivery,orderLifecycleVersionFence(dispatched)).outcome,"already_applied");
+  const illegal={
+    ...delivery,eventId:"event-00000099",sequence:delivered.state.sequence+1,
+    previousEventId:delivered.state.lastEventId,from:"delivered",
+    occurredAt:new Date(Date.UTC(2026,10,3,0,1,0)).toISOString(),
+    evidenceRef:"receipt-new-000099",action:"dispatch",to:"dispatched",
+  };
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(
+    delivered.state,illegal,orderLifecycleVersionFence(delivered.state)),
+    /Illegal order transition/);
+});
+
+
+test("retry version fence must identify the original audit predecessor",()=>{
+  const created=base();
+  const createdFence=orderLifecycleVersionFence(created);
+  const accepted=step(created,"accept");
+  const acceptedFence=orderLifecycleVersionFence(accepted);
+  const cutting=step(accepted,"start_cutting");
+  const cuttingFence=orderLifecycleVersionFence(cutting);
+  const stitching=step(cutting,"start_stitching");
+
+  // Exact retry body plus its original predecessor fence is safe even after
+  // other stages have advanced.
+  const acceptedAgain=applyOrderLifecycleEventWithVersionFence(
+    stitching,accepted.audit[0],createdFence);
+  assert.equal(acceptedAgain.outcome,"already_applied");
+  assert.equal(acceptedAgain.state,stitching);
+
+  const cuttingAgain=applyOrderLifecycleEventWithVersionFence(
+    stitching,cutting.audit[1],acceptedFence);
+  assert.equal(cuttingAgain.outcome,"already_applied");
+  assert.equal(cuttingAgain.state,stitching);
+
+  // A matching body must not be acknowledged using an arbitrary, later,
+  // inconsistent or unrelated fence from the same locked order.
+  const invalidFences=[
+    acceptedFence,
+    cuttingFence,
+    orderLifecycleVersionFence(stitching),
+    {...acceptedFence,lastEventId:"event-99999999"},
+    {...acceptedFence,sequence:3},
+  ];
+  for(const fence of invalidFences){
+    assert.throws(()=>applyOrderLifecycleEventWithVersionFence(
+      stitching,accepted.audit[0],fence),/retry version fence/);
+  }
+
+  // This includes terminal orders: no invented fence should cause an old
+  // dispatch receipt to be acknowledged as a new write.
+  const approved=step(toQc(),"approve_qc",{qc:qc()});
+  const approvalFence=orderLifecycleVersionFence(approved);
+  const dispatched=step(approved,"dispatch");
+  const delivered=step(dispatched,"deliver");
+  assert.equal(applyOrderLifecycleEventWithVersionFence(
+    delivered,dispatched.audit.at(-1),approvalFence).outcome,"already_applied");
+  assert.throws(()=>applyOrderLifecycleEventWithVersionFence(
+    delivered,dispatched.audit.at(-1),orderLifecycleVersionFence(delivered)),
+    /retry version fence/);
+  assert.equal(delivered.audit.length,8);
+});
