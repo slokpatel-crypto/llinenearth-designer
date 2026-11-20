@@ -41,6 +41,8 @@ export default function AccountPage(){
   const [shareUrl,setShareUrl]=useState("");
   const [enquiryUrl,setEnquiryUrl]=useState("");
   const designLoadEpoch=useRef(0);
+  const accountRefreshEpoch=useRef(0);
+  const accountOwner=useRef<string|null>(null);
   const [profiles,setProfiles]=useState<OwnedProfile[]>([]);
   const [quotes,setQuotes]=useState<OwnedQuote[]>([]);
   const [orders,setOrders]=useState<OwnedOrder[]>([]);
