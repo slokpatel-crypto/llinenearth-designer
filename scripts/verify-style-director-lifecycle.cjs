@@ -308,6 +308,23 @@ async function regression(name, run) {
     await finishPanel.locator(".directorFinishOptions button").first().click();
     await ready(page);
     assert.equal(await count(page,"render"),beforePaid,"Finishing selection must never invoke paid image rendering");
+    const beforeVersatility=await count(page,"versatility");
+    await page.getByRole("button",{name:"Explore occasions",exact:true}).click();
+    await page.waitForFunction(index=>window.__linenDirectorQA.requests.filter(r=>r.kind==="versatility").length>index,beforeVersatility);
+    const versusRequest=await request(page,"versatility",beforeVersatility);
+    assert.equal(versusRequest.body.shirtId,looks[0].realModel.shirtId);
+    assert.equal(versusRequest.body.pantId,looks[0].realModel.pantId);
+    assert.equal(versusRequest.body.finishKey,null);
+    await complete(page,"versatility",beforeVersatility,{
+      sourceLookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
+      pantId:looks[0].realModel.pantId,finishId:null,rows:versatility,
+    });
+    const versatilityPanel=page.locator(".directorVersatility");
+    assert.equal(await versatilityPanel.locator(".directorVersatilityCard").count(),4);
+    const versusWidth=await versatilityPanel.evaluate(node=>({scroll:node.scrollWidth,client:node.clientWidth}));
+    assert.ok(versusWidth.scroll<=versusWidth.client+2,"Versatility grid overflow at "+width+"px");
+    await page.screenshot({path:path.join(output,"versatility-"+width+".png"),fullPage:true});
+    assert.equal(await count(page,"render"),beforePaid,"Read-only versatility must not call paid rendering");
     const initialFraming = await modelFraming(page);
     const initialCoverage = await fabricCoverage(page);
     fs.writeFileSync(path.join(output, "coverage-" + width + ".json"), JSON.stringify(initialCoverage, null, 2));
