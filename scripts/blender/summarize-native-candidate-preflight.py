@@ -37,6 +37,44 @@ def find_blender_preflight_report(log: str) -> dict:
     raise RuntimeError("Native Blender preflight did not emit its structured gate report.")
 
 
+def legacy_waist_reason_count(reasons: list[str], contacts: dict) -> int:
+    """Check all real panel crossings yet keep the historic waist comparison stable.
+
+    Every new positive pair must remain one explicit production rejection.
+    Only those independently matched NEW reasons are excluded from the legacy
+    baseline; no fit tolerance, intersection count or preflight gate is relaxed.
+    """
+    pairs = {
+        f"{left}::{right}"
+        for index, left in enumerate(GARMENT_OBJECTS)
+        for right in GARMENT_OBJECTS[index + 1:]
+    }
+    if not isinstance(contacts, dict) or set(contacts) != pairs:
+        raise RuntimeError("Native rejection must include all fifteen garment contact pairs.")
+    if any(type(value) is not int or value < 0 for value in contacts.values()):
+        raise RuntimeError("Garment contact evidence must have real nonnegative intersection counts.")
+    separately_gated = {
+        "TrouserLegLFabric::TrouserLegRFabric",
+        "ShirtTorsoFabric::TrouserWaistFabric",
+    }
+    new_reasons = 0
+    for pair, count in contacts.items():
+        if pair in separately_gated:
+            continue
+        matches = [
+            reason for reason in reasons
+            if reason.startswith(f"{pair} has ")
+        ]
+        if len(matches) != (1 if count > 0 else 0) or (
+            count > 0 and not matches[0].startswith(
+                f"{pair} has {count} intersecting triangle pairs; "
+            )
+        ):
+            raise RuntimeError(f"Unreviewed real garment crossing must block preflight: {pair}.")
+        new_reasons += len(matches)
+    return len(reasons) - new_reasons
+
+
 def summarize(log: str, blender_exit_code: int) -> dict:
     if blender_exit_code != 1:
         raise RuntimeError(
@@ -68,6 +106,7 @@ def summarize(log: str, blender_exit_code: int) -> dict:
         for name in GARMENT_OBJECTS
     ):
         raise RuntimeError("Candidate body-shell authoring did not produce all six real UV-mapped meshes.")
+    old_reason_count = legacy_waist_reason_count(reasons, report.get("garmentPairIntersections"))
     return {
         "version": "titan-native-source-candidate-rejection-v1",
         "candidateOnly": True,
@@ -79,9 +118,11 @@ def summarize(log: str, blender_exit_code: int) -> dict:
         "preflightReady": False,
         "nativeBlenderExitCode": blender_exit_code,
         "rejectionReasonCount": len(reasons),
+        "legacyWaistRejectionReasonCount": old_reason_count,
         "reasons": reasons,
         "identityFitMeasurementsMm": report.get("identityFitMeasurementsMm"),
         "boundaryIntersections": report.get("boundaryIntersections"),
+        "garmentPairIntersections": report.get("garmentPairIntersections"),
         "meshSummary": {
             name: {
                 "vertices": objects[name].get("vertices"),
