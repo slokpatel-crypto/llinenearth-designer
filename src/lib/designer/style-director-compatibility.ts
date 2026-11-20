@@ -1896,6 +1896,78 @@ export function styleDirectorConstructionIssues(
 }
 
 /**
+ * Non-binding tailoring alternatives for construction contradictions that
+ * have a single, existing canonical option capable of resolving the named
+ * issue. These are suggestions for customer/tailor review, NEVER automatic
+ * repairs to saved, locked or measured specifications. Ambiguous pleat
+ * direction, photographed accuracy and physical fit remain review-only.
+ *
+ * This is an ephemeral pure decision result, not a persisted schema.
+ */
+export type DirectorConstructionSuggestion = Readonly<{
+  cause: DirectorConstructionIssue["code"];
+  optionGroup: "shirt.cuff" | "pant.fit" | "pant.pleat" | "pant.rise" |
+    "pant.waistband" | "pant.hem" | "pant.break";
+  savedId: string;
+  proposedId: string;
+  explanation: string;
+}>;
+
+const directorConstructionProposals: Partial<Record<
+  DirectorConstructionIssue["code"],
+  readonly [DirectorConstructionSuggestion["optionGroup"], string]
+>> = {
+  short_sleeve_double_cuff: ["shirt.cuff", "open_short_hem_cuff"],
+  short_sleeve_cuff_review: ["shirt.cuff", "open_short_hem_cuff"],
+  flat_front_has_pleat: ["pant.pleat", "flat_front"],
+  high_rise_type_mismatch: ["pant.rise", "high_rise"],
+  gurkha_tab_waistband_mismatch: ["pant.waistband", "extended_tab"],
+  linen_drawstring_waistband_mismatch: ["pant.waistband", "drawstring_elastic"],
+  wide_leg_tapered_fit_mismatch: ["pant.fit", "wide_leg_drape"],
+  cropped_type_hem_mismatch: ["pant.hem", "cropped_above_ankle_hem"],
+  cropped_break_hem_mismatch: ["pant.hem", "cropped_above_ankle_hem"],
+  cropped_slight_break: ["pant.break", "no_break"],
+  cropped_half_break: ["pant.break", "no_break"],
+  cropped_full_break: ["pant.break", "no_break"],
+  cropped_stacked_break: ["pant.break", "no_break"],
+};
+
+/**
+ * Surface a bounded, catalogue-validated way to resolve a mismatch without
+ * claiming that the customer agreed, the photo shows it, or a tailor approved
+ * the construction. Missing, retired and accessor-backed saved IDs must not
+ * receive a substitute ID recommendation.
+ */
+export function styleDirectorConstructionSuggestions(
+  spec: Pick<StyleSpecV2, "shirt" | "pant">,
+  occasion?: OccasionTier,
+): DirectorConstructionSuggestion[] {
+  const suggestions: DirectorConstructionSuggestion[] = [];
+  const seen = new Set<string>();
+  for (const issue of styleDirectorConstructionIssues(spec, occasion)) {
+    const proposal = directorConstructionProposals[issue.code];
+    if (!proposal) continue;
+    const [optionGroup, proposedId] = proposal;
+    const [garment, key] = optionGroup.split(".") as ["shirt" | "pant", string];
+    const savedId = styleDirectorLockedOptionValue(spec[garment], key);
+    const catalog = optionsFor(optionGroup);
+    if (typeof savedId !== "string" ||
+        !catalog.some(option => option.id === savedId) ||
+        !catalog.some(option => option.id === proposedId) ||
+        savedId === proposedId || seen.has(optionGroup)) continue;
+    seen.add(optionGroup);
+    suggestions.push({
+      cause: issue.code,
+      optionGroup,
+      savedId,
+      proposedId,
+      explanation: issue.explanation,
+    });
+  }
+  return suggestions;
+}
+
+/**
  * Fail closed when the legacy photographic style and the versioned garment
  * construction would tell a customer to wear or cut different shirts.
  * Compare named camp/band/cutaway collars by their canonical IDs. Other
