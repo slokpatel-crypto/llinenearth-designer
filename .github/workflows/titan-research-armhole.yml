@@ -76,6 +76,12 @@ jobs:
             --experimental-disjoint-armholes \
             --experimental-capture-armhole-stages \
             --output .cache/linen-earth/titan-disjoint-armhole-research.blend
+          "$BLENDER_BIN" --background "$body" --python-exit-code 1 \
+            --python scripts/blender/author-linen-earth-officewear.py -- \
+            --experimental-disjoint-armholes \
+            --experimental-capture-armhole-stages \
+            --experimental-open-armhole-rims \
+            --output .cache/linen-earth/titan-open-armhole-rims-research.blend
           after="$(sha256sum "$body" | cut -d' ' -f1)"
           test "$before" = "$after"
       - name: Record true scanned source face overlap and evaluated garment crossings
@@ -89,11 +95,20 @@ jobs:
           "$BLENDER_BIN" --background .cache/linen-earth/titan-disjoint-armhole-research.blend \
             --python-exit-code 1 --python tests/blender/test_actual_armhole_source_ownership.py -- \
             --expect-mode disjoint --output "$RUNNER_TEMP/armhole-evidence/disjoint.json"
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-open-armhole-rims-research.blend \
+            --python-exit-code 1 --python tests/blender/test_actual_armhole_source_ownership.py -- \
+            --expect-mode disjoint-open-rims --output "$RUNNER_TEMP/armhole-evidence/open-rims.json"
           python3 - "$RUNNER_TEMP/armhole-evidence" <<'PY'
           import json, pathlib, sys
           root=pathlib.Path(sys.argv[1])
           base=json.loads((root/"baseline.json").read_text())
           trial=json.loads((root/"disjoint.json").read_text())
+          open_trial=json.loads((root/"open-rims.json").read_text())
+          assert open_trial["sourceBodySha256"]==trial["sourceBodySha256"]==base["sourceBodySha256"]
+          assert open_trial["modelIdentityId"]==trial["modelIdentityId"]==base["modelIdentityId"]
+          assert open_trial["experimentalDisjointArmholes"] and open_trial["experimentalOpenArmholeRims"]
+          assert open_trial["openClothCuffsAndHems"] and not open_trial["productionApproved"]
+          assert not trial["experimentalOpenArmholeRims"] and not base["experimentalOpenArmholeRims"]
           assert base["sourceBodySha256"]==trial["sourceBodySha256"]
           assert base["modelIdentityId"]==trial["modelIdentityId"]=="linen-earth-studio-model-v1"
           assert not base["experimentalDisjointArmholes"] and trial["experimentalDisjointArmholes"]
@@ -147,6 +162,18 @@ jobs:
               after=trial["garmentContactPairs"][pair]
               assert type(before) is int and type(after) is int and min(before,after)>=0
               print(f"REAL_CC0_CONTACT_DELTA {pair}: {before} => {after} ({after-before:+d})")
+          for side in ("L", "R"):
+              side_panel=f"ShirtTorsoFabric::ShirtSleeve{side}Fabric"
+              closed=trial["actualArmholeModifierSeamDisplacement"][side]["realWorldBVHTrianglePairContactsByStage"]
+              no_rim=open_trial["actualArmholeModifierSeamDisplacement"][side]["realWorldBVHTrianglePairContactsByStage"]
+              assert closed["selectedBodyShell"]==no_rim["selectedBodyShell"]
+              assert closed["afterSmoothing"]==no_rim["afterSmoothing"]
+              assert closed["afterBodyClearance"]==no_rim["afterBodyClearance"]
+              assert no_rim["afterClothThickness"]==open_trial["garmentContactPairs"][side_panel]
+              assert trial["originalSourceArmholeCutEdges"][side]==open_trial["originalSourceArmholeCutEdges"][side]
+              print("REAL_CC0_ARMHOLE_SOLIDIFY_RIM_CONTACT_COMPARISON",side,
+                    {"closedRim":closed["afterClothThickness"],"noRim":no_rim["afterClothThickness"],
+                     "preThickness":closed["afterBodyClearance"]})
           print("TITAN_DISJOINT_FACE_SOURCE_TRIAL_RESEARCH_ONLY_NO_MESH_APPROVAL")
           PY
       - name: Render four original-source research frames without any new model
