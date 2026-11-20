@@ -124,11 +124,14 @@ async function visit(browser,width,revision){
   },{shirtId:revision.garmentSpec.fabrics.shirt.id,pantId:revision.garmentSpec.fabrics.trouser.id,parent:revision.revisionId,draftKey});
   assert.equal(await page.getByRole("combobox",{name:"Shirt type",exact:true}).inputValue(),"overshirt");
   await page.getByRole("button",{name:"Reassess this saved look"}).click();
-  await page.getByRole("button",{name:/Lock recipe revision/}).waitFor({state:"attached",timeout:30000});
-  // The original remains immutable; a newly locked recipe must explicitly
-  // refer to it and retain the exact StyleSpec v2 construction/fabric IDs.
+  // The recipe actions are inside a collapsed <details>; first wait for
+  // the assessed result, then open the drawer before finding its buttons.
   const drawer=page.locator(".newDesignerTechnicalDrawer");
+  await drawer.waitFor({state:"attached",timeout:30000});
   await drawer.locator("summary").click();
+  await page.getByRole("button",{name:/Lock recipe revision/}).waitFor({state:"visible"});
+  // The original remains immutable; the exported child must reference it
+  // and retain the exact StyleSpec v2 construction and fabric IDs.
   const downloaded=page.waitForEvent("download");
   await page.getByRole("button",{name:/Lock recipe revision/}).click();
   const file=await downloaded;
