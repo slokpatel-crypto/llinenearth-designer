@@ -15,6 +15,7 @@ import {
 } from "@/lib/designer/style-director-compare";
 import type { StyleDirectorPairingAlternative } from "@/lib/designer/style-director-pairings";
 import { StyleDirectorFinishes, type StyleDirectorClientFinish } from "@/components/StyleDirectorFinishes";
+import { StyleDirectorVersatility } from "@/components/StyleDirectorVersatility";
 import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
@@ -543,6 +544,14 @@ export default function StyleDirectorPage() {
               base={pairingLook.realModel}
               activeId={chosenFinish?.id||null}
               onChoose={applyFinish}
+            />}
+            {originalLook && selectedLook.realModel && <StyleDirectorVersatility
+              key={`${originalLook.id}:${selectedLook.realModel.shirtId}:${selectedLook.realModel.pantId}:${chosenFinish?.id||"original"}`}
+              answers={answers as StyleDirectorAnswers}
+              sourceLookId={originalLook.id}
+              base={selectedLook.realModel}
+              finishKey={chosenFinish?.finishKey||null}
+              finishId={chosenFinish?.id||null}
             />}
             <div className="directorActions">
               {selectedLook.realModel
