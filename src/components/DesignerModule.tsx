@@ -32,6 +32,7 @@ import {
   fabricEvidence, fabricFilterCounts, type ShirtFabricFamily, type TrouserFabricTone,
 } from "@/lib/designer/fabric-discovery";
 import { optionById, optionsFor } from "@/lib/designer/options/library";
+import { readReferenceOutfitHandoff } from "@/lib/designer/reference-outfit-handoff";
 import {
   fromLegacyStyle,
   mergeLegacyIntoStyleSpec,
@@ -134,6 +135,7 @@ export function DesignerModule() {
   const [factPlaying, setFactPlaying] = useState(true);
   const [draftReady, setDraftReady] = useState(false);
   const [directorHandoff, setDirectorHandoff] = useState(false);
+  const [referenceHandoffStatus, setReferenceHandoffStatus] = useState<"applied" | "invalid" | null>(null);
   const [directorHandoffTitle, setDirectorHandoffTitle] = useState("");
   const [directorHandoffTier, setDirectorHandoffTier] = useState("");
   const [directorHandoffReason, setDirectorHandoffReason] = useState("");
@@ -341,7 +343,16 @@ export function DesignerModule() {
       // photographed model opens as the Director's actual result.
       const params = new URLSearchParams(window.location.search);
       const fromDirector = params.get("from") === "style-director";
+      const fromReference = params.get("from") === "reference-match";
       setDirectorHandoff(fromDirector);
+      if (fromReference) {
+        const pair = readReferenceOutfitHandoff(params, DESIGNER_SHIRTS, DESIGNER_PANTS);
+        setReferenceHandoffStatus(pair ? "applied" : "invalid");
+        if (pair) {
+          nextShirtId = pair.shirtId;
+          nextPantId = pair.pantId;
+        }
+      }
       if(fromDirector) nextStyleSpec=undefined;
 
       if (fromDirector) {
@@ -427,7 +438,7 @@ export function DesignerModule() {
       setStyleSpec(nextStyleSpec || fromLegacyStyle(nextStyle));
       setBodyProfile(nextBodyProfile || DEFAULT_BODY_PREVIEW_PROFILE);
 
-      if(!fromDirector && parsed?.creative &&
+      if(!fromDirector && !fromReference && parsed?.creative &&
         parsed.creative.recommendation?.shirt?.id===nextShirtId &&
         parsed.creative.recommendation?.pant?.id===nextPantId &&
         parsed.creative.recommendation?.occasion===nextOccasion &&
@@ -1227,6 +1238,15 @@ export function DesignerModule() {
 
     <div className="newDesignerBody">
       <section className="newDesignerSelections" aria-labelledby="designerChoose">
+        {referenceHandoffStatus === "applied" && <div className="newDesignerHandoff" role="status">
+          <span>REFERENCE LOOK / EXPLICIT FABRIC PAIR</span>
+          <strong>Your chosen photo-inspired outfit fabrics are loaded.</strong>
+          <p>{shirt?.name} shirt + {pant?.name} trousers. The existing StyleSpec v2 construction remains editable and will be saved with the two catalogue IDs. No photo, stock promise, fit approval or verified colour was transferred.</p>
+        </div>}
+        {referenceHandoffStatus === "invalid" && <div className="newDesignerHandoff" role="alert">
+          <span>REFERENCE LOOK / NOT APPLIED</span>
+          <p>The fabric-pair link was invalid or out of date. Your previous Designer selections are unchanged.</p>
+        </div>}
         {directorHandoff && <div className="newDesignerHandoff">
           <span>STYLE DIRECTOR HANDOFF</span>
           <strong>{directorHandoffTitle || "Your complete outfit direction is loaded."}</strong>
