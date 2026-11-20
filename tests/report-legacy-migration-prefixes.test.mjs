@@ -1,0 +1,135 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {summarizeMigrationEntries, fingerprintSql, inventoryIntegrityVerified, reconciliationRows, assessKnownReserveOverwriteOrder} from '../scripts/report-legacy-migration-prefixes.mjs';
+const f=(n,kind='file')=>({path:'supabase/migrations/'+n,kind,
+  ...fingerprintSql(Buffer.from('synthetic SQL for '+n))});
+test('legacy eight-digit collisions are explicitly grouped instead of hidden behind filename failure',()=>{
+  const x=summarizeMigrationEntries([f('20261103_alpha.sql'),f('20261103_beta.sql'),f('20261103_gamma.sql'),f('20261104010101_forward.sql')],'a'.repeat(40));
+  assert.equal(x.collision_group_count,1);assert.equal(x.collisions[0].count,3);
+  assert.equal(x.collisions[0].version,'20261103');assert.equal(x.legacy_eight_digit_files,3);
+  assert.equal(x.standard_fourteen_digit_files,1);assert.equal(x.release_ready,false);
+});
+test('standard fourteen-digit duplicates are also collisions',()=>{
+  const x=summarizeMigrationEntries([f('20261103010101_one.sql'),f('20261103010101_two.sql')]);
+  assert.equal(x.collisions[0].version_format,'standard_14_digit');assert.equal(x.collision_group_count,1);
+});
+test('unsafe symlinks, nested paths and malformed filenames are reported without following data',()=>{
+  const x=summarizeMigrationEntries([f('20261103010101_normal.sql','symlink'),{path:'supabase/migrations/nested/20261103010202_hidden.sql',kind:'file'},f('bad_version.sql'),f('20261103010101_bad.SQL')]);
+  assert.equal(x.invalid_entries.length,4);assert.deepEqual(x.invalid_entries.map(p=>p.kind).sort(),['invalid_filename','invalid_filename','unsafe_source_entry','unsafe_source_entry'].sort());
+});
+test('no migration entries and duplicate tracked entries do not produce approval',()=>{
+  const empty=summarizeMigrationEntries([]);assert.equal(empty.invalid_entries[0].kind,'no_migrations');
+  const duplicate=summarizeMigrationEntries([f('20261103010101_ok.sql'),f('20261103010101_ok.sql')]);
+  assert.ok(duplicate.invalid_entries.some(x=>x.kind==='invalid_or_duplicate_path'));
+  assert.equal(duplicate.release_ready,false);
+});
+test('unique standard versions still require actual staging history and review',()=>{
+  const x=summarizeMigrationEntries([f('20261103010101_a.sql'),f('20261103010102_b.sql')]);
+  assert.equal(x.collision_group_count,0);assert.equal(x.invalid_entries.length,0);
+  assert.equal(x.staging_history_verified,false);assert.equal(x.independent_review_complete,false);
+  assert.equal(x.approval,'BLOCKED_PENDING_APPLIED_HISTORY_AND_REVIEW');
+});
+test('collision groups and invalid entry output have stable ordering',()=>{
+  const x=summarizeMigrationEntries([f('20261104_z.sql'),f('20261001_b.sql'),f('20261104_a.sql'),f('20261001_a.sql'),f('unknown.sql')]);
+  assert.deepEqual(x.collisions.map(c=>c.version),['20261001','20261104']);
+  assert.deepEqual(x.collisions[0].files,['supabase/migrations/20261001_a.sql','supabase/migrations/20261001_b.sql']);
+});
+
+test('different SQL files with identical legacy version have content fingerprints',()=>{
+  const one=f('20261103_one.sql'),two=f('20261103_two.sql');
+  const out=summarizeMigrationEntries([two,one],'b'.repeat(40));
+  assert.equal(out.file_fingerprints.length,2);
+  assert.equal(out.content_fingerprints_complete,true);
+  assert.equal(out.file_fingerprints[0].path,one.path);
+  assert.notEqual(out.file_fingerprints[0].content_sha256,out.file_fingerprints[1].content_sha256);
+});
+test('missing or invalid source hashes are rejected without release approval',()=>{
+  const path='supabase/migrations/20261103000101_test.sql';
+  const out=summarizeMigrationEntries([{path,kind:'file'}]);
+  assert.equal(out.file_fingerprints.length,0);
+  assert.equal(out.content_fingerprints_complete,false);
+  assert.ok(out.invalid_entries.some(x=>x.kind==='missing_or_invalid_source_fingerprint'));
+  assert.equal(out.release_ready,false);
+});
+test('fingerprints are Git typed blobs and exact-byte SHA-256',()=>{
+  const hash=fingerprintSql(Buffer.from('hello\n'));
+  assert.equal(hash.git_blob_sha1,'ce013625030ba8dba906f756967f9e9ca394464a');
+  assert.equal(hash.content_sha256,'5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03');
+});
+
+test('inventory integrity must fail closed for source corruption or absent files, never legacy version collisions',()=>{
+  const safe=summarizeMigrationEntries([f('20261103_one.sql'),f('20261103_two.sql')]);
+  assert.equal(safe.collision_group_count,1);
+  assert.equal(inventoryIntegrityVerified(safe),true);
+  assert.equal(safe.release_ready,false);
+  const corrupted=summarizeMigrationEntries([f('20261103010101_valid.sql'),
+    {path:'supabase/migrations/20261103010102_missing.sql',kind:'missing'}]);
+  assert.equal(inventoryIntegrityVerified(corrupted),false);
+  assert.equal(inventoryIntegrityVerified(summarizeMigrationEntries([])),false);
+  assert.equal(inventoryIntegrityVerified({...safe,file_fingerprints:[]}),false);
+  assert.equal(inventoryIntegrityVerified({...safe,content_fingerprints_complete:false}),false);
+});
+
+test('source fingerprint inventory exports exactly PR 909 compatible version/filename/hash rows',()=>{
+  const entries=[f('20261103_second.sql'),f('20261103_first.sql'),f('20261104010203_forward.sql')];
+  const report=summarizeMigrationEntries(entries,'a'.repeat(40));
+  const rows=reconciliationRows(report);
+  assert.deepEqual(rows.map(x=>x.filename),['20261103_first.sql','20261103_second.sql','20261104010203_forward.sql']);
+  assert.deepEqual(rows.map(x=>x.version),['20261103','20261103','20261104010203']);
+  assert.deepEqual(rows.map(x=>x.sha256),report.file_fingerprints.map(x=>x.content_sha256));
+  assert.equal(report.release_ready,false);assert.equal(report.staging_history_verified,false);
+});
+test('reconciliation adapter blocks incomplete, malformed and duplicate fingerprint paths',()=>{
+  const report=summarizeMigrationEntries([f('20261103_alpha.sql'),f('20261103_beta.sql')]);
+  const invalid=[
+    {...report,content_fingerprints_complete:false},
+    {...report,file_fingerprints:report.file_fingerprints.slice(1)},
+    {...report,file_fingerprints:[report.file_fingerprints[0],report.file_fingerprints[0]]},
+    {...report,file_fingerprints:[{...report.file_fingerprints[0],path:'supabase/migrations/../bad.sql'},report.file_fingerprints[1]]},
+    {...report,file_fingerprints:[{...report.file_fingerprints[0],content_sha256:'invalid'},report.file_fingerprints[1]]},
+  ];
+  for(const candidate of invalid)assert.throws(()=>reconciliationRows(candidate));
+});
+
+test('leading underscore rejected before export, matching PR 909 accepted basename syntax',()=>{
+  const bad=summarizeMigrationEntries([f('20261103__hidden.sql')]);
+  assert.equal(bad.content_fingerprints_complete,false);
+  assert.ok(bad.invalid_entries.some(x=>x.kind==='invalid_filename'));
+  assert.throws(()=>reconciliationRows(bad),/Incomplete source inventory/);
+  const safe=summarizeMigrationEntries([f('20261103_valid-name.sql')]);
+  assert.equal(reconciliationRows(safe)[0].filename,'20261103_valid-name.sql');
+});
+
+const reserveStrictSql=`create or replace function public.fabric_stock_reserve_v2(
+  p_fabric_id text) returns uuid language plpgsql as $$
+begin
+  if length(v_fabric)>160 or length(v_key)>180 then
+    raise exception 'reservation identity or evidence exceeds supported length';
+  end if;
+end; $$;`;
+const reserveTruncSql=`create or replace function public.fabric_stock_reserve_v2(
+  p_fabric_id text) returns uuid language plpgsql as $$
+declare
+  v_key text:=left(trim(coalesce(p_request_key,'')),180);
+begin
+  return gen_random_uuid();
+end; $$;`;
+test('known reserve v2 source order reports strict guard overwritten in hypothetical filename order',()=>{
+  const a=assessKnownReserveOverwriteOrder(reserveStrictSql,reserveTruncSql);
+  assert.equal(a.function_name,'public.fabric_stock_reserve_v2');
+  assert.equal(a.would_overwrite_strict_identity_rejection,true);
+  assert.match(a.last_definition_if_filename_order,/provenance_gate\.sql$/);
+  assert.equal(a.actual_deployment_order_verified,false);
+  assert.equal(a.release_ready,false);
+});
+test('known reserve order evidence fails closed if strict guard or truncation behavior changes',()=>{
+  assert.throws(()=>assessKnownReserveOverwriteOrder(reserveStrictSql.replace('raise exception','raise notice'),reserveTruncSql));
+  assert.throws(()=>assessKnownReserveOverwriteOrder(reserveStrictSql,reserveTruncSql.replace('left(trim','trim')));
+  assert.throws(()=>assessKnownReserveOverwriteOrder(reserveStrictSql,reserveStrictSql));
+  assert.throws(()=>assessKnownReserveOverwriteOrder(reserveStrictSql.replace('fabric_stock_reserve_v2','unrelated'),reserveTruncSql));
+});
+test('never misstate an actual SQL migration deployment order based on alphabetical filenames',()=>{
+  const x=assessKnownReserveOverwriteOrder(reserveStrictSql,reserveTruncSql);
+  assert.equal(x.hypothetical_order_basis,'lexicographic_filename_only_not_actual_deployment_order');
+  assert.equal(x.resolution,'BLOCKED_PENDING_APPLIED_HISTORY_AND_FORWARD_ORDER_REVIEW');
+});
