@@ -705,12 +705,12 @@ async function main(){
       else assert.equal(data.revision?.recipeHash,recipeHash);
     }
     seen.length=0;
-    const bobDelete=await fetch(url,{method:"POST",
+    const bobVaultDelete=await fetch(url,{method:"POST",
       headers:{...fixtureHeaders(),cookie:"le_customer_session="+bobCookie},
       body:JSON.stringify({action:"deleteOwned",vaultId,ownerUserId:"123e4567-e89b-12d3-a456-426614174000"}),
       signal:AbortSignal.timeout(15000)});
-    assert.equal(bobDelete.status,200);
-    assert.deepEqual(await bobDelete.json(),{deleted:false});
+    assert.equal(bobVaultDelete.status,200);
+    assert.deepEqual(await bobVaultDelete.json(),{deleted:false});
     assert.equal(seen.length,1);
     assert.equal(seen[0].payload.p_owner_user_id,"223e4567-e89b-12d3-a456-426614174000");
     const crossSiteLogout=await fetch(origin+"/api/customer-auth/logout",{
