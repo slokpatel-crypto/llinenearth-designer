@@ -278,6 +278,33 @@ async function regression(name, run) {
     await panel.locator(".directorPairingOptions button").first().click();
     await ready(page);
     assert.equal(await count(page,"render"),beforePaid,"Styling alternatives must not call paid rendering");
+    const beforeFinishes=await count(page,"finishes");
+    await page.getByRole("button",{name:"Explore finishes",exact:true}).click();
+    await page.waitForFunction((index)=>window.__linenDirectorQA.requests.filter(r=>r.kind==="finishes").length>index,beforeFinishes);
+    const finishRequest=await request(page,"finishes",beforeFinishes);
+    assert.equal(finishRequest.body.finishKey,finishKey);
+    assert.equal(finishRequest.body.shirtId,looks[0].realModel.shirtId);
+    assert.equal(finishRequest.body.pantId,looks[0].realModel.pantId);
+    await complete(page,"finishes",beforeFinishes,{
+      sourceLookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
+      pantId:looks[0].realModel.pantId,finishKey,alternatives:finishes,
+    });
+    const finishPanel=page.locator(".directorFinishes");
+    assert.equal(await finishPanel.locator(".directorFinishOptions button").count(),finishes.length+1);
+    const finishWidth=await finishPanel.evaluate(node=>({scroll:node.scrollWidth,client:node.clientWidth}));
+    assert.ok(finishWidth.scroll<=finishWidth.client+2,"Finishing options overflow at "+width+"px");
+    await finishPanel.locator(".directorFinishOptions button").nth(1).click();
+    const changedHref=await page.locator(".directorActions a[href^='/designer-studio?']").getAttribute("href");
+    const changedParams=new URL(changedHref,"http://localhost").searchParams;
+    const changedSpec=JSON.parse(changedParams.get("styleSpec"));
+    assert.equal(changedParams.get("shirt"),looks[0].realModel.shirtId);
+    assert.equal(changedParams.get("pant"),looks[0].realModel.pantId);
+    assert.equal(changedSpec.shirt.collar,finishes[0].optionId);
+    await ready(page);
+    await page.screenshot({path:path.join(output,"finishes-"+width+".png"),fullPage:true});
+    await finishPanel.locator(".directorFinishOptions button").first().click();
+    await ready(page);
+    assert.equal(await count(page,"render"),beforePaid,"Finishing selection must never invoke paid image rendering");
     const initialFraming = await modelFraming(page);
     const initialCoverage = await fabricCoverage(page);
     fs.writeFileSync(path.join(output, "coverage-" + width + ".json"), JSON.stringify(initialCoverage, null, 2));
