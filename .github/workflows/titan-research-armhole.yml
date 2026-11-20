@@ -10,6 +10,7 @@ on:
       - "tests/blender/test_open_rim_research_boundary_fixture.py"
       - "scripts/blender/bootstrap-human-base-meshes.py"
       - "scripts/blender/research-sewn-shirt-from-source.py"
+      - "scripts/blender/render-linen-earth-model-qa.py"
       - "scripts/blender/research-sewn-trousers-from-source.py"
       - "tests/blender/test_joint_trousers_real_source_candidate.py"
       - "tests/blender/test_joint_shirt_real_source_candidate.py"
@@ -300,7 +301,7 @@ jobs:
             "$BLENDER_BIN" --background "$scene" --python-exit-code 1 \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
             --output-dir "$RUNNER_TEMP/armhole-evidence/angles" \
-            --width 480 --height 640 --samples 8
+            --width 480 --height 640 --samples 8 --research-fabric-contrast
           after="$(sha256sum "$scene" | cut -d' ' -f1)"
           test "$before" = "$after"
           python3 - "$RUNNER_TEMP/armhole-evidence/angles" <<'PY'
@@ -309,6 +310,8 @@ jobs:
           data=json.loads((path/"model-qa-manifest.json").read_text())
           assert data["modelIdentityId"]=="linen-earth-studio-model-v1"
           assert data["candidateOnly"] and not data["realismApproved"] and not data["tailorApproved"]
+          assert data["researchOnlyFabricContrast"] is True
+          assert data["measuredColourApproved"] is False
           assert [(v["view"],v["yawDeg"]) for v in data["angles"]]==[
               ("front",0),("three-quarter",35),("side",90),("back",180)]
           for view in data["angles"]:
