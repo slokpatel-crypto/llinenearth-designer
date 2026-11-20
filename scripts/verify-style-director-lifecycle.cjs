@@ -376,6 +376,40 @@ async function regression(name, run) {
       data:JSON.stringify({answers,lookId:"X".repeat(9000)})});
     assert.equal(huge.status(),413,"Oversized JSON is refused before catalog access");
   });
+  await regression("finishes-public-http-enforces-closed-input-and-json-limit",async(page)=>{
+    const endpoint=baseURL+"/api/style-director/finishes";
+    const base={answers,lookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
+      pantId:looks[0].realModel.pantId,finishKey:"collar"};
+    const invalid=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,finishKey:"unguarded_wing_collar"})});
+    assert.equal(invalid.status(),400,"Finishing group must be closed vocabulary");
+    const invalidAnswers=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,answers:{...answers,occasion:"untrusted"}})});
+    assert.equal(invalidAnswers.status(),400,"Narrative intent cannot bypass original styling choices");
+    const invalidExtra=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,stockOverride:"verified"})});
+    assert.equal(invalidExtra.status(),400,"Client may not assert physical stock");
+    const huge=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,lookId:"x".repeat(9000)})});
+    assert.equal(huge.status(),413,"Oversized finishing request fails before catalog access");
+    const malformed=await page.request.post(endpoint,{headers:{"content-type":"application/json"},data:'{"answers":'});
+    assert.equal(malformed.status(),400,"Malformed JSON fails closed");
+  });
+  await regression("stale-finishes-after-pair-change-are-discarded",async(page)=>{
+    await journey(page);
+    await page.getByRole("button",{name:"Explore pairings",exact:true}).click();
+    await page.waitForFunction(()=>window.__linenDirectorQA.requests.some(r=>r.kind==="pairings"));
+    await complete(page,"pairings",0,{sourceLookId:looks[0].id,heroFabricId:looks[0].fabric.id,alternatives:pairings});
+    await page.getByRole("button",{name:"Explore finishes",exact:true}).click();
+    await page.waitForFunction(()=>window.__linenDirectorQA.requests.some(r=>r.kind==="finishes"));
+    await page.locator(".directorPairingOptions button").nth(1).click();
+    await complete(page,"finishes",0,{
+      sourceLookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
+      pantId:looks[0].realModel.pantId,finishKey,alternatives:finishes,
+    });
+    assert.equal(await page.locator(".directorFinishOptions button").count(),0);
+    assert.equal((await request(page,"finishes",0)).aborted,true,"Outdated finishing request is aborted on fabric change");
+  });
   await regression("stale-pairings-after-look-change-are-discarded",async(page)=>{
     await journey(page);
     await page.getByRole("button",{name:"Explore pairings",exact:true}).click();
