@@ -47,3 +47,38 @@ test("invalid cloud records and local-only unsafe recipe cannot be uploaded", as
   assert.equal(called, false);
   await assert.rejects(() => listCloudDesigns(async () => response({designs: "invalid"})), /Invalid cloud/);
 });
+
+
+test("two independent browser transports recover only their authenticated account records", async () => {
+  const accounts = new Map<string, Map<string, typeof row>>();
+  const makeTransport = (account: string) => async (_url: string, init?: RequestInit) => {
+    const records = accounts.get(account) ?? new Map<string, typeof row>();
+    accounts.set(account, records);
+    if (init?.method === "POST") {
+      const request = JSON.parse(String(init.body));
+      if (request.action === "save") {
+        const design = request.design;
+        records.set(design.designId, {
+          design_id: design.designId, updated_at: saved.savedAt, payload: design,
+        });
+        return response({saved: true, designId: design.designId});
+      }
+      if (request.action === "delete") {
+        return response({deleted: records.delete(request.designId)});
+      }
+      return response({error: "invalid action"}, 400);
+    }
+    return response({designs: [...records.values()]});
+  };
+  // Separate transports represent separate browsers with no shared localStorage.
+  const aliceBrowserOne = makeTransport("alice");
+  const aliceBrowserTwo = makeTransport("alice");
+  const bobBrowser = makeTransport("bob");
+  await saveCloudDesign(saved, aliceBrowserOne);
+  assert.deepEqual(await listCloudDesigns(aliceBrowserTwo), [saved]);
+  assert.deepEqual(await listCloudDesigns(bobBrowser), []);
+  await saveCloudDesign({...saved, title: "Bob's independent design"}, bobBrowser);
+  assert.equal(await deleteCloudDesign(saved.id, bobBrowser), true);
+  assert.deepEqual(await listCloudDesigns(aliceBrowserTwo), [saved]);
+  assert.deepEqual(await listCloudDesigns(bobBrowser), []);
+});
