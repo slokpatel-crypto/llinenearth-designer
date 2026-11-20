@@ -106,3 +106,15 @@ test("account continuation fetches owner-only revision and new locks retain pare
   assert.match(api,/p_owner_user_id:customer.id/);
   assert.doesNotMatch(account,/resumeVault=.*recoveryToken/);
 });
+
+
+test("a successful vault write is never mislabeled as account-owned without an owner acknowledgment",()=>{
+  const studio=readFileSync("src/components/DesignerModule.tsx","utf8");
+  const api=readFileSync("src/app/api/designer/vault/route.ts","utf8");
+  assert.match(api,/return jsonNoStore\(\{[\s\S]*?accountOwned,[\s\S]*?customer:/);
+  assert.match(studio,/const accountOwned=result\.accountOwned===true/);
+  assert.match(studio,/setVaultAccountOwned\(accountOwned\)/);
+  assert.match(studio,/not linked to your account yet/);
+  assert.match(studio,/Sign in to My Account and link this recovery token/);
+  assert.match(studio,/Reassess this saved look/);
+});
