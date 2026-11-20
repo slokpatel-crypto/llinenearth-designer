@@ -330,23 +330,52 @@ def measure_guided_right_hem_taper(obj, guide_z, taper_mm):
 
 
 def planar_grain_uv(obj):
+    """Research: project each real face on its dominant geometric plane.
+
+    The old global X/Z-only projection collapsed Y/Z-facing arm/leg edges
+    and horizontal hem/rim triangles to zero UV area. This candidate unwrap
+    chooses the plane with the largest world-space triangle projection, while
+    keeping V increasing with true body height on vertical garment faces.
+    It introduces face-chart joins that MUST be reviewed for grain/stripe
+    continuity before being considered for production. It does not claim
+    any physically calibrated repeat, fabric drape, or finished seam.
+    """
     mesh = obj.data
+    if not mesh.vertices or not mesh.polygons:
+        raise RuntimeError("Cannot unwrap an empty authentic garment surface.")
     if not mesh.uv_layers:
         uv_layer = mesh.uv_layers.new(name="UVMap")
     else:
         uv_layer = mesh.uv_layers.active
-    xs = [vertex.co.x for vertex in mesh.vertices]
-    zs = [vertex.co.z for vertex in mesh.vertices]
-    min_x, max_x = min(xs), max(xs)
-    min_z, max_z = min(zs), max(zs)
-    span_x = max(max_x - min_x, 1e-6)
-    span_z = max(max_z - min_z, 1e-6)
+    if uv_layer is None:
+        raise RuntimeError("Cannot create an active garment UV layer.")
+
+    points = [tuple(vertex.co) for vertex in mesh.vertices]
+    if any(not all(math.isfinite(c) for c in point) for point in points):
+        raise RuntimeError("Nonfinite real garment vertices cannot receive UV coordinates.")
+    lower = [min(point[axis] for point in points) for axis in range(3)]
+    upper = [max(point[axis] for point in points) for axis in range(3)]
+    spans = [max(upper[i] - lower[i], 1e-9) for i in range(3)]
+
     for polygon in mesh.polygons:
+        normal = polygon.normal
+        if not all(math.isfinite(v) for v in normal):
+            raise RuntimeError("Invalid face normal in candidate garment unwrap.")
+        dominant = max(range(3), key=lambda i: abs(normal[i]))
+        # Global XZ is good for front/back; YZ for side-facing surfaces;
+        # XY for cloth rims/caps whose top and bottom share the same Z.
+        u_axis, v_axis = ((1, 2), (0, 2), (0, 1))[dominant]
         for loop_index in polygon.loop_indices:
-            vertex = mesh.vertices[mesh.loops[loop_index].vertex_index]
-            u = (vertex.co.x - min_x) / span_x
-            v = (vertex.co.z - min_z) / span_z
-            uv_layer.data[loop_index].uv = (u, v)
+            point = points[mesh.loops[loop_index].vertex_index]
+            uv_layer.data[loop_index].uv = (
+                (point[u_axis] - lower[u_axis]) / spans[u_axis],
+                (point[v_axis] - lower[v_axis]) / spans[v_axis],
+            )
+
+    mesh.update()
+    obj["linen_earth_uv_authoring_method"] = "dominant-plane-face-charts-research-v1"
+    obj["linen_earth_uv_seams_reviewed"] = False
+    obj["linen_earth_repeat_scale_measured"] = False
 
 
 def main():
