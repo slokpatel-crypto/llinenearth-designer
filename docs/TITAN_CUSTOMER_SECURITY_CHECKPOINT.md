@@ -269,3 +269,11 @@ Prior parent matching-head evidence: Full CI #44657065416, Non-3D #44657065342 a
 - **Prior matching-head evidence:** Full CI, Non-3D and disposable PostgreSQL succeeded at parent `ce88433dd30c94a6549c6b95ac1b2ecd29af223d`. New regression and matching-head workflows are **PENDING**, not claimed executed.
 - **Remaining:** wire explicit signed-in Designer controls, prove real two-browser recovery and customer pilot, staging migration and independent security review; physical stock/fabric/tailor/device/native gates PENDING/BLOCKED.
 - **Next bounded slice:** verify matching-head CI for this addition, then connect signed-in cloud listing/recovery controls without auto-uploading local drafts. No main merge, deployment, live migration or paid AI.
+
+
+## 2026-11-20 — Explicit cloud vault UI slice (pending exact-head verification)
+- Parent: `57126b1ca5dedd690eaef75f11bcd3cd6d6e7c24`; new cloud panel commit `d815657bd7f7e3f50408220d3d05df9175430a85`; SavedDesignsClient integration commit `dadfcf056ddc9873eccb65fcc2c8de84fb3c91d6`.
+- Criterion: authenticated customer cloud listing and deliberate local-draft upload; selected cloud-record retrieval without implicit localStorage migration or browser draft overwrite. UI exposes these operations on the saved-designs screen, including when there are no local designs. No real browser or customer sign-in proof yet.
+- Prior parent matching-head evidence: CI #44690169705 SUCCESS; Non-3D #44690169765 SUCCESS; disposable PostgreSQL #44690169676 SUCCESS. Those checks do **not** cover these new commits. Matching-head CI/browser QA for new head PENDING; no tests claimed executed here.
+- Blockers: actual signed-in two-browser recovery, usable reconstruction into Designer, owner/device pilot, stock/fabric/tailor and independent security/release gates. No production migration or deploy.
+- Next 30–40-minute slice: add browser UI regressions for signed-in cloud listing/upload and cloud recovery, verify exact-head CI, then implement explicit cloud-to-Designer reconstruction without modifying browser drafts.
