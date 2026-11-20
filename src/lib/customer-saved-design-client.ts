@@ -62,3 +62,19 @@ export async function deleteCloudDesign(id: string, transport: SavedDesignTransp
     throw new Error("Cloud delete was not acknowledged.");
   return (result as {deleted: boolean}).deleted;
 }
+
+/** Recover one explicitly selected cloud design; never fall back to localStorage. */
+export async function getCloudDesign(id: string, transport: SavedDesignTransport = fetch): Promise<SavedDesign | null> {
+  if (!validId(id)) throw new Error("Invalid design ID.");
+  const response = await transport(`${endpoint}?designId=${encodeURIComponent(id)}`, {
+    credentials: "same-origin", cache: "no-store",
+  });
+  if (response.status === 404) return null;
+  const result = await json(response);
+  if (!result || typeof result !== "object" || Array.isArray(result) ||
+    Object.keys(result).join(",") !== "design")
+    throw new Error("Invalid cloud saved-design response.");
+  const design = decodeRow((result as {design: unknown}).design);
+  if (design.id !== id) throw new Error("Invalid cloud saved-design response.");
+  return design;
+}
