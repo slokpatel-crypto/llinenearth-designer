@@ -5,6 +5,8 @@ import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { photoConstructionMismatches, photoPatternPanelPlacementDisclosure, photoPatternScaleDisclosure } from "@/lib/designer/photo-preview-fidelity";
 import { photoFabricCaptionSafeCrop } from "@/lib/designer/photo-fabric-caption-crop";
+import { PHOTO_INSPECTION_FOCUS, PHOTO_INSPECTION_TARGETS, type PhotoInspectionFocus } from "@/lib/designer/photo-inspection-focus";
+import type { CSSProperties } from "react";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { applyRuntimeFabricScale, photoFabricPatternScale, photoPatternScaleWithinCanvasBounds, visiblePatternScaleVerified, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
@@ -1285,7 +1287,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const previousReviewedRender = useRef("");
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
-  const [inspectFit, setInspectFit] = useState(false);
+  const [photoFocus, setPhotoFocus] = useState<PhotoInspectionFocus>("full");
   const [showOriginal, setShowOriginal] = useState(false);
   const [showBoundaries, setShowBoundaries] = useState(false);
   const [creativeAi, setCreativeAi] = useState<PhotorealResult|null>(null);
@@ -1300,6 +1302,12 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const [creativeReview, setCreativeReview] = useState<"up"|"down"|null>(null);
   const [creativeReviewReason, setCreativeReviewReason] = useState<CreativeFeedbackReason|null>(null);
   const [photoCalibration,setPhotoCalibration]=useState<CustomerPhotoCalibration>(UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION);
+  const photoInspection=PHOTO_INSPECTION_FOCUS[photoFocus];
+  const inspectFit=photoFocus!=="full";
+  const photoInspectionStyle={
+    "--studio-inspect-scale":String(photoInspection.scale),
+    "--studio-inspect-origin":`${photoInspection.originX}% ${photoInspection.originY}%`,
+  } as CSSProperties;
   const verifiedPhotoPxPerMm=photoCalibration.verified ? Number(photoCalibration.photoPxPerMm) : undefined;
   const templateId = photoTemplateForStyle(style);
   const template = DESIGNER_PHOTO_TEMPLATES[templateId];
@@ -1382,7 +1390,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     setReady(false);
     // Every new design starts in its own full-frame customer view, not the
     // previous look's cropped zoom or diagnostic seam overlay.
-    setInspectFit(false);
+    setPhotoFocus("full");
     setShowBoundaries(false);
     // A source comparison from the previous selection must not mask the next look.
     setShowOriginal(false);
@@ -1807,13 +1815,13 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <strong>Photographic construction limits</strong> · {constructionMismatches.map((gap)=>gap.label).join(", ")} not reconstructed in the fixed studio photograph. Your selected construction remains in the saved design specification.
     </div>}
     {!showOriginal && !showCreativeAi && ready && <p className="newDesignerPhotoApproximation" style={{fontSize:"12px",lineHeight:1.6,margin:"10px 20px 12px",padding:"12px 14px",background:"#faf6f0",borderLeft:"3px solid #a65d43",color:"#514538",overflowWrap:"anywhere"}} data-photo-caption="instant" data-photo-pattern-placement={panelPlacementVerified?"verified":"unverified"} data-photo-scale-trust={patternedPlacementItems.length===0?"no-visible-repeat":previewScaleVerified?"verified":"approximate"}><strong>Instant preview</strong> · Studio model; {photoPatternTruthNotice}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
-    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-ready={ready?"true":"false"} aria-busy={!ready && !error}>
+    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-photo-focus={photoFocus} style={photoInspectionStyle} data-ready={ready?"true":"false"} aria-busy={!ready && !error}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-hidden={!ready || showOriginal || showCreativeAi} aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} style={{visibility:ready?"visible":"hidden"}} />
       {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image)} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal ${photorealView} view of ${shirt.name} with ${pant.name}`} />}
       {showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal" src={template.src} alt={templateId==="wide"
         ? "Original wide-trouser studio photograph. The instant-preview shirt uses the separate pleated studio source photograph."
         : "Original photographed studio model template for comparison"} />}
-      {showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay" style={{transform:inspectFit?"scale(1.42)":"scale(1)",transformOrigin:"50% 35%",transition:"transform .28s ease"}}>
+      {showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay" style={{transform:inspectFit?`scale(${photoInspection.scale})`:"scale(1)",transformOrigin:`${photoInspection.originX}% ${photoInspection.originY}%`,transition:"transform .28s ease"}}>
         {tucked ? <>
           <path d={PHOTO_TUCKED_SHIRT_BODY_CLIP} className="shirtBoundary" />
           <path d={PHOTO_TUCKED_LEFT_SLEEVE_CLIP} className="shirtBoundary" />
@@ -1892,9 +1900,13 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     <details className="newDesignerTechnicalDrawer newDesignerPreviewTools">
       <summary>Preview tools</summary>
       <div>
-        <button type="button" onClick={() => setInspectFit((value) => !value)} disabled={!ready}>{inspectFit ? "Full view" : "Zoom fit"}</button>
+        <button type="button" onClick={() => setPhotoFocus((value) => value==="full"?"fit":"full")} disabled={!ready} aria-pressed={photoFocus==="fit"}>{inspectFit ? "Full view" : "Zoom fit"}</button>
         <button type="button" onClick={() => setShowBoundaries((value) => !value)} disabled={!ready || showOriginal || showCreativeAi} aria-pressed={showBoundaries && !showOriginal && !showCreativeAi}>{showBoundaries ? "Hide boundaries" : "Boundary QA"}</button>
+        <div className="newDesignerFocusTargets" role="group" aria-label="Inspect photographed garment details">
+          {PHOTO_INSPECTION_TARGETS.map(target=><button key={target} type="button" data-photo-focus-target={target} aria-pressed={photoFocus===target} onClick={()=>setPhotoFocus(target)} disabled={!ready}>{PHOTO_INSPECTION_FOCUS[target].label}</button>)}
+        </div>
       </div>
+      <p className="newDesignerPhotoFocusNote">Zoom shows only the unchanged front studio photograph. It does not verify construction, fabric scale, seam matching or physical fit.</p>
     </details>
     {creativeDirection && <div className="newDesignerPhotoCreative newDesignerPhotoCreativeCompact">
       <span>SELECTED · {creativeDirection.name.toUpperCase()}</span>

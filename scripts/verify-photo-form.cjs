@@ -670,6 +670,42 @@ async function run(){
     assert.equal(zoomTransforms.boundaryOrigin,zoomTransforms.canvasOrigin,"Zoom Fit origins must match source photo");
     await page.getByRole("button",{name:"Full view",exact:true}).click();
     await page.waitForTimeout(400);
+    // On actual mobile, tablet and desktop viewports, the same original
+    // photographed source can be inspected in four targeted detail regions.
+    // Source, final AI image and diagnostic boundaries must never drift apart.
+    for(const target of [
+      {id:"collar",label:"Collar",scale:2.25},
+      {id:"sleeves",label:"Sleeves",scale:1.7},
+      {id:"waist",label:"Waist",scale:2.05},
+      {id:"hem",label:"Trouser hem",scale:1.9},
+    ]){
+      const control=page.locator(`[data-photo-focus-target="${target.id}"]`);
+      assert.equal(await control.isEnabled(),true);
+      const box=await control.boundingBox(),labelPx=await control.evaluate(node=>parseFloat(getComputedStyle(node).fontSize));
+      assert.ok(box && box.width>=44 && box.height>=44 && labelPx>=12,
+        target.label+" must have a readable 44px mobile touch target");
+      await control.click();
+      assert.equal(await page.locator(".newDesignerPhotoStage").getAttribute("data-photo-focus"),target.id);
+      assert.equal(await control.getAttribute("aria-pressed"),"true");
+      await page.waitForTimeout(320);
+      const inspected=await page.locator(".newDesignerPhotoStage").evaluate(stage=>{
+        const photo=stage.querySelector("canvas"),boundary=stage.querySelector("svg.newDesignerBoundaryQa");
+        const c=getComputedStyle(photo),b=getComputedStyle(boundary);
+        return {canvas:c.transform,boundary:b.transform,canvasOrigin:c.transformOrigin,boundaryOrigin:b.transformOrigin};
+      });
+      assert.notEqual(inspected.canvas,"none",target.label+" must visibly magnify the photographed model");
+      assert.equal(inspected.canvas,inspected.boundary,target.label+" boundary QA must track fabric pixels");
+      assert.equal(inspected.canvasOrigin,inspected.boundaryOrigin,target.label+" boundary QA must share the photo transform origin");
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,
+        target.label+" controls must not create mobile horizontal overflow");
+      if(width===390 && (target.id==="collar"||target.id==="hem")){
+        await page.locator(".newDesignerPhotoStage").screenshot({path:path.join(out,`inspected-${target.id}-390.png`)});
+      }
+    }
+    assert.match(await page.locator(".newDesignerPhotoFocusNote").textContent(),/unchanged front studio photograph/);
+    await page.getByRole("button",{name:"Full view",exact:true}).click();
+    assert.equal(await page.locator(".newDesignerPhotoStage").getAttribute("data-photo-focus"),"full");
+    summary.viewports[summary.viewports.length-1].detailInspectionFocusVerified=true;
     await page.getByRole("button",{name:"Compare",exact:true}).click();
     assert.equal(await page.locator(".newDesignerBoundaryQa").count(),0,
       "source Compare must never inherit selected-preview garment boundary geometry");

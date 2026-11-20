@@ -296,15 +296,17 @@ test("boundary QA belongs only to the ready deterministic garment canvas", () =>
 test("Zoom Fit uses the same scale and origin for the garment canvas and its QA contours", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
-  assert.match(css,/\.newDesignerPhotoStage\.inspectFit canvas[^\n]*transform:scale\(1\.42\)/);
-  assert.ok(source.includes('style={{transform:inspectFit?"scale(1.42)":"scale(1)",transformOrigin:"50% 35%",transition:"transform .28s ease"}}'));
+  assert.match(css,/\.newDesignerPhotoStage\.inspectFit canvas[^\n]*transform:scale\(var\(--studio-inspect-scale,1\.42\)\)/);
+  assert.ok(source.includes('transform:inspectFit?`scale(${photoInspection.scale})`:"scale(1)"')); 
+  assert.ok(source.includes('transformOrigin:`${photoInspection.originX}% ${photoInspection.originY}%`'));
+  assert.ok(source.includes('"--studio-inspect-origin"'));
   assert.ok(source.includes('showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa"'));
 });
 
 test("a changed look does not keep a previous photo zoom or diagnostic garment seams", () => {
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   const reset=source.slice(source.indexOf("useLayoutEffect(() => {"),source.indexOf("},[requestScope]);"));
-  assert.ok(reset.includes("setInspectFit(false);"),"new selected look must start in full-view mode");
+  assert.ok(reset.includes('setPhotoFocus("full");'),"new selected look must start in full-view mode");
   assert.ok(reset.includes("setShowBoundaries(false);"),"new selected look must not inherit old seam QA");
   assert.ok(reset.includes("setShowOriginal(false);"),"new selected look must not inherit source comparison");
   assert.ok(reset.includes("setFinalLocked(false);"),"new selection must not retain old design lock");
