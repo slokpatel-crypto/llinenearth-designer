@@ -150,6 +150,121 @@ def uv_edge_continuity_report(obj, uv_layer):
     }
 
 
+
+def align_periodic_uv_faces(obj, layer, radius):
+    """Align face-local cylinder turns across shared ORIGINAL mesh edges.
+
+    Every feasible shared edge supplies an exact integer equation for the
+    face's 2*pi*radius UV period. Weighted union-find solves compatible
+    constraints without touching geometry, UV0, V coordinates or normals.
+    Front-facing (-Y) edges are processed before back (+Y) edges so an
+    unavoidable wrap conflict is left on the back whenever possible.
+    This is not a sewing seam, weaving direction or physical scale approval.
+    """
+    period = 2.0 * math.pi * radius
+    if not math.isfinite(period) or period <= 0.006:
+        raise RuntimeError("A finite source-derived circumferential UV period is required.")
+    mesh = obj.data
+    if layer is None or len(mesh.polygons) < 1:
+        raise RuntimeError("Missing actual garment faces for UV seam alignment.")
+    world = [obj.matrix_world @ v.co for v in mesh.vertices]
+    if any(not all(math.isfinite(float(t)) for t in v) for v in world):
+        raise RuntimeError("Cannot align a nonfinite source garment mesh.")
+    edges = {}
+    for polygon in mesh.polygons:
+        loop_ids = list(polygon.loop_indices)
+        for i, loop_index in enumerate(loop_ids):
+            next_loop = loop_ids[(i + 1) % len(loop_ids)]
+            va = mesh.loops[loop_index].vertex_index
+            vb = mesh.loops[next_loop].vertex_index
+            if va == vb:
+                raise RuntimeError("Original source mesh has an invalid zero-length edge.")
+            key = (min(va, vb), max(va, vb))
+            a = tuple(float(v) for v in layer.data[loop_index].uv)
+            b = tuple(float(v) for v in layer.data[next_loop].uv)
+            if not all(math.isfinite(value) for value in a+b):
+                raise RuntimeError("Nonfinite projected face UV cannot be aligned.")
+            ends = (a, b) if va <= vb else (b, a)
+            edges.setdefault(key, []).append((polygon.index, ends))
+    # These constraints only shift U by whole turns. A face with geometric
+    # projection fallback is never forced into an invalid cylinder island.
+    candidates = []
+    incompatible = 0
+    nonmanifold = 0
+    for key, incident in edges.items():
+        if len(incident) != 2:
+            if len(incident) > 2:
+                nonmanifold += 1
+            continue
+        (left, a), (right, b) = incident
+        turns = round((a[0][0] - b[0][0]) / period)
+        if (
+            abs(a[0][0]-b[0][0]-turns*period) > 2e-5
+            or abs(a[1][0]-b[1][0]-turns*period) > 2e-5
+            or abs(a[0][1]-b[0][1]) > 2e-5
+            or abs(a[1][1]-b[1][1]) > 2e-5
+        ):
+            incompatible += 1
+            continue
+        mid_y = (world[key[0]].y + world[key[1]].y)*0.5
+        candidates.append((mid_y, key, left, right, turns))
+    # Deterministic strong-front priority; the exact source topology is
+    # unchanged and ties are settled by original mesh edge/face IDs.
+    candidates.sort(key=lambda row: (row[0], row[1], row[2], row[3]))
+    n = len(mesh.polygons)
+    parent = list(range(n))
+    rank = [0]*n
+    relative = [0]*n  # integer shift(face) - shift(parent(face))
+    def find(i):
+        if parent[i] == i:
+            return i, 0
+        root, shift = find(parent[i])
+        relative[i] += shift
+        parent[i] = root
+        return root, relative[i]
+    joined = 0
+    conflicts = 0
+    for _, _, left, right, turn in candidates:
+        root_a, shift_a = find(left)
+        root_b, shift_b = find(right)
+        if root_a == root_b:
+            if shift_b-shift_a != turn:
+                conflicts += 1
+            continue
+        # shift(right) - shift(left) = turn
+        root_b_minus_a = turn + shift_a - shift_b
+        if rank[root_a] < rank[root_b]:
+            parent[root_a] = root_b
+            relative[root_a] = -root_b_minus_a
+        else:
+            parent[root_b] = root_a
+            relative[root_b] = root_b_minus_a
+            if rank[root_a] == rank[root_b]:
+                rank[root_a] += 1
+        joined += 1
+    shifts = [find(i)[1] for i in range(n)]
+    if max(abs(shift) for shift in shifts) > 16:
+        raise RuntimeError("Unbounded original-source face wrap shift is not credible.")
+    for polygon in mesh.polygons:
+        offset = shifts[polygon.index]*period
+        if offset:
+            for loop_index in polygon.loop_indices:
+                old_uv = layer.data[loop_index].uv
+                layer.data[loop_index].uv = (float(old_uv.x)+offset, float(old_uv.y))
+    return {
+        "periodGeometryMetres": round(period, 7),
+        "eligibleSharedEdges": len(candidates),
+        "incompatibleSharedEdges": incompatible,
+        "sourceNonManifoldEdges": nonmanifold,
+        "consistentFaceEdgesJoined": joined,
+        "conflictingWrapEdgesRetained": conflicts,
+        "facesWithTurnShift": sum(shift != 0 for shift in shifts),
+        "maxAbsTurns": max(abs(shift) for shift in shifts),
+        "physicalFabricRepeatApproved": False,
+        "sewnSeamApproval": False,
+    }
+
+
 def apply_source_grain_uv(obj, preflight):
     """Add native UV coordinates; never alter any source polygon or mesh vertex.
 
@@ -218,6 +333,14 @@ def apply_source_grain_uv(obj, preflight):
             )
         for loop_index, point in zip(polygon.loop_indices, projected):
             uv.data[loop_index].uv = point
+    chart_before_alignment = uv_edge_continuity_report(obj, uv)
+    periodic_alignment = align_periodic_uv_faces(obj, uv, radius)
+    chart_after_alignment = uv_edge_continuity_report(obj, uv)
+    if (chart_after_alignment["uvDiscontinuityEdges"]
+            > chart_before_alignment["uvDiscontinuityEdges"]
+        or chart_after_alignment["minusYCameraFacingSeamEdges"]
+            > chart_before_alignment["minusYCameraFacingSeamEdges"]):
+        raise RuntimeError("Periodic seam alignment increased an existing UV or visible-front discontinuity.")
     mesh.update()
     bpy.context.view_layer.update()
     evaluated = preflight.evaluated_mesh_stats(obj)
@@ -237,7 +360,9 @@ def apply_source_grain_uv(obj, preflight):
         "originalUvLayer": old_active_name,
         "newUvLayer": UV_NAME,
         "originalUvEdgeContinuity": baseline_edges,
-        "researchUvEdgeContinuity": uv_edge_continuity_report(obj, uv),
+        "preAlignmentUvEdgeContinuity": chart_before_alignment,
+        "periodicFaceAlignment": periodic_alignment,
+        "researchUvEdgeContinuity": chart_after_alignment,
         "beforeCollapsedUvTriangles": base_stats["uvCollapsedTriangles"],
         "afterCollapsedUvTriangles": evaluated["uvCollapsedTriangles"],
         "beforeNonFiniteUvTriangles": base_stats["uvNonFiniteTriangles"],
