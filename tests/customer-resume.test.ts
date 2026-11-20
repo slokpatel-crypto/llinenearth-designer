@@ -168,3 +168,68 @@ test("owner-only vault summaries are created strictly after immutable hash verif
   assert.match(account,/item.summary.trouserName/);
   assert.match(account,/verify current availability before ordering/);
 });
+
+
+test("owner-verified saved revision comparison exposes exact fabric and advanced cut changes",()=>{
+  const {compareOwnedLockedDesigns}=load("src/lib/designer/owned-design-compare.ts") as typeof import("../src/lib/designer/owned-design-compare.ts");
+  const before=syntheticOwnedRevision();
+  const after=structuredClone(before);
+  after.revisionId="LE-LOCK-SYNTHETIC-DIRECT-CHILD";
+  after.parentRevisionId=before.revisionId;
+  after.recipeHash="b".repeat(64);
+  after.garmentSpec.fabrics.shirt.id=shirtIds[1];
+  after.garmentSpec.fabrics.shirt.name="New synthetic shirt";
+  assert.ok(after.garmentSpec.styleSpec);
+  after.garmentSpec.styleSpec.shirt.type="overshirt";
+  const comparison=compareOwnedLockedDesigns(before,after);
+  assert.equal(comparison.relationship,"direct-child");
+  assert.equal(comparison.constructionCoverage,"exact-v2");
+  assert.deepEqual(comparison.differences.map(d=>d.key),["shirt.fabric","shirt.type"]);
+  assert.match(comparison.differences[0].selected,/New synthetic shirt/);
+  assert.equal(JSON.stringify(comparison).includes("measurements"),false);
+  assert.equal(JSON.stringify(comparison).includes("bodyProfile"),false);
+  assert.equal(JSON.stringify(comparison).includes("recipeHash"),false);
+  assert.equal(JSON.stringify(comparison).includes("creative"),false);
+  assert.equal(JSON.stringify(comparison).includes("finishedTargets"),false);
+});
+
+test("saved comparison never invents advanced options for a legacy revision",()=>{
+  const {compareOwnedLockedDesigns}=load("src/lib/designer/owned-design-compare.ts") as typeof import("../src/lib/designer/owned-design-compare.ts");
+  const before=syntheticOwnedRevision();
+  const after=structuredClone(before);
+  after.revisionId="LE-LOCK-SYNTHETIC-LEGACY";
+  after.parentRevisionId=null;
+  before.garmentSpec.styleSpec=null;
+  after.garmentSpec.styleSpec!.shirt.type="overshirt";
+  const comparison=compareOwnedLockedDesigns(before,after);
+  assert.equal(comparison.relationship,"unrelated");
+  assert.equal(comparison.constructionCoverage,"legacy-only");
+  assert.deepEqual(comparison.differences,[]);
+  const reversed=compareOwnedLockedDesigns(after,before);
+  assert.equal(reversed.constructionCoverage,"legacy-only");
+  assert.deepEqual(reversed.differences,[]);
+});
+
+test("saved comparison refuses future schemas and inconsistent duplicate revision IDs",()=>{
+  const {compareOwnedLockedDesigns}=load("src/lib/designer/owned-design-compare.ts") as typeof import("../src/lib/designer/owned-design-compare.ts");
+  const before=syntheticOwnedRevision();
+  const after=structuredClone(before);
+  after.recipeHash="b".repeat(64);
+  assert.throws(()=>compareOwnedLockedDesigns(before,after),/Conflicting saved revision identities/);
+  after.revisionId="LE-LOCK-SYNTHETIC-OTHER";
+  after.garmentSpec.styleSpec={...fromLegacyStyle(style),styleSchemaVersion:3} as never;
+  assert.throws(()=>compareOwnedLockedDesigns(before,after),/Unsupported saved revision/);
+  assert.equal(compareOwnedLockedDesigns(before,before).relationship,"same-revision");
+});
+
+test("account comparison calls owner-only verified loads for each selected revision",()=>{
+  const account=readFileSync("src/app/account/page.tsx","utf8");
+  const compare=readFileSync("src/lib/designer/owned-design-compare.ts","utf8");
+  assert.match(account,/async function loadVerifiedOwnedRevision/);
+  assert.match(account,/action:"loadOwned",vaultId:item.vaultId/);
+  assert.match(account,/verifyLockedDesignRevision\(revision\)/);
+  assert.match(account,/Promise.all\(items.map\(item=>loadVerifiedOwnedRevision\(item\)\)\)/);
+  assert.match(account,/compareOwnedLockedDesigns\(before,after\)/);
+  assert.match(account,/Select saved revision \$\{item.revisionId\} for comparison/);
+  assert.doesNotMatch(compare,/\.measurements\b|\.finishedTargets\b|\.bodyProfile\b|\.creative\b/);
+});
