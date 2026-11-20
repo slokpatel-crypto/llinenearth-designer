@@ -1,5 +1,13 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-11-20 — Server-recomputed hero-preserving Style Director pairings
+
+**Customer functionality:** after Style Director creates three deterministic looks, a customer may retain the selected shirt or trouser hero and compare up to three ranked supporting fabrics for the same existing StyleSpec v2 cut. The alternatives are recomputed server-side from the six original closed-vocabulary answers, selected server-issued look ID, current stock-filtered catalogue and the existing `evaluateDesignerCombo` compatibility engine. High-severity construction rule flags are rejected, unsupported/duplicate IDs are refused and the original selected look remains the default. Every applied pair retains the exact original versioned construction recipe and, where configured, receives a **new server-signed handoff v2 token** for its actual shirt/pant IDs.
+
+**Privacy and physical truth:** source stock is not customer-asserted; live ledger rules are reapplied on each request. Static catalogue rows are **not** proof of current inventory, measured colour, GSM, fabric drape or tailor approval. Every option explicitly remains preliminary or needs human review. The photo compositor is preserved; changing a pair invalidates old photoreal and QA state, preventing stale imagery from certifying a different outfit. No provider call on an ordinary pair switch, customer data write, migration, new inventory schema or option ID is introduced.
+
+**Acceptance:** pure tests cover hero identity and option-role preservation, immutable v2 spec, ranked repeatability, duplicate/wrong-role/missing stock, negative availability claims. Real built-Next browser checks at 390/768/1440 exercise requests, selection, Designer handoff IDs, preview reset and delayed-response rejection; native HTTP checks reject malformed, invalid-vocabulary and oversized JSON at the public boundary. Exact-head CI and independent QA remain mandatory before merging. Existing locked designs and handoffs are unchanged.
+
 ## 2026-11-20 — Native garment contact evidence must cover every panel pair
 
 **Decision:** Preserve the original locked photographic model and photo guide targets. A production Blender scene must have measured world-space contact evidence for all 15 distinct six-panel combinations, not just leg/leg and shirt/waist. All 13 formerly unchecked pairs now reject collisions and unknown geometry; existing zero leg/leg and 120 tucked-junction maximum remain unchanged. This is a fail-closed QA contract, **not** proof that the current source mesh is repaired, or a waiver for intentional sewn joins.
