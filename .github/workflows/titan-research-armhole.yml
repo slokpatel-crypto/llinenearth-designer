@@ -259,6 +259,35 @@ jobs:
                      "preThickness":closed["afterBodyClearance"]})
           print("TITAN_DISJOINT_FACE_SOURCE_TRIAL_RESEARCH_ONLY_NO_MESH_APPROVAL")
           PY
+      - name: Independently reject unfinished six-panel real 3D model with unchanged production gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/armhole-evidence/joint-both-preflight.log"
+          set +e
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-single-solidify-both-garments-research.blend \
+            --python-exit-code 1 --python scripts/blender/preflight-linen-earth-officewear.py > "$log" 2>&1
+          status=$?
+          set -e
+          test "$status" -eq 1
+          python3 - "$log" "$RUNNER_TEMP/armhole-evidence/joint-both-preflight.json" <<'PY'
+          import importlib.util,json,pathlib,sys
+          module=pathlib.Path("scripts/blender/summarize-native-candidate-preflight.py")
+          spec=importlib.util.spec_from_file_location("titan_original_preflight_parse",module)
+          preflight=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(preflight)
+          result=preflight.find_blender_preflight_report(pathlib.Path(sys.argv[1]).read_text())
+          assert result["modelIdentity"]["id"]=="linen-earth-studio-model-v1"
+          assert result["modelIdentity"]["referenceImage"]=="/designer/studio-tucked.webp"
+          assert result["ready"] is False and result["reasons"]
+          assert len(result["garmentPairIntersections"])==15
+          assert all(type(v) is int and v>=0 for v in result["garmentPairIntersections"].values())
+          assert isinstance(result["identityFitMeasurementsMm"],dict)
+          print("TITAN_REAL_CC0_SIX_PANEL_RESEARCH_PREVIEW_BLOCKED_BY_PRODUCTION_GATES",
+                len(result["reasons"]),result["identityFitMeasurementsMm"],
+                result["boundaryIntersections"])
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(result,indent=2)+"\n")
+          PY
       - name: Render four original-source research frames without any new model
         shell: bash
         run: |
