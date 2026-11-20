@@ -13,6 +13,7 @@ import { optionById } from "@/lib/designer/options/library";
 import {
   compareStyleDirectorLooks, STYLE_DIRECTOR_COMPARE_LENSES, type StyleDirectorCompareLens,
 } from "@/lib/designer/style-director-compare";
+import type { StyleDirectorPairingAlternative } from "@/lib/designer/style-director-pairings";
 import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
@@ -20,6 +21,7 @@ type RenderSet = { renders?: Array<{ view: string; src: string; label: string; p
 type PhotorealResult = {image:string;jobId:string;generatedAt:string};
 type PhotorealQaStatus = "checking"|"review"|"unavailable";
 type StyleDirectorClientLook = StyleDirectorLook & {handoffToken?:string|null};
+type StyleDirectorClientAlternative = StyleDirectorPairingAlternative & {handoffToken?:string|null};
 
 const steps: Array<{ key: StepKey; eyebrow: string; title: string; note: string; options: Array<{ value: string; label: string; hint: string; symbol: string }> }> = [
   { key:"occasion", eyebrow:"THE MOMENT", title:"Where are you going?", note:"Don’t think about clothes yet. Start with the moment.", options:[
@@ -58,6 +60,10 @@ export default function StyleDirectorPage() {
   const [selected,setSelected] = useState(0);
   const [compareOpen,setCompareOpen] = useState(false);
   const [compareLens,setCompareLens] = useState<StyleDirectorCompareLens>("overall");
+  const [pairings,setPairings] = useState<StyleDirectorClientAlternative[]|null>(null);
+  const [pairingsLoading,setPairingsLoading] = useState(false);
+  const [chosenPairing,setChosenPairing] = useState<StyleDirectorClientAlternative|null>(null);
+  const [pairingsError,setPairingsError] = useState("");
   const [loading,setLoading] = useState(false);
   const [rendering,setRendering] = useState(false);
   const [renderSet,setRenderSet] = useState<RenderSet|null>(null);
@@ -70,11 +76,17 @@ export default function StyleDirectorPage() {
   const [error,setError] = useState("");
   const step = steps[index];
   const complete = looks.length > 0;
-  const selectedLook = looks[selected];
+  const originalLook = looks[selected];
+  const selectedLook = useMemo<StyleDirectorClientLook|undefined>(()=>originalLook
+    ? chosenPairing && chosenPairing.id.startsWith(originalLook.id+":") && chosenPairing.realModel
+      ? {...originalLook, realModel:chosenPairing.realModel,handoffToken:chosenPairing.handoffToken}
+      : originalLook
+    : undefined,[originalLook,chosenPairing]);
   const comparedLooks = useMemo(()=>compareStyleDirectorLooks(looks,compareLens),[looks,compareLens]);
   const progress = complete ? 100 : Math.round((index / steps.length) * 100);
   const journeyScope = useMemo(()=>createPreviewRequestScope(),[index,journeyEpoch]);
   const renderScope = useMemo(()=>createPreviewRequestScope(),[selectedLook,currentCalibrationIdentity,journeyEpoch]);
+  const pairingScope = useMemo(()=>createPreviewRequestScope(),[originalLook,journeyEpoch]);
 
   useLayoutEffect(()=>{
     journeyScope.activate();
@@ -89,6 +101,45 @@ export default function StyleDirectorPage() {
     // if the server continues rendering after the browser cancels its fetch.
     return ()=>renderScope.invalidate();
   },[renderScope]);
+
+  useLayoutEffect(()=>{
+    pairingScope.activate();
+    return ()=>pairingScope.invalidate();
+  },[pairingScope]);
+
+  async function loadPairingAlternatives() {
+    if(!originalLook?.realModel || pairingsLoading) return;
+    const request=pairingScope.begin();
+    if(!request) return;
+    setPairingsLoading(true);setPairingsError("");
+    try{
+      const response=await fetch("/api/style-director/pairings",{
+        method:"POST",signal:request.signal,headers:{"content-type":"application/json"},
+        body:JSON.stringify({answers,lookId:originalLook.id}),
+      });
+      if(!request.isCurrent()) return;
+      const body=await response.json() as {sourceLookId?:string;heroFabricId?:string;alternatives?:StyleDirectorClientAlternative[];error?:string};
+      if(!request.isCurrent()) return;
+      if(!response.ok) throw new Error(body.error||"Alternatives are unavailable.");
+      if(body.sourceLookId!==originalLook.id || body.heroFabricId!==originalLook.fabric.id || !Array.isArray(body.alternatives))
+        throw new Error("Pairing response no longer matches the original outfit.");
+      setPairings(body.alternatives);
+    }catch(e){
+      if(request.isCurrent()) setPairingsError(e instanceof Error ? e.message : "Alternatives are unavailable.");
+    }finally{
+      if(request.isCurrent()) setPairingsLoading(false);
+      request.finish();
+    }
+  }
+
+  function applyPairing(item:StyleDirectorClientAlternative|null) {
+    if(!renderScope.isEnabled()) return;
+    renderScope.invalidate();
+    setChosenPairing(item);
+    setRenderSet(null);setPhotoreal(null);setPhotorealQaStatus(null);
+    setRenderCalibrationIdentity(null);setLockedPreviewImage("");setLockedPreviewCalibrationIdentity("");
+    setRendering(false);setError("");
+  }
 
   async function choose(value:string) {
     const request=journeyScope.begin();
@@ -112,6 +163,7 @@ export default function StyleDirectorPage() {
       setLooks(data.looks);
       setSelected(0);
       setCompareOpen(false);
+      setPairings(null);setChosenPairing(null);setPairingsError("");setPairingsLoading(false);
       setRenderSet(null);
       setPhotoreal(null); setPhotorealQaStatus(null);
       setRenderCalibrationIdentity(null);
@@ -207,6 +259,7 @@ export default function StyleDirectorPage() {
     setJourneyEpoch((epoch)=>epoch+1);
     setIndex(0); setAnswers({}); setLooks([]); setSelected(0);
     setCompareOpen(false); setCompareLens("overall");
+    setPairings(null);setChosenPairing(null);setPairingsError("");setPairingsLoading(false);
     setLoading(false); setRendering(false);
     setRenderSet(null); setRenderCalibrationIdentity(null);
     setPhotoreal(null); setPhotorealQaStatus(null);
@@ -227,6 +280,7 @@ export default function StyleDirectorPage() {
     const look=looks[i];
     renderScope.invalidate();
     setSelected(i); setRendering(false); setError("");
+    setPairings(null);setChosenPairing(null);setPairingsError("");setPairingsLoading(false);
     setRenderSet(null); setRenderCalibrationIdentity(null);
     setPhotoreal(null); setPhotorealQaStatus(null);
     setLockedPreviewImage(""); setLockedPreviewCalibrationIdentity("");
@@ -284,7 +338,7 @@ export default function StyleDirectorPage() {
     };
   },[sessionId]);
 
-  const whatsapp = selectedLook ? `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919226338282"}?text=${encodeURIComponent(`Hi Linen Earth, I created “${selectedLook.title}” in the Style Director. Fabric: ${selectedLook.fabric.line} — ${selectedLook.fabric.colorName}. I’d like to explore this look in store.`)}` : "#";
+  const whatsapp = selectedLook ? `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919226338282"}?text=${encodeURIComponent(`Hi Linen Earth, I created “${selectedLook.title}” in the Style Director. Hero fabric: ${selectedLook.fabric.line} — ${selectedLook.fabric.colorName}.${chosenPairing && selectedLook.realModel ? ` Selected outfit: ${selectedLook.realModel.shirtName} shirt + ${selectedLook.realModel.pantName} trousers.` : ""} I’d like to explore this look in store, subject to physical stock and tailoring confirmation.`)}` : "#";
 
   const designerHandoff = selectedLook?.realModel
     ? (() => {
@@ -409,7 +463,7 @@ export default function StyleDirectorPage() {
           <p className="directorCompareDisclaimer">Comparison reorders existing deterministic styling scores only. It never changes a garment recipe, consumes paid rendering credits, checks physical stock, or certifies fit, fabric measurements or tailoring.</p>
         </section>}
 
-        <motion.div key={selectedLook.id} className="lookStage" initial={{opacity:0,x:14}} animate={{opacity:1,x:0}} transition={{duration:.3,ease:[.2,.8,.2,1]}}>
+        <motion.div key={`${selectedLook.id}:${selectedLook.realModel?.shirtId||"none"}:${selectedLook.realModel?.pantId||"none"}`} className="lookStage" initial={{opacity:0,x:14}} animate={{opacity:1,x:0}} transition={{duration:.3,ease:[.2,.8,.2,1]}}>
           <div className="lookVisual" style={{"--fabric":selectedLook.fabric.hex} as React.CSSProperties}>
             {heroRender ? <img src={heroRender.src} alt={heroRender.label} /> : selectedLook.realModel ? <>
               <StyleDirectorRealModelPreview shirt={selectedLook.realModel.shirtFabric} pant={selectedLook.realModel.pantFabric} style={selectedLook.realModel.style} onPreviewReady={acceptLockedPreview} />
@@ -441,6 +495,26 @@ export default function StyleDirectorPage() {
               <strong>{selectedLook.realModel.shirtName} shirt + {selectedLook.realModel.pantName} trousers</strong>
               <p>{optionById(selectedLook.realModel.styleSpec.shirt.type)?.label || "Shirt"} · {optionById(selectedLook.realModel.styleSpec.pant.type)?.label || selectedLook.realModel.style.trouser} · {selectedLook.realModel.style.collar}</p>
             </div>}
+            {originalLook?.realModel && <section className="directorPairings" aria-label="Explore supporting garment options">
+              <div className="directorPairingIntro">
+                <div><span>KEEP YOUR HERO FABRIC</span><h4>Try different {originalLook.fabric.id===originalLook.realModel.shirtId ? "trousers" : "shirts"}</h4></div>
+                <button type="button" onClick={()=>void loadPairingAlternatives()} disabled={pairingsLoading}>{pairingsLoading?"Checking combinations…":pairings===null?"Explore pairings":"Refresh pairings"}</button>
+              </div>
+              <p>Deterministic stylistic pairings from the current catalogue. Actual stock, physical colour, fabric behaviour and tailoring require confirmation.</p>
+              {pairingsError && <p className="directorPairingError" role="alert">{pairingsError}</p>}
+              {pairings && <div className="directorPairingOptions">
+                <button type="button" aria-pressed={!chosenPairing} onClick={()=>applyPairing(null)}>
+                  <b>Original pairing</b><span>{originalLook.realModel.shirtName} + {originalLook.realModel.pantName}</span>
+                </button>
+                {pairings.map((item)=><button type="button" key={item.id}
+                  aria-pressed={chosenPairing?.id===item.id} onClick={()=>applyPairing(item)}>
+                  <b>{item.supportingFabricName}</b>
+                  <span>{item.supportingFabricLine} · {item.status==="needs_review"?"Needs human review":"Preliminary"}</span>
+                </button>)}
+              </div>}
+              {pairings?.length===0 && <p className="directorPairingEmpty">No other pairing passed the current construction rules. The original outfit remains unchanged.</p>}
+              {chosenPairing && <p className="directorPairingSelected" role="status">{chosenPairing.reviewNote}</p>}
+            </section>}
             <div className="directorActions">
               {selectedLook.realModel
                 ? <button className="photoAction" onClick={()=>void visualizePhotoreal()} disabled={rendering || !!heroRender || !lockedPreviewImage || lockedPreviewCalibrationIdentity!==currentCalibrationIdentity}>{rendering?(photorealQaStatus==="checking"?"Checking photoreal…":"Rendering…"):heroRender?"Photoreal ready":photoreal?"Retry photoreal check":lockedPreviewImage?"Make photoreal":"Preparing real model…"} <b>✦</b></button>
