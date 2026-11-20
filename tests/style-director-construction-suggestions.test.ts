@@ -110,6 +110,10 @@ test("construction alternatives cover distinct, catalogue-backed tailoring decis
       }
       assert.ok(issues.some(issue => issue.code === suggestion.cause),
         `${scenario.name}: suggestion must derive from a live compatibility issue`);
+      const countCause = (candidateIssues: ReturnType<typeof styleDirectorConstructionIssues>) =>
+        candidateIssues.filter(issue => issue.code === suggestion.cause).length;
+      assert.ok(countCause(styleDirectorConstructionIssues(candidate)) < countCause(issues),
+        `${scenario.name}: proposed change must resolve its named construction fault`);
       assert.ok(optionsFor(suggestion.optionGroup).some(option =>
         option.id === suggestion.proposedId),
         `${scenario.name}: proposal must be an existing catalogue ID`);
