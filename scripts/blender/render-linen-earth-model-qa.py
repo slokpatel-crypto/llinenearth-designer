@@ -40,6 +40,8 @@ def args():
     parser.add_argument("--width", type=int, default=768)
     parser.add_argument("--height", type=int, default=1088)
     parser.add_argument("--samples", type=int, default=48)
+    parser.add_argument("--research-fabric-contrast", action="store_true",
+                        help="QA ONLY: contrast-colour source garment regions in memory; no stock fabric or photo match claim")
     return parser.parse_args(argv)
 
 
@@ -110,6 +112,30 @@ def material(name, color, roughness=0.9):
     return mat
 
 
+def apply_unapproved_research_contrast(scene):
+    """In-memory visual separator for geometry QA; NEVER a fabric colour claim."""
+    if not (scene.get("linen_earth_research_single_solidify_shirt") is True
+            and scene.get("linen_earth_research_single_solidify_trousers") is True
+            and scene.get("linen_earth_production_approved") is False):
+        raise RuntimeError("Contrast QA is restricted to explicitly unapproved original-source research scenes")
+    # Default scenes and Blender source files are NEVER changed or saved.
+    colors = {
+        "ShirtTorsoFabric": (0.43,0.52,0.62),
+        "ShirtSleeveLFabric": (0.43,0.52,0.62),
+        "ShirtSleeveRFabric": (0.43,0.52,0.62),
+        "TrouserWaistFabric": (0.24,0.27,0.32),
+        "TrouserLegLFabric": (0.24,0.27,0.32),
+        "TrouserLegRFabric": (0.24,0.27,0.32),
+    }
+    for name, color in colors.items():
+        obj = bpy.data.objects.get(name)
+        if obj is None or obj.type != "MESH" or obj.get("productionApproved") is not False:
+            raise RuntimeError("Research garment lacks explicit nonapproval: " + name)
+        obj.data.materials.clear()
+        obj.data.materials.append(material("LE_RESEARCH_ONLY_CONTRAST_" + name, color))
+    return True
+
+
 def add_area(name, location, power, size, target):
     data = bpy.data.lights.new(name, "AREA")
     data.energy = power
@@ -168,6 +194,8 @@ def main():
     output = options.output_dir.expanduser().resolve()
     output.mkdir(parents=True, exist_ok=True)
     camera = setup_studio(mid_height, floor_z, options)
+    if options.research_fabric_contrast:
+        apply_unapproved_research_contrast(bpy.context.scene)
     scene = bpy.context.scene
     manifest = {
         "version": "linen-earth-model-qa-turntable-v1",
@@ -177,6 +205,8 @@ def main():
         "sourceBlendSha256": hashlib.sha256(source.read_bytes()).hexdigest(),
         "identityLocked": True,
         "candidateOnly": True,
+        "researchOnlyFabricContrast": bool(options.research_fabric_contrast),
+        "measuredColourApproved": False,
         "photographicMatchApproved": False,
         "realismApproved": False,
         "tailorApproved": False,
