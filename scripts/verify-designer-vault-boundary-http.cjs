@@ -73,18 +73,19 @@ async function main(){
   let otpMode="ok";
   const otpSubjects=new Map();
   const seen=[];
+  const ordinarySavedDesigns=new Map(); // synthetic owner -> design map; never live records
   const upstream=http.createServer(async(req,res)=>{
     const path=req.url||"";
     if(path==="/auth/v1/user"){
       seen.push({path,headers:req.headers});
-      if(!["Bearer valid-legacy","Bearer malformed-legacy",
+      if(!["Bearer valid-legacy","Bearer bob-legacy","Bearer malformed-legacy",
         "Bearer oversized-legacy","Bearer html-legacy"].includes(req.headers.authorization)){
         res.writeHead(401,{"content-type":"application/json"});res.end("{}");return;
       }
       const legacyBearer=req.headers.authorization;
       res.writeHead(200,{"content-type":legacyBearer==="Bearer html-legacy"
         ?"text/html":"application/json"});
-      res.end(JSON.stringify({id:legacyBearer==="Bearer malformed-legacy"
+      res.end(JSON.stringify({id:legacyBearer==="Bearer bob-legacy"?"223e4567-e89b-12d3-a456-426614174000":legacyBearer==="Bearer malformed-legacy"
         ?"broken-owner-identity":"123e4567-e89b-12d3-a456-426614174000",
         email:"alice@example.com",
         ...(legacyBearer==="Bearer oversized-legacy"?{padding:"z".repeat(16_384)}:{})}));return;
@@ -93,6 +94,24 @@ async function main(){
     for await(const chunk of req)parts.push(chunk);
     const payload=JSON.parse(Buffer.concat(parts).toString("utf8"));
     seen.push({path,headers:req.headers,payload});
+    if(path.startsWith("/rest/v1/rpc/customer_saved_design_")){
+      const owner=payload.p_owner_user_id;
+      assert.match(owner,/^[0-9a-f-]{36}$/);
+      const records=ordinarySavedDesigns.get(owner)||new Map();
+      ordinarySavedDesigns.set(owner,records);
+      const id=payload.p_design_id;
+      let result;
+      if(path.endsWith("_upsert_owned")){
+        assert.equal(id,payload.p_payload.designId);
+        records.set(id,{design_id:id,payload:payload.p_payload,updated_at:"2026-11-20T00:00:00Z"});
+        result=true;
+      }else if(path.endsWith("_delete_owned"))result=records.delete(id);
+      else if(path.endsWith("_get_owned"))result=records.has(id)?[records.get(id)]:[];
+      else if(path.endsWith("_list_owned"))result=Array.from(records.values()).slice(0,24);
+      else throw Error("Unexpected saved-design RPC: "+path);
+      res.writeHead(200,{"content-type":"application/json"});
+      res.end(JSON.stringify(result));return;
+    }
     if(path==="/rest/v1/rpc/customer_otp_rate_consume"){
       assert.match(payload.p_subject_hash,/^[a-f0-9]{64}$/);
       assert.ok(!JSON.stringify(payload).includes("@"),"the database must never receive raw customer emails");
@@ -389,6 +408,39 @@ async function main(){
       assert.equal(response.status,403,endpoint+" rejects same-site subdomain");
       assert.equal(seen.length,0);
     }
+    // Actual Next HTTP saved-design owner isolation with two independent
+    // legacy-authenticated synthetic identities. No real Supabase writes.
+    const savedEndpoint=origin+"/api/customer-saved-designs";
+    const ordinaryDesign={schemaVersion:1,designId:"synthetic-shared-id",
+      title:"Synthetic office shirt",recipe:{brief:{occasion:"office"},
+      version:{id:"v_1",specHash:"synthetic"},renderSet:{views:[]}}};
+    async function savedRequest(bearer,body,designId){
+      const target=savedEndpoint+(designId?"?designId="+encodeURIComponent(designId):"");
+      const headers={cookie:"le_customer_access="+bearer};
+      if(body!==undefined)Object.assign(headers,fixtureHeaders());
+      return fetch(target,{method:body===undefined?"GET":"POST",headers,
+        ...(body===undefined?{}:{body:JSON.stringify(body)}),
+        signal:AbortSignal.timeout(15000)});
+    }
+    const aliceSave=await savedRequest("valid-legacy",{action:"save",design:ordinaryDesign});
+    assert.equal(aliceSave.status,200);
+    assert.equal((await aliceSave.json()).saved,true);
+    const bobBefore=await savedRequest("bob-legacy",undefined,ordinaryDesign.designId);
+    assert.equal(bobBefore.status,404,"Bob cannot read Alice's design");
+    const bobSave=await savedRequest("bob-legacy",{action:"save",design:{
+      ...ordinaryDesign,title:"Bob's independent version"}});
+    assert.equal(bobSave.status,200);
+    const aliceRead=await savedRequest("valid-legacy",undefined,ordinaryDesign.designId);
+    assert.equal((await aliceRead.json()).design.payload.title,ordinaryDesign.title);
+    const bobRead=await savedRequest("bob-legacy",undefined,ordinaryDesign.designId);
+    assert.equal((await bobRead.json()).design.payload.title,"Bob's independent version");
+    const bobDelete=await savedRequest("bob-legacy",{action:"delete",designId:ordinaryDesign.designId});
+    assert.equal((await bobDelete.json()).deleted,true);
+    const aliceStill=await savedRequest("valid-legacy",undefined,ordinaryDesign.designId);
+    assert.equal(aliceStill.status,200,"Bob's deletion cannot remove Alice's design");
+    const anonymousSaved=await savedRequest("",undefined,ordinaryDesign.designId);
+    assert.equal(anonymousSaved.status,401);
+    assert.match(aliceStill.headers.get("cache-control")||"",/private.*no-store/);
     // Every OTP dispatch denial stays uncacheable and cannot touch the
     // provider when the local request itself is malformed or oversized.
     for(const [label,body,headers,expectedStatus] of [
