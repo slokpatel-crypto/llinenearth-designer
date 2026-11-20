@@ -33,3 +33,12 @@ seam-matching or garment-construction claims.
 
 No alteration to underlying photo, fabric tile, measured scale, body mesh,
 warehouse records, customer evidence, supplier measurements or deployment.
+
+## CI correction — preserved original zoom regression
+The first exact-head CI caught two old source-string expectations, which pinned
+`transform:scale(1.42)` and `setInspectFit(false)` literally. Existing behavior
+still exists as the explicit `fit` preset (1.42x, 50%/35%) and a reset to
+`photoFocus="full"`. The old test assertions have been updated to verify the
+CSS-variable scale/origin contract and explicit selection-reset action. Browser
+Canvas/QA affine equality assertions are retained, not skipped. The new commit
+requires all exact-head CI and browser gates again.
