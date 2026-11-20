@@ -140,12 +140,29 @@ test("several independent faults produce review alternatives without auto-fixing
   ]);
   // Validate the complete recommendation bundle, not only each individual
   // change against the original locked design.
+  const countIssues = (spec: StyleSpecV2) => {
+    const counts = new Map<string, number>();
+    for (const issue of styleDirectorConstructionIssues(spec)) {
+      counts.set(issue.code, (counts.get(issue.code) ?? 0) + 1);
+    }
+    return counts;
+  };
+  let previous = countIssues(locked);
   const combined = suggestions.reduce((candidate, suggestion) => {
     const [garment, key] = suggestion.optionGroup.split(".") as ["shirt" | "pant", string];
-    return {
+    const next = {
       ...candidate,
       [garment]: { ...candidate[garment], [key]: suggestion.proposedId },
     } as StyleSpecV2;
+    const after = countIssues(next);
+    for (const [code, count] of after) {
+      assert.ok(count <= (previous.get(code) ?? 0),
+        `each sequential suggestion must not restore an already resolved conflict: ${code}`);
+    }
+    assert.ok((after.get(suggestion.cause) ?? 0) < (previous.get(suggestion.cause) ?? 0),
+      `each suggestion must resolve its cause: ${suggestion.cause}`);
+    previous = after;
+    return next;
   }, locked);
   const originalCodes = new Set(styleDirectorConstructionIssues(locked).map(x => x.code));
   assert.deepEqual(styleDirectorConstructionIssues(combined).filter(issue =>
