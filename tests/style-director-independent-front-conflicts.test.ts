@@ -86,3 +86,22 @@ test("independent waistband and rise mismatches survive a stale sleeve selection
     }
   }
 });
+
+test("cropped hem and stacked shoe break remain independently reviewable with stale shirt IDs", () => {
+  for (const sleeve of ["full_sleeve", "retired_sleeve"] as const) {
+    for (const pantType of ["cropped_ankle", "formal_flat_front"] as const) {
+      const locked = makeSpec(sleeve, pantType, "flat_front");
+      locked.pant.hem = "cropped_above_ankle_hem";
+      locked.pant.break = "stacked_break";
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      assert.ok(issues.some(issue => issue.code === "cropped_stacked_break"),
+        `${pantType}/${sleeve}: cropped hem cannot support stacked shoe break`);
+      if (sleeve === "retired_sleeve") {
+        assert.ok(issues.some(issue => issue.code === "unknown_versioned_option"));
+      }
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+      assert.equal(JSON.stringify(locked), before);
+    }
+  }
+});
