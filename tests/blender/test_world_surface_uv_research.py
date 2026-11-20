@@ -51,6 +51,8 @@ for name,tilt in (("synthetic_vertical_cylinder",0),("synthetic_angled_sleeve",m
     else:
         assert abs(result["inferredAxisWorld"][0])>0.3,result
     assert result["geometryPreserved"] and result["originalUvPreserved"]
+    assert result["selectedMapping"]=="surface_arc"
+    assert result["surfaceArcTrial"]==result["candidate"]
     assert research.world_mesh_signature(obj)==geometry
     assert research.uv_signature(obj.data,obj.data.uv_layers[uvname])==uvhash
     assert obj.data.uv_layers.active.name==research.CANDIDATE_UV

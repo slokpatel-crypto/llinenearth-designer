@@ -88,3 +88,29 @@ passes it to the existing strict `--archive` verifier for the pinned
 50,643,039-byte ZIP plus safe extraction. Neither a CDN failure nor a failed
 mirror can be mislabeled as a completed source comparison. This is a scoped
 workflow fallback, not an upstream library rewrite or physical model repair.
+
+## Independent genuine CC0 UV density discovery and selective repair
+Exact native run [44794613972](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44794613972)
+**PASSED** source SHA, native six-mesh construction, surface UV step, four-angle
+preservation, unchanged 16 rejection reasons and all existing native pipeline
+steps on the same pinned 4.5.14 CC0 source. The baseline **already had ZERO
+collapsed UV triangles** on each of six panels. The surface arc experiment
+had zero as well. Measured p90/p10 ratio (lower is more uniform, NOT a
+physically calibrated texture) changed:
+
+| Real panel | Original UV | Surface arc trial | Decision |
+| --- | ---: | ---: | --- |
+| Shirt torso | 9.744 | 7.743 | retain trial candidate |
+| Left sleeve | 10.505 | 4.545 | retain trial candidate |
+| Right sleeve | 10.306 | 4.473 | retain trial candidate |
+| Trouser waist | 6.198 | 1.684 | retain trial candidate |
+| Left trouser leg | 9.359 | **13.818** | revert to original map |
+| Right trouser leg | 9.739 | **14.532** | revert to original map |
+
+The original surface-arc projection made BOTH trouser legs materially LESS
+uniform even though synthetic cylinders improved. New deterministic
+native per-panel selection now retains the ORIGINAL UVs when collapse counts
+are equal and the trial increases UV area-density dispersion. It records the
+rejected trial and the actually selected map separately, and fails closed if
+evidence falsely claims improved distortion. This is a controlled UV research
+candidate only, not approved sewing grain, real fabric repeat or four-angle fit.

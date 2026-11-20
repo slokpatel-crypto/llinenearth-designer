@@ -202,6 +202,24 @@ def map_surface_grain(obj):
             face_local_fallbacks += 1
         for loop_index,uv in zip(polygon.loop_indices,uvs):
             candidate.data[loop_index].uv = uv
+    trial_metrics = uv_metrics(obj, candidate)
+    if trial_metrics["collapsedUvTriangles"] > original["collapsedUvTriangles"]:
+        raise RuntimeError(f"{obj.name}: surface arc trial worsened structural UV collapse.")
+    selected_mapping = "surface_arc"
+    # On the actual pinned CC0 source all six original UV maps already have
+    # ZERO collapsed triangles. Measured arc projection improved torso, sleeve
+    # and waist density, but worsened both real trouser legs. Preserve the
+    # original UVs on ANY panel where equal-collapse UV area dispersion
+    # increases. This is a structural *research* guard, NOT a physical-scale
+    # or sewn seam / grain verification.
+    old_density = original["uvAreaDensityP90P10"]
+    trial_density = trial_metrics["uvAreaDensityP90P10"]
+    if (trial_metrics["collapsedUvTriangles"] == original["collapsedUvTriangles"]
+            and old_density is not None and trial_density is not None
+            and trial_density > old_density + 1e-6):
+        for loop_index in range(len(mesh.loops)):
+            candidate.data[loop_index].uv = source_uv.data[loop_index].uv
+        selected_mapping = "original_uv_density_guard"
     candidate_metrics = uv_metrics(obj, candidate)
     if geometry_before != world_mesh_signature(obj):
         raise RuntimeError(f"{obj.name}: UV research changed physical mesh geometry.")
@@ -214,7 +232,8 @@ def map_surface_grain(obj):
     obj["titan_surface_uv_candidate_only"] = True
     obj["titan_surface_uv_physical_repeat_verified"] = False
     return {
-        "original": original, "candidate": candidate_metrics,
+        "original": original, "surfaceArcTrial": trial_metrics,
+        "candidate": candidate_metrics, "selectedMapping": selected_mapping,
         "faceLocalFallbackIslands": face_local_fallbacks,
         "radialSeamWrapFaces": seam_wrap_faces,
         "inferredAxisWorld": [round(float(v),6) for v in axis],
@@ -284,6 +303,10 @@ def main():
     print("TITAN_SURFACE_UV_NATIVE_RESEARCH_ONLY",json.dumps({
         name:{"oldCollapsed":p["original"]["collapsedUvTriangles"],
               "researchCollapsed":p["candidate"]["collapsedUvTriangles"],
+              "sourceDensity":p["original"]["uvAreaDensityP90P10"],
+              "surfaceTrialDensity":p["surfaceArcTrial"]["uvAreaDensityP90P10"],
+              "selectedDensity":p["candidate"]["uvAreaDensityP90P10"],
+              "selectedMapping":p["selectedMapping"],
               "fallbackFaces":p["faceLocalFallbackIslands"]}
         for name,p in results.items()},sort_keys=True))
     print("Candidate UV work is NOT sewn-seam, physical-repeat, fit or photo approval.")
