@@ -49,3 +49,9 @@ four-angle candidate render must still reject unapproved geometry.
    customer promotion.
 
 **No Vercel deployment, no production GLB, no customer data changes.**
+
+The native source-candidate workflow archives the research-only **JSON report**
+next to the unchanged production rejection report; it intentionally does not
+archive or promote the unapproved .blend output. The experimental .blend is
+regenerated deterministically from the pinned source when independent review
+is authorized. Blender vector initialization is explicit 3D world coordinates.

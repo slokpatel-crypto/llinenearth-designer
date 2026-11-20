@@ -101,8 +101,8 @@ def inferred_axis_and_frame(obj):
         raise RuntimeError(f"{obj.name}: insufficient authentic shell vertices.")
     sorted_by_z = sorted(coords, key=lambda point: point.z)
     n = max(2, min(len(coords)//4, len(coords)//8))
-    low = sum(sorted_by_z[:n], Vector()) / n
-    high = sum(sorted_by_z[-n:], Vector()) / n
+    low = sum(sorted_by_z[:n], Vector((0.0,0.0,0.0))) / n
+    high = sum(sorted_by_z[-n:], Vector((0.0,0.0,0.0))) / n
     axis = high-low
     if axis.length < 0.01:
         raise RuntimeError(f"{obj.name}: no physically measurable longitudinal axis.")
@@ -116,7 +116,7 @@ def inferred_axis_and_frame(obj):
         radial_x = helper - axis * helper.dot(axis)
     radial_x.normalize()
     radial_y = axis.cross(radial_x).normalized()
-    center = sum(coords, Vector()) / len(coords)
+    center = sum(coords, Vector((0.0,0.0,0.0))) / len(coords)
     radii = [math.hypot((p-center).dot(radial_x),
                         (p-center).dot(radial_y)) for p in coords]
     radius = statistics.median(radii)

@@ -847,6 +847,7 @@ jobs:
           name: titan-native-candidate-evidence
           path: |
             ${{ runner.temp }}/titan-candidate-evidence/rejection-report.json
+            ${{ runner.temp }}/titan-candidate-evidence/surface-uv-research.json
             ${{ runner.temp }}/titan-candidate-evidence/model-qa/**
             ${{ runner.temp }}/titan-candidate-evidence/right-hem-0mm-preflight.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-tuck-control.json
