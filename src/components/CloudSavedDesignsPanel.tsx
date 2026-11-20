@@ -21,6 +21,9 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
   // previous account data rather than displaying it until another action.
   useEffect(() => {
     function clearPrivateView() {
+      // Browser confirmation dialogs can fire focus events. They execute
+      // inside run(), which verifies the account again after the dialog.
+      if (inFlight.current) return;
       visibilityEpoch.current++;
       loadedOwner.current = null;
       selectedOwner.current = null;
@@ -111,9 +114,9 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
           selectedOwner.current = loadedOwner.current;
           setSelected(recovered);
         })}>{item.title} — Recover details</button>
-        <button type="button" disabled={busy} onClick={() => {
-          if (!window.confirm(`Delete cloud design "${item.title}"? This does not delete your browser drafts.`)) return;
-          void run(async (assertOwner) => {
+        <button type="button" disabled={busy} onClick={() => void run(async (assertOwner) => {
+            await assertOwner();
+            if (!window.confirm(`Delete cloud design "${item.title}"? This does not delete your browser drafts.`)) return;
             await assertOwner();
             const deleted = await deleteCloudDesign(item.id);
             if (!deleted) throw new Error("Cloud design could not be deleted.");
@@ -123,8 +126,7 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
             selectedOwner.current = null;
             setSelected(null);
             setMessage("Cloud design deleted. Browser drafts unchanged.");
-          });
-        }}>Delete cloud copy</button>
+        })}>Delete cloud copy</button>
       </li>)}</ul>
       {selected && <div role="status">
         <strong>{selected.title}</strong>
@@ -151,9 +153,10 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
             URL.revokeObjectURL(url);
           }
         })}>Export recovered recipe JSON</button>
-        <button type="button" disabled={busy} onClick={() => {
-          if (!window.confirm(`Import cloud design "${selected.title}" into browser drafts on this device? Existing drafts will be preserved. This is not a production lock.`)) return;
-          void run(async (assertOwner) => {
+        <button type="button" disabled={busy} onClick={() => void run(async (assertOwner) => {
+            await assertOwner();
+            requireSelectedOwner();
+            if (!window.confirm(`Import cloud design "${selected.title}" into browser drafts on this device? Existing drafts will be preserved. This is not a production lock.`)) return;
             await assertOwner();
             requireSelectedOwner();
             // The selected cloud record was fetched through the authenticated,
@@ -164,8 +167,7 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
             });
             onImported(recovered);
             setMessage("Cloud design imported as a browser draft on this device. Cloud copy unchanged; production lock not verified.");
-          });
-        }}>Import into browser drafts</button>
+        })}>Import into browser drafts</button>
       </div>}
     </div>}
   </section>;
