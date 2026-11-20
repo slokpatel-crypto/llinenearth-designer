@@ -106,3 +106,12 @@ test("current calibrated catalogue may resume a valid newer fabric not in the st
   const loaded=await ownedRevisionToDraft(updated,[...DESIGNER_SHIRTS,{...currentOnly,allowedGarments:["shirt"]}],DESIGNER_PANTS);
   assert.equal(loaded?.shirtId,currentOnly.id);
 });
+
+test("account switching invalidates stale owner-bound lists and share/enquiry responses",()=>{
+  const source=readFileSync("src/app/account/page.tsx","utf8");
+  assert.match(source,/const epoch=\\+\\+accountRefreshEpoch\\.current;/);
+  assert.match(source,/if\\(epoch!==accountRefreshEpoch\\.current\\|\\|accountOwner\\.current!==owner\\)return;/);
+  assert.match(source,/if\\(accountOwner\\.current!==owner\\)\\{[\\s\\S]*?clearPrivateAccount\\(\\)/);
+  assert.match(source,/async function logout\\(\\)\\{[\\s\\S]*?clearPrivateAccount\\(\\)/);
+  assert.equal((source.match(/if\\(epoch!==designLoadEpoch\\.current\\)return;/g)||[]).length,2);
+});
