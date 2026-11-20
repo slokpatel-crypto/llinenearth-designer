@@ -1955,12 +1955,16 @@ export function styleDirectorConstructionSuggestions(
         !catalog.some(option => option.id === savedId) ||
         !catalog.some(option => option.id === proposedId) ||
         savedId === proposedId || seen.has(optionGroup)) continue;
-    // Changing the pleat to flat-front would introduce a new contradiction
-    // with a separately locked Pleated Straight fit. There is no unique
-    // safe one-field answer: the customer may instead need a different
-    // trouser type or fit. Leave both original IDs for tailor review.
-    if (issue.code === "flat_front_has_pleat" &&
-        styleDirectorLockedOptionValue(spec.pant, "fit") === "pleated_straight") continue;
+    // An alternative must not introduce a new construction contradiction
+    // elsewhere in the separately saved specification. Evaluate a shallow,
+    // ephemeral copy only; never alter locked IDs or persist a repair.
+    const originalCodes = new Set(styleDirectorConstructionIssues(spec, occasion).map(x => x.code));
+    const proposedSpec = {
+      ...spec,
+      [garment]: { ...spec[garment], [key]: proposedId },
+    } as Pick<StyleSpecV2, "shirt" | "pant">;
+    if (styleDirectorConstructionIssues(proposedSpec, occasion).some(x =>
+      !originalCodes.has(x.code))) continue;
     seen.add(optionGroup);
     suggestions.push({
       cause: issue.code,
