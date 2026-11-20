@@ -340,8 +340,47 @@ jobs:
           assert contact["bodyTrouserWaist"] == 0, (
               "One-level simple waist refinement did not clear true waist/body intersections: "
               + str(contact["bodyTrouserWaist"]))
-          assert evidence["rejectionReasonCount"] <= 10, (
-              "New hard physical failures offset the two measured waist collision repairs")
+          # The 10-reason legacy cap predates measurement of thirteen other
+          # garment-panel boundaries. Preserve each new genuine collision as
+          # a blocking reason; compare legacy waist behavior separately.
+          pairs = evidence["garmentPairIntersections"]
+          names = (
+              "ShirtTorsoFabric", "ShirtSleeveLFabric", "ShirtSleeveRFabric",
+              "TrouserWaistFabric", "TrouserLegLFabric", "TrouserLegRFabric",
+          )
+          expected = {
+              "::".join((left, right))
+              for index, left in enumerate(names)
+              for right in names[index + 1:]
+          }
+          assert set(pairs) == expected, "Measure all fifteen garment contacts"
+          assert all(type(v) is int and v >= 0 for v in pairs.values()), (
+              "Unknown garment contact cannot establish fit evidence"
+          )
+          assert pairs["TrouserLegLFabric::TrouserLegRFabric"] == contact["garmentLegToLeg"]
+          assert pairs["ShirtTorsoFabric::TrouserWaistFabric"] == contact["shirtTrouserTuck"]
+          excluded = {
+              "ShirtTorsoFabric::TrouserWaistFabric",
+              "TrouserLegLFabric::TrouserLegRFabric",
+          }
+          reasons = evidence["reasons"]
+          assert evidence["rejectionReasonCount"] == len(reasons)
+          new_pair_reason_count = 0
+          for key, actual in pairs.items():
+              if key in excluded:
+                  continue
+              matching = [
+                  reason for reason in reasons
+                  if reason.startswith(f"{key} has {actual} intersecting triangle pairs; ")
+              ]
+              assert len(matching) == (1 if actual > 0 else 0), (
+                  "Every new panel crossing must remain an explicit blocker", key, actual
+              )
+              new_pair_reason_count += len(matching)
+          assert len(reasons) - new_pair_reason_count <= 10, (
+              "Legacy physical-fit failures regressed after excluding only "
+              "newly discovered and still-blocking panel crossings"
+          )
           assert contact["shirtTrouserTuck"] == 0, "Tucked shirt and real waist must not intersect"
           # Unmodified five real panels must retain or improve their original
           # world-space triangle-pair BVH counts at the same 0.5mm epsilon.
