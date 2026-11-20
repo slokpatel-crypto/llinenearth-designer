@@ -147,7 +147,7 @@ export default function ProductionClient(){
   return <main className="productionDesk">
     <header className="productionHeader">
       <div><span>LINEN EARTH / PRIVATE OPERATOR</span><h1>Production Desk</h1><p>Create traceable quotes and production orders from locked design revisions. Amounts are entered by the operator; this desk never invents prices.</p></div>
-      <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/stock">Stock Ledger</Link><Link href="/operator/production-calibration">Usage Calibration</Link><Link href="/operator/garment-qc">Garment QC</Link><Link href="/operator/production-evidence">Zero-Reentry Proof</Link><Link href="/operator/customer-outcomes">Outcome Review</Link><button type="button" disabled={busy} onClick={()=>void load().then(()=>setMessage("Production records refreshed.")).catch(()=>setMessage("Production records could not be loaded. Refresh before proceeding."))}>Refresh records</button></nav>
+      <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/stock">Stock Ledger</Link><Link href="/operator/production-calibration">Usage Calibration</Link><Link href="/operator/garment-qc">Garment QC</Link><Link href="/operator/production-evidence">Zero-Reentry Proof</Link><Link href="/operator/customer-outcomes">Outcome Review</Link><Link href="/operator/quality-insights">Quality Insights</Link><button type="button" disabled={busy} onClick={()=>void load().then(()=>setMessage("Production records refreshed.")).catch(()=>setMessage("Production records could not be loaded. Refresh before proceeding."))}>Refresh records</button></nav>
     </header>
 
     <section className="productionLoad">
