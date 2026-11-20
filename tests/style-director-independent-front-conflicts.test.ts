@@ -215,7 +215,7 @@ test("independent waistband and cropped-break faults survive a frozen retired sh
     for (const fixWaistband of [false, true]) {
       for (const fixBreak of [false, true]) {
         const locked = makeSpec(sleeve, "linen_drawstring", "flat_front");
-        locked.pant.waistband = fixWaistband ? "drawstring" : "belt_loops";
+        locked.pant.waistband = fixWaistband ? "drawstring_elastic" : "belt_loops";
         locked.pant.hem = "cropped_above_ankle_hem";
         locked.pant.break = fixBreak ? "no_break" : "stacked_break";
         const before = JSON.stringify(locked);
