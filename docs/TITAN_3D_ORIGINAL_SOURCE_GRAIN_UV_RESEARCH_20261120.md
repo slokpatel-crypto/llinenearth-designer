@@ -37,6 +37,13 @@ tailor/textile and native seam-chart acceptance. Existing UV data is untouched,
 the original source body is byte/geometry preserved, and each panel's exact
 world vertices and polygon topology must remain unchanged.
 
+The research report separately counts **true source-mesh boundary edges,
+non-manifold edges and candidate UV discontinuities across shared polygon
+edges**, comparing original vs experimental UV layers. The new cylindrical
+projection can cure collapse while *introducing unsewn UV chart breaks*;
+that tradeoff is recorded, never silently treated as a finished pattern.
+The report preserves these counts even where native UV triangle area passes.
+
 ## Reproducible native QA
 
 The isolated `TITAN — RESEARCH original CC0 surface-grain UV` workflow:
