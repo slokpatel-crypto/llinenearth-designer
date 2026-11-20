@@ -29,7 +29,7 @@ test("research-only open leg rim cannot weaken regular physical six-piece garmen
     'open_edges["left"] > 0 and open_edges["right"] > 0',
     '"neverPromote": True',
     'assert trial["preflightReady"] is False',
-    'assert original["rejectionReasonCount"] == 10',
+    'assert original["legacyWaistRejectionReasonCount"] == 10',
     'assert item["candidateOnly"] is True and item["productionApproved"] is False',
   ]) assert.ok(workflow.includes(expected),expected);
   for(const expected of [

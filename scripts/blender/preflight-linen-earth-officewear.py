@@ -156,6 +156,48 @@ def intersection_pair_count(left, right):
     return len(left_tree.overlap(right_tree))
 
 
+def unchecked_garment_pairs():
+    """Enumerate every garment boundary not already covered by a dedicated gate.
+
+    A sewn seam is not evidence of a clean intersection. Until native geometry
+    and a human construction review prove a deliberate join, crossed surfaces
+    must block production; never silently exempt armholes or waist seams.
+    """
+    checked = {
+        frozenset(("TrouserLegLFabric", "TrouserLegRFabric")),
+        frozenset(("ShirtTorsoFabric", "TrouserWaistFabric")),
+    }
+    return tuple(
+        (left, right)
+        for index, left in enumerate(GARMENT_OBJECTS)
+        for right in GARMENT_OBJECTS[index + 1:]
+        if frozenset((left, right)) not in checked
+    )
+
+
+def unchecked_garment_contact_report(objects):
+    """Measure the thirteen previously invisible real panel-to-panel contacts."""
+    measured, failures = {}, []
+    for left_name, right_name in unchecked_garment_pairs():
+        key = f"{left_name}::{right_name}"
+        left = objects.get(left_name)
+        right = objects.get(right_name)
+        count = intersection_pair_count(left, right)
+        measured[key] = count
+        if count is None:
+            failures.append(
+                f"Could not evaluate garment panel contact for {key}; "
+                "missing geometry is not evidence of separation."
+            )
+        elif count > 0:
+            failures.append(
+                f"{key} has {count} intersecting triangle pairs; "
+                "unreviewed armhole, waist and cross-panel intersections "
+                "cannot be treated as approved sewn seams."
+            )
+    return measured, failures
+
+
 def triangle_plane_span_x(obj, z_world):
     """Measure actual evaluated cloth/guide-plane intersections in world space.
 
@@ -541,6 +583,7 @@ def main():
         )
 
     boundary_intersections = {}
+    garment_pair_intersections = {}
     if body is not None:
         boundary_pairs = (
             ("bodyShirtTorso", body, bpy.data.objects.get("ShirtTorsoFabric"), 0),
@@ -588,6 +631,19 @@ def main():
                 "clean the waist overlap before production export."
             )
 
+        # The two historical gates above keep their exact allowances: zero
+        # leg/leg crossings and <=120 actual tucked waist triangle pairs.
+        # All remaining 13 six-panel combinations now fail closed at zero.
+        garment_pair_intersections.update({
+            "TrouserLegLFabric::TrouserLegRFabric": leg_to_leg,
+            "ShirtTorsoFabric::TrouserWaistFabric": tuck_overlap,
+        })
+        other_contacts, other_failures = unchecked_garment_contact_report(bpy.data.objects)
+        garment_pair_intersections.update(other_contacts)
+        reasons.extend(other_failures)
+        if len(garment_pair_intersections) != 15:
+            reasons.append("Incomplete garment contact matrix: all 15 distinct panel pairs must be checked.")
+
     report = {
         "gate": "linen-earth-officewear-scene-preflight-v1",
         "ready": len(reasons) == 0,
@@ -604,6 +660,7 @@ def main():
         "identityGuideMeasurementsMm": guide_measurements,
         "identityFitMeasurementsMm": identity_measurements,
         "boundaryIntersections": boundary_intersections,
+        "garmentPairIntersections": garment_pair_intersections,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
         "objects": objects,
         "totals": {

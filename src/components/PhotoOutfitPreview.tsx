@@ -149,31 +149,22 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
   // Read the actual upper cloth field. The catalogue HEX is an approximate
   // fallback, not a substitute for the swatch colour and woven texture.
   const plain = fabric.patternType === "Solid";
-  const stripe = /stripe/i.test(fabric.patternType);
-  if (plain || stripe) {
-    // Generated tiles are preferred, but local/offline fallback to a raw
-    // plain swatch must also avoid printed names near the photographed centre.
-    // Match the builder's upper-cloth crop rather than reverting to its
-    // previous centre-biased crop (22–44% of source height).
-    const plainCrop = plain ? photoFabricCaptionSafeCrop(image.width,image.height) : null;
-    const sourceX = plainCrop?.left ?? image.width * .31;
-    const sourceY = plainCrop?.top ?? image.height * .16;
-    const sourceWidth = plainCrop?.width ?? image.width * .38;
-    const sourceHeight = plainCrop?.height ?? image.height * .27;
-    if(plain) {
-      // Only visually plain cloth is mirrored to soften source-photo lighting
-      // seams. Mirroring stripes would manufacture false stripe spacing.
-      for (const [column, row] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
-        context.save();
-        context.translate(column * 160, row * 160);
-        context.scale(column ? -1 : 1, row ? -1 : 1);
-        context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight,
-          column ? -160 : 0, row ? -160 : 0, 160, 160);
-        context.restore();
-      }
-    } else {
-      context.drawImage(image,sourceX,sourceY,sourceWidth,sourceHeight,0,0,320,320);
-    }
+  // Mirror the generated tile builder's crop and 2x2 tile layout for EVERY
+  // raw catalogue fallback, including stripes, checks and prints. The older
+  // non-solid branch used larger mid-photo crops which could repeat supplier
+  // captions or stretch a printed motif after a prepared tile failed to load.
+  // This is a visual fallback only; it never upgrades physical scale evidence.
+  const sourceCrop = photoFabricCaptionSafeCrop(image.width,image.height);
+  for (const [column, row] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+    context.save();
+    context.translate(column * 160, row * 160);
+    // Plain weave can be mirrored to soften swatch edges. Never flip a
+    // directional stripe, check or print: preserve the photographed motif.
+    if(plain) context.scale(column ? -1 : 1, row ? -1 : 1);
+    context.drawImage(image,
+      sourceCrop.left, sourceCrop.top, sourceCrop.width, sourceCrop.height,
+      plain && column ? -160 : 0, plain && row ? -160 : 0, 160, 160);
+    context.restore();
   }
   if (plain) {
     const original = context.getImageData(0, 0, 320, 320);
@@ -204,9 +195,6 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
       }
     }
     context.putImageData(original, 0, 0);
-  } else if (!stripe) {
-    context.drawImage(image, image.width * .08, image.height * .06,
-      image.width * .84, image.height * .62, 0, 0, 320, 320);
   }
   fabricTiles.set(tileKey, tile);
   if (fabricTiles.size > 12) {

@@ -19,6 +19,7 @@ on:
       - "tests/crotch-solidify-rim-trial.test.ts"
       - "tests/crotch-modifier-stage-origin.test.ts"
       - "tests/blender/test_real_contact_diagnostics.py"
+      - "tests/blender/test_all_garment_pair_contacts.py"
       - "tests/blender/test_real_crotch_cross_sections.py"
       - "tests/blender/test_garment_modifier_contact_stages.py"
       - "scripts/blender/summarize-native-candidate-preflight.py"
@@ -42,6 +43,7 @@ on:
       - "tests/crotch-solidify-rim-trial.test.ts"
       - "tests/crotch-modifier-stage-origin.test.ts"
       - "tests/blender/test_real_contact_diagnostics.py"
+      - "tests/blender/test_all_garment_pair_contacts.py"
       - "tests/blender/test_real_crotch_cross_sections.py"
       - "tests/blender/test_garment_modifier_contact_stages.py"
       - "scripts/blender/summarize-native-candidate-preflight.py"
@@ -65,10 +67,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --show-error --silent --retry 3 \
+          # Keep exactly the same published Blender 4.5.14 SHA-256.
+          # Official download front-end can return 403 to CI: fall back to
+          # Blender Foundation's official mirror service, never arbitrary bytes.
+          archive="$RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz"
+          if ! curl --fail --location --show-error --silent --retry 3 \
             --connect-timeout 30 --max-time 900 \
             "https://download.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz" \
-            --output "$RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz"
+            --output "$archive"; then
+            rm -f "$archive"
+            curl --fail --location --show-error --silent --retry 3 \
+              --connect-timeout 30 --max-time 900 \
+              "https://mirror.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz" \
+              --output "$archive"
+          fi
           echo "9ba871ff2ecd36526b77432745980b7e6664ecd0c7ca11c48849073dcfe06da3  $RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz" | sha256sum --check --status
           mkdir -p "$RUNNER_TEMP/titan-blender"
           tar -xf "$RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz" -C "$RUNNER_TEMP/titan-blender"
@@ -97,6 +109,12 @@ jobs:
           set -euo pipefail
           "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
             --python tests/blender/test_garment_modifier_contact_stages.py
+      - name: Verify all formerly unchecked garment-to-garment boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_all_garment_pair_contacts.py
       - name: Verify true Blender inner-leg cross-section fixtures (candidate only)
         shell: bash
         run: |
@@ -127,6 +145,41 @@ jobs:
             --experimental-waist-extra-clearance-mm 0 \
             --output .cache/linen-earth/linen-earth-officewear-waist-control.blend
           test -s .cache/linen-earth/linen-earth-officewear-waist-control.blend
+      - name: Install official Mesa software rendering dependencies for headless QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libgl1-mesa-dri libopengl0 xvfb
+      - name: Capture four original-source views as unapproved native QA evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene=.cache/linen-earth/linen-earth-officewear-authored.blend
+          before="$(sha256sum "$scene" | cut -d' ' -f1)"
+          xvfb-run -a -s "-screen 0 1280x1024x24" \
+            env LIBGL_ALWAYS_SOFTWARE=1 "$BLENDER_BIN" --background "$scene" --python-exit-code 1 \
+            --python scripts/blender/render-linen-earth-model-qa.py -- \
+            --output-dir "$RUNNER_TEMP/titan-candidate-evidence/model-qa" \
+            --width 480 --height 640 --samples 8
+          after="$(sha256sum "$scene" | cut -d' ' -f1)"
+          test "$before" = "$after"
+          python3 - "$RUNNER_TEMP/titan-candidate-evidence/model-qa" <<'PY'
+          import hashlib, json, pathlib, sys
+          out=pathlib.Path(sys.argv[1])
+          manifest=json.loads((out/"model-qa-manifest.json").read_text())
+          assert manifest["modelIdentityId"]=="linen-earth-studio-model-v1"
+          assert manifest["referenceImage"]=="/designer/studio-tucked.webp"
+          for flag in ("candidateOnly","photographicMatchApproved","realismApproved","tailorApproved","measuredFabricDrapeApproved"):
+              assert manifest[flag] is (flag=="candidateOnly"), flag
+          assert [(a["view"],a["yawDeg"]) for a in manifest["angles"]]==[
+              ("front",0),("three-quarter",35),("side",90),("back",180)]
+          for angle in manifest["angles"]:
+              image=out/angle["file"]
+              assert image.is_file() and image.stat().st_size>=12000, image
+              assert hashlib.sha256(image.read_bytes()).hexdigest()==angle["sha256"]
+          print("TITAN_FOUR_ANGLE_CANDIDATE_ONLY_SOURCE_PRESERVED")
+          PY
       - name: Measure actual waist/tuck contacted face area for both real Blender candidates
         shell: bash
         run: |
@@ -297,8 +350,12 @@ jobs:
           assert contact["bodyTrouserWaist"] == 0, (
               "One-level simple waist refinement did not clear true waist/body intersections: "
               + str(contact["bodyTrouserWaist"]))
-          assert evidence["rejectionReasonCount"] <= 10, (
-              "New hard physical failures offset the two measured waist collision repairs")
+          # The original 10-reason waist baseline excludes only freshly
+          # detected, independently reported garment-panel crossings. All
+          # crossings remain full preflight blockers; none are waived.
+          assert evidence["legacyWaistRejectionReasonCount"] <= 10, (
+              "Original physical waist/fit failures regressed"
+          )
           assert contact["shirtTrouserTuck"] == 0, "Tucked shirt and real waist must not intersect"
           # Unmodified five real panels must retain or improve their original
           # world-space triangle-pair BVH counts at the same 0.5mm epsilon.
@@ -340,9 +397,9 @@ jobs:
               assert report["preflightReady"] is False
               assert report["modelIdentityId"] == "linen-earth-studio-model-v1"
               assert report["boundaryIntersections"]["bodyTrouserWaist"] == 0
-          assert control["rejectionReasonCount"] == 11
+          assert control["legacyWaistRejectionReasonCount"] == 11
           assert control["boundaryIntersections"]["shirtTrouserTuck"] == 1507
-          assert standard["rejectionReasonCount"] == 10
+          assert standard["legacyWaistRejectionReasonCount"] == 10
           assert standard["boundaryIntersections"]["shirtTrouserTuck"] == 0
           # The measured target is anchored to the locked photographic
           # identity guide, not an assistant-selected fashion silhouette.
@@ -368,13 +425,14 @@ jobs:
               assert report["preflightReady"] is False
               assert report["boundaryIntersections"]["shirtTrouserTuck"] == 0
               assert report["boundaryIntersections"]["bodyTrouserWaist"] == 0
-              assert report["rejectionReasonCount"] <= 10, "Additional waist layering introduced new physical failures"
+              assert report["legacyWaistRejectionReasonCount"] <= 10, "Additional waist layering introduced new original physical failures"
               for name, original_count in control["boundaryIntersections"].items():
                   if name not in ("shirtTrouserTuck", "bodyTrouserWaist"):
                       assert report["boundaryIntersections"][name] <= original_count, (
                           "Non-waist body or fabric collisions regressed", name)
               print(f"TITAN_REAL_TUCK_EXTRA_{extra}MM_PHYSICAL_GUIDE_FIT", json.dumps({
                   "remainingHardPreflightReasons": report["rejectionReasonCount"],
+                  "legacyWaistRejectionReasons": report["legacyWaistRejectionReasonCount"],
                   "identityFitMeasurementsMm": report["identityFitMeasurementsMm"],
                   "zeroWaistVsBodyPairs": report["boundaryIntersections"]["bodyTrouserWaist"],
                   "zeroShirtVsWaistPairs": report["boundaryIntersections"]["shirtTrouserTuck"],
@@ -420,7 +478,7 @@ jobs:
               assert trial["boundaryIntersections"][key] <= original, (
                   "A real garment collision became worse during hem correction",
                   key, trial["boundaryIntersections"][key], original)
-          assert trial["rejectionReasonCount"] <= baseline["rejectionReasonCount"] - 1, (
+          assert trial["legacyWaistRejectionReasonCount"] <= baseline["legacyWaistRejectionReasonCount"] - 1, (
               "Measured hem improvement did not reduce true hard preflight failures")
           old_asymmetry = baseline["identityFitMeasurementsMm"]["hemWidthAsymmetryMm"]
           new_asymmetry = trial["identityFitMeasurementsMm"]["hemWidthAsymmetryMm"]
@@ -527,7 +585,7 @@ jobs:
                          ("leftContactingFaceAreaMm2", "rightContactingFaceAreaMm2"))
           assert stages["afterClothThickness"]["legLegPolygonContactPairs"] == physical["boundaryIntersections"]["garmentLegToLeg"]
           assert source["actualFinalGarmentLegContactPairs"] == physical["boundaryIntersections"]["garmentLegToLeg"]
-          assert physical["rejectionReasonCount"] == 10
+          assert physical["legacyWaistRejectionReasonCount"] == 10
           print("TITAN_REAL_CROTCH_MODIFIER_STAGES_MATCH_FULL_PREFLIGHT",json.dumps({
               "source": stages["selectedBodyShell"],
               "afterSmoothing": stages["afterSmoothing"],
@@ -570,7 +628,7 @@ jobs:
               assert item["modelIdentityId"] == "linen-earth-studio-model-v1"
               assert item["candidateOnly"] is True and item["productionApproved"] is False
           assert trial["preflightReady"] is False and rimless["physicalFitApproved"] is False
-          assert original["rejectionReasonCount"] == 10
+          assert original["legacyWaistRejectionReasonCount"] == 10
           assert original["boundaryIntersections"]["garmentLegToLeg"] == source["measurements"]["legLegPolygonContactPairs"] == 89
           assert trial["boundaryIntersections"]["garmentLegToLeg"] == rimless["measurements"]["legLegPolygonContactPairs"]
           measured = rimless["measurements"]
@@ -622,7 +680,7 @@ jobs:
           root = Path(sys.argv[1])
           original = json.loads((root / "rejection-report.json").read_text(encoding="utf-8"))
           original_diag = json.loads((root / "crotch-cross-sections.json").read_text(encoding="utf-8"))
-          assert original["rejectionReasonCount"] == 10
+          assert original["legacyWaistRejectionReasonCount"] == 10
           assert original["boundaryIntersections"]["garmentLegToLeg"] == 89
           for label in ("symmetric", "inward"):
               report = json.loads((root / f"leg-thickness-{label}-preflight.json").read_text(encoding="utf-8"))
@@ -681,7 +739,7 @@ jobs:
           count = actual["boundaryIntersections"]["garmentLegToLeg"]
           assert count > 0 and count == measured["actualFinalLegLegBVHPairs"]
           assert count == stages["actualFinalGarmentLegContactPairs"]
-          assert actual["rejectionReasonCount"] == 10 and actual["preflightReady"] is False
+          assert actual["legacyWaistRejectionReasonCount"] == 10 and actual["preflightReady"] is False
           for side in ("left","right"):
               boundary = measured["actualSourceBoundaryEdges"][side]
               assert boundary["allOpenBoundaryEdges"] >= boundary["nearCenterlineBoundaryEdges"] > 0
@@ -720,7 +778,7 @@ jobs:
           assert all(x["modelIdentityId"]=="linen-earth-studio-model-v1" for x in (pairing,proximity,rejected))
           assert all(x["candidateOnly"] is True and x["productionApproved"] is False for x in (pairing,proximity,rejected))
           assert pairing["physicalFitApproved"] is False and pairing["changesProductionGeometry"] is False
-          assert rejected["preflightReady"] is False and rejected["rejectionReasonCount"] == 10
+          assert rejected["preflightReady"] is False and rejected["legacyWaistRejectionReasonCount"] == 10
           assert rejected["boundaryIntersections"]["garmentLegToLeg"] == proximity["actualFinalLegLegBVHPairs"] > 0
           left, right = pairing["pairedLeftEdgeCount"], pairing["pairedRightEdgeCount"]
           assert left == proximity["actualSourceBoundaryEdges"]["left"]["nearCenterlineBoundaryEdges"] > 0
@@ -762,6 +820,7 @@ jobs:
           name: titan-native-candidate-evidence
           path: |
             ${{ runner.temp }}/titan-candidate-evidence/rejection-report.json
+            ${{ runner.temp }}/titan-candidate-evidence/model-qa/**
             ${{ runner.temp }}/titan-candidate-evidence/right-hem-0mm-preflight.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-tuck-control.json
             ${{ runner.temp }}/titan-candidate-evidence/waist-tuck-refined.json

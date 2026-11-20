@@ -31,7 +31,7 @@ test("actual original crotch source edge pairing is native, fail-closed and neve
     '"tests/crotch-seam-pairing-native.test.ts"',
     '--python scripts/blender/diagnose-crotch-seam-pairing.py --',
     'TITAN_REAL_CROTCH_SOURCE_CUT_EDGE_ALIGNMENT_MEASURED_NO_BRIDGE_APPROVAL',
-    'assert rejected["preflightReady"] is False and rejected["rejectionReasonCount"] == 10',
+    'assert rejected["preflightReady"] is False and rejected["legacyWaistRejectionReasonCount"] == 10',
     'assert pairing["physicalFitApproved"] is False',
     'pairing["changesProductionGeometry"] is False',
     'assert left == proximity["actualSourceBoundaryEdges"]["left"]["nearCenterlineBoundaryEdges"] > 0',
