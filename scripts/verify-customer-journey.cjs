@@ -7,6 +7,7 @@ const {chromium}=createRequire(path.join(process.env.LINEN_BROWSER_QA_RUNTIME||"
 const engine=load("src/lib/designer/engine.ts");
 const {fromLegacyStyle}=load("src/lib/designer/style-spec-v2.ts");
 const {lockGarmentSpec}=load("src/lib/designer/design-lock.ts");
+const {summaryForOwnedLockedDesign}=load("src/lib/designer/owned-design-summary.ts");
 const {toLegacyStyle}=load("src/lib/designer/style-spec-v2.ts");
 const {assessFitConstruction}=load("src/lib/designer/fit-construction.ts");
 const {assessBlockStrategy}=load("src/lib/designer/block-strategy.ts");
@@ -74,6 +75,7 @@ async function visit(browser,width,revision){
     if(pathname==="/api/designer/vault"){
       if(input.action==="listOwned")return route.fulfill({status:200,json:{designs:[{
         vaultId,revisionId:revision.revisionId,recipeHash:revision.recipeHash,parentRevisionId:revision.parentRevisionId,
+        summary:summaryForOwnedLockedDesign(revision),
         createdAt:"2026-11-20T15:00:00.000Z",expiresAt:"2027-05-19T15:00:00.000Z",
       }]}});
       if(input.action==="loadOwned")return route.fulfill({
@@ -103,6 +105,8 @@ async function visit(browser,width,revision){
   await page.goto(base+"/account",{waitUntil:"domcontentloaded"});
   const item=page.getByText(revision.revisionId,{exact:true});
   await item.waitFor({state:"visible"});
+  await page.getByText("Shirt: Synthetic shirt · Trouser: Synthetic trouser",{exact:true}).waitFor({state:"visible"});
+  await page.getByText(/Saved occasion: Semi-Formal · Fabric labels from the locked recipe/).waitFor({state:"visible"});
   await page.getByText("Continues recorded revision "+revision.parentRevisionId,{exact:true}).waitFor({state:"visible"});
   await page.getByRole("button",{name:"Copy secure share link"}).click();
   await page.getByText(/Signed design-only link/).waitFor({state:"visible"});
@@ -146,7 +150,7 @@ async function visit(browser,width,revision){
   assert.ok(requests.some(x=>x.pathname==="/api/designer/vault"&&x.action==="loadOwned"));
   assert.ok(requests.some(x=>x.pathname==="/api/designer/assess"),"reassessment must use the existing deterministic engine");
   await page.screenshot({path:path.join(output,"owned-design-"+width+".png"),fullPage:true});
-  summary.viewports.push({width,ownerVaultLoad:true,savedV2Style:true,actualNewLockParentVerified:true,shareAndEnquiryPrepared:true,noOverflow:true});
+  summary.viewports.push({width,ownerVaultLoad:true,savedV2Style:true,savedPairSummary:true,actualNewLockParentVerified:true,shareAndEnquiryPrepared:true,noOverflow:true});
   await context.close();
 }
 
