@@ -133,7 +133,7 @@ async function visit(browser,width,revision,followup){
   await page.getByRole("checkbox",{name:"Select saved revision "+followup.revisionId+" for comparison"}).check();
   await page.getByRole("button",{name:"Compare selected saved designs"}).click();
   await page.getByRole("heading",{name:"Saved design comparison"}).waitFor({state:"visible"});
-  await page.getByText("The second revision directly continues the first.").waitFor({state:"visible"});
+  await page.getByText("The second revision records the first as its parent; this is not proof of edit history.").waitFor({state:"visible"});
   await page.getByText("Shirt fabric",{exact:true}).waitFor({state:"visible"});
   await page.getByText("Shirt type",{exact:true}).waitFor({state:"visible"});
   await page.getByText("Alternative synthetic shirt",{exact:false}).first().waitFor({state:"visible"});
