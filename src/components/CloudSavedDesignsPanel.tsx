@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getCloudDesign, listCloudDesigns, saveCloudDesign } from "@/lib/customer-saved-design-client";
+import { deleteCloudDesign, getCloudDesign, listCloudDesigns, saveCloudDesign } from "@/lib/customer-saved-design-client";
 import type { SavedDesign } from "@/lib/saved-designs";
 
 /** Cloud records are deliberately separate from browser drafts: no implicit migration. */
@@ -52,6 +52,16 @@ export function CloudSavedDesignsPanel({ localDesigns }: { localDesigns: SavedDe
           if (!recovered) throw new Error("Cloud design no longer exists.");
           setSelected(recovered);
         })}>{item.title} — Recover details</button>
+        <button type="button" disabled={busy} onClick={() => {
+          if (!window.confirm(`Delete cloud design "${item.title}"? This does not delete your browser drafts.`)) return;
+          void run(async () => {
+            const deleted = await deleteCloudDesign(item.id);
+            if (!deleted) throw new Error("Cloud design could not be deleted.");
+            setCloud(await listCloudDesigns());
+            setSelected(null);
+            setMessage("Cloud design deleted. Browser drafts unchanged.");
+          });
+        }}>Delete cloud copy</button>
       </li>)}</ul>
       {selected && <div role="status">
         <strong>{selected.title}</strong>
