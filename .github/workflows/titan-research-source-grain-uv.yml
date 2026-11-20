@@ -116,6 +116,10 @@ jobs:
               assert before["sewnSeamApproval"] is False and after["sewnSeamApproval"] is False
               assert type(after["uvDiscontinuityEdges"]) is int
               assert after["uvDiscontinuityEdges"]>=0
+              for metrics in (before,after):
+                  assert metrics["minusYCameraFacingSeamEdges"]+metrics["plusYCameraAwaySeamEdges"]==metrics["uvDiscontinuityEdges"]
+                  assert type(metrics["minusYCameraFacingSeamEdges"]) is int
+                  assert type(metrics["plusYCameraAwaySeamEdges"]) is int
           print("TITAN_REAL_CC0_UV_RESEARCH_GEOMETRY_ONLY_UNAPPROVED")
           PY
 
