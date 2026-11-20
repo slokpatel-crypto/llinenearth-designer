@@ -573,3 +573,10 @@ Architecture and product decisions that must persist across coding sessions.
 - A new editable draft never proves old physical fabric facts, stock, creative treatments, measurements or tailor release. Account inspection preserves the full original locked spec; product copy requires fresh assessment/review before a new lock.
 - No new migration needed. Existing locked-recipe and recovery-token contracts retain their current shape; old recipes remain loadable, shareable and exportable even when they cannot be safely projected into the current Designer. Browser draft localStorage remains a convenience only, never secure ownership.
 - Browser QA at 390 / 768 / 1440 and exact-head independent checks remain merge gates; no physical evidence is inferred from synthetic CI.
+
+## 2026-11-20 — Worker C: separate fabric discovery and validated new-design entry
+
+- Replace legacy `/catalog` redirect with a read-only catalogue using the Designer's existing live stock adapter and fabric discovery semantics. Physical/stock claims remain provenance-labelled, with unverified fallback clearly disclosed.
+- Customer carries only a bounded, validated pair of garment-category fabric IDs into Designer, never a recovery key, private measurements, locked recipe, paid provider or order record.
+- Designer waits for the same server-backed catalogue, restores neither another draft's private fit nor saved revision lineage, and requires a new assessment before a lock or enquiry. Existing vault, signed-share and Director handoffs remain independent.
+- No new dependency, schema or migration. Synthetic Chromium at 390/768/1440 and exact-head independent CI are required before merge.
