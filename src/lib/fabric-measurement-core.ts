@@ -223,7 +223,7 @@ export function measurePattern(
   width:number,
   height:number,
   palette:MeasuredPaletteEntry[],
-  physical?:{swatchRealWidthMm?:number;repeatRealMm?:number;originalWidthPx?:number},
+  physical?:{swatchRealWidthMm?:number;repeatRealMm?:number;originalWidthPx?:number;originalHeightPx?:number},
 ):FabricPatternMeasurement {
   const {rows,cols}=rowColMeans(gray,width,height);
   const colVar=variance(cols),rowVar=variance(rows);
@@ -254,16 +254,47 @@ export function measurePattern(
 
   let repeatMm:number|null=null,stripeWidthMm:number|null=null;
   let physicalScaleStatus:FabricPatternMeasurement["physicalScaleStatus"]="unknown";
-  if(physical?.repeatRealMm && physical.repeatRealMm>0){
+  // An image-space repeat must actually be found before a physical declaration
+  // can calibrate the displayed textile. Neither a flat image nor a supplier
+  // number proves that the pixel motif corresponds to the supplied mm repeat.
+  const detectedRepeat=repeatPeriodPx!==null && Number.isFinite(repeatPeriodPx) && repeatPeriodPx>0;
+  const axisKnown=orientation==="vertical" || orientation==="horizontal";
+  const validMm=(value:unknown):value is number=>
+    typeof value==="number" && Number.isFinite(value) && value>=.1 && value<=5000;
+  const sourceWidth=physical?.originalWidthPx;
+  const sourceHeight=physical?.originalHeightPx;
+  if(detectedRepeat && axisKnown && validMm(physical?.repeatRealMm)){
     repeatMm=physical.repeatRealMm;
     physicalScaleStatus="declared_repeat";
-    if(repeatPeriodPx && stripeWidthPx) stripeWidthMm=physical.repeatRealMm*(stripeWidthPx/repeatPeriodPx);
-  } else if(physical?.swatchRealWidthMm && physical.swatchRealWidthMm>0 && physical.originalWidthPx && physical.originalWidthPx>0) {
+    if(stripeWidthPx!==null && stripeWidthPx>0) {
+      stripeWidthMm=physical.repeatRealMm*(stripeWidthPx/repeatPeriodPx);
+    }
+  } else if(
+    detectedRepeat && orientation==="vertical" && validMm(physical?.swatchRealWidthMm)
+    // Sharp's 128px working image can be an *upscale* of a tiny original.
+    // A declared ruler width alone cannot turn interpolation into an actual
+    // repeat measurement. Use the existing 400px capture-quality floor and
+    // check the original height when supplied by the server. The height is
+    // optional for backwards-compatible direct measurement callers.
+    && typeof sourceWidth==="number" && Number.isInteger(sourceWidth) && sourceWidth>=400
+    && (sourceHeight===undefined
+      || (typeof sourceHeight==="number" && Number.isInteger(sourceHeight) && sourceHeight>=400))
+  ) {
+    // Swatch width calibrates the X axis only. Horizontal stripes repeat on Y
+    // and grid motifs may have two different periods; neither is measurable
+    // from a width-only reference.
     const mmPerMeasuredPx=physical.swatchRealWidthMm/width;
-    if(repeatPeriodPx) repeatMm=repeatPeriodPx*mmPerMeasuredPx;
-    if(stripeWidthPx) stripeWidthMm=stripeWidthPx*mmPerMeasuredPx;
+    repeatMm=repeatPeriodPx*mmPerMeasuredPx;
+    if(stripeWidthPx!==null && stripeWidthPx>0) stripeWidthMm=stripeWidthPx*mmPerMeasuredPx;
     physicalScaleStatus="declared_swatch_width";
   }
+  // One-decimal reporting must not turn a sub-resolution repeat into 0 mm.
+  if(repeatMm!==null && (!Number.isFinite(repeatMm) || Math.round(repeatMm*10)<=0)) {
+    repeatMm=null;
+    stripeWidthMm=null;
+    physicalScaleStatus="unknown";
+  }
+  if(stripeWidthMm!==null && (!Number.isFinite(stripeWidthMm) || Math.round(stripeWidthMm*10)<=0)) stripeWidthMm=null;
 
   return {
     orientation,

@@ -4,26 +4,20 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { FABRIC_STOCK } from "@/lib/fabric-stock";
 import { loadFabricAnalyzerGroundTruthHistory } from "@/lib/fabric-analyzer-store";
 import {
-  FABRIC_GROUND_TRUTH_FIELDS,
   FABRIC_GROUND_TRUTH_VERSION,
+  isStockBoundFabricGroundTruthId,
+  normalizeExplicitFabricGroundTruthState,
   fabricGroundTruthStateFromProfile,
   reconstructOriginalFabricGroundTruthState,
   type FabricGroundTruthLabel,
-  type FabricGroundTruthState,
 } from "@/lib/fabric-ground-truth-scorecard";
 
 type Row={at:string;payload?:Record<string,unknown>};
 
 function clean(value:unknown,limit=180){
-  return String(value??"").trim().slice(0,limit);
-}
-
-function state(value:unknown):FabricGroundTruthState|null{
-  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
-  const raw=value as Record<string,unknown>;
-  const out={} as FabricGroundTruthState;
-  for(const field of FABRIC_GROUND_TRUTH_FIELDS) out[field]=clean(raw[field],80);
-  return out;
+  // An identifier or signed receipt supplied through JSON must be literal and
+  // bounded before normalization; arrays/objects are not owner-labelled facts.
+  return typeof value==="string" && value.length<=limit ? value.trim() : "";
 }
 
 export async function loadFabricGroundTruthLabels(){
@@ -33,6 +27,9 @@ export async function loadFabricGroundTruthLabels(){
   const labels=new Map<string,FabricGroundTruthLabel>();
   let explicitLabels=0;
   let backfilledLabels=0;
+  // Owner-labelled benchmark counts physical stock units, not arbitrary
+  // operator-note IDs or historic catalogue rows that are no longer active.
+  const eligibleStockIds=new Set(FABRIC_STOCK.filter((fabric)=>fabric.inStock).map((fabric)=>fabric.id));
 
   try{
     const params=new URLSearchParams({
@@ -52,11 +49,14 @@ export async function loadFabricGroundTruthLabels(){
         const payload=row.payload||{};
         if(clean(payload.subtype,80)!=="fabric_ground_truth_label") continue;
         if(clean(payload.version,80)!==FABRIC_GROUND_TRUTH_VERSION) continue;
-        const fabricId=clean(payload.fabricId,160);
+        // Exact stock identity must be checked on the raw JSON literal.
+        // Trimming here could silently turn "stock-id " into "stock-id".
+        const fabricId=payload.fabricId;
         const profileId=clean(payload.profileId,160);
-        const original=state(payload.original);
-        const final=state(payload.final);
-        if(!fabricId || !profileId || !original || !final || labels.has(fabricId)) continue;
+        const original=normalizeExplicitFabricGroundTruthState(payload.original);
+        const final=normalizeExplicitFabricGroundTruthState(payload.final);
+        if(!isStockBoundFabricGroundTruthId(fabricId,eligibleStockIds)
+          || !profileId || !original || !final || labels.has(fabricId)) continue;
         labels.set(fabricId,{
           fabricId,
           profileId,
@@ -74,9 +74,10 @@ export async function loadFabricGroundTruthLabels(){
   }
 
   try{
-    const history=await loadFabricAnalyzerGroundTruthHistory(FABRIC_STOCK.filter((fabric)=>fabric.inStock).map((fabric)=>fabric.id));
+    const history=await loadFabricAnalyzerGroundTruthHistory([...eligibleStockIds]);
     for(const row of history){
-      if(!row.fabric_id || labels.has(row.fabric_id)) continue;
+      if(!isStockBoundFabricGroundTruthId(row.fabric_id,eligibleStockIds)
+        || labels.has(row.fabric_id)) continue;
       const final=fabricGroundTruthStateFromProfile(row.profile);
       const original=row.review_status==="corrected"
         ? reconstructOriginalFabricGroundTruthState(final,(row.feedback||[]).map((item)=>({
@@ -94,6 +95,10 @@ export async function loadFabricGroundTruthLabels(){
           ? "Backfilled from reviewed Analyzer correction history."
           : "Backfilled from an approved Analyzer profile.",
         at:row.reviewed_at,
+        // Approved backfills compare a profile to itself; corrected history
+        // captures only edited fields and assumes the rest are perfect. Neither
+        // is an independent owner-labelled accuracy denominator.
+        eligibleForAccuracy:false,
       });
       backfilledLabels+=1;
     }
