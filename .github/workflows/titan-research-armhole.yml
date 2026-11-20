@@ -5,6 +5,7 @@ on:
     paths:
       - "scripts/blender/author-linen-earth-officewear.py"
       - "tests/blender/test_actual_armhole_source_ownership.py"
+      - "tests/blender/test_armhole_source_cut_edge_fixture.py"
       - "scripts/blender/bootstrap-human-base-meshes.py"
       - "tests/python/test_cc0_source_official_mirror.py"
       - ".github/workflows/titan-research-armhole.yml"
@@ -38,6 +39,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/blender-unpacked"
           tar -xf "$archive" -C "$RUNNER_TEMP/blender-unpacked"
           echo "BLENDER_BIN=$RUNNER_TEMP/blender-unpacked/blender-4.5.14-linux-x64/blender" >> "$GITHUB_ENV"
+      - name: Native adversarial original-source seam adjacency fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_armhole_source_cut_edge_fixture.py
       - name: Bootstrap unchanged pinned Blender Human Base Meshes v1.4.1
         shell: bash
         run: |
