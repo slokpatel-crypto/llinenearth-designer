@@ -28,6 +28,11 @@ export const PHOTO_CUFF_MASK = "M 286 660 Q 307 652 338 664 L 336 703 L 288 706 
 export const PHOTO_TUCKED_COLLAR_MASK = "M 466 173 Q 451 184 447 203 L 447 249 L 481 219 Q 469 203 466 190 Z M 553 173 Q 573 184 582 207 L 582 249 L 544 219 Q 555 203 553 190 Z";
 export const PHOTO_TUCKED_COLLAR_STAND_MASK = "M 463 172 L 490 215 L 481 227 L 446 192 Z M 556 172 L 530 215 L 542 227 L 582 192 Z";
 export const PHOTO_TUCKED_CUFF_MASK = "M 285 654 Q 312 649 338 663 L 335 698 L 289 700 Z M 679 662 Q 706 651 733 656 L 730 700 L 682 699 Z";
+// Retain the fixed photograph's center-front construction relief after a
+// contrast print is composited. These paths do not assert selected button
+// material or reconstruct a different placket specification.
+export const PHOTO_TUCKED_PLACKET_DETAIL = "M 501 252 L 519 252 L 519 545 L 501 545 Z";
+export const PHOTO_UNTUCKED_PLACKET_DETAIL = "M 501 252 L 519 252 L 519 711 L 501 711 Z";
 
 // Hard photographic boundaries for the tucked studio template. These are not
 // garment illustrations: they only constrain the recolour operation to the

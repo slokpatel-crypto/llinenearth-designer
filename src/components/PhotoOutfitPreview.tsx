@@ -3,6 +3,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
+import { photoConstructionMismatches, photoPatternPanelPlacementDisclosure, photoPatternScaleDisclosure } from "@/lib/designer/photo-preview-fidelity";
+import { photoFabricCaptionSafeCrop } from "@/lib/designer/photo-fabric-caption-crop";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { applyRuntimeFabricScale, photoFabricPatternScale, visiblePatternScaleVerified, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
@@ -31,6 +33,7 @@ import {
   PHOTO_TUCKED_SHIRT_BODY_CLIP, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP,
   PHOTO_TUCKED_LEFT_TROUSER_CLIP, PHOTO_TUCKED_RIGHT_TROUSER_CLIP,
   PHOTO_UNTUCKED_SHIRT_BODY_CLIP, PHOTO_UNTUCKED_LEFT_SLEEVE_CLIP, PHOTO_UNTUCKED_RIGHT_SLEEVE_CLIP, PHOTO_UNTUCKED_COLLAR_CLIP,
+  PHOTO_TUCKED_PLACKET_DETAIL, PHOTO_UNTUCKED_PLACKET_DETAIL,
   photoTemplateForStyle, photoTemplateGaps, previewFabricLabel,
 } from "@/lib/designer/photo-preview";
 
@@ -38,6 +41,8 @@ const WIDTH = 1024;
 const HEIGHT = 1536;
 const LOCKED_PREVIEW_MIME="image/webp";
 const LOCKED_PREVIEW_QUALITY=.96;
+const PHOTO_ACTION_BUTTON_STYLE={minHeight:44} as const;
+const PHOTO_ACTION_LABEL_STYLE={fontSize:"12px",lineHeight:1.4,fontWeight:500,display:"inline-block",overflowWrap:"anywhere"} as const;
 
 function serializeLockedPreview(canvas:HTMLCanvasElement) {
   // Keep fine weave/stripe detail for the final-render handoff. Modern browsers
@@ -146,10 +151,15 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
   const plain = fabric.patternType === "Solid";
   const stripe = /stripe/i.test(fabric.patternType);
   if (plain || stripe) {
-    const sourceX = image.width * (plain ? .35 : .31);
-    const sourceY = image.height * (plain ? .22 : .16);
-    const sourceWidth = image.width * (plain ? .3 : .38);
-    const sourceHeight = image.height * (plain ? .22 : .27);
+    // Generated tiles are preferred, but local/offline fallback to a raw
+    // plain swatch must also avoid printed names near the photographed centre.
+    // Match the builder's upper-cloth crop rather than reverting to its
+    // previous centre-biased crop (22–44% of source height).
+    const plainCrop = plain ? photoFabricCaptionSafeCrop(image.width,image.height) : null;
+    const sourceX = plainCrop?.left ?? image.width * .31;
+    const sourceY = plainCrop?.top ?? image.height * .16;
+    const sourceWidth = plainCrop?.width ?? image.width * .38;
+    const sourceHeight = plainCrop?.height ?? image.height * .27;
     if(plain) {
       // Only visually plain cloth is mirrored to soften source-photo lighting
       // seams. Mirroring stripes would manufacture false stripe spacing.
@@ -652,6 +662,7 @@ function drawGarment(
   if (!pattern) throw new Error("Could not prepare the fabric pattern.");
   const visualFallback=patternScaleForFabric(fabric);
   const scale = photoFabricPatternScale(fabricRenderAsset(fabric),visualFallback,placement.photoPxPerMm) * (placement.scale ?? 1);
+  const patterned = fabric.patternType !== "Solid";
   pattern.setTransform(fabricPatternTransform(fabric,placement,scale));
   context.fillStyle = pattern;
   context.fillRect(0, 0, WIDTH, HEIGHT);
@@ -665,6 +676,7 @@ function drawGarment(
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
   context.globalAlpha = .9;
+  if (patterned) context.globalAlpha = 1;
   context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
   // A tiny multiply reinforcement is enough for deep folds because the shape
@@ -672,6 +684,7 @@ function drawGarment(
   // the original navy/beige template cloth back into the selected fabric.
   context.globalCompositeOperation = "multiply";
   context.globalAlpha = .07;
+  if (patterned) context.globalAlpha = .11;
   context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
   // Restore seam, weave, wrinkle and medium-fold contrast only from a
@@ -682,9 +695,11 @@ function drawGarment(
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
   context.globalAlpha = .7;
+  if (patterned) context.globalAlpha = .82;
   context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
   context.globalCompositeOperation = "overlay";
   context.globalAlpha = .14;
+  if (patterned) context.globalAlpha = .18;
   context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
 
   // Put a faint copy of the real textile back above the lighting model. This
@@ -692,7 +707,12 @@ function drawGarment(
   // alone tends to wash the source cloth into a smooth painted surface.
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
-  context.globalAlpha = fabric.patternType === "Solid" ? .12 : .16;
+  // Patterned tiles already carry much stronger local contrast than solids.
+  // Reapplying them too heavily after the photographic relief pass flattens
+  // folds and makes stripes look pasted onto the model. Keep only enough of
+  // this upper pass to protect fine textile edges; the base pattern remains
+  // fully opaque and therefore keeps the selected swatch colours authoritative.
+  context.globalAlpha = patterned ? .08 : .12;
   context.fillStyle = pattern;
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -980,6 +1000,37 @@ function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageEleme
   target.drawImage(layer, 0, 0);
 }
 
+function drawPhotographicConstructionRelief(target:CanvasRenderingContext2D,photo:HTMLImageElement,path:string) {
+  const layer=document.createElement("canvas");
+  layer.width=WIDTH;
+  layer.height=HEIGHT;
+  const context=layer.getContext("2d");
+  if(!context) throw new Error("Canvas is unavailable.");
+  const detailMask=featheredPathMask(path);
+  const relief=photographicReliefMap(photo,detailMask);
+
+  // Only neutral high-frequency structure returns from the canonical photo.
+  // Source dye and unverified button material never enter the selected cloth.
+  context.fillStyle="#808080";
+  context.fillRect(0,0,WIDTH,HEIGHT);
+  context.globalCompositeOperation="soft-light";
+  context.globalAlpha=.72;
+  context.drawImage(relief,0,0,WIDTH,HEIGHT);
+  context.globalCompositeOperation="overlay";
+  context.globalAlpha=.28;
+  context.drawImage(relief,0,0,WIDTH,HEIGHT);
+  context.globalAlpha=1;
+  context.globalCompositeOperation="destination-in";
+  context.drawImage(detailMask,0,0);
+  context.globalCompositeOperation="source-over";
+
+  target.save();
+  target.globalCompositeOperation="soft-light";
+  target.globalAlpha=.55;
+  target.drawImage(layer,0,0);
+  target.restore();
+}
+
 export type PhotoPreviewCalibration={photoPxPerMm?:number};
 
 export function composePhotoOutfit(
@@ -1016,6 +1067,7 @@ export function composePhotoOutfit(
     drawCreativePattern(context,creative,PHOTO_TUCKED_LEFT_SLEEVE_CLIP,masks.shirt);
     drawCreativePattern(context,creative,PHOTO_TUCKED_RIGHT_SLEEVE_CLIP,masks.shirt);
     drawCreativeDetails(context,creative,true,masks.shirt);
+    drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_TUCKED_PLACKET_DETAIL);
 
     if (style.collarFinish === "Self-fabric") {
       // The broad neck clear zone removed inner collar folds as well as skin.
@@ -1023,6 +1075,12 @@ export function composePhotoOutfit(
       // collar cloth, then draw the existing traced collar wings over it.
       drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_NECK_CLEAR, masks.collar,{...calibratedPlacement,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.collar,anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.x,anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.y, referenceX:510, referenceY:244});
       drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined,{...calibratedPlacement,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.collar,anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.x,anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.y, referenceX:510, referenceY:244});
+      // Contrast prints can visually bury the fixed photograph's point-collar
+      // and barrel-cuff seams. Reapply only their neutral high-frequency
+      // structure after painting the selected self fabric; no source dye or
+      // alternate construction is introduced.
+      drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_TUCKED_COLLAR_MASK);
+      drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_TUCKED_CUFF_MASK);
     } else {
       drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined);
       if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined);
@@ -1102,6 +1160,11 @@ export function composePhotoOutfit(
         anchorY:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.collar.y, referenceX:510, referenceY:244,
       });
     });
+    if (style.collarFinish === "Self-fabric") {
+      drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_UNTUCKED_COLLAR_CLIP);
+      drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_CUFF_MASK);
+    }
+    drawPhotographicConstructionRelief(context,modelPhoto,PHOTO_UNTUCKED_PLACKET_DETAIL);
     drawCreativePattern(context,creative,"",shirtMask);
     drawCreativeDetails(context,creative,false,shirtMask);
     if (style.collarFinish !== "Self-fabric") drawWhiteDetail(context, modelPhoto, PHOTO_COLLAR_MASK);
@@ -1253,6 +1316,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const templateId = photoTemplateForStyle(style);
   const template = DESIGNER_PHOTO_TEMPLATES[templateId];
   const gaps = photoTemplateGaps(style, templateId);
+  const constructionMismatches = photoConstructionMismatches(style,styleSpec);
   const tucked = style.shirtWear === "Tucked";
   const resolvedCraft=useMemo(()=>resolvePhotoCraft(creativeDirection?.craft,craftFabrics||[],shirt.id,pant.id),[creativeDirection?.craft,craftFabrics,shirt.id,pant.id]);
   const previewCreative=useMemo(()=>creativeDirection?{...creativeDirection,craft:resolvedCraft?.craft}:undefined,[creativeDirection,resolvedCraft]);
@@ -1272,6 +1336,22 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     ...(pantPatternScaleVerified?[]:[pant.name]),
     ...(panelPatternScaleVerified||!visiblePanelFabric?[]:[visiblePanelFabric.name]),
   ])];
+  const photoScaleNotice=photoPatternScaleDisclosure([shirt.patternType,pant.patternType,...(visiblePanelFabric?[visiblePanelFabric.patternType]:[])],previewScaleVerified,approximateScaleItems,"pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists");
+  const patternedPlacementItems=[...new Set([
+    ...(shirt.patternType.toLowerCase()==="solid"?[]:[shirt.name]),
+    ...(pant.patternType.toLowerCase()==="solid"?[]:[pant.name]),
+    ...(!visiblePanelFabric||visiblePanelFabric.patternType.toLowerCase()==="solid"?[]:[visiblePanelFabric.name]),
+  ])];
+  // No current catalogue record proves how a physical cutter matched visible
+  // motifs across photographed garment pieces. Keep placement separate from
+  // repeat-scale evidence even when scale calibration is available.
+  const panelPlacementVerified=patternedPlacementItems.length===0;
+  const photoPanelPlacementNotice=photoPatternPanelPlacementDisclosure(
+    [shirt.patternType,pant.patternType,...(visiblePanelFabric?[visiblePanelFabric.patternType]:[])],
+    panelPlacementVerified,
+    patternedPlacementItems,
+  );
+  const photoPatternTruthNotice=[photoScaleNotice,photoPanelPlacementNotice].filter(Boolean).join(". ");
   const renderSignature=JSON.stringify({
     shirt:shirt.id,
     pant:pant.id,
@@ -1312,6 +1392,12 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   useLayoutEffect(() => {
     requestScope.activate();
     setReady(false);
+    // Every new design starts in its own full-frame customer view, not the
+    // previous look's cropped zoom or diagnostic seam overlay.
+    setInspectFit(false);
+    setShowBoundaries(false);
+    // A source comparison from the previous selection must not mask the next look.
+    setShowOriginal(false);
     setCreativeAi(null);
     setCreativeAiLoading(false);
     setCreativeAiError("");
@@ -1721,14 +1807,25 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
 
   return <section className="newDesignerPhoto" aria-labelledby="designerPhotoTitle">
     <div className="newDesignerPhotoIntro newDesignerPhotoIntroCompact">
-      <span>LIVE PREVIEW</span>
-      <h2 id="designerPhotoTitle">Your look.</h2>
+      <span>{showOriginal && ready && !showCreativeAi ? "SOURCE REFERENCE" : "LIVE PREVIEW"}</span>
+      <h2 id="designerPhotoTitle">{showOriginal && ready && !showCreativeAi ? "Studio source." : "Your look."}</h2>
     </div>
-    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-ready={ready?"true":"false"}>
-      <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
+    {showOriginal && ready && !showCreativeAi && <div className="newDesignerPhotoConstructionNotice" data-photo-source-comparison={templateId==="wide"?"wide":"studio"} role="status" style={{margin:"10px 20px 12px",padding:"9px 12px",borderLeft:"3px solid #a65d43",background:"#faf6f0",color:"#514538",fontSize:"12px",lineHeight:1.5}}>
+      <strong>Original source photo, not your selected design</strong> · {templateId==="wide"
+        ? "Compare shows the original wide-trouser photograph; the shirt in the instant preview comes from the separate pleated studio photograph."
+        : "Compare shows the original unchanged studio photograph."} Choose Show design to view your selected fabrics and cuts.
+    </div>}
+    {!showOriginal && !showCreativeAi && constructionMismatches.length>0 && <div className="newDesignerPhotoConstructionNotice" data-photo-construction-mismatch="true" role="status" style={{margin:"10px 20px 12px",padding:"9px 12px",borderLeft:"3px solid #a65d43",background:"#faf6f0",color:"#514538",fontSize:"12px",lineHeight:1.5}}>
+      <strong>Photographic construction limits</strong> · {constructionMismatches.map((gap)=>gap.label).join(", ")} not reconstructed in the fixed studio photograph. Your selected construction remains in the saved design specification.
+    </div>}
+    {!showOriginal && !showCreativeAi && ready && <p className="newDesignerPhotoApproximation" style={{fontSize:"12px",lineHeight:1.6,margin:"10px 20px 12px",padding:"12px 14px",background:"#faf6f0",borderLeft:"3px solid #a65d43",color:"#514538",overflowWrap:"anywhere"}} data-photo-caption="instant" data-photo-pattern-placement={panelPlacementVerified?"verified":"unverified"}><strong>Instant preview</strong> · Studio model; {photoPatternTruthNotice}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
+    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-ready={ready?"true":"false"} aria-busy={!ready && !error}>
+      <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-hidden={!ready || showOriginal || showCreativeAi} aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} style={{visibility:ready?"visible":"hidden"}} />
       {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image)} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal ${photorealView} view of ${shirt.name} with ${pant.name}`} />}
-      {showOriginal && <img className="newDesignerPhotoOriginal" src={tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src} alt="Original photographed model template for comparison" />}
-      {showBoundaries && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay">
+      {showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal" src={template.src} alt={templateId==="wide"
+        ? "Original wide-trouser studio photograph. The instant-preview shirt uses the separate pleated studio source photograph."
+        : "Original photographed studio model template for comparison"} />}
+      {showBoundaries && ready && !showOriginal && !showCreativeAi && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay" style={{transform:inspectFit?"scale(1.42)":"scale(1)",transformOrigin:"50% 35%",transition:"transform .28s ease"}}>
         {tucked ? <>
           <path d={PHOTO_TUCKED_SHIRT_BODY_CLIP} className="shirtBoundary" />
           <path d={PHOTO_TUCKED_LEFT_SLEEVE_CLIP} className="shirtBoundary" />
@@ -1741,24 +1838,23 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
           <path d={template.trouserPath} className="trouserBoundary" />
         </>}
       </svg>}
-      <span className="newDesignerPhotoTag">{showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : "FRONT / STUDIO MODEL"}</span>
+      <span className="newDesignerPhotoTag">{error ? "PREVIEW UNAVAILABLE" : !ready ? "PREPARING SELECTED LOOK" : showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : showOriginal && ready ? (templateId==="wide" ? "SOURCE / WIDE TROUSER PHOTO" : "SOURCE / STUDIO PHOTO") : constructionMismatches.length > 0 ? "FRONT / STUDIO MODEL · CUTS APPROX." : "FRONT / STUDIO MODEL"}</span>
       {error && <span className="newDesignerPhotoError" role="alert">Preview could not load. Check the local fabric images.</span>}
       {!ready && !error && <span className="newDesignerPhotoLoading">Preparing your look…</span>}
     </div>
     <div className="newDesignerPhotoSummary newDesignerPhotoSummaryCompact">
-      <div><span>SHIRT</span><strong>{shirt.name}</strong></div>
-      <div><span>TROUSER</span><strong>{pant.name}</strong></div>
+      <div><span><b style={{fontSize:"10px",fontWeight:650}}>{showOriginal && !showCreativeAi ? "SELECTED SHIRT" : "SHIRT"}</b></span><strong title={shirt.name} style={{whiteSpace:"normal",overflow:"visible",textOverflow:"clip"}}><b style={{fontSize:"13px",fontWeight:500,lineHeight:1.4,overflowWrap:"anywhere"}}>{shirt.name}</b></strong></div>
+      <div><span><b style={{fontSize:"10px",fontWeight:650}}>{showOriginal && !showCreativeAi ? "SELECTED TROUSER" : "TROUSER"}</b></span><strong title={pant.name} style={{whiteSpace:"normal",overflow:"visible",textOverflow:"clip"}}><b style={{fontSize:"13px",fontWeight:500,lineHeight:1.4,overflowWrap:"anywhere"}}>{pant.name}</b></strong></div>
       <div className="newDesignerPhotoActions newDesignerPhotoActionsCompact">
-        {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready}>Lock final design</button>}
-        {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</button>}
-        {!creativeAi && creativeDirection && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Render selected idea ✦"}</button>}
-        {creativeAi && <button className="primary" type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant preview" : (!creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") ? "Review photoreal" : "Photoreal render")}</button>}
-        {!creativeAi && !creativeDirection && finalLocked && <button type="button" onClick={()=>setFinalLocked(false)} disabled={creativeAiLoading}>Unlock</button>}
-        <button type="button" onClick={() => setShowOriginal((value) => !value)} disabled={!ready}>{showOriginal ? "Show design" : "Compare"}</button>
-        <button type="button" onClick={download} disabled={!ready}>{showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</button>
+        {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>Lock final design</b></button>}
+        {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</b></button>}
+        {!creativeAi && creativeDirection && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}><b style={PHOTO_ACTION_LABEL_STYLE}>{creativeAiLoading ? "Rendering…" : "Render selected idea ✦"}</b></button>}
+        {creativeAi && <button className="primary" type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>{setShowOriginal(false);setShowCreativeAi((value)=>!value);}}><b style={PHOTO_ACTION_LABEL_STYLE}>{showCreativeAi ? "Instant preview" : (!creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") ? "Review photoreal" : "Photoreal render")}</b></button>}
+        {!creativeAi && !creativeDirection && finalLocked && <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={()=>setFinalLocked(false)} disabled={creativeAiLoading}><b style={PHOTO_ACTION_LABEL_STYLE}>Unlock</b></button>}
+        <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={() => {setShowCreativeAi(false);setShowOriginal((value) => !value);}} disabled={!ready}><b style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal && !showCreativeAi ? "Show design" : "Compare"}</b></button>
+        <button type="button" style={PHOTO_ACTION_BUTTON_STYLE} onClick={download} disabled={!ready || showOriginal}><b style={PHOTO_ACTION_LABEL_STYLE}>{showOriginal ? "Show design to save" : showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</b></button>
       </div>
     </div>
-    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {previewScaleVerified ? "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
     {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}
     {creativeAi?.cached && <p className="newDesignerPhotoCache">Cached final render reused · no new FASHN generation was needed.</p>}
     {creativeAi && !creativeDirection && <p className="newDesignerPhotoLock"><strong>MODEL IDENTITY LOCKED</strong> · {LINEN_EARTH_MODEL_IDENTITY_ID} stays identical across Front / 3/4 / Side / Back; only camera angle and hidden garment surfaces may change.</p>}
@@ -1809,7 +1905,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <summary>Preview tools</summary>
       <div>
         <button type="button" onClick={() => setInspectFit((value) => !value)} disabled={!ready}>{inspectFit ? "Full view" : "Zoom fit"}</button>
-        <button type="button" onClick={() => setShowBoundaries((value) => !value)} disabled={!ready} aria-pressed={showBoundaries}>{showBoundaries ? "Hide boundaries" : "Boundary QA"}</button>
+        <button type="button" onClick={() => setShowBoundaries((value) => !value)} disabled={!ready || showOriginal || showCreativeAi} aria-pressed={showBoundaries && !showOriginal && !showCreativeAi}>{showBoundaries ? "Hide boundaries" : "Boundary QA"}</button>
       </div>
     </details>
     {creativeDirection && <div className="newDesignerPhotoCreative newDesignerPhotoCreativeCompact">
