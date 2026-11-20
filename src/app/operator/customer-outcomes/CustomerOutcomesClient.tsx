@@ -91,7 +91,7 @@ export default function CustomerOutcomesClient(){
           <h1 style={{fontFamily:"Georgia,serif",fontSize:"clamp(34px,5vw,56px)",lineHeight:1,margin:"0 0 10px"}}>Customer Outcome Review</h1>
           <p style={{maxWidth:780,lineHeight:1.6,opacity:.72}}>Review real delivered-garment outcomes before any customer feedback becomes eligible for learning. The evidence threshold is entered and signed by a human; the software does not invent one.</p>
         </div>
-        <nav style={{display:"flex",gap:12,flexWrap:"wrap"}}><Link href="/operator/production">Production Desk</Link><Link href="/operator/phase10-readiness">Readiness</Link></nav>
+        <nav style={{display:"flex",gap:12,flexWrap:"wrap"}}><Link href="/operator/production">Production Desk</Link><Link href="/operator/quality-insights">Quality Insights</Link><Link href="/operator/phase10-readiness">Readiness</Link></nav>
       </header>
 
       {!configured&&<section style={{...panel,background:"#fff4df"}}>Phase 11 customer-outcome migrations are not installed yet.</section>}

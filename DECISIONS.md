@@ -1,5 +1,14 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-11-20 — Keep post-delivery quality insights private and descriptive
+
+**Decision:** the next roadmap tool is the authenticated operator-only Quality Insights explorer, reusing existing Phase 11 outcome, reviewer and policy ledgers. It is read-only. It never creates a new customer data silo or automatically modifies design weights.
+
+**Evidence gate:** latest valid outcome per order and latest unambiguous human review, matched immutable garment context and recipe hash. Unreviewed/rejected, conflicting timestamps, invalid payloads, and missing lineage are excluded. Worn-confirmed fit counts are distinct from generic customer satisfaction. A human minimum and non-capped snapshot may mark a group ready **for review**, never for auto-learning or production release.
+
+**Privacy:** only aggregated construction categories and counts are displayed; never expose customer notes, identities, raw body measurements or individual orders. Reuse the private authenticated outcome endpoint; preserve `no-store` access. No new RPC or deployment.
+
+
 Architecture and product decisions that must persist across coding sessions.
 
 ## 2026-10-05 — Style Director signs the complete garment recipe
