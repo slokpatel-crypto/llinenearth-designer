@@ -1,5 +1,5 @@
 import type { SavedDesign } from "./saved-designs";
-import { parseCustomerSavedDesignRow, parseCustomerSavedDesignWrite } from "./customer-saved-design-wire";
+import { parseCustomerSavedDesignRow, parseCustomerSavedDesignWrite } from "./customer-saved-design-wire.ts";
 
 /** Explicit signed-in cloud operations. Never migrate browser localStorage implicitly. */
 export type SavedDesignTransport = (input: string, init?: RequestInit) => Promise<Response>;
