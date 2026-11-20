@@ -126,7 +126,7 @@ def apply_source_grain_uv(obj, preflight):
         else:
             projected = [
                 (radius * theta, vertex.z)
-                for theta, vertex in zip(vertices, _unwrapped_angles(vertices, cx, cy))
+                for vertex, theta in zip(vertices, _unwrapped_angles(vertices, cx, cy))
             ]
             count["cylindricalFaces"] += 1
         if _face_has_collapsed_uv(mesh, polygon, projected, preflight.uv_triangle_issue):
