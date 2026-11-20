@@ -228,7 +228,7 @@ test("account comparison calls owner-only verified loads for each selected revis
   assert.match(account,/async function loadVerifiedOwnedRevision/);
   assert.match(account,/action:"loadOwned",vaultId:item.vaultId/);
   assert.match(account,/verifyLockedDesignRevision\(revision\)/);
-  assert.match(account,/Promise.all\(items.map\(item=>loadVerifiedOwnedRevision\(item\)\)\)/);
+  assert.match(account,/loadVerifiedOwnedRevision\(first\),loadVerifiedOwnedRevision\(second\)/);
   assert.match(account,/compareOwnedLockedDesigns\(before,after\)/);
   assert.match(account,/Select saved revision \$\{item.revisionId\} for comparison/);
   assert.doesNotMatch(compare,/\.measurements\b|\.finishedTargets\b|\.bodyProfile\b|\.creative\b/);
