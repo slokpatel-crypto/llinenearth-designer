@@ -98,5 +98,5 @@ export function readSharedDesignDraft(
 
 /** Owner-scoped or public recipe imports never hydrate unrelated local fit data. */
 export function allowLocalFitHydration(params:URLSearchParams):boolean {
-  return params.get("from")!=="shared-design"&&!params.has("resumeVault");
+  return params.get("from")!=="shared-design"&&params.get("from")!=="fabric-catalog"&&!params.has("resumeVault");
 }

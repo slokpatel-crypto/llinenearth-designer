@@ -34,6 +34,7 @@ import {
 import { optionById, optionsFor } from "@/lib/designer/options/library";
 import { readReferenceOutfitHandoff } from "@/lib/designer/reference-outfit-handoff";
 import { allowLocalFitHydration, ownedDesignResumePath, ownedRevisionToDraft, readSharedDesignDraft } from "@/lib/designer/customer-vault-journey";
+import { readCatalogFabricHandoff } from "@/lib/designer/catalog-handoff";
 import {
   fromLegacyStyle,
   mergeLegacyIntoStyleSpec,
@@ -139,6 +140,7 @@ export function DesignerModule() {
   const [directorHandoff, setDirectorHandoff] = useState(false);
   const [referenceHandoffStatus, setReferenceHandoffStatus] = useState<"applied" | "invalid" | null>(null);
   const [sharedHandoffStatus,setSharedHandoffStatus]=useState<"applied"|"invalid"|null>(null);
+  const [catalogHandoffStatus,setCatalogHandoffStatus]=useState<"applied"|"invalid"|null>(null);
   const [directorHandoffTitle, setDirectorHandoffTitle] = useState("");
   const [directorHandoffTier, setDirectorHandoffTier] = useState("");
   const [directorHandoffReason, setDirectorHandoffReason] = useState("");
@@ -357,6 +359,7 @@ export function DesignerModule() {
       const fromDirector = params.get("from") === "style-director";
       const fromReference = params.get("from") === "reference-match";
       const fromShared = params.get("from") === "shared-design";
+      const fromCatalog = params.get("from") === "fabric-catalog";
       setDirectorHandoff(fromDirector);
       if (fromReference) {
         const pair = readReferenceOutfitHandoff(params, DESIGNER_SHIRTS, DESIGNER_PANTS);
@@ -382,6 +385,7 @@ export function DesignerModule() {
           nextBodyProfile=undefined;
         }
       }
+      if(fromCatalog)nextBodyProfile=undefined;
       if(fromDirector) nextStyleSpec=undefined;
 
       if (fromDirector) {
@@ -467,7 +471,7 @@ export function DesignerModule() {
       setStyleSpec(nextStyleSpec || fromLegacyStyle(nextStyle));
       setBodyProfile(nextBodyProfile || DEFAULT_BODY_PREVIEW_PROFILE);
 
-      if(!fromDirector && !fromReference && !fromShared && parsed?.creative &&
+      if(!fromDirector && !fromReference && !fromShared && !fromCatalog && parsed?.creative &&
         parsed.creative.recommendation?.shirt?.id===nextShirtId &&
         parsed.creative.recommendation?.pant?.id===nextPantId &&
         parsed.creative.recommendation?.occasion===nextOccasion &&
@@ -583,6 +587,42 @@ export function DesignerModule() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[draftReady,catalogueReady]);
 
+
+  useEffect(()=>{
+    if(!draftReady||!catalogueReady)return;
+    const params=new URLSearchParams(window.location.search);
+    if(params.get("from")!=="fabric-catalog")return;
+    const pair=readCatalogFabricHandoff(params,shirtOptions,pantOptions);
+    if(!pair){
+      setCatalogHandoffStatus("invalid");
+      return;
+    }
+    // An explicit catalogue choice replaces the fabric pair, not an existing
+    // vault revision, personal fit measurement or historical assessment.
+    setShirtId(pair.shirtId);
+    setPantId(pair.pantId);
+    const freshStyle=designerStyleForOccasion(occasion);
+    setStyle(freshStyle);
+    setStyleSpec(fromLegacyStyle(freshStyle));
+    setBodyProfile(DEFAULT_BODY_PREVIEW_PROFILE);
+    setMeasurementProfile(null);
+    setTailorObservations(null);
+    setLastLockedRevisionId(null);
+    setLockedRevision(null);
+    setAssessment(null);
+    setRecommendation(null);
+    setRecommendationId(null);
+    setSearchResults([]);
+    setActiveCreative(null);
+    setCreativeDirections([]);
+    setCreativeVisualReview(null);
+    setResponse(null);
+    setFeedbackReason(null);
+    setAdvisorEpoch(x=>x+1);
+    setCatalogHandoffStatus("applied");
+  // Only apply once after both the previous draft and server catalogue are ready.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[draftReady,catalogueReady]);
 
   useEffect(()=>{
     if(!draftReady) return;
@@ -1335,6 +1375,13 @@ export function DesignerModule() {
           <span>ACCOUNT VAULT / {vaultResumeStatus==="loaded"?"EDITABLE DESCENDANT":vaultResumeStatus==="loading"?"LOADING":"RESUME UNAVAILABLE"}</span>
           <p>{vaultResumeMessage}</p>
           <Link href="/account">Return to private vault →</Link>
+        </div>}
+        {catalogHandoffStatus&&<div className="newDesignerHandoff" role={catalogHandoffStatus==="invalid"?"alert":"status"}>
+          <span>FABRIC CATALOGUE / {catalogHandoffStatus==="applied"?"CLOTH PAIR LOADED":"SELECTION NOT APPLIED"}</span>
+          <p>{catalogHandoffStatus==="applied"
+            ?"Your exact catalogue shirt and trouser fabric IDs are loaded. This is a fresh editable design, not a stock reservation or a continuation of any previous locked revision. Recheck availability and fit before saving."
+            :"This catalogue link is invalid or its fabrics are no longer available in the current catalogue. No fabric pair was imported."}</p>
+          <Link href="/catalog">Browse the fabric catalogue →</Link>
         </div>}
         {sharedHandoffStatus&&<div className="newDesignerHandoff" role={sharedHandoffStatus==="invalid"?"alert":"status"}>
           <span>SHARED RECIPE / {sharedHandoffStatus==="applied"?"NEW EDITABLE DRAFT":"LINK NOT APPLIED"}</span>
