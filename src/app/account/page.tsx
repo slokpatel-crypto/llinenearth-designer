@@ -185,15 +185,18 @@ export default function AccountPage(){
 
   async function compareSelectedDesigns(){
     if(busy||compareSelection.length!==2) return;
-    const items=compareSelection.map(id=>designs.find(item=>item.vaultId===id));
-    if(!items[0]||!items[1]||items[0].vaultId===items[1].vaultId) return;
+    const first=designs.find(item=>item.vaultId===compareSelection[0]);
+    const second=designs.find(item=>item.vaultId===compareSelection[1]);
+    if(!first||!second||first.vaultId===second.vaultId) return;
     setBusy(true);
     setComparison(null);
     setMessage("");
     try{
       // Only independently owner-authorized, SHA-256 verified revisions can
       // contribute to an on-screen comparison. Never retain full specs here.
-      const [before,after]=await Promise.all(items.map(item=>loadVerifiedOwnedRevision(item)));
+      const [before,after]=await Promise.all([
+        loadVerifiedOwnedRevision(first),loadVerifiedOwnedRevision(second),
+      ]);
       setComparison(compareOwnedLockedDesigns(before,after));
     }catch(error){
       setMessage(error instanceof Error?error.message:"Could not safely compare saved designs.");
