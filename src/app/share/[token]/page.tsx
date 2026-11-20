@@ -35,6 +35,7 @@ export default async function SharedDesignPage({params}:{params:Promise<{token:s
     climate:payload.context.climate,
     intention:payload.context.intention,
     from:"shared-design",
+    style:JSON.stringify(style),
   });
 
   return <main className="sharedDesign">

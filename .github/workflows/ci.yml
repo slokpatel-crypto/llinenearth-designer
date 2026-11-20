@@ -78,6 +78,7 @@ jobs:
           # observed in CI); do not abort an otherwise passing scene after 5m.
           # This 12m cap does NOT relax the strict 20s native first-frame SLA.
           # Prototype-only mode exits after a lighter interactive smoke gate.
+          node scripts/verify-customer-vault-journey.cjs
           timeout --signal=TERM --kill-after=10s 12m node scripts/verify-garment-viewer.cjs
           node scripts/verify-premium-atelier.cjs
           node scripts/verify-reference-look.cjs
