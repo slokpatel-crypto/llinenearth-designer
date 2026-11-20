@@ -26,8 +26,27 @@ async function check(browser,width){
   await page.getByRole("heading",{name:/Choose the cloth/}).waitFor();
   await page.getByText("Catalogue loaded · verify physical stock before ordering.").waitFor();
   const shirt=DESIGNER_SHIRTS[1],pant=DESIGNER_PANTS[1];
-  await page.getByRole("button",{name:"Choose shirt fabric "+shirt.name}).click();
-  await page.getByRole("button",{name:"Choose pant fabric "+pant.name}).click();
+  const beforeCompare=await page.getByRole("link",{name:/Start designing with selected fabrics/}).getAttribute("href");
+  const shirtCompare=page.getByRole("region",{name:"Shirt fabric comparison"});
+  for(const candidate of DESIGNER_SHIRTS.slice(1,4)){
+    await page.getByRole("button",{name:"Compare shirt fabric "+candidate.name}).first().click();
+  }
+  await shirtCompare.getByText("3/3",{exact:true}).waitFor();
+  assert.equal(await page.getByRole("button",{name:"Compare shirt fabric "+DESIGNER_SHIRTS[4].name}).first().isDisabled(),true,"fourth shirt is blocked");
+  assert.equal(await shirtCompare.getByRole("button",{name:"Use this shirt fabric"}).count(),3);
+  assert.equal(await page.getByRole("link",{name:/Start designing with selected fabrics/}).getAttribute("href"),beforeCompare,"shortlisting must not silently replace chosen pair");
+  await shirtCompare.getByRole("button",{name:"Use this shirt fabric"}).first().click();
+  assert.equal(await page.getByRole("button",{name:"Choose shirt fabric "+shirt.name}).getAttribute("aria-pressed"),"true");
+
+  const pantCompare=page.getByRole("region",{name:"Trouser fabric comparison"});
+  for(const candidate of DESIGNER_PANTS.slice(1,3)){
+    await page.getByRole("button",{name:"Compare pant fabric "+candidate.name}).first().click();
+  }
+  await pantCompare.getByText("2/3",{exact:true}).waitFor();
+  await pantCompare.getByRole("button",{name:"Use this trouser fabric"}).first().click();
+  assert.equal(await page.getByRole("button",{name:"Choose pant fabric "+pant.name}).getAttribute("aria-pressed"),"true");
+  assert.match(await shirtCompare.innerText(),/Confirm stock|Stock checked/,"compare must disclose stock evidence");
+  assert.match(await pantCompare.innerText(),/Colour is a screen estimate|Colour checked/,"compare must disclose colour evidence");
   const link=page.getByRole("link",{name:/Start designing with selected fabrics/});
   const href=await link.getAttribute("href");
   assert.ok(href);
@@ -51,7 +70,7 @@ async function check(browser,width){
   },{shirtId:shirt.id,pantId:pant.id});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,"Designer overflows "+width);
   await page.screenshot({path:path.join(output,"designer-"+width+".png"),fullPage:true});
-  report.widths.push({width,shirtId:shirt.id,pantId:pant.id,handoffApplied:true,noOverflow:true});
+  report.widths.push({width,shirtId:shirt.id,pantId:pant.id,comparedShirts:3,comparedPants:2,shortlistDidNotMutatePair:true,handoffApplied:true,noOverflow:true});
   await context.close();
 }
 (async()=>{
