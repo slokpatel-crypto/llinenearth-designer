@@ -78,24 +78,21 @@ export function compareOwnedLockedDesigns(
   const av=a.styleSpec,bv=b.styleSpec;
   const bothV2=Boolean(av&&bv);
   if(bothV2 && av && bv){
-    for(const [group,fields] of [
-      ["shirt",[
-        ["type","Shirt type"],["collar","Shirt collar"],["collarFinish","Collar finish"],
-        ["cuff","Shirt cuff"],["placket","Shirt placket"],["pocket","Shirt pocket"],
-        ["sleeve","Sleeve"],["fit","Shirt fit"],["length","Shirt length"],
-        ["hem","Shirt hem"],["back","Shirt back"],["wear","Shirt wear"],["button","Buttons"],
-      ]],
-      ["pant",[
-        ["type","Trouser type"],["fit","Trouser fit"],["rise","Trouser rise"],
-        ["pleat","Trouser pleats"],["waistband","Waistband"],["hem","Trouser hem"],
-        ["break","Trouser break"],
-      ]],
-    ] as const){
-      for(const [key,label] of fields){
-        const left=av[group][key],right=bv[group][key];
-        push(group+"."+key,label,left,right,key==="collarFinish"||key==="wear"?bounded:showChoice);
-      }
-    }
+    const shirtFields=[
+      ["type","Shirt type"],["collar","Shirt collar"],["collarFinish","Collar finish"],
+      ["cuff","Shirt cuff"],["placket","Shirt placket"],["pocket","Shirt pocket"],
+      ["sleeve","Sleeve"],["fit","Shirt fit"],["length","Shirt length"],
+      ["hem","Shirt hem"],["back","Shirt back"],["wear","Shirt wear"],["button","Buttons"],
+    ] as const;
+    for(const [key,label] of shirtFields)
+      push("shirt."+key,label,av.shirt[key],bv.shirt[key],key==="collarFinish"||key==="wear"?bounded:showChoice);
+    const trouserFields=[
+      ["type","Trouser type"],["fit","Trouser fit"],["rise","Trouser rise"],
+      ["pleat","Trouser pleats"],["waistband","Waistband"],["hem","Trouser hem"],
+      ["break","Trouser break"],
+    ] as const;
+    for(const [key,label] of trouserFields)
+      push("pant."+key,label,av.pant[key],bv.pant[key],showChoice);
   }else{
     // Older locked recipes have no advanced StyleSpec. Compare only choices
     // actually recorded in both specifications, not invented default cuts.
