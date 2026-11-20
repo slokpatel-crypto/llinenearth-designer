@@ -34,18 +34,32 @@ test("tile builder uses caption-safe crop for its generated assets and advances 
   assert.match(script,/scaleApproximate:tileRealWidthMm===null/);
 });
 
-test("fallback raw photographic swatches use the same caption-safe plain crop", () => {
+test("all raw photo swatches use the builder's caption-safe crop, with directional motifs never mirrored", () => {
   const component=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.match(component,/const plainCrop = plain \? photoFabricCaptionSafeCrop\(image\.width,image\.height\) : null/);
-  assert.match(component,/const sourceX = plainCrop\?\.left/);
-  assert.match(component,/const sourceY = plainCrop\?\.top/);
-  assert.match(component,/const sourceWidth = plainCrop\?\.width/);
-  assert.match(component,/const sourceHeight = plainCrop\?\.height/);
-  assert.doesNotMatch(component,/image\.height \* \(plain \? \.22 : \.16\)/);
+  const start=component.indexOf("function swatchTile("),end=component.indexOf("function clamp(",start);
+  const fallback=component.slice(start,end);
+  assert.match(fallback,/const sourceCrop = photoFabricCaptionSafeCrop\(image\.width,image\.height\)/);
+  assert.match(fallback,/sourceCrop\.left, sourceCrop\.top, sourceCrop\.width, sourceCrop\.height/);
+  assert.match(fallback,/if\(plain\) context\.scale\(column \? -1 : 1, row \? -1 : 1\)/);
+  assert.match(fallback,/plain && column \? -160 : 0, plain && row \? -160 : 0, 160, 160/);
+  assert.match(fallback,/for \(const \[column, row\] of \[\[0, 0\], \[1, 0\], \[0, 1\], \[1, 1\]\]\)/);
+  assert.doesNotMatch(fallback,/const stripe =|if \(plain \|\| stripe\)/);
+  assert.doesNotMatch(fallback,/image\.width \* \.08|image\.height \* \.62|image\.width \* \.31/);
+  assert.match(fallback,/if \(image\.src\.includes\("\/fabric-tiles\/"\)\)/);
 });
 
 test("64px synthetic shirt and trouser swatches render a bounded caption-safe source crop", () => {
   const box=photoFabricCaptionSafeCrop(64,64);
   assert.deepEqual(box,{left:22,top:3,width:20,height:20});
   assert.deepEqual(photoFabricCaptionSafeCrop(64,64),box);
+});
+
+test("browser regression refuses catalogue captions on printed shirt and striped trousers", () => {
+  const script=readFileSync("scripts/verify-photo-form.cjs","utf8");
+  assert.match(script,/captionSafeRawFallback/);
+  assert.match(script,/sourceCanvasB\.getContext\("2d"\)\.fillRect\(0,128,320,192\)/);
+  assert.match(script,/patternType:"Printed"/);
+  assert.match(script,/patternType:"Pin Stripe"/);
+  assert.match(script,/raw fallback must ignore source captions outside the upper cloth field/);
+  assert.match(script,/raw-fallback-caption-safe\.png/);
 });

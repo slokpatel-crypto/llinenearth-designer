@@ -429,6 +429,50 @@ async function run(){
           window.__photoFormBefore.compose(before.getContext("2d"),model,trouser,shirtImage,pantImage,shirt,pant,selected);
           const start=performance.now();window.__photoFormAfter.compose(after.getContext("2d"),model,trouser,shirtImage,pantImage,shirt,pant,selected);const renderMs=performance.now()-start;
           const old=before.getContext("2d").getImageData(0,0,W,H).data,current=after.getContext("2d").getImageData(0,0,W,H).data;
+
+          // The real browser compositor must treat content beneath the upper
+          // raw cloth crop as catalogue annotation, not wearable material.
+          // Exercise both a printed SHIRT and striped TROUSER using identical
+          // upper 128px imagery but visibly different lower 192px captions.
+          // Before this repair the print's 6%-68% crop and stripe's 16%-43%
+          // crop both leaked some of that lower area onto the garment.
+          let captionSafeRawFallback=true;
+          if(template==="tucked"){
+            const sourceCanvasA=document.createElement("canvas");sourceCanvasA.width=sourceCanvasA.height=320;
+            const sourceContext=sourceCanvasA.getContext("2d");
+            sourceContext.fillStyle="#eedfc2";sourceContext.fillRect(0,0,320,320);
+            for(let x=0;x<320;x+=12){sourceContext.fillStyle="#194c78";sourceContext.fillRect(x,0,4,128);}
+            const sourceCanvasB=document.createElement("canvas");sourceCanvasB.width=sourceCanvasB.height=320;
+            sourceCanvasB.getContext("2d").drawImage(sourceCanvasA,0,0);
+            sourceCanvasB.getContext("2d").fillStyle="#ff1921";
+            sourceCanvasB.getContext("2d").fillRect(0,128,320,192);
+            sourceCanvasB.getContext("2d").fillStyle="#000";
+            sourceCanvasB.getContext("2d").font="bold 30px sans-serif";
+            sourceCanvasB.getContext("2d").fillText("CATALOGUE LABEL",10,195);
+            const [rawImageA,rawImageB]=await Promise.all([image(sourceCanvasA.toDataURL()),image(sourceCanvasB.toDataURL())]);
+            const rawPrint={...shirt,id:"qa-raw-fallback-print",image:"/qa-raw-fallback-print.png",patternType:"Printed",renderScale:undefined};
+            const rawStripePant={...pant,id:"qa-raw-fallback-stripe",image:"/qa-raw-fallback-stripe.png",patternType:"Pin Stripe",renderScale:undefined};
+            const rawCanvasA=makeCanvas(),rawCanvasB=makeCanvas();
+            window.__photoFormAfter.compose(rawCanvasA.getContext("2d"),model,trouser,rawImageA,rawImageA,rawPrint,rawStripePant,selected);
+            window.__photoFormAfter.compose(rawCanvasB.getContext("2d"),model,trouser,rawImageB,rawImageB,rawPrint,rawStripePant,selected);
+            const pixelsA=rawCanvasA.getContext("2d").getImageData(0,0,W,H).data;
+            const pixelsB=rawCanvasB.getContext("2d").getImageData(0,0,W,H).data;
+            for(let k=0;k<pixelsA.length;k++){if(pixelsA[k]!==pixelsB[k]){captionSafeRawFallback=false;break;}}
+            // Guard against a vacuous equality from two blank photos.
+            let garmentPixelsChanged=0;
+            for(const box of [{x:414,y:310,w:180,h:176},{x:389,y:800,w:61,h:480}])
+              for(let y=box.y;y<box.y+box.h;y+=4)for(let x=box.x;x<box.x+box.w;x+=4){
+                const k=(y*W+x)*4;
+                if(Math.abs(pixelsA[k]-current[k])+Math.abs(pixelsA[k+1]-current[k+1])+Math.abs(pixelsA[k+2]-current[k+2])>15)garmentPixelsChanged++;
+              }
+            captionSafeRawFallback=captionSafeRawFallback&&garmentPixelsChanged>150&&sourceCanvasA.toDataURL()!==sourceCanvasB.toDataURL();
+            const rawComparison=makeCanvas();rawComparison.width=W*2;
+            rawComparison.getContext("2d").drawImage(rawCanvasA,0,0);
+            rawComparison.getContext("2d").drawImage(rawCanvasB,W,0);
+            window.__photoFormImages=window.__photoFormImages||{};
+            window.__photoFormImages["raw-fallback-caption-safe"]=rawComparison.toDataURL("image/png");
+          }
+
           const regions=[{name:"body",x:397,y:280,w:220,h:235,limit:165},{name:"left sleeve",x:298,y:350,w:61,h:270,limit:165},{name:"right sleeve",x:672,y:350,w:44,h:270,limit:165}];
           const legSource=makeCanvas();legSource.getContext("2d").drawImage(trouser,0,0);const legRaw=legSource.getContext("2d").getImageData(0,0,W,H).data;
           regions.push({name:"left leg",x:389,y:800,w:61,h:480,limit:225},{name:"right leg",x:575,y:800,w:57,h:480,limit:225});
@@ -534,7 +578,7 @@ async function run(){
           window.__photoFormImages["pant-stripe-"+template]=pantStripeCanvas.toDataURL("image/png");
           window.__photoFormImages["catalogue-pattern-"+template]=cataloguePatternCanvas.toDataURL("image/png");
           window.__photoFormImages[template]=display.toDataURL("image/png");
-          results.push({template,renderMs,folds,patternedFolds,placketCorrelation,collarCorrelation,cuffCorrelation,protectedChanges,protectedPantChanges,protectedCataloguePatternChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,cataloguePatternBody,cataloguePatternSleeve,pantStripeLeft,pantStripeRight,pantStripeLeftBlue,pantStripeRightBlue});
+          results.push({template,renderMs,captionSafeRawFallback,folds,patternedFolds,placketCorrelation,collarCorrelation,cuffCorrelation,protectedChanges,protectedPantChanges,protectedCataloguePatternChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,cataloguePatternBody,cataloguePatternSleeve,pantStripeLeft,pantStripeRight,pantStripeLeftBlue,pantStripeRightBlue});
         }return results;
       });
       for(const result of summary.forms){
@@ -544,6 +588,11 @@ async function run(){
           await page.locator("#photo-form-comparison").evaluate(image=>image.remove());
         }
       }
+      await page.evaluate(()=>{const img=document.createElement("img");img.id="raw-fallback-qa";img.src=window.__photoFormImages["raw-fallback-caption-safe"];img.style.width="1024px";document.body.append(img);});
+      await page.locator("#raw-fallback-qa").screenshot({path:path.join(out,"raw-fallback-caption-safe.png")});
+      await page.locator("#raw-fallback-qa").evaluate(image=>image.remove());
+      assert.equal(summary.forms.find(form=>form.template==="tucked")?.captionSafeRawFallback,true,
+        "raw fallback must ignore source captions outside the upper cloth field while painting both garments");
       for(const result of summary.forms){
         assert.equal(result.protectedChanges,0,result.template+" must preserve skin, shoes, inner-leg gap and set");
         assert.equal(result.wrongWaistPixels,0,"source shirting must stay fully covered at the tucked waist");
