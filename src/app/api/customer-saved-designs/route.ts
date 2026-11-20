@@ -3,7 +3,7 @@ import { getCustomerIdentity } from "@/lib/customer-auth";
 import { secureJsonRequestError, readSecureJsonObject } from "@/lib/secure-json-request";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
-import { CUSTOMER_SAVED_DESIGN_MAX_BYTES, parseCustomerSavedDesignWrite } from "@/lib/customer-saved-design-wire";
+import { CUSTOMER_SAVED_DESIGN_MAX_BYTES, parseCustomerSavedDesignWrite, parseCustomerSavedDesignRow } from "@/lib/customer-saved-design-wire";
 
 export const runtime = "nodejs";
 const privateJson = (body: unknown, status = 200) => NextResponse.json(body, {
@@ -35,8 +35,8 @@ export async function GET(request: Request) {
       id === null ? { p_owner_user_id: customer.id } : { p_owner_user_id: customer.id, p_design_id: id });
     if (!Array.isArray(rows) || rows.length > (id === null ? 24 : 1)) throw new Error("Unexpected saved-design rows");
     for (const row of rows) {
-      if (!row || typeof row !== "object" || !("payload" in row) ||
-          !parseCustomerSavedDesignWrite(row.payload, Buffer.byteLength(JSON.stringify(row.payload), "utf8")))
+      const parsed = parseCustomerSavedDesignRow(row);
+      if (!parsed || (id !== null && parsed.payload.designId !== id))
         throw new Error("Invalid saved-design record");
     }
     if (id !== null && rows.length === 0) return privateJson({ error: "Design not found." }, 404);
