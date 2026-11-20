@@ -6,6 +6,12 @@ on:
       - "scripts/blender/research-source-grain-uv.py"
       - "tests/blender/test_original_grain_uv_research.py"
       - ".github/workflows/titan-research-source-grain-uv.yml"
+  push:
+    branches: [research/titan-original-body-grain-uv-20261120]
+    paths:
+      - "scripts/blender/research-source-grain-uv.py"
+      - "tests/blender/test_original_grain_uv_research.py"
+      - ".github/workflows/titan-research-source-grain-uv.yml"
   workflow_dispatch:
 
 permissions:
