@@ -8,6 +8,10 @@ on:
       - "scripts/blender/author-linen-earth-officewear.py"
       - "tests/right-hem-fit-trial.test.ts"
       - "scripts/blender/measure-waist-tuck-contact.py"
+      - "scripts/blender/research-world-surface-uv.py"
+      - "tests/blender/test_world_surface_uv_research.py"
+      - "tests/python/test_world_surface_uv_report.py"
+      - "tests/world-surface-uv-research-contract.test.ts"
       - "scripts/blender/preflight-linen-earth-officewear.py"
       - "scripts/blender/diagnose-linen-earth-contact.py"
       - "scripts/blender/diagnose-linen-earth-crotch.py"
@@ -32,6 +36,10 @@ on:
       - "scripts/blender/author-linen-earth-officewear.py"
       - "tests/right-hem-fit-trial.test.ts"
       - "scripts/blender/measure-waist-tuck-contact.py"
+      - "scripts/blender/research-world-surface-uv.py"
+      - "tests/blender/test_world_surface_uv_research.py"
+      - "tests/python/test_world_surface_uv_report.py"
+      - "tests/world-surface-uv-research-contract.test.ts"
       - "scripts/blender/preflight-linen-earth-officewear.py"
       - "scripts/blender/diagnose-linen-earth-contact.py"
       - "scripts/blender/diagnose-linen-earth-crotch.py"
@@ -145,6 +153,25 @@ jobs:
             --experimental-waist-extra-clearance-mm 0 \
             --output .cache/linen-earth/linen-earth-officewear-waist-control.blend
           test -s .cache/linen-earth/linen-earth-officewear-waist-control.blend
+      - name: Compare real surface-aware UV candidate; never approve or export
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tests/python/test_world_surface_uv_report.py
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_world_surface_uv_research.py
+          source=.cache/linen-earth/linen-earth-officewear-authored.blend
+          original="$(sha256sum "$source" | cut -d' ' -f1)"
+          mkdir -p "$RUNNER_TEMP/titan-candidate-evidence"
+          "$BLENDER_BIN" --background "$source" --python-exit-code 1 \
+            --python scripts/blender/research-world-surface-uv.py -- \
+            --output .cache/linen-earth/linen-earth-officewear-uv-research.blend \
+            --report "$RUNNER_TEMP/titan-candidate-evidence/surface-uv-research.json"
+          test "$original" = "$(sha256sum "$source" | cut -d' ' -f1)"
+          test -s .cache/linen-earth/linen-earth-officewear-uv-research.blend
+          python3 tests/python/test_world_surface_uv_report.py \
+            "$RUNNER_TEMP/titan-candidate-evidence/surface-uv-research.json"
+          echo UV_RESEARCH_ONLY_NOT_PROMOTED
       - name: Install official Mesa software rendering dependencies for headless QA
         shell: bash
         run: |
