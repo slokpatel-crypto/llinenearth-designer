@@ -49,7 +49,12 @@ for name,tilt in (("synthetic_vertical_cylinder",0),("synthetic_angled_sleeve",m
     assert research.uv_signature(obj.data,obj.data.uv_layers[uvname])==uvhash
     assert obj.data.uv_layers.active.name==research.CANDIDATE_UV
     assert obj["titan_surface_uv_physical_repeat_verified"] is False
-    assert result["inferredAxisWorld"][2] > (0.85 if tilt else 0.98),result
+    assert result["inferredAxisWorld"][2] > (0.85 if tilt else 0.999),result
+    if not tilt:
+        # Upright cylinder has exact equal-height rings. Never misinterpret
+        # hash/mesh vertex ordering as a sloping grain direction.
+        assert abs(result["inferredAxisWorld"][0]) < 1e-5,result
+        assert abs(result["inferredAxisWorld"][1]) < 1e-5,result
     # A second UV research pass cannot silently rebind source evidence.
     try:
         research.map_surface_grain(obj)

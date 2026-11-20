@@ -99,10 +99,21 @@ def inferred_axis_and_frame(obj):
     coords = [obj.matrix_world @ vertex.co for vertex in obj.data.vertices]
     if len(coords) < 4:
         raise RuntimeError(f"{obj.name}: insufficient authentic shell vertices.")
-    sorted_by_z = sorted(coords, key=lambda point: point.z)
-    n = max(2, min(len(coords)//4, len(coords)//8))
-    low = sum(sorted_by_z[:n], Vector((0.0,0.0,0.0))) / n
-    high = sum(sorted_by_z[-n:], Vector((0.0,0.0,0.0))) / n
+    # An upright cylinder has dozens of vertices at exactly the same Z.
+    # Taking an arbitrary first/last N from these tied rings tilts the
+    # inferred axis by sampling only one azimuth sector. Measure ENTIRE
+    # physical lower/upper shell bands, including all equal-height points.
+    z_min = min(point.z for point in coords)
+    z_max = max(point.z for point in coords)
+    if z_max-z_min < 0.05:
+        raise RuntimeError(f"{obj.name}: scanned shell has no longitudinal extent.")
+    band = (z_max-z_min)*0.12
+    lower = [point for point in coords if point.z <= z_min+band]
+    upper = [point for point in coords if point.z >= z_max-band]
+    if len(lower) < 3 or len(upper) < 3:
+        raise RuntimeError(f"{obj.name}: insufficient true top/bottom shell surface samples.")
+    low = sum(lower, Vector((0.0,0.0,0.0))) / len(lower)
+    high = sum(upper, Vector((0.0,0.0,0.0))) / len(upper)
     axis = high-low
     if axis.length < 0.01:
         raise RuntimeError(f"{obj.name}: no physically measurable longitudinal axis.")

@@ -55,3 +55,15 @@ next to the unchanged production rejection report; it intentionally does not
 archive or promote the unapproved .blend output. The experimental .blend is
 regenerated deterministically from the pinned source when independent review
 is authorized. Blender vector initialization is explicit 3D world coordinates.
+
+## Native-geometry correction from first exact-head test
+Pinned native Blender source job on initial head `7c967cdfdbefa8a3d525c74dbc6d35f147165499`
+failed before the full CC0 comparison. Its adversarial **upright cylinder**
+contained 64 degenerate original X/Z UV triangles; candidate mapping reduced
+them to zero while preserving geometry, but inferred a **tilted** axis
+`[-0.17556,-0.015406,0.984348]` due selecting only arbitrary subsets
+of equal-Z ring vertices. Such angular drift would distort real woven grain.
+The code now uses ALL measured vertices in the upper and lower 12% physical
+Z bands, preserving tied rings and rejecting missing bands. The native test
+asserts a true vertical axis for a vertical cylinder and zero mapped UV
+collapse; no production promotion. Requires fresh native and full CI.
