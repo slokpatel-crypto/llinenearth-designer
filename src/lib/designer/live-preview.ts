@@ -93,6 +93,32 @@ export function photoFabricPatternScale(
   return clamp(photoTilePx/PHOTO_SWATCH_TILE_PX,.12,1.6);
 }
 
+
+/**
+ * A reviewed repeat and a verified photo fixture are necessary but not
+ * sufficient for an exact photographic-scale claim. The canvas compositor
+ * caps its texture transform at 0.12–1.6x and its photo tile at 18–320 model
+ * pixels. If either cap would change the requested millimetre-to-pixel size,
+ * keep the visible pattern-scale disclosure approximate.
+ *
+ * This checks rendering fidelity, NOT textile or cutting evidence.
+ */
+export function photoPatternScaleWithinCanvasBounds(
+  asset:FabricRenderAsset|null,
+  photoPxPerMm:number|null|undefined,
+):boolean {
+  const widthMm=asset?.tileRealWidthMm;
+  if(
+    !asset || asset.scaleApproximate!==false ||
+    typeof widthMm!=="number" || !Number.isFinite(widthMm) || widthMm<=0 ||
+    typeof photoPxPerMm!=="number" || !Number.isFinite(photoPxPerMm) || photoPxPerMm<=0
+  ) return false;
+  const requestedTilePx=widthMm*photoPxPerMm;
+  const minTilePx=Math.max(18*PHOTO_MODEL_COORDINATE_SCALE,PHOTO_SWATCH_TILE_PX*.12);
+  const maxTilePx=Math.min(320*PHOTO_MODEL_COORDINATE_SCALE,PHOTO_SWATCH_TILE_PX*1.6);
+  return Number.isFinite(requestedTilePx) && requestedTilePx>=minTilePx && requestedTilePx<=maxTilePx;
+}
+
 export function visiblePatternScaleVerified(patternType:string,asset:FabricRenderAsset|null) {
   if(patternType.toLowerCase()==="solid") return true;
   return asset?.scaleApproximate===false && Boolean(asset.tileRealWidthMm && asset.tileRealWidthMm>0);
