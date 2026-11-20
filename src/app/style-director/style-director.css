@@ -25,3 +25,20 @@
 .directorExistingModel[data-ready="false"] canvas{opacity:.35}
 .directorExistingModelState{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;background:rgba(8,24,39,.78);color:#f5f1e9;padding:9px 12px;font-size:9px;letter-spacing:.12em;white-space:nowrap}
 .directorQaStatus{margin:14px 0 0;padding:12px 14px;border:1px solid rgba(154,115,64,.28);border-radius:12px;background:rgba(154,115,64,.07);color:#4c453d;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+
+/* Alternative shirt/trouser pairings keep the hero fabric and v2 recipe locked. */
+.directorPairings{margin:24px 0;padding:20px;background:#e8e3d9;border:1px solid rgba(11,26,42,.18)}
+.directorPairingIntro{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.directorPairingIntro span{display:block;font-size:9px;letter-spacing:.17em;color:#927348;font-weight:700}
+.directorPairingIntro h4{font:400 24px/1.2 Georgia,serif;margin:8px 0 0}
+.directorPairingIntro button{min-height:44px;border:1px solid #0b1a2a;background:#0b1a2a;color:#fff;padding:10px 16px;cursor:pointer;font-size:12px}
+.directorPairingIntro button:disabled{opacity:.65;cursor:wait}
+.directorPairings>p{margin:12px 0 0;font-size:11px;line-height:1.55;color:#625c53}
+.directorPairings .directorPairingError{color:#7b2828}
+.directorPairingOptions{margin-top:16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.directorPairingOptions button{min-width:0;min-height:80px;background:#faf8f4;border:1px solid #cbc0b1;padding:12px 14px;display:flex;flex-direction:column;gap:6px;text-align:left;color:#1e2b37;cursor:pointer}
+.directorPairingOptions button[aria-pressed="true"]{outline:2px solid #0b1a2a;outline-offset:-2px;background:#f4ecdb}
+.directorPairingOptions button b{font:400 17px Georgia,serif}
+.directorPairingOptions button span{font-size:10px;line-height:1.45;color:#696259;overflow-wrap:anywhere}
+.directorPairings .directorPairingSelected{border-left:2px solid #b58d4e;padding:9px 12px;background:#f4eee4}
+@media(max-width:640px){.directorPairings{padding:14px}.directorPairingIntro{align-items:flex-start;flex-direction:column}.directorPairingIntro button{width:100%}.directorPairingOptions{grid-template-columns:minmax(0,1fr)}}
