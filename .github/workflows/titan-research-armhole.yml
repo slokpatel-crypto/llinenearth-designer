@@ -129,6 +129,11 @@ jobs:
             --report "$RUNNER_TEMP/armhole-evidence/joint-both-control.json"
           "$BLENDER_BIN" --background "$input" --python-exit-code 1 \
             --python scripts/blender/research-sewn-trousers-from-source.py -- \
+            --experimental-clearance-mode uniform \
+            --output .cache/linen-earth/titan-single-solidify-trousers-uniform-layer-control.blend \
+            --report "$RUNNER_TEMP/armhole-evidence/joint-both-uniform.json"
+          "$BLENDER_BIN" --background "$input" --python-exit-code 1 \
+            --python scripts/blender/research-sewn-trousers-from-source.py -- \
             --output .cache/linen-earth/titan-single-solidify-both-garments-research.blend \
             --report "$RUNNER_TEMP/armhole-evidence/joint-both.json"
           after="$(sha256sum "$input" | cut -d' ' -f1)"
@@ -163,6 +168,15 @@ jobs:
           sewn=json.loads((root/"joint-shirt.json").read_text())
           combined=json.loads((root/"joint-both.json").read_text())
           no_extra=json.loads((root/"joint-both-control.json").read_text())
+          uniform=json.loads((root/"joint-both-uniform.json").read_text())
+          assert uniform["researchClearanceMode"]=="uniform"
+          assert combined["researchClearanceMode"]=="waist-only"
+          assert no_extra["researchClearanceMode"]=="waist-only"
+          assert combined["researchWaistBlend"]["fullyWeightedVertices"]>8
+          assert combined["researchWaistBlend"]["weightedVertices"]>=combined["researchWaistBlend"]["fullyWeightedVertices"]
+          assert combined["researchWaistBlend"]["blendBandMm"]==45.0
+          assert combined["shirtMeshSha256Preserved"]==uniform["shirtMeshSha256Preserved"]
+          assert combined["sourceBodySha256"]==uniform["sourceBodySha256"]
           assert combined["sourceBodySha256"]==no_extra["sourceBodySha256"]
           assert combined["shirtMeshSha256Preserved"]==no_extra["shirtMeshSha256Preserved"]
           assert no_extra["researchExtraTrouserClearanceMm"]==0
@@ -174,6 +188,10 @@ jobs:
               assert type(first) is int and type(second) is int and min(first,second)>=0
               if first or second:
                   print("REAL_CC0_JOINT_TROUSER_EXTRA_CLEARANCE_CONTACT",key,first,second,second-first)
+              other=uniform["nativeGarmentPairTriangleContacts"][key]
+              assert type(other) is int and other>=0
+              if other or second:
+                  print("REAL_CC0_WAIST_ONLY_VS_UNIFORM_LAYERING",key,other,second,second-other)
           assert combined["modelIdentityId"]==trial["modelIdentityId"]=="linen-earth-studio-model-v1"
           assert combined["sourceBodySha256"]==trial["sourceBodySha256"]==sewn["sourceBodySha256"]
           assert not combined["productionApproved"] and not combined["tailorApproved"]
