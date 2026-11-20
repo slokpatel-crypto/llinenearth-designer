@@ -41,6 +41,18 @@ assert report["cylindricalFaces"] >= 8
 assert report["measuredRepeatVerified"] is False
 assert report["seamChartApproved"] is False
 assert report["newUvLayer"] == research.UV_NAME
+before_edges = report["originalUvEdgeContinuity"]
+after_edges = report["researchUvEdgeContinuity"]
+assert before_edges["sourceTopologicalEdges"] == after_edges["sourceTopologicalEdges"]
+assert before_edges["sourceBoundaryEdges"] == 0, before_edges
+assert after_edges["sourceBoundaryEdges"] == 0, after_edges
+assert before_edges["sourceNonManifoldEdges"] == 0, before_edges
+assert after_edges["sourceNonManifoldEdges"] == 0, after_edges
+assert before_edges["uvDiscontinuityEdges"] == 0, before_edges
+assert after_edges["uvDiscontinuityEdges"] > 0, (
+    "Separate cap-projection charts must be disclosed as UV seams", after_edges
+)
+assert after_edges["sewnSeamApproval"] is False
 assert len(obj.data.uv_layers) == 2
 assert [tuple(p.uv) for p in old_uv.data] == original
 assert research.geometry_fingerprint(obj) == fingerprint
