@@ -396,6 +396,41 @@ async function regression(name, run) {
       data:JSON.stringify({answers,lookId:"X".repeat(9000)})});
     assert.equal(huge.status(),413,"Oversized JSON is refused before catalog access");
   });
+  await regression("versatility-public-http-rejects-untrusted-outfit-and-oversize",async(page)=>{
+    const endpoint=baseURL+"/api/style-director/versatility";
+    const base={answers,lookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
+      pantId:looks[0].realModel.pantId,finishKey:null,finishId:null};
+    const unsupported=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,finishKey:"unverified",finishId:"fake"})});
+    assert.equal(unsupported.status(),400);
+    const injected=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,verifiedPhysicalFit:true})});
+    assert.equal(injected.status(),400);
+    const badAnswers=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,answers:{...answers,mood:"untrusted"}})});
+    assert.equal(badAnswers.status(),400);
+    const huge=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,lookId:"x".repeat(9000)})});
+    assert.equal(huge.status(),413);
+    const malformed=await page.request.post(endpoint,{headers:{"content-type":"application/json"},data:'{"answers":'});
+    assert.equal(malformed.status(),400);
+  });
+  await regression("stale-versatility-after-pair-change-gets-discarded",async(page)=>{
+    await journey(page);
+    await page.getByRole("button",{name:"Explore pairings",exact:true}).click();
+    await page.waitForFunction(()=>window.__linenDirectorQA.requests.some(r=>r.kind==="pairings"));
+    await complete(page,"pairings",0,{sourceLookId:looks[0].id,heroFabricId:looks[0].fabric.id,alternatives:pairings});
+    await page.getByRole("button",{name:"Explore occasions",exact:true}).click();
+    await page.waitForFunction(()=>window.__linenDirectorQA.requests.some(r=>r.kind==="versatility"));
+    await page.locator(".directorPairingOptions button").nth(1).click();
+    await complete(page,"versatility",0,{
+      sourceLookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
+      pantId:looks[0].realModel.pantId,finishId:null,rows:versatility,
+    });
+    assert.equal(await page.locator(".directorVersatilityCard").count(),0,
+      "Results for the old fabric pair may not appear on the new outfit");
+    assert.equal((await request(page,"versatility",0)).aborted,true);
+  });
   await regression("finishes-public-http-enforces-closed-input-and-json-limit",async(page)=>{
     const endpoint=baseURL+"/api/style-director/finishes";
     const base={answers,lookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
