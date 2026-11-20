@@ -44,6 +44,7 @@ class NativeCandidateSummary(unittest.TestCase):
         self.assertEqual(data["rejectionReasonCount"], 2)
         self.assertEqual(len(data["meshSummary"]), 6)
         self.assertEqual(len(data["garmentPairIntersections"]), 15)
+        self.assertEqual(data["legacyWaistRejectionReasonCount"], 2)
         self.assertEqual(data["identityFitMeasurementsMm"]["sleeveCenterSpacingMm"], 563.54)
 
     def test_crashes_and_success_exits_do_not_fake_a_rejection(self):
@@ -81,7 +82,30 @@ class NativeCandidateSummary(unittest.TestCase):
         data = mod.summarize(json.dumps(value), 1)
         self.assertEqual(data["garmentPairIntersections"], value["garmentPairIntersections"])
         self.assertEqual(data["rejectionReasonCount"], 3)
+        self.assertEqual(data["legacyWaistRejectionReasonCount"], 2)
         self.assertFalse(data["productionApproved"])
+
+    def test_garment_contact_missing_or_hidden_reason_fails_closed(self):
+        for key in ("garmentPairIntersections",):
+            value = example()
+            value.pop(key)
+            with self.assertRaisesRegex(RuntimeError, "fifteen"):
+                mod.summarize(json.dumps(value), 1)
+        malformed = example()
+        malformed["garmentPairIntersections"]["ShirtTorsoFabric::ShirtSleeveLFabric"] = None
+        with self.assertRaisesRegex(RuntimeError, "nonnegative"):
+            mod.summarize(json.dumps(malformed), 1)
+        unreported = example()
+        unreported["garmentPairIntersections"]["ShirtTorsoFabric::ShirtSleeveLFabric"] = 1434
+        with self.assertRaisesRegex(RuntimeError, "must block"):
+            mod.summarize(json.dumps(unreported), 1)
+        invented = example()
+        invented["reasons"].append(
+            "ShirtTorsoFabric::ShirtSleeveLFabric has 99 intersecting triangle pairs; "
+            "not independently measured"
+        )
+        with self.assertRaisesRegex(RuntimeError, "must block"):
+            mod.summarize(json.dumps(invented), 1)
 
     def test_missing_garment_geometry_is_not_valid_evidence(self):
         for changed_key, changed_value in (("triangles", 0), ("uvLayers", 0)):
