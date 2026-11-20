@@ -48,7 +48,11 @@ export async function listCloudDesigns(transport: SavedDesignTransport = fetch):
     !Array.isArray((result as {designs?: unknown}).designs) ||
     (result as {designs: unknown[]}).designs.length > 24)
     throw new Error("Invalid cloud saved-design response.");
-  return (result as {designs: unknown[]}).designs.map(decodeRow);
+  const designs = (result as {designs: unknown[]}).designs.map(decodeRow);
+  // A malformed or inconsistent account listing must not present ambiguous IDs for recovery.
+  if (new Set(designs.map((design) => design.id)).size !== designs.length)
+    throw new Error("Invalid cloud saved-design response.");
+  return designs;
 }
 
 export async function deleteCloudDesign(id: string, transport: SavedDesignTransport = fetch): Promise<boolean> {
