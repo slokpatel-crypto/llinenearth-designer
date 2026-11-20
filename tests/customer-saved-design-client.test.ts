@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { saveCloudDesign, listCloudDesigns, deleteCloudDesign } from "../src/lib/customer-saved-design-client.ts";
+import { saveCloudDesign, listCloudDesigns, getCloudDesign, deleteCloudDesign } from "../src/lib/customer-saved-design-client.ts";
 
 const saved = { id: "SD-synthetic", title: "Synthetic design", savedAt: "2026-11-20T00:00:00Z",
   brief: {}, version: { id: "synthetic" }, renderSet: {} } as Parameters<typeof saveCloudDesign>[0];
@@ -81,4 +81,26 @@ test("two independent browser transports recover only their authenticated accoun
   assert.equal(await deleteCloudDesign(saved.id, bobBrowser), true);
   assert.deepEqual(await listCloudDesigns(aliceBrowserTwo), [saved]);
   assert.deepEqual(await listCloudDesigns(bobBrowser), []);
+});
+
+test("single-design cloud recovery enforces exact ID, authentication and private missing records", async () => {
+  const recovered = await getCloudDesign(saved.id, async (url, init) => {
+    assert.equal(url, "/api/customer-saved-designs?designId=SD-synthetic");
+    assert.equal(init?.credentials, "same-origin");
+    assert.equal(init?.cache, "no-store");
+    return response({design: row});
+  });
+  assert.deepEqual(recovered, saved);
+  assert.equal(await getCloudDesign(saved.id, async () => response({error: "not found"}, 404)), null);
+  await assert.rejects(() => getCloudDesign(saved.id, async () => response({error: "sign in"}, 401)), /Sign in/);
+  await assert.rejects(() => getCloudDesign(saved.id, async () =>
+    response({design: {...row, design_id: "SD-other"}})), /Invalid cloud/);
+  await assert.rejects(() => getCloudDesign(saved.id, async () =>
+    response({design: row, owner_id: "leak"})), /Invalid cloud/);
+  let called = false;
+  await assert.rejects(() => getCloudDesign("../unsafe", async () => {
+    called = true;
+    return response({design: row});
+  }), /Invalid design ID/);
+  assert.equal(called, false);
 });
