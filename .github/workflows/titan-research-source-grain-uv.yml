@@ -101,7 +101,17 @@ jobs:
           names={"ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
                  "TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"}
           assert set(report["garmentPanels"])==names
-          for panel in report["garmentPanels"].values():
+          # Native measured first projection: 3,162 discontinuous source
+          # edges across these same six pinned CC0 meshes. The current
+          # measured rear-oriented projection has 313 (308 rear, 5 front).
+          # A research regression is NOT a physical UV/sewing approval.
+          first_trial={"ShirtTorsoFabric":1168,"ShirtSleeveLFabric":292,
+                       "ShirtSleeveRFabric":301,"TrouserWaistFabric":416,
+                       "TrouserLegLFabric":500,"TrouserLegRFabric":485}
+          research_seams=0
+          front_seams=0
+          rear_seams=0
+          for name,panel in report["garmentPanels"].items():
               assert panel["newUvLayer"]=="TITAN_RESEARCH_SURFACE_GRAIN"
               assert panel["afterCollapsedUvTriangles"]==0
               assert panel["afterNonFiniteUvTriangles"]==0
@@ -120,7 +130,14 @@ jobs:
                   assert metrics["minusYCameraFacingSeamEdges"]+metrics["plusYCameraAwaySeamEdges"]==metrics["uvDiscontinuityEdges"]
                   assert type(metrics["minusYCameraFacingSeamEdges"]) is int
                   assert type(metrics["plusYCameraAwaySeamEdges"]) is int
-          print("TITAN_REAL_CC0_UV_RESEARCH_GEOMETRY_ONLY_UNAPPROVED")
+              research_seams+=after["uvDiscontinuityEdges"]
+              front_seams+=after["minusYCameraFacingSeamEdges"]
+              rear_seams+=after["plusYCameraAwaySeamEdges"]
+              assert after["uvDiscontinuityEdges"] < first_trial[name], name
+          assert research_seams < 552, "The accepted earlier 552-edge candidate was measurably better"
+          assert front_seams <= 5 and front_seams < rear_seams
+          assert rear_seams+front_seams==research_seams
+          print("TITAN_REAL_CC0_UV_RESEARCH_GEOMETRY_ONLY_UNAPPROVED",research_seams,front_seams,rear_seams)
           PY
 
       - name: Verify candidate still fails unchanged physical/source acceptance
@@ -196,6 +213,16 @@ jobs:
               assert hashlib.sha256(pic.read_bytes()).hexdigest()==view["sha256"]
           print("TITAN_ORIGINAL_SOURCE_GRAIN_UV_FOUR_ANGLE_UNAPPROVED")
           PY
+
+      # Expose the regenerated, explicitly unapproved real Blender research
+      # scene for native seam/UV inspection; never publish as a production GLB.
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: titan-cc0-original-UV-scene-RESEARCH-NOT-PRODUCTION
+          path: .cache/linen-earth/titan-unapproved-real-source-grain-uv.blend
+          retention-days: 14
+          if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         if: always()
