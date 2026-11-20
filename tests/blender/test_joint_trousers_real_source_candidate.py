@@ -39,6 +39,9 @@ assert result["realisticTrouserConstructionApproved"] is False
 assert 3<=result["originalBodyClearanceMm"]<=18
 assert 0<=result["researchExtraTrouserClearanceMm"]<=9
 assert result["researchCombinedTrouserClearanceMm"]<=18
+assert result["researchClearanceMode"]=="waist-only"
+assert result["researchWaistBlend"]["weightedVertices"]>=result["researchWaistBlend"]["fullyWeightedVertices"]>8
+assert result["researchWaistBlend"]["blendBandMm"]==45.0
 assert abs(result["researchCombinedTrouserClearanceMm"]-(
     result["originalBodyClearanceMm"]+result["researchExtraTrouserClearanceMm"]))<0.001
 assert research.fingerprint(bpy.data.objects["Body"])==result["sourceBodySha256"]
