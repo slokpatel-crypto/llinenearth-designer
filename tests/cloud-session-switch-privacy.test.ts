@@ -50,6 +50,12 @@ test("cloud panel scrubs stale details on tab return and compares session before
   assert.match(src, /await assertOwner\(\);[\s\S]*?const recovered = importCloudDesignExport\(window\.localStorage/);
   assert.match(src, /await assertOwner\(\);\s*requireSelectedOwner\(\);\s*\/\/ Explicit export is safer/);
   assert.match(src, /visibilityEpoch\.current\+\+/);
+  // Confirm dialogs may emit focus events; owner rechecks still run after consent.
+  assert.match(src, /if \(inFlight\.current\) return;\s*visibilityEpoch\.current\+\+/);
+  assert.match(src, /if \(!window\.confirm\(`Delete cloud design/);
+  assert.match(src, /if \(!window\.confirm\(`Import cloud design/);
+  assert.match(src, /await assertOwner\(\);\s*requireSelectedOwner\(\);\s*\/\/ The selected cloud record/);
+
   assert.match(src, /selectedOwner\.current = null;/);
   assert.match(src, /selectedOwner\.current = loadedOwner\.current;/);
   assert.match(src, /selectedOwner\.current !== loadedOwner\.current/);
