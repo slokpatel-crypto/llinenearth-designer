@@ -277,3 +277,9 @@ Prior parent matching-head evidence: Full CI #44657065416, Non-3D #44657065342 a
 - Prior parent matching-head evidence: CI #44690169705 SUCCESS; Non-3D #44690169765 SUCCESS; disposable PostgreSQL #44690169676 SUCCESS. Those checks do **not** cover these new commits. Matching-head CI/browser QA for new head PENDING; no tests claimed executed here.
 - Blockers: actual signed-in two-browser recovery, usable reconstruction into Designer, owner/device pilot, stock/fabric/tailor and independent security/release gates. No production migration or deploy.
 - Next 30–40-minute slice: add browser UI regressions for signed-in cloud listing/upload and cloud recovery, verify exact-head CI, then implement explicit cloud-to-Designer reconstruction without modifying browser drafts.
+
+## 2026-11-20 — Cloud vault stale-account display and upload refresh
+- Parent `15512eb5a0eeb591e3fa1f230b65f07e141d9a8e`; UI fix `f41fc76cac4817d657dbecd046e741f67890a3ff`.
+- Acceptance slice: failed cloud operations clear previously displayed account-scoped cloud records and selected details; successful explicit local-draft upload refreshes the account list and clears stale selection. Local drafts are not implicitly uploaded or overwritten.
+- Parent matching-head evidence: CI #44697945170, Non-3D #44697945189, disposable PostgreSQL #44697945144 all SUCCESS at `15512eb5a0eeb591e3fa1f230b65f07e141d9a8e`; no matching-head test/CI evidence yet for this change. No local test execution claimed.
+- Remaining: real browser sign-in/sign-out account switching, two-session reconstruction into Designer, UI browser regressions, customer pilot and independent security approval. Physical stock, measured fabric, tailoring, device and native-model gates PENDING/BLOCKED. Next: test the cloud panel at 390/768/1440px and connect explicit recovery to Designer with versioned validation. No main merge, deployment, live migration or paid AI.
