@@ -124,6 +124,11 @@ jobs:
           before="$(sha256sum "$input" | cut -d' ' -f1)"
           "$BLENDER_BIN" --background "$input" --python-exit-code 1 \
             --python scripts/blender/research-sewn-trousers-from-source.py -- \
+            --experimental-trouser-extra-clearance-mm 0 \
+            --output .cache/linen-earth/titan-single-solidify-trousers-clearance-control.blend \
+            --report "$RUNNER_TEMP/armhole-evidence/joint-both-control.json"
+          "$BLENDER_BIN" --background "$input" --python-exit-code 1 \
+            --python scripts/blender/research-sewn-trousers-from-source.py -- \
             --output .cache/linen-earth/titan-single-solidify-both-garments-research.blend \
             --report "$RUNNER_TEMP/armhole-evidence/joint-both.json"
           after="$(sha256sum "$input" | cut -d' ' -f1)"
@@ -157,6 +162,18 @@ jobs:
           open_trial=json.loads((root/"open-rims.json").read_text())
           sewn=json.loads((root/"joint-shirt.json").read_text())
           combined=json.loads((root/"joint-both.json").read_text())
+          no_extra=json.loads((root/"joint-both-control.json").read_text())
+          assert combined["sourceBodySha256"]==no_extra["sourceBodySha256"]
+          assert combined["shirtMeshSha256Preserved"]==no_extra["shirtMeshSha256Preserved"]
+          assert no_extra["researchExtraTrouserClearanceMm"]==0
+          assert combined["researchExtraTrouserClearanceMm"]==3
+          assert combined["researchCombinedTrouserClearanceMm"]<=18
+          for key in combined["nativeGarmentPairTriangleContacts"]:
+              first=no_extra["nativeGarmentPairTriangleContacts"][key]
+              second=combined["nativeGarmentPairTriangleContacts"][key]
+              assert type(first) is int and type(second) is int and min(first,second)>=0
+              if first or second:
+                  print("REAL_CC0_JOINT_TROUSER_EXTRA_CLEARANCE_CONTACT",key,first,second,second-first)
           assert combined["modelIdentityId"]==trial["modelIdentityId"]=="linen-earth-studio-model-v1"
           assert combined["sourceBodySha256"]==trial["sourceBodySha256"]==sewn["sourceBodySha256"]
           assert not combined["productionApproved"] and not combined["tailorApproved"]
