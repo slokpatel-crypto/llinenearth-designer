@@ -180,6 +180,7 @@ export default function AccountPage(){
 
   async function shareOwnedDesign(){
     if(!activeDesign||busy) return;
+    const epoch=designLoadEpoch.current;
     setBusy(true);setMessage("");setShareUrl("");
     try{
       const response=await fetch("/api/designer/share",{
@@ -187,17 +188,19 @@ export default function AccountPage(){
         body:JSON.stringify(activeDesign.revision),
       });
       const data=await response.json() as {token?:string;error?:string};
+      if(epoch!==designLoadEpoch.current)return;
       if(!response.ok||!data.token) throw new Error(data.error||"Could not share this locked recipe.");
       const url=new URL("/share/"+encodeURIComponent(data.token),window.location.origin).toString();
       setShareUrl(url);
-      try{await navigator.clipboard.writeText(url);setMessage("Expiring, measurement-free share link copied.");}
-      catch{setMessage("Share link created. Open or copy it from below.");}
-    }catch(error){setMessage(error instanceof Error?error.message:"Could not create share link.");}
-    finally{setBusy(false);}
+      try{await navigator.clipboard.writeText(url);if(epoch===designLoadEpoch.current)setMessage("Expiring, measurement-free share link copied.");}
+      catch{if(epoch===designLoadEpoch.current)setMessage("Share link created. Open or copy it from below.");}
+    }catch(error){if(epoch===designLoadEpoch.current)setMessage(error instanceof Error?error.message:"Could not create share link.");}
+    finally{if(epoch===designLoadEpoch.current)setBusy(false);}
   }
 
   async function enquireOwnedDesign(){
     if(!activeDesign||busy) return;
+    const epoch=designLoadEpoch.current;
     setBusy(true);setMessage("");setEnquiryUrl("");
     try{
       const response=await fetch("/api/designer/enquiry",{
@@ -205,12 +208,13 @@ export default function AccountPage(){
         body:JSON.stringify(activeDesign.revision),
       });
       const data=await response.json() as {href?:string;error?:string};
+      if(epoch!==designLoadEpoch.current)return;
       if(!response.ok||!data.href||!data.href.startsWith("https://wa.me/"))
         throw new Error(data.error||"Could not prepare the exact-recipe enquiry.");
       setEnquiryUrl(data.href);
       setMessage("Enquiry prepared for the immutable saved revision. Open WhatsApp below to send it.");
-    }catch(error){setMessage(error instanceof Error?error.message:"Could not prepare enquiry.");}
-    finally{setBusy(false);}
+    }catch(error){if(epoch===designLoadEpoch.current)setMessage(error instanceof Error?error.message:"Could not prepare enquiry.");}
+    finally{if(epoch===designLoadEpoch.current)setBusy(false);}
   }
 
   async function acceptQuote(quoteId:string){
