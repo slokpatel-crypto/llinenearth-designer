@@ -42,6 +42,8 @@ assert evidence["watertightShirtConstructionApproved"] is False
 assert evidence["photographicMatchApproved"] is False
 assert evidence["measuredFabricDrapeApproved"] is False
 assert evidence["singleNativeSolidify"] is True
+assert set(evidence["originalTrouserMeshesPreservedSha256"])=={"TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"}
+assert all(len(v)==64 for v in evidence["originalTrouserMeshesPreservedSha256"].values())
 names=("ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
        "TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric")
 for name in names:
