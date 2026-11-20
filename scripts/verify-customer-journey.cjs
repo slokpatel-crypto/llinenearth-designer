@@ -127,7 +127,7 @@ async function visit(browser,width,revision){
   await page.getByRole("button",{name:"Reassess this saved look"}).click();
   // The recipe actions are inside a collapsed <details>; first wait for
   // the assessed result, then open the drawer before finding its buttons.
-  const drawer=page.locator(".newDesignerTechnicalDrawer");
+  const drawer=page.locator(".newDesignerTechnicalDrawer.newDesignerAdvancedResult");
   await drawer.waitFor({state:"attached",timeout:30000});
   await drawer.locator("summary").click();
   await page.getByRole("button",{name:/Lock recipe revision/}).waitFor({state:"visible"});
