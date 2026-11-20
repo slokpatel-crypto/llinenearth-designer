@@ -209,3 +209,26 @@ test("repairing one trouser fault does not conceal other independent locked cons
     }
   }
 });
+
+test("independent waistband and cropped-break faults survive a frozen retired shirt selection", () => {
+  for (const sleeve of ["full_sleeve", "retired_sleeve"] as const) {
+    for (const fixWaistband of [false, true]) {
+      for (const fixBreak of [false, true]) {
+        const locked = makeSpec(sleeve, "linen_drawstring", "flat_front");
+        locked.pant.waistband = fixWaistband ? "drawstring" : "belt_loops";
+        locked.pant.hem = "cropped_above_ankle_hem";
+        locked.pant.break = fixBreak ? "no_break" : "stacked_break";
+        const before = JSON.stringify(locked);
+        Object.freeze(locked.shirt);
+        Object.freeze(locked.pant);
+        Object.freeze(locked);
+        const codes = styleDirectorConstructionIssues(locked).map(issue => issue.code);
+        assert.equal(codes.includes("linen_drawstring_waistband_mismatch"), !fixWaistband);
+        assert.equal(codes.includes("cropped_stacked_break"), !fixBreak);
+        assert.equal(codes.includes("unknown_versioned_option"), sleeve === "retired_sleeve");
+        assert.deepEqual(styleDirectorConstructionIssues(locked).map(issue => issue.code), codes);
+        assert.equal(JSON.stringify(locked), before);
+      }
+    }
+  }
+});
