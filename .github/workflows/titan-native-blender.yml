@@ -52,3 +52,10 @@ jobs:
           set -euo pipefail
           "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
             --python tests/blender/test_uv_preflight_triangles.py
+
+      - name: Research only — reject collapsed side and rim UV charts
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_candidate_face_chart_uv.py
