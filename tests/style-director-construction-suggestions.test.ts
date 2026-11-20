@@ -92,6 +92,16 @@ test("construction alternatives cover distinct, catalogue-backed tailoring decis
       `${scenario.name}: do not offer duplicate field changes`);
     const issues = styleDirectorConstructionIssues(locked);
     for (const suggestion of first) {
+      const [garment, key] = suggestion.optionGroup.split(".") as ["shirt" | "pant", string];
+      const candidate = {
+        ...locked,
+        [garment]: { ...locked[garment], [key]: suggestion.proposedId },
+      } as StyleSpecV2;
+      const existingCodes = new Set(issues.map(issue => issue.code));
+      const introduced = styleDirectorConstructionIssues(candidate).filter(issue =>
+        !existingCodes.has(issue.code));
+      assert.deepEqual(introduced, [],
+        `${scenario.name}: suggested change must not introduce another contradiction`);
       assert.ok(issues.some(issue => issue.code === suggestion.cause),
         `${scenario.name}: suggestion must derive from a live compatibility issue`);
       assert.ok(optionsFor(suggestion.optionGroup).some(option =>
