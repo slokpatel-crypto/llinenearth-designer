@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {draftFromOwnedLockedRevision,validOwnedDesignVaultId} from "../src/lib/designer/customer-resume.ts";
-import {
-  DESIGNER_SHIRTS,DESIGNER_PANTS,DESIGNER_REVIEWED_PAIRING,designerStyleForOccasion,
-} from "../src/lib/designer/engine.ts";
-import {fromLegacyStyle} from "../src/lib/designer/style-spec-v2.ts";
+import {createRequire} from "node:module";
+import type {DesignerFabric} from "../src/lib/designer/engine.ts";
+const {load}=createRequire(import.meta.url)("../scripts/designer-test-loader.cjs");
+const {draftFromOwnedLockedRevision,validOwnedDesignVaultId}=load("src/lib/designer/customer-resume.ts") as typeof import("../src/lib/designer/customer-resume.ts");
+const {DESIGNER_SHIRTS,DESIGNER_PANTS,DESIGNER_REVIEWED_PAIRING,designerStyleForOccasion}=load("src/lib/designer/engine.ts") as typeof import("../src/lib/designer/engine.ts");
+const {fromLegacyStyle}=load("src/lib/designer/style-spec-v2.ts") as typeof import("../src/lib/designer/style-spec-v2.ts");
 import type {LockedDesignRevision} from "../src/lib/designer/design-lock.ts";
 
 const shirtIds=DESIGNER_SHIRTS.map(f=>f.id);
