@@ -43,6 +43,8 @@ def cli_args():
     parser.add_argument("--thickness-mm", type=float, default=1.6)
     parser.add_argument("--experimental-leg-solidify-offset", type=float, choices=(-1.0, 0.0, 1.0), default=1.0,
                         help="Native research only: independently test closed leg shell thickness offset")
+    parser.add_argument("--experimental-disjoint-armholes", action="store_true",
+                        help="RESEARCH ONLY: assign original scanned source faces to torso OR sleeve, never both")
     parser.add_argument("--experimental-leg-rim-off", action="store_true",
                         help="Blender research only: isolate Solidify rim geometry; NEVER production-safe")
     parser.add_argument("--experimental-capture-crotch-stages", action="store_true",
@@ -408,10 +410,17 @@ def main():
     arm_root = 0.155
     hip_half = 0.245
 
+    # The default unchanged candidate deliberately remains the pinned control.
+    # Research only: original torso/sleeve selection overlaps in the 155–245 mm
+    # lateral belt, duplicating actual scan faces in separate garment shells.
+    # A disjoint face owner can eliminate that source duplication, but may
+    # expose unsewn armhole gaps; NEVER treat this as a finished sleeve join.
+    sleeve_face_root = torso_half if options.experimental_disjoint_armholes else arm_root
+
     regions = {
         "ShirtTorsoFabric": lambda p: tucked_shirt_hem_z <= p.z <= z(0.895) and abs(p.x-center_x) <= torso_half,
-        "ShirtSleeveLFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x <= -arm_root,
-        "ShirtSleeveRFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x >= arm_root,
+        "ShirtSleeveLFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x < -sleeve_face_root,
+        "ShirtSleeveRFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x > sleeve_face_root,
         "TrouserWaistFabric": lambda p: z(0.455) <= p.z <= trouser_waist_upper_z and abs(p.x-center_x) <= hip_half,
         "TrouserLegLFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x < center_x,
         "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x >= center_x,
@@ -451,6 +460,7 @@ def main():
     bpy.context.scene["linen_earth_experimental_right_hem_taper_mm"] = round(right_hem_taper_mm, 3)
     bpy.context.scene["linen_earth_research_crotch_stages_emitted"] = bool(options.experimental_capture_crotch_stages)
     bpy.context.scene["linen_earth_research_leg_rim_off"] = bool(options.experimental_leg_rim_off)
+    bpy.context.scene["linen_earth_research_disjoint_armholes"] = bool(options.experimental_disjoint_armholes)
     bpy.context.scene["linen_earth_research_leg_solidify_offset"] = options.experimental_leg_solidify_offset
 
     output.parent.mkdir(parents=True, exist_ok=True)
