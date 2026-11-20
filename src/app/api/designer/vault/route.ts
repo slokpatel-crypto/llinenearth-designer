@@ -6,6 +6,7 @@ import { requireDesignVaultBooleanAck } from "@/lib/designer/design-vault-ack";
 import { checkDesignVaultRateLimit, type VaultRateEntry } from "@/lib/designer/design-vault-rate-limit";
 import { requireSingleDesignVaultRow } from "@/lib/designer/design-vault-row";
 import { requireOwnedDesignVaultRows } from "@/lib/designer/design-vault-owned-list";
+import { summaryForOwnedLockedDesign } from "@/lib/designer/owned-design-summary";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import {
   createDesignVaultAccessKey,
@@ -125,11 +126,18 @@ export async function POST(request:Request){
       const rows=requireOwnedDesignVaultRows(responseRows);
       const designs=[];
       for(const row of rows){
-        if(await verifyLockedDesignRevision(row.payload as unknown as LockedDesignRevision)){
+        const revision=row.payload as unknown as LockedDesignRevision;
+        if(await verifyLockedDesignRevision(revision)){
           designs.push({
             vaultId:row.vault_id,
             revisionId:row.revision_id,
             recipeHash:row.recipe_hash,
+            summary:summaryForOwnedLockedDesign(revision),
+            // Informational lineage recorded in the already-verified locked
+            // payload. This does not attest that the parent is still stored.
+            parentRevisionId:typeof revision.parentRevisionId==="string" &&
+              revision.parentRevisionId.length>=12 && revision.parentRevisionId.length<=220
+              ? revision.parentRevisionId : null,
             createdAt:row.created_at,
             expiresAt:row.expires_at,
           });

@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import type { CustomerFitResult, CustomerOutcomeRating } from "@/lib/designer/customer-production-outcomes";
 
 type Customer={id?:string;email:string|null};
-type OwnedDesign={vaultId:string;revisionId:string;recipeHash:string;createdAt:string;expiresAt:string};
+type OwnedDesign={vaultId:string;revisionId:string;recipeHash:string;parentRevisionId?:string|null;summary?:{shirtName:string;trouserName:string;occasion:string};createdAt:string;expiresAt:string};
 type OwnedProfile={vaultId:string;createdAt:string;expiresAt:string;unit?:string};
 type OwnedQuote={quote_id:string;revision_id:string;currency:string;line_items:Array<{label:string;amount:number|string}>;subtotal:number|string;adjustment:number|string;total:number|string;status:string;created_at:string;updated_at:string};
 type OwnedOrder={order_id:string;revision_id:string;quote_id:string|null;status:string;created_at:string;updated_at:string};
@@ -44,6 +46,9 @@ export default function AccountPage(){
   const [claimMeasurement,setClaimMeasurement]=useState("");
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState(false);
+  const [activeDesignAction,setActiveDesignAction]=useState<string|null>(null);
+  const [preparedEnquiry,setPreparedEnquiry]=useState<{vaultId:string;href:string}|null>(null);
+  const [shareFallback,setShareFallback]=useState<{vaultId:string;url:string}|null>(null);
 
   const refresh=useCallback(async()=>{
     const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
@@ -117,6 +122,46 @@ export default function AccountPage(){
     }catch(error){
       setMessage(error instanceof Error?error.message:"Secure copy could not be deleted.");
     }finally{setBusy(false);}
+  }
+
+  async function actOnOwnedDesign(kind:"share"|"enquire",item:OwnedDesign){
+    if(busy) return;
+    setBusy(true);setActiveDesignAction(item.vaultId+":"+kind);
+    setMessage("");setPreparedEnquiry(null);setShareFallback(null);
+    try{
+      // This endpoint enforces the signed-in owner's identity and verifies
+      // the immutable recipe before returning it; never use a recovery token.
+      const loaded=await fetch("/api/designer/vault",{
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"loadOwned",vaultId:item.vaultId}),cache:"no-store",
+      });
+      const record=await loaded.json() as {revision?:LockedDesignRevision;error?:string};
+      if(!loaded.ok||!record.revision) throw new Error(record.error||"Cannot open this saved design.");
+      const revision=record.revision;
+      if(revision.revisionId!==item.revisionId||revision.recipeHash!==item.recipeHash||
+        !await verifyLockedDesignRevision(revision)) throw new Error("Saved design integrity check failed.");
+      const endpoint=kind==="share"?"/api/designer/share":"/api/designer/enquiry";
+      const result=await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(revision),cache:"no-store"});
+      const data=await result.json() as {token?:string;href?:string;audited?:boolean;error?:string};
+      if(!result.ok) throw new Error(data.error||"Could not prepare this design.");
+      if(kind==="share"){
+        if(!data.token) throw new Error("No secure share token was created.");
+        const url=new URL("/share/"+encodeURIComponent(data.token),window.location.origin).toString();
+        try{
+          await navigator.clipboard.writeText(url);
+          setMessage("Signed design-only link copied. It expires in 30 days; no measurements are shared.");
+        }catch{
+          setShareFallback({vaultId:item.vaultId,url});
+          setMessage("Signed design-only link ready below. Copy it before leaving this page.");
+        }
+      }else{
+        if(!data.href||!data.href.startsWith("https://")) throw new Error("A valid enquiry link was not returned.");
+        setPreparedEnquiry({vaultId:item.vaultId,href:data.href});
+        setMessage("Enquiry prepared for this exact locked revision. Select Open WhatsApp to review and send.");
+      }
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Could not prepare the saved design.");
+    }finally{setActiveDesignAction(null);setBusy(false);}
   }
 
   async function logout(){
@@ -281,13 +326,29 @@ export default function AccountPage(){
 
         <section style={card}>
           <h2 style={{marginTop:0}}>Locked designs <span style={{opacity:.45}}>({designs.length})</span></h2>
+          <p style={{fontSize:13,opacity:.7,lineHeight:1.5}}>Reopen a saved look as a new editable draft, or prepare a signed design-only share/enquiry from the original immutable version. <Link href="/designer-studio#designerChoose">Discover fabrics and start a new look</Link>.</p>
           <div style={{display:"grid",gap:10}}>
             {designs.length===0&&<p style={{opacity:.65}}>No account-owned locked designs yet. New secure copies created while signed in will appear here.</p>}
             {designs.map(item=><div key={item.vaultId} style={{borderTop:"1px solid #ece6dc",paddingTop:12,display:"grid",gap:7}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"start",flexWrap:"wrap"}}>
-                <div><strong>{item.revisionId}</strong><div style={{fontSize:13,opacity:.65,marginTop:4}}>Saved {new Date(item.createdAt).toLocaleDateString()} · integrity hash {item.recipeHash.slice(0,12)}…</div></div>
+                <div><strong>{item.revisionId}</strong><div style={{fontSize:13,opacity:.65,marginTop:4}}>Saved {new Date(item.createdAt).toLocaleDateString()} · integrity hash {item.recipeHash.slice(0,12)}…</div>{item.parentRevisionId&&<div style={{fontSize:13,opacity:.7,marginTop:4,overflowWrap:"anywhere"}}>Continues recorded revision {item.parentRevisionId}</div>}</div>
                 <button style={{...button,background:"#fff",color:"#7a2f2f",border:"1px solid #d8c6c1",padding:"7px 10px"}} disabled={busy} onClick={()=>void deleteOwned("design",item.vaultId)}>Delete secure copy</button>
               </div>
+              {item.summary&&<div style={{display:"grid",gap:3,fontSize:14,lineHeight:1.45,overflowWrap:"anywhere"}}>
+                <strong>Shirt: {item.summary.shirtName} · Trouser: {item.summary.trouserName}</strong>
+                <span style={{fontSize:12,opacity:.7}}>Saved occasion: {item.summary.occasion} · Fabric labels from the locked recipe; verify current availability before ordering.</span>
+              </div>}
+              <div style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}}>
+                <Link href={`/designer-studio?resumeVault=${encodeURIComponent(item.vaultId)}`} style={{...button,textDecoration:"none"}}>Continue in Designer</Link>
+                <button style={{...button,background:"#f1ede4",color:"#252525"}} type="button" disabled={busy} onClick={()=>void actOnOwnedDesign("share",item)}>
+                  {activeDesignAction===item.vaultId+":share"?"Preparing…":"Copy secure share link"}
+                </button>
+                <button style={{...button,background:"#f1ede4",color:"#252525"}} type="button" disabled={busy} onClick={()=>void actOnOwnedDesign("enquire",item)}>
+                  {activeDesignAction===item.vaultId+":enquire"?"Preparing…":"Prepare WhatsApp enquiry"}
+                </button>
+              </div>
+              {preparedEnquiry?.vaultId===item.vaultId&&<a href={preparedEnquiry.href} target="_blank" rel="noopener noreferrer" style={{fontWeight:700}}>Open WhatsApp to review and send →</a>}
+              {shareFallback?.vaultId===item.vaultId&&<textarea readOnly aria-label="Signed design-only share link" rows={3} value={shareFallback.url} style={{...input,resize:"vertical"}}/>}
             </div>)}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",gap:8,marginTop:18}}>

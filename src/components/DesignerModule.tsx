@@ -18,7 +18,8 @@ import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measuremen
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
-import { lockGarmentSpec, type LockedDesignRevision } from "@/lib/designer/design-lock";
+import { lockGarmentSpec, verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
+import { draftFromOwnedLockedRevision, validOwnedDesignVaultId } from "@/lib/designer/customer-resume";
 import { buildVerifiedProductionHandoff } from "@/lib/designer/production-handoff";
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import type { DesignerAssessmentResponse } from "@/lib/designer/assessment-types";
@@ -154,6 +155,8 @@ export function DesignerModule() {
   const [assessmentError,setAssessmentError]=useState("");
   const [lockedRevision,setLockedRevision]=useState<LockedDesignRevision|null>(null);
   const [lastLockedRevisionId,setLastLockedRevisionId]=useState<string|null>(null);
+  const [resumeStatus,setResumeStatus]=useState<"idle"|"loading"|"loaded"|"error">("idle");
+  const [resumeMessage,setResumeMessage]=useState("");
   const [lockBusy,setLockBusy]=useState(false);
   const [shareBusy,setShareBusy]=useState(false);
   const [shareMessage,setShareMessage]=useState("");
@@ -162,6 +165,7 @@ export function DesignerModule() {
   const [vaultBusy,setVaultBusy]=useState(false);
   const [vaultMessage,setVaultMessage]=useState("");
   const [vaultRecoveryToken,setVaultRecoveryToken]=useState("");
+  const [vaultAccountOwned,setVaultAccountOwned]=useState(false);
   const [creativeDirections, setCreativeDirections] = useState<CreativeDirection[]>([]);
   const [craftRequest,setCraftRequest]=useState<CreativeCraftRequest>({...DEFAULT_CRAFT_REQUEST});
   const creativeRequestRef=useRef<{controller:AbortController;stamp:number}|null>(null);
@@ -264,6 +268,7 @@ export function DesignerModule() {
     setLockedRevision(null);
     setVaultRecoveryToken("");
     setVaultMessage("");
+    setVaultAccountOwned(false);
   },[shirtId,pantId,styleSpec,bodyProfile,measurementProfile,activeCreative]);
 
   useEffect(() => {
@@ -488,6 +493,78 @@ export function DesignerModule() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The account vault is authoritative only for a successful, owner-scoped
+  // loadOwned response. A URL carries the opaque row id, never a recovery key
+  // or the customer's immutable recipe. Existing local drafts are preserved
+  // if auth, integrity, schema or current catalogue validation fails.
+  useEffect(()=>{
+    if(!draftReady) return;
+    const vaultId=new URLSearchParams(window.location.search).get("resumeVault");
+    if(!vaultId) return;
+    if(!validOwnedDesignVaultId(vaultId)){
+      setResumeStatus("error");
+      setResumeMessage("This saved-design link is invalid. Your current draft has not been replaced.");
+      return;
+    }
+    const controller=new AbortController();
+    setResumeStatus("loading");
+    setResumeMessage("Loading your account-owned locked design…");
+    void (async()=>{
+      try{
+        const response=await fetch("/api/designer/vault",{
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify({action:"loadOwned",vaultId}),
+          cache:"no-store",
+          signal:controller.signal,
+        });
+        const data=await response.json() as {revision?:LockedDesignRevision;error?:string};
+        if(!response.ok||!data.revision) throw new Error("This design could not be opened from your account. Sign in and check that the copy has not expired.");
+        if(!await verifyLockedDesignRevision(data.revision)) throw new Error("The saved design failed its integrity check.");
+        // Use current catalogue identities; never switch silently to a
+        // similarly named cloth if the exact saved ID is unavailable.
+        const catalogue=await fetch("/api/designer/catalog",{cache:"no-store",signal:controller.signal})
+          .then(async result=>result.ok ? await result.json() as {shirts?:DesignerFabric[];pants?:DesignerFabric[]} : null)
+          .catch(()=>null);
+        const allowedShirts=(catalogue?.shirts?.length?catalogue.shirts:DESIGNER_SHIRTS).map(item=>item.id);
+        const allowedPants=(catalogue?.pants?.length?catalogue.pants:DESIGNER_PANTS).map(item=>item.id);
+        const resumed=draftFromOwnedLockedRevision(data.revision,allowedShirts,allowedPants);
+        if(!resumed) throw new Error("The saved fabrics or construction are not supported by today's catalogue. Your current draft is unchanged.");
+        if(controller.signal.aborted) return;
+        setShirtId(resumed.shirtId);
+        setPantId(resumed.pantId);
+        setOccasion(resumed.occasion);
+        setClimate(resumed.climate);
+        setIntention(resumed.intention);
+        setStyle(resumed.style);
+        setStyleSpec(resumed.styleSpec);
+        setBodyProfile(resumed.bodyProfile);
+        setActiveCreative(null);
+        setCreativeDirections([]);
+        setCreativeVisualReview(null);
+        setRecommendation(null);
+        setRecommendationId(null);
+        setAssessment(null);
+        setDirectorHandoff(false);
+        setReferenceHandoffStatus(null);
+        setLastLockedRevisionId(resumed.parentRevisionId);
+        setResumeStatus("loaded");
+        setResumeMessage("Editable copy loaded from "+resumed.parentRevisionId+
+          ". The original locked revision remains unchanged; lock again after review to create a child revision. Creative work must be reviewed again.");
+        const clean=new URL(window.location.href);
+        clean.searchParams.delete("resumeVault");
+        window.history.replaceState(window.history.state,"",clean.pathname+clean.search+clean.hash);
+      }catch{
+        if(controller.signal.aborted) return;
+        setResumeStatus("error");
+        setResumeMessage("Could not safely resume this account-owned design. Sign in, check its expiry and catalogue options, then try again. Your local draft is unchanged.");
+      }
+    })();
+    return ()=>controller.abort();
+  // Resume is a one-time authenticated initialization for a navigated URL.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[draftReady]);
+
   useEffect(() => {
     if (!draftReady) return;
     try {
@@ -598,6 +675,12 @@ export function DesignerModule() {
     setCreativeDirections([]);
     setActiveCreative(null);
     setCreativeAutoNote("");
+    // "Start fresh" must sever the previous saved revision's ancestry.
+    // Otherwise a completely unrelated design would be falsely recorded as
+    // a child of the last account-owned locked recipe.
+    setLastLockedRevisionId(null);
+    setResumeStatus("idle");
+    setResumeMessage("");
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   }
 
@@ -1201,14 +1284,20 @@ export function DesignerModule() {
         headers:{"content-type":"application/json"},
         body:JSON.stringify({action:"store",revision:lockedRevision}),
       });
-      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;error?:string};
+      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;accountOwned?:boolean;error?:string};
       if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure cloud copy could not be saved.");
       setVaultRecoveryToken(result.recoveryToken);
+      const accountOwned=result.accountOwned===true;
+      setVaultAccountOwned(accountOwned);
       try{
         await navigator.clipboard.writeText(result.recoveryToken);
-        setVaultMessage(`Recovery token copied · secure copy expires in ${result.expiresInDays||180} days.`);
+        setVaultMessage(accountOwned
+          ? `Saved in My Account · recovery token copied · expires in ${result.expiresInDays||180} days.`
+          : `Recovery token copied · expires in ${result.expiresInDays||180} days. This copy is not linked to your account yet.`);
       }catch{
-        setVaultMessage("Secure cloud copy saved. Copy the recovery token below and keep it private.");
+        setVaultMessage(accountOwned
+          ? "Saved in My Account. Keep the recovery token below as a private backup."
+          : "Secure copy saved, but not linked to My Account. Copy the recovery token below before leaving.");
       }
     }catch(error){
       setVaultMessage(error instanceof Error?error.message:"Secure cloud copy could not be saved.");
@@ -1236,7 +1325,15 @@ export function DesignerModule() {
       </figure>
     </header>
 
-    <div className="newDesignerBody">
+    {resumeStatus!=="idle"&&<div className="newDesignerHandoff" role={resumeStatus==="error"?"alert":"status"} aria-live="polite" style={{margin:"12px 24px"}}>
+      <strong>{resumeStatus==="loaded"?"ACCOUNT DESIGN / EDITABLE CHILD":resumeStatus==="loading"?"ACCOUNT DESIGN / LOADING":"ACCOUNT DESIGN / NOT APPLIED"}</strong>
+      <p>{resumeMessage}</p>
+      {resumeStatus==="loaded"&&<button type="button" disabled={assessmentLoading} onClick={()=>void assess()}>
+        {assessmentLoading?"Reassessing…":"Reassess this saved look"}
+      </button>}
+      {resumeStatus==="error"&&<Link href="/account">Return to my private account →</Link>}
+    </div>}
+    <div className="newDesignerBody" aria-busy={resumeStatus==="loading"} inert={resumeStatus==="loading"}>
       <section className="newDesignerSelections" aria-labelledby="designerChoose">
         {referenceHandoffStatus === "applied" && <div className="newDesignerHandoff" role="status">
           <span>REFERENCE LOOK / EXPLICIT FABRIC PAIR</span>
@@ -1533,6 +1630,7 @@ export function DesignerModule() {
                 {enquiryMessage&&<p>{enquiryMessage}</p>}
                 <button type="button" onClick={()=>void saveLockedRevisionToVault()} disabled={vaultBusy}>{vaultBusy?"Saving secure copy…":"Save secure cloud copy ↗"}</button>
                 {vaultMessage&&<p>{vaultMessage}</p>}
+                {vaultRecoveryToken&&<p><Link href="/account">{vaultAccountOwned?"View this design in My Account →":"Sign in to My Account and link this recovery token →"}</Link></p>}
                 {vaultRecoveryToken&&<>
                   <p><b>Recovery token:</b> keep this private. Anyone with it can recover this locked design until it expires.</p>
                   <textarea readOnly value={vaultRecoveryToken} rows={3} aria-label="Secure design recovery token"/>
