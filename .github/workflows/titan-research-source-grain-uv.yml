@@ -124,6 +124,20 @@ jobs:
               assert before["sourceBoundaryEdges"]==after["sourceBoundaryEdges"]
               assert before["sourceNonManifoldEdges"]==after["sourceNonManifoldEdges"]
               assert before["sewnSeamApproval"] is False and after["sewnSeamApproval"] is False
+              raw=panel["preAlignmentUvEdgeContinuity"]
+              align=panel["periodicFaceAlignment"]
+              assert align["physicalFabricRepeatApproved"] is False
+              assert align["sewnSeamApproval"] is False
+              assert align["eligibleSharedEdges"]>0
+              assert align["sourceNonManifoldEdges"]==after["sourceNonManifoldEdges"]
+              assert align["conflictingWrapEdgesRetained"]>=0
+              assert 0<=align["maxAbsTurns"]<=16
+              assert after["uvDiscontinuityEdges"]<=raw["uvDiscontinuityEdges"]
+              assert after["minusYCameraFacingSeamEdges"]<=raw["minusYCameraFacingSeamEdges"]
+              for data in (before,raw,after):
+                  assert abs(data["frontDiscontinuousEdgeLengthMm"]+data["rearDiscontinuousEdgeLengthMm"]
+                             -data["discontinuousSourceEdgeLengthMm"])<=0.002
+                  assert data["discontinuousSourceEdgeLengthMm"]>=0
               assert type(after["uvDiscontinuityEdges"]) is int
               assert after["uvDiscontinuityEdges"]>=0
               for metrics in (before,after):
