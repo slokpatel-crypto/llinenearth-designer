@@ -112,9 +112,9 @@ async function negative(browser,revision){
     if(pathname==="/api/designer/catalog")return route.fulfill({status:200,json:{shirts:engine.DESIGNER_SHIRTS,pants:engine.DESIGNER_PANTS}});
     return route.fulfill({status:200,json:{}});
   });
-  await page.addInitScript(({draftKey})=>localStorage.setItem(draftKey,JSON.stringify({
-    shirtId:engine.DESIGNER_REVIEWED_PAIRING.shirtId,pantId:engine.DESIGNER_REVIEWED_PAIRING.pantId,
-  })),{draftKey});
+  await page.addInitScript(({draftKey,shirtId,pantId})=>localStorage.setItem(draftKey,JSON.stringify({
+    shirtId,pantId,
+  })),{draftKey,shirtId:engine.DESIGNER_REVIEWED_PAIRING.shirtId,pantId:engine.DESIGNER_REVIEWED_PAIRING.pantId});
   await page.goto(base+"/designer-studio?resumeVault="+vaultId,{waitUntil:"domcontentloaded"});
   await page.getByText(/ACCOUNT DESIGN \/ NOT APPLIED/).waitFor({state:"visible",timeout:30000});
   assert.equal(await page.locator("#designer-shirt").inputValue(),engine.DESIGNER_REVIEWED_PAIRING.shirtId);
