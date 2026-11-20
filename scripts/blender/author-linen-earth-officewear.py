@@ -45,6 +45,8 @@ def cli_args():
                         help="Native research only: independently test closed leg shell thickness offset")
     parser.add_argument("--experimental-capture-armhole-stages", action="store_true",
                         help="RESEARCH ONLY: preserve true torso/sleeve modifier-stage meshes outside export collection")
+    parser.add_argument("--experimental-open-armhole-rims", action="store_true",
+                        help="RESEARCH ONLY: remove ALL torso/sleeve solidify rims to isolate seam contact; exposes cuffs/hem and is forbidden for production")
     parser.add_argument("--experimental-disjoint-armholes", action="store_true",
                         help="RESEARCH ONLY: assign original scanned source faces to torso OR sleeve, never both")
     parser.add_argument("--experimental-leg-rim-off", action="store_true",
@@ -258,7 +260,8 @@ def capture_armhole_stage_for_research(obj, stage, enabled):
 
 
 def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinement_level=1, waist_extra_m=0.0,
-              capture_crotch_stages=False, leg_rim_off=False, leg_solidify_offset=1.0, capture_armhole_stages=False):
+              capture_crotch_stages=False, leg_rim_off=False, leg_solidify_offset=1.0, capture_armhole_stages=False,
+              open_armhole_rims=False):
     # Measured diagnostics only. These are not garment acceptance or fit proof.
     stages = []
     def record_stage(stage):
@@ -310,6 +313,12 @@ def fit_shell(obj, body, clearance_m, thickness_m, body_tree=None, waist_refinem
     # Standard candidate MUST remain rim-closed. Rim-off leg research produces
     # open cloth seam boundaries and is forbidden for production export.
     solid.use_rim = True
+    if open_armhole_rims and obj.name in (
+        "ShirtTorsoFabric", "ShirtSleeveLFabric", "ShirtSleeveRFabric"
+    ):
+        # Diagnostic only; this also opens cuffs, neckline and the shirt hem.
+        # Zero BVH overlaps must NEVER be equated with sewn/watertight edges.
+        solid.use_rim = False
     if leg_rim_off and obj.name in ("TrouserLegLFabric", "TrouserLegRFabric"):
         solid.use_rim = False
     apply_modifier(obj, solid)
@@ -395,6 +404,10 @@ def main():
     )
     if clearance_m + waist_extra_m > 0.018:
         raise ValueError("Real garment waist clearance cannot exceed the original validated 18mm bound.")
+    if options.experimental_open_armhole_rims and not (
+        options.experimental_disjoint_armholes and options.experimental_capture_armhole_stages
+    ):
+        raise ValueError("Open-armhole-rim trial requires disjoint source faces AND native modifier-stage evidence.")
     body = bpy.data.objects.get(options.body)
     if body is None or body.type != "MESH":
         raise RuntimeError(f"Locked realistic body mesh not found: {options.body}")
@@ -465,7 +478,8 @@ def main():
         fit_shell(obj, body, clearance_m, thickness_m, body_contact_tree,
                   options.experimental_waist_refinement_level, waist_extra_m,
                   options.experimental_capture_crotch_stages, options.experimental_leg_rim_off,
-                  options.experimental_leg_solidify_offset, options.experimental_capture_armhole_stages)
+                  options.experimental_leg_solidify_offset, options.experimental_capture_armhole_stages,
+                  options.experimental_open_armhole_rims)
         if name == "TrouserLegRFabric":
             measure_guided_right_hem_taper(obj, right_hem_guide_z, right_hem_taper_mm)
         planar_grain_uv(obj)
@@ -489,6 +503,9 @@ def main():
     bpy.context.scene["linen_earth_research_crotch_stages_emitted"] = bool(options.experimental_capture_crotch_stages)
     bpy.context.scene["linen_earth_research_leg_rim_off"] = bool(options.experimental_leg_rim_off)
     bpy.context.scene["linen_earth_research_disjoint_armholes"] = bool(options.experimental_disjoint_armholes)
+    bpy.context.scene["linen_earth_research_open_armhole_rims"] = bool(options.experimental_open_armhole_rims)
+    if options.experimental_open_armhole_rims:
+        bpy.context.scene["linen_earth_asset_status"] = "RESEARCH-ONLY-open-cloth-edges-forbidden-production"
     bpy.context.scene["linen_earth_research_armhole_stages_emitted"] = bool(options.experimental_capture_armhole_stages)
     bpy.context.scene["linen_earth_research_leg_solidify_offset"] = options.experimental_leg_solidify_offset
 
