@@ -1946,6 +1946,10 @@ export function styleDirectorConstructionSuggestions(
   const seen = new Set<string>();
   const currentIssues = styleDirectorConstructionIssues(spec, occasion);
   const originalCodes = new Set(currentIssues.map(x => x.code));
+  // Validate the complete set of recommendations as it is assembled, not
+  // merely each change against the original saved state. Suggestions remain
+  // review-only; this working copy is never written back to the customer.
+  let suggestedSpec: Pick<StyleSpecV2, "shirt" | "pant"> = spec;
   for (const issue of currentIssues) {
     const proposal = directorConstructionProposals[issue.code];
     if (!proposal) continue;
@@ -1961,11 +1965,12 @@ export function styleDirectorConstructionSuggestions(
     // elsewhere in the separately saved specification. Evaluate a shallow,
     // ephemeral copy only; never alter locked IDs or persist a repair.
     const proposedSpec = {
-      ...spec,
-      [garment]: { ...spec[garment], [key]: proposedId },
+      ...suggestedSpec,
+      [garment]: { ...suggestedSpec[garment], [key]: proposedId },
     } as Pick<StyleSpecV2, "shirt" | "pant">;
     if (styleDirectorConstructionIssues(proposedSpec, occasion).some(x =>
       !originalCodes.has(x.code))) continue;
+    suggestedSpec = proposedSpec;
     seen.add(optionGroup);
     suggestions.push({
       cause: issue.code,
