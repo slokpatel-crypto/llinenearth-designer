@@ -118,3 +118,12 @@ test("a successful vault write is never mislabeled as account-owned without an o
   assert.match(studio,/Sign in to My Account and link this recovery token/);
   assert.match(studio,/Reassess this saved look/);
 });
+
+
+test("starting a fresh unrelated design severs owned-design ancestry",()=>{
+  const studio=readFileSync("src/components/DesignerModule.tsx","utf8");
+  const reset=studio.split("function resetDraft() {")[1]?.split("async function runAdvancedSearch()")[0]||"";
+  assert.ok(reset,"the existing Studio reset control must remain available");
+  assert.match(reset,/setLastLockedRevisionId\(null\)/);
+  assert.match(reset,/setResumeStatus\("idle"\)/);
+});
