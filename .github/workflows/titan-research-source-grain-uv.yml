@@ -1,0 +1,247 @@
+name: TITAN — RESEARCH original CC0 surface-grain UV (unapproved)
+
+on:
+  pull_request:
+    paths:
+      - "scripts/blender/research-source-grain-uv.py"
+      - "tests/blender/test_original_grain_uv_research.py"
+      - ".github/workflows/titan-research-source-grain-uv.yml"
+  push:
+    branches: [research/titan-original-body-grain-uv-20261120]
+    paths:
+      - "scripts/blender/research-source-grain-uv.py"
+      - "tests/blender/test_original_grain_uv_research.py"
+      - ".github/workflows/titan-research-source-grain-uv.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unapproved-original-source-uv:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Obtain checksum-verified official Blender 4.5.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz"
+          if ! curl --fail --location --show-error --silent --retry 3 \
+            --connect-timeout 30 --max-time 900 \
+            "https://download.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz" \
+            --output "$archive"; then
+            rm -f "$archive"
+            curl --fail --location --show-error --silent --retry 3 \
+              --connect-timeout 30 --max-time 900 \
+              "https://mirror.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz" \
+              --output "$archive"
+          fi
+          echo "9ba871ff2ecd36526b77432745980b7e6664ecd0c7ca11c48849073dcfe06da3  $archive" | sha256sum --check --status
+          mkdir -p "$RUNNER_TEMP/titan-blender"
+          tar -xf "$archive" -C "$RUNNER_TEMP/titan-blender"
+          echo "BLENDER_BIN=$RUNNER_TEMP/titan-blender/blender-4.5.14-linux-x64/blender" >> "$GITHUB_ENV"
+
+      - name: Native geometric UV fixture (actual Blender triangles)
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_original_grain_uv_research.py
+
+      - name: Bootstrap pinned source and author original six-panel garment candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! python3 scripts/blender/bootstrap-human-base-meshes.py; then
+            # The official Blender CDN can return HTTP 403 to CI runners.
+            # Use ONLY the official Blender Foundation mirror of the pinned
+            # CC0 bundle, then re-run the existing strict size/ZIP verifier.
+            pinned_archive="$RUNNER_TEMP/human-base-meshes-bundle-v1.4.1.zip"
+            curl --fail --location --show-error --silent --retry 3 \
+              --connect-timeout 30 --max-time 900 \
+              "https://mirror.blender.org/demo/asset-bundles/human-base-meshes/human-base-meshes-bundle-v1.4.1.zip" \
+              --output "$pinned_archive"
+            python3 scripts/blender/bootstrap-human-base-meshes.py \
+              --archive "$pinned_archive" --force
+          fi
+          root=.cache/linen-earth
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python scripts/blender/prepare-linen-earth-body.py -- \
+            --asset-root "$root/blender-human-base-meshes-v1.4.1" \
+            --output "$root/linen-earth-officewear-body-base.blend"
+          "$BLENDER_BIN" --background "$root/linen-earth-officewear-body-base.blend" \
+            --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
+            --output "$root/linen-earth-officewear-authored.blend"
+          test -s "$root/linen-earth-officewear-authored.blend"
+
+      - name: Produce distinct original-source UV research .blend and bounded report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/source-grain-uv"
+          source=.cache/linen-earth/linen-earth-officewear-authored.blend
+          before="$(sha256sum "$source" | cut -d' ' -f1)"
+          "$BLENDER_BIN" --background "$source" --python-exit-code 1 \
+            --python scripts/blender/research-source-grain-uv.py -- \
+            --output .cache/linen-earth/titan-unapproved-real-source-grain-uv.blend \
+            --report "$RUNNER_TEMP/source-grain-uv/grain-uv-report.json"
+          after="$(sha256sum "$source" | cut -d' ' -f1)"
+          test "$before" = "$after"
+          python3 - "$RUNNER_TEMP/source-grain-uv/grain-uv-report.json" <<'PY'
+          import json, pathlib, sys
+          report=json.loads(pathlib.Path(sys.argv[1]).read_text())
+          assert report["candidateOnly"] is True
+          assert report["modelIdentityId"]=="linen-earth-studio-model-v1"
+          assert report["referenceImage"]=="/designer/studio-tucked.webp"
+          for key in ("productionApproved","measuredFabricRepeatApproved","seamChartsApproved",
+                      "realTailorFitApproved","photographicMatchApproved"):
+              assert report[key] is False, key
+          names={"ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
+                 "TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"}
+          assert set(report["garmentPanels"])==names
+          # Native measured first projection: 3,162 discontinuous source
+          # edges across these same six pinned CC0 meshes. The current
+          # measured rear-oriented projection has 313 (308 rear, 5 front).
+          # A research regression is NOT a physical UV/sewing approval.
+          first_trial={"ShirtTorsoFabric":1168,"ShirtSleeveLFabric":292,
+                       "ShirtSleeveRFabric":301,"TrouserWaistFabric":416,
+                       "TrouserLegLFabric":500,"TrouserLegRFabric":485}
+          research_seams=0
+          front_seams=0
+          rear_seams=0
+          for name,panel in report["garmentPanels"].items():
+              assert panel["newUvLayer"]=="TITAN_RESEARCH_SURFACE_GRAIN"
+              assert panel["afterCollapsedUvTriangles"]==0
+              assert panel["afterNonFiniteUvTriangles"]==0
+              assert panel["measuredRepeatVerified"] is False
+              assert panel["seamChartApproved"] is False
+              assert panel["horizontalFaces"]+panel["cylindricalFaces"]>0
+              before=panel["originalUvEdgeContinuity"]
+              after=panel["researchUvEdgeContinuity"]
+              assert before["sourceTopologicalEdges"]==after["sourceTopologicalEdges"]
+              assert before["sourceBoundaryEdges"]==after["sourceBoundaryEdges"]
+              assert before["sourceNonManifoldEdges"]==after["sourceNonManifoldEdges"]
+              assert before["sewnSeamApproval"] is False and after["sewnSeamApproval"] is False
+              raw=panel["preAlignmentUvEdgeContinuity"]
+              align=panel["periodicFaceAlignment"]
+              assert align["physicalFabricRepeatApproved"] is False
+              assert align["sewnSeamApproval"] is False
+              assert align["eligibleSharedEdges"]>0
+              assert align["sourceNonManifoldEdges"]==after["sourceNonManifoldEdges"]
+              assert align["conflictingWrapEdgesRetained"]>=0
+              assert 0<=align["maxAbsTurns"]<=16
+              assert after["uvDiscontinuityEdges"]<=raw["uvDiscontinuityEdges"]
+              assert after["minusYCameraFacingSeamEdges"]<=raw["minusYCameraFacingSeamEdges"]
+              for data in (before,raw,after):
+                  assert abs(data["frontDiscontinuousEdgeLengthMm"]+data["rearDiscontinuousEdgeLengthMm"]
+                             -data["discontinuousSourceEdgeLengthMm"])<=0.002
+                  assert data["discontinuousSourceEdgeLengthMm"]>=0
+              assert type(after["uvDiscontinuityEdges"]) is int
+              assert after["uvDiscontinuityEdges"]>=0
+              for metrics in (before,after):
+                  assert metrics["minusYCameraFacingSeamEdges"]+metrics["plusYCameraAwaySeamEdges"]==metrics["uvDiscontinuityEdges"]
+                  assert type(metrics["minusYCameraFacingSeamEdges"]) is int
+                  assert type(metrics["plusYCameraAwaySeamEdges"]) is int
+              research_seams+=after["uvDiscontinuityEdges"]
+              front_seams+=after["minusYCameraFacingSeamEdges"]
+              rear_seams+=after["plusYCameraAwaySeamEdges"]
+              assert after["uvDiscontinuityEdges"] < first_trial[name], name
+          assert research_seams < 552, "The accepted earlier 552-edge candidate was measurably better"
+          assert front_seams <= 5 and front_seams < rear_seams
+          assert rear_seams+front_seams==research_seams
+          print("TITAN_REAL_CC0_UV_RESEARCH_GEOMETRY_ONLY_UNAPPROVED",research_seams,front_seams,rear_seams)
+          PY
+
+      - name: Verify candidate still fails unchanged physical/source acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/source-grain-uv"
+          set +e
+          "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+            --python-exit-code 1 --python scripts/blender/preflight-linen-earth-officewear.py \
+            > "$evidence/control-preflight.txt" 2>&1
+          original_exit=$?
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-unapproved-real-source-grain-uv.blend \
+            --python-exit-code 1 --python scripts/blender/preflight-linen-earth-officewear.py \
+            > "$evidence/candidate-preflight.txt" 2>&1
+          candidate_exit=$?
+          set -e
+          test "$original_exit" = 1
+          test "$candidate_exit" = 1
+          python3 scripts/blender/summarize-native-candidate-preflight.py \
+            --log "$evidence/control-preflight.txt" --exit-code "$original_exit" \
+            --output "$evidence/control-rejected.json"
+          python3 scripts/blender/summarize-native-candidate-preflight.py \
+            --log "$evidence/candidate-preflight.txt" --exit-code "$candidate_exit" \
+            --output "$evidence/candidate-rejected.json"
+          python3 - "$evidence" <<'PY'
+          import json, pathlib, sys
+          root=pathlib.Path(sys.argv[1])
+          base=json.loads((root/"control-rejected.json").read_text())
+          uv=json.loads((root/"candidate-rejected.json").read_text())
+          assert base["modelIdentityId"]==uv["modelIdentityId"]=="linen-earth-studio-model-v1"
+          assert base["boundaryIntersections"]==uv["boundaryIntersections"], "UV edit must NOT alter real collisions"
+          assert base["garmentPairIntersections"]==uv["garmentPairIntersections"], "UV edit must NOT conceal real panel crossings"
+          assert uv["productionApproved"] is False and uv["preflightReady"] is False
+          def physical_reason(reason):
+              return " collapsed UV triangles;" not in reason and "triangles with non-finite UV coordinates;" not in reason
+          assert [x for x in base["reasons"] if physical_reason(x)]==[
+              x for x in uv["reasons"] if physical_reason(x)
+          ], "UV-only research may not remove any physical, fit or collision blocker"
+          print("TITAN_NATIVE_ORIGINAL_GEOMETRY_AND_CONTACTS_UNCHANGED")
+          PY
+
+      - name: Four original-source photographic-view QA images (candidate only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libgl1-mesa-dri libopengl0 xvfb
+          scene=.cache/linen-earth/titan-unapproved-real-source-grain-uv.blend
+          before="$(sha256sum "$scene" | cut -d' ' -f1)"
+          xvfb-run -a -s "-screen 0 1280x1024x24" \
+            env LIBGL_ALWAYS_SOFTWARE=1 "$BLENDER_BIN" --background "$scene" --python-exit-code 1 \
+            --python scripts/blender/render-linen-earth-model-qa.py -- \
+            --output-dir "$RUNNER_TEMP/source-grain-uv/four-view" \
+            --width 480 --height 640 --samples 8
+          after="$(sha256sum "$scene" | cut -d' ' -f1)"
+          test "$before" = "$after"
+          python3 - "$RUNNER_TEMP/source-grain-uv/four-view" <<'PY'
+          import hashlib,json,pathlib,sys
+          root=pathlib.Path(sys.argv[1])
+          manifest=json.loads((root/"model-qa-manifest.json").read_text())
+          assert manifest["modelIdentityId"]=="linen-earth-studio-model-v1"
+          assert manifest["referenceImage"]=="/designer/studio-tucked.webp"
+          assert manifest["candidateOnly"] is True
+          for field in ("photographicMatchApproved","realismApproved",
+                        "tailorApproved","measuredFabricDrapeApproved"):
+              assert manifest[field] is False
+          assert [(angle["view"],angle["yawDeg"]) for angle in manifest["angles"]]==[
+              ("front",0),("three-quarter",35),("side",90),("back",180)]
+          for view in manifest["angles"]:
+              pic=root/view["file"]
+              assert pic.is_file() and pic.stat().st_size>=12000
+              assert hashlib.sha256(pic.read_bytes()).hexdigest()==view["sha256"]
+          print("TITAN_ORIGINAL_SOURCE_GRAIN_UV_FOUR_ANGLE_UNAPPROVED")
+          PY
+
+      # Expose the regenerated, explicitly unapproved real Blender research
+      # scene for native seam/UV inspection; never publish as a production GLB.
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: titan-cc0-original-UV-scene-RESEARCH-NOT-PRODUCTION
+          path: .cache/linen-earth/titan-unapproved-real-source-grain-uv.blend
+          retention-days: 14
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: titan-cc0-surface-grain-uv-UNAPPROVED
+          path: ${{ runner.temp }}/source-grain-uv
+          retention-days: 14
+          if-no-files-found: warn

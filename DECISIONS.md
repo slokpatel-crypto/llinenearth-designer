@@ -580,3 +580,9 @@ Architecture and product decisions that must persist across coding sessions.
 - Customer carries only a bounded, validated pair of garment-category fabric IDs into Designer, never a recovery key, private measurements, locked recipe, paid provider or order record.
 - Designer waits for the same server-backed catalogue, restores neither another draft's private fit nor saved revision lineage, and requires a new assessment before a lock or enquiry. Existing vault, signed-share and Director handoffs remain independent.
 - No new dependency, schema or migration. Synthetic Chromium at 390/768/1440 and exact-head independent CI are required before merge.
+
+## 2026-11-20 — Research: original CC0 surface-grain UV is not textile scale
+
+**Decision:** Keep original locked `linen-earth-studio-model-v1` body/source and six unapproved candidate garment panels untouched while investigating shortcomings of x/z planar UV. A separate, explicit native Blender research script adds a second surface-aware cylindrical/normal-projected UV layer to a **new** research .blend, preserving the source UV maps, exact original geometry and all garment/body collision rejections. This only improves chart nondegeneracy where independently measurable.
+
+**Provenance and boundaries:** Cylindrical UV U uses mesh-derived radius/angle and V uses Z height, with x/y on horizontal rim caps; it is NOT supplier measured physical fabric repeat, sewn seam continuity or full anisotropic grain calibration. The experiment must reject unresolved collapsed/nonfinite triangles, demonstrate no geometry identity changes and preserve every preflight rejection except real UV defects. Four views remain diagnostic candidate evidence. No schema, production GLB, mannequin replacement, Vercel deployment, real customer evidence or tailor approval is introduced. Keep research unmerged pending original source seam and physical acceptance.
