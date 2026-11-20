@@ -11,6 +11,8 @@ test("cloud deletion is explicit, confirmed, and separate from browser drafts", 
   assert.match(panel, /if \(!window\.confirm\([\s\S]*?\)\) return;/);
   assert.match(panel, /await deleteCloudDesign\(item\.id\)/);
   assert.match(panel, /if \(!deleted\) throw new Error/);
-  assert.match(panel, /setCloud\(await listCloudDesigns\(\)\)/);
+  assert.match(panel, /const designs = await listCloudDesigns\\(\\)/);
+  // Cloud records must not be republished before the session is reverified.
+  assert.match(panel, /await assertOwner\\(\\);\\s*setCloud\\(designs\\)/);
   assert.doesNotMatch(panel, /removeSavedDesign|localStorage\.removeItem/);
 });
