@@ -277,7 +277,7 @@ test("cropped construction rejects every positive shoe break independently of a 
 test("wide-leg taper conflict remains independent of cropped-break construction", () => {
   for (const sleeve of ["full_sleeve", "retired_sleeve"] as const) {
     for (const breakChoice of ["stacked_break", "no_break"] as const) {
-      const locked = makeSpec(sleeve, "wide_leg", "flat_front");
+      const locked = makeSpec(sleeve, "wide_leg_relaxed_drape", "flat_front");
       locked.pant.fit = "slim_tapered";
       locked.pant.hem = "cropped_above_ankle_hem";
       locked.pant.break = breakChoice;
