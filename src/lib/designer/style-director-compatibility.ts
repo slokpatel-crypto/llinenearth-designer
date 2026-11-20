@@ -1945,7 +1945,12 @@ export function styleDirectorConstructionSuggestions(
   const suggestions: DirectorConstructionSuggestion[] = [];
   const seen = new Set<string>();
   const currentIssues = styleDirectorConstructionIssues(spec, occasion);
-  const originalCodes = new Set(currentIssues.map(x => x.code));
+  // Track multiplicity, not only distinct codes: a proposed repair must not
+  // create another instance of an already-reported construction fault.
+  const originalIssueCounts = new Map<DirectorConstructionIssue["code"], number>();
+  for (const issue of currentIssues) {
+    originalIssueCounts.set(issue.code, (originalIssueCounts.get(issue.code) ?? 0) + 1);
+  }
   // Validate the complete set of recommendations as it is assembled, not
   // merely each change against the original saved state. Suggestions remain
   // review-only; this working copy is never written back to the customer.
@@ -1968,8 +1973,13 @@ export function styleDirectorConstructionSuggestions(
       ...suggestedSpec,
       [garment]: { ...suggestedSpec[garment], [key]: proposedId },
     } as Pick<StyleSpecV2, "shirt" | "pant">;
-    if (styleDirectorConstructionIssues(proposedSpec, occasion).some(x =>
-      !originalCodes.has(x.code))) continue;
+    const proposedIssueCounts = new Map<DirectorConstructionIssue["code"], number>();
+    for (const proposedIssue of styleDirectorConstructionIssues(proposedSpec, occasion)) {
+      proposedIssueCounts.set(proposedIssue.code,
+        (proposedIssueCounts.get(proposedIssue.code) ?? 0) + 1);
+    }
+    if ([...proposedIssueCounts].some(([code, count]) =>
+      count > (originalIssueCounts.get(code) ?? 0))) continue;
     suggestedSpec = proposedSpec;
     seen.add(optionGroup);
     suggestions.push({
