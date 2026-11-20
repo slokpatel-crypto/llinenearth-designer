@@ -41,7 +41,7 @@ test("cloud panel scrubs stale details on tab return and compares session before
   const src = readFileSync("src/components/CloudSavedDesignsPanel.tsx", "utf8");
   assert.match(src, /window\.addEventListener\("focus", clearPrivateView\)/);
   assert.match(src, /document\.addEventListener\("visibilitychange", onVisible\)/);
-  assert.match(src, /loadedOwner\.current = null;\s*setCloud\(\[\]\);\s*setSelected\(null\);/);
+  assert.match(src, /loadedOwner\.current = null;\s*selectedOwner\.current = null;\s*setCloud\(\[\]\);\s*setSelected\(null\);/);
   assert.match(src, /loadedOwner\.current && loadedOwner\.current !== owner/);
   assert.match(src, /const current = await currentCloudCustomerId\(\)/);
   assert.match(src, /current !== owner/);
