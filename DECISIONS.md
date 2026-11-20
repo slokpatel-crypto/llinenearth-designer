@@ -1,5 +1,14 @@
 # DECISIONS.md — Linen Earth
 
+## 2026-11-20 — Reference photo-to-outfit selections are explicit and source-private
+
+**Contract:** M2 uses a small, allowlisted version-1 *navigation* contract (`from=reference-match&referenceVersion=1&shirt=<ID>&pant=<ID>`), not a new StyleSpec. Both IDs must be customer-confirmed and valid members of their separate existing static garment catalogues; duplicates or malformed links are refused. Designer restores only the selected IDs while retaining its existing versioned StyleSpec v2 and browser draft lifecycle.
+
+**Privacy / physical truth:** uploaded photos and RGB patches remain in browser component state and are never put into the link, local draft or server. Visual swatch proximity proves neither material identity, verified colour, stock nor fit. Invalid links retain the previous Designer selections and do not impersonate signed Style Director results.
+
+**Verification:** dedicated pure negative tests and 390/768/1440 browser photo-to-Designer-to-v2-draft flow must run on the exact candidate commit. Manual accessibility, reviewer approval and physical production gates remain independent.
+
+
 Architecture and product decisions that must persist across coding sessions.
 
 ## 2026-10-05 — Style Director signs the complete garment recipe
