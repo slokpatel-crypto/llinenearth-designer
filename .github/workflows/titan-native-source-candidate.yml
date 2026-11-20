@@ -468,7 +468,7 @@ jobs:
               assert trial["boundaryIntersections"][key] <= original, (
                   "A real garment collision became worse during hem correction",
                   key, trial["boundaryIntersections"][key], original)
-          assert trial["rejectionReasonCount"] <= baseline["rejectionReasonCount"] - 1, (
+          assert trial["legacyWaistRejectionReasonCount"] <= baseline["legacyWaistRejectionReasonCount"] - 1, (
               "Measured hem improvement did not reduce true hard preflight failures")
           old_asymmetry = baseline["identityFitMeasurementsMm"]["hemWidthAsymmetryMm"]
           new_asymmetry = trial["identityFitMeasurementsMm"]["hemWidthAsymmetryMm"]
