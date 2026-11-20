@@ -27,3 +27,10 @@ Customer paths:
 ## Merge criteria
 
 Only merge when exact final PR head receives completed/success Full CI, applicable non-3D UI workflow, no failures or stale checks, independent review, and current main ancestry/diff inspection. No deployment from this work.
+
+## Account recognition enhancement
+
+- The private saved-design list also shows the shirt/trouser fabric names and occasion recorded in the **verified** locked recipe, with control-character stripping and an 80-character bound per label.
+- These are descriptive saved selections, not new evidence of fabric stock, colour accuracy, scale, fit or availability. The complete garment specification and measurements remain excluded from the account-card summary.
+- The public signed share token continues to use the existing design-only projection, not the private vault. Existing clients without the optional `summary` property continue to work.
+- Pure summary regression and 390/768/1440px synthetic browser tests protect display, server ownership and confidentiality; real-customer acceptance still requires later evidence.
