@@ -31,3 +31,13 @@ are applied identically to both original and selected layers.
 - All previous photo-form and studio QA still required; exact-head CI, Non-3D
   studio workflow, all release gates and inspected browser artifacts before
   merge. No Vercel deploy, live customer/stock writes or physical claims.
+
+## CI compatibility correction
+The first exact-head unit run (commit `f83019a8d7b543a7057993b91a8964115fc429e3`) passed 1053 tests but
+failed two legacy source-string checks. The reset contract had gained
+`setSplitCompare(false)` and `setSplitPercent(50)` between the previous
+`setShowOriginal` and `setCreativeAi` statements. Source-mode handlers also
+now clear the split. The old 7-button source contract becomes 8 with the new
+accessible split action. Tests now assert the full reset, mutual exclusion,
+new disabled/pressed states and all eight consistent 44px actions. The prior
+behaviour was preserved, and fresh exact-head CI/browser QA is required.

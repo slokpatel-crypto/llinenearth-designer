@@ -255,12 +255,16 @@ test("fabric changes cannot leave stale canvas or source-compare imagery visible
   // Loading another fabric must not show the previous finished canvas.
   assert.ok(source.includes('aria-busy={!ready && !error}'));
   assert.ok(source.includes('style={{visibility:ready?"visible":"hidden"}}'));
-  assert.ok(source.includes('setShowOriginal(false);\n    setCreativeAi(null);'));
+  const reset=source.slice(source.indexOf("useLayoutEffect(() => {"),source.indexOf("},[requestScope]);"));
+  assert.ok(reset.includes('setShowOriginal(false);'),"new look must clear the original source photo");
+  assert.ok(reset.includes('setSplitCompare(false);'),"new look must clear any source split");
+  assert.ok(reset.includes('setSplitPercent(50);'),"new look must reset the source split thumb");
+  assert.ok(reset.includes('setCreativeAi(null);'),"new look must clear the previous photoreal image");
   assert.ok(source.includes('showOriginal && ready && !showCreativeAi && <img className="newDesignerPhotoOriginal"'));
   // The source comparison and reviewed photoreal image cannot overlay each other.
   assert.ok(source.includes('showCreativeAi && creativeAi ? `${photorealView.toUpperCase()} / PHOTOREAL` : showOriginal && ready'));
-  assert.ok(source.includes('onClick={()=>{setShowOriginal(false);setShowCreativeAi((value)=>!value);}}'));
-  assert.ok(source.includes('onClick={() => {setShowCreativeAi(false);setShowOriginal((value) => !value);}}'));
+  assert.ok(source.includes('onClick={()=>{setShowOriginal(false);setSplitCompare(false);setShowCreativeAi((value)=>!value);}}'));
+  assert.ok(source.includes('onClick={() => {setSplitCompare(false);setSplitPercent(50);setShowCreativeAi(false);setShowOriginal((value) => !value);}}'));
 });
 
 test("source comparison cannot silently export or lock a different pictured design", () => {
@@ -448,8 +452,12 @@ test("compact photo actions are legible and scroll-reachable on short desktop sc
   const end=source.indexOf("\n      </div>",start);
   assert.ok(start>0 && end>start);
   const markup=source.slice(start,end);
-  assert.equal((markup.match(/style=\{PHOTO_ACTION_BUTTON_STYLE\}/g)||[]).length,7);
-  assert.equal((markup.match(/<b style=\{PHOTO_ACTION_LABEL_STYLE\}>/g)||[]).length,7);
+  assert.equal((markup.match(/style=\{PHOTO_ACTION_BUTTON_STYLE\}/g)||[]).length,8);
+  assert.equal((markup.match(/<b style=\{PHOTO_ACTION_LABEL_STYLE\}>/g)||[]).length,8);
+  assert.ok(markup.includes('aria-pressed={splitCompare&&!showOriginal&&!showCreativeAi}'));
+  assert.ok(markup.includes('disabled={!ready||showOriginal||showCreativeAi}'));
+  assert.ok(markup.includes('Split compare'));
+  assert.ok(markup.includes('Close split'));
   assert.ok(markup.includes("Compare"));
   assert.ok(markup.includes("Show design"));
   assert.ok(markup.includes("Save trusted preview"));
