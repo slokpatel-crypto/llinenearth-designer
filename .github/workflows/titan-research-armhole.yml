@@ -1,0 +1,373 @@
+name: TITAN — RESEARCH original-body armhole face ownership
+
+on:
+  pull_request:
+    paths:
+      - "scripts/blender/author-linen-earth-officewear.py"
+      - "tests/blender/test_actual_armhole_source_ownership.py"
+      - "tests/blender/test_armhole_source_cut_edge_fixture.py"
+      - "tests/blender/test_armhole_modifier_seam_displacement.py"
+      - "tests/blender/test_open_rim_research_boundary_fixture.py"
+      - "scripts/blender/bootstrap-human-base-meshes.py"
+      - "scripts/blender/research-sewn-shirt-from-source.py"
+      - "scripts/blender/render-linen-earth-model-qa.py"
+      - "scripts/blender/research-sewn-trousers-from-source.py"
+      - "tests/blender/test_joint_trousers_real_source_candidate.py"
+      - "tests/blender/test_joint_shirt_real_source_candidate.py"
+      - "tests/python/test_cc0_source_official_mirror.py"
+      - ".github/workflows/titan-research-armhole.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  actual-cc0-armhole-face-partition-research:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject invalid alternate CC0 bundles without network access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tests/python/test_cc0_source_official_mirror.py
+      - name: Obtain checksum-verified official Blender 4.5.14 LTS
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz"
+          if ! curl -fLsS --retry 3 --connect-timeout 30 --max-time 900 \
+            "https://download.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz" -o "$archive"; then
+            rm -f "$archive"
+            curl -fLsS --retry 3 --connect-timeout 30 --max-time 900 \
+              "https://mirror.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz" -o "$archive"
+          fi
+          echo "9ba871ff2ecd36526b77432745980b7e6664ecd0c7ca11c48849073dcfe06da3  $archive" | sha256sum --check --status
+          mkdir -p "$RUNNER_TEMP/blender-unpacked"
+          tar -xf "$archive" -C "$RUNNER_TEMP/blender-unpacked"
+          echo "BLENDER_BIN=$RUNNER_TEMP/blender-unpacked/blender-4.5.14-linux-x64/blender" >> "$GITHUB_ENV"
+      - name: Native adversarial original-source seam adjacency fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_armhole_source_cut_edge_fixture.py
+      - name: Native independent seam-stage displacement synthetic fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_armhole_modifier_seam_displacement.py
+      - name: Prove experimental open rims leave cuffs and hems unsafe
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_open_rim_research_boundary_fixture.py
+      - name: Bootstrap unchanged pinned Blender Human Base Meshes v1.4.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/blender/bootstrap-human-base-meshes.py
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python scripts/blender/prepare-linen-earth-body.py -- \
+            --asset-root .cache/linen-earth/blender-human-base-meshes-v1.4.1 \
+            --output .cache/linen-earth/linen-earth-officewear-body-base.blend
+      - name: Author unchanged control and explicitly partitioned candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          body=.cache/linen-earth/linen-earth-officewear-body-base.blend
+          before="$(sha256sum "$body" | cut -d' ' -f1)"
+          "$BLENDER_BIN" --background "$body" --python-exit-code 1 \
+            --python scripts/blender/author-linen-earth-officewear.py -- \
+            --experimental-capture-armhole-stages \
+            --output .cache/linen-earth/titan-original-armhole-control.blend
+          "$BLENDER_BIN" --background "$body" --python-exit-code 1 \
+            --python scripts/blender/author-linen-earth-officewear.py -- \
+            --experimental-disjoint-armholes \
+            --experimental-capture-armhole-stages \
+            --output .cache/linen-earth/titan-disjoint-armhole-research.blend
+          "$BLENDER_BIN" --background "$body" --python-exit-code 1 \
+            --python scripts/blender/author-linen-earth-officewear.py -- \
+            --experimental-disjoint-armholes \
+            --experimental-capture-armhole-stages \
+            --experimental-open-armhole-rims \
+            --output .cache/linen-earth/titan-open-armhole-rims-research.blend
+          after="$(sha256sum "$body" | cut -d' ' -f1)"
+          test "$before" = "$after"
+      - name: Rebuild real CC0 three-panel shirt as one continuous source surface (research)
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene=.cache/linen-earth/titan-disjoint-armhole-research.blend
+          before="$(sha256sum "$scene" | cut -d' ' -f1)"
+          mkdir -p "$RUNNER_TEMP/armhole-evidence"
+          "$BLENDER_BIN" --background "$scene" --python-exit-code 1 \
+            --python scripts/blender/research-sewn-shirt-from-source.py -- \
+            --output .cache/linen-earth/titan-single-solidify-sewn-shirt-research.blend \
+            --report "$RUNNER_TEMP/armhole-evidence/joint-shirt.json"
+          after="$(sha256sum "$scene" | cut -d' ' -f1)"
+          test "$before" = "$after"
+      - name: Native real-source single-Solidify shirt contract and identity QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-single-solidify-sewn-shirt-research.blend \
+            --python-exit-code 1 --python tests/blender/test_joint_shirt_real_source_candidate.py -- \
+            --report "$RUNNER_TEMP/armhole-evidence/joint-shirt.json"
+      - name: Reconstruct entire original-source trouser waist and legs as single shell (research)
+        shell: bash
+        run: |
+          set -euo pipefail
+          input=.cache/linen-earth/titan-single-solidify-sewn-shirt-research.blend
+          before="$(sha256sum "$input" | cut -d' ' -f1)"
+          "$BLENDER_BIN" --background "$input" --python-exit-code 1 \
+            --python scripts/blender/research-sewn-trousers-from-source.py -- \
+            --experimental-trouser-extra-clearance-mm 0 \
+            --output .cache/linen-earth/titan-single-solidify-trousers-clearance-control.blend \
+            --report "$RUNNER_TEMP/armhole-evidence/joint-both-control.json"
+          "$BLENDER_BIN" --background "$input" --python-exit-code 1 \
+            --python scripts/blender/research-sewn-trousers-from-source.py -- \
+            --experimental-clearance-mode uniform \
+            --output .cache/linen-earth/titan-single-solidify-trousers-uniform-layer-control.blend \
+            --report "$RUNNER_TEMP/armhole-evidence/joint-both-uniform.json"
+          "$BLENDER_BIN" --background "$input" --python-exit-code 1 \
+            --python scripts/blender/research-sewn-trousers-from-source.py -- \
+            --output .cache/linen-earth/titan-single-solidify-both-garments-research.blend \
+            --report "$RUNNER_TEMP/armhole-evidence/joint-both.json"
+          after="$(sha256sum "$input" | cut -d' ' -f1)"
+          test "$before" = "$after"
+      - name: Verify real original six-mesh/six-material trousers plus shirt evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-single-solidify-both-garments-research.blend \
+            --python-exit-code 1 --python tests/blender/test_joint_trousers_real_source_candidate.py -- \
+            --report "$RUNNER_TEMP/armhole-evidence/joint-both.json"
+      - name: Record true scanned source face overlap and evaluated garment crossings
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/armhole-evidence"
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-original-armhole-control.blend \
+            --python-exit-code 1 --python tests/blender/test_actual_armhole_source_ownership.py -- \
+            --expect-mode baseline --output "$RUNNER_TEMP/armhole-evidence/baseline.json"
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-disjoint-armhole-research.blend \
+            --python-exit-code 1 --python tests/blender/test_actual_armhole_source_ownership.py -- \
+            --expect-mode disjoint --output "$RUNNER_TEMP/armhole-evidence/disjoint.json"
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-open-armhole-rims-research.blend \
+            --python-exit-code 1 --python tests/blender/test_actual_armhole_source_ownership.py -- \
+            --expect-mode disjoint-open-rims --output "$RUNNER_TEMP/armhole-evidence/open-rims.json"
+          python3 - "$RUNNER_TEMP/armhole-evidence" <<'PY'
+          import json, pathlib, sys
+          root=pathlib.Path(sys.argv[1])
+          base=json.loads((root/"baseline.json").read_text())
+          trial=json.loads((root/"disjoint.json").read_text())
+          open_trial=json.loads((root/"open-rims.json").read_text())
+          sewn=json.loads((root/"joint-shirt.json").read_text())
+          combined=json.loads((root/"joint-both.json").read_text())
+          no_extra=json.loads((root/"joint-both-control.json").read_text())
+          uniform=json.loads((root/"joint-both-uniform.json").read_text())
+          assert uniform["researchClearanceMode"]=="uniform"
+          assert combined["researchClearanceMode"]=="waist-only"
+          assert no_extra["researchClearanceMode"]=="waist-only"
+          assert combined["researchWaistBlend"]["fullyWeightedVertices"]>8
+          assert combined["researchWaistBlend"]["weightedVertices"]>=combined["researchWaistBlend"]["fullyWeightedVertices"]
+          assert combined["researchWaistBlend"]["blendBandMm"]==45.0
+          assert combined["shirtMeshSha256Preserved"]==uniform["shirtMeshSha256Preserved"]
+          assert combined["sourceBodySha256"]==uniform["sourceBodySha256"]
+          assert combined["sourceBodySha256"]==no_extra["sourceBodySha256"]
+          assert combined["shirtMeshSha256Preserved"]==no_extra["shirtMeshSha256Preserved"]
+          assert no_extra["researchExtraTrouserClearanceMm"]==0
+          assert combined["researchExtraTrouserClearanceMm"]==3
+          assert combined["researchCombinedTrouserClearanceMm"]<=18
+          for key in combined["nativeGarmentPairTriangleContacts"]:
+              first=no_extra["nativeGarmentPairTriangleContacts"][key]
+              second=combined["nativeGarmentPairTriangleContacts"][key]
+              assert type(first) is int and type(second) is int and min(first,second)>=0
+              if first or second:
+                  print("REAL_CC0_JOINT_TROUSER_EXTRA_CLEARANCE_CONTACT",key,first,second,second-first)
+              other=uniform["nativeGarmentPairTriangleContacts"][key]
+              assert type(other) is int and other>=0
+              if other or second:
+                  print("REAL_CC0_WAIST_ONLY_VS_UNIFORM_LAYERING",key,other,second,second-other)
+          assert combined["modelIdentityId"]==trial["modelIdentityId"]=="linen-earth-studio-model-v1"
+          assert combined["sourceBodySha256"]==trial["sourceBodySha256"]==sewn["sourceBodySha256"]
+          assert not combined["productionApproved"] and not combined["tailorApproved"]
+          assert not combined["photographicMatchApproved"] and not combined["fabricDrapeApproved"]
+          assert set(combined["nativeGarmentPairTriangleContacts"])=={
+              f"{a}::{b}" for i,a in enumerate((
+                  "ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
+                  "TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"
+              )) for b in (
+                  "ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
+                  "TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"
+              )[i+1:]
+          }
+          for key,value in combined["nativeGarmentPairTriangleContacts"].items():
+              assert type(value) is int and value>=0
+              print("REAL_CC0_FULL_SIX_PANEL_SINGLE_SOLIDIFY_CONTACT",key,value)
+          assert sewn["sourceBodySha256"]==trial["sourceBodySha256"]==base["sourceBodySha256"]
+          assert sewn["modelIdentityId"]==trial["modelIdentityId"]
+          assert sewn["referenceImage"]==trial["referenceImage"]
+          assert sewn["singleNativeSolidify"] and not sewn["productionApproved"]
+          assert not sewn["tailorApproved"] and not sewn["photographicMatchApproved"]
+          assert set(sewn["authoredPanelMesh"])=={"ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric"}
+          assert all(x["faces"]>=x["sourceFaces"] and x["vertices"]>0 for x in sewn["authoredPanelMesh"].values())
+          assert sewn["sharedBodySourceVertexCounts"]["leftTorsoSleeve"]>=8
+          assert sewn["sharedBodySourceVertexCounts"]["rightTorsoSleeve"]>=8
+          for side in ("L","R"):
+              key=f"ShirtTorsoFabric::ShirtSleeve{side}Fabric"
+              new=sewn["realBVHShirtPanelContacts"][key]
+              old=trial["garmentContactPairs"][key]
+              assert type(new) is int and new>=0
+              print("REAL_CC0_SINGLE_SOLIDIFY_SHIRT_CONTACT_DELTA",side,old,new,new-old)
+          assert open_trial["sourceBodySha256"]==trial["sourceBodySha256"]==base["sourceBodySha256"]
+          assert open_trial["modelIdentityId"]==trial["modelIdentityId"]==base["modelIdentityId"]
+          assert open_trial["experimentalDisjointArmholes"] and open_trial["experimentalOpenArmholeRims"]
+          assert open_trial["openClothCuffsAndHems"] and not open_trial["productionApproved"]
+          assert not trial["experimentalOpenArmholeRims"] and not base["experimentalOpenArmholeRims"]
+          assert base["sourceBodySha256"]==trial["sourceBodySha256"]
+          assert base["modelIdentityId"]==trial["modelIdentityId"]=="linen-earth-studio-model-v1"
+          assert not base["experimentalDisjointArmholes"] and trial["experimentalDisjointArmholes"]
+          assert base["candidateOnly"] and trial["candidateOnly"]
+          assert not base["productionApproved"] and not trial["productionApproved"]
+          for suffix in ("L","R"):
+              assert base["sourceFaceSelection"]["duplicatedOriginalTorsoSleeveFaces"+suffix] > 0
+              assert trial["sourceFaceSelection"]["duplicatedOriginalTorsoSleeveFaces"+suffix] == 0
+          assert set(base["garmentContactPairs"])==set(trial["garmentContactPairs"])
+          for side in ("L", "R"):
+              baseline_edges=base["originalSourceArmholeCutEdges"][side]
+              trial_edges=trial["originalSourceArmholeCutEdges"][side]
+              for values in (baseline_edges, trial_edges):
+                  assert values["sourceTorsoCutEdges"]>0
+                  assert values["sourceSleeveCutEdges"]>0
+                  assert values["nearInterfaceTorsoEdges"]>0
+                  assert values["nearInterfaceSleeveEdges"]>0
+                  assert values["identicalSourceInterfaceEdges"]>=0
+                  assert values["sewnSeamApproved"] is False
+                  assert values["clothGapClosedVerified"] is False
+                  summary=values["torsoToNearestSleeveCutMidpointMm"]
+                  assert 0<=summary["min"]<=summary["median"]<=summary["max"]
+                  assert summary["min"]<=summary["p90"]<=summary["max"]
+                  assert 0<=values["torsoCutMidpointsWithin5mm"]<=values["nearInterfaceTorsoEdges"]
+              print("ORIGINAL_CC0_ARMHOLE_CUT_EDGE_SEPARATION_MM",side,baseline_edges,trial_edges)
+              initial=base["actualArmholeModifierSeamDisplacement"][side]
+              candidate=trial["actualArmholeModifierSeamDisplacement"][side]
+              assert initial["sharedOriginalSeamEdges"]==0
+              assert initial["sharedOriginalSeamVertices"]==0
+              assert not initial["preSolidifySourceVertexDisplacementMm"]
+              assert candidate["sharedOriginalSeamEdges"]>=trial_edges["identicalSourceInterfaceEdges"]
+              assert candidate["sharedOriginalSeamVertices"]>0
+              assert not candidate["postSolidifySeamSewnVerified"]
+              assert not candidate["postSolidifySeamWatertightVerified"]
+              stages=candidate["preSolidifySourceVertexDisplacementMm"]
+              assert set(stages)=={"selectedBodyShell","afterSmoothing","afterBodyClearance"}
+              assert stages["selectedBodyShell"]["max"]<=0.001
+              for name, values in stages.items():
+                  assert 0<=values["min"]<=values["median"]<=values["max"]
+                  assert values["min"]<=values["p90"]<=values["max"]
+                  assert values["matchedOriginalVertexCount"]==candidate["sharedOriginalSeamVertices"]
+                  print("REAL_CC0_SOURCE_EDGE_VERTEX_MODIFIER_SEPARATION",side,name,values)
+              contact_stage=candidate["realWorldBVHTrianglePairContactsByStage"]
+              assert set(contact_stage)=={"selectedBodyShell","afterSmoothing","afterBodyClearance","afterClothThickness"}
+              assert all(type(n) is int and n>=0 for n in contact_stage.values())
+              final_contact_key=f"ShirtTorsoFabric::ShirtSleeve{side}Fabric"
+              assert contact_stage["afterClothThickness"]==trial["garmentContactPairs"][final_contact_key]
+              print("REAL_CC0_ARMHOLE_BVH_BY_MODIFIER_STAGE",side,contact_stage)
+          for pair in base["garmentContactPairs"]:
+              before=base["garmentContactPairs"][pair]
+              after=trial["garmentContactPairs"][pair]
+              assert type(before) is int and type(after) is int and min(before,after)>=0
+              print(f"REAL_CC0_CONTACT_DELTA {pair}: {before} => {after} ({after-before:+d})")
+          for side in ("L", "R"):
+              side_panel=f"ShirtTorsoFabric::ShirtSleeve{side}Fabric"
+              closed=trial["actualArmholeModifierSeamDisplacement"][side]["realWorldBVHTrianglePairContactsByStage"]
+              no_rim=open_trial["actualArmholeModifierSeamDisplacement"][side]["realWorldBVHTrianglePairContactsByStage"]
+              assert closed["selectedBodyShell"]==no_rim["selectedBodyShell"]
+              assert closed["afterSmoothing"]==no_rim["afterSmoothing"]
+              assert closed["afterBodyClearance"]==no_rim["afterBodyClearance"]
+              assert no_rim["afterClothThickness"]==open_trial["garmentContactPairs"][side_panel]
+              assert trial["originalSourceArmholeCutEdges"][side]==open_trial["originalSourceArmholeCutEdges"][side]
+              print("REAL_CC0_ARMHOLE_SOLIDIFY_RIM_CONTACT_COMPARISON",side,
+                    {"closedRim":closed["afterClothThickness"],"noRim":no_rim["afterClothThickness"],
+                     "preThickness":closed["afterBodyClearance"]})
+          print("TITAN_DISJOINT_FACE_SOURCE_TRIAL_RESEARCH_ONLY_NO_MESH_APPROVAL")
+          PY
+      - name: Independently reject unfinished six-panel real 3D model with unchanged production gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/armhole-evidence/joint-both-preflight.log"
+          set +e
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-single-solidify-both-garments-research.blend \
+            --python-exit-code 1 --python scripts/blender/preflight-linen-earth-officewear.py > "$log" 2>&1
+          status=$?
+          set -e
+          test "$status" -eq 1
+          python3 - "$log" "$RUNNER_TEMP/armhole-evidence/joint-both-preflight.json" <<'PY'
+          import importlib.util,json,pathlib,sys
+          module=pathlib.Path("scripts/blender/summarize-native-candidate-preflight.py")
+          spec=importlib.util.spec_from_file_location("titan_original_preflight_parse",module)
+          preflight=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(preflight)
+          result=preflight.find_blender_preflight_report(pathlib.Path(sys.argv[1]).read_text())
+          assert result["modelIdentity"]["id"]=="linen-earth-studio-model-v1"
+          assert result["modelIdentity"]["referenceImage"]=="/designer/studio-tucked.webp"
+          assert result["ready"] is False and result["reasons"]
+          assert len(result["garmentPairIntersections"])==15
+          assert all(type(v) is int and v>=0 for v in result["garmentPairIntersections"].values())
+          assert isinstance(result["identityFitMeasurementsMm"],dict)
+          print("TITAN_REAL_CC0_SIX_PANEL_RESEARCH_PREVIEW_BLOCKED_BY_PRODUCTION_GATES",
+                len(result["reasons"]),result["identityFitMeasurementsMm"],
+                result["boundaryIntersections"])
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(result,indent=2)+"\n")
+          PY
+      - name: Render four original-source research frames without any new model
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libgl1-mesa-dri libopengl0 xvfb
+          scene=.cache/linen-earth/titan-single-solidify-both-garments-research.blend
+          before="$(sha256sum "$scene" | cut -d' ' -f1)"
+          xvfb-run -a -s "-screen 0 1280x1024x24" env LIBGL_ALWAYS_SOFTWARE=1 \
+            "$BLENDER_BIN" --background "$scene" --python-exit-code 1 \
+            --python scripts/blender/render-linen-earth-model-qa.py -- \
+            --output-dir "$RUNNER_TEMP/armhole-evidence/angles" \
+            --width 480 --height 640 --samples 8 --research-fabric-contrast
+          after="$(sha256sum "$scene" | cut -d' ' -f1)"
+          test "$before" = "$after"
+          python3 - "$RUNNER_TEMP/armhole-evidence/angles" <<'PY'
+          import hashlib, json, pathlib, sys
+          path=pathlib.Path(sys.argv[1])
+          data=json.loads((path/"model-qa-manifest.json").read_text())
+          assert data["modelIdentityId"]=="linen-earth-studio-model-v1"
+          assert data["candidateOnly"] and not data["realismApproved"] and not data["tailorApproved"]
+          assert data["researchOnlyFabricContrast"] is True
+          assert data["measuredColourApproved"] is False
+          assert [(v["view"],v["yawDeg"]) for v in data["angles"]]==[
+              ("front",0),("three-quarter",35),("side",90),("back",180)]
+          for view in data["angles"]:
+              frame=path/view["file"]
+              assert frame.is_file() and hashlib.sha256(frame.read_bytes()).hexdigest()==view["sha256"]
+          print("TITAN_ORIGINAL_CC0_FOUR_VIEW_EXPERIMENTAL_CANDIDATE_NOT_APPROVED")
+          PY
+      - name: Preserve the actual pinned-CC0 modified Blender scene as RESEARCH ONLY
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: titan-cc0-single-solidify-original-shirt-trousers-unapproved-blend
+          path: .cache/linen-earth/titan-single-solidify-both-garments-research.blend
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Archive research only, never production or customer artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: titan-cc0-disjoint-armhole-research-do-not-promote
+          path: ${{ runner.temp }}/armhole-evidence/**
+          if-no-files-found: ignore
+          retention-days: 7
