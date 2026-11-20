@@ -73,3 +73,34 @@ The isolated `TITAN — RESEARCH original CC0 surface-grain UV` workflow:
   owner/tailor fit approval with real evidence.
 - Only then independently review and consider an approved export. This
   research branch is intentionally unmerged, including if all CI is green.
+
+## Measured native Blender 4.5.14 evidence on the original six CC0 meshes
+
+Three independent **candidate-only** source runs were compared, with no
+changes to actual geometry or the physically rejected original:
+
+| UV experiment | Structural collapsed triangles | Discontinuous shared mesh edges | Source conclusion |
+|---|---:|---:|---|
+| Original x/z planar source layer | 0 | **0** | Structurally contiguous but textile/warp mapping and physical scale unverified |
+| First cylindrical candidate with normal-selected caps | 0 | **3,162** | Native geometry intact, but excessive projection-created chart cuts |
+| Continuous cylindrical projection with geometric collapse fallback | 0 | **552** | Fewer arbitrary breaks; not a sewn chart |
+| Rear (+Y) oriented cylindrical projection | 0 | **313** | 308 rear-side and 5 front-side breaks; physical model still rejected |
+
+The last run measured these per-panel UV discontinuities: shirt torso 74,
+left sleeve 65, right sleeve 62, trouser waist 112, left leg **0**, right leg
+**0**. The real four-view candidate render remained diagnostic only, and
+the original and altered UV preflights each rejected the same **16 physical
+blockers**. The actual source did not contain collapsed UV triangles, so
+claiming this work *repaired* a UV collapse would be wrong. The contribution
+is a measured reduction in the experimental projection's unintended seam
+discontinuities and a more defensible rear-side chart-cut placement.
+
+Evidence: native runs
+[44795447974](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44795447974),
+[44796165386](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44796165386)
+and [44796788134](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44796788134).
+
+The workflow also archives a **RESEARCH-NOT-PRODUCTION** source-derived
+Blender `.blend` for source/UV seam inspection after all native checks pass;
+it must not be deployed, treated as an approved 3D model, or used to
+manufacture garments without physical evidence.
