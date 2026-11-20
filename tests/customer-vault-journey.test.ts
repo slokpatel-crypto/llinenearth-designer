@@ -85,7 +85,7 @@ test("public share handoff restores validated photographed choices without impor
 test("public share navigation cannot import stale local private body or creative state",()=>{
   const source=readFileSync("src/components/DesignerModule.tsx","utf8");
   assert.match(source,/if\(fromShared\)\{[\s\S]*nextBodyProfile=undefined;/);
-  assert.match(source,/!fromDirector && !fromReference && !fromShared && parsed\?\.creative/);
+  assert.match(source,/!fromDirector && !fromReference && !fromShared && !fromCatalog && parsed\?\.creative/);
   assert.match(source,/setBodyProfile\(nextBodyProfile \|\| DEFAULT_BODY_PREVIEW_PROFILE\)/);
 });
 
