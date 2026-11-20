@@ -15,7 +15,7 @@ export function CloudSavedDesignsPanel({ localDesigns }: { localDesigns: SavedDe
     setBusy(true);
     setMessage("");
     try { await action(); }
-    catch (error) { setMessage(error instanceof Error ? error.message : "Cloud unavailable."); }
+    catch (error) { setCloud([]); setSelected(null); setMessage(error instanceof Error ? error.message : "Cloud unavailable."); }
     finally { setBusy(false); }
   }
   return <section aria-label="Signed-in cloud designs" className="savedIntro">
@@ -35,6 +35,8 @@ export function CloudSavedDesignsPanel({ localDesigns }: { localDesigns: SavedDe
             const draft = localDesigns.find((item) => item.id === id);
             if (!draft) throw new Error("Draft no longer available.");
             await saveCloudDesign(draft);
+            setCloud(await listCloudDesigns());
+            setSelected(null);
             setMessage("Cloud save confirmed.");
           });
         }} disabled={busy}>
