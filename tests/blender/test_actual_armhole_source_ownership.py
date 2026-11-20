@@ -31,7 +31,7 @@ def args():
     argv = argv[argv.index("--") + 1:] if "--" in argv else []
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--expect-mode", choices=("baseline", "disjoint"), required=True)
+    parser.add_argument("--expect-mode", choices=("baseline", "disjoint", "disjoint-open-rims"), required=True)
     return parser.parse_args(argv)
 
 
@@ -239,8 +239,11 @@ def report(expect):
         or scene.get("linen_earth_model_identity_locked") is not True):
         raise RuntimeError("Actual locked source model identity required for this test")
     is_trial = scene.get("linen_earth_research_disjoint_armholes") is True
-    if is_trial != (expect == "disjoint"):
+    if is_trial != (expect in ("disjoint", "disjoint-open-rims")):
         raise RuntimeError("Experimental source ownership flag does not match actual scene")
+    open_rims = scene.get("linen_earth_research_open_armhole_rims") is True
+    if open_rims != (expect == "disjoint-open-rims"):
+        raise RuntimeError("Experimental open-rim flag does not match actual research scene")
     if scene.get("linen_earth_research_armhole_stages_emitted") is not True:
         raise RuntimeError("Actual armhole modifier snapshots were not enabled")
     body = bpy.data.objects.get("Body")
@@ -331,6 +334,9 @@ def report(expect):
         "originalSourceArmholeCutEdges": armhole_edges,
         "actualArmholeModifierSeamDisplacement": stage_displacement,
         "experimentalDisjointArmholes": is_trial,
+        "experimentalOpenArmholeRims": open_rims,
+        "openClothCuffsAndHems": open_rims,
+        "productionApproved": False,
         "caveat": "Actual world BVH contacts and selected source face ownership, not sewn armhole fit",
     }
 
