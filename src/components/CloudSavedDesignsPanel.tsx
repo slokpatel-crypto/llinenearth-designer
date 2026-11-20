@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { deleteCloudDesign, getCloudDesign, listCloudDesigns, saveCloudDesign } from "@/lib/customer-saved-design-client";
 import type { SavedDesign } from "@/lib/saved-designs";
 
@@ -9,15 +9,18 @@ export function CloudSavedDesignsPanel({ localDesigns }: { localDesigns: SavedDe
   const [cloud, setCloud] = useState<SavedDesign[]>([]);
   const [selected, setSelected] = useState<SavedDesign | null>(null);
   const [busy, setBusy] = useState(false);
+  // A synchronous guard closes the gap before React commits disabled controls.
+  const inFlight = useRef(false);
   const [uploadId, setUploadId] = useState("");
   const [message, setMessage] = useState("");
   async function run(action: () => Promise<void>) {
-    if (busy) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setMessage("");
     try { await action(); }
     catch (error) { setCloud([]); setSelected(null); setMessage(error instanceof Error ? error.message : "Cloud unavailable."); }
-    finally { setBusy(false); }
+    finally { inFlight.current = false; setBusy(false); }
   }
   return <section aria-label="Signed-in cloud designs" className="savedIntro">
     <div>
