@@ -86,8 +86,15 @@ scene=bpy.context.scene
 assert export.reject_research_scene_for_export(scene) is None
 for key,value in (
     ("linen_earth_asset_status","research-surface-grain-uv-unapproved"),
+    ("linen_earth_asset_status","RESEARCH-ONLY-source-UV-unapproved"),
     ("titan_surface_uv_research_candidate_only",True),
     ("titan_surface_uv_production_approved",False),
+    ("linen_earth_production_approved",False),
+    ("linen_earth_research_surface_grain_uv",True),
+    ("linen_earth_research_single_solidify_shirt",True),
+    ("linen_earth_research_single_solidify_trousers",True),
+    ("linen_earth_research_disjoint_armholes",True),
+    ("linen_earth_research_open_armhole_rims",True),
 ):
     scene[key]=value
     try:
@@ -102,21 +109,32 @@ bpy.ops.mesh.primitive_cube_add(size=1)
 panel=bpy.context.object
 panel.name="ShirtTorsoFabric"
 try:
-    panel["titan_surface_uv_candidate_only"]=True
+    for key in export.RESEARCH_MESH_MARKERS:
+        panel[key]=True
+        try:
+            export.reject_research_scene_for_export(scene)
+        except RuntimeError as exc:
+            assert "Research-only garment UV" in str(exc),(key,exc)
+        else:
+            raise AssertionError("Explicit research mesh flag escaped exporter quarantine: "+key)
+        del panel[key]
+    panel["productionApproved"]=False
     try:
         export.reject_research_scene_for_export(scene)
     except RuntimeError as exc:
         assert "Research-only garment UV" in str(exc),exc
     else:
-        raise AssertionError("Explicit research mesh flag escaped exporter quarantine")
-    del panel["titan_surface_uv_candidate_only"]
-    panel.data.uv_layers.new(name=export.RESEARCH_SURFACE_UV_LAYER)
-    try:
-        export.reject_research_scene_for_export(scene)
-    except RuntimeError as exc:
-        assert "Research-only garment UV" in str(exc),exc
-    else:
-        raise AssertionError("Named research UV layer escaped exporter quarantine")
+        raise AssertionError("Unapproved native garment mesh bypassed quarantine")
+    del panel["productionApproved"]
+    for uv_name in export.RESEARCH_SURFACE_UV_LAYERS:
+        layer=panel.data.uv_layers.new(name=uv_name)
+        try:
+            export.reject_research_scene_for_export(scene)
+        except RuntimeError as exc:
+            assert "Research-only garment UV" in str(exc),(uv_name,exc)
+        else:
+            raise AssertionError("Named research UV escaped exporter: "+uv_name)
+        panel.data.uv_layers.remove(layer)
 finally:
     bpy.data.objects.remove(panel,do_unlink=True)
 assert export.reject_research_scene_for_export(scene) is None

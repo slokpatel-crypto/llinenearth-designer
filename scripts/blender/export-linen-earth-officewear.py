@@ -53,6 +53,23 @@ GARMENT_OBJECTS = (
 )
 
 RESEARCH_SURFACE_UV_LAYER = "TITAN_SurfaceGrain_RESEARCH"
+RESEARCH_SURFACE_UV_LAYERS = (
+    RESEARCH_SURFACE_UV_LAYER,
+    "TITAN_RESEARCH_SURFACE_GRAIN",
+)
+RESEARCH_SCENE_MARKERS = (
+    "linen_earth_research_surface_grain_uv",
+    "linen_earth_research_single_solidify_shirt",
+    "linen_earth_research_single_solidify_trousers",
+    "linen_earth_research_disjoint_armholes",
+    "linen_earth_research_open_armhole_rims",
+)
+RESEARCH_MESH_MARKERS = (
+    "titan_surface_uv_candidate_only",
+    "linen_earth_research_uv_grain_only",
+    "linen_earth_research_joint_solidify",
+    "candidateOnly",
+)
 
 SOURCE_KEYS = {
     "name": "linen_earth_model_source_name",
@@ -144,16 +161,20 @@ def reject_research_scene_for_export(scene):
     acceptance remain fully enforced by the unchanged preflight.
     """
     status = str(scene.get("linen_earth_asset_status", "")).strip()
-    if (status.startswith("research-")
+    if (status.casefold().startswith("research-")
+            or any(scene.get(key) is True for key in RESEARCH_SCENE_MARKERS)
             or scene.get("titan_surface_uv_research_candidate_only") is True
-            or scene.get("titan_surface_uv_production_approved") is False):
+            or scene.get("titan_surface_uv_production_approved") is False
+            or scene.get("linen_earth_production_approved") is False):
         raise RuntimeError("Research-only Blender scene cannot be exported as an approved garment.")
     for name in GARMENT_OBJECTS:
         obj = bpy.data.objects.get(name)
         if obj is None or obj.type != "MESH":
             continue
-        if (obj.get("titan_surface_uv_candidate_only") is True
-                or obj.data.uv_layers.get(RESEARCH_SURFACE_UV_LAYER) is not None):
+        if (any(obj.get(key) is True for key in RESEARCH_MESH_MARKERS)
+                or obj.get("productionApproved") is False
+                or any(obj.data.uv_layers.get(layer) is not None
+                       for layer in RESEARCH_SURFACE_UV_LAYERS)):
             raise RuntimeError(f"Research-only garment UV found on {name}; do not export.")
 
 

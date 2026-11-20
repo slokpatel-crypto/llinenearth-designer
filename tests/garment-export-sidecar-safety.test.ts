@@ -17,10 +17,15 @@ test("measured GLB viewer sidecars cannot survive an unmeasured overwrite",()=>{
   assert.ok(guard>=0&&quarantine>guard&&preflight>quarantine&&exportCall>preflight,
     "destination evidence mismatch must be blocked before any export");
   assert.match(source,/def reject_research_scene_for_export\(scene\):/);
-  assert.match(source,/status\.startswith\("research-"\)/);
+  assert.match(source,/status\.casefold\(\)\.startswith\("research-"\)/);
   assert.match(source,/titan_surface_uv_research_candidate_only/);
   assert.match(source,/titan_surface_uv_production_approved/);
-  assert.match(source,/obj\.data\.uv_layers\.get\(RESEARCH_SURFACE_UV_LAYER\)/);
+  assert.match(source,/RESEARCH_SURFACE_UV_LAYERS/);
+  assert.match(source,/RESEARCH_SCENE_MARKERS/);
+  assert.match(source,/RESEARCH_MESH_MARKERS/);
+  assert.match(source,/obj\.data\.uv_layers\.get\(layer\)/);
+  assert.ok(source.includes("TITAN_RESEARCH_SURFACE_GRAIN"),"CC0 UV research #1010 must be blocked");
+  assert.ok(source.includes("linen_earth_research_surface_grain_uv"),"CC0 UV research scene marker must be blocked");
   const native=readFileSync("tests/blender/test_export_sidecar_preservation.py","utf8");
   assert.match(native,/TITAN_NATIVE_RESEARCH_UV_EXPORT_QUARANTINE_PASSED/);
   for(const token of ["glb.read_bytes()", "sidecar.read_text", "export.validate_export_destination", "different-candidate.glb", "simulated manifest serialization failure", ".linen-earth-viewer-*.tmp"])
