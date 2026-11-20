@@ -383,7 +383,10 @@ async function run(){
         const engine=window.__photoFormAfter.engine,shirt={...engine.DESIGNER_SHIRTS[0],image:"/qa-solid-shirt.png",hex:"#b46d58",patternType:"Solid",renderScale:undefined},pant={...engine.DESIGNER_PANTS[0],image:"/qa-solid-pant.png",hex:"#b9afa0",patternType:"Solid",renderScale:undefined};
         const cataloguePatternFabric=engine.DESIGNER_SHIRTS.find(fabric=>fabric.id==="printed-linen-blend-08");
         if(!cataloguePatternFabric)throw Error("Printed Linen Blend 08 missing from real Designer catalogue");
-        const cataloguePatternImage=await image(cataloguePatternFabric.image);
+        // Primary user path: prepared, caption-safe real catalogue tile.
+        // Keep the original raw supplier photo as a separate fallback test.
+        const cataloguePatternImage=await image("/fabric-tiles/"+cataloguePatternFabric.image.split("/").pop());
+        const cataloguePatternRawImage=await image(cataloguePatternFabric.image);
         // Synthetic stripe TEST TILE only; it is never shown as a customer
         // fabric or passed to a provider. Actual mannequin images stay intact.
         // Use a full-size QA textile tile: swatchTile crops/expands stripes.
@@ -497,6 +500,9 @@ async function run(){
           const cataloguePattern=makeCanvas();
           window.__photoFormAfter.compose(cataloguePattern.getContext("2d"),model,trouser,cataloguePatternImage,pantImage,cataloguePatternFabric,pant,selected);
           const cataloguePatternData=cataloguePattern.getContext("2d").getImageData(0,0,W,H).data;
+          const rawCataloguePattern=makeCanvas();
+          window.__photoFormAfter.compose(rawCataloguePattern.getContext("2d"),model,trouser,cataloguePatternRawImage,pantImage,cataloguePatternFabric,pant,selected);
+          const rawCataloguePatternData=rawCataloguePattern.getContext("2d").getImageData(0,0,W,H).data;
           const priorCataloguePattern=makeCanvas();
           window.__photoFormPlacketBase.compose(priorCataloguePattern.getContext("2d"),model,trouser,cataloguePatternImage,pantImage,cataloguePatternFabric,pant,selected);
           const priorCataloguePatternData=priorCataloguePattern.getContext("2d").getImageData(0,0,W,H).data;
@@ -540,6 +546,8 @@ async function run(){
           const stripeSleeve=changes(stripeData,{x:307,y:356,w:38,h:190});
           const cataloguePatternBody=changes(cataloguePatternData,{x:414,y:310,w:180,h:176});
           const cataloguePatternSleeve=changes(cataloguePatternData,{x:307,y:356,w:38,h:190});
+          const rawCataloguePatternBody=changes(rawCataloguePatternData,{x:414,y:310,w:180,h:176});
+          const rawCataloguePatternSleeve=changes(rawCataloguePatternData,{x:307,y:356,w:38,h:190});
           const pantStripeLeft=changes(pantStripeData,{x:389,y:800,w:61,h:480});
           const pantStripeRight=changes(pantStripeData,{x:575,y:800,w:57,h:480});
           // Detect actual dark-blue textile bands, not merely a different
@@ -560,6 +568,11 @@ async function run(){
             const i=(y*W+x)*4;
             if(pantStripeData[i]!==current[i]||pantStripeData[i+1]!==current[i+1]||pantStripeData[i+2]!==current[i+2])protectedPantChanges++;
           }
+          let protectedCatalogueRawChanges=0;
+          for(const r of protectedRegions)for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++){
+            const i=(y*W+x)*4;
+            if(rawCataloguePatternData[i]!==current[i]||rawCataloguePatternData[i+1]!==current[i+1]||rawCataloguePatternData[i+2]!==current[i+2])protectedCatalogueRawChanges++;
+          }
           let protectedCataloguePatternChanges=0;
           for(const r of protectedRegions)for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++){
             const i=(y*W+x)*4;
@@ -577,12 +590,16 @@ async function run(){
           window.__photoFormImages["stripe-"+template]=stripeCanvas.toDataURL("image/png");
           window.__photoFormImages["pant-stripe-"+template]=pantStripeCanvas.toDataURL("image/png");
           window.__photoFormImages["catalogue-pattern-"+template]=cataloguePatternCanvas.toDataURL("image/png");
+          const rawFallbackCanvas=makeCanvas();rawFallbackCanvas.width=W*2;
+          rawFallbackCanvas.getContext("2d").drawImage(cataloguePattern,0,0);
+          rawFallbackCanvas.getContext("2d").drawImage(rawCataloguePattern,W,0);
+          window.__photoFormImages["real-raw-fallback-"+template]=rawFallbackCanvas.toDataURL("image/png");
           window.__photoFormImages[template]=display.toDataURL("image/png");
-          results.push({template,renderMs,captionSafeRawFallback,folds,patternedFolds,placketCorrelation,collarCorrelation,cuffCorrelation,protectedChanges,protectedPantChanges,protectedCataloguePatternChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,cataloguePatternBody,cataloguePatternSleeve,pantStripeLeft,pantStripeRight,pantStripeLeftBlue,pantStripeRightBlue});
+          results.push({template,renderMs,captionSafeRawFallback,folds,patternedFolds,placketCorrelation,collarCorrelation,cuffCorrelation,protectedChanges,protectedPantChanges,protectedCataloguePatternChanges,protectedCatalogueRawChanges,wrongWaistPixels,waistExamples,stripeBody,stripeSleeve,cataloguePatternBody,cataloguePatternSleeve,rawCataloguePatternBody,rawCataloguePatternSleeve,pantStripeLeft,pantStripeRight,pantStripeLeftBlue,pantStripeRightBlue});
         }return results;
       });
       for(const result of summary.forms){
-        for(const name of [result.template,"stripe-"+result.template,"pant-stripe-"+result.template,"catalogue-pattern-"+result.template]){
+        for(const name of [result.template,"stripe-"+result.template,"pant-stripe-"+result.template,"catalogue-pattern-"+result.template,"real-raw-fallback-"+result.template]){
           await page.evaluate(name=>{const image=document.createElement("img");image.id="photo-form-comparison";image.src=window.__photoFormImages[name];image.style.width="1024px";document.body.append(image);},name);
           await page.locator("#photo-form-comparison").screenshot({path:path.join(out,`before-after-${name}.png`)});
           await page.locator("#photo-form-comparison").evaluate(image=>image.remove());
@@ -600,6 +617,10 @@ async function run(){
         assert.ok(result.stripeSleeve>50,result.template+" photo sleeve must render the selected striped tile");
         assert.ok(result.cataloguePatternBody>400,result.template+" body must render the real Printed Linen Blend 08 catalogue pattern");
         assert.ok(result.cataloguePatternSleeve>50,result.template+" sleeve must render the real Printed Linen Blend 08 catalogue pattern");
+        assert.ok(result.rawCataloguePatternBody>400,result.template+" raw supplier fallback must still render actual printed fabric on the shirt body");
+        assert.ok(result.rawCataloguePatternSleeve>50,result.template+" raw supplier fallback must still render actual printed fabric on the sleeve");
+        assert.equal(result.protectedCatalogueRawChanges,0,
+          result.template+" raw supplier fallback must preserve the original model and studio");
         assert.equal(result.protectedCataloguePatternChanges,0,
           result.template+" real catalogue pattern must preserve skin, shoes, inner-leg gap and set");
         assert.ok(result.placketCorrelation.after>result.placketCorrelation.before,

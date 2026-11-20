@@ -62,4 +62,8 @@ test("browser regression refuses catalogue captions on printed shirt and striped
   assert.match(script,/patternType:"Pin Stripe"/);
   assert.match(script,/raw fallback must ignore source captions outside the upper cloth field/);
   assert.match(script,/raw-fallback-caption-safe\.png/);
+  assert.match(script,/cataloguePatternImage=await image\("\/fabric-tiles\/"/);
+  assert.match(script,/cataloguePatternRawImage=await image\(cataloguePatternFabric\.image\)/);
+  assert.match(script,/raw supplier fallback must preserve the original model and studio/);
+  assert.match(script,/real-raw-fallback-/);
 });

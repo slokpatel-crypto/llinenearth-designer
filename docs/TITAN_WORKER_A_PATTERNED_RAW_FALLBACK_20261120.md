@@ -35,3 +35,15 @@ be tiled across the pictured shirt or trousers.
 `npm run build`, both Full CI and Deep Engine Non-3D Chromium workflows at
 the **same exact PR head**, inspect artifacts and latest main. No Vercel deploy,
 customer/stock mutation, fabricated measurements or replacement mannequin.
+
+## Exact-head CI correction after first browser failure
+The first branch head `2641d48887ad0423409822e77304bf2b8c0ff5aa` passed 1,038 unit tests plus quality,
+engine, preview-performance, release and build gates, but real Chromium failed
+its photographed placket-correlation regression: the test used the original raw
+supplier print (which previously had a **different**, oversized crop) instead
+of the prepared tile used by the actual default customer path. Do not weaken
+or remove that test. The updated browser suite now measures construction relief
+on the real prepared catalogue tile **and** separately composes the original
+supplier image as a raw fallback for every photographic template, requiring
+visible patterns and no protected-region mutations. The two-source synthetic
+caption test is retained. A new exact-head green run is required before merge.
