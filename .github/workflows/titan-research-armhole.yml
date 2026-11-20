@@ -10,6 +10,7 @@ on:
       - "tests/blender/test_open_rim_research_boundary_fixture.py"
       - "scripts/blender/bootstrap-human-base-meshes.py"
       - "scripts/blender/research-sewn-shirt-from-source.py"
+      - "tests/blender/test_joint_shirt_real_source_candidate.py"
       - "tests/python/test_cc0_source_official_mirror.py"
       - ".github/workflows/titan-research-armhole.yml"
 
@@ -105,6 +106,13 @@ jobs:
             --report "$RUNNER_TEMP/armhole-evidence/joint-shirt.json"
           after="$(sha256sum "$scene" | cut -d' ' -f1)"
           test "$before" = "$after"
+      - name: Native real-source single-Solidify shirt contract and identity QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background .cache/linen-earth/titan-single-solidify-sewn-shirt-research.blend \
+            --python-exit-code 1 --python tests/blender/test_joint_shirt_real_source_candidate.py -- \
+            --report "$RUNNER_TEMP/armhole-evidence/joint-shirt.json"
       - name: Record true scanned source face overlap and evaluated garment crossings
         shell: bash
         run: |
