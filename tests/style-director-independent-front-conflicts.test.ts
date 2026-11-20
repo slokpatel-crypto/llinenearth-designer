@@ -156,3 +156,29 @@ test("multiple stale shirt options cannot suppress simultaneous independent trou
     assert.equal(JSON.stringify(spec), original, "frozen saved garment must remain untouched");
   }
 });
+
+test("three independent trouser faults survive retired collar cuff and sleeve IDs", () => {
+  for (const sleeve of ["full_sleeve", "retired_sleeve"] as const) {
+    const spec = makeSpec(sleeve, "double_pleat_high_rise", "flat_front");
+    spec.shirt.collar = "retired_collar";
+    spec.shirt.cuff = "retired_cuff";
+    spec.pant.rise = "low_rise";
+    spec.pant.hem = "cropped_above_ankle_hem";
+    spec.pant.break = "stacked_break";
+    const original = JSON.stringify(spec);
+    Object.freeze(spec.shirt);
+    Object.freeze(spec.pant);
+    Object.freeze(spec);
+    const first = styleDirectorConstructionIssues(spec);
+    const codes = first.map(issue => issue.code);
+    for (const expected of [
+      "unknown_versioned_option",
+      "high_rise_type_mismatch",
+      "cropped_stacked_break",
+    ]) {
+      assert.ok(codes.includes(expected), `${sleeve}: missing ${expected}`);
+    }
+    assert.deepEqual(styleDirectorConstructionIssues(spec), first);
+    assert.equal(JSON.stringify(spec), original);
+  }
+});
