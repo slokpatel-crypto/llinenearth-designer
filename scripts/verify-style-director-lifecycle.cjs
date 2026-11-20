@@ -307,6 +307,17 @@ async function regression(name, run) {
     summary.viewports.push({ ...metrics, questionnaireAndLookSelection: "passed", fidelityGateAndRetry: "passed", fabricCoverage: initialCoverage, protectedPixelsPreserved: true, framing: { initial: initialFraming, selected: selectedFraming, held: heldFraming, approved: approvedFraming } });
     await context.close();
   }
+  await regression("pairings-public-http-rejects-untrusted-input-before-stock-read",async(page)=>{
+    const endpoint=baseURL+"/api/style-director/pairings";
+    const malformed=await page.request.post(endpoint,{headers:{"content-type":"application/json"},data:'{"answers":'});
+    assert.equal(malformed.status(),400,"Malformed JSON is refused");
+    const malformedChoices=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({answers:{...answers,mood:"untrusted"},lookId:looks[0].id})});
+    assert.equal(malformedChoices.status(),400,"Unsupported closed-vocabulary values are refused");
+    const huge=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({answers,lookId:"X".repeat(9000)})});
+    assert.equal(huge.status(),413,"Oversized JSON is refused before catalog access");
+  });
   await regression("stale-pairings-after-look-change-are-discarded",async(page)=>{
     await journey(page);
     await page.getByRole("button",{name:"Explore pairings",exact:true}).click();
