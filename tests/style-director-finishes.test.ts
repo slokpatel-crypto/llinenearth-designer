@@ -44,7 +44,7 @@ test("finishing suggestions keep fabrics, v2 identity and every other constructi
       assert.deepEqual(alt.realModel.pantFabric,source.pantFabric);
       const target=dimension.key==="collar"||dimension.key==="cuff"||dimension.key==="placket"
         ? alt.realModel.styleSpec.shirt : alt.realModel.styleSpec.pant;
-      assert.equal(target[dimension.key],alt.optionId);
+      assert.equal((target as unknown as Record<string,unknown>)[dimension.key],alt.optionId);
       assert.equal(optionById(alt.optionId)?.group,dimension.group);
       assert.equal(alt.realModel.style[dimension.key],optionById(alt.optionId)?.legacyLabel);
       const oldStyle={...source.style},newStyle={...alt.realModel.style};
@@ -53,11 +53,11 @@ test("finishing suggestions keep fabrics, v2 identity and every other constructi
       assert.deepEqual(newStyle,oldStyle);
       const origSpec=structuredClone(source.styleSpec);
       const editedSpec=structuredClone(alt.realModel.styleSpec);
-      delete (dimension.key==="collar"||dimension.key==="cuff"||dimension.key==="placket" ? origSpec.shirt : origSpec.pant as Record<string,unknown>)[dimension.key];
-      delete (dimension.key==="collar"||dimension.key==="cuff"||dimension.key==="placket" ? editedSpec.shirt : editedSpec.pant as Record<string,unknown>)[dimension.key];
+      delete ((dimension.key==="collar"||dimension.key==="cuff"||dimension.key==="placket" ? origSpec.shirt : origSpec.pant) as unknown as Record<string,unknown>)[dimension.key];
+      delete ((dimension.key==="collar"||dimension.key==="cuff"||dimension.key==="placket" ? editedSpec.shirt : editedSpec.pant) as unknown as Record<string,unknown>)[dimension.key];
       // The v2 legacy snapshot correctly tracks the user-selected legacy option.
-      delete (origSpec.legacy as Record<string,unknown>)[dimension.key];
-      delete (editedSpec.legacy as Record<string,unknown>)[dimension.key];
+      delete (origSpec.legacy as unknown as Record<string,unknown>)[dimension.key];
+      delete (editedSpec.legacy as unknown as Record<string,unknown>)[dimension.key];
       assert.deepEqual(editedSpec,origSpec);
       assert.match(alt.reviewNote,/preliminary|review/i);
       assert.match(alt.id,new RegExp("^"+dimension.key+":"));
