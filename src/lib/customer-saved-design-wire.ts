@@ -64,3 +64,23 @@ export function parseCustomerSavedDesignWrite(
       !validId(version.id) || hasUnsafeClaims(value.recipe)) return null;
   return value as CustomerSavedDesignWrite;
 }
+
+/** Validate database RPC rows before returning private records to a browser.
+ * Never forward unexpected columns such as owner identifiers or credentials.
+ */
+export function parseCustomerSavedDesignRow(value: unknown): {
+  payload: CustomerSavedDesignWrite;
+  updated_at: string;
+  design_id?: string;
+} | null {
+  if (!record(value) || Object.keys(value).some(key =>
+    !["payload", "updated_at", "design_id"].includes(key)) ||
+    typeof value.updated_at !== "string" ||
+    !Number.isFinite(Date.parse(value.updated_at)) ||
+    !record(value.payload)) return null;
+  const payload = parseCustomerSavedDesignWrite(
+    value.payload, Buffer.byteLength(JSON.stringify(value.payload), "utf8"));
+  if (!payload || (value.design_id !== undefined &&
+    value.design_id !== payload.designId)) return null;
+  return value as {payload: CustomerSavedDesignWrite; updated_at: string; design_id?: string};
+}
