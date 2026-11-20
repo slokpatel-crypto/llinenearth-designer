@@ -32,6 +32,8 @@ def args():
     parser=argparse.ArgumentParser()
     parser.add_argument("--output",required=True,type=Path)
     parser.add_argument("--report",required=True,type=Path)
+    parser.add_argument("--experimental-trouser-extra-clearance-mm",type=float,default=3.0,
+                        help="RESEARCH ONLY: bounded extra radial clearance for a joined trouser source; not a fit approval")
     return parser.parse_args(argv)
 
 def selected_source_faces(body,center,min_z,height,waist_top):
@@ -92,6 +94,9 @@ def main():
         raise RuntimeError("Pinned photographic trouser guide/top is inconsistent")
     if not 3<=clearance<=18 or not 0.6<=thickness<=4:
         raise RuntimeError("Original validated cloth clearance/thickness bounds exceeded")
+    extra=float(o.experimental_trouser_extra_clearance_mm)
+    if not math.isfinite(extra) or not 0<=extra<=9 or clearance+extra>18:
+        raise RuntimeError("Joined-trouser research clearance is outside original 0-9mm / 18mm limits")
     regions,source_seams,cut_z=selected_source_faces(body,center,zmin,height,top)
     combined,_,collection=shared.build_joint(
         body,regions,shared.TROUSER_PANELS,"TROUSERS"
@@ -100,7 +105,7 @@ def main():
                  lambda mod:(setattr(mod,"factor",0.22),setattr(mod,"iterations",3)))
     shared.apply(combined,"SHRINKWRAP","LE_RESEARCH_TROUSERS_CLEARANCE",
                  lambda mod:(setattr(mod,"target",body),setattr(mod,"wrap_method","NEAREST_SURFACEPOINT"),
-                             setattr(mod,"wrap_mode","OUTSIDE_SURFACE"),setattr(mod,"offset",clearance/1000.0)))
+                             setattr(mod,"wrap_mode","OUTSIDE_SURFACE"),setattr(mod,"offset",(clearance+extra)/1000.0)))
     shared.apply(combined,"SOLIDIFY","LE_RESEARCH_TROUSERS_ONE_THICKNESS",
                  lambda mod:(setattr(mod,"thickness",thickness/1000.0),
                              setattr(mod,"offset",1.0),setattr(mod,"use_rim",True)))
@@ -135,6 +140,9 @@ def main():
         "shirtMeshSha256Preserved":shirt_hashes,
         "sourceBlend":src.name,
         "sourceCutZMm":round(cut_z*1000,3),
+        "originalBodyClearanceMm":clearance,
+        "researchExtraTrouserClearanceMm":extra,
+        "researchCombinedTrouserClearanceMm":round(clearance+extra,3),
         "originalBodySourceSeamVertices":source_seams,
         "productionApproved":False,
         "tailorApproved":False,
