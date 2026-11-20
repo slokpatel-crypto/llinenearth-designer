@@ -10,6 +10,9 @@ import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from 
 import { createPreviewRequestScope } from "@/lib/designer/preview-request-scope";
 import { selectedLookQaPassed } from "@/lib/designer/selected-look-qa";
 import { optionById } from "@/lib/designer/options/library";
+import {
+  compareStyleDirectorLooks, STYLE_DIRECTOR_COMPARE_LENSES, type StyleDirectorCompareLens,
+} from "@/lib/designer/style-director-compare";
 import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
@@ -53,6 +56,8 @@ export default function StyleDirectorPage() {
   const [answers,setAnswers] = useState<Partial<StyleDirectorAnswers>>({});
   const [looks,setLooks] = useState<StyleDirectorClientLook[]>([]);
   const [selected,setSelected] = useState(0);
+  const [compareOpen,setCompareOpen] = useState(false);
+  const [compareLens,setCompareLens] = useState<StyleDirectorCompareLens>("overall");
   const [loading,setLoading] = useState(false);
   const [rendering,setRendering] = useState(false);
   const [renderSet,setRenderSet] = useState<RenderSet|null>(null);
@@ -66,6 +71,7 @@ export default function StyleDirectorPage() {
   const step = steps[index];
   const complete = looks.length > 0;
   const selectedLook = looks[selected];
+  const comparedLooks = useMemo(()=>compareStyleDirectorLooks(looks,compareLens),[looks,compareLens]);
   const progress = complete ? 100 : Math.round((index / steps.length) * 100);
   const journeyScope = useMemo(()=>createPreviewRequestScope(),[index,journeyEpoch]);
   const renderScope = useMemo(()=>createPreviewRequestScope(),[selectedLook,currentCalibrationIdentity,journeyEpoch]);
@@ -105,6 +111,7 @@ export default function StyleDirectorPage() {
       if (!response.ok) throw new Error(data.error || "Could not create looks.");
       setLooks(data.looks);
       setSelected(0);
+      setCompareOpen(false);
       setRenderSet(null);
       setPhotoreal(null); setPhotorealQaStatus(null);
       setRenderCalibrationIdentity(null);
@@ -199,6 +206,7 @@ export default function StyleDirectorPage() {
     journeyScope.invalidate(); renderScope.invalidate();
     setJourneyEpoch((epoch)=>epoch+1);
     setIndex(0); setAnswers({}); setLooks([]); setSelected(0);
+    setCompareOpen(false); setCompareLens("overall");
     setLoading(false); setRendering(false);
     setRenderSet(null); setRenderCalibrationIdentity(null);
     setPhotoreal(null); setPhotorealQaStatus(null);
@@ -347,6 +355,59 @@ export default function StyleDirectorPage() {
             <span>{look.candidate.tier.toUpperCase()}</span><strong>{look.title}</strong><small>{look.fabric.colorName}</small>
           </button>)}
         </div>
+
+        <div className="directorCompareToggle">
+          <button type="button" onClick={()=>setCompareOpen((open)=>!open)}
+            aria-expanded={compareOpen} aria-controls="director-compare-panel">
+            {compareOpen ? "Hide look comparison" : "Compare all looks before choosing"} <span aria-hidden="true">{compareOpen ? "−" : "+"}</span>
+          </button>
+          <p>See why the three directions differ. Ranking is provisional fashion guidance, not a fit or stock certificate.</p>
+        </div>
+
+        {compareOpen && <section id="director-compare-panel" className="directorCompare" aria-label="Compare Style Director looks">
+          <div className="directorCompareHead">
+            <div>
+              <small>THE DECISION EDIT</small>
+              <h2>Which look matches your priority?</h2>
+            </div>
+            <div className="directorCompareLenses" role="group" aria-label="Styling comparison priority">
+              {STYLE_DIRECTOR_COMPARE_LENSES.map((lens)=><button type="button" key={lens.id}
+                aria-pressed={compareLens===lens.id} onClick={()=>setCompareLens(lens.id)}>{lens.label}</button>)}
+            </div>
+          </div>
+          <p className="directorCompareExplain">{STYLE_DIRECTOR_COMPARE_LENSES.find((lens)=>lens.id===compareLens)?.detail}</p>
+          <div className="directorCompareGrid">
+            {comparedLooks.map((item)=>{
+              const sourceLook=looks[item.sourceIndex];
+              const construction=item.construction;
+              const optionLabel=(id:string)=>optionById(id)?.label || "Construction detail needs review";
+              return <article key={item.lookId} className={selected===item.sourceIndex ? "directorCompareCard isSelected" : "directorCompareCard"}>
+                <div className="directorCompareCardTop">
+                  <span>{item.rank===null ? "Not ranked" : `#${item.rank} on this priority`}</span>
+                  <small>{sourceLook.candidate.tier} direction</small>
+                </div>
+                <h3>{sourceLook.candidate.name}</h3>
+                <p className="directorCompareFabric">{item.fabric.color} · {item.fabric.line} · {item.fabric.pattern}</p>
+                {item.outfit ? <p className="directorComparePair"><b>Outfit:</b> {item.outfit.shirt} shirt + {item.outfit.pant} trousers</p>
+                  : <p className="directorComparePair">Fabric-led concept; paired garment preview unavailable.</p>}
+                {construction && <dl className="directorCompareDetails">
+                  <div><dt>Shirt / collar</dt><dd>{optionLabel(construction.shirtType)} · {optionLabel(construction.collar)}</dd></div>
+                  <div><dt>Cuff / wearing</dt><dd>{optionLabel(construction.cuff)} · {optionLabel(construction.wear)}</dd></div>
+                  <div><dt>Trouser</dt><dd>{optionLabel(construction.pantType)} · {optionLabel(construction.waistband)}</dd></div>
+                  <div><dt>Break</dt><dd>{optionLabel(construction.pantBreak)}</dd></div>
+                </dl>}
+                <p className="directorCompareRationale">{item.rationale}</p>
+                <p className="directorCompareTradeoff"><b>Trade-off:</b> {item.tradeoff}</p>
+                <p className="directorCompareReview">{item.reviewNote}</p>
+                <button className="directorCompareChoose" type="button"
+                  onClick={()=>{selectLook(item.sourceIndex);setCompareOpen(false);}}>
+                  {selected===item.sourceIndex ? "Keep this direction" : "Explore this direction"} <span aria-hidden="true">↗</span>
+                </button>
+              </article>;
+            })}
+          </div>
+          <p className="directorCompareDisclaimer">Comparison reorders existing deterministic styling scores only. It never changes a garment recipe, consumes paid rendering credits, checks physical stock, or certifies fit, fabric measurements or tailoring.</p>
+        </section>}
 
         <motion.div key={selectedLook.id} className="lookStage" initial={{opacity:0,x:14}} animate={{opacity:1,x:0}} transition={{duration:.3,ease:[.2,.8,.2,1]}}>
           <div className="lookVisual" style={{"--fabric":selectedLook.fabric.hex} as React.CSSProperties}>
