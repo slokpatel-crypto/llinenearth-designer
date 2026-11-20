@@ -580,3 +580,11 @@ Architecture and product decisions that must persist across coding sessions.
 - Customer carries only a bounded, validated pair of garment-category fabric IDs into Designer, never a recovery key, private measurements, locked recipe, paid provider or order record.
 - Designer waits for the same server-backed catalogue, restores neither another draft's private fit nor saved revision lineage, and requires a new assessment before a lock or enquiry. Existing vault, signed-share and Director handoffs remain independent.
 - No new dependency, schema or migration. Synthetic Chromium at 390/768/1440 and exact-head independent CI are required before merge.
+
+## 2026-11-20 — Worker C: evidence-aware fabric shortlists before Designer
+
+- The /catalog flow now allows independent, capped three-item shirt and trouser fabric comparisons. Comparison selections are read-only and do not change the primary fabric pair or locked revision, share token or customer vault.
+- A pure helper validates garment categories and existing catalogue IDs, caps/uniquifies comparison selections and prunes removed or invalid items after a refreshed catalogue; no localStorage, private backend writes or new customer tracking.
+- Each comparison uses the existing Fabric Discovery evidence descriptors. Missing GSM, physical availability, colour calibration and pattern-scale evidence remain explicitly unknown; unreviewed fibre descriptions are labeled as such. No fabricated supplier or measurement evidence.
+- The user must explicitly choose a compared cloth before the existing exact-ID Designer handoff changes. New tests cover maximum size, category rejection, catalogue refresh, provenance and responsive synthetic-browser flow at 390/768/1440.
+- No new dependencies, database migrations, FASHN calls, Vercel deployment or physical stock mutations. Original assets and model identity unchanged. Human physical confirmation remains a separate production gate.
