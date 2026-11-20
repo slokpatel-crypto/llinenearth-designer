@@ -67,3 +67,13 @@ The code now uses ALL measured vertices in the upper and lower 12% physical
 Z bands, preserving tied rings and rejecting missing bands. The native test
 asserts a true vertical axis for a vertical cylinder and zero mapped UV
 collapse; no production promotion. Requires fresh native and full CI.
+
+Second native fixture run on `4e228e6c754d9ff9ccb9e6365c1392743b29c6bf`
+measured the *tilted* synthetic cylinder independently: 64 collapsed planar
+source UV triangles became **zero** candidate collapses, geometry/original UVs
+unchanged. The true scanned axis `[0.373655,0,0.927568]` reflects the 25°
+rotation, and its cap projection needed **zero** face-local islands. The test
+had incorrectly assumed every oriented cap must use fallback. Replaced that
+assumption with more precise controls: upright caps require fallback, tilted
+axes must follow the actual inclination, and **both** must have zero collapsed
+candidate UV triangles. This does not claim true woven grain or scale approval.

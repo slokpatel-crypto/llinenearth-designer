@@ -43,7 +43,13 @@ for name,tilt in (("synthetic_vertical_cylinder",0),("synthetic_angled_sleeve",m
     result=research.map_surface_grain(obj)
     assert result["original"]["collapsedUvTriangles"]==original["collapsedUvTriangles"]
     assert result["candidate"]["collapsedUvTriangles"]==0,result
-    assert result["faceLocalFallbackIslands"]>0,result
+    # A perfect vertical cap MUST need a local UV island. A real tilted
+    # cylindrical cap may project to nonzero radial/axial area and need
+    # none; coverage (zero collapsed mapped triangles) is authoritative.
+    if not tilt:
+        assert result["faceLocalFallbackIslands"]>0,result
+    else:
+        assert abs(result["inferredAxisWorld"][0])>0.3,result
     assert result["geometryPreserved"] and result["originalUvPreserved"]
     assert research.world_mesh_signature(obj)==geometry
     assert research.uv_signature(obj.data,obj.data.uv_layers[uvname])==uvhash
