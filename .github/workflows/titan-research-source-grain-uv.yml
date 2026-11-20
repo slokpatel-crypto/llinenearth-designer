@@ -54,7 +54,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/blender/bootstrap-human-base-meshes.py
+          if ! python3 scripts/blender/bootstrap-human-base-meshes.py; then
+            # The official Blender CDN can return HTTP 403 to CI runners.
+            # Use ONLY the official Blender Foundation mirror of the pinned
+            # CC0 bundle, then re-run the existing strict size/ZIP verifier.
+            pinned_archive="$RUNNER_TEMP/human-base-meshes-bundle-v1.4.1.zip"
+            curl --fail --location --show-error --silent --retry 3 \
+              --connect-timeout 30 --max-time 900 \
+              "https://mirror.blender.org/demo/asset-bundles/human-base-meshes/human-base-meshes-bundle-v1.4.1.zip" \
+              --output "$pinned_archive"
+            python3 scripts/blender/bootstrap-human-base-meshes.py \
+              --archive "$pinned_archive" --force
+          fi
           root=.cache/linen-earth
           "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
             --python scripts/blender/prepare-linen-earth-body.py -- \
