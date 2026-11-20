@@ -9,6 +9,7 @@ export function CloudSavedDesignsPanel({ localDesigns }: { localDesigns: SavedDe
   const [cloud, setCloud] = useState<SavedDesign[]>([]);
   const [selected, setSelected] = useState<SavedDesign | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadId, setUploadId] = useState("");
   const [message, setMessage] = useState("");
   async function run(action: () => Promise<void>) {
     if (busy) return;
@@ -27,22 +28,19 @@ export function CloudSavedDesignsPanel({ localDesigns }: { localDesigns: SavedDe
       })}>Load my cloud designs</button>
       {localDesigns.length > 0 && <div>
         <label htmlFor="cloud-local-select">Choose a browser draft to upload</label>
-        <select id="cloud-local-select" defaultValue="" onChange={(event) => {
-          const id = event.currentTarget.value;
-          if (!id) return;
-          event.currentTarget.value = "";
-          void run(async () => {
-            const draft = localDesigns.find((item) => item.id === id);
-            if (!draft) throw new Error("Draft no longer available.");
-            await saveCloudDesign(draft);
-            setCloud(await listCloudDesigns());
-            setSelected(null);
-            setMessage("Cloud save confirmed.");
-          });
-        }} disabled={busy}>
-          <option value="">Select to upload explicitly</option>
+        <select id="cloud-local-select" value={uploadId} onChange={(event) => setUploadId(event.currentTarget.value)} disabled={busy}>
+          <option value="">Choose a draft</option>
           {localDesigns.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
+        <button type="button" disabled={busy || !uploadId} onClick={() => void run(async () => {
+          const draft = localDesigns.find((item) => item.id === uploadId);
+          if (!draft) throw new Error("Draft no longer available.");
+          await saveCloudDesign(draft);
+          setCloud(await listCloudDesigns());
+          setSelected(null);
+          setUploadId("");
+          setMessage("Cloud save confirmed.");
+        })}>Upload selected draft</button>
       </div>}
       {message && <p role="status">{message}</p>}
     </div>
