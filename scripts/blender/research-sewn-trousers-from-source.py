@@ -32,6 +32,8 @@ def args():
     parser=argparse.ArgumentParser()
     parser.add_argument("--output",required=True,type=Path)
     parser.add_argument("--report",required=True,type=Path)
+    parser.add_argument("--experimental-clearance-mode",choices=("uniform","waist-only"),default="waist-only",
+                        help="RESEARCH ONLY: compare whole-leg offset with photo-guide waistband-only feathering")
     parser.add_argument("--experimental-trouser-extra-clearance-mm",type=float,default=3.0,
                         help="RESEARCH ONLY: bounded extra radial clearance for a joined trouser source; not a fit approval")
     return parser.parse_args(argv)
@@ -60,6 +62,40 @@ def selected_source_faces(body,center,min_z,height,waist_top):
     if any(n<3 for n in seams.values()):
         raise RuntimeError("Original CC0 trouser source cannot form a connected seam: "+str(seams))
     return faces,seams,mid
+
+def apply_waist_only_clearance(combined, body, base_mm, extra_mm, cut_z, blend_band_mm=45.0):
+    """Feather upper waistband clearance from the same pinned native body only.
+
+    The 45mm blend is a research-only geometric transition, not an approved
+    tailoring seam allowance or manufacturer-measured garment dimension.
+    It must NOT displace the independently fitted lower legs.
+    """
+    if not 0 <= extra_mm <= 9 or base_mm + extra_mm > 18:
+        raise RuntimeError("Unapproved waist clearance outside existing physical authoring limits")
+    if extra_mm == 0:
+        return {"weightedVertices":0,"fullyWeightedVertices":0,"blendBandMm":blend_band_mm}
+    weight_group=combined.vertex_groups.new(name="LE_RESEARCH_ONLY_WAIST_BAND_LAYER")
+    assigned=fully=0
+    for vertex in combined.data.vertices:
+        relative=(float(vertex.co.z)-cut_z)/(blend_band_mm/1000.0)
+        ratio=max(0.0,min(1.0,relative))
+        weight=ratio*ratio*(3.0-2.0*ratio)
+        if weight>0:
+            weight_group.add([vertex.index],weight,"REPLACE")
+            assigned+=1
+            fully+=int(weight>=1.0-1e-9)
+    if assigned<8 or fully<8:
+        raise RuntimeError("True scanned waistband source vertices cannot be measured/feathered")
+    def setup(mod):
+        mod.target=body
+        mod.wrap_method="NEAREST_SURFACEPOINT"
+        mod.wrap_mode="OUTSIDE_SURFACE"
+        mod.offset=(base_mm+extra_mm)/1000.0
+        mod.vertex_group=weight_group.name
+    shared.apply(combined,"SHRINKWRAP","LE_RESEARCH_UPPER_WAIST_ONLY_LAYER",setup)
+    return {"weightedVertices":assigned,"fullyWeightedVertices":fully,
+            "blendBandMm":blend_band_mm}
+
 
 def main():
     o=args()
@@ -103,9 +139,13 @@ def main():
     )
     shared.apply(combined,"CORRECTIVE_SMOOTH","LE_RESEARCH_TROUSERS_SMOOTH",
                  lambda mod:(setattr(mod,"factor",0.22),setattr(mod,"iterations",3)))
+    initial_clearance=(clearance+extra) if o.experimental_clearance_mode=="uniform" else clearance
     shared.apply(combined,"SHRINKWRAP","LE_RESEARCH_TROUSERS_CLEARANCE",
                  lambda mod:(setattr(mod,"target",body),setattr(mod,"wrap_method","NEAREST_SURFACEPOINT"),
-                             setattr(mod,"wrap_mode","OUTSIDE_SURFACE"),setattr(mod,"offset",(clearance+extra)/1000.0)))
+                             setattr(mod,"wrap_mode","OUTSIDE_SURFACE"),setattr(mod,"offset",initial_clearance/1000.0)))
+    waist_blend=apply_waist_only_clearance(
+        combined,body,clearance,extra,cut_z
+    ) if o.experimental_clearance_mode=="waist-only" else None
     shared.apply(combined,"SOLIDIFY","LE_RESEARCH_TROUSERS_ONE_THICKNESS",
                  lambda mod:(setattr(mod,"thickness",thickness/1000.0),
                              setattr(mod,"offset",1.0),setattr(mod,"use_rim",True)))
@@ -143,6 +183,8 @@ def main():
         "originalBodyClearanceMm":clearance,
         "researchExtraTrouserClearanceMm":extra,
         "researchCombinedTrouserClearanceMm":round(clearance+extra,3),
+        "researchClearanceMode":o.experimental_clearance_mode,
+        "researchWaistBlend":waist_blend,
         "originalBodySourceSeamVertices":source_seams,
         "productionApproved":False,
         "tailorApproved":False,
