@@ -1,0 +1,92 @@
+name: TITAN — RESEARCH original CC0 photographed cuff geometry
+
+on:
+  pull_request:
+    paths:
+      - "scripts/blender/research-locked-cuff-alignment.py"
+      - "tests/blender/test_locked_cuff_research.py"
+      - "tests/python/test_locked_cuff_research_report.py"
+      - "tests/locked-cuff-research-contract.test.ts"
+      - ".github/workflows/titan-research-cuff-alignment.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  native-cuff-research-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test fail-closed research reports
+        run: python3 tests/python/test_locked_cuff_research_report.py
+      - name: Download exact Blender 4.5.14 LTS with official mirror fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/blender-4.5.14-linux-x64.tar.xz"
+          if ! curl --fail --location --show-error --silent --retry 3 \
+            --connect-timeout 30 --max-time 900 \
+            "https://download.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz" \
+            --output "$archive"; then
+            rm -f "$archive"
+            curl --fail --location --show-error --silent --retry 3 \
+              --connect-timeout 30 --max-time 900 \
+              "https://mirror.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz" \
+              --output "$archive"
+          fi
+          echo "9ba871ff2ecd36526b77432745980b7e6664ecd0c7ca11c48849073dcfe06da3  $archive" | sha256sum --check --status
+          mkdir -p "$RUNNER_TEMP/titan-blender"
+          tar -xf "$archive" -C "$RUNNER_TEMP/titan-blender"
+          echo "BLENDER_BIN=$RUNNER_TEMP/titan-blender/blender-4.5.14-linux-x64/blender" >> "$GITHUB_ENV"
+      - name: Native Blender bounded and reversible cuff geometry fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_locked_cuff_research.py
+      - name: Fetch exact CC0 Human Base Meshes version 1.4.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! python3 scripts/blender/bootstrap-human-base-meshes.py; then
+            archive="$RUNNER_TEMP/human-base-meshes-bundle-v1.4.1.zip"
+            curl --fail --location --show-error --silent --retry 3 \
+              --connect-timeout 30 --max-time 900 \
+              "https://mirror.blender.org/demo/asset-bundles/human-base-meshes/human-base-meshes-bundle-v1.4.1.zip" \
+              --output "$archive"
+            python3 scripts/blender/bootstrap-human-base-meshes.py --archive "$archive" --force
+          fi
+      - name: Build existing locked original body and six-shell garment candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python scripts/blender/prepare-linen-earth-body.py -- \
+            --asset-root .cache/linen-earth/blender-human-base-meshes-v1.4.1 \
+            --output .cache/linen-earth/linen-earth-officewear-body-base.blend
+          "$BLENDER_BIN" --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+            --python-exit-code 1 --python scripts/blender/author-linen-earth-officewear.py -- \
+            --output .cache/linen-earth/linen-earth-officewear-authored.blend
+      - name: Audit every original and shifted native sleeve-body and cloth pairing
+        shell: bash
+        run: |
+          set -euo pipefail
+          source=.cache/linen-earth/linen-earth-officewear-authored.blend
+          old="$(sha256sum "$source" | cut -d' ' -f1)"
+          mkdir -p "$RUNNER_TEMP/titan-cuff-research"
+          "$BLENDER_BIN" --background "$source" --python-exit-code 1 \
+            --python scripts/blender/research-locked-cuff-alignment.py -- \
+            --report "$RUNNER_TEMP/titan-cuff-research/cuff-alignment.json"
+          test "$old" = "$(sha256sum "$source" | cut -d' ' -f1)"
+          python3 tests/python/test_locked_cuff_research_report.py \
+            "$RUNNER_TEMP/titan-cuff-research/cuff-alignment.json"
+          echo TITAN_CUFF_NATIVE_REPORT_VERIFIED
+      - name: Upload native evidence, never an unapproved 3D model
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: titan-cuff-original-source-contact-audit
+          path: ${{ runner.temp }}/titan-cuff-research/cuff-alignment.json
+          retention-days: 7
+          if-no-files-found: ignore
