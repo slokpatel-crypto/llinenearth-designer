@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
+import { compareOwnedLockedDesigns, type SavedDesignComparison } from "@/lib/designer/owned-design-compare";
 import type { CustomerFitResult, CustomerOutcomeRating } from "@/lib/designer/customer-production-outcomes";
 
 type Customer={id?:string;email:string|null};
@@ -30,6 +31,22 @@ function labelStatus(value:string){
   return value.replaceAll("_"," ");
 }
 
+// Every comparison and original-revision action uses the same owner-scoped,
+// hash-verified retrieval. Never fetch by recovery bearer token or public URL.
+async function loadVerifiedOwnedRevision(item:OwnedDesign):Promise<LockedDesignRevision>{
+  const loaded=await fetch("/api/designer/vault",{
+    method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({action:"loadOwned",vaultId:item.vaultId}),cache:"no-store",
+  });
+  const record=await loaded.json() as {revision?:LockedDesignRevision;error?:string};
+  if(!loaded.ok||!record.revision)
+    throw new Error(record.error||"Cannot open this saved design.");
+  const revision=record.revision;
+  if(revision.revisionId!==item.revisionId||revision.recipeHash!==item.recipeHash||
+    !await verifyLockedDesignRevision(revision)) throw new Error("Saved design integrity check failed.");
+  return revision;
+}
+
 export default function AccountPage(){
   const [customer,setCustomer]=useState<Customer|null>(null);
   const [email,setEmail]=useState("");
@@ -49,8 +66,12 @@ export default function AccountPage(){
   const [activeDesignAction,setActiveDesignAction]=useState<string|null>(null);
   const [preparedEnquiry,setPreparedEnquiry]=useState<{vaultId:string;href:string}|null>(null);
   const [shareFallback,setShareFallback]=useState<{vaultId:string;url:string}|null>(null);
+  const [compareSelection,setCompareSelection]=useState<string[]>([]);
+  const [comparison,setComparison]=useState<SavedDesignComparison|null>(null);
 
   const refresh=useCallback(async()=>{
+    setCompareSelection([]);
+    setComparison(null);
     const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
     const next=session.customer||null;
     setCustomer(next);
@@ -129,17 +150,7 @@ export default function AccountPage(){
     setBusy(true);setActiveDesignAction(item.vaultId+":"+kind);
     setMessage("");setPreparedEnquiry(null);setShareFallback(null);
     try{
-      // This endpoint enforces the signed-in owner's identity and verifies
-      // the immutable recipe before returning it; never use a recovery token.
-      const loaded=await fetch("/api/designer/vault",{
-        method:"POST",headers:{"content-type":"application/json"},
-        body:JSON.stringify({action:"loadOwned",vaultId:item.vaultId}),cache:"no-store",
-      });
-      const record=await loaded.json() as {revision?:LockedDesignRevision;error?:string};
-      if(!loaded.ok||!record.revision) throw new Error(record.error||"Cannot open this saved design.");
-      const revision=record.revision;
-      if(revision.revisionId!==item.revisionId||revision.recipeHash!==item.recipeHash||
-        !await verifyLockedDesignRevision(revision)) throw new Error("Saved design integrity check failed.");
+      const revision=await loadVerifiedOwnedRevision(item);
       const endpoint=kind==="share"?"/api/designer/share":"/api/designer/enquiry";
       const result=await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(revision),cache:"no-store"});
       const data=await result.json() as {token?:string;href?:string;audited?:boolean;error?:string};
@@ -164,7 +175,37 @@ export default function AccountPage(){
     }finally{setActiveDesignAction(null);setBusy(false);}
   }
 
+  function chooseDesignToCompare(vaultId:string,checked:boolean){
+    setComparison(null);
+    setCompareSelection(current=>{
+      const without=current.filter(id=>id!==vaultId);
+      return checked?[...without,vaultId].slice(-2):without;
+    });
+  }
+
+  async function compareSelectedDesigns(){
+    if(busy||compareSelection.length!==2) return;
+    const first=designs.find(item=>item.vaultId===compareSelection[0]);
+    const second=designs.find(item=>item.vaultId===compareSelection[1]);
+    if(!first||!second||first.vaultId===second.vaultId) return;
+    setBusy(true);
+    setComparison(null);
+    setMessage("");
+    try{
+      // Only independently owner-authorized, SHA-256 verified revisions can
+      // contribute to an on-screen comparison. Never retain full specs here.
+      const [before,after]=await Promise.all([
+        loadVerifiedOwnedRevision(first),loadVerifiedOwnedRevision(second),
+      ]);
+      setComparison(compareOwnedLockedDesigns(before,after));
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Could not safely compare saved designs.");
+    }finally{setBusy(false);}
+  }
+
   async function logout(){
+    setComparison(null);
+    setCompareSelection([]);
     await fetch("/api/customer-auth/logout",{method:"POST"});
     setMessage("Signed out.");setCodeSent(false);
     await refresh();
@@ -327,6 +368,34 @@ export default function AccountPage(){
         <section style={card}>
           <h2 style={{marginTop:0}}>Locked designs <span style={{opacity:.45}}>({designs.length})</span></h2>
           <p style={{fontSize:13,opacity:.7,lineHeight:1.5}}>Reopen a saved look as a new editable draft, or prepare a signed design-only share/enquiry from the original immutable version. <Link href="/designer-studio#designerChoose">Discover fabrics and start a new look</Link>.</p>
+          {designs.length>=2&&<div role="group" aria-label="Compare saved designs" style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center",padding:"12px 14px",background:"#f5f1e8",borderRadius:10}}>
+            <span style={{fontSize:13}}>Select two saved revisions to compare recorded fabrics and construction ({compareSelection.length}/2).</span>
+            <button type="button" style={{...button,padding:"8px 12px"}} disabled={busy||compareSelection.length!==2} onClick={()=>void compareSelectedDesigns()}>
+              {busy?"Working…":"Compare selected saved designs"}
+            </button>
+          </div>}
+          {comparison&&<div role="status" aria-label="Saved design comparison" style={{padding:14,border:"1px solid #d8cec0",borderRadius:12,display:"grid",gap:8,overflowWrap:"anywhere"}}>
+            <h3 style={{margin:0,fontFamily:"Georgia,serif"}}>Saved design comparison</h3>
+            <div style={{fontSize:12,opacity:.72}}>{comparison.previousRevisionId} → {comparison.selectedRevisionId}</div>
+            <p style={{fontSize:13,margin:0}}>{comparison.relationship==="direct-child"
+              ?"The second revision records the first as its parent; this is not proof of edit history."
+              :comparison.relationship==="reverse-child"
+                ?"The first revision records the second as its parent; this is not proof of edit history."
+                :comparison.relationship==="same-revision"
+                  ?"These entries refer to the same recorded revision."
+                  :"No direct parent relationship is recorded for these revisions."}</p>
+            <p style={{fontSize:12,margin:0,opacity:.74}}>{comparison.constructionCoverage==="exact-v2"
+              ?"Comparing saved StyleSpec v2 option IDs and fabric IDs."
+              :"An older saved recipe lacks advanced StyleSpec v2; only construction recorded in both versions is compared."} This is not evidence of current stock, fit or finished-garment accuracy.</p>
+            {comparison.differences.length===0?<p style={{margin:0,fontSize:13}}>No differences in the recorded fabric IDs or comparable construction selections. Other evidence may still differ.</p>
+              :<div style={{display:"grid",gap:8}}>
+                {comparison.differences.map(diff=><div key={diff.key} style={{borderTop:"1px solid #ece6dc",paddingTop:8,fontSize:13,display:"grid",gap:3}}>
+                  <strong>{diff.label}</strong>
+                  <span>First: {diff.previous}</span>
+                  <span>Second: {diff.selected}</span>
+                </div>)}
+              </div>}
+          </div>}
           <div style={{display:"grid",gap:10}}>
             {designs.length===0&&<p style={{opacity:.65}}>No account-owned locked designs yet. New secure copies created while signed in will appear here.</p>}
             {designs.map(item=><div key={item.vaultId} style={{borderTop:"1px solid #ece6dc",paddingTop:12,display:"grid",gap:7}}>
@@ -338,6 +407,10 @@ export default function AccountPage(){
                 <strong>Shirt: {item.summary.shirtName} · Trouser: {item.summary.trouserName}</strong>
                 <span style={{fontSize:12,opacity:.7}}>Saved occasion: {item.summary.occasion} · Fabric labels from the locked recipe; verify current availability before ordering.</span>
               </div>}
+              {designs.length>=2&&<label style={{display:"flex",gap:8,alignItems:"center",fontSize:13}}>
+                <input type="checkbox" disabled={busy} checked={compareSelection.includes(item.vaultId)} aria-label={`Select saved revision ${item.revisionId} for comparison`} onChange={event=>chooseDesignToCompare(item.vaultId,event.target.checked)}/>
+                Select for comparison
+              </label>}
               <div style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}}>
                 <Link href={`/designer-studio?resumeVault=${encodeURIComponent(item.vaultId)}`} style={{...button,textDecoration:"none"}}>Continue in Designer</Link>
                 <button style={{...button,background:"#f1ede4",color:"#252525"}} type="button" disabled={busy} onClick={()=>void actOnOwnedDesign("share",item)}>

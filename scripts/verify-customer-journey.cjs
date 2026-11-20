@@ -17,6 +17,7 @@ const {buildCanonicalGarmentSpec}=load("src/lib/designer/garment-spec.ts");
 const base=process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000";
 const output=path.resolve("artifacts/preview-lifecycle/customer-journey");
 const vaultId="b287e470-0e90-4fd4-b5fb-976eecebd244";
+const followupVaultId="d474f5a0-3ac5-4f76-b187-a1547df04c61";
 const draftKey="linen-earth:real-designer-draft:v2";
 const summary={evidence:"synthetic HTTP fixtures; no real customer, stock or production data",viewports:[],errors:[],paid:[],actions:[]};
 
@@ -60,7 +61,27 @@ function assessmentFixture(body){
   }};
 }
 
-async function visit(browser,width,revision){
+async function syntheticFollowup(revision){
+  const spec=structuredClone(revision.garmentSpec);
+  spec.fabrics.shirt.id=engine.DESIGNER_SHIRTS[1].id;
+  spec.fabrics.shirt.name="Alternative synthetic shirt";
+  spec.styleSpec.shirt.type="dress_shirt";
+  return lockGarmentSpec(spec,{
+    lockedAt:"2026-11-20T15:01:00.000Z",
+    parentRevisionId:revision.revisionId,
+  });
+}
+
+function savedVaultRow(vaultId,revision){
+  return {
+    vaultId,revisionId:revision.revisionId,recipeHash:revision.recipeHash,
+    parentRevisionId:revision.parentRevisionId,
+    summary:summaryForOwnedLockedDesign(revision),
+    createdAt:revision.lockedAt,expiresAt:"2027-05-19T15:00:00.000Z",
+  };
+}
+
+async function visit(browser,width,revision,followup){
   const context=await browser.newContext({viewport:{width,height:980},reducedMotion:"reduce",acceptDownloads:true});
   const page=await context.newPage();
   page.on("pageerror",error=>summary.errors.push(error.message));
@@ -73,13 +94,13 @@ async function visit(browser,width,revision){
     if(/look-render|creative-render|fashn|visualization/.test(pathname))summary.paid.push(pathname);
     if(pathname==="/api/customer-auth/session")return route.fulfill({status:200,json:{customer:{id:"synthetic-owner",email:"owner@example.invalid"}}});
     if(pathname==="/api/designer/vault"){
-      if(input.action==="listOwned")return route.fulfill({status:200,json:{designs:[{
-        vaultId,revisionId:revision.revisionId,recipeHash:revision.recipeHash,parentRevisionId:revision.parentRevisionId,
-        summary:summaryForOwnedLockedDesign(revision),
-        createdAt:"2026-11-20T15:00:00.000Z",expiresAt:"2027-05-19T15:00:00.000Z",
-      }]}});
+      if(input.action==="listOwned")return route.fulfill({status:200,json:{designs:[
+        savedVaultRow(vaultId,revision),savedVaultRow(followupVaultId,followup),
+      ]}});
       if(input.action==="loadOwned")return route.fulfill({
-        status:unauthorized?401:200,json:unauthorized?{error:"Unauthorized"}:{revision},
+        status:unauthorized?401:200,json:unauthorized?{error:"Unauthorized"}:{
+          revision:input.vaultId===followupVaultId?followup:revision,
+        },
       });
       throw Error("Unexpected vault action: "+input.action);
     }
@@ -106,15 +127,23 @@ async function visit(browser,width,revision){
   const item=page.getByText(revision.revisionId,{exact:true});
   await item.waitFor({state:"visible"});
   await page.getByText("Shirt: Synthetic shirt · Trouser: Synthetic trouser",{exact:true}).waitFor({state:"visible"});
-  await page.getByText(/Saved occasion: Semi-Formal · Fabric labels from the locked recipe/).waitFor({state:"visible"});
+  await page.getByText(/Saved occasion: Semi-Formal · Fabric labels from the locked recipe/).first().waitFor({state:"visible"});
   await page.getByText("Continues recorded revision "+revision.parentRevisionId,{exact:true}).waitFor({state:"visible"});
-  await page.getByRole("button",{name:"Copy secure share link"}).click();
+  await page.getByRole("checkbox",{name:"Select saved revision "+revision.revisionId+" for comparison"}).check();
+  await page.getByRole("checkbox",{name:"Select saved revision "+followup.revisionId+" for comparison"}).check();
+  await page.getByRole("button",{name:"Compare selected saved designs"}).click();
+  await page.getByRole("heading",{name:"Saved design comparison"}).waitFor({state:"visible"});
+  await page.getByText("The second revision records the first as its parent; this is not proof of edit history.").waitFor({state:"visible"});
+  await page.getByText("Shirt fabric",{exact:true}).waitFor({state:"visible"});
+  await page.getByText("Shirt type",{exact:true}).waitFor({state:"visible"});
+  await page.getByText("Alternative synthetic shirt",{exact:false}).first().waitFor({state:"visible"});
+  await page.getByRole("button",{name:"Copy secure share link"}).first().click();
   await page.getByText(/Signed design-only link/).waitFor({state:"visible"});
-  await page.getByRole("button",{name:"Prepare WhatsApp enquiry"}).click();
+  await page.getByRole("button",{name:"Prepare WhatsApp enquiry"}).first().click();
   const send=page.getByRole("link",{name:/Open WhatsApp to review and send/});
   await send.waitFor({state:"visible"});
   assert.ok((await send.getAttribute("href")).startsWith("https://wa.me/"));
-  const edit=page.getByRole("link",{name:"Continue in Designer"});
+  const edit=page.getByRole("link",{name:"Continue in Designer"}).first();
   const href=await edit.getAttribute("href");
   assert.equal(new URL(href,base).searchParams.get("resumeVault"),vaultId);
   assert.ok(!href.includes("lev1.")&&!href.includes(revision.recipeHash),"URL holds opaque vault ID only");
@@ -150,7 +179,36 @@ async function visit(browser,width,revision){
   assert.ok(requests.some(x=>x.pathname==="/api/designer/vault"&&x.action==="loadOwned"));
   assert.ok(requests.some(x=>x.pathname==="/api/designer/assess"),"reassessment must use the existing deterministic engine");
   await page.screenshot({path:path.join(output,"owned-design-"+width+".png"),fullPage:true});
-  summary.viewports.push({width,ownerVaultLoad:true,savedV2Style:true,savedPairSummary:true,actualNewLockParentVerified:true,shareAndEnquiryPrepared:true,noOverflow:true});
+  summary.viewports.push({width,ownerVaultLoad:true,savedV2Style:true,savedPairSummary:true,privateVersionComparison:true,actualNewLockParentVerified:true,shareAndEnquiryPrepared:true,noOverflow:true});
+  await context.close();
+}
+
+async function negativeComparison(browser,revision,followup){
+  const context=await browser.newContext({viewport:{width:390,height:980}});
+  const page=await context.newPage();
+  let denied=0;
+  await context.route("**/api/**",route=>{
+    const pathname=new URL(route.request().url()).pathname;
+    const input=JSON.parse(route.request().postData()||"{}");
+    if(pathname==="/api/customer-auth/session")return route.fulfill({status:200,json:{customer:{id:"synthetic-owner",email:"owner@example.invalid"}}});
+    if(pathname==="/api/designer/vault"){
+      if(input.action==="listOwned")return route.fulfill({status:200,json:{designs:[
+        savedVaultRow(vaultId,revision),savedVaultRow(followupVaultId,followup),
+      ]}});
+      if(input.action==="loadOwned"){
+        if(input.vaultId===followupVaultId){denied++;return route.fulfill({status:403,json:{error:"Revision not accessible"}});}
+        return route.fulfill({status:200,json:{revision}});
+      }
+    }
+    return route.fulfill({status:200,json:{}});
+  });
+  await page.goto(base+"/account",{waitUntil:"domcontentloaded"});
+  await page.getByRole("checkbox",{name:"Select saved revision "+revision.revisionId+" for comparison"}).check();
+  await page.getByRole("checkbox",{name:"Select saved revision "+followup.revisionId+" for comparison"}).check();
+  await page.getByRole("button",{name:"Compare selected saved designs"}).click();
+  await page.getByText("Revision not accessible").waitFor({state:"visible"});
+  assert.ok(denied>0,"one comparison revision is forbidden by owner scope");
+  assert.equal(await page.getByRole("heading",{name:"Saved design comparison"}).count(),0,"no partial private compare display");
   await context.close();
 }
 
@@ -175,9 +233,11 @@ async function negative(browser,revision){
 (async()=>{
   await fs.mkdir(output,{recursive:true});
   const revision=await syntheticRevision();
+  const followup=await syntheticFollowup(revision);
   const browser=await chromium.launch({headless:true});
   try{
-    for(const width of [390,768,1440])await visit(browser,width,revision);
+    for(const width of [390,768,1440])await visit(browser,width,revision,followup);
+    await negativeComparison(browser,revision,followup);
     await negative(browser,revision);
     assert.deepEqual(summary.errors,[],"no browser exceptions");
     assert.deepEqual(summary.paid,[],"never call paid render APIs");
