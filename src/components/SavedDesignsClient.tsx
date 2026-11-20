@@ -18,6 +18,14 @@ export function SavedDesignsClient() {
   useEffect(() => { const loaded = listSavedDesigns(); setDesigns(loaded); setActiveId(loaded[0]?.id || null); }, []);
   const active = useMemo(() => designs.find((item) => item.id === activeId) || designs[0], [designs, activeId]);
 
+  function onCloudImported(imported: SavedDesign) {
+    // Re-read canonical browser storage after the explicit import; do not
+    // synthesize a local UI card from a stale cloud listing.
+    const recovered = listSavedDesigns();
+    setDesigns(recovered);
+    setActiveId(imported.id);
+  }
+
   function remove(id: string) { removeSavedDesign(id); const next = designs.filter((item) => item.id !== id); setDesigns(next); if (activeId === id) setActiveId(next[0]?.id || null); }
   async function copyId(design: SavedDesign) { const value = `${design.title} · ${design.version.specHash} · ${design.id}`; try { await navigator.clipboard.writeText(value); setCopied(design.id); window.setTimeout(() => setCopied(null), 1600); } catch { setCopied(null); } }
   function rate(design: SavedDesign, rating: FeedbackRating) {
@@ -25,9 +33,9 @@ export function SavedDesignsClient() {
     setFeedbackSaved(`${design.id}:${rating}`);
   }
 
-  if (!designs.length) return <><CloudSavedDesignsPanel localDesigns={designs} /><section className="savedEmpty"><p className="eyebrow">YOUR ATELIER</p><h1>No saved designs yet.</h1><p>Finalize a direction in the Designer, visualize the locked specification, then save it here as a permanent concept card.</p><Link className="button light" href="/designer">Start a design</Link></section></>;
+  if (!designs.length) return <><CloudSavedDesignsPanel localDesigns={designs} onImported={onCloudImported} /><section className="savedEmpty"><p className="eyebrow">YOUR ATELIER</p><h1>No saved designs yet.</h1><p>Finalize a direction in the Designer, visualize the locked specification, then save it here as a permanent concept card.</p><Link className="button light" href="/designer">Start a design</Link></section></>;
 
-  return <><CloudSavedDesignsPanel localDesigns={designs} /><section className="savedStudio">
+  return <><CloudSavedDesignsPanel localDesigns={designs} onImported={onCloudImported} /><section className="savedStudio">
     <div className="savedIntro"><div><p className="eyebrow">YOUR ATELIER · SAVED DESIGNS</p><h1>Ideas worth returning to.</h1></div><p>Each saved card preserves the exact design version, context, render set and specification hash used to create it. Human feedback is stored for review, never used as an automatic fashion rule.</p></div>
     <div className="savedLayout">
       <div className="savedGrid">{designs.map((design) => { const image = frontImage(design); return <button key={design.id} className={active?.id === design.id ? "savedCard active" : "savedCard"} onClick={() => setActiveId(design.id)}><div className="savedImage">{image && <img src={image} alt={`${design.title} front visualization`} />}<span>{design.version.specHash}</span></div><div className="savedCardCopy"><span>{design.brief.context.occasion} · {design.brief.context.aesthetic}</span><strong>{design.title}</strong><p>{design.version.candidate.garments.layer}</p></div></button>; })}</div>
