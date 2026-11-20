@@ -82,3 +82,35 @@ export async function getCloudDesign(id: string, transport: SavedDesignTransport
   if (design.id !== id) throw new Error("Invalid cloud saved-design response.");
   return design;
 }
+
+
+/**
+ * Reconfirm the server-authenticated account before exposing private cloud
+ * records or importing them into this device. The owner id is read only from
+ * the server-side signed session; it is never sent as a write owner claim.
+ */
+export async function currentCloudCustomerId(
+  transport: SavedDesignTransport = fetch,
+): Promise<string> {
+  const response = await transport("/api/customer-auth/session", {
+    credentials: "same-origin", cache: "no-store",
+  });
+  if (!response.ok ||
+      response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !== "application/json") {
+    throw new Error("Customer session could not be verified. Reload cloud designs after signing in.");
+  }
+  let body: unknown;
+  try { body = await response.json(); }
+  catch { throw new Error("Customer session could not be verified."); }
+  if (!body || typeof body !== "object" || Array.isArray(body) ||
+      Object.keys(body).length !== 1 || !Object.prototype.hasOwnProperty.call(body, "customer")) {
+    throw new Error("Invalid customer session response.");
+  }
+  const customer = (body as { customer: unknown }).customer;
+  if (!customer || typeof customer !== "object" || Array.isArray(customer) ||
+      typeof (customer as { id?: unknown }).id !== "string" ||
+      !/^[A-Za-z0-9_-]{1,160}$/.test((customer as { id: string }).id)) {
+    throw new Error("Sign in to recover cloud designs.");
+  }
+  return (customer as { id: string }).id;
+}
