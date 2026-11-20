@@ -38,3 +38,26 @@ test("stale sleeve IDs cannot mask independent front-construction conflicts", ()
     }
   }
 });
+
+test("stale collar and cuff IDs do not conceal independent pleat construction findings", () => {
+  for (const [collar, cuff] of [
+    ["spread_collar", "barrel_cuff_1_button"],
+    ["retired_collar", "barrel_cuff_1_button"],
+    ["spread_collar", "retired_cuff"],
+    ["retired_collar", "retired_cuff"],
+  ] as const) {
+    const locked = makeSpec("full_sleeve", "formal_flat_front", "single_pleat_forward");
+    locked.shirt.collar = collar;
+    locked.shirt.cuff = cuff;
+    const before = JSON.stringify(locked);
+    const issues = styleDirectorConstructionIssues(locked);
+    assert.ok(issues.some(issue => issue.code === "flat_front_has_pleat"),
+      "front construction must be reviewed regardless of unrelated stale IDs");
+    if (collar.startsWith("retired_") || cuff.startsWith("retired_")) {
+      assert.ok(issues.some(issue => issue.code === "unknown_versioned_option"),
+        "retired saved IDs must remain visible for review");
+    }
+    assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+    assert.equal(JSON.stringify(locked), before);
+  }
+});
