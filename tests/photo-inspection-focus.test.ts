@@ -28,7 +28,7 @@ test("customer focus stays out of saved design and resets on look change", () =>
   assert.doesNotMatch(component,/const \[inspectFit, setInspectFit\]/);
   const script=readFileSync("scripts/verify-photo-form.cjs","utf8");
   assert.match(script,/detailInspectionFocusVerified=true/);
-  assert.match(script,/inspected-collar-390\.png/);
+  assert.match(script,/target\.id==="collar"\|\|target\.id==="hem"/);
   assert.match(script,/inspected-\$\{target\.id\}-390\.png/);
   assert.match(script,/boundary QA must track fabric pixels/);
   assert.match(script,/44px mobile touch target/);
