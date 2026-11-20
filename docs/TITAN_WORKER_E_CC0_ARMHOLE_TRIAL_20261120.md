@@ -27,5 +27,8 @@ Exact experimental source head `699bec4eae31ef5c2d1f93c13f4562e3d674bf75`, [nati
 
 Four unchanged-source camera views were rendered and hashed at 0°/35°/90°/180°. **Manual inspection did not approve them:** the garment panels closely follow the anatomical source body rather than a convincing tailored shirt/trouser silhouette; cut edges remain prominent across the chest, arms, hip/seat and trouser joins, and finished collar/cuff/placket construction is absent. The trial may have introduced open armhole gaps not quantified by BVH intersection counts. No production garment, likeness, cloth physics or drape claim is supported. Keep this branch unmerged.
 
+
+Additional pixel-level comparison of the saved 480×640/8-sample native frames (same body, scene, camera and lighting) with the original candidate gave whole-frame RGB RMSE values **0.249 front, 0.343 three-quarter, 0.324 side, 0.482 back** on a 0–255 channel scale. Therefore the contact-count reduction is **not accompanied by a materially different or visibly corrected shirt/trouser silhouette** in these diagnostic render settings. These are internal before/after image diagnostics, not photograph-match acceptance or real garment fit evidence.
+
 ## Promotion blockers
 Do not merge this trial until independently reviewed full topology/sewing feasibility, native armhole gap and cuff-to-hand measurements, all 15 garment-panel and body/garment intersections, photographed front/three-quarter/side/back identity and grain/UV orientation checks prove no new defects. Passing synthetic fixtures alone is insufficient; unmeasured fabric repeat, genuine cloth drape and tailor fit must remain unknown. No Vercel deploy or live data mutation.
