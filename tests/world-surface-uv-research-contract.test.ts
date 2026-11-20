@@ -19,4 +19,7 @@ test("native 3D UV research preserves source geometry, original UV, identity and
   assert.match(workflow,/scripts\/blender\/research-world-surface-uv.py/);
   assert.match(workflow,/tests\/python\/test_world_surface_uv_report.py/);
   assert.match(workflow,/UV_RESEARCH_ONLY_NOT_PROMOTED/);
+  assert.match(workflow,/mirror\.blender\.org\/demo\/asset-bundles\/human-base-meshes\/human-base-meshes-bundle-v1\.4\.1\.zip/);
+  assert.match(workflow,/--archive "\$pinned_archive" --force/);
+  assert.match(workflow,/The ONLY fallback is Blender Foundation/i);
 });

@@ -77,3 +77,14 @@ had incorrectly assumed every oriented cap must use fallback. Replaced that
 assumption with more precise controls: upright caps require fallback, tilted
 axes must follow the actual inclination, and **both** must have zero collapsed
 candidate UV triangles. This does not claim true woven grain or scale approval.
+
+## Pinned source availability — independent of geometry
+The next native run on `4908791b1d05e11dd0e8c068d82797a466aa7653`
+passed the local Blender fixtures and collision tests, then stopped because
+Blender's primary official CC0 asset URL returned **HTTP 403** before mesh
+preparation. The source-candidate workflow now retries ONLY Blender's official
+mirror URL for the exact same pinned Human Base Meshes v1.4.1 archive, then
+passes it to the existing strict `--archive` verifier for the pinned
+50,643,039-byte ZIP plus safe extraction. Neither a CDN failure nor a failed
+mirror can be mislabeled as a completed source comparison. This is a scoped
+workflow fallback, not an upstream library rewrite or physical model repair.

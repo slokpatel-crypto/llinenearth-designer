@@ -133,7 +133,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/blender/bootstrap-human-base-meshes.py
+          if ! python3 scripts/blender/bootstrap-human-base-meshes.py; then
+            # Blender's official CDN intermittently returns 403 to runners.
+            # The ONLY fallback is Blender Foundation's corresponding mirror
+            # for the exact pinned archive; the existing bootstrap validates
+            # its 50,643,039 bytes, ZIP integrity and path traversal safety.
+            pinned_archive="$RUNNER_TEMP/human-base-meshes-bundle-v1.4.1.zip"
+            curl --fail --location --show-error --silent --retry 3 \
+              --connect-timeout 30 --max-time 900 \
+              "https://mirror.blender.org/demo/asset-bundles/human-base-meshes/human-base-meshes-bundle-v1.4.1.zip" \
+              --output "$pinned_archive"
+            python3 scripts/blender/bootstrap-human-base-meshes.py \
+              --archive "$pinned_archive" --force
+          fi
           test -f .cache/linen-earth/blender-human-base-meshes-v1.4.1/linen-earth-source-provenance.json
       - name: Prepare exact body source and six candidate garment meshes
         shell: bash
