@@ -61,7 +61,10 @@ def _normal_projection(v, axis):
 
 
 def _unwrapped_angles(points, cx, cy):
-    angles = [math.atan2(v.y - cy, v.x - cx) for v in points]
+    # Native front QA camera views the pinned body from -Y. Put the
+    # cylinder's ±pi branch cut at +Y (rear-facing surface), not -X,
+    # where the earlier candidate exposed a visible side discontinuity.
+    angles = [math.atan2(v.x - cx, cy - v.y) for v in points]
     anchor = angles[0]
     for index in range(1, len(angles)):
         while angles[index] - anchor > math.pi:
