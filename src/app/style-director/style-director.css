@@ -77,3 +77,45 @@
 .directorPairingOptions button span{font-size:10px;line-height:1.45;color:#696259;overflow-wrap:anywhere}
 .directorPairings .directorPairingSelected{border-left:2px solid #b58d4e;padding:9px 12px;background:#f4eee4}
 @media(max-width:640px){.directorPairings{padding:14px}.directorPairingIntro{align-items:flex-start;flex-direction:column}.directorPairingIntro button{width:100%}.directorPairingOptions{grid-template-columns:minmax(0,1fr)}}
+
+/* Safe Style Director finishing directions: only the selected construction
+   detail changes, while the chosen physical fabric identities stay locked. */
+.directorFinishes{margin:24px 0;padding:20px;background:#efe9e0;border:1px solid rgba(11,26,42,.16)}
+.directorFinishIntro{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.directorFinishIntro span{display:block;font-size:9px;letter-spacing:.17em;color:#927348;font-weight:700}
+.directorFinishIntro h4{font:400 23px/1.25 Georgia,serif;margin:8px 0 0}
+.directorFinishControls{min-width:160px;display:flex;align-items:stretch;flex-direction:column;gap:8px}
+.directorFinishControls label{font-size:10px;color:#625c53}
+.directorFinishControls select{min-height:44px;border:1px solid #b4a99a;border-radius:0;background:#fff;padding:8px 12px;color:#1e2b37;font-size:13px}
+.directorFinishControls button{min-height:44px;border:1px solid #0b1a2a;border-radius:0;background:#0b1a2a;color:#fff;padding:9px 15px;cursor:pointer;font-size:12px}
+.directorFinishControls button:disabled{opacity:.6;cursor:wait}
+.directorFinishes>p{margin:12px 0 0;font-size:11px;line-height:1.55;color:#625c53}
+.directorFinishes .directorFinishError{color:#812f27}
+.directorFinishOptions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0 0}
+.directorFinishOptions button{display:flex;min-width:0;min-height:76px;flex-direction:column;gap:6px;text-align:left;padding:12px 14px;background:#faf8f4;border:1px solid #c7b9a6;color:#1e2b37;cursor:pointer}
+.directorFinishOptions button[aria-pressed="true"]{outline:2px solid #0b1a2a;outline-offset:-2px;background:#f5eddc}
+.directorFinishOptions button b{font:400 17px Georgia,serif}
+.directorFinishOptions button span{font-size:10px;line-height:1.5;color:#696259;overflow-wrap:anywhere}
+.directorFinishes .directorFinishSelected{border-left:2px solid #b58d4e;padding:9px 12px;background:#f7f0e7}
+@media(max-width:640px){.directorFinishes{padding:14px}.directorFinishIntro{flex-direction:column}.directorFinishControls{width:100%}.directorFinishOptions{grid-template-columns:minmax(0,1fr)}}
+
+/* Read-only, provisional occasion re-use signals; never physical approval. */
+.directorVersatility{margin:24px 0;padding:20px;background:#e8edea;border:1px solid rgba(11,26,42,.18)}
+.directorVersatilityIntro{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.directorVersatilityIntro span{display:block;font-size:9px;letter-spacing:.16em;color:#466956;font-weight:700}
+.directorVersatilityIntro h4{font:400 23px/1.2 Georgia,serif;margin:8px 0 0}
+.directorVersatilityIntro button{min-height:44px;background:#0b1a2a;border:1px solid #0b1a2a;color:#fff;padding:10px 16px;cursor:pointer;font-size:12px}
+.directorVersatilityIntro button:disabled{opacity:.65;cursor:wait}
+.directorVersatility>p{margin:12px 0 0;font-size:11px;line-height:1.55;color:#58675d}
+.directorVersatility .directorVersatilityError{color:#7b2828}
+.directorVersatilityGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:16px}
+.directorVersatilityCard{min-width:0;border:1px solid #b8c8be;background:#f6f8f4;padding:15px}
+.directorVersatilityCardTop{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.directorVersatilityCardTop strong{font:400 18px Georgia,serif;color:#1e2b37}
+.directorVersatilityCardTop span{font-size:10px;color:#516d58;white-space:nowrap}
+.directorVersatilityCard p{font-size:11px;line-height:1.5;color:#5b665c;margin:9px 0 0;overflow-wrap:anywhere}
+.directorVersatilityCard p b{font:400 22px Georgia,serif;color:#192b24}
+.directorVersatilityCard p small{font-size:10px;color:#607267}
+.directorVersatilityCard .directorVersatilityReview{border-top:1px solid #d2dcd5;padding-top:8px}
+.directorVersatility .directorVersatilityDisclaimer{border-left:2px solid #748e79;padding:8px 12px;background:#f2f6f0}
+@media(max-width:640px){.directorVersatility{padding:14px}.directorVersatilityIntro{flex-direction:column}.directorVersatilityIntro button{width:100%}.directorVersatilityGrid{grid-template-columns:minmax(0,1fr)}}

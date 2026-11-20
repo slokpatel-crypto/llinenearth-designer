@@ -37,6 +37,11 @@ const looks = load("src/lib/style-director-agent.ts").createStyleDirectorLooks(a
 const catalogueStock = load("src/lib/fabric-stock.ts").FABRIC_STOCK;
 const pairings = load("src/lib/designer/style-director-pairings.ts").createStyleDirectorPairingAlternatives(looks[0],catalogueStock);
 assert.ok(pairings.length > 0, "Synthetic browser fixture needs a viable alternative supporting fabric");
+const finishKey="collar";
+const finishes=load("src/lib/designer/style-director-finishes.ts").createStyleDirectorFinishAlternatives(looks[0].realModel,finishKey);
+assert.ok(finishes.length>0,"Synthetic browser fixture needs a compatible canonical finishing alternative");
+const versatility=load("src/lib/designer/style-director-versatility.ts").evaluateStyleDirectorVersatility(looks[0].realModel);
+assert.equal(versatility.length,4);
 const passingCheck = { available: true, status: "pass", fabricFidelity: "strong", colorFidelity: "strong", patternFidelity: "strong", boundary: "strong", construction: "strong", mannequinConsistency: "strong", artifact: "none" };
 assert.equal(looks.length, 3);
 assert.ok(looks.every((look) => look.realModel), "Fixture must use the real photographed shirt/trouser path");
@@ -60,7 +65,7 @@ async function freshPage(width = 1440) {
   page.on("console", (message) => { if (message.type() === "error") summary.errors.push(message.text()); });
   await context.route("**/api/**", (route) => {
     const pathname = new URL(route.request().url()).pathname;
-    if (/look-render|look-inspect|creative-render|creative-inspect|^\/api\/style-director(?:\/pairings)?$/.test(pathname)) {
+    if (/look-render|look-inspect|creative-render|creative-inspect|^\/api\/style-director(?:\/(?:pairings|finishes|versatility))?$/.test(pathname)) {
       summary.errors.push("Backend request escaped browser mock: " + pathname);
     }
     return route.fulfill({ status: 200, json: {} });
@@ -75,6 +80,8 @@ async function freshPage(width = 1440) {
       }
       const kind = pathname === "/api/style-director" ? "directions"
         : pathname === "/api/style-director/pairings" ? "pairings"
+        : pathname === "/api/style-director/finishes" ? "finishes"
+        : pathname === "/api/style-director/versatility" ? "versatility"
         : pathname === "/api/designer/look-render" ? "render" : pathname === "/api/designer/look-inspect" ? "inspect" : null;
       if (!kind) return originalFetch(input, options);
       return new Promise((resolve) => window.__linenDirectorQA.requests.push({
@@ -274,6 +281,50 @@ async function regression(name, run) {
     await panel.locator(".directorPairingOptions button").first().click();
     await ready(page);
     assert.equal(await count(page,"render"),beforePaid,"Styling alternatives must not call paid rendering");
+    const beforeFinishes=await count(page,"finishes");
+    await page.getByRole("button",{name:"Explore finishes",exact:true}).click();
+    await page.waitForFunction((index)=>window.__linenDirectorQA.requests.filter(r=>r.kind==="finishes").length>index,beforeFinishes);
+    const finishRequest=await request(page,"finishes",beforeFinishes);
+    assert.equal(finishRequest.body.finishKey,finishKey);
+    assert.equal(finishRequest.body.shirtId,looks[0].realModel.shirtId);
+    assert.equal(finishRequest.body.pantId,looks[0].realModel.pantId);
+    await complete(page,"finishes",beforeFinishes,{
+      sourceLookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
+      pantId:looks[0].realModel.pantId,finishKey,alternatives:finishes,
+    });
+    const finishPanel=page.locator(".directorFinishes");
+    assert.equal(await finishPanel.locator(".directorFinishOptions button").count(),finishes.length+1);
+    const finishWidth=await finishPanel.evaluate(node=>({scroll:node.scrollWidth,client:node.clientWidth}));
+    assert.ok(finishWidth.scroll<=finishWidth.client+2,"Finishing options overflow at "+width+"px");
+    await finishPanel.locator(".directorFinishOptions button").nth(1).click();
+    const changedHref=await page.locator(".directorActions a[href^='/designer-studio?']").getAttribute("href");
+    const changedParams=new URL(changedHref,"http://localhost").searchParams;
+    const changedSpec=JSON.parse(changedParams.get("styleSpec"));
+    assert.equal(changedParams.get("shirt"),looks[0].realModel.shirtId);
+    assert.equal(changedParams.get("pant"),looks[0].realModel.pantId);
+    assert.equal(changedSpec.shirt.collar,finishes[0].optionId);
+    await ready(page);
+    await page.screenshot({path:path.join(output,"finishes-"+width+".png"),fullPage:true});
+    await finishPanel.locator(".directorFinishOptions button").first().click();
+    await ready(page);
+    assert.equal(await count(page,"render"),beforePaid,"Finishing selection must never invoke paid image rendering");
+    const beforeVersatility=await count(page,"versatility");
+    await page.getByRole("button",{name:"Explore occasions",exact:true}).click();
+    await page.waitForFunction(index=>window.__linenDirectorQA.requests.filter(r=>r.kind==="versatility").length>index,beforeVersatility);
+    const versusRequest=await request(page,"versatility",beforeVersatility);
+    assert.equal(versusRequest.body.shirtId,looks[0].realModel.shirtId);
+    assert.equal(versusRequest.body.pantId,looks[0].realModel.pantId);
+    assert.equal(versusRequest.body.finishKey,null);
+    await complete(page,"versatility",beforeVersatility,{
+      sourceLookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
+      pantId:looks[0].realModel.pantId,finishId:null,rows:versatility,
+    });
+    const versatilityPanel=page.locator(".directorVersatility");
+    assert.equal(await versatilityPanel.locator(".directorVersatilityCard").count(),4);
+    const versusWidth=await versatilityPanel.evaluate(node=>({scroll:node.scrollWidth,client:node.clientWidth}));
+    assert.ok(versusWidth.scroll<=versusWidth.client+2,"Versatility grid overflow at "+width+"px");
+    await page.screenshot({path:path.join(output,"versatility-"+width+".png"),fullPage:true});
+    assert.equal(await count(page,"render"),beforePaid,"Read-only versatility must not call paid rendering");
     const initialFraming = await modelFraming(page);
     const initialCoverage = await fabricCoverage(page);
     fs.writeFileSync(path.join(output, "coverage-" + width + ".json"), JSON.stringify(initialCoverage, null, 2));
@@ -344,6 +395,75 @@ async function regression(name, run) {
     const huge=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
       data:JSON.stringify({answers,lookId:"X".repeat(9000)})});
     assert.equal(huge.status(),413,"Oversized JSON is refused before catalog access");
+  });
+  await regression("versatility-public-http-rejects-untrusted-outfit-and-oversize",async(page)=>{
+    const endpoint=baseURL+"/api/style-director/versatility";
+    const base={answers,lookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
+      pantId:looks[0].realModel.pantId,finishKey:null,finishId:null};
+    const unsupported=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,finishKey:"unverified",finishId:"fake"})});
+    assert.equal(unsupported.status(),400);
+    const injected=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,verifiedPhysicalFit:true})});
+    assert.equal(injected.status(),400);
+    const badAnswers=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,answers:{...answers,mood:"untrusted"}})});
+    assert.equal(badAnswers.status(),400);
+    const huge=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,lookId:"x".repeat(9000)})});
+    assert.equal(huge.status(),413);
+    const malformed=await page.request.post(endpoint,{headers:{"content-type":"application/json"},data:'{"answers":'});
+    assert.equal(malformed.status(),400);
+  });
+  await regression("stale-versatility-after-pair-change-gets-discarded",async(page)=>{
+    await journey(page);
+    await page.getByRole("button",{name:"Explore pairings",exact:true}).click();
+    await page.waitForFunction(()=>window.__linenDirectorQA.requests.some(r=>r.kind==="pairings"));
+    await complete(page,"pairings",0,{sourceLookId:looks[0].id,heroFabricId:looks[0].fabric.id,alternatives:pairings});
+    await page.getByRole("button",{name:"Explore occasions",exact:true}).click();
+    await page.waitForFunction(()=>window.__linenDirectorQA.requests.some(r=>r.kind==="versatility"));
+    await page.locator(".directorPairingOptions button").nth(1).click();
+    await complete(page,"versatility",0,{
+      sourceLookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
+      pantId:looks[0].realModel.pantId,finishId:null,rows:versatility,
+    });
+    assert.equal(await page.locator(".directorVersatilityCard").count(),0,
+      "Results for the old fabric pair may not appear on the new outfit");
+    assert.equal((await request(page,"versatility",0)).aborted,true);
+  });
+  await regression("finishes-public-http-enforces-closed-input-and-json-limit",async(page)=>{
+    const endpoint=baseURL+"/api/style-director/finishes";
+    const base={answers,lookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
+      pantId:looks[0].realModel.pantId,finishKey:"collar"};
+    const invalid=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,finishKey:"unguarded_wing_collar"})});
+    assert.equal(invalid.status(),400,"Finishing group must be closed vocabulary");
+    const invalidAnswers=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,answers:{...answers,occasion:"untrusted"}})});
+    assert.equal(invalidAnswers.status(),400,"Narrative intent cannot bypass original styling choices");
+    const invalidExtra=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,stockOverride:"verified"})});
+    assert.equal(invalidExtra.status(),400,"Client may not assert physical stock");
+    const huge=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({...base,lookId:"x".repeat(9000)})});
+    assert.equal(huge.status(),413,"Oversized finishing request fails before catalog access");
+    const malformed=await page.request.post(endpoint,{headers:{"content-type":"application/json"},data:'{"answers":'});
+    assert.equal(malformed.status(),400,"Malformed JSON fails closed");
+  });
+  await regression("stale-finishes-after-pair-change-are-discarded",async(page)=>{
+    await journey(page);
+    await page.getByRole("button",{name:"Explore pairings",exact:true}).click();
+    await page.waitForFunction(()=>window.__linenDirectorQA.requests.some(r=>r.kind==="pairings"));
+    await complete(page,"pairings",0,{sourceLookId:looks[0].id,heroFabricId:looks[0].fabric.id,alternatives:pairings});
+    await page.getByRole("button",{name:"Explore finishes",exact:true}).click();
+    await page.waitForFunction(()=>window.__linenDirectorQA.requests.some(r=>r.kind==="finishes"));
+    await page.locator(".directorPairingOptions button").nth(1).click();
+    await complete(page,"finishes",0,{
+      sourceLookId:looks[0].id,shirtId:looks[0].realModel.shirtId,
+      pantId:looks[0].realModel.pantId,finishKey,alternatives:finishes,
+    });
+    assert.equal(await page.locator(".directorFinishOptions button").count(),0);
+    assert.equal((await request(page,"finishes",0)).aborted,true,"Outdated finishing request is aborted on fabric change");
   });
   await regression("stale-pairings-after-look-change-are-discarded",async(page)=>{
     await journey(page);
