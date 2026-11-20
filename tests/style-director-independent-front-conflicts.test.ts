@@ -61,3 +61,28 @@ test("stale collar and cuff IDs do not conceal independent pleat construction fi
     assert.equal(JSON.stringify(locked), before);
   }
 });
+
+test("independent waistband and rise mismatches survive a stale sleeve selection", () => {
+  const cases = [
+    { type: "double_pleat_high_rise", pleat: "double_pleat_reverse", rise: "low_rise", waistband: "extended_tab", expected: "high_rise_type_mismatch" },
+    { type: "bespoke_side_adjuster", pleat: "flat_front", rise: "mid_rise", waistband: "belt_loops", expected: "side_adjuster_type_mismatch" },
+    { type: "gurkha", pleat: "flat_front", rise: "mid_rise", waistband: "belt_loops", expected: "gurkha_tab_waistband_mismatch" },
+    { type: "linen_drawstring", pleat: "flat_front", rise: "mid_rise", waistband: "belt_loops", expected: "linen_drawstring_waistband_mismatch" },
+  ] as const;
+  for (const scenario of cases) {
+    for (const sleeve of ["full_sleeve", "retired_sleeve"] as const) {
+      const locked = makeSpec(sleeve, scenario.type, scenario.pleat);
+      locked.pant.rise = scenario.rise;
+      locked.pant.waistband = scenario.waistband;
+      const before = JSON.stringify(locked);
+      const issues = styleDirectorConstructionIssues(locked);
+      assert.ok(issues.some(issue => issue.code === scenario.expected),
+        `${scenario.type}/${sleeve}: independent construction mismatch was hidden`);
+      if (sleeve === "retired_sleeve") {
+        assert.ok(issues.some(issue => issue.code === "unknown_versioned_option"));
+      }
+      assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+      assert.equal(JSON.stringify(locked), before);
+    }
+  }
+});
