@@ -1,24 +1,84 @@
 import { NextResponse } from "next/server";
-import { createDesignShareToken, designShareConfigured } from "@/lib/designer/design-share";
+import { secureJsonRequestError, readSecureJsonObject, SecureJsonBodyInvalid, SecureJsonBodyTooLarge } from "@/lib/secure-json-request";
+import { createDesignShareToken, designShareConfigured, verifyDesignShareToken } from "@/lib/designer/design-share";
+import { createShareRevocationKey,shareRevocationKeyDigest } from "@/lib/designer/design-share-revocation-contract";
+import { shareRevocationEnforced,registerShareRevocation,revokeShareToken,listOwnedShareRevocations,revokeOwnedShare } from "@/lib/designer/design-share-revocation";
+import { getCustomerIdentity } from "@/lib/customer-auth";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 
 export const runtime="nodejs";
+const MAX_SHARE_REQUEST_BYTES=1_048_576;
+const privateJson=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"}});
 
 export async function POST(request:Request){
+  const requestError=secureJsonRequestError(request,MAX_SHARE_REQUEST_BYTES);
+  if(requestError)return privateJson({error:requestError.error},requestError.status);
   try{
-    const revision=await request.json() as LockedDesignRevision;
+    const body=await readSecureJsonObject(request,MAX_SHARE_REQUEST_BYTES);
+    if(body.action==="listOwned"||body.action==="revokeOwned"){
+      if(!shareRevocationEnforced())return privateJson({error:"Share management is not configured."},503);
+      let customer;
+      try{customer=await getCustomerIdentity(request);}
+      catch{return privateJson({error:"Secure customer session temporarily unavailable."},503);}
+      if(!customer)return privateJson({error:"Customer sign-in is required."},401);
+      try{
+        if(body.action==="listOwned"){
+          const shares=await listOwnedShareRevocations(customer.id);
+          return privateJson({shares});
+        }
+        const tokenHash=typeof body.tokenHash==="string"?body.tokenHash:"";
+        if(!/^[a-f0-9]{64}$/.test(tokenHash))
+          return privateJson({error:"Invalid share identifier."},400);
+        const revoked=await revokeOwnedShare(tokenHash,customer.id);
+        return revoked?privateJson({revoked:true}):privateJson({error:"Shared link not found."},404);
+      }catch{
+        return privateJson({error:"Secure share management is temporarily unavailable."},503);
+      }
+    }
+    if(body.action==="revoke"){
+      if(!shareRevocationEnforced())return privateJson({error:"Share revocation is not configured."},503);
+      const token=typeof body.token==="string"?body.token:"";
+      const revokeKey=typeof body.revokeKey==="string"?body.revokeKey:"";
+      if(!verifyDesignShareToken(token)||!revokeKey)
+        return privateJson({error:"Invalid share revocation request."},400);
+      try{shareRevocationKeyDigest(revokeKey);}
+      catch{return privateJson({error:"Invalid share revocation request."},400);}
+      try{
+        const revoked=await revokeShareToken(token,revokeKey);
+        return privateJson(revoked?{revoked:true}:{error:"Share revocation unavailable."},revoked?200:404);
+      }catch{
+        return privateJson({error:"Secure share revocation is temporarily unavailable."},503);
+      }
+    }
+    const revision=body as unknown as LockedDesignRevision;
     if(!revision || revision.version!=="linen-earth-design-lock-v1") {
-      return NextResponse.json({error:"A locked Linen Earth design revision is required."},{status:400});
+      return privateJson({error:"A locked Linen Earth design revision is required."},400);
     }
     if(!await verifyLockedDesignRevision(revision)) {
-      return NextResponse.json({error:"The locked design revision did not pass integrity verification."},{status:409});
+      return privateJson({error:"The locked design revision did not pass integrity verification."},409);
     }
     if(!designShareConfigured()) {
-      return NextResponse.json({error:"Design sharing is not configured on this deployment."},{status:503});
+      return privateJson({error:"Design sharing is not configured on this deployment."},503);
     }
     const token=createDesignShareToken(revision);
-    if(!token) return NextResponse.json({error:"Could not create a share token."},{status:500});
+    if(!token) return privateJson({error:"Could not create a share token."},413);
+    let revokeKey:string|undefined;
+    if(shareRevocationEnforced()){
+      const payload=verifyDesignShareToken(token);
+      if(!payload)return privateJson({error:"Could not verify signed share."},503);
+      revokeKey=createShareRevocationKey();
+      try{
+        // Owner is derived from the server-verified customer cookie, never
+        // from user-submitted JSON. Anonymous shares retain code-only revocation.
+        const customer=await getCustomerIdentity(request);
+        await registerShareRevocation(token,revokeKey,payload.expiresAt,customer?.id??null);
+      }catch{
+        // Never leak a bearer link that cannot be revoked under enforcement.
+        console.error("[designer/share] revocation registration failed (details redacted).");
+        return privateJson({error:"Secure share creation is temporarily unavailable."},503);
+      }
+    }
 
     let audited=false;
     const cloud=getSupabaseAdminConfig();
@@ -32,14 +92,16 @@ export async function POST(request:Request){
           signal:AbortSignal.timeout(8_000),
         });
         audited=audit.ok;
-        if(!audit.ok) console.error("[designer/share] audit failed",audit.status,(await audit.text()).slice(0,240));
-      }catch(error){
-        console.error("[designer/share] audit failed",error);
+        if(!audit.ok) console.error("[designer/share] audit failed (upstream details redacted).");
+      }catch{
+        console.error("[designer/share] audit failed (upstream details redacted).");
       }
     }
 
-    return NextResponse.json({token,expiresInDays:30,audited});
-  }catch{
-    return NextResponse.json({error:"Could not create a share link for this design."},{status:400});
+    return privateJson({token,expiresInDays:30,audited,...(revokeKey?{revokeKey}:{})});
+  }catch(error){
+    if(error instanceof SecureJsonBodyTooLarge)return privateJson({error:"Request payload is too large."},413);
+    if(error instanceof SecureJsonBodyInvalid)return privateJson({error:"Invalid JSON request."},400);
+    return privateJson({error:"Could not create a share link for this design."},400);
   }
 }

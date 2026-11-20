@@ -4,6 +4,9 @@ import type { LockedDesignRevision } from "@/lib/designer/design-lock";
 
 const VERSION="v1";
 const MAX_AGE_MS=30*24*60*60*1000;
+// Limit both minted and incoming bearer URLs; overly long tokens are unsafe in
+// logs, proxies and browser history, even when a signature is otherwise valid.
+export const MAX_DESIGN_SHARE_TOKEN_LENGTH=65_536;
 
 export type SharedDesignPayload={
   version:"linen-earth-share-v1";
@@ -89,10 +92,12 @@ export function createDesignShareToken(revision:LockedDesignRevision,now=Date.no
   const body=encode(JSON.stringify(payload));
   const sig=signature(body);
   if(!sig) return null;
-  return `${VERSION}.${body}.${sig}`;
+  const token=`${VERSION}.${body}.${sig}`;
+  return token.length<=MAX_DESIGN_SHARE_TOKEN_LENGTH?token:null;
 }
 
 export function verifyDesignShareToken(token:string,now=Date.now()):SharedDesignPayload|null {
+  if(typeof token!=="string"||token.length>MAX_DESIGN_SHARE_TOKEN_LENGTH)return null;
   const [version,body,supplied,extra]=token.split(".");
   if(version!==VERSION||!body||!supplied||extra) return null;
   const expected=signature(body);
@@ -106,6 +111,10 @@ export function verifyDesignShareToken(token:string,now=Date.now()):SharedDesign
     if(!payload.revisionId||!payload.recipeHash||!Number.isFinite(payload.expiresAt)||payload.expiresAt<now) return null;
     if(payload.expiresAt>now+MAX_AGE_MS+60_000) return null;
     if(!payload.fabrics?.shirt?.id||!payload.fabrics?.trouser?.id) return null;
+    if(!payload.context||typeof payload.context.occasion!=="string"||
+      typeof payload.context.climate!=="string"||typeof payload.context.intention!=="string"||
+      !payload.shirt||!payload.trouser||
+      typeof payload.shirt.fit!=="string"||typeof payload.trouser.shape!=="string")return null;
     return payload;
   }catch{
     return null;

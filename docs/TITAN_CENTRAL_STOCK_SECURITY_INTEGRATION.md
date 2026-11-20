@@ -1,0 +1,37 @@
+# TITAN — central combined stock/customer-security integration rehearsal
+
+**This is an isolated, unapproved test snapshot, NOT a merge to main or a deployment.**
+
+Base main: `4dd8020abd83429449ff53ea5bb71b046394d86e`. Source PRs and exact commit heads:
+- #863: `714e06876147536af1b4696609690774f989e288`
+- #876: `228d8d8c86dd8983e5dbc25d4a569f4b0e585676`
+- #879: `b30aa0856c98f31dd472d8633be3ac160ac6bbbe`
+- #880: `d980b0a369894f8ec485a56e42939db3d350ff25`
+
+For all changed paths except `.github/workflows/ci.yml`, this branch imports the source PR's original Git blob SHA, unmodified. The sole shared file, `.github/workflows/ci.yml`, was reconciled: retain Security #863's responsive customer/share browser check and customer session/OTP/revocation PostgreSQL job while adding Stock #876's manual-stock lock migration and two-session parity test. The AST source caller guard #879 and executable v1 ACL retirement #880 are also present.
+
+**Additional integrated native SQL sequence:** on this rehearsal branch only, the legacy ACL workflow now applies the manual stock/fabric lock-parity migration **after the red-before-green v1 grants probe**, runs the two-session lock-parity regression, then applies the legacy v1 EXECUTE retirement **twice**, verifies effective function grants and makes real `service_role`-switched calls. This proves both migrations can be applied in their intended order in one disposable PostgreSQL instance. The separate source #880 workflow intentionally remains unchanged.
+
+**Shared-database stock/customer security interaction:** after both stock migrations and negative `service_role` function execution tests complete, the same native PostgreSQL job now applies the three customer-session, share-revocation and OTP rate-limit SQL migrations in **the same database**. It runs the original three customer SQL regressions (with rollback), then reruns all legacy stock effective-ACL and actual role-invocation checks. Finally, it asserts that all four private synthetic ledgers/tables remain empty. This is a specific cross-domain privilege/namespace regression, not a claim that production Supabase has these permissions or that live account persistence is verified.
+
+**Disposable filename-order overwrite proof (Issue #882):** a new native script `scripts/test-stock-reserve-filename-order-overwrite.sh` first asserts the curated final `fabric_stock_reserve_v2` strictly rejects an overlength idempotency key. It then replays the alphabetically later historical `20261103_stock_reservation_provenance_gate.sql` against **the same disposable database**, creates a rollback-only synthetic physically evidenced receipt and reserve, and checks that an 181-character key is silently stored as 180 characters. It then applies the exact forward-only repair migration `20261104134500_restore_stock_reservation_identity_gate.sql` imported unchanged from draft #900, checks strict rejection, repeat-request identity and synthetic transaction rollback, and reruns retired-v1 role ACL probes. This is an intentional red-behavior demonstration, **not** permission to apply the unsafe order in production. Preserve both source migrations unchanged until the owner-reviewed history/version-map solution in #882.
+
+**Acceptance gate:** exact-head `CI / build`, `CI / Disposable PostgreSQL stock reservation invariants`, `CI / Disposable PostgreSQL customer security revocations`, `Deep Engine — Non-3D QA / studio`, and `TITAN Legacy Stock RPC ACL QA / Disposable PostgreSQL legacy stock RPC ACL` must all pass. Check actual jobs, not only summaries. No inherited green checks from individual PRs can substitute.
+
+This snapshot is not automatically updated when worker PR heads move. Reconcile and reverify any new changes, staging role/provenance and external legacy callers, independent reviews and GitHub main protection #878 before any owner-approved merge. Real inventory, tailor signoff, 3D model/UV and ten customer deliveries remain separate production gates. No live Supabase operation, no stock-writes unlock, no Vercel deploy.
+
+## Central continuation — 2026-11-05
+
+- Source PR #876 advanced from imported `228d8d8c86dd8983e5dbc25d4a569f4b0e585676` to `71e4ff5d5325…` (eight commits); compare identified drift in `scripts/verify-operator-stock-private-http.cjs` and its documentation only, not migration SQL or CI.
+- Central commit `49f20fa6573b7390e9a2a2cb21b068a375e77725` ported the exact stricter source test blob `3fd24895b9ccab9ed911ff44b6943c21d23caa1f`. All five privileged stock RPC call names must be static literals, including typed/untyped invocation forms; missing/dynamic calls fail closed. No production routes, SQL, or inventory values changed.
+- Independent workstream PR paths #861, #862, #868, #869, #886, #897 and #906 do not overlap PR #881 changed-file paths as inspected; shared runtime and database effects still require dedicated verification.
+- Stacked migration PR #906 had general CI success but an expected failing dedicated migration-history gate, preserving the historical collision as a release blocker. Staging-applied migration history and rollback must be independently validated; never bypass that gate.
+- Previously green central CI (`462ff55b…`) predates this stricter test. Do not attribute it to a newer SHA; require fresh exact-head CI and cross-database disposable PostgreSQL proof. No main merge, Vercel deployment, live database writes or physical/tailor claims.
+
+
+## Central native forward-repair reconciliation — 2026-11-05
+
+- The forward repair in the **central test branch only** is the identical SQL blob from source draft #900. A dedicated disposable PostgreSQL ACL workflow replays the historical unsafe ordered override then applies the forward repair, never against staging or live Supabase.
+- The combined native run **42001912945** passed at verified code SHA `8e2ff77e1a5b075f5949c95f92aa758bd1b6f226`. The first run failed because the synthetic test incorrectly read the private ledger as `service_role`; the corrected test restored test-admin role inside the rollback-only transaction. No table grant or application role privilege was weakened.
+- Follow-up code SHA `b58826686288f664a33b7abc565924da00c30233` expands negative replay cases: exact request key cannot be reused for different quantity, locked revision, physical source evidence or fabric, and unknown/unverified stock cannot be newly reserved. All synthetic ledger records are rolled back. **Do not claim these newer cases passed until matching-head CI completes.**
+- General CI and Deep Engine run outcomes must be re-read on the latest exact head; previous running jobs may be cancelled by new commits. Historical eight-digit/duplicate migration versions and staging applied-history discrepancies remain **blocking**, irrespective of successful disposable tests. Do not merge, deploy, mutate production or infer physical supplier approval.

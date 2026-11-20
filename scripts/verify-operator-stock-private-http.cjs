@@ -2,6 +2,28 @@
 // Authenticated built-Next stock API checks against a fake localhost PostgREST.
 // Never connects to Supabase or modifies real stock/provenance records.
 const assert=require("node:assert/strict");
+const {readFileSync}=require("node:fs");
+const {join}=require("node:path");
+// Contract regression: the privileged HTTP boundary must never revive a
+// legacy stock RPC, even when the synthetic backend accepts new v2 calls.
+const stockRoute=readFileSync(join(process.cwd(),"src/app/api/operator/stock/route.ts"),"utf8");
+// Capture typed and untyped calls, with either quote style. An untyped
+// legacy RPC must not evade the privileged allowlist regression.
+const invokedStockRpcs=[...stockRoute.matchAll(/\bawait\s+rpc(?:<[^>]+>)?\s*\(\s*(['"])([^'"]+)\1/g)]
+  .map(match=>match[2]);
+const rpcCallCount=[...stockRoute.matchAll(/\bawait\s+rpc(?:<[^>]+>)?\s*\(/g)].length;
+assert.equal(invokedStockRpcs.length,rpcCallCount,
+  "operator stock RPC name must be a literal approved name; dynamic calls are prohibited");
+const approvedStockRpcs=new Set([
+  "fabric_stock_snapshot_v2","fabric_stock_record_v2",
+  "fabric_stock_reserve_v2","fabric_stock_release_v2",
+  "fabric_stock_consume_reservation_v2"
+]);
+assert.deepEqual(new Set(invokedStockRpcs),approvedStockRpcs,
+  "operator stock RPC contract changed; review legacy and new privileged calls");
+assert.equal(invokedStockRpcs.length,approvedStockRpcs.size,
+  "operator stock RPC count changed; inspect all call sites");
+
 const http=require("node:http");
 const {once}=require("node:events");
 const {spawn}=require("node:child_process");

@@ -1,12 +1,22 @@
 import "server-only";
+import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
 import { normalizeCustomerEmail } from "@/lib/customer-account";
 import { CUSTOMER_SESSION_COOKIE, verifySignedCustomerSession } from "@/lib/customer-session";
+import { validCustomerSessionIdentityId } from "@/lib/customer-session-token";
+import { validLegacyCustomerAccessBearer } from "@/lib/customer-auth-legacy-token";
+import { customerSessionBearerAllowed, customerSessionRevocationRequired } from "@/lib/customer-session-revocation";
 export { normalizeCustomerEmail } from "@/lib/customer-account";
 
 export type CustomerIdentity = {
   id:string;
   email:string|null;
 };
+
+const MAX_VERIFY_PROVIDER_BYTES=65_536;
+const MAX_LEGACY_USER_PROVIDER_BYTES=16_384;
+function jsonProviderResponse(response:Response){
+  return response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase()==="application/json";
+}
 
 type SupabaseAuthSession = {
   access_token?:string;
@@ -56,8 +66,8 @@ export async function requestCustomerOtp(email:string){
     body:JSON.stringify({email,create_user:true}),
   });
   if(!response.ok){
-    const detail=(await response.text()).slice(0,240);
-    throw new Error(`Customer OTP request failed (${response.status}): ${detail}`);
+    // Error bodies can contain private identifiers or be arbitrarily large.
+    throw new Error(`Customer OTP request failed (${response.status}).`);
   }
 }
 
@@ -67,27 +77,45 @@ export async function verifyCustomerOtp(email:string,token:string):Promise<Supab
     body:JSON.stringify({email,token,type:"email"}),
   });
   if(!response.ok){
-    const detail=(await response.text()).slice(0,240);
-    throw new Error(`Customer OTP verification failed (${response.status}): ${detail}`);
+    throw new Error(`Customer OTP verification failed (${response.status}).`);
   }
-  return await response.json() as SupabaseAuthSession;
+  if(!jsonProviderResponse(response))throw new Error("Invalid customer OTP provider content type.");
+  const payload=await readBoundedJsonResponse(response,MAX_VERIFY_PROVIDER_BYTES);
+  if(!payload||typeof payload!=="object"||Array.isArray(payload))
+    throw new Error("Invalid customer OTP provider response.");
+  return payload as SupabaseAuthSession;
 }
 
 export async function getCustomerIdentity(request:Request):Promise<CustomerIdentity|null>{
-  const durable=verifySignedCustomerSession(readCookie(request,CUSTOMER_SESSION_COOKIE));
-  if(durable) return durable;
+  // Presence, not truthiness, determines whether a signed cookie was sent.
+  // An empty or invalidly encoded signed cookie must NEVER downgrade to a
+  // legacy access token. Reject duplicate signed-cookie names as ambiguous.
+  const signedCookieParts=(request.headers.get("cookie")||"").split(";")
+    .filter(part=>part.trim().split("=")[0]===CUSTOMER_SESSION_COOKIE);
+  if(signedCookieParts.length){
+    if(signedCookieParts.length!==1)return null;
+    const signedCookie=readCookie(request,CUSTOMER_SESSION_COOKIE);
+    const identity=verifySignedCustomerSession(signedCookie);
+    if(!identity)return null;
+    return await customerSessionBearerAllowed(signedCookie)?identity:null;
+  }
+  // Once revocation is enforced, legacy bearer cookies cannot bypass it.
+  if(customerSessionRevocationRequired())return null;
 
   // Backward-compatible bridge for sessions created before the durable
   // Linen Earth customer-session cookie was introduced.
   const token=readCookie(request,CUSTOMER_ACCESS_COOKIE);
-  if(!token) return null;
+  if(!validLegacyCustomerAccessBearer(token)) return null;
   const response=await authFetch("/auth/v1/user",{
     method:"GET",
     headers:{authorization:`Bearer ${token}`},
   });
   if(!response.ok) return null;
-  const user=await response.json() as {id?:string;email?:string|null};
-  if(!user.id) return null;
+  if(!jsonProviderResponse(response))return null;
+  const raw=await readBoundedJsonResponse(response,MAX_LEGACY_USER_PROVIDER_BYTES);
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
+  const user=raw as {id?:string;email?:string|null};
+  if(!validCustomerSessionIdentityId(user.id)) return null;
   return {id:user.id,email:user.email||null};
 }
 

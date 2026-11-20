@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CustomerFitResult, CustomerOutcomeRating } from "@/lib/designer/customer-production-outcomes";
 
 type Customer={id?:string;email:string|null};
 type OwnedDesign={vaultId:string;revisionId:string;recipeHash:string;createdAt:string;expiresAt:string};
+type OwnedShare={tokenHash:string;expiresAt:string;revokedAt:string|null};
 type OwnedProfile={vaultId:string;createdAt:string;expiresAt:string;unit?:string};
 type OwnedQuote={quote_id:string;revision_id:string;currency:string;line_items:Array<{label:string;amount:number|string}>;subtotal:number|string;adjustment:number|string;total:number|string;status:string;created_at:string;updated_at:string};
 type OwnedOrder={order_id:string;revision_id:string;quote_id:string|null;status:string;created_at:string;updated_at:string};
@@ -34,6 +35,9 @@ export default function AccountPage(){
   const [code,setCode]=useState("");
   const [codeSent,setCodeSent]=useState(false);
   const [designs,setDesigns]=useState<OwnedDesign[]>([]);
+  const [shares,setShares]=useState<OwnedShare[]>([]);
+  const [shareListUnavailable,setShareListUnavailable]=useState(false);
+  const [sessionUnavailable,setSessionUnavailable]=useState(false);
   const [profiles,setProfiles]=useState<OwnedProfile[]>([]);
   const [quotes,setQuotes]=useState<OwnedQuote[]>([]);
   const [orders,setOrders]=useState<OwnedOrder[]>([]);
@@ -44,19 +48,76 @@ export default function AccountPage(){
   const [claimMeasurement,setClaimMeasurement]=useState("");
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState(false);
+  // A delayed Alice vault/share request must never repopulate Bob's account,
+  // nor update the screen after sign-out. Epochs invalidate stale refreshes.
+  const refreshEpoch=useRef(0);
+  const loadedOwnerId=useRef<string|null>(null);
 
   const refresh=useCallback(async()=>{
-    const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
-    const next=session.customer||null;
+    const epoch=++refreshEpoch.current;
+    // A failed session recheck must not leave the previous owner's private
+    // account history or bearer recovery inputs visible on a shared device.
+    const session=await fetch("/api/customer-auth/session",{cache:"no-store"})
+      .then(r=>r.ok?r.json():Promise.reject(new Error("Session check unavailable")))
+      .catch(()=>({customer:null,unavailable:true}));
+    if(epoch!==refreshEpoch.current)return;
+    const raw=session.customer;
+    const next:Customer|null=raw&&typeof raw==="object"&&!Array.isArray(raw)&&
+      typeof raw.id==="string"&&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw.id)&&
+      (raw.email===null||typeof raw.email==="string")?raw:null;
+    const unavailable=Boolean(session.unavailable)||(raw!=null&&!next);
+    setSessionUnavailable(unavailable);
+    if(loadedOwnerId.current!==(next?.id??null)){
+      // Clear prior account data in the same render batch as identity change.
+      loadedOwnerId.current=next?.id??null;
+      setShares([]);setShareListUnavailable(false);setDesigns([]);setProfiles([]);setQuotes([]);
+      setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});
+      // Also clear unfinished bearer claims if cookies changed outside this tab.
+      setClaimDesign("");setClaimMeasurement("");
+      setEmail("");setCode("");setCodeSent(false);
+    }
     setCustomer(next);
-    if(!next){setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});return;}
+    if(!next)return;
 
-    const [d,m,p]=await Promise.all([
-      fetch("/api/designer/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
-      fetch("/api/measurements/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
-      fetch("/api/customer-account/production",{cache:"no-store"}).then(r=>r.json()),
-    ]);
+    const owned=await Promise.all([
+      fetch("/api/designer/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})})
+        .then(r=>r.ok?r.json():Promise.reject(new Error("Owned design lookup unavailable"))),
+      fetch("/api/measurements/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})})
+        .then(r=>r.ok?r.json():Promise.reject(new Error("Owned profile lookup unavailable"))),
+      fetch("/api/customer-account/production",{cache:"no-store"})
+        .then(r=>r.ok?r.json():Promise.reject(new Error("Owned production lookup unavailable"))),
+      fetch("/api/designer/share",{method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"listOwned"})})
+        .then(r=>r.ok?r.json():Promise.reject(new Error("Share management unavailable")))
+        .catch(()=>({shares:[],unavailable:true})),
+    ]).catch(()=>null);
+    if(epoch!==refreshEpoch.current)return;
+    // Authentication is checked again after the private reads. Cookies may
+    // have switched from Alice to Bob in another tab while requests were
+    // outstanding; a single initial session check does not bind the result.
+    const confirmed=owned?await fetch("/api/customer-auth/session",{cache:"no-store"})
+      .then(r=>r.ok?r.json():Promise.reject(new Error("Session recheck unavailable")))
+      .catch(()=>({customer:null})):null;
+    if(epoch!==refreshEpoch.current)return;
+    if(!owned||!confirmed?.customer||confirmed.customer.id!==next.id||
+      !Array.isArray(owned[0]?.designs)||!Array.isArray(owned[1]?.profiles)||
+      !Array.isArray(owned[2]?.quotes)||!Array.isArray(owned[2]?.orders)||
+      !Array.isArray(owned[2]?.orderEvents)||!Array.isArray(owned[2]?.outcomes)){
+      // On any owner mismatch, malformed backend or failed private read,
+      // fail closed instead of showing mixed-owner or stale private history.
+      loadedOwnerId.current=null;
+      setCustomer(null);setSessionUnavailable(true);
+      setShares([]);setShareListUnavailable(false);setDesigns([]);setProfiles([]);setQuotes([]);
+      setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});
+      setClaimDesign("");setClaimMeasurement("");
+      setEmail("");setCode("");setCodeSent(false);
+      return;
+    }
+    const [d,m,p,s]=owned;
     setDesigns(Array.isArray(d.designs)?d.designs:[]);
+    setShares(Array.isArray(s.shares)?s.shares:[]);
+    setShareListUnavailable(Boolean(s.unavailable)||!Array.isArray(s.shares));
     setProfiles(Array.isArray(m.profiles)?m.profiles:[]);
     setQuotes(Array.isArray(p.quotes)?p.quotes:[]);
     setOrders(Array.isArray(p.orders)?p.orders:[]);
@@ -120,9 +181,52 @@ export default function AccountPage(){
   }
 
   async function logout(){
-    await fetch("/api/customer-auth/logout",{method:"POST"});
-    setMessage("Signed out.");setCodeSent(false);
-    await refresh();
+    setBusy(true);
+    try{
+      const response=await fetch("/api/customer-auth/logout",{method:"POST"});
+      if(!response.ok){
+        setMessage("Secure sign-out could not be completed. Please retry.");
+        return;
+      }
+      // The server confirmed cookie invalidation. Immediately hide all
+      // private account data and invalidate in-flight owner fetches, even if
+      // the follow-up session request is slow or unavailable.
+      refreshEpoch.current+=1;
+      loadedOwnerId.current=null;
+      setCustomer(null);setShares([]);setShareListUnavailable(false);
+      setSessionUnavailable(false);
+      setDesigns([]);setProfiles([]);
+      setQuotes([]);setOrders([]);setOrderEvents([]);setOutcomes([]);
+      setOutcomeDrafts({});
+      // A failed recovery claim can leave its bearer credential in the form.
+      // Never retain recovery tokens, OTP codes or the previous account email
+      // on a shared browser after the server confirms sign-out.
+      setClaimDesign("");setClaimMeasurement("");
+      setEmail("");setCode("");
+      setMessage("Signed out.");setCodeSent(false);
+      // Never restore old identity/data in a best-effort post-logout refresh.
+      // A later explicit sign-in starts its own guarded refresh.
+    }catch{
+      setMessage("Secure sign-out could not be completed. Please retry.");
+    }finally{setBusy(false);}
+  }
+
+  async function revokeOwnedShareLink(tokenHash:string){
+    if(!window.confirm("Revoke this shared design link? Anyone with the old link will lose access."))return;
+    setBusy(true);setMessage("");
+    try{
+      const response=await fetch("/api/designer/share",{
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"revokeOwned",tokenHash}),
+      });
+      const data=await response.json();
+      if(!response.ok||data.revoked!==true)
+        throw new Error(data.error||"Could not revoke shared design.");
+      setMessage("Shared design link revoked, including on other devices.");
+      await refresh();
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Could not revoke shared design.");
+    }finally{setBusy(false);}
   }
 
   async function acceptQuote(quoteId:string){
@@ -182,6 +286,10 @@ export default function AccountPage(){
         <p style={{maxWidth:700,lineHeight:1.6,opacity:.72}}>Keep locked designs, measurements, quotes and production progress tied to one private account while preserving the recovery-token backup.</p>
       </header>
 
+      {sessionUnavailable&&<section role="alert" style={{...card,display:"grid",gap:10,justifyItems:"start"}}>
+        <p style={{margin:0}}>Account session could not be verified. Previously loaded private details have been hidden.</p>
+        <button type="button" disabled={busy} style={button} onClick={()=>void refresh()}>Retry account session</button>
+      </section>}
       {!customer?<section style={card}>
         <h2 style={{marginTop:0}}>Email sign in</h2>
         <div style={{display:"grid",gap:10,maxWidth:520}}>
@@ -196,6 +304,25 @@ export default function AccountPage(){
         <section style={{...card,display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,flexWrap:"wrap"}}>
           <div><strong>Signed in</strong><div style={{opacity:.7,marginTop:4}}>{customer.email}</div></div>
           <button style={{...button,background:"#6b7a63"}} onClick={logout}>Sign out</button>
+        </section>
+
+        <section style={card}>
+          <h2 style={{marginTop:0}}>My public design shares <span style={{opacity:.45}}>({shares.length})</span></h2>
+          <p style={{opacity:.65,fontSize:13}}>Only shares created while signed into this account appear here. Public links and private cancellation codes are never displayed in account history.</p>
+          {shareListUnavailable?<div style={{display:"grid",gap:10,justifyItems:"start"}}>
+            <p role="alert" style={{opacity:.8}}>Private share management is unavailable. Your existing links may still be active.</p>
+            <button type="button" disabled={busy} style={button} onClick={()=>void refresh()}>Retry share list</button>
+          </div>:shares.length===0?<p style={{opacity:.65}}>No managed share links are linked to this account.</p>:
+            <div style={{display:"grid",gap:12}}>
+              {shares.map(share=><div key={share.tokenHash} style={{display:"flex",gap:12,alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",borderTop:"1px solid #ece6dc",paddingTop:12}}>
+                <div style={{display:"grid",gap:4}}>
+                  <strong>Design share {share.tokenHash.slice(0,12)}…</strong>
+                  <small style={{opacity:.65}}>Expires {new Date(share.expiresAt).toLocaleDateString()} · {share.revokedAt?"Revoked":"Active"}</small>
+                </div>
+                {!share.revokedAt&&<button type="button" style={button} disabled={busy}
+                  onClick={()=>void revokeOwnedShareLink(share.tokenHash)}>Revoke this link</button>}
+              </div>)}
+            </div>}
         </section>
 
         <section style={card}>
