@@ -128,6 +128,20 @@ test("several independent faults produce review alternatives without auto-fixing
     ["pant.fit", "wide_leg_drape"],
     ["pant.break", "no_break"],
   ]);
+  // Validate the complete recommendation bundle, not only each individual
+  // change against the original locked design.
+  const combined = suggestions.reduce((candidate, suggestion) => {
+    const [garment, key] = suggestion.optionGroup.split(".") as ["shirt" | "pant", string];
+    return {
+      ...candidate,
+      [garment]: { ...candidate[garment], [key]: suggestion.proposedId },
+    } as StyleSpecV2;
+  }, locked);
+  const originalCodes = new Set(styleDirectorConstructionIssues(locked).map(x => x.code));
+  assert.deepEqual(styleDirectorConstructionIssues(combined).filter(issue =>
+    !originalCodes.has(issue.code)), [],
+    "applying all independent review suggestions together must not introduce a contradiction");
+  assert.deepEqual(styleDirectorConstructionSuggestions(locked), suggestions);
   assert.equal(JSON.stringify(locked), before);
 });
 
