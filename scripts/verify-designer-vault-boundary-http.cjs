@@ -438,6 +438,27 @@ async function main(){
     assert.equal((await bobDelete.json()).deleted,true);
     const aliceStill=await savedRequest("valid-legacy",undefined,ordinaryDesign.designId);
     assert.equal(aliceStill.status,200,"Bob's deletion cannot remove Alice's design");
+    // Reject browser-supplied ownership and nested authorization claims before any RPC.
+    const rpcBeforeForgery=seen.filter(item=>item.path.startsWith("/rest/v1/rpc/customer_saved_design_")).length;
+    for(const forged of [
+      {...ordinaryDesign,ownerId:"223e4567-e89b-12d3-a456-426614174000"},
+      {...ordinaryDesign,recipe:{...ordinaryDesign.recipe,brief:{
+        ...ordinaryDesign.recipe.brief,sessionToken:"synthetic-forged-token"}}},
+    ]){
+      const rejected=await savedRequest("valid-legacy",{action:"save",design:forged});
+      assert.equal(rejected.status,400,"saved-design ownership forgery rejected");
+      assert.match(rejected.headers.get("cache-control")||"",/private.*no-store/);
+    }
+    assert.equal(seen.filter(item=>item.path.startsWith("/rest/v1/rpc/customer_saved_design_")).length,
+      rpcBeforeForgery,"rejected forgery must never reach privileged RPC");
+    const bobAfterDelete=await savedRequest("bob-legacy",undefined,ordinaryDesign.designId);
+    assert.equal(bobAfterDelete.status,404,"deleted Bob record stays absent");
+    const aliceList=await savedRequest("valid-legacy");
+    const bobList=await savedRequest("bob-legacy");
+    assert.equal(aliceList.status,200);
+    assert.equal(bobList.status,200);
+    assert.equal((await aliceList.json()).designs.length,1,"Alice list retains her record");
+    assert.equal((await bobList.json()).designs.length,0,"Bob list cannot expose Alice's record");
     const anonymousSaved=await savedRequest("",undefined,ordinaryDesign.designId);
     assert.equal(anonymousSaved.status,401);
     assert.match(aliceStill.headers.get("cache-control")||"",/private.*no-store/);
