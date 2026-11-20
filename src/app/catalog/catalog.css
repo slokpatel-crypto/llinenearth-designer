@@ -37,3 +37,32 @@
 .fabricCatalogVaultLink{font-size:13px;color:#7f573f}
 @media(max-width:850px){.fabricCatalogPage{padding:24px 16px 68px}.fabricCatalogHero{grid-template-columns:1fr}.fabricCatalogHeroImage{height:260px}.fabricCatalogColumns{grid-template-columns:1fr}.fabricCatalogPanel{padding:16px}.fabricCatalogSwatches{grid-template-columns:repeat(3,minmax(0,1fr))}.fabricCatalogSelection .fabricCatalogContinue{width:100%}}
 @media(max-width:390px){.fabricCatalogSwatches{grid-template-columns:repeat(2,minmax(0,1fr))}.fabricCatalogSelection{padding:16px}.fabricCatalogHero h1{font-size:2.5rem}}
+
+/* Fabric evidence comparison is deliberately distinct from the primary pair. */
+.fabricCatalogOption{display:flex;flex-direction:column;gap:7px;min-width:0}
+.fabricCatalogOption .fabricCatalogSwatch{width:100%;flex:1}
+.fabricCatalogCompareToggle{border:1px solid #b6ada3;background:#fff;color:#714b3e;min-height:36px;padding:7px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:700}
+.fabricCatalogCompareToggle[aria-pressed="true"]{background:#ece2d5;border-color:#a6674b}
+.fabricCatalogCompareToggle:disabled{opacity:.45;cursor:not-allowed}
+.fabricCatalogCompareToggle:focus-visible,.fabricCatalogCompareHead button:focus-visible,.fabricCatalogUseChoice:focus-visible{outline:3px solid #c48b5d;outline-offset:2px}
+.fabricCatalogComparePanel{margin-top:20px;padding:16px;border:1px solid #ddd3c6;background:#f8f6f0;border-radius:6px}
+.fabricCatalogCompareHead{display:flex;align-items:start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.fabricCatalogCompareHead>div>span{color:#946a50;font-size:10px;letter-spacing:.12em;font-weight:700}
+.fabricCatalogCompareHead h3{font:400 clamp(1.15rem,2vw,1.5rem)/1.15 Georgia,serif;margin:6px 0 14px}
+.fabricCatalogCompareHead h3 small{font:12px Arial,sans-serif;color:#66778a}
+.fabricCatalogCompareHead>button{border:1px solid #baa995;background:#fff;color:#634f40;padding:8px 11px;border-radius:5px;cursor:pointer}
+.fabricCatalogCompareEmpty,.fabricCatalogCompareDisclaimer{font-size:12px;line-height:1.6;color:#5e6e80;margin:0}
+.fabricCatalogCompareCards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.fabricCatalogCompareCard{display:flex;flex-direction:column;min-width:0;border:1px solid #ded7cd;background:#fff;border-radius:5px;padding:9px;gap:10px}
+.fabricCatalogCompareCard>img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:3px}
+.fabricCatalogCompareCard>strong{font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+.fabricCatalogCompareCard dl{margin:0;display:grid;gap:7px;flex:1}
+.fabricCatalogCompareCard dl>div{border-top:1px solid #eee8e0;padding-top:5px;min-width:0}
+.fabricCatalogCompareCard dt{font-size:10px;line-height:1.3;color:#777e8c}
+.fabricCatalogCompareCard dd{font-size:11px;line-height:1.4;color:#263d56;margin:2px 0 0;overflow-wrap:anywhere}
+.fabricCatalogUseChoice{border:0;background:#1c3e56;color:#fff;font-size:11px;font-weight:700;line-height:1.4;padding:9px 6px;cursor:pointer;border-radius:4px}
+.fabricCatalogCompareDisclaimer{margin:12px 0 0}
+@media(max-width:1120px){.fabricCatalogCompareCards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:850px){.fabricCatalogCompareCards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:620px){.fabricCatalogCompareCards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:430px){.fabricCatalogCompareCards{grid-template-columns:1fr}.fabricCatalogCompareCard{display:grid;grid-template-columns:98px minmax(0,1fr);align-items:start}.fabricCatalogCompareCard>img{grid-row:span 2}.fabricCatalogCompareCard dl,.fabricCatalogCompareCard>button{grid-column:1/-1}}
