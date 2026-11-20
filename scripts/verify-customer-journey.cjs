@@ -1,0 +1,138 @@
+// Synthetic-only account -> owned vault -> Designer resume -> share/enquiry.
+// Real built Next.js + Chromium at 390/768/1440; no customer/cloud writes.
+const assert=require("node:assert/strict"),fs=require("node:fs/promises"),path=require("node:path");
+const {createRequire}=require("node:module");
+const {load}=require("./designer-test-loader.cjs");
+const {chromium}=createRequire(path.join(process.env.LINEN_BROWSER_QA_RUNTIME||"/missing","package.json"))("playwright");
+const engine=load("src/lib/designer/engine.ts");
+const {fromLegacyStyle}=load("src/lib/designer/style-spec-v2.ts");
+const {lockGarmentSpec}=load("src/lib/designer/design-lock.ts");
+const base=process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000";
+const output=path.resolve("artifacts/preview-lifecycle/customer-journey");
+const vaultId="b287e470-0e90-4fd4-b5fb-976eecebd244";
+const draftKey="linen-earth:real-designer-draft:v2";
+const summary={evidence:"synthetic HTTP fixtures; no real customer, stock or production data",viewports:[],errors:[],paid:[],actions:[]};
+
+async function syntheticRevision(){
+  const style=engine.designerStyleForOccasion("Semi-Formal");
+  const styleSpec=fromLegacyStyle(style);
+  styleSpec.shirt.type="overshirt";
+  const spec={
+    version:"linen-earth-garment-spec-v1",
+    status:"review_required",
+    source:{designerRuleSetVersion:"SYNTHETIC",styleSchemaVersion:2},
+    styleSpec,bodyProfile:null,
+    context:{occasion:"Semi-Formal",climate:"Not specified",intention:"Balanced"},
+    fabrics:{
+      shirt:{id:engine.DESIGNER_SHIRTS[0].id,name:"Synthetic shirt",line:"CI fixture",source:"synthetic",verifiedMaterialFacts:0},
+      trouser:{id:engine.DESIGNER_PANTS[0].id,name:"Synthetic trouser",line:"CI fixture",source:"synthetic",verifiedMaterialFacts:0},
+    },
+    shirt:{fit:style.shirtFit,wear:style.shirtWear,collar:style.collar,collarFinish:style.collarFinish,
+      cuff:style.cuff,placket:style.placket,button:style.button,finishedTargets:[]},
+    trouser:{shape:style.trouser,rise:style.rise,waistband:style.waistband,break:style.break,finishedTargets:[]},
+    creative:null,decision:{designFitScore:0,confidenceScore:0},blockStrategy:null,constructionChecks:[],
+    unresolved:["Synthetic fixture"],readiness:{},caveats:[],
+  };
+  return lockGarmentSpec(spec,{lockedAt:"2026-11-20T15:00:00.000Z"});
+}
+
+async function visit(browser,width,revision){
+  const context=await browser.newContext({viewport:{width,height:980},reducedMotion:"reduce"});
+  const page=await context.newPage();
+  page.on("pageerror",error=>summary.errors.push(error.message));
+  const requests=[];
+  let unauthorized=false;
+  await context.route("**/api/**",route=>{
+    const url=new URL(route.request().url()),pathname=url.pathname;
+    const input=JSON.parse(route.request().postData()||"{}");
+    requests.push({pathname,action:input.action||null});
+    if(/look-render|creative-render|fashn|visualization/.test(pathname))summary.paid.push(pathname);
+    if(pathname==="/api/customer-auth/session")return route.fulfill({status:200,json:{customer:{id:"synthetic-owner",email:"owner@example.invalid"}}});
+    if(pathname==="/api/designer/vault"){
+      if(input.action==="listOwned")return route.fulfill({status:200,json:{designs:[{
+        vaultId,revisionId:revision.revisionId,recipeHash:revision.recipeHash,
+        createdAt:"2026-11-20T15:00:00.000Z",expiresAt:"2027-05-19T15:00:00.000Z",
+      }]}});
+      if(input.action==="loadOwned")return route.fulfill({
+        status:unauthorized?401:200,json:unauthorized?{error:"Unauthorized"}:{revision},
+      });
+      throw Error("Unexpected vault action: "+input.action);
+    }
+    if(pathname==="/api/designer/share"){
+      assert.equal(input.recipeHash,revision.recipeHash);
+      summary.actions.push("share");
+      return route.fulfill({status:200,json:{token:"synthetic-signed-token",expiresInDays:30,audited:false}});
+    }
+    if(pathname==="/api/designer/enquiry"){
+      assert.equal(input.recipeHash,revision.recipeHash);
+      summary.actions.push("enquiry");
+      return route.fulfill({status:200,json:{href:"https://wa.me/15550000000?text=SYNTHETIC",audited:false}});
+    }
+    if(pathname==="/api/designer/catalog")return route.fulfill({status:200,json:{
+      shirts:engine.DESIGNER_SHIRTS,pants:engine.DESIGNER_PANTS,
+    }});
+    return route.fulfill({status:200,json:{}});
+  });
+  await page.goto(base+"/account",{waitUntil:"domcontentloaded"});
+  const item=page.getByText(revision.revisionId,{exact:true});
+  await item.waitFor({state:"visible"});
+  await page.getByRole("button",{name:"Copy secure share link"}).click();
+  await page.getByText(/Signed design-only link/).waitFor({state:"visible"});
+  await page.getByRole("button",{name:"Prepare WhatsApp enquiry"}).click();
+  const send=page.getByRole("link",{name:/Open WhatsApp to review and send/});
+  await send.waitFor({state:"visible"});
+  assert.ok((await send.getAttribute("href")).startsWith("https://wa.me/"));
+  const edit=page.getByRole("link",{name:"Continue in Designer"});
+  const href=await edit.getAttribute("href");
+  assert.equal(new URL(href,base).searchParams.get("resumeVault"),vaultId);
+  assert.ok(!href.includes("lev1.")&&!href.includes(revision.recipeHash),"URL holds opaque vault ID only");
+  await edit.click();
+  await page.waitForURL(url=>url.pathname==="/designer-studio");
+  await page.getByText(/ACCOUNT DESIGN \/ EDITABLE CHILD/).waitFor({state:"visible",timeout:30000});
+  await page.waitForFunction(({shirtId,pantId,parent,draftKey})=>{
+    const draft=JSON.parse(localStorage.getItem(draftKey)||"null");
+    return draft?.shirtId===shirtId&&draft?.pantId===pantId&&
+      draft.styleSpec?.shirt?.type==="overshirt"&&
+      document.body.textContent.includes(parent);
+  },{shirtId:revision.garmentSpec.fabrics.shirt.id,pantId:revision.garmentSpec.fabrics.trouser.id,parent:revision.revisionId,draftKey});
+  assert.equal(await page.getByRole("combobox",{name:"Shirt type",exact:true}).inputValue(),"overshirt");
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,"no horizontal overflow");
+  assert.ok(requests.some(x=>x.pathname==="/api/designer/vault"&&x.action==="loadOwned"));
+  await page.screenshot({path:path.join(output,"owned-design-"+width+".png"),fullPage:true});
+  summary.viewports.push({width,ownerVaultLoad:true,savedV2Style:true,parentLinked:true,shareAndEnquiryPrepared:true,noOverflow:true});
+  await context.close();
+}
+
+async function negative(browser,revision){
+  const context=await browser.newContext({viewport:{width:768,height:980}});
+  const page=await context.newPage();
+  await context.route("**/api/**",route=>{
+    const pathname=new URL(route.request().url()).pathname;
+    if(pathname==="/api/designer/vault")return route.fulfill({status:401,json:{error:"Sign-in required"}});
+    if(pathname==="/api/designer/catalog")return route.fulfill({status:200,json:{shirts:engine.DESIGNER_SHIRTS,pants:engine.DESIGNER_PANTS}});
+    return route.fulfill({status:200,json:{}});
+  });
+  await page.addInitScript(({draftKey})=>localStorage.setItem(draftKey,JSON.stringify({
+    shirtId:engine.DESIGNER_REVIEWED_PAIRING.shirtId,pantId:engine.DESIGNER_REVIEWED_PAIRING.pantId,
+  })),{draftKey});
+  await page.goto(base+"/designer-studio?resumeVault="+vaultId,{waitUntil:"domcontentloaded"});
+  await page.getByText(/ACCOUNT DESIGN \/ NOT APPLIED/).waitFor({state:"visible",timeout:30000});
+  assert.equal(await page.locator("#designer-shirt").inputValue(),engine.DESIGNER_REVIEWED_PAIRING.shirtId);
+  await context.close();
+}
+
+(async()=>{
+  await fs.mkdir(output,{recursive:true});
+  const revision=await syntheticRevision();
+  const browser=await chromium.launch({headless:true});
+  try{
+    for(const width of [390,768,1440])await visit(browser,width,revision);
+    await negative(browser,revision);
+    assert.deepEqual(summary.errors,[],"no browser exceptions");
+    assert.deepEqual(summary.paid,[],"never call paid render APIs");
+    assert.equal(summary.actions.filter(a=>a==="share").length,3);
+    assert.equal(summary.actions.filter(a=>a==="enquiry").length,3);
+    await fs.writeFile(path.join(output,"evidence.json"),JSON.stringify(summary,null,2));
+    console.log("Synthetic customer-journey browser checks passed",JSON.stringify(summary));
+  }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});
