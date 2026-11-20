@@ -40,6 +40,8 @@ assert.ok(pairings.length > 0, "Synthetic browser fixture needs a viable alterna
 const finishKey="collar";
 const finishes=load("src/lib/designer/style-director-finishes.ts").createStyleDirectorFinishAlternatives(looks[0].realModel,finishKey);
 assert.ok(finishes.length>0,"Synthetic browser fixture needs a compatible canonical finishing alternative");
+const versatility=load("src/lib/designer/style-director-versatility.ts").evaluateStyleDirectorVersatility(looks[0].realModel);
+assert.equal(versatility.length,4);
 const passingCheck = { available: true, status: "pass", fabricFidelity: "strong", colorFidelity: "strong", patternFidelity: "strong", boundary: "strong", construction: "strong", mannequinConsistency: "strong", artifact: "none" };
 assert.equal(looks.length, 3);
 assert.ok(looks.every((look) => look.realModel), "Fixture must use the real photographed shirt/trouser path");
@@ -63,7 +65,7 @@ async function freshPage(width = 1440) {
   page.on("console", (message) => { if (message.type() === "error") summary.errors.push(message.text()); });
   await context.route("**/api/**", (route) => {
     const pathname = new URL(route.request().url()).pathname;
-    if (/look-render|look-inspect|creative-render|creative-inspect|^\/api\/style-director(?:\/(?:pairings|finishes))?$/.test(pathname)) {
+    if (/look-render|look-inspect|creative-render|creative-inspect|^\/api\/style-director(?:\/(?:pairings|finishes|versatility))?$/.test(pathname)) {
       summary.errors.push("Backend request escaped browser mock: " + pathname);
     }
     return route.fulfill({ status: 200, json: {} });
@@ -79,6 +81,7 @@ async function freshPage(width = 1440) {
       const kind = pathname === "/api/style-director" ? "directions"
         : pathname === "/api/style-director/pairings" ? "pairings"
         : pathname === "/api/style-director/finishes" ? "finishes"
+        : pathname === "/api/style-director/versatility" ? "versatility"
         : pathname === "/api/designer/look-render" ? "render" : pathname === "/api/designer/look-inspect" ? "inspect" : null;
       if (!kind) return originalFetch(input, options);
       return new Promise((resolve) => window.__linenDirectorQA.requests.push({
