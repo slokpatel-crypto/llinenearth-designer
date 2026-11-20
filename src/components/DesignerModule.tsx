@@ -18,7 +18,8 @@ import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measuremen
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
-import { lockGarmentSpec, type LockedDesignRevision } from "@/lib/designer/design-lock";
+import { lockGarmentSpec, verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
+import { draftFromOwnedLockedRevision, validOwnedDesignVaultId } from "@/lib/designer/customer-resume";
 import { buildVerifiedProductionHandoff } from "@/lib/designer/production-handoff";
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import type { DesignerAssessmentResponse } from "@/lib/designer/assessment-types";
@@ -154,6 +155,8 @@ export function DesignerModule() {
   const [assessmentError,setAssessmentError]=useState("");
   const [lockedRevision,setLockedRevision]=useState<LockedDesignRevision|null>(null);
   const [lastLockedRevisionId,setLastLockedRevisionId]=useState<string|null>(null);
+  const [resumeStatus,setResumeStatus]=useState<"idle"|"loading"|"loaded"|"error">("idle");
+  const [resumeMessage,setResumeMessage]=useState("");
   const [lockBusy,setLockBusy]=useState(false);
   const [shareBusy,setShareBusy]=useState(false);
   const [shareMessage,setShareMessage]=useState("");
@@ -487,6 +490,78 @@ export function DesignerModule() {
   // Restore once; subsequent changes are persisted by the effect below.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The account vault is authoritative only for a successful, owner-scoped
+  // loadOwned response. A URL carries the opaque row id, never a recovery key
+  // or the customer's immutable recipe. Existing local drafts are preserved
+  // if auth, integrity, schema or current catalogue validation fails.
+  useEffect(()=>{
+    if(!draftReady) return;
+    const vaultId=new URLSearchParams(window.location.search).get("resumeVault");
+    if(!vaultId) return;
+    if(!validOwnedDesignVaultId(vaultId)){
+      setResumeStatus("error");
+      setResumeMessage("This saved-design link is invalid. Your current draft has not been replaced.");
+      return;
+    }
+    const controller=new AbortController();
+    setResumeStatus("loading");
+    setResumeMessage("Loading your account-owned locked design…");
+    void (async()=>{
+      try{
+        const response=await fetch("/api/designer/vault",{
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify({action:"loadOwned",vaultId}),
+          cache:"no-store",
+          signal:controller.signal,
+        });
+        const data=await response.json() as {revision?:LockedDesignRevision;error?:string};
+        if(!response.ok||!data.revision) throw new Error("This design could not be opened from your account. Sign in and check that the copy has not expired.");
+        if(!await verifyLockedDesignRevision(data.revision)) throw new Error("The saved design failed its integrity check.");
+        // Use current catalogue identities; never switch silently to a
+        // similarly named cloth if the exact saved ID is unavailable.
+        const catalogue=await fetch("/api/designer/catalog",{cache:"no-store",signal:controller.signal})
+          .then(async result=>result.ok ? await result.json() as {shirts?:DesignerFabric[];pants?:DesignerFabric[]} : null)
+          .catch(()=>null);
+        const allowedShirts=(catalogue?.shirts?.length?catalogue.shirts:DESIGNER_SHIRTS).map(item=>item.id);
+        const allowedPants=(catalogue?.pants?.length?catalogue.pants:DESIGNER_PANTS).map(item=>item.id);
+        const resumed=draftFromOwnedLockedRevision(data.revision,allowedShirts,allowedPants);
+        if(!resumed) throw new Error("The saved fabrics or construction are not supported by today's catalogue. Your current draft is unchanged.");
+        if(controller.signal.aborted) return;
+        setShirtId(resumed.shirtId);
+        setPantId(resumed.pantId);
+        setOccasion(resumed.occasion);
+        setClimate(resumed.climate);
+        setIntention(resumed.intention);
+        setStyle(resumed.style);
+        setStyleSpec(resumed.styleSpec);
+        setBodyProfile(resumed.bodyProfile);
+        setActiveCreative(null);
+        setCreativeDirections([]);
+        setCreativeVisualReview(null);
+        setRecommendation(null);
+        setRecommendationId(null);
+        setAssessment(null);
+        setDirectorHandoff(false);
+        setReferenceHandoffStatus(null);
+        setLastLockedRevisionId(resumed.parentRevisionId);
+        setResumeStatus("loaded");
+        setResumeMessage("Editable copy loaded from "+resumed.parentRevisionId+
+          ". The original locked revision remains unchanged; lock again after review to create a child revision. Creative work must be reviewed again.");
+        const clean=new URL(window.location.href);
+        clean.searchParams.delete("resumeVault");
+        window.history.replaceState(window.history.state,"",clean.pathname+clean.search+clean.hash);
+      }catch{
+        if(controller.signal.aborted) return;
+        setResumeStatus("error");
+        setResumeMessage("Could not safely resume this account-owned design. Sign in, check its expiry and catalogue options, then try again. Your local draft is unchanged.");
+      }
+    })();
+    return ()=>controller.abort();
+  // Resume is a one-time authenticated initialization for a navigated URL.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[draftReady]);
 
   useEffect(() => {
     if (!draftReady) return;
@@ -1236,7 +1311,12 @@ export function DesignerModule() {
       </figure>
     </header>
 
-    <div className="newDesignerBody">
+    {resumeStatus!=="idle"&&<div className="newDesignerHandoff" role={resumeStatus==="error"?"alert":"status"} aria-live="polite" style={{margin:"12px 24px"}}>
+      <strong>{resumeStatus==="loaded"?"ACCOUNT DESIGN / EDITABLE CHILD":resumeStatus==="loading"?"ACCOUNT DESIGN / LOADING":"ACCOUNT DESIGN / NOT APPLIED"}</strong>
+      <p>{resumeMessage}</p>
+      {resumeStatus==="error"&&<Link href="/account">Return to my private account →</Link>}
+    </div>}
+    <div className="newDesignerBody" aria-busy={resumeStatus==="loading"} inert={resumeStatus==="loading"}>
       <section className="newDesignerSelections" aria-labelledby="designerChoose">
         {referenceHandoffStatus === "applied" && <div className="newDesignerHandoff" role="status">
           <span>REFERENCE LOOK / EXPLICIT FABRIC PAIR</span>
