@@ -575,7 +575,7 @@ jobs:
                          ("leftContactingFaceAreaMm2", "rightContactingFaceAreaMm2"))
           assert stages["afterClothThickness"]["legLegPolygonContactPairs"] == physical["boundaryIntersections"]["garmentLegToLeg"]
           assert source["actualFinalGarmentLegContactPairs"] == physical["boundaryIntersections"]["garmentLegToLeg"]
-          assert physical["rejectionReasonCount"] == 10
+          assert physical["legacyWaistRejectionReasonCount"] == 10
           print("TITAN_REAL_CROTCH_MODIFIER_STAGES_MATCH_FULL_PREFLIGHT",json.dumps({
               "source": stages["selectedBodyShell"],
               "afterSmoothing": stages["afterSmoothing"],
@@ -618,7 +618,7 @@ jobs:
               assert item["modelIdentityId"] == "linen-earth-studio-model-v1"
               assert item["candidateOnly"] is True and item["productionApproved"] is False
           assert trial["preflightReady"] is False and rimless["physicalFitApproved"] is False
-          assert original["rejectionReasonCount"] == 10
+          assert original["legacyWaistRejectionReasonCount"] == 10
           assert original["boundaryIntersections"]["garmentLegToLeg"] == source["measurements"]["legLegPolygonContactPairs"] == 89
           assert trial["boundaryIntersections"]["garmentLegToLeg"] == rimless["measurements"]["legLegPolygonContactPairs"]
           measured = rimless["measurements"]
@@ -670,7 +670,7 @@ jobs:
           root = Path(sys.argv[1])
           original = json.loads((root / "rejection-report.json").read_text(encoding="utf-8"))
           original_diag = json.loads((root / "crotch-cross-sections.json").read_text(encoding="utf-8"))
-          assert original["rejectionReasonCount"] == 10
+          assert original["legacyWaistRejectionReasonCount"] == 10
           assert original["boundaryIntersections"]["garmentLegToLeg"] == 89
           for label in ("symmetric", "inward"):
               report = json.loads((root / f"leg-thickness-{label}-preflight.json").read_text(encoding="utf-8"))
@@ -729,7 +729,7 @@ jobs:
           count = actual["boundaryIntersections"]["garmentLegToLeg"]
           assert count > 0 and count == measured["actualFinalLegLegBVHPairs"]
           assert count == stages["actualFinalGarmentLegContactPairs"]
-          assert actual["rejectionReasonCount"] == 10 and actual["preflightReady"] is False
+          assert actual["legacyWaistRejectionReasonCount"] == 10 and actual["preflightReady"] is False
           for side in ("left","right"):
               boundary = measured["actualSourceBoundaryEdges"][side]
               assert boundary["allOpenBoundaryEdges"] >= boundary["nearCenterlineBoundaryEdges"] > 0
@@ -768,7 +768,7 @@ jobs:
           assert all(x["modelIdentityId"]=="linen-earth-studio-model-v1" for x in (pairing,proximity,rejected))
           assert all(x["candidateOnly"] is True and x["productionApproved"] is False for x in (pairing,proximity,rejected))
           assert pairing["physicalFitApproved"] is False and pairing["changesProductionGeometry"] is False
-          assert rejected["preflightReady"] is False and rejected["rejectionReasonCount"] == 10
+          assert rejected["preflightReady"] is False and rejected["legacyWaistRejectionReasonCount"] == 10
           assert rejected["boundaryIntersections"]["garmentLegToLeg"] == proximity["actualFinalLegLegBVHPairs"] > 0
           left, right = pairing["pairedLeftEdgeCount"], pairing["pairedRightEdgeCount"]
           assert left == proximity["actualSourceBoundaryEdges"]["left"]["nearCenterlineBoundaryEdges"] > 0
