@@ -32,3 +32,16 @@
 @media (max-width: 900px) { .workflow { grid-template-columns: 1fr; } .photoPanel,.matchesPanel { padding: 18px; } }
 @media (max-width: 480px) { .match { grid-template-columns: 58px minmax(0,1fr) 18px; gap: 8px; } .matchImage { width: 58px; height: 70px; } .matchSwatch { width: 18px; height: 18px; } }
 @media print { .upload, .switches, .continue { display: none; } }
+
+/* Roadmap M2: explicit, touch-and-keyboard accessible fabric-pair selection. */
+.sampleStatus { margin: 12px 0; color: #bfd0df; font-size: 12px; line-height: 1.6; }
+.clearButton { margin-left: auto; padding: 9px 12px; color: #dce7f3; background: transparent; border: 1px solid #7f97ae; cursor: pointer; }
+.keyboardSample { padding: 10px 13px; margin: 0 0 12px; border: 1px solid #8da4b8; background: #10253a; color: #ecf4fa; font-size: 12px; cursor: pointer; }
+.chooseButton { display: inline-block; width: max-content; max-width: 100%; margin-top: 10px; padding: 8px 10px; border: 1px solid #bed0df; background: #11293f; color: #ecf3fa; font-size: 12px; cursor: pointer; }
+.chooseButton[aria-pressed="true"] { background: #e8eff6; color: #081a2c; font-weight: 700; }
+.chooseButton:focus-visible, .keyboardSample:focus-visible, .clearButton:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.outfitSummary { border-top: 1px solid rgba(187,198,210,.35); padding: 18px 0 0; margin-top: 24px; }
+.outfitSummary h3 { font-size: 11px; letter-spacing: .16em; color: #bed0df; }
+.outfitSummary p { font-size: 13px; line-height: 1.6; }
+.outfitSummary strong { color: #f4f8fb; }
+@media print { .clearButton, .keyboardSample, .chooseButton { display: none; } }

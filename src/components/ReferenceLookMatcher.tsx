@@ -6,8 +6,11 @@ import { DESIGNER_SHIRTS, DESIGNER_PANTS, type DesignerFabric } from "@/lib/desi
 import {
   rankReferenceSwatches,
   sampleReferencePatch,
+  withReferenceTargetSample,
+  type ReferenceSamples,
   type Rgb,
 } from "@/lib/designer/reference-look-matcher";
+import { buildReferenceOutfitHref, chooseReferenceOutfitFabric, type ReferenceOutfitChoices } from "@/lib/designer/reference-outfit-handoff";
 import styles from "./ReferenceLookMatcher.module.css";
 
 type Garment = "shirt" | "pant";
@@ -19,18 +22,24 @@ export function ReferenceLookMatcher() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestId = useRef(0);
   const [garment, setGarment] = useState<Garment>("shirt");
-  const [sample, setSample] = useState<Rgb | null>(null);
+  const [samples, setSamples] = useState<ReferenceSamples>({ shirt: null, pant: null });
+  const [selected, setSelected] = useState<ReferenceOutfitChoices>({ shirt: null, pant: null });
   const [imageReady, setImageReady] = useState(false);
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
   const fabrics: DesignerFabric[] = garment === "shirt" ? DESIGNER_SHIRTS : DESIGNER_PANTS;
+  const sample = samples[garment];
   const matches = sample ? rankReferenceSwatches(sample, fabrics, 6) : [];
+  const handoffHref = buildReferenceOutfitHref(selected, DESIGNER_SHIRTS, DESIGNER_PANTS);
+  const selectedShirt = DESIGNER_SHIRTS.find((fabric) => fabric.id === selected.shirt);
+  const selectedPant = DESIGNER_PANTS.find((fabric) => fabric.id === selected.pant);
   const sampleHex = sample ? "#" + sample.map((part) => part.toString(16).padStart(2, "0")).join("") : null;
 
   function chooseFile(file?: File) {
     const thisRequest = ++requestId.current;
     setError("");
-    setSample(null);
+    setSamples({ shirt: null, pant: null });
+    setSelected({ shirt: null, pant: null });
     setImageReady(false);
     setFileName("");
     if (!file) return;
@@ -67,6 +76,24 @@ export function ReferenceLookMatcher() {
     picture.src = url;
   }
 
+  function sampleAt(x: number, y: number) {
+    const canvas = canvasRef.current;
+    if (!canvas || !imageReady) return;
+    const imageData = canvas.getContext("2d", { willReadFrequently: true })?.getImageData(
+      0, 0, canvas.width, canvas.height,
+    );
+    if (!imageData) return;
+    const sampled = sampleReferencePatch(imageData, x, y);
+    if (!sampled) {
+      setError("Choose an opaque garment area in the photo.");
+      return;
+    }
+    setSamples((previous) => withReferenceTargetSample(previous, garment, sampled));
+    // A new colour must not retain a previously confirmed cloth choice.
+    setSelected((previous) => chooseReferenceOutfitFabric(previous, garment, null, DESIGNER_SHIRTS, DESIGNER_PANTS));
+    setError("");
+  }
+
   function chooseColour(event: React.MouseEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current;
     if (!canvas || !imageReady) return;
@@ -74,23 +101,18 @@ export function ReferenceLookMatcher() {
     if (!rectangle.width || !rectangle.height) return;
     const x = Math.floor((event.clientX - rectangle.left) * canvas.width / rectangle.width);
     const y = Math.floor((event.clientY - rectangle.top) * canvas.height / rectangle.height);
-    const imageData = canvas.getContext("2d", { willReadFrequently: true })?.getImageData(
-      0, 0, canvas.width, canvas.height,
-    );
-    if (!imageData) return;
-    const sampled = sampleReferencePatch(imageData, x, y);
-    if (!sampled) {
-      setError("Tap an opaque garment area in the photo.");
-      return;
-    }
-    setSample(sampled);
-    setError("");
+    sampleAt(x, y);
+  }
+
+  function sampleCentreForKeyboard() {
+    const canvas = canvasRef.current;
+    if (canvas && imageReady) sampleAt(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2));
   }
 
   return (
     <div className={styles.workflow}>
       <section className={styles.photoPanel}>
-        <div className={styles.panelHeading}><span>01 / YOUR REFERENCE</span><h2>Tap the colour you want to match.</h2></div>
+        <div className={styles.panelHeading}><span>01 / YOUR REFERENCE</span><h2>Sample shirt and trouser colours separately.</h2></div>
         <label className={styles.upload}>
           <span>Choose a reference photo</span>
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => chooseFile(event.target.files?.[0])} />
@@ -107,21 +129,27 @@ export function ReferenceLookMatcher() {
           />
           {!imageReady && <div className={styles.empty}>Upload a photo to start matching its fabric colour.</div>}
         </div>
+        {imageReady && <button type="button" className={styles.keyboardSample} onClick={sampleCentreForKeyboard}>Sample centre of photo for {garment === "shirt" ? "shirt" : "trousers"} (keyboard alternative)</button>}
         {fileName && <p className={styles.hint}>Selected reference: {fileName}</p>}
         {error && <p className={styles.error} role="alert">{error}</p>}
       </section>
 
       <section className={styles.matchesPanel} aria-live="polite">
-        <div className={styles.panelHeading}><span>02 / LINEN EARTH FABRICS</span><h2>Closest catalogue colours.</h2></div>
+        <div className={styles.panelHeading}><span>02 / LINEN EARTH FABRICS</span><h2>Choose a real cloth for each garment.</h2></div>
         <div className={styles.switches} role="group" aria-label="Choose garment fabric category">
-          <button type="button" aria-pressed={garment === "shirt"} onClick={() => setGarment("shirt")}>Shirt fabrics</button>
-          <button type="button" aria-pressed={garment === "pant"} onClick={() => setGarment("pant")}>Trouser fabrics</button>
+          <button type="button" aria-pressed={garment === "shirt"} onClick={() => setGarment("shirt")}>Shirt fabrics{samples.shirt ? " · sampled" : ""}</button>
+          <button type="button" aria-pressed={garment === "pant"} onClick={() => setGarment("pant")}>Trouser fabrics{samples.pant ? " · sampled" : ""}</button>
         </div>
+        <p className={styles.sampleStatus} role="status">Shirt: {samples.shirt ? "sampled" : "not sampled"} · Trousers: {samples.pant ? "sampled" : "not sampled"}</p>
         {sample && sampleHex ? (
           <>
             <div className={styles.sampled}>
               <span className={styles.sampleSwatch} style={{ backgroundColor: sampleHex }} />
-              <div><strong>Sampled photo colour</strong><small>{sampleHex.toUpperCase()} · approximate on-screen sample</small></div>
+              <div><strong>{garment === "shirt" ? "Shirt" : "Trouser"} photo colour</strong><small>{sampleHex.toUpperCase()} · approximate on-screen sample</small></div>
+              <button type="button" className={styles.clearButton} onClick={() => {
+                setSamples((previous) => withReferenceTargetSample(previous, garment, null));
+                setSelected((previous) => chooseReferenceOutfitFabric(previous, garment, null, DESIGNER_SHIRTS, DESIGNER_PANTS));
+              }}>Clear sample</button>
             </div>
             <div className={styles.matchList}>
               {matches.map(({ fabric }) => (
@@ -133,6 +161,10 @@ export function ReferenceLookMatcher() {
                     <strong>{fabric.name}</strong>
                     <small>{fabric.line} · {fabric.id}</small>
                     <span>Visual colour candidate · confirm physical cloth and stock</span>
+                    <button type="button" className={styles.chooseButton} aria-pressed={selected[garment] === fabric.id}
+                      onClick={() => setSelected((previous) => chooseReferenceOutfitFabric(previous, garment, fabric.id, DESIGNER_SHIRTS, DESIGNER_PANTS))}>
+                      {selected[garment] === fabric.id ? "Selected for " : "Choose for "}{garment === "shirt" ? "shirt" : "trousers"}
+                    </button>
                   </div>
                   <span className={styles.matchSwatch} style={{ backgroundColor: fabric.hex }} aria-hidden="true" />
                 </article>
@@ -140,14 +172,25 @@ export function ReferenceLookMatcher() {
               {matches.length === 0 && <p>No catalogue swatches have usable colour data in this category.</p>}
             </div>
             <p className={styles.disclaimer}>This matches a selected photo colour to approximate catalogue swatch colours. Lighting and screens change colour. It does not identify fabric weave, verify stock, infer the garment cut, or approve a fit.</p>
-            <Link className={styles.continue} href="/designer-studio">Open Designer to choose fabric and customize <span aria-hidden="true">↗</span></Link>
+            <p className={styles.hint}>Select a candidate for both garments below to create your outfit. No automatic stock or fit approval.</p>
           </>
         ) : (
           <div className={styles.instructions}>
             <b>To see suggestions</b>
-            <p>Upload a picture, then tap the shirt, trouser or jacket area whose colour you like. Select which fabric category to search.</p>
+            <p>Upload a photo, choose shirt or trousers above, then tap its fabric colour. Each garment keeps its own sample and cloth choice.</p>
           </div>
         )}
+        <div className={styles.outfitSummary} aria-live="polite">
+          <h3>03 / YOUR OUTFIT PAIR</h3>
+          <p>Shirt: <strong>{selectedShirt?.name || "Choose a shirt cloth"}</strong></p>
+          <p>Trousers: <strong>{selectedPant?.name || "Choose a trouser cloth"}</strong></p>
+          {handoffHref ? (
+            <Link className={styles.continue} href={handoffHref}>Open this outfit in Designer <span aria-hidden="true">↗</span></Link>
+          ) : (
+            <p className={styles.hint}>A pair needs two explicit selections. Nothing is auto-selected or ordered.</p>
+          )}
+          <p className={styles.disclaimer}>Only the two verified catalogue IDs enter Designer. The photo stays on your device. Designer keeps its existing versioned styling options and asks for physical confirmation.</p>
+        </div>
       </section>
     </div>
   );
