@@ -378,9 +378,9 @@ export default function AccountPage(){
             <h3 style={{margin:0,fontFamily:"Georgia,serif"}}>Saved design comparison</h3>
             <div style={{fontSize:12,opacity:.72}}>{comparison.previousRevisionId} → {comparison.selectedRevisionId}</div>
             <p style={{fontSize:13,margin:0}}>{comparison.relationship==="direct-child"
-              ?"The second revision directly continues the first."
+              ?"The second revision records the first as its parent; this is not proof of edit history."
               :comparison.relationship==="reverse-child"
-                ?"The first revision directly continues the second."
+                ?"The first revision records the second as its parent; this is not proof of edit history."
                 :comparison.relationship==="same-revision"
                   ?"These entries refer to the same recorded revision."
                   :"No direct parent relationship is recorded for these revisions."}</p>
