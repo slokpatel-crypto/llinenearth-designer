@@ -117,8 +117,12 @@ def uv_edge_continuity_report(obj, uv_layer):
     boundaries = 0
     nonmanifold = 0
     seams = 0
+    minus_y_seams = 0
+    plus_y_seams = 0
+    world = [obj.matrix_world @ vertex.co for vertex in mesh.vertices]
+    mean_y = sum(vertex.y for vertex in world) / len(world)
     largest_gap = 0.0
-    for adjacent in incidents.values():
+    for edge, adjacent in incidents.items():
         if len(adjacent) == 1:
             boundaries += 1
         elif len(adjacent) != 2:
@@ -128,12 +132,19 @@ def uv_edge_continuity_report(obj, uv_layer):
             error = max(math.dist(a[0], b[0]), math.dist(a[1], b[1]))
             if error > 1e-6:
                 seams += 1
+                mid_y = (world[edge[0]].y + world[edge[1]].y) * 0.5
+                if mid_y < mean_y:
+                    minus_y_seams += 1
+                else:
+                    plus_y_seams += 1
                 largest_gap = max(largest_gap, error)
     return {
         "sourceTopologicalEdges": len(incidents),
         "sourceBoundaryEdges": boundaries,
         "sourceNonManifoldEdges": nonmanifold,
         "uvDiscontinuityEdges": seams,
+        "minusYCameraFacingSeamEdges": minus_y_seams,
+        "plusYCameraAwaySeamEdges": plus_y_seams,
         "maxUvDiscontinuityMetres": round(largest_gap, 7),
         "sewnSeamApproval": False,
     }
