@@ -13,6 +13,9 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
   // A synchronous guard closes the gap before React commits disabled controls.
   const inFlight = useRef(false);
   const loadedOwner = useRef<string | null>(null);
+  // Bind the selected recipe to the specific owner who fetched it. Closing a
+  // browser confirmation dialog may itself fire focus/visibility events.
+  const selectedOwner = useRef<string | null>(null);
   const visibilityEpoch = useRef(0);
   // Session cookies are HTTP-only: after returning to this tab, discard
   // previous account data rather than displaying it until another action.
@@ -20,6 +23,7 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
     function clearPrivateView() {
       visibilityEpoch.current++;
       loadedOwner.current = null;
+      selectedOwner.current = null;
       setCloud([]);
       setSelected(null);
       setMessage("Cloud records were hidden for privacy. Load your cloud designs to verify this session.");
@@ -54,10 +58,15 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
       await assertOwner();
     } catch (error) {
       loadedOwner.current = null;
+      selectedOwner.current = null;
       setCloud([]);
       setSelected(null);
       setMessage(error instanceof Error ? error.message : "Cloud unavailable.");
     } finally { inFlight.current = false; setBusy(false); }
+  }
+  function requireSelectedOwner() {
+    if (!selectedOwner.current || selectedOwner.current !== loadedOwner.current)
+      throw new Error("Recovered cloud selection is no longer verified. Recover this design again.");
   }
   return <section aria-label="Signed-in cloud designs" className="savedIntro">
     <div>
@@ -67,6 +76,7 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
         const designs = await listCloudDesigns();
         await assertOwner();
         setCloud(designs);
+        selectedOwner.current = null;
         setSelected(null);
       })}>Load my cloud designs</button>
       {localDesigns.length > 0 && <div>
@@ -83,6 +93,7 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
           const designs = await listCloudDesigns();
           await assertOwner();
           setCloud(designs);
+          selectedOwner.current = null;
           setSelected(null);
           setUploadId("");
           setMessage("Cloud save confirmed.");
@@ -97,6 +108,7 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
           const recovered = await getCloudDesign(item.id);
           await assertOwner();
           if (!recovered) throw new Error("Cloud design no longer exists.");
+          selectedOwner.current = loadedOwner.current;
           setSelected(recovered);
         })}>{item.title} — Recover details</button>
         <button type="button" disabled={busy} onClick={() => {
@@ -108,6 +120,7 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
             const designs = await listCloudDesigns();
             await assertOwner();
             setCloud(designs);
+            selectedOwner.current = null;
             setSelected(null);
             setMessage("Cloud design deleted. Browser drafts unchanged.");
           });
@@ -119,6 +132,7 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
         <p>Cloud recovery does not overwrite browser drafts or claim production lock approval.</p>
         <button type="button" disabled={busy} onClick={() => void run(async (assertOwner) => {
           await assertOwner();
+          requireSelectedOwner();
           // Explicit export is safer than silently replacing local drafts. The
           // versioned recipe remains inspectable even on a second device.
           const payload = JSON.stringify({
@@ -141,6 +155,7 @@ export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesi
           if (!window.confirm(`Import cloud design "${selected.title}" into browser drafts on this device? Existing drafts will be preserved. This is not a production lock.`)) return;
           void run(async (assertOwner) => {
             await assertOwner();
+            requireSelectedOwner();
             // The selected cloud record was fetched through the authenticated,
             // owner-scoped recovery API. Importing is a separate local-only action.
             const recovered = importCloudDesignExport(window.localStorage, {
