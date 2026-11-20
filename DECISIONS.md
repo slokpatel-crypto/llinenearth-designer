@@ -564,6 +564,16 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Next engineering gate:** exact single identity body mesh, production garment/drape fit and UV evidence, independent front/3-4/side/back visual comparisons, verified supplier physical scale and tailor approval before customer-facing 3D promotion.
 
+## 2026-11-20 — Worker C: authenticated vault-to-Designer customer journey
+
+- Reuse the existing authenticated design-vault RPC `loadOwned` and the existing immutable lock, signed share and verified enquiry endpoints. No new credential, storage adapter, schema, public recovery URL or paid service.
+- The account vault provides a per-item integrity-checked, on-demand recipe inspection and reuses the original revision for share/enquiry; it does not send measurement data to the public share payload.
+- An account-owned vault UUID in `/designer-studio?resumeVault=` is an identifier, **not an access token**. The Designer must POST it to the owner-authenticated vault API and separately verify the hash; neither a copied UUID nor a non-owner session can read a saved recipe.
+- A verified modern StyleSpec v2 recipe can be projected onto an **editable descendant**. Restore only closed-vocabulary construction IDs, matching catalogue garment categories, allowed context values and a validated body preview. Reject unsupported legacy, tampered or out-of-catalogue recipes without changing the existing draft. Store the source revision ID as the parent of the next lock; do not import the original lock into mutable state.
+- A new editable draft never proves old physical fabric facts, stock, creative treatments, measurements or tailor release. Account inspection preserves the full original locked spec; product copy requires fresh assessment/review before a new lock.
+- No new migration needed. Existing locked-recipe and recovery-token contracts retain their current shape; old recipes remain loadable, shareable and exportable even when they cannot be safely projected into the current Designer. Browser draft localStorage remains a convenience only, never secure ownership.
+- Browser QA at 390 / 768 / 1440 and exact-head independent checks remain merge gates; no physical evidence is inferred from synthetic CI.
+
 ## 2026-11-20 — Research: original CC0 surface-grain UV is not textile scale
 
 **Decision:** Keep original locked `linen-earth-studio-model-v1` body/source and six unapproved candidate garment panels untouched while investigating shortcomings of x/z planar UV. A separate, explicit native Blender research script adds a second surface-aware cylindrical/normal-projected UV layer to a **new** research .blend, preserving the source UV maps, exact original geometry and all garment/body collision rejections. This only improves chart nondegeneracy where independently measurable.
