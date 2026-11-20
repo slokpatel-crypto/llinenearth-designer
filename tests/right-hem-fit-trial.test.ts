@@ -14,8 +14,8 @@ test("native right-hem taper is optional, guide-based, bounded and remains a ful
   assert.ok(author.includes('safe_candidate_output(options.output, bpy.data.filepath)'));
   const workflow=readFileSync(".github/workflows/titan-native-source-candidate.yml","utf8");
   assert.ok(workflow.includes('--experimental-right-hem-taper-mm 0.0'),"retain original 0mm source control");
-  assert.ok(workflow.includes('assert standard["rejectionReasonCount"] == 10'),"keep exact ten original hard defects");
-  assert.ok(workflow.includes('assert evidence["rejectionReasonCount"] <= 10'),"all native gates remain active");
+  assert.ok(workflow.includes('assert standard["legacyWaistRejectionReasonCount"] == 10'),"keep exact ten original hard defects");
+  assert.ok(workflow.includes('assert evidence["legacyWaistRejectionReasonCount"] <= 10'),"all native gates remain active");
   assert.ok(workflow.includes('new_asymmetry < old_asymmetry'),"hem fit must actually improve left/right symmetry");
   assert.ok(workflow.includes('new_asymmetry <= 14'),"retain photographic hem symmetry tolerance");
   assert.ok(workflow.includes('if key not in ("rightHemWidthMm", "hemWidthAsymmetryMm")'),
@@ -26,7 +26,7 @@ test("native right-hem taper is optional, guide-based, bounded and remains a ful
 
   for(const lockedGate of [
     "TITAN_REAL_RIGHT_HEM_TAPER_NATIVE_FIT_VALIDATED_CANDIDATE_ONLY",
-    'assert trial["rejectionReasonCount"] <= baseline["rejectionReasonCount"] - 1',
+    'assert trial["legacyWaistRejectionReasonCount"] <= baseline["legacyWaistRejectionReasonCount"] - 1',
     'assert trial["boundaryIntersections"][key] <= original',
     'assert trial["identityFitMeasurementsMm"][key] == original',
     'assert trial_width < original_width',
