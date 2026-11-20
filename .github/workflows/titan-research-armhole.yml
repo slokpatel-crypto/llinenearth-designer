@@ -9,6 +9,7 @@ on:
       - "tests/blender/test_armhole_modifier_seam_displacement.py"
       - "tests/blender/test_open_rim_research_boundary_fixture.py"
       - "scripts/blender/bootstrap-human-base-meshes.py"
+      - "scripts/blender/research-sewn-shirt-from-source.py"
       - "tests/python/test_cc0_source_official_mirror.py"
       - ".github/workflows/titan-research-armhole.yml"
 
@@ -91,6 +92,19 @@ jobs:
             --output .cache/linen-earth/titan-open-armhole-rims-research.blend
           after="$(sha256sum "$body" | cut -d' ' -f1)"
           test "$before" = "$after"
+      - name: Rebuild real CC0 three-panel shirt as one continuous source surface (research)
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene=.cache/linen-earth/titan-disjoint-armhole-research.blend
+          before="$(sha256sum "$scene" | cut -d' ' -f1)"
+          mkdir -p "$RUNNER_TEMP/armhole-evidence"
+          "$BLENDER_BIN" --background "$scene" --python-exit-code 1 \
+            --python scripts/blender/research-sewn-shirt-from-source.py -- \
+            --output .cache/linen-earth/titan-single-solidify-sewn-shirt-research.blend \
+            --report "$RUNNER_TEMP/armhole-evidence/joint-shirt.json"
+          after="$(sha256sum "$scene" | cut -d' ' -f1)"
+          test "$before" = "$after"
       - name: Record true scanned source face overlap and evaluated garment crossings
         shell: bash
         run: |
@@ -111,6 +125,22 @@ jobs:
           base=json.loads((root/"baseline.json").read_text())
           trial=json.loads((root/"disjoint.json").read_text())
           open_trial=json.loads((root/"open-rims.json").read_text())
+          sewn=json.loads((root/"joint-shirt.json").read_text())
+          assert sewn["sourceBodySha256"]==trial["sourceBodySha256"]==base["sourceBodySha256"]
+          assert sewn["modelIdentityId"]==trial["modelIdentityId"]
+          assert sewn["referenceImage"]==trial["referenceImage"]
+          assert sewn["singleNativeSolidify"] and not sewn["productionApproved"]
+          assert not sewn["tailorApproved"] and not sewn["photographicMatchApproved"]
+          assert set(sewn["authoredPanelMesh"])=={"ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric"}
+          assert all(x["faces"]>=x["sourceFaces"] and x["vertices"]>0 for x in sewn["authoredPanelMesh"].values())
+          assert sewn["sharedBodySourceVertexCounts"]["leftTorsoSleeve"]>=8
+          assert sewn["sharedBodySourceVertexCounts"]["rightTorsoSleeve"]>=8
+          for side in ("L","R"):
+              key=f"ShirtTorsoFabric::ShirtSleeve{side}Fabric"
+              new=sewn["realBVHShirtPanelContacts"][key]
+              old=trial["garmentContactPairs"][key]
+              assert type(new) is int and new>=0
+              print("REAL_CC0_SINGLE_SOLIDIFY_SHIRT_CONTACT_DELTA",side,old,new,new-old)
           assert open_trial["sourceBodySha256"]==trial["sourceBodySha256"]==base["sourceBodySha256"]
           assert open_trial["modelIdentityId"]==trial["modelIdentityId"]==base["modelIdentityId"]
           assert open_trial["experimentalDisjointArmholes"] and open_trial["experimentalOpenArmholeRims"]
@@ -189,7 +219,7 @@ jobs:
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends libegl1 libgl1 libgl1-mesa-dri libopengl0 xvfb
-          scene=.cache/linen-earth/titan-disjoint-armhole-research.blend
+          scene=.cache/linen-earth/titan-single-solidify-sewn-shirt-research.blend
           before="$(sha256sum "$scene" | cut -d' ' -f1)"
           xvfb-run -a -s "-screen 0 1280x1024x24" env LIBGL_ALWAYS_SOFTWARE=1 \
             "$BLENDER_BIN" --background "$scene" --python-exit-code 1 \
