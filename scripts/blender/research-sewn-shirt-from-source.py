@@ -177,6 +177,10 @@ def main():
     if body is None or body.type != "MESH":
         raise RuntimeError("Real pinned source body missing")
     original = fingerprint(body)
+    trouser_names=("TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric")
+    if any(bpy.data.objects.get(n) is None for n in trouser_names):
+        raise RuntimeError("Unmodified pinned trouser materials must exist")
+    original_trousers={name:fingerprint(bpy.data.objects[name]) for name in trouser_names}
     bbox = [body.matrix_world @ Vector(v) for v in body.bound_box]
     center = (min(v.x for v in bbox)+max(v.x for v in bbox))/2
     zmin = min(v.z for v in bbox)
@@ -209,6 +213,8 @@ def main():
         raise RuntimeError("Combined research mesh unexpectedly survived splitting")
     if fingerprint(body) != original:
         raise RuntimeError("Original CC0 body was mutated by seam research")
+    if any(fingerprint(bpy.data.objects[name])!=original_trousers[name] for name in trouser_names):
+        raise RuntimeError("Original pinned trouser panels were mutated by upper-shirt seam research")
     scene["linen_earth_asset_status"] = "RESEARCH-only-joint-shirt-solidify-unapproved"
     scene["linen_earth_research_single_solidify_shirt"] = True
     scene["linen_earth_production_approved"] = False
@@ -225,6 +231,7 @@ def main():
       "referenceImage":"/designer/studio-tucked.webp",
       "sourceBodySha256":original,
       "sourceBlend":source.name,
+      "originalTrouserMeshesPreservedSha256":original_trousers,
       "productionApproved":False,
       "tailorApproved":False,
       "watertightShirtConstructionApproved":False,
