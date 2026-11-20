@@ -7,6 +7,12 @@ const {chromium}=createRequire(path.join(process.env.LINEN_BROWSER_QA_RUNTIME||"
 const engine=load("src/lib/designer/engine.ts");
 const {fromLegacyStyle}=load("src/lib/designer/style-spec-v2.ts");
 const {lockGarmentSpec}=load("src/lib/designer/design-lock.ts");
+const {toLegacyStyle}=load("src/lib/designer/style-spec-v2.ts");
+const {assessFitConstruction}=load("src/lib/designer/fit-construction.ts");
+const {assessBlockStrategy}=load("src/lib/designer/block-strategy.ts");
+const {evaluateLinenEarthBrandLanguage}=load("src/lib/designer/brand-language.ts");
+const {buildDesignerNegotiation}=load("src/lib/designer/constraint-negotiation.ts");
+const {buildCanonicalGarmentSpec}=load("src/lib/designer/garment-spec.ts");
 const base=process.env.LINEN_BROWSER_QA_URL||"http://127.0.0.1:3000";
 const output=path.resolve("artifacts/preview-lifecycle/customer-journey");
 const vaultId="b287e470-0e90-4fd4-b5fb-976eecebd244";
@@ -36,8 +42,25 @@ async function syntheticRevision(){
   return lockGarmentSpec(spec,{lockedAt:"2026-11-20T15:00:00.000Z"});
 }
 
+function assessmentFixture(body){
+  assert.equal(body.styleSpec.shirt.type,"overshirt","saved advanced v2 cut must survive reassessment");
+  const shirt=engine.DESIGNER_SHIRTS.find(f=>f.id===body.shirtId);
+  const pant=engine.DESIGNER_PANTS.find(f=>f.id===body.pantId);
+  assert.ok(shirt&&pant);
+  const style=toLegacyStyle(body.styleSpec);
+  const recommendation=engine.evaluateDesignerCombo(shirt,pant,body.occasion,style,undefined,body.context);
+  const fitConstruction=assessFitConstruction(body.measurements,style,{climate:body.context.climate,shirtFabric:shirt,trouserFabric:pant,observations:body.observations});
+  const blockStrategy=assessBlockStrategy(body.measurements,style,body.observations);
+  const brandLanguage=evaluateLinenEarthBrandLanguage(shirt,pant,style,body.occasion,body.context);
+  return {assessment:{
+    recommendation,fitConstruction,blockStrategy,brandLanguage,
+    negotiation:buildDesignerNegotiation(recommendation,fitConstruction),
+    garmentSpec:buildCanonicalGarmentSpec(recommendation,fitConstruction,body.measurements,brandLanguage,blockStrategy,null,null,body.styleSpec,body.bodyProfile),
+  }};
+}
+
 async function visit(browser,width,revision){
-  const context=await browser.newContext({viewport:{width,height:980},reducedMotion:"reduce"});
+  const context=await browser.newContext({viewport:{width,height:980},reducedMotion:"reduce",acceptDownloads:true});
   const page=await context.newPage();
   page.on("pageerror",error=>summary.errors.push(error.message));
   const requests=[];
@@ -57,6 +80,10 @@ async function visit(browser,width,revision){
         status:unauthorized?401:200,json:unauthorized?{error:"Unauthorized"}:{revision},
       });
       throw Error("Unexpected vault action: "+input.action);
+    }
+    if(pathname==="/api/designer/assess"){
+      summary.actions.push("assess");
+      return route.fulfill({status:200,json:assessmentFixture(input)});
     }
     if(pathname==="/api/designer/share"){
       assert.equal(input.recipeHash,revision.recipeHash);
@@ -96,10 +123,26 @@ async function visit(browser,width,revision){
       document.body.textContent.includes(parent);
   },{shirtId:revision.garmentSpec.fabrics.shirt.id,pantId:revision.garmentSpec.fabrics.trouser.id,parent:revision.revisionId,draftKey});
   assert.equal(await page.getByRole("combobox",{name:"Shirt type",exact:true}).inputValue(),"overshirt");
+  await page.getByRole("button",{name:"Reassess this saved look"}).click();
+  await page.getByRole("button",{name:/Lock recipe revision/}).waitFor({state:"attached",timeout:30000});
+  // The original remains immutable; a newly locked recipe must explicitly
+  // refer to it and retain the exact StyleSpec v2 construction/fabric IDs.
+  const drawer=page.locator(".newDesignerTechnicalDrawer");
+  await drawer.locator("summary").click();
+  const downloaded=page.waitForEvent("download");
+  await page.getByRole("button",{name:/Lock recipe revision/}).click();
+  const file=await downloaded;
+  const child=JSON.parse(await fs.readFile(await file.path(),"utf8"));
+  assert.equal(child.parentRevisionId,revision.revisionId);
+  assert.equal(child.garmentSpec.styleSpec.shirt.type,"overshirt");
+  assert.equal(child.garmentSpec.fabrics.shirt.id,revision.garmentSpec.fabrics.shirt.id);
+  assert.equal(child.garmentSpec.fabrics.trouser.id,revision.garmentSpec.fabrics.trouser.id);
+  assert.notEqual(child.revisionId,revision.revisionId);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,"no horizontal overflow");
   assert.ok(requests.some(x=>x.pathname==="/api/designer/vault"&&x.action==="loadOwned"));
+  assert.ok(requests.some(x=>x.pathname==="/api/designer/assess"),"reassessment must use the existing deterministic engine");
   await page.screenshot({path:path.join(output,"owned-design-"+width+".png"),fullPage:true});
-  summary.viewports.push({width,ownerVaultLoad:true,savedV2Style:true,parentLinked:true,shareAndEnquiryPrepared:true,noOverflow:true});
+  summary.viewports.push({width,ownerVaultLoad:true,savedV2Style:true,actualNewLockParentVerified:true,shareAndEnquiryPrepared:true,noOverflow:true});
   await context.close();
 }
 
@@ -132,6 +175,7 @@ async function negative(browser,revision){
     assert.deepEqual(summary.paid,[],"never call paid render APIs");
     assert.equal(summary.actions.filter(a=>a==="share").length,3);
     assert.equal(summary.actions.filter(a=>a==="enquiry").length,3);
+    assert.equal(summary.actions.filter(a=>a==="assess").length,3);
     await fs.writeFile(path.join(output,"evidence.json"),JSON.stringify(summary,null,2));
     console.log("Synthetic customer-journey browser checks passed",JSON.stringify(summary));
   }finally{await browser.close();}
