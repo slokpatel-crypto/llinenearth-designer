@@ -99,6 +99,8 @@ async function run(){
       "real catalogue pattern must retain its unmeasured-scale warning");
     assert.match(await realPatternCaption.textContent(),/panel motif alignment is illustrative for Printed Linen Blend 08, including collar\/body and sleeve\/cuff joins/i,
       "real catalogue pattern must not imply approved sewn-panel matching");
+    assert.equal(await realPatternCaption.getAttribute("data-photo-scale-trust"),"approximate",
+      "an unmeasured real pattern must not be advertised as physically scaled");
     assert.equal(await realPatternCaption.getAttribute("data-photo-pattern-placement"),"unverified",
       "patterned preview must expose an unverified panel-placement state");
     const patternPanelPlacementUnverified=true;

@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import manifest from "../public/fabric-tiles/manifest.json" with { type:"json" };
 import { FABRIC_STOCK } from "../src/lib/fabric-stock.ts";
 import { fromLegacyStyle } from "../src/lib/designer/style-spec-v2.ts";
-import { fabricTileSizePx, LIVE_APPROXIMATE_TILE_PX, LIVE_MODEL_PX_PER_MM, PHOTO_MODEL_COORDINATE_SCALE, PHOTO_SWATCH_TILE_PX, liveCapabilities, modelGeometry, photoFabricPatternScale } from "../src/lib/designer/live-preview.ts";
+import { fabricTileSizePx, LIVE_APPROXIMATE_TILE_PX, LIVE_MODEL_PX_PER_MM, PHOTO_MODEL_COORDINATE_SCALE, PHOTO_SWATCH_TILE_PX, liveCapabilities, modelGeometry, photoFabricPatternScale, photoPatternScaleWithinCanvasBounds } from "../src/lib/designer/live-preview.ts";
 import { GARMENT_OPTION_LIBRARY } from "../src/lib/designer/options/library.ts";
 
 const legacy={
@@ -102,4 +103,38 @@ test("owner-declared millimetres map to a calibrated model-space tile size",()=>
     (fabricTileSizePx(declared)*PHOTO_MODEL_COORDINATE_SCALE)/PHOTO_SWATCH_TILE_PX,
   );
   assert.equal(photoFabricPatternScale({...declared,scaleApproximate:true,tileRealWidthMm:null},1.12),1.12);
+});
+
+
+test("verified photo repeat is disclosed only when the canvas transform is not clamped",()=>{
+  const asset={
+    tileUrl:"/fabric-tiles/test.webp",placeholderUrl:"/fabric-tiles/placeholder.webp",
+    tileWidthPx:256,tileHeightPx:256,repeatDetected:true,repeatPeriodPx:32,
+    orientation:"vertical" as const,dominantHex:"#334455",
+    scaleApproximate:false,tileRealWidthMm:120,renderAssetVersion:"fabric-tile-v2",
+  };
+  assert.equal(photoPatternScaleWithinCanvasBounds(asset,.8),true);
+  assert.equal(photoFabricPatternScale(asset,1,.8),.3);
+  // Lower/upper scale guards deliberately cap the *drawn* pattern tile.
+  assert.equal(photoPatternScaleWithinCanvasBounds(asset,.1),false);
+  assert.equal(photoFabricPatternScale(asset,1,.1),.12);
+  assert.equal(photoPatternScaleWithinCanvasBounds(asset,5),false);
+  assert.equal(photoFabricPatternScale(asset,1,5),1.6);
+  // An apparently physical tile alone is insufficient for customer proof.
+  for(const invalid of [null,undefined,0,-1,NaN,Infinity,-Infinity]){
+    assert.equal(photoPatternScaleWithinCanvasBounds(asset,invalid),false,String(invalid));
+  }
+  assert.equal(photoPatternScaleWithinCanvasBounds({...asset,scaleApproximate:true},.8),false);
+  assert.equal(photoPatternScaleWithinCanvasBounds({...asset,tileRealWidthMm:NaN},.8),false);
+  assert.equal(photoPatternScaleWithinCanvasBounds({...asset,tileRealWidthMm:Infinity},.8),false);
+  assert.equal(photoPatternScaleWithinCanvasBounds({...asset,tileRealWidthMm:0},.8),false);
+  assert.equal(photoPatternScaleWithinCanvasBounds({...asset,tileRealWidthMm:Number.MAX_VALUE},2),false);
+});
+
+test("shirt, trouser and craft panels all gate scale claims on unclamped photographic transforms",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(source,/shirtScaleEvidenceReady&&photoScaleReady&&photoPatternScaleWithinCanvasBounds\(shirtPreviewAsset,verifiedPhotoPxPerMm\)/);
+  assert.match(source,/pantScaleEvidenceReady&&photoScaleReady&&photoPatternScaleWithinCanvasBounds\(pantPreviewAsset,verifiedPhotoPxPerMm\)/);
+  assert.match(source,/photoPatternScaleWithinCanvasBounds\(fabricRenderAsset\(visiblePanelFabric\),verifiedPhotoPxPerMm\)/);
+  assert.match(source,/data-photo-scale-trust=\{patternedPlacementItems\.length===0\?"no-visible-repeat":previewScaleVerified\?"verified":"approximate"\}/);
 });
