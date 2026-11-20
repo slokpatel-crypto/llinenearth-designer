@@ -5,6 +5,8 @@ on:
     paths:
       - "scripts/blender/author-linen-earth-officewear.py"
       - "tests/blender/test_actual_armhole_source_ownership.py"
+      - "scripts/blender/bootstrap-human-base-meshes.py"
+      - "tests/python/test_cc0_source_official_mirror.py"
       - ".github/workflows/titan-research-armhole.yml"
 
 permissions:
@@ -16,6 +18,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Reject invalid alternate CC0 bundles without network access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tests/python/test_cc0_source_official_mirror.py
       - name: Obtain checksum-verified official Blender 4.5.14 LTS
         shell: bash
         run: |
@@ -80,6 +87,22 @@ jobs:
               assert base["sourceFaceSelection"]["duplicatedOriginalTorsoSleeveFaces"+suffix] > 0
               assert trial["sourceFaceSelection"]["duplicatedOriginalTorsoSleeveFaces"+suffix] == 0
           assert set(base["garmentContactPairs"])==set(trial["garmentContactPairs"])
+          for side in ("L", "R"):
+              baseline_edges=base["originalSourceArmholeCutEdges"][side]
+              trial_edges=trial["originalSourceArmholeCutEdges"][side]
+              for values in (baseline_edges, trial_edges):
+                  assert values["sourceTorsoCutEdges"]>0
+                  assert values["sourceSleeveCutEdges"]>0
+                  assert values["nearInterfaceTorsoEdges"]>0
+                  assert values["nearInterfaceSleeveEdges"]>0
+                  assert values["identicalSourceInterfaceEdges"]>=0
+                  assert values["sewnSeamApproved"] is False
+                  assert values["clothGapClosedVerified"] is False
+                  summary=values["torsoToNearestSleeveCutMidpointMm"]
+                  assert 0<=summary["min"]<=summary["median"]<=summary["max"]
+                  assert summary["min"]<=summary["p90"]<=summary["max"]
+                  assert 0<=values["torsoCutMidpointsWithin5mm"]<=values["nearInterfaceTorsoEdges"]
+              print("ORIGINAL_CC0_ARMHOLE_CUT_EDGE_SEPARATION_MM",side,baseline_edges,trial_edges)
           for pair in base["garmentContactPairs"]:
               before=base["garmentContactPairs"][pair]
               after=trial["garmentContactPairs"][pair]
