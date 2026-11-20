@@ -1983,9 +1983,12 @@ export function styleDirectorConstructionSuggestions(
     // A recommendation must actually resolve at least one occurrence of
     // the contradiction that caused it. Merely changing a canonical ID
     // without reducing that fault is not a justified tailoring suggestion.
-    const workingCauseCount = styleDirectorConstructionIssues(suggestedSpec, occasion)
-      .filter(candidateIssue => candidateIssue.code === issue.code).length;
-    if ((proposedIssueCounts.get(issue.code) ?? 0) >= workingCauseCount) continue;
+    // The current working issue multiset was already calculated above.
+    // Reuse its cause count instead of re-running the full construction
+    // validator for every candidate. This also keeps the accepted bundle's
+    // decision based on the same exact issue snapshot.
+    if ((proposedIssueCounts.get(issue.code) ?? 0) >=
+        (workingIssueCounts.get(issue.code) ?? 0)) continue;
     suggestedSpec = proposedSpec;
     // Never restore a conflict already resolved by an earlier suggestion.
     workingIssueCounts = proposedIssueCounts;
