@@ -14,6 +14,7 @@ import {
   compareStyleDirectorLooks, STYLE_DIRECTOR_COMPARE_LENSES, type StyleDirectorCompareLens,
 } from "@/lib/designer/style-director-compare";
 import type { StyleDirectorPairingAlternative } from "@/lib/designer/style-director-pairings";
+import { StyleDirectorFinishes, type StyleDirectorClientFinish } from "@/components/StyleDirectorFinishes";
 import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
@@ -63,6 +64,7 @@ export default function StyleDirectorPage() {
   const [pairings,setPairings] = useState<StyleDirectorClientAlternative[]|null>(null);
   const [pairingsLoading,setPairingsLoading] = useState(false);
   const [chosenPairing,setChosenPairing] = useState<StyleDirectorClientAlternative|null>(null);
+  const [chosenFinish,setChosenFinish] = useState<StyleDirectorClientFinish|null>(null);
   const [pairingsError,setPairingsError] = useState("");
   const [loading,setLoading] = useState(false);
   const [rendering,setRendering] = useState(false);
@@ -77,11 +79,17 @@ export default function StyleDirectorPage() {
   const step = steps[index];
   const complete = looks.length > 0;
   const originalLook = looks[selected];
-  const selectedLook = useMemo<StyleDirectorClientLook|undefined>(()=>originalLook
+  const pairingLook = useMemo<StyleDirectorClientLook|undefined>(()=>originalLook
     ? chosenPairing && chosenPairing.id.startsWith(originalLook.id+":") && chosenPairing.realModel
       ? {...originalLook, realModel:chosenPairing.realModel,handoffToken:chosenPairing.handoffToken}
       : originalLook
     : undefined,[originalLook,chosenPairing]);
+  const selectedLook = useMemo<StyleDirectorClientLook|undefined>(()=>pairingLook
+    ? chosenFinish && pairingLook.realModel && chosenFinish.baseShirtId===pairingLook.realModel.shirtId
+      && chosenFinish.basePantId===pairingLook.realModel.pantId
+      ? {...pairingLook,realModel:chosenFinish.realModel,handoffToken:chosenFinish.handoffToken}
+      : pairingLook
+    : undefined,[pairingLook,chosenFinish]);
   const comparedLooks = useMemo(()=>compareStyleDirectorLooks(looks,compareLens),[looks,compareLens]);
   const progress = complete ? 100 : Math.round((index / steps.length) * 100);
   const journeyScope = useMemo(()=>createPreviewRequestScope(),[index,journeyEpoch]);
