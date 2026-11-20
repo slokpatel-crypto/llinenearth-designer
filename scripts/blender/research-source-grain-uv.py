@@ -87,6 +87,55 @@ def _face_has_collapsed_uv(polygon, projected, triangles, check):
     return False
 
 
+def uv_edge_continuity_report(obj, uv_layer):
+    """Measure UV jumps across real shared mesh edges, not guessed seams.
+
+    A per-face surface projection may remove collapsed triangles while
+    introducing chart breaks. Report these breaks independently; nothing
+    here certifies sewn cross-panel seams or real textile repeat.
+    """
+    mesh = obj.data
+    incidents = {}
+    for polygon in mesh.polygons:
+        loop_ids = list(polygon.loop_indices)
+        for i, start_loop in enumerate(loop_ids):
+            end_loop = loop_ids[(i + 1) % len(loop_ids)]
+            first = mesh.loops[start_loop].vertex_index
+            second = mesh.loops[end_loop].vertex_index
+            if first == second:
+                raise RuntimeError("Zero-length source topological edge.")
+            edge = (min(first, second), max(first, second))
+            uv_start = tuple(float(v) for v in uv_layer.data[start_loop].uv)
+            uv_end = tuple(float(v) for v in uv_layer.data[end_loop].uv)
+            if not all(math.isfinite(value) for value in (*uv_start, *uv_end)):
+                raise RuntimeError("Nonfinite research seam UV.")
+            incident = (uv_start, uv_end) if first <= second else (uv_end, uv_start)
+            incidents.setdefault(edge, []).append(incident)
+    boundaries = 0
+    nonmanifold = 0
+    seams = 0
+    largest_gap = 0.0
+    for adjacent in incidents.values():
+        if len(adjacent) == 1:
+            boundaries += 1
+        elif len(adjacent) != 2:
+            nonmanifold += 1
+        else:
+            a, b = adjacent
+            error = max(math.dist(a[0], b[0]), math.dist(a[1], b[1]))
+            if error > 1e-6:
+                seams += 1
+                largest_gap = max(largest_gap, error)
+    return {
+        "sourceTopologicalEdges": len(incidents),
+        "sourceBoundaryEdges": boundaries,
+        "sourceNonManifoldEdges": nonmanifold,
+        "uvDiscontinuityEdges": seams,
+        "maxUvDiscontinuityMetres": round(largest_gap, 7),
+        "sewnSeamApproval": False,
+    }
+
+
 def apply_source_grain_uv(obj, preflight):
     """Add native UV coordinates; never alter any source polygon or mesh vertex.
 
@@ -111,6 +160,7 @@ def apply_source_grain_uv(obj, preflight):
         for index in range(len(mesh.loops))
     ]
     base_stats = preflight.evaluated_mesh_stats(obj)
+    baseline_edges = uv_edge_continuity_report(obj, mesh.uv_layers.active)
     mat = obj.matrix_world
     world = [mat @ vert.co for vert in mesh.vertices]
     if any(not all(math.isfinite(float(x)) for x in v) for v in world):
@@ -167,6 +217,8 @@ def apply_source_grain_uv(obj, preflight):
         "sourceGeometrySha256": original_hash,
         "originalUvLayer": old_active_name,
         "newUvLayer": UV_NAME,
+        "originalUvEdgeContinuity": baseline_edges,
+        "researchUvEdgeContinuity": uv_edge_continuity_report(obj, uv),
         "beforeCollapsedUvTriangles": base_stats["uvCollapsedTriangles"],
         "afterCollapsedUvTriangles": evaluated["uvCollapsedTriangles"],
         "beforeNonFiniteUvTriangles": base_stats["uvNonFiniteTriangles"],
