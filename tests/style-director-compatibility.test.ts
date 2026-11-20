@@ -5669,3 +5669,33 @@ test("retired sleeve selection never masks independent trouser-front constructio
     }
   }
 });
+
+test("explicit sleeve bans and requests remain independent of stale cuff and pleat review", () => {
+  for (const [wording, sleeve, mismatch] of [
+    ["Roll-up styled prohibited", "roll_up_styled", true],
+    ["Roll-up styled prohibited", "full_sleeve", false],
+    ["Roll-up styled requested", "roll_up_styled", false],
+    ["Roll-up styled requested", "full_sleeve", true],
+  ] as const) {
+    for (const staleCuff of [false, true]) {
+      for (const correctedPleat of [false, true]) {
+        const locked = Object.freeze(spec({
+          sleeve, cuff: staleCuff ? "retired_cuff_id" : "barrel_cuff_1_button",
+        }, {
+          type: "pleated_trouser",
+          pleat: correctedPleat ? "single_pleat_forward" : "flat_front",
+        }));
+        const before = JSON.stringify(locked);
+        const sleeveIssues = styleDirectorCandidateSleeveIssues(wording, locked.shirt);
+        const construction = styleDirectorConstructionIssues(locked);
+        const codes = construction.map(issue => issue.code);
+        assert.equal(sleeveIssues.some(issue => issue.code === "candidate_sleeve_mismatch"), mismatch);
+        assert.equal(codes.includes("unknown_versioned_option"), staleCuff);
+        assert.equal(codes.includes("pleated_front_missing_pleat"), !correctedPleat);
+        assert.deepEqual(styleDirectorCandidateSleeveIssues(wording, locked.shirt), sleeveIssues);
+        assert.deepEqual(styleDirectorConstructionIssues(locked), construction);
+        assert.equal(JSON.stringify(locked), before, "review must not mutate locked IDs");
+      }
+    }
+  }
+});
