@@ -2,10 +2,11 @@
 
 import { useRef, useState } from "react";
 import { deleteCloudDesign, getCloudDesign, listCloudDesigns, saveCloudDesign } from "@/lib/customer-saved-design-client";
+import { importCloudDesignExport } from "@/lib/cloud-design-import";
 import type { SavedDesign } from "@/lib/saved-designs";
 
 /** Cloud records are deliberately separate from browser drafts: no implicit migration. */
-export function CloudSavedDesignsPanel({ localDesigns }: { localDesigns: SavedDesign[] }) {
+export function CloudSavedDesignsPanel({ localDesigns, onImported }: { localDesigns: SavedDesign[]; onImported: (saved: SavedDesign) => void }) {
   const [cloud, setCloud] = useState<SavedDesign[]>([]);
   const [selected, setSelected] = useState<SavedDesign | null>(null);
   const [busy, setBusy] = useState(false);
@@ -89,6 +90,19 @@ export function CloudSavedDesignsPanel({ localDesigns }: { localDesigns: SavedDe
             URL.revokeObjectURL(url);
           }
         }}>Export recovered recipe JSON</button>
+        <button type="button" disabled={busy} onClick={() => {
+          if (!window.confirm(`Import cloud design "${selected.title}" into browser drafts on this device? Existing drafts will be preserved. This is not a production lock.`)) return;
+          void run(async () => {
+            // The selected cloud record was fetched through the authenticated,
+            // owner-scoped recovery API. Importing is a separate local-only action.
+            const recovered = importCloudDesignExport(window.localStorage, {
+              schemaVersion: 1, designId: selected.id, title: selected.title,
+              brief: selected.brief, version: selected.version, renderSet: selected.renderSet,
+            });
+            onImported(recovered);
+            setMessage("Cloud design imported as a browser draft on this device. Cloud copy unchanged; production lock not verified.");
+          });
+        }}>Import into browser drafts</button>
       </div>}
     </div>}
   </section>;
