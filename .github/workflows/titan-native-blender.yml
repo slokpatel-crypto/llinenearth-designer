@@ -46,6 +46,12 @@ jobs:
           set -euo pipefail
           "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
             --python tests/blender/test_world_collision_bvh.py
+      - name: Reject all unchecked native garment-panel crossings
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_all_garment_pair_contacts.py
       - name: Validate evaluated UV triangle area in native Blender
         shell: bash
         run: |
