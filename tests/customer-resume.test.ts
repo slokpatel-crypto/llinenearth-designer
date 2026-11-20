@@ -127,3 +127,16 @@ test("starting a fresh unrelated design severs owned-design ancestry",()=>{
   assert.match(reset,/setLastLockedRevisionId\(null\)/);
   assert.match(reset,/setResumeStatus\("idle"\)/);
 });
+
+
+test("private vault listing carries bounded recorded revision parent without a new database write",()=>{
+  const api=readFileSync("src/app/api/designer/vault/route.ts","utf8");
+  const account=readFileSync("src/app/account/page.tsx","utf8");
+  const ownerList=api.split('if(action==="listOwned"){')[1]?.split('if(action==="loadOwned"){')[0]||"";
+  assert.ok(ownerList);
+  assert.match(ownerList,/p_owner_user_id:customer.id/);
+  assert.match(ownerList,/verifyLockedDesignRevision\(revision\)/);
+  assert.match(ownerList,/parentRevisionId:typeof revision.parentRevisionId==="string"/);
+  assert.match(ownerList,/revision.parentRevisionId.length<=220/);
+  assert.match(account,/Continues recorded revision \{item.parentRevisionId\}/);
+});
