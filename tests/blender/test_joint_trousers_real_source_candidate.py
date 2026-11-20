@@ -36,6 +36,11 @@ assert result["referenceImage"]=="/designer/studio-tucked.webp"
 assert result["productionApproved"] is False
 assert result["tailorApproved"] is False
 assert result["realisticTrouserConstructionApproved"] is False
+assert 3<=result["originalBodyClearanceMm"]<=18
+assert 0<=result["researchExtraTrouserClearanceMm"]<=9
+assert result["researchCombinedTrouserClearanceMm"]<=18
+assert abs(result["researchCombinedTrouserClearanceMm"]-(
+    result["originalBodyClearanceMm"]+result["researchExtraTrouserClearanceMm"]))<0.001
 assert research.fingerprint(bpy.data.objects["Body"])==result["sourceBodySha256"]
 assert result["sourceBodySha256"]=="db195b223b23c1f501fc24cc20d20456d9c4d6cd6e63d2204b489b133f39df76"
 assert all(research.fingerprint(bpy.data.objects[name])==sha
