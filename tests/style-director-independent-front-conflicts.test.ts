@@ -273,3 +273,28 @@ test("cropped construction rejects every positive shoe break independently of a 
       }
   }
 });
+
+test("wide-leg taper conflict remains independent of cropped-break construction", () => {
+  for (const sleeve of ["full_sleeve", "retired_sleeve"] as const) {
+    for (const breakChoice of ["stacked_break", "no_break"] as const) {
+      const locked = makeSpec(sleeve, "wide_leg", "flat_front");
+      locked.pant.fit = "slim_tapered";
+      locked.pant.hem = "cropped_above_ankle_hem";
+      locked.pant.break = breakChoice;
+      const before = JSON.stringify(locked);
+      Object.freeze(locked.shirt);
+      Object.freeze(locked.pant);
+      Object.freeze(locked);
+      const first = styleDirectorConstructionIssues(locked);
+      const codes = first.map(issue => issue.code);
+      assert.ok(codes.includes("wide_leg_tapered_fit_mismatch"),
+        "wide-leg silhouette cannot be certified as slim tapered");
+      assert.equal(codes.includes("cropped_stacked_break"), breakChoice === "stacked_break");
+      if (sleeve === "retired_sleeve") {
+        assert.ok(codes.includes("unknown_versioned_option"));
+      }
+      assert.deepEqual(styleDirectorConstructionIssues(locked), first);
+      assert.equal(JSON.stringify(locked), before);
+    }
+  }
+});
