@@ -70,6 +70,25 @@ export function CloudSavedDesignsPanel({ localDesigns }: { localDesigns: SavedDe
         <strong>{selected.title}</strong>
         <p>Recovered cloud design {selected.id}. Version {selected.version.id}.</p>
         <p>Cloud recovery does not overwrite browser drafts or claim production lock approval.</p>
+        <button type="button" disabled={busy} onClick={() => {
+          // Explicit export is safer than silently replacing local drafts. The
+          // versioned recipe remains inspectable even on a second device.
+          const payload = JSON.stringify({
+            schemaVersion: 1, designId: selected.id, title: selected.title,
+            brief: selected.brief, version: selected.version, renderSet: selected.renderSet,
+          }, null, 2);
+          const blob = new Blob([payload], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          try {
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "linen-earth-cloud-design.json";
+            link.click();
+            setMessage("Versioned cloud design exported. Browser drafts unchanged.");
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        }}>Export recovered recipe JSON</button>
       </div>}
     </div>}
   </section>;
