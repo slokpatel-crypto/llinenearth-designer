@@ -1980,6 +1980,12 @@ export function styleDirectorConstructionSuggestions(
     }
     if ([...proposedIssueCounts].some(([code, count]) =>
       count > (originalIssueCounts.get(code) ?? 0))) continue;
+    // A recommendation must actually resolve at least one occurrence of
+    // the contradiction that caused it. Merely changing a canonical ID
+    // without reducing that fault is not a justified tailoring suggestion.
+    const workingCauseCount = styleDirectorConstructionIssues(suggestedSpec, occasion)
+      .filter(candidateIssue => candidateIssue.code === issue.code).length;
+    if ((proposedIssueCounts.get(issue.code) ?? 0) >= workingCauseCount) continue;
     suggestedSpec = proposedSpec;
     seen.add(optionGroup);
     suggestions.push({
