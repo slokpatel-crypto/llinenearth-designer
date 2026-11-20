@@ -6,6 +6,7 @@ on:
       - "scripts/blender/author-linen-earth-officewear.py"
       - "tests/blender/test_actual_armhole_source_ownership.py"
       - "tests/blender/test_armhole_source_cut_edge_fixture.py"
+      - "tests/blender/test_armhole_modifier_seam_displacement.py"
       - "scripts/blender/bootstrap-human-base-meshes.py"
       - "tests/python/test_cc0_source_official_mirror.py"
       - ".github/workflows/titan-research-armhole.yml"
@@ -45,6 +46,12 @@ jobs:
           set -euo pipefail
           "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
             --python tests/blender/test_armhole_source_cut_edge_fixture.py
+      - name: Native independent seam-stage displacement synthetic fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BLENDER_BIN" --background --factory-startup --python-exit-code 1 \
+            --python tests/blender/test_armhole_modifier_seam_displacement.py
       - name: Bootstrap unchanged pinned Blender Human Base Meshes v1.4.1
         shell: bash
         run: |
