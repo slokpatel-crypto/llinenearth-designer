@@ -55,11 +55,39 @@ assert after_edges["uvDiscontinuityEdges"] > 0, (
 for stats in (before_edges, after_edges):
     assert stats["minusYCameraFacingSeamEdges"] + stats["plusYCameraAwaySeamEdges"] == stats["uvDiscontinuityEdges"]
 assert after_edges["sewnSeamApproval"] is False
+before_alignment = report["preAlignmentUvEdgeContinuity"]
+alignment = report["periodicFaceAlignment"]
+assert after_edges["uvDiscontinuityEdges"] <= before_alignment["uvDiscontinuityEdges"]
+assert after_edges["minusYCameraFacingSeamEdges"] <= before_alignment["minusYCameraFacingSeamEdges"]
+assert alignment["eligibleSharedEdges"] > 0
+assert alignment["consistentFaceEdgesJoined"] > 0
+assert alignment["physicalFabricRepeatApproved"] is False
+assert alignment["sewnSeamApproval"] is False
 assert len(obj.data.uv_layers) == 2
 assert [tuple(p.uv) for p in old_uv.data] == original
 assert research.geometry_fingerprint(obj) == fingerprint
 assert obj.get("linen_earth_research_uv_grain_only") is True
 assert obj.get("linen_earth_measured_textile_repeat_approved") is False
+
+# Adversarial native Blender fixture: perturb one real cylinder face by a
+# WHOLE transverse UV turn. This is the kind of arbitrary chart offset that
+# must be eliminated by shared-source-edge integer equations, without any
+# change to the actual 3D surface or the original UV map.
+radius = sum(math.hypot(v.co.x, v.co.y) for v in obj.data.vertices) / len(obj.data.vertices)
+period = math.tau * radius
+one_side = next(p for p in obj.data.polygons if abs(p.normal.z) < 0.1)
+experiment = obj.data.uv_layers[research.UV_NAME]
+for loop_index in one_side.loop_indices:
+    uv = experiment.data[loop_index].uv
+    experiment.data[loop_index].uv = (uv.x + period, uv.y)
+artificial = research.uv_edge_continuity_report(obj, experiment)
+repair = research.align_periodic_uv_faces(obj, experiment, radius)
+restored = research.uv_edge_continuity_report(obj, experiment)
+assert repair["eligibleSharedEdges"] > 0
+assert restored["uvDiscontinuityEdges"] <= artificial["uvDiscontinuityEdges"]
+assert restored["minusYCameraFacingSeamEdges"] <= artificial["minusYCameraFacingSeamEdges"]
+assert research.geometry_fingerprint(obj) == fingerprint
+assert [tuple(p.uv) for p in old_uv.data] == original
 
 # Never overwrite a UV research layer: it could erase original evidence.
 try:
