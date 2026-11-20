@@ -97,11 +97,17 @@ test("construction alternatives cover distinct, catalogue-backed tailoring decis
         ...locked,
         [garment]: { ...locked[garment], [key]: suggestion.proposedId },
       } as StyleSpecV2;
-      const existingCodes = new Set(issues.map(issue => issue.code));
-      const introduced = styleDirectorConstructionIssues(candidate).filter(issue =>
-        !existingCodes.has(issue.code));
-      assert.deepEqual(introduced, [],
-        `${scenario.name}: suggested change must not introduce another contradiction`);
+      const countCodes = (all: ReturnType<typeof styleDirectorConstructionIssues>) => {
+        const counts = new Map<string, number>();
+        for (const issue of all) counts.set(issue.code, (counts.get(issue.code) ?? 0) + 1);
+        return counts;
+      };
+      const originalCounts = countCodes(issues);
+      const candidateCounts = countCodes(styleDirectorConstructionIssues(candidate));
+      for (const [code, count] of candidateCounts) {
+        assert.ok(count <= (originalCounts.get(code) ?? 0),
+          `${scenario.name}: suggestion must not add another instance of ${code}`);
+      }
       assert.ok(issues.some(issue => issue.code === suggestion.cause),
         `${scenario.name}: suggestion must derive from a live compatibility issue`);
       assert.ok(optionsFor(suggestion.optionGroup).some(option =>
