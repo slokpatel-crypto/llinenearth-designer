@@ -254,7 +254,10 @@ test("cropped construction rejects every positive shoe break independently of a 
       assert.ok(codes.includes(expected), `${sleeve}/${shoeBreak}: expected ${expected}`);
       assert.equal(codes.filter(code => code.startsWith("cropped_") && code.endsWith("_break")).length, 1,
         "only the selected incompatible shoe break should be reported");
-      assert.equal(codes.includes("unknown_versioned_option"), sleeve === "retired_sleeve");
+      if (sleeve === "retired_sleeve") {
+        assert.ok(codes.includes("unknown_versioned_option"),
+          "a retired sleeve must be flagged even if other option IDs also require review");
+      }
       assert.deepEqual(styleDirectorConstructionIssues(spec), first);
       assert.equal(JSON.stringify(spec), original);
     }
@@ -264,6 +267,9 @@ test("cropped construction rejects every positive shoe break independently of a 
     const codes = styleDirectorConstructionIssues(compatible).map(issue => issue.code);
     assert.ok(!codes.some(code => ["cropped_slight_break", "cropped_half_break",
       "cropped_full_break", "cropped_stacked_break"].includes(code)));
-    assert.equal(codes.includes("unknown_versioned_option"), sleeve === "retired_sleeve");
+    if (sleeve === "retired_sleeve") {
+        assert.ok(codes.includes("unknown_versioned_option"),
+          "a retired sleeve must be flagged even if other option IDs also require review");
+      }
   }
 });
