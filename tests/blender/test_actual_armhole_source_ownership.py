@@ -336,7 +336,6 @@ def report(expect):
         "experimentalDisjointArmholes": is_trial,
         "experimentalOpenArmholeRims": open_rims,
         "openClothCuffsAndHems": open_rims,
-        "productionApproved": False,
         "caveat": "Actual world BVH contacts and selected source face ownership, not sewn armhole fit",
     }
 
