@@ -182,3 +182,30 @@ test("three independent trouser faults survive retired collar cuff and sleeve ID
     assert.equal(JSON.stringify(spec), original);
   }
 });
+
+test("repairing one trouser fault does not conceal other independent locked construction faults", () => {
+  for (const sleeve of ["full_sleeve", "retired_sleeve"] as const) {
+    for (const fixRise of [false, true]) {
+      for (const fixBreak of [false, true]) {
+        const locked = makeSpec(sleeve, "double_pleat_high_rise", "double_pleat_reverse");
+        locked.pant.rise = fixRise ? "high_rise" : "low_rise";
+        locked.pant.hem = "cropped_above_ankle_hem";
+        locked.pant.break = fixBreak ? "no_break" : "stacked_break";
+        const original = JSON.stringify(locked);
+        Object.freeze(locked.shirt);
+        Object.freeze(locked.pant);
+        Object.freeze(locked);
+        const issues = styleDirectorConstructionIssues(locked);
+        const codes = issues.map(issue => issue.code);
+        assert.equal(codes.includes("high_rise_type_mismatch"), !fixRise,
+          "rise mismatch must reflect only the locked rise");
+        assert.equal(codes.includes("cropped_stacked_break"), !fixBreak,
+          "shoe-break mismatch must reflect only the locked hem and break");
+        assert.equal(codes.includes("unknown_versioned_option"), sleeve === "retired_sleeve",
+          "stale sleeve remains a separate review issue");
+        assert.deepEqual(styleDirectorConstructionIssues(locked), issues);
+        assert.equal(JSON.stringify(locked), original);
+      }
+    }
+  }
+});
