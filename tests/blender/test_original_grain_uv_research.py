@@ -54,6 +54,12 @@ assert after_edges["uvDiscontinuityEdges"] > 0, (
 )
 for stats in (before_edges, after_edges):
     assert stats["minusYCameraFacingSeamEdges"] + stats["plusYCameraAwaySeamEdges"] == stats["uvDiscontinuityEdges"]
+    assert abs(
+        stats["frontDiscontinuousEdgeLengthMm"]+stats["rearDiscontinuousEdgeLengthMm"]
+        -stats["discontinuousSourceEdgeLengthMm"]
+    ) <= 0.002, stats
+    assert stats["discontinuousSourceEdgeLengthMm"]>=0
+    assert (stats["discontinuousSourceEdgeLengthMm"]==0)==(stats["uvDiscontinuityEdges"]==0)
 assert after_edges["sewnSeamApproval"] is False
 before_alignment = report["preAlignmentUvEdgeContinuity"]
 alignment = report["periodicFaceAlignment"]
