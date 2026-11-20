@@ -29,7 +29,7 @@ test("real crotch seam-locality evidence uses actual original boundary and never
     'TITAN_REAL_CROTCH_SEAM_SOURCE_LOCALITY_MEASURED_NOT_SEWING_APPROVED',
     'count == measured["actualFinalLegLegBVHPairs"]',
     'count == stages["actualFinalGarmentLegContactPairs"]',
-    'assert actual["rejectionReasonCount"] == 10',
+    'assert actual["legacyWaistRejectionReasonCount"] == 10',
     'assert measured["changesProductionGeometry"] is False',
     'assert 0 <= bucket["bothLegFacesNear"] <= bucket["eitherLegFaceNear"] <= count',
     'titan-candidate-evidence/crotch-source-seam-proximity.json',
