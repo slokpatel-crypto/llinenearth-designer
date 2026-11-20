@@ -232,3 +232,38 @@ test("independent waistband and cropped-break faults survive a frozen retired sh
     }
   }
 });
+
+test("cropped construction rejects every positive shoe break independently of a stale sleeve", () => {
+  const incompatible = [
+    ["slight_break", "cropped_slight_break"],
+    ["half_break", "cropped_half_break"],
+    ["full_break", "cropped_full_break"],
+    ["stacked_break", "cropped_stacked_break"],
+  ] as const;
+  for (const sleeve of ["full_sleeve", "retired_sleeve"] as const) {
+    for (const [shoeBreak, expected] of incompatible) {
+      const spec = makeSpec(sleeve, "cropped_ankle", "flat_front");
+      spec.pant.hem = "cropped_above_ankle_hem";
+      spec.pant.break = shoeBreak;
+      const original = JSON.stringify(spec);
+      Object.freeze(spec.shirt);
+      Object.freeze(spec.pant);
+      Object.freeze(spec);
+      const first = styleDirectorConstructionIssues(spec);
+      const codes = first.map(issue => issue.code);
+      assert.ok(codes.includes(expected), `${sleeve}/${shoeBreak}: expected ${expected}`);
+      assert.equal(codes.filter(code => code.startsWith("cropped_") && code.endsWith("_break")).length, 1,
+        "only the selected incompatible shoe break should be reported");
+      assert.equal(codes.includes("unknown_versioned_option"), sleeve === "retired_sleeve");
+      assert.deepEqual(styleDirectorConstructionIssues(spec), first);
+      assert.equal(JSON.stringify(spec), original);
+    }
+    const compatible = makeSpec(sleeve, "cropped_ankle", "flat_front");
+    compatible.pant.hem = "cropped_above_ankle_hem";
+    compatible.pant.break = "no_break";
+    const codes = styleDirectorConstructionIssues(compatible).map(issue => issue.code);
+    assert.ok(!codes.some(code => ["cropped_slight_break", "cropped_half_break",
+      "cropped_full_break", "cropped_stacked_break"].includes(code)));
+    assert.equal(codes.includes("unknown_versioned_option"), sleeve === "retired_sleeve");
+  }
+});
