@@ -52,6 +52,8 @@ GARMENT_OBJECTS = (
     "TrouserLegRFabric",
 )
 
+RESEARCH_SURFACE_UV_LAYER = "TITAN_SurfaceGrain_RESEARCH"
+
 SOURCE_KEYS = {
     "name": "linen_earth_model_source_name",
     "version": "linen_earth_model_source_version",
@@ -132,6 +134,27 @@ def validate_scene(collection_name, reference_body_name):
         )
 
     return collection, height
+
+
+def reject_research_scene_for_export(scene):
+    """Never export unapproved research UV even if future physical preflight passes.
+
+    This only blocks known explicitly tagged experimental Blender sources.
+    Existing production identity, body, geometry, measurement and materials
+    acceptance remain fully enforced by the unchanged preflight.
+    """
+    status = str(scene.get("linen_earth_asset_status", "")).strip()
+    if (status.startswith("research-")
+            or scene.get("titan_surface_uv_research_candidate_only") is True
+            or scene.get("titan_surface_uv_production_approved") is False):
+        raise RuntimeError("Research-only Blender scene cannot be exported as an approved garment.")
+    for name in GARMENT_OBJECTS:
+        obj = bpy.data.objects.get(name)
+        if obj is None or obj.type != "MESH":
+            continue
+        if (obj.get("titan_surface_uv_candidate_only") is True
+                or obj.data.uv_layers.get(RESEARCH_SURFACE_UV_LAYER) is not None):
+            raise RuntimeError(f"Research-only garment UV found on {name}; do not export.")
 
 
 def scene_source_provenance(scene):
@@ -332,6 +355,7 @@ def main():
     args = cli_args()
     # Prevent a false GLB/physical-metre manifest pairing before any export.
     validate_export_destination(args.output, args.panel_spec)
+    reject_research_scene_for_export(bpy.context.scene)
     run_scene_preflight()
     panel_spec = load_panel_spec(args.panel_spec) if args.panel_spec else None
     source = scene_source_provenance(bpy.context.scene) if panel_spec else None

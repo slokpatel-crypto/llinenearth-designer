@@ -580,3 +580,12 @@ Architecture and product decisions that must persist across coding sessions.
 - Customer carries only a bounded, validated pair of garment-category fabric IDs into Designer, never a recovery key, private measurements, locked recipe, paid provider or order record.
 - Designer waits for the same server-backed catalogue, restores neither another draft's private fit nor saved revision lineage, and requires a new assessment before a lock or enquiry. Existing vault, signed-share and Director handoffs remain independent.
 - No new dependency, schema or migration. Synthetic Chromium at 390/768/1440 and exact-head independent CI are required before merge.
+
+
+### 2026-11-20 — Reject unapproved UV research scenes before production GLB export
+The Blender exporter now rejects known explicit experimental scene markers,
+research-tagged six-panel cloth meshes and the named TITAN_SurfaceGrain_RESEARCH
+UV layer even when the visible scene status is cleared. This is a separate
+quarantine before the unchanged true body/garment physical preflight; no new
+operator approval attribute, substitute model, customer data or image is
+introduced. The experimental UV candidate remains draft/unmerged.

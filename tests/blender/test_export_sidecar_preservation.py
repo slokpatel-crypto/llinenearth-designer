@@ -10,6 +10,8 @@ import json
 import tempfile
 from pathlib import Path
 
+import bpy
+
 source = Path(__file__).resolve().parents[2] / "scripts/blender/export-linen-earth-officewear.py"
 spec = importlib.util.spec_from_file_location("titan_export", source)
 assert spec is not None and spec.loader is not None
@@ -78,4 +80,45 @@ with tempfile.TemporaryDirectory(prefix="titan-export-pair-safety-") as temp:
     assert manifest["referenceHeightMm"] == 1727
     assert not list(folder.glob(".linen-earth-viewer-*.tmp"))
 
+# A previously rejected UV research .blend cannot become exportable merely
+# because its geometry preflight is improved in a future development branch.
+scene=bpy.context.scene
+assert export.reject_research_scene_for_export(scene) is None
+for key,value in (
+    ("linen_earth_asset_status","research-surface-grain-uv-unapproved"),
+    ("titan_surface_uv_research_candidate_only",True),
+    ("titan_surface_uv_production_approved",False),
+):
+    scene[key]=value
+    try:
+        export.reject_research_scene_for_export(scene)
+    except RuntimeError as exc:
+        assert "Research-only Blender scene" in str(exc),exc
+    else:
+        raise AssertionError(f"Experimental Blender scene escaped export block: {key}")
+    del scene[key]
+
+bpy.ops.mesh.primitive_cube_add(size=1)
+panel=bpy.context.object
+panel.name="ShirtTorsoFabric"
+try:
+    panel["titan_surface_uv_candidate_only"]=True
+    try:
+        export.reject_research_scene_for_export(scene)
+    except RuntimeError as exc:
+        assert "Research-only garment UV" in str(exc),exc
+    else:
+        raise AssertionError("Explicit research mesh flag escaped exporter quarantine")
+    del panel["titan_surface_uv_candidate_only"]
+    panel.data.uv_layers.new(name=export.RESEARCH_SURFACE_UV_LAYER)
+    try:
+        export.reject_research_scene_for_export(scene)
+    except RuntimeError as exc:
+        assert "Research-only garment UV" in str(exc),exc
+    else:
+        raise AssertionError("Named research UV layer escaped exporter quarantine")
+finally:
+    bpy.data.objects.remove(panel,do_unlink=True)
+assert export.reject_research_scene_for_export(scene) is None
+print("TITAN_NATIVE_RESEARCH_UV_EXPORT_QUARANTINE_PASSED")
 print("TITAN_NATIVE_MEASURED_SIDECAR_EXPORT_GUARD_PASSED")
