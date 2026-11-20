@@ -170,6 +170,7 @@ def actual_shared_seam_modifier_displacement(body, torso_faces, sleeve_faces, sl
         }
     paired_vertices = sorted({vertex for edge in shared for vertex in edge})
     displacement_by_stage = {}
+    real_bvh_by_stage = {}
     for stage in stages:
         clones = {}
         for name in ("ShirtTorsoFabric", sleeve_name):
@@ -185,6 +186,12 @@ def actual_shared_seam_modifier_displacement(body, torso_faces, sleeve_faces, sl
             ):
                 raise RuntimeError("Unexpected torso/sleeve vertex-order change before solidify")
             clones[name] = clone
+        measured = preflight.intersection_pair_count(
+            clones["ShirtTorsoFabric"], clones[sleeve_name]
+        )
+        if type(measured) is not int or measured < 0:
+            raise RuntimeError("Missing actual world-space torso/sleeve collision evidence at "+stage)
+        real_bvh_by_stage[stage] = measured
         if stage == "afterClothThickness":
             # Solidify clones are archived for visual inspection, but source
             # vertex IDs no longer certify a correspondence across rim faces.
@@ -219,6 +226,7 @@ def actual_shared_seam_modifier_displacement(body, torso_faces, sleeve_faces, sl
         "sharedOriginalSeamEdges": len(shared),
         "sharedOriginalSeamVertices": len(paired_vertices),
         "preSolidifySourceVertexDisplacementMm": displacement_by_stage,
+        "realWorldBVHTrianglePairContactsByStage": real_bvh_by_stage,
         "postSolidifySeamSewnVerified": False,
         "postSolidifySeamWatertightVerified": False,
         "method": "actual original-source vertex-index mapping; independent torso/sleeve Blender snapshots",
@@ -296,6 +304,12 @@ def report(expect):
         if type(count) is not int or count < 0:
             raise RuntimeError(f"Actual evaluated world BVH contact unknown for {left}::{right}")
         contact[f"{left}::{right}"] = count
+    for side, sleeve in (("L", "ShirtSleeveLFabric"), ("R", "ShirtSleeveRFabric")):
+        panel_key = f"ShirtTorsoFabric::{sleeve}"
+        final_from_stage = stage_displacement[side]["realWorldBVHTrianglePairContactsByStage"]["afterClothThickness"]
+        if final_from_stage != contact[panel_key]:
+            raise RuntimeError("Stale actual armhole modifier stage: final mesh contacts differ from exported panel")
+
     return {
         "version": "titan-cc0-original-face-ownership-trial-v1",
         "modelIdentityId": "linen-earth-studio-model-v1",
