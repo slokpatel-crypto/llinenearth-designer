@@ -675,6 +675,12 @@ export function DesignerModule() {
     setCreativeDirections([]);
     setActiveCreative(null);
     setCreativeAutoNote("");
+    // "Start fresh" must sever the previous saved revision's ancestry.
+    // Otherwise a completely unrelated design would be falsely recorded as
+    // a child of the last account-owned locked recipe.
+    setLastLockedRevisionId(null);
+    setResumeStatus("idle");
+    setResumeMessage("");
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   }
 
