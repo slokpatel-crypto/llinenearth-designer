@@ -113,6 +113,49 @@ async function verify(browser,width){
   summary.widths.push({width,vaultRecipeHash:hash.slice(0,12),noOverflow:true,reopenedAsNewDraft:true,shareAndEnquiryMocked:true});
   await context.close();
 }
+async function delayedShareLogout(browser){
+  const context=await browser.newContext({viewport:{width:390,height:850}});
+  const page=await context.newPage();
+  let loggedIn=true,allowShare;
+  let notifyShare;
+  const shareRequested=new Promise(resolve=>{notifyShare=resolve;});
+  const finishShare=new Promise(resolve=>{allowShare=resolve;});
+  await context.route("**/api/**",async route=>{
+    const path=new URL(route.request().url()).pathname;
+    const body=route.request().method()==="POST"?JSON.parse(route.request().postData()||"{}"):{};
+    let data={};
+    if(path==="/api/customer-auth/session")data={customer:loggedIn?{id:"synthetic-one",email:"one@example.invalid"}:null};
+    else if(path==="/api/customer-auth/logout"){loggedIn=false;}
+    else if(path==="/api/designer/vault"){
+      if(body.action==="listOwned")data={designs:[metadata]};
+      else if(body.action==="loadOwned")data={revision};
+      else throw Error("Unexpected vault mutation: "+body.action);
+    }
+    else if(path==="/api/measurements/vault")data={profiles:[]};
+    else if(path==="/api/customer-account/production")data={quotes:[],orders:[],orderEvents:[],outcomes:[]};
+    else if(path==="/api/designer/share"){
+      notifyShare();
+      await finishShare;
+      data={token:"late-owner-one-public-link"};
+    }
+    await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(data)});
+  });
+  await page.goto(origin+"/account",{waitUntil:"domcontentloaded"});
+  await page.getByRole("button",{name:"View & share"}).click();
+  await page.getByRole("region",{name:"Saved design details"}).waitFor();
+  await page.getByRole("button",{name:"Create 30-day share link"}).click();
+  await shareRequested;
+  // Signing out while a share request is still in flight must invalidate it.
+  await page.getByRole("button",{name:"Sign out"}).click();
+  await page.getByRole("button",{name:"Send secure code"}).waitFor();
+  allowShare();
+  await page.waitForTimeout(180);
+  assert.equal(await page.getByRole("link",{name:"Open shared recipe"}).count(),0);
+  assert.equal(await page.getByText("late-owner-one-public-link",{exact:false}).count(),0);
+  await context.close();
+  summary.requests.push("privacy-regression:delayed-share-discarded-on-logout");
+}
+
 async function unauthorized(browser){
   const context=await browser.newContext({viewport:{width:390,height:800}});
   const page=await context.newPage();
@@ -132,6 +175,7 @@ async function unauthorized(browser){
   try{
     for(const width of [390,768,1440])await verify(browser,width);
     await unauthorized(browser);
+    await delayedShareLogout(browser);
     assert.deepEqual(summary.errors,[],"new UI must have no JS runtime errors");
     await fs.writeFile(path.join(output,"summary.json"),JSON.stringify(summary,null,2));
     console.log("Verified synthetic account→vault→share/enquiry→Designer at three widths; unauthorized vault denied.");
