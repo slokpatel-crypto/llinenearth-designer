@@ -5699,3 +5699,27 @@ test("explicit sleeve bans and requests remain independent of stale cuff and ple
     }
   }
 });
+
+
+test("independent collar catalogue and trouser construction conflicts survive sleeve wording permutations", () => {
+  const clauses = [
+    "Roll-up styled no longer required",
+    "Full sleeves requested",
+  ];
+  const locked = spec({ collar: "retired_collar_id", sleeve: "full_sleeve" }, {
+    type: "pleated_trouser", pleat: "flat_front",
+  });
+  const original = JSON.stringify(locked);
+  const construction = styleDirectorConstructionIssues(locked);
+  assert.ok(construction.some(issue => issue.code === "unknown_versioned_option"),
+    "retired collar ID must require review");
+  assert.ok(construction.some(issue => issue.code === "pleated_front_missing_pleat"),
+    "independent trouser-front mismatch must require review");
+  for (const phrase of [clauses.join("; "), [...clauses].reverse().join("; ")]) {
+    assert.deepEqual(styleDirectorCandidateSleeveIssues(phrase, locked.shirt), [],
+      "withdrawn roll-up requirement must not invalidate a locked full sleeve");
+    assert.deepEqual(styleDirectorConstructionIssues(locked), construction,
+      "unrelated wording must not alter locked construction review");
+    assert.equal(JSON.stringify(locked), original, "locked design remains immutable");
+  }
+});
