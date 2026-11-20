@@ -52,6 +52,8 @@ assert before_edges["uvDiscontinuityEdges"] == 0, before_edges
 assert after_edges["uvDiscontinuityEdges"] > 0, (
     "Separate cap-projection charts must be disclosed as UV seams", after_edges
 )
+for stats in (before_edges, after_edges):
+    assert stats["minusYCameraFacingSeamEdges"] + stats["plusYCameraAwaySeamEdges"] == stats["uvDiscontinuityEdges"]
 assert after_edges["sewnSeamApproval"] is False
 assert len(obj.data.uv_layers) == 2
 assert [tuple(p.uv) for p in old_uv.data] == original
