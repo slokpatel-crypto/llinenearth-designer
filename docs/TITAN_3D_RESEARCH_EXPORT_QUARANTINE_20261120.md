@@ -19,3 +19,29 @@ Native Blender tests exercise the real scene-marker and mesh-layer rules,
 plus existing old GLB/sidecar preservation. Full CI, Studio QA and exact-head
 native export checks must pass before this production-safe guard merges.
 No Vercel deployment, live data writes or unapproved model promotion.
+
+
+## Follow-on: cross-research quarantine variant coverage
+
+The original exporter quarantine covered the independent Worker E research
+`TITAN_SurfaceGrain_RESEARCH` and lower-case `research-*` statuses.
+Native original-CC0 source research PR #1010 independently produces a
+**different** UV layer, `TITAN_RESEARCH_SURFACE_GRAIN`, and uses
+`linen_earth_asset_status=RESEARCH-ONLY-source-UV-unapproved`
+(uppercase), `linen_earth_research_surface_grain_uv=True` on the scene,
+and `linen_earth_research_uv_grain_only=True` on six source-derived
+garment meshes. Those exact values were not recognized before this follow-on.
+
+Exporter guard now checks case-insensitive research status; both explicit
+UV layer names; scene flags for original-source UV, disjoint armholes,
+single-Solidify upper/lower garment topology, open research rims; and
+mesh-level research/candidate identity or explicit unapproved state.
+The rejection executes before physical preflight and before any GLB or
+sidecar write. Native Blender tests cover each marker in isolation using
+real mesh objects, so clearing one flag cannot bypass a still-present
+named research UV layer. The existing measured-panel output preservation
+tests and all physical preflight gates stay intact.
+
+This is a **fail-closed safety integration** between two already existing
+unmerged research streams, not a certificate of production geometry,
+cloth grain, tailoring, fit, fabric scale or model likeness.
