@@ -39,7 +39,7 @@ async function syntheticRevision(){
     creative:null,decision:{designFitScore:0,confidenceScore:0},blockStrategy:null,constructionChecks:[],
     unresolved:["Synthetic fixture"],readiness:{},caveats:[],
   };
-  return lockGarmentSpec(spec,{lockedAt:"2026-11-20T15:00:00.000Z"});
+  return lockGarmentSpec(spec,{lockedAt:"2026-11-20T15:00:00.000Z",parentRevisionId:"LE-LOCK-SYNTHETIC-GRANDPARENT"});
 }
 
 function assessmentFixture(body){
@@ -73,7 +73,7 @@ async function visit(browser,width,revision){
     if(pathname==="/api/customer-auth/session")return route.fulfill({status:200,json:{customer:{id:"synthetic-owner",email:"owner@example.invalid"}}});
     if(pathname==="/api/designer/vault"){
       if(input.action==="listOwned")return route.fulfill({status:200,json:{designs:[{
-        vaultId,revisionId:revision.revisionId,recipeHash:revision.recipeHash,
+        vaultId,revisionId:revision.revisionId,recipeHash:revision.recipeHash,parentRevisionId:revision.parentRevisionId,
         createdAt:"2026-11-20T15:00:00.000Z",expiresAt:"2027-05-19T15:00:00.000Z",
       }]}});
       if(input.action==="loadOwned")return route.fulfill({
@@ -103,6 +103,7 @@ async function visit(browser,width,revision){
   await page.goto(base+"/account",{waitUntil:"domcontentloaded"});
   const item=page.getByText(revision.revisionId,{exact:true});
   await item.waitFor({state:"visible"});
+  await page.getByText("Continues recorded revision "+revision.parentRevisionId,{exact:true}).waitFor({state:"visible"});
   await page.getByRole("button",{name:"Copy secure share link"}).click();
   await page.getByText(/Signed design-only link/).waitFor({state:"visible"});
   await page.getByRole("button",{name:"Prepare WhatsApp enquiry"}).click();
