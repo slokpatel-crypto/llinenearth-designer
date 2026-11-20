@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CloudSavedDesignsPanel } from "@/components/CloudSavedDesignsPanel";
 import { useEffect, useMemo, useState } from "react";
 import { listSavedDesigns, removeSavedDesign, type SavedDesign } from "@/lib/saved-designs";
 import { AtelierHandoffPanel } from "@/components/AtelierHandoffPanel";
@@ -24,9 +25,9 @@ export function SavedDesignsClient() {
     setFeedbackSaved(`${design.id}:${rating}`);
   }
 
-  if (!designs.length) return <section className="savedEmpty"><p className="eyebrow">YOUR ATELIER</p><h1>No saved designs yet.</h1><p>Finalize a direction in the Designer, visualize the locked specification, then save it here as a permanent concept card.</p><Link className="button light" href="/designer">Start a design</Link></section>;
+  if (!designs.length) return <><CloudSavedDesignsPanel localDesigns={designs} /><section className="savedEmpty"><p className="eyebrow">YOUR ATELIER</p><h1>No saved designs yet.</h1><p>Finalize a direction in the Designer, visualize the locked specification, then save it here as a permanent concept card.</p><Link className="button light" href="/designer">Start a design</Link></section></>;
 
-  return <section className="savedStudio">
+  return <><CloudSavedDesignsPanel localDesigns={designs} /><section className="savedStudio">
     <div className="savedIntro"><div><p className="eyebrow">YOUR ATELIER · SAVED DESIGNS</p><h1>Ideas worth returning to.</h1></div><p>Each saved card preserves the exact design version, context, render set and specification hash used to create it. Human feedback is stored for review, never used as an automatic fashion rule.</p></div>
     <div className="savedLayout">
       <div className="savedGrid">{designs.map((design) => { const image = frontImage(design); return <button key={design.id} className={active?.id === design.id ? "savedCard active" : "savedCard"} onClick={() => setActiveId(design.id)}><div className="savedImage">{image && <img src={image} alt={`${design.title} front visualization`} />}<span>{design.version.specHash}</span></div><div className="savedCardCopy"><span>{design.brief.context.occasion} · {design.brief.context.aesthetic}</span><strong>{design.title}</strong><p>{design.version.candidate.garments.layer}</p></div></button>; })}</div>
@@ -40,5 +41,5 @@ export function SavedDesignsClient() {
         <AtelierHandoffPanel design={active}/>
       </aside>}
     </div>
-  </section>;
+  </section></>;
 }

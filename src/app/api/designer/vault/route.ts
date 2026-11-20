@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { secureJsonRequestError } from "@/lib/secure-json-request";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { getCustomerIdentity } from "@/lib/customer-auth";
 import { readBoundedJsonResponse } from "@/lib/designer/bounded-json-response";
@@ -58,6 +59,8 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 }
 
 export async function POST(request:Request){
+  const requestError=secureJsonRequestError(request,MAX_VAULT_REQUEST_BYTES);
+  if(requestError)return jsonNoStore({error:requestError.error},{status:requestError.status});
   if(blocked(request)) return jsonNoStore({error:"Too many design-vault requests."},{status:429});
   try{
     const rawBody=await readBoundedJsonResponse(request,MAX_VAULT_REQUEST_BYTES);
@@ -92,9 +95,17 @@ export async function POST(request:Request){
 
       let accountOwned=false;
       if(customer){
-        accountOwned=requireDesignVaultBooleanAck(await rpc<unknown>("designer_locked_revision_vault_set_owner",{
-          p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:customer.id,
-        }));
+        try{
+          accountOwned=requireDesignVaultBooleanAck(await rpc<unknown>("designer_locked_revision_vault_set_owner",{
+            p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:customer.id,
+          }));
+        }catch{
+          // The store RPC already succeeded. Returning 503 here loses the only
+          // recovery key and leaves an unrecoverable private vault row.
+          // Never claim ownership succeeded without a strict positive ack.
+          console.error("[designer/vault] ownership attachment failed (details redacted).");
+          accountOwned=false;
+        }
         if(accountOwned){
           try{
             await rpc("production_claim_revision_ownership",{
