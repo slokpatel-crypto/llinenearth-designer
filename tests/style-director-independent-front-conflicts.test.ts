@@ -105,3 +105,29 @@ test("cropped hem and stacked shoe break remain independently reviewable with st
     }
   }
 });
+
+test("independent trouser construction conflicts accumulate without repairing frozen saved IDs", () => {
+  for (const sleeve of ["full_sleeve", "retired_sleeve"] as const) {
+    for (const pantType of ["formal_flat_front", "pleated_trouser"] as const) {
+      const pantPleat = pantType === "formal_flat_front" ? "single_pleat_forward" : "flat_front";
+      const frontCode = pantType === "formal_flat_front" ? "flat_front_has_pleat" : "pleated_front_missing_pleat";
+      const spec = makeSpec(sleeve, pantType, pantPleat);
+      spec.pant.hem = "cropped_above_ankle_hem";
+      spec.pant.break = "stacked_break";
+      Object.freeze(spec.shirt);
+      Object.freeze(spec.pant);
+      Object.freeze(spec);
+      const first = styleDirectorConstructionIssues(spec);
+      const codes = first.map(issue => issue.code);
+      assert.ok(codes.includes(frontCode), `${sleeve}/${pantType}: front mismatch missing`);
+      assert.ok(codes.includes("cropped_stacked_break"),
+        `${sleeve}/${pantType}: independent shoe-break mismatch missing`);
+      assert.equal(codes.includes("unknown_versioned_option"), sleeve === "retired_sleeve");
+      assert.deepEqual(styleDirectorConstructionIssues(spec), first,
+        "reviewing a frozen locked design must be deterministic");
+      assert.equal(spec.shirt.sleeve, sleeve);
+      assert.equal(spec.pant.pleat, pantPleat);
+      assert.equal(spec.pant.break, "stacked_break");
+    }
+  }
+});
