@@ -134,3 +134,25 @@ test("unsupported or missing saved IDs never receive a fabricated alternative", 
   const noIssues = makeSpec();
   assert.deepEqual(styleDirectorConstructionSuggestions(noIssues), []);
 });
+
+test("do not offer a flat-front change that contradicts a separately locked pleated fit", () => {
+  const spec = makeSpec();
+  spec.pant.type = "formal_flat_front";
+  spec.pant.pleat = "single_pleat_forward";
+  spec.pant.fit = "pleated_straight";
+  const before = JSON.stringify(spec);
+  Object.freeze(spec.shirt);
+  Object.freeze(spec.pant);
+  Object.freeze(spec);
+  assert.ok(styleDirectorConstructionIssues(spec).some(issue =>
+    issue.code === "flat_front_has_pleat"));
+  assert.deepEqual(styleDirectorConstructionSuggestions(spec), [],
+    "do not fix one construction choice by creating another incompatibility");
+  assert.equal(JSON.stringify(spec), before);
+
+  const independentlySelectable = makeSpec();
+  independentlySelectable.pant.pleat = "single_pleat_forward";
+  assert.deepEqual(styleDirectorConstructionSuggestions(independentlySelectable).map(x =>
+    [x.optionGroup, x.proposedId]), [["pant.pleat", "flat_front"]],
+    "existing safe canonical suggestion must remain available");
+});
