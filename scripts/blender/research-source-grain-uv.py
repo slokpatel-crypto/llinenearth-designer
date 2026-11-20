@@ -300,12 +300,15 @@ def apply_source_grain_uv(obj, preflight):
         tuple(mesh.uv_layers.active.data[index].uv)
         for index in range(len(mesh.loops))
     ]
-    base_stats = preflight.evaluated_mesh_stats(obj)
-    baseline_edges = uv_edge_continuity_report(obj, mesh.uv_layers.active)
+    # Validate real source geometry BEFORE any UV diagnostics. A NaN
+    # injected into a source vertex must fail with a precise source error,
+    # not an incidental chart-length exception.
     mat = obj.matrix_world
     world = [mat @ vert.co for vert in mesh.vertices]
     if any(not all(math.isfinite(float(x)) for x in v) for v in world):
         raise RuntimeError("Invalid real world-space garment coordinates.")
+    base_stats = preflight.evaluated_mesh_stats(obj)
+    baseline_edges = uv_edge_continuity_report(obj, mesh.uv_layers.active)
     cx = sum(v.x for v in world) / len(world)
     cy = sum(v.y for v in world) / len(world)
     radius = sum(math.hypot(v.x - cx, v.y - cy) for v in world) / len(world)
