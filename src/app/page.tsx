@@ -112,7 +112,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="gatewayFoot wrap" data-reveal><span>LINEN EARTH / DESIGN STUDIO</span><p>Style Director for direction. Designer for cloth, cut and photographic preview.</p></section>
+      <section className="gatewayFoot wrap" data-reveal><span>LINEN EARTH / DESIGN STUDIO</span><p>Style Director for direction. Designer for cloth, cut and photographic preview. <Link href="/reference-match">Match a reference photo ↗</Link></p></section>
 
       <section className="homeContactBand" data-reveal>
         <div className="homeContactInner wrap">
