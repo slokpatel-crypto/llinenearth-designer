@@ -9,7 +9,7 @@ test("choosing a browser draft never initiates a cloud upload", () => {
   assert.ok(selection, "local draft selection control must exist");
   assert.match(selection, /onChange=\{\(event\) => setUploadId\(event\.currentTarget\.value\)\}/);
   assert.doesNotMatch(selection, /saveCloudDesign|fetch\s*\(|run\s*\(/);
-  const upload = source.match(/<button\b[^>]*>Upload selected draft<\/button>/)?.[0];
+  const upload = source.match(/<button\b[\s\S]*?>Upload selected draft<\/button>/)?.[0];
   assert.ok(upload, "separate explicit upload button must exist");
   assert.match(upload, /disabled=\{busy \|\| !uploadId\}/);
   assert.match(upload, /onClick=/);
