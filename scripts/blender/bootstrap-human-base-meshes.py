@@ -11,6 +11,7 @@ import argparse
 import json
 import shutil
 import sys
+import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -24,6 +25,7 @@ BUNDLE_URL = (
     "https://download.blender.org/demo/asset-bundles/human-base-meshes/"
     "human-base-meshes-bundle-v1.4.1.zip"
 )
+BUNDLE_MIRROR_URL = BUNDLE_URL.replace("https://download.blender.org/", "https://mirror.blender.org/")
 EXPECTED_ARCHIVE_BYTES = 50_643_039
 DEFAULT_DESTINATION = Path(".cache/linen-earth/blender-human-base-meshes-v1.4.1")
 
@@ -69,13 +71,36 @@ def safe_extract(archive: Path, destination: Path) -> None:
 
 
 def download_archive(target: Path) -> None:
+    """Download the exact CC0 bundle, never accept an HTTP error or partial ZIP.
+
+    The official CDN intermittently responds 403 to GitHub runners. The only
+    alternate URL is Blender Foundation's official mirror for the *same*
+    versioned archive; byte count and ZIP integrity are validated before
+    moving bytes to the requested destination.
+    """
     target.parent.mkdir(parents=True, exist_ok=True)
-    request = urllib.request.Request(
-        BUNDLE_URL,
-        headers={"User-Agent": "Linen-Earth-Model-Intake/1.0"},
-    )
-    with urllib.request.urlopen(request, timeout=180) as response, target.open("wb") as output:
-        shutil.copyfileobj(response, output)
+    staged = target.with_name(target.name + ".partial")
+    failures: list[str] = []
+    try:
+        for url in (BUNDLE_URL, BUNDLE_MIRROR_URL):
+            request = urllib.request.Request(
+                url, headers={"User-Agent": "Linen-Earth-Model-Intake/1.0"}
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=180) as response, staged.open("wb") as output:
+                    shutil.copyfileobj(response, output)
+                verify_archive(staged)
+                staged.replace(target)
+                return
+            except (urllib.error.URLError, TimeoutError, OSError) as exc:
+                failures.append(f"{url}: {type(exc).__name__}")
+                staged.unlink(missing_ok=True)
+        raise RuntimeError(
+            "Official pinned CC0 bundle was unavailable from both Blender sources ("
+            + "; ".join(failures) + ")."
+        )
+    finally:
+        staged.unlink(missing_ok=True)
 
 
 def write_provenance(destination: Path) -> None:
