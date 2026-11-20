@@ -34,6 +34,9 @@ function load(file) {
 }
 const answers = { occasion: "Work", mood: "Quiet", time: "Day", climate: "Indoor", garment: "shirt", colorDirection: "Light" };
 const looks = load("src/lib/style-director-agent.ts").createStyleDirectorLooks(answers);
+const catalogueStock = load("src/lib/fabric-stock.ts").FABRIC_STOCK;
+const pairings = load("src/lib/designer/style-director-pairings.ts").createStyleDirectorPairingAlternatives(looks[0],catalogueStock);
+assert.ok(pairings.length > 0, "Synthetic browser fixture needs a viable alternative supporting fabric");
 const passingCheck = { available: true, status: "pass", fabricFidelity: "strong", colorFidelity: "strong", patternFidelity: "strong", boundary: "strong", construction: "strong", mannequinConsistency: "strong", artifact: "none" };
 assert.equal(looks.length, 3);
 assert.ok(looks.every((look) => look.realModel), "Fixture must use the real photographed shirt/trouser path");
@@ -57,7 +60,7 @@ async function freshPage(width = 1440) {
   page.on("console", (message) => { if (message.type() === "error") summary.errors.push(message.text()); });
   await context.route("**/api/**", (route) => {
     const pathname = new URL(route.request().url()).pathname;
-    if (/look-render|look-inspect|creative-render|creative-inspect|^\/api\/style-director$/.test(pathname)) {
+    if (/look-render|look-inspect|creative-render|creative-inspect|^\/api\/style-director(?:\/pairings)?$/.test(pathname)) {
       summary.errors.push("Backend request escaped browser mock: " + pathname);
     }
     return route.fulfill({ status: 200, json: {} });
@@ -70,7 +73,9 @@ async function freshPage(width = 1440) {
       if (pathname === "/api/designer/photo-calibration") {
         return Promise.resolve(new Response(JSON.stringify(window.__linenDirectorQA.calibration), { status: 200 }));
       }
-      const kind = pathname === "/api/style-director" ? "directions" : pathname === "/api/designer/look-render" ? "render" : pathname === "/api/designer/look-inspect" ? "inspect" : null;
+      const kind = pathname === "/api/style-director" ? "directions"
+        : pathname === "/api/style-director/pairings" ? "pairings"
+        : pathname === "/api/designer/look-render" ? "render" : pathname === "/api/designer/look-inspect" ? "inspect" : null;
       if (!kind) return originalFetch(input, options);
       return new Promise((resolve) => window.__linenDirectorQA.requests.push({
         kind, body: JSON.parse(options.body || "{}"), signal: options.signal, completed: false,
@@ -252,6 +257,23 @@ async function regression(name, run) {
     await page.getByRole("button", { name: /Hide look comparison/ }).click();
     assert.equal(await comparison.isVisible(), false);
     assert.equal(await count(page, "render"), paidBeforeCompare, "Comparison must not spend paid render credits");
+    const beforePairings = await count(page,"pairings");
+    const beforePaid = await count(page,"render");
+    await page.getByRole("button",{name:"Explore pairings",exact:true}).click();
+    await page.waitForFunction((index)=>window.__linenDirectorQA.requests.filter(r=>r.kind==="pairings").length>index,beforePairings);
+    await complete(page,"pairings",beforePairings,{sourceLookId:looks[0].id,heroFabricId:looks[0].fabric.id,alternatives:pairings});
+    const panel=page.locator(".directorPairings");
+    assert.equal(await panel.locator(".directorPairingOptions button").count(),pairings.length+1);
+    const size=await panel.evaluate((el)=>({scroll:el.scrollWidth,client:el.clientWidth}));
+    assert.ok(size.scroll<=size.client+2,"Pairing controls overflow at "+width+"px");
+    await panel.locator(".directorPairingOptions button").nth(1).click();
+    await page.locator(".directorRealModelSpec strong").getByText(pairings[0].realModel.pantName,{exact:false}).waitFor();
+    const altUrl=await page.locator(".directorActions a[href^='/designer-studio?']").getAttribute("href");
+    assert.equal(new URL(altUrl,"http://localhost").searchParams.get("pant"),pairings[0].pantId);
+    await page.screenshot({path:path.join(output,"pairings-"+width+".png"),fullPage:true});
+    await panel.locator(".directorPairingOptions button").first().click();
+    await ready(page);
+    assert.equal(await count(page,"render"),beforePaid,"Styling alternatives must not call paid rendering");
     const initialFraming = await modelFraming(page);
     const initialCoverage = await fabricCoverage(page);
     fs.writeFileSync(path.join(output, "coverage-" + width + ".json"), JSON.stringify(initialCoverage, null, 2));
@@ -311,6 +333,26 @@ async function regression(name, run) {
     assert.equal(await page.locator(".lookCopy h2").textContent(), requestedName);
     assert.equal(await count(page, "render"), countBefore);
     assert.equal((await page.locator(".lookTabs button.active").count()), 1);
+  });
+  await regression("pairings-public-http-rejects-untrusted-input-before-stock-read",async(page)=>{
+    const endpoint=baseURL+"/api/style-director/pairings";
+    const malformed=await page.request.post(endpoint,{headers:{"content-type":"application/json"},data:'{"answers":'});
+    assert.equal(malformed.status(),400,"Malformed JSON is refused");
+    const malformedChoices=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({answers:{...answers,mood:"untrusted"},lookId:looks[0].id})});
+    assert.equal(malformedChoices.status(),400,"Unsupported closed-vocabulary values are refused");
+    const huge=await page.request.post(endpoint,{headers:{"content-type":"application/json"},
+      data:JSON.stringify({answers,lookId:"X".repeat(9000)})});
+    assert.equal(huge.status(),413,"Oversized JSON is refused before catalog access");
+  });
+  await regression("stale-pairings-after-look-change-are-discarded",async(page)=>{
+    await journey(page);
+    await page.getByRole("button",{name:"Explore pairings",exact:true}).click();
+    await page.waitForFunction(()=>window.__linenDirectorQA.requests.some(r=>r.kind==="pairings"));
+    await selectLook(page,1);
+    await complete(page,"pairings",0,{sourceLookId:looks[0].id,heroFabricId:looks[0].fabric.id,alternatives:pairings});
+    assert.equal(await page.locator(".directorPairingOptions button").count(),0);
+    assert.equal((await request(page,"pairings",0)).aborted,true);
   });
   await regression("delayed-render-and-return-to-same-look", async (page) => {
     await journey(page);
