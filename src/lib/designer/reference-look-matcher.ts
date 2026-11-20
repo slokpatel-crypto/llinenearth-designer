@@ -89,3 +89,14 @@ export function sampleReferencePatch(
     return values[Math.floor(values.length / 2)];
   }) as unknown as Rgb;
 }
+
+/** Two garment zones are intentionally user-labelled, never semantically guessed. */
+export type ReferenceSamples = Readonly<{ shirt: Rgb | null; pant: Rgb | null }>;
+export function withReferenceTargetSample(
+  previous: ReferenceSamples,
+  target: "shirt" | "pant",
+  sample: Rgb | null,
+): ReferenceSamples {
+  if ((target !== "shirt" && target !== "pant") || (sample !== null && !validRgb(sample))) return previous;
+  return { ...previous, [target]: sample === null ? null : [sample[0], sample[1], sample[2]] as Rgb };
+}
