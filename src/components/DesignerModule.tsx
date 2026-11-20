@@ -165,6 +165,7 @@ export function DesignerModule() {
   const [vaultBusy,setVaultBusy]=useState(false);
   const [vaultMessage,setVaultMessage]=useState("");
   const [vaultRecoveryToken,setVaultRecoveryToken]=useState("");
+  const [vaultAccountOwned,setVaultAccountOwned]=useState(false);
   const [creativeDirections, setCreativeDirections] = useState<CreativeDirection[]>([]);
   const [craftRequest,setCraftRequest]=useState<CreativeCraftRequest>({...DEFAULT_CRAFT_REQUEST});
   const creativeRequestRef=useRef<{controller:AbortController;stamp:number}|null>(null);
@@ -267,6 +268,7 @@ export function DesignerModule() {
     setLockedRevision(null);
     setVaultRecoveryToken("");
     setVaultMessage("");
+    setVaultAccountOwned(false);
   },[shirtId,pantId,styleSpec,bodyProfile,measurementProfile,activeCreative]);
 
   useEffect(() => {
@@ -1276,14 +1278,20 @@ export function DesignerModule() {
         headers:{"content-type":"application/json"},
         body:JSON.stringify({action:"store",revision:lockedRevision}),
       });
-      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;error?:string};
+      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;accountOwned?:boolean;error?:string};
       if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure cloud copy could not be saved.");
       setVaultRecoveryToken(result.recoveryToken);
+      const accountOwned=result.accountOwned===true;
+      setVaultAccountOwned(accountOwned);
       try{
         await navigator.clipboard.writeText(result.recoveryToken);
-        setVaultMessage(`Recovery token copied · secure copy expires in ${result.expiresInDays||180} days.`);
+        setVaultMessage(accountOwned
+          ? `Saved in My Account · recovery token copied · expires in ${result.expiresInDays||180} days.`
+          : `Recovery token copied · expires in ${result.expiresInDays||180} days. This copy is not linked to your account yet.`);
       }catch{
-        setVaultMessage("Secure cloud copy saved. Copy the recovery token below and keep it private.");
+        setVaultMessage(accountOwned
+          ? "Saved in My Account. Keep the recovery token below as a private backup."
+          : "Secure copy saved, but not linked to My Account. Copy the recovery token below before leaving.");
       }
     }catch(error){
       setVaultMessage(error instanceof Error?error.message:"Secure cloud copy could not be saved.");
@@ -1314,6 +1322,9 @@ export function DesignerModule() {
     {resumeStatus!=="idle"&&<div className="newDesignerHandoff" role={resumeStatus==="error"?"alert":"status"} aria-live="polite" style={{margin:"12px 24px"}}>
       <strong>{resumeStatus==="loaded"?"ACCOUNT DESIGN / EDITABLE CHILD":resumeStatus==="loading"?"ACCOUNT DESIGN / LOADING":"ACCOUNT DESIGN / NOT APPLIED"}</strong>
       <p>{resumeMessage}</p>
+      {resumeStatus==="loaded"&&<button type="button" disabled={assessmentLoading} onClick={()=>void assess()}>
+        {assessmentLoading?"Reassessing…":"Reassess this saved look"}
+      </button>}
       {resumeStatus==="error"&&<Link href="/account">Return to my private account →</Link>}
     </div>}
     <div className="newDesignerBody" aria-busy={resumeStatus==="loading"} inert={resumeStatus==="loading"}>
@@ -1613,6 +1624,7 @@ export function DesignerModule() {
                 {enquiryMessage&&<p>{enquiryMessage}</p>}
                 <button type="button" onClick={()=>void saveLockedRevisionToVault()} disabled={vaultBusy}>{vaultBusy?"Saving secure copy…":"Save secure cloud copy ↗"}</button>
                 {vaultMessage&&<p>{vaultMessage}</p>}
+                {vaultRecoveryToken&&<p><Link href="/account">{vaultAccountOwned?"View this design in My Account →":"Sign in to My Account and link this recovery token →"}</Link></p>}
                 {vaultRecoveryToken&&<>
                   <p><b>Recovery token:</b> keep this private. Anyone with it can recover this locked design until it expires.</p>
                   <textarea readOnly value={vaultRecoveryToken} rows={3} aria-label="Secure design recovery token"/>
