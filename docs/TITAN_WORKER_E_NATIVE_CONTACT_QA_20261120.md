@@ -15,6 +15,19 @@ The native preflight previously measured all six body/garment pairs but only 2 o
 - The source-candidate **rejection-evidence** workflow runs the test and renders front 0°, three-quarter 35°, side 90°, back 180° from a single authored source scene, at an explicitly labeled diagnostic 480×640/8-sample setting. It checks identity, reference photograph, image SHA-256, all unapproved flags and a byte-for-byte unchanged source .blend.
 - The artifact archives these same-source **QA candidates**, not replacement photographic mannequins or customer-facing GLBs.
 
+## Measured pinned CC0 source candidate — 2026-11-20
+Native run [44772211455](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/44772211455) successfully loaded pinned Blender Human Base Meshes v1.4.1 and generated the six original-source garment shells. Same-source four-angle render SHA verification and byte-for-byte `.blend` preservation **passed**. A later legacy raw-count assertion failed because stricter QA discovered six additional actual intersections, not because source geometry had improved or been approved.
+
+New BVH contact pairs at the original 0.5 mm epsilon:
+- `ShirtTorsoFabric::ShirtSleeveLFabric`: 1,434
+- `ShirtTorsoFabric::ShirtSleeveRFabric`: 1,345
+- `ShirtSleeveLFabric::TrouserLegLFabric`: 1,109
+- `ShirtSleeveRFabric::TrouserLegRFabric`: 989
+- `TrouserWaistFabric::TrouserLegLFabric`: 30
+- `TrouserWaistFabric::TrouserLegRFabric`: 60
+
+All ten original physical/photographic failures remain, producing **16 actual rejection reasons**. The summarizer preserves full `rejectionReasonCount` alongside `legacyWaistRejectionReasonCount`: the latter excludes ONLY independently verified new crossings when comparing historical waist experiments, while every crossing remains a hard blocker. No garment geometry is approved.
+
 ## Remaining production blockers
 Actual source garment topology, original photographic four-angle visual comparison, UV seam/physical grain/repeat verification, true body and garment collision elimination, cloth alignment and owner/tailor-reviewed fit remain **blocked**. Any UV unwrapping or collision-remediation modeling experiment must remain in a separate unmerged research branch until real Blender before/after data and independent acceptance prove no regressions.
 
