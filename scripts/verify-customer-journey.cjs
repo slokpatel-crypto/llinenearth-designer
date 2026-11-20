@@ -127,7 +127,7 @@ async function visit(browser,width,revision,followup){
   const item=page.getByText(revision.revisionId,{exact:true});
   await item.waitFor({state:"visible"});
   await page.getByText("Shirt: Synthetic shirt · Trouser: Synthetic trouser",{exact:true}).waitFor({state:"visible"});
-  await page.getByText(/Saved occasion: Semi-Formal · Fabric labels from the locked recipe/).waitFor({state:"visible"});
+  await page.getByText(/Saved occasion: Semi-Formal · Fabric labels from the locked recipe/).first().waitFor({state:"visible"});
   await page.getByText("Continues recorded revision "+revision.parentRevisionId,{exact:true}).waitFor({state:"visible"});
   await page.getByRole("checkbox",{name:"Select saved revision "+revision.revisionId+" for comparison"}).check();
   await page.getByRole("checkbox",{name:"Select saved revision "+followup.revisionId+" for comparison"}).check();
